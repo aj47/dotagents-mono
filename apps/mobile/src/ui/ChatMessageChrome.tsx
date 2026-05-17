@@ -7512,13 +7512,13 @@ export function ChatMessageDelegationCard({
             {delegationCardParts.statusText.text}
           </Text>
         </View>
-        {delegationCardParts.liveText ? (
+        {delegationCardParts.liveText.shouldRender ? (
           <Text style={delegationCardParts.liveText.style}>
             {delegationCardParts.liveText.text}
           </Text>
         ) : null}
       </View>
-      {delegationCardParts.subtitle ? (
+      {delegationCardParts.subtitle.shouldRender ? (
         <Text
           style={delegationCardParts.subtitle.style}
           numberOfLines={delegationCardParts.subtitle.numberOfLines}

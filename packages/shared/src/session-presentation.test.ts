@@ -10828,10 +10828,16 @@ describe("session presentation semantics", () => {
       text: delegationCardProps.presentation.statusLabel,
     })
     expect(delegationCardParts.liveText).toEqual({
+      shouldRender: true,
       style: "delegation-live-text-style",
       text: delegationCardProps.surface.liveLabel,
     })
-    expect(delegationCardParts.subtitle?.text).toBe(delegationCardProps.presentation.subtitle)
+    expect(delegationCardParts.subtitle).toEqual({
+      shouldRender: true,
+      style: "delegation-subtitle-style",
+      numberOfLines: delegationCardProps.surface.subtitleNumberOfLines,
+      text: delegationCardProps.presentation.subtitle,
+    })
     expect(delegationCardParts.meta.items.map((item) => item.text)).toEqual([
       delegationCardProps.presentation.sourceLabel,
       delegationCardProps.presentation.trackingLabel,

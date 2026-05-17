@@ -2209,14 +2209,16 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     text: string
   }
   liveText: {
+    shouldRender: boolean
     style: TStyles["liveText"]
     text: string
-  } | null
+  }
   subtitle: {
+    shouldRender: boolean
     style: TStyles["subtitle"]
     numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["subtitleNumberOfLines"]
     text: string
-  } | null
+  }
   meta: {
     style: TStyles["metaRow"]
     items: Array<{
@@ -22618,15 +22620,17 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       numberOfLines: surface.statusNumberOfLines,
       text: presentation.statusLabel,
     },
-    liveText: presentation.isActive ? {
+    liveText: {
+      shouldRender: presentation.isActive,
       style: styles.liveText,
       text: surface.liveLabel,
-    } : null,
-    subtitle: presentation.subtitle ? {
+    },
+    subtitle: {
+      shouldRender: Boolean(presentation.subtitle),
       style: styles.subtitle,
       numberOfLines: surface.subtitleNumberOfLines,
-      text: presentation.subtitle,
-    } : null,
+      text: presentation.subtitle ?? "",
+    },
     meta: {
       style: styles.metaRow,
       items: metaItems.map((item) => ({

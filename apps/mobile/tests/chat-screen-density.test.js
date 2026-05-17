@@ -993,8 +993,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(delegationCardComponentSource, /\{delegationCardParts\.title\.text\}/);
   assert.match(delegationCardComponentSource, /numberOfLines=\{delegationCardParts\.statusText\.numberOfLines\}/);
   assert.match(delegationCardComponentSource, /\{delegationCardParts\.statusText\.text\}/);
-  assert.match(delegationCardComponentSource, /delegationCardParts\.liveText \? \(/);
+  assert.match(delegationCardComponentSource, /delegationCardParts\.liveText\.shouldRender \? \(/);
+  assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.liveText \? \(/);
   assert.match(delegationCardComponentSource, /\{delegationCardParts\.liveText\.text\}/);
+  assert.match(delegationCardComponentSource, /delegationCardParts\.subtitle\.shouldRender \? \(/);
+  assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.subtitle \? \(/);
   assert.match(delegationCardComponentSource, /numberOfLines=\{delegationCardParts\.subtitle\.numberOfLines\}/);
   assert.match(sessionPresentationSource, /statusStyles\.chip/);
   assert.match(sessionPresentationSource, /statusStyles\.text/);
