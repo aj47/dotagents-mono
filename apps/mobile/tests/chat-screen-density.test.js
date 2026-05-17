@@ -326,7 +326,8 @@ test('shows a conversation-state chip in the mobile chat header while preserving
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderConversationStatus[\s\S]*?export function ChatRuntimeHeaderTurnDuration/)?.[0] ?? '';
   assert.match(headerConversationStatusSource, /const conversationStatusParts = createChatRuntimeHeaderConversationStatusMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+styles,\s+\}\);/);
   assert.match(headerConversationStatusSource, /if \(!conversationStatusParts\.shouldRender\) return null;/);
-  assert.match(headerConversationStatusSource, /conversationStatusParts\.runningIndicator\.shouldRender && \(/);
+  assert.match(headerConversationStatusSource, /conversationStatusParts\.runningIndicator\.shouldRender \? \(/);
+  assert.doesNotMatch(headerConversationStatusSource, /conversationStatusParts\.runningIndicator\.shouldRender && \(/);
   assert.match(headerConversationStatusSource, /resizeMode=\{conversationStatusParts\.runningIndicator\.resizeMode\}/);
   assert.match(headerConversationStatusSource, /style=\{conversationStatusParts\.container\.style\}/);
   assert.match(headerConversationStatusSource, /style=\{conversationStatusParts\.label\.style\}/);

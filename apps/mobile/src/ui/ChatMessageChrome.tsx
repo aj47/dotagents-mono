@@ -6759,13 +6759,13 @@ export function ChatRuntimeHeaderConversationStatus({
 
   return (
     <View style={conversationStatusParts.container.style}>
-      {conversationStatusParts.runningIndicator.shouldRender && (
+      {conversationStatusParts.runningIndicator.shouldRender ? (
         <Image
           source={conversationStatusParts.runningIndicator.source}
           style={conversationStatusParts.runningIndicator.style}
           resizeMode={conversationStatusParts.runningIndicator.resizeMode}
         />
-      )}
+      ) : null}
       <Text style={conversationStatusParts.label.style}>
         {conversationStatusParts.label.text}
       </Text>
