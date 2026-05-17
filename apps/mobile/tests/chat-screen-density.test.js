@@ -5101,8 +5101,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /createMessageQueuePanelHeaderActionMobilePropsParts,/);
   assert.doesNotMatch(messageQueuePanelSource, /createMessageQueuePanelChromeMobilePropsParts,/);
   assert.doesNotMatch(messageQueuePanelSource, /createMessageQueuePanelListMobilePropsParts,/);
-  assert.match(messageQueuePanelSource, /multiline=\{editParts\.input\.multiline\}/);
-  assert.match(messageQueuePanelSource, /autoFocus=\{editParts\.input\.autoFocus\}/);
+  assert.match(messageQueuePanelSource, /<TextInput\s+\{\.\.\.editParts\.input\.props\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /multiline=\{editParts\.input\.multiline\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /autoFocus=\{editParts\.input\.autoFocus\}/);
   assert.doesNotMatch(messageQueuePanelSource, /createMessageQueuePanelMobileStyleSlots,/);
   assert.doesNotMatch(messageQueuePanelSource, /const panelStyleSlots = createMessageQueuePanelMobileStyleSlots/);
   assert.doesNotMatch(messageQueuePanelSource, /panelStyleSlots\./);
@@ -5164,8 +5165,11 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /<QueuedMessageItem[\s\S]*?\{\.\.\.item\.messageProps\}[\s\S]*?colors=\{colors\}/);
   assert.match(messageQueuePanelSource, /getQueuedMessageEditDraftState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /const editSubmitState = editDraftState\.submitState;/);
-  assert.match(messageQueuePanelSource, /disabled=\{editParts\.saveButton\.disabled\}/);
-  assert.match(messageQueuePanelSource, /accessibilityState=\{editParts\.saveButton\.accessibilityState\}/);
+  assert.match(messageQueuePanelSource, /<TextInput\s+\{\.\.\.editParts\.input\.props\}[\s\S]*?value=\{editText\}[\s\S]*?onChangeText=\{setEditText\}/);
+  assert.match(messageQueuePanelSource, /<TouchableOpacity\s+\{\.\.\.editParts\.cancelButton\.props\}/);
+  assert.match(messageQueuePanelSource, /<TouchableOpacity\s+\{\.\.\.editParts\.saveButton\.props\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /disabled=\{editParts\.saveButton\.disabled\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /accessibilityState=\{editParts\.saveButton\.accessibilityState\}/);
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSaveActionState\(editText\)/);
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSubmitState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /createQueuedMessageItemMobileStyleSheetSlots,/);
@@ -5209,9 +5213,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
   assert.doesNotMatch(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<Ionicons\s+name=\{expandButtonParts\.icon\.name\}/);
   assert.doesNotMatch(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);
-  assert.match(messageQueuePanelSource, /style=\{editParts\.cancelButton\.style\}/);
-  assert.match(messageQueuePanelSource, /activeOpacity=\{editParts\.saveButton\.activeOpacity\}/);
-  assert.match(messageQueuePanelSource, /accessibilityLabel=\{editParts\.input\.accessibilityLabel\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /style=\{editParts\.cancelButton\.style\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /activeOpacity=\{editParts\.saveButton\.activeOpacity\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /accessibilityLabel=\{editParts\.input\.accessibilityLabel\}/);
   assert.doesNotMatch(messageQueuePanelSource, /style=\{\[styles\.editButton, styles\.cancelButton\]\}/);
   assert.doesNotMatch(messageQueuePanelSource, /style=\{\[styles\.editButton, styles\.saveButton\]\}/);
   assert.doesNotMatch(messageQueuePanelSource, /borderColor:\s*actionColors\.buttonBorderColor/);

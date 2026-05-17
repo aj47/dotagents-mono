@@ -2445,20 +2445,24 @@ export interface QueuedMessageEditMobilePropsParts<
     style: TStyles['editContainer'];
   };
   input: {
-    style: TStyles['editInput'];
-    accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editInputAccessibilityLabel;
-    multiline: QueuedMessageMobileEditSurface['inputMultiline'];
-    autoFocus: QueuedMessageMobileEditSurface['inputAutoFocus'];
+    props: {
+      style: TStyles['editInput'];
+      accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editInputAccessibilityLabel;
+      multiline: QueuedMessageMobileEditSurface['inputMultiline'];
+      autoFocus: QueuedMessageMobileEditSurface['inputAutoFocus'];
+    };
   };
   actions: {
     style: TStyles['editActions'];
   };
   cancelButton: {
-    style: Array<TStyles['editButton'] | TStyles['cancelButton']>;
-    onPress: TOnCancel;
-    activeOpacity: QueuedMessageMobileEditSurface['buttonPressedOpacity'];
-    accessibilityRole: QueuedMessageMobileEditSurface['buttonAccessibilityRole'];
-    accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelAccessibilityLabel;
+    props: {
+      style: Array<TStyles['editButton'] | TStyles['cancelButton']>;
+      onPress: TOnCancel;
+      activeOpacity: QueuedMessageMobileEditSurface['buttonPressedOpacity'];
+      accessibilityRole: QueuedMessageMobileEditSurface['buttonAccessibilityRole'];
+      accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelAccessibilityLabel;
+    };
     text: {
       text: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelLabel;
       props: {
@@ -2467,13 +2471,15 @@ export interface QueuedMessageEditMobilePropsParts<
     };
   };
   saveButton: {
-    style: Array<TStyles['editButton'] | TStyles['saveButton']>;
-    onPress: TOnSave;
-    disabled: boolean;
-    activeOpacity: QueuedMessageMobileEditSurface['buttonPressedOpacity'];
-    accessibilityRole: QueuedMessageMobileEditSurface['buttonAccessibilityRole'];
-    accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveAccessibilityLabel;
-    accessibilityState: QueuedMessageEditSaveActionState['accessibilityState'];
+    props: {
+      style: Array<TStyles['editButton'] | TStyles['saveButton']>;
+      onPress: TOnSave;
+      disabled: boolean;
+      activeOpacity: QueuedMessageMobileEditSurface['buttonPressedOpacity'];
+      accessibilityRole: QueuedMessageMobileEditSurface['buttonAccessibilityRole'];
+      accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveAccessibilityLabel;
+      accessibilityState: QueuedMessageEditSaveActionState['accessibilityState'];
+    };
     text: {
       text: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveLabel;
       props: {
@@ -3082,20 +3088,24 @@ export function createQueuedMessageEditMobilePropsParts<
       style: styles.editContainer,
     },
     input: {
-      style: styles.editInput,
-      accessibilityLabel: copy.actions.editInputAccessibilityLabel,
-      multiline: surface.inputMultiline,
-      autoFocus: surface.inputAutoFocus,
+      props: {
+        style: styles.editInput,
+        accessibilityLabel: copy.actions.editInputAccessibilityLabel,
+        multiline: surface.inputMultiline,
+        autoFocus: surface.inputAutoFocus,
+      },
     },
     actions: {
       style: styles.editActions,
     },
     cancelButton: {
-      style: [styles.editButton, styles.cancelButton],
-      onPress: onCancel,
-      activeOpacity: surface.buttonPressedOpacity,
-      accessibilityRole: surface.buttonAccessibilityRole,
-      accessibilityLabel: copy.actions.cancelAccessibilityLabel,
+      props: {
+        style: [styles.editButton, styles.cancelButton],
+        onPress: onCancel,
+        activeOpacity: surface.buttonPressedOpacity,
+        accessibilityRole: surface.buttonAccessibilityRole,
+        accessibilityLabel: copy.actions.cancelAccessibilityLabel,
+      },
       text: {
         text: copy.actions.cancelLabel,
         props: {
@@ -3104,13 +3114,15 @@ export function createQueuedMessageEditMobilePropsParts<
       },
     },
     saveButton: {
-      style: [styles.editButton, styles.saveButton],
-      onPress: onSave,
-      disabled: editDraftState.saveActionState.isDisabled,
-      activeOpacity: surface.buttonPressedOpacity,
-      accessibilityRole: surface.buttonAccessibilityRole,
-      accessibilityLabel: copy.actions.saveAccessibilityLabel,
-      accessibilityState: editDraftState.saveActionState.accessibilityState,
+      props: {
+        style: [styles.editButton, styles.saveButton],
+        onPress: onSave,
+        disabled: editDraftState.saveActionState.isDisabled,
+        activeOpacity: surface.buttonPressedOpacity,
+        accessibilityRole: surface.buttonAccessibilityRole,
+        accessibilityLabel: copy.actions.saveAccessibilityLabel,
+        accessibilityState: editDraftState.saveActionState.accessibilityState,
+      },
       text: {
         text: copy.actions.saveLabel,
         props: {

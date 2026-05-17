@@ -130,33 +130,20 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
       <View style={itemChromeParts.container.style}>
         <View style={editParts.container.style}>
           <TextInput
-            style={editParts.input.style}
+            {...editParts.input.props}
             value={editText}
             onChangeText={setEditText}
-            accessibilityLabel={editParts.input.accessibilityLabel}
-            multiline={editParts.input.multiline}
-            autoFocus={editParts.input.autoFocus}
           />
           <View style={editParts.actions.style}>
             <TouchableOpacity
-              style={editParts.cancelButton.style}
-              onPress={editParts.cancelButton.onPress}
-              activeOpacity={editParts.cancelButton.activeOpacity}
-              accessibilityRole={editParts.cancelButton.accessibilityRole}
-              accessibilityLabel={editParts.cancelButton.accessibilityLabel}
+              {...editParts.cancelButton.props}
             >
               <Text {...editParts.cancelButton.text.props}>
                 {editParts.cancelButton.text.text}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={editParts.saveButton.style}
-              onPress={editParts.saveButton.onPress}
-              disabled={editParts.saveButton.disabled}
-              activeOpacity={editParts.saveButton.activeOpacity}
-              accessibilityRole={editParts.saveButton.accessibilityRole}
-              accessibilityLabel={editParts.saveButton.accessibilityLabel}
-              accessibilityState={editParts.saveButton.accessibilityState}
+              {...editParts.saveButton.props}
             >
               <Text {...editParts.saveButton.text.props}>
                 {editParts.saveButton.text.text}

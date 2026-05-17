@@ -1577,19 +1577,23 @@ describe('message-queue-utils', () => {
         style: 'editContainer',
       },
       input: {
-        style: 'editInput',
-        accessibilityLabel: 'Queued message edit input',
-        multiline: true,
-        autoFocus: true,
+        props: {
+          style: 'editInput',
+          accessibilityLabel: 'Queued message edit input',
+          multiline: true,
+          autoFocus: true,
+        },
       },
       actions: {
         style: 'editActions',
       },
       cancelButton: {
-        style: ['editButton', 'cancelButton'],
-        activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.buttonPressedOpacity,
-        accessibilityRole: 'button',
-        accessibilityLabel: 'Cancel queued message edit',
+        props: {
+          style: ['editButton', 'cancelButton'],
+          activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.buttonPressedOpacity,
+          accessibilityRole: 'button',
+          accessibilityLabel: 'Cancel queued message edit',
+        },
         text: {
           text: 'Cancel',
           props: {
@@ -1598,12 +1602,14 @@ describe('message-queue-utils', () => {
         },
       },
       saveButton: {
-        style: ['editButton', 'saveButton'],
-        disabled: false,
-        activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.buttonPressedOpacity,
-        accessibilityRole: 'button',
-        accessibilityLabel: 'Save queued message edit',
-        accessibilityState: { disabled: false },
+        props: {
+          style: ['editButton', 'saveButton'],
+          disabled: false,
+          activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.edit.buttonPressedOpacity,
+          accessibilityRole: 'button',
+          accessibilityLabel: 'Save queued message edit',
+          accessibilityState: { disabled: false },
+        },
         text: {
           text: 'Save',
           props: {
@@ -1612,8 +1618,8 @@ describe('message-queue-utils', () => {
         },
       },
     });
-    editParts.cancelButton.onPress();
-    editParts.saveButton.onPress();
+    editParts.cancelButton.props.onPress();
+    editParts.saveButton.props.onPress();
     expect(editPartCalls).toEqual(['cancel', 'save']);
     const bundledPartCalls: string[] = [];
     const bundledMessage = makeMessage('bundled-message', {
@@ -1722,12 +1728,16 @@ describe('message-queue-utils', () => {
     expect(bundledParts.actions.actions.map((action) => action.key)).toEqual(['retry', 'edit', 'remove']);
     expect(bundledParts.edit).toMatchObject({
       input: {
-        style: 'editInput',
-        accessibilityLabel: 'Queued message edit input',
+        props: {
+          style: 'editInput',
+          accessibilityLabel: 'Queued message edit input',
+        },
       },
       saveButton: {
-        disabled: false,
-        accessibilityState: { disabled: false },
+        props: {
+          disabled: false,
+          accessibilityState: { disabled: false },
+        },
       },
     });
     bundledParts.actions.actions.forEach((action) => action.onPress());
@@ -1735,8 +1745,8 @@ describe('message-queue-utils', () => {
       throw new Error('Expected bundled queued message expand button');
     }
     bundledParts.expandButton.pressable.onPress();
-    bundledParts.edit.cancelButton.onPress();
-    bundledParts.edit.saveButton.onPress();
+    bundledParts.edit.cancelButton.props.onPress();
+    bundledParts.edit.saveButton.props.onPress();
     expect(bundledPartCalls).toEqual(['retry', 'edit', 'remove', 'expand', 'cancel', 'save']);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item.containerBaseClassName).toContain('transition-colors');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.desktop.item.messageCollapsedClassName).toBe('line-clamp-2');
