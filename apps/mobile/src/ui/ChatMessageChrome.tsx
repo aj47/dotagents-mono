@@ -10195,7 +10195,7 @@ export function ChatMessageScrollViewport({
     <ScrollView
       {...scrollViewportParts.scrollView.props}
     >
-      {scrollViewportParts.content.children}
+      {scrollViewportParts.scrollView.content.children}
     </ScrollView>
   );
 }

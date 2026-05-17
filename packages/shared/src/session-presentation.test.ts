@@ -9603,9 +9603,9 @@ describe("session presentation semantics", () => {
           onScrollEndDrag: "on-scroll-end-drag",
           scrollEventThrottle: 16,
         },
-      },
-      content: {
-        children: "thread-list",
+        content: {
+          children: "thread-list",
+        },
       },
     })
     expect(createChatRuntimeConversationViewportContentMobilePropsParts({

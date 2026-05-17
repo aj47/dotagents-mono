@@ -7634,9 +7634,9 @@ export interface ChatRuntimeConversationScrollViewportMobilePropsParts<
       onScrollEndDrag: TOnScrollEndDrag | undefined
       scrollEventThrottle: TScrollEventThrottle
     }
-  }
-  content: {
-    children: TChildren
+    content: {
+      children: TChildren
+    }
   }
 }
 
@@ -25209,9 +25209,9 @@ export function createChatRuntimeConversationScrollViewportMobilePropsParts<
         onScrollEndDrag,
         scrollEventThrottle,
       },
-    },
-    content: {
-      children,
+      content: {
+        children,
+      },
     },
   }
 }
