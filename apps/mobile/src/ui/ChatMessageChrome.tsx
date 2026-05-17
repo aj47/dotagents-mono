@@ -2048,6 +2048,14 @@ type ChatMessageToolApprovalActionButtonProps = {
   | ChatMessageToolApprovalParts['approveButton']['props']
 );
 
+type ChatMessageToolApprovalDenyActionContentProps = {
+  content: ChatMessageToolApprovalParts['denyButton']['content'];
+};
+
+type ChatMessageToolApprovalApproveActionContentProps = {
+  content: ChatMessageToolApprovalParts['approveButton']['content'];
+};
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -9013,8 +9021,6 @@ export function ChatMessageToolApproval({
     styles,
   });
   const argumentsToggleContent = toolApprovalParts.argumentsToggle.content;
-  const denyButtonContent = toolApprovalParts.denyButton.content;
-  const approveButtonContent = toolApprovalParts.approveButton.content;
 
   return (
     <ChatMessageToolApprovalView
@@ -9078,32 +9084,56 @@ export function ChatMessageToolApproval({
           <ChatMessageToolApprovalActionButton
             {...toolApprovalParts.denyButton.props}
           >
-            <ChatMessageToolApprovalIcon
-              {...denyButtonContent.icon.props}
-            />
-            <ChatMessageToolApprovalActionLabel
-              {...denyButtonContent.label.props}
+            <ChatMessageToolApprovalDenyActionContent
+              content={toolApprovalParts.denyButton.content}
             />
           </ChatMessageToolApprovalActionButton>
           <ChatMessageToolApprovalActionButton
             {...toolApprovalParts.approveButton.props}
           >
-            {approveButtonContent.spinner.shouldRender ? (
-              <ChatMessageToolApprovalSpinner
-                {...approveButtonContent.spinner.props}
-              />
-            ) : approveButtonContent.icon.shouldRender ? (
-              <ChatMessageToolApprovalIcon
-                {...approveButtonContent.icon.props}
-              />
-            ) : null}
-            <ChatMessageToolApprovalActionLabel
-              {...approveButtonContent.label.props}
+            <ChatMessageToolApprovalApproveActionContent
+              content={toolApprovalParts.approveButton.content}
             />
           </ChatMessageToolApprovalActionButton>
         </ChatMessageToolApprovalActions>
       </ChatMessageToolApprovalView>
     </ChatMessageToolApprovalView>
+  );
+}
+
+export function ChatMessageToolApprovalDenyActionContent({
+  content,
+}: ChatMessageToolApprovalDenyActionContentProps) {
+  return (
+    <>
+      <ChatMessageToolApprovalIcon
+        {...content.icon.props}
+      />
+      <ChatMessageToolApprovalActionLabel
+        {...content.label.props}
+      />
+    </>
+  );
+}
+
+export function ChatMessageToolApprovalApproveActionContent({
+  content,
+}: ChatMessageToolApprovalApproveActionContentProps) {
+  return (
+    <>
+      {content.spinner.shouldRender ? (
+        <ChatMessageToolApprovalSpinner
+          {...content.spinner.props}
+        />
+      ) : content.icon.shouldRender ? (
+        <ChatMessageToolApprovalIcon
+          {...content.icon.props}
+        />
+      ) : null}
+      <ChatMessageToolApprovalActionLabel
+        {...content.label.props}
+      />
+    </>
   );
 }
 
