@@ -2001,6 +2001,19 @@ type ChatMessageToolApprovalHeaderProps = {
   spinner: ChatMessageToolApprovalParts['headerSpinner'];
 };
 
+type ChatMessageToolApprovalContentProps = {
+  content: ChatMessageToolApprovalParts['content'];
+  toolRow: ChatMessageToolApprovalParts['toolRow'];
+  toolLabel: ChatMessageToolApprovalParts['toolLabel'];
+  toolName: ChatMessageToolApprovalParts['toolName'];
+  argumentsPreview: ChatMessageToolApprovalParts['argumentsPreview'];
+  argumentsToggle: ChatMessageToolApprovalParts['argumentsToggle'];
+  fullArguments: ChatMessageToolApprovalParts['fullArguments'];
+  actions: ChatMessageToolApprovalParts['actions'];
+  denyButton: ChatMessageToolApprovalParts['denyButton'];
+  approveButton: ChatMessageToolApprovalParts['approveButton'];
+};
+
 type ChatMessageToolApprovalToolRowProps = {
   row: ChatMessageToolApprovalParts['toolRow'];
   label: ChatMessageToolApprovalParts['toolLabel'];
@@ -9066,29 +9079,57 @@ export function ChatMessageToolApproval({
         title={toolApprovalParts.title}
         spinner={toolApprovalParts.headerSpinner}
       />
-      <ChatMessageToolApprovalView
-        {...toolApprovalParts.content.props}
-      >
-        <ChatMessageToolApprovalToolRow
-          row={toolApprovalParts.toolRow}
-          label={toolApprovalParts.toolLabel}
-          name={toolApprovalParts.toolName}
-        />
-        <ChatMessageToolApprovalArgumentsPreviewBlock
-          preview={toolApprovalParts.argumentsPreview}
-        />
-        <ChatMessageToolApprovalArgumentsToggleBlock
-          argumentsToggle={toolApprovalParts.argumentsToggle}
-        />
-        <ChatMessageToolApprovalFullArgumentsBlock
-          fullArguments={toolApprovalParts.fullArguments}
-        />
-        <ChatMessageToolApprovalActionBar
-          actions={toolApprovalParts.actions}
-          denyButton={toolApprovalParts.denyButton}
-          approveButton={toolApprovalParts.approveButton}
-        />
-      </ChatMessageToolApprovalView>
+      <ChatMessageToolApprovalContent
+        content={toolApprovalParts.content}
+        toolRow={toolApprovalParts.toolRow}
+        toolLabel={toolApprovalParts.toolLabel}
+        toolName={toolApprovalParts.toolName}
+        argumentsPreview={toolApprovalParts.argumentsPreview}
+        argumentsToggle={toolApprovalParts.argumentsToggle}
+        fullArguments={toolApprovalParts.fullArguments}
+        actions={toolApprovalParts.actions}
+        denyButton={toolApprovalParts.denyButton}
+        approveButton={toolApprovalParts.approveButton}
+      />
+    </ChatMessageToolApprovalView>
+  );
+}
+
+export function ChatMessageToolApprovalContent({
+  content,
+  toolRow,
+  toolLabel,
+  toolName,
+  argumentsPreview,
+  argumentsToggle,
+  fullArguments,
+  actions,
+  denyButton,
+  approveButton,
+}: ChatMessageToolApprovalContentProps) {
+  return (
+    <ChatMessageToolApprovalView
+      {...content.props}
+    >
+      <ChatMessageToolApprovalToolRow
+        row={toolRow}
+        label={toolLabel}
+        name={toolName}
+      />
+      <ChatMessageToolApprovalArgumentsPreviewBlock
+        preview={argumentsPreview}
+      />
+      <ChatMessageToolApprovalArgumentsToggleBlock
+        argumentsToggle={argumentsToggle}
+      />
+      <ChatMessageToolApprovalFullArgumentsBlock
+        fullArguments={fullArguments}
+      />
+      <ChatMessageToolApprovalActionBar
+        actions={actions}
+        denyButton={denyButton}
+        approveButton={approveButton}
+      />
     </ChatMessageToolApprovalView>
   );
 }
