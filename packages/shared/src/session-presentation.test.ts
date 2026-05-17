@@ -13488,8 +13488,16 @@ describe("session presentation semantics", () => {
       },
     })
     expect(payloadSectionParts).toEqual({
-      sectionStyle: "payload-section",
-      headerRowStyle: "payload-header-row",
+      section: {
+        props: {
+          style: "payload-section",
+        },
+      },
+      headerRow: {
+        props: {
+          style: "payload-header-row",
+        },
+      },
       payloadMeta: {
         renderState: "payload-render-state",
         styles: "payload-meta-styles",

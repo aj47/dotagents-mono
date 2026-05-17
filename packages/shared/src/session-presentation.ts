@@ -3241,8 +3241,16 @@ export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
     payloadBlock: unknown
   },
 > {
-  sectionStyle: TStyles["section"]
-  headerRowStyle: TStyles["headerRow"]
+  section: {
+    props: {
+      style: TStyles["section"]
+    }
+  }
+  headerRow: {
+    props: {
+      style: TStyles["headerRow"]
+    }
+  }
   payloadMeta: {
     renderState: TPayloadRenderState
     styles: TStyles["payloadMeta"]
@@ -20595,8 +20603,16 @@ export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
   TStyles
 > {
   return {
-    sectionStyle: styles.section,
-    headerRowStyle: styles.headerRow,
+    section: {
+      props: {
+        style: styles.section,
+      },
+    },
+    headerRow: {
+      props: {
+        style: styles.headerRow,
+      },
+    },
     payloadMeta: {
       renderState: payloadRenderState,
       styles: styles.payloadMeta,

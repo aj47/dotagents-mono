@@ -2222,6 +2222,18 @@ type ChatMessageToolExecutionPayloadSectionProps = {
   styles: ChatMessageToolExecutionPayloadSectionStyles;
 };
 
+type ChatMessageToolExecutionPayloadSectionParts = ReturnType<typeof createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
+  ChatMessageToolExecutionPayloadSectionProps['payloadRenderState'],
+  ChatMessageToolExecutionPayloadSectionProps['copyButtonRenderState'],
+  ChatMessageToolExecutionPayloadSectionProps['onCopyPress'],
+  ChatMessageToolExecutionPayloadSectionProps['styles']
+>>;
+
+type ChatMessageToolExecutionPayloadSectionViewProps =
+  (ChatMessageToolExecutionPayloadSectionParts['section']['props'] | ChatMessageToolExecutionPayloadSectionParts['headerRow']['props']) & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolExecutionErrorBlockStyles = {
   section: StyleProp<ViewStyle>;
   headerRow: StyleProp<ViewStyle>;
@@ -9582,18 +9594,33 @@ export function ChatMessageToolExecutionPayloadSection({
   });
 
   return (
-    <View style={payloadSectionParts.sectionStyle}>
-      <View style={payloadSectionParts.headerRowStyle}>
+    <ChatMessageToolExecutionPayloadSectionView
+      {...payloadSectionParts.section.props}
+    >
+      <ChatMessageToolExecutionPayloadSectionView
+        {...payloadSectionParts.headerRow.props}
+      >
         <ChatMessageToolExecutionPayloadMeta
           {...payloadSectionParts.payloadMeta}
         />
         <ChatMessageToolExecutionCopyButton
           {...payloadSectionParts.copyButton}
         />
-      </View>
+      </ChatMessageToolExecutionPayloadSectionView>
       <ChatMessageToolExecutionPayloadBlock
         {...payloadSectionParts.payloadBlock}
       />
+    </ChatMessageToolExecutionPayloadSectionView>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadSectionView({
+  style,
+  children,
+}: ChatMessageToolExecutionPayloadSectionViewProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
   );
 }
