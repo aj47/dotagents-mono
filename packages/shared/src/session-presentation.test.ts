@@ -63,6 +63,7 @@ import {
   createChatComposerStyleSlots,
   createChatComposerStyleSlotsFromStyleSource,
   getChatMessageActionMobileButtonStatesBySlot,
+  createChatComposerIconButtonMobilePropsParts,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerRuntimeDockStyleSlots,
@@ -8447,6 +8448,57 @@ describe("session presentation semantics", () => {
         styles: "input-dock-styles",
       },
     })
+    const composerIconButtonParts = createChatComposerIconButtonMobilePropsParts({
+      shouldRender: true,
+      renderState: {
+        isActive: true,
+        accessibilityRole: "button",
+        accessibilityLabel: "Attach image",
+        accessibilityHint: null,
+        accessibilityState: { checked: true },
+        ariaChecked: true,
+        icon: {
+          name: "image",
+          size: 18,
+          color: "#ffffff",
+        },
+      },
+      onPress: "press-accessory",
+      activeOpacity: 0.72,
+      style: "accessory-style",
+      activeStyle: "accessory-active-style",
+    })
+    expect(composerIconButtonParts).toEqual({
+      shouldRender: true,
+      touchable: {
+        style: ["accessory-style", "accessory-active-style"],
+        onPress: "press-accessory",
+        activeOpacity: 0.72,
+        accessibilityRole: "button",
+        accessibilityLabel: "Attach image",
+        accessibilityHint: undefined,
+        accessibilityState: { checked: true },
+        ariaChecked: true,
+      },
+      icon: {
+        name: "image",
+        size: 18,
+        color: "#ffffff",
+      },
+    })
+    expect(createChatComposerIconButtonMobilePropsParts({
+      shouldRender: false,
+      renderState: {
+        accessibilityRole: "button",
+        accessibilityLabel: "Attach image",
+        icon: {
+          name: "image",
+          size: 18,
+          color: "#ffffff",
+        },
+      },
+      style: "accessory-style",
+    }).shouldRender).toBe(false)
     const surfaceParts = createChatRuntimeConversationSurfaceMobilePropsParts({
       frame: {
         keyboardAvoidingBehavior: "padding",

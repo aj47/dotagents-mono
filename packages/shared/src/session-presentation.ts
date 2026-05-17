@@ -3834,6 +3834,56 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
   }
 }
 
+export interface ChatComposerIconButtonMobileRenderStateLike {
+  isActive?: boolean
+  accessibilityRole: unknown
+  accessibilityLabel: string
+  accessibilityHint?: string | null
+  accessibilityState?: unknown
+  ariaChecked?: unknown
+  icon: {
+    name: unknown
+    size: unknown
+    color: unknown
+  }
+}
+
+export interface ChatComposerIconButtonMobilePropsPartsInput<
+  TRenderState extends ChatComposerIconButtonMobileRenderStateLike = ChatComposerIconButtonMobileRenderStateLike,
+  TOnPress = unknown,
+  TActiveOpacity = unknown,
+  TStyle = unknown,
+  TActiveStyle = unknown,
+> {
+  shouldRender?: boolean
+  renderState: TRenderState
+  onPress?: TOnPress
+  activeOpacity?: TActiveOpacity
+  style: TStyle
+  activeStyle?: TActiveStyle
+}
+
+export interface ChatComposerIconButtonMobilePropsParts<
+  TRenderState extends ChatComposerIconButtonMobileRenderStateLike = ChatComposerIconButtonMobileRenderStateLike,
+  TOnPress = unknown,
+  TActiveOpacity = unknown,
+  TStyle = unknown,
+  TActiveStyle = unknown,
+> {
+  shouldRender: boolean
+  touchable: {
+    style: Array<TStyle | TActiveStyle | false | undefined>
+    onPress: TOnPress | undefined
+    activeOpacity: TActiveOpacity | undefined
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityHint: string | undefined
+    accessibilityState: TRenderState["accessibilityState"]
+    ariaChecked: TRenderState["ariaChecked"]
+  }
+  icon: TRenderState["icon"]
+}
+
 export interface ChatComposerRuntimeDockMobilePropsPartsInput<
   TSpeechPreview extends object = Record<string, never>,
   TPendingImagesRail extends object = Record<string, never>,
@@ -18677,6 +18727,48 @@ export function createChatRuntimeToolExecutionResultSectionMobilePropsParts<
       onCopyPress: onErrorCopyPress,
       styles: styles.errorBlock,
     } : null,
+  }
+}
+
+export function createChatComposerIconButtonMobilePropsParts<
+  TRenderState extends ChatComposerIconButtonMobileRenderStateLike,
+  TOnPress,
+  TActiveOpacity,
+  TStyle,
+  TActiveStyle,
+>({
+  shouldRender = true,
+  renderState,
+  onPress,
+  activeOpacity,
+  style,
+  activeStyle,
+}: ChatComposerIconButtonMobilePropsPartsInput<
+  TRenderState,
+  TOnPress,
+  TActiveOpacity,
+  TStyle,
+  TActiveStyle
+>): ChatComposerIconButtonMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TActiveOpacity,
+  TStyle,
+  TActiveStyle
+> {
+  return {
+    shouldRender,
+    touchable: {
+      style: [style, renderState.isActive && activeStyle],
+      onPress,
+      activeOpacity,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityHint: renderState.accessibilityHint ?? undefined,
+      accessibilityState: renderState.accessibilityState,
+      ariaChecked: renderState.ariaChecked,
+    },
+    icon: renderState.icon,
   }
 }
 

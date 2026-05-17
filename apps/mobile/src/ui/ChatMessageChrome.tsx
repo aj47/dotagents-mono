@@ -35,6 +35,7 @@ import {
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
+  createChatComposerIconButtonMobilePropsParts,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
@@ -9594,23 +9595,32 @@ export function ChatComposerIconButton({
   style,
   activeStyle,
 }: ChatComposerIconButtonProps) {
-  if (!shouldRender) return null;
+  const iconButtonParts = createChatComposerIconButtonMobilePropsParts({
+    shouldRender,
+    renderState,
+    onPress,
+    activeOpacity,
+    style,
+    activeStyle,
+  });
+
+  if (!iconButtonParts.shouldRender) return null;
 
   return (
     <TouchableOpacity
-      style={[style, renderState.isActive && activeStyle]}
-      onPress={onPress}
-      activeOpacity={activeOpacity}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityHint={renderState.accessibilityHint ?? undefined}
-      accessibilityState={renderState.accessibilityState}
-      aria-checked={renderState.ariaChecked}
+      style={iconButtonParts.touchable.style}
+      onPress={iconButtonParts.touchable.onPress}
+      activeOpacity={iconButtonParts.touchable.activeOpacity}
+      accessibilityRole={iconButtonParts.touchable.accessibilityRole}
+      accessibilityLabel={iconButtonParts.touchable.accessibilityLabel}
+      accessibilityHint={iconButtonParts.touchable.accessibilityHint}
+      accessibilityState={iconButtonParts.touchable.accessibilityState}
+      aria-checked={iconButtonParts.touchable.ariaChecked}
     >
       <Ionicons
-        name={renderState.icon.name}
-        size={renderState.icon.size}
-        color={renderState.icon.color}
+        name={iconButtonParts.icon.name}
+        size={iconButtonParts.icon.size}
+        color={iconButtonParts.icon.color}
       />
     </TouchableOpacity>
   );
