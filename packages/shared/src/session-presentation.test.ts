@@ -123,6 +123,7 @@ import {
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeLoadingStateMobilePropsParts,
+  createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -4803,6 +4804,45 @@ describe("session presentation semantics", () => {
       accessibilityState: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.accessibilityState,
       spinnerResizeMode: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerResizeMode,
     })
+    const inlineActivityParts = createChatRuntimeInlineActivityMobilePropsParts({
+      renderState: {
+        shouldRender: true,
+        accessibilityRole: "progressbar",
+        accessibilityLabel: "Assistant is thinking",
+        accessibilityState: { busy: true },
+        spinnerResizeMode: "contain",
+      },
+      spinnerSource: "spinner-source",
+      style: "inline-style",
+      spinnerStyle: "inline-spinner-style",
+    })
+    expect(inlineActivityParts).toEqual({
+      shouldRenderInlineActivity: true,
+      container: {
+        accessible: true,
+        accessibilityRole: "progressbar",
+        accessibilityLabel: "Assistant is thinking",
+        accessibilityState: { busy: true },
+        style: "inline-style",
+      },
+      spinner: {
+        source: "spinner-source",
+        style: "inline-spinner-style",
+        resizeMode: "contain",
+      },
+    })
+    expect(createChatRuntimeInlineActivityMobilePropsParts({
+      renderState: {
+        shouldRender: false,
+        accessibilityRole: "progressbar",
+        accessibilityLabel: "Assistant is thinking",
+        accessibilityState: { busy: true },
+        spinnerResizeMode: "contain",
+      },
+      spinnerSource: "spinner-source",
+      style: "inline-style",
+      spinnerStyle: "inline-spinner-style",
+    }).shouldRenderInlineActivity).toBe(false)
     expect(getChatRuntimeInlineActivityMobileRenderState({
       isResponding: false,
       message: { role: "assistant", content: "" },

@@ -3638,6 +3638,63 @@ export interface ChatRuntimeLoadingStateMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeInlineActivityMobilePropsPartsInput<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  },
+  TSpinnerSource = unknown,
+  TStyle = unknown,
+  TSpinnerStyle = unknown,
+> {
+  renderState: TRenderState
+  spinnerSource: TSpinnerSource
+  style: TStyle
+  spinnerStyle: TSpinnerStyle
+}
+
+export interface ChatRuntimeInlineActivityMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  },
+  TSpinnerSource = unknown,
+  TStyle = unknown,
+  TSpinnerStyle = unknown,
+> {
+  shouldRenderInlineActivity: boolean
+  container: {
+    accessible: true
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityState: TRenderState["accessibilityState"]
+    style: TStyle
+  }
+  spinner: {
+    source: TSpinnerSource
+    style: TSpinnerStyle
+    resizeMode: TRenderState["spinnerResizeMode"]
+  }
+}
+
 export interface ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -17085,6 +17142,50 @@ export function createChatRuntimeLoadingStateMobilePropsParts<
 > {
   return {
     shouldRenderLoadingState: renderState.shouldRender,
+    container: {
+      accessible: true,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityState: renderState.accessibilityState,
+      style,
+    },
+    spinner: {
+      source: spinnerSource,
+      style: spinnerStyle,
+      resizeMode: renderState.spinnerResizeMode,
+    },
+  }
+}
+
+export function createChatRuntimeInlineActivityMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  },
+  TSpinnerSource,
+  TStyle,
+  TSpinnerStyle,
+>({
+  renderState,
+  spinnerSource,
+  style,
+  spinnerStyle,
+}: ChatRuntimeInlineActivityMobilePropsPartsInput<
+  TRenderState,
+  TSpinnerSource,
+  TStyle,
+  TSpinnerStyle
+>): ChatRuntimeInlineActivityMobilePropsParts<
+  TRenderState,
+  TSpinnerSource,
+  TStyle,
+  TSpinnerStyle
+> {
+  return {
+    shouldRenderInlineActivity: renderState.shouldRender,
     container: {
       accessible: true,
       accessibilityRole: renderState.accessibilityRole,

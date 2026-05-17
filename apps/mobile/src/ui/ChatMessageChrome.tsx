@@ -78,6 +78,7 @@ import {
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeLoadingStateMobilePropsParts,
+  createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeMessageHistoryBannerMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -9738,18 +9739,27 @@ export function ChatMessageInlineActivity({
   style,
   spinnerStyle,
 }: ChatMessageInlineActivityProps) {
+  const inlineActivityParts = createChatRuntimeInlineActivityMobilePropsParts({
+    renderState,
+    spinnerSource,
+    style,
+    spinnerStyle,
+  });
+
+  if (!inlineActivityParts.shouldRenderInlineActivity) return null;
+
   return (
     <View
-      accessible
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityState={renderState.accessibilityState}
-      style={style}
+      accessible={inlineActivityParts.container.accessible}
+      accessibilityRole={inlineActivityParts.container.accessibilityRole}
+      accessibilityLabel={inlineActivityParts.container.accessibilityLabel}
+      accessibilityState={inlineActivityParts.container.accessibilityState}
+      style={inlineActivityParts.container.style}
     >
       <Image
-        source={spinnerSource}
-        style={spinnerStyle}
-        resizeMode={renderState.spinnerResizeMode}
+        source={inlineActivityParts.spinner.source}
+        style={inlineActivityParts.spinner.style}
+        resizeMode={inlineActivityParts.spinner.resizeMode}
       />
     </View>
   );
