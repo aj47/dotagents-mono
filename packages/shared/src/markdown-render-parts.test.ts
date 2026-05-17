@@ -5,6 +5,7 @@ import {
   MARKDOWN_CONTENT_SURFACE_PRESENTATION,
   MARKDOWN_THINK_SECTION_PRESENTATION,
   MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION,
+  createMarkdownCodeBlockCopyMobilePropsParts,
   createMarkdownContentMobileStyleSlots,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
@@ -247,6 +248,39 @@ describe("markdown render parts", () => {
     expect(markdownContentStyleSlots.codeBlockCopyButtonCopied).toEqual({
       borderColor: "#16a34a",
       backgroundColor: "rgba(22, 163, 74, 0.16)",
+    })
+    const codeBlockCopyParts = createMarkdownCodeBlockCopyMobilePropsParts({
+      renderState: getMarkdownCodeBlockCopyMobileRenderState({
+        isCopied: true,
+        colors: markdownContentSurfaceColors,
+      }),
+      styles: markdownContentStyleSlots,
+      codeContent: "const demo = true",
+      isCopied: true,
+      onCopy: "copy-code",
+    })
+    expect(codeBlockCopyParts.container.props.style).toBe(markdownContentStyleSlots.codeBlockCopyContainer)
+    expect(codeBlockCopyParts.text).toEqual({
+      text: "const demo = true",
+      props: {
+        style: markdownContentStyleSlots.codeBlockCopyText,
+        selectable: true,
+      },
+    })
+    expect(codeBlockCopyParts.button.props).toMatchObject({
+      accessibilityRole: "button",
+      accessibilityLabel: "Copied!",
+      onPress: "copy-code",
+    })
+    expect(codeBlockCopyParts.button.props.style({ pressed: true })).toEqual([
+      markdownContentStyleSlots.codeBlockCopyButton,
+      markdownContentStyleSlots.codeBlockCopyButtonCopied,
+      markdownContentStyleSlots.codeBlockCopyButtonPressed,
+    ])
+    expect(codeBlockCopyParts.button.icon.props).toEqual({
+      name: "checkmark-done-outline",
+      size: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.codeBlockCopyIcon.size,
+      color: "#16a34a",
     })
     expect(markdownContentStyleSlots.image).toMatchObject({
       width: "100%",

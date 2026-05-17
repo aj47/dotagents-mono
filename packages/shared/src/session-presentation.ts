@@ -62,6 +62,7 @@ export {
 } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 export {
+  createMarkdownCodeBlockCopyMobilePropsParts,
   createMarkdownContentMobileStyleSlots,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
@@ -88,6 +89,8 @@ export {
   normalizeMarkdownThoughtContent,
   splitMarkdownContent,
   transformMarkdownContentUrl,
+  type MarkdownCodeBlockCopyMobilePropsParts,
+  type MarkdownCodeBlockCopyMobilePropsPartsInput,
   type MarkdownContentMobileStyleSlotsInput,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownMobileStyleRadiusToken,

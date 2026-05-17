@@ -5,6 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import {
   buildConversationImageAssetHttpUrl,
+  createMarkdownCodeBlockCopyMobilePropsParts,
   createMarkdownContentMobileStyleSlots,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
@@ -247,26 +248,24 @@ const MarkdownCodeBlock: React.FC<{
       // Clipboard failures should not disturb markdown reading.
     }
   }, [codeContent]);
+  const codeBlockCopyParts = createMarkdownCodeBlockCopyMobilePropsParts({
+    renderState: codeBlockCopyRenderState,
+    styles,
+    codeContent,
+    isCopied: copied,
+    onCopy: handleCopy,
+  });
 
   return (
-    <View style={styles.codeBlockCopyContainer}>
-      <Text style={styles.codeBlockCopyText} selectable>
-        {codeContent}
+    <View {...codeBlockCopyParts.container.props}>
+      <Text {...codeBlockCopyParts.text.props}>
+        {codeBlockCopyParts.text.text}
       </Text>
       <Pressable
-        accessibilityRole={codeBlockCopyRenderState.button.accessibilityRole}
-        accessibilityLabel={codeBlockCopyRenderState.label}
-        onPress={handleCopy}
-        style={({ pressed }) => [
-          styles.codeBlockCopyButton,
-          copied && styles.codeBlockCopyButtonCopied,
-          pressed && styles.codeBlockCopyButtonPressed,
-        ]}
+        {...codeBlockCopyParts.button.props}
       >
         <Ionicons
-          name={codeBlockCopyRenderState.icon.name}
-          size={codeBlockCopyRenderState.icon.size}
-          color={codeBlockCopyRenderState.icon.color}
+          {...codeBlockCopyParts.button.icon.props}
         />
       </Pressable>
     </View>

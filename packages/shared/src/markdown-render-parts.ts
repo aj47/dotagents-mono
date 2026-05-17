@@ -502,6 +502,61 @@ export interface MarkdownCodeBlockCopyMobileRenderState {
   }
 }
 
+export interface MarkdownCodeBlockCopyMobilePropsStylesLike {
+  codeBlockCopyContainer: unknown
+  codeBlockCopyText: unknown
+  codeBlockCopyButton: unknown
+  codeBlockCopyButtonCopied: unknown
+  codeBlockCopyButtonPressed: unknown
+}
+
+export interface MarkdownCodeBlockCopyMobilePropsPartsInput<
+  TStyles extends MarkdownCodeBlockCopyMobilePropsStylesLike = MarkdownCodeBlockCopyMobilePropsStylesLike,
+  TPressHandler = unknown,
+> {
+  renderState: MarkdownCodeBlockCopyMobileRenderState
+  styles: TStyles
+  codeContent: string
+  isCopied: boolean
+  onCopy: TPressHandler
+}
+
+export interface MarkdownCodeBlockCopyMobilePropsParts<
+  TStyles extends MarkdownCodeBlockCopyMobilePropsStylesLike = MarkdownCodeBlockCopyMobilePropsStylesLike,
+  TPressHandler = unknown,
+> {
+  container: {
+    props: {
+      style: TStyles["codeBlockCopyContainer"]
+    }
+  }
+  text: {
+    text: string
+    props: {
+      style: TStyles["codeBlockCopyText"]
+      selectable: true
+    }
+  }
+  button: {
+    props: {
+      accessibilityRole: MarkdownCodeBlockCopyMobileRenderState["button"]["accessibilityRole"]
+      accessibilityLabel: string
+      onPress: TPressHandler
+      style: (
+        input: { pressed: boolean },
+      ) => Array<
+        | TStyles["codeBlockCopyButton"]
+        | false
+        | TStyles["codeBlockCopyButtonCopied"]
+        | TStyles["codeBlockCopyButtonPressed"]
+      >
+    }
+    icon: {
+      props: MarkdownCodeBlockCopyMobileRenderState["icon"]
+    }
+  }
+}
+
 export interface MarkdownThinkSectionMobileSurfaceColors {
   collapsedContainer: {
     borderColor: string
@@ -1119,6 +1174,48 @@ export function getMarkdownCodeBlockCopyMobileRenderState({
       color: isCopied
         ? colors.codeBlockCopyIcon.copiedColor
         : colors.codeBlockCopyIcon.color,
+    },
+  }
+}
+
+export function createMarkdownCodeBlockCopyMobilePropsParts<
+  TStyles extends MarkdownCodeBlockCopyMobilePropsStylesLike = MarkdownCodeBlockCopyMobilePropsStylesLike,
+  TPressHandler = unknown,
+>({
+  renderState,
+  styles,
+  codeContent,
+  isCopied,
+  onCopy,
+}: MarkdownCodeBlockCopyMobilePropsPartsInput<TStyles, TPressHandler>):
+  MarkdownCodeBlockCopyMobilePropsParts<TStyles, TPressHandler> {
+  return {
+    container: {
+      props: {
+        style: styles.codeBlockCopyContainer,
+      },
+    },
+    text: {
+      text: codeContent,
+      props: {
+        style: styles.codeBlockCopyText,
+        selectable: true,
+      },
+    },
+    button: {
+      props: {
+        accessibilityRole: renderState.button.accessibilityRole,
+        accessibilityLabel: renderState.label,
+        onPress: onCopy,
+        style: ({ pressed }) => [
+          styles.codeBlockCopyButton,
+          isCopied && styles.codeBlockCopyButtonCopied,
+          pressed && styles.codeBlockCopyButtonPressed,
+        ],
+      },
+      icon: {
+        props: renderState.icon,
+      },
     },
   }
 }
