@@ -1559,6 +1559,25 @@ type ChatConversationHomeQuickStartsProps<
   styles: ChatConversationHomeQuickStartsStyles;
 };
 
+type ChatConversationHomeQuickStartActionButtonPressablePart = {
+  props: ComponentProps<typeof Pressable>;
+};
+
+type ChatConversationHomeQuickStartActionButtonIconPart = {
+  props: ComponentProps<typeof Ionicons>;
+};
+
+type ChatConversationHomeQuickStartActionButtonLabelPart = {
+  text: string;
+  props: ComponentProps<typeof Text>;
+};
+
+type ChatConversationHomeQuickStartActionButtonProps = {
+  pressable: ChatConversationHomeQuickStartActionButtonPressablePart;
+  icon: ChatConversationHomeQuickStartActionButtonIconPart;
+  label: ChatConversationHomeQuickStartActionButtonLabelPart;
+};
+
 type ChatConversationHomePromptEditorModalStyles = {
   keyboardAvoidingView: StyleProp<ViewStyle>;
   overlay: StyleProp<ViewStyle>;
@@ -7962,14 +7981,16 @@ export function ChatConversationHomeQuickStarts<
                 ) : null}
                 {actions.shouldRender ? (
                   <View {...actions.props}>
-                    <Pressable {...actions.edit.pressable.props}>
-                      <Ionicons {...actions.edit.icon.props} />
-                      <Text {...actions.edit.label.props}>{actions.edit.label.text}</Text>
-                    </Pressable>
-                    <Pressable {...actions.delete.pressable.props}>
-                      <Ionicons {...actions.delete.icon.props} />
-                      <Text {...actions.delete.label.props}>{actions.delete.label.text}</Text>
-                    </Pressable>
+                    <ChatConversationHomeQuickStartActionButton
+                      pressable={actions.edit.pressable}
+                      icon={actions.edit.icon}
+                      label={actions.edit.label}
+                    />
+                    <ChatConversationHomeQuickStartActionButton
+                      pressable={actions.delete.pressable}
+                      icon={actions.delete.icon}
+                      label={actions.delete.label}
+                    />
                   </View>
                 ) : null}
               </Pressable>
@@ -7982,6 +8003,19 @@ export function ChatConversationHomeQuickStarts<
         </Text>
       ) : null}
     </View>
+  );
+}
+
+export function ChatConversationHomeQuickStartActionButton({
+  pressable,
+  icon,
+  label,
+}: ChatConversationHomeQuickStartActionButtonProps) {
+  return (
+    <Pressable {...pressable.props}>
+      <Ionicons {...icon.props} />
+      <Text {...label.props}>{label.text}</Text>
+    </Pressable>
   );
 }
 
