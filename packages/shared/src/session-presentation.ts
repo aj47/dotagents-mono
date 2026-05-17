@@ -6120,14 +6120,22 @@ export interface ChatRuntimeConversationRuntimeThreadMobilePropsParts<
   }
   bodySurface: {
     shouldRender: true
-    body: TBody
-    surface: {
-      surfaceToneStyle: TToneStyle
-      groupRenderState: TGroupRenderState | null | undefined
-      onToggleGroup: TOnToggleGroup | undefined
-      styles: TSurfaceStyles
+    body: {
+      props: TBody
     }
-    bodyStyles: TBodyStyles
+    surface: {
+      props: {
+        surfaceToneStyle: TToneStyle
+        groupRenderState: TGroupRenderState | null | undefined
+        onToggleGroup: TOnToggleGroup | undefined
+        styles: TSurfaceStyles
+      }
+    }
+    bodyPanel: {
+      props: {
+        styles: TBodyStyles
+      }
+    }
   } | {
     shouldRender: false
   }
@@ -23362,14 +23370,22 @@ export function createChatRuntimeConversationRuntimeThreadMobilePropsParts<
     collapsedBoundary,
     bodySurface: shouldRenderBodySurface ? {
       shouldRender: true,
-      body,
-      surface: {
-        surfaceToneStyle: styles.surface.getToneStyle(body.conversation.surfaceToneStyleSlot) as TToneStyle,
-        groupRenderState,
-        onToggleGroup,
-        styles: styles.surface,
+      body: {
+        props: body,
       },
-      bodyStyles: styles.body,
+      surface: {
+        props: {
+          surfaceToneStyle: styles.surface.getToneStyle(body.conversation.surfaceToneStyleSlot) as TToneStyle,
+          groupRenderState,
+          onToggleGroup,
+          styles: styles.surface,
+        },
+      },
+      bodyPanel: {
+        props: {
+          styles: styles.body,
+        },
+      },
     } : {
       shouldRender: false,
     },

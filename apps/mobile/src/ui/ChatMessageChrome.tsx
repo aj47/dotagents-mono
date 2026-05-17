@@ -8093,17 +8093,17 @@ export function ChatMessageRuntimeThread({
   if (!runtimeThreadParts.bodySurface.shouldRender) return null;
 
   const resolvedBody = createChatRuntimeConversationThreadBodyMobilePropsFromActionInput({
-    ...runtimeThreadParts.bodySurface.body,
+    ...runtimeThreadParts.bodySurface.body.props,
     createActionSet: createChatMessageActionSet,
   });
 
   return (
     <ChatMessageToolActivityGroupThreadSurface
-      {...runtimeThreadParts.bodySurface.surface}
+      {...runtimeThreadParts.bodySurface.surface.props}
     >
       <ChatMessageThreadBody
         {...resolvedBody}
-        styles={runtimeThreadParts.bodySurface.bodyStyles}
+        {...runtimeThreadParts.bodySurface.bodyPanel.props}
       />
     </ChatMessageToolActivityGroupThreadSurface>
   );

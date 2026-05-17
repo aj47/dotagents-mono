@@ -9426,17 +9426,21 @@ describe("session presentation semantics", () => {
     if (!runtimeThreadParts.bodySurface.shouldRender) {
       throw new Error("Expected runtime thread body surface")
     }
-    expect(runtimeThreadParts.bodySurface.body).toBe(runtimeThreadBody)
-    expect(runtimeThreadParts.bodySurface.bodyStyles).toBe("thread-body-styles")
+    expect(runtimeThreadParts.bodySurface.body.props).toBe(runtimeThreadBody)
+    expect(runtimeThreadParts.bodySurface.bodyPanel.props).toEqual({
+      styles: "thread-body-styles",
+    })
     expect(runtimeThreadParts.bodySurface.surface).toEqual({
-      surfaceToneStyle: "tone:assistant",
-      groupRenderState: {
-        groupKey: "group-1",
-        shouldSkipCollapsedItem: false,
-        shouldRenderCollapsedHeader: false,
+      props: {
+        surfaceToneStyle: "tone:assistant",
+        groupRenderState: {
+          groupKey: "group-1",
+          shouldSkipCollapsedItem: false,
+          shouldRenderCollapsedHeader: false,
+        },
+        onToggleGroup: "toggle-group",
+        styles: runtimeThreadSurfaceStyles,
       },
-      onToggleGroup: "toggle-group",
-      styles: runtimeThreadSurfaceStyles,
     })
     expect(createChatRuntimeConversationRuntimeThreadMobilePropsParts({
       groupRenderState: {
