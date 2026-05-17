@@ -1394,14 +1394,28 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.doesNotMatch(screenSource, /style=\{\[conversationDockStyles\.scrollToBottomButtonStyle,\s*mobileSafeAreaStyles\.scrollToBottomButton\]\}/);
   assert.doesNotMatch(screenSource, /style=\{\[styles\.scrollToBottomButton,\s*mobileSafeAreaStyles\.scrollToBottomButton\]\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageScrollToBottomButton/);
-  assert.match(chatMessageChromeSource, /if \(!renderState\.shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /activeOpacity=\{renderState\.button\.pressedOpacity\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.button\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.button\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.button\.accessibilityHint\}/);
-  assert.match(chatMessageChromeSource, /name=\{renderState\.button\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{renderState\.button\.icon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{renderState\.button\.icon\.color\}/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeScrollToBottomButtonMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeScrollToBottomButtonMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const scrollToBottomButtonParts = createChatRuntimeScrollToBottomButtonMobilePropsParts\(\{\s+renderState,\s+onPress,\s+style,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /if \(!scrollToBottomButtonParts\.shouldRenderButton\) return null;/);
+  assert.match(chatMessageChromeSource, /style=\{scrollToBottomButtonParts\.button\.style\}/);
+  assert.match(chatMessageChromeSource, /onPress=\{scrollToBottomButtonParts\.button\.onPress\}/);
+  assert.match(chatMessageChromeSource, /activeOpacity=\{scrollToBottomButtonParts\.button\.activeOpacity\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{scrollToBottomButtonParts\.button\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{scrollToBottomButtonParts\.button\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityHint=\{scrollToBottomButtonParts\.button\.accessibilityHint\}/);
+  assert.match(chatMessageChromeSource, /name=\{scrollToBottomButtonParts\.icon\.name\}/);
+  assert.match(chatMessageChromeSource, /size=\{scrollToBottomButtonParts\.icon\.size\}/);
+  assert.match(chatMessageChromeSource, /color=\{scrollToBottomButtonParts\.icon\.color\}/);
+  assert.match(sessionPresentationSource, /shouldRenderButton: renderState\.shouldRender/);
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageScrollToBottomButton[\s\S]*?activeOpacity=\{renderState\.button\.pressedOpacity\}[\s\S]*?export function ChatMessageLoadingState/
+  );
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageScrollToBottomButton[\s\S]*?name=\{renderState\.button\.icon\.name\}[\s\S]*?export function ChatMessageLoadingState/
+  );
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageScrollToBottomButton[\s\S]*?(accessibilityLabel=\{renderState\.accessibilityLabel\}|accessibilityHint=\{renderState\.accessibilityHint\}|name=\{renderState\.icon\.name\}|size=\{renderState\.icon\.size\}|color=\{renderState\.icon\.color\})[\s\S]*?export function ChatMessageLoadingState/

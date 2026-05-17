@@ -3719,6 +3719,69 @@ export interface ChatRuntimeConversationDockMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeScrollToBottomButtonMobilePropsPartsInput<
+  TRenderState extends {
+    shouldRender: boolean
+    button: {
+      pressedOpacity: unknown
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      accessibilityHint: string
+      icon: unknown
+    }
+  } = {
+    shouldRender: boolean
+    button: {
+      pressedOpacity: unknown
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      accessibilityHint: string
+      icon: unknown
+    }
+  },
+  TOnPress = unknown,
+  TStyle = unknown,
+> {
+  renderState: TRenderState
+  onPress?: TOnPress
+  style: TStyle
+}
+
+export interface ChatRuntimeScrollToBottomButtonMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    button: {
+      pressedOpacity: unknown
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      accessibilityHint: string
+      icon: unknown
+    }
+  } = {
+    shouldRender: boolean
+    button: {
+      pressedOpacity: unknown
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      accessibilityHint: string
+      icon: unknown
+    }
+  },
+  TOnPress = unknown,
+  TStyle = unknown,
+> {
+  shouldRenderButton: boolean
+  button: {
+    style: TStyle
+    onPress: TOnPress | undefined
+    activeOpacity: TRenderState["button"]["pressedOpacity"]
+    accessibilityRole: TRenderState["button"]["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityHint: string
+  }
+  icon: TRenderState["button"]["icon"]
+}
+
 export interface ChatRuntimeConversationSurfaceMobilePropsPartsInput<
   TFrame extends object = Record<string, never>,
   TDock extends object = Record<string, never>,
@@ -16836,6 +16899,46 @@ export function createChatRuntimeConversationDockMobilePropsParts<
       ...composer,
       styles: styles.composer,
     },
+  }
+}
+
+export function createChatRuntimeScrollToBottomButtonMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    button: {
+      pressedOpacity: unknown
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      accessibilityHint: string
+      icon: unknown
+    }
+  },
+  TOnPress,
+  TStyle,
+>({
+  renderState,
+  onPress,
+  style,
+}: ChatRuntimeScrollToBottomButtonMobilePropsPartsInput<
+  TRenderState,
+  TOnPress,
+  TStyle
+>): ChatRuntimeScrollToBottomButtonMobilePropsParts<
+  TRenderState,
+  TOnPress,
+  TStyle
+> {
+  return {
+    shouldRenderButton: renderState.shouldRender,
+    button: {
+      style,
+      onPress,
+      activeOpacity: renderState.button.pressedOpacity,
+      accessibilityRole: renderState.button.accessibilityRole,
+      accessibilityLabel: renderState.button.accessibilityLabel,
+      accessibilityHint: renderState.button.accessibilityHint,
+    },
+    icon: renderState.button.icon,
   }
 }
 

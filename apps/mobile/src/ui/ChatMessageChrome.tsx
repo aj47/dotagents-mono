@@ -77,6 +77,7 @@ import {
   getChatRuntimeConversationMessageThreadMobileState,
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
+  createChatRuntimeScrollToBottomButtonMobilePropsParts,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeConversationBodyMobileProps,
@@ -8993,21 +8994,27 @@ export function ChatMessageScrollToBottomButton({
   onPress,
   style,
 }: ChatMessageScrollToBottomButtonProps) {
-  if (!renderState.shouldRender) return null;
+  const scrollToBottomButtonParts = createChatRuntimeScrollToBottomButtonMobilePropsParts({
+    renderState,
+    onPress,
+    style,
+  });
+
+  if (!scrollToBottomButtonParts.shouldRenderButton) return null;
 
   return (
     <TouchableOpacity
-      style={style}
-      onPress={onPress}
-      activeOpacity={renderState.button.pressedOpacity}
-      accessibilityRole={renderState.button.accessibilityRole}
-      accessibilityLabel={renderState.button.accessibilityLabel}
-      accessibilityHint={renderState.button.accessibilityHint}
+      style={scrollToBottomButtonParts.button.style}
+      onPress={scrollToBottomButtonParts.button.onPress}
+      activeOpacity={scrollToBottomButtonParts.button.activeOpacity}
+      accessibilityRole={scrollToBottomButtonParts.button.accessibilityRole}
+      accessibilityLabel={scrollToBottomButtonParts.button.accessibilityLabel}
+      accessibilityHint={scrollToBottomButtonParts.button.accessibilityHint}
     >
       <Ionicons
-        name={renderState.button.icon.name}
-        size={renderState.button.icon.size}
-        color={renderState.button.icon.color}
+        name={scrollToBottomButtonParts.icon.name}
+        size={scrollToBottomButtonParts.icon.size}
+        color={scrollToBottomButtonParts.icon.color}
       />
     </TouchableOpacity>
   );

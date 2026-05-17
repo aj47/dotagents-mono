@@ -123,6 +123,7 @@ import {
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeRetryStatusMobileStyleSlots,
+  createChatRuntimeScrollToBottomButtonMobilePropsParts,
   createChatRuntimeScrollToBottomMobileStyleSlots,
   createChatRuntimeStepSummaryMobileStyleSlots,
   createChatRuntimeStreamingContentMobileStyleSlots,
@@ -5969,6 +5970,57 @@ describe("session presentation semantics", () => {
         elevation: 5,
       },
     })
+    const scrollToBottomButtonParts = createChatRuntimeScrollToBottomButtonMobilePropsParts({
+      renderState: {
+        shouldRender: true,
+        button: {
+          pressedOpacity: 0.8,
+          accessibilityRole: "button",
+          accessibilityLabel: "Scroll to bottom",
+          accessibilityHint: "Scrolls to the latest messages",
+          icon: {
+            name: "arrow-down",
+            size: 18,
+            color: "#fff",
+          },
+        },
+      },
+      onPress: "scroll-bottom",
+      style: "scroll-button-style",
+    })
+    expect(scrollToBottomButtonParts).toEqual({
+      shouldRenderButton: true,
+      button: {
+        style: "scroll-button-style",
+        onPress: "scroll-bottom",
+        activeOpacity: 0.8,
+        accessibilityRole: "button",
+        accessibilityLabel: "Scroll to bottom",
+        accessibilityHint: "Scrolls to the latest messages",
+      },
+      icon: {
+        name: "arrow-down",
+        size: 18,
+        color: "#fff",
+      },
+    })
+    expect(createChatRuntimeScrollToBottomButtonMobilePropsParts({
+      renderState: {
+        shouldRender: false,
+        button: {
+          pressedOpacity: 0.8,
+          accessibilityRole: "button",
+          accessibilityLabel: "Scroll to bottom",
+          accessibilityHint: "Scrolls to the latest messages",
+          icon: {
+            name: "arrow-down",
+            size: 18,
+            color: "#fff",
+          },
+        },
+      },
+      style: "scroll-button-style",
+    }).shouldRenderButton).toBe(false)
     expect(getChatRuntimeScrollToBottomMobileRenderState({
       isVisible: false,
       colors: {
