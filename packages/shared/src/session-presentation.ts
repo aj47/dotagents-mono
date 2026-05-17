@@ -5429,7 +5429,9 @@ export interface ChatRuntimeToolActivityGroupToggleMobilePropsParts<
   headerRow: {
     style: TStyles["headerRow"]
   }
-  leadingIcon: TRenderState["leadingIcon"]
+  leadingIcon: {
+    props: TRenderState["leadingIcon"]
+  }
   countBadge: {
     shouldRender: boolean
     props: {
@@ -5451,7 +5453,9 @@ export interface ChatRuntimeToolActivityGroupToggleMobilePropsParts<
       text: string
     }
   }
-  toggleIcon: TRenderState["headerToggleIcon"]
+  toggleIcon: {
+    props: TRenderState["headerToggleIcon"]
+  }
 }
 
 export interface ChatRuntimeToolActivityGroupFooterMobilePropsPartsInput<
@@ -22137,7 +22141,9 @@ export function createChatRuntimeToolActivityGroupToggleMobilePropsParts<
     headerRow: {
       style: styles.headerRow,
     },
-    leadingIcon: renderState.leadingIcon,
+    leadingIcon: {
+      props: renderState.leadingIcon,
+    },
     countBadge: {
       shouldRender: renderState.summary.shouldShowToolCallCount,
       props: {
@@ -22159,7 +22165,9 @@ export function createChatRuntimeToolActivityGroupToggleMobilePropsParts<
         text: renderState.summary.previewText,
       },
     },
-    toggleIcon: renderState.headerToggleIcon,
+    toggleIcon: {
+      props: renderState.headerToggleIcon,
+    },
   }
 }
 

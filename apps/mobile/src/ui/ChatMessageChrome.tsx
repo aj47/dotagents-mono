@@ -1699,6 +1699,9 @@ type ChatMessageToolActivityGroupCountBadgeProps =
 type ChatMessageToolActivityGroupPreviewLineProps =
   ChatMessageToolActivityGroupToggleParts['preview']['props'];
 
+type ChatMessageToolActivityGroupIconProps =
+  ChatMessageToolActivityGroupToggleParts['leadingIcon']['props'];
+
 type ChatMessageToolActivityGroupFooterStyles = {
   button: StyleProp<ViewStyle>;
   pressed: StyleProp<ViewStyle>;
@@ -7835,10 +7838,8 @@ export function ChatMessageToolActivityGroupToggle({
       style={toggleParts.pressable.style}
     >
       <View style={toggleParts.headerRow.style}>
-        <Ionicons
-          name={toggleParts.leadingIcon.name}
-          size={toggleParts.leadingIcon.size}
-          color={toggleParts.leadingIcon.color}
+        <ChatMessageToolActivityGroupIcon
+          {...toggleParts.leadingIcon.props}
         />
         {toggleParts.countBadge.shouldRender ? (
           <ChatMessageToolActivityGroupCountBadge
@@ -7848,13 +7849,25 @@ export function ChatMessageToolActivityGroupToggle({
         <ChatMessageToolActivityGroupPreviewLine
           {...toggleParts.preview.props}
         />
-        <Ionicons
-          name={toggleParts.toggleIcon.name}
-          size={toggleParts.toggleIcon.size}
-          color={toggleParts.toggleIcon.color}
+        <ChatMessageToolActivityGroupIcon
+          {...toggleParts.toggleIcon.props}
         />
       </View>
     </Pressable>
+  );
+}
+
+export function ChatMessageToolActivityGroupIcon({
+  name,
+  size,
+  color,
+}: ChatMessageToolActivityGroupIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
   );
 }
 
