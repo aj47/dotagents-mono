@@ -1114,6 +1114,28 @@ export interface ChatRuntimeMessageActionRowMobileStyleSlot {
   gap: number
 }
 
+export interface ChatRuntimeMessageActionMobileStyleSlotsInput {
+  renderState: Pick<
+    ChatRuntimeMessageActionMobileStyleRenderState,
+    "row" | "slotButtons" | "activeSlotButtons"
+  >
+  spacing: ChatRuntimeMessageActionRowMobileStyleSlotInput["spacing"]
+}
+
+export interface ChatRuntimeMessageActionMobileStyleSlots {
+  row: ChatRuntimeMessageActionRowMobileStyleSlot
+  buttons: {
+    expansion: ChatRuntimeMessageActionButtonMobileStyleSlots
+    copy: ChatRuntimeMessageActionButtonMobileStyleSlots
+    branch: ChatRuntimeMessageActionButtonMobileStyleSlots
+    speech: ChatRuntimeMessageActionButtonMobileStyleSlots
+  }
+  activeButtons: {
+    copy: ChatRuntimeMessageActionButtonMobileStyleSlots
+    speech: ChatRuntimeMessageActionButtonMobileStyleSlots
+  }
+}
+
 export interface ChatRuntimeMessageThreadMobileStyleRenderStateInput {
   colors: ChatMessageMobileRenderColorPalette
 }
@@ -17396,6 +17418,40 @@ export function createChatRuntimeMessageActionRowMobileStyleSlot({
     justifyContent: row.justifyContent,
     marginTop: row.marginTop,
     gap: spacing[row.gap],
+  }
+}
+
+export function createChatRuntimeMessageActionMobileStyleSlots({
+  renderState,
+  spacing,
+}: ChatRuntimeMessageActionMobileStyleSlotsInput): ChatRuntimeMessageActionMobileStyleSlots {
+  return {
+    row: createChatRuntimeMessageActionRowMobileStyleSlot({
+      row: renderState.row,
+      spacing,
+    }),
+    buttons: {
+      expansion: createChatRuntimeMessageActionButtonMobileStyleSlots({
+        renderState: renderState.slotButtons.expansion,
+      }),
+      copy: createChatRuntimeMessageActionButtonMobileStyleSlots({
+        renderState: renderState.slotButtons.copy,
+      }),
+      branch: createChatRuntimeMessageActionButtonMobileStyleSlots({
+        renderState: renderState.slotButtons.branch,
+      }),
+      speech: createChatRuntimeMessageActionButtonMobileStyleSlots({
+        renderState: renderState.slotButtons.speech,
+      }),
+    },
+    activeButtons: {
+      copy: createChatRuntimeMessageActionButtonMobileStyleSlots({
+        renderState: renderState.activeSlotButtons.copy,
+      }),
+      speech: createChatRuntimeMessageActionButtonMobileStyleSlots({
+        renderState: renderState.activeSlotButtons.speech,
+      }),
+    },
   }
 }
 

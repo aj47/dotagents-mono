@@ -194,6 +194,7 @@ import {
   createChatRuntimeViewportMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerImageAttachmentMobileStyleSlots,
+  createChatRuntimeMessageActionMobileStyleSlots,
   createChatRuntimeMessageActionButtonMobileStyleSlots,
   createChatRuntimeMessageActionRowMobileStyleSlot,
   createChatRuntimeMessageMobileStyleSlots,
@@ -8084,6 +8085,35 @@ describe("session presentation semantics", () => {
     )
     expect(expansionButtonStyleSlots.disabled.opacity).toBe(
       messageThreadStyle.action.slotButtons.expansion.button.disabledOpacity,
+    )
+    const mobileMessageActionStyleSlots = createChatRuntimeMessageActionMobileStyleSlots({
+      renderState: messageThreadStyle.action,
+      spacing: {
+        xs: 4,
+      },
+    })
+    expect(mobileMessageActionStyleSlots.row).toEqual({
+      flexDirection: "row",
+      alignItems: messageThreadStyle.action.row.alignItems,
+      justifyContent: "flex-end",
+      marginTop: messageThreadStyle.action.row.marginTop,
+      gap: 4,
+    })
+    expect(mobileMessageActionStyleSlots.buttons.expansion).toEqual(expansionButtonStyleSlots)
+    expect(mobileMessageActionStyleSlots.buttons.copy.button.backgroundColor).toBe(
+      messageThreadStyle.action.slotButtons.copy.colors.backgroundColor,
+    )
+    expect(mobileMessageActionStyleSlots.buttons.branch.button.backgroundColor).toBe(
+      messageThreadStyle.action.slotButtons.branch.colors.backgroundColor,
+    )
+    expect(mobileMessageActionStyleSlots.buttons.speech.button.backgroundColor).toBe(
+      messageThreadStyle.action.slotButtons.speech.colors.backgroundColor,
+    )
+    expect(mobileMessageActionStyleSlots.activeButtons.copy.button.backgroundColor).toBe(
+      messageThreadStyle.action.activeSlotButtons.copy.colors.backgroundColor,
+    )
+    expect(mobileMessageActionStyleSlots.activeButtons.speech.button.backgroundColor).toBe(
+      messageThreadStyle.action.activeSlotButtons.speech.colors.backgroundColor,
     )
     const threadBodyStyleKeys = [
       "retryStatusCard",

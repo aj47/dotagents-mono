@@ -30,8 +30,7 @@ import {
   createChatRuntimeHeaderPinButtonMobileStyleSlots,
   createChatRuntimeHeaderStyleSlotsFromStyleSource,
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
-  createChatRuntimeMessageActionButtonMobileStyleSlots,
-  createChatRuntimeMessageActionRowMobileStyleSlot,
+  createChatRuntimeMessageActionMobileStyleSlots,
   createChatRuntimeMessageMobileStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeRetryStatusMobileStyleSlots,
@@ -249,28 +248,12 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     platform: mobilePlatform,
   });
   const mobileMessageActionStyleState = mobileMessageThreadStyleState.action;
-  const mobileMessageActionRowStyleSlot = createChatRuntimeMessageActionRowMobileStyleSlot({
-    row: mobileMessageActionStyleState.row,
+  const mobileMessageActionStyleSlots = createChatRuntimeMessageActionMobileStyleSlots({
+    renderState: mobileMessageActionStyleState,
     spacing,
   });
-  const mobileMessageExpansionButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots({
-    renderState: mobileMessageActionStyleState.slotButtons.expansion,
-  });
-  const mobileMessageCopyButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots({
-    renderState: mobileMessageActionStyleState.slotButtons.copy,
-  });
-  const mobileMessageBranchButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots({
-    renderState: mobileMessageActionStyleState.slotButtons.branch,
-  });
-  const mobileMessageSpeechButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots({
-    renderState: mobileMessageActionStyleState.slotButtons.speech,
-  });
-  const mobileMessageCopiedButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots({
-    renderState: mobileMessageActionStyleState.activeSlotButtons.copy,
-  });
-  const mobileMessageSpeechActiveButtonStyleSlots = createChatRuntimeMessageActionButtonMobileStyleSlots({
-    renderState: mobileMessageActionStyleState.activeSlotButtons.speech,
-  });
+  const mobileMessageActionButtonStyleSlots = mobileMessageActionStyleSlots.buttons;
+  const mobileMessageActiveActionButtonStyleSlots = mobileMessageActionStyleSlots.activeButtons;
   const mobileMessageTurnDurationRenderState = mobileMessageThreadStyleState.turnDuration.standard;
   const mobileMessageTurnDurationLiveRenderState = mobileMessageThreadStyleState.turnDuration.live;
   const mobileMessageTurnDurationStyleSlots = createChatRuntimeTurnDurationMessageMobileStyleSlots({
@@ -1021,11 +1004,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...mobileMessageStyleSlots.collapsedPreview,
     },
     messageExpandButton: {
-      ...mobileMessageExpansionButtonStyleSlots.button,
+      ...mobileMessageActionButtonStyleSlots.expansion.button,
     },
-    messageExpandButtonPressed: mobileMessageExpansionButtonStyleSlots.pressed,
+    messageExpandButtonPressed: mobileMessageActionButtonStyleSlots.expansion.pressed,
     messageActionsRow: {
-      ...mobileMessageActionRowStyleSlot,
+      ...mobileMessageActionStyleSlots.row,
     },
     messageTurnDurationBadge: {
       ...mobileMessageTurnDurationStyleSlots.badge,
@@ -1040,25 +1023,25 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...mobileMessageTurnDurationLiveStyleSlots.text,
     },
     messageBranchButton: {
-      ...mobileMessageBranchButtonStyleSlots.button,
+      ...mobileMessageActionButtonStyleSlots.branch.button,
     },
-    messageBranchButtonPressed: mobileMessageBranchButtonStyleSlots.pressed,
-    messageBranchButtonDisabled: mobileMessageBranchButtonStyleSlots.disabled,
+    messageBranchButtonPressed: mobileMessageActionButtonStyleSlots.branch.pressed,
+    messageBranchButtonDisabled: mobileMessageActionButtonStyleSlots.branch.disabled,
     messageCopyButton: {
-      ...mobileMessageCopyButtonStyleSlots.button,
+      ...mobileMessageActionButtonStyleSlots.copy.button,
     },
     messageCopyButtonCopied: {
-      ...mobileMessageCopiedButtonStyleSlots.button,
+      ...mobileMessageActiveActionButtonStyleSlots.copy.button,
     },
-    messageCopyButtonPressed: mobileMessageCopyButtonStyleSlots.pressed,
+    messageCopyButtonPressed: mobileMessageActionButtonStyleSlots.copy.pressed,
     // Per-message TTS button styles (#1078)
     speakButton: {
-      ...mobileMessageSpeechButtonStyleSlots.button,
+      ...mobileMessageActionButtonStyleSlots.speech.button,
     },
     speakButtonActive: {
-      ...mobileMessageSpeechActiveButtonStyleSlots.button,
+      ...mobileMessageActiveActionButtonStyleSlots.speech.button,
     },
-    speakButtonPressed: mobileMessageSpeechButtonStyleSlots.pressed,
+    speakButtonPressed: mobileMessageActionButtonStyleSlots.speech.pressed,
   });
 }
 
