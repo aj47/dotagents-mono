@@ -13762,8 +13762,16 @@ describe("session presentation semantics", () => {
       },
     })
     expect(resultHeaderParts).toEqual({
-      headerStyle: "result-header",
-      metaStyle: "result-meta",
+      header: {
+        props: {
+          style: "result-header",
+        },
+      },
+      meta: {
+        props: {
+          style: "result-meta",
+        },
+      },
       payloadMeta: {
         renderState: "result-payload-state",
         styles: "result-payload-meta",
@@ -13773,8 +13781,10 @@ describe("session presentation semantics", () => {
         styles: "result-badge-styles",
       },
       characterCount: {
-        label: "42 chars",
-        style: "character-count-style",
+        props: {
+          style: "character-count-style",
+          text: "42 chars",
+        },
       },
       copyButton: {
         renderState: "copy-result-state",

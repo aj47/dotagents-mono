@@ -2172,6 +2172,22 @@ type ChatMessageToolExecutionResultHeaderProps = {
   styles: ChatMessageToolExecutionResultHeaderStyles;
 };
 
+type ChatMessageToolExecutionResultHeaderParts = ReturnType<typeof createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
+  ChatMessageToolExecutionResultHeaderProps['payloadRenderState'],
+  ChatMessageToolExecutionResultHeaderProps['resultBadge'],
+  ChatMessageToolExecutionResultHeaderProps['copyButtonRenderState'],
+  ChatMessageToolExecutionResultHeaderProps['onCopyPress'],
+  ChatMessageToolExecutionResultHeaderProps['styles']
+>>;
+
+type ChatMessageToolExecutionResultHeaderViewProps =
+  (ChatMessageToolExecutionResultHeaderParts['header']['props'] | ChatMessageToolExecutionResultHeaderParts['meta']['props']) & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionResultCharacterCountProps =
+  ChatMessageToolExecutionResultHeaderParts['characterCount']['props'];
+
 type ChatMessageToolExecutionPayloadBlockStyles = {
   preview: StyleProp<TextStyle>;
   scroll: StyleProp<ViewStyle>;
@@ -9462,22 +9478,48 @@ export function ChatMessageToolExecutionResultHeader({
   });
 
   return (
-    <View style={resultHeaderParts.headerStyle}>
-      <View style={resultHeaderParts.metaStyle}>
+    <ChatMessageToolExecutionResultHeaderView
+      {...resultHeaderParts.header.props}
+    >
+      <ChatMessageToolExecutionResultHeaderView
+        {...resultHeaderParts.meta.props}
+      >
         <ChatMessageToolExecutionPayloadMeta
           {...resultHeaderParts.payloadMeta}
         />
         <ChatMessageToolExecutionResultBadge
           {...resultHeaderParts.resultBadge}
         />
-        <Text style={resultHeaderParts.characterCount.style}>
-          {resultHeaderParts.characterCount.label}
-        </Text>
-      </View>
+        <ChatMessageToolExecutionResultCharacterCount
+          {...resultHeaderParts.characterCount.props}
+        />
+      </ChatMessageToolExecutionResultHeaderView>
       <ChatMessageToolExecutionCopyButton
         {...resultHeaderParts.copyButton}
       />
+    </ChatMessageToolExecutionResultHeaderView>
+  );
+}
+
+export function ChatMessageToolExecutionResultHeaderView({
+  style,
+  children,
+}: ChatMessageToolExecutionResultHeaderViewProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageToolExecutionResultCharacterCount({
+  style,
+  text,
+}: ChatMessageToolExecutionResultCharacterCountProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 

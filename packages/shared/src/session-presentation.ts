@@ -4119,8 +4119,16 @@ export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
     copyButton: unknown
   },
 > {
-  headerStyle: TStyles["header"]
-  metaStyle: TStyles["meta"]
+  header: {
+    props: {
+      style: TStyles["header"]
+    }
+  }
+  meta: {
+    props: {
+      style: TStyles["meta"]
+    }
+  }
   payloadMeta: {
     renderState: TPayloadRenderState
     styles: TStyles["payloadMeta"]
@@ -4130,8 +4138,10 @@ export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
     styles: TStyles["badge"]
   }
   characterCount: {
-    label: string
-    style: TStyles["characterCount"]
+    props: {
+      style: TStyles["characterCount"]
+      text: string
+    }
   }
   copyButton: {
     renderState: TCopyButtonRenderState
@@ -21177,8 +21187,16 @@ export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
   TStyles
 > {
   return {
-    headerStyle: styles.header,
-    metaStyle: styles.meta,
+    header: {
+      props: {
+        style: styles.header,
+      },
+    },
+    meta: {
+      props: {
+        style: styles.meta,
+      },
+    },
     payloadMeta: {
       renderState: payloadRenderState,
       styles: styles.payloadMeta,
@@ -21188,8 +21206,10 @@ export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
       styles: styles.badge,
     },
     characterCount: {
-      label: characterCountLabel,
-      style: styles.characterCount,
+      props: {
+        style: styles.characterCount,
+        text: characterCountLabel,
+      },
     },
     copyButton: {
       renderState: copyButtonRenderState,
