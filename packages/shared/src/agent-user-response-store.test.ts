@@ -5,6 +5,7 @@ import {
   AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION,
   appendAgentUserResponseEvent,
   clearAgentUserResponseEvents,
+  createAgentResponseHistoryMobilePropsParts,
   createAgentResponseHistoryMobileStyleSlots,
   createAgentUserResponseStoreState,
   formatAgentResponseHistoryPreviewText,
@@ -129,12 +130,14 @@ describe('agent-user-response-store', () => {
       surface: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile,
       colors: responseHistorySurfaceColors,
     });
+    const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState({
+      responses: [{ text: 'Hello from the agent', timestamp: 1000 }],
+      colors: responseHistoryPalette,
+      isCollapsed: false,
+      speakingIndex: 0,
+    });
     const responseHistoryStyleSlots = createAgentResponseHistoryMobileStyleSlots({
-      renderState: getAgentResponseHistoryMobileRenderState({
-        responses: [{ text: 'Hello from the agent', timestamp: 1000 }],
-        colors: responseHistoryPalette,
-        isCollapsed: false,
-      }),
+      renderState: responseHistoryRenderState,
       spacing: {
         sm: 8,
       },
@@ -173,6 +176,61 @@ describe('agent-user-response-store', () => {
       lineHeight: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.collapsedPreview.previewLineHeight,
       color: '#171717',
     });
+    const responseHistorySpeakCalls: Array<{ text: string; index: number }> = [];
+    const responseHistoryParts = createAgentResponseHistoryMobilePropsParts({
+      renderState: responseHistoryRenderState,
+      styles: responseHistoryStyleSlots,
+      onToggleCollapsed: () => undefined,
+      onSpeakResponse: (text, index) => responseHistorySpeakCalls.push({ text, index }),
+    });
+    expect(responseHistoryParts.container.style).toBe(responseHistoryStyleSlots.container);
+    expect(responseHistoryParts.header.touchable).toMatchObject({
+      style: responseHistoryStyleSlots.header,
+      activeOpacity: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.pressedOpacity,
+      accessibilityRole: 'button',
+      accessibilityLabel: 'Hide agent responses',
+      accessibilityState: { expanded: true },
+    });
+    expect(responseHistoryParts.header.icon).toEqual({
+      name: 'chatbubbles-outline',
+      size: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.header.iconSize,
+      color: '#737373',
+    });
+    expect(responseHistoryParts.header.badge.text).toEqual({
+      style: responseHistoryStyleSlots.badgeText,
+      value: '1',
+    });
+    expect(responseHistoryParts.collapsedPreview).toBeNull();
+    expect(responseHistoryParts.list).not.toBeNull();
+    const responseHistoryItem = responseHistoryParts.list?.items[0];
+    expect(responseHistoryItem).toMatchObject({
+      key: '1000-0',
+      entry: { text: 'Hello from the agent', timestamp: 1000 },
+      originalIndex: 0,
+      shouldRenderSeparator: false,
+      animated: {
+        isNewest: false,
+        animation: responseHistoryRenderState.animation,
+      },
+      speakButton: {
+        style: responseHistoryStyleSlots.speakButton,
+        activeOpacity: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.speakButtonPressedOpacity,
+        accessibilityRole: 'button',
+        accessibilityLabel: 'Stop speaking',
+      },
+      speakIcon: {
+        name: 'stop-circle',
+        size: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.item.speakIconSize,
+        color: '#2563eb',
+      },
+    });
+    responseHistoryItem?.speakButton.onPress();
+    expect(responseHistorySpeakCalls).toEqual([
+      {
+        text: 'Hello from the agent',
+        index: 0,
+      },
+    ]);
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.preview.maxLength).toBe(110);
     expect(getAgentResponseHistoryToggleAccessibilityLabel(true)).toBe('Show agent responses');
     expect(getAgentResponseHistoryToggleAccessibilityLabel(false)).toBe('Hide agent responses');

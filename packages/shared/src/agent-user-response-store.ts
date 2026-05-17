@@ -377,6 +377,135 @@ export interface AgentResponseHistoryMobileStyleSlots {
   };
 }
 
+export interface AgentResponseHistoryMobileStylesLike {
+  container: unknown;
+  header: unknown;
+  headerLeft: unknown;
+  headerTitle: unknown;
+  badge: unknown;
+  badgeText: unknown;
+  list: unknown;
+  responseItem: unknown;
+  responseHeader: unknown;
+  timestamp: unknown;
+  speakButton: unknown;
+  separator: unknown;
+  collapsedPreview: unknown;
+  collapsedPreviewTimestamp: unknown;
+  collapsedPreviewText: unknown;
+}
+
+export interface AgentResponseHistoryMobilePropsPartsInput<
+  T extends { id?: string | null; text: string; timestamp: number },
+  TStyles extends AgentResponseHistoryMobileStylesLike = AgentResponseHistoryMobileStylesLike,
+  TOnToggleCollapsed = unknown,
+> {
+  renderState: AgentResponseHistoryMobileRenderState<T>;
+  styles: TStyles;
+  onToggleCollapsed: TOnToggleCollapsed;
+  onSpeakResponse: (text: string, index: number) => void;
+}
+
+export interface AgentResponseHistoryMobilePropsPartsItem<
+  T extends { id?: string | null; text: string; timestamp: number },
+  TStyles extends AgentResponseHistoryMobileStylesLike,
+> {
+  key: string;
+  entry: T;
+  originalIndex: number;
+  shouldRenderSeparator: boolean;
+  separator: {
+    style: TStyles['separator'];
+  };
+  animated: {
+    isNewest: boolean;
+    animation: AgentResponseHistoryMobileAnimationState;
+  };
+  container: {
+    style: TStyles['responseItem'];
+  };
+  header: {
+    style: TStyles['responseHeader'];
+  };
+  timestamp: {
+    style: TStyles['timestamp'];
+    text: string;
+  };
+  speakButton: {
+    style: TStyles['speakButton'];
+    onPress: () => void;
+    activeOpacity: AgentResponseHistoryMobileSurface['item']['speakButtonPressedOpacity'];
+    accessibilityRole: AgentResponseHistoryMobileSurface['item']['speakButtonAccessibilityRole'];
+    accessibilityLabel: string;
+  };
+  speakIcon: {
+    name: AgentResponseHistorySpeechActionState['icon']['name'];
+    size: AgentResponseHistoryMobileSurface['item']['speakIconSize'];
+    color: string;
+  };
+}
+
+export interface AgentResponseHistoryMobilePropsParts<
+  T extends { id?: string | null; text: string; timestamp: number },
+  TStyles extends AgentResponseHistoryMobileStylesLike = AgentResponseHistoryMobileStylesLike,
+  TOnToggleCollapsed = unknown,
+> {
+  shouldRender: boolean;
+  container: {
+    style: TStyles['container'];
+  };
+  header: {
+    touchable: {
+      style: TStyles['header'];
+      onPress: TOnToggleCollapsed;
+      activeOpacity: AgentResponseHistoryMobileSurface['header']['pressedOpacity'];
+      accessibilityRole: AgentResponseHistoryMobileSurface['header']['accessibilityRole'];
+      accessibilityLabel: string;
+      accessibilityState: AgentResponseHistoryPanelToggleAccessibilityState;
+    };
+    left: {
+      style: TStyles['headerLeft'];
+    };
+    icon: {
+      name: typeof AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.headerName;
+      size: AgentResponseHistoryMobileSurface['header']['iconSize'];
+      color: string;
+    };
+    title: {
+      style: TStyles['headerTitle'];
+      text: string;
+    };
+    badge: {
+      style: TStyles['badge'];
+      text: {
+        style: TStyles['badgeText'];
+        value: string;
+      };
+    };
+    toggleIcon: {
+      name: AgentResponseHistoryPanelState<T>['toggleIconName'];
+      size: AgentResponseHistoryMobileSurface['header']['toggleIconSize'];
+      color: string;
+    };
+  };
+  collapsedPreview: {
+    style: TStyles['collapsedPreview'];
+    timestamp: {
+      style: TStyles['collapsedPreviewTimestamp'];
+      text: string;
+    };
+    preview: {
+      style: TStyles['collapsedPreviewText'];
+      numberOfLines: AgentResponseHistoryMobileSurface['collapsedPreview']['previewNumberOfLines'];
+      text: string;
+    };
+  } | null;
+  list: {
+    style: TStyles['list'];
+    items: Array<AgentResponseHistoryMobilePropsPartsItem<T, TStyles>>;
+  } | null;
+}
+
 const NO_RUN_ORDINAL_KEY = 'no-run';
 
 export function getAgentResponseHistoryToggleAccessibilityLabel(isCollapsed: boolean): string {
@@ -585,6 +714,121 @@ export function createAgentResponseHistoryMobileStyleSlots({
       lineHeight: surface.collapsedPreview.previewLineHeight,
       color: colors.collapsedPreview.previewColor,
     },
+  };
+}
+
+export function createAgentResponseHistoryMobilePropsParts<
+  T extends { id?: string | null; text: string; timestamp: number },
+  TStyles extends AgentResponseHistoryMobileStylesLike,
+  TOnToggleCollapsed,
+>({
+  renderState,
+  styles,
+  onToggleCollapsed,
+  onSpeakResponse,
+}: AgentResponseHistoryMobilePropsPartsInput<T, TStyles, TOnToggleCollapsed>): AgentResponseHistoryMobilePropsParts<T, TStyles, TOnToggleCollapsed> {
+  const surface = renderState.surface;
+  const colors = renderState.colors;
+  const icons = renderState.icons;
+  const panel = renderState.panel;
+
+  return {
+    shouldRender: renderState.shouldRender,
+    container: {
+      style: styles.container,
+    },
+    header: {
+      touchable: {
+        style: styles.header,
+        onPress: onToggleCollapsed,
+        activeOpacity: surface.header.pressedOpacity,
+        accessibilityRole: surface.header.accessibilityRole,
+        accessibilityLabel: panel.toggleAccessibilityLabel,
+        accessibilityState: panel.toggleAccessibilityState,
+      },
+      left: {
+        style: styles.headerLeft,
+      },
+      icon: {
+        name: icons.headerName,
+        size: surface.header.iconSize,
+        color: colors.header.iconColor,
+      },
+      title: {
+        style: styles.headerTitle,
+        text: panel.title,
+      },
+      badge: {
+        style: styles.badge,
+        text: {
+          style: styles.badgeText,
+          value: panel.countLabel,
+        },
+      },
+      toggleIcon: {
+        name: panel.toggleIconName,
+        size: surface.header.toggleIconSize,
+        color: colors.header.toggleIconColor,
+      },
+    },
+    collapsedPreview: panel.collapsedPreview.shouldRender
+      ? {
+          style: styles.collapsedPreview,
+          timestamp: {
+            style: styles.collapsedPreviewTimestamp,
+            text: panel.collapsedPreview.timestampLabel,
+          },
+          preview: {
+            style: styles.collapsedPreviewText,
+            numberOfLines: surface.collapsedPreview.previewNumberOfLines,
+            text: panel.collapsedPreview.text,
+          },
+        }
+      : null,
+    list: renderState.shouldRenderList
+      ? {
+          style: styles.list,
+          items: renderState.items.map((item) => {
+            const speechActionState = item.speechActionState;
+
+            return {
+              key: item.key,
+              entry: item.entry,
+              originalIndex: item.originalIndex,
+              shouldRenderSeparator: item.shouldRenderSeparator,
+              separator: {
+                style: styles.separator,
+              },
+              animated: {
+                isNewest: item.isNewest,
+                animation: renderState.animation,
+              },
+              container: {
+                style: styles.responseItem,
+              },
+              header: {
+                style: styles.responseHeader,
+              },
+              timestamp: {
+                style: styles.timestamp,
+                text: item.timestampLabel,
+              },
+              speakButton: {
+                style: styles.speakButton,
+                onPress: () => onSpeakResponse(item.entry.text, item.originalIndex),
+                activeOpacity: surface.item.speakButtonPressedOpacity,
+                accessibilityRole: surface.item.speakButtonAccessibilityRole,
+                accessibilityLabel: speechActionState.accessibilityLabel,
+              },
+              speakIcon: {
+                name: speechActionState.icon.name,
+                size: surface.item.speakIconSize,
+                color: speechActionState.icon.color,
+              },
+            };
+          }),
+        }
+      : null,
   };
 }
 

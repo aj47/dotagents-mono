@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  createAgentResponseHistoryMobilePropsParts,
   createAgentResponseHistoryMobileStyleSlots,
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
@@ -95,11 +96,6 @@ export function ResponseHistoryPanel({
     animateNewest: shouldAnimateNewest,
     speakingIndex,
   });
-  const responseHistoryPanelState = responseHistoryRenderState.panel;
-  const responseHistorySurface = responseHistoryRenderState.surface;
-  const responseHistorySurfaceColors = responseHistoryRenderState.colors;
-  const responseHistoryIcons = responseHistoryRenderState.icons;
-  const responseHistoryAnimation = responseHistoryRenderState.animation;
   const responseHistoryStyleSlots = createAgentResponseHistoryMobileStyleSlots({
     renderState: responseHistoryRenderState,
     spacing,
@@ -157,77 +153,88 @@ export function ResponseHistoryPanel({
       ...responseHistoryStyleSlots.collapsedPreviewText,
     },
   });
+  const responseHistoryParts = createAgentResponseHistoryMobilePropsParts({
+    renderState: responseHistoryRenderState,
+    styles,
+    onToggleCollapsed,
+    onSpeakResponse,
+  });
 
   return (
-    <View style={styles.container}>
+    <View style={responseHistoryParts.container.style}>
       <TouchableOpacity
-        style={styles.header}
-        onPress={onToggleCollapsed}
-        activeOpacity={responseHistorySurface.header.pressedOpacity}
-        accessibilityRole={responseHistorySurface.header.accessibilityRole}
-        accessibilityLabel={responseHistoryPanelState.toggleAccessibilityLabel}
-        accessibilityState={responseHistoryPanelState.toggleAccessibilityState}
+        style={responseHistoryParts.header.touchable.style}
+        onPress={responseHistoryParts.header.touchable.onPress}
+        activeOpacity={responseHistoryParts.header.touchable.activeOpacity}
+        accessibilityRole={responseHistoryParts.header.touchable.accessibilityRole}
+        accessibilityLabel={responseHistoryParts.header.touchable.accessibilityLabel}
+        accessibilityState={responseHistoryParts.header.touchable.accessibilityState}
       >
-        <View style={styles.headerLeft}>
+        <View style={responseHistoryParts.header.left.style}>
           <Ionicons
-            name={responseHistoryIcons.headerName}
-            size={responseHistorySurface.header.iconSize}
-            color={responseHistorySurfaceColors.header.iconColor}
+            name={responseHistoryParts.header.icon.name}
+            size={responseHistoryParts.header.icon.size}
+            color={responseHistoryParts.header.icon.color}
           />
-          <Text style={styles.headerTitle}>{responseHistoryPanelState.title}</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{responseHistoryPanelState.countLabel}</Text>
+          <Text style={responseHistoryParts.header.title.style}>
+            {responseHistoryParts.header.title.text}
+          </Text>
+          <View style={responseHistoryParts.header.badge.style}>
+            <Text style={responseHistoryParts.header.badge.text.style}>
+              {responseHistoryParts.header.badge.text.value}
+            </Text>
           </View>
         </View>
         <Ionicons
-          name={responseHistoryPanelState.toggleIconName}
-          size={responseHistorySurface.header.toggleIconSize}
-          color={responseHistorySurfaceColors.header.toggleIconColor}
+          name={responseHistoryParts.header.toggleIcon.name}
+          size={responseHistoryParts.header.toggleIcon.size}
+          color={responseHistoryParts.header.toggleIcon.color}
         />
       </TouchableOpacity>
-      {responseHistoryPanelState.collapsedPreview.shouldRender && (
-        <View style={styles.collapsedPreview}>
-          <Text style={styles.collapsedPreviewTimestamp}>
-            {responseHistoryPanelState.collapsedPreview.timestampLabel}
+      {responseHistoryParts.collapsedPreview && (
+        <View style={responseHistoryParts.collapsedPreview.style}>
+          <Text style={responseHistoryParts.collapsedPreview.timestamp.style}>
+            {responseHistoryParts.collapsedPreview.timestamp.text}
           </Text>
           <Text
-            style={styles.collapsedPreviewText}
-            numberOfLines={responseHistorySurface.collapsedPreview.previewNumberOfLines}
+            style={responseHistoryParts.collapsedPreview.preview.style}
+            numberOfLines={responseHistoryParts.collapsedPreview.preview.numberOfLines}
           >
-            {responseHistoryPanelState.collapsedPreview.text}
+            {responseHistoryParts.collapsedPreview.preview.text}
           </Text>
         </View>
       )}
-      {responseHistoryRenderState.shouldRenderList && (
-        <ScrollView style={styles.list}>
-          {responseHistoryRenderState.items.map((item) => {
-            const response = item.entry;
-            const speechActionState = item.speechActionState;
+      {responseHistoryParts.list && (
+        <ScrollView style={responseHistoryParts.list.style}>
+          {responseHistoryParts.list.items.map((item) => {
             return (
               <React.Fragment key={item.key}>
-                {item.shouldRenderSeparator && <View style={styles.separator} />}
-                <AnimatedResponseItem isNewest={item.isNewest} animation={responseHistoryAnimation}>
-                  <View style={styles.responseItem}>
-                    <View style={styles.responseHeader}>
-                      <Text style={styles.timestamp}>
-                        {item.timestampLabel}
+                {item.shouldRenderSeparator && <View style={item.separator.style} />}
+                <AnimatedResponseItem
+                  isNewest={item.animated.isNewest}
+                  animation={item.animated.animation}
+                >
+                  <View style={item.container.style}>
+                    <View style={item.header.style}>
+                      <Text style={item.timestamp.style}>
+                        {item.timestamp.text}
                       </Text>
                       <TouchableOpacity
-                        style={styles.speakButton}
-                        onPress={() => onSpeakResponse(response.text, item.originalIndex)}
-                        activeOpacity={responseHistorySurface.item.speakButtonPressedOpacity}
-                        accessibilityRole={responseHistorySurface.item.speakButtonAccessibilityRole}
-                        accessibilityLabel={speechActionState.accessibilityLabel}
+                        style={item.speakButton.style}
+                        onPress={item.speakButton.onPress}
+                        activeOpacity={item.speakButton.activeOpacity}
+                        accessibilityRole={item.speakButton.accessibilityRole}
+                        accessibilityLabel={item.speakButton.accessibilityLabel}
                       >
                         <Ionicons
-                          name={speechActionState.icon.name}
-                          size={responseHistorySurface.item.speakIconSize}
-                          color={speechActionState.icon.color}
+                          name={item.speakIcon.name}
+                          size={item.speakIcon.size}
+                          color={item.speakIcon.color}
                         />
                       </TouchableOpacity>
                     </View>
                     <MarkdownRenderer
-                      content={response.text}
+                      content={item.entry.text}
                       assetBaseUrl={remoteBaseUrl}
                       assetAuthToken={remoteApiKey}
                     />
