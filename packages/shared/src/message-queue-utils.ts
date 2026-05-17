@@ -2123,6 +2123,38 @@ export interface QueuedMessageEditMobileStyleSlots {
   };
 }
 
+export interface QueuedMessageItemMobileStyleSheetSlotsInput {
+  renderState: Pick<
+    QueuedMessageItemMobileRenderState,
+    'surface' | 'colors' | 'presentation' | 'statusColor' | 'statusMetaColor'
+  >;
+}
+
+export interface QueuedMessageItemMobileStyleSheetSlots {
+  container: QueuedMessageItemMobileStyleSlots['container'];
+  row: QueuedMessageItemMobileStyleSlots['row'];
+  content: QueuedMessageItemMobileStyleSlots['content'];
+  messageText: QueuedMessageItemMobileStyleSlots['messageText'];
+  errorText: QueuedMessageItemMobileStyleSlots['errorText'];
+  metaRow: QueuedMessageItemMobileStyleSlots['metaRow'];
+  metaText: QueuedMessageItemMobileStyleSlots['metaText'];
+  expandButton: QueuedMessageItemMobileStyleSlots['expandButton'];
+  expandText: QueuedMessageItemMobileStyleSlots['expandText'];
+  actions: QueuedMessageActionRowMobileStyleSlot;
+  actionButton: QueuedMessageActionButtonMobileStyleSlots['button'];
+  retryActionText: QueuedMessageActionButtonMobileStyleSlots['retryText'];
+  editActionText: QueuedMessageActionButtonMobileStyleSlots['editText'];
+  removeActionText: QueuedMessageActionButtonMobileStyleSlots['removeText'];
+  editContainer: QueuedMessageEditMobileStyleSlots['container'];
+  editInput: QueuedMessageEditMobileStyleSlots['input'];
+  editActions: QueuedMessageEditMobileStyleSlots['actions'];
+  editButton: QueuedMessageEditMobileStyleSlots['button'];
+  cancelButton: QueuedMessageEditMobileStyleSlots['cancelButton'];
+  saveButton: QueuedMessageEditMobileStyleSlots['saveButton'];
+  buttonText: QueuedMessageEditMobileStyleSlots['buttonText'];
+  saveButtonText: QueuedMessageEditMobileStyleSlots['saveButtonText'];
+}
+
 export interface QueuedMessageEditMobileStylesLike {
   editContainer: unknown;
   editInput: unknown;
@@ -2685,6 +2717,53 @@ export function createQueuedMessageEditMobileStyleSlots({
       fontSize: surface.buttonTextFontSize,
       color: colors.saveButtonTextColor,
     },
+  };
+}
+
+export function createQueuedMessageItemMobileStyleSheetSlots({
+  renderState,
+}: QueuedMessageItemMobileStyleSheetSlotsInput): QueuedMessageItemMobileStyleSheetSlots {
+  const itemStyleSlots = createQueuedMessageItemMobileStyleSlots({
+    surface: renderState.surface.item,
+    colors: renderState.colors.item,
+    presentation: renderState.presentation,
+    statusColor: renderState.statusColor,
+    statusMetaColor: renderState.statusMetaColor,
+  });
+  const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots({
+    surface: renderState.surface.actions,
+    colors: renderState.colors.actions,
+  });
+  const editStyleSlots = createQueuedMessageEditMobileStyleSlots({
+    surface: renderState.surface.edit,
+    colors: renderState.colors.edit,
+  });
+
+  return {
+    container: itemStyleSlots.container,
+    row: itemStyleSlots.row,
+    content: itemStyleSlots.content,
+    messageText: itemStyleSlots.messageText,
+    errorText: itemStyleSlots.errorText,
+    metaRow: itemStyleSlots.metaRow,
+    metaText: itemStyleSlots.metaText,
+    expandButton: itemStyleSlots.expandButton,
+    expandText: itemStyleSlots.expandText,
+    actions: createQueuedMessageActionRowMobileStyleSlot({
+      surface: renderState.surface.actions,
+    }),
+    actionButton: actionButtonStyleSlots.button,
+    retryActionText: actionButtonStyleSlots.retryText,
+    editActionText: actionButtonStyleSlots.editText,
+    removeActionText: actionButtonStyleSlots.removeText,
+    editContainer: editStyleSlots.container,
+    editInput: editStyleSlots.input,
+    editActions: editStyleSlots.actions,
+    editButton: editStyleSlots.button,
+    cancelButton: editStyleSlots.cancelButton,
+    saveButton: editStyleSlots.saveButton,
+    buttonText: editStyleSlots.buttonText,
+    saveButtonText: editStyleSlots.saveButtonText,
   };
 }
 

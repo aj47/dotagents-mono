@@ -22,10 +22,7 @@ import {
   createMessageQueuePanelChromeMobilePropsParts,
   createMessageQueuePanelListMobilePropsParts,
   createQueuedMessageItemMobilePropsParts,
-  createQueuedMessageActionButtonMobileStyleSlots,
-  createQueuedMessageActionRowMobileStyleSlot,
-  createQueuedMessageEditMobileStyleSlots,
-  createQueuedMessageItemMobileStyleSlots,
+  createQueuedMessageItemMobileStyleSheetSlots,
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
   getQueuedMessageItemMobileRenderState,
@@ -74,32 +71,9 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   const {
     isProcessing,
   } = messagePresentation;
-  const itemSurface = queuedMessageRenderState.surface.item;
-  const actionSurface = queuedMessageRenderState.surface.actions;
-  const editSurface = queuedMessageRenderState.surface.edit;
-  const itemColors = queuedMessageRenderState.colors.item;
-  const actionColors = queuedMessageRenderState.colors.actions;
-  const editColors = queuedMessageRenderState.colors.edit;
-  const statusColor = queuedMessageRenderState.statusColor;
-  const statusMetaColor = queuedMessageRenderState.statusMetaColor;
   const editDraftState = getQueuedMessageEditDraftState(editText, message.text);
-  const itemStyleSlots = createQueuedMessageItemMobileStyleSlots({
-    surface: itemSurface,
-    colors: itemColors,
-    presentation: messagePresentation,
-    statusColor,
-    statusMetaColor,
-  });
-  const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots({
-    surface: actionSurface,
-    colors: actionColors,
-  });
-  const actionRowStyleSlot = createQueuedMessageActionRowMobileStyleSlot({
-    surface: actionSurface,
-  });
-  const editStyleSlots = createQueuedMessageEditMobileStyleSlots({
-    surface: editSurface,
-    colors: editColors,
+  const itemStyleSheetSlots = createQueuedMessageItemMobileStyleSheetSlots({
+    renderState: queuedMessageRenderState,
   });
 
   // Sync editText with message.text when it changes (only when not editing)
@@ -133,74 +107,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     setEditText(message.text);
   };
 
-  const styles = StyleSheet.create({
-    container: {
-      ...itemStyleSlots.container,
-    },
-    row: {
-      ...itemStyleSlots.row,
-    },
-    content: {
-      ...itemStyleSlots.content,
-    },
-    messageText: {
-      ...itemStyleSlots.messageText,
-    },
-    errorText: {
-      ...itemStyleSlots.errorText,
-    },
-    metaRow: {
-      ...itemStyleSlots.metaRow,
-    },
-    metaText: {
-      ...itemStyleSlots.metaText,
-    },
-    expandButton: {
-      ...itemStyleSlots.expandButton,
-    },
-    expandText: {
-      ...itemStyleSlots.expandText,
-    },
-    actions: {
-      ...actionRowStyleSlot,
-    },
-    actionButton: {
-      ...actionButtonStyleSlots.button,
-    },
-    retryActionText: {
-      ...actionButtonStyleSlots.retryText,
-    },
-    editActionText: {
-      ...actionButtonStyleSlots.editText,
-    },
-    removeActionText: {
-      ...actionButtonStyleSlots.removeText,
-    },
-    editContainer: {
-      ...editStyleSlots.container,
-    },
-    editInput: {
-      ...editStyleSlots.input,
-    },
-    editActions: {
-      ...editStyleSlots.actions,
-    },
-    editButton: {
-      ...editStyleSlots.button,
-    },
-    cancelButton: {
-      ...editStyleSlots.cancelButton,
-    },
-    saveButton: {
-      ...editStyleSlots.saveButton,
-    },
-    buttonText: {
-      ...editStyleSlots.buttonText,
-    },
-    saveButtonText: {
-      ...editStyleSlots.saveButtonText,
-    },
-  });
+  const styles = StyleSheet.create({ ...itemStyleSheetSlots });
   const {
     edit: editParts,
     actions: actionParts,

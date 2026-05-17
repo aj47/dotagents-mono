@@ -23,6 +23,7 @@ import {
   createQueuedMessageActionRowMobileStyleSlot,
   createQueuedMessageEditMobilePropsParts,
   createQueuedMessageEditMobileStyleSlots,
+  createQueuedMessageItemMobileStyleSheetSlots,
   createQueuedMessageItemMobileStyleSlots,
   enqueueQueuedMessage,
   canEditQueuedMessage,
@@ -1299,6 +1300,47 @@ describe('message-queue-utils', () => {
       },
       saveButtonText: {
         fontSize: 12,
+        color: '#ffffff',
+      },
+    });
+    expect(createQueuedMessageItemMobileStyleSheetSlots({
+      renderState: getQueuedMessageItemMobileRenderState({
+        message: makeMessage('style-sheet-message', { status: 'failed' }),
+        isExpanded: false,
+        colors: mobileMessageQueuePalette,
+      }),
+    })).toMatchObject({
+      container: {
+        paddingHorizontal: 12,
+        backgroundColor: 'rgba(220, 38, 38, 0.08)',
+      },
+      row: {
+        flexDirection: 'row',
+        gap: 8,
+      },
+      messageText: {
+        color: '#dc2626',
+      },
+      actions: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 6,
+      },
+      actionButton: {
+        minHeight: 28,
+        borderColor: '#d4d4d4',
+      },
+      retryActionText: {
+        color: '#2563eb',
+      },
+      removeActionText: {
+        color: '#dc2626',
+      },
+      editInput: {
+        minHeight: 60,
+        textAlignVertical: 'top',
+      },
+      saveButtonText: {
         color: '#ffffff',
       },
     });
