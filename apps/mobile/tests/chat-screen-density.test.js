@@ -2049,7 +2049,10 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   const conversationOverlaysSource =
     chatMessageChromeSource.match(/export function ChatMessageConversationOverlays[\s\S]*?export function ChatMessageRuntimeOverlays/)?.[0] ?? '';
   assert.match(conversationOverlaysSource, /const overlayParts = createChatRuntimeConversationOverlaysMobilePropsParts\(\{\s+agentSelector,\s+promptEditor,\s+\}\);/);
-  assert.match(conversationOverlaysSource, /\{overlayParts\.agentSelector\.children\}[\s\S]*?\{overlayParts\.promptEditor\.children\}/);
+  assert.match(sessionPresentationSource, /content: \{\s+agentSelector: \{\s+children: agentSelector,/);
+  assert.match(conversationOverlaysSource, /const overlayContent = overlayParts\.content;/);
+  assert.match(conversationOverlaysSource, /\{overlayContent\.agentSelector\.children\}[\s\S]*?\{overlayContent\.promptEditor\.children\}/);
+  assert.doesNotMatch(conversationOverlaysSource, /overlayParts\.agentSelector\.children/);
   assert.doesNotMatch(conversationOverlaysSource, /\{agentSelector\}[\s\S]*?\{promptEditor\}/);
   assert.match(screenSource, /ChatMessageRuntimeChromeSurface,/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatMessageRuntimeViewportStyleSlots,/);

@@ -10141,11 +10141,12 @@ export function ChatMessageConversationOverlays({
     agentSelector,
     promptEditor,
   });
+  const overlayContent = overlayParts.content;
 
   return (
     <>
-      {overlayParts.agentSelector.children}
-      {overlayParts.promptEditor.children}
+      {overlayContent.agentSelector.children}
+      {overlayContent.promptEditor.children}
     </>
   );
 }
