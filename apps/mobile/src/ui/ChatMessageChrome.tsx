@@ -4194,6 +4194,9 @@ type ChatComposerMicButtonPressableProps =
     children: ReactNode;
   };
 
+type ChatComposerMicButtonPressableContentProps =
+  ChatComposerMicButtonParts['pressable']['content'];
+
 type ChatComposerMicButtonIconProps =
   ChatComposerMicButtonParts['pressable']['content']['icon']['props'];
 
@@ -13929,18 +13932,11 @@ export function ChatComposerMicButton({
   });
   const micButtonPressable = micButtonParts.pressable;
 
-  const pressableContent = micButtonPressable.content;
-
   return (
     <ChatComposerMicButtonPressable
       {...micButtonPressable.props}
     >
-      <ChatComposerMicButtonIcon
-        {...pressableContent.icon.props}
-      />
-      <ChatComposerMicButtonLabel
-        {...pressableContent.label.props}
-      />
+      <ChatComposerMicButtonPressableContent {...micButtonPressable.content} />
     </ChatComposerMicButtonPressable>
   );
 }
@@ -13953,6 +13949,22 @@ export function ChatComposerMicButtonPressable({
     <Pressable {...props}>
       {children}
     </Pressable>
+  );
+}
+
+export function ChatComposerMicButtonPressableContent({
+  icon,
+  label,
+}: ChatComposerMicButtonPressableContentProps) {
+  return (
+    <>
+      <ChatComposerMicButtonIcon
+        {...icon.props}
+      />
+      <ChatComposerMicButtonLabel
+        {...label.props}
+      />
+    </>
   );
 }
 

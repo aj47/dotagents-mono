@@ -3154,13 +3154,18 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /export function createChatComposerMicButtonMobilePropsParts/);
   assert.match(composerMicButtonSource, /const micButtonParts = createChatComposerMicButtonMobilePropsParts\(\{\s+renderState,\s+onPressIn,\s+onPressOut,\s+onPress,\s+webPressedStyle,\s+styles,\s+\}\);/);
   assert.match(composerMicButtonSource, /const micButtonPressable = micButtonParts\.pressable;/);
-  assert.match(composerMicButtonSource, /const pressableContent = micButtonPressable\.content;/);
+  assert.doesNotMatch(composerMicButtonSource, /const pressableContent = micButtonPressable\.content;/);
   assert.match(composerMicButtonSource, /<ChatComposerMicButtonPressable\s+\{\.\.\.micButtonPressable\.props\}/);
-  assert.match(composerMicButtonSource, /<ChatComposerMicButtonIcon\s+\{\.\.\.pressableContent\.icon\.props\}/);
-  assert.match(composerMicButtonSource, /<ChatComposerMicButtonLabel\s+\{\.\.\.pressableContent\.label\.props\}/);
+  assert.match(composerMicButtonSource, /<ChatComposerMicButtonPressableContent\s+\{\.\.\.micButtonPressable\.content\}/);
+  assert.match(composerMicButtonSource, /<ChatComposerMicButtonIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(composerMicButtonSource, /<ChatComposerMicButtonLabel\s+\{\.\.\.label\.props\}/);
   assert.match(
     composerMicButtonSource,
-    /export function ChatComposerMicButtonPressable\([\s\S]*?<Pressable \{\.\.\.props\}>[\s\S]*?export function ChatComposerMicButtonIcon/
+    /export function ChatComposerMicButtonPressable\([\s\S]*?<Pressable \{\.\.\.props\}>[\s\S]*?export function ChatComposerMicButtonPressableContent/
+  );
+  assert.match(
+    composerMicButtonSource,
+    /export function ChatComposerMicButtonPressableContent\([\s\S]*?<ChatComposerMicButtonIcon\s+\{\.\.\.icon\.props\}[\s\S]*?export function ChatComposerMicButtonIcon/
   );
   assert.match(
     composerMicButtonSource,
