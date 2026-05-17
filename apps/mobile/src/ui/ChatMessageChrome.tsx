@@ -1601,6 +1601,9 @@ type ChatMessageToolApprovalSpinnerProps =
   | ChatMessageToolApprovalParts['headerSpinner']['props']
   | ChatMessageToolApprovalParts['approveButton']['spinner']['props'];
 
+type ChatMessageToolApprovalTitleProps =
+  ChatMessageToolApprovalParts['title']['props'];
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7448,12 +7451,9 @@ export function ChatMessageToolApproval({
         <ChatMessageToolApprovalIcon
           {...toolApprovalParts.headerIcon.props}
         />
-        <Text
-          style={toolApprovalParts.title.style}
-          numberOfLines={toolApprovalParts.title.numberOfLines}
-        >
-          {toolApprovalParts.title.text}
-        </Text>
+        <ChatMessageToolApprovalTitle
+          {...toolApprovalParts.title.props}
+        />
         {toolApprovalParts.headerSpinner.shouldRender ? (
           <ChatMessageToolApprovalSpinner
             {...toolApprovalParts.headerSpinner.props}
@@ -7572,6 +7572,21 @@ export function ChatMessageToolApprovalSpinner({
       size={size}
       color={color}
     />
+  );
+}
+
+export function ChatMessageToolApprovalTitle({
+  style,
+  numberOfLines,
+  text,
+}: ChatMessageToolApprovalTitleProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
   );
 }
 

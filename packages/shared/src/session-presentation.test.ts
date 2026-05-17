@@ -8166,9 +8166,11 @@ describe("session presentation semantics", () => {
       props: toolApprovalProps.renderState.headerIcon,
     })
     expect(toolApprovalParts.title).toEqual({
-      style: "tool-approval-title-style",
-      numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.title.numberOfLines,
-      text: CHAT_RUNTIME_PRESENTATION.approval.processingTitle,
+      props: {
+        style: "tool-approval-title-style",
+        numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.title.numberOfLines,
+        text: CHAT_RUNTIME_PRESENTATION.approval.processingTitle,
+      },
     })
     expect(toolApprovalParts.headerSpinner).toEqual({
       shouldRender: true,

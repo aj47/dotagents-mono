@@ -1972,9 +1972,11 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     props: ChatRuntimeToolApprovalMobileRenderState["headerIcon"]
   }
   title: {
-    style: TStyles["title"]
-    numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["title"]["numberOfLines"]
-    text: string
+    props: {
+      style: TStyles["title"]
+      numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["title"]["numberOfLines"]
+      text: string
+    }
   }
   headerSpinner: {
     shouldRender: boolean
@@ -22802,9 +22804,11 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       props: renderState.headerIcon,
     },
     title: {
-      style: styles.title,
-      numberOfLines: renderState.surface.title.numberOfLines,
-      text: renderState.title,
+      props: {
+        style: styles.title,
+        numberOfLines: renderState.surface.title.numberOfLines,
+        text: renderState.title,
+      },
     },
     headerSpinner: {
       shouldRender: renderState.approveButton.isDisabled,

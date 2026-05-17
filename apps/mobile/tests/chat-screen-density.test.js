@@ -650,8 +650,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.toolApprovalParts\.headerIcon\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalIcon[\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerIcon\.(name|size|color)/);
-  assert.match(toolApprovalComponentSource, /numberOfLines=\{toolApprovalParts\.title\.numberOfLines\}/);
-  assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.title\.text\}/);
+  assert.match(sessionPresentationSource, /title: \{[\s\S]*?props: \{[\s\S]*?style: styles\.title,[\s\S]*?numberOfLines: renderState\.surface\.title\.numberOfLines,[\s\S]*?text: renderState\.title,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalTitle/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalTitle\s+\{\.\.\.toolApprovalParts\.title\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalTitle[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.title\.(style|numberOfLines|text)/);
   assert.match(sessionPresentationSource, /headerSpinner: \{[\s\S]*?shouldRender: renderState\.approveButton\.isDisabled,[\s\S]*?props: renderState\.spinner,/);
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner\.shouldRender \? \(/);
   assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalSpinner\s+\{\.\.\.toolApprovalParts\.headerSpinner\.props\}/);
