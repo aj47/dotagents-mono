@@ -145,8 +145,8 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
               accessibilityRole={editParts.cancelButton.accessibilityRole}
               accessibilityLabel={editParts.cancelButton.accessibilityLabel}
             >
-              <Text style={editParts.cancelButton.text.style}>
-                {editParts.cancelButton.text.value}
+              <Text {...editParts.cancelButton.text.props}>
+                {editParts.cancelButton.text.text}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -158,8 +158,8 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
               accessibilityLabel={editParts.saveButton.accessibilityLabel}
               accessibilityState={editParts.saveButton.accessibilityState}
             >
-              <Text style={editParts.saveButton.text.style}>
-                {editParts.saveButton.text.value}
+              <Text {...editParts.saveButton.text.props}>
+                {editParts.saveButton.text.text}
               </Text>
             </TouchableOpacity>
           </View>
@@ -182,19 +182,16 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
           />
         ) : null}
         <View style={contentParts.container.style}>
-          <Text
-            style={contentParts.messageText.style}
-            numberOfLines={contentParts.messageText.numberOfLines}
-          >
+          <Text {...contentParts.messageText.props}>
             {contentParts.messageText.text}
           </Text>
           {contentParts.errorText.shouldRender ? (
-            <Text style={contentParts.errorText.style}>
+            <Text {...contentParts.errorText.props}>
               {contentParts.errorText.text}
             </Text>
           ) : null}
           <View style={contentParts.metaRow.style}>
-            <Text style={contentParts.metaText.style}>
+            <Text {...contentParts.metaText.props}>
               {contentParts.metaText.text}
             </Text>
             {expandButtonParts.shouldRender ? (
@@ -208,7 +205,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
                 <Ionicons
                   {...expandButtonParts.icon.props}
                 />
-                <Text style={expandButtonParts.label.style}>
+                <Text {...expandButtonParts.label.props}>
                   {expandButtonParts.label.text}
                 </Text>
               </TouchableOpacity>
@@ -229,7 +226,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
                   <Ionicons
                     {...action.icon.props}
                   />
-                  <Text style={action.label.style}>{action.label.text}</Text>
+                  <Text {...action.label.props}>{action.label.text}</Text>
                 </TouchableOpacity>
               ))}
             </View>

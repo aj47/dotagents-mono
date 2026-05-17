@@ -2059,15 +2059,19 @@ export interface QueuedMessageContentMobilePropsParts<
     style: TStyles['content'];
   };
   messageText: {
-    style: TStyles['messageText'];
-    numberOfLines: QueuedMessageMobileItemSurface['message']['collapsedNumberOfLines'] | undefined;
     text: string;
+    props: {
+      style: TStyles['messageText'];
+      numberOfLines: QueuedMessageMobileItemSurface['message']['collapsedNumberOfLines'] | undefined;
+    };
   };
   errorText:
     | {
         shouldRender: true;
-        style: TStyles['errorText'];
         text: string;
+        props: {
+          style: TStyles['errorText'];
+        };
       }
     | {
         shouldRender: false;
@@ -2076,8 +2080,10 @@ export interface QueuedMessageContentMobilePropsParts<
     style: TStyles['metaRow'];
   };
   metaText: {
-    style: TStyles['metaText'];
     text: string;
+    props: {
+      style: TStyles['metaText'];
+    };
   };
 }
 
@@ -2145,8 +2151,10 @@ export type QueuedMessageExpandButtonMobilePropsParts<
         };
       };
       label: {
-        style: TStyles['expandText'];
         text: string;
+        props: {
+          style: TStyles['expandText'];
+        };
       };
     }
   | {
@@ -2244,11 +2252,13 @@ export interface QueuedMessageActionButtonMobilePropsPart<
     };
   };
   label: {
-    style:
-      | TStyles['retryActionText']
-      | TStyles['editActionText']
-      | TStyles['removeActionText'];
     text: string;
+    props: {
+      style:
+        | TStyles['retryActionText']
+        | TStyles['editActionText']
+        | TStyles['removeActionText'];
+    };
   };
 }
 
@@ -2440,8 +2450,10 @@ export interface QueuedMessageEditMobilePropsParts<
     accessibilityRole: QueuedMessageMobileEditSurface['buttonAccessibilityRole'];
     accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelAccessibilityLabel;
     text: {
-      style: TStyles['buttonText'];
-      value: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelLabel;
+      text: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.cancelLabel;
+      props: {
+        style: TStyles['buttonText'];
+      };
     };
   };
   saveButton: {
@@ -2453,8 +2465,10 @@ export interface QueuedMessageEditMobilePropsParts<
     accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveAccessibilityLabel;
     accessibilityState: QueuedMessageEditSaveActionState['accessibilityState'];
     text: {
-      style: TStyles['saveButtonText'];
-      value: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveLabel;
+      text: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.saveLabel;
+      props: {
+        style: TStyles['saveButtonText'];
+      };
     };
   };
 }
@@ -2700,15 +2714,19 @@ export function createQueuedMessageContentMobilePropsParts<
       style: styles.content,
     },
     messageText: {
-      style: styles.messageText,
-      numberOfLines: isExpanded ? undefined : surface.message.collapsedNumberOfLines,
       text: message.text,
+      props: {
+        style: styles.messageText,
+        numberOfLines: isExpanded ? undefined : surface.message.collapsedNumberOfLines,
+      },
     },
     errorText: presentation.errorText
       ? {
           shouldRender: true,
-          style: styles.errorText,
           text: presentation.errorText,
+          props: {
+            style: styles.errorText,
+          },
         }
       : {
           shouldRender: false,
@@ -2717,8 +2735,10 @@ export function createQueuedMessageContentMobilePropsParts<
       style: styles.metaRow,
     },
     metaText: {
-      style: styles.metaText,
       text: formatQueuedMessageMetaLabel(message.createdAt, presentation.statusLabel),
+      props: {
+        style: styles.metaText,
+      },
     },
   };
 }
@@ -2758,8 +2778,10 @@ export function createQueuedMessageExpandButtonMobilePropsParts<
       },
     },
     label: {
-      style: styles.expandText,
       text: presentation.expansionLabel,
+      props: {
+        style: styles.expandText,
+      },
     },
   };
 }
@@ -2822,7 +2844,7 @@ export function createQueuedMessageActionButtonMobilePropsParts<
       accessibilityLabel: string;
       iconName: QueuedMessageActionButtonMobilePropsPart<TStyles>['icon']['props']['name'];
       iconColor: string;
-      labelStyle: QueuedMessageActionButtonMobilePropsPart<TStyles>['label']['style'];
+      labelStyle: QueuedMessageActionButtonMobilePropsPart<TStyles>['label']['props']['style'];
       labelText: string;
     },
   ): QueuedMessageActionButtonMobilePropsPart<TStyles> => ({
@@ -2841,8 +2863,10 @@ export function createQueuedMessageActionButtonMobilePropsParts<
       },
     },
     label: {
-      style: params.labelStyle,
       text: params.labelText,
+      props: {
+        style: params.labelStyle,
+      },
     },
   });
 
@@ -3063,8 +3087,10 @@ export function createQueuedMessageEditMobilePropsParts<
       accessibilityRole: surface.buttonAccessibilityRole,
       accessibilityLabel: copy.actions.cancelAccessibilityLabel,
       text: {
-        style: styles.buttonText,
-        value: copy.actions.cancelLabel,
+        text: copy.actions.cancelLabel,
+        props: {
+          style: styles.buttonText,
+        },
       },
     },
     saveButton: {
@@ -3076,8 +3102,10 @@ export function createQueuedMessageEditMobilePropsParts<
       accessibilityLabel: copy.actions.saveAccessibilityLabel,
       accessibilityState: editDraftState.saveActionState.accessibilityState,
       text: {
-        style: styles.saveButtonText,
-        value: copy.actions.saveLabel,
+        text: copy.actions.saveLabel,
+        props: {
+          style: styles.saveButtonText,
+        },
       },
     },
   };

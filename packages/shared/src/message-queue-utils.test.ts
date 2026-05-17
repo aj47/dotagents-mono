@@ -1259,21 +1259,27 @@ describe('message-queue-utils', () => {
         style: 'content',
       },
       messageText: {
-        style: 'messageText',
-        numberOfLines: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.message.collapsedNumberOfLines,
         text: 'failed',
+        props: {
+          style: 'messageText',
+          numberOfLines: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.message.collapsedNumberOfLines,
+        },
       },
       errorText: {
         shouldRender: true,
-        style: 'errorText',
         text: 'Error: timeout',
+        props: {
+          style: 'errorText',
+        },
       },
       metaRow: {
         style: 'metaRow',
       },
       metaText: {
-        style: 'metaText',
         text: formatQueuedMessageMetaLabel(1000, 'Failed'),
+        props: {
+          style: 'metaText',
+        },
       },
     });
     expect(createQueuedMessageContentMobilePropsParts({
@@ -1290,7 +1296,9 @@ describe('message-queue-utils', () => {
       },
     })).toMatchObject({
       messageText: {
-        numberOfLines: undefined,
+        props: {
+          numberOfLines: undefined,
+        },
       },
       errorText: {
         shouldRender: false,
@@ -1327,8 +1335,10 @@ describe('message-queue-utils', () => {
         },
       },
       label: {
-        style: 'expandText',
         text: 'More',
+        props: {
+          style: 'expandText',
+        },
       },
     });
     if (!expandButtonParts.shouldRender) {
@@ -1417,8 +1427,10 @@ describe('message-queue-utils', () => {
         },
       },
       label: {
-        style: 'retryActionText',
         text: 'Retry',
+        props: {
+          style: 'retryActionText',
+        },
       },
     });
     actionParts.actions.forEach((action) => action.onPress());
@@ -1573,8 +1585,10 @@ describe('message-queue-utils', () => {
         accessibilityRole: 'button',
         accessibilityLabel: 'Cancel queued message edit',
         text: {
-          style: 'buttonText',
-          value: 'Cancel',
+          text: 'Cancel',
+          props: {
+            style: 'buttonText',
+          },
         },
       },
       saveButton: {
@@ -1585,8 +1599,10 @@ describe('message-queue-utils', () => {
         accessibilityLabel: 'Save queued message edit',
         accessibilityState: { disabled: false },
         text: {
-          style: 'saveButtonText',
-          value: 'Save',
+          text: 'Save',
+          props: {
+            style: 'saveButtonText',
+          },
         },
       },
     });
@@ -1666,13 +1682,17 @@ describe('message-queue-utils', () => {
         style: 'content',
       },
       messageText: {
-        style: 'messageText',
-        numberOfLines: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.message.collapsedNumberOfLines,
+        props: {
+          style: 'messageText',
+          numberOfLines: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.message.collapsedNumberOfLines,
+        },
       },
       errorText: {
         shouldRender: true,
-        style: 'errorText',
         text: 'Error: offline',
+        props: {
+          style: 'errorText',
+        },
       },
     });
     expect(bundledParts.expandButton).toMatchObject({
@@ -1687,8 +1707,10 @@ describe('message-queue-utils', () => {
         },
       },
       label: {
-        style: 'expandText',
         text: 'More',
+        props: {
+          style: 'expandText',
+        },
       },
     });
     expect(bundledParts.actions.actions.map((action) => action.key)).toEqual(['retry', 'edit', 'remove']);

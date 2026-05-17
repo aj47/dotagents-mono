@@ -5200,8 +5200,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /itemChromeParts\.actions\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /itemChromeParts\.actions && \(/);
   assert.match(messageQueuePanelSource, /style=\{itemChromeParts\.actions\.style\}/);
-  assert.match(messageQueuePanelSource, /numberOfLines=\{contentParts\.messageText\.numberOfLines\}/);
+  assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.contentParts\.messageText\.props\}>/);
   assert.match(messageQueuePanelSource, /\{contentParts\.metaText\.text\}/);
+  assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.contentParts\.metaText\.props\}>/);
   assert.match(messageQueuePanelSource, /activeOpacity=\{expandButtonParts\.pressable\.activeOpacity\}/);
   assert.match(messageQueuePanelSource, /expandButtonParts\.shouldRender \? \([\s\S]*?<Ionicons\s+\{\.\.\.expandButtonParts\.icon\.props\}/);
   assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
@@ -5232,7 +5233,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) =>/);
   assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
   assert.doesNotMatch(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+name=\{action\.icon\.name\}/);
-  assert.match(messageQueuePanelSource, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
+  assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.action\.label\.props\}>\{action\.label\.text\}<\/Text>/);
   assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.retryName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.retryTextColor\}/);
   assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.editName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.editTextColor\}/);
   assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.removeName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.removeTextColor\}/);
