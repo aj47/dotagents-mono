@@ -3598,9 +3598,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /pendingResult: !result && resultDetail\.isPending \? \{/);
   assert.match(sessionPresentationSource, /pendingResult: !result && resultDetail\.isPending \? \{\s+renderState: pendingResultRenderState,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPendingResult/);
-  assert.match(chatMessageChromeSource, /callDetailParts\.pendingResult\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionPendingResult\s+\{\.\.\.callDetailParts\.pendingResult\}/);
+  assert.match(chatMessageChromeSource, /callDetailParts\.pendingResult\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionPendingResult\s+\{\.\.\.callDetailParts\.pendingResult\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /callDetailParts\.pendingResult \? \(/);
-  assert.match(sessionPresentationSource, /pendingResult: !resultSection\.shouldRender && pendingResult \? \{\s+shouldRender: true as const,\s+renderState: pendingResult\.renderState,\s+styles: styles\.pendingResult,/);
+  assert.match(sessionPresentationSource, /pendingResult: !resultSection\.shouldRender && pendingResult \? \{\s+shouldRender: true,\s+props: \{\s+renderState: pendingResult\.renderState,\s+styles: styles\.pendingResult,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPendingResultMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPendingResultMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const pendingResultParts = createChatRuntimeToolExecutionPendingResultMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);

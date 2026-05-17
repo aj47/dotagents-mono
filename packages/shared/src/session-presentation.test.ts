@@ -13012,8 +13012,10 @@ describe("session presentation semantics", () => {
       },
       pendingResult: {
         shouldRender: true,
-        renderState: "pending-result-state",
-        styles: "pending-result-styles",
+        props: {
+          renderState: "pending-result-state",
+          styles: "pending-result-styles",
+        },
       },
     })
     expect(createChatRuntimeToolExecutionCallDetailMobilePropsParts({
@@ -13033,7 +13035,7 @@ describe("session presentation semantics", () => {
       },
     }).pendingResult).toEqual({
       shouldRender: false,
-      styles: "pending-result-styles",
+      props: null,
     })
     expect(createChatRuntimeToolExecutionCallListMobilePropsParts({
       rows: [
