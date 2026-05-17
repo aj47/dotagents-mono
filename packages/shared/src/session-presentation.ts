@@ -9753,8 +9753,8 @@ export interface ChatRuntimeHeaderConversationStatusMobilePropsParts<
     spinner: unknown
   },
 > {
-  shouldRender: boolean
   container: {
+    shouldRender: boolean
     props: {
       style: [TStyles["chip"], TRenderState["styles"]["chip"]]
     }
@@ -9851,8 +9851,8 @@ export interface ChatRuntimeHeaderTurnDurationMobilePropsParts<
     liveText?: unknown
   },
 > {
-  shouldRender: boolean
   container: {
+    shouldRender: boolean
     props: {
       accessible: true
       accessibilityRole: TRenderState["accessibilityRole"]
@@ -27368,8 +27368,8 @@ export function createChatRuntimeHeaderConversationStatusMobilePropsParts<
   TStyles
 > {
   return {
-    shouldRender: renderState.shouldRender,
     container: {
+      shouldRender: renderState.shouldRender,
       props: {
         style: [
           styles.chip,
@@ -27415,8 +27415,8 @@ export function createChatRuntimeHeaderTurnDurationMobilePropsParts<
   TStyles
 > {
   return {
-    shouldRender: renderState.shouldRender,
     container: {
+      shouldRender: renderState.shouldRender,
       props: {
         accessible: true,
         accessibilityRole: renderState.accessibilityRole,

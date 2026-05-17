@@ -7750,14 +7750,15 @@ export function ChatRuntimeHeaderConversationStatus({
     spinnerSource,
     styles,
   });
+  const conversationStatusContainer = conversationStatusParts.container;
 
-  if (!conversationStatusParts.shouldRender) return null;
+  if (!conversationStatusContainer.shouldRender) return null;
 
-  const containerContent = conversationStatusParts.container.content;
+  const containerContent = conversationStatusContainer.content;
 
   return (
     <ChatRuntimeHeaderConversationStatusContainer
-      {...conversationStatusParts.container.props}
+      {...conversationStatusContainer.props}
     >
       {containerContent.runningIndicator.shouldRender ? (
         <ChatRuntimeHeaderConversationStatusRunningIndicator
@@ -7809,14 +7810,15 @@ export function ChatRuntimeHeaderTurnDuration({
     renderState,
     styles,
   });
+  const turnDurationContainer = turnDurationParts.container;
 
-  if (!turnDurationParts.shouldRender) return null;
+  if (!turnDurationContainer.shouldRender) return null;
 
-  const containerContent = turnDurationParts.container.content;
+  const containerContent = turnDurationContainer.content;
 
   return (
     <ChatRuntimeHeaderTurnDurationContainer
-      {...turnDurationParts.container.props}
+      {...turnDurationContainer.props}
     >
       <ChatRuntimeHeaderTurnDurationIcon
         {...containerContent.icon.props}

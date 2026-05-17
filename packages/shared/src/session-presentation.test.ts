@@ -4394,8 +4394,8 @@ describe("session presentation semantics", () => {
       ...navigationHeaderOptionParts.conversationStatus,
       styles: headerConversationStatusStyles,
     })).toEqual({
-      shouldRender: navigationHeaderState.conversationStatusRenderState.shouldRender,
       container: {
+        shouldRender: navigationHeaderState.conversationStatusRenderState.shouldRender,
         props: {
           style: [
             headerConversationStatusStyles.chip,
@@ -4435,8 +4435,8 @@ describe("session presentation semantics", () => {
       ...navigationHeaderOptionParts.turnDuration,
       styles: headerTurnDurationStyles,
     })).toEqual({
-      shouldRender: navigationHeaderState.turnDurationRenderState.shouldRender,
       container: {
+        shouldRender: navigationHeaderState.turnDurationRenderState.shouldRender,
         props: {
           accessible: true,
           accessibilityRole: navigationHeaderState.turnDurationRenderState.accessibilityRole,
