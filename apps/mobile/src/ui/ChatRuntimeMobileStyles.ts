@@ -86,6 +86,13 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const headerChromeStyleState = chatChromeStyleState.header;
   const headerStyleState = headerChromeStyleState.header;
   const headerSurface = headerStyleState.surface;
+  const threadChromeStyleState = chatChromeStyleState.thread;
+  const compactToolExecutionStyleState = threadChromeStyleState.compactToolExecution;
+  const compactToolExecutionStyleSlots = createChatRuntimeToolExecutionCompactMobileStyleSlots({
+    renderState: compactToolExecutionStyleState,
+    radius,
+    platform: mobilePlatform,
+  });
   const headerAgentSelectorColors = headerStyleState.agentSelector;
   const headerAgentSelectorStyleSlots = createChatRuntimeAgentSelectorMobileStyleSlots({
     surface: headerSurface,
@@ -144,6 +151,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     renderState: delegationCardStyleState,
     spacing,
     radius,
+    toolPreviewStatusIconWidth: compactToolExecutionStyleSlots.statusIndicator.width,
   });
   const scrollToBottomStyleState = conversationChromeStyleState.scrollToBottom;
   const scrollToBottomStyleSlots = createChatRuntimeScrollToBottomMobileStyleSlots({
@@ -200,13 +208,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const sessionStatusSurface = sessionStatusStyleState.surface;
   const sessionStatusStyleSlots = createChatSessionStatusMobileChromeStyleSlots({
     surface: sessionStatusSurface,
-  });
-  const threadChromeStyleState = chatChromeStyleState.thread;
-  const compactToolExecutionStyleState = threadChromeStyleState.compactToolExecution;
-  const compactToolExecutionStyleSlots = createChatRuntimeToolExecutionCompactMobileStyleSlots({
-    renderState: compactToolExecutionStyleState,
-    radius,
-    platform: mobilePlatform,
   });
   const toolExecutionDetailStyleState = threadChromeStyleState.toolExecutionDetail;
   const toolExecutionDetailStyleSlots = createChatRuntimeToolExecutionDetailMobileStyleSlots({
@@ -508,7 +509,6 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...delegationCardStyleSlots.toolPreviewLine,
     },
     delegationToolPreviewStatusIcon: {
-      width: compactToolExecutionStyleSlots.statusIndicator.width,
       ...delegationCardStyleSlots.toolPreviewStatusIcon,
     },
     delegationToolPreviewName: {

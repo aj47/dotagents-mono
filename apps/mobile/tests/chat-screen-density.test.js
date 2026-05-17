@@ -1140,10 +1140,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /formatChatRuntimeDelegationMoreToolActivityLabel\(delegationHiddenToolCount\)/);
   assert.match(screenSource, /createChatRuntimeDelegationCardMobileStyleSlots,/);
   assert.match(screenSource, /const delegationCardStyleState = conversationChromeStyleState\.delegationCard;/);
-  assert.match(screenSource, /const delegationCardStyleSlots = createChatRuntimeDelegationCardMobileStyleSlots\(\{\s+renderState: delegationCardStyleState,\s+spacing,\s+radius,\s+\}\);/);
-  assert.match(sessionPresentationSource, /export function createChatRuntimeDelegationCardMobileStyleSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,/);
+  assert.match(screenSource, /const delegationCardStyleSlots = createChatRuntimeDelegationCardMobileStyleSlots\(\{\s+renderState: delegationCardStyleState,\s+spacing,\s+radius,\s+toolPreviewStatusIconWidth: compactToolExecutionStyleSlots\.statusIndicator\.width,\s+\}\);/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeDelegationCardMobileStyleSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?toolPreviewStatusIconWidth,/);
   assert.match(sessionPresentationSource, /card:\s*\{[\s\S]*?borderColor: colors\.card\.borderColor,[\s\S]*?backgroundColor: colors\.card\.backgroundColor/);
   assert.match(sessionPresentationSource, /conversationPreview:\s*\{[\s\S]*?borderColor: colors\.conversationPreview\.borderColor,[\s\S]*?backgroundColor: colors\.conversationPreview\.backgroundColor/);
+  assert.match(sessionPresentationSource, /toolPreviewStatusIcon:\s*\{[\s\S]*?toolPreviewStatusIconWidth == null \? \{\} : \{ width: toolPreviewStatusIconWidth \}/);
   assert.match(sessionPresentationSource, /toolPreviewStatusIcon:\s*\{[\s\S]*?minWidth: surface\.toolPreviewStatusMinWidth,[\s\S]*?justifyContent: surface\.toolPreviewStatusJustifyContent/);
   assert.doesNotMatch(screenSource, /const delegationCardSurface = delegationCardStyleState\.surface;/);
   assert.doesNotMatch(screenSource, /const delegationCardSurfaceColors = delegationCardStyleState\.colors;/);
@@ -1168,7 +1169,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(screenSource, /delegationToolPreview:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreview,/);
   assert.match(screenSource, /delegationToolPreviewLabel:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewLabel,/);
   assert.match(screenSource, /delegationToolPreviewLine:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewLine,/);
-  assert.match(screenSource, /delegationToolPreviewStatusIcon:\s*\{\s+width:\s*compactToolExecutionStyleSlots\.statusIndicator\.width,\s+\.\.\.delegationCardStyleSlots\.toolPreviewStatusIcon,/);
+  assert.match(screenSource, /delegationToolPreviewStatusIcon:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewStatusIcon,/);
+  assert.doesNotMatch(screenSource, /delegationToolPreviewStatusIcon:\s*\{\s+width:\s*compactToolExecutionStyleSlots\.statusIndicator\.width,/);
   assert.match(screenSource, /delegationToolPreviewName:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewName,/);
   assert.match(screenSource, /delegationToolPreviewMoreButton:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewMoreButton,/);
   assert.match(screenSource, /delegationToolPreviewMoreButtonPressed:\s*\{\s+\.\.\.delegationCardStyleSlots\.toolPreviewMoreButtonPressed,/);

@@ -6773,6 +6773,7 @@ describe("session presentation semantics", () => {
       radius: {
         sm: 6,
       },
+      toolPreviewStatusIconWidth: 12,
     })).toEqual({
       card: {
         gap: 4,
@@ -6900,6 +6901,7 @@ describe("session presentation semantics", () => {
         minWidth: 0,
       },
       toolPreviewStatusIcon: {
+        width: 12,
         minWidth: 36,
         alignItems: "center",
         justifyContent: "center",

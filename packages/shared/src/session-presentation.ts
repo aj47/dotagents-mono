@@ -8855,6 +8855,7 @@ export interface ChatRuntimeDelegationCardMobileStyleSlotsInput {
   renderState: Pick<ChatRuntimeDelegationCardMobileRenderState, "surface" | "colors">
   spacing: Readonly<Record<ChatRuntimeDelegationCardMobileSpacingToken, number>>
   radius: Readonly<Record<ChatRuntimeDelegationCardMobileRadiusToken, number>>
+  toolPreviewStatusIconWidth?: number
 }
 
 export interface ChatRuntimeDelegationCardMobileStyleSlots {
@@ -8984,6 +8985,7 @@ export interface ChatRuntimeDelegationCardMobileStyleSlots {
     minWidth: number
   }
   toolPreviewStatusIcon: {
+    width?: number
     minWidth: number
     alignItems: ChatRuntimeDelegationCardMobileSurface["toolPreviewStatusAlignItems"]
     justifyContent: ChatRuntimeDelegationCardMobileSurface["toolPreviewStatusJustifyContent"]
@@ -16784,6 +16786,7 @@ export function createChatRuntimeDelegationCardMobileStyleSlots({
   renderState,
   spacing,
   radius,
+  toolPreviewStatusIconWidth,
 }: ChatRuntimeDelegationCardMobileStyleSlotsInput): ChatRuntimeDelegationCardMobileStyleSlots {
   const surface = renderState.surface
   const colors = renderState.colors
@@ -16915,6 +16918,7 @@ export function createChatRuntimeDelegationCardMobileStyleSlots({
       minWidth: surface.toolPreviewLineMinWidth,
     },
     toolPreviewStatusIcon: {
+      ...(toolPreviewStatusIconWidth == null ? {} : { width: toolPreviewStatusIconWidth }),
       minWidth: surface.toolPreviewStatusMinWidth,
       alignItems: surface.toolPreviewStatusAlignItems,
       justifyContent: surface.toolPreviewStatusJustifyContent,
