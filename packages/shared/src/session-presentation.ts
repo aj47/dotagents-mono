@@ -2597,8 +2597,10 @@ export interface ChatRuntimeMessageThreadItemMobilePropsParts<
   TLeadingActivity = unknown,
   TTrailingActivity = unknown,
 > {
-  leadingActivity: TLeadingActivity | undefined
-  trailingActivity: TTrailingActivity | undefined
+  props: {
+    leadingActivity: TLeadingActivity | undefined
+    trailingActivity: TTrailingActivity | undefined
+  }
 }
 
 export interface ChatRuntimeMessageThreadSurfaceMobilePropsPartsInput<
@@ -2623,10 +2625,12 @@ export interface ChatRuntimeMessageThreadSurfaceMobilePropsParts<
     TLeadingActivity,
     TTrailingActivity
   >
-  surface: ChatRuntimeMessageSurfaceMobilePropsPartsInput<
-    TSurfaceStyle,
-    TSurfaceToneStyle
-  >
+  surface: {
+    props: ChatRuntimeMessageSurfaceMobilePropsPartsInput<
+      TSurfaceStyle,
+      TSurfaceToneStyle
+    >
+  }
 }
 
 export interface ChatRuntimeMessageContentRowMobilePropsPartsInput<
@@ -6033,8 +6037,10 @@ export interface ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
   TBoundaryStyles = unknown,
 > {
   surface: {
-    surfaceStyle: TSurfaceStyle
-    surfaceToneStyle: TSurfaceToneStyle | undefined
+    props: {
+      surfaceStyle: TSurfaceStyle
+      surfaceToneStyle: TSurfaceToneStyle | undefined
+    }
   }
   leadingBoundary: ChatRuntimeToolActivityGroupThreadSurfaceBoundaryMobilePropsPart<
     TGroupRenderState,
@@ -20351,8 +20357,10 @@ export function createChatRuntimeMessageThreadItemMobilePropsParts<
   TTrailingActivity
 > {
   return {
-    leadingActivity,
-    trailingActivity,
+    props: {
+      leadingActivity,
+      trailingActivity,
+    },
   }
 }
 
@@ -20383,8 +20391,10 @@ export function createChatRuntimeMessageThreadSurfaceMobilePropsParts<
       trailingActivity,
     }),
     surface: {
-      style: surfaceStyle,
-      toneStyle: surfaceToneStyle,
+      props: {
+        style: surfaceStyle,
+        toneStyle: surfaceToneStyle,
+      },
     },
   }
 }
@@ -23267,8 +23277,10 @@ export function createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
 > {
   return {
     surface: {
-      surfaceStyle: styles.surfaceStyle,
-      surfaceToneStyle,
+      props: {
+        surfaceStyle: styles.surfaceStyle,
+        surfaceToneStyle,
+      },
     },
     leadingBoundary: groupRenderState?.shouldRenderExpandedHeader ? {
       shouldRender: true,

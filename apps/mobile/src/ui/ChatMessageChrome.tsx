@@ -8000,9 +8000,9 @@ export function ChatMessageThreadItem({
 
   return (
     <View>
-      {threadItemParts.leadingActivity}
+      {threadItemParts.props.leadingActivity}
       {children}
-      {threadItemParts.trailingActivity}
+      {threadItemParts.props.trailingActivity}
     </View>
   );
 }
@@ -8023,10 +8023,10 @@ export function ChatMessageThreadSurface({
 
   return (
     <ChatMessageThreadItem
-      {...threadSurfaceParts.item}
+      {...threadSurfaceParts.item.props}
     >
       <ChatMessageSurface
-        {...threadSurfaceParts.surface}
+        {...threadSurfaceParts.surface.props}
       >
         {children}
       </ChatMessageSurface>
@@ -8050,7 +8050,7 @@ export function ChatMessageToolActivityGroupThreadSurface({
 
   return (
     <ChatMessageThreadSurface
-      {...surfaceParts.surface}
+      {...surfaceParts.surface.props}
       leadingActivity={surfaceParts.leadingBoundary.shouldRender ? (
         <ChatMessageToolActivityGroupBoundary
           {...surfaceParts.leadingBoundary.props}

@@ -9080,8 +9080,10 @@ describe("session presentation semantics", () => {
     })
     expect(threadSurfaceParts).toEqual({
       surface: {
-        surfaceStyle: "thread-surface",
-        surfaceToneStyle: "assistant-surface-tone",
+        props: {
+          surfaceStyle: "thread-surface",
+          surfaceToneStyle: "assistant-surface-tone",
+        },
       },
       leadingBoundary: {
         shouldRender: true,
@@ -9118,8 +9120,10 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       surface: {
-        surfaceStyle: "thread-surface",
-        surfaceToneStyle: undefined,
+        props: {
+          surfaceStyle: "thread-surface",
+          surfaceToneStyle: undefined,
+        },
       },
       leadingBoundary: {
         shouldRender: false,
@@ -11951,8 +11955,10 @@ describe("session presentation semantics", () => {
       leadingActivity: "leading-activity",
       trailingActivity: "trailing-activity",
     })).toEqual({
-      leadingActivity: "leading-activity",
-      trailingActivity: "trailing-activity",
+      props: {
+        leadingActivity: "leading-activity",
+        trailingActivity: "trailing-activity",
+      },
     })
     expect(createChatRuntimeMessageThreadSurfaceMobilePropsParts({
       leadingActivity: "leading-activity",
@@ -11961,12 +11967,16 @@ describe("session presentation semantics", () => {
       surfaceToneStyle: "message-surface-tone-style",
     })).toEqual({
       item: {
-        leadingActivity: "leading-activity",
-        trailingActivity: "trailing-activity",
+        props: {
+          leadingActivity: "leading-activity",
+          trailingActivity: "trailing-activity",
+        },
       },
       surface: {
-        style: "message-surface-style",
-        toneStyle: "message-surface-tone-style",
+        props: {
+          style: "message-surface-style",
+          toneStyle: "message-surface-tone-style",
+        },
       },
     })
     expect(createChatRuntimeMessageContentRowMobilePropsParts({
