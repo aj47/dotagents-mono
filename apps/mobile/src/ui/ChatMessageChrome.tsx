@@ -8796,7 +8796,7 @@ export function ChatMessageDelegationConversationPreview({
   moreAction,
 }: ChatMessageDelegationConversationPreviewProps) {
   return (
-    <View style={container.style}>
+    <View {...container.props}>
       {rows.map((row) => (
         <ChatMessageDelegationConversationPreviewRow
           key={row.key}
@@ -8911,7 +8911,7 @@ export function ChatMessageDelegationMetaRow({
   items,
 }: ChatMessageDelegationMetaRowProps) {
   return (
-    <View style={container.style}>
+    <View {...container.props}>
       {items.map((metaItem) => (
         <ChatMessageDelegationMetaItem
           key={metaItem.key}
@@ -8955,7 +8955,7 @@ export function ChatMessageDelegationToolPreview({
   moreAction,
 }: ChatMessageDelegationToolPreviewProps) {
   return (
-    <View style={container.style}>
+    <View {...container.props}>
       <ChatMessageDelegationToolPreviewLabel
         {...label.props}
       />

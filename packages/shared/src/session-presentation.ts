@@ -2307,7 +2307,9 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
   meta: {
     props: {
       container: {
-        style: TStyles["metaRow"]
+        props: {
+          style: TStyles["metaRow"]
+        }
       }
       items: Array<{
         key: string
@@ -2325,7 +2327,9 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     shouldRender: boolean
     props: {
       container: {
-        style: TStyles["conversationPreview"]
+        props: {
+          style: TStyles["conversationPreview"]
+        }
       }
       rows: Array<{
         key: string
@@ -2404,7 +2408,9 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     shouldRender: boolean
     props: {
       container: {
-        style: TStyles["toolPreview"]
+        props: {
+          style: TStyles["toolPreview"]
+        }
       }
       label: {
         props: {
@@ -23666,7 +23672,9 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
     meta: {
       props: {
         container: {
-          style: styles.metaRow,
+          props: {
+            style: styles.metaRow,
+          },
         },
         items: metaItems.map((item) => ({
           key: item.key,
@@ -23684,7 +23692,9 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       shouldRender: shouldRenderConversationPreview,
       props: {
         container: {
-          style: styles.conversationPreview,
+          props: {
+            style: styles.conversationPreview,
+          },
         },
         rows: shouldRenderConversationPreview ? conversationPreview.rows.map((row, rowIndex) => ({
           key: `${row.timestamp}-${row.role}-${rowIndex}`,
@@ -23756,7 +23766,9 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       shouldRender: shouldRenderToolPreview,
       props: {
         container: {
-          style: styles.toolPreview,
+          props: {
+            style: styles.toolPreview,
+          },
         },
         label: {
           props: {

@@ -11235,7 +11235,9 @@ describe("session presentation semantics", () => {
       delegationCardProps.messageCountLabel,
     ].filter(Boolean))
     expect(delegationCardParts.meta.props.container).toEqual({
-      style: "delegation-meta-row-style",
+      props: {
+        style: "delegation-meta-row-style",
+      },
     })
     expect(delegationCardParts.meta.props.items[0]).toMatchObject({
       key: "source",
@@ -11252,7 +11254,9 @@ describe("session presentation semantics", () => {
     }
     expect(delegationCardParts.conversationPreview.shouldRender).toBe(true)
     expect(delegationCardParts.conversationPreview.props.container).toEqual({
-      style: "delegation-conversation-preview-style",
+      props: {
+        style: "delegation-conversation-preview-style",
+      },
     })
     const delegationConversationPreviewRowParts = delegationCardParts.conversationPreview.props.rows[0]
     if (!delegationConversationPreviewRowParts) {
@@ -11313,7 +11317,9 @@ describe("session presentation semantics", () => {
     delegationCardParts.conversationPreview.props.moreAction.props.button.props.onPress()
     expect(delegationCardParts.toolPreview.shouldRender).toBe(true)
     expect(delegationCardParts.toolPreview.props.container).toEqual({
-      style: "delegation-tool-preview-style",
+      props: {
+        style: "delegation-tool-preview-style",
+      },
     })
     expect(delegationCardParts.toolPreview.props.label.props).toMatchObject({
       props: {
