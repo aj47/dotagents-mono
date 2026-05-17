@@ -4732,20 +4732,26 @@ export interface ChatComposerLabeledActionButtonMobilePropsParts<
 > {
   shouldRender: boolean
   touchable: {
-    style: Array<TStyles["button"] | TStyles["disabledButton"] | false | undefined>
-    onPress: TOnPress | undefined
-    activeOpacity: TActiveOpacity | undefined
-    disabled: TRenderState["isDisabled"]
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityHint: string | undefined
-    accessibilityState: TRenderState["accessibilityState"]
+    props: {
+      style: Array<TStyles["button"] | TStyles["disabledButton"] | false | undefined>
+      onPress: TOnPress | undefined
+      activeOpacity: TActiveOpacity | undefined
+      disabled: TRenderState["isDisabled"]
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityHint: string | undefined
+      accessibilityState: TRenderState["accessibilityState"]
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
   label: {
     shouldRender: boolean
-    style: TStyles["text"]
-    text: string
+    props: {
+      style: TStyles["text"]
+      text: string
+    }
   }
 }
 
@@ -21550,20 +21556,26 @@ export function createChatComposerLabeledActionButtonMobilePropsParts<
   return {
     shouldRender,
     touchable: {
-      style: [styles.button, renderState.isDisabled && styles.disabledButton],
-      onPress,
-      activeOpacity,
-      disabled: renderState.isDisabled,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityHint: renderState.accessibilityHint ?? undefined,
-      accessibilityState: renderState.accessibilityState,
+      props: {
+        style: [styles.button, renderState.isDisabled && styles.disabledButton],
+        onPress,
+        activeOpacity,
+        disabled: renderState.isDisabled,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityHint: renderState.accessibilityHint ?? undefined,
+        accessibilityState: renderState.accessibilityState,
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
     label: {
       shouldRender: renderState.labelShouldRender ?? true,
-      style: styles.text,
-      text: renderState.label,
+      props: {
+        style: styles.text,
+        text: renderState.label,
+      },
     },
   }
 }

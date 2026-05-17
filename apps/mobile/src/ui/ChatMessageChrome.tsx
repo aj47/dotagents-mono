@@ -2884,6 +2884,24 @@ type ChatComposerLabeledActionButtonProps = {
   styles: ChatComposerLabeledActionButtonStyles;
 };
 
+type ChatComposerLabeledActionButtonParts = ReturnType<typeof createChatComposerLabeledActionButtonMobilePropsParts<
+  ChatComposerLabeledActionRenderState,
+  ChatComposerLabeledActionButtonProps['onPress'],
+  ChatComposerLabeledActionButtonProps['activeOpacity'],
+  ChatComposerLabeledActionButtonProps['styles']
+>>;
+
+type ChatComposerLabeledActionButtonTouchableProps =
+  ChatComposerLabeledActionButtonParts['touchable']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerLabeledActionButtonIconProps =
+  ChatComposerLabeledActionButtonParts['icon']['props'];
+
+type ChatComposerLabeledActionButtonLabelProps =
+  ChatComposerLabeledActionButtonParts['label']['props'];
+
 type ChatComposerMicButtonRenderState = ChatComposerIconButtonRenderState & {
   ariaBusy?: boolean;
   label: string;
@@ -10570,27 +10588,70 @@ export function ChatComposerLabeledActionButton({
   if (!actionButtonParts.shouldRender) return null;
 
   return (
-    <TouchableOpacity
-      style={actionButtonParts.touchable.style}
-      onPress={actionButtonParts.touchable.onPress}
-      activeOpacity={actionButtonParts.touchable.activeOpacity}
-      disabled={actionButtonParts.touchable.disabled}
-      accessibilityRole={actionButtonParts.touchable.accessibilityRole}
-      accessibilityLabel={actionButtonParts.touchable.accessibilityLabel}
-      accessibilityHint={actionButtonParts.touchable.accessibilityHint}
-      accessibilityState={actionButtonParts.touchable.accessibilityState}
+    <ChatComposerLabeledActionButtonTouchable
+      {...actionButtonParts.touchable.props}
     >
-      <Ionicons
-        name={actionButtonParts.icon.name}
-        size={actionButtonParts.icon.size}
-        color={actionButtonParts.icon.color}
+      <ChatComposerLabeledActionButtonIcon
+        {...actionButtonParts.icon.props}
       />
       {actionButtonParts.label.shouldRender ? (
-        <Text style={actionButtonParts.label.style}>
-          {actionButtonParts.label.text}
-        </Text>
+        <ChatComposerLabeledActionButtonLabel
+          {...actionButtonParts.label.props}
+        />
       ) : null}
+    </ChatComposerLabeledActionButtonTouchable>
+  );
+}
+
+export function ChatComposerLabeledActionButtonTouchable({
+  style,
+  onPress,
+  activeOpacity,
+  disabled,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityState,
+  children,
+}: ChatComposerLabeledActionButtonTouchableProps) {
+  return (
+    <TouchableOpacity
+      style={style}
+      onPress={onPress}
+      activeOpacity={activeOpacity}
+      disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={accessibilityState}
+    >
+      {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatComposerLabeledActionButtonIcon({
+  name,
+  size,
+  color,
+}: ChatComposerLabeledActionButtonIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatComposerLabeledActionButtonLabel({
+  style,
+  text,
+}: ChatComposerLabeledActionButtonLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 

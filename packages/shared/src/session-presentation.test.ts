@@ -10016,24 +10016,30 @@ describe("session presentation semantics", () => {
     expect(composerLabeledActionButtonParts).toEqual({
       shouldRender: true,
       touchable: {
-        style: ["queue-button", "queue-disabled-button"],
-        onPress: "press-queue",
-        activeOpacity: 0.68,
-        disabled: true,
-        accessibilityRole: "button",
-        accessibilityLabel: "Queue message",
-        accessibilityHint: undefined,
-        accessibilityState: { disabled: true },
+        props: {
+          style: ["queue-button", "queue-disabled-button"],
+          onPress: "press-queue",
+          activeOpacity: 0.68,
+          disabled: true,
+          accessibilityRole: "button",
+          accessibilityLabel: "Queue message",
+          accessibilityHint: undefined,
+          accessibilityState: { disabled: true },
+        },
       },
       icon: {
-        name: "albums",
-        size: 16,
-        color: "#ffffff",
+        props: {
+          name: "albums",
+          size: 16,
+          color: "#ffffff",
+        },
       },
       label: {
         shouldRender: true,
-        style: "queue-button-text",
-        text: "Queue",
+        props: {
+          style: "queue-button-text",
+          text: "Queue",
+        },
       },
     })
     expect(createChatComposerLabeledActionButtonMobilePropsParts({

@@ -2652,14 +2652,36 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
   assert.match(chatMessageChromeSource, /setDebugInfo\(getChatComposerQueueMobileActionState\(\)\.debugMessage\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function getChatComposerRuntimeQueueDebugMessage/);
-  assert.match(composerLabeledActionButtonSource, /disabled=\{actionButtonParts\.touchable\.disabled\}/);
-  assert.match(composerLabeledActionButtonSource, /style=\{actionButtonParts\.touchable\.style\}/);
-  assert.match(composerLabeledActionButtonSource, /accessibilityRole=\{actionButtonParts\.touchable\.accessibilityRole\}/);
-  assert.match(composerLabeledActionButtonSource, /accessibilityHint=\{actionButtonParts\.touchable\.accessibilityHint\}/);
-  assert.match(composerLabeledActionButtonSource, /name=\{actionButtonParts\.icon\.name\}/);
+  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonTouchable\s+\{\.\.\.actionButtonParts\.touchable\.props\}/);
+  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonIcon\s+\{\.\.\.actionButtonParts\.icon\.props\}/);
   assert.match(composerLabeledActionButtonSource, /actionButtonParts\.label\.shouldRender \? \(/);
-  assert.match(composerLabeledActionButtonSource, /<Text style=\{actionButtonParts\.label\.style\}>/);
-  assert.match(composerLabeledActionButtonSource, /\{actionButtonParts\.label\.text\}/);
+  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonLabel\s+\{\.\.\.actionButtonParts\.label\.props\}/);
+  assert.match(
+    composerLabeledActionButtonSource,
+    /export function ChatComposerLabeledActionButtonTouchable\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?disabled=\{disabled\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?export function ChatComposerLabeledActionButtonIcon/
+  );
+  assert.match(
+    composerLabeledActionButtonSource,
+    /export function ChatComposerLabeledActionButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatComposerLabeledActionButtonLabel/
+  );
+  assert.match(
+    composerLabeledActionButtonSource,
+    /export function ChatComposerLabeledActionButtonLabel\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerMicButton/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /touchable: \{\s+props: \{\s+style: \[styles\.button, renderState\.isDisabled && styles\.disabledButton\],\s+onPress,\s+activeOpacity,\s+disabled: renderState\.isDisabled,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,/
+  );
+  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},/);
+  assert.match(sessionPresentationSource, /label: \{\s+shouldRender: renderState\.labelShouldRender \?\? true,\s+props: \{\s+style: styles\.text,\s+text: renderState\.label,/);
+  assert.doesNotMatch(
+    composerLabeledActionButtonSource,
+    /actionButtonParts\.(touchable|icon)\.(disabled|style|onPress|activeOpacity|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|name|size|color)/
+  );
+  assert.doesNotMatch(
+    composerLabeledActionButtonSource,
+    /actionButtonParts\.label\.(style|text)/
+  );
   assert.match(sessionPresentationSource, /labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION\.mobile\.queueButton\.labelShouldRender/);
   assert.match(sessionPresentationSource, /labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION\.mobile\.submitButton\.labelShouldRender/);
   assert.match(sessionPresentationSource, /shouldRender: renderState\.labelShouldRender \?\? true/);
