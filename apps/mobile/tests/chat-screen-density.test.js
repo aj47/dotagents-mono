@@ -4228,14 +4228,13 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(sessionPresentationSource, /export function createChatRuntimeInlineActivityMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const inlineActivityParts = createChatRuntimeInlineActivityMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+style,\s+spinnerStyle,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!inlineActivityParts\.shouldRenderInlineActivity\) return null;/);
-  assert.match(chatMessageChromeSource, /accessible=\{inlineActivityParts\.container\.accessible\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{inlineActivityParts\.container\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{inlineActivityParts\.container\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{inlineActivityParts\.container\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /style=\{inlineActivityParts\.container\.style\}/);
-  assert.match(chatMessageChromeSource, /source=\{inlineActivityParts\.spinner\.source\}/);
-  assert.match(chatMessageChromeSource, /style=\{inlineActivityParts\.spinner\.style\}/);
-  assert.match(chatMessageChromeSource, /resizeMode=\{inlineActivityParts\.spinner\.resizeMode\}/);
+  assert.match(sessionPresentationSource, /container: \{[\s\S]*?props: \{[\s\S]*?accessible: true,[\s\S]*?accessibilityRole: renderState\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.accessibilityLabel,[\s\S]*?accessibilityState: renderState\.accessibilityState,[\s\S]*?style,/);
+  assert.match(sessionPresentationSource, /spinner: \{[\s\S]*?props: \{[\s\S]*?source: spinnerSource,[\s\S]*?style: spinnerStyle,[\s\S]*?resizeMode: renderState\.spinnerResizeMode,/);
+  assert.match(chatMessageChromeSource, /<ChatMessageInlineActivityContainer\s+\{\.\.\.inlineActivityParts\.container\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageInlineActivitySpinner\s+\{\.\.\.inlineActivityParts\.spinner\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageInlineActivityContainer[\s\S]*?<View[\s\S]*?accessible=\{accessible\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?style=\{style\}[\s\S]*?\{children\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageInlineActivitySpinner[\s\S]*?<Image[\s\S]*?source=\{source\}[\s\S]*?style=\{style\}[\s\S]*?resizeMode=\{resizeMode\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /inlineActivityParts\.(container|spinner)\.(accessible|accessibilityLabel|accessibilityRole|accessibilityState|style|source|resizeMode)/);
   assert.match(sessionPresentationSource, /shouldRenderInlineActivity: renderState\.shouldRender/);
   assert.doesNotMatch(
     chatMessageChromeSource,

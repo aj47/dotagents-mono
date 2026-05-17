@@ -2855,6 +2855,21 @@ type ChatMessageInlineActivityProps = {
   spinnerStyle: StyleProp<ImageStyle>;
 };
 
+type ChatMessageInlineActivityParts = ReturnType<typeof createChatRuntimeInlineActivityMobilePropsParts<
+  ChatRuntimeInlineActivityMobileRenderState,
+  ImageSourcePropType,
+  StyleProp<ViewStyle>,
+  StyleProp<ImageStyle>
+>>;
+
+type ChatMessageInlineActivityContainerProps =
+  ChatMessageInlineActivityParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageInlineActivitySpinnerProps =
+  ChatMessageInlineActivityParts['spinner']['props'];
+
 type ChatMessageContentRowProps = {
   children: ReactNode;
   shouldRenderActionSlots: boolean;
@@ -10290,19 +10305,48 @@ export function ChatMessageInlineActivity({
   if (!inlineActivityParts.shouldRenderInlineActivity) return null;
 
   return (
-    <View
-      accessible={inlineActivityParts.container.accessible}
-      accessibilityRole={inlineActivityParts.container.accessibilityRole}
-      accessibilityLabel={inlineActivityParts.container.accessibilityLabel}
-      accessibilityState={inlineActivityParts.container.accessibilityState}
-      style={inlineActivityParts.container.style}
+    <ChatMessageInlineActivityContainer
+      {...inlineActivityParts.container.props}
     >
-      <Image
-        source={inlineActivityParts.spinner.source}
-        style={inlineActivityParts.spinner.style}
-        resizeMode={inlineActivityParts.spinner.resizeMode}
+      <ChatMessageInlineActivitySpinner
+        {...inlineActivityParts.spinner.props}
       />
+    </ChatMessageInlineActivityContainer>
+  );
+}
+
+export function ChatMessageInlineActivityContainer({
+  accessible,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityState,
+  style,
+  children,
+}: ChatMessageInlineActivityContainerProps) {
+  return (
+    <View
+      accessible={accessible}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
+      style={style}
+    >
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageInlineActivitySpinner({
+  source,
+  style,
+  resizeMode,
+}: ChatMessageInlineActivitySpinnerProps) {
+  return (
+    <Image
+      source={source}
+      style={style}
+      resizeMode={resizeMode}
+    />
   );
 }
 

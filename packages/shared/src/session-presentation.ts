@@ -5908,16 +5908,20 @@ export interface ChatRuntimeInlineActivityMobilePropsParts<
 > {
   shouldRenderInlineActivity: boolean
   container: {
-    accessible: true
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityState: TRenderState["accessibilityState"]
-    style: TStyle
+    props: {
+      accessible: true
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityState: TRenderState["accessibilityState"]
+      style: TStyle
+    }
   }
   spinner: {
-    source: TSpinnerSource
-    style: TSpinnerStyle
-    resizeMode: TRenderState["spinnerResizeMode"]
+    props: {
+      source: TSpinnerSource
+      style: TSpinnerStyle
+      resizeMode: TRenderState["spinnerResizeMode"]
+    }
   }
 }
 
@@ -22610,16 +22614,20 @@ export function createChatRuntimeInlineActivityMobilePropsParts<
   return {
     shouldRenderInlineActivity: renderState.shouldRender,
     container: {
-      accessible: true,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityState: renderState.accessibilityState,
-      style,
+      props: {
+        accessible: true,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityState: renderState.accessibilityState,
+        style,
+      },
     },
     spinner: {
-      source: spinnerSource,
-      style: spinnerStyle,
-      resizeMode: renderState.spinnerResizeMode,
+      props: {
+        source: spinnerSource,
+        style: spinnerStyle,
+        resizeMode: renderState.spinnerResizeMode,
+      },
     },
   }
 }

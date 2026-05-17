@@ -5694,16 +5694,20 @@ describe("session presentation semantics", () => {
     expect(inlineActivityParts).toEqual({
       shouldRenderInlineActivity: true,
       container: {
-        accessible: true,
-        accessibilityRole: "progressbar",
-        accessibilityLabel: "Assistant is thinking",
-        accessibilityState: { busy: true },
-        style: "inline-style",
+        props: {
+          accessible: true,
+          accessibilityRole: "progressbar",
+          accessibilityLabel: "Assistant is thinking",
+          accessibilityState: { busy: true },
+          style: "inline-style",
+        },
       },
       spinner: {
-        source: "spinner-source",
-        style: "inline-spinner-style",
-        resizeMode: "contain",
+        props: {
+          source: "spinner-source",
+          style: "inline-spinner-style",
+          resizeMode: "contain",
+        },
       },
     })
     expect(createChatRuntimeInlineActivityMobilePropsParts({
