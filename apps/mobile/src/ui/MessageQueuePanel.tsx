@@ -264,8 +264,8 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
             value={editText}
             onChangeText={setEditText}
             accessibilityLabel={editParts.input.accessibilityLabel}
-            multiline
-            autoFocus
+            multiline={editParts.input.multiline}
+            autoFocus={editParts.input.autoFocus}
           />
           <View style={editParts.actions.style}>
             <TouchableOpacity

@@ -1324,6 +1324,8 @@ describe('message-queue-utils', () => {
       input: {
         style: 'editInput',
         accessibilityLabel: 'Queued message edit input',
+        multiline: true,
+        autoFocus: true,
       },
       actions: {
         style: 'editActions',

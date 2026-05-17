@@ -259,6 +259,8 @@ export const MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION = {
       inputBackgroundColorToken: 'background',
       inputTextColorToken: 'foreground',
       inputTextAlignVertical: 'top',
+      inputMultiline: true,
+      inputAutoFocus: true,
       actionsFlexDirection: 'row',
       actionsJustifyContent: 'flex-end',
       actionsGap: 8,
@@ -2153,6 +2155,8 @@ export interface QueuedMessageEditMobilePropsParts<
   input: {
     style: TStyles['editInput'];
     accessibilityLabel: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.actions.editInputAccessibilityLabel;
+    multiline: QueuedMessageMobileEditSurface['inputMultiline'];
+    autoFocus: QueuedMessageMobileEditSurface['inputAutoFocus'];
   };
   actions: {
     style: TStyles['editActions'];
@@ -2661,6 +2665,8 @@ export function createQueuedMessageEditMobilePropsParts<
     input: {
       style: styles.editInput,
       accessibilityLabel: copy.actions.editInputAccessibilityLabel,
+      multiline: surface.inputMultiline,
+      autoFocus: surface.inputAutoFocus,
     },
     actions: {
       style: styles.editActions,

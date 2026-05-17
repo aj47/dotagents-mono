@@ -203,6 +203,8 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.match(source, /removeActionText:\s*\{[\s\S]*?\.\.\.actionButtonStyleSlots\.removeText/);
   assert.match(source, /const editStyleSlots = createQueuedMessageEditMobileStyleSlots\(\{[\s\S]*?surface: editSurface,[\s\S]*?colors: editColors,/);
   assert.match(source, /editInput:\s*\{[\s\S]*?\.\.\.editStyleSlots\.input/);
+  assert.match(source, /multiline=\{editParts\.input\.multiline\}/);
+  assert.match(source, /autoFocus=\{editParts\.input\.autoFocus\}/);
   assert.match(source, /editActions:\s*\{[\s\S]*?\.\.\.editStyleSlots\.actions/);
   assert.match(source, /cancelButton:\s*\{[\s\S]*?\.\.\.editStyleSlots\.cancelButton/);
   assert.match(source, /saveButton:\s*\{[\s\S]*?\.\.\.editStyleSlots\.saveButton/);
@@ -251,6 +253,7 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.doesNotMatch(source, /name=\{queuePanelIcons\.(resumeName|pauseName|sendNextName|clearName)\}/);
   assert.doesNotMatch(source, /size=\{panelSurface\.compactActionIconSize\}/);
   assert.doesNotMatch(source, /numberOfLines=\{isExpanded \? undefined : 2\}/);
+  assert.doesNotMatch(source, /\s+multiline\s+autoFocus/);
   assert.doesNotMatch(source, /maxHeight:\s*200,/);
   assert.doesNotMatch(source, /borderRadius:\s*999,/);
   assert.doesNotMatch(source, /AlphaHex/);
