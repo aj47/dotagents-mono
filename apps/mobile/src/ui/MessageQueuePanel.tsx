@@ -343,7 +343,7 @@ export function MessageQueuePanel({
               accessibilityState={action.accessibilityState}
             >
               {action.label.shouldRender ? (
-                <Text style={action.label.style}>{action.label.text}</Text>
+                <Text {...action.label.props}>{action.label.text}</Text>
               ) : null}
               {action.icon.shouldRender ? (
                 <Ionicons

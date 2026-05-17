@@ -750,8 +750,10 @@ describe('message-queue-utils', () => {
       accessibilityState: { disabled: false },
       label: {
         shouldRender: true,
-        style: ['queueControlText', false],
         text: 'Pause',
+        props: {
+          style: ['queueControlText', false],
+        },
       },
       icon: {
         shouldRender: false,
@@ -761,8 +763,10 @@ describe('message-queue-utils', () => {
       type: 'text',
       label: {
         shouldRender: true,
-        style: 'processButtonText',
         text: 'Send Next',
+        props: {
+          style: 'processButtonText',
+        },
       },
       icon: {
         shouldRender: false,
@@ -813,8 +817,10 @@ describe('message-queue-utils', () => {
         type: 'text',
         label: {
           shouldRender: true,
-          style: 'queueControlText',
           text: 'Resume',
+          props: {
+            style: 'queueControlText',
+          },
         },
         icon: {
           shouldRender: false,

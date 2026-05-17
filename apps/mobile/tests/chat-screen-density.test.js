@@ -5129,7 +5129,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /style=\{action\.style\}/);
   assert.match(messageQueuePanelSource, /action\.label\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /action\.type === 'text'/);
-  assert.match(messageQueuePanelSource, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
+  assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.action\.label\.props\}>\{action\.label\.text\}<\/Text>/);
+  assert.doesNotMatch(messageQueuePanelSource, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
   assert.match(messageQueuePanelSource, /action\.icon\.shouldRender \? \(/);
   assert.match(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
   assert.match(messageQueuePanelSource, /headerActionParts\.actions\.map\(\(action\) => \([\s\S]*?action\.icon\.shouldRender \? \([\s\S]*?<Ionicons\s+\{\.\.\.action\.icon\.props\}/);

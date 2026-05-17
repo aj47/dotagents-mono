@@ -1074,8 +1074,10 @@ export interface MessageQueuePanelHeaderTextActionMobilePropsPart<
   type: 'text';
   label: {
     shouldRender: true;
-    style: TLabelStyle;
     text: string;
+    props: {
+      style: TLabelStyle;
+    };
   };
   icon: {
     shouldRender: false;
@@ -1657,8 +1659,10 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
       accessibilityLabel: copy.actions.resumeTitle,
       label: {
         shouldRender: true,
-        style: styles.queueControlText,
         text: copy.actions.resumeLabel,
+        props: {
+          style: styles.queueControlText,
+        },
       },
       icon: {
         shouldRender: false,
@@ -1678,11 +1682,13 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
       accessibilityState: panel.pauseActionState.accessibilityState,
       label: {
         shouldRender: true,
-        style: [
-          styles.queueControlText,
-          panel.pauseActionState.isDisabled && styles.queueControlTextDisabled,
-        ],
         text: copy.actions.pauseLabel,
+        props: {
+          style: [
+            styles.queueControlText,
+            panel.pauseActionState.isDisabled && styles.queueControlTextDisabled,
+          ],
+        },
       },
       icon: {
         shouldRender: false,
@@ -1700,8 +1706,10 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
       accessibilityLabel: copy.actions.sendNextAccessibilityLabel,
       label: {
         shouldRender: true,
-        style: styles.processButtonText,
         text: copy.actions.sendNextLabel,
+        props: {
+          style: styles.processButtonText,
+        },
       },
       icon: {
         shouldRender: false,
@@ -1721,8 +1729,10 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
       accessibilityState: panel.clearActionState.accessibilityState,
       label: {
         shouldRender: true,
-        style: styles.clearButtonText,
         text: copy.actions.clearAllLabel,
+        props: {
+          style: styles.clearButtonText,
+        },
       },
       icon: {
         shouldRender: false,
