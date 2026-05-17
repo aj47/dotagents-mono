@@ -3161,12 +3161,14 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /rowStyles: styles\.compactRow/);
   assert.doesNotMatch(chatMessageChromeSource, /styles: styles\.expandedGroup/);
   assert.doesNotMatch(chatMessageChromeSource, /styles=\{styles\.callDetail\}/);
-  assert.match(chatMessageChromeSource, /const \{\s+compact: compactPanelProps,\s+expandedGroup,\s+emptyState,\s+emptyStateTextStyle,\s+callDetailStyles,\s+\} = createChatRuntimeToolExecutionStackPanelMobilePropsParts\(\{/);
-  assert.match(chatMessageChromeSource, /compact=\{compactPanelProps\}/);
-  assert.match(chatMessageChromeSource, /style=\{emptyStateTextStyle\}/);
-  assert.match(chatMessageChromeSource, /styles=\{callDetailStyles\}/);
+  assert.match(chatMessageChromeSource, /const stackPanelParts = createChatRuntimeToolExecutionStackPanelMobilePropsParts\(\{\s+compact,\s+expanded,\s+detailRows,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /compact=\{stackPanelParts\.compact\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyState\s+\{\.\.\.stackPanelParts\.emptyState\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallList\s+\{\.\.\.stackPanelParts\.callList\}/);
   assert.match(sessionPresentationSource, /compact: \{\s+\.\.\.compact,\s+groupStyles: styles\.compactGroup,\s+rowStyles: styles\.compactRow,/);
   assert.match(sessionPresentationSource, /expandedGroup: \{\s+\.\.\.expandedGroup,\s+styles: styles\.expandedGroup,/);
+  assert.match(sessionPresentationSource, /emptyState: emptyState\?\.shouldRender \? \{\s+renderState: emptyState\.renderState,\s+style: styles\.emptyStateText,/);
+  assert.match(sessionPresentationSource, /callList: \{\s+rows: detailRows,\s+styles: styles\.callDetail,/);
   assert.match(sessionPresentationSource, /styles\.card,[\s\S]*?isPending && styles\.pending,[\s\S]*?allSuccess && styles\.success,[\s\S]*?hasErrors && styles\.error/);
   assert.match(chatMessageChromeSource, /\{expandedGroupParts\.emptyState\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCollapseControl/);
@@ -3331,7 +3333,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionCallDetail\s+key=\{idx\}/);
   assert.doesNotMatch(screenSource, /toggleToolCallExpansion\(stableMessageKey, idx\)/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallList/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallList\s+rows=\{detailRows\}\s+styles=\{callDetailStyles\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /<ChatMessageToolExecutionCallList\s+rows=\{detailRows\}\s+styles=\{callDetailStyles\}/);
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallListMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallListMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const callListParts = createChatRuntimeToolExecutionCallListMobilePropsParts\(\{\s+rows,\s+styles,\s+\}\);/);
@@ -3572,7 +3574,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /toolExecutionDetailCopy\.noToolCallsLabel/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionEmptyState\s+renderState=\{toolExecutionDetailEmptyState\}\s+style=\{styles\.toolResponsePendingText\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyState/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyState\s+renderState=\{emptyState\.renderState\}\s+style=\{emptyStateTextStyle\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyState\s+renderState=\{emptyState\.renderState\}\s+style=\{emptyStateTextStyle\}/);
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionEmptyStateMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionEmptyStateMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const emptyStateParts = createChatRuntimeToolExecutionEmptyStateMobilePropsParts\(\{\s+renderState,\s+style,\s+\}\);/);

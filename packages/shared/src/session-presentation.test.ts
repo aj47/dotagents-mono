@@ -11582,6 +11582,7 @@ describe("session presentation semantics", () => {
         },
         onCollapsePress: "collapse-expanded",
       },
+      detailRows: ["detail-row"],
       styles: {
         compactGroup: "compact-group-styles",
         compactRow: "compact-row-styles",
@@ -11605,12 +11606,33 @@ describe("session presentation semantics", () => {
         styles: "expanded-group-styles",
       },
       emptyState: {
-        shouldRender: true,
         renderState: "empty-state",
+        style: "empty-state-text-styles",
       },
-      emptyStateTextStyle: "empty-state-text-styles",
-      callDetailStyles: "call-detail-styles",
+      callList: {
+        rows: ["detail-row"],
+        styles: "call-detail-styles",
+      },
     })
+    expect(createChatRuntimeToolExecutionStackPanelMobilePropsParts({
+      compact: {
+        renderState: "compact-render-state",
+      },
+      expanded: {
+        emptyState: {
+          shouldRender: false,
+          renderState: "empty-state",
+        },
+      },
+      detailRows: [],
+      styles: {
+        compactGroup: "compact-group-styles",
+        compactRow: "compact-row-styles",
+        expandedGroup: "expanded-group-styles",
+        emptyStateText: "empty-state-text-styles",
+        callDetail: "call-detail-styles",
+      },
+    }).emptyState).toBeNull()
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.totalTitle).toBe("Total agent time")

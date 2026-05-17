@@ -3695,9 +3695,17 @@ export interface ChatRuntimeToolExecutionPanelMobilePropsParts<
   expandedGroup: TExpanded | null
 }
 
+type ChatRuntimeToolExecutionStackPanelEmptyStateLike = {
+  shouldRender: boolean
+  renderState: unknown
+}
+
 export interface ChatRuntimeToolExecutionStackPanelMobilePropsPartsInput<
   TCompact extends object = Record<string, never>,
-  TExpanded extends { emptyState?: unknown | null } = { emptyState?: unknown | null },
+  TExpanded extends { emptyState?: ChatRuntimeToolExecutionStackPanelEmptyStateLike | null } = {
+    emptyState?: ChatRuntimeToolExecutionStackPanelEmptyStateLike | null
+  },
+  TDetailRows = unknown,
   TCompactGroupStyles = unknown,
   TCompactRowStyles = unknown,
   TExpandedGroupStyles = unknown,
@@ -3706,6 +3714,7 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsPartsInput<
 > {
   compact: TCompact
   expanded: TExpanded
+  detailRows: TDetailRows
   styles: {
     compactGroup: TCompactGroupStyles
     compactRow: TCompactRowStyles
@@ -3717,7 +3726,10 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsPartsInput<
 
 export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
   TCompact extends object = Record<string, never>,
-  TExpanded extends { emptyState?: unknown | null } = { emptyState?: unknown | null },
+  TExpanded extends { emptyState?: ChatRuntimeToolExecutionStackPanelEmptyStateLike | null } = {
+    emptyState?: ChatRuntimeToolExecutionStackPanelEmptyStateLike | null
+  },
+  TDetailRows = unknown,
   TCompactGroupStyles = unknown,
   TCompactRowStyles = unknown,
   TExpandedGroupStyles = unknown,
@@ -3731,9 +3743,14 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
   expandedGroup: Omit<TExpanded, "emptyState"> & {
     styles: TExpandedGroupStyles
   }
-  emptyState: TExpanded["emptyState"]
-  emptyStateTextStyle: TEmptyStateTextStyle
-  callDetailStyles: TCallDetailStyles
+  emptyState: {
+    renderState: NonNullable<TExpanded["emptyState"]>["renderState"]
+    style: TEmptyStateTextStyle
+  } | null
+  callList: {
+    rows: TDetailRows
+    styles: TCallDetailStyles
+  }
 }
 
 export interface ChatComposerRuntimeDockMobilePropsPartsInput<
@@ -18684,7 +18701,8 @@ export function createChatRuntimeToolExecutionPanelMobilePropsParts<
 
 export function createChatRuntimeToolExecutionStackPanelMobilePropsParts<
   TCompact extends object,
-  TExpanded extends { emptyState?: unknown | null },
+  TExpanded extends { emptyState?: ChatRuntimeToolExecutionStackPanelEmptyStateLike | null },
+  TDetailRows,
   TCompactGroupStyles,
   TCompactRowStyles,
   TExpandedGroupStyles,
@@ -18693,10 +18711,12 @@ export function createChatRuntimeToolExecutionStackPanelMobilePropsParts<
 >({
   compact,
   expanded,
+  detailRows,
   styles,
 }: ChatRuntimeToolExecutionStackPanelMobilePropsPartsInput<
   TCompact,
   TExpanded,
+  TDetailRows,
   TCompactGroupStyles,
   TCompactRowStyles,
   TExpandedGroupStyles,
@@ -18705,6 +18725,7 @@ export function createChatRuntimeToolExecutionStackPanelMobilePropsParts<
 >): ChatRuntimeToolExecutionStackPanelMobilePropsParts<
   TCompact,
   TExpanded,
+  TDetailRows,
   TCompactGroupStyles,
   TCompactRowStyles,
   TExpandedGroupStyles,
@@ -18723,9 +18744,14 @@ export function createChatRuntimeToolExecutionStackPanelMobilePropsParts<
       ...expandedGroup,
       styles: styles.expandedGroup,
     },
-    emptyState,
-    emptyStateTextStyle: styles.emptyStateText,
-    callDetailStyles: styles.callDetail,
+    emptyState: emptyState?.shouldRender ? {
+      renderState: emptyState.renderState,
+      style: styles.emptyStateText,
+    } : null,
+    callList: {
+      rows: detailRows,
+      styles: styles.callDetail,
+    },
   }
 }
 

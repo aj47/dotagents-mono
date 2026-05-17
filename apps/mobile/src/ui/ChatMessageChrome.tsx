@@ -8197,15 +8197,10 @@ export function ChatMessageToolExecutionStack({
   detailRows,
   styles,
 }: ChatMessageToolExecutionStackProps) {
-  const {
-    compact: compactPanelProps,
-    expandedGroup,
-    emptyState,
-    emptyStateTextStyle,
-    callDetailStyles,
-  } = createChatRuntimeToolExecutionStackPanelMobilePropsParts({
+  const stackPanelParts = createChatRuntimeToolExecutionStackPanelMobilePropsParts({
     compact,
     expanded,
+    detailRows,
     styles,
   });
 
@@ -8213,20 +8208,18 @@ export function ChatMessageToolExecutionStack({
     <ChatMessageToolExecutionPanel
       shouldRender={shouldRender}
       isExpanded={isExpanded}
-      compact={compactPanelProps}
+      compact={stackPanelParts.compact}
       expanded={{
-        ...expandedGroup,
-        emptyState: emptyState?.shouldRender ? (
+        ...stackPanelParts.expandedGroup,
+        emptyState: stackPanelParts.emptyState ? (
           <ChatMessageToolExecutionEmptyState
-            renderState={emptyState.renderState}
-            style={emptyStateTextStyle}
+            {...stackPanelParts.emptyState}
           />
         ) : null,
       }}
     >
       <ChatMessageToolExecutionCallList
-        rows={detailRows}
-        styles={callDetailStyles}
+        {...stackPanelParts.callList}
       />
     </ChatMessageToolExecutionPanel>
   );
