@@ -10359,12 +10359,14 @@ describe("session presentation semantics", () => {
           accessibilityState: { checked: true },
           "aria-checked": true,
         },
-      },
-      icon: {
-        props: {
-          name: "image",
-          size: 18,
-          color: "#ffffff",
+        content: {
+          icon: {
+            props: {
+              name: "image",
+              size: 18,
+              color: "#ffffff",
+            },
+          },
         },
       },
     })
@@ -10417,19 +10419,21 @@ describe("session presentation semantics", () => {
           accessibilityHint: undefined,
           accessibilityState: { disabled: true },
         },
-      },
-      icon: {
-        props: {
-          name: "albums",
-          size: 16,
-          color: "#ffffff",
-        },
-      },
-      label: {
-        shouldRender: true,
-        props: {
-          style: "queue-button-text",
-          text: "Queue",
+        content: {
+          icon: {
+            props: {
+              name: "albums",
+              size: 16,
+              color: "#ffffff",
+            },
+          },
+          label: {
+            shouldRender: true,
+            props: {
+              style: "queue-button-text",
+              text: "Queue",
+            },
+          },
         },
       },
     })
@@ -10489,19 +10493,21 @@ describe("session presentation semantics", () => {
           onPressOut: "press-out",
           onPress: "press",
         },
-      },
-      icon: {
-        props: {
-          name: "mic",
-          size: 20,
-          color: "#ffffff",
-        },
-      },
-      label: {
-        props: {
-          style: ["mic-label", "mic-active-label"],
-          selectable: false,
-          text: "Hold to talk",
+        content: {
+          icon: {
+            props: {
+              name: "mic",
+              size: 20,
+              color: "#ffffff",
+            },
+          },
+          label: {
+            props: {
+              style: ["mic-label", "mic-active-label"],
+              selectable: false,
+              text: "Hold to talk",
+            },
+          },
         },
       },
     })

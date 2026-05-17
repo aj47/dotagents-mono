@@ -3305,7 +3305,7 @@ type ChatComposerIconButtonTouchableProps =
   };
 
 type ChatComposerIconButtonIconProps =
-  ChatComposerIconButtonParts['icon']['props'];
+  ChatComposerIconButtonParts['touchable']['content']['icon']['props'];
 
 type ChatComposerLabeledActionRenderState = {
   accessibilityRole: AccessibilityRole;
@@ -3344,10 +3344,10 @@ type ChatComposerLabeledActionButtonTouchableProps =
   };
 
 type ChatComposerLabeledActionButtonIconProps =
-  ChatComposerLabeledActionButtonParts['icon']['props'];
+  ChatComposerLabeledActionButtonParts['touchable']['content']['icon']['props'];
 
 type ChatComposerLabeledActionButtonLabelProps =
-  ChatComposerLabeledActionButtonParts['label']['props'];
+  ChatComposerLabeledActionButtonParts['touchable']['content']['label']['props'];
 
 type ChatComposerMicButtonRenderState = ChatComposerIconButtonRenderState & {
   ariaBusy?: boolean;
@@ -3386,10 +3386,10 @@ type ChatComposerMicButtonPressableProps =
   };
 
 type ChatComposerMicButtonIconProps =
-  ChatComposerMicButtonParts['icon']['props'];
+  ChatComposerMicButtonParts['pressable']['content']['icon']['props'];
 
 type ChatComposerMicButtonLabelProps =
-  ChatComposerMicButtonParts['label']['props'];
+  ChatComposerMicButtonParts['pressable']['content']['label']['props'];
 
 type ChatComposerTextEntryStyles = {
   input: StyleProp<TextStyle>;
@@ -11296,12 +11296,14 @@ export function ChatComposerIconButton({
 
   if (!iconButtonParts.shouldRender) return null;
 
+  const touchableContent = iconButtonParts.touchable.content;
+
   return (
     <ChatComposerIconButtonTouchable
       {...iconButtonParts.touchable.props}
     >
       <ChatComposerIconButtonIcon
-        {...iconButtonParts.icon.props}
+        {...touchableContent.icon.props}
       />
     </ChatComposerIconButtonTouchable>
   );
@@ -11341,16 +11343,18 @@ export function ChatComposerLabeledActionButton({
 
   if (!actionButtonParts.shouldRender) return null;
 
+  const touchableContent = actionButtonParts.touchable.content;
+
   return (
     <ChatComposerLabeledActionButtonTouchable
       {...actionButtonParts.touchable.props}
     >
       <ChatComposerLabeledActionButtonIcon
-        {...actionButtonParts.icon.props}
+        {...touchableContent.icon.props}
       />
-      {actionButtonParts.label.shouldRender ? (
+      {touchableContent.label.shouldRender ? (
         <ChatComposerLabeledActionButtonLabel
-          {...actionButtonParts.label.props}
+          {...touchableContent.label.props}
         />
       ) : null}
     </ChatComposerLabeledActionButtonTouchable>
@@ -11402,15 +11406,17 @@ export function ChatComposerMicButton({
     styles,
   });
 
+  const pressableContent = micButtonParts.pressable.content;
+
   return (
     <ChatComposerMicButtonPressable
       {...micButtonParts.pressable.props}
     >
       <ChatComposerMicButtonIcon
-        {...micButtonParts.icon.props}
+        {...pressableContent.icon.props}
       />
       <ChatComposerMicButtonLabel
-        {...micButtonParts.label.props}
+        {...pressableContent.label.props}
       />
     </ChatComposerMicButtonPressable>
   );

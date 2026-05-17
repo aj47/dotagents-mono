@@ -5042,9 +5042,11 @@ export interface ChatComposerIconButtonMobilePropsParts<
       accessibilityState: TRenderState["accessibilityState"]
       "aria-checked": TRenderState["ariaChecked"]
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
+    content: {
+      icon: {
+        props: TRenderState["icon"]
+      }
+    }
   }
 }
 
@@ -5100,15 +5102,17 @@ export interface ChatComposerLabeledActionButtonMobilePropsParts<
       accessibilityHint: string | undefined
       accessibilityState: TRenderState["accessibilityState"]
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
-  }
-  label: {
-    shouldRender: boolean
-    props: {
-      style: TStyles["text"]
-      text: string
+    content: {
+      icon: {
+        props: TRenderState["icon"]
+      }
+      label: {
+        shouldRender: boolean
+        props: {
+          style: TStyles["text"]
+          text: string
+        }
+      }
     }
   }
 }
@@ -5178,15 +5182,17 @@ export interface ChatComposerMicButtonMobilePropsParts<
       onPressOut: TOnPressOut | undefined
       onPress: TOnPress | undefined
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
-  }
-  label: {
-    props: {
-      style: Array<TStyles["label"] | TStyles["activeLabel"] | false | undefined>
-      selectable: TRenderState["labelSelectable"]
-      text: string
+    content: {
+      icon: {
+        props: TRenderState["icon"]
+      }
+      label: {
+        props: {
+          style: Array<TStyles["label"] | TStyles["activeLabel"] | false | undefined>
+          selectable: TRenderState["labelSelectable"]
+          text: string
+        }
+      }
     }
   }
 }
@@ -22493,9 +22499,11 @@ export function createChatComposerIconButtonMobilePropsParts<
         accessibilityState: renderState.accessibilityState,
         "aria-checked": renderState.ariaChecked,
       },
-    },
-    icon: {
-      props: renderState.icon,
+      content: {
+        icon: {
+          props: renderState.icon,
+        },
+      },
     },
   }
 }
@@ -22535,15 +22543,17 @@ export function createChatComposerLabeledActionButtonMobilePropsParts<
         accessibilityHint: renderState.accessibilityHint ?? undefined,
         accessibilityState: renderState.accessibilityState,
       },
-    },
-    icon: {
-      props: renderState.icon,
-    },
-    label: {
-      shouldRender: renderState.labelShouldRender ?? true,
-      props: {
-        style: styles.text,
-        text: renderState.label,
+      content: {
+        icon: {
+          props: renderState.icon,
+        },
+        label: {
+          shouldRender: renderState.labelShouldRender ?? true,
+          props: {
+            style: styles.text,
+            text: renderState.label,
+          },
+        },
       },
     },
   }
@@ -22595,15 +22605,17 @@ export function createChatComposerMicButtonMobilePropsParts<
         onPressOut,
         onPress,
       },
-    },
-    icon: {
-      props: renderState.icon,
-    },
-    label: {
-      props: {
-        style: [styles.label, renderState.isActive && styles.activeLabel],
-        selectable: renderState.labelSelectable,
-        text: renderState.label,
+      content: {
+        icon: {
+          props: renderState.icon,
+        },
+        label: {
+          props: {
+            style: [styles.label, renderState.isActive && styles.activeLabel],
+            selectable: renderState.labelSelectable,
+            text: renderState.label,
+          },
+        },
       },
     },
   }

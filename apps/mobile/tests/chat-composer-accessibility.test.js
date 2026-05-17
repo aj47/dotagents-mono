@@ -125,6 +125,8 @@ test('uses shared mobile composer control accessibility state', () => {
   assert.match(sessionPresentationSource, /export function createChatComposerIconButtonMobilePropsParts/);
   assert.match(iconButtonSource, /const iconButtonParts = createChatComposerIconButtonMobilePropsParts\(\{/);
   assert.match(iconButtonSource, /<ChatComposerIconButtonTouchable\s+\{\.\.\.iconButtonParts\.touchable\.props\}/);
+  assert.match(iconButtonSource, /const touchableContent = iconButtonParts\.touchable\.content;/);
+  assert.match(iconButtonSource, /<ChatComposerIconButtonIcon\s+\{\.\.\.touchableContent\.icon\.props\}/);
   assert.match(sessionPresentationSource, /accessibilityRole: renderState\.accessibilityRole/);
   assert.match(sessionPresentationSource, /accessibilityLabel: renderState\.accessibilityLabel/);
   assert.match(sessionPresentationSource, /accessibilityHint: renderState\.accessibilityHint \?\? undefined/);
@@ -146,8 +148,9 @@ test('keeps the chat composer send and queue controls icon-first with mobile tou
   assert.match(sessionPresentationSource, /labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION\.mobile\.queueButton\.labelShouldRender/);
   assert.match(sessionPresentationSource, /labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION\.mobile\.submitButton\.labelShouldRender/);
   assert.match(sessionPresentationSource, /shouldRender: renderState\.labelShouldRender \?\? true/);
-  assert.match(actionButtonSource, /actionButtonParts\.label\.shouldRender \? \(/);
-  assert.match(actionButtonSource, /<ChatComposerLabeledActionButtonLabel\s+\{\.\.\.actionButtonParts\.label\.props\}/);
+  assert.match(actionButtonSource, /const touchableContent = actionButtonParts\.touchable\.content;/);
+  assert.match(actionButtonSource, /touchableContent\.label\.shouldRender \? \(/);
+  assert.match(actionButtonSource, /<ChatComposerLabeledActionButtonLabel\s+\{\.\.\.touchableContent\.label\.props\}/);
   assert.doesNotMatch(actionButtonSource, /\{renderState\.label\}/);
 });
 
@@ -160,7 +163,7 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
   assert.match(sessionPresentationSource, /borderColor:\s*colors\.accessoryButton\.borderColor/);
   assert.match(sessionPresentationSource, /backgroundColor:\s*colors\.accessoryButton\.backgroundColor/);
   assert.match(sessionPresentationSource, /accessoryButtonActive:\s*\{[\s\S]*?backgroundColor:\s*colors\.accessoryButton\.activeBackgroundColor,[\s\S]*?borderColor:\s*colors\.accessoryButton\.activeBorderColor/);
-  assert.match(iconButtonSource, /<ChatComposerIconButtonIcon\s+\{\.\.\.iconButtonParts\.icon\.props\}/);
+  assert.match(iconButtonSource, /<ChatComposerIconButtonIcon\s+\{\.\.\.touchableContent\.icon\.props\}/);
   assert.doesNotMatch(screenSource, /CHAT_COMPOSER_PRESENTATION\.(imageAttachment|textToSpeech|editBeforeSend|mic)\.mobileIcon/);
   assert.doesNotMatch(screenSource, /composerSurface\.accessoryButton\.glyphFontSize/);
 });
