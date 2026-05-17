@@ -111,11 +111,13 @@ test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.match(sessionPresentationSource, /export function resolveChatRuntimeMobileFontFamily\(\s+fontFamilyByPlatform: ChatRuntimeMobileFontFamilyByPlatform,\s+platform: ChatRuntimeMobileFontPlatform,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeTurnDurationHeaderMobileStyleSlotVariants\(\{/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeTurnDurationMessageMobileStyleSlotVariants\(\{/);
-  assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeHeaderMobileStyleSlots,/);
-  assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeThreadMobileStyleSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeMobileChromeStyleSlots,/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatRuntimeHeaderMobileStyleSlots,/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatRuntimeThreadMobileStyleSlots,/);
   assert.match(chatRuntimeMobileStylesSource, /const mobilePlatform = chatRuntimeChromeEnvironment\.platform;/);
-  assert.match(screenSource, /const headerMobileStyleSlots = createChatRuntimeHeaderMobileStyleSlots\(\{\s+header: headerChromeStyleState\.header,\s+sessionStatus: headerChromeStyleState\.sessionStatus,\s+turnDuration: headerChromeStyleState\.turnDuration,\s+headerPinButton: chatChromeStyleState\.headerPinButton,\s+radius,\s+platform: mobilePlatform,\s+\}\);/);
-  assert.match(screenSource, /const threadMobileStyleSlots = createChatRuntimeThreadMobileStyleSlots\(\{\s+renderState: threadChromeStyleState,\s+spacing,\s+radius,\s+borderWidths: theme,\s+platform: mobilePlatform,\s+\}\);/);
+  assert.match(screenSource, /const chatMobileStyleSlots = createChatRuntimeMobileChromeStyleSlots\(\{\s+renderState: chatChromeStyleState,\s+spacing,\s+radius,\s+borderWidths: theme,\s+platform: mobilePlatform,\s+\}\);/);
+  assert.match(screenSource, /const headerMobileStyleSlots = chatMobileStyleSlots\.header;/);
+  assert.match(screenSource, /const threadMobileStyleSlots = chatMobileStyleSlots\.thread;/);
   assert.doesNotMatch(screenSource, /const createChatRuntimeMobileHeaderDurationTextStyle =/);
   assert.match(screenSource, /headerDurationChip:\s*\{[\s\S]*?\.\.\.headerMobileStyleSlots\.turnDuration\.standard\.chip/);
   assert.match(screenSource, /headerDurationChipText:\s*\{[\s\S]*?\.\.\.headerMobileStyleSlots\.turnDuration\.standard\.text/);
@@ -126,7 +128,8 @@ test('resolves mobile monospace typography from shared surface tokens', () => {
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupMobileStyleSlots\(\{/);
   assert.match(screenSource, /const toolActivityGroupStyleSlots = threadMobileStyleSlots\.toolActivityGroup;/);
   assert.match(sessionPresentationSource, /export function createChatComposerRuntimeChromeMobileStyleSlots\(\{/);
-  assert.match(screenSource, /const composerChromeStyleSlots = createChatComposerRuntimeChromeMobileStyleSlots\(\{\s+renderState: composerChromeStyleState,\s+spacing,\s+radius,\s+borderWidths: theme,\s+platform: mobilePlatform,\s+\}\);/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatComposerRuntimeChromeMobileStyleSlots,/);
+  assert.match(screenSource, /const composerChromeStyleSlots = chatMobileStyleSlots\.composer;/);
   assert.match(screenSource, /const handsFreeStyleSlots = composerChromeStyleSlots\.handsFree;/);
   assert.match(sessionPresentationSource, /debugText:\s*\{[\s\S]*?fontFamily: resolveChatRuntimeMobileFontFamily\(\s+surface\.debugText\.fontFamilyByPlatform,\s+platform \?\? "",\s+\)/);
   assert.match(screenSource, /debugText:\s*\{\s+\.\.\.handsFreeStyleSlots\.debugText,/);
@@ -251,14 +254,14 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.doesNotMatch(chatScreenSource, /chatMessageRuntimeChromeStyles/);
   assert.doesNotMatch(chatScreenSource, /Platform\.OS/);
   assert.doesNotMatch(chatScreenSource, /theme\.colors/);
-  assert.match(screenSource, /const headerChromeStyleState = chatChromeStyleState\.header;/);
-  assert.match(screenSource, /const headerMobileStyleSlots = createChatRuntimeHeaderMobileStyleSlots\(\{\s+header: headerChromeStyleState\.header,\s+sessionStatus: headerChromeStyleState\.sessionStatus,\s+turnDuration: headerChromeStyleState\.turnDuration,\s+headerPinButton: chatChromeStyleState\.headerPinButton,\s+radius,\s+platform: mobilePlatform,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const headerChromeStyleState = chatChromeStyleState\.header;/);
+  assert.match(screenSource, /const headerMobileStyleSlots = chatMobileStyleSlots\.header;/);
   assert.doesNotMatch(screenSource, /const headerStyleState = headerChromeStyleState\.header;/);
   assert.doesNotMatch(screenSource, /const headerSurface = headerStyleState\.surface;/);
   assert.doesNotMatch(screenSource, /const headerAgentSelectorColors = headerStyleState\.agentSelector;/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeAgentSelectorMobileStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderMobileStyleSlots\(\{/);
-  assert.match(screenSource, /createChatRuntimeHeaderMobileStyleSlots,/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatRuntimeHeaderMobileStyleSlots,/);
   assert.doesNotMatch(screenSource, /createChatRuntimeAgentSelectorMobileStyleSlots,/);
   assert.doesNotMatch(screenSource, /const headerAgentSelectorStyleSlots = createChatRuntimeAgentSelectorMobileStyleSlots/);
   assert.match(screenSource, /headerAgentSelectorButton:\s*\{[\s\S]*?\.\.\.headerMobileStyleSlots\.agentSelector\.button/);
@@ -480,7 +483,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageRuntimeThreadChromeStyleState/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeThreadChromeMobileStyleRenderState,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeThreadChromeMobileStyleRenderState\(\{/);
-  assert.match(chatRuntimeMobileStylesSource, /const threadChromeStyleState = chatChromeStyleState\.thread;/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /const threadChromeStyleState = chatChromeStyleState\.thread;/);
+  assert.match(chatRuntimeMobileStylesSource, /const threadMobileStyleSlots = chatMobileStyleSlots\.thread;/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeToolApprovalMobileRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeToolApprovalCardMobileRenderState,/);
   assert.match(sessionPresentationSource, /getChatRuntimeToolApprovalCardMobileRenderState/);
@@ -795,8 +799,8 @@ test('shows desktop-style retry status updates from shared runtime presentation'
     chatMessageChromeSource,
     /export function ChatMessageRetryStatus[\s\S]*?numberOfLines=\{renderState\.surface\.titleNumberOfLines\}[\s\S]*?export function ChatMessageToolApproval/
   );
-  assert.match(screenSource, /createChatRuntimeConversationMobileStyleSlots,/);
-  assert.match(screenSource, /const conversationMobileStyleSlots = createChatRuntimeConversationMobileStyleSlots\(\{\s+renderState: conversationChromeStyleState,\s+spacing,\s+radius,\s+toolPreviewStatusIconWidth: compactToolExecutionStyleSlots\.statusIndicator\.width,\s+\}\);/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatRuntimeConversationMobileStyleSlots,/);
+  assert.match(screenSource, /const conversationMobileStyleSlots = chatMobileStyleSlots\.conversation;/);
   assert.doesNotMatch(screenSource, /createChatRuntimeRetryStatusMobileStyleSlots,/);
   assert.doesNotMatch(screenSource, /const retryStatusStyleState = conversationChromeStyleState\.retryStatus;/);
   assert.doesNotMatch(screenSource, /const retryStatusStyleSlots = createChatRuntimeRetryStatusMobileStyleSlots/);
@@ -1404,7 +1408,8 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.doesNotMatch(screenSource, /const headerHandsFreeMobileRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileHeaderKillSwitchRenderState = useMemo/);
   assert.doesNotMatch(chatScreenSource, /styles\.headerHandsFreeIconContainer/);
-  assert.match(screenSource, /const headerMobileStyleSlots = createChatRuntimeHeaderMobileStyleSlots\(\{/);
+  assert.match(screenSource, /const headerMobileStyleSlots = chatMobileStyleSlots\.header;/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeMobileChromeStyleSlots\(\{/);
   assert.doesNotMatch(screenSource, /const headerStyleState = headerChromeStyleState\.header;/);
   assert.doesNotMatch(screenSource, /const headerPinButtonStyleSlots = createChatRuntimeHeaderPinButtonMobileStyleSlots/);
   assert.doesNotMatch(screenSource, /const headerIconContainerStyleSlots = createChatRuntimeHeaderIconContainerMobileStyleSlots/);
@@ -1608,7 +1613,8 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
 test('uses shared runtime presentation for the mobile chat viewport and loading state', () => {
   assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationChromeMobileStyleRenderState/);
-  assert.match(screenSource, /const conversationChromeStyleState = chatChromeStyleState\.conversation;/);
+  assert.doesNotMatch(screenSource, /const conversationChromeStyleState = chatChromeStyleState\.conversation;/);
+  assert.match(screenSource, /const conversationMobileStyleSlots = chatMobileStyleSlots\.conversation;/);
   assert.match(sessionPresentationSource, /viewport: getChatRuntimeViewportMobileRenderState\(\{\s+colors,\s+\}\),/);
   assert.match(sessionPresentationSource, /streamingContent: getChatRuntimeStreamingContentMobileRenderState\(\{\s+colors,\s+\}\),/);
   assert.match(sessionPresentationSource, /connectionBanner: getChatRuntimeConnectionBannerMobileRenderState\(\{\s+colors,\s+\}\),/);
@@ -1641,8 +1647,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /const mobileRuntimeViewport = mobileRuntimeViewportRenderState\.surface;/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeLoadingState = mobileRuntimeViewportRenderState\.loadingState;/);
   assert.doesNotMatch(screenSource, /const viewportStyleState = conversationChromeStyleState\.viewport;/);
-  assert.match(screenSource, /createChatRuntimeConversationMobileStyleSlots,/);
-  assert.match(screenSource, /const conversationMobileStyleSlots = createChatRuntimeConversationMobileStyleSlots\(\{\s+renderState: conversationChromeStyleState,\s+spacing,\s+radius,\s+toolPreviewStatusIconWidth: compactToolExecutionStyleSlots\.statusIndicator\.width,\s+\}\);/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatRuntimeConversationMobileStyleSlots,/);
+  assert.match(screenSource, /const conversationMobileStyleSlots = chatMobileStyleSlots\.conversation;/);
   assert.doesNotMatch(screenSource, /createChatRuntimeViewportChromeMobileStyleSlots,/);
   assert.doesNotMatch(screenSource, /const viewportChromeStyleSlots = createChatRuntimeViewportChromeMobileStyleSlots/);
   assert.doesNotMatch(screenSource, /createChatRuntimeViewportMobileStyleSlots,/);
@@ -2146,7 +2152,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps\(\{\s+colors,\s+platform,\s+\}\);/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatComposerRuntimeChromeMobileStyleRenderState,/);
   assert.match(sessionPresentationSource, /export function getChatComposerRuntimeChromeMobileStyleRenderState\(\{/);
-  assert.match(chatRuntimeMobileStylesSource, /const composerChromeStyleState = chatChromeStyleState\.composer;/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /const composerChromeStyleState = chatChromeStyleState\.composer;/);
+  assert.match(chatRuntimeMobileStylesSource, /const composerChromeStyleSlots = chatMobileStyleSlots\.composer;/);
   assert.match(chatMessageChromeSource, /getChatComposerRuntimeDockMobileRenderState,/);
   assert.match(sessionPresentationSource, /export function getChatComposerRuntimeDockMobileRenderState\(\{/);
   assert.match(chatMessageChromeSource, /return \{\s+\.\.\.dockRenderState,\s+micButton: \{\s+webPressedStyle: dockRenderState\.micButton\.webPressedStyle as ChatComposerMicButtonProps\['webPressedStyle'\],\s+\},\s+\};/);
@@ -2525,8 +2532,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /nativeID=\{mobileComposerWebAccessibility\.inputDescriptionNativeId\}/);
   assert.doesNotMatch(screenSource, /createChatComposerMobileStyleSlots,/);
   assert.match(sessionPresentationSource, /export function createChatComposerMobileStyleSlots/);
-  assert.match(screenSource, /const composerChromeStyleState = chatChromeStyleState\.composer;/);
-  assert.match(screenSource, /const composerChromeStyleSlots = createChatComposerRuntimeChromeMobileStyleSlots\(\{\s+renderState: composerChromeStyleState,\s+spacing,\s+radius,\s+borderWidths: theme,\s+platform: mobilePlatform,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const composerChromeStyleState = chatChromeStyleState\.composer;/);
+  assert.match(screenSource, /const composerChromeStyleSlots = chatMobileStyleSlots\.composer;/);
   assert.doesNotMatch(screenSource, /const composerStyleState = composerChromeStyleState\.composer;/);
   assert.doesNotMatch(screenSource, /const composerSurface = composerStyleState\.surface;/);
   assert.match(screenSource, /const composerStyleSlots = composerChromeStyleSlots\.composer;/);
@@ -3358,8 +3365,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /renderState\.isPending && styles\.namePending/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRow[\s\S]*?name=\{renderState\.toolIcon\.name\}[\s\S]*?export function ChatMessageToolExecutionCompactList/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRow[\s\S]*?renderState\.statusIndicator\.spinner\.shouldRender[\s\S]*?export function ChatMessageToolExecutionCompactList/);
-  assert.match(screenSource, /const threadChromeStyleState = chatChromeStyleState\.thread;/);
-  assert.match(screenSource, /const threadMobileStyleSlots = createChatRuntimeThreadMobileStyleSlots\(\{\s+renderState: threadChromeStyleState,\s+spacing,\s+radius,\s+borderWidths: theme,\s+platform: mobilePlatform,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const threadChromeStyleState = chatChromeStyleState\.thread;/);
+  assert.match(screenSource, /const threadMobileStyleSlots = chatMobileStyleSlots\.thread;/);
   assert.doesNotMatch(screenSource, /const compactToolExecutionStyleState = threadChromeStyleState\.compactToolExecution;/);
   assert.match(screenSource, /const compactToolExecutionStyleSlots = threadMobileStyleSlots\.compactToolExecution;/);
   assert.doesNotMatch(screenSource, /const compactToolExecution = compactToolExecutionStyleState\.surface;/);
@@ -4456,9 +4463,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
-  assert.match(screenSource, /const messageQueuePanelWrapperState = chatChromeStyleState\.messageQueuePanelWrapper;/);
-  assert.match(screenSource, /createMessageQueuePanelMobileWrapperStyleSlots,/);
-  assert.match(screenSource, /const messageQueuePanelWrapperStyleSlots = createMessageQueuePanelMobileWrapperStyleSlots\(\{\s+wrapper: messageQueuePanelWrapperState\.wrapper,\s+spacing,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const messageQueuePanelWrapperState = chatChromeStyleState\.messageQueuePanelWrapper;/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /createMessageQueuePanelMobileWrapperStyleSlots,/);
+  assert.match(screenSource, /const messageQueuePanelWrapperStyleSlots = chatMobileStyleSlots\.messageQueuePanelWrapper;/);
   assert.match(screenSource, /useChatMessageRuntimeQueuePanelState,/);
   assert.match(screenSource, /const \{\s+queuedMessages,\s+isMessageQueuePaused,\s+nextQueuedMessage,\s+handleProcessNextQueuedMessage,\s+handlePauseMessageQueue,\s+handleResumeMessageQueue,\s+handleRemoveQueuedMessage,\s+handleUpdateQueuedMessage,\s+handleRetryQueuedMessage,\s+handleClearQueuedMessages,\s+\} = useChatMessageRuntimeQueuePanelState\(\{\s+currentConversationId,\s+queue: messageQueue,\s+responding,\s+handsFree,\s+handsFreePhase: handsFreeController\.state\.phase,\s+handsFreeRef,\s+handsFreePhaseRef,\s+processQueuedMessage,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const isMessageQueuePaused = messageQueue\.isQueuePaused\(currentConversationId\);/);

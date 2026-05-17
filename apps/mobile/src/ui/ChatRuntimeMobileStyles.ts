@@ -6,7 +6,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  createChatComposerRuntimeChromeMobileStyleSlots,
   createChatComposerRuntimeDockStyleSlots,
   createChatMessageConversationDockStyleSlotsFromStyleSource,
   createChatMessageConversationThreadStyleSlotsFromStyleSource,
@@ -18,15 +17,12 @@ import {
   createChatMessageRuntimeSurfaceChromeSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatRuntimeChromeSlots,
-  createChatRuntimeConversationMobileStyleSlots,
   createChatRuntimeHeaderChromeSlots,
-  createChatRuntimeHeaderMobileStyleSlots,
   createChatRuntimeHeaderStyleSlotsFromStyleSource,
+  createChatRuntimeMobileChromeStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatRuntimeThreadMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
-  createMessageQueuePanelMobileWrapperStyleSlots,
   createChatComposerStyleSlotsFromStyleSource,
   createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource,
   getChatRuntimeMobileChromeStyleRenderState,
@@ -59,51 +55,26 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   const chatRuntimeChromeEnvironment = createChatRuntimeMobileChromeEnvironment(theme);
   const mobilePlatform = chatRuntimeChromeEnvironment.platform;
   const chatChromeStyleState = getChatRuntimeMobileChromeStyleRenderState(chatRuntimeChromeEnvironment);
-  const headerChromeStyleState = chatChromeStyleState.header;
-  const headerMobileStyleSlots = createChatRuntimeHeaderMobileStyleSlots({
-    header: headerChromeStyleState.header,
-    sessionStatus: headerChromeStyleState.sessionStatus,
-    turnDuration: headerChromeStyleState.turnDuration,
-    headerPinButton: chatChromeStyleState.headerPinButton,
-    radius,
-    platform: mobilePlatform,
-  });
-  const threadChromeStyleState = chatChromeStyleState.thread;
-  const threadMobileStyleSlots = createChatRuntimeThreadMobileStyleSlots({
-    renderState: threadChromeStyleState,
+  const chatMobileStyleSlots = createChatRuntimeMobileChromeStyleSlots({
+    renderState: chatChromeStyleState,
     spacing,
     radius,
     borderWidths: theme,
     platform: mobilePlatform,
   });
-  const compactToolExecutionStyleSlots = threadMobileStyleSlots.compactToolExecution;
-  const conversationChromeStyleState = chatChromeStyleState.conversation;
-  const conversationMobileStyleSlots = createChatRuntimeConversationMobileStyleSlots({
-    renderState: conversationChromeStyleState,
-    spacing,
-    radius,
-    toolPreviewStatusIconWidth: compactToolExecutionStyleSlots.statusIndicator.width,
-  });
-  const composerChromeStyleState = chatChromeStyleState.composer;
-  const composerChromeStyleSlots = createChatComposerRuntimeChromeMobileStyleSlots({
-    renderState: composerChromeStyleState,
-    spacing,
-    radius,
-    borderWidths: theme,
-    platform: mobilePlatform,
-  });
+  const headerMobileStyleSlots = chatMobileStyleSlots.header;
+  const threadMobileStyleSlots = chatMobileStyleSlots.thread;
+  const conversationMobileStyleSlots = chatMobileStyleSlots.conversation;
+  const composerChromeStyleSlots = chatMobileStyleSlots.composer;
   const composerStyleSlots = composerChromeStyleSlots.composer;
   const imageAttachmentStyleSlots = composerChromeStyleSlots.imageAttachment;
   const promptLibraryStyleSlots = composerChromeStyleSlots.promptLibrary;
   const promptEditorModalStyleSlots = composerChromeStyleSlots.promptEditorModal;
-  const messageQueuePanelWrapperState = chatChromeStyleState.messageQueuePanelWrapper;
-  const messageQueuePanelWrapperStyleSlots = createMessageQueuePanelMobileWrapperStyleSlots({
-    wrapper: messageQueuePanelWrapperState.wrapper,
-    spacing,
-  });
+  const messageQueuePanelWrapperStyleSlots = chatMobileStyleSlots.messageQueuePanelWrapper;
   const handsFreeStyleSlots = composerChromeStyleSlots.handsFree;
-  const headerActionButton = chatChromeStyleState.headerActionButton;
-  const headerEdgeActionButton = chatChromeStyleState.headerEdgeActionButton;
+  const headerActionButton = chatMobileStyleSlots.headerActionButton;
+  const headerEdgeActionButton = chatMobileStyleSlots.headerEdgeActionButton;
+  const compactToolExecutionStyleSlots = threadMobileStyleSlots.compactToolExecution;
   const toolExecutionDetailStyleSlots = threadMobileStyleSlots.toolExecutionDetail;
   const toolActivityGroupStyleSlots = threadMobileStyleSlots.toolActivityGroup;
   const toolApprovalStyleSlots = threadMobileStyleSlots.toolApproval;

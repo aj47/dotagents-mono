@@ -207,6 +207,7 @@ import {
   createChatRuntimeTurnDurationMessageMobileStyleSlotVariants,
   createChatRuntimeTurnDurationMessageMobileStyleSlots,
   createChatRuntimeThemeSpinnerSource,
+  createMessageQueuePanelMobileWrapperStyleSlots,
   deriveAttentionState,
   deriveLifecycleState,
   formatChatRuntimeActivityContent,
@@ -419,6 +420,7 @@ import {
   getChatRuntimeMessageHistoryBannerState,
   createChatRuntimeMessageHistoryBannerMobilePropsParts,
   createChatRuntimeMessageHistoryBannerMobileStyleSlots,
+  createChatRuntimeMobileChromeStyleSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatRuntimeMobileActivityAccessibilityState,
@@ -2919,6 +2921,65 @@ describe("session presentation semantics", () => {
     expect(runtimeChromeStyle.messageQueuePanelWrapper.wrapper.paddingHorizontal).toBe("md")
     expect(runtimeChromeStyle.headerActionButton.minWidth).toBe(44)
     expect(runtimeChromeStyle.thread.toolApproval.title).toBe("Tool Approval Required")
+    const chatRuntimeChromeMobileSpacing = {
+      xs: 4,
+      sm: 8,
+      md: 12,
+      lg: 16,
+    }
+    const chatRuntimeChromeMobileRadius = {
+      sm: 4,
+      md: 8,
+      lg: 12,
+      xl: 16,
+      full: 999,
+    }
+    const chatRuntimeChromeMobileBorderWidths = {
+      hairline: 0.5,
+    }
+    const expectedChatRuntimeThreadMobileStyleSlots = createChatRuntimeThreadMobileStyleSlots({
+      renderState: runtimeChromeStyle.thread,
+      spacing: chatRuntimeChromeMobileSpacing,
+      radius: chatRuntimeChromeMobileRadius,
+      borderWidths: chatRuntimeChromeMobileBorderWidths,
+      platform: "android",
+    })
+    expect(createChatRuntimeMobileChromeStyleSlots({
+      renderState: runtimeChromeStyle,
+      spacing: chatRuntimeChromeMobileSpacing,
+      radius: chatRuntimeChromeMobileRadius,
+      borderWidths: chatRuntimeChromeMobileBorderWidths,
+      platform: "android",
+    })).toEqual({
+      header: createChatRuntimeHeaderMobileStyleSlots({
+        header: runtimeChromeStyle.header.header,
+        sessionStatus: runtimeChromeStyle.header.sessionStatus,
+        turnDuration: runtimeChromeStyle.header.turnDuration,
+        headerPinButton: runtimeChromeStyle.headerPinButton,
+        radius: chatRuntimeChromeMobileRadius,
+        platform: "android",
+      }),
+      thread: expectedChatRuntimeThreadMobileStyleSlots,
+      conversation: createChatRuntimeConversationMobileStyleSlots({
+        renderState: runtimeChromeStyle.conversation,
+        spacing: chatRuntimeChromeMobileSpacing,
+        radius: chatRuntimeChromeMobileRadius,
+        toolPreviewStatusIconWidth: expectedChatRuntimeThreadMobileStyleSlots.compactToolExecution.statusIndicator.width,
+      }),
+      composer: createChatComposerRuntimeChromeMobileStyleSlots({
+        renderState: runtimeChromeStyle.composer,
+        spacing: chatRuntimeChromeMobileSpacing,
+        radius: chatRuntimeChromeMobileRadius,
+        borderWidths: chatRuntimeChromeMobileBorderWidths,
+        platform: "android",
+      }),
+      messageQueuePanelWrapper: createMessageQueuePanelMobileWrapperStyleSlots({
+        wrapper: runtimeChromeStyle.messageQueuePanelWrapper.wrapper,
+        spacing: chatRuntimeChromeMobileSpacing,
+      }),
+      headerActionButton: runtimeChromeStyle.headerActionButton,
+      headerEdgeActionButton: runtimeChromeStyle.headerEdgeActionButton,
+    })
     expect(createChatRuntimeToolActivityGroupMobileStyleSlots({
       renderState: runtimeChromeStyle.thread.toolActivityGroup,
       spacing: {

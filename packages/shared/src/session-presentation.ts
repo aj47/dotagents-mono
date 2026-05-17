@@ -418,10 +418,13 @@ export type {
   ToolActivityGroupMobileRenderState,
 } from "./tool-activity-grouping"
 import {
+  createMessageQueuePanelMobileWrapperStyleSlots,
   getMessageQueuePanelMobileDockRenderState,
   getMessageQueuePanelMobileWrapperRenderState,
   type MessageQueuePanelMobileDockRenderState,
   type MessageQueuePanelMobileDockRenderStateInput,
+  type MessageQueuePanelMobileWrapperStyleSlotsInput,
+  type MessageQueuePanelMobileWrapperStyleSlots,
 } from "./message-queue-utils"
 export {
   createMessageQueuePanelMobileWrapperStyleSlots,
@@ -9897,6 +9900,34 @@ export interface ChatRuntimeMobileChromeStyleRenderState {
   headerEdgeActionButton: ReturnType<typeof createMinimumTouchTargetStyle>
   headerPinButton: ReturnType<typeof createMinimumTouchTargetStyle>
   thread: ChatRuntimeThreadChromeMobileStyleRenderState
+}
+
+export interface ChatRuntimeMobileChromeStyleSlotsInput {
+  renderState: ChatRuntimeMobileChromeStyleRenderState
+  spacing:
+    & ChatRuntimeConversationMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeThreadMobileStyleSlotsInput["spacing"]
+    & ChatComposerRuntimeChromeMobileStyleSlotsInput["spacing"]
+    & MessageQueuePanelMobileWrapperStyleSlotsInput["spacing"]
+  radius:
+    & ChatRuntimeHeaderMobileStyleSlotsInput["radius"]
+    & ChatRuntimeConversationMobileStyleSlotsInput["radius"]
+    & ChatRuntimeThreadMobileStyleSlotsInput["radius"]
+    & ChatComposerRuntimeChromeMobileStyleSlotsInput["radius"]
+  borderWidths:
+    & ChatRuntimeThreadMobileStyleSlotsInput["borderWidths"]
+    & ChatComposerRuntimeChromeMobileStyleSlotsInput["borderWidths"]
+  platform?: ChatRuntimeMobileFontPlatform | null
+}
+
+export interface ChatRuntimeMobileChromeStyleSlots {
+  header: ChatRuntimeHeaderMobileStyleSlots
+  thread: ChatRuntimeThreadMobileStyleSlots
+  conversation: ChatRuntimeConversationMobileStyleSlots
+  composer: ChatComposerRuntimeChromeMobileStyleSlots
+  messageQueuePanelWrapper: MessageQueuePanelMobileWrapperStyleSlots
+  headerActionButton: ChatRuntimeMobileChromeStyleRenderState["headerActionButton"]
+  headerEdgeActionButton: ChatRuntimeMobileChromeStyleRenderState["headerEdgeActionButton"]
 }
 
 export interface ChatRuntimeMobileActivityAccessibilityState {
@@ -28118,6 +28149,54 @@ export function getChatRuntimeMobileChromeStyleRenderState({
     thread: getChatRuntimeThreadChromeMobileStyleRenderState({
       colors,
     }),
+  }
+}
+
+export function createChatRuntimeMobileChromeStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  borderWidths,
+  platform,
+}: ChatRuntimeMobileChromeStyleSlotsInput): ChatRuntimeMobileChromeStyleSlots {
+  const header = createChatRuntimeHeaderMobileStyleSlots({
+    header: renderState.header.header,
+    sessionStatus: renderState.header.sessionStatus,
+    turnDuration: renderState.header.turnDuration,
+    headerPinButton: renderState.headerPinButton,
+    radius,
+    platform,
+  })
+  const thread = createChatRuntimeThreadMobileStyleSlots({
+    renderState: renderState.thread,
+    spacing,
+    radius,
+    borderWidths,
+    platform,
+  })
+
+  return {
+    header,
+    thread,
+    conversation: createChatRuntimeConversationMobileStyleSlots({
+      renderState: renderState.conversation,
+      spacing,
+      radius,
+      toolPreviewStatusIconWidth: thread.compactToolExecution.statusIndicator.width,
+    }),
+    composer: createChatComposerRuntimeChromeMobileStyleSlots({
+      renderState: renderState.composer,
+      spacing,
+      radius,
+      borderWidths,
+      platform,
+    }),
+    messageQueuePanelWrapper: createMessageQueuePanelMobileWrapperStyleSlots({
+      wrapper: renderState.messageQueuePanelWrapper.wrapper,
+      spacing,
+    }),
+    headerActionButton: renderState.headerActionButton,
+    headerEdgeActionButton: renderState.headerEdgeActionButton,
   }
 }
 
