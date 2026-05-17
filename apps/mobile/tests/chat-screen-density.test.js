@@ -663,7 +663,10 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.approveButton\.icon\.color\}/);
   assert.match(toolApprovalComponentSource, /size=\{toolApprovalParts\.approveButton\.spinner\.size\}/);
   assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.approveButton\.spinner\.color\}/);
-  assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.approveButton\.spinner \? \(/);
+  assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.approveButton\.spinner\.shouldRender \? \(/);
+  assert.match(toolApprovalComponentSource, /toolApprovalParts\.approveButton\.icon\.shouldRender \? \(/);
+  assert.doesNotMatch(toolApprovalComponentSource, /\{toolApprovalParts\.approveButton\.spinner \? \(/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.approveButton\.icon \? \(/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.approveButton\.label\.text\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /numberOfLines=\{renderState\.surface\.argumentsPreview\.numberOfLines\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /name=\{renderState\.argumentsToggle\.icon\.name\}/);

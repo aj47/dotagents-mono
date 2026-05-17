@@ -8209,8 +8209,14 @@ describe("session presentation semantics", () => {
       accessibilityState: {
         disabled: true,
       },
-      icon: null,
-      spinner: toolApprovalProps.renderState.approveButton.spinner,
+      icon: {
+        ...toolApprovalProps.renderState.approveButton.icon,
+        shouldRender: false,
+      },
+      spinner: {
+        ...toolApprovalProps.renderState.approveButton.spinner,
+        shouldRender: true,
+      },
       label: {
         style: "tool-approval-approve-button-text-style",
         text: CHAT_RUNTIME_PRESENTATION.approval.processingLabel,

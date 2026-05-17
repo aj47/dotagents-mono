@@ -7445,12 +7445,12 @@ export function ChatMessageToolApproval({
             accessibilityLabel={toolApprovalParts.approveButton.accessibilityLabel}
             accessibilityState={toolApprovalParts.approveButton.accessibilityState}
           >
-            {toolApprovalParts.approveButton.spinner ? (
+            {toolApprovalParts.approveButton.spinner.shouldRender ? (
               <ActivityIndicator
                 size={toolApprovalParts.approveButton.spinner.size}
                 color={toolApprovalParts.approveButton.spinner.color}
               />
-            ) : toolApprovalParts.approveButton.icon ? (
+            ) : toolApprovalParts.approveButton.icon.shouldRender ? (
               <Ionicons
                 name={toolApprovalParts.approveButton.icon.name}
                 size={toolApprovalParts.approveButton.icon.size}

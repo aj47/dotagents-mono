@@ -2025,8 +2025,12 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityRole"]
     accessibilityLabel: string
     accessibilityState: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityState"]
-    icon: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["icon"] | null
-    spinner: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["spinner"] | null
+    icon: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["icon"] & {
+      shouldRender: boolean
+    }
+    spinner: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["spinner"] & {
+      shouldRender: boolean
+    }
     label: {
       style: TStyles["approveButtonText"]
       text: string
@@ -22520,8 +22524,14 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       accessibilityRole: renderState.approveButton.accessibilityRole,
       accessibilityLabel: renderState.approveButton.accessibilityLabel,
       accessibilityState: renderState.approveButton.accessibilityState,
-      icon: renderState.approveButton.isDisabled ? null : renderState.approveButton.icon,
-      spinner: renderState.approveButton.isDisabled ? renderState.approveButton.spinner : null,
+      icon: {
+        ...renderState.approveButton.icon,
+        shouldRender: !renderState.approveButton.isDisabled,
+      },
+      spinner: {
+        ...renderState.approveButton.spinner,
+        shouldRender: renderState.approveButton.isDisabled,
+      },
       label: {
         style: styles.approveButtonText,
         text: renderState.approveButton.label,
