@@ -37,6 +37,7 @@ import {
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerIconButtonMobilePropsParts,
   createChatComposerLabeledActionButtonMobilePropsParts,
+  createChatComposerMicButtonMobilePropsParts,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
@@ -9675,32 +9676,37 @@ export function ChatComposerMicButton({
   webPressedStyle,
   styles,
 }: ChatComposerMicButtonProps) {
+  const micButtonParts = createChatComposerMicButtonMobilePropsParts({
+    renderState,
+    onPressIn,
+    onPressOut,
+    onPress,
+    webPressedStyle,
+    styles,
+  });
+
   return (
     <Pressable
-      style={[
-        styles.button,
-        renderState.isActive && styles.activeButton,
-        webPressedStyle,
-      ]}
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityHint={renderState.accessibilityHint ?? undefined}
-      accessibilityState={renderState.accessibilityState}
-      aria-busy={renderState.ariaBusy}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={onPress}
+      style={micButtonParts.pressable.style}
+      accessibilityRole={micButtonParts.pressable.accessibilityRole}
+      accessibilityLabel={micButtonParts.pressable.accessibilityLabel}
+      accessibilityHint={micButtonParts.pressable.accessibilityHint}
+      accessibilityState={micButtonParts.pressable.accessibilityState}
+      aria-busy={micButtonParts.pressable.ariaBusy}
+      onPressIn={micButtonParts.pressable.onPressIn}
+      onPressOut={micButtonParts.pressable.onPressOut}
+      onPress={micButtonParts.pressable.onPress}
     >
       <Ionicons
-        name={renderState.icon.name}
-        size={renderState.icon.size}
-        color={renderState.icon.color}
+        name={micButtonParts.icon.name}
+        size={micButtonParts.icon.size}
+        color={micButtonParts.icon.color}
       />
       <Text
-        style={[styles.label, renderState.isActive && styles.activeLabel]}
-        selectable={renderState.labelSelectable}
+        style={micButtonParts.label.style}
+        selectable={micButtonParts.label.selectable}
       >
-        {renderState.label}
+        {micButtonParts.label.text}
       </Text>
     </Pressable>
   );

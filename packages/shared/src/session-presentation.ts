@@ -3941,6 +3941,78 @@ export interface ChatComposerLabeledActionButtonMobilePropsParts<
   }
 }
 
+export interface ChatComposerMicButtonMobileRenderStateLike {
+  isActive?: boolean
+  accessibilityRole: unknown
+  accessibilityLabel: string
+  accessibilityHint?: string | null
+  accessibilityState?: unknown
+  ariaBusy?: unknown
+  icon: {
+    name: unknown
+    size: unknown
+    color: unknown
+  }
+  label: string
+  labelSelectable?: unknown
+}
+
+export interface ChatComposerMicButtonMobileStylesLike {
+  button: unknown
+  activeButton?: unknown
+  label: unknown
+  activeLabel?: unknown
+}
+
+export interface ChatComposerMicButtonMobilePropsPartsInput<
+  TRenderState extends ChatComposerMicButtonMobileRenderStateLike = ChatComposerMicButtonMobileRenderStateLike,
+  TOnPressIn = unknown,
+  TOnPressOut = unknown,
+  TOnPress = unknown,
+  TWebPressedStyle = unknown,
+  TStyles extends ChatComposerMicButtonMobileStylesLike = ChatComposerMicButtonMobileStylesLike,
+> {
+  renderState: TRenderState
+  onPressIn?: TOnPressIn
+  onPressOut?: TOnPressOut
+  onPress?: TOnPress
+  webPressedStyle?: TWebPressedStyle
+  styles: TStyles
+}
+
+export interface ChatComposerMicButtonMobilePropsParts<
+  TRenderState extends ChatComposerMicButtonMobileRenderStateLike = ChatComposerMicButtonMobileRenderStateLike,
+  TOnPressIn = unknown,
+  TOnPressOut = unknown,
+  TOnPress = unknown,
+  TWebPressedStyle = unknown,
+  TStyles extends ChatComposerMicButtonMobileStylesLike = ChatComposerMicButtonMobileStylesLike,
+> {
+  pressable: {
+    style: Array<
+      | TStyles["button"]
+      | TStyles["activeButton"]
+      | TWebPressedStyle
+      | false
+      | undefined
+    >
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityHint: string | undefined
+    accessibilityState: TRenderState["accessibilityState"]
+    ariaBusy: TRenderState["ariaBusy"]
+    onPressIn: TOnPressIn | undefined
+    onPressOut: TOnPressOut | undefined
+    onPress: TOnPress | undefined
+  }
+  icon: TRenderState["icon"]
+  label: {
+    style: Array<TStyles["label"] | TStyles["activeLabel"] | false | undefined>
+    selectable: TRenderState["labelSelectable"]
+    text: string
+  }
+}
+
 export interface ChatComposerRuntimeDockMobilePropsPartsInput<
   TSpeechPreview extends object = Record<string, never>,
   TPendingImagesRail extends object = Record<string, never>,
@@ -18866,6 +18938,60 @@ export function createChatComposerLabeledActionButtonMobilePropsParts<
     icon: renderState.icon,
     label: {
       style: styles.text,
+      text: renderState.label,
+    },
+  }
+}
+
+export function createChatComposerMicButtonMobilePropsParts<
+  TRenderState extends ChatComposerMicButtonMobileRenderStateLike,
+  TOnPressIn,
+  TOnPressOut,
+  TOnPress,
+  TWebPressedStyle,
+  TStyles extends ChatComposerMicButtonMobileStylesLike,
+>({
+  renderState,
+  onPressIn,
+  onPressOut,
+  onPress,
+  webPressedStyle,
+  styles,
+}: ChatComposerMicButtonMobilePropsPartsInput<
+  TRenderState,
+  TOnPressIn,
+  TOnPressOut,
+  TOnPress,
+  TWebPressedStyle,
+  TStyles
+>): ChatComposerMicButtonMobilePropsParts<
+  TRenderState,
+  TOnPressIn,
+  TOnPressOut,
+  TOnPress,
+  TWebPressedStyle,
+  TStyles
+> {
+  return {
+    pressable: {
+      style: [
+        styles.button,
+        renderState.isActive && styles.activeButton,
+        webPressedStyle,
+      ],
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityHint: renderState.accessibilityHint ?? undefined,
+      accessibilityState: renderState.accessibilityState,
+      ariaBusy: renderState.ariaBusy,
+      onPressIn,
+      onPressOut,
+      onPress,
+    },
+    icon: renderState.icon,
+    label: {
+      style: [styles.label, renderState.isActive && styles.activeLabel],
+      selectable: renderState.labelSelectable,
       text: renderState.label,
     },
   }

@@ -65,6 +65,7 @@ import {
   getChatMessageActionMobileButtonStatesBySlot,
   createChatComposerIconButtonMobilePropsParts,
   createChatComposerLabeledActionButtonMobilePropsParts,
+  createChatComposerMicButtonMobilePropsParts,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerRuntimeDockStyleSlots,
@@ -8562,6 +8563,55 @@ describe("session presentation semantics", () => {
         text: "queue-button-text",
       },
     }).shouldRender).toBe(false)
+    expect(createChatComposerMicButtonMobilePropsParts({
+      renderState: {
+        isActive: true,
+        accessibilityRole: "button",
+        accessibilityLabel: "Start voice input",
+        accessibilityHint: null,
+        accessibilityState: { busy: true },
+        ariaBusy: true,
+        icon: {
+          name: "mic",
+          size: 20,
+          color: "#ffffff",
+        },
+        label: "Hold to talk",
+        labelSelectable: false,
+      },
+      onPressIn: "press-in",
+      onPressOut: "press-out",
+      onPress: "press",
+      webPressedStyle: "web-pressed",
+      styles: {
+        button: "mic-button",
+        activeButton: "mic-active-button",
+        label: "mic-label",
+        activeLabel: "mic-active-label",
+      },
+    })).toEqual({
+      pressable: {
+        style: ["mic-button", "mic-active-button", "web-pressed"],
+        accessibilityRole: "button",
+        accessibilityLabel: "Start voice input",
+        accessibilityHint: undefined,
+        accessibilityState: { busy: true },
+        ariaBusy: true,
+        onPressIn: "press-in",
+        onPressOut: "press-out",
+        onPress: "press",
+      },
+      icon: {
+        name: "mic",
+        size: 20,
+        color: "#ffffff",
+      },
+      label: {
+        style: ["mic-label", "mic-active-label"],
+        selectable: false,
+        text: "Hold to talk",
+      },
+    })
     const surfaceParts = createChatRuntimeConversationSurfaceMobilePropsParts({
       frame: {
         keyboardAvoidingBehavior: "padding",

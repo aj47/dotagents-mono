@@ -2258,12 +2258,22 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /micButton: \{\s+\.\.\.micButton,\s+styles: styles\.micButton,\s+\}/);
   assert.match(sessionPresentationSource, /micButtonStyles: \{\s+button: styles\.mic,\s+activeButton: styles\.micOn,\s+label: styles\.micLabel,\s+activeLabel: styles\.micLabelOn,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatComposerMicButton/);
-  assert.match(chatMessageChromeSource, /aria-busy=\{renderState\.ariaBusy\}/);
-  assert.match(chatMessageChromeSource, /name=\{renderState\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{renderState\.icon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{renderState\.icon\.color\}/);
-  assert.match(chatMessageChromeSource, /selectable=\{renderState\.labelSelectable\}/);
-  assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
+  const composerMicButtonSource =
+    chatMessageChromeSource.match(/export function ChatComposerMicButton[\s\S]*?export function ChatComposerTextEntry/)?.[0] ?? '';
+  assert.match(chatMessageChromeSource, /createChatComposerMicButtonMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatComposerMicButtonMobilePropsParts/);
+  assert.match(composerMicButtonSource, /const micButtonParts = createChatComposerMicButtonMobilePropsParts\(\{\s+renderState,\s+onPressIn,\s+onPressOut,\s+onPress,\s+webPressedStyle,\s+styles,\s+\}\);/);
+  assert.match(composerMicButtonSource, /style=\{micButtonParts\.pressable\.style\}/);
+  assert.match(composerMicButtonSource, /aria-busy=\{micButtonParts\.pressable\.ariaBusy\}/);
+  assert.match(composerMicButtonSource, /name=\{micButtonParts\.icon\.name\}/);
+  assert.match(composerMicButtonSource, /size=\{micButtonParts\.icon\.size\}/);
+  assert.match(composerMicButtonSource, /color=\{micButtonParts\.icon\.color\}/);
+  assert.match(composerMicButtonSource, /selectable=\{micButtonParts\.label\.selectable\}/);
+  assert.match(composerMicButtonSource, /\{micButtonParts\.label\.text\}/);
+  assert.doesNotMatch(composerMicButtonSource, /aria-busy=\{renderState\.ariaBusy\}/);
+  assert.doesNotMatch(composerMicButtonSource, /name=\{renderState\.icon\.name\}/);
+  assert.doesNotMatch(composerMicButtonSource, /selectable=\{renderState\.labelSelectable\}/);
+  assert.doesNotMatch(composerMicButtonSource, /\{renderState\.label\}/);
   assert.doesNotMatch(screenSource, /name=\{mobileComposerMicRenderState\.icon\.name\}/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{mobileComposerMicRenderState\.accessibilityRole\}/);
   assert.doesNotMatch(screenSource, /aria-busy=\{mobileComposerMicRenderState\.ariaBusy\}/);
