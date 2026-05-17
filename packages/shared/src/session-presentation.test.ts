@@ -13001,10 +13001,12 @@ describe("session presentation semantics", () => {
         styles: "call-section-styles",
       },
       inputSection: {
-        payloadRenderState: "input-payload-state",
-        content: "input-content",
         shouldRender: true,
-        styles: "payload-section-styles",
+        props: {
+          payloadRenderState: "input-payload-state",
+          content: "input-content",
+          styles: "payload-section-styles",
+        },
       },
       resultSection: {
         shouldRender: false,

@@ -8441,7 +8441,7 @@ export function ChatMessageToolExecutionCallDetail({
     >
       {callDetailParts.inputSection.shouldRender ? (
         <ChatMessageToolExecutionPayloadSection
-          {...callDetailParts.inputSection}
+          {...callDetailParts.inputSection.props}
         />
       ) : null}
       {callDetailParts.resultSection.shouldRender ? (

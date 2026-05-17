@@ -3040,16 +3040,9 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
     onHeaderPress: TOnHeaderPress | undefined
     styles: TStyles["callSection"]
   }
-  inputSection: (
-    | (TInput & {
-      shouldRender: true
-      styles: TStyles["payloadSection"]
-    })
-    | {
-      shouldRender: false
-      styles: TStyles["payloadSection"]
-    }
-  )
+  inputSection: ChatRuntimeMobilePropsPart<TInput & {
+    styles: TStyles["payloadSection"]
+  }>
   resultSection: (
     | (TResult & {
       shouldRender: true
@@ -20249,12 +20242,14 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
   TStyles
 > {
   const inputSection = input ? {
-    ...input,
     shouldRender: true as const,
-    styles: styles.payloadSection,
+    props: {
+      ...input,
+      styles: styles.payloadSection,
+    },
   } : {
     shouldRender: false as const,
-    styles: styles.payloadSection,
+    props: null,
   }
   const resultSection = result ? {
     ...result,

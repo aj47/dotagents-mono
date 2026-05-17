@@ -3784,9 +3784,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /toolDetailToggleIcon\.opacity/);
   assert.match(sessionPresentationSource, /input: argumentsDetail\.hasArguments \? \{\s+payloadRenderState: inputHeaderState,\s+compactText: argumentsPayload\?\.compactText,\s+content: argumentsDetail\.content,\s+isExpanded,\s+previewNumberOfLines,\s+copyButtonRenderState: inputCopyButtonRenderState,/);
   assert.match(sessionPresentationSource, /input: input \? \{\s+\.\.\.input,\s+onCopyPress: \(\) => \{ void onCopyPayload\(input\.content\) \},/);
-  assert.match(chatMessageChromeSource, /callDetailParts\.inputSection\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionPayloadSection\s+\{\.\.\.callDetailParts\.inputSection\}/);
+  assert.match(chatMessageChromeSource, /callDetailParts\.inputSection\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionPayloadSection\s+\{\.\.\.callDetailParts\.inputSection\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /callDetailParts\.inputSection \? \(/);
-  assert.match(sessionPresentationSource, /const inputSection = input \? \{\s+\.\.\.input,\s+shouldRender: true as const,\s+styles: styles\.payloadSection,/);
+  assert.match(sessionPresentationSource, /const inputSection = input \? \{\s+shouldRender: true,\s+props: \{\s+\.\.\.input,\s+styles: styles\.payloadSection,/);
   assert.match(sessionPresentationSource, /payloadSection: \{\s+section: styles\.toolParamsSection,\s+headerRow: styles\.toolDetailHeaderRow,\s+payloadMeta: \{\s+row: styles\.toolPayloadMetaRow,\s+label: styles\.toolSectionLabel,\s+payloadType: styles\.toolPayloadType,\s+\},\s+copyButton: \{/);
   assert.match(sessionPresentationSource, /payloadBlock: \{\s+preview: styles\.toolPayloadPreview,\s+scroll: styles\.toolParamsScroll,\s+scrollExpanded: styles\.toolParamsScrollExpanded,\s+code: styles\.toolParamsCode,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadSection/);
