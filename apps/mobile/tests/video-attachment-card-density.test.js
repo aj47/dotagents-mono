@@ -7,32 +7,36 @@ const source = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'VideoAttachmentCard.tsx'),
   'utf8',
 );
+const conversationMediaAssetsSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'conversation-media-assets.ts'),
+  'utf8',
+);
 
 test('mobile video attachment card uses shared copy and accessibility labels', () => {
   assert.match(source, /getChatVideoAttachmentMobileRenderState/);
   assert.match(source, /const videoAttachmentRenderState = useMemo\(\s+\(\) => getChatVideoAttachmentMobileRenderState\(\{[\s\S]*?sourceUrl,[\s\S]*?label,[\s\S]*?colors: theme\.colors,[\s\S]*?isDark,[\s\S]*?loading,/);
   assert.match(source, /const videoAttachmentCopy = videoAttachmentRenderState\.copy;/);
-  assert.match(source, /const videoAttachmentSurface = videoAttachmentRenderState\.surface;/);
-  assert.match(source, /const videoAttachmentSurfaceColors = videoAttachmentRenderState\.colors;/);
+  assert.match(source, /createChatVideoAttachmentMobilePropsParts,/);
+  assert.match(conversationMediaAssetsSource, /export function createChatVideoAttachmentMobilePropsParts/);
   assert.match(source, /const videoAttachmentStyleSlots = useMemo\(\s+\(\) => createChatVideoAttachmentMobileStyleSlots\(\{/);
-  assert.match(source, /const displayLabel = videoAttachmentRenderState\.displayLabel;/);
-  assert.match(source, /videoAttachmentCopy\.glyphs\.link/);
-  assert.match(source, /videoAttachmentRenderState\.title/);
-  assert.match(source, /videoAttachmentRenderState\.subtitle/);
-  assert.match(source, /videoAttachmentCopy\.labels\.openExternally/);
+  assert.match(source, /const videoAttachmentParts = createChatVideoAttachmentMobilePropsParts\(\{/);
+  assert.match(conversationMediaAssetsSource, /text: `\$\{renderState\.copy\.glyphs\.link\} \$\{renderState\.displayLabel\}`/);
+  assert.match(conversationMediaAssetsSource, /text: renderState\.title/);
+  assert.match(conversationMediaAssetsSource, /text: renderState\.subtitle/);
+  assert.match(conversationMediaAssetsSource, /text: renderState\.copy\.labels\.openExternally/);
   assert.match(source, /videoAttachmentCopy\.errors\.missingCredentials/);
   assert.match(source, /videoAttachmentCopy\.errors\.loadFallback/);
   assert.match(source, /formatVideoAttachmentRequestFailedMessage\(response\.status\)/);
   assert.match(source, /import \{ radius, spacing \} from '\.\/theme';/);
-  assert.match(source, /accessibilityLabel=\{videoAttachmentRenderState\.loadButton\.accessibilityLabel\}/);
-  assert.match(source, /accessibilityLabel=\{videoAttachmentRenderState\.loadButton\.accessibilityLabel\}[\s\S]{0,220}onPress=\{loadVideo\}/);
-  assert.match(source, /accessibilityLabel=\{videoAttachmentRenderState\.video\.accessibilityLabel\}[\s\S]{0,220}player=\{player\}/);
-  assert.match(source, /accessibilityRole=\{videoAttachmentRenderState\.loadButton\.accessibilityRole\}/);
-  assert.match(source, /accessibilityRole=\{videoAttachmentRenderState\.fallbackLink\.accessibilityRole\}/);
-  assert.match(source, /accessibilityRole=\{videoAttachmentRenderState\.externalLink\.accessibilityRole\}/);
-  assert.match(source, /accessibilityLabel=\{videoAttachmentRenderState\.fallbackLink\.accessibilityLabel\}/);
-  assert.match(source, /accessibilityLabel=\{videoAttachmentRenderState\.externalLink\.accessibilityLabel\}/);
-  assert.match(source, /accessibilityState=\{videoAttachmentRenderState\.loadButton\.accessibilityState\}/);
+  assert.match(conversationMediaAssetsSource, /accessibilityLabel: renderState\.loadButton\.accessibilityLabel/);
+  assert.match(conversationMediaAssetsSource, /onPress: onLoadVideo/);
+  assert.match(source, /<VideoView\s+\{\.\.\.videoAttachmentParts\.video\.props\}[\s\S]{0,220}player=\{player\}/);
+  assert.match(conversationMediaAssetsSource, /accessibilityRole: renderState\.loadButton\.accessibilityRole/);
+  assert.match(conversationMediaAssetsSource, /accessibilityRole: renderState\.fallbackLink\.accessibilityRole/);
+  assert.match(conversationMediaAssetsSource, /accessibilityRole: renderState\.externalLink\.accessibilityRole/);
+  assert.match(conversationMediaAssetsSource, /accessibilityLabel: renderState\.fallbackLink\.accessibilityLabel/);
+  assert.match(conversationMediaAssetsSource, /accessibilityLabel: renderState\.externalLink\.accessibilityLabel/);
+  assert.match(conversationMediaAssetsSource, /accessibilityState: renderState\.loadButton\.accessibilityState/);
   assert.doesNotMatch(source, /getChatVideoAttachmentCopyState/);
   assert.doesNotMatch(source, /getChatVideoAttachmentMobileSurfaceColors/);
   assert.doesNotMatch(source, /getChatVideoAttachmentMobileSurfaceState/);
@@ -50,9 +54,8 @@ test('mobile video attachment card uses shared copy and accessibility labels', (
 });
 
 test('mobile video attachment card reads compact sizing from shared surface tokens', () => {
-  assert.match(source, /const videoAttachmentSurface = videoAttachmentRenderState\.surface;/);
-  assert.match(source, /const videoAttachmentSurfaceColors = videoAttachmentRenderState\.colors;/);
   assert.match(source, /createChatVideoAttachmentMobileStyleSlots,/);
+  assert.match(source, /createChatVideoAttachmentMobilePropsParts,/);
   assert.match(source, /createChatVideoAttachmentMobileStyleSlots\(\{\s+renderState: videoAttachmentRenderState,\s+spacing,\s+radius,\s+\}\)/);
   assert.match(source, /card:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.card,\s+\}/);
   assert.match(source, /header:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.header,\s+\}/);
@@ -70,11 +73,11 @@ test('mobile video attachment card reads compact sizing from shared surface toke
   assert.match(source, /externalLink:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.externalLink,\s+\}/);
   assert.match(source, /externalLinkPressed:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.externalLinkPressed,\s+\}/);
   assert.match(source, /errorText:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.errorText,\s+\}/);
-  assert.match(source, /name=\{videoAttachmentSurface\.playIcon\.name\}/);
-  assert.match(source, /color=\{videoAttachmentSurfaceColors\.playIcon\.color\}/);
-  assert.match(source, /<Text style=\{\[styles\.subtitle, styles\.externalLink\]\}>/);
-  assert.match(source, /style=\{\(\{ pressed \}\) => \[styles\.fallbackLink, pressed && styles\.fallbackLinkPressed\]\}/);
-  assert.match(source, /style=\{\(\{ pressed \}\) => pressed && styles\.externalLinkPressed\}/);
+  assert.match(source, /<Ionicons\s+\{\.\.\.videoAttachmentParts\.playIcon\.props\}/);
+  assert.match(source, /<ActivityIndicator \{\.\.\.videoAttachmentParts\.loadingIndicator\.props\} \/>/);
+  assert.match(source, /<Text \{\.\.\.videoAttachmentParts\.externalLink\.label\.props\}>/);
+  assert.match(conversationMediaAssetsSource, /style: \(\{ pressed \}\) => \[\s+styles\.fallbackLink,\s+pressed && styles\.fallbackLinkPressed,\s+\]/);
+  assert.match(conversationMediaAssetsSource, /style: \(\{ pressed \}\) => pressed && styles\.externalLinkPressed/);
   assert.doesNotMatch(source, /borderColor:\s*videoAttachmentSurfaceColors\.card\.borderColor/);
   assert.doesNotMatch(source, /borderRadius:\s*radius\[videoAttachmentSurface\.card\.borderRadius\]/);
   assert.doesNotMatch(source, /backgroundColor:\s*videoAttachmentSurfaceColors\.card\.backgroundColor/);
@@ -90,6 +93,8 @@ test('mobile video attachment card reads compact sizing from shared surface toke
   assert.doesNotMatch(source, /backgroundAlphaHex/);
   assert.doesNotMatch(source, /theme\.colors\[videoAttachmentSurface\./);
   assert.doesNotMatch(source, /hexToRgba\(/);
+  assert.doesNotMatch(source, /videoAttachmentRenderState\.(title|subtitle|displayLabel)/);
+  assert.doesNotMatch(source, /videoAttachmentRenderState\.(fallbackLink|loadButton|externalLink)\.(accessibilityRole|accessibilityLabel|accessibilityState)/);
   assert.doesNotMatch(source, /rgba\(255,255,255,0\.04\)|rgba\(0,0,0,0\.03\)/);
   assert.doesNotMatch(source, /CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION/);
   assert.doesNotMatch(source, /theme\.colors\.(background|foreground|card|border|muted|mutedForeground|primary|primaryForeground|destructive|success|warning|info)/);

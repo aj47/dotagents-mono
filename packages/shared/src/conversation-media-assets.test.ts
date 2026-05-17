@@ -15,6 +15,7 @@ import {
   CHAT_IMAGE_ATTACHMENT_SURFACE_PRESENTATION,
   CHAT_VIDEO_ATTACHMENT_PRESENTATION,
   CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION,
+  createChatVideoAttachmentMobilePropsParts,
   createChatVideoAttachmentMobileStyleSlots,
   createConversationImageAssetFileService,
   createConversationImageAssetRouteActions,
@@ -283,7 +284,7 @@ describe('conversation video asset utilities', () => {
         accessibilityLabel: 'Open video link: Demo clip',
       },
     });
-    expect(createChatVideoAttachmentMobileStyleSlots({
+    const videoAttachmentStyleSlots = createChatVideoAttachmentMobileStyleSlots({
       renderState: videoAttachmentRenderState,
       spacing: {
         xs: 4,
@@ -292,7 +293,8 @@ describe('conversation video asset utilities', () => {
       radius: {
         lg: 12,
       },
-    })).toEqual({
+    });
+    expect(videoAttachmentStyleSlots).toEqual({
       card: {
         borderWidth: 1,
         borderColor: '#d4d4d4',
@@ -365,6 +367,48 @@ describe('conversation video asset utilities', () => {
         color: '#dc2626',
         fontSize: 11,
         marginTop: 4,
+      },
+    });
+    const videoAttachmentParts = createChatVideoAttachmentMobilePropsParts({
+      renderState: videoAttachmentRenderState,
+      styles: videoAttachmentStyleSlots,
+      isLoading: true,
+      canOpenExternally: true,
+      loadError: 'Unable to fetch demo',
+      onLoadVideo: 'load-video',
+      onOpenVideo: 'open-video',
+    });
+    expect(videoAttachmentParts.loadButton.props).toMatchObject({
+      accessibilityRole: 'button',
+      accessibilityLabel: 'Load video Demo clip',
+      accessibilityState: { busy: true },
+      disabled: true,
+      onPress: 'load-video',
+    });
+    expect(videoAttachmentParts.loadingIndicator).toEqual({
+      shouldRender: true,
+      props: {
+        size: 'small',
+        color: '#2563eb',
+      },
+    });
+    expect(videoAttachmentParts.playIcon.shouldRender).toBe(false);
+    expect(videoAttachmentParts.fallbackLink.props).toMatchObject({
+      accessibilityRole: 'link',
+      accessibilityLabel: 'Open video link: Demo clip',
+      onPress: 'open-video',
+    });
+    expect(videoAttachmentParts.fallbackLink.text.text).toBe('🔗 Demo clip');
+    expect(videoAttachmentParts.title.text).toBe('🎬 Demo clip');
+    expect(videoAttachmentParts.subtitle.text).toBe('Loading…');
+    expect(videoAttachmentParts.error).toMatchObject({
+      shouldRender: true,
+      text: 'Unable to fetch demo',
+    });
+    expect(videoAttachmentParts.externalLink).toMatchObject({
+      shouldRender: true,
+      label: {
+        text: 'Open externally',
       },
     });
     expect(getChatVideoAttachmentMobileSurfaceColors({

@@ -154,6 +154,7 @@ export {
   buildChatImageAttachmentMessage,
   buildConversationImageAssetHttpUrl,
   buildConversationVideoAssetHttpUrl,
+  createChatVideoAttachmentMobilePropsParts,
   createChatVideoAttachmentMobileStyleSlots,
   formatChatImageAttachmentLimitMessage,
   formatChatImageAttachmentErrorMessage,
@@ -180,6 +181,8 @@ export {
   type ChatImageAttachmentMobileAlertInput,
   type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileRenderState,
+  type ChatVideoAttachmentMobilePropsParts,
+  type ChatVideoAttachmentMobilePropsPartsInput,
   type ChatVideoAttachmentMobileStyleSlots,
   type ImageMimeTypeSource,
 } from "./conversation-media-assets"

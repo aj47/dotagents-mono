@@ -637,6 +637,149 @@ export interface ChatVideoAttachmentMobileStyleSlots {
   };
 }
 
+export interface ChatVideoAttachmentMobilePropsStylesLike {
+  card: unknown;
+  header: unknown;
+  loadButton: unknown;
+  loadButtonPressed: unknown;
+  loadButtonDisabled: unknown;
+  playIconWrapper: unknown;
+  textWrapper: unknown;
+  title: unknown;
+  subtitle: unknown;
+  video: unknown;
+  fallbackLink: unknown;
+  fallbackLinkPressed: unknown;
+  fallbackLinkText: unknown;
+  externalLink: unknown;
+  externalLinkPressed: unknown;
+  errorText: unknown;
+}
+
+export interface ChatVideoAttachmentMobilePropsPartsInput<
+  TStyles extends ChatVideoAttachmentMobilePropsStylesLike = ChatVideoAttachmentMobilePropsStylesLike,
+  TPressHandler = unknown,
+> {
+  renderState: ChatVideoAttachmentMobileRenderState;
+  styles: TStyles;
+  isLoading: boolean;
+  canOpenExternally: boolean;
+  loadError?: string | null;
+  onLoadVideo: TPressHandler;
+  onOpenVideo: TPressHandler;
+}
+
+export interface ChatVideoAttachmentMobilePropsParts<
+  TStyles extends ChatVideoAttachmentMobilePropsStylesLike = ChatVideoAttachmentMobilePropsStylesLike,
+  TPressHandler = unknown,
+> {
+  fallbackLink: {
+    props: {
+      accessibilityRole: ChatVideoAttachmentMobileRenderState['fallbackLink']['accessibilityRole'];
+      accessibilityLabel: string;
+      onPress: TPressHandler;
+      style: (input: { pressed: boolean }) => Array<TStyles['fallbackLink'] | false | TStyles['fallbackLinkPressed']>;
+    };
+    text: {
+      text: string;
+      props: {
+        style: TStyles['fallbackLinkText'];
+      };
+    };
+  };
+  card: {
+    props: {
+      style: TStyles['card'];
+    };
+  };
+  video: {
+    props: {
+      accessibilityLabel: string;
+      style: TStyles['video'];
+    };
+  };
+  header: {
+    props: {
+      style: TStyles['header'];
+    };
+  };
+  loadButton: {
+    props: {
+      accessibilityRole: ChatVideoAttachmentMobileRenderState['loadButton']['accessibilityRole'];
+      accessibilityLabel: string;
+      accessibilityState: ChatVideoAttachmentMobileRenderState['loadButton']['accessibilityState'];
+      onPress: TPressHandler;
+      style: (
+        input: { pressed: boolean },
+      ) => Array<TStyles['loadButton'] | false | TStyles['loadButtonPressed'] | TStyles['loadButtonDisabled']>;
+      disabled: boolean;
+    };
+  };
+  playIconWrapper: {
+    props: {
+      style: TStyles['playIconWrapper'];
+    };
+  };
+  loadingIndicator: {
+    shouldRender: boolean;
+    props: {
+      size: 'small';
+      color: string;
+    };
+  };
+  playIcon: {
+    shouldRender: boolean;
+    props: {
+      name: ChatVideoAttachmentMobileSurface['playIcon']['name'];
+      size: number;
+      color: string;
+    };
+  };
+  textWrapper: {
+    props: {
+      style: TStyles['textWrapper'];
+    };
+  };
+  title: {
+    text: string;
+    props: {
+      style: TStyles['title'];
+      numberOfLines: ChatVideoAttachmentMobileSurface['title']['numberOfLines'];
+    };
+  };
+  subtitle: {
+    text: string;
+    props: {
+      style: TStyles['subtitle'];
+      numberOfLines: ChatVideoAttachmentMobileSurface['subtitle']['numberOfLines'];
+    };
+  };
+  error: {
+    shouldRender: boolean;
+    text: string;
+    props: {
+      style: TStyles['errorText'];
+    };
+  };
+  externalLink: {
+    shouldRender: boolean;
+    pressable: {
+      props: {
+        accessibilityRole: ChatVideoAttachmentMobileRenderState['externalLink']['accessibilityRole'];
+        accessibilityLabel: string;
+        onPress: TPressHandler;
+        style: (input: { pressed: boolean }) => false | TStyles['externalLinkPressed'];
+      };
+    };
+    label: {
+      text: string;
+      props: {
+        style: Array<TStyles['subtitle'] | TStyles['externalLink']>;
+      };
+    };
+  };
+}
+
 export function getChatVideoAttachmentMobileSurfaceColors(
   colors: ChatVideoAttachmentMobileSurfaceColorPalette,
   input: { isDark?: boolean } = {},
@@ -832,6 +975,136 @@ export function getChatVideoAttachmentMobileRenderState({
     externalLink: {
       accessibilityRole: surface.externalLink.accessibilityRole,
       accessibilityLabel: getVideoAttachmentOpenLinkAccessibilityLabel(displayLabel),
+    },
+  };
+}
+
+export function createChatVideoAttachmentMobilePropsParts<
+  TStyles extends ChatVideoAttachmentMobilePropsStylesLike = ChatVideoAttachmentMobilePropsStylesLike,
+  TPressHandler = unknown,
+>({
+  renderState,
+  styles,
+  isLoading,
+  canOpenExternally,
+  loadError,
+  onLoadVideo,
+  onOpenVideo,
+}: ChatVideoAttachmentMobilePropsPartsInput<TStyles, TPressHandler>):
+  ChatVideoAttachmentMobilePropsParts<TStyles, TPressHandler> {
+  const surface = renderState.surface;
+  const colors = renderState.colors;
+
+  return {
+    fallbackLink: {
+      props: {
+        accessibilityRole: renderState.fallbackLink.accessibilityRole,
+        accessibilityLabel: renderState.fallbackLink.accessibilityLabel,
+        onPress: onOpenVideo,
+        style: ({ pressed }) => [
+          styles.fallbackLink,
+          pressed && styles.fallbackLinkPressed,
+        ],
+      },
+      text: {
+        text: `${renderState.copy.glyphs.link} ${renderState.displayLabel}`,
+        props: {
+          style: styles.fallbackLinkText,
+        },
+      },
+    },
+    card: {
+      props: {
+        style: styles.card,
+      },
+    },
+    video: {
+      props: {
+        accessibilityLabel: renderState.video.accessibilityLabel,
+        style: styles.video,
+      },
+    },
+    header: {
+      props: {
+        style: styles.header,
+      },
+    },
+    loadButton: {
+      props: {
+        accessibilityRole: renderState.loadButton.accessibilityRole,
+        accessibilityLabel: renderState.loadButton.accessibilityLabel,
+        accessibilityState: renderState.loadButton.accessibilityState,
+        onPress: onLoadVideo,
+        style: ({ pressed }) => [
+          styles.loadButton,
+          pressed && styles.loadButtonPressed,
+          isLoading && styles.loadButtonDisabled,
+        ],
+        disabled: isLoading,
+      },
+    },
+    playIconWrapper: {
+      props: {
+        style: styles.playIconWrapper,
+      },
+    },
+    loadingIndicator: {
+      shouldRender: isLoading,
+      props: {
+        size: 'small',
+        color: colors.playIcon.color,
+      },
+    },
+    playIcon: {
+      shouldRender: !isLoading,
+      props: {
+        name: surface.playIcon.name,
+        size: surface.playIcon.size,
+        color: colors.playIcon.color,
+      },
+    },
+    textWrapper: {
+      props: {
+        style: styles.textWrapper,
+      },
+    },
+    title: {
+      text: renderState.title,
+      props: {
+        style: styles.title,
+        numberOfLines: surface.title.numberOfLines,
+      },
+    },
+    subtitle: {
+      text: renderState.subtitle,
+      props: {
+        style: styles.subtitle,
+        numberOfLines: surface.subtitle.numberOfLines,
+      },
+    },
+    error: {
+      shouldRender: Boolean(loadError),
+      text: loadError ?? '',
+      props: {
+        style: styles.errorText,
+      },
+    },
+    externalLink: {
+      shouldRender: canOpenExternally,
+      pressable: {
+        props: {
+          accessibilityRole: renderState.externalLink.accessibilityRole,
+          accessibilityLabel: renderState.externalLink.accessibilityLabel,
+          onPress: onOpenVideo,
+          style: ({ pressed }) => pressed && styles.externalLinkPressed,
+        },
+      },
+      label: {
+        text: renderState.copy.labels.openExternally,
+        props: {
+          style: [styles.subtitle, styles.externalLink],
+        },
+      },
     },
   };
 }
