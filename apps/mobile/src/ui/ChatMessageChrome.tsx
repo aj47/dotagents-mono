@@ -9492,13 +9492,14 @@ export function ChatMessageToolExecutionCallSection({
     onHeaderPress,
     styles,
   });
+  const callSectionContent = callSectionParts.container.content;
 
   return (
     <ChatMessageToolExecutionCallSectionContainer
       {...callSectionParts.container.props}
     >
       <ChatMessageToolExecutionDetailHeader
-        {...callSectionParts.header.props}
+        {...callSectionContent.header.props}
       />
       {children}
     </ChatMessageToolExecutionCallSectionContainer>

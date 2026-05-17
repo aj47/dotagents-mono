@@ -4190,13 +4190,15 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallSectionMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const callSectionParts = createChatRuntimeToolExecutionCallSectionMobilePropsParts\(\{\s+renderState,\s+toolName,\s+onHeaderPress,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const callSectionContent = callSectionParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallSectionContainer\s+\{\.\.\.callSectionParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeader\s+\{\.\.\.callSectionParts\.header\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeader\s+\{\.\.\.callSectionContent\.header\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSectionContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionResultBadge/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSectionContainer[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionResultBadge/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: styles\.section,/);
-  assert.match(sessionPresentationSource, /header: \{\s+props: \{\s+renderState,\s+toolName,\s+onPress: onHeaderPress,\s+styles: styles\.header,/);
-  assert.doesNotMatch(chatMessageChromeSource, /callSectionParts\.(container\.style|header\.(renderState|toolName|onPress|styles))/);
+  assert.match(sessionPresentationSource, /content: \{\s+header: \{\s+props: \{\s+renderState,\s+toolName,\s+onPress: onHeaderPress,\s+styles: styles\.header,/);
+  assert.doesNotMatch(chatMessageChromeSource, /callSectionParts\.(container\.style|header\.)/);
+  assert.doesNotMatch(chatMessageChromeSource, /callSectionContent\.header\.(renderState|toolName|onPress|styles)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSection[\s\S]*?<ChatMessageToolExecutionDetailHeader\s+renderState=\{renderState\}[\s\S]*?export function ChatMessageToolExecutionResultBadge/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionDetailHeader\s+renderState=\{toolDetailHeaderState\}\s+toolName=\{toolNameLabel\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeader/);

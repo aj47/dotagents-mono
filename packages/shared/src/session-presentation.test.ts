@@ -13970,13 +13970,15 @@ describe("session presentation semantics", () => {
         props: {
           style: "call-section",
         },
-      },
-      header: {
-        props: {
-          renderState: "detail-header-state",
-          toolName: "read_file",
-          onPress: "toggle-detail",
-          styles: "detail-header-styles",
+        content: {
+          header: {
+            props: {
+              renderState: "detail-header-state",
+              toolName: "read_file",
+              onPress: "toggle-detail",
+              styles: "detail-header-styles",
+            },
+          },
         },
       },
     })
