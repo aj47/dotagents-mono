@@ -3233,6 +3233,14 @@ type ChatMessageConnectionBannerFailedBody =
 type ChatMessageConnectionBannerFailedBodyContent =
   ChatMessageConnectionBannerFailedBody['content'];
 
+type ChatMessageConnectionBannerReconnectingProps = {
+  reconnecting: ChatMessageConnectionBannerParts['reconnecting'];
+};
+
+type ChatMessageConnectionBannerFailedProps = {
+  failed: ChatMessageConnectionBannerParts['failed'];
+};
+
 type ChatMessageConnectionBannerContainerProps =
   | (ChatMessageConnectionBannerParts['reconnecting']['container']['props'] & {
     children: ReactNode;
@@ -11375,72 +11383,93 @@ export function ChatMessageConnectionBanner({
     styles,
   });
 
-  const reconnectingContent = connectionBannerParts.reconnecting.container.content;
+  return (
+    <>
+      <ChatMessageConnectionBannerReconnecting
+        reconnecting={connectionBannerParts.reconnecting}
+      />
+      <ChatMessageConnectionBannerFailed
+        failed={connectionBannerParts.failed}
+      />
+    </>
+  );
+}
+
+export function ChatMessageConnectionBannerReconnecting({
+  reconnecting,
+}: ChatMessageConnectionBannerReconnectingProps) {
+  if (!reconnecting.shouldRender) return null;
+
+  const reconnectingContent = reconnecting.container.content;
   const reconnectingBodyContent = reconnectingContent.body.content;
   const reconnectingTextContent = reconnectingBodyContent.textContainer.content;
-  const failedContent = connectionBannerParts.failed.container.content;
+
+  return (
+    <ChatMessageConnectionBannerContainer
+      {...reconnecting.container.props}
+    >
+      <ChatMessageConnectionBannerContent
+        {...reconnectingContent.body.props}
+      >
+        <ChatMessageConnectionBannerSpinner
+          {...reconnectingBodyContent.spinner.props}
+        />
+        <ChatMessageConnectionBannerTextContainer
+          {...reconnectingBodyContent.textContainer.props}
+        >
+          <ChatMessageConnectionBannerText
+            {...reconnectingTextContent.title.props}
+          />
+          {reconnectingTextContent.subtitle.shouldRender ? (
+            <ChatMessageConnectionBannerText
+              {...reconnectingTextContent.subtitle.props}
+            />
+          ) : null}
+        </ChatMessageConnectionBannerTextContainer>
+      </ChatMessageConnectionBannerContent>
+    </ChatMessageConnectionBannerContainer>
+  );
+}
+
+export function ChatMessageConnectionBannerFailed({
+  failed,
+}: ChatMessageConnectionBannerFailedProps) {
+  if (!failed.shouldRender) return null;
+
+  const failedContent = failed.container.content;
   const failedBodyContent = failedContent.body.content;
   const failedTextContent = failedBodyContent.textContainer.content;
   const failedRetryButtonContent = failedBodyContent.retryButton.content;
 
   return (
-    <>
-      {connectionBannerParts.reconnecting.shouldRender ? (
-        <ChatMessageConnectionBannerContainer
-          {...connectionBannerParts.reconnecting.container.props}
+    <ChatMessageConnectionBannerContainer
+      {...failed.container.props}
+    >
+      <ChatMessageConnectionBannerContent
+        {...failedContent.body.props}
+      >
+        <ChatMessageConnectionBannerIcon
+          {...failedBodyContent.icon.props}
+        />
+        <ChatMessageConnectionBannerTextContainer
+          {...failedBodyContent.textContainer.props}
         >
-          <ChatMessageConnectionBannerContent
-            {...reconnectingContent.body.props}
-          >
-            <ChatMessageConnectionBannerSpinner
-              {...reconnectingBodyContent.spinner.props}
-            />
-            <ChatMessageConnectionBannerTextContainer
-              {...reconnectingBodyContent.textContainer.props}
-            >
-              <ChatMessageConnectionBannerText
-                {...reconnectingTextContent.title.props}
-              />
-              {reconnectingTextContent.subtitle.shouldRender ? (
-                <ChatMessageConnectionBannerText
-                  {...reconnectingTextContent.subtitle.props}
-                />
-              ) : null}
-            </ChatMessageConnectionBannerTextContainer>
-          </ChatMessageConnectionBannerContent>
-        </ChatMessageConnectionBannerContainer>
-      ) : null}
-      {connectionBannerParts.failed.shouldRender ? (
-        <ChatMessageConnectionBannerContainer
-          {...connectionBannerParts.failed.container.props}
+          <ChatMessageConnectionBannerText
+            {...failedTextContent.title.props}
+          />
+          <ChatMessageConnectionBannerText
+            {...failedTextContent.subtitle.props}
+          />
+        </ChatMessageConnectionBannerTextContainer>
+        <ChatMessageConnectionBannerRetryButton
+          {...failedBodyContent.retryButton.props}
         >
-          <ChatMessageConnectionBannerContent
-            {...failedContent.body.props}
-          >
-            <ChatMessageConnectionBannerIcon
-              {...failedBodyContent.icon.props}
-            />
-            <ChatMessageConnectionBannerTextContainer
-              {...failedBodyContent.textContainer.props}
-            >
-              <ChatMessageConnectionBannerText
-                {...failedTextContent.title.props}
-              />
-              <ChatMessageConnectionBannerText
-                {...failedTextContent.subtitle.props}
-              />
-            </ChatMessageConnectionBannerTextContainer>
-            <ChatMessageConnectionBannerRetryButton
-              {...failedBodyContent.retryButton.props}
-            >
-              <ChatMessageConnectionBannerText
-                {...failedRetryButtonContent.label.props}
-              />
-            </ChatMessageConnectionBannerRetryButton>
-          </ChatMessageConnectionBannerContent>
-        </ChatMessageConnectionBannerContainer>
-      ) : null}
-    </>
+          <ChatMessageConnectionBannerText
+            {...failedRetryButtonContent.label.props}
+          />
+        </ChatMessageConnectionBannerRetryButton>
+      </ChatMessageConnectionBannerContent>
+    </ChatMessageConnectionBannerContainer>
   );
 }
 
