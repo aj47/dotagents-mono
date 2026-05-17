@@ -6807,19 +6807,21 @@ export interface ChatRuntimeRetryStatusMobilePropsParts<
     props: {
       style: TStyles["header"]
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
-  }
-  title: {
-    props: {
-      style: TStyles["title"]
-      numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
-      text: string
+    content: {
+      icon: {
+        props: TRenderState["icon"]
+      }
+      title: {
+        props: {
+          style: TStyles["title"]
+          numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
+          text: string
+        }
+      }
+      spinner: {
+        props: TRenderState["spinner"]
+      }
     }
-  }
-  spinner: {
-    props: TRenderState["spinner"]
   }
   meta: {
     props: {
@@ -24017,19 +24019,21 @@ export function createChatRuntimeRetryStatusMobilePropsParts<
       props: {
         style: styles.header,
       },
-    },
-    icon: {
-      props: renderState.icon,
-    },
-    title: {
-      props: {
-        style: styles.title,
-        numberOfLines: renderState.surface.titleNumberOfLines,
-        text: renderState.title,
+      content: {
+        icon: {
+          props: renderState.icon,
+        },
+        title: {
+          props: {
+            style: styles.title,
+            numberOfLines: renderState.surface.titleNumberOfLines,
+            text: renderState.title,
+          },
+        },
+        spinner: {
+          props: renderState.spinner,
+        },
       },
-    },
-    spinner: {
-      props: renderState.spinner,
     },
     meta: {
       props: {

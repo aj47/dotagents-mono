@@ -935,7 +935,7 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(chatMessageChromeSource, /if \(!retryStatusParts\.shouldRenderRetryStatus\) return null;/);
   assert.match(sessionPresentationSource, /card: \{[\s\S]*?props: \{[\s\S]*?accessible: true,[\s\S]*?accessibilityRole: renderState\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.accessibilityLabel,[\s\S]*?style: styles\.card,/);
   assert.match(sessionPresentationSource, /header: \{[\s\S]*?props: \{[\s\S]*?style: styles\.header,/);
-  assert.match(sessionPresentationSource, /icon: \{[\s\S]*?props: renderState\.icon,/);
+  assert.match(sessionPresentationSource, /content: \{[\s\S]*?icon: \{[\s\S]*?props: renderState\.icon,/);
   assert.match(sessionPresentationSource, /title: \{[\s\S]*?props: \{[\s\S]*?style: styles\.title,[\s\S]*?numberOfLines: renderState\.surface\.titleNumberOfLines,[\s\S]*?text: renderState\.title,/);
   assert.match(sessionPresentationSource, /spinner: \{[\s\S]*?props: renderState\.spinner,/);
   assert.match(sessionPresentationSource, /meta: \{[\s\S]*?props: \{[\s\S]*?style: styles\.metaRow,/);
@@ -944,9 +944,10 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(sessionPresentationSource, /description: \{[\s\S]*?props: \{[\s\S]*?style: styles\.description,[\s\S]*?text: renderState\.description,/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusCard\s+\{\.\.\.retryStatusParts\.card\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusView\s+\{\.\.\.retryStatusParts\.header\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusIcon\s+\{\.\.\.retryStatusParts\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusTitle\s+\{\.\.\.retryStatusParts\.title\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusSpinner\s+\{\.\.\.retryStatusParts\.spinner\.props\}/);
+  assert.match(chatMessageChromeSource, /const headerContent = retryStatusParts\.header\.content;/);
+  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusIcon\s+\{\.\.\.headerContent\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusTitle\s+\{\.\.\.headerContent\.title\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusSpinner\s+\{\.\.\.headerContent\.spinner\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusView\s+\{\.\.\.retryStatusParts\.meta\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.retryStatusParts\.attempt\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.retryStatusParts\.countdown\.props\}/);
@@ -962,6 +963,7 @@ test('shows desktop-style retry status updates from shared runtime presentation'
     /accessible=\{accessible\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|style=\{style\}|name=\{name\}|size=\{size\}|color=\{color\}|numberOfLines=\{numberOfLines\}/
   );
   assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.(card|header|icon|title|spinner|meta|attempt|countdown|description)\.(accessible|accessibilityRole|accessibilityLabel|style|name|size|color|numberOfLines|text)/);
+  assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.(icon|title|spinner)\.props/);
   assert.match(sessionPresentationSource, /shouldRenderRetryStatus: renderState\.shouldRender/);
   assert.doesNotMatch(
     chatMessageChromeSource,

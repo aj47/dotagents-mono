@@ -1688,13 +1688,13 @@ type ChatMessageRetryStatusViewProps =
   };
 
 type ChatMessageRetryStatusIconProps =
-  ChatMessageRetryStatusParts['icon']['props'];
+  ChatMessageRetryStatusParts['header']['content']['icon']['props'];
 
 type ChatMessageRetryStatusTitleProps =
-  ChatMessageRetryStatusParts['title']['props'];
+  ChatMessageRetryStatusParts['header']['content']['title']['props'];
 
 type ChatMessageRetryStatusSpinnerProps =
-  ChatMessageRetryStatusParts['spinner']['props'];
+  ChatMessageRetryStatusParts['header']['content']['spinner']['props'];
 
 type ChatMessageRetryStatusTextProps =
   | ChatMessageRetryStatusParts['attempt']['props']
@@ -8228,6 +8228,8 @@ export function ChatMessageRetryStatus({
 
   if (!retryStatusParts.shouldRenderRetryStatus) return null;
 
+  const headerContent = retryStatusParts.header.content;
+
   return (
     <ChatMessageRetryStatusCard
       {...retryStatusParts.card.props}
@@ -8236,13 +8238,13 @@ export function ChatMessageRetryStatus({
         {...retryStatusParts.header.props}
       >
         <ChatMessageRetryStatusIcon
-          {...retryStatusParts.icon.props}
+          {...headerContent.icon.props}
         />
         <ChatMessageRetryStatusTitle
-          {...retryStatusParts.title.props}
+          {...headerContent.title.props}
         />
         <ChatMessageRetryStatusSpinner
-          {...retryStatusParts.spinner.props}
+          {...headerContent.spinner.props}
         />
       </ChatMessageRetryStatusView>
       <ChatMessageRetryStatusView

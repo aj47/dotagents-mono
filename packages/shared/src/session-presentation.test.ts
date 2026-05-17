@@ -4665,25 +4665,27 @@ describe("session presentation semantics", () => {
         props: {
           style: "retry-header-style",
         },
-      },
-      icon: {
-        props: {
-          name: "time-outline",
-          size: 14,
-          color: "#d97706",
-        },
-      },
-      title: {
-        props: {
-          style: "retry-title-style",
-          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.retryStatus.titleNumberOfLines,
-          text: "Rate limit reached",
-        },
-      },
-      spinner: {
-        props: {
-          size: "small",
-          color: "#d97706",
+        content: {
+          icon: {
+            props: {
+              name: "time-outline",
+              size: 14,
+              color: "#d97706",
+            },
+          },
+          title: {
+            props: {
+              style: "retry-title-style",
+              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.retryStatus.titleNumberOfLines,
+              text: "Rate limit reached",
+            },
+          },
+          spinner: {
+            props: {
+              size: "small",
+              color: "#d97706",
+            },
+          },
         },
       },
       meta: {
