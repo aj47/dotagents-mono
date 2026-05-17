@@ -19,6 +19,7 @@ import {
   getAgentResponseHistoryNewestFadeDurationMs,
   getAgentResponseHistoryNewestInitialOpacity,
   getAgentResponseHistoryNewestTimestamp,
+  getAgentResponseHistoryNewestUseNativeDriver,
   getAgentResponseHistoryPanelState,
   getAgentResponseHistoryRenderItems,
   getAgentResponseHistorySpeechActionState,
@@ -38,14 +39,17 @@ describe('agent-user-response-store', () => {
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.animation.newestFadeDurationMs).toBe(300);
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.animation.newestInitialOpacity).toBe(0);
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.animation.visibleOpacity).toBe(1);
+    expect(AGENT_RESPONSE_HISTORY_PRESENTATION.animation.newestUseNativeDriver).toBe(true);
     expect(getAgentResponseHistoryTitle()).toBe('Agent Responses');
     expect(getAgentResponseHistoryNewestFadeDurationMs()).toBe(300);
     expect(getAgentResponseHistoryNewestInitialOpacity()).toBe(0);
     expect(getAgentResponseHistoryVisibleOpacity()).toBe(1);
+    expect(getAgentResponseHistoryNewestUseNativeDriver()).toBe(true);
     expect(getAgentResponseHistoryMobileAnimationState()).toEqual({
       newestInitialOpacity: 0,
       visibleOpacity: 1,
       newestFadeDurationMs: 300,
+      newestUseNativeDriver: true,
     });
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.headerName).toBe('chatbubbles-outline');
     expect(AGENT_RESPONSE_HISTORY_PRESENTATION.mobileIcon.expandName).toBe('chevron-down');
@@ -454,6 +458,7 @@ describe('agent-user-response-store', () => {
         newestInitialOpacity: 0,
         visibleOpacity: 1,
         newestFadeDurationMs: 300,
+        newestUseNativeDriver: true,
       },
     });
     expect(getAgentResponseHistoryMobileRenderState({

@@ -66,10 +66,16 @@ function AnimatedResponseItem({
       Animated.timing(fadeAnim, {
         toValue: animation.visibleOpacity,
         duration: animation.newestFadeDurationMs,
-        useNativeDriver: true,
+        useNativeDriver: animation.newestUseNativeDriver,
       }).start();
     }
-  }, [animation.newestFadeDurationMs, animation.visibleOpacity, fadeAnim, isNewest]);
+  }, [
+    animation.newestFadeDurationMs,
+    animation.newestUseNativeDriver,
+    animation.visibleOpacity,
+    fadeAnim,
+    isNewest,
+  ]);
 
   return (
     <Animated.View style={animatedStyle}>

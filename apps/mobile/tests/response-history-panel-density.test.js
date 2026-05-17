@@ -59,6 +59,8 @@ test('mobile response history panel reads compact sizing from shared surface tok
   assert.match(source, /const animatedStyle = useMemo\(\(\) => \(\{ opacity: fadeAnim \}\), \[fadeAnim\]\);/);
   assert.match(source, /duration: animation\.newestFadeDurationMs/);
   assert.match(source, /toValue: animation\.visibleOpacity/);
+  assert.match(source, /useNativeDriver: animation\.newestUseNativeDriver/);
+  assert.doesNotMatch(source, /useNativeDriver: true/);
   assert.match(source, /<Animated\.View style=\{animatedStyle\}>/);
   assert.match(source, /import \{ spacing, radius \} from '\.\/theme';/);
   assert.match(source, /const responseHistoryStyleSlots = createAgentResponseHistoryMobileStyleSlots\(\{\s+renderState: responseHistoryRenderState,\s+spacing,\s+radius,\s+\}\);/);

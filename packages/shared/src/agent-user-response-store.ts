@@ -85,6 +85,7 @@ export const AGENT_RESPONSE_HISTORY_PRESENTATION = {
     newestInitialOpacity: 0,
     visibleOpacity: 1,
     newestFadeDurationMs: 300,
+    newestUseNativeDriver: true,
   },
 } as const;
 
@@ -254,6 +255,7 @@ export interface AgentResponseHistoryMobileAnimationState {
   newestInitialOpacity: number;
   visibleOpacity: number;
   newestFadeDurationMs: number;
+  newestUseNativeDriver: boolean;
 }
 
 export interface AgentResponseHistoryMobileRenderStateInput<T extends { id?: string | null; text: string; timestamp: number }>
@@ -557,11 +559,16 @@ export function getAgentResponseHistoryVisibleOpacity(): number {
   return AGENT_RESPONSE_HISTORY_PRESENTATION.animation.visibleOpacity;
 }
 
+export function getAgentResponseHistoryNewestUseNativeDriver(): boolean {
+  return AGENT_RESPONSE_HISTORY_PRESENTATION.animation.newestUseNativeDriver;
+}
+
 export function getAgentResponseHistoryMobileAnimationState(): AgentResponseHistoryMobileAnimationState {
   return {
     newestInitialOpacity: getAgentResponseHistoryNewestInitialOpacity(),
     visibleOpacity: getAgentResponseHistoryVisibleOpacity(),
     newestFadeDurationMs: getAgentResponseHistoryNewestFadeDurationMs(),
+    newestUseNativeDriver: getAgentResponseHistoryNewestUseNativeDriver(),
   };
 }
 
