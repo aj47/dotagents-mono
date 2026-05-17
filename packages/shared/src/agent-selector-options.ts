@@ -349,6 +349,169 @@ export interface AgentSelectorMobileSurfaceColors {
   }
 }
 
+type AgentSelectorMobileSurface = typeof AGENT_SELECTOR_PRESENTATION.mobile
+
+export type AgentSelectorMobileStyleSpacingToken =
+  | AgentSelectorMobileSurface["sheet"]["paddingHorizontal"]
+  | AgentSelectorMobileSurface["sheet"]["paddingTop"]
+  | AgentSelectorMobileSurface["sheet"]["bottomPadding"]
+  | AgentSelectorMobileSurface["handle"]["marginBottom"]
+  | AgentSelectorMobileSurface["header"]["gap"]
+  | AgentSelectorMobileSurface["header"]["marginBottom"]
+  | AgentSelectorMobileSurface["headerCloseButton"]["paddingHorizontal"]
+  | AgentSelectorMobileSurface["headerCloseButton"]["paddingVertical"]
+  | AgentSelectorMobileSurface["headerCloseButton"]["negativeMarginRight"]
+  | AgentSelectorMobileSurface["profileItem"]["gap"]
+  | AgentSelectorMobileSurface["profileItem"]["paddingVertical"]
+  | AgentSelectorMobileSurface["profileItem"]["paddingHorizontal"]
+  | AgentSelectorMobileSurface["profileItem"]["marginBottom"]
+  | AgentSelectorMobileSurface["loadingContainer"]["paddingVertical"]
+  | AgentSelectorMobileSurface["loadingContainer"]["gap"]
+  | AgentSelectorMobileSurface["errorContainer"]["paddingVertical"]
+  | AgentSelectorMobileSurface["errorContainer"]["gap"]
+  | AgentSelectorMobileSurface["retryButton"]["paddingHorizontal"]
+  | AgentSelectorMobileSurface["retryButton"]["paddingVertical"]
+  | AgentSelectorMobileSurface["emptyText"]["paddingVertical"]
+
+export type AgentSelectorMobileStyleRadiusToken =
+  | AgentSelectorMobileSurface["sheet"]["borderTopRadius"]
+  | AgentSelectorMobileSurface["headerCloseButton"]["borderRadius"]
+  | AgentSelectorMobileSurface["profileItem"]["borderRadius"]
+  | AgentSelectorMobileSurface["avatar"]["borderRadius"]
+
+export interface AgentSelectorMobileStyleSlotsInput {
+  renderState: Pick<AgentSelectorMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<AgentSelectorMobileStyleSpacingToken, number>>
+  radius: Readonly<Record<AgentSelectorMobileStyleRadiusToken, number>>
+}
+
+export interface AgentSelectorMobileStyleSlots {
+  backdrop: {
+    flex: number
+    backgroundColor: string
+  }
+  backdropSpacer: {
+    flex: number
+  }
+  sheet: {
+    backgroundColor: string
+    borderTopLeftRadius: number
+    borderTopRightRadius: number
+    paddingHorizontal: number
+    paddingTop: number
+    paddingBottom: number
+    maxHeight: AgentSelectorMobileSurface["sheet"]["maxHeight"]
+  }
+  handle: {
+    width: number
+    height: number
+    backgroundColor: string
+    borderRadius: number
+    alignSelf: AgentSelectorMobileSurface["handle"]["alignSelf"]
+    marginBottom: number
+  }
+  header: {
+    flexDirection: AgentSelectorMobileSurface["header"]["flexDirection"]
+    alignItems: AgentSelectorMobileSurface["header"]["alignItems"]
+    gap: number
+    marginBottom: number
+  }
+  title: {
+    flex: number
+    minWidth: number
+    fontSize: number
+    fontWeight: AgentSelectorMobileSurface["title"]["fontWeight"]
+    lineHeight: number
+    color: string
+  }
+  headerCloseButton: {
+    width: number
+    height: number
+    borderRadius: number
+    alignItems: AgentSelectorMobileSurface["headerCloseButton"]["alignItems"]
+    justifyContent: AgentSelectorMobileSurface["headerCloseButton"]["justifyContent"]
+    paddingHorizontal: number
+    paddingVertical: number
+    marginRight: number
+  }
+  list: {
+    maxHeight: number
+  }
+  profileItem: {
+    flexDirection: AgentSelectorMobileSurface["profileItem"]["flexDirection"]
+    alignItems: AgentSelectorMobileSurface["profileItem"]["alignItems"]
+    justifyContent: AgentSelectorMobileSurface["profileItem"]["justifyContent"]
+    gap: number
+    paddingVertical: number
+    paddingHorizontal: number
+    borderRadius: number
+    marginBottom: number
+  }
+  profileItemSelected: {
+    backgroundColor: string
+  }
+  profileAvatar: {
+    width: number
+    height: number
+    borderRadius: number
+    alignItems: AgentSelectorMobileSurface["avatar"]["alignItems"]
+    justifyContent: AgentSelectorMobileSurface["avatar"]["justifyContent"]
+    overflow: AgentSelectorMobileSurface["avatar"]["overflow"]
+    flexShrink: number
+  }
+  profileAvatarImage: {
+    width: AgentSelectorMobileSurface["avatarImage"]["width"]
+    height: AgentSelectorMobileSurface["avatarImage"]["height"]
+  }
+  profileInfo: {
+    flex: number
+    minWidth: number
+  }
+  profileName: {
+    fontSize: number
+    fontWeight: AgentSelectorMobileSurface["profileName"]["fontWeight"]
+    color: string
+  }
+  profileNameSelected: {
+    color: string
+    fontWeight: AgentSelectorMobileSurface["profileName"]["selectedFontWeight"]
+  }
+  profileDescription: {
+    fontSize: number
+    color: string
+    marginTop: number
+  }
+  loadingContainer: {
+    alignItems: AgentSelectorMobileSurface["loadingContainer"]["alignItems"]
+    paddingVertical: number
+    gap: number
+  }
+  loadingText: {
+    color: string
+  }
+  errorContainer: {
+    alignItems: AgentSelectorMobileSurface["errorContainer"]["alignItems"]
+    paddingVertical: number
+    gap: number
+  }
+  errorText: {
+    color: string
+  }
+  retryButton: {
+    paddingHorizontal: number
+    paddingVertical: number
+  }
+  retryButtonText: {
+    color: string
+    fontWeight: AgentSelectorMobileSurface["retryButtonText"]["fontWeight"]
+  }
+  emptyText: {
+    textAlign: AgentSelectorMobileSurface["emptyText"]["textAlign"]
+    color: string
+    paddingVertical: number
+  }
+}
+
 export function getAgentSelectorSheetCopyState(): typeof AGENT_SELECTOR_PRESENTATION.sheet {
   return AGENT_SELECTOR_PRESENTATION.sheet
 }
@@ -461,6 +624,142 @@ export function getAgentSelectorMobileRenderState({
         size: closeIcon.size,
         color: surfaceColors.headerCloseIcon.color,
       },
+    },
+  }
+}
+
+export function createAgentSelectorMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: AgentSelectorMobileStyleSlotsInput): AgentSelectorMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    backdrop: {
+      flex: 1,
+      backgroundColor: colors.backdrop.backgroundColor,
+    },
+    backdropSpacer: {
+      flex: surface.backdropSpacer.flex,
+    },
+    sheet: {
+      backgroundColor: colors.sheet.backgroundColor,
+      borderTopLeftRadius: radius[surface.sheet.borderTopRadius],
+      borderTopRightRadius: radius[surface.sheet.borderTopRadius],
+      paddingHorizontal: spacing[surface.sheet.paddingHorizontal],
+      paddingTop: spacing[surface.sheet.paddingTop],
+      paddingBottom: spacing[surface.sheet.bottomPadding],
+      maxHeight: surface.sheet.maxHeight,
+    },
+    handle: {
+      width: surface.handle.width,
+      height: surface.handle.height,
+      backgroundColor: colors.handle.backgroundColor,
+      borderRadius: surface.handle.borderRadius,
+      alignSelf: surface.handle.alignSelf,
+      marginBottom: spacing[surface.handle.marginBottom],
+    },
+    header: {
+      flexDirection: surface.header.flexDirection,
+      alignItems: surface.header.alignItems,
+      gap: spacing[surface.header.gap],
+      marginBottom: spacing[surface.header.marginBottom],
+    },
+    title: {
+      flex: surface.title.flex,
+      minWidth: surface.title.minWidth,
+      fontSize: surface.title.fontSize,
+      fontWeight: surface.title.fontWeight,
+      lineHeight: surface.title.lineHeight,
+      color: colors.title.color,
+    },
+    headerCloseButton: {
+      width: surface.headerCloseButton.width,
+      height: surface.headerCloseButton.height,
+      borderRadius: radius[surface.headerCloseButton.borderRadius],
+      alignItems: surface.headerCloseButton.alignItems,
+      justifyContent: surface.headerCloseButton.justifyContent,
+      paddingHorizontal: spacing[surface.headerCloseButton.paddingHorizontal],
+      paddingVertical: spacing[surface.headerCloseButton.paddingVertical],
+      marginRight: -spacing[surface.headerCloseButton.negativeMarginRight],
+    },
+    list: {
+      maxHeight: surface.list.maxHeight,
+    },
+    profileItem: {
+      flexDirection: surface.profileItem.flexDirection,
+      alignItems: surface.profileItem.alignItems,
+      justifyContent: surface.profileItem.justifyContent,
+      gap: spacing[surface.profileItem.gap],
+      paddingVertical: spacing[surface.profileItem.paddingVertical],
+      paddingHorizontal: spacing[surface.profileItem.paddingHorizontal],
+      borderRadius: radius[surface.profileItem.borderRadius],
+      marginBottom: spacing[surface.profileItem.marginBottom],
+    },
+    profileItemSelected: {
+      backgroundColor: colors.profileItem.selectedBackgroundColor,
+    },
+    profileAvatar: {
+      width: surface.avatar.size,
+      height: surface.avatar.size,
+      borderRadius: radius[surface.avatar.borderRadius],
+      alignItems: surface.avatar.alignItems,
+      justifyContent: surface.avatar.justifyContent,
+      overflow: surface.avatar.overflow,
+      flexShrink: surface.avatar.flexShrink,
+    },
+    profileAvatarImage: {
+      width: surface.avatarImage.width,
+      height: surface.avatarImage.height,
+    },
+    profileInfo: {
+      flex: surface.profileInfo.flex,
+      minWidth: surface.profileInfo.minWidth,
+    },
+    profileName: {
+      fontSize: surface.profileName.fontSize,
+      fontWeight: surface.profileName.fontWeight,
+      color: colors.profileName.color,
+    },
+    profileNameSelected: {
+      color: colors.profileName.selectedColor,
+      fontWeight: surface.profileName.selectedFontWeight,
+    },
+    profileDescription: {
+      fontSize: surface.profileDescription.fontSize,
+      color: colors.profileDescription.color,
+      marginTop: surface.profileDescription.marginTop,
+    },
+    loadingContainer: {
+      alignItems: surface.loadingContainer.alignItems,
+      paddingVertical: spacing[surface.loadingContainer.paddingVertical],
+      gap: spacing[surface.loadingContainer.gap],
+    },
+    loadingText: {
+      color: colors.loadingText.color,
+    },
+    errorContainer: {
+      alignItems: surface.errorContainer.alignItems,
+      paddingVertical: spacing[surface.errorContainer.paddingVertical],
+      gap: spacing[surface.errorContainer.gap],
+    },
+    errorText: {
+      color: colors.errorText.color,
+    },
+    retryButton: {
+      paddingHorizontal: spacing[surface.retryButton.paddingHorizontal],
+      paddingVertical: spacing[surface.retryButton.paddingVertical],
+    },
+    retryButtonText: {
+      color: colors.retryButtonText.color,
+      fontWeight: surface.retryButtonText.fontWeight,
+    },
+    emptyText: {
+      textAlign: surface.emptyText.textAlign,
+      color: colors.emptyText.color,
+      paddingVertical: spacing[surface.emptyText.paddingVertical],
     },
   }
 }

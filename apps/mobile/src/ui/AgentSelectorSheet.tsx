@@ -24,10 +24,9 @@ import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi
 import { useProfile } from '../store/profile';
 import {
   buildSelectorProfiles,
+  createAgentSelectorMobileStyleSlots,
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
-  type AgentSelectorMobileRenderState,
-  type AgentSelectorMobileSurfaceColors,
   type SelectableAgentProfile as SelectableProfile,
 } from '@dotagents/shared/agent-selector-options';
 
@@ -58,9 +57,87 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const agentSelectorSurface = agentSelectorRenderState.surface;
   const agentSelectorColors = agentSelectorRenderState.colors;
   const agentSelectorCloseButton = agentSelectorRenderState.closeButton;
+  const agentSelectorStyleSlots = React.useMemo(
+    () => createAgentSelectorMobileStyleSlots({
+      renderState: agentSelectorRenderState,
+      spacing,
+      radius,
+    }),
+    [agentSelectorRenderState],
+  );
   const styles = React.useMemo(
-    () => createStyles(agentSelectorSurface, agentSelectorColors),
-    [agentSelectorColors, agentSelectorSurface],
+    () => StyleSheet.create({
+      backdrop: {
+        ...agentSelectorStyleSlots.backdrop,
+      },
+      backdropSpacer: {
+        ...agentSelectorStyleSlots.backdropSpacer,
+      },
+      sheet: {
+        ...agentSelectorStyleSlots.sheet,
+      },
+      handle: {
+        ...agentSelectorStyleSlots.handle,
+      },
+      header: {
+        ...agentSelectorStyleSlots.header,
+      },
+      title: {
+        ...agentSelectorStyleSlots.title,
+      },
+      headerCloseButton: {
+        ...agentSelectorStyleSlots.headerCloseButton,
+      },
+      list: {
+        ...agentSelectorStyleSlots.list,
+      },
+      profileItem: {
+        ...agentSelectorStyleSlots.profileItem,
+      },
+      profileItemSelected: {
+        ...agentSelectorStyleSlots.profileItemSelected,
+      },
+      profileAvatar: {
+        ...agentSelectorStyleSlots.profileAvatar,
+      },
+      profileAvatarImage: {
+        ...agentSelectorStyleSlots.profileAvatarImage,
+      },
+      profileInfo: {
+        ...agentSelectorStyleSlots.profileInfo,
+      },
+      profileName: {
+        ...agentSelectorStyleSlots.profileName,
+      },
+      profileNameSelected: {
+        ...agentSelectorStyleSlots.profileNameSelected,
+      },
+      profileDescription: {
+        ...agentSelectorStyleSlots.profileDescription,
+      },
+      loadingContainer: {
+        ...agentSelectorStyleSlots.loadingContainer,
+      },
+      loadingText: {
+        ...agentSelectorStyleSlots.loadingText,
+      },
+      errorContainer: {
+        ...agentSelectorStyleSlots.errorContainer,
+      },
+      errorText: {
+        ...agentSelectorStyleSlots.errorText,
+      },
+      retryButton: {
+        ...agentSelectorStyleSlots.retryButton,
+      },
+      retryButtonText: {
+        ...agentSelectorStyleSlots.retryButtonText,
+      },
+      emptyText: {
+        ...agentSelectorStyleSlots.emptyText,
+      },
+    }),
+    [agentSelectorStyleSlots],
   );
   const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
   const missingConfigError = agentSelectorCopy.missingConfigError;
@@ -204,7 +281,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       <Pressable style={styles.backdrop} onPress={onClose}>
         <View style={styles.backdropSpacer} />
       </Pressable>
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[agentSelectorSurface.sheet.bottomPadding] }]}>
+      <View style={[styles.sheet, { paddingBottom: insets.bottom + agentSelectorStyleSlots.sheet.paddingBottom }]}>
         <View style={styles.handle} />
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={agentSelectorSurface.title.numberOfLines}>
@@ -253,135 +330,4 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       </View>
     </Modal>
   );
-}
-
-function createStyles(
-  agentSelectorSurface: AgentSelectorMobileRenderState['surface'],
-  agentSelectorColors: AgentSelectorMobileSurfaceColors,
-) {
-  return StyleSheet.create({
-    backdrop: {
-      flex: 1,
-      backgroundColor: agentSelectorColors.backdrop.backgroundColor,
-    },
-    backdropSpacer: {
-      flex: agentSelectorSurface.backdropSpacer.flex,
-    },
-    sheet: {
-      backgroundColor: agentSelectorColors.sheet.backgroundColor,
-      borderTopLeftRadius: radius[agentSelectorSurface.sheet.borderTopRadius],
-      borderTopRightRadius: radius[agentSelectorSurface.sheet.borderTopRadius],
-      paddingHorizontal: spacing[agentSelectorSurface.sheet.paddingHorizontal],
-      paddingTop: spacing[agentSelectorSurface.sheet.paddingTop],
-      maxHeight: agentSelectorSurface.sheet.maxHeight,
-    },
-    handle: {
-      width: agentSelectorSurface.handle.width,
-      height: agentSelectorSurface.handle.height,
-      backgroundColor: agentSelectorColors.handle.backgroundColor,
-      borderRadius: agentSelectorSurface.handle.borderRadius,
-      alignSelf: agentSelectorSurface.handle.alignSelf,
-      marginBottom: spacing[agentSelectorSurface.handle.marginBottom],
-    },
-    header: {
-      flexDirection: agentSelectorSurface.header.flexDirection,
-      alignItems: agentSelectorSurface.header.alignItems,
-      gap: spacing[agentSelectorSurface.header.gap],
-      marginBottom: spacing[agentSelectorSurface.header.marginBottom],
-    },
-    title: {
-      flex: agentSelectorSurface.title.flex,
-      minWidth: agentSelectorSurface.title.minWidth,
-      fontSize: agentSelectorSurface.title.fontSize,
-      fontWeight: agentSelectorSurface.title.fontWeight,
-      lineHeight: agentSelectorSurface.title.lineHeight,
-      color: agentSelectorColors.title.color,
-    },
-    headerCloseButton: {
-      width: agentSelectorSurface.headerCloseButton.width,
-      height: agentSelectorSurface.headerCloseButton.height,
-      borderRadius: radius[agentSelectorSurface.headerCloseButton.borderRadius],
-      alignItems: agentSelectorSurface.headerCloseButton.alignItems,
-      justifyContent: agentSelectorSurface.headerCloseButton.justifyContent,
-      paddingHorizontal: spacing[agentSelectorSurface.headerCloseButton.paddingHorizontal],
-      paddingVertical: spacing[agentSelectorSurface.headerCloseButton.paddingVertical],
-      marginRight: -spacing[agentSelectorSurface.headerCloseButton.negativeMarginRight],
-    },
-    list: {
-      maxHeight: agentSelectorSurface.list.maxHeight,
-    },
-    profileItem: {
-      flexDirection: agentSelectorSurface.profileItem.flexDirection,
-      alignItems: agentSelectorSurface.profileItem.alignItems,
-      justifyContent: agentSelectorSurface.profileItem.justifyContent,
-      gap: spacing[agentSelectorSurface.profileItem.gap],
-      paddingVertical: spacing[agentSelectorSurface.profileItem.paddingVertical],
-      paddingHorizontal: spacing[agentSelectorSurface.profileItem.paddingHorizontal],
-      borderRadius: radius[agentSelectorSurface.profileItem.borderRadius],
-      marginBottom: spacing[agentSelectorSurface.profileItem.marginBottom],
-    },
-    profileItemSelected: {
-      backgroundColor: agentSelectorColors.profileItem.selectedBackgroundColor,
-    },
-    profileAvatar: {
-      width: agentSelectorSurface.avatar.size,
-      height: agentSelectorSurface.avatar.size,
-      borderRadius: radius[agentSelectorSurface.avatar.borderRadius],
-      alignItems: agentSelectorSurface.avatar.alignItems,
-      justifyContent: agentSelectorSurface.avatar.justifyContent,
-      overflow: agentSelectorSurface.avatar.overflow,
-      flexShrink: agentSelectorSurface.avatar.flexShrink,
-    },
-    profileAvatarImage: {
-      width: agentSelectorSurface.avatarImage.width,
-      height: agentSelectorSurface.avatarImage.height,
-    },
-    profileInfo: {
-      flex: agentSelectorSurface.profileInfo.flex,
-      minWidth: agentSelectorSurface.profileInfo.minWidth,
-    },
-    profileName: {
-      fontSize: agentSelectorSurface.profileName.fontSize,
-      fontWeight: agentSelectorSurface.profileName.fontWeight,
-      color: agentSelectorColors.profileName.color,
-    },
-    profileNameSelected: {
-      color: agentSelectorColors.profileName.selectedColor,
-      fontWeight: agentSelectorSurface.profileName.selectedFontWeight,
-    },
-    profileDescription: {
-      fontSize: agentSelectorSurface.profileDescription.fontSize,
-      color: agentSelectorColors.profileDescription.color,
-      marginTop: agentSelectorSurface.profileDescription.marginTop,
-    },
-    loadingContainer: {
-      alignItems: agentSelectorSurface.loadingContainer.alignItems,
-      paddingVertical: spacing[agentSelectorSurface.loadingContainer.paddingVertical],
-      gap: spacing[agentSelectorSurface.loadingContainer.gap],
-    },
-    loadingText: {
-      color: agentSelectorColors.loadingText.color,
-    },
-    errorContainer: {
-      alignItems: agentSelectorSurface.errorContainer.alignItems,
-      paddingVertical: spacing[agentSelectorSurface.errorContainer.paddingVertical],
-      gap: spacing[agentSelectorSurface.errorContainer.gap],
-    },
-    errorText: {
-      color: agentSelectorColors.errorText.color,
-    },
-    retryButton: {
-      paddingHorizontal: spacing[agentSelectorSurface.retryButton.paddingHorizontal],
-      paddingVertical: spacing[agentSelectorSurface.retryButton.paddingVertical],
-    },
-    retryButtonText: {
-      color: agentSelectorColors.retryButtonText.color,
-      fontWeight: agentSelectorSurface.retryButtonText.fontWeight,
-    },
-    emptyText: {
-      textAlign: agentSelectorSurface.emptyText.textAlign,
-      color: agentSelectorColors.emptyText.color,
-      paddingVertical: spacing[agentSelectorSurface.emptyText.paddingVertical],
-    },
-  });
 }

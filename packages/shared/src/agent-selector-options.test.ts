@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   AGENT_SELECTOR_PRESENTATION,
   buildSelectorProfiles,
+  createAgentSelectorMobileStyleSlots,
   formatAgentSelectorEditLabel,
   formatAgentSelectorSelectAccessibilityLabel,
   formatAgentSelectorSelectedAccessibilityLabel,
@@ -258,10 +259,11 @@ describe("agent selector option helpers", () => {
       },
     }
     expect(getAgentSelectorMobileSurfaceColors(agentSelectorPalette)).toEqual(agentSelectorSurfaceColors)
-    expect(getAgentSelectorMobileRenderState({
+    const agentSelectorRenderState = getAgentSelectorMobileRenderState({
       selectorMode: "profile",
       colors: agentSelectorPalette,
-    })).toEqual({
+    })
+    expect(agentSelectorRenderState).toEqual({
       copy: AGENT_SELECTOR_PRESENTATION.sheet,
       surface: AGENT_SELECTOR_PRESENTATION.mobile,
       colors: agentSelectorSurfaceColors,
@@ -276,6 +278,146 @@ describe("agent selector option helpers", () => {
           size: AGENT_SELECTOR_PRESENTATION.mobile.headerCloseIcon.size,
           color: "#737373",
         },
+      },
+    })
+    expect(createAgentSelectorMobileStyleSlots({
+      renderState: agentSelectorRenderState,
+      spacing: {
+        xs: 4,
+        sm: 8,
+        md: 12,
+        lg: 16,
+        xl: 24,
+      },
+      radius: {
+        md: 8,
+        lg: 12,
+        xl: 16,
+      },
+    })).toEqual({
+      backdrop: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
+      },
+      backdropSpacer: {
+        flex: 1,
+      },
+      sheet: {
+        backgroundColor: "#fafafa",
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        paddingHorizontal: 16,
+        paddingTop: 8,
+        paddingBottom: 12,
+        maxHeight: "60%",
+      },
+      handle: {
+        width: 36,
+        height: 4,
+        backgroundColor: "#d4d4d4",
+        borderRadius: 2,
+        alignSelf: "center",
+        marginBottom: 8,
+      },
+      header: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        marginBottom: 12,
+      },
+      title: {
+        flex: 1,
+        minWidth: 0,
+        fontSize: 18,
+        fontWeight: "600",
+        lineHeight: 22,
+        color: "#171717",
+      },
+      headerCloseButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 4,
+        paddingVertical: 4,
+        marginRight: -4,
+      },
+      list: {
+        maxHeight: 300,
+      },
+      profileItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderRadius: 12,
+        marginBottom: 4,
+      },
+      profileItemSelected: {
+        backgroundColor: "rgba(37, 99, 235, 0.12)",
+      },
+      profileAvatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        flexShrink: 0,
+      },
+      profileAvatarImage: {
+        width: "100%",
+        height: "100%",
+      },
+      profileInfo: {
+        flex: 1,
+        minWidth: 0,
+      },
+      profileName: {
+        fontSize: 16,
+        fontWeight: "500",
+        color: "#171717",
+      },
+      profileNameSelected: {
+        color: "#2563eb",
+        fontWeight: "600",
+      },
+      profileDescription: {
+        fontSize: 12,
+        color: "#737373",
+        marginTop: 2,
+      },
+      loadingContainer: {
+        alignItems: "center",
+        paddingVertical: 24,
+        gap: 8,
+      },
+      loadingText: {
+        color: "#737373",
+      },
+      errorContainer: {
+        alignItems: "center",
+        paddingVertical: 16,
+        gap: 8,
+      },
+      errorText: {
+        color: "#dc2626",
+      },
+      retryButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+      },
+      retryButtonText: {
+        color: "#2563eb",
+        fontWeight: "500",
+      },
+      emptyText: {
+        textAlign: "center",
+        color: "#737373",
+        paddingVertical: 16,
       },
     })
     expect(getAgentSelectorMobileRenderState({
