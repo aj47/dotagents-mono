@@ -2290,6 +2290,22 @@ type ChatMessageToolExecutionResultSectionProps = {
   styles: ChatMessageToolExecutionResultSectionStyles;
 };
 
+type ChatMessageToolExecutionResultSectionParts = ReturnType<typeof createChatRuntimeToolExecutionResultSectionMobilePropsParts<
+  ChatMessageToolExecutionResultSectionProps['payloadRenderState'],
+  ChatMessageToolExecutionResultSectionProps['resultBadge'],
+  ChatMessageToolExecutionResultSectionProps['copyButtonRenderState'],
+  ChatMessageToolExecutionResultSectionProps['onCopyPress'],
+  ChatMessageToolExecutionResultSectionProps['errorRenderState'],
+  ChatMessageToolExecutionResultSectionProps['errorCopyButtonRenderState'],
+  ChatMessageToolExecutionResultSectionProps['onErrorCopyPress'],
+  ChatMessageToolExecutionResultSectionProps['styles']
+>>;
+
+type ChatMessageToolExecutionResultSectionItemProps =
+  ChatMessageToolExecutionResultSectionParts['item']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolExecutionCallDetailInput = NonNullable<
   ChatRuntimeConversationToolExecutionDetailMobileRowState['input']
 >;
@@ -9733,7 +9749,9 @@ export function ChatMessageToolExecutionResultSection({
   });
 
   return (
-    <View style={resultSectionParts.itemStyle}>
+    <ChatMessageToolExecutionResultSectionItem
+      {...resultSectionParts.item.props}
+    >
       <ChatMessageToolExecutionResultHeader
         {...resultSectionParts.header}
       />
@@ -9745,6 +9763,17 @@ export function ChatMessageToolExecutionResultSection({
           {...resultSectionParts.errorBlock.props}
         />
       ) : null}
+    </ChatMessageToolExecutionResultSectionItem>
+  );
+}
+
+export function ChatMessageToolExecutionResultSectionItem({
+  style,
+  children,
+}: ChatMessageToolExecutionResultSectionItemProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
   );
 }

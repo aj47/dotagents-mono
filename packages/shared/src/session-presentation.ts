@@ -4286,7 +4286,11 @@ export interface ChatRuntimeToolExecutionResultSectionMobilePropsParts<
     errorBlock: unknown
   },
 > {
-  itemStyle: TStyles["item"]
+  item: {
+    props: {
+      style: TStyles["item"]
+    }
+  }
   header: {
     payloadRenderState: TPayloadRenderState
     resultBadge: TResultBadge
@@ -21355,7 +21359,11 @@ export function createChatRuntimeToolExecutionResultSectionMobilePropsParts<
   TStyles
 > {
   return {
-    itemStyle: styles.item,
+    item: {
+      props: {
+        style: styles.item,
+      },
+    },
     header: {
       payloadRenderState,
       resultBadge,

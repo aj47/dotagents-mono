@@ -13866,7 +13866,11 @@ describe("session presentation semantics", () => {
       },
     })
     expect(resultSectionParts).toEqual({
-      itemStyle: "result-item",
+      item: {
+        props: {
+          style: "result-item",
+        },
+      },
       header: {
         payloadRenderState: "result-payload-state",
         resultBadge: "success-badge",
