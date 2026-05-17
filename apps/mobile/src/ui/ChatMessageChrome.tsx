@@ -4104,58 +4104,26 @@ export function ChatMessageActionIconButton({
 }
 
 export function ChatMessageActionIconButtonPressable({
-  onPress,
-  disabled,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
-  accessibilityState,
-  'aria-expanded': ariaExpanded,
-  hitSlop,
-  style,
   children,
+  ...props
 }: ChatMessageActionIconButtonPressableProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={accessibilityState}
-      aria-expanded={ariaExpanded}
-      hitSlop={hitSlop}
-      style={style}
-    >
+    <Pressable {...props}>
       {children}
     </Pressable>
   );
 }
 
-export function ChatMessageActionIconButtonActivityIndicator({
-  size,
-  color,
-}: ChatMessageActionIconButtonActivityIndicatorProps) {
-  return (
-    <ActivityIndicator
-      size={size}
-      color={color}
-    />
-  );
+export function ChatMessageActionIconButtonActivityIndicator(
+  props: ChatMessageActionIconButtonActivityIndicatorProps
+) {
+  return <ActivityIndicator {...props} />;
 }
 
-export function ChatMessageActionIconButtonIcon({
-  name,
-  size,
-  color,
-}: ChatMessageActionIconButtonIconProps) {
-  return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
-  );
+export function ChatMessageActionIconButtonIcon(
+  props: ChatMessageActionIconButtonIconProps
+) {
+  return <Ionicons {...props} />;
 }
 
 function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {

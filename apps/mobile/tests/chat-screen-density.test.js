@@ -5761,15 +5761,19 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonIcon\s+\{\.\.\.actionIconButtonParts\.icon\.props\}/);
   assert.match(
     actionIconButtonSource,
-    /export function ChatMessageActionIconButtonPressable\([\s\S]*?onPress=\{onPress\}[\s\S]*?disabled=\{disabled\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?aria-expanded=\{ariaExpanded\}[\s\S]*?hitSlop=\{hitSlop\}[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageActionIconButtonActivityIndicator/
+    /export function ChatMessageActionIconButtonPressable\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageActionIconButtonPressableProps\) \{\s+return \(\s+<Pressable \{\.\.\.props\}>[\s\S]*?export function ChatMessageActionIconButtonActivityIndicator/
   );
   assert.match(
     actionIconButtonSource,
-    /export function ChatMessageActionIconButtonActivityIndicator\([\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatMessageActionIconButtonIcon/
+    /export function ChatMessageActionIconButtonActivityIndicator\(\s+props: ChatMessageActionIconButtonActivityIndicatorProps\s+\) \{\s+return <ActivityIndicator \{\.\.\.props\} \/>;\s+\}/
   );
   assert.match(
     actionIconButtonSource,
-    /export function ChatMessageActionIconButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?function renderChatMessageActionButton/
+    /export function ChatMessageActionIconButtonIcon\(\s+props: ChatMessageActionIconButtonIconProps\s+\) \{\s+return <Ionicons \{\.\.\.props\} \/>;\s+\}/
+  );
+  assert.doesNotMatch(
+    actionIconButtonSource,
+    /onPress=\{onPress\}|disabled=\{disabled\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\}|accessibilityState=\{accessibilityState\}|aria-expanded=\{ariaExpanded\}|hitSlop=\{hitSlop\}|style=\{style\}|size=\{size\}|color=\{color\}|name=\{name\}/
   );
   assert.doesNotMatch(
     actionIconButtonSource,
