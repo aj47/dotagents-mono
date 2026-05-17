@@ -13511,7 +13511,7 @@ describe("session presentation semantics", () => {
           accessibilityState: {
             expanded: false,
           },
-          ariaExpanded: false,
+          "aria-expanded": false,
           accessibilityHint: "Shows tool details",
         },
       },

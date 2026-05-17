@@ -9493,35 +9493,19 @@ export function ChatMessageToolExecutionCopyButton({
 }
 
 export function ChatMessageToolExecutionCopyButtonPressable({
-  onPress,
-  accessibilityRole,
-  accessibilityLabel,
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionCopyButtonPressableProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      style={style}
-    >
+    <Pressable {...props}>
       {children}
     </Pressable>
   );
 }
 
-export function ChatMessageToolExecutionCopyButtonIcon({
-  name,
-  size,
-  color,
-}: ChatMessageToolExecutionCopyButtonIconProps) {
+export function ChatMessageToolExecutionCopyButtonIcon(props: ChatMessageToolExecutionCopyButtonIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
@@ -9571,25 +9555,11 @@ export function ChatMessageToolExecutionDetailHeader({
 }
 
 export function ChatMessageToolExecutionDetailHeaderPressable({
-  onPress,
-  style,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityState,
-  ariaExpanded,
-  accessibilityHint,
   children,
+  ...props
 }: ChatMessageToolExecutionDetailHeaderPressableProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={style}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={accessibilityState}
-      aria-expanded={ariaExpanded}
-      accessibilityHint={accessibilityHint}
-    >
+    <Pressable {...props}>
       {children}
     </Pressable>
   );
@@ -9607,27 +9577,19 @@ export function ChatMessageToolExecutionDetailHeaderToolName({
 }
 
 export function ChatMessageToolExecutionDetailHeaderExpandHint({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionDetailHeaderExpandHintProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatMessageToolExecutionDetailHeaderIcon({
-  name,
-  size,
-  color,
-}: ChatMessageToolExecutionDetailHeaderIconProps) {
+export function ChatMessageToolExecutionDetailHeaderIcon(props: ChatMessageToolExecutionDetailHeaderIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
@@ -9669,11 +9631,11 @@ export function ChatMessageToolExecutionCallSection({
 }
 
 export function ChatMessageToolExecutionCallSectionContainer({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionCallSectionContainerProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
@@ -9703,35 +9665,19 @@ export function ChatMessageToolExecutionResultBadge({
 }
 
 export function ChatMessageToolExecutionResultBadgeContainer({
-  accessible,
-  accessibilityRole,
-  accessibilityLabel,
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionResultBadgeContainerProps) {
   return (
-    <View
-      accessible={accessible}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      style={style}
-    >
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatMessageToolExecutionResultBadgeIcon({
-  name,
-  size,
-  color,
-}: ChatMessageToolExecutionResultBadgeIconProps) {
+export function ChatMessageToolExecutionResultBadgeIcon(props: ChatMessageToolExecutionResultBadgeIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
@@ -9770,33 +9716,19 @@ export function ChatMessageToolExecutionPendingResult({
 }
 
 export function ChatMessageToolExecutionPendingResultContainer({
-  accessible,
-  accessibilityRole,
-  accessibilityLabel,
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionPendingResultContainerProps) {
   return (
-    <View
-      accessible={accessible}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      style={style}
-    >
+    <View {...props}>
       {children}
     </View>
   );
 }
 
-export function ChatMessageToolExecutionPendingResultSpinner({
-  size,
-  color,
-}: ChatMessageToolExecutionPendingResultSpinnerProps) {
+export function ChatMessageToolExecutionPendingResultSpinner(props: ChatMessageToolExecutionPendingResultSpinnerProps) {
   return (
-    <ActivityIndicator
-      size={size}
-      color={color}
-    />
+    <ActivityIndicator {...props} />
   );
 }
 
@@ -9880,11 +9812,11 @@ export function ChatMessageToolExecutionPayloadMeta({
 }
 
 export function ChatMessageToolExecutionPayloadMetaRow({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionPayloadMetaRowProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
@@ -9943,11 +9875,11 @@ export function ChatMessageToolExecutionResultHeader({
 }
 
 export function ChatMessageToolExecutionResultHeaderView({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionResultHeaderViewProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
@@ -10010,12 +9942,11 @@ export function ChatMessageToolExecutionPayloadPreview({
 }
 
 export function ChatMessageToolExecutionPayloadScroll({
-  style,
-  nestedScrollEnabled,
   children,
+  ...props
 }: ChatMessageToolExecutionPayloadScrollProps) {
   return (
-    <ScrollView style={style} nestedScrollEnabled={nestedScrollEnabled}>
+    <ScrollView {...props}>
       {children}
     </ScrollView>
   );
@@ -10075,11 +10006,11 @@ export function ChatMessageToolExecutionPayloadSection({
 }
 
 export function ChatMessageToolExecutionPayloadSectionView({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionPayloadSectionViewProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
@@ -10122,11 +10053,11 @@ export function ChatMessageToolExecutionErrorBlock({
 }
 
 export function ChatMessageToolExecutionErrorBlockView({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionErrorBlockViewProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );
@@ -10196,11 +10127,11 @@ export function ChatMessageToolExecutionResultSection({
 }
 
 export function ChatMessageToolExecutionResultSectionItem({
-  style,
   children,
+  ...props
 }: ChatMessageToolExecutionResultSectionItemProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );

@@ -3696,7 +3696,7 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
       accessibilityRole: TRenderState["accessibilityRole"]
       accessibilityLabel: string
       accessibilityState: TRenderState["accessibilityState"]
-      ariaExpanded: TRenderState["ariaExpanded"]
+      "aria-expanded": TRenderState["ariaExpanded"]
       accessibilityHint: string
     }
   }
@@ -21089,7 +21089,7 @@ export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
         accessibilityRole: renderState.accessibilityRole,
         accessibilityLabel: renderState.accessibilityLabel,
         accessibilityState: renderState.accessibilityState,
-        ariaExpanded: renderState.ariaExpanded,
+        "aria-expanded": renderState.ariaExpanded,
         accessibilityHint: renderState.accessibilityHint,
       },
     },

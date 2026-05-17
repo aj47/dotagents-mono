@@ -3992,6 +3992,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButtonPressable\s+\{\.\.\.copyButtonParts\.container\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButtonIcon\s+\{\.\.\.copyButtonParts\.icon\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButtonLabel\s+\{\.\.\.copyButtonParts\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCopyButtonPressable[\s\S]*?<Pressable\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCopyButtonIcon/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCopyButtonPressable[\s\S]*?(onPress=\{onPress\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionCopyButtonIcon/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCopyButtonIcon\(props: ChatMessageToolExecutionCopyButtonIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCopyButtonIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolExecutionCopyButtonLabel/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+onPress,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+style: \(\{ pressed \}\) => \[\s+styles\.button,\s+pressed && styles\.pressed,/);
   assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.text,\s+text: renderState\.label,/);
@@ -4013,6 +4017,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPendingResultContainer\s+\{\.\.\.pendingResultParts\.container\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPendingResultSpinner\s+\{\.\.\.pendingResultParts\.spinner\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPendingResultLabel\s+\{\.\.\.pendingResultParts\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPendingResultContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionPendingResultSpinner/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPendingResultContainer[\s\S]*?(accessible=\{accessible\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionPendingResultSpinner/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPendingResultSpinner\(props: ChatMessageToolExecutionPendingResultSpinnerProps\)[\s\S]*?<ActivityIndicator\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPendingResultSpinner[\s\S]*?(size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolExecutionPendingResultLabel/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+accessible: true,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+style: styles\.row,/);
   assert.match(sessionPresentationSource, /spinner: \{\s+props: renderState\.spinner,/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.text,\s+text: renderState\.label,/);
@@ -4102,6 +4110,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /const callSectionParts = createChatRuntimeToolExecutionCallSectionMobilePropsParts\(\{\s+renderState,\s+toolName,\s+onHeaderPress,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallSectionContainer\s+\{\.\.\.callSectionParts\.container\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeader\s+\{\.\.\.callSectionParts\.header\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSectionContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionResultBadge/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSectionContainer[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionResultBadge/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: styles\.section,/);
   assert.match(sessionPresentationSource, /header: \{\s+props: \{\s+renderState,\s+toolName,\s+onPress: onHeaderPress,\s+styles: styles\.header,/);
   assert.doesNotMatch(chatMessageChromeSource, /callSectionParts\.(container\.style|header\.(renderState|toolName|onPress|styles))/);
@@ -4118,8 +4128,14 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeaderExpandHint\s+\{\.\.\.detailHeaderParts\.expandHint\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeaderIcon\s+\{\.\.\.detailHeaderParts\.expandHint\.icon\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeaderExpandLabel\s+\{\.\.\.detailHeaderParts\.expandHint\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeaderPressable[\s\S]*?<Pressable\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionDetailHeaderToolName/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeaderPressable[\s\S]*?(onPress=\{onPress\}|style=\{style\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityState=\{accessibilityState\}|aria-expanded=\{ariaExpanded\}|accessibilityHint=\{accessibilityHint\})[\s\S]*?export function ChatMessageToolExecutionDetailHeaderToolName/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeaderExpandHint[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionDetailHeaderIcon/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeaderExpandHint[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionDetailHeaderIcon/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeaderIcon\(props: ChatMessageToolExecutionDetailHeaderIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeaderIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolExecutionDetailHeaderExpandLabel/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+onPress,\s+style: \(\{ pressed \}\) => \[\s+styles\.header,\s+pressed && styles\.headerPressed,/);
-  assert.match(sessionPresentationSource, /accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityState: renderState\.accessibilityState,\s+ariaExpanded: renderState\.ariaExpanded,\s+accessibilityHint: renderState\.accessibilityHint,/);
+  assert.match(sessionPresentationSource, /accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-expanded": renderState\.ariaExpanded,\s+accessibilityHint: renderState\.accessibilityHint,/);
   assert.match(sessionPresentationSource, /toolName: \{\s+props: \{\s+style: styles\.toolName,\s+text: toolName,/);
   assert.match(sessionPresentationSource, /expandHint: \{\s+props: \{\s+style: styles\.expandHint,\s+\},\s+icon: \{\s+props: renderState\.toggleIcon,/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.expandHintText,\s+text: renderState\.toggleLabel,/);
@@ -4148,7 +4164,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadBlock\s+\{\.\.\.resultSectionParts\.payloadBlock\.props\}/);
   assert.match(chatMessageChromeSource, /resultSectionParts\.errorBlock\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionErrorBlock\s+\{\.\.\.resultSectionParts\.errorBlock\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /resultSectionParts\.errorBlock \? \(/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSectionItem[\s\S]*?<View style=\{style\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSectionItem[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCallDetail/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSectionItem[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionCallDetail/);
   assert.match(sessionPresentationSource, /item: \{\s+props: \{\s+style: styles\.item,/);
   assert.match(sessionPresentationSource, /header: \{\s+props: \{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+copyButtonRenderState,\s+onCopyPress,\s+styles: styles\.header,/);
   assert.match(sessionPresentationSource, /payloadBlock: \{\s+props: \{\s+compactText: resultCompactText,\s+content: resultContent,\s+isExpanded,\s+previewNumberOfLines,\s+styles: styles\.payloadBlock,/);
@@ -4168,7 +4185,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadMeta\s+\{\.\.\.resultHeaderParts\.payloadMeta\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadge\s+\{\.\.\.resultHeaderParts\.resultBadge\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultCharacterCount\s+\{\.\.\.resultHeaderParts\.characterCount\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultHeaderView[\s\S]*?<View style=\{style\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultHeaderView[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionResultCharacterCount/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultHeaderView[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionResultCharacterCount/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultCharacterCount[\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.resultHeaderParts\.copyButton\.props\}/);
   assert.match(sessionPresentationSource, /payloadMeta: \{\s+props: \{\s+renderState: payloadRenderState,\s+styles: styles\.payloadMeta,/);
@@ -4190,6 +4208,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeContainer\s+\{\.\.\.resultBadgeParts\.container\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeIcon\s+\{\.\.\.resultBadgeParts\.icon\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeLabel\s+\{\.\.\.resultBadgeParts\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultBadgeContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionResultBadgeIcon/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultBadgeContainer[\s\S]*?(accessible=\{accessible\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionResultBadgeIcon/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultBadgeIcon\(props: ChatMessageToolExecutionResultBadgeIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultBadgeIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolExecutionResultBadgeLabel/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+accessible: true,\s+accessibilityRole: badge\.accessibilityRole,\s+accessibilityLabel: badge\.accessibilityLabel,\s+style: \[\s+styles\.badge,\s+badge\.isSuccess \? styles\.badgeSuccess : styles\.badgeError,/);
   assert.match(sessionPresentationSource, /icon: \{\s+props: badge\.icon,/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: \[\s+styles\.text,\s+badge\.isSuccess \? styles\.textSuccess : styles\.textError,/);
@@ -4219,7 +4241,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadMeta\s+\{\.\.\.payloadSectionParts\.payloadMeta\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.payloadSectionParts\.copyButton\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadBlock\s+\{\.\.\.payloadSectionParts\.payloadBlock\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadSectionView[\s\S]*?<View style=\{style\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadSectionView[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionErrorBlock/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadSectionView[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionErrorBlock/);
   assert.match(sessionPresentationSource, /section: \{\s+props: \{\s+style: styles\.section,/);
   assert.match(sessionPresentationSource, /headerRow: \{\s+props: \{\s+style: styles\.headerRow,/);
   assert.match(sessionPresentationSource, /payloadMeta: \{\s+props: \{\s+renderState: payloadRenderState,\s+styles: styles\.payloadMeta,/);
@@ -4241,7 +4264,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadMetaText\s+\{\.\.\.payloadMetaParts\.payloadType\.props\}/);
   assert.match(chatMessageChromeSource, /if \(!payloadMetaParts\.row\.shouldRender\) \{/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadMetaRow\s+\{\.\.\.payloadMetaParts\.row\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMetaRow[\s\S]*?<View style=\{style\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMetaRow[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionPayloadMetaText/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMetaRow[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionPayloadMetaText/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMetaText[\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.label,\s+text: renderState\.label,/);
   assert.match(sessionPresentationSource, /payloadType: \{\s+shouldRender: Boolean\(renderState\.payloadTypeLabel\),\s+props: \{\s+style: styles\.payloadType,\s+text: renderState\.payloadTypeLabel \?\? "",/);
@@ -4259,7 +4283,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockText\s+\{\.\.\.errorBlockParts\.label\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.errorBlockParts\.copyButton\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockText\s+\{\.\.\.errorBlockParts\.error\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlockView[\s\S]*?<View style=\{style\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlockView[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionErrorBlockText/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlockView[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionErrorBlockText/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlockText[\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}/);
   assert.match(sessionPresentationSource, /section: \{\s+props: \{\s+style: styles\.section,/);
   assert.match(sessionPresentationSource, /headerRow: \{\s+props: \{\s+style: styles\.headerRow,/);
@@ -4290,8 +4315,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadCode\s+\{\.\.\.payloadBlockParts\.code\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadPreview\(\{\s+style,\s+numberOfLines,\s+text,\s+\}: ChatMessageToolExecutionPayloadPreviewProps\)/);
   assert.match(chatMessageChromeSource, /<Text style=\{style\} numberOfLines=\{numberOfLines\}>/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadScroll\(\{\s+style,\s+nestedScrollEnabled,\s+children,\s+\}: ChatMessageToolExecutionPayloadScrollProps\)/);
-  assert.match(chatMessageChromeSource, /<ScrollView style=\{style\} nestedScrollEnabled=\{nestedScrollEnabled\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadScroll[\s\S]*?<ScrollView\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionPayloadCode/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadScroll[\s\S]*?(style=\{style\}|nestedScrollEnabled=\{nestedScrollEnabled\})[\s\S]*?export function ChatMessageToolExecutionPayloadCode/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadCode\(\{\s+style,\s+text,\s+\}: ChatMessageToolExecutionPayloadCodeProps\)/);
   assert.match(sessionPresentationSource, /preview: \{\s+shouldRender: Boolean\(compactText\),\s+props: \{\s+style: styles\.preview,\s+numberOfLines: previewNumberOfLines,\s+text: compactText \?\? "",/);
   assert.match(sessionPresentationSource, /scroll: \{\s+props: \{\s+style: isExpanded \? styles\.scrollExpanded : styles\.scroll,\s+nestedScrollEnabled: true,/);
