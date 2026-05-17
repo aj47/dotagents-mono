@@ -4270,7 +4270,9 @@ describe("session presentation semantics", () => {
       },
     })
     expect(navigationHeaderMobileParts.actionsRow).toEqual({
-      style: "header-actions-row",
+      props: {
+        style: "header-actions-row",
+      },
     })
     expect(navigationHeaderMobileParts.agentSelector).toEqual({
       ...navigationHeaderOptionParts.agentSelector,

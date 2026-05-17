@@ -7382,7 +7382,7 @@ export function createChatRuntimeNavigationHeaderOptions({
       />
     ),
     headerLeft: () => (
-      <ChatRuntimeHeaderActionsRow {...headerParts.actionsRow}>
+      <ChatRuntimeHeaderActionsRow {...headerParts.actionsRow.props}>
         <ChatRuntimeHeaderIconButton
           {...headerParts.backButton}
         />
@@ -7392,7 +7392,7 @@ export function createChatRuntimeNavigationHeaderOptions({
       </ChatRuntimeHeaderActionsRow>
     ),
     headerRight: () => (
-      <ChatRuntimeHeaderActionsRow {...headerParts.actionsRow}>
+      <ChatRuntimeHeaderActionsRow {...headerParts.actionsRow.props}>
         <ChatRuntimeHeaderConversationStatus
           {...headerParts.conversationStatus}
         />
@@ -7598,10 +7598,10 @@ export function ChatRuntimeHeaderAgentSelectorIcon(props: ChatRuntimeHeaderAgent
 
 export function ChatRuntimeHeaderActionsRow({
   children,
-  style,
+  ...props
 }: ChatRuntimeHeaderActionsRowProps) {
   return (
-    <View style={style}>
+    <View {...props}>
       {children}
     </View>
   );

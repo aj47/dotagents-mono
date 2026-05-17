@@ -394,12 +394,12 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.doesNotMatch(headerConversationStatusSource, /styles\.chip,\s+renderState\.styles\.chip,/);
   assert.doesNotMatch(headerConversationStatusSource, /styles\.text,\s+renderState\.styles\.text,/);
   assert.doesNotMatch(headerConversationStatusSource, /\{renderState\.label\}/);
-  assert.match(chatMessageChromeSource, /headerRight: \(\) => \(\s+<ChatRuntimeHeaderActionsRow \{\.\.\.headerParts\.actionsRow\}>[\s\S]*?<ChatRuntimeHeaderConversationStatus/);
-  assert.match(sessionPresentationSource, /actionsRow: \{\s+style: styles\.actionsRowStyle,\s+\}/);
+  assert.match(chatMessageChromeSource, /headerRight: \(\) => \(\s+<ChatRuntimeHeaderActionsRow \{\.\.\.headerParts\.actionsRow\.props\}>[\s\S]*?<ChatRuntimeHeaderConversationStatus/);
+  assert.match(sessionPresentationSource, /actionsRow: \{\s+props: \{\s+style: styles\.actionsRowStyle,\s+\},\s+\}/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderActionsRow/);
   assert.match(sessionPresentationSource, /actionsRowStyle: styles\.headerActionsRow,/);
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderActionsRow/);
-  assert.match(chatMessageChromeSource, /<View style=\{style\}>[\s\S]*?\{children\}[\s\S]*?<\/View>/);
+  assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderActionsRow\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?\{children\}[\s\S]*?<\/View>/);
   assert.doesNotMatch(screenSource, /const mobileSessionStatusSurface = getSessionStatusMobileSurfaceState\(\);/);
   assert.doesNotMatch(screenSource, /const sessionStatusStyleState = headerChromeStyleState\.sessionStatus;/);
   assert.doesNotMatch(screenSource, /const sessionStatusSurface = sessionStatusStyleState\.surface;/);
@@ -1513,7 +1513,7 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.doesNotMatch(screenSource, /navigation\.navigate\('Sessions'\)/);
   assert.match(screenSource, /onBackButtonPress: handleBackToSessions,\s+onPinButtonPress: handleToggleCurrentSessionPinned,/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderIconButton/);
-  assert.match(chatMessageChromeSource, /headerLeft: \(\) => \(\s+<ChatRuntimeHeaderActionsRow \{\.\.\.headerParts\.actionsRow\}>[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.headerParts\.backButton\}[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.headerParts\.pinButton\}/);
+  assert.match(chatMessageChromeSource, /headerLeft: \(\) => \(\s+<ChatRuntimeHeaderActionsRow \{\.\.\.headerParts\.actionsRow\.props\}>[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.headerParts\.backButton\}[\s\S]*?<ChatRuntimeHeaderIconButton\s+\{\.\.\.headerParts\.pinButton\}/);
   assert.match(sessionPresentationSource, /backButton: \{\s+\.\.\.backButton,\s+style: styles\.iconButtons\.edgeStyle,\s+\}/);
   assert.match(sessionPresentationSource, /pinButton: \{\s+\.\.\.pinButton,\s+style: styles\.iconButtons\.pinStyle,\s+activeStyle: styles\.iconButtons\.pinActiveStyle,\s+\}/);
   assert.match(sessionPresentationSource, /iconButtonStyles: \{\s+edgeStyle: styles\.headerEdgeActionButton,\s+pinStyle: styles\.headerPinButton,\s+pinActiveStyle: styles\.headerPinButtonActive,/);

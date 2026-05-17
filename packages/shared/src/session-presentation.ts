@@ -9029,7 +9029,9 @@ export type ChatRuntimeNavigationHeaderOptionsMobilePropsParts<
   TInput extends ChatRuntimeNavigationHeaderOptionsMobilePropsPartsInput,
 > = {
   actionsRow: {
-    style: TInput["styles"]["actionsRowStyle"]
+    props: {
+      style: TInput["styles"]["actionsRowStyle"]
+    }
   }
   agentSelector: TInput["agentSelector"] & {
     styles: TInput["styles"]["agentSelector"]
@@ -26307,7 +26309,9 @@ export function createChatRuntimeNavigationHeaderOptionsMobilePropsParts<
 }: TInput): ChatRuntimeNavigationHeaderOptionsMobilePropsParts<TInput> {
   return {
     actionsRow: {
-      style: styles.actionsRowStyle,
+      props: {
+        style: styles.actionsRowStyle,
+      },
     },
     agentSelector: {
       ...agentSelector,
