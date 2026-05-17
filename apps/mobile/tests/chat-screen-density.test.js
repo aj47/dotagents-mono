@@ -2187,10 +2187,21 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /<ChatComposerSpeechPreview\s+\{\.\.\.composerDockParts\.speechPreview\}/);
   assert.match(sessionPresentationSource, /speechPreview: \{\s+\.\.\.speechPreview,\s+styles: styles\.speechPreview,\s+\}/);
   assert.match(sessionPresentationSource, /speechPreviewStyles: \{\s+box: styles\.sttPreviewBox,\s+label: styles\.sttPreviewLabel,\s+text: styles\.sttPreviewText,\s+\}/);
+  assert.match(chatMessageChromeSource, /createChatComposerSpeechPreviewMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatComposerSpeechPreviewMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatComposerSpeechPreview/);
-  assert.match(chatMessageChromeSource, /if \(!text\) return null;/);
-  assert.match(chatMessageChromeSource, /\{label\}/);
-  assert.match(chatMessageChromeSource, /\{text\}/);
+  const speechPreviewSource =
+    chatMessageChromeSource.match(/export function ChatComposerSpeechPreview[\s\S]*?export function ChatComposerPendingImagesRail/)?.[0] ?? '';
+  assert.match(speechPreviewSource, /const speechPreviewParts = createChatComposerSpeechPreviewMobilePropsParts\(\{\s+label,\s+text,\s+styles,\s+\}\);/);
+  assert.match(speechPreviewSource, /if \(!speechPreviewParts\.shouldRender\) return null;/);
+  assert.match(speechPreviewSource, /<View style=\{speechPreviewParts\.container\.style\}>/);
+  assert.match(speechPreviewSource, /<Text style=\{speechPreviewParts\.label\.style\}>/);
+  assert.match(speechPreviewSource, /\{speechPreviewParts\.label\.text\}/);
+  assert.match(speechPreviewSource, /<Text style=\{speechPreviewParts\.text\.style\}>/);
+  assert.match(speechPreviewSource, /\{speechPreviewParts\.text\.text\}/);
+  assert.doesNotMatch(speechPreviewSource, /if \(!text\) return null;/);
+  assert.doesNotMatch(speechPreviewSource, /<View style=\{styles\.box\}>/);
+  assert.doesNotMatch(speechPreviewSource, /<Text style=\{styles\.label\}>/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{mobileComposer(ImageAttachment|TextToSpeech|EditBeforeSend)RenderState\.accessibilityRole\}/);
   assert.doesNotMatch(screenSource, /aria-checked=\{mobileComposer(TextToSpeech|EditBeforeSend)RenderState\.ariaChecked\}/);
   assert.doesNotMatch(screenSource, /textEntryAccessibilityLabel:/);

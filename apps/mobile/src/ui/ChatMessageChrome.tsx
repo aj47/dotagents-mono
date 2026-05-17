@@ -39,6 +39,7 @@ import {
   createChatComposerLabeledActionButtonMobilePropsParts,
   createChatComposerMicButtonMobilePropsParts,
   createChatComposerPendingImagesRailMobilePropsParts,
+  createChatComposerSpeechPreviewMobilePropsParts,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
@@ -9453,15 +9454,21 @@ export function ChatComposerSpeechPreview({
   text,
   styles,
 }: ChatComposerSpeechPreviewProps) {
-  if (!text) return null;
+  const speechPreviewParts = createChatComposerSpeechPreviewMobilePropsParts({
+    label,
+    text,
+    styles,
+  });
+
+  if (!speechPreviewParts.shouldRender) return null;
 
   return (
-    <View style={styles.box}>
-      <Text style={styles.label}>
-        {label}
+    <View style={speechPreviewParts.container.style}>
+      <Text style={speechPreviewParts.label.style}>
+        {speechPreviewParts.label.text}
       </Text>
-      <Text style={styles.text}>
-        {text}
+      <Text style={speechPreviewParts.text.style}>
+        {speechPreviewParts.text.text}
       </Text>
     </View>
   );

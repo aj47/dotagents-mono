@@ -67,6 +67,7 @@ import {
   createChatComposerLabeledActionButtonMobilePropsParts,
   createChatComposerMicButtonMobilePropsParts,
   createChatComposerPendingImagesRailMobilePropsParts,
+  createChatComposerSpeechPreviewMobilePropsParts,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerRuntimeDockStyleSlots,
@@ -8451,6 +8452,37 @@ describe("session presentation semantics", () => {
         styles: "input-dock-styles",
       },
     })
+    expect(createChatComposerSpeechPreviewMobilePropsParts({
+      label: "Speech preview",
+      text: "voice draft",
+      styles: {
+        box: "speech-preview-box",
+        label: "speech-preview-label",
+        text: "speech-preview-text",
+      },
+    })).toEqual({
+      shouldRender: true,
+      container: {
+        style: "speech-preview-box",
+      },
+      label: {
+        style: "speech-preview-label",
+        text: "Speech preview",
+      },
+      text: {
+        style: "speech-preview-text",
+        text: "voice draft",
+      },
+    })
+    expect(createChatComposerSpeechPreviewMobilePropsParts({
+      label: "Speech preview",
+      text: "",
+      styles: {
+        box: "speech-preview-box",
+        label: "speech-preview-label",
+        text: "speech-preview-text",
+      },
+    }).shouldRender).toBe(false)
     const composerIconButtonParts = createChatComposerIconButtonMobilePropsParts({
       shouldRender: true,
       renderState: {

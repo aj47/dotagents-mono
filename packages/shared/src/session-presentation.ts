@@ -3834,6 +3834,39 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
   }
 }
 
+export interface ChatComposerSpeechPreviewMobileStylesLike {
+  box: unknown
+  label: unknown
+  text: unknown
+}
+
+export interface ChatComposerSpeechPreviewMobilePropsPartsInput<
+  TText = string | null | undefined,
+  TStyles extends ChatComposerSpeechPreviewMobileStylesLike = ChatComposerSpeechPreviewMobileStylesLike,
+> {
+  label: string
+  text: TText
+  styles: TStyles
+}
+
+export interface ChatComposerSpeechPreviewMobilePropsParts<
+  TText = string | null | undefined,
+  TStyles extends ChatComposerSpeechPreviewMobileStylesLike = ChatComposerSpeechPreviewMobileStylesLike,
+> {
+  shouldRender: boolean
+  container: {
+    style: TStyles["box"]
+  }
+  label: {
+    style: TStyles["label"]
+    text: string
+  }
+  text: {
+    style: TStyles["text"]
+    text: TText
+  }
+}
+
 export interface ChatComposerIconButtonMobileRenderStateLike {
   isActive?: boolean
   accessibilityRole: unknown
@@ -18928,6 +18961,36 @@ export function createChatRuntimeToolExecutionResultSectionMobilePropsParts<
       onCopyPress: onErrorCopyPress,
       styles: styles.errorBlock,
     } : null,
+  }
+}
+
+export function createChatComposerSpeechPreviewMobilePropsParts<
+  TText,
+  TStyles extends ChatComposerSpeechPreviewMobileStylesLike,
+>({
+  label,
+  text,
+  styles,
+}: ChatComposerSpeechPreviewMobilePropsPartsInput<
+  TText,
+  TStyles
+>): ChatComposerSpeechPreviewMobilePropsParts<
+  TText,
+  TStyles
+> {
+  return {
+    shouldRender: Boolean(text),
+    container: {
+      style: styles.box,
+    },
+    label: {
+      style: styles.label,
+      text: label,
+    },
+    text: {
+      style: styles.text,
+      text,
+    },
   }
 }
 
