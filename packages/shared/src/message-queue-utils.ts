@@ -1094,11 +1094,13 @@ export interface MessageQueuePanelHeaderActionMobilePropsParts<
 }
 
 export interface MessageQueuePanelChromeMobilePropsPartsStylesLike {
+  container: unknown;
   compactContainer: unknown;
   compactText: unknown;
   header: unknown;
   headerCollapsed: unknown;
   headerLeft: unknown;
+  headerActions: unknown;
   headerTitle: unknown;
   pausedNotice: unknown;
   pausedNoticeText: unknown;
@@ -1129,6 +1131,9 @@ export interface MessageQueuePanelChromeMobilePropsParts<
   TStyles extends MessageQueuePanelChromeMobilePropsPartsStylesLike =
     MessageQueuePanelChromeMobilePropsPartsStylesLike,
 > {
+  container: {
+    style: TStyles['container'];
+  };
   compactContainer: {
     style: TStyles['compactContainer'];
   };
@@ -1146,6 +1151,9 @@ export interface MessageQueuePanelChromeMobilePropsParts<
   };
   headerLeft: {
     style: TStyles['headerLeft'];
+  };
+  headerActions: {
+    style: TStyles['headerActions'];
   };
   headerStatusIcon: {
     name: MessageQueuePanelStatusIconName;
@@ -1631,6 +1639,9 @@ export function createMessageQueuePanelChromeMobilePropsParts<
   const statusColors = colors.status[panel.statusKey];
 
   return {
+    container: {
+      style: styles.container,
+    },
     compactContainer: {
       style: styles.compactContainer,
     },
@@ -1648,6 +1659,9 @@ export function createMessageQueuePanelChromeMobilePropsParts<
     },
     headerLeft: {
       style: styles.headerLeft,
+    },
+    headerActions: {
+      style: styles.headerActions,
     },
     headerStatusIcon: {
       name: panel.statusIconName,

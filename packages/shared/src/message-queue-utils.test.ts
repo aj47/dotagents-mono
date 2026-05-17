@@ -776,11 +776,13 @@ describe('message-queue-utils', () => {
         isPaused: true,
       }),
       styles: {
+        container: 'container',
         compactContainer: 'compactContainer',
         compactText: 'compactText',
         header: 'header',
         headerCollapsed: 'headerCollapsed',
         headerLeft: 'headerLeft',
+        headerActions: 'headerActions',
         headerTitle: 'headerTitle',
         pausedNotice: 'pausedNotice',
         pausedNoticeText: 'pausedNoticeText',
@@ -788,6 +790,9 @@ describe('message-queue-utils', () => {
       },
     });
     expect(chromeParts).toMatchObject({
+      container: {
+        style: 'container',
+      },
       compactContainer: {
         style: 'compactContainer',
       },
@@ -805,6 +810,9 @@ describe('message-queue-utils', () => {
       },
       headerLeft: {
         style: 'headerLeft',
+      },
+      headerActions: {
+        style: 'headerActions',
       },
       headerStatusIcon: {
         name: 'pause-circle-outline',
@@ -832,11 +840,13 @@ describe('message-queue-utils', () => {
         isListCollapsed: true,
       }),
       styles: {
+        container: 'container',
         compactContainer: 'compactContainer',
         compactText: 'compactText',
         header: 'header',
         headerCollapsed: 'headerCollapsed',
         headerLeft: 'headerLeft',
+        headerActions: 'headerActions',
         headerTitle: 'headerTitle',
         pausedNotice: 'pausedNotice',
         pausedNoticeText: 'pausedNoticeText',

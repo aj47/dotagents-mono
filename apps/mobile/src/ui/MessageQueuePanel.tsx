@@ -551,7 +551,7 @@ export function MessageQueuePanel({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={panelChromeParts.container.style}>
       <View style={panelChromeParts.headerContainer.style}>
         <View style={panelChromeParts.headerLeft.style}>
           <Ionicons
@@ -563,7 +563,7 @@ export function MessageQueuePanel({
             {panelChromeParts.headerTitle.text}
           </Text>
         </View>
-        <View style={styles.headerActions}>
+        <View style={panelChromeParts.headerActions.style}>
           {headerActionParts.actions.map((action) => (
             <TouchableOpacity
               key={action.key}

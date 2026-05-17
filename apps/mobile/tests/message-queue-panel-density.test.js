@@ -87,6 +87,8 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /const panelChromeParts = createMessageQueuePanelChromeMobilePropsParts\(\{[\s\S]*?surface: panelSurface,[\s\S]*?colors: panelColors,[\s\S]*?copy: queuePanelCopy,[\s\S]*?panel: queuePanelState,[\s\S]*?styles,/);
   assert.match(source, /\{panelChromeParts\.compactLabel\.text\}/);
   assert.match(source, /\{panelChromeParts\.headerTitle\.text\}/);
+  assert.match(source, /style=\{panelChromeParts\.container\.style\}/);
+  assert.match(source, /style=\{panelChromeParts\.headerActions\.style\}/);
   assert.match(source, /name=\{panelChromeParts\.headerStatusIcon\.name\}/);
   assert.match(source, /createMessageQueuePanelCompactActionMobilePropsParts/);
   assert.match(source, /const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts\(\{[\s\S]*?surface: panelSurface,[\s\S]*?colors: panelColors,[\s\S]*?icons: queuePanelIcons,[\s\S]*?copy: queuePanelCopy,[\s\S]*?panel: queuePanelState,[\s\S]*?styles,[\s\S]*?onPause,[\s\S]*?onResume,[\s\S]*?onProcessNext,[\s\S]*?onClear,/);
@@ -203,10 +205,12 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.match(source, /const panelStyleSlots = createMessageQueuePanelMobileStyleSlots\(\{[\s\S]*?surface: panelSurface,[\s\S]*?colors: panelColors,[\s\S]*?panel: queuePanelState,/);
   assert.match(source, /container:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.container/);
   assert.match(source, /header:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.header/);
+  assert.match(source, /style=\{panelChromeParts\.container\.style\}/);
   assert.match(source, /style=\{panelChromeParts\.headerContainer\.style\}/);
   assert.match(source, /headerCollapsed:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.headerCollapsed/);
   assert.match(source, /headerLeft:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.headerLeft/);
   assert.match(source, /headerActions:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.headerActions/);
+  assert.match(source, /style=\{panelChromeParts\.headerActions\.style\}/);
   assert.match(source, /headerTitle:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.headerTitle/);
   assert.match(source, /queueControlTextDisabled:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.queueControlTextDisabled/);
   assert.match(source, /processButtonText:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.processButtonText/);
@@ -233,6 +237,8 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.doesNotMatch(source, /editActions:\s*\{\s*flexDirection:\s*'row',\s*justifyContent:\s*'flex-end',/);
   assert.doesNotMatch(source, /overflow:\s*'hidden'/);
   assert.doesNotMatch(source, /header:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',\s*justifyContent:\s*'space-between',/);
+  assert.doesNotMatch(source, /style=\{styles\.container\}/);
+  assert.doesNotMatch(source, /style=\{styles\.headerActions\}/);
   assert.doesNotMatch(source, /isListCollapsed && \{ borderBottomWidth: 0 \}/);
   assert.doesNotMatch(source, /headerLeft:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',/);
   assert.doesNotMatch(source, /headerActions:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',/);
