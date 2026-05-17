@@ -2241,9 +2241,11 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
   }
   subtitle: {
     shouldRender: boolean
-    style: TStyles["subtitle"]
-    numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["subtitleNumberOfLines"]
-    text: string
+    props: {
+      style: TStyles["subtitle"]
+      numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["subtitleNumberOfLines"]
+      text: string
+    }
   }
   meta: {
     style: TStyles["metaRow"]
@@ -22931,9 +22933,11 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
     },
     subtitle: {
       shouldRender: Boolean(presentation.subtitle),
-      style: styles.subtitle,
-      numberOfLines: surface.subtitleNumberOfLines,
-      text: presentation.subtitle ?? "",
+      props: {
+        style: styles.subtitle,
+        numberOfLines: surface.subtitleNumberOfLines,
+        text: presentation.subtitle ?? "",
+      },
     },
     meta: {
       style: styles.metaRow,

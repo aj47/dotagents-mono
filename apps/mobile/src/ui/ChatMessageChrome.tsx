@@ -1635,6 +1635,9 @@ type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegat
 type ChatMessageDelegationHeaderProps =
   ChatMessageDelegationCardParts['header']['props'];
 
+type ChatMessageDelegationSubtitleProps =
+  ChatMessageDelegationCardParts['subtitle']['props'];
+
 type ChatMessageDelegationMetaItemProps =
   ChatMessageDelegationCardParts['meta']['items'][number]['props'];
 
@@ -7636,6 +7639,21 @@ export function ChatMessageDelegationMetaItem({
   );
 }
 
+export function ChatMessageDelegationSubtitle({
+  style,
+  numberOfLines,
+  text,
+}: ChatMessageDelegationSubtitleProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
+  );
+}
+
 export function ChatMessageDelegationCard({
   surface,
   agentName,
@@ -7670,12 +7688,9 @@ export function ChatMessageDelegationCard({
         {...delegationCardParts.header.props}
       />
       {delegationCardParts.subtitle.shouldRender ? (
-        <Text
-          style={delegationCardParts.subtitle.style}
-          numberOfLines={delegationCardParts.subtitle.numberOfLines}
-        >
-          {delegationCardParts.subtitle.text}
-        </Text>
+        <ChatMessageDelegationSubtitle
+          {...delegationCardParts.subtitle.props}
+        />
       ) : null}
       <View style={delegationCardParts.meta.style}>
         {delegationCardParts.meta.items.map((metaItem) => (

@@ -1001,7 +1001,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.liveText\./);
   assert.match(delegationCardComponentSource, /delegationCardParts\.subtitle\.shouldRender \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.subtitle \? \(/);
-  assert.match(delegationCardComponentSource, /numberOfLines=\{delegationCardParts\.subtitle\.numberOfLines\}/);
+  assert.match(sessionPresentationSource, /subtitle: \{[\s\S]*?shouldRender: Boolean\(presentation\.subtitle\),[\s\S]*?props: \{[\s\S]*?numberOfLines: surface\.subtitleNumberOfLines,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationSubtitle/);
+  assert.match(delegationCardComponentSource, /<ChatMessageDelegationSubtitle\s+\{\.\.\.delegationCardParts\.subtitle\.props\}/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationSubtitle[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageDelegationCard/);
+  assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{delegationCardParts\.subtitle\.numberOfLines\}/);
   assert.match(sessionPresentationSource, /statusStyles\.chip/);
   assert.match(sessionPresentationSource, /statusStyles\.text/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{surface\.titleNumberOfLines\}/);

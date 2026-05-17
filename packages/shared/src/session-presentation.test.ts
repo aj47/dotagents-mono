@@ -11013,9 +11013,11 @@ describe("session presentation semantics", () => {
     })
     expect(delegationCardParts.subtitle).toEqual({
       shouldRender: true,
-      style: "delegation-subtitle-style",
-      numberOfLines: delegationCardProps.surface.subtitleNumberOfLines,
-      text: delegationCardProps.presentation.subtitle,
+      props: {
+        style: "delegation-subtitle-style",
+        numberOfLines: delegationCardProps.surface.subtitleNumberOfLines,
+        text: delegationCardProps.presentation.subtitle,
+      },
     })
     expect(delegationCardParts.meta.items.map((item) => item.props.text)).toEqual([
       delegationCardProps.presentation.sourceLabel,
