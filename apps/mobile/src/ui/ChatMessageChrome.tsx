@@ -2374,12 +2374,15 @@ type ChatMessageToolExecutionResultHeaderParts = ReturnType<typeof createChatRun
 >>;
 
 type ChatMessageToolExecutionResultHeaderViewProps =
-  (ChatMessageToolExecutionResultHeaderParts['header']['props'] | ChatMessageToolExecutionResultHeaderParts['meta']['props']) & {
+  (
+    | ChatMessageToolExecutionResultHeaderParts['header']['props']
+    | ChatMessageToolExecutionResultHeaderParts['header']['content']['meta']['props']
+  ) & {
     children: ReactNode;
   };
 
 type ChatMessageToolExecutionResultCharacterCountProps =
-  ChatMessageToolExecutionResultHeaderParts['characterCount']['props'];
+  ChatMessageToolExecutionResultHeaderParts['header']['content']['meta']['content']['characterCount']['props'];
 
 type ChatMessageToolExecutionPayloadBlockStyles = {
   preview: StyleProp<TextStyle>;
@@ -9725,26 +9728,28 @@ export function ChatMessageToolExecutionResultHeader({
     onCopyPress,
     styles,
   });
+  const resultHeaderContent = resultHeaderParts.header.content;
+  const resultHeaderMetaContent = resultHeaderContent.meta.content;
 
   return (
     <ChatMessageToolExecutionResultHeaderView
       {...resultHeaderParts.header.props}
     >
       <ChatMessageToolExecutionResultHeaderView
-        {...resultHeaderParts.meta.props}
+        {...resultHeaderContent.meta.props}
       >
         <ChatMessageToolExecutionPayloadMeta
-          {...resultHeaderParts.payloadMeta.props}
+          {...resultHeaderMetaContent.payloadMeta.props}
         />
         <ChatMessageToolExecutionResultBadge
-          {...resultHeaderParts.resultBadge.props}
+          {...resultHeaderMetaContent.resultBadge.props}
         />
         <ChatMessageToolExecutionResultCharacterCount
-          {...resultHeaderParts.characterCount.props}
+          {...resultHeaderMetaContent.characterCount.props}
         />
       </ChatMessageToolExecutionResultHeaderView>
       <ChatMessageToolExecutionCopyButton
-        {...resultHeaderParts.copyButton.props}
+        {...resultHeaderContent.copyButton.props}
       />
     </ChatMessageToolExecutionResultHeaderView>
   );

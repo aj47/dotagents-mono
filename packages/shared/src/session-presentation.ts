@@ -4427,37 +4427,41 @@ export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
     props: {
       style: TStyles["header"]
     }
-  }
-  meta: {
-    props: {
-      style: TStyles["meta"]
-    }
-  }
-  payloadMeta: {
-    props: {
-      renderState: TPayloadRenderState
-      styles: TStyles["payloadMeta"]
-    }
-  }
-  resultBadge: {
-    props: {
-      badge: TResultBadge
-      styles: TStyles["badge"]
-    }
-  }
-  characterCount: {
-    props: {
-      props: {
-        style: TStyles["characterCount"]
+    content: {
+      meta: {
+        props: {
+          style: TStyles["meta"]
+        }
+        content: {
+          payloadMeta: {
+            props: {
+              renderState: TPayloadRenderState
+              styles: TStyles["payloadMeta"]
+            }
+          }
+          resultBadge: {
+            props: {
+              badge: TResultBadge
+              styles: TStyles["badge"]
+            }
+          }
+          characterCount: {
+            props: {
+              props: {
+                style: TStyles["characterCount"]
+              }
+              text: string
+            }
+          }
+        }
       }
-      text: string
-    }
-  }
-  copyButton: {
-    props: {
-      renderState: TCopyButtonRenderState
-      onPress: TOnCopyPress | undefined
-      styles: TStyles["copyButton"]
+      copyButton: {
+        props: {
+          renderState: TCopyButtonRenderState
+          onPress: TOnCopyPress | undefined
+          styles: TStyles["copyButton"]
+        }
+      }
     }
   }
 }
@@ -22102,37 +22106,41 @@ export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
       props: {
         style: styles.header,
       },
-    },
-    meta: {
-      props: {
-        style: styles.meta,
-      },
-    },
-    payloadMeta: {
-      props: {
-        renderState: payloadRenderState,
-        styles: styles.payloadMeta,
-      },
-    },
-    resultBadge: {
-      props: {
-        badge: resultBadge,
-        styles: styles.badge,
-      },
-    },
-    characterCount: {
-      props: {
-        props: {
-          style: styles.characterCount,
+      content: {
+        meta: {
+          props: {
+            style: styles.meta,
+          },
+          content: {
+            payloadMeta: {
+              props: {
+                renderState: payloadRenderState,
+                styles: styles.payloadMeta,
+              },
+            },
+            resultBadge: {
+              props: {
+                badge: resultBadge,
+                styles: styles.badge,
+              },
+            },
+            characterCount: {
+              props: {
+                props: {
+                  style: styles.characterCount,
+                },
+                text: characterCountLabel,
+              },
+            },
+          },
         },
-        text: characterCountLabel,
-      },
-    },
-    copyButton: {
-      props: {
-        renderState: copyButtonRenderState,
-        onPress: onCopyPress,
-        styles: styles.copyButton,
+        copyButton: {
+          props: {
+            renderState: copyButtonRenderState,
+            onPress: onCopyPress,
+            styles: styles.copyButton,
+          },
+        },
       },
     },
   }

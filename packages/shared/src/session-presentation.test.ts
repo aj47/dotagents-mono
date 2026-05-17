@@ -14419,37 +14419,41 @@ describe("session presentation semantics", () => {
         props: {
           style: "result-header",
         },
-      },
-      meta: {
-        props: {
-          style: "result-meta",
-        },
-      },
-      payloadMeta: {
-        props: {
-          renderState: "result-payload-state",
-          styles: "result-payload-meta",
-        },
-      },
-      resultBadge: {
-        props: {
-          badge: "success-badge",
-          styles: "result-badge-styles",
-        },
-      },
-      characterCount: {
-        props: {
-          props: {
-            style: "character-count-style",
+        content: {
+          meta: {
+            props: {
+              style: "result-meta",
+            },
+            content: {
+              payloadMeta: {
+                props: {
+                  renderState: "result-payload-state",
+                  styles: "result-payload-meta",
+                },
+              },
+              resultBadge: {
+                props: {
+                  badge: "success-badge",
+                  styles: "result-badge-styles",
+                },
+              },
+              characterCount: {
+                props: {
+                  props: {
+                    style: "character-count-style",
+                  },
+                  text: "42 chars",
+                },
+              },
+            },
           },
-          text: "42 chars",
-        },
-      },
-      copyButton: {
-        props: {
-          renderState: "copy-result-state",
-          onPress: "copy-result",
-          styles: "result-copy-button",
+          copyButton: {
+            props: {
+              renderState: "copy-result-state",
+              onPress: "copy-result",
+              styles: "result-copy-button",
+            },
+          },
         },
       },
     })
