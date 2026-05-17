@@ -4408,7 +4408,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileWrapperRenderState/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
   assert.doesNotMatch(messageQueuePanelSource, /from '@dotagents\/shared\/message-queue-utils'/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileWrapperStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createMessageQueuePanelCompactActionMobilePropsParts,[\s\S]*?createMessageQueuePanelHeaderActionMobilePropsParts,[\s\S]*?createQueuedMessageStatusIndicatorMobilePropsPart,[\s\S]*?createQueuedMessageContentMobilePropsParts,[\s\S]*?createQueuedMessageExpandButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageActionRowMobileStyleSlot,[\s\S]*?createQueuedMessageEditMobilePropsParts,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileWrapperStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createMessageQueuePanelCompactActionMobilePropsParts,[\s\S]*?createMessageQueuePanelHeaderActionMobilePropsParts,[\s\S]*?createMessageQueuePanelChromeMobilePropsParts,[\s\S]*?createQueuedMessageStatusIndicatorMobilePropsPart,[\s\S]*?createQueuedMessageContentMobilePropsParts,[\s\S]*?createQueuedMessageExpandButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageActionRowMobileStyleSlot,[\s\S]*?createQueuedMessageEditMobilePropsParts,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
@@ -4457,12 +4457,18 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts\(\{\s+surface: panelSurface,\s+colors: panelColors,\s+icons: queuePanelIcons,\s+copy: queuePanelCopy,\s+panel: queuePanelState,\s+styles,\s+onPause,\s+onResume,\s+onProcessNext,\s+onClear,\s+\}\);/);
   assert.match(messageQueuePanelSource, /createMessageQueuePanelHeaderActionMobilePropsParts,/);
   assert.match(messageQueuePanelSource, /const headerActionParts = createMessageQueuePanelHeaderActionMobilePropsParts\(\{\s+surface: panelSurface,\s+colors: panelColors,\s+copy: queuePanelCopy,\s+panel: queuePanelState,\s+styles,\s+onPause,\s+onResume,\s+onProcessNext,\s+onClear,\s+onToggleListCollapsed,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /createMessageQueuePanelChromeMobilePropsParts,/);
+  assert.match(messageQueuePanelSource, /const panelChromeParts = createMessageQueuePanelChromeMobilePropsParts\(\{\s+surface: panelSurface,\s+colors: panelColors,\s+copy: queuePanelCopy,\s+panel: queuePanelState,\s+styles,\s+\}\);/);
   assert.match(messageQueuePanelSource, /container:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.container/);
   assert.match(messageQueuePanelSource, /header:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.header/);
   assert.match(messageQueuePanelSource, /compactContainer:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactContainer/);
   assert.match(messageQueuePanelSource, /compactAction:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactAction/);
   assert.match(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) =>/);
   assert.match(messageQueuePanelSource, /headerActionParts\.actions\.map\(\(action\) =>/);
+  assert.match(messageQueuePanelSource, /style=\{panelChromeParts\.compactContainer\.style\}/);
+  assert.match(messageQueuePanelSource, /style=\{panelChromeParts\.headerContainer\.style\}/);
+  assert.match(messageQueuePanelSource, /name=\{panelChromeParts\.compactStatusIcon\.name\}[\s\S]*?size=\{panelChromeParts\.compactStatusIcon\.size\}[\s\S]*?color=\{panelChromeParts\.compactStatusIcon\.color\}/);
+  assert.match(messageQueuePanelSource, /\{panelChromeParts\.headerTitle\.text\}/);
   assert.match(messageQueuePanelSource, /style=\{action\.style\}/);
   assert.match(messageQueuePanelSource, /action\.type === 'text'/);
   assert.match(messageQueuePanelSource, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
@@ -4474,6 +4480,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /queuePanelState\.shouldShowProcessNext && onProcessNext/);
   assert.doesNotMatch(messageQueuePanelSource, /queuePanelState\.shouldRenderClear &&/);
   assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelState\.toggleIconName\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /const panelStatusColors = panelColors\.status\[queuePanelState\.statusKey\];/);
+  assert.doesNotMatch(messageQueuePanelSource, /queuePanelState\.shouldRenderPausedNotice &&/);
+  assert.doesNotMatch(messageQueuePanelSource, /queuePanelState\.shouldRenderList &&/);
   assert.match(messageQueuePanelSource, /getQueuedMessageEditDraftState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /const editSubmitState = editDraftState\.submitState;/);
   assert.match(messageQueuePanelSource, /disabled=\{editParts\.saveButton\.disabled\}/);

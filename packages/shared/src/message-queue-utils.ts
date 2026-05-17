@@ -1093,6 +1093,79 @@ export interface MessageQueuePanelHeaderActionMobilePropsParts<
   actions: Array<MessageQueuePanelHeaderActionMobilePropsPart<TStyles, TOnPress>>;
 }
 
+export interface MessageQueuePanelChromeMobilePropsPartsStylesLike {
+  compactContainer: unknown;
+  compactText: unknown;
+  header: unknown;
+  headerCollapsed: unknown;
+  headerLeft: unknown;
+  headerTitle: unknown;
+  pausedNotice: unknown;
+  pausedNoticeText: unknown;
+  list: unknown;
+}
+
+export interface MessageQueuePanelChromeMobilePropsPartsInput<
+  TStyles extends MessageQueuePanelChromeMobilePropsPartsStylesLike =
+    MessageQueuePanelChromeMobilePropsPartsStylesLike,
+> {
+  surface: MessageQueuePanelMobilePanelSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['panel'];
+  copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
+  panel: Pick<
+    MessageQueuePanelState<Pick<QueuedMessage, 'id' | 'status'>>,
+    | 'statusKey'
+    | 'statusIconName'
+    | 'compactLabel'
+    | 'title'
+    | 'isListCollapsed'
+    | 'shouldRenderPausedNotice'
+    | 'shouldRenderList'
+  >;
+  styles: TStyles;
+}
+
+export interface MessageQueuePanelChromeMobilePropsParts<
+  TStyles extends MessageQueuePanelChromeMobilePropsPartsStylesLike =
+    MessageQueuePanelChromeMobilePropsPartsStylesLike,
+> {
+  compactContainer: {
+    style: TStyles['compactContainer'];
+  };
+  compactStatusIcon: {
+    name: MessageQueuePanelStatusIconName;
+    size: MessageQueuePanelMobilePanelSurface['compactIconSize'];
+    color: string;
+  };
+  compactLabel: {
+    style: TStyles['compactText'];
+    text: string;
+  };
+  headerContainer: {
+    style: Array<TStyles['header'] | TStyles['headerCollapsed'] | false>;
+  };
+  headerLeft: {
+    style: TStyles['headerLeft'];
+  };
+  headerStatusIcon: {
+    name: MessageQueuePanelStatusIconName;
+    size: MessageQueuePanelMobilePanelSurface['headerIconSize'];
+    color: string;
+  };
+  headerTitle: {
+    style: TStyles['headerTitle'];
+    text: string;
+  };
+  pausedNotice: {
+    containerStyle: TStyles['pausedNotice'];
+    textStyle: TStyles['pausedNoticeText'];
+    text: string;
+  } | null;
+  list: {
+    style: TStyles['list'];
+  } | null;
+}
+
 export function getMessageQueuePanelRenderItems<T extends { id: string }>(
   messages: readonly T[],
 ): MessageQueuePanelRenderItem<T>[] {
@@ -1503,6 +1576,60 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
   });
 
   return { actions };
+}
+
+export function createMessageQueuePanelChromeMobilePropsParts<
+  TStyles extends MessageQueuePanelChromeMobilePropsPartsStylesLike,
+>({
+  surface,
+  colors,
+  copy,
+  panel,
+  styles,
+}: MessageQueuePanelChromeMobilePropsPartsInput<TStyles>): MessageQueuePanelChromeMobilePropsParts<TStyles> {
+  const statusColors = colors.status[panel.statusKey];
+
+  return {
+    compactContainer: {
+      style: styles.compactContainer,
+    },
+    compactStatusIcon: {
+      name: panel.statusIconName,
+      size: surface.compactIconSize,
+      color: statusColors.color,
+    },
+    compactLabel: {
+      style: styles.compactText,
+      text: panel.compactLabel,
+    },
+    headerContainer: {
+      style: [styles.header, panel.isListCollapsed && styles.headerCollapsed],
+    },
+    headerLeft: {
+      style: styles.headerLeft,
+    },
+    headerStatusIcon: {
+      name: panel.statusIconName,
+      size: surface.headerIconSize,
+      color: statusColors.color,
+    },
+    headerTitle: {
+      style: styles.headerTitle,
+      text: panel.title,
+    },
+    pausedNotice: panel.shouldRenderPausedNotice
+      ? {
+          containerStyle: styles.pausedNotice,
+          textStyle: styles.pausedNoticeText,
+          text: copy.pausedNotice,
+        }
+      : null,
+    list: panel.shouldRenderList
+      ? {
+          style: styles.list,
+        }
+      : null,
+  };
 }
 
 export type QueuedMessageItemPresentation = {

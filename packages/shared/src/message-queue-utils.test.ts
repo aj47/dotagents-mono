@@ -11,6 +11,7 @@ import {
   createMessageQueuePanelMobileWrapperStyleSlots,
   createMessageQueuePanelCompactActionMobilePropsParts,
   createMessageQueuePanelHeaderActionMobilePropsParts,
+  createMessageQueuePanelChromeMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
@@ -765,6 +766,87 @@ describe('message-queue-utils', () => {
         },
       },
     ]);
+    const chromeParts = createMessageQueuePanelChromeMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.panel,
+      colors: mobileQueueSurfaceRenderState.colors.panel,
+      copy: getMessageQueuePanelCopyState(),
+      panel: getMessageQueuePanelState([makeMessage('paused-chrome-message')], {
+        isPaused: true,
+      }),
+      styles: {
+        compactContainer: 'compactContainer',
+        compactText: 'compactText',
+        header: 'header',
+        headerCollapsed: 'headerCollapsed',
+        headerLeft: 'headerLeft',
+        headerTitle: 'headerTitle',
+        pausedNotice: 'pausedNotice',
+        pausedNoticeText: 'pausedNoticeText',
+        list: 'list',
+      },
+    });
+    expect(chromeParts).toMatchObject({
+      compactContainer: {
+        style: 'compactContainer',
+      },
+      compactStatusIcon: {
+        name: 'pause-circle-outline',
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactIconSize,
+        color: '#f59e0b',
+      },
+      compactLabel: {
+        style: 'compactText',
+        text: '1 queued message (paused)',
+      },
+      headerContainer: {
+        style: ['header', false],
+      },
+      headerLeft: {
+        style: 'headerLeft',
+      },
+      headerStatusIcon: {
+        name: 'pause-circle-outline',
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.headerIconSize,
+        color: '#f59e0b',
+      },
+      headerTitle: {
+        style: 'headerTitle',
+        text: 'Paused Messages (1)',
+      },
+      pausedNotice: {
+        containerStyle: 'pausedNotice',
+        textStyle: 'pausedNoticeText',
+        text: MESSAGE_QUEUE_PANEL_PRESENTATION.pausedNotice,
+      },
+      list: {
+        style: 'list',
+      },
+    });
+    expect(createMessageQueuePanelChromeMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.panel,
+      colors: mobileQueueSurfaceRenderState.colors.panel,
+      copy: getMessageQueuePanelCopyState(),
+      panel: getMessageQueuePanelState([makeMessage('collapsed-chrome-message')], {
+        isListCollapsed: true,
+      }),
+      styles: {
+        compactContainer: 'compactContainer',
+        compactText: 'compactText',
+        header: 'header',
+        headerCollapsed: 'headerCollapsed',
+        headerLeft: 'headerLeft',
+        headerTitle: 'headerTitle',
+        pausedNotice: 'pausedNotice',
+        pausedNoticeText: 'pausedNoticeText',
+        list: 'list',
+      },
+    })).toMatchObject({
+      headerContainer: {
+        style: ['header', 'headerCollapsed'],
+      },
+      pausedNotice: null,
+      list: null,
+    });
     expect(createQueuedMessageItemMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.item,
       colors: mobileQueueSurfaceRenderState.colors.item,

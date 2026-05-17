@@ -19,6 +19,7 @@ import {
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelCompactActionMobilePropsParts,
   createMessageQueuePanelHeaderActionMobilePropsParts,
+  createMessageQueuePanelChromeMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
@@ -399,7 +400,6 @@ export function MessageQueuePanel({
   const panelSurface = queuePanelRenderState.surface.panel;
   const queuePanelColors = queuePanelRenderState.colors;
   const panelColors = queuePanelColors.panel;
-  const panelStatusColors = panelColors.status[queuePanelState.statusKey];
   const queuePanelIcons = queuePanelRenderState.icons;
   const queuePanelCopy = queuePanelRenderState.copy;
   const panelStyleSlots = createMessageQueuePanelMobileStyleSlots({
@@ -495,13 +495,24 @@ export function MessageQueuePanel({
     onClear,
     onToggleListCollapsed,
   });
+  const panelChromeParts = createMessageQueuePanelChromeMobilePropsParts({
+    surface: panelSurface,
+    colors: panelColors,
+    copy: queuePanelCopy,
+    panel: queuePanelState,
+    styles,
+  });
 
   if (compact) {
     return (
-      <View style={styles.compactContainer}>
-        <Ionicons name={queuePanelState.statusIconName} size={panelSurface.compactIconSize} color={panelStatusColors.color} />
-        <Text style={styles.compactText}>
-          {queuePanelState.compactLabel}
+      <View style={panelChromeParts.compactContainer.style}>
+        <Ionicons
+          name={panelChromeParts.compactStatusIcon.name}
+          size={panelChromeParts.compactStatusIcon.size}
+          color={panelChromeParts.compactStatusIcon.color}
+        />
+        <Text style={panelChromeParts.compactLabel.style}>
+          {panelChromeParts.compactLabel.text}
         </Text>
         {compactActionParts.actions.map((action) => (
           <TouchableOpacity
@@ -527,11 +538,15 @@ export function MessageQueuePanel({
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, queuePanelState.isListCollapsed && styles.headerCollapsed]}>
-        <View style={styles.headerLeft}>
-          <Ionicons name={queuePanelState.statusIconName} size={panelSurface.headerIconSize} color={panelStatusColors.color} />
-          <Text style={styles.headerTitle}>
-            {queuePanelState.title}
+      <View style={panelChromeParts.headerContainer.style}>
+        <View style={panelChromeParts.headerLeft.style}>
+          <Ionicons
+            name={panelChromeParts.headerStatusIcon.name}
+            size={panelChromeParts.headerStatusIcon.size}
+            color={panelChromeParts.headerStatusIcon.color}
+          />
+          <Text style={panelChromeParts.headerTitle.style}>
+            {panelChromeParts.headerTitle.text}
           </Text>
         </View>
         <View style={styles.headerActions}>
@@ -559,13 +574,15 @@ export function MessageQueuePanel({
           ))}
         </View>
       </View>
-      {queuePanelState.shouldRenderPausedNotice && (
-        <View style={styles.pausedNotice}>
-          <Text style={styles.pausedNoticeText}>{queuePanelCopy.pausedNotice}</Text>
+      {panelChromeParts.pausedNotice && (
+        <View style={panelChromeParts.pausedNotice.containerStyle}>
+          <Text style={panelChromeParts.pausedNotice.textStyle}>
+            {panelChromeParts.pausedNotice.text}
+          </Text>
         </View>
       )}
-      {queuePanelState.shouldRenderList && (
-        <ScrollView style={styles.list}>
+      {panelChromeParts.list && (
+        <ScrollView style={panelChromeParts.list.style}>
           {queuePanelState.items.map((item) => {
             const msg = item.message;
             return (
