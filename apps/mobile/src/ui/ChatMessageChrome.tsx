@@ -4280,15 +4280,24 @@ type ChatComposerInputDockAreaProps =
     children: ReactNode;
   };
 
+type ChatComposerInputDockAreaContentProps =
+  ChatComposerInputDockParts['area']['content'];
+
 type ChatComposerInputDockRowProps =
   ChatComposerInputDockParts['area']['content']['row']['props'] & {
     children: ReactNode;
   };
 
+type ChatComposerInputDockRowContentProps =
+  ChatComposerInputDockParts['area']['content']['row']['content'];
+
 type ChatComposerInputDockMicWrapperProps =
   Omit<ChatComposerInputDockParts['area']['content']['micWrapper']['props'], 'ref'> & {
     children: ReactNode;
   };
+
+type ChatComposerInputDockMicWrapperContentProps =
+  ChatComposerInputDockParts['area']['content']['micWrapper']['content'];
 
 type ChatMessageSurfaceProps = {
   children: ReactNode;
@@ -13324,31 +13333,44 @@ export function ChatComposerInputDock({
     styles,
   });
 
-  const inputDockContent = inputDockParts.area.content;
-
   return (
     <ChatComposerInputDockArea
       {...inputDockParts.area.props}
     >
-      {inputDockContent.speechPreview.children}
-      {inputDockContent.pendingImagesRail.children}
-      {inputDockContent.handsFreeControls.children}
+      <ChatComposerInputDockAreaContent
+        {...inputDockParts.area.content}
+      />
+    </ChatComposerInputDockArea>
+  );
+}
+
+export function ChatComposerInputDockAreaContent({
+  speechPreview,
+  pendingImagesRail,
+  handsFreeControls,
+  row,
+  micWrapper,
+}: ChatComposerInputDockAreaContentProps) {
+  return (
+    <>
+      {speechPreview.children}
+      {pendingImagesRail.children}
+      {handsFreeControls.children}
       <ChatComposerInputDockRow
-        {...inputDockContent.row.props}
+        {...row.props}
       >
-        {inputDockContent.row.content.imageAttachmentControl.children}
-        {inputDockContent.row.content.textToSpeechControl.children}
-        {inputDockContent.row.content.editBeforeSendControl.children}
-        {inputDockContent.row.content.textEntry.children}
-        {inputDockContent.row.content.queueAction.children}
-        {inputDockContent.row.content.submitAction.children}
+        <ChatComposerInputDockRowContent
+          {...row.content}
+        />
       </ChatComposerInputDockRow>
       <ChatComposerInputDockMicWrapper
-        {...inputDockContent.micWrapper.props}
+        {...micWrapper.props}
       >
-        {inputDockContent.micWrapper.content.micButton.children}
+        <ChatComposerInputDockMicWrapperContent
+          {...micWrapper.content}
+        />
       </ChatComposerInputDockMicWrapper>
-    </ChatComposerInputDockArea>
+    </>
   );
 }
 
@@ -13374,6 +13396,26 @@ export function ChatComposerInputDockRow({
   );
 }
 
+export function ChatComposerInputDockRowContent({
+  imageAttachmentControl,
+  textToSpeechControl,
+  editBeforeSendControl,
+  textEntry,
+  queueAction,
+  submitAction,
+}: ChatComposerInputDockRowContentProps) {
+  return (
+    <>
+      {imageAttachmentControl.children}
+      {textToSpeechControl.children}
+      {editBeforeSendControl.children}
+      {textEntry.children}
+      {queueAction.children}
+      {submitAction.children}
+    </>
+  );
+}
+
 export const ChatComposerInputDockMicWrapper = forwardRef<View, ChatComposerInputDockMicWrapperProps>(function ChatComposerInputDockMicWrapper({
   children,
   ...props
@@ -13387,6 +13429,16 @@ export const ChatComposerInputDockMicWrapper = forwardRef<View, ChatComposerInpu
     </View>
   );
 });
+
+export function ChatComposerInputDockMicWrapperContent({
+  micButton,
+}: ChatComposerInputDockMicWrapperContentProps) {
+  return (
+    <>
+      {micButton.children}
+    </>
+  );
+}
 
 export function ChatComposerSpeechPreview({
   label,

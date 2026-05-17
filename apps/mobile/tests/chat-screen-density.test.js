@@ -2797,20 +2797,28 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   const inputDockSource =
     chatMessageChromeSource.match(/export function ChatComposerInputDock[\s\S]*?export function ChatComposerSpeechPreview/)?.[0] ?? '';
   assert.match(inputDockSource, /const inputDockParts = createChatComposerInputDockMobilePropsParts\(\{\s+speechPreview,\s+pendingImagesRail,\s+handsFreeControls,\s+imageAttachmentControl,\s+textToSpeechControl,\s+editBeforeSendControl,\s+textEntry,\s+queueAction,\s+submitAction,\s+micButton,\s+micWrapperRef,\s+styles,\s+\}\);/);
-  assert.match(inputDockSource, /const inputDockContent = inputDockParts\.area\.content;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockAreaContentProps =\s+ChatComposerInputDockParts\['area'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockRowContentProps =\s+ChatComposerInputDockParts\['area'\]\['content'\]\['row'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockMicWrapperContentProps =\s+ChatComposerInputDockParts\['area'\]\['content'\]\['micWrapper'\]\['content'\];/);
   assert.match(inputDockSource, /<ChatComposerInputDockArea\s+\{\.\.\.inputDockParts\.area\.props\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.speechPreview\.children\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.pendingImagesRail\.children\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.handsFreeControls\.children\}/);
-  assert.match(inputDockSource, /<ChatComposerInputDockRow\s+\{\.\.\.inputDockContent\.row\.props\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.row\.content\.imageAttachmentControl\.children\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.row\.content\.textToSpeechControl\.children\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.row\.content\.editBeforeSendControl\.children\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.row\.content\.textEntry\.children\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.row\.content\.queueAction\.children\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.row\.content\.submitAction\.children\}/);
-  assert.match(inputDockSource, /<ChatComposerInputDockMicWrapper\s+\{\.\.\.inputDockContent\.micWrapper\.props\}/);
-  assert.match(inputDockSource, /\{inputDockContent\.micWrapper\.content\.micButton\.children\}/);
+  assert.match(inputDockSource, /<ChatComposerInputDockAreaContent\s+\{\.\.\.inputDockParts\.area\.content\}\s+\/>/);
+  assert.match(inputDockSource, /export function ChatComposerInputDockAreaContent/);
+  assert.match(inputDockSource, /\{speechPreview\.children\}/);
+  assert.match(inputDockSource, /\{pendingImagesRail\.children\}/);
+  assert.match(inputDockSource, /\{handsFreeControls\.children\}/);
+  assert.match(inputDockSource, /<ChatComposerInputDockRow\s+\{\.\.\.row\.props\}/);
+  assert.match(inputDockSource, /<ChatComposerInputDockRowContent\s+\{\.\.\.row\.content\}/);
+  assert.match(inputDockSource, /export function ChatComposerInputDockRowContent/);
+  assert.match(inputDockSource, /\{imageAttachmentControl\.children\}/);
+  assert.match(inputDockSource, /\{textToSpeechControl\.children\}/);
+  assert.match(inputDockSource, /\{editBeforeSendControl\.children\}/);
+  assert.match(inputDockSource, /\{textEntry\.children\}/);
+  assert.match(inputDockSource, /\{queueAction\.children\}/);
+  assert.match(inputDockSource, /\{submitAction\.children\}/);
+  assert.match(inputDockSource, /<ChatComposerInputDockMicWrapper\s+\{\.\.\.micWrapper\.props\}/);
+  assert.match(inputDockSource, /<ChatComposerInputDockMicWrapperContent\s+\{\.\.\.micWrapper\.content\}/);
+  assert.match(inputDockSource, /export function ChatComposerInputDockMicWrapperContent[\s\S]*?\{micButton\.children\}/);
+  assert.doesNotMatch(inputDockSource, /const inputDockContent = inputDockParts\.area\.content;/);
   assert.match(
     inputDockSource,
     /export function ChatComposerInputDockArea\([\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatComposerInputDockRow/
