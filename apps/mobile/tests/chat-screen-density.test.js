@@ -4490,18 +4490,26 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSection[\s\S]*?<ChatMessageToolExecutionDetailHeader\s+renderState=\{renderState\}[\s\S]*?export function ChatMessageToolExecutionResultBadge/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionDetailHeader\s+renderState=\{toolDetailHeaderState\}\s+toolName=\{toolNameLabel\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeader/);
+  const toolExecutionDetailHeaderSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionDetailHeader\([\s\S]*?export function ChatMessageToolExecutionDetailHeaderPressable/)?.[0] ?? '';
+  const toolExecutionDetailHeaderContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionDetailHeaderContent[\s\S]*?export function ChatMessageToolExecutionDetailHeaderToolName/)?.[0] ?? '';
+  const toolExecutionDetailHeaderExpandHintContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionDetailHeaderExpandHintContent[\s\S]*?export function ChatMessageToolExecutionDetailHeaderIcon/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionDetailHeaderMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const detailHeaderParts = createChatRuntimeToolExecutionDetailHeaderMobilePropsParts\(\{\s+renderState,\s+toolName,\s+onPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const detailHeaderContent = detailHeaderParts\.container\.content;/);
-  assert.match(chatMessageChromeSource, /const expandHintContent = detailHeaderContent\.expandHint\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const detailHeaderContent = detailHeaderParts\.container\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const expandHintContent = detailHeaderContent\.expandHint\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeaderPressable\s+\{\.\.\.detailHeaderParts\.container\.props\}/);
+  assert.match(toolExecutionDetailHeaderSource, /<ChatMessageToolExecutionDetailHeaderContent\s+\{\.\.\.detailHeaderParts\.container\.content\}/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ expanded: toolDetailHeaderState\.isExpanded \}\}/);
   assert.doesNotMatch(screenSource, /aria-expanded=\{toolDetailHeaderState\.isExpanded\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeaderToolName\s+\{\.\.\.detailHeaderContent\.toolName\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeaderExpandHint\s+\{\.\.\.detailHeaderContent\.expandHint\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeaderIcon\s+\{\.\.\.expandHintContent\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeaderExpandLabel\s+\{\.\.\.expandHintContent\.label\.props\}/);
+  assert.match(toolExecutionDetailHeaderContentSource, /<ChatMessageToolExecutionDetailHeaderToolName\s+\{\.\.\.toolName\.props\}/);
+  assert.match(toolExecutionDetailHeaderContentSource, /<ChatMessageToolExecutionDetailHeaderExpandHint\s+\{\.\.\.expandHint\.props\}/);
+  assert.match(toolExecutionDetailHeaderContentSource, /<ChatMessageToolExecutionDetailHeaderExpandHintContent\s+\{\.\.\.expandHint\.content\}/);
+  assert.match(toolExecutionDetailHeaderExpandHintContentSource, /<ChatMessageToolExecutionDetailHeaderIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(toolExecutionDetailHeaderExpandHintContentSource, /<ChatMessageToolExecutionDetailHeaderExpandLabel\s+\{\.\.\.label\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeaderPressable[\s\S]*?<Pressable\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionDetailHeaderToolName/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeaderPressable[\s\S]*?(onPress=\{onPress\}|style=\{style\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityState=\{accessibilityState\}|aria-expanded=\{ariaExpanded\}|accessibilityHint=\{accessibilityHint\})[\s\S]*?export function ChatMessageToolExecutionDetailHeaderToolName/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeaderExpandHint[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionDetailHeaderIcon/);

@@ -2631,6 +2631,9 @@ type ChatMessageToolExecutionDetailHeaderPressableProps =
     children: ReactNode;
   };
 
+type ChatMessageToolExecutionDetailHeaderContentProps =
+  ChatMessageToolExecutionDetailHeaderParts['container']['content'];
+
 type ChatMessageToolExecutionDetailHeaderToolNameProps =
   ChatMessageToolExecutionDetailHeaderParts['container']['content']['toolName']['props'];
 
@@ -2638,6 +2641,9 @@ type ChatMessageToolExecutionDetailHeaderExpandHintProps =
   ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['props'] & {
     children: ReactNode;
   };
+
+type ChatMessageToolExecutionDetailHeaderExpandHintContentProps =
+  ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['content'];
 
 type ChatMessageToolExecutionDetailHeaderIconProps =
   ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['content']['icon']['props'];
@@ -10729,26 +10735,14 @@ export function ChatMessageToolExecutionDetailHeader({
     onPress,
     styles,
   });
-  const detailHeaderContent = detailHeaderParts.container.content;
-  const expandHintContent = detailHeaderContent.expandHint.content;
 
   return (
     <ChatMessageToolExecutionDetailHeaderPressable
       {...detailHeaderParts.container.props}
     >
-      <ChatMessageToolExecutionDetailHeaderToolName
-        {...detailHeaderContent.toolName.props}
+      <ChatMessageToolExecutionDetailHeaderContent
+        {...detailHeaderParts.container.content}
       />
-      <ChatMessageToolExecutionDetailHeaderExpandHint
-        {...detailHeaderContent.expandHint.props}
-      >
-        <ChatMessageToolExecutionDetailHeaderIcon
-          {...expandHintContent.icon.props}
-        />
-        <ChatMessageToolExecutionDetailHeaderExpandLabel
-          {...expandHintContent.label.props}
-        />
-      </ChatMessageToolExecutionDetailHeaderExpandHint>
     </ChatMessageToolExecutionDetailHeaderPressable>
   );
 }
@@ -10761,6 +10755,26 @@ export function ChatMessageToolExecutionDetailHeaderPressable({
     <Pressable {...props}>
       {children}
     </Pressable>
+  );
+}
+
+export function ChatMessageToolExecutionDetailHeaderContent({
+  toolName,
+  expandHint,
+}: ChatMessageToolExecutionDetailHeaderContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionDetailHeaderToolName
+        {...toolName.props}
+      />
+      <ChatMessageToolExecutionDetailHeaderExpandHint
+        {...expandHint.props}
+      >
+        <ChatMessageToolExecutionDetailHeaderExpandHintContent
+          {...expandHint.content}
+        />
+      </ChatMessageToolExecutionDetailHeaderExpandHint>
+    </>
   );
 }
 
@@ -10783,6 +10797,22 @@ export function ChatMessageToolExecutionDetailHeaderExpandHint({
     <View {...props}>
       {children}
     </View>
+  );
+}
+
+export function ChatMessageToolExecutionDetailHeaderExpandHintContent({
+  icon,
+  label,
+}: ChatMessageToolExecutionDetailHeaderExpandHintContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionDetailHeaderIcon
+        {...icon.props}
+      />
+      <ChatMessageToolExecutionDetailHeaderExpandLabel
+        {...label.props}
+      />
+    </>
   );
 }
 
