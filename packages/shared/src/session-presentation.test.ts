@@ -8129,7 +8129,10 @@ describe("session presentation semantics", () => {
       numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.title.numberOfLines,
       text: CHAT_RUNTIME_PRESENTATION.approval.processingTitle,
     })
-    expect(toolApprovalParts.headerSpinner).toEqual(toolApprovalProps.renderState.spinner)
+    expect(toolApprovalParts.headerSpinner).toEqual({
+      ...toolApprovalProps.renderState.spinner,
+      shouldRender: true,
+    })
     expect(toolApprovalParts.content.style).toEqual([
       "tool-approval-content-style",
       "tool-approval-content-disabled-style",

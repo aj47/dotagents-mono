@@ -641,8 +641,10 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.headerIcon\.color\}/);
   assert.match(toolApprovalComponentSource, /numberOfLines=\{toolApprovalParts\.title\.numberOfLines\}/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.title\.text\}/);
+  assert.match(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner\.shouldRender \? \(/);
   assert.match(toolApprovalComponentSource, /size=\{toolApprovalParts\.headerSpinner\.size\}/);
   assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.headerSpinner\.color\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner \? \(/);
   assert.match(toolApprovalComponentSource, /style=\{toolApprovalParts\.content\.style\}/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.toolLabel\.text\}:/);
   assert.match(toolApprovalComponentSource, /numberOfLines=\{toolApprovalParts\.toolName\.numberOfLines\}/);

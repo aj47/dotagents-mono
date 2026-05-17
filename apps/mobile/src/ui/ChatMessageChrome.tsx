@@ -7364,7 +7364,7 @@ export function ChatMessageToolApproval({
         >
           {toolApprovalParts.title.text}
         </Text>
-        {toolApprovalParts.headerSpinner ? (
+        {toolApprovalParts.headerSpinner.shouldRender ? (
           <ActivityIndicator
             size={toolApprovalParts.headerSpinner.size}
             color={toolApprovalParts.headerSpinner.color}

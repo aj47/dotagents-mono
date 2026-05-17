@@ -1952,7 +1952,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["title"]["numberOfLines"]
     text: string
   }
-  headerSpinner: ChatRuntimeToolApprovalMobileRenderState["spinner"] | null
+  headerSpinner: ChatRuntimeToolApprovalMobileRenderState["spinner"] & {
+    shouldRender: boolean
+  }
   content: {
     style: Array<TStyles["content"] | TStyles["contentDisabled"] | false>
   }
@@ -22441,7 +22443,10 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       numberOfLines: renderState.surface.title.numberOfLines,
       text: renderState.title,
     },
-    headerSpinner: renderState.approveButton.isDisabled ? renderState.spinner : null,
+    headerSpinner: {
+      ...renderState.spinner,
+      shouldRender: renderState.approveButton.isDisabled,
+    },
     content: {
       style: [
         styles.content,
