@@ -14529,34 +14529,36 @@ describe("session presentation semantics", () => {
         props: {
           style: "result-item",
         },
-      },
-      header: {
-        props: {
-          payloadRenderState: "result-payload-state",
-          resultBadge: "success-badge",
-          characterCountLabel: "42 chars",
-          copyButtonRenderState: "copy-result-state",
-          onCopyPress: "copy-result",
-          styles: "result-header",
-        },
-      },
-      payloadBlock: {
-        props: {
-          compactText: "compact-result",
-          content: "full-result",
-          isExpanded: true,
-          previewNumberOfLines: 3,
-          styles: "result-payload-block",
-        },
-      },
-      errorBlock: {
-        shouldRender: true,
-        props: {
-          renderState: "error-state",
-          error: "failed",
-          copyButtonRenderState: "copy-error-state",
-          onCopyPress: "copy-error",
-          styles: "result-error-block",
+        content: {
+          header: {
+            props: {
+              payloadRenderState: "result-payload-state",
+              resultBadge: "success-badge",
+              characterCountLabel: "42 chars",
+              copyButtonRenderState: "copy-result-state",
+              onCopyPress: "copy-result",
+              styles: "result-header",
+            },
+          },
+          payloadBlock: {
+            props: {
+              compactText: "compact-result",
+              content: "full-result",
+              isExpanded: true,
+              previewNumberOfLines: 3,
+              styles: "result-payload-block",
+            },
+          },
+          errorBlock: {
+            shouldRender: true,
+            props: {
+              renderState: "error-state",
+              error: "failed",
+              copyButtonRenderState: "copy-error-state",
+              onCopyPress: "copy-error",
+              styles: "result-error-block",
+            },
+          },
         },
       },
     })
@@ -14577,7 +14579,7 @@ describe("session presentation semantics", () => {
         payloadBlock: "result-payload-block",
         errorBlock: "result-error-block",
       },
-    }).errorBlock).toEqual({
+    }).item.content.errorBlock).toEqual({
       shouldRender: false,
       props: null,
     })

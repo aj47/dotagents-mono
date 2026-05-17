@@ -9985,20 +9985,21 @@ export function ChatMessageToolExecutionResultSection({
     onErrorCopyPress,
     styles,
   });
+  const resultSectionContent = resultSectionParts.item.content;
 
   return (
     <ChatMessageToolExecutionResultSectionItem
       {...resultSectionParts.item.props}
     >
       <ChatMessageToolExecutionResultHeader
-        {...resultSectionParts.header.props}
+        {...resultSectionContent.header.props}
       />
       <ChatMessageToolExecutionPayloadBlock
-        {...resultSectionParts.payloadBlock.props}
+        {...resultSectionContent.payloadBlock.props}
       />
-      {resultSectionParts.errorBlock.shouldRender ? (
+      {resultSectionContent.errorBlock.shouldRender ? (
         <ChatMessageToolExecutionErrorBlock
-          {...resultSectionParts.errorBlock.props}
+          {...resultSectionContent.errorBlock.props}
         />
       ) : null}
     </ChatMessageToolExecutionResultSectionItem>

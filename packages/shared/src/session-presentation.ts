@@ -4600,33 +4600,35 @@ export interface ChatRuntimeToolExecutionResultSectionMobilePropsParts<
     props: {
       style: TStyles["item"]
     }
-  }
-  header: {
-    props: {
-      payloadRenderState: TPayloadRenderState
-      resultBadge: TResultBadge
-      characterCountLabel: string
-      copyButtonRenderState: TCopyButtonRenderState
-      onCopyPress: TOnCopyPress | undefined
-      styles: TStyles["header"]
+    content: {
+      header: {
+        props: {
+          payloadRenderState: TPayloadRenderState
+          resultBadge: TResultBadge
+          characterCountLabel: string
+          copyButtonRenderState: TCopyButtonRenderState
+          onCopyPress: TOnCopyPress | undefined
+          styles: TStyles["header"]
+        }
+      }
+      payloadBlock: {
+        props: {
+          compactText: string | null | undefined
+          content: string
+          isExpanded: boolean
+          previewNumberOfLines: number
+          styles: TStyles["payloadBlock"]
+        }
+      }
+      errorBlock: ChatRuntimeMobilePropsPart<{
+        renderState: TErrorRenderState
+        error: string
+        copyButtonRenderState: TErrorCopyButtonRenderState
+        onCopyPress: TOnErrorCopyPress | undefined
+        styles: TStyles["errorBlock"]
+      }>
     }
   }
-  payloadBlock: {
-    props: {
-      compactText: string | null | undefined
-      content: string
-      isExpanded: boolean
-      previewNumberOfLines: number
-      styles: TStyles["payloadBlock"]
-    }
-  }
-  errorBlock: ChatRuntimeMobilePropsPart<{
-    renderState: TErrorRenderState
-    error: string
-    copyButtonRenderState: TErrorCopyButtonRenderState
-    onCopyPress: TOnErrorCopyPress | undefined
-    styles: TStyles["errorBlock"]
-  }>
 }
 
 export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
@@ -22252,38 +22254,40 @@ export function createChatRuntimeToolExecutionResultSectionMobilePropsParts<
       props: {
         style: styles.item,
       },
-    },
-    header: {
-      props: {
-        payloadRenderState,
-        resultBadge,
-        characterCountLabel,
-        copyButtonRenderState,
-        onCopyPress,
-        styles: styles.header,
+      content: {
+        header: {
+          props: {
+            payloadRenderState,
+            resultBadge,
+            characterCountLabel,
+            copyButtonRenderState,
+            onCopyPress,
+            styles: styles.header,
+          },
+        },
+        payloadBlock: {
+          props: {
+            compactText: resultCompactText,
+            content: resultContent,
+            isExpanded,
+            previewNumberOfLines,
+            styles: styles.payloadBlock,
+          },
+        },
+        errorBlock: error ? {
+          shouldRender: true,
+          props: {
+            renderState: errorRenderState,
+            error,
+            copyButtonRenderState: errorCopyButtonRenderState,
+            onCopyPress: onErrorCopyPress,
+            styles: styles.errorBlock,
+          },
+        } : {
+          shouldRender: false,
+          props: null,
+        },
       },
-    },
-    payloadBlock: {
-      props: {
-        compactText: resultCompactText,
-        content: resultContent,
-        isExpanded,
-        previewNumberOfLines,
-        styles: styles.payloadBlock,
-      },
-    },
-    errorBlock: error ? {
-      shouldRender: true,
-      props: {
-        renderState: errorRenderState,
-        error,
-        copyButtonRenderState: errorCopyButtonRenderState,
-        onCopyPress: onErrorCopyPress,
-        styles: styles.errorBlock,
-      },
-    } : {
-      shouldRender: false,
-      props: null,
     },
   }
 }
