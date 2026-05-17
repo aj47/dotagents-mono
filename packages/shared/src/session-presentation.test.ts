@@ -9817,21 +9817,29 @@ describe("session presentation semantics", () => {
     })).toEqual({
       shouldRender: true,
       overlay: {
-        style: "voice-overlay",
-        pointerEvents: "none",
+        props: {
+          style: "voice-overlay",
+          pointerEvents: "none",
+        },
       },
       card: {
-        style: "voice-overlay-card",
+        props: {
+          style: "voice-overlay-card",
+        },
       },
       label: {
-        style: "voice-overlay-label",
-        text: "Listening",
+        props: {
+          style: "voice-overlay-label",
+          text: "Listening",
+        },
       },
       transcript: {
         shouldRender: true,
-        style: "voice-overlay-transcript",
-        numberOfLines: 2,
-        text: "voice transcript",
+        props: {
+          style: "voice-overlay-transcript",
+          numberOfLines: 2,
+          text: "voice transcript",
+        },
       },
     })
     expect(createChatComposerVoiceOverlayMobilePropsParts({
@@ -9849,9 +9857,11 @@ describe("session presentation semantics", () => {
       shouldRender: false,
       transcript: {
         shouldRender: false,
-        style: "voice-overlay-transcript",
-        numberOfLines: 2,
-        text: "",
+        props: {
+          style: "voice-overlay-transcript",
+          numberOfLines: 2,
+          text: "",
+        },
       },
     })
     expect(createChatComposerTextEntryMobilePropsParts({

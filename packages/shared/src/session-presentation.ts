@@ -4544,21 +4544,29 @@ export interface ChatComposerVoiceOverlayMobilePropsParts<
 > {
   shouldRender: boolean
   overlay: {
-    style: TStyles["overlay"]
-    pointerEvents: "none"
+    props: {
+      style: TStyles["overlay"]
+      pointerEvents: "none"
+    }
   }
   card: {
-    style: TStyles["card"]
+    props: {
+      style: TStyles["card"]
+    }
   }
   label: {
-    style: TStyles["label"]
-    text: string
+    props: {
+      style: TStyles["label"]
+      text: string
+    }
   }
   transcript: {
     shouldRender: boolean
-    style: TStyles["transcript"]
-    numberOfLines: TTranscriptNumberOfLines
-    text: TTranscript
+    props: {
+      style: TStyles["transcript"]
+      numberOfLines: TTranscriptNumberOfLines
+      text: TTranscript
+    }
   }
 }
 
@@ -21422,21 +21430,29 @@ export function createChatComposerVoiceOverlayMobilePropsParts<
   return {
     shouldRender: isVisible,
     overlay: {
-      style: styles.overlay,
-      pointerEvents: "none",
+      props: {
+        style: styles.overlay,
+        pointerEvents: "none",
+      },
     },
     card: {
-      style: styles.card,
+      props: {
+        style: styles.card,
+      },
     },
     label: {
-      style: styles.label,
-      text: label,
+      props: {
+        style: styles.label,
+        text: label,
+      },
     },
     transcript: {
       shouldRender: Boolean(transcript),
-      style: styles.transcript,
-      numberOfLines: transcriptNumberOfLines,
-      text: transcript,
+      props: {
+        style: styles.transcript,
+        numberOfLines: transcriptNumberOfLines,
+        text: transcript,
+      },
     },
   }
 }

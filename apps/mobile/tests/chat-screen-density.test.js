@@ -3127,15 +3127,35 @@ test('keeps the live voice overlay compact by grouping status and transcript int
     chatMessageChromeSource.match(/export function ChatComposerVoiceOverlay[\s\S]*?export function ChatComposerHandsFreeControls/)?.[0] ?? '';
   assert.match(voiceOverlaySource, /const voiceOverlayParts = createChatComposerVoiceOverlayMobilePropsParts\(\{\s+isVisible,\s+label,\s+transcript,\s+transcriptNumberOfLines,\s+styles,\s+\}\);/);
   assert.match(voiceOverlaySource, /if \(!voiceOverlayParts\.shouldRender\) return null;/);
-  assert.match(voiceOverlaySource, /style=\{voiceOverlayParts\.overlay\.style\}/);
-  assert.match(voiceOverlaySource, /pointerEvents=\{voiceOverlayParts\.overlay\.pointerEvents\}/);
-  assert.match(voiceOverlaySource, /<View style=\{voiceOverlayParts\.card\.style\}>/);
-  assert.match(voiceOverlaySource, /<Text style=\{voiceOverlayParts\.label\.style\}>/);
-  assert.match(voiceOverlaySource, /\{voiceOverlayParts\.label\.text\}/);
+  assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayContainer\s+\{\.\.\.voiceOverlayParts\.overlay\.props\}/);
+  assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayCard\s+\{\.\.\.voiceOverlayParts\.card\.props\}/);
+  assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayLabel\s+\{\.\.\.voiceOverlayParts\.label\.props\}/);
   assert.match(voiceOverlaySource, /\{voiceOverlayParts\.transcript\.shouldRender \? \(/);
-  assert.match(voiceOverlaySource, /style=\{voiceOverlayParts\.transcript\.style\}/);
-  assert.match(voiceOverlaySource, /numberOfLines=\{voiceOverlayParts\.transcript\.numberOfLines\}/);
-  assert.match(voiceOverlaySource, /\{voiceOverlayParts\.transcript\.text\}/);
+  assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayTranscript\s+\{\.\.\.voiceOverlayParts\.transcript\.props\}/);
+  assert.match(
+    voiceOverlaySource,
+    /export function ChatComposerVoiceOverlayContainer\([\s\S]*?style=\{style\}[\s\S]*?pointerEvents=\{pointerEvents\}[\s\S]*?export function ChatComposerVoiceOverlayCard/
+  );
+  assert.match(
+    voiceOverlaySource,
+    /export function ChatComposerVoiceOverlayCard\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerVoiceOverlayLabel/
+  );
+  assert.match(
+    voiceOverlaySource,
+    /export function ChatComposerVoiceOverlayLabel\([\s\S]*?<Text style=\{style\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerVoiceOverlayTranscript/
+  );
+  assert.match(
+    voiceOverlaySource,
+    /export function ChatComposerVoiceOverlayTranscript\([\s\S]*?style=\{style\}[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}[\s\S]*?export function ChatComposerHandsFreeControls/
+  );
+  assert.match(sessionPresentationSource, /overlay: \{\s+props: \{\s+style: styles\.overlay,\s+pointerEvents: "none",/);
+  assert.match(sessionPresentationSource, /card: \{\s+props: \{\s+style: styles\.card,/);
+  assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.label,\s+text: label,/);
+  assert.match(sessionPresentationSource, /transcript: \{\s+shouldRender: Boolean\(transcript\),\s+props: \{\s+style: styles\.transcript,\s+numberOfLines: transcriptNumberOfLines,\s+text: transcript,/);
+  assert.doesNotMatch(
+    voiceOverlaySource,
+    /voiceOverlayParts\.(overlay|card|label|transcript)\.(style|pointerEvents|numberOfLines|text)/
+  );
   assert.doesNotMatch(voiceOverlaySource, /if \(!isVisible\) return null;/);
   assert.doesNotMatch(voiceOverlaySource, /pointerEvents="none"/);
   assert.doesNotMatch(voiceOverlaySource, /<View style=\{styles\.card\}>/);
@@ -3170,7 +3190,7 @@ test('caps live transcript height so the recording overlay is less likely to cov
   assert.doesNotMatch(screenSource, /voiceOverlayTranscriptNumberOfLines: mobileComposerSurface\.voiceOverlay\.transcriptNumberOfLines/);
   assert.match(sessionPresentationSource, /transcriptNumberOfLines: dockChromeRenderState\.voiceOverlay\.transcriptNumberOfLines/);
   assert.match(sessionPresentationSource, /numberOfLines: transcriptNumberOfLines/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{voiceOverlayParts\.transcript\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /<ChatComposerVoiceOverlayTranscript\s+\{\.\.\.voiceOverlayParts\.transcript\.props\}/);
   assert.match(screenSource, /overlayTranscript:\s*\{\s+\.\.\.composerStyleSlots\.overlayTranscript,\s+\}/);
   assert.match(sessionPresentationSource, /overlayTranscript:\s*\{[\s\S]*?color:\s*textColors\.voiceOverlay\.color,[\s\S]*?marginTop:\s*surface\.voiceOverlay\.transcriptMarginTop,[\s\S]*?opacity:\s*surface\.voiceOverlay\.transcriptOpacity,/);
   assert.doesNotMatch(screenSource, /numberOfLines=\{mobileComposerSurface\.voiceOverlay\.transcriptNumberOfLines\}/);

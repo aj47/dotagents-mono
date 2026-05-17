@@ -2844,6 +2844,28 @@ type ChatComposerVoiceOverlayProps = {
   styles: ChatComposerVoiceOverlayStyles;
 };
 
+type ChatComposerVoiceOverlayParts = ReturnType<typeof createChatComposerVoiceOverlayMobilePropsParts<
+  ChatComposerVoiceOverlayProps['transcript'],
+  ChatComposerVoiceOverlayProps['transcriptNumberOfLines'],
+  ChatComposerVoiceOverlayProps['styles']
+>>;
+
+type ChatComposerVoiceOverlayContainerProps =
+  ChatComposerVoiceOverlayParts['overlay']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerVoiceOverlayCardProps =
+  ChatComposerVoiceOverlayParts['card']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerVoiceOverlayLabelProps =
+  ChatComposerVoiceOverlayParts['label']['props'];
+
+type ChatComposerVoiceOverlayTranscriptProps =
+  ChatComposerVoiceOverlayParts['transcript']['props'];
+
 type ChatComposerHandsFreeControlsStyles = {
   statusRow: StyleProp<ViewStyle>;
   controlsRow: StyleProp<ViewStyle>;
@@ -10609,24 +10631,74 @@ export function ChatComposerVoiceOverlay({
   if (!voiceOverlayParts.shouldRender) return null;
 
   return (
-    <View
-      style={voiceOverlayParts.overlay.style}
-      pointerEvents={voiceOverlayParts.overlay.pointerEvents}
+    <ChatComposerVoiceOverlayContainer
+      {...voiceOverlayParts.overlay.props}
     >
-      <View style={voiceOverlayParts.card.style}>
-        <Text style={voiceOverlayParts.label.style}>
-          {voiceOverlayParts.label.text}
-        </Text>
+      <ChatComposerVoiceOverlayCard
+        {...voiceOverlayParts.card.props}
+      >
+        <ChatComposerVoiceOverlayLabel
+          {...voiceOverlayParts.label.props}
+        />
         {voiceOverlayParts.transcript.shouldRender ? (
-          <Text
-            style={voiceOverlayParts.transcript.style}
-            numberOfLines={voiceOverlayParts.transcript.numberOfLines}
-          >
-            {voiceOverlayParts.transcript.text}
-          </Text>
+          <ChatComposerVoiceOverlayTranscript
+            {...voiceOverlayParts.transcript.props}
+          />
         ) : null}
-      </View>
+      </ChatComposerVoiceOverlayCard>
+    </ChatComposerVoiceOverlayContainer>
+  );
+}
+
+export function ChatComposerVoiceOverlayContainer({
+  style,
+  pointerEvents,
+  children,
+}: ChatComposerVoiceOverlayContainerProps) {
+  return (
+    <View
+      style={style}
+      pointerEvents={pointerEvents}
+    >
+      {children}
     </View>
+  );
+}
+
+export function ChatComposerVoiceOverlayCard({
+  style,
+  children,
+}: ChatComposerVoiceOverlayCardProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatComposerVoiceOverlayLabel({
+  style,
+  text,
+}: ChatComposerVoiceOverlayLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
+  );
+}
+
+export function ChatComposerVoiceOverlayTranscript({
+  style,
+  numberOfLines,
+  text,
+}: ChatComposerVoiceOverlayTranscriptProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
   );
 }
 
