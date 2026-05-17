@@ -13249,9 +13249,11 @@ describe("session presentation semantics", () => {
     expect(compactListParts).toEqual({
       shouldRenderList: true,
       group: {
-        renderState: "compact-expand-state",
-        onPress: "expand-tools",
-        styles: "compact-group-styles",
+        props: {
+          renderState: "compact-expand-state",
+          onPress: "expand-tools",
+          styles: "compact-group-styles",
+        },
       },
       rows: [
         {

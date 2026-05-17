@@ -4056,9 +4056,11 @@ export interface ChatRuntimeToolExecutionCompactListMobilePropsParts<
 > {
   shouldRenderList: boolean
   group: {
-    renderState: TRenderState
-    onPress: TOnPress | undefined
-    styles: TCompactGroupStyles
+    props: {
+      renderState: TRenderState
+      onPress: TOnPress | undefined
+      styles: TCompactGroupStyles
+    }
   }
   rows: Array<{
     key: TRow["key"]
@@ -21279,9 +21281,11 @@ export function createChatRuntimeToolExecutionCompactListMobilePropsParts<
   return {
     shouldRenderList: shouldRender,
     group: {
-      renderState,
-      onPress,
-      styles: groupStyles,
+      props: {
+        renderState,
+        onPress,
+        styles: groupStyles,
+      },
     },
     rows: rows.map((row) => ({
       key: row.key,

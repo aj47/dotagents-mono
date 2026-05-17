@@ -9403,7 +9403,7 @@ export function ChatMessageToolExecutionCompactList({
 
   return (
     <ChatMessageToolExecutionCompactGroup
-      {...compactListParts.group}
+      {...compactListParts.group.props}
     >
       {compactListParts.rows.map((row) => (
         <ChatMessageToolExecutionCompactRow
