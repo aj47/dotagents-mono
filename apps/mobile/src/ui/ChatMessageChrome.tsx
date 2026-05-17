@@ -8684,7 +8684,7 @@ export function ChatMessageToolExecutionCallList({
           input={row.input}
           result={row.result}
           pendingResult={row.pendingResult}
-          styles={styles}
+          styles={row.styles}
         />
       ))}
     </>
