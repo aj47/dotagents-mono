@@ -59,6 +59,76 @@ export interface HandsFreeStatusChipMobileRenderState {
   colors: HandsFreeStatusChipMobileColors
 }
 
+type HandsFreeStatusChipMobileSurface =
+  typeof HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.statusChip
+
+export type HandsFreeStatusChipMobileStyleSpacingToken =
+  | HandsFreeStatusChipMobileSurface["paddingHorizontal"]
+  | HandsFreeStatusChipMobileSurface["paddingVertical"]
+
+export type HandsFreeStatusChipMobileStyleRadiusToken =
+  HandsFreeStatusChipMobileSurface["borderRadius"]
+
+export interface HandsFreeStatusChipMobileStyleSlotsInput {
+  renderState: Pick<HandsFreeStatusChipMobileRenderState, "surface" | "colors">
+  spacing: Readonly<Record<HandsFreeStatusChipMobileStyleSpacingToken, number>>
+  radius: Readonly<Record<HandsFreeStatusChipMobileStyleRadiusToken, number>>
+}
+
+export interface HandsFreeStatusChipMobileStyleSlots {
+  container: {
+    borderRadius: number
+    borderWidth: number
+    paddingHorizontal: number
+    paddingVertical: number
+    alignSelf: HandsFreeStatusChipMobileSurface["alignSelf"]
+    maxWidth: HandsFreeStatusChipMobileSurface["maxWidth"]
+    backgroundColor: string
+    borderColor: string
+  }
+  label: {
+    fontSize: number
+    fontWeight: HandsFreeStatusChipMobileSurface["label"]["fontWeight"]
+    color: string
+  }
+  subtitle: {
+    fontSize: number
+    marginTop: number
+    opacity: number
+    color: string
+  }
+}
+
+export interface HandsFreeStatusChipMobileStylesLike {
+  container: unknown
+  label: unknown
+  subtitle: unknown
+}
+
+export interface HandsFreeStatusChipMobilePropsPartsInput<
+  TStyles extends HandsFreeStatusChipMobileStylesLike = HandsFreeStatusChipMobileStylesLike,
+> {
+  renderState: HandsFreeStatusChipMobileRenderState
+  styles: TStyles
+}
+
+export interface HandsFreeStatusChipMobilePropsParts<
+  TStyles extends HandsFreeStatusChipMobileStylesLike = HandsFreeStatusChipMobileStylesLike,
+> {
+  container: {
+    style: TStyles["container"]
+  }
+  label: {
+    style: TStyles["label"]
+    text: string
+  }
+  subtitle: {
+    style: TStyles["subtitle"]
+    numberOfLines: HandsFreeStatusChipMobileSurface["subtitle"]["numberOfLines"]
+    text: string
+  } | null
+}
+
 export type HandsFreeComposerMobileSurfaceColorToken =
   | typeof HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.borderColorToken
   | typeof HANDS_FREE_COMPOSER_PRESENTATION.surface.mobile.controlButton.backgroundColorToken
@@ -359,6 +429,63 @@ export function getHandsFreeStatusChipMobileRenderState({
     shouldRenderSubtitle: normalizedSubtitle.length > 0,
     surface: getHandsFreeComposerMobileSurfaceState().statusChip,
     colors: getHandsFreeStatusChipMobileColors(phase, colors),
+  }
+}
+
+export function createHandsFreeStatusChipMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+}: HandsFreeStatusChipMobileStyleSlotsInput): HandsFreeStatusChipMobileStyleSlots {
+  const surface = renderState.surface
+  const colors = renderState.colors
+
+  return {
+    container: {
+      borderRadius: radius[surface.borderRadius],
+      borderWidth: surface.borderWidth,
+      paddingHorizontal: spacing[surface.paddingHorizontal],
+      paddingVertical: spacing[surface.paddingVertical],
+      alignSelf: surface.alignSelf,
+      maxWidth: surface.maxWidth,
+      backgroundColor: colors.backgroundColor,
+      borderColor: colors.borderColor,
+    },
+    label: {
+      fontSize: surface.label.fontSize,
+      fontWeight: surface.label.fontWeight,
+      color: colors.textColor,
+    },
+    subtitle: {
+      fontSize: surface.subtitle.fontSize,
+      marginTop: surface.subtitle.marginTop,
+      opacity: surface.subtitle.opacity,
+      color: colors.textColor,
+    },
+  }
+}
+
+export function createHandsFreeStatusChipMobilePropsParts<
+  TStyles extends HandsFreeStatusChipMobileStylesLike,
+>({
+  renderState,
+  styles,
+}: HandsFreeStatusChipMobilePropsPartsInput<TStyles>): HandsFreeStatusChipMobilePropsParts<TStyles> {
+  return {
+    container: {
+      style: styles.container,
+    },
+    label: {
+      style: styles.label,
+      text: renderState.label,
+    },
+    subtitle: renderState.shouldRenderSubtitle
+      ? {
+          style: styles.subtitle,
+          numberOfLines: renderState.surface.subtitle.numberOfLines,
+          text: renderState.subtitle,
+        }
+      : null,
   }
 }
 

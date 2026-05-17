@@ -115,9 +115,13 @@ import {
   type HandsFreeComposerDebugMessageKey,
 } from "./hands-free-controller"
 export {
+  createHandsFreeStatusChipMobilePropsParts,
+  createHandsFreeStatusChipMobileStyleSlots,
   getHandsFreeStatusChipMobileRenderState,
   type HandsFreeStatusChipMobileColors,
+  type HandsFreeStatusChipMobilePropsParts,
   type HandsFreeStatusChipMobileRenderState,
+  type HandsFreeStatusChipMobileStyleSlots,
 } from "./hands-free-controller"
 import {
   extractDataImageMarkdownReferences,

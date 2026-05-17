@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  createHandsFreeStatusChipMobilePropsParts,
+  createHandsFreeStatusChipMobileStyleSlots,
   createHandsFreeComposerPermissionDeniedDebugState,
   createHandsFreeComposerRecognizerErrorDebugState,
   createHandsFreeComposerTranscriptAddedDebugState,
@@ -233,12 +235,13 @@ describe("hands-free controller", () => {
       borderColor: "#ef4444",
       textColor: "#fafafa",
     })
-    expect(getHandsFreeStatusChipMobileRenderState({
+    const listeningStatusChipRenderState = getHandsFreeStatusChipMobileRenderState({
       phase: "listening",
       label: "Listening",
       subtitle: "Say “go to sleep” to return to sleep.",
       colors,
-    })).toEqual({
+    })
+    expect(listeningStatusChipRenderState).toEqual({
       label: "Listening",
       subtitle: "Say “go to sleep” to return to sleep.",
       shouldRenderSubtitle: true,
@@ -247,6 +250,54 @@ describe("hands-free controller", () => {
         backgroundColor: "#171717",
         borderColor: "#171717",
         textColor: "#fafafa",
+      },
+    })
+    const listeningStatusChipStyleSlots = createHandsFreeStatusChipMobileStyleSlots({
+      renderState: listeningStatusChipRenderState,
+      spacing: {
+        xs: 4,
+        md: 12,
+      },
+      radius: {
+        full: 999,
+      },
+    })
+    expect(listeningStatusChipStyleSlots.container).toEqual({
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      alignSelf: "flex-start",
+      maxWidth: "100%",
+      backgroundColor: "#171717",
+      borderColor: "#171717",
+    })
+    expect(listeningStatusChipStyleSlots.label).toEqual({
+      fontSize: 12,
+      fontWeight: "700",
+      color: "#fafafa",
+    })
+    expect(listeningStatusChipStyleSlots.subtitle).toEqual({
+      fontSize: 11,
+      marginTop: 2,
+      opacity: 0.92,
+      color: "#fafafa",
+    })
+    expect(createHandsFreeStatusChipMobilePropsParts({
+      renderState: listeningStatusChipRenderState,
+      styles: listeningStatusChipStyleSlots,
+    })).toEqual({
+      container: {
+        style: listeningStatusChipStyleSlots.container,
+      },
+      label: {
+        style: listeningStatusChipStyleSlots.label,
+        text: "Listening",
+      },
+      subtitle: {
+        style: listeningStatusChipStyleSlots.subtitle,
+        numberOfLines: 2,
+        text: "Say “go to sleep” to return to sleep.",
       },
     })
     expect(getHandsFreeStatusChipMobileRenderState({

@@ -99,7 +99,7 @@ test('keeps mobile chat shared domain types routed through session presentation'
   assert.match(sessionPresentationSource, /export type \{ Loop, PredefinedPromptSummary, Settings, Skill \} from "\.\/api-types"/);
   assert.match(sessionPresentationSource, /export type \{ HandsFreePhase \} from "\.\/types"/);
   assert.match(sessionPresentationSource, /export type \{ VoiceDebugEntry, VoiceDebugLog \} from "\.\/voice-debug-log"/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?getHandsFreeStatusChipMobileRenderState,[\s\S]*?HandsFreeStatusChipMobileColors,[\s\S]*?HandsFreeStatusChipMobileRenderState,[\s\S]*?\} from "\.\/hands-free-controller"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createHandsFreeStatusChipMobilePropsParts,[\s\S]*?createHandsFreeStatusChipMobileStyleSlots,[\s\S]*?getHandsFreeStatusChipMobileRenderState,[\s\S]*?HandsFreeStatusChipMobileColors,[\s\S]*?HandsFreeStatusChipMobileRenderState,[\s\S]*?\} from "\.\/hands-free-controller"/);
 });
 
 test('resolves mobile monospace typography from shared surface tokens', () => {
