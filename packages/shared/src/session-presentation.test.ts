@@ -6021,53 +6021,59 @@ describe("session presentation semantics", () => {
           accessibilityLabel: "Generating response...",
           style: "header-style",
         },
-      },
-      icon: {
-        props: {
-          name: "sparkles",
-          size: 14,
-          color: "#2563eb",
-        },
-      },
-      title: {
-        text: "Generating response...",
-        props: {
-          style: "title-style",
-          numberOfLines: 1,
-        },
-      },
-      spinner: {
-        props: {
-          source: "spinner-source",
-          style: "spinner-style",
-          resizeMode: "contain",
-        },
-      },
-      badge: {
-        props: {
-          style: "badge-style",
-        },
-      },
-      badgeLabel: {
-        text: "Streaming",
-        props: {
-          style: "badge-text-style",
+        content: {
+          icon: {
+            props: {
+              name: "sparkles",
+              size: 14,
+              color: "#2563eb",
+            },
+          },
+          title: {
+            text: "Generating response...",
+            props: {
+              style: "title-style",
+              numberOfLines: 1,
+            },
+          },
+          spinner: {
+            props: {
+              source: "spinner-source",
+              style: "spinner-style",
+              resizeMode: "contain",
+            },
+          },
+          badge: {
+            props: {
+              style: "badge-style",
+            },
+            content: {
+              label: {
+                text: "Streaming",
+                props: {
+                  style: "badge-text-style",
+                },
+              },
+            },
+          },
         },
       },
       body: {
         props: {
           style: "body-row-style",
         },
-      },
-      text: {
-        text: "Hello live",
-        props: {
-          style: "text-style",
-        },
-      },
-      caret: {
-        props: {
-          style: "caret-style",
+        content: {
+          text: {
+            text: "Hello live",
+            props: {
+              style: "text-style",
+            },
+          },
+          caret: {
+            props: {
+              style: "caret-style",
+            },
+          },
         },
       },
     })

@@ -7185,49 +7185,55 @@ export interface ChatRuntimeConversationExpandedContentMobilePropsParts<
       accessibilityLabel: string
       style: TStreamingStyles["header"]
     }
-  }
-  icon: {
-    props: TStreamingRenderState["icon"]
-  }
-  title: {
-    text: string
-    props: {
-      style: TStreamingStyles["title"]
-      numberOfLines: TStreamingRenderState["surface"]["titleNumberOfLines"]
-    }
-  }
-  spinner: {
-    props: {
-      source: TSpinnerSource
-      style: TStreamingStyles["spinner"]
-      resizeMode: TStreamingRenderState["spinner"]["resizeMode"]
-    }
-  }
-  badge: {
-    props: {
-      style: TStreamingStyles["badge"]
-    }
-  }
-  badgeLabel: {
-    text: string
-    props: {
-      style: TStreamingStyles["badgeText"]
+    content: {
+      icon: {
+        props: TStreamingRenderState["icon"]
+      }
+      title: {
+        text: string
+        props: {
+          style: TStreamingStyles["title"]
+          numberOfLines: TStreamingRenderState["surface"]["titleNumberOfLines"]
+        }
+      }
+      spinner: {
+        props: {
+          source: TSpinnerSource
+          style: TStreamingStyles["spinner"]
+          resizeMode: TStreamingRenderState["spinner"]["resizeMode"]
+        }
+      }
+      badge: {
+        props: {
+          style: TStreamingStyles["badge"]
+        }
+        content: {
+          label: {
+            text: string
+            props: {
+              style: TStreamingStyles["badgeText"]
+            }
+          }
+        }
+      }
     }
   }
   body: {
     props: {
       style: TStreamingStyles["bodyRow"]
     }
-  }
-  text: {
-    text: string
-    props: {
-      style: TStreamingStyles["text"]
-    }
-  }
-  caret: {
-    props: {
-      style: TStreamingStyles["caret"]
+    content: {
+      text: {
+        text: string
+        props: {
+          style: TStreamingStyles["text"]
+        }
+      }
+      caret: {
+        props: {
+          style: TStreamingStyles["caret"]
+        }
+      }
     }
   }
 }
@@ -24913,49 +24919,55 @@ export function createChatRuntimeConversationExpandedContentMobilePropsParts<
         accessibilityLabel: streamingRenderState.accessibilityLabel,
         style: streamingStyles.header,
       },
-    },
-    icon: {
-      props: streamingRenderState.icon,
-    },
-    title: {
-      text: streamingRenderState.title,
-      props: {
-        style: streamingStyles.title,
-        numberOfLines: streamingRenderState.surface.titleNumberOfLines,
-      },
-    },
-    spinner: {
-      props: {
-        source: spinnerSource,
-        style: streamingStyles.spinner,
-        resizeMode: streamingRenderState.spinner.resizeMode,
-      },
-    },
-    badge: {
-      props: {
-        style: streamingStyles.badge,
-      },
-    },
-    badgeLabel: {
-      text: streamingRenderState.badgeLabel,
-      props: {
-        style: streamingStyles.badgeText,
+      content: {
+        icon: {
+          props: streamingRenderState.icon,
+        },
+        title: {
+          text: streamingRenderState.title,
+          props: {
+            style: streamingStyles.title,
+            numberOfLines: streamingRenderState.surface.titleNumberOfLines,
+          },
+        },
+        spinner: {
+          props: {
+            source: spinnerSource,
+            style: streamingStyles.spinner,
+            resizeMode: streamingRenderState.spinner.resizeMode,
+          },
+        },
+        badge: {
+          props: {
+            style: streamingStyles.badge,
+          },
+          content: {
+            label: {
+              text: streamingRenderState.badgeLabel,
+              props: {
+                style: streamingStyles.badgeText,
+              },
+            },
+          },
+        },
       },
     },
     body: {
       props: {
         style: streamingStyles.bodyRow,
       },
-    },
-    text: {
-      text: streamingRenderState.content,
-      props: {
-        style: streamingStyles.text,
-      },
-    },
-    caret: {
-      props: {
-        style: streamingStyles.caret,
+      content: {
+        text: {
+          text: streamingRenderState.content,
+          props: {
+            style: streamingStyles.text,
+          },
+        },
+        caret: {
+          props: {
+            style: streamingStyles.caret,
+          },
+        },
       },
     },
   }

@@ -11765,25 +11765,29 @@ export function ChatMessageExpandedContent({
     );
   }
 
+  const expandedHeaderContent = expandedContentParts.header.content;
+  const expandedBadgeContent = expandedHeaderContent.badge.content;
+  const expandedBodyContent = expandedContentParts.body.content;
+
   return (
     <>
       <View {...expandedContentParts.header.props}>
-        <Ionicons {...expandedContentParts.icon.props} />
-        <Text {...expandedContentParts.title.props}>
-          {expandedContentParts.title.text}
+        <Ionicons {...expandedHeaderContent.icon.props} />
+        <Text {...expandedHeaderContent.title.props}>
+          {expandedHeaderContent.title.text}
         </Text>
-        <Image {...expandedContentParts.spinner.props} />
-        <View {...expandedContentParts.badge.props}>
-          <Text {...expandedContentParts.badgeLabel.props}>
-            {expandedContentParts.badgeLabel.text}
+        <Image {...expandedHeaderContent.spinner.props} />
+        <View {...expandedHeaderContent.badge.props}>
+          <Text {...expandedBadgeContent.label.props}>
+            {expandedBadgeContent.label.text}
           </Text>
         </View>
       </View>
       <View {...expandedContentParts.body.props}>
-        <Text {...expandedContentParts.text.props}>
-          {expandedContentParts.text.text}
+        <Text {...expandedBodyContent.text.props}>
+          {expandedBodyContent.text.text}
         </Text>
-        <View {...expandedContentParts.caret.props} />
+        <View {...expandedBodyContent.caret.props} />
       </View>
     </>
   );
