@@ -10341,14 +10341,13 @@ export function ChatMessageDelegationCard({
     toolPreview,
     styles,
   });
-  const cardContent = delegationCardParts.card.content;
 
   return (
     <View
       {...delegationCardParts.card.props}
     >
       <ChatMessageDelegationContent
-        {...cardContent}
+        {...delegationCardParts.card.content}
       />
     </View>
   );

@@ -1229,9 +1229,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /createChatRuntimeDelegationCardMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeDelegationCardMobilePropsParts/);
   assert.match(delegationCardComponentSource, /const delegationCardParts = createChatRuntimeDelegationCardMobilePropsParts\(\{\s+surface,\s+agentName,\s+presentation,\s+accessibilityLabel,\s+messageCountLabel,\s+statusStyles,\s+conversationPreview,\s+toolPreview,\s+styles,\s+\}\);/);
-  assert.match(delegationCardComponentSource, /const cardContent = delegationCardParts\.card\.content;/);
   assert.match(delegationCardComponentSource, /<View\s+\{\.\.\.delegationCardParts\.card\.props\}/);
-  assert.match(delegationCardComponentSource, /<ChatMessageDelegationContent\s+\{\.\.\.cardContent\}/);
+  assert.match(delegationCardComponentSource, /<ChatMessageDelegationContent\s+\{\.\.\.delegationCardParts\.card\.content\}/);
+  assert.doesNotMatch(delegationCardComponentSource, /const cardContent = delegationCardParts\.card\.content;/);
   assert.match(sessionPresentationSource, /card: \{[\s\S]*?props: \{[\s\S]*?accessible: true,[\s\S]*?accessibilityRole: surface\.accessibilityRole,[\s\S]*?accessibilityLabel,[\s\S]*?style: styles\.card,/);
   assert.match(sessionPresentationSource, /card: \{[\s\S]*?content: \{[\s\S]*?header: \{/);
   assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.card\.(accessible|accessibilityRole|accessibilityLabel|style)/);
