@@ -13063,7 +13063,9 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: "collapse-text",
+          props: {
+            style: "collapse-text",
+          },
           text: "Collapse",
         },
       },
@@ -13186,14 +13188,16 @@ describe("session presentation semantics", () => {
       name: {
         props: {
           text: "read_file",
-          style: [
-            "compact-name",
-            "compact-name-pending",
-            false,
-            false,
-          ],
-          numberOfLines: 1,
-          ellipsizeMode: "tail",
+          props: {
+            style: [
+              "compact-name",
+              "compact-name-pending",
+              false,
+              false,
+            ],
+            numberOfLines: 1,
+            ellipsizeMode: "tail",
+          },
         },
       },
       statusIndicator: {
@@ -13517,7 +13521,9 @@ describe("session presentation semantics", () => {
       },
       toolName: {
         props: {
-          style: "detail-tool-name",
+          props: {
+            style: "detail-tool-name",
+          },
           text: "read_file",
         },
       },
@@ -13534,7 +13540,9 @@ describe("session presentation semantics", () => {
         },
         label: {
           props: {
-            style: "detail-expand-hint-text",
+            props: {
+              style: "detail-expand-hint-text",
+            },
             text: "Show",
           },
         },
@@ -13606,7 +13614,9 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: "copy-button-text",
+          props: {
+            style: "copy-button-text",
+          },
           text: "Copy",
         },
       },
@@ -13689,14 +13699,18 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: "payload-meta-label",
+          props: {
+            style: "payload-meta-label",
+          },
           text: "Input",
         },
       },
       payloadType: {
         shouldRender: true,
         props: {
-          style: "payload-type",
+          props: {
+            style: "payload-type",
+          },
           text: "JSON",
         },
       },
@@ -13716,14 +13730,18 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: "payload-meta-label",
+          props: {
+            style: "payload-meta-label",
+          },
           text: "Output",
         },
       },
       payloadType: {
         shouldRender: false,
         props: {
-          style: "payload-type",
+          props: {
+            style: "payload-type",
+          },
           text: "",
         },
       },
@@ -13744,8 +13762,10 @@ describe("session presentation semantics", () => {
       preview: {
         shouldRender: true,
         props: {
-          style: "payload-preview",
-          numberOfLines: 3,
+          props: {
+            style: "payload-preview",
+            numberOfLines: 3,
+          },
           text: "preview",
         },
       },
@@ -13757,7 +13777,9 @@ describe("session presentation semantics", () => {
       },
       code: {
         props: {
-          style: "payload-code",
+          props: {
+            style: "payload-code",
+          },
           text: "payload-content",
         },
       },
@@ -13777,8 +13799,10 @@ describe("session presentation semantics", () => {
       preview: {
         shouldRender: false,
         props: {
-          style: "payload-preview",
-          numberOfLines: 2,
+          props: {
+            style: "payload-preview",
+            numberOfLines: 2,
+          },
           text: "",
         },
       },
@@ -13790,7 +13814,9 @@ describe("session presentation semantics", () => {
       },
       code: {
         props: {
-          style: "payload-code",
+          props: {
+            style: "payload-code",
+          },
           text: "payload-content",
         },
       },
@@ -13837,10 +13863,12 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: [
-            "result-badge-text",
-            "result-badge-text-success",
-          ],
+          props: {
+            style: [
+              "result-badge-text",
+              "result-badge-text-success",
+            ],
+          },
           text: "Succeeded",
         },
       },
@@ -13876,10 +13904,12 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: [
-            "result-badge-text",
-            "result-badge-text-error",
-          ],
+          props: {
+            style: [
+              "result-badge-text",
+              "result-badge-text-error",
+            ],
+          },
         },
       },
     })
@@ -13915,7 +13945,9 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: "pending-text",
+          props: {
+            style: "pending-text",
+          },
           text: "Waiting...",
         },
       },
@@ -13931,9 +13963,11 @@ describe("session presentation semantics", () => {
     expect(emptyStateParts).toEqual({
       label: {
         props: {
-          accessibilityRole: "text",
-          accessibilityLabel: "No tool calls",
-          style: "empty-state-text",
+          props: {
+            accessibilityRole: "text",
+            accessibilityLabel: "No tool calls",
+            style: "empty-state-text",
+          },
           text: "No tool calls",
         },
       },
@@ -13978,7 +14012,9 @@ describe("session presentation semantics", () => {
       },
       characterCount: {
         props: {
-          style: "character-count-style",
+          props: {
+            style: "character-count-style",
+          },
           text: "42 chars",
         },
       },
@@ -14018,7 +14054,9 @@ describe("session presentation semantics", () => {
       },
       label: {
         props: {
-          style: "error-label-style",
+          props: {
+            style: "error-label-style",
+          },
           text: "Error",
         },
       },
@@ -14031,7 +14069,9 @@ describe("session presentation semantics", () => {
       },
       error: {
         props: {
-          style: "error-text-style",
+          props: {
+            style: "error-text-style",
+          },
           text: "failed",
         },
       },

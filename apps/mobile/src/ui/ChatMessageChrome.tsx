@@ -9211,17 +9211,11 @@ export function ChatMessageToolExecutionCompactRowIcon(props: ChatMessageToolExe
 }
 
 export function ChatMessageToolExecutionCompactRowName({
-  style,
-  numberOfLines,
-  ellipsizeMode,
+  props,
   text,
 }: ChatMessageToolExecutionCompactRowNameProps) {
   return (
-    <Text
-      style={style}
-      numberOfLines={numberOfLines}
-      ellipsizeMode={ellipsizeMode}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9320,11 +9314,11 @@ export function ChatMessageToolExecutionCollapseControlIcon(props: ChatMessageTo
 }
 
 export function ChatMessageToolExecutionCollapseControlLabel({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionCollapseControlLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9510,11 +9504,11 @@ export function ChatMessageToolExecutionCopyButtonIcon(props: ChatMessageToolExe
 }
 
 export function ChatMessageToolExecutionCopyButtonLabel({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionCopyButtonLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9566,11 +9560,11 @@ export function ChatMessageToolExecutionDetailHeaderPressable({
 }
 
 export function ChatMessageToolExecutionDetailHeaderToolName({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionDetailHeaderToolNameProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9594,11 +9588,11 @@ export function ChatMessageToolExecutionDetailHeaderIcon(props: ChatMessageToolE
 }
 
 export function ChatMessageToolExecutionDetailHeaderExpandLabel({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionDetailHeaderExpandLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9682,11 +9676,11 @@ export function ChatMessageToolExecutionResultBadgeIcon(props: ChatMessageToolEx
 }
 
 export function ChatMessageToolExecutionResultBadgeLabel({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionResultBadgeLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9733,11 +9727,11 @@ export function ChatMessageToolExecutionPendingResultSpinner(props: ChatMessageT
 }
 
 export function ChatMessageToolExecutionPendingResultLabel({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionPendingResultLabelProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9760,17 +9754,11 @@ export function ChatMessageToolExecutionEmptyState({
 }
 
 export function ChatMessageToolExecutionEmptyStateLabel({
-  accessibilityRole,
-  accessibilityLabel,
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionEmptyStateLabelProps) {
   return (
-    <Text
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      style={style}
-    >
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9823,11 +9811,11 @@ export function ChatMessageToolExecutionPayloadMetaRow({
 }
 
 export function ChatMessageToolExecutionPayloadMetaText({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionPayloadMetaTextProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9886,11 +9874,11 @@ export function ChatMessageToolExecutionResultHeaderView({
 }
 
 export function ChatMessageToolExecutionResultCharacterCount({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionResultCharacterCountProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9930,12 +9918,11 @@ export function ChatMessageToolExecutionPayloadBlock({
 }
 
 export function ChatMessageToolExecutionPayloadPreview({
-  style,
-  numberOfLines,
+  props,
   text,
 }: ChatMessageToolExecutionPayloadPreviewProps) {
   return (
-    <Text style={style} numberOfLines={numberOfLines}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -9953,11 +9940,11 @@ export function ChatMessageToolExecutionPayloadScroll({
 }
 
 export function ChatMessageToolExecutionPayloadCode({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionPayloadCodeProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );
@@ -10064,11 +10051,11 @@ export function ChatMessageToolExecutionErrorBlockView({
 }
 
 export function ChatMessageToolExecutionErrorBlockText({
-  style,
+  props,
   text,
 }: ChatMessageToolExecutionErrorBlockTextProps) {
   return (
-    <Text style={style}>
+    <Text {...props}>
       {text}
     </Text>
   );

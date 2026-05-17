@@ -3396,14 +3396,18 @@ export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
   }>
   label: {
     props: {
-      style: TStyles["label"]
+      props: {
+        style: TStyles["label"]
+      }
       text: TRenderState["label"]
     }
   }
   payloadType: {
     shouldRender: boolean
     props: {
-      style: TStyles["payloadType"]
+      props: {
+        style: TStyles["payloadType"]
+      }
       text: string
     }
   }
@@ -3445,8 +3449,10 @@ export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
   preview: {
     shouldRender: boolean
     props: {
-      style: TStyles["preview"]
-      numberOfLines: number
+      props: {
+        style: TStyles["preview"]
+        numberOfLines: number
+      }
       text: string
     }
   }
@@ -3458,7 +3464,9 @@ export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
   }
   code: {
     props: {
-      style: TStyles["code"]
+      props: {
+        style: TStyles["code"]
+      }
       text: string
     }
   }
@@ -3541,7 +3549,9 @@ export interface ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
   }
   label: {
     props: {
-      style: Array<TStyles["text"] | TStyles["textSuccess"] | TStyles["textError"]>
+      props: {
+        style: Array<TStyles["text"] | TStyles["textSuccess"] | TStyles["textError"]>
+      }
       text: string
     }
   }
@@ -3611,7 +3621,9 @@ export interface ChatRuntimeToolExecutionCopyButtonMobilePropsParts<
   }
   label: {
     props: {
-      style: TStyles["text"]
+      props: {
+        style: TStyles["text"]
+      }
       text: string
     }
   }
@@ -3702,7 +3714,9 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
   }
   toolName: {
     props: {
-      style: TStyles["toolName"]
+      props: {
+        style: TStyles["toolName"]
+      }
       text: string
     }
   }
@@ -3715,7 +3729,9 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
     }
     label: {
       props: {
-        style: TStyles["expandHintText"]
+        props: {
+          style: TStyles["expandHintText"]
+        }
         text: string
       }
     }
@@ -3840,7 +3856,9 @@ export interface ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
   }
   label: {
     props: {
-      style: TStyles["text"]
+      props: {
+        style: TStyles["text"]
+      }
       text: string
     }
   }
@@ -4052,15 +4070,17 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
   name: {
     props: {
       text: string
-      style: Array<
-        | TStyles["name"]
-        | TStyles["namePending"]
-        | TStyles["nameSuccess"]
-        | TStyles["nameError"]
-        | false
-      >
-      numberOfLines: TRenderState["name"]["numberOfLines"]
-      ellipsizeMode: TRenderState["name"]["ellipsizeMode"]
+      props: {
+        style: Array<
+          | TStyles["name"]
+          | TStyles["namePending"]
+          | TStyles["nameSuccess"]
+          | TStyles["nameError"]
+          | false
+        >
+        numberOfLines: TRenderState["name"]["numberOfLines"]
+        ellipsizeMode: TRenderState["name"]["ellipsizeMode"]
+      }
     }
   }
   statusIndicator: {
@@ -4196,7 +4216,9 @@ export interface ChatRuntimeToolExecutionPendingResultMobilePropsParts<
   }
   label: {
     props: {
-      style: TStyles["text"]
+      props: {
+        style: TStyles["text"]
+      }
       text: string
     }
   }
@@ -4232,9 +4254,11 @@ export interface ChatRuntimeToolExecutionEmptyStateMobilePropsParts<
 > {
   label: {
     props: {
-      accessibilityRole: TRenderState["accessibilityRole"]
-      accessibilityLabel: string
-      style: TStyle
+      props: {
+        accessibilityRole: TRenderState["accessibilityRole"]
+        accessibilityLabel: string
+        style: TStyle
+      }
       text: string
     }
   }
@@ -4314,7 +4338,9 @@ export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
   }
   characterCount: {
     props: {
-      style: TStyles["characterCount"]
+      props: {
+        style: TStyles["characterCount"]
+      }
       text: string
     }
   }
@@ -4382,7 +4408,9 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
   }
   label: {
     props: {
-      style: TStyles["label"]
+      props: {
+        style: TStyles["label"]
+      }
       text: TRenderState["label"]
     }
   }
@@ -4395,7 +4423,9 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
   }
   error: {
     props: {
-      style: TStyles["text"]
+      props: {
+        style: TStyles["text"]
+      }
       text: string
     }
   }
@@ -20891,14 +20921,18 @@ export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
     },
     label: {
       props: {
-        style: styles.label,
+        props: {
+          style: styles.label,
+        },
         text: renderState.label,
       },
     },
     payloadType: {
       shouldRender: Boolean(renderState.payloadTypeLabel),
       props: {
-        style: styles.payloadType,
+        props: {
+          style: styles.payloadType,
+        },
         text: renderState.payloadTypeLabel ?? "",
       },
     },
@@ -20923,8 +20957,10 @@ export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
     preview: {
       shouldRender: Boolean(compactText),
       props: {
-        style: styles.preview,
-        numberOfLines: previewNumberOfLines,
+        props: {
+          style: styles.preview,
+          numberOfLines: previewNumberOfLines,
+        },
         text: compactText ?? "",
       },
     },
@@ -20936,7 +20972,9 @@ export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
     },
     code: {
       props: {
-        style: styles.code,
+        props: {
+          style: styles.code,
+        },
         text: content,
       },
     },
@@ -20986,10 +21024,12 @@ export function createChatRuntimeToolExecutionResultBadgeMobilePropsParts<
     },
     label: {
       props: {
-        style: [
-          styles.text,
-          badge.isSuccess ? styles.textSuccess : styles.textError,
-        ],
+        props: {
+          style: [
+            styles.text,
+            badge.isSuccess ? styles.textSuccess : styles.textError,
+          ],
+        },
         text: badge.label,
       },
     },
@@ -21039,7 +21079,9 @@ export function createChatRuntimeToolExecutionCopyButtonMobilePropsParts<
     },
     label: {
       props: {
-        style: styles.text,
+        props: {
+          style: styles.text,
+        },
         text: renderState.label,
       },
     },
@@ -21095,7 +21137,9 @@ export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
     },
     toolName: {
       props: {
-        style: styles.toolName,
+        props: {
+          style: styles.toolName,
+        },
         text: toolName,
       },
     },
@@ -21108,7 +21152,9 @@ export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
       },
       label: {
         props: {
-          style: styles.expandHintText,
+          props: {
+            style: styles.expandHintText,
+          },
           text: renderState.toggleLabel,
         },
       },
@@ -21201,7 +21247,9 @@ export function createChatRuntimeToolExecutionCollapseControlMobilePropsParts<
     },
     label: {
       props: {
-        style: styles.text,
+        props: {
+          style: styles.text,
+        },
         text: renderState.label,
       },
     },
@@ -21313,14 +21361,16 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
     name: {
       props: {
         text: renderState.preview,
-        style: [
-          styles.name,
-          renderState.isPending && styles.namePending,
-          renderState.isSuccess && styles.nameSuccess,
-          renderState.isError && styles.nameError,
-        ],
-        numberOfLines: renderState.name.numberOfLines,
-        ellipsizeMode: renderState.name.ellipsizeMode,
+        props: {
+          style: [
+            styles.name,
+            renderState.isPending && styles.namePending,
+            renderState.isSuccess && styles.nameSuccess,
+            renderState.isError && styles.nameError,
+          ],
+          numberOfLines: renderState.name.numberOfLines,
+          ellipsizeMode: renderState.name.ellipsizeMode,
+        },
       },
     },
     statusIndicator: {
@@ -21434,7 +21484,9 @@ export function createChatRuntimeToolExecutionPendingResultMobilePropsParts<
     },
     label: {
       props: {
-        style: styles.text,
+        props: {
+          style: styles.text,
+        },
         text: renderState.label,
       },
     },
@@ -21461,9 +21513,11 @@ export function createChatRuntimeToolExecutionEmptyStateMobilePropsParts<
   return {
     label: {
       props: {
-        accessibilityRole: renderState.accessibilityRole,
-        accessibilityLabel: renderState.accessibilityLabel,
-        style,
+        props: {
+          accessibilityRole: renderState.accessibilityRole,
+          accessibilityLabel: renderState.accessibilityLabel,
+          style,
+        },
         text: renderState.label,
       },
     },
@@ -21528,7 +21582,9 @@ export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
     },
     characterCount: {
       props: {
-        style: styles.characterCount,
+        props: {
+          style: styles.characterCount,
+        },
         text: characterCountLabel,
       },
     },
@@ -21583,7 +21639,9 @@ export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
     },
     label: {
       props: {
-        style: styles.label,
+        props: {
+          style: styles.label,
+        },
         text: renderState.label,
       },
     },
@@ -21596,7 +21654,9 @@ export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
     },
     error: {
       props: {
-        style: styles.text,
+        props: {
+          style: styles.text,
+        },
         text: error,
       },
     },
