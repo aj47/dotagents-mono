@@ -1598,7 +1598,8 @@ type ChatMessageToolApprovalActionLabelProps =
   | ChatMessageToolApprovalParts['approveButton']['label']['props'];
 
 type ChatMessageToolApprovalSpinnerProps =
-  ChatMessageToolApprovalParts['approveButton']['spinner']['props'];
+  | ChatMessageToolApprovalParts['headerSpinner']['props']
+  | ChatMessageToolApprovalParts['approveButton']['spinner']['props'];
 
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
@@ -7454,9 +7455,8 @@ export function ChatMessageToolApproval({
           {toolApprovalParts.title.text}
         </Text>
         {toolApprovalParts.headerSpinner.shouldRender ? (
-          <ActivityIndicator
-            size={toolApprovalParts.headerSpinner.size}
-            color={toolApprovalParts.headerSpinner.color}
+          <ChatMessageToolApprovalSpinner
+            {...toolApprovalParts.headerSpinner.props}
           />
         ) : null}
       </View>

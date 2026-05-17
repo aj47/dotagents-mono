@@ -652,9 +652,10 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerIcon\.(name|size|color)/);
   assert.match(toolApprovalComponentSource, /numberOfLines=\{toolApprovalParts\.title\.numberOfLines\}/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.title\.text\}/);
+  assert.match(sessionPresentationSource, /headerSpinner: \{[\s\S]*?shouldRender: renderState\.approveButton\.isDisabled,[\s\S]*?props: renderState\.spinner,/);
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner\.shouldRender \? \(/);
-  assert.match(toolApprovalComponentSource, /size=\{toolApprovalParts\.headerSpinner\.size\}/);
-  assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.headerSpinner\.color\}/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalSpinner\s+\{\.\.\.toolApprovalParts\.headerSpinner\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner\.(size|color)/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner \? \(/);
   assert.match(toolApprovalComponentSource, /style=\{toolApprovalParts\.content\.style\}/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.toolLabel\.text\}:/);

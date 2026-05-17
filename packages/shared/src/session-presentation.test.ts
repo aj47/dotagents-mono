@@ -8171,8 +8171,8 @@ describe("session presentation semantics", () => {
       text: CHAT_RUNTIME_PRESENTATION.approval.processingTitle,
     })
     expect(toolApprovalParts.headerSpinner).toEqual({
-      ...toolApprovalProps.renderState.spinner,
       shouldRender: true,
+      props: toolApprovalProps.renderState.spinner,
     })
     expect(toolApprovalParts.content.style).toEqual([
       "tool-approval-content-style",
