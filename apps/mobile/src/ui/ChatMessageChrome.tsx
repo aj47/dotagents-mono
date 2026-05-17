@@ -10544,32 +10544,32 @@ export function ChatMessageRuntimeDock({
     <ChatMessageConversationDock
       responseHistoryPanel={(
         <ChatMessageResponseHistoryPanelDock
-          {...dockParts.responseHistoryPanel}
+          {...dockParts.responseHistoryPanel.props}
         />
       )}
       scrollToBottomButton={(
         <ChatMessageScrollToBottomButton
-          {...dockParts.scrollToBottomButton}
+          {...dockParts.scrollToBottomButton.props}
         />
       )}
       voiceOverlay={(
         <ChatComposerVoiceOverlay
-          {...dockParts.voiceOverlay}
+          {...dockParts.voiceOverlay.props}
         />
       )}
       queuePanel={(
         <ChatMessageQueuePanelDock
-          {...dockParts.queuePanel}
+          {...dockParts.queuePanel.props}
         />
       )}
       connectionBanner={(
         <ChatMessageConnectionBanner
-          {...dockParts.connectionBanner}
+          {...dockParts.connectionBanner.props}
         />
       )}
       composer={(
         <ChatComposerRuntimeDock
-          {...dockParts.composer}
+          {...dockParts.composer.props}
         />
       )}
     />

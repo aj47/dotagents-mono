@@ -9721,31 +9721,43 @@ describe("session presentation semantics", () => {
     })
     expect(dockParts).toEqual({
       responseHistoryPanel: {
-        responses: ["response-event"],
+        props: {
+          responses: ["response-event"],
+        },
       },
       scrollToBottomButton: {
-        renderState: "scroll-button-state",
-        style: "scroll-button-style",
+        props: {
+          renderState: "scroll-button-state",
+          style: "scroll-button-style",
+        },
       },
       voiceOverlay: {
-        renderState: "voice-overlay-state",
-        styles: "voice-overlay-styles",
+        props: {
+          renderState: "voice-overlay-state",
+          styles: "voice-overlay-styles",
+        },
       },
       queuePanel: {
-        renderState: "queue-panel-state",
-        container: {
-          props: {
-            style: "queue-panel-style",
+        props: {
+          renderState: "queue-panel-state",
+          container: {
+            props: {
+              style: "queue-panel-style",
+            },
           },
         },
       },
       connectionBanner: {
-        renderState: "connection-banner-state",
-        styles: "connection-banner-styles",
+        props: {
+          renderState: "connection-banner-state",
+          styles: "connection-banner-styles",
+        },
       },
       composer: {
-        value: "composer-value",
-        styles: "composer-styles",
+        props: {
+          value: "composer-value",
+          styles: "composer-styles",
+        },
       },
     })
     expect(createChatRuntimeConversationDockShellMobilePropsParts({

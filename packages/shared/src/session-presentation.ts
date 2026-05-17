@@ -7638,25 +7638,37 @@ export interface ChatRuntimeConversationDockMobilePropsParts<
   TConnectionBannerStyles = unknown,
   TComposerStyles = unknown,
 > {
-  responseHistoryPanel: TResponseHistoryPanel
-  scrollToBottomButton: TScrollToBottomButton & {
-    style: TScrollToBottomButtonStyle
+  responseHistoryPanel: {
+    props: TResponseHistoryPanel
   }
-  voiceOverlay: TVoiceOverlay & {
-    styles: TVoiceOverlayStyles
+  scrollToBottomButton: {
+    props: TScrollToBottomButton & {
+      style: TScrollToBottomButtonStyle
+    }
   }
-  queuePanel: TQueuePanel & {
-    container: {
-      props: {
-        style: TQueuePanelStyle
+  voiceOverlay: {
+    props: TVoiceOverlay & {
+      styles: TVoiceOverlayStyles
+    }
+  }
+  queuePanel: {
+    props: TQueuePanel & {
+      container: {
+        props: {
+          style: TQueuePanelStyle
+        }
       }
     }
   }
-  connectionBanner: TConnectionBanner & {
-    styles: TConnectionBannerStyles
+  connectionBanner: {
+    props: TConnectionBanner & {
+      styles: TConnectionBannerStyles
+    }
   }
-  composer: TComposer & {
-    styles: TComposerStyles
+  composer: {
+    props: TComposer & {
+      styles: TComposerStyles
+    }
   }
 }
 
@@ -24998,30 +25010,42 @@ export function createChatRuntimeConversationDockMobilePropsParts<
   TComposerStyles
 > {
   return {
-    responseHistoryPanel,
+    responseHistoryPanel: {
+      props: responseHistoryPanel,
+    },
     scrollToBottomButton: {
-      ...scrollToBottomButton,
-      style: styles.scrollToBottomButtonStyle,
+      props: {
+        ...scrollToBottomButton,
+        style: styles.scrollToBottomButtonStyle,
+      },
     },
     voiceOverlay: {
-      ...voiceOverlay,
-      styles: styles.voiceOverlay,
+      props: {
+        ...voiceOverlay,
+        styles: styles.voiceOverlay,
+      },
     },
     queuePanel: {
-      ...queuePanel,
-      container: {
-        props: {
-          style: styles.queuePanelStyle,
+      props: {
+        ...queuePanel,
+        container: {
+          props: {
+            style: styles.queuePanelStyle,
+          },
         },
       },
     },
     connectionBanner: {
-      ...connectionBanner,
-      styles: styles.connectionBanner,
+      props: {
+        ...connectionBanner,
+        styles: styles.connectionBanner,
+      },
     },
     composer: {
-      ...composer,
-      styles: styles.composer,
+      props: {
+        ...composer,
+        styles: styles.composer,
+      },
     },
   }
 }
