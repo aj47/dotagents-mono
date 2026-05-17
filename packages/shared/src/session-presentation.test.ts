@@ -131,6 +131,7 @@ import {
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
+  createChatRuntimeToolExecutionCallListMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   createChatRuntimeToolExecutionCompactGroupMobilePropsParts,
   createChatRuntimeToolExecutionCompactListMobilePropsParts,
@@ -9411,6 +9412,52 @@ describe("session presentation semantics", () => {
         pendingResult: "pending-result-styles",
       },
     }).pendingResult).toBeNull()
+    expect(createChatRuntimeToolExecutionCallListMobilePropsParts({
+      rows: [
+        {
+          key: "read_file:0",
+          renderState: "read-file-header",
+          toolName: "read_file",
+          onHeaderPress: "toggle-read",
+          input: "read-input",
+          result: null,
+          pendingResult: "read-pending",
+        },
+        {
+          key: "write_file:1",
+          renderState: "write-file-header",
+          toolName: "write_file",
+          onHeaderPress: "toggle-write",
+          input: null,
+          result: "write-result",
+          pendingResult: null,
+        },
+      ],
+      styles: "call-detail-styles",
+    })).toEqual({
+      rows: [
+        {
+          key: "read_file:0",
+          renderState: "read-file-header",
+          toolName: "read_file",
+          onHeaderPress: "toggle-read",
+          input: "read-input",
+          result: null,
+          pendingResult: "read-pending",
+          styles: "call-detail-styles",
+        },
+        {
+          key: "write_file:1",
+          renderState: "write-file-header",
+          toolName: "write_file",
+          onHeaderPress: "toggle-write",
+          input: null,
+          result: "write-result",
+          pendingResult: null,
+          styles: "call-detail-styles",
+        },
+      ],
+    })
     const detailHeaderParts = createChatRuntimeToolExecutionDetailHeaderMobilePropsParts({
       renderState: {
         accessibilityRole: "button",

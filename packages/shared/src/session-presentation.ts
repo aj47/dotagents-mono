@@ -1941,6 +1941,62 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
   }) | null
 }
 
+export interface ChatRuntimeToolExecutionCallListMobilePropsPartsInput<
+  TRow extends {
+    key: unknown
+    renderState: unknown
+    toolName: string
+    onHeaderPress?: unknown
+    input?: unknown
+    result?: unknown
+    pendingResult?: unknown
+  } = {
+    key: unknown
+    renderState: unknown
+    toolName: string
+    onHeaderPress?: unknown
+    input?: unknown
+    result?: unknown
+    pendingResult?: unknown
+  },
+  TStyles = unknown,
+> {
+  rows: readonly TRow[]
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolExecutionCallListMobilePropsParts<
+  TRow extends {
+    key: unknown
+    renderState: unknown
+    toolName: string
+    onHeaderPress?: unknown
+    input?: unknown
+    result?: unknown
+    pendingResult?: unknown
+  } = {
+    key: unknown
+    renderState: unknown
+    toolName: string
+    onHeaderPress?: unknown
+    input?: unknown
+    result?: unknown
+    pendingResult?: unknown
+  },
+  TStyles = unknown,
+> {
+  rows: Array<{
+    key: TRow["key"]
+    renderState: TRow["renderState"]
+    toolName: string
+    onHeaderPress: TRow["onHeaderPress"]
+    input: TRow["input"]
+    result: TRow["result"]
+    pendingResult: TRow["pendingResult"]
+    styles: TStyles
+  }>
+}
+
 export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsPartsInput<
   TPayloadRenderState = unknown,
   TCopyButtonRenderState = unknown,
@@ -15378,6 +15434,41 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
       renderState: pendingResult.renderState,
       styles: styles.pendingResult,
     } : null,
+  }
+}
+
+export function createChatRuntimeToolExecutionCallListMobilePropsParts<
+  TRow extends {
+    key: unknown
+    renderState: unknown
+    toolName: string
+    onHeaderPress?: unknown
+    input?: unknown
+    result?: unknown
+    pendingResult?: unknown
+  },
+  TStyles,
+>({
+  rows,
+  styles,
+}: ChatRuntimeToolExecutionCallListMobilePropsPartsInput<
+  TRow,
+  TStyles
+>): ChatRuntimeToolExecutionCallListMobilePropsParts<
+  TRow,
+  TStyles
+> {
+  return {
+    rows: rows.map((row) => ({
+      key: row.key,
+      renderState: row.renderState,
+      toolName: row.toolName,
+      onHeaderPress: row.onHeaderPress,
+      input: row.input,
+      result: row.result,
+      pendingResult: row.pendingResult,
+      styles,
+    })),
   }
 }
 

@@ -93,6 +93,7 @@ import {
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeToolExecutionCallSectionMobilePropsParts,
   createChatRuntimeToolExecutionCallDetailMobilePropsParts,
+  createChatRuntimeToolExecutionCallListMobilePropsParts,
   createChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   createChatRuntimeToolExecutionCompactGroupMobilePropsParts,
   createChatRuntimeToolExecutionCompactListMobilePropsParts,
@@ -8651,9 +8652,14 @@ export function ChatMessageToolExecutionCallList({
   rows,
   styles,
 }: ChatMessageToolExecutionCallListProps) {
+  const callListParts = createChatRuntimeToolExecutionCallListMobilePropsParts({
+    rows,
+    styles,
+  });
+
   return (
     <>
-      {rows.map((row) => (
+      {callListParts.rows.map((row) => (
         <ChatMessageToolExecutionCallDetail
           key={row.key}
           renderState={row.renderState}
