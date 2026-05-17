@@ -8790,20 +8790,22 @@ describe("session presentation semantics", () => {
           accessibilityLabel: "Agent turn in progress: 12s",
           style: ["badge-style", "badge-live-style"],
         },
-      },
-      icon: {
-        props: {
-          name: "time",
-          size: 12,
-          color: "#d97706",
-        },
-      },
-      label: {
-        props: {
-          text: "12s",
-          props: {
-            style: ["text-style", "text-live-style"],
-            numberOfLines: 1,
+        content: {
+          icon: {
+            props: {
+              name: "time",
+              size: 12,
+              color: "#d97706",
+            },
+          },
+          label: {
+            props: {
+              text: "12s",
+              props: {
+                style: ["text-style", "text-live-style"],
+                numberOfLines: 1,
+              },
+            },
           },
         },
       },

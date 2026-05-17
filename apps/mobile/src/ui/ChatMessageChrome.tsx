@@ -1630,10 +1630,10 @@ type ChatMessageTurnDurationBadgeContainerProps =
   };
 
 type ChatMessageTurnDurationBadgeIconProps =
-  ChatMessageTurnDurationBadgeParts['icon']['props'];
+  ChatMessageTurnDurationBadgeParts['container']['content']['icon']['props'];
 
 type ChatMessageTurnDurationBadgeLabelProps =
-  ChatMessageTurnDurationBadgeParts['label']['props'];
+  ChatMessageTurnDurationBadgeParts['container']['content']['label']['props'];
 
 type ChatMessageActionSlotListProps = {
   shouldRender?: boolean;
@@ -11598,15 +11598,17 @@ export function ChatMessageTurnDurationBadge({
 
   if (!turnDurationBadgeParts.shouldRenderBadge) return null;
 
+  const containerContent = turnDurationBadgeParts.container.content;
+
   return (
     <ChatMessageTurnDurationBadgeContainer
       {...turnDurationBadgeParts.container.props}
     >
       <ChatMessageTurnDurationBadgeIcon
-        {...turnDurationBadgeParts.icon.props}
+        {...containerContent.icon.props}
       />
       <ChatMessageTurnDurationBadgeLabel
-        {...turnDurationBadgeParts.label.props}
+        {...containerContent.label.props}
       />
     </ChatMessageTurnDurationBadgeContainer>
   );

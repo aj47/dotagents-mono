@@ -6471,8 +6471,9 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(chatMessageChromeSource, /if \(!turnDurationBadgeParts\.shouldRenderBadge\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}\s+style=\{turnDuration\.style\}\s+liveStyle=\{turnDuration\.liveStyle\}\s+textStyle=\{turnDuration\.textStyle\}\s+liveTextStyle=\{turnDuration\.liveTextStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeContainer\s+\{\.\.\.turnDurationBadgeParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeIcon\s+\{\.\.\.turnDurationBadgeParts\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeLabel\s+\{\.\.\.turnDurationBadgeParts\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /const containerContent = turnDurationBadgeParts\.container\.content;/);
+  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeIcon\s+\{\.\.\.containerContent\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeLabel\s+\{\.\.\.containerContent\.label\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeContainer[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeIcon\(props: ChatMessageTurnDurationBadgeIconProps\)[\s\S]*?<Ionicons \{\.\.\.props\} \/>/);
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeLabel[\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}/);
@@ -6483,6 +6484,7 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
     chatMessageChromeSource,
     /turnDurationBadgeParts\.(container|icon|label)\.(accessible|accessibilityRole|accessibilityLabel|style|name|size|color|numberOfLines|text)/
   );
+  assert.doesNotMatch(chatMessageChromeSource, /turnDurationBadgeParts\.(icon|label)\.props/);
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageTurnDurationBadge[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageExpandedContent/

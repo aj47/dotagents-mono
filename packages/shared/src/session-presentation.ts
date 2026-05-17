@@ -6915,16 +6915,18 @@ export interface ChatRuntimeTurnDurationBadgeMobilePropsParts<
       accessibilityLabel: string
       style: [TStyle, false | TLiveStyle]
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
-  }
-  label: {
-    props: {
-      text: string
-      props: {
-        style: [TTextStyle, false | TLiveTextStyle]
-        numberOfLines: TRenderState["badge"]["numberOfLines"]
+    content: {
+      icon: {
+        props: TRenderState["icon"]
+      }
+      label: {
+        props: {
+          text: string
+          props: {
+            style: [TTextStyle, false | TLiveTextStyle]
+            numberOfLines: TRenderState["badge"]["numberOfLines"]
+          }
+        }
       }
     }
   }
@@ -24589,16 +24591,18 @@ export function createChatRuntimeTurnDurationBadgeMobilePropsParts<
         accessibilityLabel: renderState.accessibilityLabel,
         style: [style, renderState.isLive && liveStyle],
       },
-    },
-    icon: {
-      props: renderState.icon,
-    },
-    label: {
-      props: {
-        text: renderState.label,
-        props: {
-          style: [textStyle, renderState.isLive && liveTextStyle],
-          numberOfLines: renderState.badge.numberOfLines,
+      content: {
+        icon: {
+          props: renderState.icon,
+        },
+        label: {
+          props: {
+            text: renderState.label,
+            props: {
+              style: [textStyle, renderState.isLive && liveTextStyle],
+              numberOfLines: renderState.badge.numberOfLines,
+            },
+          },
         },
       },
     },
