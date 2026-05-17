@@ -11019,12 +11019,15 @@ describe("session presentation semantics", () => {
         text: delegationCardProps.presentation.subtitle,
       },
     })
-    expect(delegationCardParts.meta.items.map((item) => item.props.text)).toEqual([
+    expect(delegationCardParts.meta.props.items.map((item) => item.props.text)).toEqual([
       delegationCardProps.presentation.sourceLabel,
       delegationCardProps.presentation.trackingLabel,
       delegationCardProps.messageCountLabel,
     ].filter(Boolean))
-    expect(delegationCardParts.meta.items[0]).toMatchObject({
+    expect(delegationCardParts.meta.props.container).toEqual({
+      style: "delegation-meta-row-style",
+    })
+    expect(delegationCardParts.meta.props.items[0]).toMatchObject({
       key: "source",
       props: {
         style: "delegation-meta-text-style",

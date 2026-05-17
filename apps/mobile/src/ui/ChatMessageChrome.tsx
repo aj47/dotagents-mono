@@ -1638,8 +1638,11 @@ type ChatMessageDelegationHeaderProps =
 type ChatMessageDelegationSubtitleProps =
   ChatMessageDelegationCardParts['subtitle']['props'];
 
+type ChatMessageDelegationMetaRowProps =
+  ChatMessageDelegationCardParts['meta']['props'];
+
 type ChatMessageDelegationMetaItemProps =
-  ChatMessageDelegationCardParts['meta']['items'][number]['props'];
+  ChatMessageDelegationMetaRowProps['items'][number]['props'];
 
 type ChatMessageDelegationConversationPreviewRowProps =
   ChatMessageDelegationCardParts['conversationPreview']['rows'][number]['props'];
@@ -7642,6 +7645,22 @@ export function ChatMessageDelegationMetaItem({
   );
 }
 
+export function ChatMessageDelegationMetaRow({
+  container,
+  items,
+}: ChatMessageDelegationMetaRowProps) {
+  return (
+    <View style={container.style}>
+      {items.map((metaItem) => (
+        <ChatMessageDelegationMetaItem
+          key={metaItem.key}
+          {...metaItem.props}
+        />
+      ))}
+    </View>
+  );
+}
+
 export function ChatMessageDelegationSubtitle({
   style,
   numberOfLines,
@@ -7710,14 +7729,9 @@ export function ChatMessageDelegationCard({
           {...delegationCardParts.subtitle.props}
         />
       ) : null}
-      <View style={delegationCardParts.meta.style}>
-        {delegationCardParts.meta.items.map((metaItem) => (
-          <ChatMessageDelegationMetaItem
-            key={metaItem.key}
-            {...metaItem.props}
-          />
-        ))}
-      </View>
+      <ChatMessageDelegationMetaRow
+        {...delegationCardParts.meta.props}
+      />
       {delegationCardParts.conversationPreview.shouldRender ? (
         <View style={delegationCardParts.conversationPreview.style}>
           {delegationCardParts.conversationPreview.rows.map((row) => (

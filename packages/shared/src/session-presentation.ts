@@ -2248,15 +2248,19 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     }
   }
   meta: {
-    style: TStyles["metaRow"]
-    items: Array<{
-      key: string
-      props: {
-        text: string
-        style: TStyles["metaText"]
-        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["metaNumberOfLines"]
+    props: {
+      container: {
+        style: TStyles["metaRow"]
       }
-    }>
+      items: Array<{
+        key: string
+        props: {
+          text: string
+          style: TStyles["metaText"]
+          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["metaNumberOfLines"]
+        }
+      }>
+    }
   }
   conversationPreview: {
     shouldRender: boolean
@@ -22942,15 +22946,19 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       },
     },
     meta: {
-      style: styles.metaRow,
-      items: metaItems.map((item) => ({
-        key: item.key,
-        props: {
-          text: item.text,
-          style: styles.metaText,
-          numberOfLines: surface.metaNumberOfLines,
+      props: {
+        container: {
+          style: styles.metaRow,
         },
-      })),
+        items: metaItems.map((item) => ({
+          key: item.key,
+          props: {
+            text: item.text,
+            style: styles.metaText,
+            numberOfLines: surface.metaNumberOfLines,
+          },
+        })),
+      },
     },
     conversationPreview: {
       shouldRender: shouldRenderConversationPreview,
