@@ -8264,8 +8264,8 @@ describe("session presentation semantics", () => {
         disabled: true,
       },
       icon: {
-        ...toolApprovalProps.renderState.approveButton.icon,
         shouldRender: false,
+        props: toolApprovalProps.renderState.approveButton.icon,
       },
       spinner: {
         ...toolApprovalProps.renderState.approveButton.spinner,

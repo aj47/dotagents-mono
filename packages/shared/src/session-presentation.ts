@@ -2061,8 +2061,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityRole"]
     accessibilityLabel: string
     accessibilityState: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityState"]
-    icon: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["icon"] & {
+    icon: {
       shouldRender: boolean
+      props: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["icon"]
     }
     spinner: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["spinner"] & {
       shouldRender: boolean
@@ -22898,8 +22899,8 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       accessibilityLabel: renderState.approveButton.accessibilityLabel,
       accessibilityState: renderState.approveButton.accessibilityState,
       icon: {
-        ...renderState.approveButton.icon,
         shouldRender: !renderState.approveButton.isDisabled,
+        props: renderState.approveButton.icon,
       },
       spinner: {
         ...renderState.approveButton.spinner,

@@ -675,9 +675,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /accessibilityLabel=\{toolApprovalParts\.approveButton\.accessibilityLabel\}/);
   assert.match(toolApprovalComponentSource, /accessibilityState=\{toolApprovalParts\.approveButton\.accessibilityState\}/);
   assert.match(toolApprovalComponentSource, /disabled=\{toolApprovalParts\.approveButton\.disabled\}/);
-  assert.match(toolApprovalComponentSource, /name=\{toolApprovalParts\.approveButton\.icon\.name\}/);
-  assert.match(toolApprovalComponentSource, /size=\{toolApprovalParts\.approveButton\.icon\.size\}/);
-  assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.approveButton\.icon\.color\}/);
+  assert.match(sessionPresentationSource, /approveButton: \{[\s\S]*?icon: \{[\s\S]*?shouldRender: !renderState\.approveButton\.isDisabled,[\s\S]*?props: renderState\.approveButton\.icon,/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.toolApprovalParts\.approveButton\.icon\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.approveButton\.icon\.(name|size|color)/);
   assert.match(toolApprovalComponentSource, /size=\{toolApprovalParts\.approveButton\.spinner\.size\}/);
   assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.approveButton\.spinner\.color\}/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.approveButton\.spinner\.shouldRender \? \(/);

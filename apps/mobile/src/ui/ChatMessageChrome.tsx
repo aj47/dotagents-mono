@@ -1587,7 +1587,8 @@ type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolAppro
 type ChatMessageToolApprovalIconProps =
   | ChatMessageToolApprovalParts['headerIcon']['props']
   | ChatMessageToolApprovalParts['argumentsToggle']['icon']['props']
-  | ChatMessageToolApprovalParts['denyButton']['icon']['props'];
+  | ChatMessageToolApprovalParts['denyButton']['icon']['props']
+  | ChatMessageToolApprovalParts['approveButton']['icon']['props'];
 
 type ChatMessageToolApprovalArgumentsToggleLabelProps =
   ChatMessageToolApprovalParts['argumentsToggle']['label']['props'];
@@ -7531,10 +7532,8 @@ export function ChatMessageToolApproval({
                 color={toolApprovalParts.approveButton.spinner.color}
               />
             ) : toolApprovalParts.approveButton.icon.shouldRender ? (
-              <Ionicons
-                name={toolApprovalParts.approveButton.icon.name}
-                size={toolApprovalParts.approveButton.icon.size}
-                color={toolApprovalParts.approveButton.icon.color}
+              <ChatMessageToolApprovalIcon
+                {...toolApprovalParts.approveButton.icon.props}
               />
             ) : null}
             <Text style={toolApprovalParts.approveButton.label.style}>
