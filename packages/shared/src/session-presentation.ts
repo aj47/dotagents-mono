@@ -4876,8 +4876,8 @@ export interface ChatComposerHandsFreeControlsMobilePropsParts<
   TControlPressedOpacity = unknown,
   TStyles extends ChatComposerHandsFreeControlsMobileStylesLike = ChatComposerHandsFreeControlsMobileStylesLike,
 > {
-  shouldRender: boolean
   statusRow: {
+    shouldRender: boolean
     props: {
       style: TStyles["statusRow"]
     }
@@ -4888,6 +4888,7 @@ export interface ChatComposerHandsFreeControlsMobilePropsParts<
     }
   }
   controlsRow: {
+    shouldRender: boolean
     props: {
       style: TStyles["controlsRow"]
     }
@@ -22474,8 +22475,8 @@ export function createChatComposerHandsFreeControlsMobilePropsParts<
     : onPause
 
   return {
-    shouldRender: isVisible,
     statusRow: {
+      shouldRender: isVisible,
       props: {
         style: styles.statusRow,
       },
@@ -22486,6 +22487,7 @@ export function createChatComposerHandsFreeControlsMobilePropsParts<
       },
     },
     controlsRow: {
+      shouldRender: isVisible,
       props: {
         style: styles.controlsRow,
       },

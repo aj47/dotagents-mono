@@ -10176,8 +10176,8 @@ describe("session presentation semantics", () => {
       styles: handsFreeControlStyles,
     })
     expect(handsFreeControlsParts).toEqual({
-      shouldRender: true,
       statusRow: {
+        shouldRender: true,
         props: {
           style: "hands-free-status-row",
         },
@@ -10188,6 +10188,7 @@ describe("session presentation semantics", () => {
         },
       },
       controlsRow: {
+        shouldRender: true,
         props: {
           style: "hands-free-controls-row",
         },
@@ -10257,7 +10258,8 @@ describe("session presentation semantics", () => {
       controlPressedOpacity: 0.66,
       styles: handsFreeControlStyles,
     })
-    expect(sleepingHandsFreeControlsParts.shouldRender).toBe(false)
+    expect(sleepingHandsFreeControlsParts.statusRow.shouldRender).toBe(false)
+    expect(sleepingHandsFreeControlsParts.controlsRow.shouldRender).toBe(false)
     expect(sleepingHandsFreeControlsParts.controlsRow.content.primaryControl.touchable.props.onPress)
       .toBe("sleep-handler")
     expect(sleepingHandsFreeControlsParts.controlsRow.content.secondaryControl.touchable.props.onPress)

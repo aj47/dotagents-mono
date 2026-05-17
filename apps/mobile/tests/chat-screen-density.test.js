@@ -2633,11 +2633,15 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   const handsFreeControlsSource =
     chatMessageChromeSource.match(/export function ChatComposerHandsFreeControls[\s\S]*?export function ChatComposerIconButton/)?.[0] ?? '';
   assert.match(handsFreeControlsSource, /const handsFreeControlsParts = createChatComposerHandsFreeControlsMobilePropsParts\(\{\s+isVisible,\s+status,\s+controlState,\s+onWake,\s+onSleep,\s+onResume,\s+onPause,\s+controlPressedOpacity,\s+styles,\s+\}\);/);
-  assert.match(handsFreeControlsSource, /if \(!handsFreeControlsParts\.shouldRender\) return null;/);
-  assert.match(handsFreeControlsSource, /const controlsRowContent = handsFreeControlsParts\.controlsRow\.content;/);
-  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeStatusRow\s+\{\.\.\.handsFreeControlsParts\.statusRow\.props\}/);
-  assert.match(handsFreeControlsSource, /\{handsFreeControlsParts\.statusRow\.content\.status\.children\}/);
-  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlsRow\s+\{\.\.\.handsFreeControlsParts\.controlsRow\.props\}/);
+  assert.match(handsFreeControlsSource, /const handsFreeStatusRow = handsFreeControlsParts\.statusRow;/);
+  assert.match(handsFreeControlsSource, /const handsFreeControlsRow = handsFreeControlsParts\.controlsRow;/);
+  assert.match(handsFreeControlsSource, /if \(!handsFreeStatusRow\.shouldRender && !handsFreeControlsRow\.shouldRender\) return null;/);
+  assert.match(handsFreeControlsSource, /const controlsRowContent = handsFreeControlsRow\.content;/);
+  assert.match(handsFreeControlsSource, /\{handsFreeStatusRow\.shouldRender \? \(/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeStatusRow\s+\{\.\.\.handsFreeStatusRow\.props\}/);
+  assert.match(handsFreeControlsSource, /\{handsFreeStatusRow\.content\.status\.children\}/);
+  assert.match(handsFreeControlsSource, /\{handsFreeControlsRow\.shouldRender \? \(/);
+  assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlsRow\s+\{\.\.\.handsFreeControlsRow\.props\}/);
   assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlButton\s+\{\.\.\.controlsRowContent\.primaryControl\.touchable\.props\}/);
   assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlLabel\s+\{\.\.\.controlsRowContent\.primaryControl\.content\.label\.props\}/);
   assert.match(handsFreeControlsSource, /<ChatComposerHandsFreeControlButton\s+\{\.\.\.controlsRowContent\.secondaryControl\.touchable\.props\}/);
@@ -2660,8 +2664,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     handsFreeControlsSource,
     /export function ChatComposerHandsFreeControlLabel\([\s\S]*?<Text \{\.\.\.props\}>[\s\S]*?\{text\}[\s\S]*?export function ChatComposerIconButton/
   );
-  assert.match(sessionPresentationSource, /statusRow: \{\s+props: \{\s+style: styles\.statusRow,/);
-  assert.match(sessionPresentationSource, /controlsRow: \{\s+props: \{\s+style: styles\.controlsRow,/);
+  assert.match(sessionPresentationSource, /statusRow: \{\s+shouldRender: isVisible,\s+props: \{\s+style: styles\.statusRow,/);
+  assert.match(sessionPresentationSource, /controlsRow: \{\s+shouldRender: isVisible,\s+props: \{\s+style: styles\.controlsRow,/);
   assert.match(sessionPresentationSource, /primaryControl: \{\s+touchable: \{\s+props: \{\s+style: styles\.controlButton,\s+onPress: primaryOnPress,/);
   assert.match(sessionPresentationSource, /secondaryControl: \{\s+touchable: \{\s+props: \{\s+style: styles\.controlButton,\s+onPress: secondaryOnPress,/);
   assert.match(sessionPresentationSource, /label: \{\s+props: \{\s+style: styles\.controlButtonText,\s+text: controlState\.(primary|secondary)\.label,/);
@@ -2669,6 +2673,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     handsFreeControlsSource,
     /handsFreeControlsParts\.(statusRow|controlsRow)\.style/
   );
+  assert.doesNotMatch(handsFreeControlsSource, /handsFreeControlsParts\.shouldRender/);
   assert.doesNotMatch(
     handsFreeControlsSource,
     /handsFreeControlsParts\.(primaryControl|secondaryControl)\.(touchable|label)\.(style|onPress|activeOpacity|accessibilityRole|accessibilityLabel|text)/
