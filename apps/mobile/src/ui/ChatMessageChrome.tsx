@@ -2675,6 +2675,11 @@ type ChatMessageToolExecutionCallSectionContainerProps =
     children: ReactNode;
   };
 
+type ChatMessageToolExecutionCallSectionContentProps =
+  ChatMessageToolExecutionCallSectionParts['container']['content'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolExecutionResultBadgeStyles = {
   badge: StyleProp<ViewStyle>;
   badgeSuccess: StyleProp<ViewStyle>;
@@ -10869,17 +10874,31 @@ export function ChatMessageToolExecutionCallSection({
     onHeaderPress,
     styles,
   });
-  const callSectionContent = callSectionParts.container.content;
 
   return (
     <ChatMessageToolExecutionCallSectionContainer
       {...callSectionParts.container.props}
     >
+      <ChatMessageToolExecutionCallSectionContent
+        {...callSectionParts.container.content}
+      >
+        {children}
+      </ChatMessageToolExecutionCallSectionContent>
+    </ChatMessageToolExecutionCallSectionContainer>
+  );
+}
+
+export function ChatMessageToolExecutionCallSectionContent({
+  header,
+  children,
+}: ChatMessageToolExecutionCallSectionContentProps) {
+  return (
+    <>
       <ChatMessageToolExecutionDetailHeader
-        {...callSectionContent.header.props}
+        {...header.props}
       />
       {children}
-    </ChatMessageToolExecutionCallSectionContainer>
+    </>
   );
 }
 

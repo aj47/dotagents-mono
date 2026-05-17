@@ -4480,12 +4480,17 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /callDetailParts\.(inputSection|resultSection|pendingResult)\./);
   assert.match(sessionPresentationSource, /content: \{\s+inputSection,\s+resultSection,\s+pendingResult: !resultSection\.shouldRender && pendingResult \? \{/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSection/);
+  const toolExecutionCallSectionSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCallSection\([\s\S]*?export function ChatMessageToolExecutionCallSectionContent/)?.[0] ?? '';
+  const toolExecutionCallSectionContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionCallSectionContent[\s\S]*?export function ChatMessageToolExecutionCallSectionContainer/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallSectionMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const callSectionParts = createChatRuntimeToolExecutionCallSectionMobilePropsParts\(\{\s+renderState,\s+toolName,\s+onHeaderPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const callSectionContent = callSectionParts\.container\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const callSectionContent = callSectionParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallSectionContainer\s+\{\.\.\.callSectionParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionDetailHeader\s+\{\.\.\.callSectionContent\.header\.props\}/);
+  assert.match(toolExecutionCallSectionSource, /<ChatMessageToolExecutionCallSectionContent\s+\{\.\.\.callSectionParts\.container\.content\}/);
+  assert.match(toolExecutionCallSectionContentSource, /<ChatMessageToolExecutionDetailHeader\s+\{\.\.\.header\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSectionContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionResultBadge/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSectionContainer[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionResultBadge/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: styles\.section,/);
