@@ -7427,7 +7427,10 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /const quickStartsParts = createChatRuntimeHomeQuickStartsMobilePropsParts</);
   assert.match(chatMessageChromeSource, /const quickStartsContainer = quickStartsParts\.container;/);
   assert.match(chatMessageChromeSource, /if \(!quickStartsContainer\.shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /<View \{\.\.\.quickStartsContainer\.props\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartsContainer/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartsContainer\s+container=\{quickStartsContainer\}/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartsContainer[\s\S]*?<View \{\.\.\.container\.props\}>[\s\S]*?\{children\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /<View \{\.\.\.quickStartsContainer\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /quickStartsParts\.shouldRender/);
   assert.doesNotMatch(chatMessageChromeSource, /style=\{quickStartsParts\.container\.style\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<View \{\.\.\.quickStartsParts\.container\.props\}>/);

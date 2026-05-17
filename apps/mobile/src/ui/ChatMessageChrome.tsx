@@ -1559,6 +1559,15 @@ type ChatConversationHomeQuickStartsProps<
   styles: ChatConversationHomeQuickStartsStyles;
 };
 
+type ChatConversationHomeQuickStartsContainerPart = {
+  props: ComponentProps<typeof View>;
+};
+
+type ChatConversationHomeQuickStartsContainerProps = {
+  container: ChatConversationHomeQuickStartsContainerPart;
+  children: ReactNode;
+};
+
 type ChatConversationHomeQuickStartSourcePillPart =
   | {
       shouldRender: false;
@@ -8062,11 +8071,24 @@ export function ChatConversationHomeQuickStarts<
   if (!quickStartsContainer.shouldRender) return null;
 
   return (
-    <View {...quickStartsContainer.props}>
+    <ChatConversationHomeQuickStartsContainer
+      container={quickStartsContainer}
+    >
       <ChatConversationHomeQuickStartsContent
         grid={quickStartsParts.grid}
         emptyState={quickStartsParts.emptyState}
       />
+    </ChatConversationHomeQuickStartsContainer>
+  );
+}
+
+export function ChatConversationHomeQuickStartsContainer({
+  container,
+  children,
+}: ChatConversationHomeQuickStartsContainerProps) {
+  return (
+    <View {...container.props}>
+      {children}
     </View>
   );
 }
