@@ -8201,20 +8201,22 @@ describe("session presentation semantics", () => {
         text: "path: /test",
       },
     })
-    expect(toolApprovalParts.argumentsToggle.style({ pressed: true })).toEqual([
+    expect(toolApprovalParts.argumentsToggle.props.style({ pressed: true })).toEqual([
       "tool-approval-arguments-toggle-style",
       "tool-approval-arguments-toggle-pressed-style",
       "tool-approval-button-disabled-style",
     ])
     expect(toolApprovalParts.argumentsToggle).toMatchObject({
-      disabled: true,
-      accessibilityRole: "button",
-      accessibilityLabel: "Hide full arguments for write_file",
-      accessibilityState: {
-        expanded: true,
+      props: {
         disabled: true,
+        accessibilityRole: "button",
+        accessibilityLabel: "Hide full arguments for write_file",
+        accessibilityState: {
+          expanded: true,
+          disabled: true,
+        },
+        "aria-expanded": true,
       },
-      ariaExpanded: true,
       icon: {
         props: toolApprovalProps.renderState.argumentsToggle.icon,
       },
@@ -8225,6 +8227,7 @@ describe("session presentation semantics", () => {
         },
       },
     })
+    expect(toolApprovalParts.argumentsToggle.props.onPress).toBe(toolApprovalProps.onToggleArguments)
     expect(toolApprovalParts.fullArguments).toEqual({
       shouldRender: true,
       scroll: {

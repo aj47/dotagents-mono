@@ -2010,18 +2010,20 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     }
   }
   argumentsToggle: {
-    onPress: TOnToggleArguments
-    disabled: boolean
-    accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityState: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["accessibilityState"]
-    ariaExpanded: boolean
-    style: (state: { pressed: boolean }) => Array<
-      | TStyles["argumentsToggle"]
-      | TStyles["argumentsTogglePressed"]
-      | TStyles["buttonDisabled"]
-      | false
-    >
+    props: {
+      onPress: TOnToggleArguments
+      disabled: boolean
+      accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityState: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["accessibilityState"]
+      "aria-expanded": boolean
+      style: (state: { pressed: boolean }) => Array<
+        | TStyles["argumentsToggle"]
+        | TStyles["argumentsTogglePressed"]
+        | TStyles["buttonDisabled"]
+        | false
+      >
+    }
     icon: {
       props: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["icon"]
     }
@@ -22861,17 +22863,19 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       },
     },
     argumentsToggle: {
-      onPress: onToggleArguments,
-      disabled: renderState.argumentsToggle.isDisabled,
-      accessibilityRole: renderState.argumentsToggle.accessibilityRole,
-      accessibilityLabel: renderState.argumentsToggle.accessibilityLabel,
-      accessibilityState: renderState.argumentsToggle.accessibilityState,
-      ariaExpanded: renderState.argumentsToggle.ariaExpanded,
-      style: ({ pressed }) => [
-        styles.argumentsToggle,
-        pressed && styles.argumentsTogglePressed,
-        renderState.argumentsToggle.isDisabled && styles.buttonDisabled,
-      ],
+      props: {
+        onPress: onToggleArguments,
+        disabled: renderState.argumentsToggle.isDisabled,
+        accessibilityRole: renderState.argumentsToggle.accessibilityRole,
+        accessibilityLabel: renderState.argumentsToggle.accessibilityLabel,
+        accessibilityState: renderState.argumentsToggle.accessibilityState,
+        "aria-expanded": renderState.argumentsToggle.ariaExpanded,
+        style: ({ pressed }) => [
+          styles.argumentsToggle,
+          pressed && styles.argumentsTogglePressed,
+          renderState.argumentsToggle.isDisabled && styles.buttonDisabled,
+        ],
+      },
       icon: {
         props: renderState.argumentsToggle.icon,
       },

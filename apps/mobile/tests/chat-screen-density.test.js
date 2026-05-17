@@ -614,12 +614,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /createChatRuntimeToolApprovalMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(toolApprovalComponentSource, /const toolApprovalParts = createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
-  assert.match(toolApprovalComponentSource, /accessibilityRole=\{toolApprovalParts\.argumentsToggle\.accessibilityRole\}/);
-  assert.match(toolApprovalComponentSource, /accessibilityLabel=\{toolApprovalParts\.argumentsToggle\.accessibilityLabel\}/);
-  assert.match(toolApprovalComponentSource, /accessibilityState=\{toolApprovalParts\.argumentsToggle\.accessibilityState\}/);
-  assert.match(toolApprovalComponentSource, /aria-expanded=\{toolApprovalParts\.argumentsToggle\.ariaExpanded\}/);
-  assert.match(toolApprovalComponentSource, /disabled=\{toolApprovalParts\.argumentsToggle\.disabled\}/);
-  assert.match(toolApprovalComponentSource, /style=\{toolApprovalParts\.argumentsToggle\.style\}/);
+  assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?props: \{[\s\S]*?onPress: onToggleArguments,[\s\S]*?disabled: renderState\.argumentsToggle\.isDisabled,[\s\S]*?accessibilityRole: renderState\.argumentsToggle\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.argumentsToggle\.accessibilityLabel,[\s\S]*?accessibilityState: renderState\.argumentsToggle\.accessibilityState,[\s\S]*?"aria-expanded": renderState\.argumentsToggle\.ariaExpanded,[\s\S]*?style: \(\{ pressed \}\) => \[/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalArgumentsToggle/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsToggle\s+\{\.\.\.toolApprovalParts\.argumentsToggle\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsToggle[\s\S]*?<Pressable[\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?disabled=\{disabled\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityState=\{accessibilityState\}[\s\S]*?aria-expanded=\{ariaExpanded\}[\s\S]*?\{children\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsToggle\.(style|onPress|disabled|accessibilityRole|accessibilityLabel|accessibilityState|ariaExpanded)/);
   assert.doesNotMatch(toolApprovalComponentSource, /accessibilityRole=\{renderState\.argumentsToggle\.accessibilityRole\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /accessibilityLabel=\{renderState\.argumentsToggle\.accessibilityLabel\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /accessibilityState=\{renderState\.argumentsToggle\.accessibilityState\}/);

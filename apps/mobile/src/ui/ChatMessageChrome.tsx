@@ -1590,6 +1590,11 @@ type ChatMessageToolApprovalIconProps =
   | ChatMessageToolApprovalParts['denyButton']['icon']['props']
   | ChatMessageToolApprovalParts['approveButton']['icon']['props'];
 
+type ChatMessageToolApprovalArgumentsToggleProps =
+  ChatMessageToolApprovalParts['argumentsToggle']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolApprovalArgumentsToggleLabelProps =
   ChatMessageToolApprovalParts['argumentsToggle']['label']['props'];
 
@@ -7503,14 +7508,8 @@ export function ChatMessageToolApproval({
             {...toolApprovalParts.argumentsPreview.props}
           />
         ) : null}
-        <Pressable
-          onPress={toolApprovalParts.argumentsToggle.onPress}
-          disabled={toolApprovalParts.argumentsToggle.disabled}
-          accessibilityRole={toolApprovalParts.argumentsToggle.accessibilityRole}
-          accessibilityLabel={toolApprovalParts.argumentsToggle.accessibilityLabel}
-          accessibilityState={toolApprovalParts.argumentsToggle.accessibilityState}
-          aria-expanded={toolApprovalParts.argumentsToggle.ariaExpanded}
-          style={toolApprovalParts.argumentsToggle.style}
+        <ChatMessageToolApprovalArgumentsToggle
+          {...toolApprovalParts.argumentsToggle.props}
         >
           <ChatMessageToolApprovalIcon
             {...toolApprovalParts.argumentsToggle.icon.props}
@@ -7518,7 +7517,7 @@ export function ChatMessageToolApproval({
           <ChatMessageToolApprovalArgumentsToggleLabel
             {...toolApprovalParts.argumentsToggle.label.props}
           />
-        </Pressable>
+        </ChatMessageToolApprovalArgumentsToggle>
         {toolApprovalParts.fullArguments.shouldRender ? (
           <ChatMessageToolApprovalFullArgumentsScroll
             {...toolApprovalParts.fullArguments.scroll.props}
@@ -7702,6 +7701,31 @@ export function ChatMessageToolApprovalActionButton({
     >
       {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatMessageToolApprovalArgumentsToggle({
+  style,
+  onPress,
+  disabled,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityState,
+  "aria-expanded": ariaExpanded,
+  children,
+}: ChatMessageToolApprovalArgumentsToggleProps) {
+  return (
+    <Pressable
+      style={style}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
+      aria-expanded={ariaExpanded}
+    >
+      {children}
+    </Pressable>
   );
 }
 
