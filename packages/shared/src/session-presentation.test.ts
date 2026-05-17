@@ -13080,48 +13080,72 @@ describe("session presentation semantics", () => {
     })
     expect(compactRowParts).toEqual({
       container: {
-        style: "compact-line",
-        accessibilityLabel: "Running: read_file",
+        props: {
+          style: "compact-line",
+          accessibilityLabel: "Running: read_file",
+        },
       },
       leadingIcon: {
-        style: "compact-leading",
+        container: {
+          props: {
+            style: "compact-leading",
+          },
+        },
         icon: {
-          name: "hammer-outline",
-          size: 14,
-          color: "#555",
+          props: {
+            name: "hammer-outline",
+            size: 14,
+            color: "#555",
+          },
         },
       },
       name: {
-        text: "read_file",
-        style: [
-          "compact-name",
-          "compact-name-pending",
-          false,
-          false,
-        ],
-        numberOfLines: 1,
-        ellipsizeMode: "tail",
+        props: {
+          text: "read_file",
+          style: [
+            "compact-name",
+            "compact-name-pending",
+            false,
+            false,
+          ],
+          numberOfLines: 1,
+          ellipsizeMode: "tail",
+        },
       },
       statusIndicator: {
-        style: "compact-status",
+        container: {
+          props: {
+            style: "compact-status",
+          },
+        },
         spinner: {
           shouldRender: true,
-          size: "small",
-          color: "#888",
+          props: {
+            size: "small",
+            color: "#888",
+          },
         },
         icon: {
           shouldRender: false,
-          name: "checkmark-circle",
-          size: 12,
-          color: "#0f0",
+          props: {
+            name: "checkmark-circle",
+            size: 12,
+            color: "#0f0",
+          },
         },
       },
       toggleIcon: {
-        style: "compact-toggle",
+        container: {
+          props: {
+            style: "compact-toggle",
+          },
+        },
         icon: {
-          name: "chevron-forward",
-          size: 16,
-          color: "#999",
+          props: {
+            name: "chevron-forward",
+            size: 16,
+            color: "#999",
+          },
         },
       },
     })
@@ -13172,17 +13196,25 @@ describe("session presentation semantics", () => {
       },
     })
     expect(compactRowIconParts.statusIndicator).toEqual({
-      style: "compact-status",
+      container: {
+        props: {
+          style: "compact-status",
+        },
+      },
       spinner: {
         shouldRender: false,
-        size: "small",
-        color: "#888",
+        props: {
+          size: "small",
+          color: "#888",
+        },
       },
       icon: {
         shouldRender: true,
-        name: "checkmark-circle",
-        size: 12,
-        color: "#0f0",
+        props: {
+          name: "checkmark-circle",
+          size: 12,
+          color: "#0f0",
+        },
       },
     })
     const compactListParts = createChatRuntimeToolExecutionCompactListMobilePropsParts({

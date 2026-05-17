@@ -3828,6 +3828,13 @@ type ChatRuntimeToolExecutionCompactRowStatusIndicatorPart = {
   shouldRender: boolean
 }
 
+type ChatRuntimeToolExecutionCompactRowStatusIndicatorPropsPart<
+  TPart extends ChatRuntimeToolExecutionCompactRowStatusIndicatorPart,
+> = {
+  shouldRender: boolean
+  props: Omit<TPart, "shouldRender">
+}
+
 export interface ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
   TRenderState extends {
     accessibilityLabel: string
@@ -3941,33 +3948,57 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
   },
 > {
   container: {
-    style: TStyles["line"]
-    accessibilityLabel: string
+    props: {
+      style: TStyles["line"]
+      accessibilityLabel: string
+    }
   }
   leadingIcon: {
-    style: TStyles["leadingIcon"]
-    icon: TRenderState["toolIcon"]
+    container: {
+      props: {
+        style: TStyles["leadingIcon"]
+      }
+    }
+    icon: {
+      props: TRenderState["toolIcon"]
+    }
   }
   name: {
-    text: string
-    style: Array<
-      | TStyles["name"]
-      | TStyles["namePending"]
-      | TStyles["nameSuccess"]
-      | TStyles["nameError"]
-      | false
-    >
-    numberOfLines: TRenderState["name"]["numberOfLines"]
-    ellipsizeMode: TRenderState["name"]["ellipsizeMode"]
+    props: {
+      text: string
+      style: Array<
+        | TStyles["name"]
+        | TStyles["namePending"]
+        | TStyles["nameSuccess"]
+        | TStyles["nameError"]
+        | false
+      >
+      numberOfLines: TRenderState["name"]["numberOfLines"]
+      ellipsizeMode: TRenderState["name"]["ellipsizeMode"]
+    }
   }
   statusIndicator: {
-    style: TStyles["statusIndicator"]
-    spinner: TRenderState["statusIndicator"]["spinner"]
-    icon: TRenderState["statusIndicator"]["icon"]
+    container: {
+      props: {
+        style: TStyles["statusIndicator"]
+      }
+    }
+    spinner: ChatRuntimeToolExecutionCompactRowStatusIndicatorPropsPart<
+      TRenderState["statusIndicator"]["spinner"]
+    >
+    icon: ChatRuntimeToolExecutionCompactRowStatusIndicatorPropsPart<
+      TRenderState["statusIndicator"]["icon"]
+    >
   }
   toggleIcon: {
-    style: TStyles["toggleIcon"]
-    icon: TRenderState["toggleIcon"]
+    container: {
+      props: {
+        style: TStyles["toggleIcon"]
+      }
+    }
+    icon: {
+      props: TRenderState["toggleIcon"]
+    }
   }
 }
 
@@ -21119,39 +21150,63 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
   TRenderState,
   TStyles
 > {
+  const { shouldRender: spinnerShouldRender, ...spinnerProps } = renderState.statusIndicator.spinner
+  const { shouldRender: iconShouldRender, ...iconProps } = renderState.statusIndicator.icon
+
   return {
     container: {
-      style: styles.line,
-      accessibilityLabel: renderState.accessibilityLabel,
+      props: {
+        style: styles.line,
+        accessibilityLabel: renderState.accessibilityLabel,
+      },
     },
     leadingIcon: {
-      style: styles.leadingIcon,
-      icon: renderState.toolIcon,
+      container: {
+        props: {
+          style: styles.leadingIcon,
+        },
+      },
+      icon: {
+        props: renderState.toolIcon,
+      },
     },
     name: {
-      text: renderState.preview,
-      style: [
-        styles.name,
-        renderState.isPending && styles.namePending,
-        renderState.isSuccess && styles.nameSuccess,
-        renderState.isError && styles.nameError,
-      ],
-      numberOfLines: renderState.name.numberOfLines,
-      ellipsizeMode: renderState.name.ellipsizeMode,
+      props: {
+        text: renderState.preview,
+        style: [
+          styles.name,
+          renderState.isPending && styles.namePending,
+          renderState.isSuccess && styles.nameSuccess,
+          renderState.isError && styles.nameError,
+        ],
+        numberOfLines: renderState.name.numberOfLines,
+        ellipsizeMode: renderState.name.ellipsizeMode,
+      },
     },
     statusIndicator: {
-      style: styles.statusIndicator,
-      spinner: renderState.statusIndicator.spinner as TRenderState["statusIndicator"]["spinner"],
+      container: {
+        props: {
+          style: styles.statusIndicator,
+        },
+      },
+      spinner: {
+        shouldRender: spinnerShouldRender,
+        props: spinnerProps as Omit<TRenderState["statusIndicator"]["spinner"], "shouldRender">,
+      },
       icon: {
-        ...renderState.statusIndicator.icon,
-        shouldRender:
-          !renderState.statusIndicator.spinner.shouldRender
-          && renderState.statusIndicator.icon.shouldRender,
-      } as TRenderState["statusIndicator"]["icon"],
+        shouldRender: !spinnerShouldRender && iconShouldRender,
+        props: iconProps as Omit<TRenderState["statusIndicator"]["icon"], "shouldRender">,
+      },
     },
     toggleIcon: {
-      style: styles.toggleIcon,
-      icon: renderState.toggleIcon,
+      container: {
+        props: {
+          style: styles.toggleIcon,
+        },
+      },
+      icon: {
+        props: renderState.toggleIcon,
+      },
     },
   }
 }

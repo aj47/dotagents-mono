@@ -1964,6 +1964,40 @@ type ChatMessageToolExecutionCompactRowProps = {
   styles: ChatMessageToolExecutionCompactRowStyles;
 };
 
+type ChatMessageToolExecutionCompactRowParts = ReturnType<typeof createChatRuntimeToolExecutionCompactRowMobilePropsParts<
+  ChatMessageToolExecutionCompactRowProps['renderState'],
+  ChatMessageToolExecutionCompactRowProps['styles']
+>>;
+
+type ChatMessageToolExecutionCompactRowContainerProps =
+  ChatMessageToolExecutionCompactRowParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionCompactRowIconCellProps =
+  (
+    | ChatMessageToolExecutionCompactRowParts['leadingIcon']['container']['props']
+    | ChatMessageToolExecutionCompactRowParts['toggleIcon']['container']['props']
+  ) & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionCompactRowIconProps =
+  | ChatMessageToolExecutionCompactRowParts['leadingIcon']['icon']['props']
+  | ChatMessageToolExecutionCompactRowParts['statusIndicator']['icon']['props']
+  | ChatMessageToolExecutionCompactRowParts['toggleIcon']['icon']['props'];
+
+type ChatMessageToolExecutionCompactRowNameProps =
+  ChatMessageToolExecutionCompactRowParts['name']['props'];
+
+type ChatMessageToolExecutionCompactRowStatusIndicatorProps =
+  ChatMessageToolExecutionCompactRowParts['statusIndicator']['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionCompactRowSpinnerProps =
+  ChatMessageToolExecutionCompactRowParts['statusIndicator']['spinner']['props'];
+
 type ChatMessageToolExecutionCompactListRow = {
   key: string;
   renderState: ToolExecutionCompactMobileRenderState;
@@ -9202,46 +9236,120 @@ export function ChatMessageToolExecutionCompactRow({
   });
 
   return (
-    <View
-      style={compactRowParts.container.style}
-      accessibilityLabel={compactRowParts.container.accessibilityLabel}
+    <ChatMessageToolExecutionCompactRowContainer
+      {...compactRowParts.container.props}
     >
-      <View style={compactRowParts.leadingIcon.style}>
-        <Ionicons
-          name={compactRowParts.leadingIcon.icon.name}
-          size={compactRowParts.leadingIcon.icon.size}
-          color={compactRowParts.leadingIcon.icon.color}
-        />
-      </View>
-      <Text
-        style={compactRowParts.name.style}
-        numberOfLines={compactRowParts.name.numberOfLines}
-        ellipsizeMode={compactRowParts.name.ellipsizeMode}
+      <ChatMessageToolExecutionCompactRowIconCell
+        {...compactRowParts.leadingIcon.container.props}
       >
-        {compactRowParts.name.text}
-      </Text>
-      <View style={compactRowParts.statusIndicator.style}>
+        <ChatMessageToolExecutionCompactRowIcon
+          {...compactRowParts.leadingIcon.icon.props}
+        />
+      </ChatMessageToolExecutionCompactRowIconCell>
+      <ChatMessageToolExecutionCompactRowName
+        {...compactRowParts.name.props}
+      />
+      <ChatMessageToolExecutionCompactRowStatusIndicator
+        {...compactRowParts.statusIndicator.container.props}
+      >
         {compactRowParts.statusIndicator.spinner.shouldRender ? (
-          <ActivityIndicator
-            size={compactRowParts.statusIndicator.spinner.size}
-            color={compactRowParts.statusIndicator.spinner.color}
+          <ChatMessageToolExecutionCompactRowSpinner
+            {...compactRowParts.statusIndicator.spinner.props}
           />
         ) : compactRowParts.statusIndicator.icon.shouldRender ? (
-          <Ionicons
-            name={compactRowParts.statusIndicator.icon.name}
-            size={compactRowParts.statusIndicator.icon.size}
-            color={compactRowParts.statusIndicator.icon.color}
+          <ChatMessageToolExecutionCompactRowIcon
+            {...compactRowParts.statusIndicator.icon.props}
           />
         ) : null}
-      </View>
-      <View style={compactRowParts.toggleIcon.style}>
-        <Ionicons
-          name={compactRowParts.toggleIcon.icon.name}
-          size={compactRowParts.toggleIcon.icon.size}
-          color={compactRowParts.toggleIcon.icon.color}
+      </ChatMessageToolExecutionCompactRowStatusIndicator>
+      <ChatMessageToolExecutionCompactRowIconCell
+        {...compactRowParts.toggleIcon.container.props}
+      >
+        <ChatMessageToolExecutionCompactRowIcon
+          {...compactRowParts.toggleIcon.icon.props}
         />
-      </View>
+      </ChatMessageToolExecutionCompactRowIconCell>
+    </ChatMessageToolExecutionCompactRowContainer>
+  );
+}
+
+export function ChatMessageToolExecutionCompactRowContainer({
+  style,
+  accessibilityLabel,
+  children,
+}: ChatMessageToolExecutionCompactRowContainerProps) {
+  return (
+    <View
+      style={style}
+      accessibilityLabel={accessibilityLabel}
+    >
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageToolExecutionCompactRowIconCell({
+  style,
+  children,
+}: ChatMessageToolExecutionCompactRowIconCellProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageToolExecutionCompactRowIcon({
+  name,
+  size,
+  color,
+}: ChatMessageToolExecutionCompactRowIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionCompactRowName({
+  style,
+  numberOfLines,
+  ellipsizeMode,
+  text,
+}: ChatMessageToolExecutionCompactRowNameProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+      ellipsizeMode={ellipsizeMode}
+    >
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageToolExecutionCompactRowStatusIndicator({
+  style,
+  children,
+}: ChatMessageToolExecutionCompactRowStatusIndicatorProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageToolExecutionCompactRowSpinner({
+  size,
+  color,
+}: ChatMessageToolExecutionCompactRowSpinnerProps) {
+  return (
+    <ActivityIndicator
+      size={size}
+      color={color}
+    />
   );
 }
 
