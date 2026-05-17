@@ -638,12 +638,14 @@ describe('message-queue-utils', () => {
     });
     expect(compactActionParts.actions.map((action) => action.key)).toEqual(['pause', 'sendNext', 'clear']);
     expect(compactActionParts.actions[0]).toMatchObject({
-      style: 'compactAction',
-      activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPressedOpacity,
-      accessibilityRole: 'button',
-      accessibilityLabel: 'Pause queue',
-      disabled: false,
-      accessibilityState: { disabled: false },
+      props: {
+        style: 'compactAction',
+        activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPressedOpacity,
+        accessibilityRole: 'button',
+        accessibilityLabel: 'Pause queue',
+        disabled: false,
+        accessibilityState: { disabled: false },
+      },
       icon: {
         props: {
           name: 'pause',
@@ -653,7 +655,9 @@ describe('message-queue-utils', () => {
       },
     });
     expect(compactActionParts.actions[1]).toMatchObject({
-      accessibilityLabel: 'Send next queued message',
+      props: {
+        accessibilityLabel: 'Send next queued message',
+      },
       icon: {
         props: {
           name: 'play',
@@ -661,7 +665,7 @@ describe('message-queue-utils', () => {
         },
       },
     });
-    compactActionParts.actions.forEach((action) => action.onPress());
+    compactActionParts.actions.forEach((action) => action.props.onPress());
     expect(compactActionCalls).toEqual(['pause', 'sendNext', 'clear']);
     expect(createMessageQueuePanelCompactActionMobilePropsParts({
       surface: mobileQueueSurfaceRenderState.surface.panel,
@@ -693,8 +697,10 @@ describe('message-queue-utils', () => {
     }).actions).toMatchObject([
       {
         key: 'pause',
-        disabled: true,
-        accessibilityState: { disabled: true },
+        props: {
+          disabled: true,
+          accessibilityState: { disabled: true },
+        },
         icon: {
           props: {
             color: '#737373',
@@ -703,8 +709,10 @@ describe('message-queue-utils', () => {
       },
       {
         key: 'clear',
-        disabled: true,
-        accessibilityState: { disabled: true },
+        props: {
+          disabled: true,
+          accessibilityState: { disabled: true },
+        },
         icon: {
           props: {
             color: '#737373',
@@ -742,12 +750,14 @@ describe('message-queue-utils', () => {
     ]);
     expect(headerActionParts.actions[0]).toMatchObject({
       type: 'text',
-      style: 'processButton',
-      activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPressedOpacity,
-      accessibilityRole: 'button',
-      accessibilityLabel: 'Pause queue',
-      disabled: false,
-      accessibilityState: { disabled: false },
+      props: {
+        style: 'processButton',
+        activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPressedOpacity,
+        accessibilityRole: 'button',
+        accessibilityLabel: 'Pause queue',
+        disabled: false,
+        accessibilityState: { disabled: false },
+      },
       label: {
         shouldRender: true,
         text: 'Pause',
@@ -774,9 +784,11 @@ describe('message-queue-utils', () => {
     });
     expect(headerActionParts.actions[3]).toMatchObject({
       type: 'icon',
-      style: 'clearButton',
-      accessibilityLabel: 'Collapse queue',
-      accessibilityState: { expanded: true },
+      props: {
+        style: 'clearButton',
+        accessibilityLabel: 'Collapse queue',
+        accessibilityState: { expanded: true },
+      },
       label: {
         shouldRender: false,
       },
@@ -789,7 +801,7 @@ describe('message-queue-utils', () => {
         },
       },
     });
-    headerActionParts.actions.forEach((action) => action.onPress());
+    headerActionParts.actions.forEach((action) => action.props.onPress());
     expect(headerActionCalls).toEqual(['pause', 'sendNext', 'clear', 'toggle']);
     expect(createMessageQueuePanelHeaderActionMobilePropsParts({
       surface: mobileQueueSurfaceRenderState.surface.panel,
@@ -829,8 +841,10 @@ describe('message-queue-utils', () => {
       {
         key: 'toggleList',
         type: 'icon',
-        accessibilityLabel: 'Expand queue',
-        accessibilityState: { expanded: false },
+        props: {
+          accessibilityLabel: 'Expand queue',
+          accessibilityState: { expanded: false },
+        },
         label: {
           shouldRender: false,
         },
@@ -1065,8 +1079,8 @@ describe('message-queue-utils', () => {
         message: listFailedMessage,
       },
     });
-    panelParts.compactActions.actions[0].onPress();
-    panelParts.headerActions.actions[3].onPress();
+    panelParts.compactActions.actions[0].props.onPress();
+    panelParts.headerActions.actions[3].props.onPress();
     panelParts.list.items[1].messageProps.onRetry();
     expect(panelPartCalls).toEqual(['pause', 'toggle', 'retry:list-failed-message']);
     expect(createQueuedMessageItemMobileStyleSlots({

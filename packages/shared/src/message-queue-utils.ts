@@ -979,13 +979,15 @@ export interface MessageQueuePanelCompactActionMobilePropsPartsInput<
 
 export interface MessageQueuePanelCompactActionMobilePropsPart<TStyle, TOnPress> {
   key: MessageQueuePanelCompactActionMobilePropsPartKey;
-  style: TStyle;
-  onPress: TOnPress;
-  disabled?: boolean;
-  activeOpacity: MessageQueuePanelMobilePanelSurface['actionPressedOpacity'];
-  accessibilityRole: MessageQueuePanelMobilePanelSurface['actionAccessibilityRole'];
-  accessibilityLabel: string;
-  accessibilityState?: MessageQueuePanelActionAccessibilityState;
+  props: {
+    style: TStyle;
+    onPress: TOnPress;
+    disabled?: boolean;
+    activeOpacity: MessageQueuePanelMobilePanelSurface['actionPressedOpacity'];
+    accessibilityRole: MessageQueuePanelMobilePanelSurface['actionAccessibilityRole'];
+    accessibilityLabel: string;
+    accessibilityState?: MessageQueuePanelActionAccessibilityState;
+  };
   icon: {
     props: {
       name: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon[keyof typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon];
@@ -1056,13 +1058,15 @@ export type MessageQueuePanelHeaderActionMobileLabelStyle<
 
 interface MessageQueuePanelHeaderActionMobilePropsPartBase<TStyle, TOnPress> {
   key: MessageQueuePanelHeaderActionMobilePropsPartKey;
-  style: TStyle;
-  onPress: TOnPress;
-  disabled?: boolean;
-  activeOpacity: MessageQueuePanelMobilePanelSurface['actionPressedOpacity'];
-  accessibilityRole: MessageQueuePanelMobilePanelSurface['actionAccessibilityRole'];
-  accessibilityLabel: string;
-  accessibilityState?: MessageQueuePanelActionAccessibilityState | MessageQueuePanelListToggleAccessibilityState;
+  props: {
+    style: TStyle;
+    onPress: TOnPress;
+    disabled?: boolean;
+    activeOpacity: MessageQueuePanelMobilePanelSurface['actionPressedOpacity'];
+    accessibilityRole: MessageQueuePanelMobilePanelSurface['actionAccessibilityRole'];
+    accessibilityLabel: string;
+    accessibilityState?: MessageQueuePanelActionAccessibilityState | MessageQueuePanelListToggleAccessibilityState;
+  };
 }
 
 export interface MessageQueuePanelHeaderTextActionMobilePropsPart<
@@ -1548,7 +1552,7 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
   MessageQueuePanelCompactActionMobilePropsParts<TStyles, TOnPress> {
   const statusColors = colors.status[panel.statusKey];
   const actions: MessageQueuePanelCompactActionMobilePropsPart<TStyles['compactAction'], TOnPress>[] = [];
-  const baseAction = {
+  const baseActionProps = {
     style: styles.compactAction,
     activeOpacity: surface.actionPressedOpacity,
     accessibilityRole: surface.actionAccessibilityRole,
@@ -1556,10 +1560,12 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
 
   if (panel.isPaused && onResume) {
     actions.push({
-      ...baseAction,
       key: 'resume',
-      onPress: onResume,
-      accessibilityLabel: copy.actions.resumeTitle,
+      props: {
+        ...baseActionProps,
+        onPress: onResume,
+        accessibilityLabel: copy.actions.resumeTitle,
+      },
       icon: {
         props: {
           name: icons.resumeName,
@@ -1572,12 +1578,14 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
 
   if (!panel.isPaused && onPause) {
     actions.push({
-      ...baseAction,
       key: 'pause',
-      onPress: onPause,
-      disabled: panel.pauseActionState.isDisabled,
-      accessibilityLabel: copy.actions.pauseTitle,
-      accessibilityState: panel.pauseActionState.accessibilityState,
+      props: {
+        ...baseActionProps,
+        onPress: onPause,
+        disabled: panel.pauseActionState.isDisabled,
+        accessibilityLabel: copy.actions.pauseTitle,
+        accessibilityState: panel.pauseActionState.accessibilityState,
+      },
       icon: {
         props: {
           name: icons.pauseName,
@@ -1592,10 +1600,12 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
 
   if (panel.shouldShowCompactProcessNext && onProcessNext) {
     actions.push({
-      ...baseAction,
       key: 'sendNext',
-      onPress: onProcessNext,
-      accessibilityLabel: copy.actions.sendNextAccessibilityLabel,
+      props: {
+        ...baseActionProps,
+        onPress: onProcessNext,
+        accessibilityLabel: copy.actions.sendNextAccessibilityLabel,
+      },
       icon: {
         props: {
           name: icons.sendNextName,
@@ -1607,12 +1617,14 @@ export function createMessageQueuePanelCompactActionMobilePropsParts<
   }
 
   actions.push({
-    ...baseAction,
     key: 'clear',
-    onPress: onClear,
-    disabled: panel.clearActionState.isDisabled,
-    accessibilityLabel: copy.actions.clearQueueTitle,
-    accessibilityState: panel.clearActionState.accessibilityState,
+    props: {
+      ...baseActionProps,
+      onPress: onClear,
+      disabled: panel.clearActionState.isDisabled,
+      accessibilityLabel: copy.actions.clearQueueTitle,
+      accessibilityState: panel.clearActionState.accessibilityState,
+    },
     icon: {
       props: {
         name: icons.clearName,
@@ -1644,19 +1656,21 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
 }: MessageQueuePanelHeaderActionMobilePropsPartsInput<TStyles, TOnPress>):
   MessageQueuePanelHeaderActionMobilePropsParts<TStyles, TOnPress> {
   const actions: Array<MessageQueuePanelHeaderActionMobilePropsPart<TStyles, TOnPress>> = [];
-  const baseAction = {
+  const baseActionProps = {
     activeOpacity: surface.actionPressedOpacity,
     accessibilityRole: surface.actionAccessibilityRole,
   };
 
   if (panel.isPaused && onResume) {
     actions.push({
-      ...baseAction,
       key: 'resume',
       type: 'text',
-      style: styles.processButton,
-      onPress: onResume,
-      accessibilityLabel: copy.actions.resumeTitle,
+      props: {
+        ...baseActionProps,
+        style: styles.processButton,
+        onPress: onResume,
+        accessibilityLabel: copy.actions.resumeTitle,
+      },
       label: {
         shouldRender: true,
         text: copy.actions.resumeLabel,
@@ -1672,14 +1686,16 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
 
   if (!panel.isPaused && onPause) {
     actions.push({
-      ...baseAction,
       key: 'pause',
       type: 'text',
-      style: styles.processButton,
-      onPress: onPause,
-      disabled: panel.pauseActionState.isDisabled,
-      accessibilityLabel: copy.actions.pauseTitle,
-      accessibilityState: panel.pauseActionState.accessibilityState,
+      props: {
+        ...baseActionProps,
+        style: styles.processButton,
+        onPress: onPause,
+        disabled: panel.pauseActionState.isDisabled,
+        accessibilityLabel: copy.actions.pauseTitle,
+        accessibilityState: panel.pauseActionState.accessibilityState,
+      },
       label: {
         shouldRender: true,
         text: copy.actions.pauseLabel,
@@ -1698,12 +1714,14 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
 
   if (panel.shouldShowProcessNext && onProcessNext) {
     actions.push({
-      ...baseAction,
       key: 'sendNext',
       type: 'text',
-      style: styles.processButton,
-      onPress: onProcessNext,
-      accessibilityLabel: copy.actions.sendNextAccessibilityLabel,
+      props: {
+        ...baseActionProps,
+        style: styles.processButton,
+        onPress: onProcessNext,
+        accessibilityLabel: copy.actions.sendNextAccessibilityLabel,
+      },
       label: {
         shouldRender: true,
         text: copy.actions.sendNextLabel,
@@ -1719,14 +1737,16 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
 
   if (panel.shouldRenderClear) {
     actions.push({
-      ...baseAction,
       key: 'clear',
       type: 'text',
-      style: styles.clearButton,
-      onPress: onClear,
-      disabled: panel.clearActionState.isDisabled,
-      accessibilityLabel: copy.actions.clearQueueTitle,
-      accessibilityState: panel.clearActionState.accessibilityState,
+      props: {
+        ...baseActionProps,
+        style: styles.clearButton,
+        onPress: onClear,
+        disabled: panel.clearActionState.isDisabled,
+        accessibilityLabel: copy.actions.clearQueueTitle,
+        accessibilityState: panel.clearActionState.accessibilityState,
+      },
       label: {
         shouldRender: true,
         text: copy.actions.clearAllLabel,
@@ -1741,13 +1761,15 @@ export function createMessageQueuePanelHeaderActionMobilePropsParts<
   }
 
   actions.push({
-    ...baseAction,
     key: 'toggleList',
     type: 'icon',
-    style: styles.clearButton,
-    onPress: onToggleListCollapsed,
-    accessibilityLabel: panel.listToggleLabel,
-    accessibilityState: panel.listToggleAccessibilityState,
+    props: {
+      ...baseActionProps,
+      style: styles.clearButton,
+      onPress: onToggleListCollapsed,
+      accessibilityLabel: panel.listToggleLabel,
+      accessibilityState: panel.listToggleAccessibilityState,
+    },
     label: {
       shouldRender: false,
     },

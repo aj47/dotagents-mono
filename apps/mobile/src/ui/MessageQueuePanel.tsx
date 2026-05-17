@@ -280,13 +280,7 @@ export function MessageQueuePanel({
         {compactActionParts.actions.map((action) => (
           <TouchableOpacity
             key={action.key}
-            style={action.style}
-            onPress={action.onPress}
-            disabled={action.disabled}
-            activeOpacity={action.activeOpacity}
-            accessibilityRole={action.accessibilityRole}
-            accessibilityLabel={action.accessibilityLabel}
-            accessibilityState={action.accessibilityState}
+            {...action.props}
           >
             <Ionicons
               {...action.icon.props}
@@ -312,13 +306,7 @@ export function MessageQueuePanel({
           {headerActionParts.actions.map((action) => (
             <TouchableOpacity
               key={action.key}
-              style={action.style}
-              onPress={action.onPress}
-              disabled={action.disabled}
-              activeOpacity={action.activeOpacity}
-              accessibilityRole={action.accessibilityRole}
-              accessibilityLabel={action.accessibilityLabel}
-              accessibilityState={action.accessibilityState}
+              {...action.props}
             >
               {action.label.shouldRender ? (
                 <Text {...action.label.props}>{action.label.text}</Text>

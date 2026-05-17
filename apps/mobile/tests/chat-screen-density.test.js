@@ -5127,7 +5127,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.panelChromeParts\.headerTitle\.props\}>/);
   assert.match(messageQueuePanelSource, /\{panelChromeParts\.headerTitle\.text\}/);
   assert.doesNotMatch(messageQueuePanelSource, /panelChromeParts\.(compactLabel|headerTitle|pausedNotice\.message)\.style/);
-  assert.match(messageQueuePanelSource, /style=\{action\.style\}/);
+  assert.match(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<TouchableOpacity\s+key=\{action\.key\}[\s\S]*?\{\.\.\.action\.props\}/);
+  assert.match(messageQueuePanelSource, /headerActionParts\.actions\.map\(\(action\) => \([\s\S]*?<TouchableOpacity\s+key=\{action\.key\}[\s\S]*?\{\.\.\.action\.props\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /(compactActionParts|headerActionParts)\.actions\.map\(\(action\) => \(\s+<TouchableOpacity\s+key=\{action\.key\}\s+style=\{action\.style\}/);
   assert.match(messageQueuePanelSource, /action\.label\.shouldRender \? \(/);
   assert.doesNotMatch(messageQueuePanelSource, /action\.type === 'text'/);
   assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.action\.label\.props\}>\{action\.label\.text\}<\/Text>/);
