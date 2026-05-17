@@ -2178,6 +2178,10 @@ type ChatMessageDelegationMetaItemProps =
 type ChatMessageDelegationConversationPreviewProps =
   ChatMessageDelegationCardParts['card']['content']['conversationPreview']['props'];
 
+type ChatMessageDelegationConversationPreviewBlockProps = {
+  conversationPreview: ChatMessageDelegationCardParts['card']['content']['conversationPreview'];
+};
+
 type ChatMessageDelegationConversationPreviewRowProps =
   ChatMessageDelegationConversationPreviewProps['container']['content']['rows'][number]['props'];
 
@@ -9489,6 +9493,20 @@ export function ChatMessageDelegationConversationPreviewTimestamp({
   );
 }
 
+export function ChatMessageDelegationConversationPreviewBlock({
+  conversationPreview,
+}: ChatMessageDelegationConversationPreviewBlockProps) {
+  if (!conversationPreview.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageDelegationConversationPreview
+      {...conversationPreview.props}
+    />
+  );
+}
+
 export function ChatMessageDelegationConversationPreview({
   container,
 }: ChatMessageDelegationConversationPreviewProps) {
@@ -9730,11 +9748,9 @@ export function ChatMessageDelegationCard({
       <ChatMessageDelegationMetaRow
         {...cardContent.meta.props}
       />
-      {cardContent.conversationPreview.shouldRender ? (
-        <ChatMessageDelegationConversationPreview
-          {...cardContent.conversationPreview.props}
-        />
-      ) : null}
+      <ChatMessageDelegationConversationPreviewBlock
+        conversationPreview={cardContent.conversationPreview}
+      />
       {cardContent.toolPreview.shouldRender ? (
         <ChatMessageDelegationToolPreview
           {...cardContent.toolPreview.props}
