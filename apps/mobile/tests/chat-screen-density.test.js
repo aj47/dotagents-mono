@@ -3800,13 +3800,15 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /const panelParts = createChatRuntimeToolExecutionPanelMobilePropsParts\(\{\s+shouldRender,\s+isExpanded,\s+compact,\s+expanded,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const panelContent = panelParts\.content;/);
   assert.match(chatMessageChromeSource, /const panelShellParts = createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{\s+compactList: \([\s\S]*?<ChatMessageToolExecutionCompactList[\s\S]*?\{\.\.\.panelContent\.compactList\.props\}[\s\S]*?expandedGroup: panelContent\.expandedGroup\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionExpandedGroup \{\.\.\.panelContent\.expandedGroup\.props\}>/);
+  assert.match(chatMessageChromeSource, /const panelShellContent = panelShellParts\.content;/);
   assert.match(sessionPresentationSource, /content: \{\s+compactList: \{\s+props: \{\s+\.\.\.compact,\s+shouldRender: shouldRender && !isExpanded,/);
   assert.doesNotMatch(chatMessageChromeSource, /\{\.\.\.panelParts\.compact/);
   assert.doesNotMatch(chatMessageChromeSource, /expandedGroup: panelParts\.expandedGroup \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /panelParts\.(compact|expandedGroup)\./);
   assert.match(chatMessageChromeSource, /if \(!panelParts\.shouldRenderPanel\) return null;/);
-  assert.match(chatMessageChromeSource, /\{panelShellParts\.compactList\}[\s\S]*?panelShellParts\.expandedGroup\.shouldRender \? panelShellParts\.expandedGroup\.props : null/);
-  assert.match(sessionPresentationSource, /expandedGroup: expandedGroup != null \? \{\s+shouldRender: true,\s+props: expandedGroup as NonNullable<TExpandedGroup>,/);
+  assert.match(chatMessageChromeSource, /\{panelShellContent\.compactList\}[\s\S]*?panelShellContent\.expandedGroup\.shouldRender \? panelShellContent\.expandedGroup\.props : null/);
+  assert.match(sessionPresentationSource, /content: \{\s+compactList,\s+expandedGroup: expandedGroup != null \? \{\s+shouldRender: true,\s+props: expandedGroup as NonNullable<TExpandedGroup>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /panelShellParts\.(compactList|expandedGroup)\./);
   assert.match(sessionPresentationSource, /shouldRender: shouldRender && !isExpanded,/);
   assert.match(sessionPresentationSource, /expandedGroup: shouldRender && isExpanded \? \{\s+shouldRender: true,\s+props: expanded,/);
   assert.doesNotMatch(chatMessageChromeSource, /shouldRender=\{!isExpanded\}/);

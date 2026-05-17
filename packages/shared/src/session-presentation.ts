@@ -4690,8 +4690,10 @@ export interface ChatRuntimeToolExecutionPanelShellMobilePropsParts<
   TCompactList = unknown,
   TExpandedGroup = unknown,
 > {
-  compactList: TCompactList
-  expandedGroup: ChatRuntimeMobilePropsPart<NonNullable<TExpandedGroup>>
+  content: {
+    compactList: TCompactList
+    expandedGroup: ChatRuntimeMobilePropsPart<NonNullable<TExpandedGroup>>
+  }
 }
 
 type ChatRuntimeToolExecutionStackPanelEmptyStateLike = {
@@ -23135,13 +23137,15 @@ export function createChatRuntimeToolExecutionPanelShellMobilePropsParts<
   TExpandedGroup
 > {
   return {
-    compactList,
-    expandedGroup: expandedGroup != null ? {
-      shouldRender: true,
-      props: expandedGroup as NonNullable<TExpandedGroup>,
-    } : {
-      shouldRender: false,
-      props: null,
+    content: {
+      compactList,
+      expandedGroup: expandedGroup != null ? {
+        shouldRender: true,
+        props: expandedGroup as NonNullable<TExpandedGroup>,
+      } : {
+        shouldRender: false,
+        props: null,
+      },
     },
   }
 }

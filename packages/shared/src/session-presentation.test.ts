@@ -14675,20 +14675,24 @@ describe("session presentation semantics", () => {
       compactList: "compact-list",
       expandedGroup: "expanded-group",
     })).toEqual({
-      compactList: "compact-list",
-      expandedGroup: {
-        shouldRender: true,
-        props: "expanded-group",
+      content: {
+        compactList: "compact-list",
+        expandedGroup: {
+          shouldRender: true,
+          props: "expanded-group",
+        },
       },
     })
     expect(createChatRuntimeToolExecutionPanelShellMobilePropsParts({
       compactList: "compact-list",
       expandedGroup: null,
     })).toEqual({
-      compactList: "compact-list",
-      expandedGroup: {
-        shouldRender: false,
-        props: null,
+      content: {
+        compactList: "compact-list",
+        expandedGroup: {
+          shouldRender: false,
+          props: null,
+        },
       },
     })
     const toolExecutionPanelParts = createChatRuntimeToolExecutionStackPanelMobilePropsParts({

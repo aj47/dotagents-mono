@@ -9305,11 +9305,12 @@ export function ChatMessageToolExecutionPanel({
       </ChatMessageToolExecutionExpandedGroup>
     ) : null,
   });
+  const panelShellContent = panelShellParts.content;
 
   return (
     <>
-      {panelShellParts.compactList}
-      {panelShellParts.expandedGroup.shouldRender ? panelShellParts.expandedGroup.props : null}
+      {panelShellContent.compactList}
+      {panelShellContent.expandedGroup.shouldRender ? panelShellContent.expandedGroup.props : null}
     </>
   );
 }
