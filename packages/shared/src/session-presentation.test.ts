@@ -381,6 +381,7 @@ import {
   getChatRuntimeHomeQuickStartItemMobileRenderState,
   getChatRuntimeHomeQuickStartPressIntent,
   getChatRuntimeHomeQuickStartsMobileRenderState,
+  createChatRuntimeHomeQuickStartsMobilePropsParts,
   getChatRuntimeInlineActivityMobileIndicatorState,
   getChatRuntimeInlineActivityMobileRenderState,
   getChatRuntimeInlineActivityMobileState,
@@ -4792,6 +4793,116 @@ describe("session presentation semantics", () => {
     )
     expect(addPromptRenderState.interaction.isAddPrompt).toBe(true)
     expect(addPromptRenderState.addAction?.icon.name).toBe("add-circle-outline")
+    const quickStartStyles = {
+      card: "card",
+      emptyText: "emptyText",
+      grid: "grid",
+      shortcutCard: "shortcutCard",
+      shortcutCardAdd: "shortcutCardAdd",
+      shortcutCardDisabled: "shortcutCardDisabled",
+      shortcutCardPressed: "shortcutCardPressed",
+      sourcePill: "sourcePill",
+      sourceLabel: "sourceLabel",
+      addIcon: "addIcon",
+      title: "title",
+      titleAdd: "titleAdd",
+      description: "description",
+      actions: "actions",
+      actionButton: "actionButton",
+      actionButtonPressed: "actionButtonPressed",
+      actionText: "actionText",
+      actionDangerText: "actionDangerText",
+    }
+    let pressedQuickStartId: string | null = null
+    let editedPromptId: string | null = null
+    let deletedPromptId: string | null = null
+    const quickStartPropsParts = createChatRuntimeHomeQuickStartsMobilePropsParts({
+      shouldRender: true,
+      items: viewportChrome.quickStartItems,
+      isLoading: false,
+      runningTaskId: null,
+      onPress: (item) => {
+        pressedQuickStartId = item.id
+      },
+      onEditPrompt: (prompt) => {
+        editedPromptId = prompt.id
+      },
+      onDeletePrompt: (prompt) => {
+        deletedPromptId = prompt.id
+      },
+      shortcutRenderState: viewportChrome.shortcutRenderState,
+      styles: quickStartStyles,
+    })
+    expect(quickStartPropsParts.container.style).toBe("card")
+    expect(quickStartPropsParts.emptyState).toBeNull()
+    expect(quickStartPropsParts.grid?.style).toBe("grid")
+    const promptItemParts = quickStartPropsParts.grid!.items[0]!
+    expect(promptItemParts.key).toBe("prompt-1")
+    expect(promptItemParts.pressable.getStyle(true)).toEqual([
+      "shortcutCard",
+      false,
+      false,
+      "shortcutCardPressed",
+    ])
+    promptItemParts.pressable.onPress()
+    expect(pressedQuickStartId).toBe("prompt-1")
+    expect(promptItemParts.sourcePill?.label.text).toBe("prompt")
+    expect(promptItemParts.sourcePill?.label.numberOfLines).toBe(1)
+    expect(promptItemParts.title.text).toBe("Summarize")
+    expect(promptItemParts.title.numberOfLines).toBe(2)
+    expect(promptItemParts.actions?.edit.label.text).toBe("Edit")
+    expect(promptItemParts.actions?.delete.label.style).toEqual([
+      "actionText",
+      "actionDangerText",
+    ])
+    let stoppedPropagationCount = 0
+    promptItemParts.actions?.edit.pressable.onPress({
+      stopPropagation: () => {
+        stoppedPropagationCount += 1
+      },
+    })
+    expect(stoppedPropagationCount).toBe(1)
+    expect(editedPromptId).toBe("prompt-1")
+    promptItemParts.actions?.delete.pressable.onPress({
+      stopPropagation: () => {
+        stoppedPropagationCount += 1
+      },
+    })
+    expect(stoppedPropagationCount).toBe(2)
+    expect(deletedPromptId).toBe("prompt-1")
+    const addPromptItemParts = quickStartPropsParts.grid!.items[1]!
+    expect(addPromptItemParts.sourcePill).toBeNull()
+    expect(addPromptItemParts.addIcon?.style).toBe("addIcon")
+    expect(addPromptItemParts.title.style).toEqual([
+      "title",
+      "titleAdd",
+    ])
+    const emptyQuickStartPropsParts = createChatRuntimeHomeQuickStartsMobilePropsParts({
+      shouldRender: true,
+      items: [],
+      isLoading: false,
+      onPress: () => undefined,
+      onEditPrompt: () => undefined,
+      onDeletePrompt: () => undefined,
+      shortcutRenderState: viewportChrome.shortcutRenderState,
+      styles: quickStartStyles,
+    })
+    expect(emptyQuickStartPropsParts.grid).toBeNull()
+    expect(emptyQuickStartPropsParts.emptyState?.text).toBe(
+      "No prompts, skills, or tasks available from your connected desktop app.",
+    )
+    const hiddenQuickStartPropsParts = createChatRuntimeHomeQuickStartsMobilePropsParts({
+      shouldRender: false,
+      items: viewportChrome.quickStartItems,
+      isLoading: false,
+      onPress: () => undefined,
+      onEditPrompt: () => undefined,
+      onDeletePrompt: () => undefined,
+      shortcutRenderState: viewportChrome.shortcutRenderState,
+      styles: quickStartStyles,
+    })
+    expect(hiddenQuickStartPropsParts.grid).toBeNull()
+    expect(hiddenQuickStartPropsParts.emptyState).toBeNull()
     expect(viewportChrome.affordance.historyBanner.renderState.shouldRender).toBe(true)
     expect(viewportChrome.affordance.stepSummary.renderState.shouldRender).toBe(true)
     expect(viewportChrome.debugPanels.requestShouldRender).toBe(true)

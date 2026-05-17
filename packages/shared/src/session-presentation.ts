@@ -655,6 +655,153 @@ export interface ChatRuntimeHomeQuickStartItemsMobileStateInput<
   canAddPrompt?: boolean
 }
 
+export interface ChatRuntimeHomeQuickStartsMobileStylesLike {
+  card: unknown
+  emptyText: unknown
+  grid: unknown
+  shortcutCard: unknown
+  shortcutCardAdd: unknown
+  shortcutCardDisabled: unknown
+  shortcutCardPressed: unknown
+  sourcePill: unknown
+  sourceLabel: unknown
+  addIcon: unknown
+  title: unknown
+  titleAdd: unknown
+  description: unknown
+  actions: unknown
+  actionButton: unknown
+  actionButtonPressed: unknown
+  actionText: unknown
+  actionDangerText: unknown
+}
+
+export interface ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike {
+  stopPropagation: () => void
+}
+
+type ChatRuntimeHomeQuickStartsMobilePromptActionRenderState =
+  NonNullable<PromptLibraryMobileShortcutItemRenderState["promptActions"]>["edit"]
+
+type ChatRuntimeHomeQuickStartsMobileAddActionRenderState =
+  NonNullable<PromptLibraryMobileShortcutItemRenderState["addAction"]>
+
+export interface ChatRuntimeHomeQuickStartsMobilePropsPartsInput<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+  TEvent extends ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike =
+    ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike,
+  TStyles extends ChatRuntimeHomeQuickStartsMobileStylesLike =
+    ChatRuntimeHomeQuickStartsMobileStylesLike,
+> {
+  shouldRender: boolean
+  items: readonly PromptLibraryShortcutItem<TPrompt, TTask>[]
+  isLoading: boolean
+  runningTaskId?: string | null
+  onPress: (item: PromptLibraryShortcutItem<TPrompt, TTask>) => void
+  onEditPrompt: (prompt: TPrompt) => void
+  onDeletePrompt: (prompt: TPrompt) => void
+  shortcutRenderState: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>
+  styles: TStyles
+}
+
+export interface ChatRuntimeHomeQuickStartsMobileActionPropsParts<
+  TPrompt extends PredefinedPromptSummary,
+  TEvent extends ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike,
+  TStyles extends ChatRuntimeHomeQuickStartsMobileStylesLike,
+> {
+  pressable: {
+    getStyle: (pressed: boolean) => Array<TStyles["actionButton"] | TStyles["actionButtonPressed"] | false>
+    onPress: (event: TEvent) => void
+    accessibilityRole: ChatRuntimeHomeQuickStartsMobilePromptActionRenderState["accessibilityRole"]
+    accessibilityLabel: string
+  }
+  icon: ChatRuntimeHomeQuickStartsMobilePromptActionRenderState["icon"]
+  iconColors: ChatRuntimeHomeQuickStartsMobilePromptActionRenderState["iconColors"]
+  label: {
+    style:
+      | TStyles["actionText"]
+      | Array<TStyles["actionText"] | TStyles["actionDangerText"]>
+    text: string
+  }
+  prompt: TPrompt
+}
+
+export interface ChatRuntimeHomeQuickStartsMobileItemPropsParts<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+  TEvent extends ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike,
+  TStyles extends ChatRuntimeHomeQuickStartsMobileStylesLike,
+> {
+  key: string
+  pressable: {
+    getStyle: (pressed: boolean) => Array<
+      | TStyles["shortcutCard"]
+      | TStyles["shortcutCardAdd"]
+      | TStyles["shortcutCardDisabled"]
+      | TStyles["shortcutCardPressed"]
+      | false
+    >
+    onPress: () => void
+    disabled: boolean
+    accessibilityRole: PromptLibraryMobileShortcutItemRenderState["accessibilityRole"]
+    accessibilityState: PromptLibraryMobileShortcutItemRenderState["interaction"]["accessibilityState"]
+    accessibilityLabel: string
+    accessibilityHint: string
+  }
+  sourcePill: {
+    style: TStyles["sourcePill"]
+    icon: PromptLibraryMobileShortcutItemRenderState["sourceIcon"]
+    iconColors: PromptLibraryMobileShortcutItemRenderState["sourceIconColors"]
+    label: {
+      style: TStyles["sourceLabel"]
+      numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutSourceLabel"]["numberOfLines"]
+      text: string
+    }
+  } | null
+  addIcon: (ChatRuntimeHomeQuickStartsMobileAddActionRenderState & {
+    style: TStyles["addIcon"]
+  }) | null
+  title: {
+    style: Array<TStyles["title"] | TStyles["titleAdd"] | false>
+    numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutTitle"]["numberOfLines"]
+    text: string
+  }
+  description: {
+    style: TStyles["description"]
+    numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutDescription"]["numberOfLines"]
+    text: string
+  } | null
+  actions: {
+    style: TStyles["actions"]
+    edit: ChatRuntimeHomeQuickStartsMobileActionPropsParts<TPrompt, TEvent, TStyles>
+    delete: ChatRuntimeHomeQuickStartsMobileActionPropsParts<TPrompt, TEvent, TStyles>
+  } | null
+  item: PromptLibraryShortcutItem<TPrompt, TTask>
+}
+
+export interface ChatRuntimeHomeQuickStartsMobilePropsParts<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+  TEvent extends ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike =
+    ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike,
+  TStyles extends ChatRuntimeHomeQuickStartsMobileStylesLike =
+    ChatRuntimeHomeQuickStartsMobileStylesLike,
+> {
+  shouldRender: boolean
+  container: {
+    style: TStyles["card"]
+  }
+  grid: {
+    style: TStyles["grid"]
+    items: Array<ChatRuntimeHomeQuickStartsMobileItemPropsParts<TPrompt, TTask, TEvent, TStyles>>
+  } | null
+  emptyState: {
+    style: TStyles["emptyText"]
+    text: string
+  } | null
+}
+
 export interface ChatRuntimeDebugPanelMobileRow {
   key: string
   text: string
@@ -27390,6 +27537,183 @@ export function getChatRuntimeHomeQuickStartItemMobileRenderState<
     shortcutRenderState,
     runningTaskId,
   )
+}
+
+export function createChatRuntimeHomeQuickStartsMobilePropsParts<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+  TEvent extends ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike =
+    ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike,
+  TStyles extends ChatRuntimeHomeQuickStartsMobileStylesLike =
+    ChatRuntimeHomeQuickStartsMobileStylesLike,
+>({
+  shouldRender,
+  items,
+  isLoading,
+  runningTaskId,
+  onPress,
+  onEditPrompt,
+  onDeletePrompt,
+  shortcutRenderState,
+  styles,
+}: ChatRuntimeHomeQuickStartsMobilePropsPartsInput<
+  TPrompt,
+  TTask,
+  TEvent,
+  TStyles
+>): ChatRuntimeHomeQuickStartsMobilePropsParts<TPrompt, TTask, TEvent, TStyles> {
+  const shortcutSurface = shortcutRenderState.surface
+
+  if (!shouldRender) {
+    return {
+      shouldRender: false,
+      container: {
+        style: styles.card,
+      },
+      grid: null,
+      emptyState: null,
+    }
+  }
+
+  if (items.length === 0) {
+    const shortcutEmptyRenderState = getChatRuntimeHomeQuickStartEmptyMobileRenderState(
+      shortcutRenderState,
+      isLoading,
+    )
+
+    return {
+      shouldRender: true,
+      container: {
+        style: styles.card,
+      },
+      grid: null,
+      emptyState: {
+        style: styles.emptyText,
+        text: shortcutEmptyRenderState.label,
+      },
+    }
+  }
+
+  return {
+    shouldRender: true,
+    container: {
+      style: styles.card,
+    },
+    grid: {
+      style: styles.grid,
+      items: items.map((item) => {
+        const shortcutItemRenderState = getChatRuntimeHomeQuickStartItemMobileRenderState(
+          item,
+          shortcutRenderState,
+          runningTaskId,
+        )
+        const shortcutInteraction = shortcutItemRenderState.interaction
+        const prompt = item.prompt
+        const promptActions = shortcutItemRenderState.promptActions
+
+        return {
+          key: item.id,
+          pressable: {
+            getStyle: (pressed: boolean) => [
+              styles.shortcutCard,
+              shortcutInteraction.isAddPrompt && styles.shortcutCardAdd,
+              shortcutInteraction.isRunning && styles.shortcutCardDisabled,
+              pressed && styles.shortcutCardPressed,
+            ],
+            onPress: () => onPress(item),
+            disabled: shortcutInteraction.isDisabled,
+            accessibilityRole: shortcutItemRenderState.accessibilityRole,
+            accessibilityState: shortcutInteraction.accessibilityState,
+            accessibilityLabel: shortcutItemRenderState.accessibilityLabel,
+            accessibilityHint: shortcutItemRenderState.accessibilityHint,
+          },
+          sourcePill: shortcutInteraction.isAddPrompt
+            ? null
+            : {
+                style: styles.sourcePill,
+                icon: shortcutItemRenderState.sourceIcon,
+                iconColors: shortcutItemRenderState.sourceIconColors,
+                label: {
+                  style: styles.sourceLabel,
+                  numberOfLines: shortcutSurface.shortcutSourceLabel.numberOfLines,
+                  text: shortcutItemRenderState.sourceLabel,
+                },
+              },
+          addIcon:
+            shortcutInteraction.isAddPrompt && shortcutItemRenderState.addAction
+              ? {
+                  ...shortcutItemRenderState.addAction,
+                  style: styles.addIcon,
+                }
+              : null,
+          title: {
+            style: [
+              styles.title,
+              shortcutInteraction.isAddPrompt && styles.titleAdd,
+            ],
+            numberOfLines: shortcutSurface.shortcutTitle.numberOfLines,
+            text: item.title,
+          },
+          description: item.description
+            ? {
+                style: styles.description,
+                numberOfLines: shortcutSurface.shortcutDescription.numberOfLines,
+                text: item.description,
+              }
+            : null,
+          actions: prompt && promptActions
+            ? {
+                style: styles.actions,
+                edit: {
+                  pressable: {
+                    getStyle: (pressed: boolean) => [
+                      styles.actionButton,
+                      pressed && styles.actionButtonPressed,
+                    ],
+                    onPress: (event: TEvent) => {
+                      event.stopPropagation()
+                      onEditPrompt(prompt)
+                    },
+                    accessibilityRole: promptActions.edit.accessibilityRole,
+                    accessibilityLabel: promptActions.edit.accessibilityLabel,
+                  },
+                  icon: promptActions.edit.icon,
+                  iconColors: promptActions.edit.iconColors,
+                  label: {
+                    style: styles.actionText,
+                    text: promptActions.edit.label,
+                  },
+                  prompt,
+                },
+                delete: {
+                  pressable: {
+                    getStyle: (pressed: boolean) => [
+                      styles.actionButton,
+                      pressed && styles.actionButtonPressed,
+                    ],
+                    onPress: (event: TEvent) => {
+                      event.stopPropagation()
+                      onDeletePrompt(prompt)
+                    },
+                    accessibilityRole: promptActions.delete.accessibilityRole,
+                    accessibilityLabel: promptActions.delete.accessibilityLabel,
+                  },
+                  icon: promptActions.delete.icon,
+                  iconColors: promptActions.delete.iconColors,
+                  label: {
+                    style: [styles.actionText, styles.actionDangerText],
+                    text: promptActions.delete.label,
+                  },
+                  prompt,
+                },
+              }
+            : null,
+          item,
+        }
+      }),
+    },
+    emptyState: null,
+  }
 }
 
 export function getChatRuntimeViewportChromeMobileRenderState<

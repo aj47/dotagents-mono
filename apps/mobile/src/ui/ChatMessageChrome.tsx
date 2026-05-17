@@ -74,8 +74,7 @@ import {
   getChatConversationHomePromptSaveSuccessAlertState,
   getChatConversationHomePromptTaskRunFailedAlertState,
   getChatConversationHomePromptTaskStartedAlertState,
-  getChatRuntimeHomeQuickStartEmptyMobileRenderState,
-  getChatRuntimeHomeQuickStartItemMobileRenderState,
+  createChatRuntimeHomeQuickStartsMobilePropsParts,
   getChatRuntimeHomeQuickStartPressIntent,
   getChatRuntimeMessageHistoryWindowMobileClampedVisibleCount,
   getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount,
@@ -7045,118 +7044,106 @@ export function ChatConversationHomeQuickStarts<
   shortcutRenderState,
   styles,
 }: ChatConversationHomeQuickStartsProps<TPrompt, TTask>) {
-  if (!shouldRender) return null;
-  const { surface: shortcutSurface } = shortcutRenderState;
-  const shortcutEmptyRenderState = getChatRuntimeHomeQuickStartEmptyMobileRenderState(shortcutRenderState, isLoading);
+  const quickStartsParts = createChatRuntimeHomeQuickStartsMobilePropsParts<
+    TPrompt,
+    TTask,
+    GestureResponderEvent,
+    ChatConversationHomeQuickStartsStyles
+  >({
+    shouldRender,
+    items,
+    isLoading,
+    runningTaskId,
+    onPress,
+    onEditPrompt,
+    onDeletePrompt,
+    shortcutRenderState,
+    styles,
+  });
+
+  if (!quickStartsParts.shouldRender) return null;
 
   return (
-    <View style={styles.card}>
-      {items.length > 0 ? (
-        <View style={styles.grid}>
-          {items.map((item) => {
-            const shortcutItemRenderState = getChatRuntimeHomeQuickStartItemMobileRenderState(
-              item,
-              shortcutRenderState,
-              runningTaskId,
-            );
-            const { interaction: shortcutInteraction } = shortcutItemRenderState;
-            const addAction = shortcutItemRenderState.addAction;
-            const promptActions = shortcutItemRenderState.promptActions;
+    <View style={quickStartsParts.container.style}>
+      {quickStartsParts.grid ? (
+        <View style={quickStartsParts.grid.style}>
+          {quickStartsParts.grid.items.map((item) => {
+            const actions = item.actions;
 
             return (
               <Pressable
-                key={item.id}
-                style={({ pressed }) => [
-                  styles.shortcutCard,
-                  shortcutInteraction.isAddPrompt && styles.shortcutCardAdd,
-                  shortcutInteraction.isRunning && styles.shortcutCardDisabled,
-                  pressed && styles.shortcutCardPressed,
-                ]}
-                onPress={() => onPress(item)}
-                disabled={shortcutInteraction.isDisabled}
-                accessibilityRole={shortcutItemRenderState.accessibilityRole}
-                accessibilityState={shortcutInteraction.accessibilityState}
-                accessibilityLabel={shortcutItemRenderState.accessibilityLabel}
-                accessibilityHint={shortcutItemRenderState.accessibilityHint}
+                key={item.key}
+                style={({ pressed }) => item.pressable.getStyle(pressed)}
+                onPress={item.pressable.onPress}
+                disabled={item.pressable.disabled}
+                accessibilityRole={item.pressable.accessibilityRole}
+                accessibilityState={item.pressable.accessibilityState}
+                accessibilityLabel={item.pressable.accessibilityLabel}
+                accessibilityHint={item.pressable.accessibilityHint}
               >
-                {!shortcutInteraction.isAddPrompt ? (
-                  <View style={styles.sourcePill}>
+                {item.sourcePill ? (
+                  <View style={item.sourcePill.style}>
                     <Ionicons
-                      name={shortcutItemRenderState.sourceIcon.name}
-                      size={shortcutItemRenderState.sourceIcon.size}
-                      color={shortcutItemRenderState.sourceIconColors.color}
+                      name={item.sourcePill.icon.name}
+                      size={item.sourcePill.icon.size}
+                      color={item.sourcePill.iconColors.color}
                     />
                     <Text
-                      style={styles.sourceLabel}
-                      numberOfLines={shortcutSurface.shortcutSourceLabel.numberOfLines}
+                      style={item.sourcePill.label.style}
+                      numberOfLines={item.sourcePill.label.numberOfLines}
                     >
-                      {shortcutItemRenderState.sourceLabel}
+                      {item.sourcePill.label.text}
                     </Text>
                   </View>
-                ) : addAction ? (
+                ) : item.addIcon ? (
                   <Ionicons
-                    name={addAction.icon.name}
-                    size={addAction.icon.size}
-                    color={addAction.iconColors.color}
-                    style={styles.addIcon}
+                    name={item.addIcon.icon.name}
+                    size={item.addIcon.icon.size}
+                    color={item.addIcon.iconColors.color}
+                    style={item.addIcon.style}
                   />
                 ) : null}
                 <Text
-                  style={[
-                    styles.title,
-                    shortcutInteraction.isAddPrompt && styles.titleAdd,
-                  ]}
-                  numberOfLines={shortcutSurface.shortcutTitle.numberOfLines}
+                  style={item.title.style}
+                  numberOfLines={item.title.numberOfLines}
                 >
-                  {item.title}
+                  {item.title.text}
                 </Text>
                 {item.description ? (
                   <Text
-                    style={styles.description}
-                    numberOfLines={shortcutSurface.shortcutDescription.numberOfLines}
+                    style={item.description.style}
+                    numberOfLines={item.description.numberOfLines}
                   >
-                    {item.description}
+                    {item.description.text}
                   </Text>
                 ) : null}
-                {item.prompt && promptActions ? (
-                  <View style={styles.actions}>
+                {actions ? (
+                  <View style={actions.style}>
                     <Pressable
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        pressed && styles.actionButtonPressed,
-                      ]}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        onEditPrompt(item.prompt!);
-                      }}
-                      accessibilityRole={promptActions.edit.accessibilityRole}
-                      accessibilityLabel={promptActions.edit.accessibilityLabel}
+                      style={({ pressed }) => actions.edit.pressable.getStyle(pressed)}
+                      onPress={actions.edit.pressable.onPress}
+                      accessibilityRole={actions.edit.pressable.accessibilityRole}
+                      accessibilityLabel={actions.edit.pressable.accessibilityLabel}
                     >
                       <Ionicons
-                        name={promptActions.edit.icon.name}
-                        size={promptActions.edit.icon.size}
-                        color={promptActions.edit.iconColors.color}
+                        name={actions.edit.icon.name}
+                        size={actions.edit.icon.size}
+                        color={actions.edit.iconColors.color}
                       />
-                      <Text style={styles.actionText}>{promptActions.edit.label}</Text>
+                      <Text style={actions.edit.label.style}>{actions.edit.label.text}</Text>
                     </Pressable>
                     <Pressable
-                      style={({ pressed }) => [
-                        styles.actionButton,
-                        pressed && styles.actionButtonPressed,
-                      ]}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        onDeletePrompt(item.prompt!);
-                      }}
-                      accessibilityRole={promptActions.delete.accessibilityRole}
-                      accessibilityLabel={promptActions.delete.accessibilityLabel}
+                      style={({ pressed }) => actions.delete.pressable.getStyle(pressed)}
+                      onPress={actions.delete.pressable.onPress}
+                      accessibilityRole={actions.delete.pressable.accessibilityRole}
+                      accessibilityLabel={actions.delete.pressable.accessibilityLabel}
                     >
                       <Ionicons
-                        name={promptActions.delete.icon.name}
-                        size={promptActions.delete.icon.size}
-                        color={promptActions.delete.iconColors.color}
+                        name={actions.delete.icon.name}
+                        size={actions.delete.icon.size}
+                        color={actions.delete.iconColors.color}
                       />
-                      <Text style={[styles.actionText, styles.actionDangerText]}>{promptActions.delete.label}</Text>
+                      <Text style={actions.delete.label.style}>{actions.delete.label.text}</Text>
                     </Pressable>
                   </View>
                 ) : null}
@@ -7164,11 +7151,11 @@ export function ChatConversationHomeQuickStarts<
             );
           })}
         </View>
-      ) : (
-        <Text style={styles.emptyText}>
-          {shortcutEmptyRenderState.label}
+      ) : quickStartsParts.emptyState ? (
+        <Text style={quickStartsParts.emptyState.style}>
+          {quickStartsParts.emptyState.text}
         </Text>
-      )}
+      ) : null}
     </View>
   );
 }
