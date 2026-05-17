@@ -7477,12 +7477,15 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /accessibilityRole=\{item\.pressable\.accessibilityRole\}/);
   assert.doesNotMatch(chatMessageChromeSource, /accessibilityLabel=\{item\.pressable\.accessibilityLabel\}/);
   assert.doesNotMatch(chatMessageChromeSource, /createButtonAccessibilityLabel/);
-  assert.match(chatMessageChromeSource, /<Text \{\.\.\.item\.title\.props\}>/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartTextContent/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStartTextContent\s+title=\{item\.title\}\s+description=\{item\.description\}/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartTextContent[\s\S]*?<Text \{\.\.\.title\.props\}>[\s\S]*?\{title\.text\}[\s\S]*?description\.shouldRender \? \([\s\S]*?<Text \{\.\.\.description\.props\}>[\s\S]*?\{description\.text\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /<Text \{\.\.\.item\.title\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /numberOfLines=\{item\.title\.numberOfLines\}/);
   assert.doesNotMatch(chatMessageChromeSource, /numberOfLines=\{item\.sourcePill\.label\.numberOfLines\}/);
-  assert.match(chatMessageChromeSource, /item\.description\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /item\.description\.shouldRender \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /item\.description \? \(/);
-  assert.match(chatMessageChromeSource, /<Text \{\.\.\.item\.description\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /<Text \{\.\.\.item\.description\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /numberOfLines=\{item\.description\.numberOfLines\}/);
   assert.doesNotMatch(chatMessageChromeSource, /shortcutCopy\.(edit|delete)Label/);
   assert.match(chatMessageChromeSource, /\{actions\.shouldRender \? \(/);

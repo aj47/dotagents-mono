@@ -1589,6 +1589,26 @@ type ChatConversationHomeQuickStartLeadingAccessoryProps = {
   addIcon: ChatConversationHomeQuickStartAddIconPart;
 };
 
+type ChatConversationHomeQuickStartTextPart = {
+  text: string;
+  props: ComponentProps<typeof Text>;
+};
+
+type ChatConversationHomeQuickStartDescriptionPart =
+  | {
+      shouldRender: false;
+    }
+  | {
+      shouldRender: true;
+      text: string;
+      props: ComponentProps<typeof Text>;
+    };
+
+type ChatConversationHomeQuickStartTextContentProps = {
+  title: ChatConversationHomeQuickStartTextPart;
+  description: ChatConversationHomeQuickStartDescriptionPart;
+};
+
 type ChatConversationHomeQuickStartActionButtonPressablePart = {
   props: ComponentProps<typeof Pressable>;
 };
@@ -7995,14 +8015,10 @@ export function ChatConversationHomeQuickStarts<
                   sourcePill={item.sourcePill}
                   addIcon={item.addIcon}
                 />
-                <Text {...item.title.props}>
-                  {item.title.text}
-                </Text>
-                {item.description.shouldRender ? (
-                  <Text {...item.description.props}>
-                    {item.description.text}
-                  </Text>
-                ) : null}
+                <ChatConversationHomeQuickStartTextContent
+                  title={item.title}
+                  description={item.description}
+                />
                 {actions.shouldRender ? (
                   <View {...actions.props}>
                     <ChatConversationHomeQuickStartActionButton
@@ -8052,6 +8068,24 @@ export function ChatConversationHomeQuickStartLeadingAccessory({
   }
 
   return null;
+}
+
+export function ChatConversationHomeQuickStartTextContent({
+  title,
+  description,
+}: ChatConversationHomeQuickStartTextContentProps) {
+  return (
+    <>
+      <Text {...title.props}>
+        {title.text}
+      </Text>
+      {description.shouldRender ? (
+        <Text {...description.props}>
+          {description.text}
+        </Text>
+      ) : null}
+    </>
+  );
 }
 
 export function ChatConversationHomeQuickStartActionButton({
