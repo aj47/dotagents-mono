@@ -11779,20 +11779,9 @@ export function ChatMessageCollapsedPreview({
 
   return (
     <Pressable
-      onPress={collapsedPreviewParts.pressable.onPress}
-      disabled={collapsedPreviewParts.pressable.disabled}
-      accessibilityRole={collapsedPreviewParts.pressable.accessibilityRole}
-      accessibilityLabel={collapsedPreviewParts.pressable.accessibilityLabel}
-      accessibilityHint={collapsedPreviewParts.pressable.accessibilityHint}
-      accessibilityState={collapsedPreviewParts.pressable.accessibilityState}
-      aria-expanded={collapsedPreviewParts.pressable.ariaExpanded}
-      hitSlop={collapsedPreviewParts.pressable.hitSlop}
-      style={collapsedPreviewParts.pressable.style}
+      {...collapsedPreviewParts.pressable.props}
     >
-      <Text
-        style={collapsedPreviewParts.text.style}
-        numberOfLines={collapsedPreviewParts.text.numberOfLines}
-      >
+      <Text {...collapsedPreviewParts.text.props}>
         {collapsedPreviewParts.text.text}
       </Text>
     </Pressable>

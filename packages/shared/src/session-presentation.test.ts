@@ -6089,28 +6089,32 @@ describe("session presentation semantics", () => {
     })
     expect(collapsedPreviewParts).toMatchObject({
       pressable: {
-        onPress: "on-press",
-        disabled: false,
-        accessibilityRole: "button",
-        accessibilityLabel: "Expand message",
-        accessibilityHint: "Shows full message",
-        accessibilityState: {
-          expanded: false,
+        props: {
+          onPress: "on-press",
+          disabled: false,
+          accessibilityRole: "button",
+          accessibilityLabel: "Expand message",
+          accessibilityHint: "Shows full message",
+          accessibilityState: {
+            expanded: false,
+          },
+          "aria-expanded": false,
+          hitSlop: 8,
         },
-        ariaExpanded: false,
-        hitSlop: 8,
       },
       text: {
-        style: "preview-text-style",
-        numberOfLines: 2,
         text: "Preview text",
+        props: {
+          style: "preview-text-style",
+          numberOfLines: 2,
+        },
       },
     })
-    expect(collapsedPreviewParts.pressable.style({ pressed: false })).toEqual([
+    expect(collapsedPreviewParts.pressable.props.style({ pressed: false })).toEqual([
       "preview-style",
       false,
     ])
-    expect(collapsedPreviewParts.pressable.style({ pressed: true })).toEqual([
+    expect(collapsedPreviewParts.pressable.props.style({ pressed: true })).toEqual([
       "preview-style",
       "preview-pressed-style",
     ])
@@ -6133,7 +6137,7 @@ describe("session presentation semantics", () => {
       pressedStyle: "preview-pressed-style",
       textStyle: "preview-text-style",
     })
-    expect(disabledCollapsedPreviewParts.pressable.style({ pressed: true })).toEqual([
+    expect(disabledCollapsedPreviewParts.pressable.props.style({ pressed: true })).toEqual([
       "preview-style",
       false,
     ])

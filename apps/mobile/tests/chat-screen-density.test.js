@@ -3575,6 +3575,8 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationCollapsedPreviewMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const collapsedPreviewParts = createChatRuntimeConversationCollapsedPreviewMobilePropsParts\(\{\s+renderState,\s+actionState,\s+onPress,\s+style,\s+pressedStyle,\s+textStyle,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /<Pressable\s+\{\.\.\.collapsedPreviewParts\.pressable\.props\}/);
+  assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.collapsedPreviewParts\.text\.props\}>/);
   assert.match(chatMessageChromeSource, /\{collapsedPreviewParts\.text\.text\}/);
   assert.doesNotMatch(
     chatMessageChromeSource,
@@ -5894,9 +5896,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(actionSlotListSource, /actionSlotListParts\.row\.props\.style/);
   assert.doesNotMatch(standaloneActionsSource, /if \(!shouldRender\) return null;/);
   assert.doesNotMatch(standaloneActionsSource, /if \(!standaloneActionsParts\.actionSlotList\) return null;/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{collapsedPreviewParts\.pressable\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /hitSlop=\{collapsedPreviewParts\.pressable\.hitSlop\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{collapsedPreviewParts\.text\.numberOfLines\}/);
+  assert.match(chatMessageChromeSource, /<Pressable\s+\{\.\.\.collapsedPreviewParts\.pressable\.props\}/);
+  assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.collapsedPreviewParts\.text\.props\}>/);
   assert.match(chatMessageChromeSource, /\{collapsedPreviewParts\.text\.text\}/);
   assert.doesNotMatch(screenSource, /getChatMessageActionCopyState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionCopyState,/);
@@ -6279,23 +6280,17 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageCollapsedPreviewProps/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationCollapsedPreviewMobileProps/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /onPress=\{collapsedPreviewParts\.pressable\.onPress\}/);
-  assert.match(chatMessageChromeSource, /disabled=\{collapsedPreviewParts\.pressable\.disabled\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{collapsedPreviewParts\.pressable\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{collapsedPreviewParts\.pressable\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityHint=\{collapsedPreviewParts\.pressable\.accessibilityHint\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{collapsedPreviewParts\.pressable\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /aria-expanded=\{collapsedPreviewParts\.pressable\.ariaExpanded\}/);
-  assert.match(chatMessageChromeSource, /hitSlop=\{collapsedPreviewParts\.pressable\.hitSlop\}/);
-  assert.match(chatMessageChromeSource, /style=\{collapsedPreviewParts\.pressable\.style\}/);
+  assert.match(chatMessageChromeSource, /<Pressable\s+\{\.\.\.collapsedPreviewParts\.pressable\.props\}/);
+  assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.collapsedPreviewParts\.text\.props\}>/);
+  assert.match(sessionPresentationSource, /pressable: \{\s+props: \{\s+onPress,\s+disabled: actionState\.disabled,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: actionState\.accessibilityLabel,\s+accessibilityHint: actionState\.accessibilityHint,\s+accessibilityState: actionState\.accessibilityState,\s+"aria-expanded": actionState\.ariaExpanded,\s+hitSlop: renderState\.hitSlop,/);
   assert.match(sessionPresentationSource, /style: \(\{ pressed \}: \{ pressed: boolean \}\) => \[\s+style,\s+pressed && !actionState\.disabled && pressedStyle,/);
   assert.doesNotMatch(chatMessageChromeSource, /collapsedPreviewParts\.pressable\.pressedStyle/);
+  assert.doesNotMatch(chatMessageChromeSource, /collapsedPreviewParts\.pressable\.(onPress|disabled|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaExpanded|hitSlop|style)/);
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageCollapsedPreview[\s\S]*?style=\{\(\{ pressed \}\) => \[[\s\S]*?export function ChatMessageConversationContent/
   );
-  assert.match(chatMessageChromeSource, /style=\{collapsedPreviewParts\.text\.style\}/);
-  assert.match(chatMessageChromeSource, /numberOfLines=\{collapsedPreviewParts\.text\.numberOfLines\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /collapsedPreviewParts\.text\.(style|numberOfLines)/);
   assert.doesNotMatch(chatMessageChromeSource, /onPress: actionState\.canToggle \? onToggle : undefined,/);
   assert.doesNotMatch(
     chatMessageChromeSource,
@@ -6586,10 +6581,7 @@ test('uses shared desktop chat message presentation tones for mobile message car
   assert.doesNotMatch(screenSource, /ariaExpanded: messageRenderState\.expansion\.ariaExpanded/);
   assert.equal((screenSource.match(/aria-expanded=\{messageRenderState\.expansion\.ariaExpanded\}/g) ?? []).length, 0);
   assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreview\s+\{\.\.\.conversationContentParts\.collapsedContent\.props\.preview\}/);
-  assert.match(chatMessageChromeSource, /disabled=\{collapsedPreviewParts\.pressable\.disabled\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{collapsedPreviewParts\.pressable\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{collapsedPreviewParts\.pressable\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /aria-expanded=\{collapsedPreviewParts\.pressable\.ariaExpanded\}/);
+  assert.match(chatMessageChromeSource, /<Pressable\s+\{\.\.\.collapsedPreviewParts\.pressable\.props\}/);
   assert.doesNotMatch(screenSource, /numberOfLines=\{messageRenderState\.collapsedPreview\.numberOfLines\}/);
   assert.doesNotMatch(screenSource, /\{messageRenderState\.collapsedPreview\.text\}/);
   assert.match(screenSource, /collapsedMessagePreviewToggle:\s*\{\s+\.\.\.mobileMessageStyleSlots\.collapsedPreviewToggle,/);

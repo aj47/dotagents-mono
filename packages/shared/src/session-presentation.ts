@@ -7034,25 +7034,29 @@ export interface ChatRuntimeConversationCollapsedPreviewMobilePropsParts<
   TTextStyle = unknown,
 > {
   pressable: {
-    onPress?: TOnPress
-    disabled: boolean
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityHint?: string
-    accessibilityState: TActionState["accessibilityState"]
-    ariaExpanded: TActionState["ariaExpanded"]
-    hitSlop: TRenderState["hitSlop"]
-    style: (state: { pressed: boolean }) => Array<
-      | TStyle
-      | TPressedStyle
-      | false
-      | undefined
-    >
+    props: {
+      onPress?: TOnPress
+      disabled: boolean
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityHint?: string
+      accessibilityState: TActionState["accessibilityState"]
+      "aria-expanded": TActionState["ariaExpanded"]
+      hitSlop: TRenderState["hitSlop"]
+      style: (state: { pressed: boolean }) => Array<
+        | TStyle
+        | TPressedStyle
+        | false
+        | undefined
+      >
+    }
   }
   text: {
-    style: TTextStyle
-    numberOfLines: TRenderState["numberOfLines"]
     text: string
+    props: {
+      style: TTextStyle
+      numberOfLines: TRenderState["numberOfLines"]
+    }
   }
 }
 
@@ -24340,23 +24344,27 @@ export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts<
 > {
   return {
     pressable: {
-      onPress,
-      disabled: actionState.disabled,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: actionState.accessibilityLabel,
-      accessibilityHint: actionState.accessibilityHint,
-      accessibilityState: actionState.accessibilityState,
-      ariaExpanded: actionState.ariaExpanded,
-      hitSlop: renderState.hitSlop,
-      style: ({ pressed }: { pressed: boolean }) => [
-        style,
-        pressed && !actionState.disabled && pressedStyle,
-      ],
+      props: {
+        onPress,
+        disabled: actionState.disabled,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: actionState.accessibilityLabel,
+        accessibilityHint: actionState.accessibilityHint,
+        accessibilityState: actionState.accessibilityState,
+        "aria-expanded": actionState.ariaExpanded,
+        hitSlop: renderState.hitSlop,
+        style: ({ pressed }: { pressed: boolean }) => [
+          style,
+          pressed && !actionState.disabled && pressedStyle,
+        ],
+      },
     },
     text: {
-      style: textStyle,
-      numberOfLines: renderState.numberOfLines,
       text: renderState.text,
+      props: {
+        style: textStyle,
+        numberOfLines: renderState.numberOfLines,
+      },
     },
   }
 }
