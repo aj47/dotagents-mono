@@ -128,6 +128,7 @@ import {
   createChatRuntimeDockChromeMobileProps,
   createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
+  createChatRuntimeToolExecutionPanelShellMobilePropsParts,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeHeaderChromeSlots,
   createChatRuntimeHeaderStyleSlots,
@@ -12271,6 +12272,13 @@ describe("session presentation semantics", () => {
         shouldRender: false,
       },
       expandedGroup: null,
+    })
+    expect(createChatRuntimeToolExecutionPanelShellMobilePropsParts({
+      compactList: "compact-list",
+      expandedGroup: "expanded-group",
+    })).toEqual({
+      compactList: "compact-list",
+      expandedGroup: "expanded-group",
     })
     const toolExecutionPanelParts = createChatRuntimeToolExecutionStackPanelMobilePropsParts({
       compact: {

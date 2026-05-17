@@ -3776,6 +3776,22 @@ export interface ChatRuntimeToolExecutionPanelMobilePropsParts<
   expandedGroup: TExpanded | null
 }
 
+export interface ChatRuntimeToolExecutionPanelShellMobilePropsPartsInput<
+  TCompactList = unknown,
+  TExpandedGroup = unknown,
+> {
+  compactList: TCompactList
+  expandedGroup?: TExpandedGroup | null
+}
+
+export interface ChatRuntimeToolExecutionPanelShellMobilePropsParts<
+  TCompactList = unknown,
+  TExpandedGroup = unknown,
+> {
+  compactList: TCompactList
+  expandedGroup: TExpandedGroup | null | undefined
+}
+
 type ChatRuntimeToolExecutionStackPanelEmptyStateLike = {
   shouldRender: boolean
   renderState: unknown
@@ -20098,6 +20114,25 @@ export function createChatRuntimeToolExecutionPanelMobilePropsParts<
       shouldRender: shouldRender && !isExpanded,
     },
     expandedGroup: shouldRender && isExpanded ? expanded : null,
+  }
+}
+
+export function createChatRuntimeToolExecutionPanelShellMobilePropsParts<
+  TCompactList,
+  TExpandedGroup,
+>({
+  compactList,
+  expandedGroup,
+}: ChatRuntimeToolExecutionPanelShellMobilePropsPartsInput<
+  TCompactList,
+  TExpandedGroup
+>): ChatRuntimeToolExecutionPanelShellMobilePropsParts<
+  TCompactList,
+  TExpandedGroup
+> {
+  return {
+    compactList,
+    expandedGroup,
   }
 }
 

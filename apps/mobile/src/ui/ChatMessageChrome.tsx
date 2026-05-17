@@ -140,6 +140,7 @@ import {
   createChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   createChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   createChatRuntimeToolExecutionPanelMobilePropsParts,
+  createChatRuntimeToolExecutionPanelShellMobilePropsParts,
   createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
   createChatRuntimeToolExecutionPayloadMetaMobilePropsParts,
   createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
@@ -8182,16 +8183,23 @@ export function ChatMessageToolExecutionPanel({
 
   if (!panelParts.shouldRenderPanel) return null;
 
-  return (
-    <>
+  const panelShellParts = createChatRuntimeToolExecutionPanelShellMobilePropsParts({
+    compactList: (
       <ChatMessageToolExecutionCompactList
         {...panelParts.compact}
       />
-      {panelParts.expandedGroup ? (
-        <ChatMessageToolExecutionExpandedGroup {...panelParts.expandedGroup}>
-          {children}
-        </ChatMessageToolExecutionExpandedGroup>
-      ) : null}
+    ),
+    expandedGroup: panelParts.expandedGroup ? (
+      <ChatMessageToolExecutionExpandedGroup {...panelParts.expandedGroup}>
+        {children}
+      </ChatMessageToolExecutionExpandedGroup>
+    ) : null,
+  });
+
+  return (
+    <>
+      {panelShellParts.compactList}
+      {panelShellParts.expandedGroup}
     </>
   );
 }
