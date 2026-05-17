@@ -13526,13 +13526,17 @@ describe("session presentation semantics", () => {
         },
       },
       label: {
-        text: "Input",
-        style: "payload-meta-label",
+        props: {
+          style: "payload-meta-label",
+          text: "Input",
+        },
       },
       payloadType: {
         shouldRender: true,
-        text: "JSON",
-        style: "payload-type",
+        props: {
+          style: "payload-type",
+          text: "JSON",
+        },
       },
     })
     expect(createChatRuntimeToolExecutionPayloadMetaMobilePropsParts({
@@ -13549,13 +13553,17 @@ describe("session presentation semantics", () => {
         props: null,
       },
       label: {
-        text: "Output",
-        style: "payload-meta-label",
+        props: {
+          style: "payload-meta-label",
+          text: "Output",
+        },
       },
       payloadType: {
         shouldRender: false,
-        text: "",
-        style: "payload-type",
+        props: {
+          style: "payload-type",
+          text: "",
+        },
       },
     })
     const payloadBlockParts = createChatRuntimeToolExecutionPayloadBlockMobilePropsParts({

@@ -3305,13 +3305,17 @@ export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
     style: TStyles["row"]
   }>
   label: {
-    text: TRenderState["label"]
-    style: TStyles["label"]
+    props: {
+      style: TStyles["label"]
+      text: TRenderState["label"]
+    }
   }
   payloadType: {
     shouldRender: boolean
-    text: string
-    style: TStyles["payloadType"]
+    props: {
+      style: TStyles["payloadType"]
+      text: string
+    }
   }
 }
 
@@ -20633,13 +20637,17 @@ export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
       props: null,
     },
     label: {
-      text: renderState.label,
-      style: styles.label,
+      props: {
+        style: styles.label,
+        text: renderState.label,
+      },
     },
     payloadType: {
       shouldRender: Boolean(renderState.payloadTypeLabel),
-      text: renderState.payloadTypeLabel ?? "",
-      style: styles.payloadType,
+      props: {
+        style: styles.payloadType,
+        text: renderState.payloadTypeLabel ?? "",
+      },
     },
   }
 }

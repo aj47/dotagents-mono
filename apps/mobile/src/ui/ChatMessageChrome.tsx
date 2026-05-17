@@ -2140,6 +2140,20 @@ type ChatMessageToolExecutionPayloadMetaProps = {
   styles: ChatMessageToolExecutionPayloadMetaStyles;
 };
 
+type ChatMessageToolExecutionPayloadMetaParts = ReturnType<typeof createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
+  ChatMessageToolExecutionPayloadMetaProps['renderState'],
+  ChatMessageToolExecutionPayloadMetaProps['styles']
+>>;
+
+type ChatMessageToolExecutionPayloadMetaRowProps =
+  ChatMessageToolExecutionPayloadMetaParts['row']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionPayloadMetaTextProps =
+  | ChatMessageToolExecutionPayloadMetaParts['label']['props']
+  | ChatMessageToolExecutionPayloadMetaParts['payloadType']['props'];
+
 type ChatMessageToolExecutionResultHeaderStyles = {
   header: StyleProp<ViewStyle>;
   meta: StyleProp<ViewStyle>;
@@ -9384,13 +9398,13 @@ export function ChatMessageToolExecutionPayloadMeta({
 
   const content = (
     <>
-      <Text style={payloadMetaParts.label.style}>
-        {payloadMetaParts.label.text}
-      </Text>
+      <ChatMessageToolExecutionPayloadMetaText
+        {...payloadMetaParts.label.props}
+      />
       {payloadMetaParts.payloadType.shouldRender ? (
-        <Text style={payloadMetaParts.payloadType.style}>
-          {payloadMetaParts.payloadType.text}
-        </Text>
+        <ChatMessageToolExecutionPayloadMetaText
+          {...payloadMetaParts.payloadType.props}
+        />
       ) : null}
     </>
   );
@@ -9400,9 +9414,33 @@ export function ChatMessageToolExecutionPayloadMeta({
   }
 
   return (
-    <View style={payloadMetaParts.row.props.style}>
+    <ChatMessageToolExecutionPayloadMetaRow
+      {...payloadMetaParts.row.props}
+    >
       {content}
+    </ChatMessageToolExecutionPayloadMetaRow>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadMetaRow({
+  style,
+  children,
+}: ChatMessageToolExecutionPayloadMetaRowProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadMetaText({
+  style,
+  text,
+}: ChatMessageToolExecutionPayloadMetaTextProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 
