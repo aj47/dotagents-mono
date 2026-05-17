@@ -655,6 +655,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalFullArguments[\s\S]*?style=\{style\}[\s\S]*?\{text\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.text\.(style|text)/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.fullArguments \? \(/);
+  assert.match(sessionPresentationSource, /actions: \{[\s\S]*?props: \{[\s\S]*?style: styles\.actions,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalActions/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalActions\s+\{\.\.\.toolApprovalParts\.actions\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalActions[\s\S]*?<View style=\{style\}>[\s\S]*?\{children\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.actions\.style/);
   assert.match(toolApprovalComponentSource, /onPress=\{toolApprovalParts\.denyButton\.onPress\}/);
   assert.match(toolApprovalComponentSource, /onPress=\{toolApprovalParts\.approveButton\.onPress\}/);
   assert.match(toolApprovalComponentSource, /<View style=\{toolApprovalParts\.header\.style\}>/);

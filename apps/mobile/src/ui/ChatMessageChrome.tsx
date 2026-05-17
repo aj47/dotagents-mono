@@ -1621,6 +1621,11 @@ type ChatMessageToolApprovalFullArgumentsScrollProps =
     children: ReactNode;
   };
 
+type ChatMessageToolApprovalActionsProps =
+  ChatMessageToolApprovalParts['actions']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7516,7 +7521,9 @@ export function ChatMessageToolApproval({
             />
           </ChatMessageToolApprovalFullArgumentsScroll>
         ) : null}
-        <View style={toolApprovalParts.actions.style}>
+        <ChatMessageToolApprovalActions
+          {...toolApprovalParts.actions.props}
+        >
           <TouchableOpacity
             style={toolApprovalParts.denyButton.style}
             onPress={toolApprovalParts.denyButton.onPress}
@@ -7553,7 +7560,7 @@ export function ChatMessageToolApproval({
               {...toolApprovalParts.approveButton.label.props}
             />
           </TouchableOpacity>
-        </View>
+        </ChatMessageToolApprovalActions>
       </View>
     </View>
   );
@@ -7664,6 +7671,17 @@ export function ChatMessageToolApprovalFullArgumentsScroll({
     >
       {children}
     </ScrollView>
+  );
+}
+
+export function ChatMessageToolApprovalActions({
+  style,
+  children,
+}: ChatMessageToolApprovalActionsProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
   );
 }
 

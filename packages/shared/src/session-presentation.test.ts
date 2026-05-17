@@ -8240,7 +8240,11 @@ describe("session presentation semantics", () => {
         },
       },
     })
-    expect(toolApprovalParts.actions.style).toBe("tool-approval-actions-style")
+    expect(toolApprovalParts.actions).toEqual({
+      props: {
+        style: "tool-approval-actions-style",
+      },
+    })
     expect(toolApprovalParts.denyButton).toMatchObject({
       style: [
         "tool-approval-button-style",

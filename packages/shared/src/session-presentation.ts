@@ -2048,7 +2048,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     }
   }
   actions: {
-    style: TStyles["actions"]
+    props: {
+      style: TStyles["actions"]
+    }
   }
   denyButton: {
     style: Array<TStyles["button"] | TStyles["denyButton"] | TStyles["buttonDisabled"] | false>
@@ -22892,7 +22894,9 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       },
     },
     actions: {
-      style: styles.actions,
+      props: {
+        style: styles.actions,
+      },
     },
     denyButton: {
       style: [
