@@ -2162,6 +2162,10 @@ type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegat
 type ChatMessageDelegationHeaderProps =
   ChatMessageDelegationCardParts['card']['content']['header']['props'];
 
+type ChatMessageDelegationTitleProps = {
+  title: ChatMessageDelegationHeaderProps['title'];
+};
+
 type ChatMessageDelegationStatusBadgeProps = {
   badge: ChatMessageDelegationHeaderProps['statusBadge'];
   text: ChatMessageDelegationHeaderProps['statusText'];
@@ -9627,11 +9631,9 @@ export function ChatMessageDelegationHeader({
 }: ChatMessageDelegationHeaderProps) {
   return (
     <View {...container.props}>
-      <Text
-        {...title.props}
-      >
-        {title.text}
-      </Text>
+      <ChatMessageDelegationTitle
+        title={title}
+      />
       <ChatMessageDelegationStatusBadge
         badge={statusBadge}
         text={statusText}
@@ -9640,6 +9642,18 @@ export function ChatMessageDelegationHeader({
         liveText={liveText}
       />
     </View>
+  );
+}
+
+export function ChatMessageDelegationTitle({
+  title,
+}: ChatMessageDelegationTitleProps) {
+  return (
+    <Text
+      {...title.props}
+    >
+      {title.text}
+    </Text>
   );
 }
 
