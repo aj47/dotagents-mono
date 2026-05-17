@@ -2681,7 +2681,9 @@ type ChatMessageDebugPanelRowProps = ChatMessageDebugPanelRow & {
 
 type ChatMessageDebugPanelProps = {
   shouldRender: boolean;
-  rows: readonly ChatMessageDebugPanelRowProps[];
+  content: {
+    rows: readonly ChatMessageDebugPanelRowProps[];
+  };
   props: {
     style: StyleProp<ViewStyle>;
   };
@@ -10509,14 +10511,16 @@ export function ChatMessageLoadingStateSpinner(
 
 export function ChatMessageDebugPanel({
   shouldRender,
-  rows,
+  content,
   props,
 }: ChatMessageDebugPanelProps) {
-  if (!shouldRender || rows.length === 0) return null;
+  const debugPanelContent = content;
+
+  if (!shouldRender || debugPanelContent.rows.length === 0) return null;
 
   return (
     <View {...props}>
-      {rows.map((row) => (
+      {debugPanelContent.rows.map((row) => (
         <Text key={row.key} {...row.props}>
           {row.text}
         </Text>

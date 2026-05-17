@@ -9721,26 +9721,30 @@ describe("session presentation semantics", () => {
     })).toEqual({
       requestPanel: {
         shouldRender: true,
-        rows: [{
-          key: "request-row-key",
-          text: "request-row",
-          props: {
-            style: "debug-text-style",
-          },
-        }],
+        content: {
+          rows: [{
+            key: "request-row-key",
+            text: "request-row",
+            props: {
+              style: "debug-text-style",
+            },
+          }],
+        },
         props: {
           style: "debug-panel-style",
         },
       },
       voicePanel: {
         shouldRender: false,
-        rows: [{
-          key: "voice-row-key",
-          text: "voice-row",
-          props: {
-            style: "debug-text-style",
-          },
-        }],
+        content: {
+          rows: [{
+            key: "voice-row-key",
+            text: "voice-row",
+            props: {
+              style: "debug-text-style",
+            },
+          }],
+        },
         props: {
           style: "debug-panel-style",
         },

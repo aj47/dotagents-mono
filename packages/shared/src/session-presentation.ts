@@ -6424,7 +6424,9 @@ export interface ChatRuntimeDebugPanelMobilePropsParts<
   TTextStyle = unknown,
 > {
   shouldRender: TShouldRender
-  rows: Array<ChatRuntimeDebugPanelMobileRowPropsParts<TRows[number], TTextStyle>>
+  content: {
+    rows: Array<ChatRuntimeDebugPanelMobileRowPropsParts<TRows[number], TTextStyle>>
+  }
   props: {
     style: TPanelStyle
   }
@@ -23892,26 +23894,30 @@ export function createChatRuntimeDebugPanelStackMobilePropsParts<
   return {
     requestPanel: {
       shouldRender: requestShouldRender,
-      rows: requestRows.map((row) => ({
-        key: row.key,
-        text: row.text,
-        props: {
-          style: textStyle,
-        },
-      })),
+      content: {
+        rows: requestRows.map((row) => ({
+          key: row.key,
+          text: row.text,
+          props: {
+            style: textStyle,
+          },
+        })),
+      },
       props: {
         style: panelStyle,
       },
     },
     voicePanel: {
       shouldRender: voiceShouldRender,
-      rows: voiceRows.map((row) => ({
-        key: row.key,
-        text: row.text,
-        props: {
-          style: textStyle,
-        },
-      })),
+      content: {
+        rows: voiceRows.map((row) => ({
+          key: row.key,
+          text: row.text,
+          props: {
+            style: textStyle,
+          },
+        })),
+      },
       props: {
         style: panelStyle,
       },

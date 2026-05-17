@@ -7190,6 +7190,8 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(chatMessageChromeSource, /export function ChatMessageDebugPanelStack/);
   assert.match(chatMessageChromeSource, /createChatRuntimeDebugPanelStackMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeDebugPanelStackMobilePropsParts/);
+  const debugPanelSource =
+    chatMessageChromeSource.match(/export function ChatMessageDebugPanel\([\s\S]*?export function ChatMessageDebugPanelStack/)?.[0] ?? '';
   const debugPanelStackSource =
     chatMessageChromeSource.match(/export function ChatMessageDebugPanelStack[\s\S]*?export function ChatMessageConversationDock/)?.[0] ?? '';
   assert.match(debugPanelStackSource, /const debugPanelStackParts = createChatRuntimeDebugPanelStackMobilePropsParts\(\{\s+requestShouldRender,\s+requestRows,\s+voiceShouldRender,\s+voiceRows,\s+panelStyle,\s+textStyle,\s+\}\);/);
@@ -7197,12 +7199,16 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(debugPanelStackSource, /<ChatMessageDebugPanel\s+\{\.\.\.debugPanelStackParts\.voicePanel\}/);
   assert.doesNotMatch(debugPanelStackSource, /<ChatMessageDebugPanel\s+shouldRender=\{requestShouldRender\}\s+rows=\{requestRows\}/);
   assert.doesNotMatch(debugPanelStackSource, /<ChatMessageDebugPanel\s+shouldRender=\{voiceShouldRender\}\s+rows=\{voiceRows\}/);
-  assert.match(chatMessageChromeSource, /if \(!shouldRender \|\| rows\.length === 0\) return null;/);
-  assert.match(chatMessageChromeSource, /rows\.map\(\(row\) => \(/);
-  assert.match(chatMessageChromeSource, /<View \{\.\.\.props\}>/);
-  assert.match(chatMessageChromeSource, /<Text key=\{row\.key\} \{\.\.\.row\.props\}>/);
-  assert.doesNotMatch(chatMessageChromeSource, /style=\{panelStyle\}/);
-  assert.doesNotMatch(chatMessageChromeSource, /style=\{textStyle\}/);
+  assert.match(sessionPresentationSource, /content: \{\s+rows: requestRows\.map\(\(row\) => \(\{/);
+  assert.match(sessionPresentationSource, /content: \{\s+rows: voiceRows\.map\(\(row\) => \(\{/);
+  assert.match(debugPanelSource, /const debugPanelContent = content;/);
+  assert.match(debugPanelSource, /if \(!shouldRender \|\| debugPanelContent\.rows\.length === 0\) return null;/);
+  assert.match(debugPanelSource, /debugPanelContent\.rows\.map\(\(row\) => \(/);
+  assert.doesNotMatch(debugPanelSource, /\{rows\.map\(\(row\) => \(/);
+  assert.match(debugPanelSource, /<View \{\.\.\.props\}>/);
+  assert.match(debugPanelSource, /<Text key=\{row\.key\} \{\.\.\.row\.props\}>/);
+  assert.doesNotMatch(debugPanelSource, /style=\{panelStyle\}/);
+  assert.doesNotMatch(debugPanelSource, /style=\{textStyle\}/);
   assert.doesNotMatch(screenSource, /mobileRuntimeCopy\.debug\./);
   assert.doesNotMatch(screenSource, /<View style=\{styles\.debugInfo\}>/);
   assert.doesNotMatch(screenSource, /<ChatMessageDebugPanel\s+shouldRender=\{Boolean\(debugInfo\)\}/);
