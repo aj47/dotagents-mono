@@ -2204,6 +2204,17 @@ type ChatMessageToolExecutionCallSectionProps = {
   children: ReactNode;
 };
 
+type ChatMessageToolExecutionCallSectionParts = ReturnType<typeof createChatRuntimeToolExecutionCallSectionMobilePropsParts<
+  ChatMessageToolExecutionCallSectionProps['renderState'],
+  ChatMessageToolExecutionCallSectionProps['onHeaderPress'],
+  ChatMessageToolExecutionCallSectionProps['styles']
+>>;
+
+type ChatMessageToolExecutionCallSectionContainerProps =
+  ChatMessageToolExecutionCallSectionParts['container']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolExecutionResultBadgeStyles = {
   badge: StyleProp<ViewStyle>;
   badgeSuccess: StyleProp<ViewStyle>;
@@ -9758,10 +9769,23 @@ export function ChatMessageToolExecutionCallSection({
   });
 
   return (
-    <View style={callSectionParts.container.style}>
+    <ChatMessageToolExecutionCallSectionContainer
+      {...callSectionParts.container.props}
+    >
       <ChatMessageToolExecutionDetailHeader
-        {...callSectionParts.header}
+        {...callSectionParts.header.props}
       />
+      {children}
+    </ChatMessageToolExecutionCallSectionContainer>
+  );
+}
+
+export function ChatMessageToolExecutionCallSectionContainer({
+  style,
+  children,
+}: ChatMessageToolExecutionCallSectionContainerProps) {
+  return (
+    <View style={style}>
       {children}
     </View>
   );

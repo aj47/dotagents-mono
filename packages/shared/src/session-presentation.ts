@@ -3669,13 +3669,17 @@ export interface ChatRuntimeToolExecutionCallSectionMobilePropsParts<
   },
 > {
   container: {
-    style: TStyles["section"]
+    props: {
+      style: TStyles["section"]
+    }
   }
   header: {
-    renderState: TRenderState
-    toolName: string
-    onPress: TOnHeaderPress | undefined
-    styles: TStyles["header"]
+    props: {
+      renderState: TRenderState
+      toolName: string
+      onPress: TOnHeaderPress | undefined
+      styles: TStyles["header"]
+    }
   }
 }
 
@@ -21003,13 +21007,17 @@ export function createChatRuntimeToolExecutionCallSectionMobilePropsParts<
 > {
   return {
     container: {
-      style: styles.section,
+      props: {
+        style: styles.section,
+      },
     },
     header: {
-      renderState,
-      toolName,
-      onPress: onHeaderPress,
-      styles: styles.header,
+      props: {
+        renderState,
+        toolName,
+        onPress: onHeaderPress,
+        styles: styles.header,
+      },
     },
   }
 }

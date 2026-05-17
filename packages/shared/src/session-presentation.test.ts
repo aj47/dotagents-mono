@@ -13470,13 +13470,17 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       container: {
-        style: "call-section",
+        props: {
+          style: "call-section",
+        },
       },
       header: {
-        renderState: "detail-header-state",
-        toolName: "read_file",
-        onPress: "toggle-detail",
-        styles: "detail-header-styles",
+        props: {
+          renderState: "detail-header-state",
+          toolName: "read_file",
+          onPress: "toggle-detail",
+          styles: "detail-header-styles",
+        },
       },
     })
     const copyButtonParts = createChatRuntimeToolExecutionCopyButtonMobilePropsParts({
