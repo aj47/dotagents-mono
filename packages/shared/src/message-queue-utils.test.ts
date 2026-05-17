@@ -9,6 +9,7 @@ import {
   clearQueuedMessages,
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
+  createQueuedMessageActionButtonMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageActionRowMobileStyleSlot,
   createQueuedMessageEditMobilePropsParts,
@@ -659,6 +660,62 @@ describe('message-queue-utils', () => {
         fontSize: 12,
         fontWeight: '500',
       },
+    });
+    const actionPartCalls: string[] = [];
+    const actionParts = createQueuedMessageActionButtonMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.actions,
+      colors: mobileQueueSurfaceRenderState.colors.actions,
+      icons: getMessageQueuePanelMobileIconState(),
+      copy: getMessageQueuePanelCopyState(),
+      presentation: getQueuedMessageItemPresentation(makeMessage('failed', { status: 'failed' }), false),
+      styles: {
+        actionButton: 'actionButton',
+        retryActionText: 'retryActionText',
+        editActionText: 'editActionText',
+        removeActionText: 'removeActionText',
+      },
+      onRetry: () => actionPartCalls.push('retry'),
+      onEdit: () => actionPartCalls.push('edit'),
+      onRemove: () => actionPartCalls.push('remove'),
+    });
+    expect(actionParts.shouldRender).toBe(true);
+    expect(actionParts.actions.map((action) => action.key)).toEqual(['retry', 'edit', 'remove']);
+    expect(actionParts.actions[0]).toMatchObject({
+      style: 'actionButton',
+      activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.buttonPressedOpacity,
+      accessibilityRole: 'button',
+      accessibilityLabel: 'Retry queued message',
+      hitSlop: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.hitSlop,
+      icon: {
+        name: 'refresh',
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.actions.actionIconSize,
+        color: '#2563eb',
+      },
+      label: {
+        style: 'retryActionText',
+        text: 'Retry',
+      },
+    });
+    actionParts.actions.forEach((action) => action.onPress());
+    expect(actionPartCalls).toEqual(['retry', 'edit', 'remove']);
+    expect(createQueuedMessageActionButtonMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.actions,
+      colors: mobileQueueSurfaceRenderState.colors.actions,
+      icons: getMessageQueuePanelMobileIconState(),
+      copy: getMessageQueuePanelCopyState(),
+      presentation: getQueuedMessageItemPresentation(makeMessage('processing', { status: 'processing' }), false),
+      styles: {
+        actionButton: 'actionButton',
+        retryActionText: 'retryActionText',
+        editActionText: 'editActionText',
+        removeActionText: 'removeActionText',
+      },
+      onRetry: () => actionPartCalls.push('retry'),
+      onEdit: () => actionPartCalls.push('edit'),
+      onRemove: () => actionPartCalls.push('remove'),
+    })).toMatchObject({
+      shouldRender: false,
+      actions: [],
     });
     expect(createQueuedMessageActionRowMobileStyleSlot({
       surface: mobileQueueSurfaceRenderState.surface.actions,

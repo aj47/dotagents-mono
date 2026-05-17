@@ -1295,6 +1295,66 @@ export interface QueuedMessageActionButtonMobileStyleSlots {
   removeText: QueuedMessageActionTextMobileStyleSlot;
 }
 
+export type QueuedMessageActionButtonMobileActionKey = 'retry' | 'edit' | 'remove';
+
+export interface QueuedMessageActionButtonMobilePropsPartsStylesLike {
+  actionButton: unknown;
+  retryActionText: unknown;
+  editActionText: unknown;
+  removeActionText: unknown;
+}
+
+export interface QueuedMessageActionButtonMobilePropsPartsInput<
+  TStyles extends QueuedMessageActionButtonMobilePropsPartsStylesLike =
+    QueuedMessageActionButtonMobilePropsPartsStylesLike,
+> {
+  surface: QueuedMessageMobileActionSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['actions'];
+  icons: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon;
+  copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
+  presentation: Pick<QueuedMessageItemPresentation, 'isFailed' | 'canMutateMessage' | 'canEditMessage'>;
+  styles: TStyles;
+  onRetry: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}
+
+export interface QueuedMessageActionButtonMobilePropsPart<
+  TStyles extends QueuedMessageActionButtonMobilePropsPartsStylesLike =
+    QueuedMessageActionButtonMobilePropsPartsStylesLike,
+> {
+  key: QueuedMessageActionButtonMobileActionKey;
+  style: TStyles['actionButton'];
+  onPress: () => void;
+  activeOpacity: QueuedMessageMobileActionSurface['buttonPressedOpacity'];
+  accessibilityRole: QueuedMessageMobileActionSurface['buttonAccessibilityRole'];
+  accessibilityLabel: string;
+  hitSlop: QueuedMessageMobileActionSurface['hitSlop'];
+  icon: {
+    name:
+      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.retryName
+      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.editName
+      | typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.removeName;
+    size: QueuedMessageMobileActionSurface['actionIconSize'];
+    color: string;
+  };
+  label: {
+    style:
+      | TStyles['retryActionText']
+      | TStyles['editActionText']
+      | TStyles['removeActionText'];
+    text: string;
+  };
+}
+
+export interface QueuedMessageActionButtonMobilePropsParts<
+  TStyles extends QueuedMessageActionButtonMobilePropsPartsStylesLike =
+    QueuedMessageActionButtonMobilePropsPartsStylesLike,
+> {
+  shouldRender: boolean;
+  actions: Array<QueuedMessageActionButtonMobilePropsPart<TStyles>>;
+}
+
 export interface QueuedMessageEditMobileStyleSlotsInput {
   surface: QueuedMessageMobileEditSurface;
   colors: MessageQueuePanelMobileSurfaceRenderState['colors']['edit'];
@@ -1588,6 +1648,94 @@ export function createQueuedMessageActionButtonMobileStyleSlots({
     retryText: createTextStyle(colors.retryTextColor),
     editText: createTextStyle(colors.editTextColor),
     removeText: createTextStyle(colors.removeTextColor),
+  };
+}
+
+export function createQueuedMessageActionButtonMobilePropsParts<
+  TStyles extends QueuedMessageActionButtonMobilePropsPartsStylesLike,
+>({
+  surface,
+  colors,
+  icons,
+  copy,
+  presentation,
+  styles,
+  onRetry,
+  onEdit,
+  onRemove,
+}: QueuedMessageActionButtonMobilePropsPartsInput<TStyles>): QueuedMessageActionButtonMobilePropsParts<TStyles> {
+  if (!presentation.canMutateMessage) {
+    return {
+      shouldRender: false,
+      actions: [],
+    };
+  }
+
+  const createAction = (
+    key: QueuedMessageActionButtonMobileActionKey,
+    params: {
+      onPress: () => void;
+      accessibilityLabel: string;
+      iconName: QueuedMessageActionButtonMobilePropsPart<TStyles>['icon']['name'];
+      iconColor: string;
+      labelStyle: QueuedMessageActionButtonMobilePropsPart<TStyles>['label']['style'];
+      labelText: string;
+    },
+  ): QueuedMessageActionButtonMobilePropsPart<TStyles> => ({
+    key,
+    style: styles.actionButton,
+    onPress: params.onPress,
+    activeOpacity: surface.buttonPressedOpacity,
+    accessibilityRole: surface.buttonAccessibilityRole,
+    accessibilityLabel: params.accessibilityLabel,
+    hitSlop: surface.hitSlop,
+    icon: {
+      name: params.iconName,
+      size: surface.actionIconSize,
+      color: params.iconColor,
+    },
+    label: {
+      style: params.labelStyle,
+      text: params.labelText,
+    },
+  });
+
+  const actions: Array<QueuedMessageActionButtonMobilePropsPart<TStyles>> = [];
+
+  if (presentation.isFailed) {
+    actions.push(createAction('retry', {
+      onPress: onRetry,
+      accessibilityLabel: copy.actions.retryAccessibilityLabel,
+      iconName: icons.retryName,
+      iconColor: colors.retryTextColor,
+      labelStyle: styles.retryActionText,
+      labelText: copy.actions.retryLabel,
+    }));
+  }
+
+  if (presentation.canEditMessage) {
+    actions.push(createAction('edit', {
+      onPress: onEdit,
+      accessibilityLabel: copy.actions.editAccessibilityLabel,
+      iconName: icons.editName,
+      iconColor: colors.editTextColor,
+      labelStyle: styles.editActionText,
+      labelText: copy.actions.editLabel,
+    }));
+  }
+
+  actions.push(createAction('remove', {
+    onPress: onRemove,
+    accessibilityLabel: copy.actions.removeAccessibilityLabel,
+    iconName: icons.removeName,
+    iconColor: colors.removeTextColor,
+    labelStyle: styles.removeActionText,
+    labelText: copy.actions.removeLabel,
+  }));
+
+  return {
+    shouldRender: actions.length > 0,
+    actions,
   };
 }
 

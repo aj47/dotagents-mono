@@ -4466,6 +4466,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSubmitState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /createQueuedMessageItemMobileStyleSlots,/);
   assert.match(messageQueuePanelSource, /const itemStyleSlots = createQueuedMessageItemMobileStyleSlots\(\{\s+surface: itemSurface,\s+colors: itemColors,\s+presentation: messagePresentation,\s+statusColor,\s+statusMetaColor,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /createQueuedMessageActionButtonMobilePropsParts,/);
+  assert.match(messageQueuePanelSource, /const actionParts = createQueuedMessageActionButtonMobilePropsParts\(\{\s+surface: actionSurface,\s+colors: actionColors,\s+icons: queuePanelIcons,\s+copy: queuePanelCopy,\s+presentation: messagePresentation,\s+styles,\s+onRetry,\s+onEdit: \(\) => setIsEditing\(true\),\s+onRemove,\s+\}\);/);
   assert.match(messageQueuePanelSource, /createQueuedMessageActionButtonMobileStyleSlots,/);
   assert.match(messageQueuePanelSource, /const actionButtonStyleSlots = createQueuedMessageActionButtonMobileStyleSlots\(\{\s+surface: actionSurface,\s+colors: actionColors,\s+\}\);/);
   assert.match(messageQueuePanelSource, /createQueuedMessageActionRowMobileStyleSlot,/);
@@ -4499,9 +4501,12 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /paddingHorizontal:\s*itemSurface\.paddingHorizontal/);
   assert.doesNotMatch(messageQueuePanelSource, /backgroundColor:\s*isFailed/);
   assert.doesNotMatch(messageQueuePanelSource, /color:\s*statusColor/);
-  assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.retryName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.retryTextColor\}/);
-  assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.editName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.editTextColor\}/);
-  assert.match(messageQueuePanelSource, /name=\{queuePanelIcons\.removeName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.removeTextColor\}/);
+  assert.match(messageQueuePanelSource, /actionParts\.actions\.map\(\(action\) =>/);
+  assert.match(messageQueuePanelSource, /name=\{action\.icon\.name\}[\s\S]*?size=\{action\.icon\.size\}[\s\S]*?color=\{action\.icon\.color\}/);
+  assert.match(messageQueuePanelSource, /<Text style=\{action\.label\.style\}>\{action\.label\.text\}<\/Text>/);
+  assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.retryName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.retryTextColor\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.editName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.editTextColor\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.removeName\}[\s\S]*?size=\{actionSurface\.actionIconSize\}[\s\S]*?color=\{actionColors\.removeTextColor\}/);
   assert.doesNotMatch(screenSource, /import \{ MessageQueuePanel \} from '\.\.\/ui\/MessageQueuePanel';/);
   assert.doesNotMatch(screenSource, /import \{ ResponseHistoryPanel \} from '\.\.\/ui\/ResponseHistoryPanel';/);
   assert.match(chatMessageChromeSource, /import \{ MessageQueuePanel \} from '\.\/MessageQueuePanel';/);

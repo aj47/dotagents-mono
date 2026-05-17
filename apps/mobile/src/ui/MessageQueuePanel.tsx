@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   createMessageQueuePanelMobileStyleSlots,
+  createQueuedMessageActionButtonMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,
   createQueuedMessageActionRowMobileStyleSlot,
   createQueuedMessageEditMobilePropsParts,
@@ -72,8 +73,6 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     isLongMessage,
     isFailed,
     isProcessing,
-    canMutateMessage,
-    canEditMessage,
     statusLabel,
     expansionLabel,
     errorText,
@@ -215,6 +214,17 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     onCancel: handleCancelEdit,
     onSave: handleSaveEdit,
   });
+  const actionParts = createQueuedMessageActionButtonMobilePropsParts({
+    surface: actionSurface,
+    colors: actionColors,
+    icons: queuePanelIcons,
+    copy: queuePanelCopy,
+    presentation: messagePresentation,
+    styles,
+    onRetry,
+    onEdit: () => setIsEditing(true),
+    onRemove,
+  });
 
   if (isEditing) {
     return (
@@ -301,57 +311,26 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
               </TouchableOpacity>
             )}
           </View>
-          {canMutateMessage && (
+          {actionParts.shouldRender && (
             <View style={styles.actions}>
-              {isFailed && (
+              {actionParts.actions.map((action) => (
                 <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={onRetry}
-                  activeOpacity={actionSurface.buttonPressedOpacity}
-                  accessibilityRole={actionSurface.buttonAccessibilityRole}
-                  accessibilityLabel={queuePanelCopy.actions.retryAccessibilityLabel}
-                  hitSlop={actionSurface.hitSlop}
+                  key={action.key}
+                  style={action.style}
+                  onPress={action.onPress}
+                  activeOpacity={action.activeOpacity}
+                  accessibilityRole={action.accessibilityRole}
+                  accessibilityLabel={action.accessibilityLabel}
+                  hitSlop={action.hitSlop}
                 >
                   <Ionicons
-                    name={queuePanelIcons.retryName}
-                    size={actionSurface.actionIconSize}
-                    color={actionColors.retryTextColor}
+                    name={action.icon.name}
+                    size={action.icon.size}
+                    color={action.icon.color}
                   />
-                  <Text style={styles.retryActionText}>{queuePanelCopy.actions.retryLabel}</Text>
+                  <Text style={action.label.style}>{action.label.text}</Text>
                 </TouchableOpacity>
-              )}
-              {canEditMessage && (
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => setIsEditing(true)}
-                  activeOpacity={actionSurface.buttonPressedOpacity}
-                  accessibilityRole={actionSurface.buttonAccessibilityRole}
-                  accessibilityLabel={queuePanelCopy.actions.editAccessibilityLabel}
-                  hitSlop={actionSurface.hitSlop}
-                >
-                  <Ionicons
-                    name={queuePanelIcons.editName}
-                    size={actionSurface.actionIconSize}
-                    color={actionColors.editTextColor}
-                  />
-                  <Text style={styles.editActionText}>{queuePanelCopy.actions.editLabel}</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={onRemove}
-                activeOpacity={actionSurface.buttonPressedOpacity}
-                accessibilityRole={actionSurface.buttonAccessibilityRole}
-                accessibilityLabel={queuePanelCopy.actions.removeAccessibilityLabel}
-                hitSlop={actionSurface.hitSlop}
-              >
-                <Ionicons
-                  name={queuePanelIcons.removeName}
-                  size={actionSurface.actionIconSize}
-                  color={actionColors.removeTextColor}
-                />
-                <Text style={styles.removeActionText}>{queuePanelCopy.actions.removeLabel}</Text>
-              </TouchableOpacity>
+              ))}
             </View>
           )}
         </View>
