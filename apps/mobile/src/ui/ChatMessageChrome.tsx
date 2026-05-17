@@ -38,6 +38,7 @@ import {
   createChatComposerIconButtonMobilePropsParts,
   createChatComposerLabeledActionButtonMobilePropsParts,
   createChatComposerMicButtonMobilePropsParts,
+  createChatComposerPendingImagesRailMobilePropsParts,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
@@ -9472,31 +9473,38 @@ export function ChatComposerPendingImagesRail({
   onRemove,
   styles,
 }: ChatComposerPendingImagesRailProps) {
-  if (images.length === 0) return null;
+  const pendingImagesRailParts = createChatComposerPendingImagesRailMobilePropsParts({
+    images,
+    renderState,
+    onRemove,
+    styles,
+  });
+
+  if (!pendingImagesRailParts.shouldRender) return null;
 
   return (
     <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={renderState.surface.row.showsHorizontalScrollIndicator}
-      contentContainerStyle={styles.row}
+      horizontal={pendingImagesRailParts.scrollView.horizontal}
+      showsHorizontalScrollIndicator={pendingImagesRailParts.scrollView.showsHorizontalScrollIndicator}
+      contentContainerStyle={pendingImagesRailParts.scrollView.contentContainerStyle}
     >
-      {images.map((image) => (
-        <View key={image.id} style={styles.card}>
+      {pendingImagesRailParts.items.map((item) => (
+        <View key={item.key} style={item.card.style}>
           <Image
-            source={{ uri: image.previewUri }}
-            style={styles.preview}
+            source={item.preview.source}
+            style={item.preview.style}
           />
           <TouchableOpacity
-            style={styles.removeButton}
-            onPress={() => onRemove(image.id)}
-            activeOpacity={renderState.removeButton.pressedOpacity}
-            accessibilityRole={renderState.removeButton.accessibilityRole}
-            accessibilityLabel={renderState.removeButton.accessibilityLabel}
+            style={item.removeButton.style}
+            onPress={item.removeButton.onPress}
+            activeOpacity={item.removeButton.activeOpacity}
+            accessibilityRole={item.removeButton.accessibilityRole}
+            accessibilityLabel={item.removeButton.accessibilityLabel}
           >
             <Ionicons
-              name={renderState.removeIcon.name}
-              size={renderState.removeIcon.size}
-              color={renderState.removeIcon.color}
+              name={item.removeIcon.name}
+              size={item.removeIcon.size}
+              color={item.removeIcon.color}
             />
           </TouchableOpacity>
         </View>

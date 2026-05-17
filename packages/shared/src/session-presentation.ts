@@ -4013,6 +4013,78 @@ export interface ChatComposerMicButtonMobilePropsParts<
   }
 }
 
+export interface ChatComposerPendingImagesRailImageLike {
+  id: string | number
+  previewUri: string
+}
+
+export interface ChatComposerPendingImagesRailMobileRenderStateLike {
+  surface: {
+    row: {
+      showsHorizontalScrollIndicator: unknown
+    }
+  }
+  removeButton: {
+    pressedOpacity: unknown
+    accessibilityRole: unknown
+    accessibilityLabel: string
+  }
+  removeIcon: {
+    name: unknown
+    size: unknown
+    color: unknown
+  }
+}
+
+export interface ChatComposerPendingImagesRailMobileStylesLike {
+  row: unknown
+  card: unknown
+  preview: unknown
+  removeButton: unknown
+}
+
+export interface ChatComposerPendingImagesRailMobilePropsPartsInput<
+  TImage extends ChatComposerPendingImagesRailImageLike = ChatComposerPendingImagesRailImageLike,
+  TRenderState extends ChatComposerPendingImagesRailMobileRenderStateLike = ChatComposerPendingImagesRailMobileRenderStateLike,
+  TStyles extends ChatComposerPendingImagesRailMobileStylesLike = ChatComposerPendingImagesRailMobileStylesLike,
+> {
+  images: readonly TImage[]
+  renderState: TRenderState
+  onRemove: (imageId: TImage["id"]) => void
+  styles: TStyles
+}
+
+export interface ChatComposerPendingImagesRailMobilePropsParts<
+  TImage extends ChatComposerPendingImagesRailImageLike = ChatComposerPendingImagesRailImageLike,
+  TRenderState extends ChatComposerPendingImagesRailMobileRenderStateLike = ChatComposerPendingImagesRailMobileRenderStateLike,
+  TStyles extends ChatComposerPendingImagesRailMobileStylesLike = ChatComposerPendingImagesRailMobileStylesLike,
+> {
+  shouldRender: boolean
+  scrollView: {
+    horizontal: true
+    showsHorizontalScrollIndicator: TRenderState["surface"]["row"]["showsHorizontalScrollIndicator"]
+    contentContainerStyle: TStyles["row"]
+  }
+  items: Array<{
+    key: TImage["id"]
+    card: {
+      style: TStyles["card"]
+    }
+    preview: {
+      source: { uri: TImage["previewUri"] }
+      style: TStyles["preview"]
+    }
+    removeButton: {
+      style: TStyles["removeButton"]
+      onPress: () => void
+      activeOpacity: TRenderState["removeButton"]["pressedOpacity"]
+      accessibilityRole: TRenderState["removeButton"]["accessibilityRole"]
+      accessibilityLabel: string
+    }
+    removeIcon: TRenderState["removeIcon"]
+  }>
+}
+
 export interface ChatComposerRuntimeDockMobilePropsPartsInput<
   TSpeechPreview extends object = Record<string, never>,
   TPendingImagesRail extends object = Record<string, never>,
@@ -18994,6 +19066,52 @@ export function createChatComposerMicButtonMobilePropsParts<
       selectable: renderState.labelSelectable,
       text: renderState.label,
     },
+  }
+}
+
+export function createChatComposerPendingImagesRailMobilePropsParts<
+  TImage extends ChatComposerPendingImagesRailImageLike,
+  TRenderState extends ChatComposerPendingImagesRailMobileRenderStateLike,
+  TStyles extends ChatComposerPendingImagesRailMobileStylesLike,
+>({
+  images,
+  renderState,
+  onRemove,
+  styles,
+}: ChatComposerPendingImagesRailMobilePropsPartsInput<
+  TImage,
+  TRenderState,
+  TStyles
+>): ChatComposerPendingImagesRailMobilePropsParts<
+  TImage,
+  TRenderState,
+  TStyles
+> {
+  return {
+    shouldRender: images.length > 0,
+    scrollView: {
+      horizontal: true,
+      showsHorizontalScrollIndicator: renderState.surface.row.showsHorizontalScrollIndicator,
+      contentContainerStyle: styles.row,
+    },
+    items: images.map((image) => ({
+      key: image.id,
+      card: {
+        style: styles.card,
+      },
+      preview: {
+        source: { uri: image.previewUri },
+        style: styles.preview,
+      },
+      removeButton: {
+        style: styles.removeButton,
+        onPress: () => onRemove(image.id),
+        activeOpacity: renderState.removeButton.pressedOpacity,
+        accessibilityRole: renderState.removeButton.accessibilityRole,
+        accessibilityLabel: renderState.removeButton.accessibilityLabel,
+      },
+      removeIcon: renderState.removeIcon,
+    })),
   }
 }
 

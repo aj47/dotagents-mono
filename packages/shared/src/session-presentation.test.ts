@@ -66,6 +66,7 @@ import {
   createChatComposerIconButtonMobilePropsParts,
   createChatComposerLabeledActionButtonMobilePropsParts,
   createChatComposerMicButtonMobilePropsParts,
+  createChatComposerPendingImagesRailMobilePropsParts,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerRuntimeDockStyleSlots,
@@ -8611,6 +8612,103 @@ describe("session presentation semantics", () => {
         selectable: false,
         text: "Hold to talk",
       },
+    })
+    const removedImageIds: Array<string | number> = []
+    const pendingImagesRailParts = createChatComposerPendingImagesRailMobilePropsParts({
+      images: [{
+        id: "image-1",
+        previewUri: "file://preview-1.png",
+      }],
+      renderState: {
+        surface: {
+          row: {
+            showsHorizontalScrollIndicator: false,
+          },
+        },
+        removeButton: {
+          pressedOpacity: 0.62,
+          accessibilityRole: "button",
+          accessibilityLabel: "Remove image",
+        },
+        removeIcon: {
+          name: "close",
+          size: 16,
+          color: "#ffffff",
+        },
+      },
+      onRemove: (imageId) => {
+        removedImageIds.push(imageId)
+      },
+      styles: {
+        row: "pending-row",
+        card: "pending-card",
+        preview: "pending-preview",
+        removeButton: "pending-remove-button",
+      },
+    })
+    expect(pendingImagesRailParts.shouldRender).toBe(true)
+    expect(pendingImagesRailParts.scrollView).toEqual({
+      horizontal: true,
+      showsHorizontalScrollIndicator: false,
+      contentContainerStyle: "pending-row",
+    })
+    expect(pendingImagesRailParts.items).toHaveLength(1)
+    const pendingImageItem = pendingImagesRailParts.items[0]!
+    expect(pendingImageItem).toEqual({
+      key: "image-1",
+      card: {
+        style: "pending-card",
+      },
+      preview: {
+        source: { uri: "file://preview-1.png" },
+        style: "pending-preview",
+      },
+      removeButton: {
+        style: "pending-remove-button",
+        onPress: expect.any(Function),
+        activeOpacity: 0.62,
+        accessibilityRole: "button",
+        accessibilityLabel: "Remove image",
+      },
+      removeIcon: {
+        name: "close",
+        size: 16,
+        color: "#ffffff",
+      },
+    })
+    pendingImageItem.removeButton.onPress()
+    expect(removedImageIds).toEqual(["image-1"])
+    expect(createChatComposerPendingImagesRailMobilePropsParts({
+      images: [],
+      renderState: {
+        surface: {
+          row: {
+            showsHorizontalScrollIndicator: false,
+          },
+        },
+        removeButton: {
+          pressedOpacity: 0.62,
+          accessibilityRole: "button",
+          accessibilityLabel: "Remove image",
+        },
+        removeIcon: {
+          name: "close",
+          size: 16,
+          color: "#ffffff",
+        },
+      },
+      onRemove: (imageId) => {
+        removedImageIds.push(imageId)
+      },
+      styles: {
+        row: "pending-row",
+        card: "pending-card",
+        preview: "pending-preview",
+        removeButton: "pending-remove-button",
+      },
+    })).toMatchObject({
+      shouldRender: false,
+      items: [],
     })
     const surfaceParts = createChatRuntimeConversationSurfaceMobilePropsParts({
       frame: {
