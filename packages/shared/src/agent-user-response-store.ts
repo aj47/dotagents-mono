@@ -416,7 +416,7 @@ export interface AgentResponseHistoryMobilePropsPartsItem<
   shouldRenderSeparator: boolean;
   separator: {
     style: TStyles['separator'];
-  };
+  } | null;
   animated: {
     isNewest: boolean;
     animation: AgentResponseHistoryMobileAnimationState;
@@ -796,9 +796,11 @@ export function createAgentResponseHistoryMobilePropsParts<
               entry: item.entry,
               originalIndex: item.originalIndex,
               shouldRenderSeparator: item.shouldRenderSeparator,
-              separator: {
-                style: styles.separator,
-              },
+              separator: item.shouldRenderSeparator
+                ? {
+                    style: styles.separator,
+                  }
+                : null,
               animated: {
                 isNewest: item.isNewest,
                 animation: renderState.animation,

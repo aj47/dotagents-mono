@@ -4589,6 +4589,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(responseHistoryPanelSource, /activeOpacity=\{responseHistoryParts\.header\.touchable\.activeOpacity\}/);
   assert.match(responseHistoryPanelSource, /numberOfLines=\{responseHistoryParts\.collapsedPreview\.preview\.numberOfLines\}/);
   assert.match(responseHistoryPanelSource, /onPress=\{item\.speakButton\.onPress\}/);
+  assert.match(responseHistoryPanelSource, /responseHistoryParts\.list\.items\.map\(\(item\) => \{/);
+  assert.match(responseHistoryPanelSource, /item\.separator && <View style=\{item\.separator\.style\} \/>/);
+  assert.doesNotMatch(responseHistoryPanelSource, /item\.shouldRenderSeparator &&/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistoryPanelState/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistorySurface/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistoryIcons/);

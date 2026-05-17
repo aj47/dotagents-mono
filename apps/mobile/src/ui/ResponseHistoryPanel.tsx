@@ -209,7 +209,7 @@ export function ResponseHistoryPanel({
           {responseHistoryParts.list.items.map((item) => {
             return (
               <React.Fragment key={item.key}>
-                {item.shouldRenderSeparator && <View style={item.separator.style} />}
+                {item.separator && <View style={item.separator.style} />}
                 <AnimatedResponseItem
                   isNewest={item.animated.isNewest}
                   animation={item.animated.animation}

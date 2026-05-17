@@ -208,6 +208,7 @@ describe('agent-user-response-store', () => {
       entry: { text: 'Hello from the agent', timestamp: 1000 },
       originalIndex: 0,
       shouldRenderSeparator: false,
+      separator: null,
       animated: {
         isNewest: false,
         animation: responseHistoryRenderState.animation,
@@ -224,6 +225,23 @@ describe('agent-user-response-store', () => {
         color: '#2563eb',
       },
     });
+    const responseHistoryTwoParts = createAgentResponseHistoryMobilePropsParts({
+      renderState: getAgentResponseHistoryMobileRenderState({
+        responses: [
+          { text: 'Older response', timestamp: 1000 },
+          { text: 'Newer response', timestamp: 2000 },
+        ],
+        colors: responseHistoryPalette,
+        isCollapsed: false,
+      }),
+      styles: responseHistoryStyleSlots,
+      onToggleCollapsed: () => undefined,
+      onSpeakResponse: (text, index) => responseHistorySpeakCalls.push({ text, index }),
+    });
+    expect(responseHistoryTwoParts.list?.items.map((item) => item.separator)).toEqual([
+      null,
+      { style: responseHistoryStyleSlots.separator },
+    ]);
     responseHistoryItem?.speakButton.onPress();
     expect(responseHistorySpeakCalls).toEqual([
       {
