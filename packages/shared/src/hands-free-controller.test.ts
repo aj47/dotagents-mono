@@ -288,16 +288,22 @@ describe("hands-free controller", () => {
       styles: listeningStatusChipStyleSlots,
     })).toEqual({
       container: {
-        style: listeningStatusChipStyleSlots.container,
+        props: {
+          style: listeningStatusChipStyleSlots.container,
+        },
       },
       label: {
-        style: listeningStatusChipStyleSlots.label,
         text: "Listening",
+        props: {
+          style: listeningStatusChipStyleSlots.label,
+        },
       },
       subtitle: {
-        style: listeningStatusChipStyleSlots.subtitle,
-        numberOfLines: 2,
         text: "Say “go to sleep” to return to sleep.",
+        props: {
+          style: listeningStatusChipStyleSlots.subtitle,
+          numberOfLines: 2,
+        },
       },
     })
     expect(getHandsFreeStatusChipMobileRenderState({

@@ -116,16 +116,22 @@ export interface HandsFreeStatusChipMobilePropsParts<
   TStyles extends HandsFreeStatusChipMobileStylesLike = HandsFreeStatusChipMobileStylesLike,
 > {
   container: {
-    style: TStyles["container"]
+    props: {
+      style: TStyles["container"]
+    }
   }
   label: {
-    style: TStyles["label"]
     text: string
+    props: {
+      style: TStyles["label"]
+    }
   }
   subtitle: {
-    style: TStyles["subtitle"]
-    numberOfLines: HandsFreeStatusChipMobileSurface["subtitle"]["numberOfLines"]
     text: string
+    props: {
+      style: TStyles["subtitle"]
+      numberOfLines: HandsFreeStatusChipMobileSurface["subtitle"]["numberOfLines"]
+    }
   } | null
 }
 
@@ -473,17 +479,23 @@ export function createHandsFreeStatusChipMobilePropsParts<
 }: HandsFreeStatusChipMobilePropsPartsInput<TStyles>): HandsFreeStatusChipMobilePropsParts<TStyles> {
   return {
     container: {
-      style: styles.container,
+      props: {
+        style: styles.container,
+      },
     },
     label: {
-      style: styles.label,
       text: renderState.label,
+      props: {
+        style: styles.label,
+      },
     },
     subtitle: renderState.shouldRenderSubtitle
       ? {
-          style: styles.subtitle,
-          numberOfLines: renderState.surface.subtitle.numberOfLines,
           text: renderState.subtitle,
+          props: {
+            style: styles.subtitle,
+            numberOfLines: renderState.surface.subtitle.numberOfLines,
+          },
         }
       : null,
   }

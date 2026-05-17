@@ -51,13 +51,10 @@ export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusC
   });
 
   return (
-    <View style={statusChipParts.container.style}>
-      <Text style={statusChipParts.label.style}>{statusChipParts.label.text}</Text>
+    <View {...statusChipParts.container.props}>
+      <Text {...statusChipParts.label.props}>{statusChipParts.label.text}</Text>
       {statusChipParts.subtitle ? (
-        <Text
-          style={statusChipParts.subtitle.style}
-          numberOfLines={statusChipParts.subtitle.numberOfLines}
-        >
+        <Text {...statusChipParts.subtitle.props}>
           {statusChipParts.subtitle.text}
         </Text>
       ) : null}

@@ -20,13 +20,14 @@ test('uses shared hands-free status chip colors and surface tokens', () => {
   assert.match(chipSource, /label:\s*\{[\s\S]*?\.\.\.styleSlots\.label/);
   assert.match(chipSource, /subtitle:\s*\{[\s\S]*?\.\.\.styleSlots\.subtitle/);
   assert.match(chipSource, /const statusChipParts = createHandsFreeStatusChipMobilePropsParts\(\{[\s\S]*?renderState,[\s\S]*?styles,/);
-  assert.match(chipSource, /style=\{statusChipParts\.container\.style\}/);
-  assert.match(chipSource, /style=\{statusChipParts\.label\.style\}/);
+  assert.match(chipSource, /<View\s+\{\.\.\.statusChipParts\.container\.props\}>/);
+  assert.match(chipSource, /<Text\s+\{\.\.\.statusChipParts\.label\.props\}>\{statusChipParts\.label\.text\}<\/Text>/);
   assert.match(chipSource, /\{statusChipParts\.label\.text\}/);
   assert.match(chipSource, /\{statusChipParts\.subtitle \? \(/);
-  assert.match(chipSource, /style=\{statusChipParts\.subtitle\.style\}/);
-  assert.match(chipSource, /numberOfLines=\{statusChipParts\.subtitle\.numberOfLines\}/);
+  assert.match(chipSource, /<Text\s+\{\.\.\.statusChipParts\.subtitle\.props\}>/);
   assert.match(chipSource, /\{statusChipParts\.subtitle\.text\}/);
+  assert.doesNotMatch(chipSource, /style=\{statusChipParts\.(container|label|subtitle)\.style\}/);
+  assert.doesNotMatch(chipSource, /numberOfLines=\{statusChipParts\.subtitle\.numberOfLines\}/);
   assert.doesNotMatch(chipSource, /numberOfLines=\{2\}/);
   assert.doesNotMatch(chipSource, /alignSelf:\s*'flex-start'/);
   assert.doesNotMatch(chipSource, /getHandsFreeComposerMobileSurfaceState/);
