@@ -106,6 +106,7 @@ import {
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
+  createChatRuntimeConversationThreadBodyMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   createChatRuntimeToolActivityGroupFooterMobilePropsParts,
@@ -8598,6 +8599,140 @@ describe("session presentation semantics", () => {
     })
     expect(conversationBodyPanelParts).toEqual({
       content: {
+        contentDisplayMode: "expanded",
+        shouldRenderActionSlots: true,
+        entries: ["message-action"],
+        rowStyle: "message-content-row",
+        expanded: {
+          markdownContent: "expanded message",
+          spinnerSource: "spinner-source",
+          bodyStyle: "message-content-body",
+          streamingStyles: "streaming-content-styles",
+        },
+        collapsed: {
+          renderState: "collapsed-preview",
+          onPress: "toggle-preview",
+          style: "collapsed-preview-style",
+          pressedStyle: "collapsed-preview-pressed-style",
+          textStyle: "collapsed-preview-text-style",
+        },
+      },
+      toolExecutionStack: {
+        shouldRender: true,
+        detailRows: ["tool-detail-row"],
+        styles: "tool-execution-stack-styles",
+      },
+      standaloneActions: {
+        shouldRender: true,
+        entries: ["standalone-action"],
+        rowStyle: "standalone-actions-row",
+      },
+    })
+    const threadBodyPartsStyles = {
+      retryStatus: "retry-status-styles",
+      delegationCard: "delegation-card-styles",
+      toolApproval: "tool-approval-styles",
+      inlineActivity: {
+        style: "inline-activity-style",
+        spinnerStyle: "inline-activity-spinner-style",
+      },
+      content: {
+        rowStyle: "message-content-row",
+        expandedBodyStyle: "message-content-body",
+        streamingStyles: "streaming-content-styles",
+        collapsedStyle: "collapsed-preview-style",
+        collapsedPressedStyle: "collapsed-preview-pressed-style",
+        collapsedTextStyle: "collapsed-preview-text-style",
+      },
+      toolExecutionStack: "tool-execution-stack-styles",
+      standaloneActions: {
+        rowStyle: "standalone-actions-row",
+      },
+    }
+    const threadBodyConversation = {
+      content: {
+        contentDisplayMode: "expanded",
+        shouldRenderActionSlots: true,
+        entries: ["message-action"],
+        expanded: {
+          markdownContent: "expanded message",
+          spinnerSource: "spinner-source",
+        },
+        collapsed: {
+          renderState: "collapsed-preview",
+          onPress: "toggle-preview",
+        },
+      },
+      toolExecutionStack: {
+        shouldRender: true,
+        detailRows: ["tool-detail-row"],
+      },
+      standaloneActions: {
+        shouldRender: true,
+        entries: ["standalone-action"],
+      },
+    }
+    expect(createChatRuntimeConversationThreadBodyMobilePropsParts({
+      bodyDisplayMode: "retryStatus",
+      retryStatus: {
+        renderState: "retry-render-state",
+      },
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: null,
+      conversation: threadBodyConversation,
+      styles: threadBodyPartsStyles,
+    })).toEqual({
+      retryStatus: {
+        renderState: "retry-render-state",
+        styles: "retry-status-styles",
+      },
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: null,
+      conversation: null,
+      toolExecutionStack: null,
+      standaloneActions: null,
+    })
+    expect(createChatRuntimeConversationThreadBodyMobilePropsParts({
+      bodyDisplayMode: "inlineActivity",
+      retryStatus: null,
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: {
+        renderState: "inline-activity-render-state",
+        spinnerSource: "spinner-source",
+      },
+      conversation: threadBodyConversation,
+      styles: threadBodyPartsStyles,
+    })).toEqual({
+      retryStatus: null,
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: {
+        renderState: "inline-activity-render-state",
+        spinnerSource: "spinner-source",
+        style: "inline-activity-style",
+        spinnerStyle: "inline-activity-spinner-style",
+      },
+      conversation: null,
+      toolExecutionStack: null,
+      standaloneActions: null,
+    })
+    expect(createChatRuntimeConversationThreadBodyMobilePropsParts({
+      bodyDisplayMode: "conversation",
+      retryStatus: null,
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: null,
+      conversation: threadBodyConversation,
+      styles: threadBodyPartsStyles,
+    })).toEqual({
+      retryStatus: null,
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: null,
+      conversation: {
         contentDisplayMode: "expanded",
         shouldRenderActionSlots: true,
         entries: ["message-action"],

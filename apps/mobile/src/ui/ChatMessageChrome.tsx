@@ -100,12 +100,11 @@ import {
   createChatRuntimeMessageThreadItemMobilePropsParts,
   createChatRuntimeMessageThreadSurfaceMobilePropsParts,
   createChatRuntimeConversationBodyMobileProps,
-  createChatRuntimeConversationBodyPanelMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationSurfaceMobilePropsParts,
-  createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
+  createChatRuntimeConversationThreadBodyMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
@@ -7431,65 +7430,64 @@ export function ChatMessageThreadBody({
   inlineActivity,
   conversation,
 }: ChatMessageThreadBodyProps) {
-  const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({
+  const threadBodyParts = createChatRuntimeConversationThreadBodyMobilePropsParts({
+    bodyDisplayMode,
     retryStatus,
     delegationCard,
     toolApproval,
     inlineActivity,
-    styles,
-  });
-
-  if (bodyDisplayMode === 'retryStatus') {
-    if (!statusPanelParts.retryStatus) return null;
-    return (
-      <ChatMessageRetryStatus
-        {...statusPanelParts.retryStatus}
-      />
-    );
-  }
-
-  if (bodyDisplayMode === 'delegationCard') {
-    if (!statusPanelParts.delegationCard) return null;
-    return (
-      <ChatMessageDelegationCard
-        {...statusPanelParts.delegationCard}
-      />
-    );
-  }
-
-  if (bodyDisplayMode === 'toolApproval') {
-    if (!statusPanelParts.toolApproval) return null;
-    return (
-      <ChatMessageToolApproval
-        {...statusPanelParts.toolApproval}
-      />
-    );
-  }
-
-  if (bodyDisplayMode === 'inlineActivity') {
-    if (!statusPanelParts.inlineActivity) return null;
-    return (
-      <ChatMessageInlineActivity
-        {...statusPanelParts.inlineActivity}
-      />
-    );
-  }
-
-  const conversationBodyParts = createChatRuntimeConversationBodyPanelMobilePropsParts({
     conversation,
     styles,
   });
 
+  if (threadBodyParts.retryStatus) {
+    return (
+      <ChatMessageRetryStatus
+        {...threadBodyParts.retryStatus}
+      />
+    );
+  }
+
+  if (threadBodyParts.delegationCard) {
+    return (
+      <ChatMessageDelegationCard
+        {...threadBodyParts.delegationCard}
+      />
+    );
+  }
+
+  if (threadBodyParts.toolApproval) {
+    return (
+      <ChatMessageToolApproval
+        {...threadBodyParts.toolApproval}
+      />
+    );
+  }
+
+  if (threadBodyParts.inlineActivity) {
+    return (
+      <ChatMessageInlineActivity
+        {...threadBodyParts.inlineActivity}
+      />
+    );
+  }
+
+  if (
+    !threadBodyParts.conversation
+    || !threadBodyParts.toolExecutionStack
+    || !threadBodyParts.standaloneActions
+  ) return null;
+
   return (
     <>
       <ChatMessageConversationContent
-        {...conversationBodyParts.content}
+        {...threadBodyParts.conversation}
       />
       <ChatMessageToolExecutionStack
-        {...conversationBodyParts.toolExecutionStack}
+        {...threadBodyParts.toolExecutionStack}
       />
       <ChatMessageStandaloneActions
-        {...conversationBodyParts.standaloneActions}
+        {...threadBodyParts.standaloneActions}
       />
     </>
   );

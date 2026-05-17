@@ -3964,6 +3964,180 @@ export interface ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
   }) | null
 }
 
+export interface ChatRuntimeConversationThreadBodyMobilePropsPartsInput<
+  TRetryStatus extends object = Record<string, never>,
+  TDelegationCard extends object = Record<string, never>,
+  TToolApproval extends object = Record<string, never>,
+  TInlineActivity extends object = Record<string, never>,
+  TContent extends { expanded: object; collapsed: object } = { expanded: object; collapsed: object },
+  TToolExecutionStack extends object = Record<string, never>,
+  TStandaloneActions extends object = Record<string, never>,
+  TRetryStatusStyles = unknown,
+  TDelegationCardStyles = unknown,
+  TToolApprovalStyles = unknown,
+  TInlineActivityStyle = unknown,
+  TInlineActivitySpinnerStyle = unknown,
+  TContentRowStyle = unknown,
+  TExpandedBodyStyle = unknown,
+  TStreamingStyles = unknown,
+  TCollapsedStyle = unknown,
+  TCollapsedPressedStyle = unknown,
+  TCollapsedTextStyle = unknown,
+  TToolExecutionStackStyles = unknown,
+  TStandaloneActionsRowStyle = unknown,
+> {
+  bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode
+  retryStatus?: TRetryStatus | null
+  delegationCard?: TDelegationCard | null
+  toolApproval?: TToolApproval | null
+  inlineActivity?: TInlineActivity | null
+  conversation: ChatRuntimeConversationBodyPanelMobilePropsPartsInput<
+    TContent,
+    TToolExecutionStack,
+    TStandaloneActions,
+    TContentRowStyle,
+    TExpandedBodyStyle,
+    TStreamingStyles,
+    TCollapsedStyle,
+    TCollapsedPressedStyle,
+    TCollapsedTextStyle,
+    TToolExecutionStackStyles,
+    TStandaloneActionsRowStyle
+  >["conversation"]
+  styles:
+    & ChatRuntimeConversationThreadBodyStatusPanelMobilePropsPartsInput<
+      TRetryStatus,
+      TDelegationCard,
+      TToolApproval,
+      TInlineActivity,
+      TRetryStatusStyles,
+      TDelegationCardStyles,
+      TToolApprovalStyles,
+      TInlineActivityStyle,
+      TInlineActivitySpinnerStyle
+    >["styles"]
+    & ChatRuntimeConversationBodyPanelMobilePropsPartsInput<
+      TContent,
+      TToolExecutionStack,
+      TStandaloneActions,
+      TContentRowStyle,
+      TExpandedBodyStyle,
+      TStreamingStyles,
+      TCollapsedStyle,
+      TCollapsedPressedStyle,
+      TCollapsedTextStyle,
+      TToolExecutionStackStyles,
+      TStandaloneActionsRowStyle
+    >["styles"]
+}
+
+export interface ChatRuntimeConversationThreadBodyMobilePropsParts<
+  TRetryStatus extends object = Record<string, never>,
+  TDelegationCard extends object = Record<string, never>,
+  TToolApproval extends object = Record<string, never>,
+  TInlineActivity extends object = Record<string, never>,
+  TContent extends { expanded: object; collapsed: object } = { expanded: object; collapsed: object },
+  TToolExecutionStack extends object = Record<string, never>,
+  TStandaloneActions extends object = Record<string, never>,
+  TRetryStatusStyles = unknown,
+  TDelegationCardStyles = unknown,
+  TToolApprovalStyles = unknown,
+  TInlineActivityStyle = unknown,
+  TInlineActivitySpinnerStyle = unknown,
+  TContentRowStyle = unknown,
+  TExpandedBodyStyle = unknown,
+  TStreamingStyles = unknown,
+  TCollapsedStyle = unknown,
+  TCollapsedPressedStyle = unknown,
+  TCollapsedTextStyle = unknown,
+  TToolExecutionStackStyles = unknown,
+  TStandaloneActionsRowStyle = unknown,
+> {
+  retryStatus: ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
+    TRetryStatus,
+    TDelegationCard,
+    TToolApproval,
+    TInlineActivity,
+    TRetryStatusStyles,
+    TDelegationCardStyles,
+    TToolApprovalStyles,
+    TInlineActivityStyle,
+    TInlineActivitySpinnerStyle
+  >["retryStatus"]
+  delegationCard: ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
+    TRetryStatus,
+    TDelegationCard,
+    TToolApproval,
+    TInlineActivity,
+    TRetryStatusStyles,
+    TDelegationCardStyles,
+    TToolApprovalStyles,
+    TInlineActivityStyle,
+    TInlineActivitySpinnerStyle
+  >["delegationCard"]
+  toolApproval: ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
+    TRetryStatus,
+    TDelegationCard,
+    TToolApproval,
+    TInlineActivity,
+    TRetryStatusStyles,
+    TDelegationCardStyles,
+    TToolApprovalStyles,
+    TInlineActivityStyle,
+    TInlineActivitySpinnerStyle
+  >["toolApproval"]
+  inlineActivity: ChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts<
+    TRetryStatus,
+    TDelegationCard,
+    TToolApproval,
+    TInlineActivity,
+    TRetryStatusStyles,
+    TDelegationCardStyles,
+    TToolApprovalStyles,
+    TInlineActivityStyle,
+    TInlineActivitySpinnerStyle
+  >["inlineActivity"]
+  conversation: ChatRuntimeConversationBodyPanelMobilePropsParts<
+    TContent,
+    TToolExecutionStack,
+    TStandaloneActions,
+    TContentRowStyle,
+    TExpandedBodyStyle,
+    TStreamingStyles,
+    TCollapsedStyle,
+    TCollapsedPressedStyle,
+    TCollapsedTextStyle,
+    TToolExecutionStackStyles,
+    TStandaloneActionsRowStyle
+  >["content"] | null
+  toolExecutionStack: ChatRuntimeConversationBodyPanelMobilePropsParts<
+    TContent,
+    TToolExecutionStack,
+    TStandaloneActions,
+    TContentRowStyle,
+    TExpandedBodyStyle,
+    TStreamingStyles,
+    TCollapsedStyle,
+    TCollapsedPressedStyle,
+    TCollapsedTextStyle,
+    TToolExecutionStackStyles,
+    TStandaloneActionsRowStyle
+  >["toolExecutionStack"] | null
+  standaloneActions: ChatRuntimeConversationBodyPanelMobilePropsParts<
+    TContent,
+    TToolExecutionStack,
+    TStandaloneActions,
+    TContentRowStyle,
+    TExpandedBodyStyle,
+    TStreamingStyles,
+    TCollapsedStyle,
+    TCollapsedPressedStyle,
+    TCollapsedTextStyle,
+    TToolExecutionStackStyles,
+    TStandaloneActionsRowStyle
+  >["standaloneActions"] | null
+}
+
 export type ChatRuntimeToolActivityGroupHeaderMobileKind = "collapsed" | "expanded"
 
 export type ChatRuntimeToolActivityGroupBoundaryMobileKind =
@@ -18599,6 +18773,147 @@ export function createChatRuntimeConversationThreadBodyStatusPanelMobilePropsPar
       style: styles.inlineActivity.style,
       spinnerStyle: styles.inlineActivity.spinnerStyle,
     } : null,
+  }
+}
+
+export function createChatRuntimeConversationThreadBodyMobilePropsParts<
+  TRetryStatus extends object,
+  TDelegationCard extends object,
+  TToolApproval extends object,
+  TInlineActivity extends object,
+  TContent extends { expanded: object; collapsed: object },
+  TToolExecutionStack extends object,
+  TStandaloneActions extends object,
+  TRetryStatusStyles,
+  TDelegationCardStyles,
+  TToolApprovalStyles,
+  TInlineActivityStyle,
+  TInlineActivitySpinnerStyle,
+  TContentRowStyle,
+  TExpandedBodyStyle,
+  TStreamingStyles,
+  TCollapsedStyle,
+  TCollapsedPressedStyle,
+  TCollapsedTextStyle,
+  TToolExecutionStackStyles,
+  TStandaloneActionsRowStyle,
+>({
+  bodyDisplayMode,
+  retryStatus,
+  delegationCard,
+  toolApproval,
+  inlineActivity,
+  conversation,
+  styles,
+}: ChatRuntimeConversationThreadBodyMobilePropsPartsInput<
+  TRetryStatus,
+  TDelegationCard,
+  TToolApproval,
+  TInlineActivity,
+  TContent,
+  TToolExecutionStack,
+  TStandaloneActions,
+  TRetryStatusStyles,
+  TDelegationCardStyles,
+  TToolApprovalStyles,
+  TInlineActivityStyle,
+  TInlineActivitySpinnerStyle,
+  TContentRowStyle,
+  TExpandedBodyStyle,
+  TStreamingStyles,
+  TCollapsedStyle,
+  TCollapsedPressedStyle,
+  TCollapsedTextStyle,
+  TToolExecutionStackStyles,
+  TStandaloneActionsRowStyle
+>): ChatRuntimeConversationThreadBodyMobilePropsParts<
+  TRetryStatus,
+  TDelegationCard,
+  TToolApproval,
+  TInlineActivity,
+  TContent,
+  TToolExecutionStack,
+  TStandaloneActions,
+  TRetryStatusStyles,
+  TDelegationCardStyles,
+  TToolApprovalStyles,
+  TInlineActivityStyle,
+  TInlineActivitySpinnerStyle,
+  TContentRowStyle,
+  TExpandedBodyStyle,
+  TStreamingStyles,
+  TCollapsedStyle,
+  TCollapsedPressedStyle,
+  TCollapsedTextStyle,
+  TToolExecutionStackStyles,
+  TStandaloneActionsRowStyle
+> {
+  const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({
+    retryStatus,
+    delegationCard,
+    toolApproval,
+    inlineActivity,
+    styles,
+  })
+  const emptyConversationBodyParts = {
+    conversation: null,
+    toolExecutionStack: null,
+    standaloneActions: null,
+  }
+
+  if (bodyDisplayMode === "retryStatus") {
+    return {
+      retryStatus: statusPanelParts.retryStatus,
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: null,
+      ...emptyConversationBodyParts,
+    }
+  }
+
+  if (bodyDisplayMode === "delegationCard") {
+    return {
+      retryStatus: null,
+      delegationCard: statusPanelParts.delegationCard,
+      toolApproval: null,
+      inlineActivity: null,
+      ...emptyConversationBodyParts,
+    }
+  }
+
+  if (bodyDisplayMode === "toolApproval") {
+    return {
+      retryStatus: null,
+      delegationCard: null,
+      toolApproval: statusPanelParts.toolApproval,
+      inlineActivity: null,
+      ...emptyConversationBodyParts,
+    }
+  }
+
+  if (bodyDisplayMode === "inlineActivity") {
+    return {
+      retryStatus: null,
+      delegationCard: null,
+      toolApproval: null,
+      inlineActivity: statusPanelParts.inlineActivity,
+      ...emptyConversationBodyParts,
+    }
+  }
+
+  const conversationBodyParts = createChatRuntimeConversationBodyPanelMobilePropsParts({
+    conversation,
+    styles,
+  })
+
+  return {
+    retryStatus: null,
+    delegationCard: null,
+    toolApproval: null,
+    inlineActivity: null,
+    conversation: conversationBodyParts.content,
+    toolExecutionStack: conversationBodyParts.toolExecutionStack,
+    standaloneActions: conversationBodyParts.standaloneActions,
   }
 }
 
