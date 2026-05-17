@@ -6827,17 +6827,19 @@ export interface ChatRuntimeRetryStatusMobilePropsParts<
     props: {
       style: TStyles["metaRow"]
     }
-  }
-  attempt: {
-    props: {
-      style: TStyles["attempt"]
-      text: string
-    }
-  }
-  countdown: {
-    props: {
-      style: TStyles["countdown"]
-      text: string
+    content: {
+      attempt: {
+        props: {
+          style: TStyles["attempt"]
+          text: string
+        }
+      }
+      countdown: {
+        props: {
+          style: TStyles["countdown"]
+          text: string
+        }
+      }
     }
   }
   description: {
@@ -24039,17 +24041,19 @@ export function createChatRuntimeRetryStatusMobilePropsParts<
       props: {
         style: styles.metaRow,
       },
-    },
-    attempt: {
-      props: {
-        style: styles.attempt,
-        text: renderState.attemptLabel,
-      },
-    },
-    countdown: {
-      props: {
-        style: styles.countdown,
-        text: renderState.countdownLabel,
+      content: {
+        attempt: {
+          props: {
+            style: styles.attempt,
+            text: renderState.attemptLabel,
+          },
+        },
+        countdown: {
+          props: {
+            style: styles.countdown,
+            text: renderState.countdownLabel,
+          },
+        },
       },
     },
     description: {

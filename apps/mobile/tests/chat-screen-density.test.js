@@ -939,7 +939,7 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(sessionPresentationSource, /title: \{[\s\S]*?props: \{[\s\S]*?style: styles\.title,[\s\S]*?numberOfLines: renderState\.surface\.titleNumberOfLines,[\s\S]*?text: renderState\.title,/);
   assert.match(sessionPresentationSource, /spinner: \{[\s\S]*?props: renderState\.spinner,/);
   assert.match(sessionPresentationSource, /meta: \{[\s\S]*?props: \{[\s\S]*?style: styles\.metaRow,/);
-  assert.match(sessionPresentationSource, /attempt: \{[\s\S]*?props: \{[\s\S]*?style: styles\.attempt,[\s\S]*?text: renderState\.attemptLabel,/);
+  assert.match(sessionPresentationSource, /content: \{[\s\S]*?attempt: \{[\s\S]*?props: \{[\s\S]*?style: styles\.attempt,[\s\S]*?text: renderState\.attemptLabel,/);
   assert.match(sessionPresentationSource, /countdown: \{[\s\S]*?props: \{[\s\S]*?style: styles\.countdown,[\s\S]*?text: renderState\.countdownLabel,/);
   assert.match(sessionPresentationSource, /description: \{[\s\S]*?props: \{[\s\S]*?style: styles\.description,[\s\S]*?text: renderState\.description,/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusCard\s+\{\.\.\.retryStatusParts\.card\.props\}/);
@@ -949,8 +949,9 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusTitle\s+\{\.\.\.headerContent\.title\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusSpinner\s+\{\.\.\.headerContent\.spinner\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusView\s+\{\.\.\.retryStatusParts\.meta\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.retryStatusParts\.attempt\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.retryStatusParts\.countdown\.props\}/);
+  assert.match(chatMessageChromeSource, /const metaContent = retryStatusParts\.meta\.content;/);
+  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.metaContent\.attempt\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.metaContent\.countdown\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusText\s+\{\.\.\.retryStatusParts\.description\.props\}/);
   assert.match(retryStatusSource, /export function ChatMessageRetryStatusCard\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageRetryStatusCardProps\) \{\s+return \(\s+<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
   assert.match(retryStatusSource, /export function ChatMessageRetryStatusView\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageRetryStatusViewProps\) \{\s+return \(\s+<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
@@ -964,6 +965,7 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   );
   assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.(card|header|icon|title|spinner|meta|attempt|countdown|description)\.(accessible|accessibilityRole|accessibilityLabel|style|name|size|color|numberOfLines|text)/);
   assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.(icon|title|spinner)\.props/);
+  assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.(attempt|countdown)\.props/);
   assert.match(sessionPresentationSource, /shouldRenderRetryStatus: renderState\.shouldRender/);
   assert.doesNotMatch(
     chatMessageChromeSource,

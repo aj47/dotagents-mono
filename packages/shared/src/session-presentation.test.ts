@@ -4692,17 +4692,19 @@ describe("session presentation semantics", () => {
         props: {
           style: "retry-meta-style",
         },
-      },
-      attempt: {
-        props: {
-          style: "retry-attempt-style",
-          text: "Attempt 2/5",
-        },
-      },
-      countdown: {
-        props: {
-          style: "retry-countdown-style",
-          text: "Retrying in 7s",
+        content: {
+          attempt: {
+            props: {
+              style: "retry-attempt-style",
+              text: "Attempt 2/5",
+            },
+          },
+          countdown: {
+            props: {
+              style: "retry-countdown-style",
+              text: "Retrying in 7s",
+            },
+          },
         },
       },
       description: {

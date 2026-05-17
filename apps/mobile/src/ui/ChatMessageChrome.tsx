@@ -1697,8 +1697,8 @@ type ChatMessageRetryStatusSpinnerProps =
   ChatMessageRetryStatusParts['header']['content']['spinner']['props'];
 
 type ChatMessageRetryStatusTextProps =
-  | ChatMessageRetryStatusParts['attempt']['props']
-  | ChatMessageRetryStatusParts['countdown']['props']
+  | ChatMessageRetryStatusParts['meta']['content']['attempt']['props']
+  | ChatMessageRetryStatusParts['meta']['content']['countdown']['props']
   | ChatMessageRetryStatusParts['description']['props'];
 
 type ChatMessageToolApprovalStyles = {
@@ -8229,6 +8229,7 @@ export function ChatMessageRetryStatus({
   if (!retryStatusParts.shouldRenderRetryStatus) return null;
 
   const headerContent = retryStatusParts.header.content;
+  const metaContent = retryStatusParts.meta.content;
 
   return (
     <ChatMessageRetryStatusCard
@@ -8251,10 +8252,10 @@ export function ChatMessageRetryStatus({
         {...retryStatusParts.meta.props}
       >
         <ChatMessageRetryStatusText
-          {...retryStatusParts.attempt.props}
+          {...metaContent.attempt.props}
         />
         <ChatMessageRetryStatusText
-          {...retryStatusParts.countdown.props}
+          {...metaContent.countdown.props}
         />
       </ChatMessageRetryStatusView>
       <ChatMessageRetryStatusText
