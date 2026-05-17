@@ -5457,9 +5457,9 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /aria-expanded=\{(false|true)\}/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileToolActivityGroupExpandedToggleIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /mobileToolActivityGroupExpandedToggleIcon\.opacity/);
-  assert.match(toolActivityGroupFooterComponentSource, /accessibilityRole=\{footerParts\.button\.accessibilityRole\}/);
-  assert.match(toolActivityGroupFooterComponentSource, /accessibilityLabel=\{footerParts\.button\.accessibilityLabel\}/);
-  assert.match(toolActivityGroupFooterComponentSource, /style=\{footerParts\.button\.style\}/);
+  assert.match(toolActivityGroupFooterComponentSource, /<Pressable\s+\{\.\.\.footerParts\.button\.props\}/);
+  assert.match(sessionPresentationSource, /button: \{[\s\S]*?props: \{[\s\S]*?onPress,[\s\S]*?accessibilityRole: renderState\.footerButton\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.footerButton\.accessibilityLabel,[\s\S]*?style: \(\{ pressed \}/);
+  assert.doesNotMatch(toolActivityGroupFooterComponentSource, /footerParts\.button\.(onPress|accessibilityRole|accessibilityLabel|style)/);
   assert.match(sessionPresentationSource, /icon: \{[\s\S]*?props: renderState\.footerToggleIcon,/);
   assert.match(toolActivityGroupFooterComponentSource, /<ChatMessageToolActivityGroupIcon\s+\{\.\.\.footerParts\.icon\.props\}/);
   assert.doesNotMatch(toolActivityGroupFooterComponentSource, /footerParts\.icon\.(name|size|color)/);

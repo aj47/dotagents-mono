@@ -5750,10 +5750,12 @@ export interface ChatRuntimeToolActivityGroupFooterMobilePropsParts<
     ChatRuntimeToolActivityGroupFooterMobileStyleSlots,
 > {
   button: {
-    onPress: TOnPress | undefined
-    accessibilityRole: TRenderState["footerButton"]["accessibilityRole"]
-    accessibilityLabel: string
-    style: (state: { pressed: boolean }) => Array<TStyles["button"] | TStyles["pressed"] | false>
+    props: {
+      onPress: TOnPress | undefined
+      accessibilityRole: TRenderState["footerButton"]["accessibilityRole"]
+      accessibilityLabel: string
+      style: (state: { pressed: boolean }) => Array<TStyles["button"] | TStyles["pressed"] | false>
+    }
   }
   icon: {
     props: TRenderState["footerToggleIcon"]
@@ -22737,13 +22739,15 @@ export function createChatRuntimeToolActivityGroupFooterMobilePropsParts<
   ChatRuntimeToolActivityGroupFooterMobilePropsParts<TRenderState, TOnPress, TStyles> {
   return {
     button: {
-      onPress,
-      accessibilityRole: renderState.footerButton.accessibilityRole,
-      accessibilityLabel: renderState.footerButton.accessibilityLabel,
-      style: ({ pressed }: { pressed: boolean }) => [
-        styles.button,
-        pressed && styles.pressed,
-      ],
+      props: {
+        onPress,
+        accessibilityRole: renderState.footerButton.accessibilityRole,
+        accessibilityLabel: renderState.footerButton.accessibilityLabel,
+        style: ({ pressed }: { pressed: boolean }) => [
+          styles.button,
+          pressed && styles.pressed,
+        ],
+      },
     },
     icon: {
       props: renderState.footerToggleIcon,

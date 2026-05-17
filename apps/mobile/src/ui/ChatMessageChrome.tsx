@@ -9153,10 +9153,7 @@ export function ChatMessageToolActivityGroupFooter({
 
   return (
     <Pressable
-      onPress={footerParts.button.onPress}
-      accessibilityRole={footerParts.button.accessibilityRole}
-      accessibilityLabel={footerParts.button.accessibilityLabel}
-      style={footerParts.button.style}
+      {...footerParts.button.props}
     >
       <ChatMessageToolActivityGroupIcon
         {...footerParts.icon.props}

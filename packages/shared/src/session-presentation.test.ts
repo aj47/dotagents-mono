@@ -9104,16 +9104,16 @@ describe("session presentation semantics", () => {
         text: "footer-text",
       },
     })
-    expect(activityGroupFooterParts.button).toMatchObject({
+    expect(activityGroupFooterParts.button.props).toMatchObject({
       onPress: "toggle-footer",
       accessibilityRole: "button",
       accessibilityLabel: "Collapse tool activities",
     })
-    expect(activityGroupFooterParts.button.style({ pressed: false })).toEqual([
+    expect(activityGroupFooterParts.button.props.style({ pressed: false })).toEqual([
       "footer-button",
       false,
     ])
-    expect(activityGroupFooterParts.button.style({ pressed: true })).toEqual([
+    expect(activityGroupFooterParts.button.props.style({ pressed: true })).toEqual([
       "footer-button",
       "footer-pressed",
     ])
