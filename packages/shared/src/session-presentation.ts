@@ -6202,6 +6202,56 @@ export interface ChatRuntimeStepSummaryCardMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeConversationScrollViewportMobilePropsPartsInput<
+  TChildren = unknown,
+  TScrollRef = unknown,
+  TStyle = unknown,
+  TContentContainerStyle = unknown,
+  TKeyboardShouldPersistTaps = unknown,
+  TContentInsetAdjustmentBehavior = unknown,
+  TOnScroll = unknown,
+  TOnScrollBeginDrag = unknown,
+  TOnScrollEndDrag = unknown,
+  TScrollEventThrottle = unknown,
+> {
+  children: TChildren
+  scrollRef?: TScrollRef
+  style: TStyle
+  contentContainerStyle: TContentContainerStyle
+  keyboardShouldPersistTaps: TKeyboardShouldPersistTaps
+  contentInsetAdjustmentBehavior: TContentInsetAdjustmentBehavior
+  onScroll?: TOnScroll
+  onScrollBeginDrag?: TOnScrollBeginDrag
+  onScrollEndDrag?: TOnScrollEndDrag
+  scrollEventThrottle: TScrollEventThrottle
+}
+
+export interface ChatRuntimeConversationScrollViewportMobilePropsParts<
+  TChildren = unknown,
+  TScrollRef = unknown,
+  TStyle = unknown,
+  TContentContainerStyle = unknown,
+  TKeyboardShouldPersistTaps = unknown,
+  TContentInsetAdjustmentBehavior = unknown,
+  TOnScroll = unknown,
+  TOnScrollBeginDrag = unknown,
+  TOnScrollEndDrag = unknown,
+  TScrollEventThrottle = unknown,
+> {
+  scrollView: {
+    ref: TScrollRef | undefined
+    style: TStyle
+    contentContainerStyle: TContentContainerStyle
+    keyboardShouldPersistTaps: TKeyboardShouldPersistTaps
+    contentInsetAdjustmentBehavior: TContentInsetAdjustmentBehavior
+    onScroll: TOnScroll | undefined
+    onScrollBeginDrag: TOnScrollBeginDrag | undefined
+    onScrollEndDrag: TOnScrollEndDrag | undefined
+    scrollEventThrottle: TScrollEventThrottle
+  }
+  children: TChildren
+}
+
 export interface ChatRuntimeConversationViewportMobilePropsPartsInput<
   TLoadingState extends object = Record<string, never>,
   THomeQuickStarts extends object = Record<string, never>,
@@ -21365,6 +21415,67 @@ export function createChatRuntimeStepSummaryCardMobilePropsParts<
       numberOfLines: renderState.surface.previewNumberOfLines,
       text: renderState.preview,
     },
+  }
+}
+
+export function createChatRuntimeConversationScrollViewportMobilePropsParts<
+  TChildren,
+  TScrollRef,
+  TStyle,
+  TContentContainerStyle,
+  TKeyboardShouldPersistTaps,
+  TContentInsetAdjustmentBehavior,
+  TOnScroll,
+  TOnScrollBeginDrag,
+  TOnScrollEndDrag,
+  TScrollEventThrottle,
+>({
+  children,
+  scrollRef,
+  style,
+  contentContainerStyle,
+  keyboardShouldPersistTaps,
+  contentInsetAdjustmentBehavior,
+  onScroll,
+  onScrollBeginDrag,
+  onScrollEndDrag,
+  scrollEventThrottle,
+}: ChatRuntimeConversationScrollViewportMobilePropsPartsInput<
+  TChildren,
+  TScrollRef,
+  TStyle,
+  TContentContainerStyle,
+  TKeyboardShouldPersistTaps,
+  TContentInsetAdjustmentBehavior,
+  TOnScroll,
+  TOnScrollBeginDrag,
+  TOnScrollEndDrag,
+  TScrollEventThrottle
+>): ChatRuntimeConversationScrollViewportMobilePropsParts<
+  TChildren,
+  TScrollRef,
+  TStyle,
+  TContentContainerStyle,
+  TKeyboardShouldPersistTaps,
+  TContentInsetAdjustmentBehavior,
+  TOnScroll,
+  TOnScrollBeginDrag,
+  TOnScrollEndDrag,
+  TScrollEventThrottle
+> {
+  return {
+    scrollView: {
+      ref: scrollRef,
+      style,
+      contentContainerStyle,
+      keyboardShouldPersistTaps,
+      contentInsetAdjustmentBehavior,
+      onScroll,
+      onScrollBeginDrag,
+      onScrollEndDrag,
+      scrollEventThrottle,
+    },
+    children,
   }
 }
 

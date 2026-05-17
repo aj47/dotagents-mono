@@ -118,6 +118,7 @@ import {
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
+  createChatRuntimeConversationScrollViewportMobilePropsParts,
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   createChatRuntimeToolActivityGroupFooterMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
@@ -8231,6 +8232,31 @@ describe("session presentation semantics", () => {
           },
         },
       ],
+    })
+    expect(createChatRuntimeConversationScrollViewportMobilePropsParts({
+      children: "thread-list",
+      scrollRef: "scroll-ref",
+      style: "scroll-style",
+      contentContainerStyle: "scroll-content-style",
+      keyboardShouldPersistTaps: "handled",
+      contentInsetAdjustmentBehavior: "automatic",
+      onScroll: "on-scroll",
+      onScrollBeginDrag: "on-scroll-begin-drag",
+      onScrollEndDrag: "on-scroll-end-drag",
+      scrollEventThrottle: 16,
+    })).toEqual({
+      scrollView: {
+        ref: "scroll-ref",
+        style: "scroll-style",
+        contentContainerStyle: "scroll-content-style",
+        keyboardShouldPersistTaps: "handled",
+        contentInsetAdjustmentBehavior: "automatic",
+        onScroll: "on-scroll",
+        onScrollBeginDrag: "on-scroll-begin-drag",
+        onScrollEndDrag: "on-scroll-end-drag",
+        scrollEventThrottle: 16,
+      },
+      children: "thread-list",
     })
     const viewportParts = createChatRuntimeConversationViewportMobilePropsParts({
       loadingState: {

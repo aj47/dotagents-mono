@@ -113,6 +113,7 @@ import {
   createChatRuntimeConversationDockMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
+  createChatRuntimeConversationScrollViewportMobilePropsParts,
   createChatRuntimeConversationSurfaceMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
@@ -8754,19 +8755,32 @@ export function ChatMessageScrollViewport({
   onScrollEndDrag,
   scrollEventThrottle,
 }: ChatMessageScrollViewportProps) {
+  const scrollViewportParts = createChatRuntimeConversationScrollViewportMobilePropsParts({
+    children,
+    scrollRef,
+    style,
+    contentContainerStyle,
+    keyboardShouldPersistTaps,
+    contentInsetAdjustmentBehavior,
+    onScroll,
+    onScrollBeginDrag,
+    onScrollEndDrag,
+    scrollEventThrottle,
+  });
+
   return (
     <ScrollView
-      ref={scrollRef}
-      style={style}
-      contentContainerStyle={contentContainerStyle}
-      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
-      contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
-      onScroll={onScroll}
-      onScrollBeginDrag={onScrollBeginDrag}
-      onScrollEndDrag={onScrollEndDrag}
-      scrollEventThrottle={scrollEventThrottle}
+      ref={scrollViewportParts.scrollView.ref}
+      style={scrollViewportParts.scrollView.style}
+      contentContainerStyle={scrollViewportParts.scrollView.contentContainerStyle}
+      keyboardShouldPersistTaps={scrollViewportParts.scrollView.keyboardShouldPersistTaps}
+      contentInsetAdjustmentBehavior={scrollViewportParts.scrollView.contentInsetAdjustmentBehavior}
+      onScroll={scrollViewportParts.scrollView.onScroll}
+      onScrollBeginDrag={scrollViewportParts.scrollView.onScrollBeginDrag}
+      onScrollEndDrag={scrollViewportParts.scrollView.onScrollEndDrag}
+      scrollEventThrottle={scrollViewportParts.scrollView.scrollEventThrottle}
     >
-      {children}
+      {scrollViewportParts.children}
     </ScrollView>
   );
 }
