@@ -2783,6 +2783,36 @@ type ChatComposerPendingImagesRailProps = {
   styles: ChatComposerPendingImagesRailStyles;
 };
 
+type ChatComposerPendingImagesRailParts = ReturnType<typeof createChatComposerPendingImagesRailMobilePropsParts<
+  ChatComposerPendingImageItem,
+  ChatComposerPendingImagesRailProps['renderState'],
+  ChatComposerPendingImagesRailProps['styles']
+>>;
+
+type ChatComposerPendingImagesRailScrollViewProps =
+  ChatComposerPendingImagesRailParts['scrollView']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerPendingImagesRailItemParts =
+  ChatComposerPendingImagesRailParts['items'][number];
+
+type ChatComposerPendingImageCardProps =
+  ChatComposerPendingImagesRailItemParts['card']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerPendingImagePreviewProps =
+  ChatComposerPendingImagesRailItemParts['preview']['props'];
+
+type ChatComposerPendingImageRemoveButtonProps =
+  ChatComposerPendingImagesRailItemParts['removeButton']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatComposerPendingImageRemoveIconProps =
+  ChatComposerPendingImagesRailItemParts['removeIcon']['props'];
+
 type ChatComposerVoiceOverlayStyles = {
   overlay: StyleProp<ViewStyle>;
   card: StyleProp<ViewStyle>;
@@ -10411,33 +10441,102 @@ export function ChatComposerPendingImagesRail({
   if (!pendingImagesRailParts.shouldRender) return null;
 
   return (
-    <ScrollView
-      horizontal={pendingImagesRailParts.scrollView.horizontal}
-      showsHorizontalScrollIndicator={pendingImagesRailParts.scrollView.showsHorizontalScrollIndicator}
-      contentContainerStyle={pendingImagesRailParts.scrollView.contentContainerStyle}
+    <ChatComposerPendingImagesRailScrollView
+      {...pendingImagesRailParts.scrollView.props}
     >
       {pendingImagesRailParts.items.map((item) => (
-        <View key={item.key} style={item.card.style}>
-          <Image
-            source={item.preview.source}
-            style={item.preview.style}
+        <ChatComposerPendingImageCard
+          key={item.key}
+          {...item.card.props}
+        >
+          <ChatComposerPendingImagePreview
+            {...item.preview.props}
           />
-          <TouchableOpacity
-            style={item.removeButton.style}
-            onPress={item.removeButton.onPress}
-            activeOpacity={item.removeButton.activeOpacity}
-            accessibilityRole={item.removeButton.accessibilityRole}
-            accessibilityLabel={item.removeButton.accessibilityLabel}
+          <ChatComposerPendingImageRemoveButton
+            {...item.removeButton.props}
           >
-            <Ionicons
-              name={item.removeIcon.name}
-              size={item.removeIcon.size}
-              color={item.removeIcon.color}
+            <ChatComposerPendingImageRemoveIcon
+              {...item.removeIcon.props}
             />
-          </TouchableOpacity>
-        </View>
+          </ChatComposerPendingImageRemoveButton>
+        </ChatComposerPendingImageCard>
       ))}
+    </ChatComposerPendingImagesRailScrollView>
+  );
+}
+
+export function ChatComposerPendingImagesRailScrollView({
+  horizontal,
+  showsHorizontalScrollIndicator,
+  contentContainerStyle,
+  children,
+}: ChatComposerPendingImagesRailScrollViewProps) {
+  return (
+    <ScrollView
+      horizontal={horizontal}
+      showsHorizontalScrollIndicator={showsHorizontalScrollIndicator}
+      contentContainerStyle={contentContainerStyle}
+    >
+      {children}
     </ScrollView>
+  );
+}
+
+export function ChatComposerPendingImageCard({
+  style,
+  children,
+}: ChatComposerPendingImageCardProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatComposerPendingImagePreview({
+  source,
+  style,
+}: ChatComposerPendingImagePreviewProps) {
+  return (
+    <Image
+      source={source}
+      style={style}
+    />
+  );
+}
+
+export function ChatComposerPendingImageRemoveButton({
+  style,
+  onPress,
+  activeOpacity,
+  accessibilityRole,
+  accessibilityLabel,
+  children,
+}: ChatComposerPendingImageRemoveButtonProps) {
+  return (
+    <TouchableOpacity
+      style={style}
+      onPress={onPress}
+      activeOpacity={activeOpacity}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+    >
+      {children}
+    </TouchableOpacity>
+  );
+}
+
+export function ChatComposerPendingImageRemoveIcon({
+  name,
+  size,
+  color,
+}: ChatComposerPendingImageRemoveIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
   );
 }
 

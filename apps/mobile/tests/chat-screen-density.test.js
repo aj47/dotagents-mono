@@ -3005,20 +3005,45 @@ test('uses shared mobile icon chrome for pending image removal', () => {
     chatMessageChromeSource.match(/export function ChatComposerPendingImagesRail[\s\S]*?export function ChatComposerVoiceOverlay/)?.[0] ?? '';
   assert.match(pendingImagesRailSource, /const pendingImagesRailParts = createChatComposerPendingImagesRailMobilePropsParts\(\{\s+images,\s+renderState,\s+onRemove,\s+styles,\s+\}\);/);
   assert.match(pendingImagesRailSource, /if \(!pendingImagesRailParts\.shouldRender\) return null;/);
-  assert.match(pendingImagesRailSource, /horizontal=\{pendingImagesRailParts\.scrollView\.horizontal\}/);
-  assert.match(pendingImagesRailSource, /showsHorizontalScrollIndicator=\{pendingImagesRailParts\.scrollView\.showsHorizontalScrollIndicator\}/);
-  assert.match(pendingImagesRailSource, /contentContainerStyle=\{pendingImagesRailParts\.scrollView\.contentContainerStyle\}/);
+  assert.match(pendingImagesRailSource, /<ChatComposerPendingImagesRailScrollView\s+\{\.\.\.pendingImagesRailParts\.scrollView\.props\}/);
   assert.match(pendingImagesRailSource, /pendingImagesRailParts\.items\.map\(\(item\) =>/);
-  assert.match(pendingImagesRailSource, /<View key=\{item\.key\} style=\{item\.card\.style\}>/);
-  assert.match(pendingImagesRailSource, /source=\{item\.preview\.source\}/);
-  assert.match(pendingImagesRailSource, /style=\{item\.preview\.style\}/);
-  assert.match(pendingImagesRailSource, /onPress=\{item\.removeButton\.onPress\}/);
-  assert.match(pendingImagesRailSource, /activeOpacity=\{item\.removeButton\.activeOpacity\}/);
-  assert.match(pendingImagesRailSource, /accessibilityRole=\{item\.removeButton\.accessibilityRole\}/);
-  assert.match(pendingImagesRailSource, /accessibilityLabel=\{item\.removeButton\.accessibilityLabel\}/);
-  assert.match(pendingImagesRailSource, /name=\{item\.removeIcon\.name\}/);
-  assert.match(pendingImagesRailSource, /size=\{item\.removeIcon\.size\}/);
-  assert.match(pendingImagesRailSource, /color=\{item\.removeIcon\.color\}/);
+  assert.match(pendingImagesRailSource, /<ChatComposerPendingImageCard\s+key=\{item\.key\}\s+\{\.\.\.item\.card\.props\}/);
+  assert.match(pendingImagesRailSource, /<ChatComposerPendingImagePreview\s+\{\.\.\.item\.preview\.props\}/);
+  assert.match(pendingImagesRailSource, /<ChatComposerPendingImageRemoveButton\s+\{\.\.\.item\.removeButton\.props\}/);
+  assert.match(pendingImagesRailSource, /<ChatComposerPendingImageRemoveIcon\s+\{\.\.\.item\.removeIcon\.props\}/);
+  assert.match(
+    pendingImagesRailSource,
+    /export function ChatComposerPendingImagesRailScrollView\([\s\S]*?horizontal=\{horizontal\}[\s\S]*?showsHorizontalScrollIndicator=\{showsHorizontalScrollIndicator\}[\s\S]*?contentContainerStyle=\{contentContainerStyle\}[\s\S]*?export function ChatComposerPendingImageCard/
+  );
+  assert.match(
+    pendingImagesRailSource,
+    /export function ChatComposerPendingImageCard\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatComposerPendingImagePreview/
+  );
+  assert.match(
+    pendingImagesRailSource,
+    /export function ChatComposerPendingImagePreview\([\s\S]*?source=\{source\}[\s\S]*?style=\{style\}[\s\S]*?export function ChatComposerPendingImageRemoveButton/
+  );
+  assert.match(
+    pendingImagesRailSource,
+    /export function ChatComposerPendingImageRemoveButton\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?export function ChatComposerPendingImageRemoveIcon/
+  );
+  assert.match(
+    pendingImagesRailSource,
+    /export function ChatComposerPendingImageRemoveIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatComposerVoiceOverlay/
+  );
+  assert.match(sessionPresentationSource, /scrollView: \{\s+props: \{\s+horizontal: true,\s+showsHorizontalScrollIndicator: renderState\.surface\.row\.showsHorizontalScrollIndicator,\s+contentContainerStyle: styles\.row,/);
+  assert.match(sessionPresentationSource, /card: \{\s+props: \{\s+style: styles\.card,/);
+  assert.match(sessionPresentationSource, /preview: \{\s+props: \{\s+source: \{ uri: image\.previewUri \},\s+style: styles\.preview,/);
+  assert.match(sessionPresentationSource, /removeButton: \{\s+props: \{\s+style: styles\.removeButton,\s+onPress: \(\) => onRemove\(image\.id\),\s+activeOpacity: renderState\.removeButton\.pressedOpacity,\s+accessibilityRole: renderState\.removeButton\.accessibilityRole,\s+accessibilityLabel: renderState\.removeButton\.accessibilityLabel,/);
+  assert.match(sessionPresentationSource, /removeIcon: \{\s+props: renderState\.removeIcon,/);
+  assert.doesNotMatch(
+    pendingImagesRailSource,
+    /pendingImagesRailParts\.scrollView\.(horizontal|showsHorizontalScrollIndicator|contentContainerStyle)/
+  );
+  assert.doesNotMatch(
+    pendingImagesRailSource,
+    /item\.(card|preview|removeButton|removeIcon)\.(style|source|onPress|activeOpacity|accessibilityRole|accessibilityLabel|name|size|color)/
+  );
   assert.doesNotMatch(pendingImagesRailSource, /images\.length === 0/);
   assert.doesNotMatch(pendingImagesRailSource, /showsHorizontalScrollIndicator=\{renderState\.surface\.row\.showsHorizontalScrollIndicator\}/);
   assert.doesNotMatch(pendingImagesRailSource, /onPress=\{\(\) => onRemove\(image\.id\)\}/);

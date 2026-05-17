@@ -10161,35 +10161,45 @@ describe("session presentation semantics", () => {
     })
     expect(pendingImagesRailParts.shouldRender).toBe(true)
     expect(pendingImagesRailParts.scrollView).toEqual({
-      horizontal: true,
-      showsHorizontalScrollIndicator: false,
-      contentContainerStyle: "pending-row",
+      props: {
+        horizontal: true,
+        showsHorizontalScrollIndicator: false,
+        contentContainerStyle: "pending-row",
+      },
     })
     expect(pendingImagesRailParts.items).toHaveLength(1)
     const pendingImageItem = pendingImagesRailParts.items[0]!
     expect(pendingImageItem).toEqual({
       key: "image-1",
       card: {
-        style: "pending-card",
+        props: {
+          style: "pending-card",
+        },
       },
       preview: {
-        source: { uri: "file://preview-1.png" },
-        style: "pending-preview",
+        props: {
+          source: { uri: "file://preview-1.png" },
+          style: "pending-preview",
+        },
       },
       removeButton: {
-        style: "pending-remove-button",
-        onPress: expect.any(Function),
-        activeOpacity: 0.62,
-        accessibilityRole: "button",
-        accessibilityLabel: "Remove image",
+        props: {
+          style: "pending-remove-button",
+          onPress: expect.any(Function),
+          activeOpacity: 0.62,
+          accessibilityRole: "button",
+          accessibilityLabel: "Remove image",
+        },
       },
       removeIcon: {
-        name: "close",
-        size: 16,
-        color: "#ffffff",
+        props: {
+          name: "close",
+          size: 16,
+          color: "#ffffff",
+        },
       },
     })
-    pendingImageItem.removeButton.onPress()
+    pendingImageItem.removeButton.props.onPress()
     expect(removedImageIds).toEqual(["image-1"])
     expect(createChatComposerPendingImagesRailMobilePropsParts({
       images: [],
