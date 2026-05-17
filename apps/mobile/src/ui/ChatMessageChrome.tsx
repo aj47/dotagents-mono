@@ -3963,6 +3963,9 @@ type ChatComposerPendingImagesRailScrollViewProps =
     children: ReactNode;
   };
 
+type ChatComposerPendingImagesRailScrollViewContentProps =
+  ChatComposerPendingImagesRailParts['scrollView']['content'];
+
 type ChatComposerPendingImagesRailItemParts =
   ChatComposerPendingImagesRailParts['scrollView']['content']['items'][number];
 
@@ -13529,7 +13532,6 @@ export function ChatComposerPendingImagesRail({
     styles,
   });
   const pendingImagesRailScrollView = pendingImagesRailParts.scrollView;
-  const pendingImagesRailContent = pendingImagesRailScrollView.content;
 
   if (!pendingImagesRailScrollView.shouldRender) return null;
 
@@ -13537,7 +13539,28 @@ export function ChatComposerPendingImagesRail({
     <ChatComposerPendingImagesRailScrollView
       {...pendingImagesRailScrollView.props}
     >
-      {pendingImagesRailContent.items.map((item) => (
+      <ChatComposerPendingImagesRailScrollViewContent {...pendingImagesRailScrollView.content} />
+    </ChatComposerPendingImagesRailScrollView>
+  );
+}
+
+export function ChatComposerPendingImagesRailScrollView({
+  children,
+  ...props
+}: ChatComposerPendingImagesRailScrollViewProps) {
+  return (
+    <ScrollView {...props}>
+      {children}
+    </ScrollView>
+  );
+}
+
+export function ChatComposerPendingImagesRailScrollViewContent({
+  items,
+}: ChatComposerPendingImagesRailScrollViewContentProps) {
+  return (
+    <>
+      {items.map((item) => (
         <ChatComposerPendingImageCard
           key={item.key}
           {...item.card.props}
@@ -13554,18 +13577,7 @@ export function ChatComposerPendingImagesRail({
           </ChatComposerPendingImageRemoveButton>
         </ChatComposerPendingImageCard>
       ))}
-    </ChatComposerPendingImagesRailScrollView>
-  );
-}
-
-export function ChatComposerPendingImagesRailScrollView({
-  children,
-  ...props
-}: ChatComposerPendingImagesRailScrollViewProps) {
-  return (
-    <ScrollView {...props}>
-      {children}
-    </ScrollView>
+    </>
   );
 }
 

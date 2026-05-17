@@ -3457,10 +3457,11 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(pendingImagesRailSource, /const pendingImagesRailParts = createChatComposerPendingImagesRailMobilePropsParts\(\{\s+images,\s+renderState,\s+onRemove,\s+styles,\s+\}\);/);
   assert.match(sessionPresentationSource, /scrollView: \{\s+shouldRender: images\.length > 0,\s+props: \{[\s\S]*?contentContainerStyle: styles\.row,[\s\S]*?content: \{\s+items: images\.map\(\(image\) => \(\{/);
   assert.match(pendingImagesRailSource, /const pendingImagesRailScrollView = pendingImagesRailParts\.scrollView;/);
-  assert.match(pendingImagesRailSource, /const pendingImagesRailContent = pendingImagesRailScrollView\.content;/);
+  assert.doesNotMatch(pendingImagesRailSource, /const pendingImagesRailContent = pendingImagesRailScrollView\.content;/);
   assert.match(pendingImagesRailSource, /if \(!pendingImagesRailScrollView\.shouldRender\) return null;/);
   assert.match(pendingImagesRailSource, /<ChatComposerPendingImagesRailScrollView\s+\{\.\.\.pendingImagesRailScrollView\.props\}/);
-  assert.match(pendingImagesRailSource, /pendingImagesRailContent\.items\.map\(\(item\) =>/);
+  assert.match(pendingImagesRailSource, /<ChatComposerPendingImagesRailScrollViewContent\s+\{\.\.\.pendingImagesRailScrollView\.content\}/);
+  assert.match(pendingImagesRailSource, /items\.map\(\(item\) =>/);
   assert.doesNotMatch(pendingImagesRailSource, /pendingImagesRailParts\.items\./);
   assert.match(pendingImagesRailSource, /<ChatComposerPendingImageCard\s+key=\{item\.key\}\s+\{\.\.\.item\.card\.props\}/);
   assert.match(pendingImagesRailSource, /<ChatComposerPendingImagePreview\s+\{\.\.\.item\.preview\.props\}/);
@@ -3468,7 +3469,11 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(pendingImagesRailSource, /<ChatComposerPendingImageRemoveIcon\s+\{\.\.\.item\.removeIcon\.props\}/);
   assert.match(
     pendingImagesRailSource,
-    /export function ChatComposerPendingImagesRailScrollView\([\s\S]*?<ScrollView \{\.\.\.props\}>[\s\S]*?export function ChatComposerPendingImageCard/
+    /export function ChatComposerPendingImagesRailScrollView\([\s\S]*?<ScrollView \{\.\.\.props\}>[\s\S]*?export function ChatComposerPendingImagesRailScrollViewContent/
+  );
+  assert.match(
+    pendingImagesRailSource,
+    /export function ChatComposerPendingImagesRailScrollViewContent\([\s\S]*?items\.map\(\(item\) =>[\s\S]*?export function ChatComposerPendingImageCard/
   );
   assert.match(
     pendingImagesRailSource,
