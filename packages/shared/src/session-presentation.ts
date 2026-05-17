@@ -4803,8 +4803,8 @@ export interface ChatComposerSpeechPreviewMobilePropsParts<
   TText = string | null | undefined,
   TStyles extends ChatComposerSpeechPreviewMobileStylesLike = ChatComposerSpeechPreviewMobileStylesLike,
 > {
-  shouldRender: boolean
   container: {
+    shouldRender: boolean
     props: {
       style: TStyles["box"]
     }
@@ -5321,8 +5321,8 @@ export interface ChatComposerPendingImagesRailMobilePropsParts<
   TRenderState extends ChatComposerPendingImagesRailMobileRenderStateLike = ChatComposerPendingImagesRailMobileRenderStateLike,
   TStyles extends ChatComposerPendingImagesRailMobileStylesLike = ChatComposerPendingImagesRailMobileStylesLike,
 > {
-  shouldRender: boolean
   scrollView: {
+    shouldRender: boolean
     props: {
       horizontal: true
       showsHorizontalScrollIndicator: TRenderState["surface"]["row"]["showsHorizontalScrollIndicator"]
@@ -22407,8 +22407,8 @@ export function createChatComposerSpeechPreviewMobilePropsParts<
   TStyles
 > {
   return {
-    shouldRender: Boolean(text),
     container: {
+      shouldRender: Boolean(text),
       props: {
         style: styles.box,
       },
@@ -22846,8 +22846,8 @@ export function createChatComposerPendingImagesRailMobilePropsParts<
   TStyles
 > {
   return {
-    shouldRender: images.length > 0,
     scrollView: {
+      shouldRender: images.length > 0,
       props: {
         horizontal: true,
         showsHorizontalScrollIndicator: renderState.surface.row.showsHorizontalScrollIndicator,

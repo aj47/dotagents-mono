@@ -10117,8 +10117,8 @@ describe("session presentation semantics", () => {
         text: "speech-preview-text",
       },
     })).toEqual({
-      shouldRender: true,
       container: {
+        shouldRender: true,
         props: {
           style: "speech-preview-box",
         },
@@ -10144,7 +10144,7 @@ describe("session presentation semantics", () => {
         label: "speech-preview-label",
         text: "speech-preview-text",
       },
-    }).shouldRender).toBe(false)
+    }).container.shouldRender).toBe(false)
     const handsFreeControlStyles = {
       statusRow: "hands-free-status-row",
       controlsRow: "hands-free-controls-row",
@@ -10640,7 +10640,7 @@ describe("session presentation semantics", () => {
         removeButton: "pending-remove-button",
       },
     })
-    expect(pendingImagesRailParts.shouldRender).toBe(true)
+    expect(pendingImagesRailParts.scrollView.shouldRender).toBe(true)
     expect(pendingImagesRailParts.scrollView.props).toEqual({
       horizontal: true,
       showsHorizontalScrollIndicator: false,
@@ -10709,8 +10709,8 @@ describe("session presentation semantics", () => {
         removeButton: "pending-remove-button",
       },
     })).toMatchObject({
-      shouldRender: false,
       scrollView: {
+        shouldRender: false,
         content: {
           items: [],
         },

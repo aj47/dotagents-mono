@@ -11070,12 +11070,13 @@ export function ChatComposerSpeechPreview({
     text,
     styles,
   });
+  const speechPreviewContainer = speechPreviewParts.container;
 
-  if (!speechPreviewParts.shouldRender) return null;
+  if (!speechPreviewContainer.shouldRender) return null;
 
   return (
     <ChatComposerSpeechPreviewContainer
-      {...speechPreviewParts.container.props}
+      {...speechPreviewContainer.props}
     >
       <ChatComposerSpeechPreviewLabel
         {...speechPreviewParts.label.props}
@@ -11132,13 +11133,14 @@ export function ChatComposerPendingImagesRail({
     onRemove,
     styles,
   });
-  const pendingImagesRailContent = pendingImagesRailParts.scrollView.content;
+  const pendingImagesRailScrollView = pendingImagesRailParts.scrollView;
+  const pendingImagesRailContent = pendingImagesRailScrollView.content;
 
-  if (!pendingImagesRailParts.shouldRender) return null;
+  if (!pendingImagesRailScrollView.shouldRender) return null;
 
   return (
     <ChatComposerPendingImagesRailScrollView
-      {...pendingImagesRailParts.scrollView.props}
+      {...pendingImagesRailScrollView.props}
     >
       {pendingImagesRailContent.items.map((item) => (
         <ChatComposerPendingImageCard
