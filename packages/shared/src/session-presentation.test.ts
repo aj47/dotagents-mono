@@ -6401,8 +6401,8 @@ describe("session presentation semantics", () => {
       },
     })
     expect(historyBannerParts).toMatchObject({
-      shouldRenderBanner: true,
       container: {
+        shouldRender: true,
         props: {
           style: "container-style",
         },
@@ -6468,7 +6468,7 @@ describe("session presentation semantics", () => {
         loadButtonPressed: "load-button-pressed-style",
         loadButtonText: "load-button-text-style",
       },
-    }).shouldRenderBanner).toBe(false)
+    }).container.shouldRender).toBe(false)
     expect(getChatRuntimeMessageHistoryBannerState({
       visibleCount: 40,
       totalCount: 100,

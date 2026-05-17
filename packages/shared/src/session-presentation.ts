@@ -7412,8 +7412,8 @@ export interface ChatRuntimeMessageHistoryBannerMobilePropsParts<
     loadButtonText: unknown
   },
 > {
-  shouldRenderBanner: boolean
   container: {
+    shouldRender: boolean
     props: {
       style: TStyles["container"]
     }
@@ -25081,8 +25081,8 @@ export function createChatRuntimeMessageHistoryBannerMobilePropsParts<
   TStyles
 > {
   return {
-    shouldRenderBanner: renderState.shouldRender,
     container: {
+      shouldRender: renderState.shouldRender,
       props: {
         style: styles.container,
       },

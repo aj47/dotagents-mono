@@ -4790,7 +4790,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageHistoryBannerMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageHistoryBannerMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const historyBannerParts = createChatRuntimeMessageHistoryBannerMobilePropsParts\(\{\s+renderState,\s+onLoadEarlier,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /if \(!historyBannerParts\.shouldRenderBanner\) return null;/);
+  assert.match(chatMessageChromeSource, /if \(!historyBannerParts\.container\.shouldRender\) return null;/);
   const historyBannerSource =
     chatMessageChromeSource.match(/export function ChatMessageHistoryBanner[\s\S]*?export function ChatMessageStepSummaryCard/)?.[0] ?? '';
   assert.match(historyBannerSource, /const historyBannerContent = historyBannerParts\.container\.content;/);
@@ -4805,7 +4805,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(historyBannerSource, /historyBannerParts\.(summary|loadButton|icon|loadButtonLabel)/);
   assert.doesNotMatch(chatMessageChromeSource, /historyBannerParts\.loadButton\.(onPress|accessibilityRole|accessibilityLabel|style|pressedStyle)/);
   assert.doesNotMatch(chatMessageChromeSource, /historyBannerParts\.icon\.(name|size|color)/);
-  assert.match(sessionPresentationSource, /shouldRenderBanner: renderState\.shouldRender/);
+  assert.match(sessionPresentationSource, /container: \{\s+shouldRender: renderState\.shouldRender,/);
+  assert.doesNotMatch(chatMessageChromeSource, /historyBannerParts\.shouldRenderBanner/);
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageHistoryBanner[\s\S]*?accessibilityRole=\{renderState\.loadButton\.accessibilityRole\}[\s\S]*?export function ChatMessageStepSummaryCard/

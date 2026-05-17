@@ -10384,7 +10384,7 @@ export function ChatMessageHistoryBanner({
     styles,
   });
 
-  if (!historyBannerParts.shouldRenderBanner) return null;
+  if (!historyBannerParts.container.shouldRender) return null;
 
   const historyBannerContent = historyBannerParts.container.content;
   const historyBannerLoadButtonContent = historyBannerContent.loadButton.content;
