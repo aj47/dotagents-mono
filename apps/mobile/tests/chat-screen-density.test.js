@@ -179,7 +179,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.doesNotMatch(chatScreenSource, /styles: chatRuntimeChrome\.headerStyles,/);
   assert.doesNotMatch(chatScreenSource, /colors: chatRuntimeChrome\.colors,/);
   assert.doesNotMatch(chatScreenSource, /spinnerSource: chatRuntimeChrome\.spinnerSource,/);
-  assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderRenderState/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderRenderState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderOptions/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderChromeOptions/);
   assert.match(chatMessageChromeSource, /useChatRuntimeNavigationHeaderOptions\(\{\s+navigation,\s+\.\.\.headerRenderState,/);
@@ -199,7 +199,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(sessionPresentationSource, /getChatRuntimeAgentSelectorMobileRenderState/);
   assert.doesNotMatch(screenSource, /const mobileHeaderRenderState = useChatRuntimeNavigationHeaderRenderState/);
   assert.match(screenSource, /agentName: currentProfile\?\.name,\s+isPinned: isCurrentSessionPinned,\s+handsFree,\s+conversationState,\s+isResponding: responding,\s+turnDurationMs: turnDurations\.totalMs,\s+turnDurationIsLive: turnDurations\.hasLive,/);
-  assert.match(chatMessageChromeSource, /return useMemo\(\s+\(\) => getChatRuntimeNavigationHeaderMobileRenderState\(\{\s+agentName,[\s\S]*?colors,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /const headerRenderState = useMemo\(\s+\(\) => getChatRuntimeNavigationHeaderMobileRenderState\(\{\s+agentName,[\s\S]*?colors,\s+\}\),/);
   assert.match(screenSource, /useChatRuntimeAgentSelectorOverlayState,/);
   assert.match(screenSource, /const \{\s+agentSelectorVisible,\s+openAgentSelector,\s+closeAgentSelector,\s+\} = useChatRuntimeAgentSelectorOverlayState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeAgentSelectorOverlayState/);

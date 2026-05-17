@@ -6450,40 +6450,6 @@ export function useChatMessageRuntimeClipboardChromeActionsState(
   });
 }
 
-export function useChatRuntimeNavigationHeaderRenderState({
-  agentName,
-  isPinned = false,
-  handsFree = false,
-  conversationState = null,
-  isResponding = false,
-  turnDurationMs = null,
-  turnDurationIsLive = false,
-  colors,
-}: ChatRuntimeNavigationHeaderRenderStateInput): ChatRuntimeNavigationHeaderRenderState {
-  return useMemo(
-    () => getChatRuntimeNavigationHeaderMobileRenderState({
-      agentName,
-      isPinned,
-      handsFree,
-      conversationState,
-      isResponding,
-      turnDurationMs,
-      turnDurationIsLive,
-      colors,
-    }),
-    [
-      agentName,
-      isPinned,
-      handsFree,
-      conversationState,
-      isResponding,
-      turnDurationMs,
-      turnDurationIsLive,
-      colors,
-    ],
-  );
-}
-
 export function createChatRuntimeNavigationHeaderOptions({
   agentSelectorRenderState,
   onAgentSelectorPress,
@@ -6641,16 +6607,28 @@ export function useChatRuntimeNavigationHeaderChromeOptions({
   onHandsFreeButtonPress,
   styles,
 }: ChatRuntimeNavigationHeaderChromeOptionsInput): void {
-  const headerRenderState = useChatRuntimeNavigationHeaderRenderState({
-    agentName,
-    isPinned,
-    handsFree,
-    conversationState,
-    isResponding,
-    turnDurationMs,
-    turnDurationIsLive,
-    colors,
-  });
+  const headerRenderState = useMemo(
+    () => getChatRuntimeNavigationHeaderMobileRenderState({
+      agentName,
+      isPinned,
+      handsFree,
+      conversationState,
+      isResponding,
+      turnDurationMs,
+      turnDurationIsLive,
+      colors,
+    }),
+    [
+      agentName,
+      isPinned,
+      handsFree,
+      conversationState,
+      isResponding,
+      turnDurationMs,
+      turnDurationIsLive,
+      colors,
+    ],
+  );
 
   useChatRuntimeNavigationHeaderOptions({
     navigation,
