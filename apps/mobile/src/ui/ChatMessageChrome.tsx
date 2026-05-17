@@ -7558,7 +7558,7 @@ export function ChatMessageDelegationCard({
               >
                 {row.content.text}
               </Text>
-              {row.timestamp ? (
+              {row.timestamp.shouldRender ? (
                 <Text
                   style={row.timestamp.style}
                   numberOfLines={row.timestamp.numberOfLines}
@@ -7568,7 +7568,7 @@ export function ChatMessageDelegationCard({
               ) : null}
             </View>
           ))}
-          {delegationCardParts.conversationPreview.moreAction ? (
+          {delegationCardParts.conversationPreview.moreAction.shouldRender ? (
             <Pressable
               onPress={delegationCardParts.conversationPreview.moreAction.button.onPress}
               accessibilityRole={delegationCardParts.conversationPreview.moreAction.button.accessibilityRole}
@@ -7626,7 +7626,7 @@ export function ChatMessageDelegationCard({
               </Text>
             </View>
           ))}
-          {delegationCardParts.toolPreview.moreAction ? (
+          {delegationCardParts.toolPreview.moreAction.shouldRender ? (
             <Pressable
               onPress={delegationCardParts.toolPreview.moreAction.button.onPress}
               accessibilityRole={delegationCardParts.toolPreview.moreAction.button.accessibilityRole}

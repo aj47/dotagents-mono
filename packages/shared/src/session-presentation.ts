@@ -2275,29 +2275,39 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
         ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentEllipsizeMode"]
         text: string
       }
-      timestamp: {
-        style: TStyles["conversationPreviewTimestamp"]
-        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
-        text: string
-      } | null
+      timestamp:
+        | {
+          shouldRender: true
+          style: TStyles["conversationPreviewTimestamp"]
+          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
+          text: string
+        }
+        | {
+          shouldRender: false
+        }
     }>
-    moreAction: {
-      button: {
-        onPress: TConversationPreviewOnShowAll
-        accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
-        accessibilityLabel: string
-        style: (state: { pressed: boolean }) => Array<
-          | TStyles["conversationPreviewMoreButton"]
-          | TStyles["conversationPreviewMoreButtonPressed"]
-          | false
-        >
+    moreAction:
+      | {
+        shouldRender: true
+        button: {
+          onPress: TConversationPreviewOnShowAll
+          accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
+          accessibilityLabel: string
+          style: (state: { pressed: boolean }) => Array<
+            | TStyles["conversationPreviewMoreButton"]
+            | TStyles["conversationPreviewMoreButtonPressed"]
+            | false
+          >
+        }
+        label: {
+          style: TStyles["conversationPreviewMore"]
+          numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
+          text: string
+        }
       }
-      label: {
-        style: TStyles["conversationPreviewMore"]
-        numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
-        text: string
+      | {
+        shouldRender: false
       }
-    } | null
   }
   toolPreview: {
     shouldRender: boolean
@@ -2333,23 +2343,28 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
         text: string
       }
     }>
-    moreAction: {
-      button: {
-        onPress: TToolPreviewOnShowAll
-        accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
-        accessibilityLabel: string
-        style: (state: { pressed: boolean }) => Array<
-          | TStyles["toolPreviewMoreButton"]
-          | TStyles["toolPreviewMoreButtonPressed"]
-          | false
-        >
+    moreAction:
+      | {
+        shouldRender: true
+        button: {
+          onPress: TToolPreviewOnShowAll
+          accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
+          accessibilityLabel: string
+          style: (state: { pressed: boolean }) => Array<
+            | TStyles["toolPreviewMoreButton"]
+            | TStyles["toolPreviewMoreButtonPressed"]
+            | false
+          >
+        }
+        label: {
+          style: TStyles["toolPreviewMore"]
+          numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
+          text: string
+        }
       }
-      label: {
-        style: TStyles["toolPreviewMore"]
-        numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
-        text: string
+      | {
+        shouldRender: false
       }
-    } | null
   }
 }
 
@@ -22797,12 +22812,16 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
           text: row.content,
         },
         timestamp: row.timestampLabel ? {
+          shouldRender: true,
           style: styles.conversationPreviewTimestamp,
           numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
           text: row.timestampLabel,
-        } : null,
+        } : {
+          shouldRender: false,
+        },
       })) : [],
       moreAction: shouldRenderConversationPreview && conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? {
+        shouldRender: true,
         button: {
           onPress: conversationPreview.onShowAll,
           accessibilityRole: conversationPreview.moreAction.accessibilityRole,
@@ -22817,7 +22836,9 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
           numberOfLines: conversationPreview.moreAction.numberOfLines,
           text: conversationPreview.moreAction.label,
         },
-      } : null,
+      } : {
+        shouldRender: false,
+      },
     },
     toolPreview: {
       shouldRender: shouldRenderToolPreview,
@@ -22858,6 +22879,7 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
         },
       })) : [],
       moreAction: shouldRenderToolPreview && toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? {
+        shouldRender: true,
         button: {
           onPress: toolPreview.onShowAll,
           accessibilityRole: toolPreview.moreAction.accessibilityRole,
@@ -22872,7 +22894,9 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
           numberOfLines: toolPreview.moreAction.numberOfLines,
           text: toolPreview.moreAction.label,
         },
-      } : null,
+      } : {
+        shouldRender: false,
+      },
     },
   }
 }

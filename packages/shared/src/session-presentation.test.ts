@@ -10890,7 +10890,11 @@ describe("session presentation semantics", () => {
       throw new Error("Expected a delegation conversation preview row")
     }
     expect(delegationCardParts.conversationPreview.shouldRender).toBe(true)
-    expect(delegationCardParts.conversationPreview.rows[0]).toMatchObject({
+    const delegationConversationPreviewRowParts = delegationCardParts.conversationPreview.rows[0]
+    if (!delegationConversationPreviewRowParts) {
+      throw new Error("Expected delegation conversation preview row parts")
+    }
+    expect(delegationConversationPreviewRowParts).toMatchObject({
       key: `${delegationConversationPreviewRow.timestamp}-${delegationConversationPreviewRow.role}-0`,
       line: {
         style: "delegation-conversation-preview-line-style",
@@ -10911,11 +10915,24 @@ describe("session presentation semantics", () => {
         text: delegationConversationPreviewRow.content,
       },
     })
-    expect(delegationCardParts.conversationPreview.moreAction?.button.style({ pressed: true })).toEqual([
+    expect(delegationConversationPreviewRowParts.timestamp.shouldRender).toBe(true)
+    if (!delegationConversationPreviewRowParts.timestamp.shouldRender) {
+      throw new Error("Expected delegation conversation preview timestamp parts")
+    }
+    expect(delegationConversationPreviewRowParts.timestamp).toMatchObject({
+      style: "delegation-conversation-preview-timestamp-style",
+      numberOfLines: delegationCardProps.surface.conversationPreviewTimestampNumberOfLines,
+      text: delegationConversationPreviewRow.timestampLabel,
+    })
+    expect(delegationCardParts.conversationPreview.moreAction.shouldRender).toBe(true)
+    if (!delegationCardParts.conversationPreview.moreAction.shouldRender) {
+      throw new Error("Expected delegation conversation preview more action")
+    }
+    expect(delegationCardParts.conversationPreview.moreAction.button.style({ pressed: true })).toEqual([
       "delegation-conversation-preview-more-button-style",
       "delegation-conversation-preview-more-button-pressed-style",
     ])
-    delegationCardParts.conversationPreview.moreAction?.button.onPress?.()
+    delegationCardParts.conversationPreview.moreAction.button.onPress()
     expect(delegationCardParts.toolPreview.shouldRender).toBe(true)
     expect(delegationCardParts.toolPreview.label.text).toBe("Tool activity · 1 tool call")
     const delegationToolPreviewRow = delegationCardProps.toolPreview.rows[0]
@@ -10951,11 +10968,15 @@ describe("session presentation semantics", () => {
         text: delegationToolPreviewRow.preview,
       },
     })
-    expect(delegationCardParts.toolPreview.moreAction?.button.style({ pressed: true })).toEqual([
+    expect(delegationCardParts.toolPreview.moreAction.shouldRender).toBe(true)
+    if (!delegationCardParts.toolPreview.moreAction.shouldRender) {
+      throw new Error("Expected delegation tool preview more action")
+    }
+    expect(delegationCardParts.toolPreview.moreAction.button.style({ pressed: true })).toEqual([
       "delegation-tool-preview-more-button-style",
       "delegation-tool-preview-more-button-pressed-style",
     ])
-    delegationCardParts.toolPreview.moreAction?.button.onPress?.()
+    delegationCardParts.toolPreview.moreAction.button.onPress()
     expect(delegationPropEvents).toEqual(["conversation:run-1", "tools:run-1"])
     delegationCardState.onShowAllConversationPreview("run-1")
     delegationCardState.onShowAllToolPreview("run-2")
