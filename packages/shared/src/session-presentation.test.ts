@@ -10514,24 +10514,34 @@ describe("session presentation semantics", () => {
     })
     expect(surfaceParts).toEqual({
       frame: {
-        keyboardAvoidingBehavior: "padding",
-        keyboardVerticalOffset: 24,
-        keyboardAvoidingStyle: "keyboard-avoiding-style",
-        rootStyle: "root-style",
+        props: {
+          keyboardAvoidingBehavior: "padding",
+          keyboardVerticalOffset: 24,
+          keyboardAvoidingStyle: "keyboard-avoiding-style",
+          rootStyle: "root-style",
+        },
       },
       dock: {
-        scrollToBottomButton: "scroll-button-props",
-        styles: "dock-styles",
+        props: {
+          scrollToBottomButton: "scroll-button-props",
+          styles: "dock-styles",
+        },
       },
       overlays: {
-        agentSelector: "agent-selector-props",
+        props: {
+          agentSelector: "agent-selector-props",
+        },
       },
       threadList: {
-        items: ["thread-item"],
+        props: {
+          items: ["thread-item"],
+        },
       },
       viewport: {
-        scrollRef: "scroll-ref",
-        styles: "viewport-styles",
+        props: {
+          scrollRef: "scroll-ref",
+          styles: "viewport-styles",
+        },
       },
     })
     const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts({

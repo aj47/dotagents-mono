@@ -10266,25 +10266,22 @@ export function ChatMessageRuntimeSurface<
 
   return (
     <ChatMessageConversationFrame
-      keyboardAvoidingStyle={surfaceParts.frame.keyboardAvoidingStyle}
-      keyboardAvoidingBehavior={surfaceParts.frame.keyboardAvoidingBehavior}
-      keyboardVerticalOffset={surfaceParts.frame.keyboardVerticalOffset}
-      rootStyle={surfaceParts.frame.rootStyle}
+      {...surfaceParts.frame.props}
       dock={(
         <ChatMessageRuntimeDock
-          {...surfaceParts.dock}
+          {...surfaceParts.dock.props}
         />
       )}
       overlays={(
         <ChatMessageRuntimeOverlays
-          {...surfaceParts.overlays}
+          {...surfaceParts.overlays.props}
         />
       )}
     >
       <ChatMessageRuntimeViewport
-        {...surfaceParts.viewport}
+        {...surfaceParts.viewport.props}
       >
-        <ChatMessageConversationRuntimeThreadList {...surfaceParts.threadList} />
+        <ChatMessageConversationRuntimeThreadList {...surfaceParts.threadList.props} />
       </ChatMessageRuntimeViewport>
     </ChatMessageConversationFrame>
   );

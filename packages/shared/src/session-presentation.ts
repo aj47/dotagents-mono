@@ -7844,17 +7844,27 @@ export interface ChatRuntimeConversationSurfaceMobilePropsParts<
   TDockStyles = unknown,
   TViewportStyles = unknown,
 > {
-  frame: TFrame & {
-    keyboardAvoidingStyle: TFrameKeyboardAvoidingStyle
-    rootStyle: TFrameRootStyle
+  frame: {
+    props: TFrame & {
+      keyboardAvoidingStyle: TFrameKeyboardAvoidingStyle
+      rootStyle: TFrameRootStyle
+    }
   }
-  dock: TDock & {
-    styles: TDockStyles
+  dock: {
+    props: TDock & {
+      styles: TDockStyles
+    }
   }
-  overlays: TOverlays
-  threadList: TThreadList
-  viewport: TViewport & {
-    styles: TViewportStyles
+  overlays: {
+    props: TOverlays
+  }
+  threadList: {
+    props: TThreadList
+  }
+  viewport: {
+    props: TViewport & {
+      styles: TViewportStyles
+    }
   }
 }
 
@@ -25186,19 +25196,29 @@ export function createChatRuntimeConversationSurfaceMobilePropsParts<
 > {
   return {
     frame: {
-      ...frame,
-      keyboardAvoidingStyle: styles.frame.keyboardAvoidingStyle,
-      rootStyle: styles.frame.rootStyle,
+      props: {
+        ...frame,
+        keyboardAvoidingStyle: styles.frame.keyboardAvoidingStyle,
+        rootStyle: styles.frame.rootStyle,
+      },
     },
     dock: {
-      ...dock,
-      styles: styles.dock,
+      props: {
+        ...dock,
+        styles: styles.dock,
+      },
     },
-    overlays,
-    threadList,
+    overlays: {
+      props: overlays,
+    },
+    threadList: {
+      props: threadList,
+    },
     viewport: {
-      ...viewport,
-      styles: styles.viewport,
+      props: {
+        ...viewport,
+        styles: styles.viewport,
+      },
     },
   }
 }
