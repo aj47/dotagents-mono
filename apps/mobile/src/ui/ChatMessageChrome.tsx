@@ -77,6 +77,7 @@ import {
   getChatRuntimeConversationMessageThreadMobileState,
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationThreadBodyMobileState,
+  createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
@@ -9026,20 +9027,27 @@ export function ChatMessageLoadingState({
   style,
   spinnerStyle,
 }: ChatMessageLoadingStateProps) {
-  if (!renderState.shouldRender) return null;
+  const loadingStateParts = createChatRuntimeLoadingStateMobilePropsParts({
+    renderState,
+    spinnerSource,
+    style,
+    spinnerStyle,
+  });
+
+  if (!loadingStateParts.shouldRenderLoadingState) return null;
 
   return (
     <View
-      accessible
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
-      accessibilityState={renderState.accessibilityState}
-      style={style}
+      accessible={loadingStateParts.container.accessible}
+      accessibilityRole={loadingStateParts.container.accessibilityRole}
+      accessibilityLabel={loadingStateParts.container.accessibilityLabel}
+      accessibilityState={loadingStateParts.container.accessibilityState}
+      style={loadingStateParts.container.style}
     >
       <Image
-        source={spinnerSource}
-        style={spinnerStyle}
-        resizeMode={renderState.spinnerResizeMode}
+        source={loadingStateParts.spinner.source}
+        style={loadingStateParts.spinner.style}
+        resizeMode={loadingStateParts.spinner.resizeMode}
       />
     </View>
   );

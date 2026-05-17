@@ -1677,13 +1677,27 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /style=\{styles\.loadingState\}\s+spinnerStyle=\{styles\.loadingSpinner\}/);
   assert.match(sessionPresentationSource, /loadingStateStyles: \{\s+style: styles\.loadingState,\s+spinnerStyle: styles\.loadingSpinner,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageLoadingState/);
-  assert.match(chatMessageChromeSource, /if \(!renderState\.shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{renderState\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /source=\{spinnerSource\}/);
-  assert.match(chatMessageChromeSource, /style=\{spinnerStyle\}/);
-  assert.match(chatMessageChromeSource, /resizeMode=\{renderState\.spinnerResizeMode\}/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeLoadingStateMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeLoadingStateMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const loadingStateParts = createChatRuntimeLoadingStateMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+style,\s+spinnerStyle,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /if \(!loadingStateParts\.shouldRenderLoadingState\) return null;/);
+  assert.match(chatMessageChromeSource, /accessible=\{loadingStateParts\.container\.accessible\}/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{loadingStateParts\.container\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /accessibilityRole=\{loadingStateParts\.container\.accessibilityRole\}/);
+  assert.match(chatMessageChromeSource, /accessibilityState=\{loadingStateParts\.container\.accessibilityState\}/);
+  assert.match(chatMessageChromeSource, /style=\{loadingStateParts\.container\.style\}/);
+  assert.match(chatMessageChromeSource, /source=\{loadingStateParts\.spinner\.source\}/);
+  assert.match(chatMessageChromeSource, /style=\{loadingStateParts\.spinner\.style\}/);
+  assert.match(chatMessageChromeSource, /resizeMode=\{loadingStateParts\.spinner\.resizeMode\}/);
+  assert.match(sessionPresentationSource, /shouldRenderLoadingState: renderState\.shouldRender/);
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageLoadingState[\s\S]*?accessibilityLabel=\{renderState\.accessibilityLabel\}[\s\S]*?export function ChatMessageDebugPanel/
+  );
+  assert.doesNotMatch(
+    chatMessageChromeSource,
+    /export function ChatMessageLoadingState[\s\S]*?resizeMode=\{renderState\.spinnerResizeMode\}[\s\S]*?export function ChatMessageDebugPanel/
+  );
   assert.match(screenSource, /keyboardAvoidingContainer:\s*\{[\s\S]*?\.\.\.viewportStyleSlots\.keyboardAvoidingContainer/);
   assert.match(screenSource, /chatRoot:\s*\{[\s\S]*?\.\.\.viewportStyleSlots\.root/);
   assert.match(screenSource, /chatScroll:\s*\{[\s\S]*?\.\.\.viewportStyleSlots\.scroll/);

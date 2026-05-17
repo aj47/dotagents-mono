@@ -122,6 +122,7 @@ import {
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
+  createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
   createChatRuntimeScrollToBottomMobileStyleSlots,
@@ -4407,6 +4408,45 @@ describe("session presentation semantics", () => {
       accessibilityState: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.accessibilityState,
       spinnerResizeMode: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerResizeMode,
     })
+    const loadingStateParts = createChatRuntimeLoadingStateMobilePropsParts({
+      renderState: {
+        shouldRender: true,
+        accessibilityRole: "progressbar",
+        accessibilityLabel: "Loading messages",
+        accessibilityState: { busy: true },
+        spinnerResizeMode: "contain",
+      },
+      spinnerSource: "spinner-source",
+      style: "loading-style",
+      spinnerStyle: "spinner-style",
+    })
+    expect(loadingStateParts).toEqual({
+      shouldRenderLoadingState: true,
+      container: {
+        accessible: true,
+        accessibilityRole: "progressbar",
+        accessibilityLabel: "Loading messages",
+        accessibilityState: { busy: true },
+        style: "loading-style",
+      },
+      spinner: {
+        source: "spinner-source",
+        style: "spinner-style",
+        resizeMode: "contain",
+      },
+    })
+    expect(createChatRuntimeLoadingStateMobilePropsParts({
+      renderState: {
+        shouldRender: false,
+        accessibilityRole: "progressbar",
+        accessibilityLabel: "Loading messages",
+        accessibilityState: { busy: true },
+        spinnerResizeMode: "contain",
+      },
+      spinnerSource: "spinner-source",
+      style: "loading-style",
+      spinnerStyle: "spinner-style",
+    }).shouldRenderLoadingState).toBe(false)
     expect(getChatRuntimeLoadingStateMobileRenderState({
       isLoadingMessages: true,
       messageCount: 1,

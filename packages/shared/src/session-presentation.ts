@@ -3581,6 +3581,63 @@ export interface ChatRuntimeConversationRuntimeThreadListMobilePropsParts<
   }>
 }
 
+export interface ChatRuntimeLoadingStateMobilePropsPartsInput<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  },
+  TSpinnerSource = unknown,
+  TStyle = unknown,
+  TSpinnerStyle = unknown,
+> {
+  renderState: TRenderState
+  spinnerSource: TSpinnerSource
+  style: TStyle
+  spinnerStyle: TSpinnerStyle
+}
+
+export interface ChatRuntimeLoadingStateMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  } = {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  },
+  TSpinnerSource = unknown,
+  TStyle = unknown,
+  TSpinnerStyle = unknown,
+> {
+  shouldRenderLoadingState: boolean
+  container: {
+    accessible: true
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityState: TRenderState["accessibilityState"]
+    style: TStyle
+  }
+  spinner: {
+    source: TSpinnerSource
+    style: TSpinnerStyle
+    resizeMode: TRenderState["spinnerResizeMode"]
+  }
+}
+
 export interface ChatRuntimeConversationViewportMobilePropsPartsInput<
   TLoadingState extends object = Record<string, never>,
   THomeQuickStarts extends object = Record<string, never>,
@@ -16746,6 +16803,50 @@ export function createChatRuntimeConversationRuntimeThreadListMobilePropsParts<
           styles,
         },
       })),
+  }
+}
+
+export function createChatRuntimeLoadingStateMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    spinnerResizeMode: unknown
+  },
+  TSpinnerSource,
+  TStyle,
+  TSpinnerStyle,
+>({
+  renderState,
+  spinnerSource,
+  style,
+  spinnerStyle,
+}: ChatRuntimeLoadingStateMobilePropsPartsInput<
+  TRenderState,
+  TSpinnerSource,
+  TStyle,
+  TSpinnerStyle
+>): ChatRuntimeLoadingStateMobilePropsParts<
+  TRenderState,
+  TSpinnerSource,
+  TStyle,
+  TSpinnerStyle
+> {
+  return {
+    shouldRenderLoadingState: renderState.shouldRender,
+    container: {
+      accessible: true,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityState: renderState.accessibilityState,
+      style,
+    },
+    spinner: {
+      source: spinnerSource,
+      style: spinnerStyle,
+      resizeMode: renderState.spinnerResizeMode,
+    },
   }
 }
 
