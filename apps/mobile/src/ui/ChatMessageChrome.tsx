@@ -9334,7 +9334,7 @@ export function ChatMessageToolExecutionStack({
     <ChatMessageToolExecutionPanel
       shouldRender={shouldRender}
       isExpanded={isExpanded}
-      compact={stackPanelParts.compact}
+      compact={stackPanelParts.compactList.props}
       expanded={{
         ...stackPanelExpandedGroup.props,
         emptyState: stackPanelExpandedGroupContent.emptyState.shouldRender ? (

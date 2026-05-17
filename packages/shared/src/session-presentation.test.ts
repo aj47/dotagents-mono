@@ -14710,12 +14710,14 @@ describe("session presentation semantics", () => {
       },
     })
     expect(toolExecutionPanelParts).toEqual({
-      compact: {
-        renderState: "compact-render-state",
-        rows: ["compact-row"],
-        onPress: "toggle-compact",
-        groupStyles: "compact-group-styles",
-        rowStyles: "compact-row-styles",
+      compactList: {
+        props: {
+          renderState: "compact-render-state",
+          rows: ["compact-row"],
+          onPress: "toggle-compact",
+          groupStyles: "compact-group-styles",
+          rowStyles: "compact-row-styles",
+        },
       },
       expandedGroup: {
         props: {

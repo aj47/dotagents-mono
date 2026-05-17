@@ -4747,9 +4747,11 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
   TEmptyStateTextStyle = unknown,
   TCallDetailStyles = unknown,
 > {
-  compact: TCompact & {
-    groupStyles: TCompactGroupStyles
-    rowStyles: TCompactRowStyles
+  compactList: {
+    props: TCompact & {
+      groupStyles: TCompactGroupStyles
+      rowStyles: TCompactRowStyles
+    }
   }
   expandedGroup: {
     props: Omit<TExpanded, "emptyState"> & {
@@ -23176,10 +23178,12 @@ export function createChatRuntimeToolExecutionStackPanelMobilePropsParts<
   const { emptyState, ...expandedGroup } = expanded
 
   return {
-    compact: {
-      ...compact,
-      groupStyles: styles.compactGroup,
-      rowStyles: styles.compactRow,
+    compactList: {
+      props: {
+        ...compact,
+        groupStyles: styles.compactGroup,
+        rowStyles: styles.compactRow,
+      },
     },
     expandedGroup: {
       props: {
