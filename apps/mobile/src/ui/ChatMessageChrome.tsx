@@ -10157,12 +10157,12 @@ export function ChatMessageConversationViewportContent({
 
   return (
     <>
-      {viewportContentParts.loadingState}
-      {viewportContentParts.homeState}
-      {viewportContentParts.historyBanner}
-      {viewportContentParts.stepSummary}
-      {viewportContentParts.children}
-      {viewportContentParts.debugPanels}
+      {viewportContentParts.loadingState.children}
+      {viewportContentParts.homeState.children}
+      {viewportContentParts.historyBanner.children}
+      {viewportContentParts.stepSummary.children}
+      {viewportContentParts.content.children}
+      {viewportContentParts.debugPanels.children}
     </>
   );
 }

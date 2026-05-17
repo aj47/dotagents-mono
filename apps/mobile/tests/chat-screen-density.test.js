@@ -2119,7 +2119,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   const conversationViewportContentSource =
     chatMessageChromeSource.match(/export function ChatMessageConversationViewportContent[\s\S]*?export function ChatMessageConversationViewport/)?.[0] ?? '';
   assert.match(conversationViewportContentSource, /const viewportContentParts = createChatRuntimeConversationViewportContentMobilePropsParts\(\{\s+loadingState,\s+homeState,\s+historyBanner,\s+stepSummary,\s+children,\s+debugPanels,\s+\}\);/);
-  assert.match(conversationViewportContentSource, /\{viewportContentParts\.loadingState\}[\s\S]*?\{viewportContentParts\.homeState\}[\s\S]*?\{viewportContentParts\.historyBanner\}[\s\S]*?\{viewportContentParts\.stepSummary\}[\s\S]*?\{viewportContentParts\.children\}[\s\S]*?\{viewportContentParts\.debugPanels\}/);
+  assert.match(conversationViewportContentSource, /\{viewportContentParts\.loadingState\.children\}[\s\S]*?\{viewportContentParts\.homeState\.children\}[\s\S]*?\{viewportContentParts\.historyBanner\.children\}[\s\S]*?\{viewportContentParts\.stepSummary\.children\}[\s\S]*?\{viewportContentParts\.content\.children\}[\s\S]*?\{viewportContentParts\.debugPanels\.children\}/);
   assert.doesNotMatch(conversationViewportContentSource, /\{loadingState\}[\s\S]*?\{homeState\}[\s\S]*?\{historyBanner\}[\s\S]*?\{stepSummary\}[\s\S]*?\{children\}[\s\S]*?\{debugPanels\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeViewport/);
   assert.match(chatMessageChromeSource, /const viewportParts = createChatRuntimeConversationViewportMobilePropsParts\(\{\s+loadingState,\s+homeQuickStarts,\s+historyBanner,\s+stepSummary,\s+debugPanels,\s+styles,\s+\}\);/);
