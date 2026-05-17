@@ -2297,8 +2297,10 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
   subtitle: {
     shouldRender: boolean
     props: {
-      style: TStyles["subtitle"]
-      numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["subtitleNumberOfLines"]
+      props: {
+        style: TStyles["subtitle"]
+        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["subtitleNumberOfLines"]
+      }
       text: string
     }
   }
@@ -2310,9 +2312,11 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
       items: Array<{
         key: string
         props: {
+          props: {
+            style: TStyles["metaText"]
+            numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["metaNumberOfLines"]
+          }
           text: string
-          style: TStyles["metaText"]
-          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["metaNumberOfLines"]
         }
       }>
     }
@@ -2404,8 +2408,10 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
       }
       label: {
         props: {
-          style: TStyles["toolPreviewLabel"]
-          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["toolPreviewLabelNumberOfLines"]
+          props: {
+            style: TStyles["toolPreviewLabel"]
+            numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["toolPreviewLabelNumberOfLines"]
+          }
           text: string
         }
       }
@@ -23650,8 +23656,10 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
     subtitle: {
       shouldRender: Boolean(presentation.subtitle),
       props: {
-        style: styles.subtitle,
-        numberOfLines: surface.subtitleNumberOfLines,
+        props: {
+          style: styles.subtitle,
+          numberOfLines: surface.subtitleNumberOfLines,
+        },
         text: presentation.subtitle ?? "",
       },
     },
@@ -23663,9 +23671,11 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
         items: metaItems.map((item) => ({
           key: item.key,
           props: {
+            props: {
+              style: styles.metaText,
+              numberOfLines: surface.metaNumberOfLines,
+            },
             text: item.text,
-            style: styles.metaText,
-            numberOfLines: surface.metaNumberOfLines,
           },
         })),
       },
@@ -23750,8 +23760,10 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
         },
         label: {
           props: {
-            style: styles.toolPreviewLabel,
-            numberOfLines: surface.toolPreviewLabelNumberOfLines,
+            props: {
+              style: styles.toolPreviewLabel,
+              numberOfLines: surface.toolPreviewLabelNumberOfLines,
+            },
             text: toolPreview.label,
           },
         },

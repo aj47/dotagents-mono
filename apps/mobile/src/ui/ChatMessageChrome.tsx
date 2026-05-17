@@ -8894,14 +8894,12 @@ export function ChatMessageDelegationHeader({
 }
 
 export function ChatMessageDelegationMetaItem({
-  style,
-  numberOfLines,
+  props,
   text,
 }: ChatMessageDelegationMetaItemProps) {
   return (
     <Text
-      style={style}
-      numberOfLines={numberOfLines}
+      {...props}
     >
       {text}
     </Text>
@@ -8925,14 +8923,12 @@ export function ChatMessageDelegationMetaRow({
 }
 
 export function ChatMessageDelegationSubtitle({
-  style,
-  numberOfLines,
+  props,
   text,
 }: ChatMessageDelegationSubtitleProps) {
   return (
     <Text
-      style={style}
-      numberOfLines={numberOfLines}
+      {...props}
     >
       {text}
     </Text>
@@ -8940,14 +8936,12 @@ export function ChatMessageDelegationSubtitle({
 }
 
 export function ChatMessageDelegationToolPreviewLabel({
-  style,
-  numberOfLines,
+  props,
   text,
 }: ChatMessageDelegationToolPreviewLabelProps) {
   return (
     <Text
-      style={style}
-      numberOfLines={numberOfLines}
+      {...props}
     >
       {text}
     </Text>

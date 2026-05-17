@@ -11222,8 +11222,10 @@ describe("session presentation semantics", () => {
     expect(delegationCardParts.subtitle).toEqual({
       shouldRender: true,
       props: {
-        style: "delegation-subtitle-style",
-        numberOfLines: delegationCardProps.surface.subtitleNumberOfLines,
+        props: {
+          style: "delegation-subtitle-style",
+          numberOfLines: delegationCardProps.surface.subtitleNumberOfLines,
+        },
         text: delegationCardProps.presentation.subtitle,
       },
     })
@@ -11238,8 +11240,10 @@ describe("session presentation semantics", () => {
     expect(delegationCardParts.meta.props.items[0]).toMatchObject({
       key: "source",
       props: {
-        style: "delegation-meta-text-style",
-        numberOfLines: delegationCardProps.surface.metaNumberOfLines,
+        props: {
+          style: "delegation-meta-text-style",
+          numberOfLines: delegationCardProps.surface.metaNumberOfLines,
+        },
       },
     })
     const delegationConversationPreviewRow = delegationCardProps.conversationPreview.rows[0]
@@ -11312,8 +11316,10 @@ describe("session presentation semantics", () => {
       style: "delegation-tool-preview-style",
     })
     expect(delegationCardParts.toolPreview.props.label.props).toMatchObject({
-      style: "delegation-tool-preview-label-style",
-      numberOfLines: delegationCardProps.surface.toolPreviewLabelNumberOfLines,
+      props: {
+        style: "delegation-tool-preview-label-style",
+        numberOfLines: delegationCardProps.surface.toolPreviewLabelNumberOfLines,
+      },
       text: "Tool activity · 1 tool call",
     })
     const delegationToolPreviewRow = delegationCardProps.toolPreview.rows[0]
