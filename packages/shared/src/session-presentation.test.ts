@@ -4660,57 +4660,59 @@ describe("session presentation semantics", () => {
           accessibilityLabel: "Rate limit reached. Attempt 2/5. Retrying in 7s. The agent will automatically retry when the API is available.",
           style: "retry-card-style",
         },
-      },
-      header: {
-        props: {
-          style: "retry-header-style",
-        },
         content: {
-          icon: {
+          header: {
             props: {
-              name: "time-outline",
-              size: 14,
-              color: "#d97706",
+              style: "retry-header-style",
+            },
+            content: {
+              icon: {
+                props: {
+                  name: "time-outline",
+                  size: 14,
+                  color: "#d97706",
+                },
+              },
+              title: {
+                props: {
+                  style: "retry-title-style",
+                  numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.retryStatus.titleNumberOfLines,
+                  text: "Rate limit reached",
+                },
+              },
+              spinner: {
+                props: {
+                  size: "small",
+                  color: "#d97706",
+                },
+              },
             },
           },
-          title: {
+          meta: {
             props: {
-              style: "retry-title-style",
-              numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.retryStatus.titleNumberOfLines,
-              text: "Rate limit reached",
+              style: "retry-meta-style",
+            },
+            content: {
+              attempt: {
+                props: {
+                  style: "retry-attempt-style",
+                  text: "Attempt 2/5",
+                },
+              },
+              countdown: {
+                props: {
+                  style: "retry-countdown-style",
+                  text: "Retrying in 7s",
+                },
+              },
             },
           },
-          spinner: {
+          description: {
             props: {
-              size: "small",
-              color: "#d97706",
+              style: "retry-description-style",
+              text: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
             },
           },
-        },
-      },
-      meta: {
-        props: {
-          style: "retry-meta-style",
-        },
-        content: {
-          attempt: {
-            props: {
-              style: "retry-attempt-style",
-              text: "Attempt 2/5",
-            },
-          },
-          countdown: {
-            props: {
-              style: "retry-countdown-style",
-              text: "Retrying in 7s",
-            },
-          },
-        },
-      },
-      description: {
-        props: {
-          style: "retry-description-style",
-          text: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
         },
       },
     })

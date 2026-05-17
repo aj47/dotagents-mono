@@ -6904,50 +6904,52 @@ export interface ChatRuntimeRetryStatusMobilePropsParts<
       accessibilityLabel: string
       style: TStyles["card"]
     }
-  }
-  header: {
-    props: {
-      style: TStyles["header"]
-    }
     content: {
-      icon: {
-        props: TRenderState["icon"]
-      }
-      title: {
+      header: {
         props: {
-          style: TStyles["title"]
-          numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
+          style: TStyles["header"]
+        }
+        content: {
+          icon: {
+            props: TRenderState["icon"]
+          }
+          title: {
+            props: {
+              style: TStyles["title"]
+              numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
+              text: string
+            }
+          }
+          spinner: {
+            props: TRenderState["spinner"]
+          }
+        }
+      }
+      meta: {
+        props: {
+          style: TStyles["metaRow"]
+        }
+        content: {
+          attempt: {
+            props: {
+              style: TStyles["attempt"]
+              text: string
+            }
+          }
+          countdown: {
+            props: {
+              style: TStyles["countdown"]
+              text: string
+            }
+          }
+        }
+      }
+      description: {
+        props: {
+          style: TStyles["description"]
           text: string
         }
       }
-      spinner: {
-        props: TRenderState["spinner"]
-      }
-    }
-  }
-  meta: {
-    props: {
-      style: TStyles["metaRow"]
-    }
-    content: {
-      attempt: {
-        props: {
-          style: TStyles["attempt"]
-          text: string
-        }
-      }
-      countdown: {
-        props: {
-          style: TStyles["countdown"]
-          text: string
-        }
-      }
-    }
-  }
-  description: {
-    props: {
-      style: TStyles["description"]
-      text: string
     }
   }
 }
@@ -24226,50 +24228,52 @@ export function createChatRuntimeRetryStatusMobilePropsParts<
         accessibilityLabel: renderState.accessibilityLabel,
         style: styles.card,
       },
-    },
-    header: {
-      props: {
-        style: styles.header,
-      },
       content: {
-        icon: {
-          props: renderState.icon,
-        },
-        title: {
+        header: {
           props: {
-            style: styles.title,
-            numberOfLines: renderState.surface.titleNumberOfLines,
-            text: renderState.title,
+            style: styles.header,
+          },
+          content: {
+            icon: {
+              props: renderState.icon,
+            },
+            title: {
+              props: {
+                style: styles.title,
+                numberOfLines: renderState.surface.titleNumberOfLines,
+                text: renderState.title,
+              },
+            },
+            spinner: {
+              props: renderState.spinner,
+            },
           },
         },
-        spinner: {
-          props: renderState.spinner,
-        },
-      },
-    },
-    meta: {
-      props: {
-        style: styles.metaRow,
-      },
-      content: {
-        attempt: {
+        meta: {
           props: {
-            style: styles.attempt,
-            text: renderState.attemptLabel,
+            style: styles.metaRow,
+          },
+          content: {
+            attempt: {
+              props: {
+                style: styles.attempt,
+                text: renderState.attemptLabel,
+              },
+            },
+            countdown: {
+              props: {
+                style: styles.countdown,
+                text: renderState.countdownLabel,
+              },
+            },
           },
         },
-        countdown: {
+        description: {
           props: {
-            style: styles.countdown,
-            text: renderState.countdownLabel,
+            style: styles.description,
+            text: renderState.description,
           },
         },
-      },
-    },
-    description: {
-      props: {
-        style: styles.description,
-        text: renderState.description,
       },
     },
   }

@@ -1682,24 +1682,27 @@ type ChatMessageRetryStatusCardProps =
     children: ReactNode;
   };
 
+type ChatMessageRetryStatusContent =
+  ChatMessageRetryStatusParts['card']['content'];
+
 type ChatMessageRetryStatusViewProps =
-  (ChatMessageRetryStatusParts['header']['props'] | ChatMessageRetryStatusParts['meta']['props']) & {
+  (ChatMessageRetryStatusContent['header']['props'] | ChatMessageRetryStatusContent['meta']['props']) & {
     children: ReactNode;
   };
 
 type ChatMessageRetryStatusIconProps =
-  ChatMessageRetryStatusParts['header']['content']['icon']['props'];
+  ChatMessageRetryStatusContent['header']['content']['icon']['props'];
 
 type ChatMessageRetryStatusTitleProps =
-  ChatMessageRetryStatusParts['header']['content']['title']['props'];
+  ChatMessageRetryStatusContent['header']['content']['title']['props'];
 
 type ChatMessageRetryStatusSpinnerProps =
-  ChatMessageRetryStatusParts['header']['content']['spinner']['props'];
+  ChatMessageRetryStatusContent['header']['content']['spinner']['props'];
 
 type ChatMessageRetryStatusTextProps =
-  | ChatMessageRetryStatusParts['meta']['content']['attempt']['props']
-  | ChatMessageRetryStatusParts['meta']['content']['countdown']['props']
-  | ChatMessageRetryStatusParts['description']['props'];
+  | ChatMessageRetryStatusContent['meta']['content']['attempt']['props']
+  | ChatMessageRetryStatusContent['meta']['content']['countdown']['props']
+  | ChatMessageRetryStatusContent['description']['props'];
 
 type ChatMessageToolApprovalStyles = {
   card: StyleProp<ViewStyle>;
@@ -8258,15 +8261,16 @@ export function ChatMessageRetryStatus({
 
   if (!retryStatusParts.shouldRenderRetryStatus) return null;
 
-  const headerContent = retryStatusParts.header.content;
-  const metaContent = retryStatusParts.meta.content;
+  const retryStatusContent = retryStatusParts.card.content;
+  const headerContent = retryStatusContent.header.content;
+  const metaContent = retryStatusContent.meta.content;
 
   return (
     <ChatMessageRetryStatusCard
       {...retryStatusParts.card.props}
     >
       <ChatMessageRetryStatusView
-        {...retryStatusParts.header.props}
+        {...retryStatusContent.header.props}
       >
         <ChatMessageRetryStatusIcon
           {...headerContent.icon.props}
@@ -8279,7 +8283,7 @@ export function ChatMessageRetryStatus({
         />
       </ChatMessageRetryStatusView>
       <ChatMessageRetryStatusView
-        {...retryStatusParts.meta.props}
+        {...retryStatusContent.meta.props}
       >
         <ChatMessageRetryStatusText
           {...metaContent.attempt.props}
@@ -8289,7 +8293,7 @@ export function ChatMessageRetryStatus({
         />
       </ChatMessageRetryStatusView>
       <ChatMessageRetryStatusText
-        {...retryStatusParts.description.props}
+        {...retryStatusContent.description.props}
       />
     </ChatMessageRetryStatusCard>
   );
