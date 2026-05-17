@@ -2262,24 +2262,34 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
   header: {
     props: {
       container: {
-        style: TStyles["header"]
+        props: {
+          style: TStyles["header"]
+        }
       }
       title: {
-        style: TStyles["title"]
-        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["titleNumberOfLines"]
+        props: {
+          style: TStyles["title"]
+          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["titleNumberOfLines"]
+        }
         text: string
       }
       statusBadge: {
-        style: Array<TStyles["statusBadge"] | ChatSessionStatusMobileStyleState["chip"]>
+        props: {
+          style: Array<TStyles["statusBadge"] | ChatSessionStatusMobileStyleState["chip"]>
+        }
       }
       statusText: {
-        style: Array<TStyles["statusText"] | ChatSessionStatusMobileStyleState["text"]>
-        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["statusNumberOfLines"]
+        props: {
+          style: Array<TStyles["statusText"] | ChatSessionStatusMobileStyleState["text"]>
+          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["statusNumberOfLines"]
+        }
         text: string
       }
       liveText: {
         shouldRender: boolean
-        style: TStyles["liveText"]
+        props: {
+          style: TStyles["liveText"]
+        }
         text: string
       }
     }
@@ -23599,30 +23609,40 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
     header: {
       props: {
         container: {
-          style: styles.header,
+          props: {
+            style: styles.header,
+          },
         },
         title: {
-          style: styles.title,
-          numberOfLines: surface.titleNumberOfLines,
+          props: {
+            style: styles.title,
+            numberOfLines: surface.titleNumberOfLines,
+          },
           text: agentName,
         },
         statusBadge: {
-          style: [
-            styles.statusBadge,
-            statusStyles.chip,
-          ],
+          props: {
+            style: [
+              styles.statusBadge,
+              statusStyles.chip,
+            ],
+          },
         },
         statusText: {
-          style: [
-            styles.statusText,
-            statusStyles.text,
-          ],
-          numberOfLines: surface.statusNumberOfLines,
+          props: {
+            style: [
+              styles.statusText,
+              statusStyles.text,
+            ],
+            numberOfLines: surface.statusNumberOfLines,
+          },
           text: presentation.statusLabel,
         },
         liveText: {
           shouldRender: presentation.isActive,
-          style: styles.liveText,
+          props: {
+            style: styles.liveText,
+          },
           text: surface.liveLabel,
         },
       },

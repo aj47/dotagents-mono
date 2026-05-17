@@ -1116,12 +1116,14 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(delegationCardComponentSource, /accessibilityRole=\{surface\.accessibilityRole\}/);
   assert.doesNotMatch(delegationCardComponentSource, /accessibilityLabel=\{accessibilityLabel\}/);
   assert.match(sessionPresentationSource, /delegationCard: \{[\s\S]*?card: styles\.delegationCard,[\s\S]*?toolPreviewMore: styles\.delegationToolPreviewMore,/);
-  assert.match(sessionPresentationSource, /header: \{[\s\S]*?props: \{[\s\S]*?container: \{[\s\S]*?style: styles\.header,/);
+  assert.match(sessionPresentationSource, /header: \{[\s\S]*?props: \{[\s\S]*?container: \{[\s\S]*?props: \{[\s\S]*?style: styles\.header,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader/);
   assert.match(delegationCardComponentSource, /<ChatMessageDelegationHeader\s+\{\.\.\.delegationCardParts\.header\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?numberOfLines=\{title\.numberOfLines\}[\s\S]*?\{title\.text\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?numberOfLines=\{statusText\.numberOfLines\}[\s\S]*?\{statusText\.text\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?liveText\.shouldRender \? \([\s\S]*?\{liveText\.text\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?<View\s+\{\.\.\.container\.props\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?<Text\s+\{\.\.\.title\.props\}[\s\S]*?\{title\.text\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?<View\s+\{\.\.\.statusBadge\.props\}[\s\S]*?<Text\s+\{\.\.\.statusText\.props\}[\s\S]*?\{statusText\.text\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?liveText\.shouldRender \? \([\s\S]*?<Text\s+\{\.\.\.liveText\.props\}[\s\S]*?\{liveText\.text\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?(container|title|statusBadge|statusText|liveText)\.(style|numberOfLines)[\s\S]*?export function ChatMessageDelegationMetaItem/);
   assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.title\./);
   assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.statusText\./);
   assert.doesNotMatch(delegationCardComponentSource, /delegationCardParts\.liveText\./);

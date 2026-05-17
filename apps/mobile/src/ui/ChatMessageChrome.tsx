@@ -8871,23 +8871,21 @@ export function ChatMessageDelegationHeader({
   liveText,
 }: ChatMessageDelegationHeaderProps) {
   return (
-    <View style={container.style}>
+    <View {...container.props}>
       <Text
-        style={title.style}
-        numberOfLines={title.numberOfLines}
+        {...title.props}
       >
         {title.text}
       </Text>
-      <View style={statusBadge.style}>
+      <View {...statusBadge.props}>
         <Text
-          style={statusText.style}
-          numberOfLines={statusText.numberOfLines}
+          {...statusText.props}
         >
           {statusText.text}
         </Text>
       </View>
       {liveText.shouldRender ? (
-        <Text style={liveText.style}>
+        <Text {...liveText.props}>
           {liveText.text}
         </Text>
       ) : null}

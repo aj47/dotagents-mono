@@ -11187,28 +11187,36 @@ describe("session presentation semantics", () => {
       style: "delegation-card-style",
     })
     expect(delegationCardParts.header.props.container).toEqual({
-      style: "delegation-header-style",
+      props: {
+        style: "delegation-header-style",
+      },
     })
     expect(delegationCardParts.header.props.title).toEqual({
-      style: "delegation-title-style",
-      numberOfLines: delegationCardProps.surface.titleNumberOfLines,
+      props: {
+        style: "delegation-title-style",
+        numberOfLines: delegationCardProps.surface.titleNumberOfLines,
+      },
       text: "Worker",
     })
-    expect(delegationCardParts.header.props.statusBadge.style).toEqual([
+    expect(delegationCardParts.header.props.statusBadge.props.style).toEqual([
       "delegation-status-badge-style",
       delegationCardProps.statusStyles.chip,
     ])
     expect(delegationCardParts.header.props.statusText).toEqual({
-      style: [
-        "delegation-status-text-style",
-        delegationCardProps.statusStyles.text,
-      ],
-      numberOfLines: delegationCardProps.surface.statusNumberOfLines,
+      props: {
+        style: [
+          "delegation-status-text-style",
+          delegationCardProps.statusStyles.text,
+        ],
+        numberOfLines: delegationCardProps.surface.statusNumberOfLines,
+      },
       text: delegationCardProps.presentation.statusLabel,
     })
     expect(delegationCardParts.header.props.liveText).toEqual({
       shouldRender: true,
-      style: "delegation-live-text-style",
+      props: {
+        style: "delegation-live-text-style",
+      },
       text: delegationCardProps.surface.liveLabel,
     })
     expect(delegationCardParts.subtitle).toEqual({
