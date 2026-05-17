@@ -21,242 +21,147 @@ const sessionPresentationSource = fs.readFileSync(
   'utf8'
 );
 
+function sourceBlock(source, pattern) {
+  return source.match(pattern)?.[0] ?? '';
+}
+
+function composerIconButtonSource() {
+  return sourceBlock(
+    chatMessageChromeSource,
+    /export function ChatComposerIconButton[\s\S]*?export function ChatComposerLabeledActionButton/
+  );
+}
+
+function composerLabeledActionButtonSource() {
+  return sourceBlock(
+    chatMessageChromeSource,
+    /export function ChatComposerLabeledActionButton[\s\S]*?export function ChatComposerMicButton/
+  );
+}
+
 test('exposes the chat composer send control as an accessible button', () => {
+  const actionButtonSource = composerLabeledActionButtonSource();
+
   assert.doesNotMatch(screenSource, /<ChatComposerRuntimeDock/);
   assert.match(chatMessageChromeSource, /composer: chatComposerRuntimeDock,/);
   assert.doesNotMatch(screenSource, /submitActionRenderState:/);
-  assert.match(sessionPresentationSource, /renderState: controlRenderState\.submitAction/);
-  assert.match(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
-  assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.submitAction\}\s+styles=\{styles\.submitAction\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?accessibilityLabel=\{renderState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.accessibilityHint \?\? undefined\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{renderState\.accessibilityState\}/);
+  assert.match(sessionPresentationSource, /submitAction: \{\s+renderState: controlRenderState\.submitAction,\s+onPress: onSubmitActionPress,\s+\.\.\.chrome\.submitAction,\s+\}/);
+  assert.match(sessionPresentationSource, /export function createChatComposerRuntimeDockMobileProps/);
+  assert.match(chatMessageChromeSource, /createChatComposerRuntimeDockMobileProps,/);
+  assert.match(chatMessageChromeSource, /createChatComposerRuntimeDockMobilePropsParts,/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
+  assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.composerDockParts\.submitAction\}/);
+  assert.match(actionButtonSource, /createChatComposerLabeledActionButtonMobilePropsParts\(\{/);
+  assert.match(actionButtonSource, /accessibilityRole=\{actionButtonParts\.touchable\.accessibilityRole\}/);
+  assert.match(actionButtonSource, /accessibilityLabel=\{actionButtonParts\.touchable\.accessibilityLabel\}/);
+  assert.match(actionButtonSource, /accessibilityHint=\{actionButtonParts\.touchable\.accessibilityHint\}/);
+  assert.match(actionButtonSource, /accessibilityState=\{actionButtonParts\.touchable\.accessibilityState\}/);
+  assert.doesNotMatch(actionButtonSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
 });
 
 test('uses shared session presentation for mobile composer copy and disabled state', () => {
   assert.doesNotMatch(screenSource, /getFollowUpInputPresentation/);
-  assert.doesNotMatch(screenSource, /createChatComposerRuntimeFollowUpPresentationState/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeFollowUpPresentationState/);
-  assert.doesNotMatch(chatMessageChromeSource, /getFollowUpInputPresentation/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatComposerRuntimeFollowUpPresentationState/);
   assert.match(sessionPresentationSource, /export function getChatComposerRuntimeFollowUpPresentationState/);
   assert.doesNotMatch(screenSource, /getChatComposerMobileControlState/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatComposerMobileControlState/);
   assert.match(sessionPresentationSource, /controls: ChatComposerMobileControlState/);
-  assert.doesNotMatch(screenSource, /createChatComposerRuntimeControlRenderState/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeControlRenderState/);
-  assert.match(sessionPresentationSource, /getChatComposerMobileActionAvailabilityRenderState/);
-  assert.match(sessionPresentationSource, /getChatComposerQueueMobileRenderState/);
-  assert.match(sessionPresentationSource, /getChatComposerSubmitMobileRenderState/);
-  assert.match(sessionPresentationSource, /getChatComposerTextToSpeechMobileRenderState/);
-  assert.match(sessionPresentationSource, /getChatComposerEditBeforeSendMobileRenderState/);
-  assert.match(sessionPresentationSource, /const mobileComposerControls = controlRenderState\.controls/);
-  assert.doesNotMatch(screenSource, /mobileComposerQueueRenderState/);
-  assert.match(screenSource, /composerControlHasContent: composerHasContent,[\s\S]*?composerControlConversationState: conversationState,[\s\S]*?composerControlIsResponding: responding,[\s\S]*?onImageAttachmentPress: handlePickImages,/);
-  assert.doesNotMatch(screenSource, /composerControlColors: theme\.colors,/);
-  assert.match(chatMessageChromeSource, /pendingImagesColors: colors,\s+composerControlColors: colors,/);
-  assert.match(sessionPresentationSource, /const composerControlPresentation = getChatComposerRuntimeFollowUpPresentationState\(\{[\s\S]*?conversationState: composerControlConversationState,[\s\S]*?isResponding: composerControlIsResponding,[\s\S]*?isQueueEnabled: composerControlMessageQueueEnabled,[\s\S]*?\}\)/);
-  assert.match(sessionPresentationSource, /const controlRenderState = getChatComposerRuntimeControlMobileRenderState\(\{[\s\S]*?hasContent: composerControlHasContent,[\s\S]*?presentation: composerControlPresentation,[\s\S]*?colors: composerControlColors,[\s\S]*?\}\)/);
-  assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState/);
-  assert.doesNotMatch(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
-  assert.match(sessionPresentationSource, /const composerSurfaceRenderState = getChatComposerMobileSurfaceRenderState\(\{\s+colors,\s+platform,\s+\}\)/);
-  assert.doesNotMatch(chatScreenSource, /getChatRuntimeMobileSafeAreaLayoutState/);
-  assert.match(chatRuntimeMobileStylesSource, /getChatRuntimeMobileSafeAreaLayoutState/);
-  assert.match(sessionPresentationSource, /getChatRuntimeMobileSafeAreaLayoutState/);
-  assert.match(screenSource, /createChatComposerStyleSlots,/);
-  assert.match(screenSource, /createChatComposerRuntimeDockStyleSlots,/);
-  assert.match(chatRuntimeMobileStylesSource, /createChatComposerStyleSlots,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);
-  assert.match(chatRuntimeMobileStylesSource, /createChatComposerRuntimeDockStyleSlots,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);
-  assert.doesNotMatch(chatRuntimeMobileStylesSource, /import \{[^;]*createChatComposerStyleSlots[^;]*\} from '\.\/ChatMessageChrome';/);
-  assert.doesNotMatch(chatRuntimeMobileStylesSource, /import \{[^;]*createChatComposerRuntimeDockStyleSlots[^;]*\} from '\.\/ChatMessageChrome';/);
-  assert.match(screenSource, /createChatRuntimeMobileSafeAreaStyleSlots,/);
-  assert.match(screenSource, /createChatRuntimeSafeAreaMergedStyleSlots,/);
-  assert.match(chatRuntimeMobileStylesSource, /const chatComposerStyles = useMemo\(\s+\(\) => createChatComposerStyleSlots\(\{\s+speechPreviewStyles: \{\s+box: styles\.sttPreviewBox,\s+label: styles\.sttPreviewLabel,\s+text: styles\.sttPreviewText,/);
-  assert.match(screenSource, /const mobileSafeAreaStyles = useMemo\(\s+\(\) => createChatRuntimeMobileSafeAreaStyleSlots\(mobileSafeAreaLayout\),\s+\[mobileSafeAreaLayout\],\s+\);/);
-  assert.match(screenSource, /const chatSafeAreaStyles = useMemo\(\s+\(\) => createChatRuntimeSafeAreaMergedStyleSlots\(\{/);
-  assert.match(screenSource, /const chatComposerRuntimeDockStyles = useMemo\(\s+\(\) => createChatComposerRuntimeDockStyleSlots\(\{/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
-  assert.match(sessionPresentationSource, /export function createChatComposerStyleSlots/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
-  assert.match(sessionPresentationSource, /export function createChatComposerRuntimeDockStyleSlots/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function createChatRuntimeMobileSafeAreaLayoutState/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function createChatRuntimeMobileSafeAreaStyleSlots/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function createChatRuntimeSafeAreaMergedStyleSlots/);
-  assert.match(sessionPresentationSource, /export function createChatRuntimeMobileSafeAreaStyleSlots/);
-  assert.match(sessionPresentationSource, /export function createChatRuntimeSafeAreaMergedStyleSlots/);
-  assert.doesNotMatch(screenSource, /const mobileComposerWebAccessibility = mobileComposerSurface\.webAccessibility;/);
-  assert.match(sessionPresentationSource, /const webAccessibility = composerSurface\.webAccessibility/);
-  assert.doesNotMatch(screenSource, /CHAT_COMPOSER_PRESENTATION/);
-  assert.doesNotMatch(screenSource, /CHAT_COMPOSER_SURFACE_PRESENTATION/);
-  assert.doesNotMatch(screenSource, /mobileComposerCopy/);
-  assert.doesNotMatch(screenSource, /const inputAreaSurface = composerSurface\.inputArea;/);
-  assert.match(sessionPresentationSource, /borderTopWidth:\s*borderWidths\[surface\.inputArea\.borderTopWidthToken\]/);
-  assert.doesNotMatch(screenSource, /borderTopWidth:\s*theme\.hairline/);
-  assert.match(sessionPresentationSource, /inputArea:\s*\{\s+paddingBottom: layout\.inputArea\.paddingBottom,\s+\}/);
-  assert.doesNotMatch(screenSource, /inputArea:\s*\{\s*paddingBottom:\s*mobileSafeAreaLayout\.inputArea\.paddingBottom,\s*\}/);
-  assert.match(screenSource, /composerStyles: chatComposerRuntimeDockStyles/);
-  assert.doesNotMatch(screenSource, /chatComposerStyles\.inputDock\.area,\s*mobileSafeAreaStyles\.inputArea,/);
-  assert.match(sessionPresentationSource, /inputDock: \{[\s\S]*?area: \[\s+chatComposerStyles\.inputDock\.area,\s+safeAreaStyles\.inputArea,\s+\]/);
-  assert.match(sessionPresentationSource, /inputDock: safeAreaStyles\.inputDock,/);
-  assert.match(chatRuntimeMobileStylesSource, /inputDockStyles: \{\s+area: styles\.inputArea,\s+row: styles\.inputRow,\s+micWrapper: styles\.micWrapper,\s+\}/);
-  assert.match(chatMessageChromeSource, /<ChatComposerRuntimeDock\s+\{\.\.\.composer\}\s+styles=\{styles\.composer\}/);
-  assert.match(chatMessageChromeSource, /export function ChatComposerRuntimeDock/);
-  assert.match(chatMessageChromeSource, /export function ChatComposerInputDock/);
-  assert.match(chatMessageChromeSource, /<View style=\{styles\.area\}>[\s\S]*?<View style=\{styles\.row\}>[\s\S]*?<View\s+ref=\{micWrapperRef\}[\s\S]*?style=\{styles\.micWrapper\}/);
-  assert.doesNotMatch(screenSource, /mobileComposerSurface\.inputArea\.bottomInsetOffset \+ insets\.bottom/);
-  assert.match(sessionPresentationSource, /paddingHorizontal:\s*spacing\[surface\.inputArea\.micWrapperPaddingHorizontal\]/);
-  assert.doesNotMatch(screenSource, /const sttPreviewSurface = composerSurface\.sttPreview;/);
-  assert.match(sessionPresentationSource, /paddingHorizontal:\s*spacing\[surface\.sttPreview\.paddingHorizontal\]/);
-  assert.match(sessionPresentationSource, /fontWeight:\s*surface\.sttPreview\.labelFontWeight/);
-  assert.match(screenSource, /visuallyHiddenComposerHint:\s*\{\s+\.\.\.composerStyleSlots\.visuallyHiddenComposerHint,\s+\}/);
-  assert.match(sessionPresentationSource, /visuallyHiddenComposerHint:\s*\{[\s\S]*?position:\s*surface\.visuallyHiddenComposerHint\.position,[\s\S]*?left:\s*surface\.visuallyHiddenComposerHint\.left,[\s\S]*?width:\s*surface\.visuallyHiddenComposerHint\.width,[\s\S]*?height:\s*surface\.visuallyHiddenComposerHint\.height,/);
-  assert.doesNotMatch(screenSource, /visuallyHiddenComposerHint:\s*\{\s*position:\s*'absolute',\s*left:\s*-10000,\s*width:\s*1,\s*height:\s*1,/);
-  assert.doesNotMatch(screenSource, /createChatComposerRuntimeFollowUpPresentationState\(\{[\s\S]*?conversationState,[\s\S]*?isResponding: responding,[\s\S]*?isQueueEnabled: messageQueueEnabled,[\s\S]*?\}\)/);
-  assert.match(screenSource, /composerControlConversationState: conversationState,\s+composerControlIsResponding: responding,/);
-  assert.doesNotMatch(screenSource, /composerPresentation\.placeholder \|\| composerPresentation\.submitTitle/);
-  assert.doesNotMatch(chatMessageChromeSource, /textEntryPlaceholderFallback\s+\?\? \(composerControlPresentation\.placeholder \|\| composerControlPresentation\.submitTitle\)/);
-  assert.match(sessionPresentationSource, /const textEntryRenderState = getChatComposerRuntimeTextEntryMobileRenderState\(\{/);
-  assert.match(sessionPresentationSource, /export function getChatComposerRuntimeTextEntryMobileRenderState/);
-  assert.match(sessionPresentationSource, /const fallback = placeholderFallback \?\? \(presentation\.placeholder \|\| presentation\.submitTitle\)/);
+  assert.match(sessionPresentationSource, /export function getChatComposerRuntimeControlMobileRenderState/);
   assert.match(sessionPresentationSource, /getChatComposerMobileActionAvailabilityRenderState\(\{\s+hasContent,\s+handsFree,\s+presentation,\s+\}\)/);
-  assert.match(sessionPresentationSource, /getChatComposerSubmitMobileRenderState\(\{\s+presentation,\s+isHandsFree: handsFree,\s+isDisabled: actionAvailability\.submitAction\.isDisabled,\s+colors,\s+\}\)/);
-  assert.doesNotMatch(screenSource, /const isComposerSubmitDisabled =/);
-  assert.match(chatMessageChromeSource, /\{renderState\.label\}/);
-  assert.doesNotMatch(screenSource, /composerSubmitAction/);
-  assert.doesNotMatch(screenSource, /queueActionRenderState:/);
-  assert.match(sessionPresentationSource, /renderState: controlRenderState\.queueAction/);
-  assert.doesNotMatch(screenSource, /mobileComposerControls\.field\.accessibilityLabel/);
-  assert.doesNotMatch(screenSource, /textEntryAccessibilityLabel:/);
-  assert.match(sessionPresentationSource, /accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
-  assert.match(screenSource, /colors: theme\.colors,\s+platform: Platform\.OS,/);
-  assert.doesNotMatch(screenSource, /isWebPlatform,/);
-  assert.match(sessionPresentationSource, /const isWebPlatform = platform === "web"/);
-  assert.match(sessionPresentationSource, /webAccessibility: \{\s+isWebPlatform,/);
-  assert.match(sessionPresentationSource, /inputDescriptionNativeId: webAccessibility\.inputDescriptionNativeId/);
-  assert.match(sessionPresentationSource, /voiceStatusLiveRegionNativeId: webAccessibility\.voiceStatusLiveRegionNativeId/);
-  assert.match(sessionPresentationSource, /voiceStatusLiveRegionPoliteness: webAccessibility\.voiceStatusLiveRegionPoliteness/);
-  assert.match(chatMessageChromeSource, /aria-describedby=\{webAccessibility\.isWebPlatform \? webAccessibility\.inputDescriptionNativeId : undefined\}/);
-  assert.match(chatMessageChromeSource, /nativeID=\{webAccessibility\.inputDescriptionNativeId\}/);
-  assert.match(chatMessageChromeSource, /nativeID=\{webAccessibility\.voiceStatusLiveRegionNativeId\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLiveRegion=\{webAccessibility\.voiceStatusLiveRegionPoliteness\}/);
-  assert.match(chatMessageChromeSource, /aria-live=\{voiceStatusAriaLive\}/);
+  assert.match(sessionPresentationSource, /const composerControlPresentation = getChatComposerRuntimeFollowUpPresentationState\(\{/);
+  assert.match(sessionPresentationSource, /const controlRenderState = getChatComposerRuntimeControlMobileRenderState\(\{/);
+  assert.match(sessionPresentationSource, /const mobileComposerControls = controlRenderState\.controls/);
+  assert.match(screenSource, /composerControlHasContent: composerHasContent,\s+composerControlConversationState: conversationState,\s+composerControlIsResponding: responding,/);
+  assert.match(chatMessageChromeSource, /pendingImagesColors: colors,\s+composerControlColors: colors,/);
+
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatComposerStyleSlots,/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatComposerRuntimeDockStyleSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeMobileChromeStyleSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeMobileChromeSlotsFromStyleSource,/);
+  assert.match(sessionPresentationSource, /export function createChatComposerStyleSlots/);
+  assert.match(sessionPresentationSource, /export function createChatComposerRuntimeDockStyleSlots/);
+  assert.match(sessionPresentationSource, /const composerStyles = createChatComposerStyleSlotsFromStyleSource\(\{\s+styles,\s+\}\)/);
+  assert.match(sessionPresentationSource, /const composerRuntimeDockStyles = createChatComposerRuntimeDockStyleSlots\(\{/);
+  assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeDockStyleSlots/);
+
+  assert.match(sessionPresentationSource, /const webAccessibility = composerSurface\.webAccessibility/);
   assert.doesNotMatch(screenSource, /CHAT_COMPOSER_HINT_NATIVE_ID/);
   assert.doesNotMatch(screenSource, /CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID/);
+  assert.match(sessionPresentationSource, /inputDescriptionNativeId: webAccessibility\.inputDescriptionNativeId/);
+  assert.match(sessionPresentationSource, /voiceStatusLiveRegionNativeId: webAccessibility\.voiceStatusLiveRegionNativeId/);
+  assert.match(sessionPresentationSource, /ariaDescribedBy: webAccessibility\.isWebPlatform\s+\? webAccessibility\.inputDescriptionNativeId\s+: undefined/);
+  assert.match(chatMessageChromeSource, /aria-describedby=\{textEntryParts\.input\.ariaDescribedBy\}/);
+  assert.match(chatMessageChromeSource, /nativeID=\{textEntryParts\.inputDescription\.nativeID\}/);
+  assert.match(chatMessageChromeSource, /nativeID=\{textEntryParts\.voiceStatusLiveRegion\.nativeID\}/);
 });
 
 test('exposes the handsfree queue control as an accessible button', () => {
+  const actionButtonSource = composerLabeledActionButtonSource();
+
   assert.doesNotMatch(screenSource, /queueActionShouldRender:/);
   assert.doesNotMatch(screenSource, /queueActionRenderState:/);
-  assert.match(sessionPresentationSource, /shouldRender: controlRenderState\.visibility\.queueAction\.shouldRender/);
-  assert.match(sessionPresentationSource, /renderState: controlRenderState\.queueAction/);
-  assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.queueAction\}\s+styles=\{styles\.queueAction\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?accessibilityLabel=\{renderState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.accessibilityHint \?\? undefined\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{renderState\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /disabled=\{renderState\.isDisabled\}/);
+  assert.match(sessionPresentationSource, /queueAction: \{\s+shouldRender: controlRenderState\.visibility\.queueAction\.shouldRender,\s+renderState: controlRenderState\.queueAction,\s+onPress: onQueueActionPress,\s+\.\.\.chrome\.queueAction,\s+\}/);
+  assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.composerDockParts\.queueAction\}/);
+  assert.match(actionButtonSource, /disabled=\{actionButtonParts\.touchable\.disabled\}/);
+  assert.match(actionButtonSource, /accessibilityRole=\{actionButtonParts\.touchable\.accessibilityRole\}/);
+  assert.match(actionButtonSource, /accessibilityLabel=\{actionButtonParts\.touchable\.accessibilityLabel\}/);
+  assert.match(actionButtonSource, /accessibilityHint=\{actionButtonParts\.touchable\.accessibilityHint\}/);
+  assert.match(actionButtonSource, /accessibilityState=\{actionButtonParts\.touchable\.accessibilityState\}/);
   assert.doesNotMatch(screenSource, /const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage\(\);/);
   assert.doesNotMatch(screenSource, /setDebugInfo\(getChatComposerRuntimeQueueDebugMessage\(\)\)/);
   assert.match(chatMessageChromeSource, /setDebugInfo\(getChatComposerQueueMobileActionState\(\)\.debugMessage\)/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function getChatComposerRuntimeQueueDebugMessage/);
 });
 
 test('uses shared mobile composer control accessibility state', () => {
-  assert.match(screenSource, /speechPreviewText: sttPreview/);
-  assert.match(sessionPresentationSource, /label: mobileComposerControls\.sttPreview\.label/);
-  assert.doesNotMatch(screenSource, /imageAttachmentRenderState:/);
-  assert.doesNotMatch(screenSource, /textToSpeechRenderState:/);
-  assert.doesNotMatch(screenSource, /editBeforeSendRenderState:/);
+  const iconButtonSource = composerIconButtonSource();
+
   assert.match(sessionPresentationSource, /renderState: controlRenderState\.imageAttachment/);
   assert.match(sessionPresentationSource, /renderState: controlRenderState\.textToSpeech/);
   assert.match(sessionPresentationSource, /renderState: controlRenderState\.editBeforeSend/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?accessibilityLabel=\{renderState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.accessibilityHint \?\? undefined\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{renderState\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /aria-checked=\{renderState\.ariaChecked\}/);
-  assert.doesNotMatch(screenSource, /textEntryAccessibilityLabel:/);
   assert.match(sessionPresentationSource, /accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
+  assert.match(chatMessageChromeSource, /createChatComposerIconButtonMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatComposerIconButtonMobilePropsParts/);
+  assert.match(iconButtonSource, /const iconButtonParts = createChatComposerIconButtonMobilePropsParts\(\{/);
+  assert.match(iconButtonSource, /accessibilityRole=\{iconButtonParts\.touchable\.accessibilityRole\}/);
+  assert.match(iconButtonSource, /accessibilityLabel=\{iconButtonParts\.touchable\.accessibilityLabel\}/);
+  assert.match(iconButtonSource, /accessibilityHint=\{iconButtonParts\.touchable\.accessibilityHint\}/);
+  assert.match(iconButtonSource, /accessibilityState=\{iconButtonParts\.touchable\.accessibilityState\}/);
+  assert.match(iconButtonSource, /aria-checked=\{iconButtonParts\.touchable\.ariaChecked\}/);
+  assert.doesNotMatch(screenSource, /textEntryAccessibilityLabel:/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ checked: (ttsEnabled|willCancel) \}\}/);
   assert.doesNotMatch(screenSource, /aria-checked=\{(ttsEnabled|willCancel)\}/);
 });
 
-test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {
-  assert.doesNotMatch(screenSource, /getChatComposerMobileSurfaceState,/);
-  assert.match(screenSource, /getChatRuntimeMobileChromeStyleRenderState,/);
-  assert.match(sessionPresentationSource, /getChatComposerMobileSurfaceRenderState/);
-  assert.doesNotMatch(screenSource, /const mobileComposerSurface = mobileComposerSurfaceRenderState\.surface;/);
-  assert.match(sessionPresentationSource, /const composerSurface = composerSurfaceRenderState\.surface/);
-  assert.match(screenSource, /const composerChromeStyleState = chatChromeStyleState\.composer;/);
-  assert.match(screenSource, /const composerStyleState = composerChromeStyleState\.composer;/);
-  assert.doesNotMatch(screenSource, /const composerSurface = composerStyleState\.surface;/);
-  assert.doesNotMatch(screenSource, /const composerTextInputSurface = composerSurface\.input;/);
-  assert.doesNotMatch(screenSource, /const composerTextInputPlatform = composerStyleState\.input;/);
-  assert.match(screenSource, /sendButton:\s*\{\s+\.\.\.composerStyleSlots\.submitButton,\s+\}/);
-  assert.match(sessionPresentationSource, /submitButton:\s*\{[\s\S]*?minHeight:\s*surface\.submitButton\.minHeight,[\s\S]*?minWidth:\s*surface\.submitButton\.minWidth,/);
-  assert.match(sessionPresentationSource, /submitButton:\s*\{[\s\S]*?alignItems:\s*surface\.submitButton\.alignItems,[\s\S]*?justifyContent:\s*surface\.submitButton\.justifyContent,/);
-  assert.match(screenSource, /queueButton:\s*\{\s+\.\.\.composerStyleSlots\.queueButton,\s+\}/);
-  assert.match(sessionPresentationSource, /queueButton:\s*\{[\s\S]*?minHeight:\s*surface\.submitButton\.minHeight,[\s\S]*?minWidth:\s*surface\.submitButton\.minWidth,/);
-  assert.match(chatMessageChromeSource, /chrome: chatComposerRuntimeDockChrome,/);
-  assert.match(sessionPresentationSource, /\.\.\.chrome\.submitAction/);
-  assert.match(sessionPresentationSource, /\.\.\.chrome\.queueAction/);
-  assert.match(sessionPresentationSource, /activeOpacity: composerSurface\.submitButton\.pressedOpacity/);
-  assert.match(sessionPresentationSource, /activeOpacity: composerSurface\.queueButton\.pressedOpacity/);
-  assert.match(screenSource, /sendButtonDisabled:\s*\{\s+\.\.\.composerStyleSlots\.submitButtonDisabled,\s+\}/);
-  assert.match(sessionPresentationSource, /submitButtonDisabled:\s*\{[\s\S]*?opacity:\s*surface\.submitButton\.disabledOpacity/);
+test('keeps the chat composer send and queue controls icon-first with mobile touch targets', () => {
+  const actionButtonSource = composerLabeledActionButtonSource();
+
+  assert.match(chatRuntimeMobileStylesSource, /sendButton:\s*\{\s+\.\.\.composerStyleSlots\.submitButton,\s+\}/);
+  assert.match(chatRuntimeMobileStylesSource, /queueButton:\s*\{\s+\.\.\.composerStyleSlots\.queueButton,\s+\}/);
+  assert.match(sessionPresentationSource, /submitButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*44,[\s\S]*?paddingHorizontal:\s*"sm"/);
+  assert.match(sessionPresentationSource, /queueButton:\s*\{[\s\S]*?labelShouldRender:\s*false/);
+  assert.match(sessionPresentationSource, /submitButton:\s*\{[\s\S]*?labelShouldRender:\s*false/);
+  assert.match(sessionPresentationSource, /labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION\.mobile\.queueButton\.labelShouldRender/);
+  assert.match(sessionPresentationSource, /labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION\.mobile\.submitButton\.labelShouldRender/);
+  assert.match(sessionPresentationSource, /shouldRender: renderState\.labelShouldRender \?\? true/);
+  assert.match(actionButtonSource, /actionButtonParts\.label\.shouldRender \? \(/);
+  assert.match(actionButtonSource, /<Text style=\{actionButtonParts\.label\.style\}>/);
+  assert.match(actionButtonSource, /\{actionButtonParts\.label\.text\}/);
+  assert.doesNotMatch(actionButtonSource, /\{renderState\.label\}/);
 });
 
 test('keeps the chat composer accessory controls at a mobile-friendly touch target size', () => {
-  assert.match(screenSource, /ttsToggle:\s*\{\s+\.\.\.composerStyleSlots\.accessoryButton,\s+\}/);
+  const iconButtonSource = composerIconButtonSource();
+
+  assert.match(chatRuntimeMobileStylesSource, /ttsToggle:\s*\{\s+\.\.\.composerStyleSlots\.accessoryButton,\s+\}/);
+  assert.match(chatRuntimeMobileStylesSource, /ttsToggleOn:\s*\{\s+\.\.\.composerStyleSlots\.accessoryButtonActive,\s+\}/);
   assert.match(sessionPresentationSource, /accessoryButton:\s*\{[\s\S]*?width:\s*surface\.accessoryButton\.size,[\s\S]*?height:\s*surface\.accessoryButton\.size,[\s\S]*?borderRadius:\s*surface\.accessoryButton\.borderRadius,/);
-  assert.doesNotMatch(screenSource, /const mobileComposerSurfaceColors = composerStyleState\.colors\.surface;/);
   assert.match(sessionPresentationSource, /borderColor:\s*colors\.accessoryButton\.borderColor/);
   assert.match(sessionPresentationSource, /backgroundColor:\s*colors\.accessoryButton\.backgroundColor/);
-  assert.match(sessionPresentationSource, /alignItems:\s*surface\.accessoryButton\.alignItems/);
-  assert.match(sessionPresentationSource, /justifyContent:\s*surface\.accessoryButton\.justifyContent/);
-  assert.match(screenSource, /ttsToggleOn:\s*\{\s+\.\.\.composerStyleSlots\.accessoryButtonActive,\s+\}/);
   assert.match(sessionPresentationSource, /accessoryButtonActive:\s*\{[\s\S]*?backgroundColor:\s*colors\.accessoryButton\.activeBackgroundColor,[\s\S]*?borderColor:\s*colors\.accessoryButton\.activeBorderColor/);
-  assert.match(chatMessageChromeSource, /chrome: chatComposerRuntimeDockChrome,/);
-  assert.match(sessionPresentationSource, /\.\.\.chrome\.textEntry/);
-  assert.match(sessionPresentationSource, /placeholderTextColor: composerTextColors\.input\.placeholderColor/);
-  assert.match(screenSource, /\n    input:\s*\{\s+\.\.\.composerStyleSlots\.input,\s+\}/);
-  assert.match(sessionPresentationSource, /input:\s*\{[\s\S]*?borderWidth:\s*surface\.input\.borderWidth,[\s\S]*?borderColor:\s*colors\.input\.borderColor,[\s\S]*?borderRadius:\s*radius\[surface\.input\.borderRadius\],[\s\S]*?paddingHorizontal:\s*spacing\[surface\.input\.paddingHorizontal\],[\s\S]*?paddingVertical:\s*renderState\.input\.paddingVertical,[\s\S]*?backgroundColor:\s*colors\.input\.backgroundColor,[\s\S]*?color:\s*textColors\.input\.color,[\s\S]*?fontSize:\s*surface\.input\.fontSize/);
-  assert.doesNotMatch(screenSource, /\n    input:\s*\{\s+\.\.\.theme\.input/);
-  assert.doesNotMatch(screenSource, /getChatComposerImageAttachmentMobileRenderState,/);
-  assert.doesNotMatch(screenSource, /getChatComposerTextToSpeechMobileRenderState,/);
-  assert.doesNotMatch(screenSource, /getChatComposerEditBeforeSendMobileRenderState,/);
-  assert.doesNotMatch(screenSource, /getChatComposerMicMobileRenderState,/);
-  assert.match(sessionPresentationSource, /getChatComposerImageAttachmentMobileRenderState/);
-  assert.match(sessionPresentationSource, /getChatComposerTextToSpeechMobileRenderState/);
-  assert.match(sessionPresentationSource, /getChatComposerEditBeforeSendMobileRenderState/);
-  assert.match(sessionPresentationSource, /getChatComposerMicMobileRenderState/);
-  assert.doesNotMatch(screenSource, /getChatComposerMicMobileWebPressStyleState,/);
-  assert.match(sessionPresentationSource, /getChatComposerMicMobileWebPressStyleState/);
-  assert.doesNotMatch(screenSource, /mobileComposerImageAttachmentRenderState/);
-  assert.doesNotMatch(screenSource, /mobileComposerTextToSpeechRenderState/);
-  assert.doesNotMatch(screenSource, /mobileComposerEditBeforeSendRenderState/);
-  assert.doesNotMatch(screenSource, /mobileComposerMicRenderState/);
-  assert.match(sessionPresentationSource, /imageAttachment: getChatComposerImageAttachmentMobileRenderState/);
-  assert.match(sessionPresentationSource, /textToSpeech: getChatComposerTextToSpeechMobileRenderState/);
-  assert.match(sessionPresentationSource, /editBeforeSend: getChatComposerEditBeforeSendMobileRenderState/);
-  assert.match(sessionPresentationSource, /micButton: getChatComposerMicMobileRenderState/);
-  assert.match(chatMessageChromeSource, /chrome: chatComposerRuntimeDockChrome,/);
-  assert.match(sessionPresentationSource, /activeOpacity: composerSurface\.accessoryButton\.pressedOpacity/);
-  assert.match(sessionPresentationSource, /renderState: controlRenderState\.textToSpeech/);
-  assert.match(sessionPresentationSource, /renderState: controlRenderState\.editBeforeSend/);
-  assert.match(sessionPresentationSource, /renderState: controlRenderState\.micButton/);
-  assert.match(chatMessageChromeSource, /name=\{renderState\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityHint=\{renderState\.accessibilityHint \?\? undefined\}/);
-  assert.match(sessionPresentationSource, /\.\.\.chrome\.micButton/);
-  assert.match(sessionPresentationSource, /webPressedStyle: isWebPlatform \? getChatComposerMicMobileWebPressStyleState\(\) : undefined/);
+  assert.match(iconButtonSource, /name=\{iconButtonParts\.icon\.name\}/);
+  assert.match(iconButtonSource, /size=\{iconButtonParts\.icon\.size\}/);
+  assert.match(iconButtonSource, /color=\{iconButtonParts\.icon\.color\}/);
   assert.doesNotMatch(screenSource, /CHAT_COMPOSER_PRESENTATION\.(imageAttachment|textToSpeech|editBeforeSend|mic)\.mobileIcon/);
-  assert.doesNotMatch(screenSource, /composerImageAttachmentMobileIcon/);
-  assert.doesNotMatch(screenSource, /composer(TextToSpeech|EditBeforeSend)MobileIcon/);
-  assert.doesNotMatch(screenSource, /getChatComposerMicMobile(Action|Icon)State,/);
-  assert.doesNotMatch(screenSource, /composerMicMobile(Action|Icon|IconColors)/);
-  assert.doesNotMatch(screenSource, /WebkitTouchCallout: 'none'/);
-  assert.doesNotMatch(screenSource, /theme\.colors\[composerSurface\.accessoryButton\.(borderColorToken|backgroundColorToken|activeBorderColorToken|activeBackgroundColorToken)\]/);
-  assert.doesNotMatch(screenSource, /theme\.colors\[mobileComposerSurface\.input\.placeholderColorToken\]/);
-  assert.doesNotMatch(screenSource, /ttsToggleText:/);
   assert.doesNotMatch(screenSource, /composerSurface\.accessoryButton\.glyphFontSize/);
 });
 
@@ -264,62 +169,44 @@ test('uses shared pending image attachment presentation in the mobile composer',
   assert.doesNotMatch(chatMessageChromeSource, /getChatImageAttachmentMobileRenderState/);
   assert.match(sessionPresentationSource, /getChatImageAttachmentMobileRenderState/);
   assert.doesNotMatch(screenSource, /buildChatComposerRuntimeMessageContent/);
-  assert.doesNotMatch(chatMessageChromeSource, /buildChatComposerRuntimeMessageContent/);
   assert.match(chatMessageChromeSource, /getChatComposerRuntimeDraftMessageState/);
   assert.match(sessionPresentationSource, /export function getChatComposerRuntimeDraftMessageState/);
-  assert.doesNotMatch(screenSource, /buildChatImageAttachmentMessage/);
-  assert.doesNotMatch(chatMessageChromeSource, /buildChatImageAttachmentMessage/);
-  assert.match(sessionPresentationSource, /buildChatImageAttachmentMessage/);
   assert.doesNotMatch(screenSource, /const imageAttachmentRenderState = useMemo/);
-  assert.match(screenSource, /const imageAttachmentStyleState = composerChromeStyleState\.imageAttachment;/);
-  assert.doesNotMatch(screenSource, /const imageAttachmentSurface = imageAttachmentStyleState\.surface;/);
-  assert.doesNotMatch(screenSource, /const imageAttachmentSurfaceColors = imageAttachmentStyleState\.colors;/);
-  assert.doesNotMatch(screenSource, /pendingImagesColors: theme\.colors/);
-  assert.match(chatMessageChromeSource, /pendingImagesColors: colors,/);
-  assert.match(sessionPresentationSource, /const pendingImagesRenderState = getChatImageAttachmentMobileRenderState\(\{\s+colors: pendingImagesColors,\s+\}\)/);
-  assert.match(sessionPresentationSource, /renderState: pendingImagesRenderState/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.removeButton\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /activeOpacity=\{renderState\.removeButton\.pressedOpacity\}/);
-  assert.match(chatMessageChromeSource, /name=\{renderState\.removeIcon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{renderState\.removeIcon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{renderState\.removeIcon\.color\}/);
-  assert.match(screenSource, /pendingImagesRow:\s*\{\s+\.\.\.imageAttachmentStyleSlots\.row,\s+\}/);
-  assert.match(screenSource, /pendingImageCard:\s*\{\s+\.\.\.imageAttachmentStyleSlots\.card,\s+\}/);
-  assert.match(screenSource, /pendingImagePreview:\s*\{\s+\.\.\.imageAttachmentStyleSlots\.preview,\s+\}/);
-  assert.match(screenSource, /pendingImageRemoveButton:\s*\{\s+\.\.\.imageAttachmentStyleSlots\.removeButton,\s+\}/);
-  assert.match(sessionPresentationSource, /row:\s*\{[\s\S]*?paddingHorizontal:\s*spacing\[surface\.row\.paddingHorizontal\],[\s\S]*?gap:\s*spacing\[surface\.row\.gap\]/);
-  assert.match(sessionPresentationSource, /card:\s*\{[\s\S]*?width:\s*surface\.preview\.size,[\s\S]*?height:\s*surface\.preview\.size/);
-  assert.match(sessionPresentationSource, /preview:\s*\{[\s\S]*?width:\s*surface\.previewImage\.width,[\s\S]*?height:\s*surface\.previewImage\.height,/);
-  assert.match(sessionPresentationSource, /card:\s*\{[\s\S]*?borderColor:\s*colors\.preview\.borderColor,[\s\S]*?backgroundColor:\s*colors\.preview\.backgroundColor/);
-  assert.match(sessionPresentationSource, /removeButton:\s*\{[\s\S]*?backgroundColor:\s*colors\.removeButton\.backgroundColor/);
+  assert.match(chatRuntimeMobileStylesSource, /pendingImagesRow:\s*\{\s+\.\.\.imageAttachmentStyleSlots\.row,\s+\}/);
+  assert.match(chatRuntimeMobileStylesSource, /pendingImageCard:\s*\{\s+\.\.\.imageAttachmentStyleSlots\.card,\s+\}/);
+  assert.match(chatRuntimeMobileStylesSource, /pendingImagePreview:\s*\{\s+\.\.\.imageAttachmentStyleSlots\.preview,\s+\}/);
+  assert.match(chatRuntimeMobileStylesSource, /pendingImageRemoveButton:\s*\{\s+\.\.\.imageAttachmentStyleSlots\.removeButton,\s+\}/);
+  assert.match(chatMessageChromeSource, /createChatComposerPendingImagesRailMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatComposerPendingImagesRailMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /accessibilityLabel=\{item\.removeButton\.accessibilityLabel\}/);
+  assert.match(chatMessageChromeSource, /activeOpacity=\{item\.removeButton\.activeOpacity\}/);
+  assert.match(chatMessageChromeSource, /name=\{item\.removeIcon\.name\}/);
   assert.doesNotMatch(screenSource, /CHAT_IMAGE_ATTACHMENT_PRESENTATION/);
-  assert.doesNotMatch(screenSource, /getChatImageAttachmentCopyState,/);
-  assert.doesNotMatch(screenSource, /getChatImageAttachmentMobileSurfaceColors,/);
-  assert.doesNotMatch(screenSource, /getChatImageAttachmentMobileSurfaceState,/);
-  assert.doesNotMatch(screenSource, /getChatImageAttachmentMobileRemoveIconState,/);
   assert.doesNotMatch(screenSource, /mobileImageAttachment/);
-  assert.doesNotMatch(screenSource, /pendingImageCard:\s*\{[\s\S]*?width:\s*64/);
-  assert.doesNotMatch(screenSource, /pendingImagePreview:\s*\{\s*width:\s*'100%',\s*height:\s*'100%',/);
-  assert.doesNotMatch(screenSource, /backgroundColor:\s*'rgba\(0,0,0,0\.7\)'/);
-  assert.doesNotMatch(screenSource, /backgroundColor:\s*hexToRgba\(\s*imageAttachmentSurface\.removeButton\.backgroundColor,\s*imageAttachmentSurface\.removeButton\.backgroundAlpha,\s*\)/);
-  assert.doesNotMatch(screenSource, /const buildMessageWithPendingImages =/);
-  assert.doesNotMatch(screenSource, /buildConversationImageMarkdownMessage/);
 });
 
 test('exposes the edit-before-send toggle state to Expo Web accessibility APIs', () => {
+  const iconButtonSource = composerIconButtonSource();
+
   assert.doesNotMatch(screenSource, /editBeforeSendRenderState:/);
-  assert.match(sessionPresentationSource, /renderState: controlRenderState\.editBeforeSend/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?accessibilityState=\{renderState\.accessibilityState\}[\s\S]*?aria-checked=\{renderState\.ariaChecked\}/);
+  assert.match(sessionPresentationSource, /editBeforeSendControl: \{\s+shouldRender: controlRenderState\.visibility\.editBeforeSendControl\.shouldRender,\s+renderState: controlRenderState\.editBeforeSend,\s+onPress: onEditBeforeSendPress,\s+\.\.\.chrome\.editBeforeSendControl,\s+\}/);
+  assert.match(chatMessageChromeSource, /<ChatComposerIconButton\s+\{\.\.\.composerDockParts\.editBeforeSendControl\}/);
+  assert.match(iconButtonSource, /accessibilityState=\{iconButtonParts\.touchable\.accessibilityState\}/);
+  assert.match(iconButtonSource, /aria-checked=\{iconButtonParts\.touchable\.ariaChecked\}/);
+  assert.doesNotMatch(screenSource, /aria-checked=\{willCancel\}/);
 });
 
 test('exposes composer queue and submit disabled state through shared actions', () => {
+  const actionButtonSource = composerLabeledActionButtonSource();
+
   assert.doesNotMatch(screenSource, /queueActionRenderState:/);
   assert.doesNotMatch(screenSource, /submitActionRenderState:/);
-  assert.match(sessionPresentationSource, /renderState: controlRenderState\.queueAction/);
-  assert.match(sessionPresentationSource, /renderState: controlRenderState\.submitAction/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{renderState\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /disabled=\{renderState\.isDisabled\}/);
-  assert.doesNotMatch(screenSource, /mobileComposerQueueAction/);
+  assert.match(sessionPresentationSource, /queueAction: getChatComposerQueueMobileRenderState\(\{\s+isDisabled: actionAvailability\.queueAction\.isDisabled,\s+colors,\s+\}\),/);
+  assert.match(sessionPresentationSource, /submitAction: getChatComposerSubmitMobileRenderState\(\{\s+presentation,\s+isHandsFree: handsFree,\s+isDisabled: actionAvailability\.submitAction\.isDisabled,\s+colors,\s+\}\),/);
+  assert.match(sessionPresentationSource, /disabled: renderState\.isDisabled/);
+  assert.match(actionButtonSource, /disabled=\{actionButtonParts\.touchable\.disabled\}/);
+  assert.match(actionButtonSource, /style=\{actionButtonParts\.touchable\.style\}/);
+  assert.doesNotMatch(actionButtonSource, /disabled=\{renderState\.isDisabled\}/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ disabled: (!composerHasContent|isComposerSubmitDisabled) \}\}/);
   assert.doesNotMatch(screenSource, /disabled=\{(!composerHasContent|isComposerSubmitDisabled)\}/);
   assert.doesNotMatch(screenSource, /isDisabled: !composerHasContent/);

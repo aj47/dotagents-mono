@@ -4518,6 +4518,7 @@ export interface ChatComposerLabeledActionButtonMobileRenderStateLike {
     color: unknown
   }
   label: string
+  labelShouldRender?: boolean
 }
 
 export interface ChatComposerLabeledActionButtonMobileStylesLike {
@@ -4558,6 +4559,7 @@ export interface ChatComposerLabeledActionButtonMobilePropsParts<
   }
   icon: TRenderState["icon"]
   label: {
+    shouldRender: boolean
     style: TStyles["text"]
     text: string
   }
@@ -10994,6 +10996,7 @@ export interface ChatComposerSubmitMobileActionState {
   isQueueMode: boolean
   isDisabled: boolean
   label: string
+  labelShouldRender: boolean
   accessibilityRole: "button"
   accessibilityLabel: string
   accessibilityHint: string
@@ -11021,6 +11024,7 @@ export interface ChatComposerQueueMobileActionStateInput {
 export interface ChatComposerQueueMobileActionState {
   isDisabled: boolean
   label: string
+  labelShouldRender: boolean
   accessibilityRole: "button"
   accessibilityLabel: string
   accessibilityHint: string
@@ -12456,14 +12460,15 @@ export const CHAT_COMPOSER_SURFACE_PRESENTATION = {
     },
     submitButton: {
       minHeight: 44,
-      minWidth: 64,
-      paddingHorizontal: "md",
+      minWidth: 44,
+      paddingHorizontal: "sm",
       paddingVertical: "sm",
       borderRadius: "md",
       backgroundColorToken: "primary",
       foregroundColorToken: "primaryForeground",
       disabledOpacity: 0.5,
       pressedOpacity: 0.7,
+      labelShouldRender: false,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
@@ -12477,6 +12482,7 @@ export const CHAT_COMPOSER_SURFACE_PRESENTATION = {
       backgroundColorToken: "background",
       iconColorToken: "primary",
       textColorToken: "foreground",
+      labelShouldRender: false,
       pressedOpacity: 0.7,
     },
     micButton: {
@@ -15154,6 +15160,7 @@ export function getChatComposerSubmitMobileActionState(
     label: isQueueMode
       ? CHAT_COMPOSER_PRESENTATION.queue.label
       : CHAT_COMPOSER_PRESENTATION.submit.sendLabel,
+    labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.labelShouldRender,
     accessibilityRole: "button",
     accessibilityLabel: createButtonAccessibilityLabel(accessibilityLabel),
     accessibilityHint: isHandsFree
@@ -15198,6 +15205,7 @@ export function getChatComposerQueueMobileActionState(
   return {
     isDisabled,
     label: CHAT_COMPOSER_PRESENTATION.queue.label,
+    labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.queueButton.labelShouldRender,
     accessibilityRole: "button",
     accessibilityLabel: createButtonAccessibilityLabel(CHAT_COMPOSER_PRESENTATION.queue.accessibilityLabel),
     accessibilityHint: CHAT_COMPOSER_PRESENTATION.queue.accessibilityHint,
@@ -21152,6 +21160,7 @@ export function createChatComposerLabeledActionButtonMobilePropsParts<
     },
     icon: renderState.icon,
     label: {
+      shouldRender: renderState.labelShouldRender ?? true,
       style: styles.text,
       text: renderState.label,
     },

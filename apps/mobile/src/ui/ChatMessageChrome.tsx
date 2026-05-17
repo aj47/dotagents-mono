@@ -9549,9 +9549,11 @@ export function ChatComposerLabeledActionButton({
         size={actionButtonParts.icon.size}
         color={actionButtonParts.icon.color}
       />
-      <Text style={actionButtonParts.label.style}>
-        {actionButtonParts.label.text}
-      </Text>
+      {actionButtonParts.label.shouldRender ? (
+        <Text style={actionButtonParts.label.style}>
+          {actionButtonParts.label.text}
+        </Text>
+      ) : null}
     </TouchableOpacity>
   );
 }

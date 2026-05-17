@@ -1918,6 +1918,7 @@ describe("session presentation semantics", () => {
     expect(getChatComposerQueueMobileActionState()).toEqual({
       isDisabled: false,
       label: CHAT_COMPOSER_PRESENTATION.queue.label,
+      labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.queueButton.labelShouldRender,
       accessibilityRole: "button",
       accessibilityLabel: "Queue message button",
       accessibilityHint: CHAT_COMPOSER_PRESENTATION.queue.accessibilityHint,
@@ -1938,6 +1939,7 @@ describe("session presentation semantics", () => {
     })).toEqual({
       isDisabled: true,
       label: CHAT_COMPOSER_PRESENTATION.queue.label,
+      labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.queueButton.labelShouldRender,
       accessibilityRole: "button",
       accessibilityLabel: "Queue message button",
       accessibilityHint: CHAT_COMPOSER_PRESENTATION.queue.accessibilityHint,
@@ -2355,8 +2357,8 @@ describe("session presentation semantics", () => {
       submitButton: {
         backgroundColor: "#2563eb",
         minHeight: 44,
-        minWidth: 64,
-        paddingHorizontal: 12,
+        minWidth: 44,
+        paddingHorizontal: 8,
         paddingVertical: 8,
         borderRadius: 8,
         flexDirection: "row",
@@ -2369,8 +2371,8 @@ describe("session presentation semantics", () => {
         borderColor: "#cbd5e1",
         backgroundColor: "#f8fafc",
         minHeight: 44,
-        minWidth: 64,
-        paddingHorizontal: 12,
+        minWidth: 44,
+        paddingHorizontal: 8,
         paddingVertical: 8,
         borderRadius: 8,
         flexDirection: "row",
@@ -3078,6 +3080,7 @@ describe("session presentation semantics", () => {
       isQueueMode: true,
       isDisabled: false,
       label: CHAT_COMPOSER_PRESENTATION.queue.label,
+      labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.labelShouldRender,
       accessibilityRole: "button",
       accessibilityLabel: "Queue next message button",
       accessibilityHint: "Adds your message to the queue for this conversation.",
@@ -3095,6 +3098,7 @@ describe("session presentation semantics", () => {
       isQueueMode: false,
       isDisabled: true,
       label: CHAT_COMPOSER_PRESENTATION.submit.sendLabel,
+      labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.labelShouldRender,
       accessibilityRole: "button",
       accessibilityLabel: "Send message button",
       accessibilityHint: CHAT_COMPOSER_PRESENTATION.submit.handsFreeAccessibilityHint,
@@ -3129,6 +3133,7 @@ describe("session presentation semantics", () => {
       isQueueMode: true,
       isDisabled: true,
       label: CHAT_COMPOSER_PRESENTATION.queue.label,
+      labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.labelShouldRender,
       accessibilityRole: "button",
       accessibilityLabel: "Queue next message button",
       accessibilityHint: "Adds your message to the queue for this conversation.",
@@ -3303,14 +3308,16 @@ describe("session presentation semantics", () => {
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.accessoryButton.alignItems).toBe("center")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.accessoryButton.justifyContent).toBe("center")
     expect("glyphFontSize" in CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.accessoryButton).toBe(false)
-    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.minWidth).toBe(64)
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.minWidth).toBe(44)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.foregroundColorToken).toBe("primaryForeground")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.pressedOpacity).toBe(0.7)
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.labelShouldRender).toBe(false)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.flexDirection).toBe("row")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.alignItems).toBe("center")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.justifyContent).toBe("center")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.queueButton.textColorToken).toBe("foreground")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.queueButton.pressedOpacity).toBe(0.7)
+    expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.queueButton.labelShouldRender).toBe(false)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.gap).toBe(4)
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.micButton.width).toBe("100%")
     expect(CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.micButton.height).toBe(56)
@@ -9694,6 +9701,7 @@ describe("session presentation semantics", () => {
         color: "#ffffff",
       },
       label: {
+        shouldRender: true,
         style: "queue-button-text",
         text: "Queue",
       },

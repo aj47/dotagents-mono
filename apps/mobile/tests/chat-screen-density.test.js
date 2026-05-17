@@ -2423,8 +2423,12 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(composerLabeledActionButtonSource, /accessibilityRole=\{actionButtonParts\.touchable\.accessibilityRole\}/);
   assert.match(composerLabeledActionButtonSource, /accessibilityHint=\{actionButtonParts\.touchable\.accessibilityHint\}/);
   assert.match(composerLabeledActionButtonSource, /name=\{actionButtonParts\.icon\.name\}/);
-  assert.match(composerLabeledActionButtonSource, /style=\{actionButtonParts\.label\.style\}/);
+  assert.match(composerLabeledActionButtonSource, /actionButtonParts\.label\.shouldRender \? \(/);
+  assert.match(composerLabeledActionButtonSource, /<Text style=\{actionButtonParts\.label\.style\}>/);
   assert.match(composerLabeledActionButtonSource, /\{actionButtonParts\.label\.text\}/);
+  assert.match(sessionPresentationSource, /labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION\.mobile\.queueButton\.labelShouldRender/);
+  assert.match(sessionPresentationSource, /labelShouldRender: CHAT_COMPOSER_SURFACE_PRESENTATION\.mobile\.submitButton\.labelShouldRender/);
+  assert.match(sessionPresentationSource, /shouldRender: renderState\.labelShouldRender \?\? true/);
   assert.doesNotMatch(composerLabeledActionButtonSource, /disabled=\{renderState\.isDisabled\}/);
   assert.doesNotMatch(composerLabeledActionButtonSource, /style=\{\[styles\.button, renderState\.isDisabled && styles\.disabledButton\]\}/);
   assert.doesNotMatch(composerLabeledActionButtonSource, /\{renderState\.label\}/);
