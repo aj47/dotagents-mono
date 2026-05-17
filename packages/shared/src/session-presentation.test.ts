@@ -8918,10 +8918,12 @@ describe("session presentation semantics", () => {
       },
     })
     expect(activityGroupToggleParts.preview).toEqual({
-      style: "toggle-preview-line",
-      numberOfLines: 1,
-      ellipsizeMode: "tail",
-      text: "Read, edit, test",
+      props: {
+        style: "toggle-preview-line",
+        numberOfLines: 1,
+        ellipsizeMode: "tail",
+        text: "Read, edit, test",
+      },
     })
     expect(activityGroupToggleParts.toggleIcon).toBe("toggle-icon-state")
     expect(createChatRuntimeToolActivityGroupToggleMobilePropsParts({

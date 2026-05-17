@@ -5086,17 +5086,15 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupCountBadge[\s\S]*?accessibilityLabel=\{container\.accessibilityLabel\}[\s\S]*?style=\{container\.style\}/);
   assert.equal((toolActivityGroupToggleComponentSource.match(/\{label\.text\}/g) ?? []).length, 1);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.countBadge\.label\.text/);
-  assert.equal((toolActivityGroupToggleComponentSource.match(/\{toggleParts\.preview\.text\}/g) ?? []).length, 1);
+  assert.match(sessionPresentationSource, /preview: \{[\s\S]*?props: \{[\s\S]*?numberOfLines: renderState\.surface\.preview\.numberOfLines,[\s\S]*?ellipsizeMode: renderState\.surface\.preview\.ellipsizeMode,[\s\S]*?text: renderState\.summary\.previewText,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupPreviewLine/);
+  assert.match(toolActivityGroupToggleComponentSource, /<ChatMessageToolActivityGroupPreviewLine\s+\{\.\.\.toggleParts\.preview\.props\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupPreviewLine[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?ellipsizeMode=\{ellipsizeMode\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.preview\.text/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /summary\./);
   assert.doesNotMatch(screenSource, /\{group!?\.count\}\s*<\/Text>/);
-  assert.equal(
-    (toolActivityGroupToggleComponentSource.match(/numberOfLines=\{toggleParts\.preview\.numberOfLines\}/g) ?? []).length,
-    1,
-  );
-  assert.equal(
-    (toolActivityGroupToggleComponentSource.match(/ellipsizeMode=\{toggleParts\.preview\.ellipsizeMode\}/g) ?? []).length,
-    1,
-  );
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /numberOfLines=\{toggleParts\.preview\.numberOfLines\}/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /ellipsizeMode=\{toggleParts\.preview\.ellipsizeMode\}/);
   assert.match(sessionPresentationSource, /toggleIcon: renderState\.headerToggleIcon/);
   assert.match(toolActivityGroupToggleComponentSource, /name=\{toggleParts\.toggleIcon\.name\}/);
   assert.match(toolActivityGroupToggleComponentSource, /size=\{toggleParts\.toggleIcon\.size\}/);

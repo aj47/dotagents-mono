@@ -1696,6 +1696,9 @@ type ChatMessageToolActivityGroupToggleParts = ReturnType<typeof createChatRunti
 type ChatMessageToolActivityGroupCountBadgeProps =
   ChatMessageToolActivityGroupToggleParts['countBadge']['props'];
 
+type ChatMessageToolActivityGroupPreviewLineProps =
+  ChatMessageToolActivityGroupToggleParts['preview']['props'];
+
 type ChatMessageToolActivityGroupFooterStyles = {
   button: StyleProp<ViewStyle>;
   pressed: StyleProp<ViewStyle>;
@@ -7842,13 +7845,9 @@ export function ChatMessageToolActivityGroupToggle({
             {...toggleParts.countBadge.props}
           />
         ) : null}
-        <Text
-          style={toggleParts.preview.style}
-          numberOfLines={toggleParts.preview.numberOfLines}
-          ellipsizeMode={toggleParts.preview.ellipsizeMode}
-        >
-          {toggleParts.preview.text}
-        </Text>
+        <ChatMessageToolActivityGroupPreviewLine
+          {...toggleParts.preview.props}
+        />
         <Ionicons
           name={toggleParts.toggleIcon.name}
           size={toggleParts.toggleIcon.size}
@@ -7872,6 +7871,23 @@ export function ChatMessageToolActivityGroupCountBadge({
         {label.text}
       </Text>
     </View>
+  );
+}
+
+export function ChatMessageToolActivityGroupPreviewLine({
+  style,
+  numberOfLines,
+  ellipsizeMode,
+  text,
+}: ChatMessageToolActivityGroupPreviewLineProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+      ellipsizeMode={ellipsizeMode}
+    >
+      {text}
+    </Text>
   );
 }
 

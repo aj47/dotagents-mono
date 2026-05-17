@@ -5444,10 +5444,12 @@ export interface ChatRuntimeToolActivityGroupToggleMobilePropsParts<
     }
   }
   preview: {
-    style: TStyles["previewLine"]
-    numberOfLines: TRenderState["surface"]["preview"]["numberOfLines"]
-    ellipsizeMode: TRenderState["surface"]["preview"]["ellipsizeMode"]
-    text: string
+    props: {
+      style: TStyles["previewLine"]
+      numberOfLines: TRenderState["surface"]["preview"]["numberOfLines"]
+      ellipsizeMode: TRenderState["surface"]["preview"]["ellipsizeMode"]
+      text: string
+    }
   }
   toggleIcon: TRenderState["headerToggleIcon"]
 }
@@ -22150,10 +22152,12 @@ export function createChatRuntimeToolActivityGroupToggleMobilePropsParts<
       },
     },
     preview: {
-      style: styles.previewLine,
-      numberOfLines: renderState.surface.preview.numberOfLines,
-      ellipsizeMode: renderState.surface.preview.ellipsizeMode,
-      text: renderState.summary.previewText,
+      props: {
+        style: styles.previewLine,
+        numberOfLines: renderState.surface.preview.numberOfLines,
+        ellipsizeMode: renderState.surface.preview.ellipsizeMode,
+        text: renderState.summary.previewText,
+      },
     },
     toggleIcon: renderState.headerToggleIcon,
   }
