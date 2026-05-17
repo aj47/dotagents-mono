@@ -1362,10 +1362,10 @@ type ChatRuntimeHeaderTurnDurationContainerProps =
   };
 
 type ChatRuntimeHeaderTurnDurationIconProps =
-  ChatRuntimeHeaderTurnDurationParts['icon']['props'];
+  ChatRuntimeHeaderTurnDurationParts['container']['content']['icon']['props'];
 
 type ChatRuntimeHeaderTurnDurationLabelProps =
-  ChatRuntimeHeaderTurnDurationParts['label']['props'];
+  ChatRuntimeHeaderTurnDurationParts['container']['content']['label']['props'];
 
 type ChatRuntimeHeaderStyleSlots = {
   actionsRowStyle: ChatRuntimeHeaderActionsRowProps['style'];
@@ -7779,15 +7779,17 @@ export function ChatRuntimeHeaderTurnDuration({
 
   if (!turnDurationParts.shouldRender) return null;
 
+  const containerContent = turnDurationParts.container.content;
+
   return (
     <ChatRuntimeHeaderTurnDurationContainer
       {...turnDurationParts.container.props}
     >
       <ChatRuntimeHeaderTurnDurationIcon
-        {...turnDurationParts.icon.props}
+        {...containerContent.icon.props}
       />
       <ChatRuntimeHeaderTurnDurationLabel
-        {...turnDurationParts.label.props}
+        {...containerContent.label.props}
       />
     </ChatRuntimeHeaderTurnDurationContainer>
   );

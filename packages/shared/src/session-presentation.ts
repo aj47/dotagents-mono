@@ -9714,17 +9714,19 @@ export interface ChatRuntimeHeaderTurnDurationMobilePropsParts<
       accessibilityLabel: string
       style: Array<TStyles["chip"] | TStyles["liveChip"] | false | undefined>
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
-  }
-  label: {
-    props: {
-      props: {
-        style: Array<TStyles["text"] | TStyles["liveText"] | false | undefined>
-        numberOfLines: TRenderState["badge"]["numberOfLines"]
+    content: {
+      icon: {
+        props: TRenderState["icon"]
       }
-      text: string
+      label: {
+        props: {
+          props: {
+            style: Array<TStyles["text"] | TStyles["liveText"] | false | undefined>
+            numberOfLines: TRenderState["badge"]["numberOfLines"]
+          }
+          text: string
+        }
+      }
     }
   }
 }
@@ -27134,20 +27136,22 @@ export function createChatRuntimeHeaderTurnDurationMobilePropsParts<
           renderState.isLive && styles.liveChip,
         ],
       },
-    },
-    icon: {
-      props: renderState.icon,
-    },
-    label: {
-      props: {
-        props: {
-          style: [
-            styles.text,
-            renderState.isLive && styles.liveText,
-          ],
-          numberOfLines: renderState.badge.numberOfLines,
+      content: {
+        icon: {
+          props: renderState.icon,
         },
-        text: renderState.label,
+        label: {
+          props: {
+            props: {
+              style: [
+                styles.text,
+                renderState.isLive && styles.liveText,
+              ],
+              numberOfLines: renderState.badge.numberOfLines,
+            },
+            text: renderState.label,
+          },
+        },
       },
     },
   }

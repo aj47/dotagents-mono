@@ -465,9 +465,10 @@ test('shows the shared total agent time in the mobile chat header', () => {
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderTurnDuration[\s\S]*?export function ChatConversationHomeQuickStarts/)?.[0] ?? '';
   assert.match(headerTurnDurationSource, /const turnDurationParts = createChatRuntimeHeaderTurnDurationMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(headerTurnDurationSource, /if \(!turnDurationParts\.shouldRender\) return null;/);
+  assert.match(headerTurnDurationSource, /const containerContent = turnDurationParts\.container\.content;/);
   assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationContainer\s+\{\.\.\.turnDurationParts\.container\.props\}/);
-  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.turnDurationParts\.icon\.props\}/);
-  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.turnDurationParts\.label\.props\}/);
+  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.containerContent\.icon\.props\}/);
+  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.containerContent\.label\.props\}/);
   assert.match(
     headerTurnDurationSource,
     /export function ChatRuntimeHeaderTurnDurationContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatRuntimeHeaderTurnDurationIcon/
@@ -484,7 +485,7 @@ test('shows the shared total agent time in the mobile chat header', () => {
     sessionPresentationSource,
     /container: \{\s+props: \{\s+accessible: true,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+style: \[\s+styles\.chip,\s+renderState\.isLive && styles\.liveChip,/
   );
-  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},/);
+  assert.match(sessionPresentationSource, /content: \{\s+icon: \{\s+props: renderState\.icon,\s+\},/);
   assert.match(
     sessionPresentationSource,
     /label: \{\s+props: \{\s+props: \{\s+style: \[\s+styles\.text,\s+renderState\.isLive && styles\.liveText,\s+\],\s+numberOfLines: renderState\.badge\.numberOfLines,/
@@ -5861,8 +5862,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   );
   assert.doesNotMatch(actionIconButtonSource, /style=\{\(\{ pressed \}\) => \[/);
   assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationContainer\s+\{\.\.\.turnDurationParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.turnDurationParts\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.turnDurationParts\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.containerContent\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.containerContent\.label\.props\}/);
   const contentRowSource =
     chatMessageChromeSource.match(/export function ChatMessageContentRow[\s\S]*?export function ChatMessageStandaloneActions/)?.[0] ?? '';
   const standaloneActionsSource =

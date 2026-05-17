@@ -4446,20 +4446,22 @@ describe("session presentation semantics", () => {
             headerTurnDurationStyles.liveChip,
           ],
         },
-      },
-      icon: {
-        props: navigationHeaderState.turnDurationRenderState.icon,
-      },
-      label: {
-        props: {
-          props: {
-            style: [
-              headerTurnDurationStyles.text,
-              headerTurnDurationStyles.liveText,
-            ],
-            numberOfLines: navigationHeaderState.turnDurationRenderState.badge.numberOfLines,
+        content: {
+          icon: {
+            props: navigationHeaderState.turnDurationRenderState.icon,
           },
-          text: navigationHeaderState.turnDurationRenderState.label,
+          label: {
+            props: {
+              props: {
+                style: [
+                  headerTurnDurationStyles.text,
+                  headerTurnDurationStyles.liveText,
+                ],
+                numberOfLines: navigationHeaderState.turnDurationRenderState.badge.numberOfLines,
+              },
+              text: navigationHeaderState.turnDurationRenderState.label,
+            },
+          },
         },
       },
     })
