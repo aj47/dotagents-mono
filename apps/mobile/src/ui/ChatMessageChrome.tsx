@@ -81,6 +81,7 @@ import {
   createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeConnectionBannerMobilePropsParts,
   createChatRuntimeRetryStatusMobilePropsParts,
+  createChatRuntimeToolApprovalMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
   createChatRuntimeConversationCollapsedPreviewMobilePropsParts,
@@ -7521,129 +7522,126 @@ export function ChatMessageToolApproval({
   onApprove,
   styles,
 }: ChatMessageToolApprovalProps) {
+  const toolApprovalParts = createChatRuntimeToolApprovalMobilePropsParts({
+    renderState,
+    toolName,
+    argumentsPreview,
+    argumentsContent,
+    onToggleArguments,
+    onDeny,
+    onApprove,
+    styles,
+  });
+
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
+    <View style={toolApprovalParts.card.style}>
+      <View style={toolApprovalParts.header.style}>
         <Ionicons
-          name={renderState.headerIcon.name}
-          size={renderState.headerIcon.size}
-          color={renderState.headerIcon.color}
+          name={toolApprovalParts.headerIcon.name}
+          size={toolApprovalParts.headerIcon.size}
+          color={toolApprovalParts.headerIcon.color}
         />
         <Text
-          style={styles.title}
-          numberOfLines={renderState.surface.title.numberOfLines}
+          style={toolApprovalParts.title.style}
+          numberOfLines={toolApprovalParts.title.numberOfLines}
         >
-          {renderState.title}
+          {toolApprovalParts.title.text}
         </Text>
-        {renderState.approveButton.isDisabled ? (
+        {toolApprovalParts.headerSpinner ? (
           <ActivityIndicator
-            size={renderState.spinner.size}
-            color={renderState.spinner.color}
+            size={toolApprovalParts.headerSpinner.size}
+            color={toolApprovalParts.headerSpinner.color}
           />
         ) : null}
       </View>
-      <View
-        style={[
-          styles.content,
-          renderState.approveButton.isDisabled && styles.contentDisabled,
-        ]}
-      >
-        <View style={styles.toolRow}>
-          <Text style={styles.toolLabel}>
-            {renderState.copy.toolLabel}:
+      <View style={toolApprovalParts.content.style}>
+        <View style={toolApprovalParts.toolRow.style}>
+          <Text style={toolApprovalParts.toolLabel.style}>
+            {toolApprovalParts.toolLabel.text}:
           </Text>
           <Text
-            style={styles.toolName}
-            numberOfLines={renderState.surface.toolName.numberOfLines}
+            style={toolApprovalParts.toolName.style}
+            numberOfLines={toolApprovalParts.toolName.numberOfLines}
           >
-            {toolName}
+            {toolApprovalParts.toolName.text}
           </Text>
         </View>
-        {argumentsPreview ? (
+        {toolApprovalParts.argumentsPreview ? (
           <Text
-            style={styles.argumentsPreview}
-            numberOfLines={renderState.surface.argumentsPreview.numberOfLines}
+            style={toolApprovalParts.argumentsPreview.style}
+            numberOfLines={toolApprovalParts.argumentsPreview.numberOfLines}
           >
-            {argumentsPreview}
+            {toolApprovalParts.argumentsPreview.text}
           </Text>
         ) : null}
         <Pressable
-          onPress={onToggleArguments}
-          disabled={renderState.argumentsToggle.isDisabled}
-          accessibilityRole={renderState.argumentsToggle.accessibilityRole}
-          accessibilityLabel={renderState.argumentsToggle.accessibilityLabel}
-          accessibilityState={renderState.argumentsToggle.accessibilityState}
-          aria-expanded={renderState.argumentsToggle.ariaExpanded}
-          style={({ pressed }) => [
-            styles.argumentsToggle,
-            pressed && styles.argumentsTogglePressed,
-            renderState.argumentsToggle.isDisabled && styles.buttonDisabled,
-          ]}
+          onPress={toolApprovalParts.argumentsToggle.onPress}
+          disabled={toolApprovalParts.argumentsToggle.disabled}
+          accessibilityRole={toolApprovalParts.argumentsToggle.accessibilityRole}
+          accessibilityLabel={toolApprovalParts.argumentsToggle.accessibilityLabel}
+          accessibilityState={toolApprovalParts.argumentsToggle.accessibilityState}
+          aria-expanded={toolApprovalParts.argumentsToggle.ariaExpanded}
+          style={toolApprovalParts.argumentsToggle.style}
         >
           <Ionicons
-            name={renderState.argumentsToggle.icon.name}
-            size={renderState.argumentsToggle.icon.size}
-            color={renderState.argumentsToggle.icon.color}
+            name={toolApprovalParts.argumentsToggle.icon.name}
+            size={toolApprovalParts.argumentsToggle.icon.size}
+            color={toolApprovalParts.argumentsToggle.icon.color}
           />
-          <Text style={styles.argumentsToggleText}>
-            {renderState.argumentsToggle.label}
+          <Text style={toolApprovalParts.argumentsToggle.label.style}>
+            {toolApprovalParts.argumentsToggle.label.text}
           </Text>
         </Pressable>
-        {renderState.argumentsToggle.ariaExpanded ? (
-          <ScrollView style={styles.argumentsScroll} nestedScrollEnabled>
-            <Text style={styles.argumentsFull}>
-              {argumentsContent}
+        {toolApprovalParts.fullArguments ? (
+          <ScrollView
+            style={toolApprovalParts.fullArguments.scroll.style}
+            nestedScrollEnabled={toolApprovalParts.fullArguments.scroll.nestedScrollEnabled}
+          >
+            <Text style={toolApprovalParts.fullArguments.text.style}>
+              {toolApprovalParts.fullArguments.text.text}
             </Text>
           </ScrollView>
         ) : null}
-        <View style={styles.actions}>
+        <View style={toolApprovalParts.actions.style}>
           <TouchableOpacity
-            style={[
-              styles.button,
-              styles.denyButton,
-              renderState.denyButton.isDisabled && styles.buttonDisabled,
-            ]}
-            onPress={onDeny}
-            disabled={renderState.denyButton.isDisabled}
-            accessibilityRole={renderState.denyButton.accessibilityRole}
-            accessibilityLabel={renderState.denyButton.accessibilityLabel}
-            accessibilityState={renderState.denyButton.accessibilityState}
+            style={toolApprovalParts.denyButton.style}
+            onPress={toolApprovalParts.denyButton.onPress}
+            disabled={toolApprovalParts.denyButton.disabled}
+            accessibilityRole={toolApprovalParts.denyButton.accessibilityRole}
+            accessibilityLabel={toolApprovalParts.denyButton.accessibilityLabel}
+            accessibilityState={toolApprovalParts.denyButton.accessibilityState}
           >
             <Ionicons
-              name={renderState.denyButton.icon.name}
-              size={renderState.denyButton.icon.size}
-              color={renderState.denyButton.icon.color}
+              name={toolApprovalParts.denyButton.icon.name}
+              size={toolApprovalParts.denyButton.icon.size}
+              color={toolApprovalParts.denyButton.icon.color}
             />
-            <Text style={styles.denyButtonText}>
-              {renderState.denyButton.label}
+            <Text style={toolApprovalParts.denyButton.label.style}>
+              {toolApprovalParts.denyButton.label.text}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.button,
-              styles.approveButton,
-              renderState.approveButton.isDisabled && styles.buttonDisabled,
-            ]}
-            onPress={onApprove}
-            disabled={renderState.approveButton.isDisabled}
-            accessibilityRole={renderState.approveButton.accessibilityRole}
-            accessibilityLabel={renderState.approveButton.accessibilityLabel}
-            accessibilityState={renderState.approveButton.accessibilityState}
+            style={toolApprovalParts.approveButton.style}
+            onPress={toolApprovalParts.approveButton.onPress}
+            disabled={toolApprovalParts.approveButton.disabled}
+            accessibilityRole={toolApprovalParts.approveButton.accessibilityRole}
+            accessibilityLabel={toolApprovalParts.approveButton.accessibilityLabel}
+            accessibilityState={toolApprovalParts.approveButton.accessibilityState}
           >
-            {renderState.approveButton.isDisabled ? (
+            {toolApprovalParts.approveButton.spinner ? (
               <ActivityIndicator
-                size={renderState.approveButton.spinner.size}
-                color={renderState.approveButton.spinner.color}
+                size={toolApprovalParts.approveButton.spinner.size}
+                color={toolApprovalParts.approveButton.spinner.color}
               />
-            ) : (
+            ) : toolApprovalParts.approveButton.icon ? (
               <Ionicons
-                name={renderState.approveButton.icon.name}
-                size={renderState.approveButton.icon.size}
-                color={renderState.approveButton.icon.color}
+                name={toolApprovalParts.approveButton.icon.name}
+                size={toolApprovalParts.approveButton.icon.size}
+                color={toolApprovalParts.approveButton.icon.color}
               />
-            )}
-            <Text style={styles.approveButtonText}>
-              {renderState.approveButton.label}
+            ) : null}
+            <Text style={toolApprovalParts.approveButton.label.style}>
+              {toolApprovalParts.approveButton.label.text}
             </Text>
           </TouchableOpacity>
         </View>

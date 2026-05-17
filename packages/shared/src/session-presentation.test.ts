@@ -93,6 +93,7 @@ import {
   createChatRuntimeConversationViewportMobilePropsParts,
   createChatRuntimeConversationRetryStatusMobileProps,
   createChatRuntimeConversationToolApprovalMobileProps,
+  createChatRuntimeToolApprovalMobilePropsParts,
   createChatRuntimeConversationToolExecutionStackMobileProps,
   createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationBodyPanelMobilePropsParts,
@@ -7150,6 +7151,130 @@ describe("session presentation semantics", () => {
     toolApprovalProps?.onDeny()
     toolApprovalProps?.onApprove()
     expect(toolApprovalPropEvents).toEqual(["toggle", "deny", "approve"])
+    if (!toolApprovalProps) {
+      throw new Error("Expected tool approval props")
+    }
+    const toolApprovalParts = createChatRuntimeToolApprovalMobilePropsParts({
+      ...toolApprovalProps,
+      styles: {
+        card: "tool-approval-card-style",
+        header: "tool-approval-header-style",
+        content: "tool-approval-content-style",
+        contentDisabled: "tool-approval-content-disabled-style",
+        title: "tool-approval-title-style",
+        toolRow: "tool-approval-tool-row-style",
+        toolLabel: "tool-approval-tool-label-style",
+        toolName: "tool-approval-tool-name-style",
+        argumentsPreview: "tool-approval-arguments-preview-style",
+        argumentsToggle: "tool-approval-arguments-toggle-style",
+        argumentsTogglePressed: "tool-approval-arguments-toggle-pressed-style",
+        argumentsToggleText: "tool-approval-arguments-toggle-text-style",
+        argumentsScroll: "tool-approval-arguments-scroll-style",
+        argumentsFull: "tool-approval-arguments-full-style",
+        actions: "tool-approval-actions-style",
+        button: "tool-approval-button-style",
+        buttonDisabled: "tool-approval-button-disabled-style",
+        approveButton: "tool-approval-approve-button-style",
+        approveButtonText: "tool-approval-approve-button-text-style",
+        denyButton: "tool-approval-deny-button-style",
+        denyButtonText: "tool-approval-deny-button-text-style",
+      },
+    })
+    expect(toolApprovalParts.card.style).toBe("tool-approval-card-style")
+    expect(toolApprovalParts.header.style).toBe("tool-approval-header-style")
+    expect(toolApprovalParts.headerIcon).toEqual(toolApprovalProps.renderState.headerIcon)
+    expect(toolApprovalParts.title).toEqual({
+      style: "tool-approval-title-style",
+      numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.title.numberOfLines,
+      text: CHAT_RUNTIME_PRESENTATION.approval.processingTitle,
+    })
+    expect(toolApprovalParts.headerSpinner).toEqual(toolApprovalProps.renderState.spinner)
+    expect(toolApprovalParts.content.style).toEqual([
+      "tool-approval-content-style",
+      "tool-approval-content-disabled-style",
+    ])
+    expect(toolApprovalParts.toolLabel).toEqual({
+      style: "tool-approval-tool-label-style",
+      text: CHAT_RUNTIME_PRESENTATION.approval.toolLabel,
+    })
+    expect(toolApprovalParts.toolName).toEqual({
+      style: "tool-approval-tool-name-style",
+      numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.toolName.numberOfLines,
+      text: "write_file",
+    })
+    expect(toolApprovalParts.argumentsPreview).toEqual({
+      style: "tool-approval-arguments-preview-style",
+      numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.argumentsPreview.numberOfLines,
+      text: "path: /test",
+    })
+    expect(toolApprovalParts.argumentsToggle.style({ pressed: true })).toEqual([
+      "tool-approval-arguments-toggle-style",
+      "tool-approval-arguments-toggle-pressed-style",
+      "tool-approval-button-disabled-style",
+    ])
+    expect(toolApprovalParts.argumentsToggle).toMatchObject({
+      disabled: true,
+      accessibilityRole: "button",
+      accessibilityLabel: "Hide full arguments for write_file",
+      accessibilityState: {
+        expanded: true,
+        disabled: true,
+      },
+      ariaExpanded: true,
+      icon: toolApprovalProps.renderState.argumentsToggle.icon,
+      label: {
+        style: "tool-approval-arguments-toggle-text-style",
+        text: CHAT_RUNTIME_PRESENTATION.approval.hideArgumentsLabel,
+      },
+    })
+    expect(toolApprovalParts.fullArguments).toEqual({
+      scroll: {
+        style: "tool-approval-arguments-scroll-style",
+        nestedScrollEnabled: true,
+      },
+      text: {
+        style: "tool-approval-arguments-full-style",
+        text: '{\n  "path": "/test"\n}',
+      },
+    })
+    expect(toolApprovalParts.actions.style).toBe("tool-approval-actions-style")
+    expect(toolApprovalParts.denyButton).toMatchObject({
+      style: [
+        "tool-approval-button-style",
+        "tool-approval-deny-button-style",
+        "tool-approval-button-disabled-style",
+      ],
+      disabled: true,
+      accessibilityRole: "button",
+      accessibilityLabel: "Deny tool call write_file",
+      accessibilityState: {
+        disabled: true,
+      },
+      icon: toolApprovalProps.renderState.denyButton.icon,
+      label: {
+        style: "tool-approval-deny-button-text-style",
+        text: CHAT_RUNTIME_PRESENTATION.approval.denyLabel,
+      },
+    })
+    expect(toolApprovalParts.approveButton).toMatchObject({
+      style: [
+        "tool-approval-button-style",
+        "tool-approval-approve-button-style",
+        "tool-approval-button-disabled-style",
+      ],
+      disabled: true,
+      accessibilityRole: "button",
+      accessibilityLabel: "Approve tool call write_file",
+      accessibilityState: {
+        disabled: true,
+      },
+      icon: null,
+      spinner: toolApprovalProps.renderState.approveButton.spinner,
+      label: {
+        style: "tool-approval-approve-button-text-style",
+        text: CHAT_RUNTIME_PRESENTATION.approval.processingLabel,
+      },
+    })
     expect(createChatRuntimeConversationToolApprovalMobileProps({
       cardState: null,
     })).toBeNull()

@@ -1529,6 +1529,148 @@ export interface ChatRuntimeConversationToolApprovalMobileProps {
   onApprove: () => void
 }
 
+export interface ChatRuntimeToolApprovalMobilePropsPartsStyleSlots {
+  card: unknown
+  header: unknown
+  content: unknown
+  contentDisabled: unknown
+  title: unknown
+  toolRow: unknown
+  toolLabel: unknown
+  toolName: unknown
+  argumentsPreview: unknown
+  argumentsToggle: unknown
+  argumentsTogglePressed: unknown
+  argumentsToggleText: unknown
+  argumentsScroll: unknown
+  argumentsFull: unknown
+  actions: unknown
+  button: unknown
+  buttonDisabled: unknown
+  approveButton: unknown
+  approveButtonText: unknown
+  denyButton: unknown
+  denyButtonText: unknown
+}
+
+export interface ChatRuntimeToolApprovalMobilePropsPartsInput<
+  TOnToggleArguments = unknown,
+  TOnDeny = unknown,
+  TOnApprove = unknown,
+  TStyles extends ChatRuntimeToolApprovalMobilePropsPartsStyleSlots =
+    ChatRuntimeToolApprovalMobilePropsPartsStyleSlots,
+> {
+  renderState: ChatRuntimeToolApprovalMobileRenderState
+  toolName: string
+  argumentsPreview: string
+  argumentsContent: string
+  onToggleArguments: TOnToggleArguments
+  onDeny: TOnDeny
+  onApprove: TOnApprove
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolApprovalMobilePropsParts<
+  TOnToggleArguments = unknown,
+  TOnDeny = unknown,
+  TOnApprove = unknown,
+  TStyles extends ChatRuntimeToolApprovalMobilePropsPartsStyleSlots =
+    ChatRuntimeToolApprovalMobilePropsPartsStyleSlots,
+> {
+  card: {
+    style: TStyles["card"]
+  }
+  header: {
+    style: TStyles["header"]
+  }
+  headerIcon: ChatRuntimeToolApprovalMobileRenderState["headerIcon"]
+  title: {
+    style: TStyles["title"]
+    numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["title"]["numberOfLines"]
+    text: string
+  }
+  headerSpinner: ChatRuntimeToolApprovalMobileRenderState["spinner"] | null
+  content: {
+    style: Array<TStyles["content"] | TStyles["contentDisabled"] | false>
+  }
+  toolRow: {
+    style: TStyles["toolRow"]
+  }
+  toolLabel: {
+    style: TStyles["toolLabel"]
+    text: string
+  }
+  toolName: {
+    style: TStyles["toolName"]
+    numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["toolName"]["numberOfLines"]
+    text: string
+  }
+  argumentsPreview: {
+    style: TStyles["argumentsPreview"]
+    numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["argumentsPreview"]["numberOfLines"]
+    text: string
+  } | null
+  argumentsToggle: {
+    onPress: TOnToggleArguments
+    disabled: boolean
+    accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityState: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["accessibilityState"]
+    ariaExpanded: boolean
+    style: (state: { pressed: boolean }) => Array<
+      | TStyles["argumentsToggle"]
+      | TStyles["argumentsTogglePressed"]
+      | TStyles["buttonDisabled"]
+      | false
+    >
+    icon: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["icon"]
+    label: {
+      style: TStyles["argumentsToggleText"]
+      text: string
+    }
+  }
+  fullArguments: {
+    scroll: {
+      style: TStyles["argumentsScroll"]
+      nestedScrollEnabled: true
+    }
+    text: {
+      style: TStyles["argumentsFull"]
+      text: string
+    }
+  } | null
+  actions: {
+    style: TStyles["actions"]
+  }
+  denyButton: {
+    style: Array<TStyles["button"] | TStyles["denyButton"] | TStyles["buttonDisabled"] | false>
+    onPress: TOnDeny
+    disabled: boolean
+    accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityState: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["accessibilityState"]
+    icon: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["icon"]
+    label: {
+      style: TStyles["denyButtonText"]
+      text: string
+    }
+  }
+  approveButton: {
+    style: Array<TStyles["button"] | TStyles["approveButton"] | TStyles["buttonDisabled"] | false>
+    onPress: TOnApprove
+    disabled: boolean
+    accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityState: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityState"]
+    icon: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["icon"] | null
+    spinner: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["spinner"] | null
+    label: {
+      style: TStyles["approveButtonText"]
+      text: string
+    }
+  }
+}
+
 export type ChatRuntimeConversationDelegationExpansionState = ChatDisplayExpansionStateMap<string>
 
 export type ChatRuntimeConversationDelegationExpansionSetter = (
@@ -18085,6 +18227,137 @@ export function createChatRuntimeRetryStatusMobilePropsParts<
     description: {
       style: styles.description,
       text: renderState.description,
+    },
+  }
+}
+
+export function createChatRuntimeToolApprovalMobilePropsParts<
+  TOnToggleArguments,
+  TOnDeny,
+  TOnApprove,
+  TStyles extends ChatRuntimeToolApprovalMobilePropsPartsStyleSlots,
+>({
+  renderState,
+  toolName,
+  argumentsPreview,
+  argumentsContent,
+  onToggleArguments,
+  onDeny,
+  onApprove,
+  styles,
+}: ChatRuntimeToolApprovalMobilePropsPartsInput<
+  TOnToggleArguments,
+  TOnDeny,
+  TOnApprove,
+  TStyles
+>): ChatRuntimeToolApprovalMobilePropsParts<
+  TOnToggleArguments,
+  TOnDeny,
+  TOnApprove,
+  TStyles
+> {
+  return {
+    card: {
+      style: styles.card,
+    },
+    header: {
+      style: styles.header,
+    },
+    headerIcon: renderState.headerIcon,
+    title: {
+      style: styles.title,
+      numberOfLines: renderState.surface.title.numberOfLines,
+      text: renderState.title,
+    },
+    headerSpinner: renderState.approveButton.isDisabled ? renderState.spinner : null,
+    content: {
+      style: [
+        styles.content,
+        renderState.approveButton.isDisabled && styles.contentDisabled,
+      ],
+    },
+    toolRow: {
+      style: styles.toolRow,
+    },
+    toolLabel: {
+      style: styles.toolLabel,
+      text: renderState.copy.toolLabel,
+    },
+    toolName: {
+      style: styles.toolName,
+      numberOfLines: renderState.surface.toolName.numberOfLines,
+      text: toolName,
+    },
+    argumentsPreview: argumentsPreview ? {
+      style: styles.argumentsPreview,
+      numberOfLines: renderState.surface.argumentsPreview.numberOfLines,
+      text: argumentsPreview,
+    } : null,
+    argumentsToggle: {
+      onPress: onToggleArguments,
+      disabled: renderState.argumentsToggle.isDisabled,
+      accessibilityRole: renderState.argumentsToggle.accessibilityRole,
+      accessibilityLabel: renderState.argumentsToggle.accessibilityLabel,
+      accessibilityState: renderState.argumentsToggle.accessibilityState,
+      ariaExpanded: renderState.argumentsToggle.ariaExpanded,
+      style: ({ pressed }) => [
+        styles.argumentsToggle,
+        pressed && styles.argumentsTogglePressed,
+        renderState.argumentsToggle.isDisabled && styles.buttonDisabled,
+      ],
+      icon: renderState.argumentsToggle.icon,
+      label: {
+        style: styles.argumentsToggleText,
+        text: renderState.argumentsToggle.label,
+      },
+    },
+    fullArguments: renderState.argumentsToggle.ariaExpanded ? {
+      scroll: {
+        style: styles.argumentsScroll,
+        nestedScrollEnabled: true,
+      },
+      text: {
+        style: styles.argumentsFull,
+        text: argumentsContent,
+      },
+    } : null,
+    actions: {
+      style: styles.actions,
+    },
+    denyButton: {
+      style: [
+        styles.button,
+        styles.denyButton,
+        renderState.denyButton.isDisabled && styles.buttonDisabled,
+      ],
+      onPress: onDeny,
+      disabled: renderState.denyButton.isDisabled,
+      accessibilityRole: renderState.denyButton.accessibilityRole,
+      accessibilityLabel: renderState.denyButton.accessibilityLabel,
+      accessibilityState: renderState.denyButton.accessibilityState,
+      icon: renderState.denyButton.icon,
+      label: {
+        style: styles.denyButtonText,
+        text: renderState.denyButton.label,
+      },
+    },
+    approveButton: {
+      style: [
+        styles.button,
+        styles.approveButton,
+        renderState.approveButton.isDisabled && styles.buttonDisabled,
+      ],
+      onPress: onApprove,
+      disabled: renderState.approveButton.isDisabled,
+      accessibilityRole: renderState.approveButton.accessibilityRole,
+      accessibilityLabel: renderState.approveButton.accessibilityLabel,
+      accessibilityState: renderState.approveButton.accessibilityState,
+      icon: renderState.approveButton.isDisabled ? null : renderState.approveButton.icon,
+      spinner: renderState.approveButton.isDisabled ? renderState.approveButton.spinner : null,
+      label: {
+        style: styles.approveButtonText,
+        text: renderState.approveButton.label,
+      },
     },
   }
 }
