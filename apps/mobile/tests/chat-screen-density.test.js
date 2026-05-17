@@ -1232,13 +1232,17 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /header: \{[\s\S]*?props: \{[\s\S]*?container: \{[\s\S]*?props: \{[\s\S]*?style: styles\.header,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader/);
   const delegationHeaderSource =
-    chatMessageChromeSource.match(/export function ChatMessageDelegationHeader[\s\S]*?export function ChatMessageDelegationLiveText/)?.[0] ?? '';
+    chatMessageChromeSource.match(/export function ChatMessageDelegationHeader[\s\S]*?export function ChatMessageDelegationStatusBadge/)?.[0] ?? '';
+  const delegationStatusBadgeSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationStatusBadge[\s\S]*?export function ChatMessageDelegationLiveText/)?.[0] ?? '';
   const delegationLiveTextSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationLiveText[\s\S]*?export function ChatMessageDelegationMetaItem/)?.[0] ?? '';
   assert.match(delegationCardComponentSource, /<ChatMessageDelegationHeader\s+\{\.\.\.cardContent\.header\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?<View\s+\{\.\.\.container\.props\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?<Text\s+\{\.\.\.title\.props\}[\s\S]*?\{title\.text\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?<View\s+\{\.\.\.statusBadge\.props\}[\s\S]*?<Text\s+\{\.\.\.statusText\.props\}[\s\S]*?\{statusText\.text\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
+  assert.match(delegationHeaderSource, /<ChatMessageDelegationStatusBadge\s+badge=\{statusBadge\}[\s\S]*?text=\{statusText\}/);
+  assert.match(delegationStatusBadgeSource, /<View\s+\{\.\.\.badge\.props\}[\s\S]*?<Text\s+\{\.\.\.text\.props\}[\s\S]*?\{text\.text\}/);
+  assert.doesNotMatch(delegationHeaderSource, /<View\s+\{\.\.\.statusBadge\.props\}/);
   assert.match(delegationHeaderSource, /<ChatMessageDelegationLiveText\s+liveText=\{liveText\}/);
   assert.match(delegationLiveTextSource, /if \(!liveText\.shouldRender\) \{\s+return null;\s+\}/);
   assert.match(delegationLiveTextSource, /<Text\s+\{\.\.\.liveText\.props\}[\s\S]*?\{liveText\.text\}/);
