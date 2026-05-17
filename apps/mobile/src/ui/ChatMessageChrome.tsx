@@ -10472,40 +10472,20 @@ export function ChatMessageScrollToBottomButton({
 }
 
 export function ChatMessageScrollToBottomButtonTouchable({
-  style,
-  onPress,
-  activeOpacity,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
   children,
+  ...props
 }: ChatMessageScrollToBottomButtonTouchableProps) {
   return (
-    <TouchableOpacity
-      style={style}
-      onPress={onPress}
-      activeOpacity={activeOpacity}
-      accessibilityRole={accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
-    >
+    <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
   );
 }
 
-export function ChatMessageScrollToBottomButtonIcon({
-  name,
-  size,
-  color,
-}: ChatMessageScrollToBottomButtonIconProps) {
-  return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
-  );
+export function ChatMessageScrollToBottomButtonIcon(
+  props: ChatMessageScrollToBottomButtonIconProps
+) {
+  return <Ionicons {...props} />;
 }
 
 export function ChatMessageLoadingState({

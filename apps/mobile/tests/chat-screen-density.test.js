@@ -1805,6 +1805,8 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.doesNotMatch(screenSource, /style=\{\[conversationDockStyles\.scrollToBottomButtonStyle,\s*mobileSafeAreaStyles\.scrollToBottomButton\]\}/);
   assert.doesNotMatch(screenSource, /style=\{\[styles\.scrollToBottomButton,\s*mobileSafeAreaStyles\.scrollToBottomButton\]\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageScrollToBottomButton/);
+  const scrollToBottomButtonSource =
+    chatMessageChromeSource.match(/export function ChatMessageScrollToBottomButton[\s\S]*?export function ChatMessageLoadingState/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeScrollToBottomButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeScrollToBottomButtonMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const scrollToBottomButtonParts = createChatRuntimeScrollToBottomButtonMobilePropsParts\(\{\s+renderState,\s+onPress,\s+style,\s+\}\);/);
@@ -1812,12 +1814,16 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonTouchable\s+\{\.\.\.scrollToBottomButtonParts\.button\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonIcon\s+\{\.\.\.scrollToBottomButtonParts\.icon\.props\}/);
   assert.match(
-    chatMessageChromeSource,
-    /export function ChatMessageScrollToBottomButtonTouchable\([\s\S]*?style=\{style\}[\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?export function ChatMessageScrollToBottomButtonIcon/
+    scrollToBottomButtonSource,
+    /export function ChatMessageScrollToBottomButtonTouchable\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageScrollToBottomButtonTouchableProps\) \{\s+return \(\s+<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatMessageScrollToBottomButtonIcon/
   );
   assert.match(
-    chatMessageChromeSource,
-    /export function ChatMessageScrollToBottomButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatMessageLoadingState/
+    scrollToBottomButtonSource,
+    /export function ChatMessageScrollToBottomButtonIcon\(\s+props: ChatMessageScrollToBottomButtonIconProps\s+\) \{\s+return <Ionicons \{\.\.\.props\} \/>;\s+\}/
+  );
+  assert.doesNotMatch(
+    scrollToBottomButtonSource,
+    /style=\{style\}|onPress=\{onPress\}|activeOpacity=\{activeOpacity\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\}|name=\{name\}|size=\{size\}|color=\{color\}/
   );
   assert.match(sessionPresentationSource, /shouldRenderButton: renderState\.shouldRender/);
   assert.match(
