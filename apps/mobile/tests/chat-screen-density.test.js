@@ -6575,9 +6575,13 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /quickStartsParts\.grid \? \(/);
   assert.match(chatMessageChromeSource, /quickStartsParts\.grid\.items\.map/);
   assert.match(chatMessageChromeSource, /style=\{\(\{ pressed \}\) => item\.pressable\.getStyle\(pressed\)\}/);
+  assert.match(chatMessageChromeSource, /item\.sourcePill\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /item\.sourcePill \? \(/);
   assert.match(chatMessageChromeSource, /name=\{item\.sourcePill\.icon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{item\.sourcePill\.icon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{item\.sourcePill\.iconColors\.color\}/);
+  assert.match(chatMessageChromeSource, /item\.addIcon\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /item\.addIcon \? \(/);
   assert.match(chatMessageChromeSource, /name=\{item\.addIcon\.icon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{item\.addIcon\.icon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{item\.addIcon\.iconColors\.color\}/);

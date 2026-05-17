@@ -6857,7 +6857,7 @@ export function ChatConversationHomeQuickStarts<
                 accessibilityLabel={item.pressable.accessibilityLabel}
                 accessibilityHint={item.pressable.accessibilityHint}
               >
-                {item.sourcePill ? (
+                {item.sourcePill.shouldRender ? (
                   <View style={item.sourcePill.style}>
                     <Ionicons
                       name={item.sourcePill.icon.name}
@@ -6871,7 +6871,7 @@ export function ChatConversationHomeQuickStarts<
                       {item.sourcePill.label.text}
                     </Text>
                   </View>
-                ) : item.addIcon ? (
+                ) : item.addIcon.shouldRender ? (
                   <Ionicons
                     name={item.addIcon.icon.name}
                     size={item.addIcon.icon.size}

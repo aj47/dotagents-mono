@@ -804,19 +804,29 @@ export interface ChatRuntimeHomeQuickStartsMobileItemPropsParts<
     accessibilityLabel: string
     accessibilityHint: string
   }
-  sourcePill: {
-    style: TStyles["sourcePill"]
-    icon: PromptLibraryMobileShortcutItemRenderState["sourceIcon"]
-    iconColors: PromptLibraryMobileShortcutItemRenderState["sourceIconColors"]
-    label: {
-      style: TStyles["sourceLabel"]
-      numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutSourceLabel"]["numberOfLines"]
-      text: string
+  sourcePill:
+    | {
+      shouldRender: true
+      style: TStyles["sourcePill"]
+      icon: PromptLibraryMobileShortcutItemRenderState["sourceIcon"]
+      iconColors: PromptLibraryMobileShortcutItemRenderState["sourceIconColors"]
+      label: {
+        style: TStyles["sourceLabel"]
+        numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutSourceLabel"]["numberOfLines"]
+        text: string
+      }
     }
-  } | null
-  addIcon: (ChatRuntimeHomeQuickStartsMobileAddActionRenderState & {
-    style: TStyles["addIcon"]
-  }) | null
+    | {
+      shouldRender: false
+    }
+  addIcon:
+    | (ChatRuntimeHomeQuickStartsMobileAddActionRenderState & {
+      shouldRender: true
+      style: TStyles["addIcon"]
+    })
+    | {
+      shouldRender: false
+    }
   title: {
     style: Array<TStyles["title"] | TStyles["titleAdd"] | false>
     numberOfLines: ReturnType<typeof getPromptLibraryMobileShortcutRenderState>["surface"]["shortcutTitle"]["numberOfLines"]
@@ -29089,8 +29099,11 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
             accessibilityHint: shortcutItemRenderState.accessibilityHint,
           },
           sourcePill: shortcutInteraction.isAddPrompt
-            ? null
+            ? {
+                shouldRender: false,
+              }
             : {
+                shouldRender: true,
                 style: styles.sourcePill,
                 icon: shortcutItemRenderState.sourceIcon,
                 iconColors: shortcutItemRenderState.sourceIconColors,
@@ -29104,9 +29117,12 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
             shortcutInteraction.isAddPrompt && shortcutItemRenderState.addAction
               ? {
                   ...shortcutItemRenderState.addAction,
+                  shouldRender: true,
                   style: styles.addIcon,
                 }
-              : null,
+              : {
+                  shouldRender: false,
+                },
           title: {
             style: [
               styles.title,

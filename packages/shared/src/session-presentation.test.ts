@@ -5256,8 +5256,13 @@ describe("session presentation semantics", () => {
     ])
     promptItemParts.pressable.onPress()
     expect(pressedQuickStartId).toBe("prompt-1")
-    expect(promptItemParts.sourcePill?.label.text).toBe("prompt")
-    expect(promptItemParts.sourcePill?.label.numberOfLines).toBe(1)
+    expect(promptItemParts.sourcePill.shouldRender).toBe(true)
+    if (!promptItemParts.sourcePill.shouldRender) {
+      throw new Error("expected prompt quick start to render a source pill")
+    }
+    expect(promptItemParts.sourcePill.label.text).toBe("prompt")
+    expect(promptItemParts.sourcePill.label.numberOfLines).toBe(1)
+    expect(promptItemParts.addIcon.shouldRender).toBe(false)
     expect(promptItemParts.title.text).toBe("Summarize")
     expect(promptItemParts.title.numberOfLines).toBe(2)
     expect(promptItemParts.actions?.edit.label.text).toBe("Edit")
@@ -5281,8 +5286,12 @@ describe("session presentation semantics", () => {
     expect(stoppedPropagationCount).toBe(2)
     expect(deletedPromptId).toBe("prompt-1")
     const addPromptItemParts = quickStartPropsParts.grid.items[1]!
-    expect(addPromptItemParts.sourcePill).toBeNull()
-    expect(addPromptItemParts.addIcon?.style).toBe("addIcon")
+    expect(addPromptItemParts.sourcePill.shouldRender).toBe(false)
+    expect(addPromptItemParts.addIcon.shouldRender).toBe(true)
+    if (!addPromptItemParts.addIcon.shouldRender) {
+      throw new Error("expected add prompt quick start to render an add icon")
+    }
+    expect(addPromptItemParts.addIcon.style).toBe("addIcon")
     expect(addPromptItemParts.title.style).toEqual([
       "title",
       "titleAdd",
