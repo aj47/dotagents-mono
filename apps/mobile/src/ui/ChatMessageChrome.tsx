@@ -8409,7 +8409,7 @@ export function ChatMessageToolExecutionResultSection({
       />
       {resultSectionParts.errorBlock.shouldRender ? (
         <ChatMessageToolExecutionErrorBlock
-          {...resultSectionParts.errorBlock}
+          {...resultSectionParts.errorBlock.props}
         />
       ) : null}
     </View>

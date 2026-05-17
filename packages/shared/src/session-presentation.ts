@@ -4200,14 +4200,13 @@ export interface ChatRuntimeToolExecutionResultSectionMobilePropsParts<
     previewNumberOfLines: number
     styles: TStyles["payloadBlock"]
   }
-  errorBlock: {
-    shouldRender: boolean
+  errorBlock: ChatRuntimeMobilePropsPart<{
     renderState: TErrorRenderState
     error: string
     copyButtonRenderState: TErrorCopyButtonRenderState
     onCopyPress: TOnErrorCopyPress | undefined
     styles: TStyles["errorBlock"]
-  }
+  }>
 }
 
 export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
@@ -21080,13 +21079,18 @@ export function createChatRuntimeToolExecutionResultSectionMobilePropsParts<
       previewNumberOfLines,
       styles: styles.payloadBlock,
     },
-    errorBlock: {
-      shouldRender: Boolean(error),
-      renderState: errorRenderState,
-      error: error ?? "",
-      copyButtonRenderState: errorCopyButtonRenderState,
-      onCopyPress: onErrorCopyPress,
-      styles: styles.errorBlock,
+    errorBlock: error ? {
+      shouldRender: true,
+      props: {
+        renderState: errorRenderState,
+        error,
+        copyButtonRenderState: errorCopyButtonRenderState,
+        onCopyPress: onErrorCopyPress,
+        styles: styles.errorBlock,
+      },
+    } : {
+      shouldRender: false,
+      props: null,
     },
   }
 }

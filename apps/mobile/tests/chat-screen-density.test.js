@@ -3737,11 +3737,11 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /<View style=\{resultSectionParts\.itemStyle\}>/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultHeader\s+\{\.\.\.resultSectionParts\.header\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadBlock\s+\{\.\.\.resultSectionParts\.payloadBlock\}/);
-  assert.match(chatMessageChromeSource, /resultSectionParts\.errorBlock\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionErrorBlock\s+\{\.\.\.resultSectionParts\.errorBlock\}/);
+  assert.match(chatMessageChromeSource, /resultSectionParts\.errorBlock\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionErrorBlock\s+\{\.\.\.resultSectionParts\.errorBlock\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /resultSectionParts\.errorBlock \? \(/);
   assert.match(sessionPresentationSource, /header: \{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+copyButtonRenderState,\s+onCopyPress,\s+styles: styles\.header,/);
   assert.match(sessionPresentationSource, /payloadBlock: \{\s+compactText: resultCompactText,\s+content: resultContent,\s+isExpanded,\s+previewNumberOfLines,\s+styles: styles\.payloadBlock,/);
-  assert.match(sessionPresentationSource, /errorBlock: \{\s+shouldRender: Boolean\(error\),\s+renderState: errorRenderState,\s+error: error \?\? "",\s+copyButtonRenderState: errorCopyButtonRenderState,\s+onCopyPress: onErrorCopyPress,\s+styles: styles\.errorBlock,/);
+  assert.match(sessionPresentationSource, /errorBlock: error \? \{\s+shouldRender: true,\s+props: \{\s+renderState: errorRenderState,\s+error,\s+copyButtonRenderState: errorCopyButtonRenderState,\s+onCopyPress: onErrorCopyPress,\s+styles: styles\.errorBlock,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSection[\s\S]*?<ChatMessageToolExecutionResultHeader\s+payloadRenderState=\{payloadRenderState\}[\s\S]*?export function ChatMessageToolExecutionCallDetail/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSection[\s\S]*?<ChatMessageToolExecutionPayloadBlock\s+compactText=\{resultCompactText\}[\s\S]*?export function ChatMessageToolExecutionCallDetail/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSection[\s\S]*?<ChatMessageToolExecutionErrorBlock\s+renderState=\{errorRenderState\}[\s\S]*?export function ChatMessageToolExecutionCallDetail/);

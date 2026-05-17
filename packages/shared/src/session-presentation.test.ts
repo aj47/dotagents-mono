@@ -13579,11 +13579,13 @@ describe("session presentation semantics", () => {
       },
       errorBlock: {
         shouldRender: true,
-        renderState: "error-state",
-        error: "failed",
-        copyButtonRenderState: "copy-error-state",
-        onCopyPress: "copy-error",
-        styles: "result-error-block",
+        props: {
+          renderState: "error-state",
+          error: "failed",
+          copyButtonRenderState: "copy-error-state",
+          onCopyPress: "copy-error",
+          styles: "result-error-block",
+        },
       },
     })
     expect(createChatRuntimeToolExecutionResultSectionMobilePropsParts({
@@ -13605,11 +13607,7 @@ describe("session presentation semantics", () => {
       },
     }).errorBlock).toEqual({
       shouldRender: false,
-      renderState: "error-state",
-      error: "",
-      copyButtonRenderState: "copy-error-state",
-      onCopyPress: undefined,
-      styles: "result-error-block",
+      props: null,
     })
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
       shouldRender: true,
