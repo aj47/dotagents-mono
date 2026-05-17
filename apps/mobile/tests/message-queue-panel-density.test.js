@@ -19,8 +19,11 @@ test('mobile queued-message rows use text-first actions with explicit accessibil
   assert.match(source, /<MessageQueuePanelActionButton\s+key=\{action\.key\}\s+action=\{action\}/);
   assert.match(source, /<Text \{\.\.\.actionLabel\.props\}>\{actionLabel\.text\}<\/Text>/);
   assert.match(source, /<TextInput\s+\{\.\.\.editParts\.input\.props\}/);
-  assert.match(source, /<TouchableOpacity\s+\{\.\.\.editParts\.cancelButton\.props\}/);
-  assert.match(source, /<TouchableOpacity\s+\{\.\.\.editParts\.saveButton\.props\}/);
+  assert.match(source, /function MessageQueuePanelEditButton/);
+  assert.match(source, /<TouchableOpacity\s+\{\.\.\.button\.props\}/);
+  assert.match(source, /<MessageQueuePanelEditButton button=\{editParts\.cancelButton\} \/>/);
+  assert.match(source, /<MessageQueuePanelEditButton button=\{editParts\.saveButton\} \/>/);
+  assert.doesNotMatch(source, /<TouchableOpacity\s+\{\.\.\.editParts\.(cancelButton|saveButton)\.props\}/);
   assert.match(source, /getQueuedMessageEditDraftState/);
   assert.match(source, /const editDraftState = getQueuedMessageEditDraftState\(editText, message\.text\);/);
   assert.match(source, /const editSubmitState = editDraftState\.submitState;/);

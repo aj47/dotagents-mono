@@ -77,6 +77,18 @@ interface MessageQueuePanelActionButtonProps {
   action: MessageQueuePanelActionButtonPart;
 }
 
+type MessageQueuePanelEditButtonPart = {
+  props: ComponentProps<typeof TouchableOpacity>;
+  text: {
+    text: string;
+    props: ComponentProps<typeof Text>;
+  };
+};
+
+interface MessageQueuePanelEditButtonProps {
+  button: MessageQueuePanelEditButtonPart;
+}
+
 function MessageQueuePanelActionButton({ action }: MessageQueuePanelActionButtonProps) {
   const actionIcon = action.icon;
   const actionLabel = action.label;
@@ -93,6 +105,18 @@ function MessageQueuePanelActionButton({ action }: MessageQueuePanelActionButton
       {actionLabel && actionLabel.shouldRender !== false ? (
         <Text {...actionLabel.props}>{actionLabel.text}</Text>
       ) : null}
+    </TouchableOpacity>
+  );
+}
+
+function MessageQueuePanelEditButton({ button }: MessageQueuePanelEditButtonProps) {
+  return (
+    <TouchableOpacity
+      {...button.props}
+    >
+      <Text {...button.text.props}>
+        {button.text.text}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -178,20 +202,8 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
             onChangeText={setEditText}
           />
           <View {...editParts.actions.props}>
-            <TouchableOpacity
-              {...editParts.cancelButton.props}
-            >
-              <Text {...editParts.cancelButton.text.props}>
-                {editParts.cancelButton.text.text}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              {...editParts.saveButton.props}
-            >
-              <Text {...editParts.saveButton.text.props}>
-                {editParts.saveButton.text.text}
-              </Text>
-            </TouchableOpacity>
+            <MessageQueuePanelEditButton button={editParts.cancelButton} />
+            <MessageQueuePanelEditButton button={editParts.saveButton} />
           </View>
         </View>
       </View>

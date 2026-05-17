@@ -5351,8 +5351,11 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /getQueuedMessageEditDraftState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /const editSubmitState = editDraftState\.submitState;/);
   assert.match(messageQueuePanelSource, /<TextInput\s+\{\.\.\.editParts\.input\.props\}[\s\S]*?value=\{editText\}[\s\S]*?onChangeText=\{setEditText\}/);
-  assert.match(messageQueuePanelSource, /<TouchableOpacity\s+\{\.\.\.editParts\.cancelButton\.props\}/);
-  assert.match(messageQueuePanelSource, /<TouchableOpacity\s+\{\.\.\.editParts\.saveButton\.props\}/);
+  assert.match(messageQueuePanelSource, /function MessageQueuePanelEditButton/);
+  assert.match(messageQueuePanelSource, /<TouchableOpacity\s+\{\.\.\.button\.props\}/);
+  assert.match(messageQueuePanelSource, /<MessageQueuePanelEditButton button=\{editParts\.cancelButton\} \/>/);
+  assert.match(messageQueuePanelSource, /<MessageQueuePanelEditButton button=\{editParts\.saveButton\} \/>/);
+  assert.doesNotMatch(messageQueuePanelSource, /<TouchableOpacity\s+\{\.\.\.editParts\.(cancelButton|saveButton)\.props\}/);
   assert.doesNotMatch(messageQueuePanelSource, /disabled=\{editParts\.saveButton\.disabled\}/);
   assert.doesNotMatch(messageQueuePanelSource, /accessibilityState=\{editParts\.saveButton\.accessibilityState\}/);
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSaveActionState\(editText\)/);
