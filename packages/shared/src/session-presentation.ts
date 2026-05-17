@@ -8788,20 +8788,26 @@ export interface ChatRuntimeHeaderIconButtonMobilePropsParts<
 > {
   shouldRender: boolean
   touchable: {
-    onPress: TOnPress | undefined
-    activeOpacity: TRenderState["pressedOpacity"]
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityHint: string | undefined
-    accessibilityState: TRenderState["accessibilityState"]
-    ariaChecked: TRenderState["ariaChecked"]
-    style: Array<TStyle | TActiveStyle | false | undefined>
+    props: {
+      onPress: TOnPress | undefined
+      activeOpacity: TRenderState["pressedOpacity"]
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityHint: string | undefined
+      accessibilityState: TRenderState["accessibilityState"]
+      "aria-checked": TRenderState["ariaChecked"]
+      style: Array<TStyle | TActiveStyle | false | undefined>
+    }
   }
   iconContainer: {
     shouldRender: boolean
-    style: TIconContainerStyle | undefined
+    props: {
+      style: TIconContainerStyle | undefined
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
 }
 
 export interface ChatRuntimeHeaderConversationStatusMobilePropsPartsInput<
@@ -25616,20 +25622,26 @@ export function createChatRuntimeHeaderIconButtonMobilePropsParts<
   return {
     shouldRender,
     touchable: {
-      onPress,
-      activeOpacity: renderState.pressedOpacity,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityHint: renderState.accessibilityHint ?? undefined,
-      accessibilityState: renderState.accessibilityState,
-      ariaChecked: renderState.ariaChecked,
-      style: [style, isActive && activeStyle],
+      props: {
+        onPress,
+        activeOpacity: renderState.pressedOpacity,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityHint: renderState.accessibilityHint ?? undefined,
+        accessibilityState: renderState.accessibilityState,
+        "aria-checked": renderState.ariaChecked,
+        style: [style, isActive && activeStyle],
+      },
     },
     iconContainer: {
       shouldRender: Boolean(iconContainerStyle),
-      style: iconContainerStyle,
+      props: {
+        style: iconContainerStyle,
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
   }
 }
 

@@ -1399,14 +1399,31 @@ test('keeps pinning available from the individual chat view header', () => {
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderIconButton[\s\S]*?export function ChatRuntimeHeaderConversationStatus/)?.[0] ?? '';
   assert.match(headerIconButtonSource, /const iconButtonParts = createChatRuntimeHeaderIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+style,\s+activeStyle,\s+iconContainerStyle,\s+isActive,\s+\}\);/);
   assert.match(headerIconButtonSource, /if \(!iconButtonParts\.shouldRender\) return null;/);
-  assert.match(headerIconButtonSource, /accessibilityRole=\{iconButtonParts\.touchable\.accessibilityRole\}/);
-  assert.match(headerIconButtonSource, /activeOpacity=\{iconButtonParts\.touchable\.activeOpacity\}/);
-  assert.match(headerIconButtonSource, /accessibilityLabel=\{iconButtonParts\.touchable\.accessibilityLabel\}/);
-  assert.match(headerIconButtonSource, /accessibilityHint=\{iconButtonParts\.touchable\.accessibilityHint\}/);
-  assert.match(headerIconButtonSource, /style=\{iconButtonParts\.touchable\.style\}/);
-  assert.match(headerIconButtonSource, /name=\{iconButtonParts\.icon\.name\}/);
-  assert.match(headerIconButtonSource, /size=\{iconButtonParts\.icon\.size\}/);
-  assert.match(headerIconButtonSource, /color=\{iconButtonParts\.icon\.color\}/);
+  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonTouchable\s+\{\.\.\.iconButtonParts\.touchable\.props\}/);
+  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIcon\s+\{\.\.\.iconButtonParts\.icon\.props\}/);
+  assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonIconContainer\s+\{\.\.\.iconButtonParts\.iconContainer\.props\}/);
+  assert.match(
+    headerIconButtonSource,
+    /export function ChatRuntimeHeaderIconButtonTouchable\([\s\S]*?onPress=\{onPress\}[\s\S]*?activeOpacity=\{activeOpacity\}[\s\S]*?accessibilityRole=\{accessibilityRole\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?accessibilityState=\{accessibilityState as AccessibilityState \| undefined\}[\s\S]*?aria-checked=\{ariaChecked as boolean \| 'mixed' \| undefined\}[\s\S]*?style=\{style\}[\s\S]*?export function ChatRuntimeHeaderIconButtonIconContainer/
+  );
+  assert.match(
+    headerIconButtonSource,
+    /export function ChatRuntimeHeaderIconButtonIconContainer\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatRuntimeHeaderIconButtonIcon/
+  );
+  assert.match(
+    headerIconButtonSource,
+    /export function ChatRuntimeHeaderIconButtonIcon\([\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}[\s\S]*?export function ChatRuntimeHeaderConversationStatus/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /touchable: \{\s+props: \{\s+onPress,\s+activeOpacity: renderState\.pressedOpacity,\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+accessibilityHint: renderState\.accessibilityHint \?\? undefined,\s+accessibilityState: renderState\.accessibilityState,\s+"aria-checked": renderState\.ariaChecked,\s+style: \[style, isActive && activeStyle\],/
+  );
+  assert.match(sessionPresentationSource, /iconContainer: \{\s+shouldRender: Boolean\(iconContainerStyle\),\s+props: \{\s+style: iconContainerStyle,\s+\},\s+\},/);
+  assert.match(sessionPresentationSource, /icon: \{\s+props: renderState\.icon,\s+\},/);
+  assert.doesNotMatch(
+    headerIconButtonSource,
+    /iconButtonParts\.(touchable|iconContainer|icon)\.(onPress|activeOpacity|accessibilityRole|accessibilityLabel|accessibilityHint|accessibilityState|ariaChecked|style|name|size|color)/
+  );
   assert.doesNotMatch(headerIconButtonSource, /accessibilityRole=\{renderState\.accessibilityRole\}/);
   assert.doesNotMatch(headerIconButtonSource, /activeOpacity=\{renderState\.pressedOpacity\}/);
   assert.doesNotMatch(headerIconButtonSource, /style=\{\[style, isActive && activeStyle\]\}/);
@@ -1527,8 +1544,8 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(sessionPresentationSource, /handsFreeIconContainerStyle: styles\.headerHandsFreeIconContainer,/);
   assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderIconButton\s+\{\.\.\.headerParts\.handsFreeButton\}/);
   assert.match(sessionPresentationSource, /handsFreeButton: \{\s+\.\.\.handsFreeButton,\s+style: styles\.iconButtons\.actionStyle,\s+iconContainerStyle: styles\.iconButtons\.handsFreeIconContainerStyle,\s+\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{iconButtonParts\.touchable\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /aria-checked=\{iconButtonParts\.touchable\.ariaChecked\}/);
+  assert.match(chatMessageChromeSource, /accessibilityState=\{accessibilityState as AccessibilityState \| undefined\}/);
+  assert.match(chatMessageChromeSource, /aria-checked=\{ariaChecked as boolean \| 'mixed' \| undefined\}/);
   assert.doesNotMatch(screenSource, /getChatRuntimeKillSwitchMobileColors,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeHandsFreeMobileColors,/);
   assert.doesNotMatch(screenSource, /getChatRuntimeHandsFreeMobileActionState,/);

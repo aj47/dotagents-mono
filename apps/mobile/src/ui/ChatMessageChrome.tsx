@@ -1266,6 +1266,27 @@ type ChatRuntimeHeaderIconButtonProps = {
   isActive?: boolean;
 };
 
+type ChatRuntimeHeaderIconButtonParts = ReturnType<typeof createChatRuntimeHeaderIconButtonMobilePropsParts<
+  ChatRuntimeHeaderIconButtonRenderState,
+  ChatRuntimeHeaderIconButtonProps['onPress'],
+  ChatRuntimeHeaderIconButtonProps['style'],
+  ChatRuntimeHeaderIconButtonProps['activeStyle'],
+  ChatRuntimeHeaderIconButtonProps['iconContainerStyle']
+>>;
+
+type ChatRuntimeHeaderIconButtonTouchableProps =
+  ChatRuntimeHeaderIconButtonParts['touchable']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatRuntimeHeaderIconButtonIconContainerProps =
+  ChatRuntimeHeaderIconButtonParts['iconContainer']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatRuntimeHeaderIconButtonIconProps =
+  ChatRuntimeHeaderIconButtonParts['icon']['props'];
+
 type ChatRuntimeHeaderConversationStatusStyles = {
   chip: StyleProp<ViewStyle>;
   text: StyleProp<TextStyle>;
@@ -6994,32 +7015,77 @@ export function ChatRuntimeHeaderIconButton({
   if (!iconButtonParts.shouldRender) return null;
 
   const icon = (
-    <Ionicons
-      name={iconButtonParts.icon.name}
-      size={iconButtonParts.icon.size}
-      color={iconButtonParts.icon.color}
+    <ChatRuntimeHeaderIconButtonIcon
+      {...iconButtonParts.icon.props}
     />
   );
 
   return (
-    <TouchableOpacity
-      onPress={iconButtonParts.touchable.onPress}
-      activeOpacity={iconButtonParts.touchable.activeOpacity}
-      accessibilityRole={iconButtonParts.touchable.accessibilityRole}
-      accessibilityLabel={iconButtonParts.touchable.accessibilityLabel}
-      accessibilityHint={iconButtonParts.touchable.accessibilityHint}
-      accessibilityState={iconButtonParts.touchable.accessibilityState as AccessibilityState | undefined}
-      aria-checked={iconButtonParts.touchable.ariaChecked as boolean | 'mixed' | undefined}
-      style={iconButtonParts.touchable.style}
+    <ChatRuntimeHeaderIconButtonTouchable
+      {...iconButtonParts.touchable.props}
     >
       {iconButtonParts.iconContainer.shouldRender ? (
-        <View style={iconButtonParts.iconContainer.style}>
+        <ChatRuntimeHeaderIconButtonIconContainer
+          {...iconButtonParts.iconContainer.props}
+        >
           {icon}
-        </View>
+        </ChatRuntimeHeaderIconButtonIconContainer>
       ) : (
         icon
       )}
+    </ChatRuntimeHeaderIconButtonTouchable>
+  );
+}
+
+export function ChatRuntimeHeaderIconButtonTouchable({
+  onPress,
+  activeOpacity,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityState,
+  'aria-checked': ariaChecked,
+  style,
+  children,
+}: ChatRuntimeHeaderIconButtonTouchableProps) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={activeOpacity}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={accessibilityState as AccessibilityState | undefined}
+      aria-checked={ariaChecked as boolean | 'mixed' | undefined}
+      style={style}
+    >
+      {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatRuntimeHeaderIconButtonIconContainer({
+  style,
+  children,
+}: ChatRuntimeHeaderIconButtonIconContainerProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatRuntimeHeaderIconButtonIcon({
+  name,
+  size,
+  color,
+}: ChatRuntimeHeaderIconButtonIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
   );
 }
 

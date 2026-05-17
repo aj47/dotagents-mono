@@ -4338,20 +4338,26 @@ describe("session presentation semantics", () => {
     expect(headerIconButtonParts).toEqual({
       shouldRender: true,
       touchable: {
-        onPress: "toggle-hands-free",
-        activeOpacity: navigationHeaderState.handsFreeButtonRenderState.pressedOpacity,
-        accessibilityRole: navigationHeaderState.handsFreeButtonRenderState.accessibilityRole,
-        accessibilityLabel: navigationHeaderState.handsFreeButtonRenderState.accessibilityLabel,
-        accessibilityHint: navigationHeaderState.handsFreeButtonRenderState.accessibilityHint,
-        accessibilityState: navigationHeaderState.handsFreeButtonRenderState.accessibilityState,
-        ariaChecked: navigationHeaderState.handsFreeButtonRenderState.ariaChecked,
-        style: ["action-button-style", "hands-free-active-style"],
+        props: {
+          onPress: "toggle-hands-free",
+          activeOpacity: navigationHeaderState.handsFreeButtonRenderState.pressedOpacity,
+          accessibilityRole: navigationHeaderState.handsFreeButtonRenderState.accessibilityRole,
+          accessibilityLabel: navigationHeaderState.handsFreeButtonRenderState.accessibilityLabel,
+          accessibilityHint: navigationHeaderState.handsFreeButtonRenderState.accessibilityHint,
+          accessibilityState: navigationHeaderState.handsFreeButtonRenderState.accessibilityState,
+          "aria-checked": navigationHeaderState.handsFreeButtonRenderState.ariaChecked,
+          style: ["action-button-style", "hands-free-active-style"],
+        },
       },
       iconContainer: {
         shouldRender: true,
-        style: "hands-free-icon-container",
+        props: {
+          style: "hands-free-icon-container",
+        },
       },
-      icon: navigationHeaderState.handsFreeButtonRenderState.icon,
+      icon: {
+        props: navigationHeaderState.handsFreeButtonRenderState.icon,
+      },
     })
     expect(createChatRuntimeHeaderIconButtonMobilePropsParts({
       ...navigationHeaderMobileParts.killSwitchButton,
