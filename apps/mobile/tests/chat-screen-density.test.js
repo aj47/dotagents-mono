@@ -4182,12 +4182,14 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallListMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallListMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const callListParts = createChatRuntimeToolExecutionCallListMobilePropsParts\(\{\s+rows,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /callListParts\.rows\.map\(\(row\) => \(/);
+  assert.match(chatMessageChromeSource, /const callListContent = callListParts\.content;/);
+  assert.match(chatMessageChromeSource, /callListContent\.rows\.map\(\(row\) => \(/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallDetail\s+key=\{row\.key\}\s+\{\.\.\.row\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCallList[\s\S]*?renderState=\{row\.renderState\}[\s\S]*?export function ChatMessageConversationFrame/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCallList[\s\S]*?styles=\{row\.styles\}[\s\S]*?export function ChatMessageConversationFrame/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCallList[\s\S]*?styles=\{styles\}[\s\S]*?export function ChatMessageConversationFrame/);
-  assert.match(sessionPresentationSource, /rows: rows\.map\(\(row\) => \(\{[\s\S]*?key: row\.key,[\s\S]*?props: \{[\s\S]*?renderState: row\.renderState,[\s\S]*?toolName: row\.toolName,[\s\S]*?styles,/);
+  assert.match(sessionPresentationSource, /content: \{\s+rows: rows\.map\(\(row\) => \(\{[\s\S]*?key: row\.key,[\s\S]*?props: \{[\s\S]*?renderState: row\.renderState,[\s\S]*?toolName: row\.toolName,[\s\S]*?styles,/);
+  assert.doesNotMatch(chatMessageChromeSource, /callListParts\.rows\./);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCallList[\s\S]*?\{rows\.map\(\(row\) => \([\s\S]*?export function ChatMessageConversationFrame/);
   assert.match(sessionPresentationSource, /callSection: \{\s+section: styles\.toolCallSection,\s+header: \{\s+header: styles\.toolCallHeader,\s+headerPressed: styles\.toolCallHeaderPressed,\s+toolName: styles\.toolName,\s+expandHint: styles\.toolCallExpandHint,\s+expandHintText: styles\.toolCallExpandHintText,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallDetail/);

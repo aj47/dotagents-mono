@@ -3340,18 +3340,20 @@ export interface ChatRuntimeToolExecutionCallListMobilePropsParts<
   },
   TStyles = unknown,
 > {
-  rows: Array<{
-    key: TRow["key"]
-    props: {
-      renderState: TRow["renderState"]
-      toolName: TRow["toolName"]
-      onHeaderPress: TRow["onHeaderPress"]
-      input: TRow["input"]
-      result: TRow["result"]
-      pendingResult: TRow["pendingResult"]
-      styles: TStyles
-    }
-  }>
+  content: {
+    rows: Array<{
+      key: TRow["key"]
+      props: {
+        renderState: TRow["renderState"]
+        toolName: TRow["toolName"]
+        onHeaderPress: TRow["onHeaderPress"]
+        input: TRow["input"]
+        result: TRow["result"]
+        pendingResult: TRow["pendingResult"]
+        styles: TStyles
+      }
+    }>
+  }
 }
 
 export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsPartsInput<
@@ -21343,18 +21345,20 @@ export function createChatRuntimeToolExecutionCallListMobilePropsParts<
   TStyles
 > {
   return {
-    rows: rows.map((row) => ({
-      key: row.key,
-      props: {
-        renderState: row.renderState,
-        toolName: row.toolName,
-        onHeaderPress: row.onHeaderPress,
-        input: row.input,
-        result: row.result,
-        pendingResult: row.pendingResult,
-        styles,
-      },
-    })),
+    content: {
+      rows: rows.map((row) => ({
+        key: row.key,
+        props: {
+          renderState: row.renderState,
+          toolName: row.toolName,
+          onHeaderPress: row.onHeaderPress,
+          input: row.input,
+          result: row.result,
+          pendingResult: row.pendingResult,
+          styles,
+        },
+      })),
+    },
   }
 }
 

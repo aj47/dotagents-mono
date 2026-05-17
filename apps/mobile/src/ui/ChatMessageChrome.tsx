@@ -10082,10 +10082,11 @@ export function ChatMessageToolExecutionCallList({
     rows,
     styles,
   });
+  const callListContent = callListParts.content;
 
   return (
     <>
-      {callListParts.rows.map((row) => (
+      {callListContent.rows.map((row) => (
         <ChatMessageToolExecutionCallDetail
           key={row.key}
           {...row.props}

@@ -13854,32 +13854,34 @@ describe("session presentation semantics", () => {
       ],
       styles: "call-detail-styles",
     })).toEqual({
-      rows: [
-        {
-          key: "read_file:0",
-          props: {
-            renderState: "read-file-header",
-            toolName: "read_file",
-            onHeaderPress: "toggle-read",
-            input: "read-input",
-            result: null,
-            pendingResult: "read-pending",
-            styles: "call-detail-styles",
+      content: {
+        rows: [
+          {
+            key: "read_file:0",
+            props: {
+              renderState: "read-file-header",
+              toolName: "read_file",
+              onHeaderPress: "toggle-read",
+              input: "read-input",
+              result: null,
+              pendingResult: "read-pending",
+              styles: "call-detail-styles",
+            },
           },
-        },
-        {
-          key: "write_file:1",
-          props: {
-            renderState: "write-file-header",
-            toolName: "write_file",
-            onHeaderPress: "toggle-write",
-            input: null,
-            result: "write-result",
-            pendingResult: null,
-            styles: "call-detail-styles",
+          {
+            key: "write_file:1",
+            props: {
+              renderState: "write-file-header",
+              toolName: "write_file",
+              onHeaderPress: "toggle-write",
+              input: null,
+              result: "write-result",
+              pendingResult: null,
+              styles: "call-detail-styles",
+            },
           },
-        },
-      ],
+        ],
+      },
     })
     const detailHeaderParts = createChatRuntimeToolExecutionDetailHeaderMobilePropsParts({
       renderState: {
