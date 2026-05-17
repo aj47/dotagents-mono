@@ -6453,6 +6453,46 @@ export interface ChatRuntimeScrollToBottomButtonMobilePropsParts<
   icon: TRenderState["button"]["icon"]
 }
 
+export interface ChatRuntimeConversationFrameMobilePropsPartsInput<
+  TChildren = unknown,
+  TDock = unknown,
+  TOverlays = unknown,
+  TKeyboardAvoidingStyle = unknown,
+  TKeyboardAvoidingBehavior = unknown,
+  TKeyboardVerticalOffset = unknown,
+  TRootStyle = unknown,
+> {
+  children: TChildren
+  dock?: TDock
+  overlays?: TOverlays
+  keyboardAvoidingStyle: TKeyboardAvoidingStyle
+  keyboardAvoidingBehavior: TKeyboardAvoidingBehavior
+  keyboardVerticalOffset: TKeyboardVerticalOffset
+  rootStyle: TRootStyle
+}
+
+export interface ChatRuntimeConversationFrameMobilePropsParts<
+  TChildren = unknown,
+  TDock = unknown,
+  TOverlays = unknown,
+  TKeyboardAvoidingStyle = unknown,
+  TKeyboardAvoidingBehavior = unknown,
+  TKeyboardVerticalOffset = unknown,
+  TRootStyle = unknown,
+> {
+  keyboardAvoidingView: {
+    style: TKeyboardAvoidingStyle
+    behavior: TKeyboardAvoidingBehavior
+    keyboardVerticalOffset: TKeyboardVerticalOffset
+  }
+  root: {
+    style: TRootStyle
+    children: TChildren
+    dock: TDock | undefined
+  }
+  overlays: TOverlays | undefined
+}
+
 export interface ChatRuntimeConversationSurfaceMobilePropsPartsInput<
   TFrame extends object = Record<string, never>,
   TDock extends object = Record<string, never>,
@@ -21669,6 +21709,54 @@ export function createChatRuntimeScrollToBottomButtonMobilePropsParts<
       accessibilityHint: renderState.button.accessibilityHint,
     },
     icon: renderState.button.icon,
+  }
+}
+
+export function createChatRuntimeConversationFrameMobilePropsParts<
+  TChildren,
+  TDock,
+  TOverlays,
+  TKeyboardAvoidingStyle,
+  TKeyboardAvoidingBehavior,
+  TKeyboardVerticalOffset,
+  TRootStyle,
+>({
+  children,
+  dock,
+  overlays,
+  keyboardAvoidingStyle,
+  keyboardAvoidingBehavior,
+  keyboardVerticalOffset,
+  rootStyle,
+}: ChatRuntimeConversationFrameMobilePropsPartsInput<
+  TChildren,
+  TDock,
+  TOverlays,
+  TKeyboardAvoidingStyle,
+  TKeyboardAvoidingBehavior,
+  TKeyboardVerticalOffset,
+  TRootStyle
+>): ChatRuntimeConversationFrameMobilePropsParts<
+  TChildren,
+  TDock,
+  TOverlays,
+  TKeyboardAvoidingStyle,
+  TKeyboardAvoidingBehavior,
+  TKeyboardVerticalOffset,
+  TRootStyle
+> {
+  return {
+    keyboardAvoidingView: {
+      style: keyboardAvoidingStyle,
+      behavior: keyboardAvoidingBehavior,
+      keyboardVerticalOffset,
+    },
+    root: {
+      style: rootStyle,
+      children,
+      dock,
+    },
+    overlays,
   }
 }
 

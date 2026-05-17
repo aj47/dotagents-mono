@@ -148,6 +148,7 @@ import {
   createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeConnectionBannerMobilePropsParts,
   createChatRuntimeRetryStatusMobilePropsParts,
+  createChatRuntimeConversationFrameMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationContentMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
@@ -8116,6 +8117,27 @@ describe("session presentation semantics", () => {
         styles: "toggle-styles",
       },
       footer: null,
+    })
+    expect(createChatRuntimeConversationFrameMobilePropsParts({
+      children: "viewport",
+      dock: "dock",
+      overlays: "overlays",
+      keyboardAvoidingStyle: "keyboard-avoiding-style",
+      keyboardAvoidingBehavior: "padding",
+      keyboardVerticalOffset: 24,
+      rootStyle: "root-style",
+    })).toEqual({
+      keyboardAvoidingView: {
+        style: "keyboard-avoiding-style",
+        behavior: "padding",
+        keyboardVerticalOffset: 24,
+      },
+      root: {
+        style: "root-style",
+        children: "viewport",
+        dock: "dock",
+      },
+      overlays: "overlays",
     })
     const runtimeThreadSurfaceStyles = {
       surfaceStyle: "thread-surface",

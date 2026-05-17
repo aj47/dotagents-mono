@@ -99,6 +99,7 @@ import {
   createChatRuntimeMessageHistoryBannerMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
+  createChatRuntimeConversationFrameMobilePropsParts,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
   createChatRuntimeMessageActionIconButtonMobileProps,
@@ -8702,17 +8703,27 @@ export function ChatMessageConversationFrame({
   keyboardVerticalOffset,
   rootStyle,
 }: ChatMessageConversationFrameProps) {
+  const frameParts = createChatRuntimeConversationFrameMobilePropsParts({
+    children,
+    dock,
+    overlays,
+    keyboardAvoidingStyle,
+    keyboardAvoidingBehavior,
+    keyboardVerticalOffset,
+    rootStyle,
+  });
+
   return (
     <KeyboardAvoidingView
-      style={keyboardAvoidingStyle}
-      behavior={keyboardAvoidingBehavior}
-      keyboardVerticalOffset={keyboardVerticalOffset}
+      style={frameParts.keyboardAvoidingView.style}
+      behavior={frameParts.keyboardAvoidingView.behavior}
+      keyboardVerticalOffset={frameParts.keyboardAvoidingView.keyboardVerticalOffset}
     >
-      <View style={rootStyle}>
-        {children}
-        {dock}
+      <View style={frameParts.root.style}>
+        {frameParts.root.children}
+        {frameParts.root.dock}
       </View>
-      {overlays}
+      {frameParts.overlays}
     </KeyboardAvoidingView>
   );
 }

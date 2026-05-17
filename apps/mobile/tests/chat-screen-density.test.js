@@ -1641,9 +1641,18 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatMessageChromeSource, /keyboardAvoidingStyle=\{styles\.frame\.keyboardAvoidingStyle\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrame/);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationFrameProps = \{[\s\S]*?dock\?: ReactNode;/);
-  assert.match(chatMessageChromeSource, /<KeyboardAvoidingView\s+style=\{keyboardAvoidingStyle\}\s+behavior=\{keyboardAvoidingBehavior\}\s+keyboardVerticalOffset=\{keyboardVerticalOffset\}/);
-  assert.match(chatMessageChromeSource, /<View style=\{rootStyle\}>[\s\S]*?\{children\}[\s\S]*?\{dock\}/);
-  assert.match(chatMessageChromeSource, /\{overlays\}[\s\S]*?<\/KeyboardAvoidingView>/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeConversationFrameMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationFrameMobilePropsParts/);
+  const conversationFrameSource =
+    chatMessageChromeSource.match(/export function ChatMessageConversationFrame[\s\S]*?export function ChatMessageConversationOverlays/)?.[0] ?? '';
+  assert.match(conversationFrameSource, /const frameParts = createChatRuntimeConversationFrameMobilePropsParts\(\{\s+children,\s+dock,\s+overlays,\s+keyboardAvoidingStyle,\s+keyboardAvoidingBehavior,\s+keyboardVerticalOffset,\s+rootStyle,\s+\}\);/);
+  assert.match(conversationFrameSource, /<KeyboardAvoidingView\s+style=\{frameParts\.keyboardAvoidingView\.style\}\s+behavior=\{frameParts\.keyboardAvoidingView\.behavior\}\s+keyboardVerticalOffset=\{frameParts\.keyboardAvoidingView\.keyboardVerticalOffset\}/);
+  assert.match(conversationFrameSource, /<View style=\{frameParts\.root\.style\}>[\s\S]*?\{frameParts\.root\.children\}[\s\S]*?\{frameParts\.root\.dock\}/);
+  assert.match(conversationFrameSource, /\{frameParts\.overlays\}[\s\S]*?<\/KeyboardAvoidingView>/);
+  assert.doesNotMatch(conversationFrameSource, /style=\{keyboardAvoidingStyle\}/);
+  assert.doesNotMatch(conversationFrameSource, /behavior=\{keyboardAvoidingBehavior\}/);
+  assert.doesNotMatch(conversationFrameSource, /keyboardVerticalOffset=\{keyboardVerticalOffset\}/);
+  assert.doesNotMatch(conversationFrameSource, /style=\{rootStyle\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationOverlays/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeOverlays/);
   assert.match(chatMessageChromeSource, /agentSelector=\{<AgentSelectorSheet \{\.\.\.agentSelector\} \/>\}/);
