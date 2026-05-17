@@ -9903,7 +9903,7 @@ export function ChatMessageContentRow({
 
   return (
     <View style={contentRowParts.row.style}>
-      {contentRowParts.body ? (
+      {contentRowParts.body.shouldRender ? (
         <View style={contentRowParts.body.style}>
           {children}
         </View>
@@ -9925,8 +9925,6 @@ export function ChatMessageStandaloneActions({
     entries,
     rowStyle,
   });
-
-  if (!standaloneActionsParts.actionSlotList) return null;
 
   return (
     <ChatMessageActionSlotList

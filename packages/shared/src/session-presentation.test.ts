@@ -11177,6 +11177,7 @@ describe("session presentation semantics", () => {
         style: "content-row-style",
       },
       body: {
+        shouldRender: true,
         style: "content-body-style",
       },
       actionSlotList: {
@@ -11192,7 +11193,10 @@ describe("session presentation semantics", () => {
       row: {
         style: "content-row-style",
       },
-      body: null,
+      body: {
+        shouldRender: false,
+        style: undefined,
+      },
       actionSlotList: {
         shouldRender: false,
         entries: actionSetProps.entries,
@@ -11204,6 +11208,7 @@ describe("session presentation semantics", () => {
       rowStyle: "standalone-row-style",
     })).toEqual({
       actionSlotList: {
+        shouldRender: true,
         entries: actionSetProps.entries,
         rowStyle: "standalone-row-style",
       },
@@ -11213,7 +11218,11 @@ describe("session presentation semantics", () => {
       entries: actionSetProps.entries,
       rowStyle: "standalone-row-style",
     })).toEqual({
-      actionSlotList: null,
+      actionSlotList: {
+        shouldRender: false,
+        entries: actionSetProps.entries,
+        rowStyle: "standalone-row-style",
+      },
     })
     const toolExecutionStackEvents: string[] = []
     const toolExecutionPresentation = getChatRuntimeMessageThreadPresentationMobileRenderState({
