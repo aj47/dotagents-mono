@@ -3478,12 +3478,12 @@ type ChatComposerInputDockAreaProps =
   };
 
 type ChatComposerInputDockRowProps =
-  ChatComposerInputDockParts['row']['props'] & {
+  ChatComposerInputDockParts['area']['content']['row']['props'] & {
     children: ReactNode;
   };
 
 type ChatComposerInputDockMicWrapperProps =
-  Omit<ChatComposerInputDockParts['micWrapper']['props'], 'ref'> & {
+  Omit<ChatComposerInputDockParts['area']['content']['micWrapper']['props'], 'ref'> & {
     children: ReactNode;
   };
 
@@ -10887,27 +10887,29 @@ export function ChatComposerInputDock({
     styles,
   });
 
+  const inputDockContent = inputDockParts.area.content;
+
   return (
     <ChatComposerInputDockArea
       {...inputDockParts.area.props}
     >
-      {inputDockParts.speechPreview}
-      {inputDockParts.pendingImagesRail}
-      {inputDockParts.handsFreeControls}
+      {inputDockContent.speechPreview.children}
+      {inputDockContent.pendingImagesRail.children}
+      {inputDockContent.handsFreeControls.children}
       <ChatComposerInputDockRow
-        {...inputDockParts.row.props}
+        {...inputDockContent.row.props}
       >
-        {inputDockParts.row.imageAttachmentControl}
-        {inputDockParts.row.textToSpeechControl}
-        {inputDockParts.row.editBeforeSendControl}
-        {inputDockParts.row.textEntry}
-        {inputDockParts.row.queueAction}
-        {inputDockParts.row.submitAction}
+        {inputDockContent.row.content.imageAttachmentControl.children}
+        {inputDockContent.row.content.textToSpeechControl.children}
+        {inputDockContent.row.content.editBeforeSendControl.children}
+        {inputDockContent.row.content.textEntry.children}
+        {inputDockContent.row.content.queueAction.children}
+        {inputDockContent.row.content.submitAction.children}
       </ChatComposerInputDockRow>
       <ChatComposerInputDockMicWrapper
-        {...inputDockParts.micWrapper.props}
+        {...inputDockContent.micWrapper.props}
       >
-        {inputDockParts.micWrapper.micButton}
+        {inputDockContent.micWrapper.content.micButton.children}
       </ChatComposerInputDockMicWrapper>
     </ChatComposerInputDockArea>
   );

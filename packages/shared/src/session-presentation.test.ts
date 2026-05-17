@@ -9963,27 +9963,53 @@ describe("session presentation semantics", () => {
         props: {
           style: "input-area",
         },
-      },
-      speechPreview: "speech-preview",
-      pendingImagesRail: "pending-images",
-      handsFreeControls: "hands-free",
-      row: {
-        props: {
-          style: "input-row",
+        content: {
+          speechPreview: {
+            children: "speech-preview",
+          },
+          pendingImagesRail: {
+            children: "pending-images",
+          },
+          handsFreeControls: {
+            children: "hands-free",
+          },
+          row: {
+            props: {
+              style: "input-row",
+            },
+            content: {
+              imageAttachmentControl: {
+                children: "image-control",
+              },
+              textToSpeechControl: {
+                children: "tts-control",
+              },
+              editBeforeSendControl: {
+                children: "edit-control",
+              },
+              textEntry: {
+                children: "text-entry",
+              },
+              queueAction: {
+                children: "queue-action",
+              },
+              submitAction: {
+                children: "submit-action",
+              },
+            },
+          },
+          micWrapper: {
+            props: {
+              ref: "mic-wrapper",
+              style: "mic-wrapper-style",
+            },
+            content: {
+              micButton: {
+                children: "mic-button",
+              },
+            },
+          },
         },
-        imageAttachmentControl: "image-control",
-        textToSpeechControl: "tts-control",
-        editBeforeSendControl: "edit-control",
-        textEntry: "text-entry",
-        queueAction: "queue-action",
-        submitAction: "submit-action",
-      },
-      micWrapper: {
-        props: {
-          ref: "mic-wrapper",
-          style: "mic-wrapper-style",
-        },
-        micButton: "mic-button",
       },
     })
     expect(createChatComposerSpeechPreviewMobilePropsParts({

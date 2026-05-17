@@ -5315,27 +5315,53 @@ export interface ChatComposerInputDockMobilePropsParts<
     props: {
       style: TStyles["area"]
     }
-  }
-  speechPreview: TSpeechPreview
-  pendingImagesRail: TPendingImagesRail
-  handsFreeControls: THandsFreeControls
-  row: {
-    props: {
-      style: TStyles["row"]
+    content: {
+      speechPreview: {
+        children: TSpeechPreview
+      }
+      pendingImagesRail: {
+        children: TPendingImagesRail
+      }
+      handsFreeControls: {
+        children: THandsFreeControls
+      }
+      row: {
+        props: {
+          style: TStyles["row"]
+        }
+        content: {
+          imageAttachmentControl: {
+            children: TImageAttachmentControl
+          }
+          textToSpeechControl: {
+            children: TTextToSpeechControl
+          }
+          editBeforeSendControl: {
+            children: TEditBeforeSendControl
+          }
+          textEntry: {
+            children: TTextEntry
+          }
+          queueAction: {
+            children: TQueueAction
+          }
+          submitAction: {
+            children: TSubmitAction
+          }
+        }
+      }
+      micWrapper: {
+        props: {
+          ref: TMicWrapperRef | undefined
+          style: TStyles["micWrapper"]
+        }
+        content: {
+          micButton: {
+            children: TMicButton
+          }
+        }
+      }
     }
-    imageAttachmentControl: TImageAttachmentControl
-    textToSpeechControl: TTextToSpeechControl
-    editBeforeSendControl: TEditBeforeSendControl
-    textEntry: TTextEntry
-    queueAction: TQueueAction
-    submitAction: TSubmitAction
-  }
-  micWrapper: {
-    props: {
-      ref: TMicWrapperRef | undefined
-      style: TStyles["micWrapper"]
-    }
-    micButton: TMicButton
   }
 }
 
@@ -22677,27 +22703,53 @@ export function createChatComposerInputDockMobilePropsParts<
       props: {
         style: styles.area,
       },
-    },
-    speechPreview,
-    pendingImagesRail,
-    handsFreeControls,
-    row: {
-      props: {
-        style: styles.row,
+      content: {
+        speechPreview: {
+          children: speechPreview,
+        },
+        pendingImagesRail: {
+          children: pendingImagesRail,
+        },
+        handsFreeControls: {
+          children: handsFreeControls,
+        },
+        row: {
+          props: {
+            style: styles.row,
+          },
+          content: {
+            imageAttachmentControl: {
+              children: imageAttachmentControl,
+            },
+            textToSpeechControl: {
+              children: textToSpeechControl,
+            },
+            editBeforeSendControl: {
+              children: editBeforeSendControl,
+            },
+            textEntry: {
+              children: textEntry,
+            },
+            queueAction: {
+              children: queueAction,
+            },
+            submitAction: {
+              children: submitAction,
+            },
+          },
+        },
+        micWrapper: {
+          props: {
+            ref: micWrapperRef,
+            style: styles.micWrapper,
+          },
+          content: {
+            micButton: {
+              children: micButton,
+            },
+          },
+        },
       },
-      imageAttachmentControl,
-      textToSpeechControl,
-      editBeforeSendControl,
-      textEntry,
-      queueAction,
-      submitAction,
-    },
-    micWrapper: {
-      props: {
-        ref: micWrapperRef,
-        style: styles.micWrapper,
-      },
-      micButton,
     },
   }
 }
