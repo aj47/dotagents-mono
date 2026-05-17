@@ -2801,21 +2801,37 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   const textEntrySource =
     chatMessageChromeSource.match(/export function ChatComposerTextEntry[\s\S]*?export function ChatMessageInlineActivity/)?.[0] ?? '';
   assert.match(textEntrySource, /const textEntryParts = createChatComposerTextEntryMobilePropsParts\(\{\s+inputRef,\s+value,\s+onChangeText,\s+onKeyPress,\s+accessibilityLabel,\s+accessibilityHint,\s+placeholder,\s+placeholderTextColor,\s+voiceStatusLiveRegionAnnouncement,\s+webAccessibility,\s+styles,\s+\}\);/);
-  assert.match(textEntrySource, /ref=\{textEntryParts\.input\.ref\}/);
-  assert.match(textEntrySource, /style=\{textEntryParts\.input\.style\}/);
-  assert.match(textEntrySource, /value=\{textEntryParts\.input\.value\}/);
-  assert.match(textEntrySource, /onChangeText=\{textEntryParts\.input\.onChangeText\}/);
-  assert.match(textEntrySource, /aria-describedby=\{textEntryParts\.input\.ariaDescribedBy\}/);
-  assert.match(textEntrySource, /placeholderTextColor=\{textEntryParts\.input\.placeholderTextColor\}/);
-  assert.match(textEntrySource, /multiline=\{textEntryParts\.input\.multiline\}/);
+  assert.match(textEntrySource, /<ChatComposerTextEntryInput\s+\{\.\.\.textEntryParts\.input\.props\}/);
   assert.match(textEntrySource, /\{textEntryParts\.inputDescription\.shouldRender \? \(/);
-  assert.match(textEntrySource, /nativeID=\{textEntryParts\.inputDescription\.nativeID\}/);
-  assert.match(textEntrySource, /\{textEntryParts\.inputDescription\.text\}/);
+  assert.match(textEntrySource, /<ChatComposerTextEntryInputDescription\s+\{\.\.\.textEntryParts\.inputDescription\.props\}/);
   assert.match(textEntrySource, /\{textEntryParts\.voiceStatusLiveRegion\.shouldRender \? \(/);
-  assert.match(textEntrySource, /nativeID=\{textEntryParts\.voiceStatusLiveRegion\.nativeID\}/);
-  assert.match(textEntrySource, /accessibilityLiveRegion=\{textEntryParts\.voiceStatusLiveRegion\.accessibilityLiveRegion\}/);
-  assert.match(textEntrySource, /aria-live=\{textEntryParts\.voiceStatusLiveRegion\.ariaLive\}/);
-  assert.match(textEntrySource, /\{textEntryParts\.voiceStatusLiveRegion\.text\}/);
+  assert.match(textEntrySource, /<ChatComposerTextEntryVoiceStatusLiveRegion\s+\{\.\.\.textEntryParts\.voiceStatusLiveRegion\.props\}/);
+  assert.match(
+    textEntrySource,
+    /export const ChatComposerTextEntryInput = forwardRef<TextInput, Omit<ChatComposerTextEntryInputProps, 'ref'>>\(function ChatComposerTextEntryInput\([\s\S]*?ref=\{ref\}[\s\S]*?style=\{style\}[\s\S]*?value=\{value\}[\s\S]*?onChangeText=\{onChangeText\}[\s\S]*?onKeyPress=\{onKeyPress\}[\s\S]*?accessibilityLabel=\{accessibilityLabel\}[\s\S]*?accessibilityHint=\{accessibilityHint\}[\s\S]*?aria-describedby=\{ariaDescribedBy\}[\s\S]*?placeholder=\{placeholder\}[\s\S]*?placeholderTextColor=\{placeholderTextColor\}[\s\S]*?multiline=\{multiline\}[\s\S]*?export function ChatComposerTextEntryInputDescription/
+  );
+  assert.match(
+    textEntrySource,
+    /export function ChatComposerTextEntryInputDescription\([\s\S]*?nativeID=\{nativeID\}[\s\S]*?style=\{style\}[\s\S]*?\{text\}[\s\S]*?export function ChatComposerTextEntryVoiceStatusLiveRegion/
+  );
+  assert.match(
+    textEntrySource,
+    /export function ChatComposerTextEntryVoiceStatusLiveRegion\([\s\S]*?nativeID=\{nativeID\}[\s\S]*?style=\{style\}[\s\S]*?accessibilityLiveRegion=\{accessibilityLiveRegion\}[\s\S]*?aria-live=\{ariaLive\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageInlineActivity/
+  );
+  assert.match(
+    sessionPresentationSource,
+    /input: \{\s+props: \{\s+ref: inputRef,\s+style: styles\.input,\s+value,\s+onChangeText,\s+onKeyPress,\s+accessibilityLabel,\s+accessibilityHint,\s+"aria-describedby": webAccessibility\.isWebPlatform/
+  );
+  assert.match(sessionPresentationSource, /inputDescription: \{\s+shouldRender: webAccessibility\.isWebPlatform,\s+props: \{\s+nativeID: webAccessibility\.inputDescriptionNativeId,\s+style: styles\.visuallyHiddenHint,\s+text: accessibilityHint,/);
+  assert.match(sessionPresentationSource, /voiceStatusLiveRegion: \{\s+shouldRender: webAccessibility\.isWebPlatform,\s+props: \{\s+nativeID: webAccessibility\.voiceStatusLiveRegionNativeId,\s+style: styles\.visuallyHiddenHint,\s+accessibilityLiveRegion: webAccessibility\.voiceStatusLiveRegionPoliteness,\s+"aria-live": createChatComposerTextEntryMobileAriaLive/);
+  assert.doesNotMatch(
+    textEntrySource,
+    /textEntryParts\.input\.(ref|style|value|onChangeText|onKeyPress|accessibilityLabel|accessibilityHint|ariaDescribedBy|placeholder|placeholderTextColor|multiline)/
+  );
+  assert.doesNotMatch(
+    textEntrySource,
+    /textEntryParts\.(inputDescription|voiceStatusLiveRegion)\.(nativeID|style|accessibilityLiveRegion|ariaLive|text)/
+  );
   assert.doesNotMatch(textEntrySource, /\{textEntryParts\.inputDescription && \(/);
   assert.doesNotMatch(textEntrySource, /\{textEntryParts\.voiceStatusLiveRegion && \(/);
   assert.doesNotMatch(textEntrySource, /aria-describedby=\{webAccessibility\.isWebPlatform \? webAccessibility\.inputDescriptionNativeId : undefined\}/);

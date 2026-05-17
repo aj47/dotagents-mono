@@ -9870,31 +9870,37 @@ describe("session presentation semantics", () => {
       },
     })).toEqual({
       input: {
-        ref: "input-ref",
-        style: "text-entry-input",
-        value: "hello",
-        onChangeText: "change-text",
-        onKeyPress: "key-press",
-        accessibilityLabel: "Message",
-        accessibilityHint: "Press Enter to send.",
-        ariaDescribedBy: "chat-composer-hint",
-        placeholder: "Message agent",
-        placeholderTextColor: "#64748b",
-        multiline: true,
+        props: {
+          ref: "input-ref",
+          style: "text-entry-input",
+          value: "hello",
+          onChangeText: "change-text",
+          onKeyPress: "key-press",
+          accessibilityLabel: "Message",
+          accessibilityHint: "Press Enter to send.",
+          "aria-describedby": "chat-composer-hint",
+          placeholder: "Message agent",
+          placeholderTextColor: "#64748b",
+          multiline: true,
+        },
       },
       inputDescription: {
         shouldRender: true,
-        nativeID: "chat-composer-hint",
-        style: "visually-hidden-hint",
-        text: "Press Enter to send.",
+        props: {
+          nativeID: "chat-composer-hint",
+          style: "visually-hidden-hint",
+          text: "Press Enter to send.",
+        },
       },
       voiceStatusLiveRegion: {
         shouldRender: true,
-        nativeID: "chat-composer-voice-status",
-        style: "visually-hidden-hint",
-        accessibilityLiveRegion: "none",
-        ariaLive: "off",
-        text: "Voice transcript ready.",
+        props: {
+          nativeID: "chat-composer-voice-status",
+          style: "visually-hidden-hint",
+          accessibilityLiveRegion: "none",
+          "aria-live": "off",
+          text: "Voice transcript ready.",
+        },
       },
     })
     expect(createChatComposerTextEntryMobilePropsParts({
@@ -9917,22 +9923,28 @@ describe("session presentation semantics", () => {
       },
     })).toMatchObject({
       input: {
-        ariaDescribedBy: undefined,
-        multiline: true,
+        props: {
+          "aria-describedby": undefined,
+          multiline: true,
+        },
       },
       inputDescription: {
         shouldRender: false,
-        nativeID: "chat-composer-hint",
-        style: "visually-hidden-hint",
-        text: "Press Enter to send.",
+        props: {
+          nativeID: "chat-composer-hint",
+          style: "visually-hidden-hint",
+          text: "Press Enter to send.",
+        },
       },
       voiceStatusLiveRegion: {
         shouldRender: false,
-        nativeID: "chat-composer-voice-status",
-        style: "visually-hidden-hint",
-        accessibilityLiveRegion: "polite",
-        ariaLive: "polite",
-        text: "Voice transcript ready.",
+        props: {
+          nativeID: "chat-composer-voice-status",
+          style: "visually-hidden-hint",
+          accessibilityLiveRegion: "polite",
+          "aria-live": "polite",
+          text: "Voice transcript ready.",
+        },
       },
     })
     const composerIconButtonParts = createChatComposerIconButtonMobilePropsParts({

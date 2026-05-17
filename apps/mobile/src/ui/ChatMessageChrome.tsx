@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type RefObject, type SetStateAction } from 'react';
+import { Fragment, forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type Dispatch, type ReactNode, type Ref, type RefObject, type SetStateAction } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -2969,6 +2969,25 @@ type ChatComposerTextEntryProps = {
   webAccessibility: ChatComposerTextEntryWebAccessibility;
   styles: ChatComposerTextEntryStyles;
 };
+
+type ChatComposerTextEntryParts = ReturnType<typeof createChatComposerTextEntryMobilePropsParts<
+  ChatComposerTextEntryProps['inputRef'],
+  ChatComposerTextEntryProps['value'],
+  ChatComposerTextEntryProps['onChangeText'],
+  ChatComposerTextEntryProps['onKeyPress'],
+  ChatComposerTextEntryProps['placeholderTextColor'],
+  ChatComposerTextEntryProps['webAccessibility'],
+  ChatComposerTextEntryProps['styles']
+>>;
+
+type ChatComposerTextEntryInputProps =
+  ChatComposerTextEntryParts['input']['props'];
+
+type ChatComposerTextEntryInputDescriptionProps =
+  ChatComposerTextEntryParts['inputDescription']['props'];
+
+type ChatComposerTextEntryVoiceStatusLiveRegionProps =
+  ChatComposerTextEntryParts['voiceStatusLiveRegion']['props'];
 
 type ChatComposerInputDockStyles = {
   area: StyleProp<ViewStyle>;
@@ -10793,38 +10812,83 @@ export function ChatComposerTextEntry({
 
   return (
     <>
-      <TextInput
-        ref={textEntryParts.input.ref}
-        style={textEntryParts.input.style}
-        value={textEntryParts.input.value}
-        onChangeText={textEntryParts.input.onChangeText}
-        onKeyPress={textEntryParts.input.onKeyPress}
-        accessibilityLabel={textEntryParts.input.accessibilityLabel}
-        accessibilityHint={textEntryParts.input.accessibilityHint}
-        aria-describedby={textEntryParts.input.ariaDescribedBy}
-        placeholder={textEntryParts.input.placeholder}
-        placeholderTextColor={textEntryParts.input.placeholderTextColor}
-        multiline={textEntryParts.input.multiline}
+      <ChatComposerTextEntryInput
+        {...textEntryParts.input.props}
       />
       {textEntryParts.inputDescription.shouldRender ? (
-        <Text
-          nativeID={textEntryParts.inputDescription.nativeID}
-          style={textEntryParts.inputDescription.style}
-        >
-          {textEntryParts.inputDescription.text}
-        </Text>
+        <ChatComposerTextEntryInputDescription
+          {...textEntryParts.inputDescription.props}
+        />
       ) : null}
       {textEntryParts.voiceStatusLiveRegion.shouldRender ? (
-        <Text
-          nativeID={textEntryParts.voiceStatusLiveRegion.nativeID}
-          style={textEntryParts.voiceStatusLiveRegion.style}
-          accessibilityLiveRegion={textEntryParts.voiceStatusLiveRegion.accessibilityLiveRegion}
-          aria-live={textEntryParts.voiceStatusLiveRegion.ariaLive}
-        >
-          {textEntryParts.voiceStatusLiveRegion.text}
-        </Text>
+        <ChatComposerTextEntryVoiceStatusLiveRegion
+          {...textEntryParts.voiceStatusLiveRegion.props}
+        />
       ) : null}
     </>
+  );
+}
+
+export const ChatComposerTextEntryInput = forwardRef<TextInput, Omit<ChatComposerTextEntryInputProps, 'ref'>>(function ChatComposerTextEntryInput({
+  style,
+  value,
+  onChangeText,
+  onKeyPress,
+  accessibilityLabel,
+  accessibilityHint,
+  'aria-describedby': ariaDescribedBy,
+  placeholder,
+  placeholderTextColor,
+  multiline,
+}, ref) {
+  return (
+    <TextInput
+      ref={ref}
+      style={style}
+      value={value}
+      onChangeText={onChangeText}
+      onKeyPress={onKeyPress}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      aria-describedby={ariaDescribedBy}
+      placeholder={placeholder}
+      placeholderTextColor={placeholderTextColor}
+      multiline={multiline}
+    />
+  );
+});
+
+export function ChatComposerTextEntryInputDescription({
+  nativeID,
+  style,
+  text,
+}: ChatComposerTextEntryInputDescriptionProps) {
+  return (
+    <Text
+      nativeID={nativeID}
+      style={style}
+    >
+      {text}
+    </Text>
+  );
+}
+
+export function ChatComposerTextEntryVoiceStatusLiveRegion({
+  nativeID,
+  style,
+  accessibilityLiveRegion,
+  'aria-live': ariaLive,
+  text,
+}: ChatComposerTextEntryVoiceStatusLiveRegionProps) {
+  return (
+    <Text
+      nativeID={nativeID}
+      style={style}
+      accessibilityLiveRegion={accessibilityLiveRegion}
+      aria-live={ariaLive}
+    >
+      {text}
+    </Text>
   );
 }
 

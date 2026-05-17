@@ -4608,31 +4608,37 @@ export interface ChatComposerTextEntryMobilePropsParts<
   TStyles extends ChatComposerTextEntryMobileStylesLike = ChatComposerTextEntryMobileStylesLike,
 > {
   input: {
-    ref: TInputRef | undefined
-    style: TStyles["input"]
-    value: TValue
-    onChangeText: TOnChangeText
-    onKeyPress: TOnKeyPress | undefined
-    accessibilityLabel: string
-    accessibilityHint: string
-    ariaDescribedBy: TWebAccessibility["inputDescriptionNativeId"] | undefined
-    placeholder: string
-    placeholderTextColor: TPlaceholderTextColor
-    multiline: true
+    props: {
+      ref: TInputRef | undefined
+      style: TStyles["input"]
+      value: TValue
+      onChangeText: TOnChangeText
+      onKeyPress: TOnKeyPress | undefined
+      accessibilityLabel: string
+      accessibilityHint: string
+      "aria-describedby": TWebAccessibility["inputDescriptionNativeId"] | undefined
+      placeholder: string
+      placeholderTextColor: TPlaceholderTextColor
+      multiline: true
+    }
   }
   inputDescription: {
     shouldRender: boolean
-    nativeID: TWebAccessibility["inputDescriptionNativeId"]
-    style: TStyles["visuallyHiddenHint"]
-    text: string
+    props: {
+      nativeID: TWebAccessibility["inputDescriptionNativeId"]
+      style: TStyles["visuallyHiddenHint"]
+      text: string
+    }
   }
   voiceStatusLiveRegion: {
     shouldRender: boolean
-    nativeID: TWebAccessibility["voiceStatusLiveRegionNativeId"]
-    style: TStyles["visuallyHiddenHint"]
-    accessibilityLiveRegion: TWebAccessibility["voiceStatusLiveRegionPoliteness"]
-    ariaLive: ChatComposerTextEntryMobileAriaLive
-    text: string
+    props: {
+      nativeID: TWebAccessibility["voiceStatusLiveRegionNativeId"]
+      style: TStyles["visuallyHiddenHint"]
+      accessibilityLiveRegion: TWebAccessibility["voiceStatusLiveRegionPoliteness"]
+      "aria-live": ChatComposerTextEntryMobileAriaLive
+      text: string
+    }
   }
 }
 
@@ -21458,35 +21464,41 @@ export function createChatComposerTextEntryMobilePropsParts<
 > {
   return {
     input: {
-      ref: inputRef,
-      style: styles.input,
-      value,
-      onChangeText,
-      onKeyPress,
-      accessibilityLabel,
-      accessibilityHint,
-      ariaDescribedBy: webAccessibility.isWebPlatform
-        ? webAccessibility.inputDescriptionNativeId
-        : undefined,
-      placeholder,
-      placeholderTextColor,
-      multiline: true,
+      props: {
+        ref: inputRef,
+        style: styles.input,
+        value,
+        onChangeText,
+        onKeyPress,
+        accessibilityLabel,
+        accessibilityHint,
+        "aria-describedby": webAccessibility.isWebPlatform
+          ? webAccessibility.inputDescriptionNativeId
+          : undefined,
+        placeholder,
+        placeholderTextColor,
+        multiline: true,
+      },
     },
     inputDescription: {
       shouldRender: webAccessibility.isWebPlatform,
-      nativeID: webAccessibility.inputDescriptionNativeId,
-      style: styles.visuallyHiddenHint,
-      text: accessibilityHint,
+      props: {
+        nativeID: webAccessibility.inputDescriptionNativeId,
+        style: styles.visuallyHiddenHint,
+        text: accessibilityHint,
+      },
     },
     voiceStatusLiveRegion: {
       shouldRender: webAccessibility.isWebPlatform,
-      nativeID: webAccessibility.voiceStatusLiveRegionNativeId,
-      style: styles.visuallyHiddenHint,
-      accessibilityLiveRegion: webAccessibility.voiceStatusLiveRegionPoliteness,
-      ariaLive: createChatComposerTextEntryMobileAriaLive(
-        webAccessibility.voiceStatusLiveRegionPoliteness,
-      ),
-      text: voiceStatusLiveRegionAnnouncement,
+      props: {
+        nativeID: webAccessibility.voiceStatusLiveRegionNativeId,
+        style: styles.visuallyHiddenHint,
+        accessibilityLiveRegion: webAccessibility.voiceStatusLiveRegionPoliteness,
+        "aria-live": createChatComposerTextEntryMobileAriaLive(
+          webAccessibility.voiceStatusLiveRegionPoliteness,
+        ),
+        text: voiceStatusLiveRegionAnnouncement,
+      },
     },
   }
 }
