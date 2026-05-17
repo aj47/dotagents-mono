@@ -3216,11 +3216,12 @@ export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
     code: unknown
   },
 > {
-  preview: ({
+  preview: {
+    shouldRender: boolean
     text: string
     style: TStyles["preview"]
     numberOfLines: number
-  }) | null
+  }
   scroll: {
     style: TStyles["scroll"] | TStyles["scrollExpanded"]
     nestedScrollEnabled: true
@@ -20289,11 +20290,12 @@ export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
   styles,
 }: ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<TStyles>): ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<TStyles> {
   return {
-    preview: compactText ? {
-      text: compactText,
+    preview: {
+      shouldRender: Boolean(compactText),
+      text: compactText ?? "",
       style: styles.preview,
       numberOfLines: previewNumberOfLines,
-    } : null,
+    },
     scroll: {
       style: isExpanded ? styles.scrollExpanded : styles.scroll,
       nestedScrollEnabled: true,

@@ -3829,7 +3829,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const payloadBlockParts = createChatRuntimeToolExecutionPayloadBlockMobilePropsParts\(\{\s+compactText,\s+content,\s+isExpanded,\s+previewNumberOfLines,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /payloadBlockParts\.preview \? \(/);
+  assert.match(chatMessageChromeSource, /payloadBlockParts\.preview\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /payloadBlockParts\.preview \? \(/);
   assert.match(chatMessageChromeSource, /style=\{payloadBlockParts\.preview\.style\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{payloadBlockParts\.preview\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /\{payloadBlockParts\.preview\.text\}/);
@@ -3837,7 +3838,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /nestedScrollEnabled=\{payloadBlockParts\.scroll\.nestedScrollEnabled\}/);
   assert.match(chatMessageChromeSource, /style=\{payloadBlockParts\.code\.style\}/);
   assert.match(chatMessageChromeSource, /\{payloadBlockParts\.code\.text\}/);
-  assert.match(sessionPresentationSource, /preview: compactText \? \{\s+text: compactText,\s+style: styles\.preview,\s+numberOfLines: previewNumberOfLines,/);
+  assert.match(sessionPresentationSource, /preview: \{\s+shouldRender: Boolean\(compactText\),\s+text: compactText \?\? "",\s+style: styles\.preview,\s+numberOfLines: previewNumberOfLines,/);
   assert.match(sessionPresentationSource, /scroll: \{\s+style: isExpanded \? styles\.scrollExpanded : styles\.scroll,\s+nestedScrollEnabled: true,/);
   assert.doesNotMatch(chatMessageChromeSource, /numberOfLines=\{previewNumberOfLines\}/);
   assert.doesNotMatch(chatMessageChromeSource, /style=\{isExpanded \? styles\.scrollExpanded : styles\.scroll\}/);

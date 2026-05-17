@@ -13083,6 +13083,7 @@ describe("session presentation semantics", () => {
     })
     expect(payloadBlockParts).toEqual({
       preview: {
+        shouldRender: true,
         text: "preview",
         style: "payload-preview",
         numberOfLines: 3,
@@ -13107,11 +13108,20 @@ describe("session presentation semantics", () => {
         scrollExpanded: "payload-scroll-expanded",
         code: "payload-code",
       },
-    })).toMatchObject({
-      preview: null,
+    })).toEqual({
+      preview: {
+        shouldRender: false,
+        text: "",
+        style: "payload-preview",
+        numberOfLines: 2,
+      },
       scroll: {
         style: "payload-scroll",
         nestedScrollEnabled: true,
+      },
+      code: {
+        text: "payload-content",
+        style: "payload-code",
       },
     })
     const resultBadgeParts = createChatRuntimeToolExecutionResultBadgeMobilePropsParts({

@@ -8276,7 +8276,7 @@ export function ChatMessageToolExecutionPayloadBlock({
 
   return (
     <>
-      {payloadBlockParts.preview ? (
+      {payloadBlockParts.preview.shouldRender ? (
         <Text
           style={payloadBlockParts.preview.style}
           numberOfLines={payloadBlockParts.preview.numberOfLines}
