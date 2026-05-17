@@ -6212,9 +6212,9 @@ export interface ChatRuntimeLoadingStateMobilePropsParts<
 
 export interface ChatRuntimeDebugPanelStackMobilePropsPartsInput<
   TRequestShouldRender = unknown,
-  TRequestRows = unknown,
+  TRequestRows extends readonly ChatRuntimeDebugPanelMobileRow[] = readonly ChatRuntimeDebugPanelMobileRow[],
   TVoiceShouldRender = unknown,
-  TVoiceRows = unknown,
+  TVoiceRows extends readonly ChatRuntimeDebugPanelMobileRow[] = readonly ChatRuntimeDebugPanelMobileRow[],
   TPanelStyle = unknown,
   TTextStyle = unknown,
 > {
@@ -6226,26 +6226,50 @@ export interface ChatRuntimeDebugPanelStackMobilePropsPartsInput<
   textStyle: TTextStyle
 }
 
-export interface ChatRuntimeDebugPanelStackMobilePropsParts<
-  TRequestShouldRender = unknown,
-  TRequestRows = unknown,
-  TVoiceShouldRender = unknown,
-  TVoiceRows = unknown,
+export interface ChatRuntimeDebugPanelMobileRowPropsParts<
+  TRow extends ChatRuntimeDebugPanelMobileRow = ChatRuntimeDebugPanelMobileRow,
+  TTextStyle = unknown,
+> {
+  key: TRow["key"]
+  text: TRow["text"]
+  props: {
+    style: TTextStyle
+  }
+}
+
+export interface ChatRuntimeDebugPanelMobilePropsParts<
+  TShouldRender = unknown,
+  TRows extends readonly ChatRuntimeDebugPanelMobileRow[] = readonly ChatRuntimeDebugPanelMobileRow[],
   TPanelStyle = unknown,
   TTextStyle = unknown,
 > {
-  requestPanel: {
-    shouldRender: TRequestShouldRender
-    rows: TRequestRows
-    panelStyle: TPanelStyle
-    textStyle: TTextStyle
+  shouldRender: TShouldRender
+  rows: Array<ChatRuntimeDebugPanelMobileRowPropsParts<TRows[number], TTextStyle>>
+  props: {
+    style: TPanelStyle
   }
-  voicePanel: {
-    shouldRender: TVoiceShouldRender
-    rows: TVoiceRows
-    panelStyle: TPanelStyle
-    textStyle: TTextStyle
-  }
+}
+
+export interface ChatRuntimeDebugPanelStackMobilePropsParts<
+  TRequestShouldRender = unknown,
+  TRequestRows extends readonly ChatRuntimeDebugPanelMobileRow[] = readonly ChatRuntimeDebugPanelMobileRow[],
+  TVoiceShouldRender = unknown,
+  TVoiceRows extends readonly ChatRuntimeDebugPanelMobileRow[] = readonly ChatRuntimeDebugPanelMobileRow[],
+  TPanelStyle = unknown,
+  TTextStyle = unknown,
+> {
+  requestPanel: ChatRuntimeDebugPanelMobilePropsParts<
+    TRequestShouldRender,
+    TRequestRows,
+    TPanelStyle,
+    TTextStyle
+  >
+  voicePanel: ChatRuntimeDebugPanelMobilePropsParts<
+    TVoiceShouldRender,
+    TVoiceRows,
+    TPanelStyle,
+    TTextStyle
+  >
 }
 
 export interface ChatRuntimeInlineActivityMobilePropsPartsInput<
@@ -23400,9 +23424,9 @@ export function createChatRuntimeLoadingStateMobilePropsParts<
 
 export function createChatRuntimeDebugPanelStackMobilePropsParts<
   TRequestShouldRender,
-  TRequestRows,
+  TRequestRows extends readonly ChatRuntimeDebugPanelMobileRow[],
   TVoiceShouldRender,
-  TVoiceRows,
+  TVoiceRows extends readonly ChatRuntimeDebugPanelMobileRow[],
   TPanelStyle,
   TTextStyle,
 >({
@@ -23430,15 +23454,29 @@ export function createChatRuntimeDebugPanelStackMobilePropsParts<
   return {
     requestPanel: {
       shouldRender: requestShouldRender,
-      rows: requestRows,
-      panelStyle,
-      textStyle,
+      rows: requestRows.map((row) => ({
+        key: row.key,
+        text: row.text,
+        props: {
+          style: textStyle,
+        },
+      })),
+      props: {
+        style: panelStyle,
+      },
     },
     voicePanel: {
       shouldRender: voiceShouldRender,
-      rows: voiceRows,
-      panelStyle,
-      textStyle,
+      rows: voiceRows.map((row) => ({
+        key: row.key,
+        text: row.text,
+        props: {
+          style: textStyle,
+        },
+      })),
+      props: {
+        style: panelStyle,
+      },
     },
   }
 }

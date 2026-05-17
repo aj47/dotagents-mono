@@ -9627,23 +9627,37 @@ describe("session presentation semantics", () => {
     })
     expect(createChatRuntimeDebugPanelStackMobilePropsParts({
       requestShouldRender: true,
-      requestRows: ["request-row"],
+      requestRows: [{ key: "request-row-key", text: "request-row" }],
       voiceShouldRender: false,
-      voiceRows: ["voice-row"],
+      voiceRows: [{ key: "voice-row-key", text: "voice-row" }],
       panelStyle: "debug-panel-style",
       textStyle: "debug-text-style",
     })).toEqual({
       requestPanel: {
         shouldRender: true,
-        rows: ["request-row"],
-        panelStyle: "debug-panel-style",
-        textStyle: "debug-text-style",
+        rows: [{
+          key: "request-row-key",
+          text: "request-row",
+          props: {
+            style: "debug-text-style",
+          },
+        }],
+        props: {
+          style: "debug-panel-style",
+        },
       },
       voicePanel: {
         shouldRender: false,
-        rows: ["voice-row"],
-        panelStyle: "debug-panel-style",
-        textStyle: "debug-text-style",
+        rows: [{
+          key: "voice-row-key",
+          text: "voice-row",
+          props: {
+            style: "debug-text-style",
+          },
+        }],
+        props: {
+          style: "debug-panel-style",
+        },
       },
     })
     const dockParts = createChatRuntimeConversationDockMobilePropsParts({

@@ -2663,12 +2663,18 @@ type ChatMessageLoadingStateSpinnerProps =
   ChatMessageLoadingStateParts['spinner']['props'];
 
 type ChatMessageDebugPanelRow = ChatRuntimeDebugPanelsMobileRenderState['requestRows'][number];
+type ChatMessageDebugPanelRowProps = ChatMessageDebugPanelRow & {
+  props: {
+    style: StyleProp<TextStyle>;
+  };
+};
 
 type ChatMessageDebugPanelProps = {
   shouldRender: boolean;
-  rows: readonly ChatMessageDebugPanelRow[];
-  panelStyle: StyleProp<ViewStyle>;
-  textStyle: StyleProp<TextStyle>;
+  rows: readonly ChatMessageDebugPanelRowProps[];
+  props: {
+    style: StyleProp<ViewStyle>;
+  };
 };
 
 type ChatMessageDebugPanelStackProps = ChatRuntimeDebugPanelsMobileRenderState & {
@@ -10441,15 +10447,14 @@ export function ChatMessageLoadingStateSpinner(
 export function ChatMessageDebugPanel({
   shouldRender,
   rows,
-  panelStyle,
-  textStyle,
+  props,
 }: ChatMessageDebugPanelProps) {
   if (!shouldRender || rows.length === 0) return null;
 
   return (
-    <View style={panelStyle}>
+    <View {...props}>
       {rows.map((row) => (
-        <Text key={row.key} style={textStyle}>
+        <Text key={row.key} {...row.props}>
           {row.text}
         </Text>
       ))}
