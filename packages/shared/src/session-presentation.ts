@@ -3695,6 +3695,230 @@ export interface ChatRuntimeInlineActivityMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeConnectionBannerMobilePropsPartsInput<
+  TRenderState extends {
+    surface: {
+      subtitleNumberOfLines: unknown
+    }
+    reconnecting: {
+      shouldRender: boolean
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string | null
+      spinner: unknown
+    }
+    failed: {
+      shouldRender: boolean
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string
+      icon: unknown
+      retryButton: {
+        accessibilityRole: unknown
+        accessibilityLabel: string
+        pressedOpacity: number
+        label: string
+      }
+    }
+  } = {
+    surface: {
+      subtitleNumberOfLines: unknown
+    }
+    reconnecting: {
+      shouldRender: boolean
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string | null
+      spinner: unknown
+    }
+    failed: {
+      shouldRender: boolean
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string
+      icon: unknown
+      retryButton: {
+        accessibilityRole: unknown
+        accessibilityLabel: string
+        pressedOpacity: number
+        label: string
+      }
+    }
+  },
+  TOnRetry = unknown,
+  TStyles extends {
+    banner: unknown
+    reconnecting: unknown
+    failed: unknown
+    content: unknown
+    icon: unknown
+    textContainer: unknown
+    title: unknown
+    subtitle: unknown
+    retryButton: unknown
+    retryButtonText: unknown
+  } = {
+    banner: unknown
+    reconnecting: unknown
+    failed: unknown
+    content: unknown
+    icon: unknown
+    textContainer: unknown
+    title: unknown
+    subtitle: unknown
+    retryButton: unknown
+    retryButtonText: unknown
+  },
+> {
+  renderState: TRenderState
+  onRetry?: TOnRetry
+  styles: TStyles
+}
+
+export interface ChatRuntimeConnectionBannerMobilePropsParts<
+  TRenderState extends {
+    surface: {
+      subtitleNumberOfLines: unknown
+    }
+    reconnecting: {
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string | null
+      spinner: unknown
+    }
+    failed: {
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string
+      icon: unknown
+      retryButton: {
+        accessibilityRole: unknown
+        accessibilityLabel: string
+        pressedOpacity: number
+        label: string
+      }
+    }
+  } = {
+    surface: {
+      subtitleNumberOfLines: unknown
+    }
+    reconnecting: {
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string | null
+      spinner: unknown
+    }
+    failed: {
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string
+      icon: unknown
+      retryButton: {
+        accessibilityRole: unknown
+        accessibilityLabel: string
+        pressedOpacity: number
+        label: string
+      }
+    }
+  },
+  TOnRetry = unknown,
+  TStyles extends {
+    banner: unknown
+    reconnecting: unknown
+    failed: unknown
+    content: unknown
+    icon: unknown
+    textContainer: unknown
+    title: unknown
+    subtitle: unknown
+    retryButton: unknown
+    retryButtonText: unknown
+  } = {
+    banner: unknown
+    reconnecting: unknown
+    failed: unknown
+    content: unknown
+    icon: unknown
+    textContainer: unknown
+    title: unknown
+    subtitle: unknown
+    retryButton: unknown
+    retryButtonText: unknown
+  },
+> {
+  reconnecting: {
+    container: {
+      accessible: true
+      accessibilityRole: TRenderState["reconnecting"]["accessibilityRole"]
+      accessibilityLabel: string
+      style: [TStyles["banner"], TStyles["reconnecting"]]
+    }
+    content: {
+      style: TStyles["content"]
+    }
+    spinner: TRenderState["reconnecting"]["spinner"] & {
+      style: TStyles["icon"]
+    }
+    textContainer: {
+      style: TStyles["textContainer"]
+    }
+    title: {
+      style: TStyles["title"]
+      text: string
+    }
+    subtitle: {
+      style: TStyles["subtitle"]
+      numberOfLines: TRenderState["surface"]["subtitleNumberOfLines"]
+      text: string
+    } | null
+  } | null
+  failed: {
+    container: {
+      accessible: true
+      accessibilityRole: TRenderState["failed"]["accessibilityRole"]
+      accessibilityLabel: string
+      style: [TStyles["banner"], TStyles["failed"]]
+    }
+    content: {
+      style: TStyles["content"]
+    }
+    icon: TRenderState["failed"]["icon"] & {
+      style: TStyles["icon"]
+    }
+    textContainer: {
+      style: TStyles["textContainer"]
+    }
+    title: {
+      style: TStyles["title"]
+      text: string
+    }
+    subtitle: {
+      style: TStyles["subtitle"]
+      numberOfLines: TRenderState["surface"]["subtitleNumberOfLines"]
+      text: string
+    }
+    retryButton: {
+      style: TStyles["retryButton"]
+      onPress?: TOnRetry
+      accessibilityRole: TRenderState["failed"]["retryButton"]["accessibilityRole"]
+      accessibilityLabel: string
+      activeOpacity: number
+    }
+    retryLabel: {
+      style: TStyles["retryButtonText"]
+      text: string
+    }
+  } | null
+}
+
 export interface ChatRuntimeRetryStatusMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -17669,6 +17893,129 @@ export function createChatRuntimeInlineActivityMobilePropsParts<
       style: spinnerStyle,
       resizeMode: renderState.spinnerResizeMode,
     },
+  }
+}
+
+export function createChatRuntimeConnectionBannerMobilePropsParts<
+  TRenderState extends {
+    surface: {
+      subtitleNumberOfLines: unknown
+    }
+    reconnecting: {
+      shouldRender: boolean
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string | null
+      spinner: object
+    }
+    failed: {
+      shouldRender: boolean
+      accessibilityRole: unknown
+      accessibilityLabel: string
+      title: string
+      subtitle: string
+      icon: object
+      retryButton: {
+        accessibilityRole: unknown
+        accessibilityLabel: string
+        pressedOpacity: number
+        label: string
+      }
+    }
+  },
+  TOnRetry,
+  TStyles extends {
+    banner: unknown
+    reconnecting: unknown
+    failed: unknown
+    content: unknown
+    icon: unknown
+    textContainer: unknown
+    title: unknown
+    subtitle: unknown
+    retryButton: unknown
+    retryButtonText: unknown
+  },
+>({
+  renderState,
+  onRetry,
+  styles,
+}: ChatRuntimeConnectionBannerMobilePropsPartsInput<
+  TRenderState,
+  TOnRetry,
+  TStyles
+>): ChatRuntimeConnectionBannerMobilePropsParts<
+  TRenderState,
+  TOnRetry,
+  TStyles
+> {
+  return {
+    reconnecting: renderState.reconnecting.shouldRender ? {
+      container: {
+        accessible: true,
+        accessibilityRole: renderState.reconnecting.accessibilityRole,
+        accessibilityLabel: renderState.reconnecting.accessibilityLabel,
+        style: [styles.banner, styles.reconnecting],
+      },
+      content: {
+        style: styles.content,
+      },
+      spinner: {
+        ...renderState.reconnecting.spinner,
+        style: styles.icon,
+      },
+      textContainer: {
+        style: styles.textContainer,
+      },
+      title: {
+        style: styles.title,
+        text: renderState.reconnecting.title,
+      },
+      subtitle: renderState.reconnecting.subtitle ? {
+        style: styles.subtitle,
+        numberOfLines: renderState.surface.subtitleNumberOfLines,
+        text: renderState.reconnecting.subtitle,
+      } : null,
+    } : null,
+    failed: renderState.failed.shouldRender ? {
+      container: {
+        accessible: true,
+        accessibilityRole: renderState.failed.accessibilityRole,
+        accessibilityLabel: renderState.failed.accessibilityLabel,
+        style: [styles.banner, styles.failed],
+      },
+      content: {
+        style: styles.content,
+      },
+      icon: {
+        ...renderState.failed.icon,
+        style: styles.icon,
+      },
+      textContainer: {
+        style: styles.textContainer,
+      },
+      title: {
+        style: styles.title,
+        text: renderState.failed.title,
+      },
+      subtitle: {
+        style: styles.subtitle,
+        numberOfLines: renderState.surface.subtitleNumberOfLines,
+        text: renderState.failed.subtitle,
+      },
+      retryButton: {
+        style: styles.retryButton,
+        onPress: onRetry,
+        accessibilityRole: renderState.failed.retryButton.accessibilityRole,
+        accessibilityLabel: renderState.failed.retryButton.accessibilityLabel,
+        activeOpacity: renderState.failed.retryButton.pressedOpacity,
+      },
+      retryLabel: {
+        style: styles.retryButtonText,
+        text: renderState.failed.retryButton.label,
+      },
+    } : null,
   }
 }
 

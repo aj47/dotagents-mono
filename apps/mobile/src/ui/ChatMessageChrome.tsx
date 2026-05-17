@@ -79,6 +79,7 @@ import {
   getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
+  createChatRuntimeConnectionBannerMobilePropsParts,
   createChatRuntimeRetryStatusMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
@@ -9246,71 +9247,77 @@ export function ChatMessageConnectionBanner({
   onRetry,
   styles,
 }: ChatMessageConnectionBannerProps) {
+  const connectionBannerParts = createChatRuntimeConnectionBannerMobilePropsParts({
+    renderState,
+    onRetry,
+    styles,
+  });
+
   return (
     <>
-      {renderState.reconnecting.shouldRender ? (
+      {connectionBannerParts.reconnecting ? (
         <View
-          accessible
-          accessibilityRole={renderState.reconnecting.accessibilityRole}
-          accessibilityLabel={renderState.reconnecting.accessibilityLabel}
-          style={[styles.banner, styles.reconnecting]}
+          accessible={connectionBannerParts.reconnecting.container.accessible}
+          accessibilityRole={connectionBannerParts.reconnecting.container.accessibilityRole}
+          accessibilityLabel={connectionBannerParts.reconnecting.container.accessibilityLabel}
+          style={connectionBannerParts.reconnecting.container.style}
         >
-          <View style={styles.content}>
+          <View style={connectionBannerParts.reconnecting.content.style}>
             <ActivityIndicator
-              size={renderState.reconnecting.spinner.size}
-              color={renderState.reconnecting.spinner.color}
-              style={styles.icon}
+              size={connectionBannerParts.reconnecting.spinner.size}
+              color={connectionBannerParts.reconnecting.spinner.color}
+              style={connectionBannerParts.reconnecting.spinner.style}
             />
-            <View style={styles.textContainer}>
-              <Text style={styles.title}>
-                {renderState.reconnecting.title}
+            <View style={connectionBannerParts.reconnecting.textContainer.style}>
+              <Text style={connectionBannerParts.reconnecting.title.style}>
+                {connectionBannerParts.reconnecting.title.text}
               </Text>
-              {renderState.reconnecting.subtitle ? (
+              {connectionBannerParts.reconnecting.subtitle ? (
                 <Text
-                  style={styles.subtitle}
-                  numberOfLines={renderState.surface.subtitleNumberOfLines}
+                  style={connectionBannerParts.reconnecting.subtitle.style}
+                  numberOfLines={connectionBannerParts.reconnecting.subtitle.numberOfLines}
                 >
-                  {renderState.reconnecting.subtitle}
+                  {connectionBannerParts.reconnecting.subtitle.text}
                 </Text>
               ) : null}
             </View>
           </View>
         </View>
       ) : null}
-      {renderState.failed.shouldRender ? (
+      {connectionBannerParts.failed ? (
         <View
-          accessible
-          accessibilityRole={renderState.failed.accessibilityRole}
-          accessibilityLabel={renderState.failed.accessibilityLabel}
-          style={[styles.banner, styles.failed]}
+          accessible={connectionBannerParts.failed.container.accessible}
+          accessibilityRole={connectionBannerParts.failed.container.accessibilityRole}
+          accessibilityLabel={connectionBannerParts.failed.container.accessibilityLabel}
+          style={connectionBannerParts.failed.container.style}
         >
-          <View style={styles.content}>
+          <View style={connectionBannerParts.failed.content.style}>
             <Ionicons
-              name={renderState.failed.icon.name}
-              size={renderState.failed.icon.size}
-              color={renderState.failed.icon.color}
-              style={styles.icon}
+              name={connectionBannerParts.failed.icon.name}
+              size={connectionBannerParts.failed.icon.size}
+              color={connectionBannerParts.failed.icon.color}
+              style={connectionBannerParts.failed.icon.style}
             />
-            <View style={styles.textContainer}>
-              <Text style={styles.title}>
-                {renderState.failed.title}
+            <View style={connectionBannerParts.failed.textContainer.style}>
+              <Text style={connectionBannerParts.failed.title.style}>
+                {connectionBannerParts.failed.title.text}
               </Text>
               <Text
-                style={styles.subtitle}
-                numberOfLines={renderState.surface.subtitleNumberOfLines}
+                style={connectionBannerParts.failed.subtitle.style}
+                numberOfLines={connectionBannerParts.failed.subtitle.numberOfLines}
               >
-                {renderState.failed.subtitle}
+                {connectionBannerParts.failed.subtitle.text}
               </Text>
             </View>
             <TouchableOpacity
-              style={styles.retryButton}
-              onPress={onRetry}
-              accessibilityRole={renderState.failed.retryButton.accessibilityRole}
-              accessibilityLabel={renderState.failed.retryButton.accessibilityLabel}
-              activeOpacity={renderState.failed.retryButton.pressedOpacity}
+              style={connectionBannerParts.failed.retryButton.style}
+              onPress={connectionBannerParts.failed.retryButton.onPress}
+              accessibilityRole={connectionBannerParts.failed.retryButton.accessibilityRole}
+              accessibilityLabel={connectionBannerParts.failed.retryButton.accessibilityLabel}
+              activeOpacity={connectionBannerParts.failed.retryButton.activeOpacity}
             >
-              <Text style={styles.retryButtonText}>
-                {renderState.failed.retryButton.label}
+              <Text style={connectionBannerParts.failed.retryLabel.style}>
+                {connectionBannerParts.failed.retryLabel.text}
               </Text>
             </TouchableOpacity>
           </View>

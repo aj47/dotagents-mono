@@ -124,6 +124,7 @@ import {
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
+  createChatRuntimeConnectionBannerMobilePropsParts,
   createChatRuntimeRetryStatusMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
@@ -5664,6 +5665,100 @@ describe("session presentation semantics", () => {
         accessibilityRole: "button",
         accessibilityLabel: "Retry",
         pressedOpacity: 0.7,
+      },
+    })
+    const connectionBannerStyles = {
+      banner: "banner-style",
+      reconnecting: "reconnecting-style",
+      failed: "failed-style",
+      content: "content-style",
+      icon: "icon-style",
+      textContainer: "text-container-style",
+      title: "title-style",
+      subtitle: "subtitle-style",
+      retryButton: "retry-button-style",
+      retryButtonText: "retry-button-text-style",
+    }
+    expect(createChatRuntimeConnectionBannerMobilePropsParts({
+      renderState: reconnectingBanner,
+      onRetry: "retry-handler",
+      styles: connectionBannerStyles,
+    })).toEqual({
+      reconnecting: {
+        container: {
+          accessible: true,
+          accessibilityRole: "alert",
+          accessibilityLabel: "Reconnecting... (attempt 2). Network offline",
+          style: ["banner-style", "reconnecting-style"],
+        },
+        content: {
+          style: "content-style",
+        },
+        spinner: {
+          size: "small",
+          color: "#d97706",
+          style: "icon-style",
+        },
+        textContainer: {
+          style: "text-container-style",
+        },
+        title: {
+          style: "title-style",
+          text: "Reconnecting... (attempt 2)",
+        },
+        subtitle: {
+          style: "subtitle-style",
+          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+          text: "Network offline",
+        },
+      },
+      failed: null,
+    })
+    expect(createChatRuntimeConnectionBannerMobilePropsParts({
+      renderState: failedBanner,
+      onRetry: "retry-handler",
+      styles: connectionBannerStyles,
+    })).toEqual({
+      reconnecting: null,
+      failed: {
+        container: {
+          accessible: true,
+          accessibilityRole: "alert",
+          accessibilityLabel: "Message failed to send. Tap retry to try again",
+          style: ["banner-style", "failed-style"],
+        },
+        content: {
+          style: "content-style",
+        },
+        icon: {
+          name: "warning-outline",
+          size: 16,
+          color: "#dc2626",
+          style: "icon-style",
+        },
+        textContainer: {
+          style: "text-container-style",
+        },
+        title: {
+          style: "title-style",
+          text: "Message failed to send",
+        },
+        subtitle: {
+          style: "subtitle-style",
+          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.connectionBanner.subtitleNumberOfLines,
+          text: "Tap retry to try again",
+        },
+        retryButton: {
+          style: "retry-button-style",
+          onPress: "retry-handler",
+          accessibilityRole: "button",
+          accessibilityLabel: "Retry",
+          activeOpacity: 0.7,
+        },
+        retryLabel: {
+          style: "retry-button-text-style",
+          text: "Retry",
+        },
       },
     })
     expect(createChatRuntimeConnectionBannerMobileStyleSlots({
