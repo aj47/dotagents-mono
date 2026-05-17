@@ -9,6 +9,7 @@ import {
   clearQueuedMessages,
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
+  createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,
@@ -364,6 +365,8 @@ describe('message-queue-utils', () => {
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.rowAlignItems).toBe('flex-start');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.contentFlex).toBe(1);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.contentMinWidth).toBe(0);
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize).toBe(16);
+    expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize).toBe('small');
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.message.fontSize).toBe(14);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.message.collapsedNumberOfLines).toBe(2);
     expect(MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.metaFlexDirection).toBe('row');
@@ -628,6 +631,46 @@ describe('message-queue-utils', () => {
         marginLeft: 2,
       },
     });
+    expect(createQueuedMessageStatusIndicatorMobilePropsPart({
+      surface: mobileQueueSurfaceRenderState.surface.item,
+      colors: mobileQueueSurfaceRenderState.colors.item,
+      icons: getMessageQueuePanelMobileIconState(),
+      presentation: {
+        isFailed: true,
+        isProcessing: false,
+      },
+    })).toEqual({
+      type: 'failed',
+      icon: {
+        name: 'alert-circle',
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.stateIconSize,
+        color: '#dc2626',
+      },
+    });
+    expect(createQueuedMessageStatusIndicatorMobilePropsPart({
+      surface: mobileQueueSurfaceRenderState.surface.item,
+      colors: mobileQueueSurfaceRenderState.colors.item,
+      icons: getMessageQueuePanelMobileIconState(),
+      presentation: {
+        isFailed: false,
+        isProcessing: true,
+      },
+    })).toEqual({
+      type: 'processing',
+      activityIndicator: {
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.item.processingIndicatorSize,
+        color: '#2563eb',
+      },
+    });
+    expect(createQueuedMessageStatusIndicatorMobilePropsPart({
+      surface: mobileQueueSurfaceRenderState.surface.item,
+      colors: mobileQueueSurfaceRenderState.colors.item,
+      icons: getMessageQueuePanelMobileIconState(),
+      presentation: {
+        isFailed: false,
+        isProcessing: false,
+      },
+    })).toBeNull();
     const expandCalls: string[] = [];
     const expandButtonParts = createQueuedMessageExpandButtonMobilePropsParts({
       surface: mobileQueueSurfaceRenderState.surface.item,

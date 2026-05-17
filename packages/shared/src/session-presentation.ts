@@ -403,6 +403,7 @@ import {
 export {
   createMessageQueuePanelMobileWrapperStyleSlots,
   createMessageQueuePanelMobileStyleSlots,
+  createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,

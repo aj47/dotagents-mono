@@ -195,6 +195,7 @@ export const MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION = {
       contentFlex: 1,
       contentMinWidth: 0,
       stateIconSize: 16,
+      processingIndicatorSize: 'small',
       message: {
         fontSize: 14,
         collapsedNumberOfLines: 2,
@@ -1250,6 +1251,30 @@ export interface QueuedMessageItemMobileStyleSlots {
   };
 }
 
+export interface QueuedMessageStatusIndicatorMobilePropsPartInput {
+  surface: QueuedMessageMobileItemSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['item'];
+  icons: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon;
+  presentation: Pick<QueuedMessageItemPresentation, 'isFailed' | 'isProcessing'>;
+}
+
+export type QueuedMessageStatusIndicatorMobilePropsPart =
+  | {
+      type: 'failed';
+      icon: {
+        name: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon.failedName;
+        size: QueuedMessageMobileItemSurface['stateIconSize'];
+        color: string;
+      };
+    }
+  | {
+      type: 'processing';
+      activityIndicator: {
+        size: QueuedMessageMobileItemSurface['processingIndicatorSize'];
+        color: string;
+      };
+    };
+
 export interface QueuedMessageExpandButtonMobilePropsPartsStylesLike {
   expandButton: unknown;
   expandText: unknown;
@@ -1662,6 +1687,36 @@ export function createQueuedMessageItemMobileStyleSlots({
       marginLeft: surface.expandTextMarginLeft,
     },
   };
+}
+
+export function createQueuedMessageStatusIndicatorMobilePropsPart({
+  surface,
+  colors,
+  icons,
+  presentation,
+}: QueuedMessageStatusIndicatorMobilePropsPartInput): QueuedMessageStatusIndicatorMobilePropsPart | null {
+  if (presentation.isFailed) {
+    return {
+      type: 'failed',
+      icon: {
+        name: icons.failedName,
+        size: surface.stateIconSize,
+        color: colors.failedColor,
+      },
+    };
+  }
+
+  if (presentation.isProcessing) {
+    return {
+      type: 'processing',
+      activityIndicator: {
+        size: surface.processingIndicatorSize,
+        color: colors.processingColor,
+      },
+    };
+  }
+
+  return null;
 }
 
 export function createQueuedMessageExpandButtonMobilePropsParts<

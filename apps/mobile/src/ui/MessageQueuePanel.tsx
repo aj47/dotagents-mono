@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   createMessageQueuePanelMobileStyleSlots,
+  createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageExpandButtonMobilePropsParts,
   createQueuedMessageActionButtonMobilePropsParts,
   createQueuedMessageActionButtonMobileStyleSlots,
@@ -71,7 +72,6 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   });
   const messagePresentation = queuedMessageRenderState.presentation;
   const {
-    isFailed,
     isProcessing,
     statusLabel,
     errorText,
@@ -233,6 +233,12 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     styles,
     onToggleExpanded: () => setIsExpanded(!isExpanded),
   });
+  const statusIndicatorPart = createQueuedMessageStatusIndicatorMobilePropsPart({
+    surface: itemSurface,
+    colors: itemColors,
+    icons: queuePanelIcons,
+    presentation: messagePresentation,
+  });
 
   if (isEditing) {
     return (
@@ -280,11 +286,18 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        {isFailed && (
-          <Ionicons name={queuePanelIcons.failedName} size={itemSurface.stateIconSize} color={itemColors.failedColor} />
+        {statusIndicatorPart?.type === 'failed' && (
+          <Ionicons
+            name={statusIndicatorPart.icon.name}
+            size={statusIndicatorPart.icon.size}
+            color={statusIndicatorPart.icon.color}
+          />
         )}
-        {isProcessing && (
-          <ActivityIndicator size="small" color={itemColors.processingColor} />
+        {statusIndicatorPart?.type === 'processing' && (
+          <ActivityIndicator
+            size={statusIndicatorPart.activityIndicator.size}
+            color={statusIndicatorPart.activityIndicator.color}
+          />
         )}
         <View style={styles.content}>
           <Text
