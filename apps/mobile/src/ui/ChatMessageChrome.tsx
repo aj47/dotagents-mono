@@ -9327,6 +9327,8 @@ export function ChatMessageToolExecutionStack({
     detailRows,
     styles,
   });
+  const stackPanelExpandedGroup = stackPanelParts.expandedGroup;
+  const stackPanelExpandedGroupContent = stackPanelExpandedGroup.content;
 
   return (
     <ChatMessageToolExecutionPanel
@@ -9334,16 +9336,16 @@ export function ChatMessageToolExecutionStack({
       isExpanded={isExpanded}
       compact={stackPanelParts.compact}
       expanded={{
-        ...stackPanelParts.expandedGroup,
-        emptyState: stackPanelParts.emptyState.shouldRender ? (
+        ...stackPanelExpandedGroup.props,
+        emptyState: stackPanelExpandedGroupContent.emptyState.shouldRender ? (
           <ChatMessageToolExecutionEmptyState
-            {...stackPanelParts.emptyState.props}
+            {...stackPanelExpandedGroupContent.emptyState.props}
           />
         ) : null,
       }}
     >
       <ChatMessageToolExecutionCallList
-        {...stackPanelParts.callList}
+        {...stackPanelExpandedGroupContent.callList.props}
       />
     </ChatMessageToolExecutionPanel>
   );

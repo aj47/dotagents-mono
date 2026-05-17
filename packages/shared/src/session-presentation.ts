@@ -4751,16 +4751,22 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
     groupStyles: TCompactGroupStyles
     rowStyles: TCompactRowStyles
   }
-  expandedGroup: Omit<TExpanded, "emptyState"> & {
-    styles: TExpandedGroupStyles
-  }
-  emptyState: ChatRuntimeToolExecutionStackPanelEmptyStateMobilePropsPart<
-    NonNullable<TExpanded["emptyState"]>["renderState"],
-    TEmptyStateTextStyle
-  >
-  callList: {
-    rows: TDetailRows
-    styles: TCallDetailStyles
+  expandedGroup: {
+    props: Omit<TExpanded, "emptyState"> & {
+      styles: TExpandedGroupStyles
+    }
+    content: {
+      emptyState: ChatRuntimeToolExecutionStackPanelEmptyStateMobilePropsPart<
+        NonNullable<TExpanded["emptyState"]>["renderState"],
+        TEmptyStateTextStyle
+      >
+      callList: {
+        props: {
+          rows: TDetailRows
+          styles: TCallDetailStyles
+        }
+      }
+    }
   }
 }
 
@@ -23176,22 +23182,28 @@ export function createChatRuntimeToolExecutionStackPanelMobilePropsParts<
       rowStyles: styles.compactRow,
     },
     expandedGroup: {
-      ...expandedGroup,
-      styles: styles.expandedGroup,
-    },
-    emptyState: emptyState?.shouldRender ? {
-      shouldRender: true,
       props: {
-        renderState: emptyState.renderState,
-        style: styles.emptyStateText,
+        ...expandedGroup,
+        styles: styles.expandedGroup,
       },
-    } : {
-      shouldRender: false,
-      props: null,
-    },
-    callList: {
-      rows: detailRows,
-      styles: styles.callDetail,
+      content: {
+        emptyState: emptyState?.shouldRender ? {
+          shouldRender: true,
+          props: {
+            renderState: emptyState.renderState,
+            style: styles.emptyStateText,
+          },
+        } : {
+          shouldRender: false,
+          props: null,
+        },
+        callList: {
+          props: {
+            rows: detailRows,
+            styles: styles.callDetail,
+          },
+        },
+      },
     },
   }
 }

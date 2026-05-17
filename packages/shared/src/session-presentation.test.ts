@@ -14718,21 +14718,27 @@ describe("session presentation semantics", () => {
         rowStyles: "compact-row-styles",
       },
       expandedGroup: {
-        topCollapseRenderState: "top-collapse",
-        bottomCollapseRenderState: "bottom-collapse",
-        onCollapsePress: "collapse-expanded",
-        styles: "expanded-group-styles",
-      },
-      emptyState: {
-        shouldRender: true,
         props: {
-          renderState: "empty-state",
-          style: "empty-state-text-styles",
+          topCollapseRenderState: "top-collapse",
+          bottomCollapseRenderState: "bottom-collapse",
+          onCollapsePress: "collapse-expanded",
+          styles: "expanded-group-styles",
         },
-      },
-      callList: {
-        rows: ["detail-row"],
-        styles: "call-detail-styles",
+        content: {
+          emptyState: {
+            shouldRender: true,
+            props: {
+              renderState: "empty-state",
+              style: "empty-state-text-styles",
+            },
+          },
+          callList: {
+            props: {
+              rows: ["detail-row"],
+              styles: "call-detail-styles",
+            },
+          },
+        },
       },
     })
     expect(createChatRuntimeToolExecutionStackPanelMobilePropsParts({
@@ -14753,7 +14759,7 @@ describe("session presentation semantics", () => {
         emptyStateText: "empty-state-text-styles",
         callDetail: "call-detail-styles",
       },
-    }).emptyState).toEqual({
+    }).expandedGroup.content.emptyState).toEqual({
       shouldRender: false,
       props: null,
     })
