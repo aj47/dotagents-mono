@@ -13589,17 +13589,23 @@ describe("session presentation semantics", () => {
     expect(payloadBlockParts).toEqual({
       preview: {
         shouldRender: true,
-        text: "preview",
-        style: "payload-preview",
-        numberOfLines: 3,
+        props: {
+          style: "payload-preview",
+          numberOfLines: 3,
+          text: "preview",
+        },
       },
       scroll: {
-        style: "payload-scroll-expanded",
-        nestedScrollEnabled: true,
+        props: {
+          style: "payload-scroll-expanded",
+          nestedScrollEnabled: true,
+        },
       },
       code: {
-        text: "payload-content",
-        style: "payload-code",
+        props: {
+          style: "payload-code",
+          text: "payload-content",
+        },
       },
     })
     expect(createChatRuntimeToolExecutionPayloadBlockMobilePropsParts({
@@ -13616,17 +13622,23 @@ describe("session presentation semantics", () => {
     })).toEqual({
       preview: {
         shouldRender: false,
-        text: "",
-        style: "payload-preview",
-        numberOfLines: 2,
+        props: {
+          style: "payload-preview",
+          numberOfLines: 2,
+          text: "",
+        },
       },
       scroll: {
-        style: "payload-scroll",
-        nestedScrollEnabled: true,
+        props: {
+          style: "payload-scroll",
+          nestedScrollEnabled: true,
+        },
       },
       code: {
-        text: "payload-content",
-        style: "payload-code",
+        props: {
+          style: "payload-code",
+          text: "payload-content",
+        },
       },
     })
     const resultBadgeParts = createChatRuntimeToolExecutionResultBadgeMobilePropsParts({

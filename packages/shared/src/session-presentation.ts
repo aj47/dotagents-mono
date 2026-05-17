@@ -3362,17 +3362,23 @@ export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
 > {
   preview: {
     shouldRender: boolean
-    text: string
-    style: TStyles["preview"]
-    numberOfLines: number
+    props: {
+      style: TStyles["preview"]
+      numberOfLines: number
+      text: string
+    }
   }
   scroll: {
-    style: TStyles["scroll"] | TStyles["scrollExpanded"]
-    nestedScrollEnabled: true
+    props: {
+      style: TStyles["scroll"] | TStyles["scrollExpanded"]
+      nestedScrollEnabled: true
+    }
   }
   code: {
-    text: string
-    style: TStyles["code"]
+    props: {
+      style: TStyles["code"]
+      text: string
+    }
   }
 }
 
@@ -20711,17 +20717,23 @@ export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
   return {
     preview: {
       shouldRender: Boolean(compactText),
-      text: compactText ?? "",
-      style: styles.preview,
-      numberOfLines: previewNumberOfLines,
+      props: {
+        style: styles.preview,
+        numberOfLines: previewNumberOfLines,
+        text: compactText ?? "",
+      },
     },
     scroll: {
-      style: isExpanded ? styles.scrollExpanded : styles.scroll,
-      nestedScrollEnabled: true,
+      props: {
+        style: isExpanded ? styles.scrollExpanded : styles.scroll,
+        nestedScrollEnabled: true,
+      },
     },
     code: {
-      text: content,
-      style: styles.code,
+      props: {
+        style: styles.code,
+        text: content,
+      },
     },
   }
 }

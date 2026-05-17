@@ -2203,6 +2203,21 @@ type ChatMessageToolExecutionPayloadBlockProps = {
   styles: ChatMessageToolExecutionPayloadBlockStyles;
 };
 
+type ChatMessageToolExecutionPayloadBlockParts = ReturnType<typeof createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
+  ChatMessageToolExecutionPayloadBlockProps['styles']
+>>;
+
+type ChatMessageToolExecutionPayloadPreviewProps =
+  ChatMessageToolExecutionPayloadBlockParts['preview']['props'];
+
+type ChatMessageToolExecutionPayloadScrollProps =
+  ChatMessageToolExecutionPayloadBlockParts['scroll']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionPayloadCodeProps =
+  ChatMessageToolExecutionPayloadBlockParts['code']['props'];
+
 type ChatMessageToolExecutionPayloadSectionStyles = {
   section: StyleProp<ViewStyle>;
   headerRow: StyleProp<ViewStyle>;
@@ -9585,22 +9600,53 @@ export function ChatMessageToolExecutionPayloadBlock({
   return (
     <>
       {payloadBlockParts.preview.shouldRender ? (
-        <Text
-          style={payloadBlockParts.preview.style}
-          numberOfLines={payloadBlockParts.preview.numberOfLines}
-        >
-          {payloadBlockParts.preview.text}
-        </Text>
+        <ChatMessageToolExecutionPayloadPreview
+          {...payloadBlockParts.preview.props}
+        />
       ) : null}
-      <ScrollView
-        style={payloadBlockParts.scroll.style}
-        nestedScrollEnabled={payloadBlockParts.scroll.nestedScrollEnabled}
+      <ChatMessageToolExecutionPayloadScroll
+        {...payloadBlockParts.scroll.props}
       >
-        <Text style={payloadBlockParts.code.style}>
-          {payloadBlockParts.code.text}
-        </Text>
-      </ScrollView>
+        <ChatMessageToolExecutionPayloadCode
+          {...payloadBlockParts.code.props}
+        />
+      </ChatMessageToolExecutionPayloadScroll>
     </>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadPreview({
+  style,
+  numberOfLines,
+  text,
+}: ChatMessageToolExecutionPayloadPreviewProps) {
+  return (
+    <Text style={style} numberOfLines={numberOfLines}>
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadScroll({
+  style,
+  nestedScrollEnabled,
+  children,
+}: ChatMessageToolExecutionPayloadScrollProps) {
+  return (
+    <ScrollView style={style} nestedScrollEnabled={nestedScrollEnabled}>
+      {children}
+    </ScrollView>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadCode({
+  style,
+  text,
+}: ChatMessageToolExecutionPayloadCodeProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 
