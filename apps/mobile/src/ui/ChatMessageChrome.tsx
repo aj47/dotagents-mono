@@ -10511,12 +10511,12 @@ export function ChatMessageConversationDock({
 
   return (
     <>
-      {dockShellParts.responseHistoryPanel}
-      {dockShellParts.scrollToBottomButton}
-      {dockShellParts.voiceOverlay}
-      {dockShellParts.queuePanel}
-      {dockShellParts.connectionBanner}
-      {dockShellParts.composer}
+      {dockShellParts.responseHistoryPanel.children}
+      {dockShellParts.scrollToBottomButton.children}
+      {dockShellParts.voiceOverlay.children}
+      {dockShellParts.queuePanel.children}
+      {dockShellParts.connectionBanner.children}
+      {dockShellParts.composer.children}
     </>
   );
 }

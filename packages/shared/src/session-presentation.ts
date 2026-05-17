@@ -7696,12 +7696,24 @@ export interface ChatRuntimeConversationDockShellMobilePropsParts<
   TConnectionBanner = unknown,
   TComposer = unknown,
 > {
-  responseHistoryPanel: TResponseHistoryPanel | undefined
-  scrollToBottomButton: TScrollToBottomButton | undefined
-  voiceOverlay: TVoiceOverlay | undefined
-  queuePanel: TQueuePanel | undefined
-  connectionBanner: TConnectionBanner | undefined
-  composer: TComposer | undefined
+  responseHistoryPanel: {
+    children: TResponseHistoryPanel | undefined
+  }
+  scrollToBottomButton: {
+    children: TScrollToBottomButton | undefined
+  }
+  voiceOverlay: {
+    children: TVoiceOverlay | undefined
+  }
+  queuePanel: {
+    children: TQueuePanel | undefined
+  }
+  connectionBanner: {
+    children: TConnectionBanner | undefined
+  }
+  composer: {
+    children: TComposer | undefined
+  }
 }
 
 export interface ChatRuntimeScrollToBottomButtonMobilePropsPartsInput<
@@ -25080,12 +25092,24 @@ export function createChatRuntimeConversationDockShellMobilePropsParts<
   TComposer
 > {
   return {
-    responseHistoryPanel,
-    scrollToBottomButton,
-    voiceOverlay,
-    queuePanel,
-    connectionBanner,
-    composer,
+    responseHistoryPanel: {
+      children: responseHistoryPanel,
+    },
+    scrollToBottomButton: {
+      children: scrollToBottomButton,
+    },
+    voiceOverlay: {
+      children: voiceOverlay,
+    },
+    queuePanel: {
+      children: queuePanel,
+    },
+    connectionBanner: {
+      children: connectionBanner,
+    },
+    composer: {
+      children: composer,
+    },
   }
 }
 
