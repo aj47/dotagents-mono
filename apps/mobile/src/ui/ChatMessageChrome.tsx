@@ -1584,6 +1584,15 @@ type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolAppro
   ChatMessageToolApprovalStyles
 >>;
 
+type ChatMessageToolApprovalViewProps = {
+  children: ReactNode;
+} & (
+  | ChatMessageToolApprovalParts['card']['props']
+  | ChatMessageToolApprovalParts['header']['props']
+  | ChatMessageToolApprovalParts['content']['props']
+  | ChatMessageToolApprovalParts['toolRow']['props']
+);
+
 type ChatMessageToolApprovalIconProps =
   | ChatMessageToolApprovalParts['headerIcon']['props']
   | ChatMessageToolApprovalParts['argumentsToggle']['icon']['props']
@@ -7480,8 +7489,12 @@ export function ChatMessageToolApproval({
   });
 
   return (
-    <View style={toolApprovalParts.card.style}>
-      <View style={toolApprovalParts.header.style}>
+    <ChatMessageToolApprovalView
+      {...toolApprovalParts.card.props}
+    >
+      <ChatMessageToolApprovalView
+        {...toolApprovalParts.header.props}
+      >
         <ChatMessageToolApprovalIcon
           {...toolApprovalParts.headerIcon.props}
         />
@@ -7493,16 +7506,20 @@ export function ChatMessageToolApproval({
             {...toolApprovalParts.headerSpinner.props}
           />
         ) : null}
-      </View>
-      <View style={toolApprovalParts.content.style}>
-        <View style={toolApprovalParts.toolRow.style}>
+      </ChatMessageToolApprovalView>
+      <ChatMessageToolApprovalView
+        {...toolApprovalParts.content.props}
+      >
+        <ChatMessageToolApprovalView
+          {...toolApprovalParts.toolRow.props}
+        >
           <ChatMessageToolApprovalToolLabel
             {...toolApprovalParts.toolLabel.props}
           />
           <ChatMessageToolApprovalToolName
             {...toolApprovalParts.toolName.props}
           />
-        </View>
+        </ChatMessageToolApprovalView>
         {toolApprovalParts.argumentsPreview.shouldRender ? (
           <ChatMessageToolApprovalArgumentsPreview
             {...toolApprovalParts.argumentsPreview.props}
@@ -7557,7 +7574,18 @@ export function ChatMessageToolApproval({
             />
           </ChatMessageToolApprovalActionButton>
         </ChatMessageToolApprovalActions>
-      </View>
+      </ChatMessageToolApprovalView>
+    </ChatMessageToolApprovalView>
+  );
+}
+
+export function ChatMessageToolApprovalView({
+  style,
+  children,
+}: ChatMessageToolApprovalViewProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
   );
 }

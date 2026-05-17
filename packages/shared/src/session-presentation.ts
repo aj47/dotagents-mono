@@ -1963,10 +1963,14 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     ChatRuntimeToolApprovalMobilePropsPartsStyleSlots,
 > {
   card: {
-    style: TStyles["card"]
+    props: {
+      style: TStyles["card"]
+    }
   }
   header: {
-    style: TStyles["header"]
+    props: {
+      style: TStyles["header"]
+    }
   }
   headerIcon: {
     props: ChatRuntimeToolApprovalMobileRenderState["headerIcon"]
@@ -1983,10 +1987,14 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     props: ChatRuntimeToolApprovalMobileRenderState["spinner"]
   }
   content: {
-    style: Array<TStyles["content"] | TStyles["contentDisabled"] | false>
+    props: {
+      style: Array<TStyles["content"] | TStyles["contentDisabled"] | false>
+    }
   }
   toolRow: {
-    style: TStyles["toolRow"]
+    props: {
+      style: TStyles["toolRow"]
+    }
   }
   toolLabel: {
     props: {
@@ -22813,10 +22821,14 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
 > {
   return {
     card: {
-      style: styles.card,
+      props: {
+        style: styles.card,
+      },
     },
     header: {
-      style: styles.header,
+      props: {
+        style: styles.header,
+      },
     },
     headerIcon: {
       props: renderState.headerIcon,
@@ -22833,13 +22845,17 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       props: renderState.spinner,
     },
     content: {
-      style: [
-        styles.content,
-        renderState.approveButton.isDisabled && styles.contentDisabled,
-      ],
+      props: {
+        style: [
+          styles.content,
+          renderState.approveButton.isDisabled && styles.contentDisabled,
+        ],
+      },
     },
     toolRow: {
-      style: styles.toolRow,
+      props: {
+        style: styles.toolRow,
+      },
     },
     toolLabel: {
       props: {

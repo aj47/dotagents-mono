@@ -8160,8 +8160,16 @@ describe("session presentation semantics", () => {
         denyButtonText: "tool-approval-deny-button-text-style",
       },
     })
-    expect(toolApprovalParts.card.style).toBe("tool-approval-card-style")
-    expect(toolApprovalParts.header.style).toBe("tool-approval-header-style")
+    expect(toolApprovalParts.card).toEqual({
+      props: {
+        style: "tool-approval-card-style",
+      },
+    })
+    expect(toolApprovalParts.header).toEqual({
+      props: {
+        style: "tool-approval-header-style",
+      },
+    })
     expect(toolApprovalParts.headerIcon).toEqual({
       props: toolApprovalProps.renderState.headerIcon,
     })
@@ -8176,10 +8184,19 @@ describe("session presentation semantics", () => {
       shouldRender: true,
       props: toolApprovalProps.renderState.spinner,
     })
-    expect(toolApprovalParts.content.style).toEqual([
-      "tool-approval-content-style",
-      "tool-approval-content-disabled-style",
-    ])
+    expect(toolApprovalParts.content).toEqual({
+      props: {
+        style: [
+          "tool-approval-content-style",
+          "tool-approval-content-disabled-style",
+        ],
+      },
+    })
+    expect(toolApprovalParts.toolRow).toEqual({
+      props: {
+        style: "tool-approval-tool-row-style",
+      },
+    })
     expect(toolApprovalParts.toolLabel).toEqual({
       props: {
         style: "tool-approval-tool-label-style",
