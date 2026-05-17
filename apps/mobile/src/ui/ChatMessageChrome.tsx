@@ -2104,6 +2104,31 @@ type ChatMessageToolExecutionDetailHeaderProps = {
   styles: ChatMessageToolExecutionDetailHeaderStyles;
 };
 
+type ChatMessageToolExecutionDetailHeaderParts = ReturnType<typeof createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
+  ChatMessageToolExecutionDetailHeaderProps['renderState'],
+  ChatMessageToolExecutionDetailHeaderProps['onPress'],
+  ChatMessageToolExecutionDetailHeaderProps['styles']
+>>;
+
+type ChatMessageToolExecutionDetailHeaderPressableProps =
+  ChatMessageToolExecutionDetailHeaderParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionDetailHeaderToolNameProps =
+  ChatMessageToolExecutionDetailHeaderParts['toolName']['props'];
+
+type ChatMessageToolExecutionDetailHeaderExpandHintProps =
+  ChatMessageToolExecutionDetailHeaderParts['expandHint']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionDetailHeaderIconProps =
+  ChatMessageToolExecutionDetailHeaderParts['expandHint']['icon']['props'];
+
+type ChatMessageToolExecutionDetailHeaderExpandLabelProps =
+  ChatMessageToolExecutionDetailHeaderParts['expandHint']['label']['props'];
+
 type ChatMessageToolExecutionCallSectionStyles = {
   section: StyleProp<ViewStyle>;
   header: ChatMessageToolExecutionDetailHeaderStyles;
@@ -9431,29 +9456,95 @@ export function ChatMessageToolExecutionDetailHeader({
   });
 
   return (
-    <Pressable
-      onPress={detailHeaderParts.container.onPress}
-      style={detailHeaderParts.container.style}
-      accessibilityRole={detailHeaderParts.container.accessibilityRole}
-      accessibilityLabel={detailHeaderParts.container.accessibilityLabel}
-      accessibilityState={detailHeaderParts.container.accessibilityState}
-      aria-expanded={detailHeaderParts.container.ariaExpanded}
-      accessibilityHint={detailHeaderParts.container.accessibilityHint}
+    <ChatMessageToolExecutionDetailHeaderPressable
+      {...detailHeaderParts.container.props}
     >
-      <Text style={detailHeaderParts.toolName.style}>
-        {detailHeaderParts.toolName.text}
-      </Text>
-      <View style={detailHeaderParts.expandHint.style}>
-        <Ionicons
-          name={detailHeaderParts.expandHint.icon.name}
-          size={detailHeaderParts.expandHint.icon.size}
-          color={detailHeaderParts.expandHint.icon.color}
+      <ChatMessageToolExecutionDetailHeaderToolName
+        {...detailHeaderParts.toolName.props}
+      />
+      <ChatMessageToolExecutionDetailHeaderExpandHint
+        {...detailHeaderParts.expandHint.props}
+      >
+        <ChatMessageToolExecutionDetailHeaderIcon
+          {...detailHeaderParts.expandHint.icon.props}
         />
-        <Text style={detailHeaderParts.expandHint.label.style}>
-          {detailHeaderParts.expandHint.label.text}
-        </Text>
-      </View>
+        <ChatMessageToolExecutionDetailHeaderExpandLabel
+          {...detailHeaderParts.expandHint.label.props}
+        />
+      </ChatMessageToolExecutionDetailHeaderExpandHint>
+    </ChatMessageToolExecutionDetailHeaderPressable>
+  );
+}
+
+export function ChatMessageToolExecutionDetailHeaderPressable({
+  onPress,
+  style,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityState,
+  ariaExpanded,
+  accessibilityHint,
+  children,
+}: ChatMessageToolExecutionDetailHeaderPressableProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={style}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
+      aria-expanded={ariaExpanded}
+      accessibilityHint={accessibilityHint}
+    >
+      {children}
     </Pressable>
+  );
+}
+
+export function ChatMessageToolExecutionDetailHeaderToolName({
+  style,
+  text,
+}: ChatMessageToolExecutionDetailHeaderToolNameProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageToolExecutionDetailHeaderExpandHint({
+  style,
+  children,
+}: ChatMessageToolExecutionDetailHeaderExpandHintProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageToolExecutionDetailHeaderIcon({
+  name,
+  size,
+  color,
+}: ChatMessageToolExecutionDetailHeaderIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionDetailHeaderExpandLabel({
+  style,
+  text,
+}: ChatMessageToolExecutionDetailHeaderExpandLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 

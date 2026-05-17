@@ -13376,37 +13376,47 @@ describe("session presentation semantics", () => {
     })
     expect(detailHeaderParts).toMatchObject({
       container: {
-        onPress: "toggle-detail",
-        accessibilityRole: "button",
-        accessibilityLabel: "Expand read_file",
-        accessibilityState: {
-          expanded: false,
+        props: {
+          onPress: "toggle-detail",
+          accessibilityRole: "button",
+          accessibilityLabel: "Expand read_file",
+          accessibilityState: {
+            expanded: false,
+          },
+          ariaExpanded: false,
+          accessibilityHint: "Shows tool details",
         },
-        ariaExpanded: false,
-        accessibilityHint: "Shows tool details",
       },
       toolName: {
-        text: "read_file",
-        style: "detail-tool-name",
+        props: {
+          style: "detail-tool-name",
+          text: "read_file",
+        },
       },
       expandHint: {
-        style: "detail-expand-hint",
+        props: {
+          style: "detail-expand-hint",
+        },
         icon: {
-          name: "chevron-down",
-          size: 12,
-          color: "#777",
+          props: {
+            name: "chevron-down",
+            size: 12,
+            color: "#777",
+          },
         },
         label: {
-          text: "Show",
-          style: "detail-expand-hint-text",
+          props: {
+            style: "detail-expand-hint-text",
+            text: "Show",
+          },
         },
       },
     })
-    expect(detailHeaderParts.container.style({ pressed: false })).toEqual([
+    expect(detailHeaderParts.container.props.style({ pressed: false })).toEqual([
       "detail-header",
       false,
     ])
-    expect(detailHeaderParts.container.style({ pressed: true })).toEqual([
+    expect(detailHeaderParts.container.props.style({ pressed: true })).toEqual([
       "detail-header",
       "detail-header-pressed",
     ])

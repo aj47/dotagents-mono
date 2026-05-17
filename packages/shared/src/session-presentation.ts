@@ -3608,24 +3608,34 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
   },
 > {
   container: {
-    onPress: TOnPress | undefined
-    style: (state: { pressed: boolean }) => Array<TStyles["header"] | TStyles["headerPressed"] | false>
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityState: TRenderState["accessibilityState"]
-    ariaExpanded: TRenderState["ariaExpanded"]
-    accessibilityHint: string
+    props: {
+      onPress: TOnPress | undefined
+      style: (state: { pressed: boolean }) => Array<TStyles["header"] | TStyles["headerPressed"] | false>
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityState: TRenderState["accessibilityState"]
+      ariaExpanded: TRenderState["ariaExpanded"]
+      accessibilityHint: string
+    }
   }
   toolName: {
-    text: string
-    style: TStyles["toolName"]
+    props: {
+      style: TStyles["toolName"]
+      text: string
+    }
   }
   expandHint: {
-    style: TStyles["expandHint"]
-    icon: TRenderState["toggleIcon"]
+    props: {
+      style: TStyles["expandHint"]
+    }
+    icon: {
+      props: TRenderState["toggleIcon"]
+    }
     label: {
-      text: string
-      style: TStyles["expandHintText"]
+      props: {
+        style: TStyles["expandHintText"]
+        text: string
+      }
     }
   }
 }
@@ -20895,27 +20905,37 @@ export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
 > {
   return {
     container: {
-      onPress,
-      style: ({ pressed }) => [
-        styles.header,
-        pressed && styles.headerPressed,
-      ],
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityState: renderState.accessibilityState,
-      ariaExpanded: renderState.ariaExpanded,
-      accessibilityHint: renderState.accessibilityHint,
+      props: {
+        onPress,
+        style: ({ pressed }) => [
+          styles.header,
+          pressed && styles.headerPressed,
+        ],
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityState: renderState.accessibilityState,
+        ariaExpanded: renderState.ariaExpanded,
+        accessibilityHint: renderState.accessibilityHint,
+      },
     },
     toolName: {
-      text: toolName,
-      style: styles.toolName,
+      props: {
+        style: styles.toolName,
+        text: toolName,
+      },
     },
     expandHint: {
-      style: styles.expandHint,
-      icon: renderState.toggleIcon,
+      props: {
+        style: styles.expandHint,
+      },
+      icon: {
+        props: renderState.toggleIcon,
+      },
       label: {
-        text: renderState.toggleLabel,
-        style: styles.expandHintText,
+        props: {
+          style: styles.expandHintText,
+          text: renderState.toggleLabel,
+        },
       },
     },
   }
