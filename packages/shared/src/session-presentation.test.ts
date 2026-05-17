@@ -11714,11 +11714,15 @@ describe("session presentation semantics", () => {
       bodyStyle: "content-body-style",
     })).toEqual({
       row: {
-        style: "content-row-style",
+        props: {
+          style: "content-row-style",
+        },
       },
       body: {
         shouldRender: true,
-        style: "content-body-style",
+        props: {
+          style: "content-body-style",
+        },
       },
       actionSlotList: {
         shouldRender: true,
@@ -11731,11 +11735,15 @@ describe("session presentation semantics", () => {
       rowStyle: "content-row-style",
     })).toEqual({
       row: {
-        style: "content-row-style",
+        props: {
+          style: "content-row-style",
+        },
       },
       body: {
         shouldRender: false,
-        style: undefined,
+        props: {
+          style: undefined,
+        },
       },
       actionSlotList: {
         shouldRender: false,

@@ -3203,6 +3203,22 @@ type ChatMessageContentRowProps = {
   bodyStyle?: StyleProp<ViewStyle>;
 };
 
+type ChatMessageContentRowParts = ReturnType<typeof createChatRuntimeMessageContentRowMobilePropsParts<
+  ChatMessageActionEntry,
+  ChatMessageContentRowProps['rowStyle'],
+  ChatMessageContentRowProps['bodyStyle']
+>>;
+
+type ChatMessageContentRowContainerProps =
+  ChatMessageContentRowParts['row']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageContentBodyProps =
+  ChatMessageContentRowParts['body']['props'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageExpandedContentStyles = {
   header: StyleProp<ViewStyle>;
   title: StyleProp<TextStyle>;
@@ -11550,15 +11566,41 @@ export function ChatMessageContentRow({
   });
 
   return (
-    <View style={contentRowParts.row.style}>
+    <ChatMessageContentRowContainer
+      {...contentRowParts.row.props}
+    >
       {contentRowParts.body.shouldRender ? (
-        <View style={contentRowParts.body.style}>
+        <ChatMessageContentBody
+          {...contentRowParts.body.props}
+        >
           {children}
-        </View>
+        </ChatMessageContentBody>
       ) : children}
       <ChatMessageActionSlotList
         {...contentRowParts.actionSlotList}
       />
+    </ChatMessageContentRowContainer>
+  );
+}
+
+export function ChatMessageContentRowContainer({
+  style,
+  children,
+}: ChatMessageContentRowContainerProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageContentBody({
+  style,
+  children,
+}: ChatMessageContentBodyProps) {
+  return (
+    <View style={style}>
+      {children}
     </View>
   );
 }

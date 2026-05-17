@@ -2535,11 +2535,15 @@ export interface ChatRuntimeMessageContentRowMobilePropsParts<
   TBodyStyle = unknown,
 > {
   row: {
-    style: TRowStyle
+    props: {
+      style: TRowStyle
+    }
   }
   body: {
     shouldRender: boolean
-    style: TBodyStyle | undefined
+    props: {
+      style: TBodyStyle | undefined
+    }
   }
   actionSlotList: {
     shouldRender: boolean
@@ -19882,11 +19886,15 @@ export function createChatRuntimeMessageContentRowMobilePropsParts<
 > {
   return {
     row: {
-      style: rowStyle,
+      props: {
+        style: rowStyle,
+      },
     },
     body: {
       shouldRender: Boolean(bodyStyle),
-      style: bodyStyle,
+      props: {
+        style: bodyStyle,
+      },
     },
     actionSlotList: {
       shouldRender: shouldRenderActionSlots,

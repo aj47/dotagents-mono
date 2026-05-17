@@ -5665,12 +5665,22 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageContentRowMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageStandaloneActionsMobilePropsParts/);
   assert.match(contentRowSource, /const contentRowParts = createChatRuntimeMessageContentRowMobilePropsParts\(\{\s+shouldRenderActionSlots,\s+entries,\s+rowStyle,\s+bodyStyle,\s+\}\);/);
-  assert.match(contentRowSource, /<View style=\{contentRowParts\.row\.style\}>[\s\S]*?contentRowParts\.body\.shouldRender \? \(/);
-  assert.match(contentRowSource, /<View style=\{contentRowParts\.body\.style\}>[\s\S]*?\{children\}[\s\S]*?<ChatMessageActionSlotList\s+\{\.\.\.contentRowParts\.actionSlotList\}/);
+  assert.match(contentRowSource, /<ChatMessageContentRowContainer\s+\{\.\.\.contentRowParts\.row\.props\}[\s\S]*?contentRowParts\.body\.shouldRender \? \(/);
+  assert.match(contentRowSource, /<ChatMessageContentBody\s+\{\.\.\.contentRowParts\.body\.props\}[\s\S]*?>[\s\S]*?\{children\}[\s\S]*?<ChatMessageActionSlotList\s+\{\.\.\.contentRowParts\.actionSlotList\}/);
+  assert.match(
+    contentRowSource,
+    /export function ChatMessageContentRowContainer\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatMessageContentBody/
+  );
+  assert.match(
+    contentRowSource,
+    /export function ChatMessageContentBody\([\s\S]*?<View style=\{style\}>[\s\S]*?export function ChatMessageStandaloneActions/
+  );
   assert.match(standaloneActionsSource, /const standaloneActionsParts = createChatRuntimeMessageStandaloneActionsMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
   assert.match(standaloneActionsSource, /<ChatMessageActionSlotList\s+\{\.\.\.standaloneActionsParts\.actionSlotList\}/);
-  assert.match(sessionPresentationSource, /body: \{\s+shouldRender: Boolean\(bodyStyle\),/);
+  assert.match(sessionPresentationSource, /row: \{\s+props: \{\s+style: rowStyle,/);
+  assert.match(sessionPresentationSource, /body: \{\s+shouldRender: Boolean\(bodyStyle\),\s+props: \{\s+style: bodyStyle,/);
   assert.match(sessionPresentationSource, /actionSlotList: \{\s+shouldRender,/);
+  assert.doesNotMatch(contentRowSource, /contentRowParts\.(row|body)\.style/);
   assert.doesNotMatch(contentRowSource, /contentRowParts\.body \? \(/);
   assert.doesNotMatch(contentRowSource, /<View style=\{rowStyle\}>/);
   assert.doesNotMatch(contentRowSource, /<View style=\{bodyStyle\}>/);
@@ -5873,7 +5883,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /standaloneActions: \{\s+\.\.\.conversation\.standaloneActions,\s+rowStyle: styles\.standaloneActions\.rowStyle,/);
   assert.doesNotMatch(screenSource, /body=\{\{/);
   assert.doesNotMatch(screenSource, /body=\{\{[\s\S]*?conversation: createChatMessageConversationBodyProps/);
-  assert.equal((chatMessageChromeSource.match(/<ChatMessageContentRow/g) ?? []).length, 2);
+  assert.equal((chatMessageChromeSource.match(/<ChatMessageContentRow\s/g) ?? []).length, 2);
   assert.equal((chatMessageChromeSource.match(/<ChatMessageCollapsedPreview\s/g) ?? []).length, 1);
   assert.equal((screenSource.match(/<ChatMessageActionSlotList/g) ?? []).length, 0);
   assert.equal((screenSource.match(/<ChatMessageStandaloneActions/g) ?? []).length, 0);
