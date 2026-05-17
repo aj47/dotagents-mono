@@ -8819,13 +8819,10 @@ export function ChatMessageDelegationToolPreviewRow({
 }: ChatMessageDelegationToolPreviewRowProps) {
   return (
     <View
-      style={line.style}
-      accessibilityLabel={line.accessibilityLabel}
+      {...line.props}
     >
       <View
-        style={statusIcon.style}
-        accessibilityElementsHidden={statusIcon.accessibilityElementsHidden}
-        importantForAccessibility={statusIcon.importantForAccessibility}
+        {...statusIcon.props}
       >
         {statusIcon.spinner.shouldRender ? (
           <ActivityIndicator
@@ -8841,9 +8838,7 @@ export function ChatMessageDelegationToolPreviewRow({
         ) : null}
       </View>
       <Text
-        style={name.style}
-        numberOfLines={name.numberOfLines}
-        ellipsizeMode={name.ellipsizeMode}
+        {...name.props}
       >
         {name.text}
       </Text>

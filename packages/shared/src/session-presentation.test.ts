@@ -11316,13 +11316,17 @@ describe("session presentation semantics", () => {
       key: delegationToolPreviewRow.key,
       props: {
         line: {
-          style: "delegation-tool-preview-line-style",
-          accessibilityLabel: delegationToolPreviewRow.renderState.accessibilityLabel,
+          props: {
+            style: "delegation-tool-preview-line-style",
+            accessibilityLabel: delegationToolPreviewRow.renderState.accessibilityLabel,
+          },
         },
         statusIcon: {
-          style: "delegation-tool-preview-status-icon-style",
-          accessibilityElementsHidden: true,
-          importantForAccessibility: "no-hide-descendants",
+          props: {
+            style: "delegation-tool-preview-status-icon-style",
+            accessibilityElementsHidden: true,
+            importantForAccessibility: "no-hide-descendants",
+          },
           spinner: {
             ...delegationToolPreviewRow.renderState.statusIndicator.spinner,
             shouldRender: false,
@@ -11333,12 +11337,16 @@ describe("session presentation semantics", () => {
           },
         },
         name: {
-          style: [
-            "delegation-tool-preview-name-style",
-            false,
-            "delegation-tool-preview-name-success-style",
-            false,
-          ],
+          props: {
+            style: [
+              "delegation-tool-preview-name-style",
+              false,
+              "delegation-tool-preview-name-success-style",
+              false,
+            ],
+            numberOfLines: delegationToolPreviewRow.renderState.name.numberOfLines,
+            ellipsizeMode: delegationToolPreviewRow.renderState.name.ellipsizeMode,
+          },
           text: delegationToolPreviewRow.preview,
         },
       },
