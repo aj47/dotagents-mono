@@ -101,6 +101,7 @@ import {
   createChatRuntimeConversationViewportMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
+  createChatRuntimeToolActivityGroupFooterMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeToolExecutionCallSectionMobilePropsParts,
@@ -7837,50 +7838,49 @@ export function ChatMessageToolActivityGroupToggle({
   onPress,
   styles,
 }: ChatMessageToolActivityGroupToggleProps) {
-  const { headerState, summary } = createChatRuntimeToolActivityGroupToggleMobilePropsParts({
+  const toggleParts = createChatRuntimeToolActivityGroupToggleMobilePropsParts({
     renderState,
     headerKind,
+    onPress,
+    styles,
   });
 
   return (
     <Pressable
-      onPress={onPress}
-      accessibilityRole={headerState.accessibilityRole}
-      accessibilityLabel={headerState.accessibilityLabel}
-      accessibilityState={headerState.accessibilityState}
-      aria-expanded={headerState.ariaExpanded}
-      style={({ pressed }) => [
-        styles.container,
-        pressed && styles.pressed,
-      ]}
+      onPress={toggleParts.pressable.onPress}
+      accessibilityRole={toggleParts.pressable.accessibilityRole}
+      accessibilityLabel={toggleParts.pressable.accessibilityLabel}
+      accessibilityState={toggleParts.pressable.accessibilityState}
+      aria-expanded={toggleParts.pressable.ariaExpanded}
+      style={toggleParts.pressable.style}
     >
-      <View style={styles.headerRow}>
+      <View style={toggleParts.headerRow.style}>
         <Ionicons
-          name={renderState.leadingIcon.name}
-          size={renderState.leadingIcon.size}
-          color={renderState.leadingIcon.color}
+          name={toggleParts.leadingIcon.name}
+          size={toggleParts.leadingIcon.size}
+          color={toggleParts.leadingIcon.color}
         />
-        {summary.shouldShowToolCallCount && (
+        {toggleParts.countBadge ? (
           <View
-            accessibilityLabel={summary.toolCallCountLabel}
-            style={styles.countBadge}
+            accessibilityLabel={toggleParts.countBadge.accessibilityLabel}
+            style={toggleParts.countBadge.style}
           >
-            <Text style={styles.countBadgeText}>
-              {summary.toolCallCount}
+            <Text style={toggleParts.countBadge.label.style}>
+              {toggleParts.countBadge.label.text}
             </Text>
           </View>
-        )}
+        ) : null}
         <Text
-          style={styles.previewLine}
-          numberOfLines={renderState.surface.preview.numberOfLines}
-          ellipsizeMode={renderState.surface.preview.ellipsizeMode}
+          style={toggleParts.preview.style}
+          numberOfLines={toggleParts.preview.numberOfLines}
+          ellipsizeMode={toggleParts.preview.ellipsizeMode}
         >
-          {summary.previewText}
+          {toggleParts.preview.text}
         </Text>
         <Ionicons
-          name={renderState.headerToggleIcon.name}
-          size={renderState.headerToggleIcon.size}
-          color={renderState.headerToggleIcon.color}
+          name={toggleParts.toggleIcon.name}
+          size={toggleParts.toggleIcon.size}
+          color={toggleParts.toggleIcon.color}
         />
       </View>
     </Pressable>
@@ -7892,23 +7892,26 @@ export function ChatMessageToolActivityGroupFooter({
   onPress,
   styles,
 }: ChatMessageToolActivityGroupFooterProps) {
+  const footerParts = createChatRuntimeToolActivityGroupFooterMobilePropsParts({
+    renderState,
+    onPress,
+    styles,
+  });
+
   return (
     <Pressable
-      onPress={onPress}
-      accessibilityRole={renderState.footerButton.accessibilityRole}
-      accessibilityLabel={renderState.footerButton.accessibilityLabel}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && styles.pressed,
-      ]}
+      onPress={footerParts.button.onPress}
+      accessibilityRole={footerParts.button.accessibilityRole}
+      accessibilityLabel={footerParts.button.accessibilityLabel}
+      style={footerParts.button.style}
     >
       <Ionicons
-        name={renderState.footerToggleIcon.name}
-        size={renderState.footerToggleIcon.size}
-        color={renderState.footerToggleIcon.color}
+        name={footerParts.icon.name}
+        size={footerParts.icon.size}
+        color={footerParts.icon.color}
       />
-      <Text style={styles.text}>
-        {renderState.footerButton.label}
+      <Text style={footerParts.label.style}>
+        {footerParts.label.text}
       </Text>
     </Pressable>
   );

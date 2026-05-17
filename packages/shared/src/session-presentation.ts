@@ -3705,26 +3705,145 @@ export type ChatRuntimeToolActivityGroupHeaderMobileKind = "collapsed" | "expand
 export type ChatRuntimeToolActivityGroupBoundaryMobileKind =
   ChatRuntimeToolActivityGroupHeaderMobileKind | "footer"
 
+export interface ChatRuntimeToolActivityGroupToggleMobileStyleSlots {
+  container: unknown
+  pressed: unknown
+  headerRow: unknown
+  countBadge: unknown
+  countBadgeText: unknown
+  previewLine: unknown
+}
+
+export interface ChatRuntimeToolActivityGroupFooterMobileStyleSlots {
+  button: unknown
+  pressed: unknown
+  text: unknown
+}
+
+export interface ChatRuntimeToolActivityGroupToggleMobileRenderStateParts {
+  collapsedHeader: {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  }
+  expandedHeader: {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    accessibilityState: unknown
+    ariaExpanded: unknown
+  }
+  summary: {
+    shouldShowToolCallCount: boolean
+    toolCallCountLabel: string
+    toolCallCount: unknown
+    previewText: string
+  }
+  leadingIcon: unknown
+  headerToggleIcon: unknown
+  surface: {
+    preview: {
+      numberOfLines: unknown
+      ellipsizeMode: unknown
+    }
+  }
+}
+
+export interface ChatRuntimeToolActivityGroupFooterMobileRenderStateParts {
+  footerButton: {
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    label: string
+  }
+  footerToggleIcon: unknown
+}
+
 export interface ChatRuntimeToolActivityGroupToggleMobilePropsPartsInput<
-  TRenderState extends {
-    collapsedHeader: unknown
-    expandedHeader: unknown
-    summary: unknown
-  } = Pick<ToolActivityGroupMobileRenderState, "collapsedHeader" | "expandedHeader" | "summary">,
+  TRenderState extends ChatRuntimeToolActivityGroupToggleMobileRenderStateParts =
+    Pick<
+      ToolActivityGroupMobileRenderState,
+      "collapsedHeader" | "expandedHeader" | "summary" | "leadingIcon" | "headerToggleIcon" | "surface"
+    >,
+  TOnPress = unknown,
+  TStyles extends ChatRuntimeToolActivityGroupToggleMobileStyleSlots =
+    ChatRuntimeToolActivityGroupToggleMobileStyleSlots,
 > {
   renderState: TRenderState
   headerKind: ChatRuntimeToolActivityGroupHeaderMobileKind
+  onPress?: TOnPress
+  styles: TStyles
 }
 
 export interface ChatRuntimeToolActivityGroupToggleMobilePropsParts<
-  TRenderState extends {
-    collapsedHeader: unknown
-    expandedHeader: unknown
-    summary: unknown
-  } = Pick<ToolActivityGroupMobileRenderState, "collapsedHeader" | "expandedHeader" | "summary">,
+  TRenderState extends ChatRuntimeToolActivityGroupToggleMobileRenderStateParts =
+    Pick<
+      ToolActivityGroupMobileRenderState,
+      "collapsedHeader" | "expandedHeader" | "summary" | "leadingIcon" | "headerToggleIcon" | "surface"
+    >,
+  TOnPress = unknown,
+  TStyles extends ChatRuntimeToolActivityGroupToggleMobileStyleSlots =
+    ChatRuntimeToolActivityGroupToggleMobileStyleSlots,
 > {
   headerState: TRenderState["collapsedHeader"] | TRenderState["expandedHeader"]
-  summary: TRenderState["summary"]
+  pressable: {
+    onPress: TOnPress | undefined
+    accessibilityRole: TRenderState["collapsedHeader"]["accessibilityRole"] | TRenderState["expandedHeader"]["accessibilityRole"]
+    accessibilityLabel: string
+    accessibilityState: TRenderState["collapsedHeader"]["accessibilityState"] | TRenderState["expandedHeader"]["accessibilityState"]
+    ariaExpanded: TRenderState["collapsedHeader"]["ariaExpanded"] | TRenderState["expandedHeader"]["ariaExpanded"]
+    style: (state: { pressed: boolean }) => Array<TStyles["container"] | TStyles["pressed"] | false>
+  }
+  headerRow: {
+    style: TStyles["headerRow"]
+  }
+  leadingIcon: TRenderState["leadingIcon"]
+  countBadge: {
+    accessibilityLabel: string
+    style: TStyles["countBadge"]
+    label: {
+      style: TStyles["countBadgeText"]
+      text: TRenderState["summary"]["toolCallCount"]
+    }
+  } | null
+  preview: {
+    style: TStyles["previewLine"]
+    numberOfLines: TRenderState["surface"]["preview"]["numberOfLines"]
+    ellipsizeMode: TRenderState["surface"]["preview"]["ellipsizeMode"]
+    text: string
+  }
+  toggleIcon: TRenderState["headerToggleIcon"]
+}
+
+export interface ChatRuntimeToolActivityGroupFooterMobilePropsPartsInput<
+  TRenderState extends ChatRuntimeToolActivityGroupFooterMobileRenderStateParts =
+    Pick<ToolActivityGroupMobileRenderState, "footerButton" | "footerToggleIcon">,
+  TOnPress = unknown,
+  TStyles extends ChatRuntimeToolActivityGroupFooterMobileStyleSlots =
+    ChatRuntimeToolActivityGroupFooterMobileStyleSlots,
+> {
+  renderState: TRenderState
+  onPress?: TOnPress
+  styles: TStyles
+}
+
+export interface ChatRuntimeToolActivityGroupFooterMobilePropsParts<
+  TRenderState extends ChatRuntimeToolActivityGroupFooterMobileRenderStateParts =
+    Pick<ToolActivityGroupMobileRenderState, "footerButton" | "footerToggleIcon">,
+  TOnPress = unknown,
+  TStyles extends ChatRuntimeToolActivityGroupFooterMobileStyleSlots =
+    ChatRuntimeToolActivityGroupFooterMobileStyleSlots,
+> {
+  button: {
+    onPress: TOnPress | undefined
+    accessibilityRole: TRenderState["footerButton"]["accessibilityRole"]
+    accessibilityLabel: string
+    style: (state: { pressed: boolean }) => Array<TStyles["button"] | TStyles["pressed"] | false>
+  }
+  icon: TRenderState["footerToggleIcon"]
+  label: {
+    style: TStyles["text"]
+    text: string
+  }
 }
 
 export interface ChatRuntimeToolActivityGroupBoundaryMobilePropsPartsInput<
@@ -17943,21 +18062,80 @@ export function createChatRuntimeConversationThreadBodyStatusPanelMobilePropsPar
 }
 
 export function createChatRuntimeToolActivityGroupToggleMobilePropsParts<
-  TRenderState extends {
-    collapsedHeader: unknown
-    expandedHeader: unknown
-    summary: unknown
-  },
+  TRenderState extends ChatRuntimeToolActivityGroupToggleMobileRenderStateParts,
+  TOnPress,
+  TStyles extends ChatRuntimeToolActivityGroupToggleMobileStyleSlots,
 >({
   renderState,
   headerKind,
-}: ChatRuntimeToolActivityGroupToggleMobilePropsPartsInput<TRenderState>):
-  ChatRuntimeToolActivityGroupToggleMobilePropsParts<TRenderState> {
+  onPress,
+  styles,
+}: ChatRuntimeToolActivityGroupToggleMobilePropsPartsInput<TRenderState, TOnPress, TStyles>):
+  ChatRuntimeToolActivityGroupToggleMobilePropsParts<TRenderState, TOnPress, TStyles> {
+  const headerState = headerKind === "collapsed"
+    ? renderState.collapsedHeader
+    : renderState.expandedHeader
+
   return {
-    headerState: headerKind === "collapsed"
-      ? renderState.collapsedHeader
-      : renderState.expandedHeader,
-    summary: renderState.summary,
+    headerState,
+    pressable: {
+      onPress,
+      accessibilityRole: headerState.accessibilityRole,
+      accessibilityLabel: headerState.accessibilityLabel,
+      accessibilityState: headerState.accessibilityState,
+      ariaExpanded: headerState.ariaExpanded,
+      style: ({ pressed }: { pressed: boolean }) => [
+        styles.container,
+        pressed && styles.pressed,
+      ],
+    },
+    headerRow: {
+      style: styles.headerRow,
+    },
+    leadingIcon: renderState.leadingIcon,
+    countBadge: renderState.summary.shouldShowToolCallCount ? {
+      accessibilityLabel: renderState.summary.toolCallCountLabel,
+      style: styles.countBadge,
+      label: {
+        style: styles.countBadgeText,
+        text: renderState.summary.toolCallCount,
+      },
+    } : null,
+    preview: {
+      style: styles.previewLine,
+      numberOfLines: renderState.surface.preview.numberOfLines,
+      ellipsizeMode: renderState.surface.preview.ellipsizeMode,
+      text: renderState.summary.previewText,
+    },
+    toggleIcon: renderState.headerToggleIcon,
+  }
+}
+
+export function createChatRuntimeToolActivityGroupFooterMobilePropsParts<
+  TRenderState extends ChatRuntimeToolActivityGroupFooterMobileRenderStateParts,
+  TOnPress,
+  TStyles extends ChatRuntimeToolActivityGroupFooterMobileStyleSlots,
+>({
+  renderState,
+  onPress,
+  styles,
+}: ChatRuntimeToolActivityGroupFooterMobilePropsPartsInput<TRenderState, TOnPress, TStyles>):
+  ChatRuntimeToolActivityGroupFooterMobilePropsParts<TRenderState, TOnPress, TStyles> {
+  return {
+    button: {
+      onPress,
+      accessibilityRole: renderState.footerButton.accessibilityRole,
+      accessibilityLabel: renderState.footerButton.accessibilityLabel,
+      style: ({ pressed }: { pressed: boolean }) => [
+        styles.button,
+        pressed && styles.pressed,
+      ],
+    },
+    icon: renderState.footerToggleIcon,
+    label: {
+      style: styles.text,
+      text: renderState.footerButton.label,
+    },
   }
 }
 

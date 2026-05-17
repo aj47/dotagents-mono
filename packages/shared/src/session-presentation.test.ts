@@ -101,6 +101,7 @@ import {
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
+  createChatRuntimeToolActivityGroupFooterMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   createChatRuntimeToolActivityGroupToggleMobilePropsParts,
   createChatRuntimeDockChromeMobileProps,
@@ -7818,26 +7819,150 @@ describe("session presentation semantics", () => {
       leadingBoundary: null,
       trailingBoundary: null,
     })
-    const activityGroupToggleParts = createChatRuntimeToolActivityGroupToggleMobilePropsParts({
-      renderState: {
-        collapsedHeader: "collapsed-header-state",
-        expandedHeader: "expanded-header-state",
-        summary: "activity-summary",
+    const activityGroupToggleRenderState = {
+      collapsedHeader: {
+        accessibilityRole: "button",
+        accessibilityLabel: "Collapsed tool activities",
+        accessibilityState: { expanded: false },
+        ariaExpanded: false,
       },
+      expandedHeader: {
+        accessibilityRole: "button",
+        accessibilityLabel: "Expanded tool activities",
+        accessibilityState: { expanded: true },
+        ariaExpanded: true,
+      },
+      summary: {
+        shouldShowToolCallCount: true,
+        toolCallCountLabel: "3 tool calls",
+        toolCallCount: 3,
+        previewText: "Read, edit, test",
+      },
+      leadingIcon: "leading-icon-state",
+      headerToggleIcon: "toggle-icon-state",
+      surface: {
+        preview: {
+          numberOfLines: 1,
+          ellipsizeMode: "tail",
+        },
+      },
+    }
+    const activityGroupToggleParts = createChatRuntimeToolActivityGroupToggleMobilePropsParts({
+      renderState: activityGroupToggleRenderState,
       headerKind: "collapsed",
+      onPress: "toggle-group",
+      styles: {
+        container: "toggle-container",
+        pressed: "toggle-pressed",
+        headerRow: "toggle-header-row",
+        countBadge: "toggle-count-badge",
+        countBadgeText: "toggle-count-badge-text",
+        previewLine: "toggle-preview-line",
+      },
     })
-    expect(activityGroupToggleParts).toEqual({
-      headerState: "collapsed-header-state",
-      summary: "activity-summary",
+    expect(activityGroupToggleParts.headerState).toBe(activityGroupToggleRenderState.collapsedHeader)
+    expect(activityGroupToggleParts.pressable).toMatchObject({
+      onPress: "toggle-group",
+      accessibilityRole: "button",
+      accessibilityLabel: "Collapsed tool activities",
+      accessibilityState: { expanded: false },
+      ariaExpanded: false,
     })
+    expect(activityGroupToggleParts.pressable.style({ pressed: false })).toEqual([
+      "toggle-container",
+      false,
+    ])
+    expect(activityGroupToggleParts.pressable.style({ pressed: true })).toEqual([
+      "toggle-container",
+      "toggle-pressed",
+    ])
+    expect(activityGroupToggleParts.headerRow.style).toBe("toggle-header-row")
+    expect(activityGroupToggleParts.leadingIcon).toBe("leading-icon-state")
+    expect(activityGroupToggleParts.countBadge).toEqual({
+      accessibilityLabel: "3 tool calls",
+      style: "toggle-count-badge",
+      label: {
+        style: "toggle-count-badge-text",
+        text: 3,
+      },
+    })
+    expect(activityGroupToggleParts.preview).toEqual({
+      style: "toggle-preview-line",
+      numberOfLines: 1,
+      ellipsizeMode: "tail",
+      text: "Read, edit, test",
+    })
+    expect(activityGroupToggleParts.toggleIcon).toBe("toggle-icon-state")
     expect(createChatRuntimeToolActivityGroupToggleMobilePropsParts({
       renderState: {
-        collapsedHeader: "collapsed-header-state",
-        expandedHeader: "expanded-header-state",
-        summary: "activity-summary",
+        ...activityGroupToggleRenderState,
+        summary: {
+          ...activityGroupToggleRenderState.summary,
+          shouldShowToolCallCount: false,
+        },
       },
       headerKind: "expanded",
-    }).headerState).toBe("expanded-header-state")
+      styles: {
+        container: "toggle-container",
+        pressed: "toggle-pressed",
+        headerRow: "toggle-header-row",
+        countBadge: "toggle-count-badge",
+        countBadgeText: "toggle-count-badge-text",
+        previewLine: "toggle-preview-line",
+      },
+    }).headerState).toBe(activityGroupToggleRenderState.expandedHeader)
+    expect(createChatRuntimeToolActivityGroupToggleMobilePropsParts({
+      renderState: {
+        ...activityGroupToggleRenderState,
+        summary: {
+          ...activityGroupToggleRenderState.summary,
+          shouldShowToolCallCount: false,
+        },
+      },
+      headerKind: "collapsed",
+      styles: {
+        container: "toggle-container",
+        pressed: "toggle-pressed",
+        headerRow: "toggle-header-row",
+        countBadge: "toggle-count-badge",
+        countBadgeText: "toggle-count-badge-text",
+        previewLine: "toggle-preview-line",
+      },
+    }).countBadge).toBeNull()
+    const activityGroupFooterParts = createChatRuntimeToolActivityGroupFooterMobilePropsParts({
+      renderState: {
+        footerButton: {
+          accessibilityRole: "button",
+          accessibilityLabel: "Collapse tool activities",
+          label: "Hide tool activities",
+        },
+        footerToggleIcon: "footer-icon-state",
+      },
+      onPress: "toggle-footer",
+      styles: {
+        button: "footer-button",
+        pressed: "footer-pressed",
+        text: "footer-text",
+      },
+    })
+    expect(activityGroupFooterParts.button).toMatchObject({
+      onPress: "toggle-footer",
+      accessibilityRole: "button",
+      accessibilityLabel: "Collapse tool activities",
+    })
+    expect(activityGroupFooterParts.button.style({ pressed: false })).toEqual([
+      "footer-button",
+      false,
+    ])
+    expect(activityGroupFooterParts.button.style({ pressed: true })).toEqual([
+      "footer-button",
+      "footer-pressed",
+    ])
+    expect(activityGroupFooterParts.icon).toBe("footer-icon-state")
+    expect(activityGroupFooterParts.label).toEqual({
+      style: "footer-text",
+      text: "Hide tool activities",
+    })
     expect(createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
       renderState: "activity-group-state",
       kind: "footer",

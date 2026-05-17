@@ -4522,57 +4522,78 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatMessageChromeSource, /if \(kind === 'footer'\)/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupToggle/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupFooter/);
+  const toolActivityGroupToggleComponentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupToggle[\s\S]*?export function ChatMessageToolActivityGroupFooter/)?.[0] ?? '';
+  const toolActivityGroupFooterComponentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupFooter[\s\S]*?export function ChatMessageToolActivityGroupBoundary/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolActivityGroupToggleMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeToolActivityGroupFooterMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupToggleMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const \{ headerState, summary \} = createChatRuntimeToolActivityGroupToggleMobilePropsParts\(\{\s+renderState,\s+headerKind,\s+\}\);/);
-  assert.match(sessionPresentationSource, /headerState: headerKind === "collapsed"[\s\S]*?\? renderState\.collapsedHeader[\s\S]*?: renderState\.expandedHeader,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupFooterMobilePropsParts/);
+  assert.match(toolActivityGroupToggleComponentSource, /const toggleParts = createChatRuntimeToolActivityGroupToggleMobilePropsParts\(\{\s+renderState,\s+headerKind,\s+onPress,\s+styles,\s+\}\);/);
+  assert.match(toolActivityGroupFooterComponentSource, /const footerParts = createChatRuntimeToolActivityGroupFooterMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\);/);
+  assert.match(sessionPresentationSource, /const headerState = headerKind === "collapsed"[\s\S]*?\? renderState\.collapsedHeader[\s\S]*?: renderState\.expandedHeader/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /const \{ headerState, summary \}/);
   assert.doesNotMatch(chatMessageChromeSource, /const headerState = headerKind === 'collapsed'/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{headerState\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{headerState\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /accessibilityState=\{headerState\.accessibilityState\}/);
-  assert.match(chatMessageChromeSource, /aria-expanded=\{headerState\.ariaExpanded\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /accessibilityRole=\{toggleParts\.pressable\.accessibilityRole\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /accessibilityLabel=\{toggleParts\.pressable\.accessibilityLabel\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /accessibilityState=\{toggleParts\.pressable\.accessibilityState\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /aria-expanded=\{toggleParts\.pressable\.ariaExpanded\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /style=\{toggleParts\.pressable\.style\}/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /accessibilityRole=\{headerState\.accessibilityRole\}/);
   assert.doesNotMatch(screenSource, /const groupSummary = group\s+\? getToolActivityGroupSummaryState/);
   assert.doesNotMatch(screenSource, /const groupSummary = groupRenderState\?\.summary \?\? null;/);
   assert.doesNotMatch(screenSource, /getChatDisplayGroupedExpansionState,/);
   assert.doesNotMatch(screenSource, /group\.previewLines\.join\(', '\) \|\| mobileToolActivityGroupCopy\.collapsedFallbackLabel/);
-  assert.match(chatMessageChromeSource, /name=\{renderState\.leadingIcon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{renderState\.leadingIcon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{renderState\.leadingIcon\.color\}/);
+  assert.match(sessionPresentationSource, /leadingIcon: renderState\.leadingIcon/);
+  assert.match(toolActivityGroupToggleComponentSource, /name=\{toggleParts\.leadingIcon\.name\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /size=\{toggleParts\.leadingIcon\.size\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /color=\{toggleParts\.leadingIcon\.color\}/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /renderState\.leadingIcon/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileToolActivityGroupLeadingIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /mobileToolActivityGroupLeadingIcon\.opacity/);
-  assert.match(chatMessageChromeSource, /style=\{styles\.countBadge\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{summary\.toolCallCountLabel\}/);
-  assert.match(chatMessageChromeSource, /summary\.shouldShowToolCallCount &&/);
-  assert.equal((chatMessageChromeSource.match(/\{summary\.toolCallCount\}/g) ?? []).length, 1);
-  assert.equal((chatMessageChromeSource.match(/\{summary\.previewText\}/g) ?? []).length, 1);
+  assert.match(sessionPresentationSource, /countBadge: renderState\.summary\.shouldShowToolCallCount \? \{/);
+  assert.match(sessionPresentationSource, /accessibilityLabel: renderState\.summary\.toolCallCountLabel/);
+  assert.match(toolActivityGroupToggleComponentSource, /toggleParts\.countBadge \? \(/);
+  assert.match(toolActivityGroupToggleComponentSource, /style=\{toggleParts\.countBadge\.style\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /accessibilityLabel=\{toggleParts\.countBadge\.accessibilityLabel\}/);
+  assert.equal((toolActivityGroupToggleComponentSource.match(/\{toggleParts\.countBadge\.label\.text\}/g) ?? []).length, 1);
+  assert.equal((toolActivityGroupToggleComponentSource.match(/\{toggleParts\.preview\.text\}/g) ?? []).length, 1);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /summary\./);
   assert.doesNotMatch(screenSource, /\{group!?\.count\}\s*<\/Text>/);
   assert.equal(
-    (chatMessageChromeSource.match(/numberOfLines=\{renderState\.surface\.preview\.numberOfLines\}/g) ?? []).length,
+    (toolActivityGroupToggleComponentSource.match(/numberOfLines=\{toggleParts\.preview\.numberOfLines\}/g) ?? []).length,
     1,
   );
   assert.equal(
-    (chatMessageChromeSource.match(/ellipsizeMode=\{renderState\.surface\.preview\.ellipsizeMode\}/g) ?? []).length,
+    (toolActivityGroupToggleComponentSource.match(/ellipsizeMode=\{toggleParts\.preview\.ellipsizeMode\}/g) ?? []).length,
     1,
   );
-  assert.match(chatMessageChromeSource, /name=\{renderState\.headerToggleIcon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{renderState\.headerToggleIcon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{renderState\.headerToggleIcon\.color\}/);
+  assert.match(sessionPresentationSource, /toggleIcon: renderState\.headerToggleIcon/);
+  assert.match(toolActivityGroupToggleComponentSource, /name=\{toggleParts\.toggleIcon\.name\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /size=\{toggleParts\.toggleIcon\.size\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /color=\{toggleParts\.toggleIcon\.color\}/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /renderState\.headerToggleIcon/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileToolActivityGroupCollapsedToggleIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /mobileToolActivityGroupCollapsedToggleIcon\.opacity/);
   assert.match(sessionPresentationSource, /renderState\.expandedHeader/);
-  assert.doesNotMatch(chatMessageChromeSource, /renderState\.expandedHeader/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /renderState\.expandedHeader/);
   assert.doesNotMatch(screenSource, /accessibilityState=\{\{ expanded: (false|true) \}\}/);
   assert.doesNotMatch(screenSource, /aria-expanded=\{(false|true)\}/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileToolActivityGroupExpandedToggleIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /mobileToolActivityGroupExpandedToggleIcon\.opacity/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{renderState\.footerButton\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{renderState\.footerButton\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /name=\{renderState\.footerToggleIcon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{renderState\.footerToggleIcon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{renderState\.footerToggleIcon\.color\}/);
+  assert.match(toolActivityGroupFooterComponentSource, /accessibilityRole=\{footerParts\.button\.accessibilityRole\}/);
+  assert.match(toolActivityGroupFooterComponentSource, /accessibilityLabel=\{footerParts\.button\.accessibilityLabel\}/);
+  assert.match(toolActivityGroupFooterComponentSource, /style=\{footerParts\.button\.style\}/);
+  assert.match(sessionPresentationSource, /icon: renderState\.footerToggleIcon/);
+  assert.match(toolActivityGroupFooterComponentSource, /name=\{footerParts\.icon\.name\}/);
+  assert.match(toolActivityGroupFooterComponentSource, /size=\{footerParts\.icon\.size\}/);
+  assert.match(toolActivityGroupFooterComponentSource, /color=\{footerParts\.icon\.color\}/);
+  assert.doesNotMatch(toolActivityGroupFooterComponentSource, /renderState\.footerToggleIcon/);
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileToolActivityGroupFooterToggleIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /mobileToolActivityGroupFooterToggleIcon\.opacity/);
-  assert.match(chatMessageChromeSource, /renderState\.footerButton\.label/);
+  assert.match(toolActivityGroupFooterComponentSource, /\{footerParts\.label\.text\}/);
+  assert.doesNotMatch(toolActivityGroupFooterComponentSource, /renderState\.footerButton\.label/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupMobileStyleSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?platform,/);
   assert.match(sessionPresentationSource, /collapsed:\s*\{[\s\S]*?borderColor: colors\.collapsed\.borderColor,[\s\S]*?borderLeftColor: colors\.collapsed\.borderLeftColor,[\s\S]*?backgroundColor: colors\.collapsed\.backgroundColor/);
   assert.match(sessionPresentationSource, /countBadge:\s*\{[\s\S]*?alignItems: surface\.countBadge\.alignItems,[\s\S]*?justifyContent: surface\.countBadge\.justifyContent,[\s\S]*?backgroundColor: colors\.countBadge\.backgroundColor/);
