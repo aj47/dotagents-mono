@@ -13779,24 +13779,26 @@ describe("session presentation semantics", () => {
           onHeaderPress: "toggle-detail",
           styles: "call-section-styles",
         },
-      },
-      inputSection: {
-        shouldRender: true,
-        props: {
-          payloadRenderState: "input-payload-state",
-          content: "input-content",
-          styles: "payload-section-styles",
-        },
-      },
-      resultSection: {
-        shouldRender: false,
-        props: null,
-      },
-      pendingResult: {
-        shouldRender: true,
-        props: {
-          renderState: "pending-result-state",
-          styles: "pending-result-styles",
+        content: {
+          inputSection: {
+            shouldRender: true,
+            props: {
+              payloadRenderState: "input-payload-state",
+              content: "input-content",
+              styles: "payload-section-styles",
+            },
+          },
+          resultSection: {
+            shouldRender: false,
+            props: null,
+          },
+          pendingResult: {
+            shouldRender: true,
+            props: {
+              renderState: "pending-result-state",
+              styles: "pending-result-styles",
+            },
+          },
         },
       },
     })
@@ -13816,14 +13818,14 @@ describe("session presentation semantics", () => {
         pendingResult: "pending-result-styles",
       },
     })
-    expect(resultCallDetailParts.resultSection).toEqual({
+    expect(resultCallDetailParts.callSection.content.resultSection).toEqual({
       shouldRender: true,
       props: {
         resultContent: "result-content",
         styles: "result-section-styles",
       },
     })
-    expect(resultCallDetailParts.pendingResult).toEqual({
+    expect(resultCallDetailParts.callSection.content.pendingResult).toEqual({
       shouldRender: false,
       props: null,
     })

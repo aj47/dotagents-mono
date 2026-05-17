@@ -10035,23 +10035,24 @@ export function ChatMessageToolExecutionCallDetail({
     pendingResult,
     styles,
   });
+  const callDetailContent = callDetailParts.callSection.content;
 
   return (
     <ChatMessageToolExecutionCallSection
       {...callDetailParts.callSection.props}
     >
-      {callDetailParts.inputSection.shouldRender ? (
+      {callDetailContent.inputSection.shouldRender ? (
         <ChatMessageToolExecutionPayloadSection
-          {...callDetailParts.inputSection.props}
+          {...callDetailContent.inputSection.props}
         />
       ) : null}
-      {callDetailParts.resultSection.shouldRender ? (
+      {callDetailContent.resultSection.shouldRender ? (
         <ChatMessageToolExecutionResultSection
-          {...callDetailParts.resultSection.props}
+          {...callDetailContent.resultSection.props}
         />
-      ) : callDetailParts.pendingResult.shouldRender ? (
+      ) : callDetailContent.pendingResult.shouldRender ? (
         <ChatMessageToolExecutionPendingResult
-          {...callDetailParts.pendingResult.props}
+          {...callDetailContent.pendingResult.props}
         />
       ) : null}
     </ChatMessageToolExecutionCallSection>

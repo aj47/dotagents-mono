@@ -3281,17 +3281,19 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
       onHeaderPress: TOnHeaderPress | undefined
       styles: TStyles["callSection"]
     }
+    content: {
+      inputSection: ChatRuntimeMobilePropsPart<TInput & {
+        styles: TStyles["payloadSection"]
+      }>
+      resultSection: ChatRuntimeMobilePropsPart<TResult & {
+        styles: TStyles["resultSection"]
+      }>
+      pendingResult: ChatRuntimeMobilePropsPart<{
+        renderState: TPendingResult["renderState"]
+        styles: TStyles["pendingResult"]
+      }>
+    }
   }
-  inputSection: ChatRuntimeMobilePropsPart<TInput & {
-    styles: TStyles["payloadSection"]
-  }>
-  resultSection: ChatRuntimeMobilePropsPart<TResult & {
-    styles: TStyles["resultSection"]
-  }>
-  pendingResult: ChatRuntimeMobilePropsPart<{
-    renderState: TPendingResult["renderState"]
-    styles: TStyles["pendingResult"]
-  }>
 }
 
 export interface ChatRuntimeToolExecutionCallListMobilePropsPartsInput<
@@ -21279,18 +21281,20 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
         onHeaderPress,
         styles: styles.callSection,
       },
-    },
-    inputSection,
-    resultSection,
-    pendingResult: !resultSection.shouldRender && pendingResult ? {
-      shouldRender: true,
-      props: {
-        renderState: pendingResult.renderState,
-        styles: styles.pendingResult,
+      content: {
+        inputSection,
+        resultSection,
+        pendingResult: !resultSection.shouldRender && pendingResult ? {
+          shouldRender: true,
+          props: {
+            renderState: pendingResult.renderState,
+            styles: styles.pendingResult,
+          },
+        } : {
+          shouldRender: false,
+          props: null,
+        },
       },
-    } : {
-      shouldRender: false,
-      props: null,
     },
   }
 }
