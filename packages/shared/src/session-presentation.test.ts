@@ -9622,7 +9622,11 @@ describe("session presentation semantics", () => {
       },
       queuePanel: {
         renderState: "queue-panel-state",
-        style: "queue-panel-style",
+        container: {
+          props: {
+            style: "queue-panel-style",
+          },
+        },
       },
       connectionBanner: {
         renderState: "connection-banner-state",

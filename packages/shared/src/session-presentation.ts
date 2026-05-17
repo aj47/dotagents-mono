@@ -7498,7 +7498,11 @@ export interface ChatRuntimeConversationDockMobilePropsParts<
     styles: TVoiceOverlayStyles
   }
   queuePanel: TQueuePanel & {
-    style: TQueuePanelStyle
+    container: {
+      props: {
+        style: TQueuePanelStyle
+      }
+    }
   }
   connectionBanner: TConnectionBanner & {
     styles: TConnectionBannerStyles
@@ -24671,7 +24675,11 @@ export function createChatRuntimeConversationDockMobilePropsParts<
     },
     queuePanel: {
       ...queuePanel,
-      style: styles.queuePanelStyle,
+      container: {
+        props: {
+          style: styles.queuePanelStyle,
+        },
+      },
     },
     connectionBanner: {
       ...connectionBanner,

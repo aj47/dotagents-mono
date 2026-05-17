@@ -2861,10 +2861,17 @@ type ChatMessageRuntimeQueuePanelDockChromeState = Pick<
   'isListCollapsed' | 'onToggleListCollapsed'
 >;
 
+type ChatMessageQueuePanelDockContainerProps = {
+  children: ReactNode;
+  style: StyleProp<ViewStyle>;
+};
+
 type ChatMessageQueuePanelDockProps = {
   shouldRender: boolean;
   panel: ChatMessageQueuePanelDockPanelProps;
-  style: StyleProp<ViewStyle>;
+  container: {
+    props: Omit<ChatMessageQueuePanelDockContainerProps, 'children'>;
+  };
 };
 
 type ChatMessageConversationDockProps = {
@@ -2940,7 +2947,7 @@ type ChatMessageConnectionBannerRetryButtonProps =
 type ChatMessageRuntimeDockStyleSlots = {
   scrollToBottomButtonStyle: ChatMessageScrollToBottomButtonProps['style'];
   voiceOverlay: ChatComposerVoiceOverlayStyles;
-  queuePanelStyle: ChatMessageQueuePanelDockProps['style'];
+  queuePanelStyle: ChatMessageQueuePanelDockContainerProps['style'];
   connectionBanner: ChatMessageConnectionBannerStyles;
   composer: ChatComposerRuntimeDockStyleSlots;
 };
@@ -2949,7 +2956,7 @@ type ChatMessageRuntimeDockProps = {
   responseHistoryPanel: ChatMessageResponseHistoryPanelDockProps;
   scrollToBottomButton: Omit<ChatMessageScrollToBottomButtonProps, 'style'>;
   voiceOverlay: Omit<ChatComposerVoiceOverlayProps, 'styles'>;
-  queuePanel: Omit<ChatMessageQueuePanelDockProps, 'style'>;
+  queuePanel: Omit<ChatMessageQueuePanelDockProps, 'container'>;
   connectionBanner: Omit<ChatMessageConnectionBannerProps, 'styles'>;
   composer: Omit<ChatComposerRuntimeDockProps, 'styles'>;
   styles: ChatMessageRuntimeDockStyleSlots;
@@ -10718,7 +10725,7 @@ export function ChatMessageResponseHistoryPanelDock(panelProps: ChatMessageRespo
 export function ChatMessageQueuePanelDock({
   shouldRender,
   panel,
-  style,
+  container,
 }: ChatMessageQueuePanelDockProps) {
   const {
     conversationId,
@@ -10731,11 +10738,22 @@ export function ChatMessageQueuePanelDock({
   if (!shouldRender) return null;
 
   return (
-    <View style={style}>
+    <ChatMessageQueuePanelDockContainer {...container.props}>
       <MessageQueuePanel
         {...panelProps}
         {...queuePanelChromeState}
       />
+    </ChatMessageQueuePanelDockContainer>
+  );
+}
+
+export function ChatMessageQueuePanelDockContainer({
+  children,
+  ...props
+}: ChatMessageQueuePanelDockContainerProps) {
+  return (
+    <View {...props}>
+      {children}
     </View>
   );
 }
