@@ -7868,11 +7868,13 @@ export function ChatConversationHomeQuickStarts<
 
   if (!quickStartsParts.shouldRender) return null;
 
+  const quickStartsGridContent = quickStartsParts.grid.content;
+
   return (
     <View {...quickStartsParts.container.props}>
       {quickStartsParts.grid.shouldRender ? (
         <View {...quickStartsParts.grid.props}>
-          {quickStartsParts.grid.items.map((item) => {
+          {quickStartsGridContent.items.map((item) => {
             const actions = item.actions;
 
             return (

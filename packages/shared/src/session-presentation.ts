@@ -905,7 +905,9 @@ export interface ChatRuntimeHomeQuickStartsMobilePropsParts<
     props: {
       style: TStyles["grid"]
     }
-    items: Array<ChatRuntimeHomeQuickStartsMobileItemPropsParts<TPrompt, TTask, TEvent, TStyles>>
+    content: {
+      items: Array<ChatRuntimeHomeQuickStartsMobileItemPropsParts<TPrompt, TTask, TEvent, TStyles>>
+    }
   }
   emptyState: {
     shouldRender: boolean
@@ -31092,7 +31094,9 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
         props: {
           style: styles.grid,
         },
-        items: [],
+        content: {
+          items: [],
+        },
       },
       emptyState: {
         shouldRender: false,
@@ -31122,7 +31126,9 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
         props: {
           style: styles.grid,
         },
-        items: [],
+        content: {
+          items: [],
+        },
       },
       emptyState: {
         shouldRender: true,
@@ -31146,167 +31152,169 @@ export function createChatRuntimeHomeQuickStartsMobilePropsParts<
       props: {
         style: styles.grid,
       },
-      items: items.map((item) => {
-        const shortcutItemRenderState = getChatRuntimeHomeQuickStartItemMobileRenderState(
-          item,
-          shortcutRenderState,
-          runningTaskId,
-        )
-        const shortcutInteraction = shortcutItemRenderState.interaction
-        const prompt = item.prompt
-        const promptActions = shortcutItemRenderState.promptActions
+      content: {
+        items: items.map((item) => {
+          const shortcutItemRenderState = getChatRuntimeHomeQuickStartItemMobileRenderState(
+            item,
+            shortcutRenderState,
+            runningTaskId,
+          )
+          const shortcutInteraction = shortcutItemRenderState.interaction
+          const prompt = item.prompt
+          const promptActions = shortcutItemRenderState.promptActions
 
-        return {
-          key: item.id,
-          pressable: {
-            props: {
-              style: ({ pressed }: { pressed: boolean }) => [
-                styles.shortcutCard,
-                shortcutInteraction.isAddPrompt && styles.shortcutCardAdd,
-                shortcutInteraction.isRunning && styles.shortcutCardDisabled,
-                pressed && styles.shortcutCardPressed,
-              ],
-              onPress: () => onPress(item),
-              disabled: shortcutInteraction.isDisabled,
-              accessibilityRole: shortcutItemRenderState.accessibilityRole,
-              accessibilityState: shortcutInteraction.accessibilityState,
-              accessibilityLabel: shortcutItemRenderState.accessibilityLabel,
-              accessibilityHint: shortcutItemRenderState.accessibilityHint,
-            },
-          },
-          sourcePill: shortcutInteraction.isAddPrompt
-            ? {
-                shouldRender: false,
-              }
-            : {
-                shouldRender: true,
-                props: {
-                  style: styles.sourcePill,
-                },
-                icon: {
-                  props: {
-                    name: shortcutItemRenderState.sourceIcon.name,
-                    size: shortcutItemRenderState.sourceIcon.size,
-                    color: shortcutItemRenderState.sourceIconColors.color,
-                  },
-                },
-                label: {
-                  text: shortcutItemRenderState.sourceLabel,
-                  props: {
-                    style: styles.sourceLabel,
-                    numberOfLines: shortcutSurface.shortcutSourceLabel.numberOfLines,
-                  },
-                },
+          return {
+            key: item.id,
+            pressable: {
+              props: {
+                style: ({ pressed }: { pressed: boolean }) => [
+                  styles.shortcutCard,
+                  shortcutInteraction.isAddPrompt && styles.shortcutCardAdd,
+                  shortcutInteraction.isRunning && styles.shortcutCardDisabled,
+                  pressed && styles.shortcutCardPressed,
+                ],
+                onPress: () => onPress(item),
+                disabled: shortcutInteraction.isDisabled,
+                accessibilityRole: shortcutItemRenderState.accessibilityRole,
+                accessibilityState: shortcutInteraction.accessibilityState,
+                accessibilityLabel: shortcutItemRenderState.accessibilityLabel,
+                accessibilityHint: shortcutItemRenderState.accessibilityHint,
               },
-          addIcon:
-            shortcutInteraction.isAddPrompt && shortcutItemRenderState.addAction
+            },
+            sourcePill: shortcutInteraction.isAddPrompt
               ? {
+                  shouldRender: false,
+                }
+              : {
                   shouldRender: true,
                   props: {
-                    name: shortcutItemRenderState.addAction.icon.name,
-                    size: shortcutItemRenderState.addAction.icon.size,
-                    color: shortcutItemRenderState.addAction.iconColors.color,
-                    style: styles.addIcon,
+                    style: styles.sourcePill,
+                  },
+                  icon: {
+                    props: {
+                      name: shortcutItemRenderState.sourceIcon.name,
+                      size: shortcutItemRenderState.sourceIcon.size,
+                      color: shortcutItemRenderState.sourceIconColors.color,
+                    },
+                  },
+                  label: {
+                    text: shortcutItemRenderState.sourceLabel,
+                    props: {
+                      style: styles.sourceLabel,
+                      numberOfLines: shortcutSurface.shortcutSourceLabel.numberOfLines,
+                    },
+                  },
+                },
+            addIcon:
+              shortcutInteraction.isAddPrompt && shortcutItemRenderState.addAction
+                ? {
+                    shouldRender: true,
+                    props: {
+                      name: shortcutItemRenderState.addAction.icon.name,
+                      size: shortcutItemRenderState.addAction.icon.size,
+                      color: shortcutItemRenderState.addAction.iconColors.color,
+                      style: styles.addIcon,
+                    },
+                  }
+                : {
+                    shouldRender: false,
+                  },
+            title: {
+              text: item.title,
+              props: {
+                style: [
+                  styles.title,
+                  shortcutInteraction.isAddPrompt && styles.titleAdd,
+                ],
+                numberOfLines: shortcutSurface.shortcutTitle.numberOfLines,
+              },
+            },
+            description: item.description
+              ? {
+                  shouldRender: true,
+                  text: item.description,
+                  props: {
+                    style: styles.description,
+                    numberOfLines: shortcutSurface.shortcutDescription.numberOfLines,
                   },
                 }
               : {
                   shouldRender: false,
                 },
-          title: {
-            text: item.title,
-            props: {
-              style: [
-                styles.title,
-                shortcutInteraction.isAddPrompt && styles.titleAdd,
-              ],
-              numberOfLines: shortcutSurface.shortcutTitle.numberOfLines,
-            },
-          },
-          description: item.description
-            ? {
-                shouldRender: true,
-                text: item.description,
-                props: {
-                  style: styles.description,
-                  numberOfLines: shortcutSurface.shortcutDescription.numberOfLines,
-                },
-              }
-            : {
-                shouldRender: false,
-              },
-          actions: prompt && promptActions
-            ? {
-                shouldRender: true,
-                props: {
-                  style: styles.actions,
-                },
-                edit: {
-                  pressable: {
-                    props: {
-                      style: ({ pressed }: { pressed: boolean }) => [
-                        styles.actionButton,
-                        pressed && styles.actionButtonPressed,
-                      ],
-                      onPress: (event: TEvent) => {
-                        event.stopPropagation()
-                        onEditPrompt(prompt)
+            actions: prompt && promptActions
+              ? {
+                  shouldRender: true,
+                  props: {
+                    style: styles.actions,
+                  },
+                  edit: {
+                    pressable: {
+                      props: {
+                        style: ({ pressed }: { pressed: boolean }) => [
+                          styles.actionButton,
+                          pressed && styles.actionButtonPressed,
+                        ],
+                        onPress: (event: TEvent) => {
+                          event.stopPropagation()
+                          onEditPrompt(prompt)
+                        },
+                        accessibilityRole: promptActions.edit.accessibilityRole,
+                        accessibilityLabel: promptActions.edit.accessibilityLabel,
                       },
-                      accessibilityRole: promptActions.edit.accessibilityRole,
-                      accessibilityLabel: promptActions.edit.accessibilityLabel,
                     },
-                  },
-                  icon: {
-                    props: {
-                      name: promptActions.edit.icon.name,
-                      size: promptActions.edit.icon.size,
-                      color: promptActions.edit.iconColors.color,
-                    },
-                  },
-                  label: {
-                    text: promptActions.edit.label,
-                    props: {
-                      style: styles.actionText,
-                    },
-                  },
-                  prompt,
-                },
-                delete: {
-                  pressable: {
-                    props: {
-                      style: ({ pressed }: { pressed: boolean }) => [
-                        styles.actionButton,
-                        pressed && styles.actionButtonPressed,
-                      ],
-                      onPress: (event: TEvent) => {
-                        event.stopPropagation()
-                        onDeletePrompt(prompt)
+                    icon: {
+                      props: {
+                        name: promptActions.edit.icon.name,
+                        size: promptActions.edit.icon.size,
+                        color: promptActions.edit.iconColors.color,
                       },
-                      accessibilityRole: promptActions.delete.accessibilityRole,
-                      accessibilityLabel: promptActions.delete.accessibilityLabel,
                     },
-                  },
-                  icon: {
-                    props: {
-                      name: promptActions.delete.icon.name,
-                      size: promptActions.delete.icon.size,
-                      color: promptActions.delete.iconColors.color,
+                    label: {
+                      text: promptActions.edit.label,
+                      props: {
+                        style: styles.actionText,
+                      },
                     },
+                    prompt,
                   },
-                  label: {
-                    text: promptActions.delete.label,
-                    props: {
-                      style: [styles.actionText, styles.actionDangerText],
+                  delete: {
+                    pressable: {
+                      props: {
+                        style: ({ pressed }: { pressed: boolean }) => [
+                          styles.actionButton,
+                          pressed && styles.actionButtonPressed,
+                        ],
+                        onPress: (event: TEvent) => {
+                          event.stopPropagation()
+                          onDeletePrompt(prompt)
+                        },
+                        accessibilityRole: promptActions.delete.accessibilityRole,
+                        accessibilityLabel: promptActions.delete.accessibilityLabel,
+                      },
                     },
+                    icon: {
+                      props: {
+                        name: promptActions.delete.icon.name,
+                        size: promptActions.delete.icon.size,
+                        color: promptActions.delete.iconColors.color,
+                      },
+                    },
+                    label: {
+                      text: promptActions.delete.label,
+                      props: {
+                        style: [styles.actionText, styles.actionDangerText],
+                      },
+                    },
+                    prompt,
                   },
-                  prompt,
+                }
+              : {
+                  shouldRender: false,
                 },
-              }
-            : {
-                shouldRender: false,
-              },
-          item,
-        }
-      }),
+            item,
+          }
+        }),
+      },
     },
     emptyState: {
       shouldRender: false,

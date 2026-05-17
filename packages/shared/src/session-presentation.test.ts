@@ -5322,7 +5322,7 @@ describe("session presentation semantics", () => {
     expect(quickStartPropsParts.emptyState.shouldRender).toBe(false)
     expect(quickStartPropsParts.grid.shouldRender).toBe(true)
     expect(quickStartPropsParts.grid.props.style).toBe("grid")
-    const promptItemParts = quickStartPropsParts.grid.items[0]!
+    const promptItemParts = quickStartPropsParts.grid.content.items[0]!
     expect(promptItemParts.key).toBe("prompt-1")
     expect(promptItemParts.pressable.props.style({ pressed: true })).toEqual([
       "shortcutCard",
@@ -5370,7 +5370,7 @@ describe("session presentation semantics", () => {
     })
     expect(stoppedPropagationCount).toBe(2)
     expect(deletedPromptId).toBe("prompt-1")
-    const addPromptItemParts = quickStartPropsParts.grid.items[1]!
+    const addPromptItemParts = quickStartPropsParts.grid.content.items[1]!
     expect(addPromptItemParts.sourcePill.shouldRender).toBe(false)
     expect(addPromptItemParts.addIcon.shouldRender).toBe(true)
     if (!addPromptItemParts.addIcon.shouldRender) {
