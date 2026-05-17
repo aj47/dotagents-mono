@@ -116,6 +116,7 @@ import {
   createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadMobilePropsParts,
   createChatRuntimeConversationScrollViewportMobilePropsParts,
+  createChatRuntimeConversationViewportContentMobilePropsParts,
   createChatRuntimeConversationSurfaceMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
@@ -8805,14 +8806,23 @@ export function ChatMessageConversationViewportContent({
   children,
   debugPanels,
 }: ChatMessageConversationViewportContentProps) {
+  const viewportContentParts = createChatRuntimeConversationViewportContentMobilePropsParts({
+    loadingState,
+    homeState,
+    historyBanner,
+    stepSummary,
+    children,
+    debugPanels,
+  });
+
   return (
     <>
-      {loadingState}
-      {homeState}
-      {historyBanner}
-      {stepSummary}
-      {children}
-      {debugPanels}
+      {viewportContentParts.loadingState}
+      {viewportContentParts.homeState}
+      {viewportContentParts.historyBanner}
+      {viewportContentParts.stepSummary}
+      {viewportContentParts.children}
+      {viewportContentParts.debugPanels}
     </>
   );
 }

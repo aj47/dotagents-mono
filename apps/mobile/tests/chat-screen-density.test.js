@@ -1745,7 +1745,13 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /frameStyles: \{\s+keyboardAvoidingStyle: styles\.keyboardAvoidingContainer,\s+rootStyle: styles\.chatRoot,\s+\}/);
   assert.match(sessionPresentationSource, /scrollViewportStyles: \{\s+style: styles\.chatScroll,\s+contentContainerStyle: styles\.chatScrollContent,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewportContent/);
-  assert.match(chatMessageChromeSource, /\{loadingState\}[\s\S]*?\{homeState\}[\s\S]*?\{historyBanner\}[\s\S]*?\{stepSummary\}[\s\S]*?\{children\}[\s\S]*?\{debugPanels\}/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeConversationViewportContentMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeConversationViewportContentMobilePropsParts/);
+  const conversationViewportContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageConversationViewportContent[\s\S]*?export function ChatMessageConversationViewport/)?.[0] ?? '';
+  assert.match(conversationViewportContentSource, /const viewportContentParts = createChatRuntimeConversationViewportContentMobilePropsParts\(\{\s+loadingState,\s+homeState,\s+historyBanner,\s+stepSummary,\s+children,\s+debugPanels,\s+\}\);/);
+  assert.match(conversationViewportContentSource, /\{viewportContentParts\.loadingState\}[\s\S]*?\{viewportContentParts\.homeState\}[\s\S]*?\{viewportContentParts\.historyBanner\}[\s\S]*?\{viewportContentParts\.stepSummary\}[\s\S]*?\{viewportContentParts\.children\}[\s\S]*?\{viewportContentParts\.debugPanels\}/);
+  assert.doesNotMatch(conversationViewportContentSource, /\{loadingState\}[\s\S]*?\{homeState\}[\s\S]*?\{historyBanner\}[\s\S]*?\{stepSummary\}[\s\S]*?\{children\}[\s\S]*?\{debugPanels\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeViewport/);
   assert.match(chatMessageChromeSource, /const viewportParts = createChatRuntimeConversationViewportMobilePropsParts\(\{\s+loadingState,\s+homeQuickStarts,\s+historyBanner,\s+stepSummary,\s+debugPanels,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageConversationViewport\s+\{\.\.\.scrollViewportProps\}\s+\{\.\.\.viewportParts\.scrollViewport\}/);

@@ -6252,6 +6252,38 @@ export interface ChatRuntimeConversationScrollViewportMobilePropsParts<
   children: TChildren
 }
 
+export interface ChatRuntimeConversationViewportContentMobilePropsPartsInput<
+  TLoadingState = unknown,
+  THomeState = unknown,
+  THistoryBanner = unknown,
+  TStepSummary = unknown,
+  TChildren = unknown,
+  TDebugPanels = unknown,
+> {
+  loadingState?: TLoadingState
+  homeState?: THomeState
+  historyBanner?: THistoryBanner
+  stepSummary?: TStepSummary
+  children: TChildren
+  debugPanels?: TDebugPanels
+}
+
+export interface ChatRuntimeConversationViewportContentMobilePropsParts<
+  TLoadingState = unknown,
+  THomeState = unknown,
+  THistoryBanner = unknown,
+  TStepSummary = unknown,
+  TChildren = unknown,
+  TDebugPanels = unknown,
+> {
+  loadingState: TLoadingState | undefined
+  homeState: THomeState | undefined
+  historyBanner: THistoryBanner | undefined
+  stepSummary: TStepSummary | undefined
+  children: TChildren
+  debugPanels: TDebugPanels | undefined
+}
+
 export interface ChatRuntimeConversationViewportMobilePropsPartsInput<
   TLoadingState extends object = Record<string, never>,
   THomeQuickStarts extends object = Record<string, never>,
@@ -21548,6 +21580,45 @@ export function createChatRuntimeConversationScrollViewportMobilePropsParts<
       scrollEventThrottle,
     },
     children,
+  }
+}
+
+export function createChatRuntimeConversationViewportContentMobilePropsParts<
+  TLoadingState,
+  THomeState,
+  THistoryBanner,
+  TStepSummary,
+  TChildren,
+  TDebugPanels,
+>({
+  loadingState,
+  homeState,
+  historyBanner,
+  stepSummary,
+  children,
+  debugPanels,
+}: ChatRuntimeConversationViewportContentMobilePropsPartsInput<
+  TLoadingState,
+  THomeState,
+  THistoryBanner,
+  TStepSummary,
+  TChildren,
+  TDebugPanels
+>): ChatRuntimeConversationViewportContentMobilePropsParts<
+  TLoadingState,
+  THomeState,
+  THistoryBanner,
+  TStepSummary,
+  TChildren,
+  TDebugPanels
+> {
+  return {
+    loadingState,
+    homeState,
+    historyBanner,
+    stepSummary,
+    children,
+    debugPanels,
   }
 }
 
