@@ -4408,7 +4408,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileWrapperRenderState/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
   assert.doesNotMatch(messageQueuePanelSource, /from '@dotagents\/shared\/message-queue-utils'/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileWrapperStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createQueuedMessageStatusIndicatorMobilePropsPart,[\s\S]*?createQueuedMessageContentMobilePropsParts,[\s\S]*?createQueuedMessageExpandButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageActionRowMobileStyleSlot,[\s\S]*?createQueuedMessageEditMobilePropsParts,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileWrapperStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createMessageQueuePanelCompactActionMobilePropsParts,[\s\S]*?createQueuedMessageStatusIndicatorMobilePropsPart,[\s\S]*?createQueuedMessageContentMobilePropsParts,[\s\S]*?createQueuedMessageExpandButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageActionRowMobileStyleSlot,[\s\S]*?createQueuedMessageEditMobilePropsParts,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
@@ -4453,11 +4453,19 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /if \(messages\.length === 0\) \{\s+return null;\s+\}/);
   assert.match(messageQueuePanelSource, /createMessageQueuePanelMobileStyleSlots,/);
   assert.match(messageQueuePanelSource, /const panelStyleSlots = createMessageQueuePanelMobileStyleSlots\(\{\s+surface: panelSurface,\s+colors: panelColors,\s+panel: queuePanelState,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /createMessageQueuePanelCompactActionMobilePropsParts,/);
+  assert.match(messageQueuePanelSource, /const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts\(\{\s+surface: panelSurface,\s+colors: panelColors,\s+icons: queuePanelIcons,\s+copy: queuePanelCopy,\s+panel: queuePanelState,\s+styles,\s+onPause,\s+onResume,\s+onProcessNext,\s+onClear,\s+\}\);/);
   assert.match(messageQueuePanelSource, /container:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.container/);
   assert.match(messageQueuePanelSource, /header:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.header/);
   assert.match(messageQueuePanelSource, /compactContainer:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactContainer/);
+  assert.match(messageQueuePanelSource, /compactAction:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactAction/);
+  assert.match(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) =>/);
+  assert.match(messageQueuePanelSource, /style=\{action\.style\}/);
+  assert.match(messageQueuePanelSource, /name=\{action\.icon\.name\}[\s\S]*?size=\{action\.icon\.size\}[\s\S]*?color=\{action\.icon\.color\}/);
   assert.doesNotMatch(messageQueuePanelSource, /borderColor:\s*panelStatusColors\.borderColor/);
   assert.doesNotMatch(messageQueuePanelSource, /fontWeight:\s*panelSurface\.processFontWeight/);
+  assert.doesNotMatch(messageQueuePanelSource, /name=\{queuePanelIcons\.(resumeName|pauseName|sendNextName|clearName)\}/);
+  assert.doesNotMatch(messageQueuePanelSource, /size=\{panelSurface\.compactActionIconSize\}/);
   assert.match(messageQueuePanelSource, /getQueuedMessageEditDraftState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /const editSubmitState = editDraftState\.submitState;/);
   assert.match(messageQueuePanelSource, /disabled=\{editParts\.saveButton\.disabled\}/);

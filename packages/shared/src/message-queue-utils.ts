@@ -938,6 +938,60 @@ export interface MessageQueuePanelMobileStyleSlots {
   };
 }
 
+export interface MessageQueuePanelCompactActionMobilePropsPartsStylesLike {
+  compactAction: unknown;
+}
+
+export type MessageQueuePanelCompactActionMobilePropsPartKey =
+  | 'resume'
+  | 'pause'
+  | 'sendNext'
+  | 'clear';
+
+export interface MessageQueuePanelCompactActionMobilePropsPartsInput<
+  TStyles extends MessageQueuePanelCompactActionMobilePropsPartsStylesLike =
+    MessageQueuePanelCompactActionMobilePropsPartsStylesLike,
+  TOnPress = unknown,
+> {
+  surface: MessageQueuePanelMobilePanelSurface;
+  colors: MessageQueuePanelMobileSurfaceRenderState['colors']['panel'];
+  icons: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon;
+  copy: typeof MESSAGE_QUEUE_PANEL_PRESENTATION;
+  panel: Pick<
+    MessageQueuePanelState<Pick<QueuedMessage, 'id' | 'status'>>,
+    'statusKey' | 'isPaused' | 'pauseActionState' | 'clearActionState' | 'shouldShowCompactProcessNext'
+  >;
+  styles: TStyles;
+  onPause?: TOnPress;
+  onResume?: TOnPress;
+  onProcessNext?: TOnPress;
+  onClear: TOnPress;
+}
+
+export interface MessageQueuePanelCompactActionMobilePropsPart<TStyle, TOnPress> {
+  key: MessageQueuePanelCompactActionMobilePropsPartKey;
+  style: TStyle;
+  onPress: TOnPress;
+  disabled?: boolean;
+  activeOpacity: MessageQueuePanelMobilePanelSurface['actionPressedOpacity'];
+  accessibilityRole: MessageQueuePanelMobilePanelSurface['actionAccessibilityRole'];
+  accessibilityLabel: string;
+  accessibilityState?: MessageQueuePanelActionAccessibilityState;
+  icon: {
+    name: typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon[keyof typeof MESSAGE_QUEUE_PANEL_PRESENTATION.mobileIcon];
+    size: MessageQueuePanelMobilePanelSurface['compactActionIconSize'];
+    color: string;
+  };
+}
+
+export interface MessageQueuePanelCompactActionMobilePropsParts<
+  TStyles extends MessageQueuePanelCompactActionMobilePropsPartsStylesLike =
+    MessageQueuePanelCompactActionMobilePropsPartsStylesLike,
+  TOnPress = unknown,
+> {
+  actions: MessageQueuePanelCompactActionMobilePropsPart<TStyles['compactAction'], TOnPress>[];
+}
+
 export function getMessageQueuePanelRenderItems<T extends { id: string }>(
   messages: readonly T[],
 ): MessageQueuePanelRenderItem<T>[] {
@@ -1152,6 +1206,95 @@ export function createMessageQueuePanelMobileStyleSlots<T extends Pick<QueuedMes
     },
     compactAction: actionButtonStyle,
   };
+}
+
+export function createMessageQueuePanelCompactActionMobilePropsParts<
+  TStyles extends MessageQueuePanelCompactActionMobilePropsPartsStylesLike,
+  TOnPress,
+>({
+  surface,
+  colors,
+  icons,
+  copy,
+  panel,
+  styles,
+  onPause,
+  onResume,
+  onProcessNext,
+  onClear,
+}: MessageQueuePanelCompactActionMobilePropsPartsInput<TStyles, TOnPress>):
+  MessageQueuePanelCompactActionMobilePropsParts<TStyles, TOnPress> {
+  const statusColors = colors.status[panel.statusKey];
+  const actions: MessageQueuePanelCompactActionMobilePropsPart<TStyles['compactAction'], TOnPress>[] = [];
+  const baseAction = {
+    style: styles.compactAction,
+    activeOpacity: surface.actionPressedOpacity,
+    accessibilityRole: surface.actionAccessibilityRole,
+  };
+
+  if (panel.isPaused && onResume) {
+    actions.push({
+      ...baseAction,
+      key: 'resume',
+      onPress: onResume,
+      accessibilityLabel: copy.actions.resumeTitle,
+      icon: {
+        name: icons.resumeName,
+        size: surface.compactActionIconSize,
+        color: colors.resumeActionColor,
+      },
+    });
+  }
+
+  if (!panel.isPaused && onPause) {
+    actions.push({
+      ...baseAction,
+      key: 'pause',
+      onPress: onPause,
+      disabled: panel.pauseActionState.isDisabled,
+      accessibilityLabel: copy.actions.pauseTitle,
+      accessibilityState: panel.pauseActionState.accessibilityState,
+      icon: {
+        name: icons.pauseName,
+        size: surface.compactActionIconSize,
+        color: panel.pauseActionState.isDisabled
+          ? colors.disabledActionColor
+          : statusColors.color,
+      },
+    });
+  }
+
+  if (panel.shouldShowCompactProcessNext && onProcessNext) {
+    actions.push({
+      ...baseAction,
+      key: 'sendNext',
+      onPress: onProcessNext,
+      accessibilityLabel: copy.actions.sendNextAccessibilityLabel,
+      icon: {
+        name: icons.sendNextName,
+        size: surface.compactActionIconSize,
+        color: colors.processReadyColor,
+      },
+    });
+  }
+
+  actions.push({
+    ...baseAction,
+    key: 'clear',
+    onPress: onClear,
+    disabled: panel.clearActionState.isDisabled,
+    accessibilityLabel: copy.actions.clearQueueTitle,
+    accessibilityState: panel.clearActionState.accessibilityState,
+    icon: {
+      name: icons.clearName,
+      size: surface.compactActionIconSize,
+      color: panel.clearActionState.isDisabled
+        ? colors.disabledActionColor
+        : statusColors.color,
+    },
+  });
+
+  return { actions };
 }
 
 export type QueuedMessageItemPresentation = {

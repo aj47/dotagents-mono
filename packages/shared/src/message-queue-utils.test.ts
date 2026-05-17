@@ -9,6 +9,7 @@ import {
   clearQueuedMessages,
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
+  createMessageQueuePanelCompactActionMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
@@ -578,6 +579,91 @@ describe('message-queue-utils', () => {
         paddingVertical: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPaddingVertical,
       },
     });
+    const compactActionCalls: string[] = [];
+    const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.panel,
+      colors: mobileQueueSurfaceRenderState.colors.panel,
+      icons: getMessageQueuePanelMobileIconState(),
+      copy: getMessageQueuePanelCopyState(),
+      panel: getMessageQueuePanelState([makeMessage('compact-panel-message')], {
+        canProcessNext: true,
+      }),
+      styles: {
+        compactAction: 'compactAction',
+      },
+      onPause: () => compactActionCalls.push('pause'),
+      onResume: () => compactActionCalls.push('resume'),
+      onProcessNext: () => compactActionCalls.push('sendNext'),
+      onClear: () => compactActionCalls.push('clear'),
+    });
+    expect(compactActionParts.actions.map((action) => action.key)).toEqual(['pause', 'sendNext', 'clear']);
+    expect(compactActionParts.actions[0]).toMatchObject({
+      style: 'compactAction',
+      activeOpacity: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPressedOpacity,
+      accessibilityRole: 'button',
+      accessibilityLabel: 'Pause queue',
+      disabled: false,
+      accessibilityState: { disabled: false },
+      icon: {
+        name: 'pause',
+        size: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.compactActionIconSize,
+        color: '#f59e0b',
+      },
+    });
+    expect(compactActionParts.actions[1]).toMatchObject({
+      accessibilityLabel: 'Send next queued message',
+      icon: {
+        name: 'play',
+        color: '#2563eb',
+      },
+    });
+    compactActionParts.actions.forEach((action) => action.onPress());
+    expect(compactActionCalls).toEqual(['pause', 'sendNext', 'clear']);
+    expect(createMessageQueuePanelCompactActionMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.panel,
+      colors: mobileQueueSurfaceRenderState.colors.panel,
+      icons: getMessageQueuePanelMobileIconState(),
+      copy: getMessageQueuePanelCopyState(),
+      panel: getMessageQueuePanelState([makeMessage('paused-panel-message')], {
+        isPaused: true,
+      }),
+      styles: {
+        compactAction: 'compactAction',
+      },
+      onPause: () => compactActionCalls.push('pause'),
+      onResume: () => compactActionCalls.push('resume'),
+      onProcessNext: () => compactActionCalls.push('sendNext'),
+      onClear: () => compactActionCalls.push('clear'),
+    }).actions.map((action) => action.key)).toEqual(['resume', 'clear']);
+    expect(createMessageQueuePanelCompactActionMobilePropsParts({
+      surface: mobileQueueSurfaceRenderState.surface.panel,
+      colors: mobileQueueSurfaceRenderState.colors.panel,
+      icons: getMessageQueuePanelMobileIconState(),
+      copy: getMessageQueuePanelCopyState(),
+      panel: getMessageQueuePanelState([makeMessage('processing-panel-message', { status: 'processing' })]),
+      styles: {
+        compactAction: 'compactAction',
+      },
+      onPause: () => compactActionCalls.push('pause'),
+      onClear: () => compactActionCalls.push('clear'),
+    }).actions).toMatchObject([
+      {
+        key: 'pause',
+        disabled: true,
+        accessibilityState: { disabled: true },
+        icon: {
+          color: '#737373',
+        },
+      },
+      {
+        key: 'clear',
+        disabled: true,
+        accessibilityState: { disabled: true },
+        icon: {
+          color: '#737373',
+        },
+      },
+    ]);
     expect(createQueuedMessageItemMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.item,
       colors: mobileQueueSurfaceRenderState.colors.item,

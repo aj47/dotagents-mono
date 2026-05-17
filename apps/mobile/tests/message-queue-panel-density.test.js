@@ -82,6 +82,8 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /\{queuePanelState\.compactLabel\}/);
   assert.match(source, /\{queuePanelState\.title\}/);
   assert.match(source, /name=\{queuePanelState\.statusIconName\}/);
+  assert.match(source, /createMessageQueuePanelCompactActionMobilePropsParts/);
+  assert.match(source, /const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts\(\{[\s\S]*?surface: panelSurface,[\s\S]*?colors: panelColors,[\s\S]*?icons: queuePanelIcons,[\s\S]*?copy: queuePanelCopy,[\s\S]*?panel: queuePanelState,[\s\S]*?styles,[\s\S]*?onPause,[\s\S]*?onResume,[\s\S]*?onProcessNext,[\s\S]*?onClear,/);
   assert.match(source, /const contentParts = createQueuedMessageContentMobilePropsParts\(\{[\s\S]*?message,[\s\S]*?presentation: messagePresentation,[\s\S]*?isExpanded,[\s\S]*?styles,/);
   assert.match(source, /\{contentParts\.metaText\.text\}/);
   assert.match(source, /queuePanelCopy\.actions\.pauseLabel/);
@@ -89,10 +91,8 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /const queuePanelIcons = queuePanelRenderState\.icons;/);
   assert.match(source, /name=\{statusIndicatorPart\.icon\.name\}/);
   assert.match(source, /name=\{expandButtonParts\.icon\.name\}/);
-  assert.match(source, /name=\{queuePanelIcons\.resumeName\}/);
-  assert.match(source, /name=\{queuePanelIcons\.pauseName\}/);
-  assert.match(source, /name=\{queuePanelIcons\.sendNextName\}/);
-  assert.match(source, /name=\{queuePanelIcons\.clearName\}/);
+  assert.match(source, /compactActionParts\.actions\.map\(\(action\) =>/);
+  assert.match(source, /name=\{action\.icon\.name\}/);
   assert.match(source, /name=\{queuePanelState\.toggleIconName\}/);
   assert.match(source, /onPress=\{onToggleListCollapsed\}/);
   assert.match(source, /accessibilityLabel=\{queuePanelState\.listToggleLabel\}/);
@@ -129,7 +129,7 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
   assert.match(source, /queuePanelState\.pauseActionState\.accessibilityState/);
   assert.doesNotMatch(source, /disabled=\{!queuePanelState\.(canClear|canPause)\}/);
   assert.doesNotMatch(source, /queuePanelState\.(clearActionAccessibilityState|pauseActionAccessibilityState)/);
-  assert.match(source, /queuePanelState\.shouldShowCompactProcessNext/);
+  assert.match(source, /createMessageQueuePanelCompactActionMobilePropsParts/);
   assert.match(source, /queuePanelState\.shouldShowProcessNext/);
   assert.match(source, /queuePanelState\.shouldRenderClear/);
   assert.match(source, /queuePanelState\.shouldRenderPausedNotice/);
@@ -204,6 +204,10 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.match(source, /separator:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.separator/);
   assert.match(source, /compactContainer:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactContainer/);
   assert.match(source, /compactText:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactText/);
+  assert.match(source, /compactAction:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactAction/);
+  assert.match(source, /style=\{action\.style\}/);
+  assert.match(source, /activeOpacity=\{action\.activeOpacity\}/);
+  assert.match(source, /accessibilityRole=\{action\.accessibilityRole\}/);
   assert.doesNotMatch(source, /import \{ hexToRgba \} from '\.\/theme';/);
   assert.doesNotMatch(source, /hexToRgba\(/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceRenderState\(/);
@@ -221,6 +225,8 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.doesNotMatch(source, /headerActions:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',/);
   assert.doesNotMatch(source, /compactContainer:\s*\{\s*flexDirection:\s*'row',\s*alignItems:\s*'center',/);
   assert.doesNotMatch(source, /compactText:\s*\{\s*flex:\s*1,/);
+  assert.doesNotMatch(source, /name=\{queuePanelIcons\.(resumeName|pauseName|sendNextName|clearName)\}/);
+  assert.doesNotMatch(source, /size=\{panelSurface\.compactActionIconSize\}/);
   assert.doesNotMatch(source, /numberOfLines=\{isExpanded \? undefined : 2\}/);
   assert.doesNotMatch(source, /maxHeight:\s*200,/);
   assert.doesNotMatch(source, /borderRadius:\s*999,/);

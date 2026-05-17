@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   createMessageQueuePanelMobileStyleSlots,
+  createMessageQueuePanelCompactActionMobilePropsParts,
   createQueuedMessageStatusIndicatorMobilePropsPart,
   createQueuedMessageContentMobilePropsParts,
   createQueuedMessageExpandButtonMobilePropsParts,
@@ -469,6 +470,18 @@ export function MessageQueuePanel({
       ...panelStyleSlots.compactAction,
     },
   });
+  const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts({
+    surface: panelSurface,
+    colors: panelColors,
+    icons: queuePanelIcons,
+    copy: queuePanelCopy,
+    panel: queuePanelState,
+    styles,
+    onPause,
+    onResume,
+    onProcessNext,
+    onClear,
+  });
 
   if (compact) {
     return (
@@ -477,76 +490,24 @@ export function MessageQueuePanel({
         <Text style={styles.compactText}>
           {queuePanelState.compactLabel}
         </Text>
-        {isPaused && onResume ? (
+        {compactActionParts.actions.map((action) => (
           <TouchableOpacity
-            style={styles.compactAction}
-            onPress={onResume}
-            activeOpacity={panelSurface.actionPressedOpacity}
-            accessibilityRole={panelSurface.actionAccessibilityRole}
-            accessibilityLabel={queuePanelCopy.actions.resumeTitle}
+            key={action.key}
+            style={action.style}
+            onPress={action.onPress}
+            disabled={action.disabled}
+            activeOpacity={action.activeOpacity}
+            accessibilityRole={action.accessibilityRole}
+            accessibilityLabel={action.accessibilityLabel}
+            accessibilityState={action.accessibilityState}
           >
             <Ionicons
-              name={queuePanelIcons.resumeName}
-              size={panelSurface.compactActionIconSize}
-              color={panelColors.resumeActionColor}
+              name={action.icon.name}
+              size={action.icon.size}
+              color={action.icon.color}
             />
           </TouchableOpacity>
-        ) : null}
-        {!isPaused && onPause ? (
-          <TouchableOpacity
-            style={styles.compactAction}
-            onPress={onPause}
-            disabled={queuePanelState.pauseActionState.isDisabled}
-            activeOpacity={panelSurface.actionPressedOpacity}
-            accessibilityRole={panelSurface.actionAccessibilityRole}
-            accessibilityLabel={queuePanelCopy.actions.pauseTitle}
-            accessibilityState={queuePanelState.pauseActionState.accessibilityState}
-          >
-            <Ionicons
-              name={queuePanelIcons.pauseName}
-              size={panelSurface.compactActionIconSize}
-              color={
-                queuePanelState.pauseActionState.isDisabled
-                  ? panelColors.disabledActionColor
-                  : panelStatusColors.color
-              }
-            />
-          </TouchableOpacity>
-        ) : null}
-        {queuePanelState.shouldShowCompactProcessNext && onProcessNext ? (
-          <TouchableOpacity
-            style={styles.compactAction}
-            onPress={onProcessNext}
-            activeOpacity={panelSurface.actionPressedOpacity}
-            accessibilityRole={panelSurface.actionAccessibilityRole}
-            accessibilityLabel={queuePanelCopy.actions.sendNextAccessibilityLabel}
-          >
-            <Ionicons
-              name={queuePanelIcons.sendNextName}
-              size={panelSurface.compactActionIconSize}
-              color={panelColors.processReadyColor}
-            />
-          </TouchableOpacity>
-        ) : null}
-        <TouchableOpacity
-          style={styles.compactAction}
-          onPress={onClear}
-          disabled={queuePanelState.clearActionState.isDisabled}
-          activeOpacity={panelSurface.actionPressedOpacity}
-          accessibilityRole={panelSurface.actionAccessibilityRole}
-          accessibilityLabel={queuePanelCopy.actions.clearQueueTitle}
-          accessibilityState={queuePanelState.clearActionState.accessibilityState}
-        >
-          <Ionicons
-            name={queuePanelIcons.clearName}
-            size={panelSurface.compactActionIconSize}
-            color={
-              queuePanelState.clearActionState.isDisabled
-                ? panelColors.disabledActionColor
-                : panelStatusColors.color
-            }
-          />
-        </TouchableOpacity>
+        ))}
       </View>
     );
   }
