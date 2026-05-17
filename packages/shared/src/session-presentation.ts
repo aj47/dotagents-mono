@@ -3739,18 +3739,24 @@ export interface ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
   },
 > {
   container: {
-    onPress: TOnPress | undefined
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityHint: string
-    style: (state: { pressed: boolean }) => Array<
-      TStyles["button"] | TStyles["pressed"] | TStyles["placement"] | false | undefined
-    >
+    props: {
+      onPress: TOnPress | undefined
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityHint: string
+      style: (state: { pressed: boolean }) => Array<
+        TStyles["button"] | TStyles["pressed"] | TStyles["placement"] | false | undefined
+      >
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
   label: {
-    text: string
-    style: TStyles["text"]
+    props: {
+      style: TStyles["text"]
+      text: string
+    }
   }
 }
 
@@ -21005,20 +21011,26 @@ export function createChatRuntimeToolExecutionCollapseControlMobilePropsParts<
 > {
   return {
     container: {
-      onPress,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      accessibilityHint: renderState.accessibilityHint,
-      style: ({ pressed }) => [
-        styles.button,
-        pressed && styles.pressed,
-        styles.placement,
-      ],
+      props: {
+        onPress,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        accessibilityHint: renderState.accessibilityHint,
+        style: ({ pressed }) => [
+          styles.button,
+          pressed && styles.pressed,
+          styles.placement,
+        ],
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
     label: {
-      text: renderState.label,
-      style: styles.text,
+      props: {
+        style: styles.text,
+        text: renderState.label,
+      },
     },
   }
 }

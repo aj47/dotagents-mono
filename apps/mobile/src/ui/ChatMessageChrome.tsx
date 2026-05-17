@@ -2003,6 +2003,23 @@ type ChatMessageToolExecutionCollapseControlProps = {
   styles: ChatMessageToolExecutionCollapseControlStyles;
 };
 
+type ChatMessageToolExecutionCollapseControlParts = ReturnType<typeof createChatRuntimeToolExecutionCollapseControlMobilePropsParts<
+  ChatMessageToolExecutionCollapseControlProps['renderState'],
+  ChatMessageToolExecutionCollapseControlProps['onPress'],
+  ChatMessageToolExecutionCollapseControlProps['styles']
+>>;
+
+type ChatMessageToolExecutionCollapseControlPressableProps =
+  ChatMessageToolExecutionCollapseControlParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionCollapseControlIconProps =
+  ChatMessageToolExecutionCollapseControlParts['icon']['props'];
+
+type ChatMessageToolExecutionCollapseControlLabelProps =
+  ChatMessageToolExecutionCollapseControlParts['label']['props'];
+
 type ChatMessageToolExecutionExpandedGroupStyles = {
   container: StyleProp<ViewStyle>;
   card: StyleProp<ViewStyle>;
@@ -9243,22 +9260,62 @@ export function ChatMessageToolExecutionCollapseControl({
   });
 
   return (
-    <Pressable
-      onPress={collapseControlParts.container.onPress}
-      accessibilityRole={collapseControlParts.container.accessibilityRole}
-      accessibilityLabel={collapseControlParts.container.accessibilityLabel}
-      accessibilityHint={collapseControlParts.container.accessibilityHint}
-      style={collapseControlParts.container.style}
+    <ChatMessageToolExecutionCollapseControlPressable
+      {...collapseControlParts.container.props}
     >
-      <Ionicons
-        name={collapseControlParts.icon.name}
-        size={collapseControlParts.icon.size}
-        color={collapseControlParts.icon.color}
+      <ChatMessageToolExecutionCollapseControlIcon
+        {...collapseControlParts.icon.props}
       />
-      <Text style={collapseControlParts.label.style}>
-        {collapseControlParts.label.text}
-      </Text>
+      <ChatMessageToolExecutionCollapseControlLabel
+        {...collapseControlParts.label.props}
+      />
+    </ChatMessageToolExecutionCollapseControlPressable>
+  );
+}
+
+export function ChatMessageToolExecutionCollapseControlPressable({
+  onPress,
+  accessibilityRole,
+  accessibilityLabel,
+  accessibilityHint,
+  style,
+  children,
+}: ChatMessageToolExecutionCollapseControlPressableProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      style={style}
+    >
+      {children}
     </Pressable>
+  );
+}
+
+export function ChatMessageToolExecutionCollapseControlIcon({
+  name,
+  size,
+  color,
+}: ChatMessageToolExecutionCollapseControlIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionCollapseControlLabel({
+  style,
+  text,
+}: ChatMessageToolExecutionCollapseControlLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 

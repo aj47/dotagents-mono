@@ -12963,27 +12963,33 @@ describe("session presentation semantics", () => {
     })
     expect(collapseControlParts).toMatchObject({
       container: {
-        onPress: "collapse-expanded",
-        accessibilityRole: "button",
-        accessibilityLabel: "Collapse tool details",
-        accessibilityHint: "Hides tool details",
+        props: {
+          onPress: "collapse-expanded",
+          accessibilityRole: "button",
+          accessibilityLabel: "Collapse tool details",
+          accessibilityHint: "Hides tool details",
+        },
       },
       icon: {
-        name: "chevron-up",
-        size: 12,
-        color: "#555",
+        props: {
+          name: "chevron-up",
+          size: 12,
+          color: "#555",
+        },
       },
       label: {
-        text: "Collapse",
-        style: "collapse-text",
+        props: {
+          style: "collapse-text",
+          text: "Collapse",
+        },
       },
     })
-    expect(collapseControlParts.container.style({ pressed: false })).toEqual([
+    expect(collapseControlParts.container.props.style({ pressed: false })).toEqual([
       "collapse-button",
       false,
       "collapse-top",
     ])
-    expect(collapseControlParts.container.style({ pressed: true })).toEqual([
+    expect(collapseControlParts.container.props.style({ pressed: true })).toEqual([
       "collapse-button",
       "collapse-pressed",
       "collapse-top",
