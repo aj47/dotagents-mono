@@ -2235,6 +2235,9 @@ type ChatMessageDelegationMorePreviewActionProps =
   | ChatMessageDelegationConversationMorePreviewActionProps
   | ChatMessageDelegationToolMorePreviewActionProps;
 
+type ChatMessageDelegationMorePreviewActionLabelProps =
+  ChatMessageDelegationMorePreviewActionProps['label'];
+
 type ChatMessageToolActivityGroupHeaderKind = ChatRuntimeToolActivityGroupHeaderMobileKind;
 
 type ChatMessageToolActivityGroupToggleStyles = {
@@ -9613,12 +9616,23 @@ export function ChatMessageDelegationMorePreviewAction({
     <Pressable
       {...button.props}
     >
-      <Text
-        {...label.props}
-      >
-        {label.text}
-      </Text>
+      <ChatMessageDelegationMorePreviewActionLabel
+        {...label}
+      />
     </Pressable>
+  );
+}
+
+export function ChatMessageDelegationMorePreviewActionLabel({
+  props,
+  text,
+}: ChatMessageDelegationMorePreviewActionLabelProps) {
+  return (
+    <Text
+      {...props}
+    >
+      {text}
+    </Text>
   );
 }
 

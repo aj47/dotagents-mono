@@ -1411,18 +1411,24 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(delegationMorePreviewActionBlockSource, /if \(!moreAction\.shouldRender\) \{\s+return null;\s+\}/);
   assert.match(delegationMorePreviewActionBlockSource, /<ChatMessageDelegationMorePreviewAction\s+\{\.\.\.moreAction\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMorePreviewAction/);
+  const delegationMorePreviewActionSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationMorePreviewAction\([\s\S]*?export function ChatMessageDelegationMorePreviewActionLabel/)?.[0] ?? '';
+  const delegationMorePreviewActionLabelSource =
+    chatMessageChromeSource.match(/export function ChatMessageDelegationMorePreviewActionLabel[\s\S]*?export function ChatMessageDelegationHeader/)?.[0] ?? '';
   assert.doesNotMatch(delegationConversationPreviewSource, /<ChatMessageDelegationMorePreviewAction\s+\{\.\.\.previewContent\.moreAction\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMorePreviewAction[\s\S]*?<Pressable\s+\{\.\.\.button\.props\}[\s\S]*?export function ChatMessageDelegationCard/);
+  assert.match(delegationMorePreviewActionSource, /<Pressable\s+\{\.\.\.button\.props\}/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction\.button\.accessibilityRole/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction\.button\.accessibilityLabel/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationMorePreviewAction[\s\S]*?button\.(onPress|accessibilityRole|accessibilityLabel|style)[\s\S]*?export function ChatMessageDelegationCard/);
+  assert.doesNotMatch(delegationMorePreviewActionSource, /button\.(onPress|accessibilityRole|accessibilityLabel|style)/);
   assert.match(sessionPresentationSource, /styles\.conversationPreviewMoreButton/);
   assert.match(sessionPresentationSource, /styles\.conversationPreviewMoreButtonPressed/);
   assert.match(sessionPresentationSource, /styles\.conversationPreviewMore/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMorePreviewAction[\s\S]*?<Text\s+\{\.\.\.label\.props\}[\s\S]*?\{label\.text\}[\s\S]*?export function ChatMessageDelegationCard/);
+  assert.match(delegationMorePreviewActionSource, /<ChatMessageDelegationMorePreviewActionLabel\s+\{\.\.\.label\}/);
+  assert.match(delegationMorePreviewActionLabelSource, /<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(delegationMorePreviewActionSource, /<Text\s+\{\.\.\.label\.props\}/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction\.label\.numberOfLines/);
   assert.doesNotMatch(delegationCardComponentSource, /cardContent\.conversationPreview\.moreAction\.label\.text/);
-  assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationMorePreviewAction[\s\S]*?label\.(style|numberOfLines)[\s\S]*?export function ChatMessageDelegationCard/);
+  assert.doesNotMatch(delegationMorePreviewActionLabelSource, /label\.(style|numberOfLines)/);
   assert.doesNotMatch(screenSource, /const isDelegationToolPreviewExpanded = m\.delegation/);
   assert.doesNotMatch(screenSource, /getChatDisplayExpansionState\(expandedDelegationToolPreviews, m\.delegation\.runId\)/);
   assert.match(screenSource, /expandedDelegationToolPreviews,/);
