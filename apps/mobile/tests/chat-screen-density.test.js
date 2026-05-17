@@ -4423,7 +4423,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileWrapperRenderState/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/message-queue-utils'/);
   assert.doesNotMatch(messageQueuePanelSource, /from '@dotagents\/shared\/message-queue-utils'/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileWrapperStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createMessageQueuePanelCompactActionMobilePropsParts,[\s\S]*?createMessageQueuePanelHeaderActionMobilePropsParts,[\s\S]*?createMessageQueuePanelChromeMobilePropsParts,[\s\S]*?createMessageQueuePanelListMobilePropsParts,[\s\S]*?createQueuedMessageItemMobilePropsParts,[\s\S]*?createQueuedMessageStatusIndicatorMobilePropsPart,[\s\S]*?createQueuedMessageItemChromeMobilePropsParts,[\s\S]*?createQueuedMessageContentMobilePropsParts,[\s\S]*?createQueuedMessageExpandButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageActionRowMobileStyleSlot,[\s\S]*?createQueuedMessageEditMobilePropsParts,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSheetSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createMessageQueuePanelMobileWrapperStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSlots,[\s\S]*?createMessageQueuePanelMobileStyleSheetSlots,[\s\S]*?createMessageQueuePanelCompactActionMobilePropsParts,[\s\S]*?createMessageQueuePanelHeaderActionMobilePropsParts,[\s\S]*?createMessageQueuePanelChromeMobilePropsParts,[\s\S]*?createMessageQueuePanelListMobilePropsParts,[\s\S]*?createQueuedMessageItemMobilePropsParts,[\s\S]*?createQueuedMessageStatusIndicatorMobilePropsPart,[\s\S]*?createQueuedMessageItemChromeMobilePropsParts,[\s\S]*?createQueuedMessageContentMobilePropsParts,[\s\S]*?createQueuedMessageExpandButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobilePropsParts,[\s\S]*?createQueuedMessageActionButtonMobileStyleSlots,[\s\S]*?createQueuedMessageActionRowMobileStyleSlot,[\s\S]*?createQueuedMessageEditMobilePropsParts,[\s\S]*?createQueuedMessageEditMobileStyleSlots,[\s\S]*?createQueuedMessageItemMobileStyleSheetSlots,[\s\S]*?createQueuedMessageItemMobileStyleSlots,[\s\S]*?getMessageQueuePanelMobileRenderState,[\s\S]*?getQueuedMessageEditDraftState,[\s\S]*?getQueuedMessageItemMobileRenderState,[\s\S]*?QueuedMessage,[\s\S]*?\} from "\.\/message-queue-utils"/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceState,/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileSurfaceRenderState,/);
   assert.doesNotMatch(screenSource, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
@@ -4466,8 +4466,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(chatMessageChromeSource, /<MessageQueuePanel \{\.\.\.panel\} \/>/);
   assert.match(messageQueuePanelSource, /if \(!queuePanelRenderState\.shouldRender\) \{\s+return null;\s+\}/);
   assert.doesNotMatch(messageQueuePanelSource, /if \(messages\.length === 0\) \{\s+return null;\s+\}/);
-  assert.match(messageQueuePanelSource, /createMessageQueuePanelMobileStyleSlots,/);
-  assert.match(messageQueuePanelSource, /const panelStyleSlots = createMessageQueuePanelMobileStyleSlots\(\{\s+surface: panelSurface,\s+colors: panelColors,\s+panel: queuePanelState,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /createMessageQueuePanelMobileStyleSheetSlots,/);
+  assert.match(messageQueuePanelSource, /const panelStyleSheetSlots = createMessageQueuePanelMobileStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /const styles = StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\);/);
   assert.match(messageQueuePanelSource, /createMessageQueuePanelCompactActionMobilePropsParts,/);
   assert.match(messageQueuePanelSource, /const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts\(\{\s+surface: panelSurface,\s+colors: panelColors,\s+icons: queuePanelIcons,\s+copy: queuePanelCopy,\s+panel: queuePanelState,\s+styles,\s+onPause,\s+onResume,\s+onProcessNext,\s+onClear,\s+\}\);/);
   assert.match(messageQueuePanelSource, /createMessageQueuePanelHeaderActionMobilePropsParts,/);
@@ -4478,10 +4479,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /const panelListParts = createMessageQueuePanelListMobilePropsParts\(\{\s+items: queuePanelState\.items,\s+styles,\s+onRemove,\s+onUpdate,\s+onRetry,\s+\}\);/);
   assert.match(messageQueuePanelSource, /multiline=\{editParts\.input\.multiline\}/);
   assert.match(messageQueuePanelSource, /autoFocus=\{editParts\.input\.autoFocus\}/);
-  assert.match(messageQueuePanelSource, /container:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.container/);
-  assert.match(messageQueuePanelSource, /header:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.header/);
-  assert.match(messageQueuePanelSource, /compactContainer:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactContainer/);
-  assert.match(messageQueuePanelSource, /compactAction:\s*\{[\s\S]*?\.\.\.panelStyleSlots\.compactAction/);
+  assert.doesNotMatch(messageQueuePanelSource, /createMessageQueuePanelMobileStyleSlots,/);
+  assert.doesNotMatch(messageQueuePanelSource, /const panelStyleSlots = createMessageQueuePanelMobileStyleSlots/);
+  assert.doesNotMatch(messageQueuePanelSource, /panelStyleSlots\./);
   assert.match(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) =>/);
   assert.match(messageQueuePanelSource, /headerActionParts\.actions\.map\(\(action\) =>/);
   assert.match(messageQueuePanelSource, /style=\{panelChromeParts\.container\.style\}/);

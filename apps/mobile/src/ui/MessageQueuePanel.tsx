@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  createMessageQueuePanelMobileStyleSlots,
+  createMessageQueuePanelMobileStyleSheetSlots,
   createMessageQueuePanelCompactActionMobilePropsParts,
   createMessageQueuePanelHeaderActionMobilePropsParts,
   createMessageQueuePanelChromeMobilePropsParts,
@@ -282,75 +282,15 @@ export function MessageQueuePanel({
   const panelColors = queuePanelColors.panel;
   const queuePanelIcons = queuePanelRenderState.icons;
   const queuePanelCopy = queuePanelRenderState.copy;
-  const panelStyleSlots = createMessageQueuePanelMobileStyleSlots({
-    surface: panelSurface,
-    colors: panelColors,
-    panel: queuePanelState,
+  const panelStyleSheetSlots = createMessageQueuePanelMobileStyleSheetSlots({
+    renderState: queuePanelRenderState,
   });
 
   if (!queuePanelRenderState.shouldRender) {
     return null;
   }
 
-  const styles = StyleSheet.create({
-    container: {
-      ...panelStyleSlots.container,
-    },
-    header: {
-      ...panelStyleSlots.header,
-    },
-    headerCollapsed: {
-      ...panelStyleSlots.headerCollapsed,
-    },
-    headerLeft: {
-      ...panelStyleSlots.headerLeft,
-    },
-    headerActions: {
-      ...panelStyleSlots.headerActions,
-    },
-    headerTitle: {
-      ...panelStyleSlots.headerTitle,
-    },
-    clearButton: {
-      ...panelStyleSlots.clearButton,
-    },
-    clearButtonText: {
-      ...panelStyleSlots.clearButtonText,
-    },
-    queueControlText: {
-      ...panelStyleSlots.queueControlText,
-    },
-    queueControlTextDisabled: {
-      ...panelStyleSlots.queueControlTextDisabled,
-    },
-    processButton: {
-      ...panelStyleSlots.processButton,
-    },
-    processButtonText: {
-      ...panelStyleSlots.processButtonText,
-    },
-    list: {
-      ...panelStyleSlots.list,
-    },
-    separator: {
-      ...panelStyleSlots.separator,
-    },
-    pausedNotice: {
-      ...panelStyleSlots.pausedNotice,
-    },
-    pausedNoticeText: {
-      ...panelStyleSlots.pausedNoticeText,
-    },
-    compactContainer: {
-      ...panelStyleSlots.compactContainer,
-    },
-    compactText: {
-      ...panelStyleSlots.compactText,
-    },
-    compactAction: {
-      ...panelStyleSlots.compactAction,
-    },
-  });
+  const styles = StyleSheet.create({ ...panelStyleSheetSlots });
   const compactActionParts = createMessageQueuePanelCompactActionMobilePropsParts({
     surface: panelSurface,
     colors: panelColors,

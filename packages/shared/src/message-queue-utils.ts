@@ -941,6 +941,12 @@ export interface MessageQueuePanelMobileStyleSlots {
   };
 }
 
+export interface MessageQueuePanelMobileStyleSheetSlotsInput<T extends Pick<QueuedMessage, 'id' | 'status'>> {
+  renderState: Pick<MessageQueuePanelMobileRenderState<T>, 'surface' | 'colors' | 'panel'>;
+}
+
+export type MessageQueuePanelMobileStyleSheetSlots = MessageQueuePanelMobileStyleSlots;
+
 export interface MessageQueuePanelCompactActionMobilePropsPartsStylesLike {
   compactAction: unknown;
 }
@@ -1437,6 +1443,16 @@ export function createMessageQueuePanelMobileStyleSlots<T extends Pick<QueuedMes
     },
     compactAction: actionButtonStyle,
   };
+}
+
+export function createMessageQueuePanelMobileStyleSheetSlots<T extends Pick<QueuedMessage, 'id' | 'status'>>({
+  renderState,
+}: MessageQueuePanelMobileStyleSheetSlotsInput<T>): MessageQueuePanelMobileStyleSheetSlots {
+  return createMessageQueuePanelMobileStyleSlots({
+    surface: renderState.surface.panel,
+    colors: renderState.colors.panel,
+    panel: renderState.panel,
+  });
 }
 
 export function createMessageQueuePanelCompactActionMobilePropsParts<

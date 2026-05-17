@@ -8,6 +8,7 @@ import {
   clearOperatorMessageQueueSummary,
   clearQueuedMessages,
   createMessageQueuePanelMobileStyleSlots,
+  createMessageQueuePanelMobileStyleSheetSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
   createMessageQueuePanelCompactActionMobilePropsParts,
   createMessageQueuePanelHeaderActionMobilePropsParts,
@@ -584,6 +585,37 @@ describe('message-queue-utils', () => {
       compactAction: {
         paddingHorizontal: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPaddingHorizontal,
         paddingVertical: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPaddingVertical,
+      },
+    });
+    expect(createMessageQueuePanelMobileStyleSheetSlots({
+      renderState: getMessageQueuePanelMobileRenderState({
+        messages: [makeMessage('panel-style-sheet-message')],
+        colors: mobileMessageQueuePalette,
+        canProcessNext: true,
+      }),
+    })).toMatchObject({
+      container: {
+        borderColor: 'rgba(245, 158, 11, 0.27)',
+        backgroundColor: 'rgba(245, 158, 11, 0.07)',
+      },
+      header: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(245, 158, 11, 0.09)',
+      },
+      headerActions: {
+        flexDirection: 'row',
+      },
+      processButtonText: {
+        color: '#2563eb',
+      },
+      pausedNoticeText: {
+        color: '#f59e0b',
+      },
+      compactContainer: {
+        borderRadius: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.borderRadius,
+      },
+      compactAction: {
+        paddingHorizontal: MESSAGE_QUEUE_PANEL_SURFACE_PRESENTATION.mobile.panel.actionPaddingHorizontal,
       },
     });
     const compactActionCalls: string[] = [];
