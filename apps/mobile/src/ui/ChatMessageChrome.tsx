@@ -2007,6 +2007,10 @@ type ChatMessageToolApprovalToolRowProps = {
   name: ChatMessageToolApprovalParts['toolName'];
 };
 
+type ChatMessageToolApprovalArgumentsToggleContentProps = {
+  content: ChatMessageToolApprovalParts['argumentsToggle']['content'];
+};
+
 type ChatMessageToolApprovalIconProps =
   | ChatMessageToolApprovalParts['headerIcon']['props']
   | ChatMessageToolApprovalParts['argumentsToggle']['content']['icon']['props']
@@ -9033,7 +9037,6 @@ export function ChatMessageToolApproval({
     onApprove,
     styles,
   });
-  const argumentsToggleContent = toolApprovalParts.argumentsToggle.content;
 
   return (
     <ChatMessageToolApprovalView
@@ -9061,11 +9064,8 @@ export function ChatMessageToolApproval({
         <ChatMessageToolApprovalArgumentsToggle
           {...toolApprovalParts.argumentsToggle.props}
         >
-          <ChatMessageToolApprovalIcon
-            {...argumentsToggleContent.icon.props}
-          />
-          <ChatMessageToolApprovalArgumentsToggleLabel
-            {...argumentsToggleContent.label.props}
+          <ChatMessageToolApprovalArgumentsToggleContent
+            content={toolApprovalParts.argumentsToggle.content}
           />
         </ChatMessageToolApprovalArgumentsToggle>
         {toolApprovalParts.fullArguments.shouldRender ? (
@@ -9116,6 +9116,21 @@ export function ChatMessageToolApprovalToolRow({
         {...name.props}
       />
     </ChatMessageToolApprovalView>
+  );
+}
+
+export function ChatMessageToolApprovalArgumentsToggleContent({
+  content,
+}: ChatMessageToolApprovalArgumentsToggleContentProps) {
+  return (
+    <>
+      <ChatMessageToolApprovalIcon
+        {...content.icon.props}
+      />
+      <ChatMessageToolApprovalArgumentsToggleLabel
+        {...content.label.props}
+      />
+    </>
   );
 }
 

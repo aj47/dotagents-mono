@@ -701,9 +701,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /createChatRuntimeToolApprovalMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(toolApprovalComponentSource, /const toolApprovalParts = createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
-  assert.match(toolApprovalComponentSource, /const argumentsToggleContent = toolApprovalParts\.argumentsToggle\.content;/);
+  assert.doesNotMatch(toolApprovalComponentSource, /const argumentsToggleContent = toolApprovalParts\.argumentsToggle\.content;/);
   const toolApprovalToolRowSource =
-    chatMessageChromeSource.match(/export function ChatMessageToolApprovalToolRow[\s\S]*?export function ChatMessageToolApprovalHeader/)?.[0] ?? '';
+    chatMessageChromeSource.match(/export function ChatMessageToolApprovalToolRow[\s\S]*?export function ChatMessageToolApprovalArgumentsToggleContent/)?.[0] ?? '';
+  const argumentsToggleContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolApprovalArgumentsToggleContent[\s\S]*?export function ChatMessageToolApprovalHeader/)?.[0] ?? '';
   const toolApprovalHeaderSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalHeader[\s\S]*?export function ChatMessageToolApprovalDenyActionContent/)?.[0] ?? '';
   const denyActionContentSource =
@@ -735,14 +737,15 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview\.(style|numberOfLines|text)/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview \? \(/);
   assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?content: \{[\s\S]*?icon: \{[\s\S]*?props: renderState\.argumentsToggle\.icon,/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.argumentsToggleContent\.icon\.props\}/);
-  assert.doesNotMatch(toolApprovalComponentSource, /argumentsToggleContent\.icon\.(name|size|color)/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsToggleContent\s+content=\{toolApprovalParts\.argumentsToggle\.content\}/);
+  assert.match(argumentsToggleContentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.content\.icon\.props\}/);
+  assert.doesNotMatch(argumentsToggleContentSource, /content\.icon\.(name|size|color)/);
   assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?content: \{[\s\S]*?label: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?style: styles\.argumentsToggleText,[\s\S]*?text: renderState\.argumentsToggle\.label,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalArgumentsToggleLabel/);
-  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalArgumentsToggleLabel\s+\{\.\.\.argumentsToggleContent\.label\.props\}/);
+  assert.match(argumentsToggleContentSource, /<ChatMessageToolApprovalArgumentsToggleLabel\s+\{\.\.\.content\.label\.props\}/);
   assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsToggleLabel[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalArgumentsToggleLabel[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolApprovalActionLabel/);
-  assert.doesNotMatch(toolApprovalComponentSource, /argumentsToggleContent\.label\.text/);
+  assert.doesNotMatch(argumentsToggleContentSource, /content\.label\.text/);
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.shouldRender \? \(/);
   assert.match(sessionPresentationSource, /fullArguments: \{[\s\S]*?scroll: \{[\s\S]*?props: \{[\s\S]*?style: styles\.argumentsScroll,[\s\S]*?nestedScrollEnabled: true,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalFullArgumentsScroll/);
