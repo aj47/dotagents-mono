@@ -4149,6 +4149,9 @@ type ChatComposerLabeledActionButtonTouchableProps =
     children: ReactNode;
   };
 
+type ChatComposerLabeledActionButtonTouchableContentProps =
+  ChatComposerLabeledActionButtonParts['touchable']['content'];
+
 type ChatComposerLabeledActionButtonIconProps =
   ChatComposerLabeledActionButtonParts['touchable']['content']['icon']['props'];
 
@@ -13853,20 +13856,11 @@ export function ChatComposerLabeledActionButton({
 
   if (!actionButtonTouchable.shouldRender) return null;
 
-  const touchableContent = actionButtonTouchable.content;
-
   return (
     <ChatComposerLabeledActionButtonTouchable
       {...actionButtonTouchable.props}
     >
-      <ChatComposerLabeledActionButtonIcon
-        {...touchableContent.icon.props}
-      />
-      {touchableContent.label.shouldRender ? (
-        <ChatComposerLabeledActionButtonLabel
-          {...touchableContent.label.props}
-        />
-      ) : null}
+      <ChatComposerLabeledActionButtonTouchableContent {...actionButtonTouchable.content} />
     </ChatComposerLabeledActionButtonTouchable>
   );
 }
@@ -13879,6 +13873,24 @@ export function ChatComposerLabeledActionButtonTouchable({
     <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatComposerLabeledActionButtonTouchableContent({
+  icon,
+  label,
+}: ChatComposerLabeledActionButtonTouchableContentProps) {
+  return (
+    <>
+      <ChatComposerLabeledActionButtonIcon
+        {...icon.props}
+      />
+      {label.shouldRender ? (
+        <ChatComposerLabeledActionButtonLabel
+          {...label.props}
+        />
+      ) : null}
+    </>
   );
 }
 

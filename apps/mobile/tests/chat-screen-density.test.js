@@ -3078,13 +3078,18 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /setDebugInfo\(getChatComposerQueueMobileActionState\(\)\.debugMessage\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function getChatComposerRuntimeQueueDebugMessage/);
   assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonTouchable\s+\{\.\.\.actionButtonTouchable\.props\}/);
-  assert.match(composerLabeledActionButtonSource, /const touchableContent = actionButtonTouchable\.content;/);
-  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonIcon\s+\{\.\.\.touchableContent\.icon\.props\}/);
-  assert.match(composerLabeledActionButtonSource, /touchableContent\.label\.shouldRender \? \(/);
-  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonLabel\s+\{\.\.\.touchableContent\.label\.props\}/);
+  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonTouchableContent\s+\{\.\.\.actionButtonTouchable\.content\}/);
+  assert.doesNotMatch(composerLabeledActionButtonSource, /const touchableContent = actionButtonTouchable\.content;/);
+  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(composerLabeledActionButtonSource, /label\.shouldRender \? \(/);
+  assert.match(composerLabeledActionButtonSource, /<ChatComposerLabeledActionButtonLabel\s+\{\.\.\.label\.props\}/);
   assert.match(
     composerLabeledActionButtonSource,
-    /export function ChatComposerLabeledActionButtonTouchable\([\s\S]*?<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatComposerLabeledActionButtonIcon/
+    /export function ChatComposerLabeledActionButtonTouchable\([\s\S]*?<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatComposerLabeledActionButtonTouchableContent/
+  );
+  assert.match(
+    composerLabeledActionButtonSource,
+    /export function ChatComposerLabeledActionButtonTouchableContent\([\s\S]*?<ChatComposerLabeledActionButtonIcon\s+\{\.\.\.icon\.props\}[\s\S]*?export function ChatComposerLabeledActionButtonIcon/
   );
   assert.match(
     composerLabeledActionButtonSource,
