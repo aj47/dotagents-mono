@@ -5945,6 +5945,14 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupFooter/);
   const toolActivityGroupToggleComponentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupToggle[\s\S]*?export function ChatMessageToolActivityGroupFooter/)?.[0] ?? '';
+  const toolActivityGroupToggleShellSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupToggle[\s\S]*?export function ChatMessageToolActivityGroupToggleHeaderRow/)?.[0] ?? '';
+  const toolActivityGroupToggleHeaderRowSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupToggleHeaderRow[\s\S]*?export function ChatMessageToolActivityGroupToggleHeaderContent/)?.[0] ?? '';
+  const toolActivityGroupToggleHeaderContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupToggleHeaderContent[\s\S]*?export function ChatMessageToolActivityGroupOptionalCountBadge/)?.[0] ?? '';
+  const toolActivityGroupOptionalCountBadgeSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupOptionalCountBadge[\s\S]*?export function ChatMessageToolActivityGroupIcon/)?.[0] ?? '';
   const toolActivityGroupFooterComponentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupFooter[\s\S]*?export function ChatMessageToolActivityGroupBoundary/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolActivityGroupToggleMobilePropsParts,/);
@@ -5957,10 +5965,13 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /const \{ headerState, summary \}/);
   assert.doesNotMatch(chatMessageChromeSource, /const headerState = headerKind === 'collapsed'/);
   assert.match(toolActivityGroupToggleComponentSource, /<Pressable\s+\{\.\.\.toggleParts\.pressable\.props\}/);
-  assert.match(toolActivityGroupToggleComponentSource, /<View\s+\{\.\.\.toggleParts\.headerRow\.props\}/);
+  assert.match(toolActivityGroupToggleShellSource, /<ChatMessageToolActivityGroupToggleHeaderRow\s+\{\.\.\.toggleParts\.headerRow\}/);
+  assert.doesNotMatch(toolActivityGroupToggleShellSource, /toggleParts\.headerRow\.content/);
+  assert.match(toolActivityGroupToggleHeaderRowSource, /<View\s+\{\.\.\.props\}/);
+  assert.match(toolActivityGroupToggleHeaderRowSource, /<ChatMessageToolActivityGroupToggleHeaderContent\s+\{\.\.\.content\}/);
   assert.match(sessionPresentationSource, /pressable: \{[\s\S]*?props: \{[\s\S]*?onPress,[\s\S]*?accessibilityRole: headerState\.accessibilityRole,[\s\S]*?accessibilityLabel: headerState\.accessibilityLabel,[\s\S]*?accessibilityState: headerState\.accessibilityState,[\s\S]*?ariaExpanded: headerState\.ariaExpanded,/);
   assert.match(sessionPresentationSource, /headerRow: \{[\s\S]*?props: \{[\s\S]*?style: styles\.headerRow,/);
-  assert.match(toolActivityGroupToggleComponentSource, /const toggleHeaderRowContent = toggleParts\.headerRow\.content;/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /const toggleHeaderRowContent = toggleParts\.headerRow\.content;/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.pressable\.(onPress|accessibilityRole|accessibilityLabel|accessibilityState|ariaExpanded|style)/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.headerRow\.style/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /accessibilityRole=\{headerState\.accessibilityRole\}/);
@@ -5970,7 +5981,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /group\.previewLines\.join\(', '\) \|\| mobileToolActivityGroupCopy\.collapsedFallbackLabel/);
   assert.match(sessionPresentationSource, /headerRow: \{[\s\S]*?content: \{[\s\S]*?leadingIcon: \{[\s\S]*?props: renderState\.leadingIcon,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupIcon/);
-  assert.match(toolActivityGroupToggleComponentSource, /<ChatMessageToolActivityGroupIcon\s+\{\.\.\.toggleHeaderRowContent\.leadingIcon\.props\}/);
+  assert.match(toolActivityGroupToggleHeaderContentSource, /<ChatMessageToolActivityGroupIcon\s+\{\.\.\.leadingIcon\.props\}/);
   assert.match(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupIcon\(props: ChatMessageToolActivityGroupIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolActivityGroupCountBadge/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.leadingIcon\./);
@@ -5979,10 +5990,11 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /theme\.colors\[mobileToolActivityGroupLeadingIcon\.colorToken\]/);
   assert.doesNotMatch(screenSource, /mobileToolActivityGroupLeadingIcon\.opacity/);
   assert.match(sessionPresentationSource, /headerRow: \{[\s\S]*?content: \{[\s\S]*?countBadge: \{\s+shouldRender: renderState\.summary\.shouldShowToolCallCount,[\s\S]*?props: \{[\s\S]*?container: \{[\s\S]*?props: \{[\s\S]*?accessibilityLabel: renderState\.summary\.toolCallCountLabel,/);
-  assert.match(toolActivityGroupToggleComponentSource, /toggleHeaderRowContent\.countBadge\.shouldRender \? \(/);
+  assert.match(toolActivityGroupOptionalCountBadgeSource, /if \(!countBadge\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.doesNotMatch(toolActivityGroupToggleHeaderContentSource, /countBadge\.shouldRender \? \(/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.countBadge \? \(/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupCountBadge/);
-  assert.match(toolActivityGroupToggleComponentSource, /<ChatMessageToolActivityGroupCountBadge\s+\{\.\.\.toggleHeaderRowContent\.countBadge\.props\}/);
+  assert.match(toolActivityGroupOptionalCountBadgeSource, /<ChatMessageToolActivityGroupCountBadge\s+\{\.\.\.countBadge\.props\}/);
   assert.match(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupCountBadge[\s\S]*?<View\s+\{\.\.\.container\.props\}[\s\S]*?<Text\s+\{\.\.\.label\.props\}/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupCountBadge[\s\S]*?(accessibilityLabel=\{container\.accessibilityLabel\}|style=\{container\.style\}|style=\{label\.style\})[\s\S]*?export function ChatMessageToolActivityGroupPreviewLine/);
   assert.equal((toolActivityGroupToggleComponentSource.match(/\{label\.text\}/g) ?? []).length, 1);
@@ -5990,7 +6002,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleHeaderRowContent\.countBadge\.label\.text/);
   assert.match(sessionPresentationSource, /headerRow: \{[\s\S]*?content: \{[\s\S]*?preview: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?numberOfLines: renderState\.surface\.preview\.numberOfLines,[\s\S]*?ellipsizeMode: renderState\.surface\.preview\.ellipsizeMode,[\s\S]*?text: renderState\.summary\.previewText,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupPreviewLine/);
-  assert.match(toolActivityGroupToggleComponentSource, /<ChatMessageToolActivityGroupPreviewLine\s+\{\.\.\.toggleHeaderRowContent\.preview\.props\}/);
+  assert.match(toolActivityGroupToggleHeaderContentSource, /<ChatMessageToolActivityGroupPreviewLine\s+\{\.\.\.preview\.props\}/);
   assert.match(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupPreviewLine[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupPreviewLine[\s\S]*?(style=\{style\}|numberOfLines=\{numberOfLines\}|ellipsizeMode=\{ellipsizeMode\})[\s\S]*?export function ChatMessageToolActivityGroupFooter/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.preview\./);
@@ -6000,7 +6012,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /numberOfLines=\{toggleHeaderRowContent\.preview\.numberOfLines\}/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /ellipsizeMode=\{toggleHeaderRowContent\.preview\.ellipsizeMode\}/);
   assert.match(sessionPresentationSource, /headerRow: \{[\s\S]*?content: \{[\s\S]*?toggleIcon: \{[\s\S]*?props: renderState\.headerToggleIcon,/);
-  assert.match(toolActivityGroupToggleComponentSource, /<ChatMessageToolActivityGroupIcon\s+\{\.\.\.toggleHeaderRowContent\.toggleIcon\.props\}/);
+  assert.match(toolActivityGroupToggleHeaderContentSource, /<ChatMessageToolActivityGroupIcon\s+\{\.\.\.toggleIcon\.props\}/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.toggleIcon\./);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleHeaderRowContent\.toggleIcon\.(name|size|color)/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /renderState\.headerToggleIcon/);

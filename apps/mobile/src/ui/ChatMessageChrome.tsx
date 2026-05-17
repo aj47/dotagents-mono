@@ -2280,6 +2280,16 @@ type ChatMessageToolActivityGroupToggleParts = ReturnType<typeof createChatRunti
   ChatMessageToolActivityGroupToggleStyles
 >>;
 
+type ChatMessageToolActivityGroupToggleHeaderRowProps =
+  ChatMessageToolActivityGroupToggleParts['headerRow'];
+
+type ChatMessageToolActivityGroupToggleHeaderContentProps =
+  ChatMessageToolActivityGroupToggleParts['headerRow']['content'];
+
+type ChatMessageToolActivityGroupOptionalCountBadgeProps = {
+  countBadge: ChatMessageToolActivityGroupToggleParts['headerRow']['content']['countBadge'];
+};
+
 type ChatMessageToolActivityGroupCountBadgeProps =
   ChatMessageToolActivityGroupToggleParts['headerRow']['content']['countBadge']['props'];
 
@@ -9955,29 +9965,66 @@ export function ChatMessageToolActivityGroupToggle({
     onPress,
     styles,
   });
-  const toggleHeaderRowContent = toggleParts.headerRow.content;
 
   return (
     <Pressable
       {...toggleParts.pressable.props}
     >
-      <View {...toggleParts.headerRow.props}>
-        <ChatMessageToolActivityGroupIcon
-          {...toggleHeaderRowContent.leadingIcon.props}
-        />
-        {toggleHeaderRowContent.countBadge.shouldRender ? (
-          <ChatMessageToolActivityGroupCountBadge
-            {...toggleHeaderRowContent.countBadge.props}
-          />
-        ) : null}
-        <ChatMessageToolActivityGroupPreviewLine
-          {...toggleHeaderRowContent.preview.props}
-        />
-        <ChatMessageToolActivityGroupIcon
-          {...toggleHeaderRowContent.toggleIcon.props}
-        />
-      </View>
+      <ChatMessageToolActivityGroupToggleHeaderRow
+        {...toggleParts.headerRow}
+      />
     </Pressable>
+  );
+}
+
+export function ChatMessageToolActivityGroupToggleHeaderRow({
+  props,
+  content,
+}: ChatMessageToolActivityGroupToggleHeaderRowProps) {
+  return (
+    <View {...props}>
+      <ChatMessageToolActivityGroupToggleHeaderContent
+        {...content}
+      />
+    </View>
+  );
+}
+
+export function ChatMessageToolActivityGroupToggleHeaderContent({
+  leadingIcon,
+  countBadge,
+  preview,
+  toggleIcon,
+}: ChatMessageToolActivityGroupToggleHeaderContentProps) {
+  return (
+    <>
+      <ChatMessageToolActivityGroupIcon
+        {...leadingIcon.props}
+      />
+      <ChatMessageToolActivityGroupOptionalCountBadge
+        countBadge={countBadge}
+      />
+      <ChatMessageToolActivityGroupPreviewLine
+        {...preview.props}
+      />
+      <ChatMessageToolActivityGroupIcon
+        {...toggleIcon.props}
+      />
+    </>
+  );
+}
+
+export function ChatMessageToolActivityGroupOptionalCountBadge({
+  countBadge,
+}: ChatMessageToolActivityGroupOptionalCountBadgeProps) {
+  if (!countBadge.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageToolActivityGroupCountBadge
+      {...countBadge.props}
+    />
   );
 }
 
