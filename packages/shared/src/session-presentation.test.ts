@@ -4652,8 +4652,8 @@ describe("session presentation semantics", () => {
       renderState: retryStatusRenderState,
       styles: retryStatusStyles,
     })).toEqual({
-      shouldRenderRetryStatus: true,
       card: {
+        shouldRender: true,
         props: {
           accessible: true,
           accessibilityRole: "text",
@@ -4722,7 +4722,7 @@ describe("session presentation semantics", () => {
         shouldRender: false,
       },
       styles: retryStatusStyles,
-    }).shouldRenderRetryStatus).toBe(false)
+    }).card.shouldRender).toBe(false)
     expect(createChatRuntimeRetryStatusMobileStyleSlots({
       renderState: getChatRuntimeRetryStatusMobileRenderState({
         retryInfo: {
@@ -5117,8 +5117,8 @@ describe("session presentation semantics", () => {
       spinnerStyle: "spinner-style",
     })
     expect(loadingStateParts).toEqual({
-      shouldRenderLoadingState: true,
       container: {
+        shouldRender: true,
         props: {
           accessible: true,
           accessibilityRole: "progressbar",
@@ -5148,7 +5148,7 @@ describe("session presentation semantics", () => {
       spinnerSource: "spinner-source",
       style: "loading-style",
       spinnerStyle: "spinner-style",
-    }).shouldRenderLoadingState).toBe(false)
+    }).container.shouldRender).toBe(false)
     expect(getChatRuntimeLoadingStateMobileRenderState({
       isLoadingMessages: true,
       messageCount: 1,
@@ -7816,8 +7816,8 @@ describe("session presentation semantics", () => {
       style: "scroll-button-style",
     })
     expect(scrollToBottomButtonParts).toEqual({
-      shouldRenderButton: true,
       button: {
+        shouldRender: true,
         props: {
           style: "scroll-button-style",
           onPress: "scroll-bottom",
@@ -7853,7 +7853,7 @@ describe("session presentation semantics", () => {
         },
       },
       style: "scroll-button-style",
-    }).shouldRenderButton).toBe(false)
+    }).button.shouldRender).toBe(false)
     expect(getChatRuntimeScrollToBottomMobileRenderState({
       isVisible: false,
       colors: {
@@ -14687,8 +14687,8 @@ describe("session presentation semantics", () => {
         renderState: "expanded-render-state",
       },
     })).toEqual({
-      shouldRenderPanel: true,
       content: {
+        shouldRender: true,
         compactList: {
           props: {
             renderState: "compact-render-state",
@@ -14711,8 +14711,8 @@ describe("session presentation semantics", () => {
         renderState: "expanded-render-state",
       },
     })).toEqual({
-      shouldRenderPanel: true,
       content: {
+        shouldRender: true,
         compactList: {
           props: {
             renderState: "compact-render-state",
@@ -14737,8 +14737,8 @@ describe("session presentation semantics", () => {
         renderState: "expanded-render-state",
       },
     })).toEqual({
-      shouldRenderPanel: false,
       content: {
+        shouldRender: false,
         compactList: {
           props: {
             renderState: "compact-render-state",

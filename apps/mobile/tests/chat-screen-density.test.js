@@ -936,7 +936,8 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(chatMessageChromeSource, /createChatRuntimeRetryStatusMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeRetryStatusMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const retryStatusParts = createChatRuntimeRetryStatusMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /if \(!retryStatusParts\.shouldRenderRetryStatus\) return null;/);
+  assert.match(chatMessageChromeSource, /const retryStatusCard = retryStatusParts\.card;/);
+  assert.match(chatMessageChromeSource, /if \(!retryStatusCard\.shouldRender\) return null;/);
   assert.match(sessionPresentationSource, /card: \{[\s\S]*?props: \{[\s\S]*?accessible: true,[\s\S]*?accessibilityRole: renderState\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.accessibilityLabel,[\s\S]*?style: styles\.card,/);
   assert.match(sessionPresentationSource, /card: \{[\s\S]*?content: \{[\s\S]*?header: \{[\s\S]*?props: \{[\s\S]*?style: styles\.header,/);
   assert.match(sessionPresentationSource, /header: \{[\s\S]*?content: \{[\s\S]*?icon: \{[\s\S]*?props: renderState\.icon,/);
@@ -946,8 +947,8 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(sessionPresentationSource, /content: \{[\s\S]*?attempt: \{[\s\S]*?props: \{[\s\S]*?style: styles\.attempt,[\s\S]*?text: renderState\.attemptLabel,/);
   assert.match(sessionPresentationSource, /countdown: \{[\s\S]*?props: \{[\s\S]*?style: styles\.countdown,[\s\S]*?text: renderState\.countdownLabel,/);
   assert.match(sessionPresentationSource, /description: \{[\s\S]*?props: \{[\s\S]*?style: styles\.description,[\s\S]*?text: renderState\.description,/);
-  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusCard\s+\{\.\.\.retryStatusParts\.card\.props\}/);
-  assert.match(chatMessageChromeSource, /const retryStatusContent = retryStatusParts\.card\.content;/);
+  assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusCard\s+\{\.\.\.retryStatusCard\.props\}/);
+  assert.match(chatMessageChromeSource, /const retryStatusContent = retryStatusCard\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusView\s+\{\.\.\.retryStatusContent\.header\.props\}/);
   assert.match(chatMessageChromeSource, /const headerContent = retryStatusContent\.header\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageRetryStatusIcon\s+\{\.\.\.headerContent\.icon\.props\}/);
@@ -969,10 +970,12 @@ test('shows desktop-style retry status updates from shared runtime presentation'
     /accessible=\{accessible\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|style=\{style\}|name=\{name\}|size=\{size\}|color=\{color\}|numberOfLines=\{numberOfLines\}/
   );
   assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.(card|header|icon|title|spinner|meta|attempt|countdown|description)\.(accessible|accessibilityRole|accessibilityLabel|style|name|size|color|numberOfLines|text)/);
+  assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.shouldRenderRetryStatus/);
   assert.doesNotMatch(retryStatusSource, /retryStatusParts\.(header|meta|description)/);
   assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.(icon|title|spinner)\.props/);
   assert.doesNotMatch(chatMessageChromeSource, /retryStatusParts\.(attempt|countdown)\.props/);
-  assert.match(sessionPresentationSource, /shouldRenderRetryStatus: renderState\.shouldRender/);
+  assert.match(sessionPresentationSource, /card: \{\s+shouldRender: renderState\.shouldRender,/);
+  assert.doesNotMatch(sessionPresentationSource, /shouldRenderRetryStatus:/);
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageRetryStatus[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageToolApproval/
@@ -1838,9 +1841,10 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /createChatRuntimeScrollToBottomButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeScrollToBottomButtonMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const scrollToBottomButtonParts = createChatRuntimeScrollToBottomButtonMobilePropsParts\(\{\s+renderState,\s+onPress,\s+style,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /if \(!scrollToBottomButtonParts\.shouldRenderButton\) return null;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonTouchable\s+\{\.\.\.scrollToBottomButtonParts\.button\.props\}/);
-  assert.match(chatMessageChromeSource, /const buttonContent = scrollToBottomButtonParts\.button\.content;/);
+  assert.match(chatMessageChromeSource, /const scrollToBottomButton = scrollToBottomButtonParts\.button;/);
+  assert.match(chatMessageChromeSource, /if \(!scrollToBottomButton\.shouldRender\) return null;/);
+  assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonTouchable\s+\{\.\.\.scrollToBottomButton\.props\}/);
+  assert.match(chatMessageChromeSource, /const buttonContent = scrollToBottomButton\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonIcon\s+\{\.\.\.buttonContent\.icon\.props\}/);
   assert.match(
     scrollToBottomButtonSource,
@@ -1854,10 +1858,12 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
     scrollToBottomButtonSource,
     /style=\{style\}|onPress=\{onPress\}|activeOpacity=\{activeOpacity\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\}|name=\{name\}|size=\{size\}|color=\{color\}/
   );
-  assert.match(sessionPresentationSource, /shouldRenderButton: renderState\.shouldRender/);
+  assert.match(sessionPresentationSource, /button: \{\s+shouldRender: renderState\.shouldRender,/);
+  assert.doesNotMatch(chatMessageChromeSource, /scrollToBottomButtonParts\.shouldRenderButton/);
+  assert.doesNotMatch(sessionPresentationSource, /shouldRenderButton:/);
   assert.match(
     sessionPresentationSource,
-    /button: \{\s+props: \{\s+style,\s+onPress,\s+activeOpacity: renderState\.button\.pressedOpacity,\s+accessibilityRole: renderState\.button\.accessibilityRole,\s+accessibilityLabel: renderState\.button\.accessibilityLabel,\s+accessibilityHint: renderState\.button\.accessibilityHint,\s+\},\s+content: \{\s+icon: \{\s+props: renderState\.button\.icon,\s+\},\s+\},\s+\},/
+    /button: \{\s+shouldRender: renderState\.shouldRender,\s+props: \{\s+style,\s+onPress,\s+activeOpacity: renderState\.button\.pressedOpacity,\s+accessibilityRole: renderState\.button\.accessibilityRole,\s+accessibilityLabel: renderState\.button\.accessibilityLabel,\s+accessibilityHint: renderState\.button\.accessibilityHint,\s+\},\s+content: \{\s+icon: \{\s+props: renderState\.button\.icon,\s+\},\s+\},\s+\},/
   );
   assert.doesNotMatch(
     chatMessageChromeSource,
@@ -2207,11 +2213,12 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /createChatRuntimeLoadingStateMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeLoadingStateMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const loadingStateParts = createChatRuntimeLoadingStateMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+style,\s+spinnerStyle,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /if \(!loadingStateParts\.shouldRenderLoadingState\) return null;/);
+  assert.match(chatMessageChromeSource, /const loadingStateContainer = loadingStateParts\.container;/);
+  assert.match(chatMessageChromeSource, /if \(!loadingStateContainer\.shouldRender\) return null;/);
   assert.match(sessionPresentationSource, /container: \{[\s\S]*?props: \{[\s\S]*?accessible: true,[\s\S]*?accessibilityRole: renderState\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.accessibilityLabel,[\s\S]*?accessibilityState: renderState\.accessibilityState,[\s\S]*?style,/);
   assert.match(sessionPresentationSource, /content: \{[\s\S]*?spinner: \{[\s\S]*?props: \{[\s\S]*?source: spinnerSource,[\s\S]*?style: spinnerStyle,[\s\S]*?resizeMode: renderState\.spinnerResizeMode,/);
-  assert.match(chatMessageChromeSource, /<ChatMessageLoadingStateContainer\s+\{\.\.\.loadingStateParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /const containerContent = loadingStateParts\.container\.content;/);
+  assert.match(chatMessageChromeSource, /<ChatMessageLoadingStateContainer\s+\{\.\.\.loadingStateContainer\.props\}/);
+  assert.match(chatMessageChromeSource, /const containerContent = loadingStateContainer\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageLoadingStateSpinner\s+\{\.\.\.containerContent\.spinner\.props\}/);
   assert.match(loadingStateSource, /export function ChatMessageLoadingStateContainer\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageLoadingStateContainerProps\) \{\s+return \(\s+<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
   assert.match(loadingStateSource, /export function ChatMessageLoadingStateSpinner\(\s+props: ChatMessageLoadingStateSpinnerProps\s+\) \{\s+return <Image \{\.\.\.props\} \/>;\s+\}/);
@@ -2220,8 +2227,10 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
     /accessible=\{accessible\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityState=\{accessibilityState\}|style=\{style\}|source=\{source\}|resizeMode=\{resizeMode\}/
   );
   assert.doesNotMatch(chatMessageChromeSource, /loadingStateParts\.(container|spinner)\.(accessible|accessibilityLabel|accessibilityRole|accessibilityState|style|source|resizeMode)/);
+  assert.doesNotMatch(chatMessageChromeSource, /loadingStateParts\.shouldRenderLoadingState/);
   assert.doesNotMatch(chatMessageChromeSource, /loadingStateParts\.spinner\.props/);
-  assert.match(sessionPresentationSource, /shouldRenderLoadingState: renderState\.shouldRender/);
+  assert.match(sessionPresentationSource, /container: \{\s+shouldRender: renderState\.shouldRender,/);
+  assert.doesNotMatch(sessionPresentationSource, /shouldRenderLoadingState:/);
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageLoadingState[\s\S]*?accessibilityLabel=\{renderState\.accessibilityLabel\}[\s\S]*?export function ChatMessageDebugPanel/
@@ -3835,11 +3844,13 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /const panelContent = panelParts\.content;/);
   assert.match(chatMessageChromeSource, /const panelShellParts = createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{\s+compactList: \([\s\S]*?<ChatMessageToolExecutionCompactList[\s\S]*?\{\.\.\.panelContent\.compactList\.props\}[\s\S]*?expandedGroup: panelContent\.expandedGroup\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionExpandedGroup \{\.\.\.panelContent\.expandedGroup\.props\}>/);
   assert.match(chatMessageChromeSource, /const panelShellContent = panelShellParts\.content;/);
-  assert.match(sessionPresentationSource, /content: \{\s+compactList: \{\s+props: \{\s+\.\.\.compact,\s+shouldRender: shouldRender && !isExpanded,/);
+  assert.match(sessionPresentationSource, /content: \{\s+shouldRender,\s+compactList: \{\s+props: \{\s+\.\.\.compact,\s+shouldRender: shouldRender && !isExpanded,/);
   assert.doesNotMatch(chatMessageChromeSource, /\{\.\.\.panelParts\.compact/);
   assert.doesNotMatch(chatMessageChromeSource, /expandedGroup: panelParts\.expandedGroup \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /panelParts\.(compact|expandedGroup)\./);
-  assert.match(chatMessageChromeSource, /if \(!panelParts\.shouldRenderPanel\) return null;/);
+  assert.match(chatMessageChromeSource, /if \(!panelContent\.shouldRender\) return null;/);
+  assert.doesNotMatch(chatMessageChromeSource, /panelParts\.shouldRenderPanel/);
+  assert.doesNotMatch(sessionPresentationSource, /shouldRenderPanel:/);
   assert.match(chatMessageChromeSource, /\{panelShellContent\.compactList\}[\s\S]*?panelShellContent\.expandedGroup\.shouldRender \? panelShellContent\.expandedGroup\.props : null/);
   assert.match(sessionPresentationSource, /content: \{\s+compactList,\s+expandedGroup: expandedGroup != null \? \{\s+shouldRender: true,\s+props: expandedGroup as NonNullable<TExpandedGroup>,/);
   assert.doesNotMatch(chatMessageChromeSource, /panelShellParts\.(compactList|expandedGroup)\./);

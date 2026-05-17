@@ -8258,16 +8258,17 @@ export function ChatMessageRetryStatus({
     renderState,
     styles,
   });
+  const retryStatusCard = retryStatusParts.card;
 
-  if (!retryStatusParts.shouldRenderRetryStatus) return null;
+  if (!retryStatusCard.shouldRender) return null;
 
-  const retryStatusContent = retryStatusParts.card.content;
+  const retryStatusContent = retryStatusCard.content;
   const headerContent = retryStatusContent.header.content;
   const metaContent = retryStatusContent.meta.content;
 
   return (
     <ChatMessageRetryStatusCard
-      {...retryStatusParts.card.props}
+      {...retryStatusCard.props}
     >
       <ChatMessageRetryStatusView
         {...retryStatusContent.header.props}
@@ -9315,7 +9316,7 @@ export function ChatMessageToolExecutionPanel({
   });
   const panelContent = panelParts.content;
 
-  if (!panelParts.shouldRenderPanel) return null;
+  if (!panelContent.shouldRender) return null;
 
   const panelShellParts = createChatRuntimeToolExecutionPanelShellMobilePropsParts({
     compactList: (
@@ -10461,14 +10462,15 @@ export function ChatMessageScrollToBottomButton({
     onPress,
     style,
   });
+  const scrollToBottomButton = scrollToBottomButtonParts.button;
 
-  if (!scrollToBottomButtonParts.shouldRenderButton) return null;
+  if (!scrollToBottomButton.shouldRender) return null;
 
-  const buttonContent = scrollToBottomButtonParts.button.content;
+  const buttonContent = scrollToBottomButton.content;
 
   return (
     <ChatMessageScrollToBottomButtonTouchable
-      {...scrollToBottomButtonParts.button.props}
+      {...scrollToBottomButton.props}
     >
       <ChatMessageScrollToBottomButtonIcon
         {...buttonContent.icon.props}
@@ -10506,14 +10508,15 @@ export function ChatMessageLoadingState({
     style,
     spinnerStyle,
   });
+  const loadingStateContainer = loadingStateParts.container;
 
-  if (!loadingStateParts.shouldRenderLoadingState) return null;
+  if (!loadingStateContainer.shouldRender) return null;
 
-  const containerContent = loadingStateParts.container.content;
+  const containerContent = loadingStateContainer.content;
 
   return (
     <ChatMessageLoadingStateContainer
-      {...loadingStateParts.container.props}
+      {...loadingStateContainer.props}
     >
       <ChatMessageLoadingStateSpinner
         {...containerContent.spinner.props}

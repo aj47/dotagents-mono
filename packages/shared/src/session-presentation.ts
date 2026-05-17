@@ -4675,8 +4675,8 @@ export interface ChatRuntimeToolExecutionPanelMobilePropsParts<
   TCompact extends object = Record<string, never>,
   TExpanded extends object = Record<string, never>,
 > {
-  shouldRenderPanel: boolean
   content: {
+    shouldRender: boolean
     compactList: {
       props: TCompact & {
         shouldRender: boolean
@@ -6371,8 +6371,8 @@ export interface ChatRuntimeLoadingStateMobilePropsParts<
   TStyle = unknown,
   TSpinnerStyle = unknown,
 > {
-  shouldRenderLoadingState: boolean
   container: {
+    shouldRender: boolean
     props: {
       accessible: true
       accessibilityRole: TRenderState["accessibilityRole"]
@@ -6898,8 +6898,8 @@ export interface ChatRuntimeRetryStatusMobilePropsParts<
     description: unknown
   },
 > {
-  shouldRenderRetryStatus: boolean
   card: {
+    shouldRender: boolean
     props: {
       accessible: true
       accessibilityRole: TRenderState["accessibilityRole"]
@@ -7987,8 +7987,8 @@ export interface ChatRuntimeScrollToBottomButtonMobilePropsParts<
   TOnPress = unknown,
   TStyle = unknown,
 > {
-  shouldRenderButton: boolean
   button: {
+    shouldRender: boolean
     props: {
       style: TStyle
       onPress: TOnPress | undefined
@@ -23170,8 +23170,8 @@ export function createChatRuntimeToolExecutionPanelMobilePropsParts<
   TExpanded
 > {
   return {
-    shouldRenderPanel: shouldRender,
     content: {
+      shouldRender,
       compactList: {
         props: {
           ...compact,
@@ -23888,8 +23888,8 @@ export function createChatRuntimeLoadingStateMobilePropsParts<
   TSpinnerStyle
 > {
   return {
-    shouldRenderLoadingState: renderState.shouldRender,
     container: {
+      shouldRender: renderState.shouldRender,
       props: {
         accessible: true,
         accessibilityRole: renderState.accessibilityRole,
@@ -24236,8 +24236,8 @@ export function createChatRuntimeRetryStatusMobilePropsParts<
   TStyles
 > {
   return {
-    shouldRenderRetryStatus: renderState.shouldRender,
     card: {
+      shouldRender: renderState.shouldRender,
       props: {
         accessible: true,
         accessibilityRole: renderState.accessibilityRole,
@@ -25608,8 +25608,8 @@ export function createChatRuntimeScrollToBottomButtonMobilePropsParts<
   TStyle
 > {
   return {
-    shouldRenderButton: renderState.shouldRender,
     button: {
+      shouldRender: renderState.shouldRender,
       props: {
         style,
         onPress,
