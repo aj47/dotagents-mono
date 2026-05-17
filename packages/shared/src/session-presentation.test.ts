@@ -13381,7 +13381,10 @@ describe("session presentation semantics", () => {
         renderState: "compact-render-state",
         shouldRender: true,
       },
-      expandedGroup: null,
+      expandedGroup: {
+        shouldRender: false,
+        props: null,
+      },
     })
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
       shouldRender: true,
@@ -13399,7 +13402,10 @@ describe("session presentation semantics", () => {
         shouldRender: false,
       },
       expandedGroup: {
-        renderState: "expanded-render-state",
+        shouldRender: true,
+        props: {
+          renderState: "expanded-render-state",
+        },
       },
     })
     expect(createChatRuntimeToolExecutionPanelMobilePropsParts({
@@ -13417,7 +13423,10 @@ describe("session presentation semantics", () => {
         renderState: "compact-render-state",
         shouldRender: false,
       },
-      expandedGroup: null,
+      expandedGroup: {
+        shouldRender: false,
+        props: null,
+      },
     })
     expect(createChatRuntimeToolExecutionPanelShellMobilePropsParts({
       compactList: "compact-list",

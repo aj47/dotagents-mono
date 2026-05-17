@@ -7967,8 +7967,8 @@ export function ChatMessageToolExecutionPanel({
         {...panelParts.compact}
       />
     ),
-    expandedGroup: panelParts.expandedGroup ? (
-      <ChatMessageToolExecutionExpandedGroup {...panelParts.expandedGroup}>
+    expandedGroup: panelParts.expandedGroup.shouldRender ? (
+      <ChatMessageToolExecutionExpandedGroup {...panelParts.expandedGroup.props}>
         {children}
       </ChatMessageToolExecutionExpandedGroup>
     ) : null,
