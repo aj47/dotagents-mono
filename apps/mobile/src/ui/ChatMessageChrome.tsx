@@ -1948,10 +1948,10 @@ type ChatMessageToolActivityGroupFooterParts = ReturnType<typeof createChatRunti
 
 type ChatMessageToolActivityGroupIconProps =
   | ChatMessageToolActivityGroupToggleParts['leadingIcon']['props']
-  | ChatMessageToolActivityGroupFooterParts['icon']['props'];
+  | ChatMessageToolActivityGroupFooterParts['button']['content']['icon']['props'];
 
 type ChatMessageToolActivityGroupFooterLabelProps =
-  ChatMessageToolActivityGroupFooterParts['label']['props'];
+  ChatMessageToolActivityGroupFooterParts['button']['content']['label']['props'];
 
 type ChatMessageToolActivityGroupBoundaryKind = ChatRuntimeToolActivityGroupBoundaryMobileKind;
 
@@ -8919,16 +8919,17 @@ export function ChatMessageToolActivityGroupFooter({
     onPress,
     styles,
   });
+  const footerButtonContent = footerParts.button.content;
 
   return (
     <Pressable
       {...footerParts.button.props}
     >
       <ChatMessageToolActivityGroupIcon
-        {...footerParts.icon.props}
+        {...footerButtonContent.icon.props}
       />
       <ChatMessageToolActivityGroupFooterLabel
-        {...footerParts.label.props}
+        {...footerButtonContent.label.props}
       />
     </Pressable>
   );

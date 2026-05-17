@@ -9338,10 +9338,10 @@ describe("session presentation semantics", () => {
       "footer-button",
       "footer-pressed",
     ])
-    expect(activityGroupFooterParts.icon).toEqual({
+    expect(activityGroupFooterParts.button.content.icon).toEqual({
       props: "footer-icon-state",
     })
-    expect(activityGroupFooterParts.label).toEqual({
+    expect(activityGroupFooterParts.button.content.label).toEqual({
       props: {
         props: {
           style: "footer-text",
