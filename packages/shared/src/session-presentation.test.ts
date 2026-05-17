@@ -10085,44 +10085,54 @@ describe("session presentation semantics", () => {
         props: {
           style: "hands-free-status-row",
         },
-        status: "hands-free-status",
+        content: {
+          status: {
+            children: "hands-free-status",
+          },
+        },
       },
       controlsRow: {
         props: {
           style: "hands-free-controls-row",
         },
-      },
-      primaryControl: {
-        touchable: {
-          props: {
-            style: "hands-free-control-button",
-            onPress: "wake-handler",
-            activeOpacity: 0.66,
-            accessibilityRole: "button",
-            accessibilityLabel: "Wake agent",
+        content: {
+          primaryControl: {
+            touchable: {
+              props: {
+                style: "hands-free-control-button",
+                onPress: "wake-handler",
+                activeOpacity: 0.66,
+                accessibilityRole: "button",
+                accessibilityLabel: "Wake agent",
+              },
+            },
+            content: {
+              label: {
+                props: {
+                  style: "hands-free-control-button-text",
+                  text: "Wake",
+                },
+              },
+            },
           },
-        },
-        label: {
-          props: {
-            style: "hands-free-control-button-text",
-            text: "Wake",
-          },
-        },
-      },
-      secondaryControl: {
-        touchable: {
-          props: {
-            style: "hands-free-control-button",
-            onPress: "resume-handler",
-            activeOpacity: 0.66,
-            accessibilityRole: "button",
-            accessibilityLabel: "Resume handsfree",
-          },
-        },
-        label: {
-          props: {
-            style: "hands-free-control-button-text",
-            text: "Resume",
+          secondaryControl: {
+            touchable: {
+              props: {
+                style: "hands-free-control-button",
+                onPress: "resume-handler",
+                activeOpacity: 0.66,
+                accessibilityRole: "button",
+                accessibilityLabel: "Resume handsfree",
+              },
+            },
+            content: {
+              label: {
+                props: {
+                  style: "hands-free-control-button-text",
+                  text: "Resume",
+                },
+              },
+            },
           },
         },
       },
@@ -10152,9 +10162,9 @@ describe("session presentation semantics", () => {
       styles: handsFreeControlStyles,
     })
     expect(sleepingHandsFreeControlsParts.shouldRender).toBe(false)
-    expect(sleepingHandsFreeControlsParts.primaryControl.touchable.props.onPress)
+    expect(sleepingHandsFreeControlsParts.controlsRow.content.primaryControl.touchable.props.onPress)
       .toBe("sleep-handler")
-    expect(sleepingHandsFreeControlsParts.secondaryControl.touchable.props.onPress)
+    expect(sleepingHandsFreeControlsParts.controlsRow.content.secondaryControl.touchable.props.onPress)
       .toBe("pause-handler")
     expect(createChatComposerVoiceOverlayMobilePropsParts({
       isVisible: true,

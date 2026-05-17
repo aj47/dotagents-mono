@@ -3257,12 +3257,12 @@ type ChatComposerHandsFreeControlsRowProps =
   };
 
 type ChatComposerHandsFreeControlButtonProps =
-  ChatComposerHandsFreeControlsParts['primaryControl']['touchable']['props'] & {
+  ChatComposerHandsFreeControlsParts['controlsRow']['content']['primaryControl']['touchable']['props'] & {
     children: ReactNode;
   };
 
 type ChatComposerHandsFreeControlLabelProps =
-  ChatComposerHandsFreeControlsParts['primaryControl']['label']['props'];
+  ChatComposerHandsFreeControlsParts['controlsRow']['content']['primaryControl']['content']['label']['props'];
 
 type ChatComposerHandsFreeRuntimeStatusProps = ComponentProps<typeof HandsFreeStatusChip>;
 
@@ -11202,28 +11202,30 @@ export function ChatComposerHandsFreeControls({
 
   if (!handsFreeControlsParts.shouldRender) return null;
 
+  const controlsRowContent = handsFreeControlsParts.controlsRow.content;
+
   return (
     <>
       <ChatComposerHandsFreeStatusRow
         {...handsFreeControlsParts.statusRow.props}
       >
-        {handsFreeControlsParts.statusRow.status}
+        {handsFreeControlsParts.statusRow.content.status.children}
       </ChatComposerHandsFreeStatusRow>
       <ChatComposerHandsFreeControlsRow
         {...handsFreeControlsParts.controlsRow.props}
       >
         <ChatComposerHandsFreeControlButton
-          {...handsFreeControlsParts.primaryControl.touchable.props}
+          {...controlsRowContent.primaryControl.touchable.props}
         >
           <ChatComposerHandsFreeControlLabel
-            {...handsFreeControlsParts.primaryControl.label.props}
+            {...controlsRowContent.primaryControl.content.label.props}
           />
         </ChatComposerHandsFreeControlButton>
         <ChatComposerHandsFreeControlButton
-          {...handsFreeControlsParts.secondaryControl.touchable.props}
+          {...controlsRowContent.secondaryControl.touchable.props}
         >
           <ChatComposerHandsFreeControlLabel
-            {...handsFreeControlsParts.secondaryControl.label.props}
+            {...controlsRowContent.secondaryControl.content.label.props}
           />
         </ChatComposerHandsFreeControlButton>
       </ChatComposerHandsFreeControlsRow>
