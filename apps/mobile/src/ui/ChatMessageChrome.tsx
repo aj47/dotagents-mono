@@ -4439,6 +4439,22 @@ type ChatMessageCollapsedPreviewPropsInput = Pick<
   'renderState' | 'actionState' | 'onPress'
 >;
 
+type ChatMessageCollapsedPreviewParts = ReturnType<typeof createChatRuntimeConversationCollapsedPreviewMobilePropsParts<
+  ChatMessageCollapsedPreviewProps['renderState'],
+  ChatMessageCollapsedPreviewProps['actionState'],
+  ChatMessageCollapsedPreviewProps['onPress'],
+  ChatMessageCollapsedPreviewProps['style'],
+  ChatMessageCollapsedPreviewProps['pressedStyle'],
+  ChatMessageCollapsedPreviewProps['textStyle']
+>>;
+
+type ChatMessageCollapsedPreviewContentProps =
+  ChatMessageCollapsedPreviewParts['pressable']['content'];
+
+type ChatMessageCollapsedPreviewTextProps = {
+  part: ChatMessageCollapsedPreviewContentProps['text'];
+};
+
 type ChatMessageConversationContentProps = {
   contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode;
   rowStyle: StyleProp<ViewStyle>;
@@ -14081,16 +14097,33 @@ export function ChatMessageCollapsedPreview({
     pressedStyle,
     textStyle,
   });
-  const collapsedPreviewContent = collapsedPreviewParts.pressable.content;
 
   return (
     <Pressable
       {...collapsedPreviewParts.pressable.props}
     >
-      <Text {...collapsedPreviewContent.text.props}>
-        {collapsedPreviewContent.text.text}
-      </Text>
+      <ChatMessageCollapsedPreviewContent
+        {...collapsedPreviewParts.pressable.content}
+      />
     </Pressable>
+  );
+}
+
+export function ChatMessageCollapsedPreviewContent({
+  text,
+}: ChatMessageCollapsedPreviewContentProps) {
+  return (
+    <ChatMessageCollapsedPreviewText part={text} />
+  );
+}
+
+export function ChatMessageCollapsedPreviewText({
+  part,
+}: ChatMessageCollapsedPreviewTextProps) {
+  return (
+    <Text {...part.props}>
+      {part.text}
+    </Text>
   );
 }
 
