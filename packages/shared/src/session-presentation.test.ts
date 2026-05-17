@@ -9409,20 +9409,22 @@ describe("session presentation semantics", () => {
           behavior: "padding",
           keyboardVerticalOffset: 24,
         },
-      },
-      root: {
-        props: {
-          style: "root-style",
-        },
         content: {
-          children: "viewport",
+          root: {
+            props: {
+              style: "root-style",
+            },
+            content: {
+              children: "viewport",
+              dock: {
+                children: "dock",
+              },
+            },
+          },
+          overlays: {
+            children: "overlays",
+          },
         },
-        dock: {
-          children: "dock",
-        },
-      },
-      overlays: {
-        children: "overlays",
       },
     })
     expect(createChatRuntimeConversationOverlaysMobilePropsParts({

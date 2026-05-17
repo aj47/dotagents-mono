@@ -7998,20 +7998,22 @@ export interface ChatRuntimeConversationFrameMobilePropsParts<
       behavior: TKeyboardAvoidingBehavior
       keyboardVerticalOffset: TKeyboardVerticalOffset
     }
-  }
-  root: {
-    props: {
-      style: TRootStyle
-    }
     content: {
-      children: TChildren
+      root: {
+        props: {
+          style: TRootStyle
+        }
+        content: {
+          children: TChildren
+          dock: {
+            children: TDock | undefined
+          }
+        }
+      }
+      overlays: {
+        children: TOverlays | undefined
+      }
     }
-    dock: {
-      children: TDock | undefined
-    }
-  }
-  overlays: {
-    children: TOverlays | undefined
   }
 }
 
@@ -25585,20 +25587,22 @@ export function createChatRuntimeConversationFrameMobilePropsParts<
         behavior: keyboardAvoidingBehavior,
         keyboardVerticalOffset,
       },
-    },
-    root: {
-      props: {
-        style: rootStyle,
-      },
       content: {
-        children,
+        root: {
+          props: {
+            style: rootStyle,
+          },
+          content: {
+            children,
+            dock: {
+              children: dock,
+            },
+          },
+        },
+        overlays: {
+          children: overlays,
+        },
       },
-      dock: {
-        children: dock,
-      },
-    },
-    overlays: {
-      children: overlays,
     },
   }
 }

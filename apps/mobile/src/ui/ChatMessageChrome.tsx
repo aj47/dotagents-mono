@@ -10119,16 +10119,17 @@ export function ChatMessageConversationFrame({
     keyboardVerticalOffset,
     rootStyle,
   });
+  const frameContent = frameParts.keyboardAvoidingView.content;
 
   return (
     <KeyboardAvoidingView
       {...frameParts.keyboardAvoidingView.props}
     >
-      <View {...frameParts.root.props}>
-        {frameParts.root.content.children}
-        {frameParts.root.dock.children}
+      <View {...frameContent.root.props}>
+        {frameContent.root.content.children}
+        {frameContent.root.content.dock.children}
       </View>
-      {frameParts.overlays.children}
+      {frameContent.overlays.children}
     </KeyboardAvoidingView>
   );
 }
