@@ -5961,39 +5961,41 @@ export interface ChatRuntimeToolActivityGroupToggleMobilePropsParts<
     props: {
       style: TStyles["headerRow"]
     }
-  }
-  leadingIcon: {
-    props: TRenderState["leadingIcon"]
-  }
-  countBadge: {
-    shouldRender: boolean
-    props: {
-      container: {
+    content: {
+      leadingIcon: {
+        props: TRenderState["leadingIcon"]
+      }
+      countBadge: {
+        shouldRender: boolean
         props: {
-          accessibilityLabel: string
-          style: TStyles["countBadge"]
+          container: {
+            props: {
+              accessibilityLabel: string
+              style: TStyles["countBadge"]
+            }
+          }
+          label: {
+            props: {
+              style: TStyles["countBadgeText"]
+            }
+            text: TRenderState["summary"]["toolCallCount"]
+          }
         }
       }
-      label: {
+      preview: {
         props: {
-          style: TStyles["countBadgeText"]
+          props: {
+            style: TStyles["previewLine"]
+            numberOfLines: TRenderState["surface"]["preview"]["numberOfLines"]
+            ellipsizeMode: TRenderState["surface"]["preview"]["ellipsizeMode"]
+          }
+          text: string
         }
-        text: TRenderState["summary"]["toolCallCount"]
+      }
+      toggleIcon: {
+        props: TRenderState["headerToggleIcon"]
       }
     }
-  }
-  preview: {
-    props: {
-      props: {
-        style: TStyles["previewLine"]
-        numberOfLines: TRenderState["surface"]["preview"]["numberOfLines"]
-        ellipsizeMode: TRenderState["surface"]["preview"]["ellipsizeMode"]
-      }
-      text: string
-    }
-  }
-  toggleIcon: {
-    props: TRenderState["headerToggleIcon"]
   }
 }
 
@@ -23412,39 +23414,41 @@ export function createChatRuntimeToolActivityGroupToggleMobilePropsParts<
       props: {
         style: styles.headerRow,
       },
-    },
-    leadingIcon: {
-      props: renderState.leadingIcon,
-    },
-    countBadge: {
-      shouldRender: renderState.summary.shouldShowToolCallCount,
-      props: {
-        container: {
+      content: {
+        leadingIcon: {
+          props: renderState.leadingIcon,
+        },
+        countBadge: {
+          shouldRender: renderState.summary.shouldShowToolCallCount,
           props: {
-            accessibilityLabel: renderState.summary.toolCallCountLabel,
-            style: styles.countBadge,
+            container: {
+              props: {
+                accessibilityLabel: renderState.summary.toolCallCountLabel,
+                style: styles.countBadge,
+              },
+            },
+            label: {
+              props: {
+                style: styles.countBadgeText,
+              },
+              text: renderState.summary.toolCallCount,
+            },
           },
         },
-        label: {
+        preview: {
           props: {
-            style: styles.countBadgeText,
+            props: {
+              style: styles.previewLine,
+              numberOfLines: renderState.surface.preview.numberOfLines,
+              ellipsizeMode: renderState.surface.preview.ellipsizeMode,
+            },
+            text: renderState.summary.previewText,
           },
-          text: renderState.summary.toolCallCount,
+        },
+        toggleIcon: {
+          props: renderState.headerToggleIcon,
         },
       },
-    },
-    preview: {
-      props: {
-        props: {
-          style: styles.previewLine,
-          numberOfLines: renderState.surface.preview.numberOfLines,
-          ellipsizeMode: renderState.surface.preview.ellipsizeMode,
-        },
-        text: renderState.summary.previewText,
-      },
-    },
-    toggleIcon: {
-      props: renderState.headerToggleIcon,
     },
   }
 }

@@ -9224,10 +9224,10 @@ describe("session presentation semantics", () => {
       "toggle-pressed",
     ])
     expect(activityGroupToggleParts.headerRow.props.style).toBe("toggle-header-row")
-    expect(activityGroupToggleParts.leadingIcon).toEqual({
+    expect(activityGroupToggleParts.headerRow.content.leadingIcon).toEqual({
       props: "leading-icon-state",
     })
-    expect(activityGroupToggleParts.countBadge).toEqual({
+    expect(activityGroupToggleParts.headerRow.content.countBadge).toEqual({
       shouldRender: true,
       props: {
         container: {
@@ -9244,7 +9244,7 @@ describe("session presentation semantics", () => {
         },
       },
     })
-    expect(activityGroupToggleParts.preview).toEqual({
+    expect(activityGroupToggleParts.headerRow.content.preview).toEqual({
       props: {
         props: {
           style: "toggle-preview-line",
@@ -9254,7 +9254,7 @@ describe("session presentation semantics", () => {
         text: "Read, edit, test",
       },
     })
-    expect(activityGroupToggleParts.toggleIcon).toEqual({
+    expect(activityGroupToggleParts.headerRow.content.toggleIcon).toEqual({
       props: "toggle-icon-state",
     })
     expect(createChatRuntimeToolActivityGroupToggleMobilePropsParts({
@@ -9292,7 +9292,7 @@ describe("session presentation semantics", () => {
         countBadgeText: "toggle-count-badge-text",
         previewLine: "toggle-preview-line",
       },
-    }).countBadge).toEqual({
+    }).headerRow.content.countBadge).toEqual({
       shouldRender: false,
       props: {
         container: {

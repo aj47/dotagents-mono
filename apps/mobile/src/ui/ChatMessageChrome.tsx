@@ -1923,10 +1923,10 @@ type ChatMessageToolActivityGroupToggleParts = ReturnType<typeof createChatRunti
 >>;
 
 type ChatMessageToolActivityGroupCountBadgeProps =
-  ChatMessageToolActivityGroupToggleParts['countBadge']['props'];
+  ChatMessageToolActivityGroupToggleParts['headerRow']['content']['countBadge']['props'];
 
 type ChatMessageToolActivityGroupPreviewLineProps =
-  ChatMessageToolActivityGroupToggleParts['preview']['props'];
+  ChatMessageToolActivityGroupToggleParts['headerRow']['content']['preview']['props'];
 
 type ChatMessageToolActivityGroupFooterStyles = {
   button: StyleProp<ViewStyle>;
@@ -1947,7 +1947,8 @@ type ChatMessageToolActivityGroupFooterParts = ReturnType<typeof createChatRunti
 >>;
 
 type ChatMessageToolActivityGroupIconProps =
-  | ChatMessageToolActivityGroupToggleParts['leadingIcon']['props']
+  | ChatMessageToolActivityGroupToggleParts['headerRow']['content']['leadingIcon']['props']
+  | ChatMessageToolActivityGroupToggleParts['headerRow']['content']['toggleIcon']['props']
   | ChatMessageToolActivityGroupFooterParts['button']['content']['icon']['props'];
 
 type ChatMessageToolActivityGroupFooterLabelProps =
@@ -8854,6 +8855,7 @@ export function ChatMessageToolActivityGroupToggle({
     onPress,
     styles,
   });
+  const toggleHeaderRowContent = toggleParts.headerRow.content;
 
   return (
     <Pressable
@@ -8861,18 +8863,18 @@ export function ChatMessageToolActivityGroupToggle({
     >
       <View {...toggleParts.headerRow.props}>
         <ChatMessageToolActivityGroupIcon
-          {...toggleParts.leadingIcon.props}
+          {...toggleHeaderRowContent.leadingIcon.props}
         />
-        {toggleParts.countBadge.shouldRender ? (
+        {toggleHeaderRowContent.countBadge.shouldRender ? (
           <ChatMessageToolActivityGroupCountBadge
-            {...toggleParts.countBadge.props}
+            {...toggleHeaderRowContent.countBadge.props}
           />
         ) : null}
         <ChatMessageToolActivityGroupPreviewLine
-          {...toggleParts.preview.props}
+          {...toggleHeaderRowContent.preview.props}
         />
         <ChatMessageToolActivityGroupIcon
-          {...toggleParts.toggleIcon.props}
+          {...toggleHeaderRowContent.toggleIcon.props}
         />
       </View>
     </Pressable>
