@@ -10871,7 +10871,14 @@ describe("session presentation semantics", () => {
         style: "delegation-tool-preview-status-icon-style",
         accessibilityElementsHidden: true,
         importantForAccessibility: "no-hide-descendants",
-        spinner: null,
+        spinner: {
+          ...delegationToolPreviewRow.renderState.statusIndicator.spinner,
+          shouldRender: false,
+        },
+        icon: {
+          ...delegationToolPreviewRow.renderState.statusIndicator.icon,
+          shouldRender: true,
+        },
       },
       name: {
         style: [

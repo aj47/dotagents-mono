@@ -7604,12 +7604,12 @@ export function ChatMessageDelegationCard({
                 accessibilityElementsHidden={row.statusIcon.accessibilityElementsHidden}
                 importantForAccessibility={row.statusIcon.importantForAccessibility}
               >
-                {row.statusIcon.spinner ? (
+                {row.statusIcon.spinner.shouldRender ? (
                   <ActivityIndicator
                     size={row.statusIcon.spinner.size}
                     color={row.statusIcon.spinner.color}
                   />
-                ) : row.statusIcon.icon ? (
+                ) : row.statusIcon.icon.shouldRender ? (
                   <Ionicons
                     name={row.statusIcon.icon.name}
                     size={row.statusIcon.icon.size}

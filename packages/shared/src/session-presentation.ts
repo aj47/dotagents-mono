@@ -2283,8 +2283,8 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
         style: TStyles["toolPreviewStatusIcon"]
         accessibilityElementsHidden: true
         importantForAccessibility: "no-hide-descendants"
-        spinner: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["spinner"] | null
-        icon: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["icon"] | null
+        spinner: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["spinner"]
+        icon: ChatRuntimeToolExecutionCompactPreviewMobileRowState["renderState"]["statusIndicator"]["icon"]
       }
       name: {
         style: Array<
@@ -22668,40 +22668,36 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
         numberOfLines: surface.toolPreviewLabelNumberOfLines,
         text: toolPreview.label,
       },
-      rows: toolPreview.rows.map(({ key, preview, renderState }) => {
-        const spinner = renderState.statusIndicator.spinner.shouldRender
-          ? renderState.statusIndicator.spinner
-          : null
-        const icon = !spinner && renderState.statusIndicator.icon.shouldRender
-          ? renderState.statusIndicator.icon
-          : null
-
-        return {
-          key,
-          line: {
-            style: styles.toolPreviewLine,
-            accessibilityLabel: renderState.accessibilityLabel,
+      rows: toolPreview.rows.map(({ key, preview, renderState }) => ({
+        key,
+        line: {
+          style: styles.toolPreviewLine,
+          accessibilityLabel: renderState.accessibilityLabel,
+        },
+        statusIcon: {
+          style: styles.toolPreviewStatusIcon,
+          accessibilityElementsHidden: true,
+          importantForAccessibility: "no-hide-descendants" as const,
+          spinner: renderState.statusIndicator.spinner,
+          icon: {
+            ...renderState.statusIndicator.icon,
+            shouldRender:
+              !renderState.statusIndicator.spinner.shouldRender
+              && renderState.statusIndicator.icon.shouldRender,
           },
-          statusIcon: {
-            style: styles.toolPreviewStatusIcon,
-            accessibilityElementsHidden: true,
-            importantForAccessibility: "no-hide-descendants" as const,
-            spinner,
-            icon,
-          },
-          name: {
-            style: [
-              styles.toolPreviewName,
-              renderState.isPending && styles.toolPreviewNamePending,
-              renderState.isSuccess && styles.toolPreviewNameSuccess,
-              renderState.isError && styles.toolPreviewNameError,
-            ],
-            numberOfLines: renderState.name.numberOfLines,
-            ellipsizeMode: renderState.name.ellipsizeMode,
-            text: preview,
-          },
-        }
-      }),
+        },
+        name: {
+          style: [
+            styles.toolPreviewName,
+            renderState.isPending && styles.toolPreviewNamePending,
+            renderState.isSuccess && styles.toolPreviewNameSuccess,
+            renderState.isError && styles.toolPreviewNameError,
+          ],
+          numberOfLines: renderState.name.numberOfLines,
+          ellipsizeMode: renderState.name.ellipsizeMode,
+          text: preview,
+        },
+      })),
       moreAction: toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? {
         button: {
           onPress: toolPreview.onShowAll,

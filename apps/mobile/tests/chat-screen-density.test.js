@@ -1123,11 +1123,15 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(screenSource, /accessibilityLabel=\{`\$\{toolPresentation\.label\}: \$\{toolPreview\}`\}/);
   assert.match(sessionPresentationSource, /styles\.toolPreviewStatusIcon/);
   assert.match(sessionPresentationSource, /renderState\.statusIndicator\.spinner\.shouldRender/);
+  assert.match(delegationCardComponentSource, /row\.statusIcon\.spinner\.shouldRender \? \(/);
   assert.match(delegationCardComponentSource, /size=\{row\.statusIcon\.spinner\.size\}/);
   assert.match(delegationCardComponentSource, /color=\{row\.statusIcon\.spinner\.color\}/);
   assert.match(sessionPresentationSource, /renderState\.statusIndicator\.icon\.shouldRender/);
+  assert.match(delegationCardComponentSource, /row\.statusIcon\.icon\.shouldRender \? \(/);
   assert.match(delegationCardComponentSource, /name=\{row\.statusIcon\.icon\.name\}/);
   assert.match(delegationCardComponentSource, /color=\{row\.statusIcon\.icon\.color\}/);
+  assert.doesNotMatch(delegationCardComponentSource, /row\.statusIcon\.spinner \? \(/);
+  assert.doesNotMatch(delegationCardComponentSource, /row\.statusIcon\.icon \? \(/);
   assert.doesNotMatch(delegationCardComponentSource, /renderState\.statusIndicator\.spinner\.shouldRender/);
   assert.doesNotMatch(delegationCardComponentSource, /renderState\.statusIndicator\.icon\.shouldRender/);
   assert.doesNotMatch(screenSource, /const toolStateColor = getToolExecutionStatusMobileColor\(toolState, theme\.colors\);/);
