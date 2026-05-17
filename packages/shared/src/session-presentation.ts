@@ -2255,36 +2255,38 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     style: TStyles["conversationPreview"]
     rows: Array<{
       key: string
-      line: {
-        style: TStyles["conversationPreviewLine"]
-      }
-      role: {
-        style: Array<
-          | TStyles["conversationPreviewRole"]
-          | ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots[
-            keyof ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
-          ]
-        >
-        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleNumberOfLines"]
-        ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleEllipsizeMode"]
-        text: string
-      }
-      content: {
-        style: TStyles["conversationPreviewContent"]
-        numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentNumberOfLines"]
-        ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentEllipsizeMode"]
-        text: string
-      }
-      timestamp:
-        | {
-          shouldRender: true
-          style: TStyles["conversationPreviewTimestamp"]
-          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
+      props: {
+        line: {
+          style: TStyles["conversationPreviewLine"]
+        }
+        role: {
+          style: Array<
+            | TStyles["conversationPreviewRole"]
+            | ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots[
+              keyof ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
+            ]
+          >
+          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleNumberOfLines"]
+          ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleEllipsizeMode"]
           text: string
         }
-        | {
-          shouldRender: false
+        content: {
+          style: TStyles["conversationPreviewContent"]
+          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentNumberOfLines"]
+          ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentEllipsizeMode"]
+          text: string
         }
+        timestamp:
+          | {
+            shouldRender: true
+            style: TStyles["conversationPreviewTimestamp"]
+            numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
+            text: string
+          }
+          | {
+            shouldRender: false
+          }
+      }
     }>
     moreAction:
       | {
@@ -22930,31 +22932,33 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
       style: styles.conversationPreview,
       rows: shouldRenderConversationPreview ? conversationPreview.rows.map((row, rowIndex) => ({
         key: `${row.timestamp}-${row.role}-${rowIndex}`,
-        line: {
-          style: styles.conversationPreviewLine,
-        },
-        role: {
-          style: [
-            styles.conversationPreviewRole,
-            conversationPreview.roleStyles[row.role],
-          ],
-          numberOfLines: surface.conversationPreviewRoleNumberOfLines,
-          ellipsizeMode: surface.conversationPreviewRoleEllipsizeMode,
-          text: row.roleLabel,
-        },
-        content: {
-          style: styles.conversationPreviewContent,
-          numberOfLines: surface.conversationPreviewContentNumberOfLines,
-          ellipsizeMode: surface.conversationPreviewContentEllipsizeMode,
-          text: row.content,
-        },
-        timestamp: row.timestampLabel ? {
-          shouldRender: true,
-          style: styles.conversationPreviewTimestamp,
-          numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
-          text: row.timestampLabel,
-        } : {
-          shouldRender: false,
+        props: {
+          line: {
+            style: styles.conversationPreviewLine,
+          },
+          role: {
+            style: [
+              styles.conversationPreviewRole,
+              conversationPreview.roleStyles[row.role],
+            ],
+            numberOfLines: surface.conversationPreviewRoleNumberOfLines,
+            ellipsizeMode: surface.conversationPreviewRoleEllipsizeMode,
+            text: row.roleLabel,
+          },
+          content: {
+            style: styles.conversationPreviewContent,
+            numberOfLines: surface.conversationPreviewContentNumberOfLines,
+            ellipsizeMode: surface.conversationPreviewContentEllipsizeMode,
+            text: row.content,
+          },
+          timestamp: row.timestampLabel ? {
+            shouldRender: true,
+            style: styles.conversationPreviewTimestamp,
+            numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
+            text: row.timestampLabel,
+          } : {
+            shouldRender: false,
+          },
         },
       })) : [],
       moreAction: shouldRenderConversationPreview && conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? {

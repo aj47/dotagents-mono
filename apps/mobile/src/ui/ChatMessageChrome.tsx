@@ -1626,6 +1626,15 @@ type ChatMessageDelegationCardProps = Omit<
 type ChatMessageDelegationCardPropsInput =
   ChatRuntimeConversationDelegationCardMobileState<ACPDelegationProgress | null | undefined>;
 
+type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegationCardMobilePropsParts<
+  ((event: GestureResponderEvent) => void),
+  ((event: GestureResponderEvent) => void),
+  ChatMessageDelegationCardStyles
+>>;
+
+type ChatMessageDelegationConversationPreviewRowProps =
+  ChatMessageDelegationCardParts['conversationPreview']['rows'][number]['props'];
+
 type ChatMessageToolActivityGroupHeaderKind = ChatRuntimeToolActivityGroupHeaderMobileKind;
 
 type ChatMessageToolActivityGroupToggleStyles = {
@@ -7467,6 +7476,40 @@ export function ChatMessageToolApproval({
   );
 }
 
+export function ChatMessageDelegationConversationPreviewRow({
+  line,
+  role,
+  content,
+  timestamp,
+}: ChatMessageDelegationConversationPreviewRowProps) {
+  return (
+    <View style={line.style}>
+      <Text
+        style={role.style}
+        numberOfLines={role.numberOfLines}
+        ellipsizeMode={role.ellipsizeMode}
+      >
+        {role.text}
+      </Text>
+      <Text
+        style={content.style}
+        numberOfLines={content.numberOfLines}
+        ellipsizeMode={content.ellipsizeMode}
+      >
+        {content.text}
+      </Text>
+      {timestamp.shouldRender ? (
+        <Text
+          style={timestamp.style}
+          numberOfLines={timestamp.numberOfLines}
+        >
+          {timestamp.text}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 export function ChatMessageDelegationCard({
   surface,
   agentName,
@@ -7540,33 +7583,10 @@ export function ChatMessageDelegationCard({
       {delegationCardParts.conversationPreview.shouldRender ? (
         <View style={delegationCardParts.conversationPreview.style}>
           {delegationCardParts.conversationPreview.rows.map((row) => (
-            <View
+            <ChatMessageDelegationConversationPreviewRow
               key={row.key}
-              style={row.line.style}
-            >
-              <Text
-                style={row.role.style}
-                numberOfLines={row.role.numberOfLines}
-                ellipsizeMode={row.role.ellipsizeMode}
-              >
-                {row.role.text}
-              </Text>
-              <Text
-                style={row.content.style}
-                numberOfLines={row.content.numberOfLines}
-                ellipsizeMode={row.content.ellipsizeMode}
-              >
-                {row.content.text}
-              </Text>
-              {row.timestamp.shouldRender ? (
-                <Text
-                  style={row.timestamp.style}
-                  numberOfLines={row.timestamp.numberOfLines}
-                >
-                  {row.timestamp.text}
-                </Text>
-              ) : null}
-            </View>
+              {...row.props}
+            />
           ))}
           {delegationCardParts.conversationPreview.moreAction.shouldRender ? (
             <Pressable

@@ -11030,30 +11030,32 @@ describe("session presentation semantics", () => {
     }
     expect(delegationConversationPreviewRowParts).toMatchObject({
       key: `${delegationConversationPreviewRow.timestamp}-${delegationConversationPreviewRow.role}-0`,
-      line: {
-        style: "delegation-conversation-preview-line-style",
-      },
-      role: {
-        style: [
-          "delegation-conversation-preview-role-style",
-          delegationCardProps.conversationPreview.roleStyles.assistant,
-        ],
-        numberOfLines: delegationCardProps.surface.conversationPreviewRoleNumberOfLines,
-        ellipsizeMode: delegationCardProps.surface.conversationPreviewRoleEllipsizeMode,
-        text: delegationConversationPreviewRow.roleLabel,
-      },
-      content: {
-        style: "delegation-conversation-preview-content-style",
-        numberOfLines: delegationCardProps.surface.conversationPreviewContentNumberOfLines,
-        ellipsizeMode: delegationCardProps.surface.conversationPreviewContentEllipsizeMode,
-        text: delegationConversationPreviewRow.content,
+      props: {
+        line: {
+          style: "delegation-conversation-preview-line-style",
+        },
+        role: {
+          style: [
+            "delegation-conversation-preview-role-style",
+            delegationCardProps.conversationPreview.roleStyles.assistant,
+          ],
+          numberOfLines: delegationCardProps.surface.conversationPreviewRoleNumberOfLines,
+          ellipsizeMode: delegationCardProps.surface.conversationPreviewRoleEllipsizeMode,
+          text: delegationConversationPreviewRow.roleLabel,
+        },
+        content: {
+          style: "delegation-conversation-preview-content-style",
+          numberOfLines: delegationCardProps.surface.conversationPreviewContentNumberOfLines,
+          ellipsizeMode: delegationCardProps.surface.conversationPreviewContentEllipsizeMode,
+          text: delegationConversationPreviewRow.content,
+        },
       },
     })
-    expect(delegationConversationPreviewRowParts.timestamp.shouldRender).toBe(true)
-    if (!delegationConversationPreviewRowParts.timestamp.shouldRender) {
+    expect(delegationConversationPreviewRowParts.props.timestamp.shouldRender).toBe(true)
+    if (!delegationConversationPreviewRowParts.props.timestamp.shouldRender) {
       throw new Error("Expected delegation conversation preview timestamp parts")
     }
-    expect(delegationConversationPreviewRowParts.timestamp).toMatchObject({
+    expect(delegationConversationPreviewRowParts.props.timestamp).toMatchObject({
       style: "delegation-conversation-preview-timestamp-style",
       numberOfLines: delegationCardProps.surface.conversationPreviewTimestampNumberOfLines,
       text: delegationConversationPreviewRow.timestampLabel,
