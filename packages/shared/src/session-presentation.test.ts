@@ -9355,12 +9355,16 @@ describe("session presentation semantics", () => {
       rootStyle: "root-style",
     })).toEqual({
       keyboardAvoidingView: {
-        style: "keyboard-avoiding-style",
-        behavior: "padding",
-        keyboardVerticalOffset: 24,
+        props: {
+          style: "keyboard-avoiding-style",
+          behavior: "padding",
+          keyboardVerticalOffset: 24,
+        },
       },
       root: {
-        style: "root-style",
+        props: {
+          style: "root-style",
+        },
         children: "viewport",
         dock: "dock",
       },

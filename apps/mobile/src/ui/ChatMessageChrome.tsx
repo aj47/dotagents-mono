@@ -10146,11 +10146,9 @@ export function ChatMessageConversationFrame({
 
   return (
     <KeyboardAvoidingView
-      style={frameParts.keyboardAvoidingView.style}
-      behavior={frameParts.keyboardAvoidingView.behavior}
-      keyboardVerticalOffset={frameParts.keyboardAvoidingView.keyboardVerticalOffset}
+      {...frameParts.keyboardAvoidingView.props}
     >
-      <View style={frameParts.root.style}>
+      <View {...frameParts.root.props}>
         {frameParts.root.children}
         {frameParts.root.dock}
       </View>

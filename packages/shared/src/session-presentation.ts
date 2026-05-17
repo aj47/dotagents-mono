@@ -7688,12 +7688,16 @@ export interface ChatRuntimeConversationFrameMobilePropsParts<
   TRootStyle = unknown,
 > {
   keyboardAvoidingView: {
-    style: TKeyboardAvoidingStyle
-    behavior: TKeyboardAvoidingBehavior
-    keyboardVerticalOffset: TKeyboardVerticalOffset
+    props: {
+      style: TKeyboardAvoidingStyle
+      behavior: TKeyboardAvoidingBehavior
+      keyboardVerticalOffset: TKeyboardVerticalOffset
+    }
   }
   root: {
-    style: TRootStyle
+    props: {
+      style: TRootStyle
+    }
     children: TChildren
     dock: TDock | undefined
   }
@@ -24911,12 +24915,16 @@ export function createChatRuntimeConversationFrameMobilePropsParts<
 > {
   return {
     keyboardAvoidingView: {
-      style: keyboardAvoidingStyle,
-      behavior: keyboardAvoidingBehavior,
-      keyboardVerticalOffset,
+      props: {
+        style: keyboardAvoidingStyle,
+        behavior: keyboardAvoidingBehavior,
+        keyboardVerticalOffset,
+      },
     },
     root: {
-      style: rootStyle,
+      props: {
+        style: rootStyle,
+      },
       children,
       dock,
     },
