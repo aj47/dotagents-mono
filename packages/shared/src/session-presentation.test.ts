@@ -13563,69 +13563,71 @@ describe("session presentation semantics", () => {
           style: "compact-line",
           accessibilityLabel: "Running: read_file",
         },
-      },
-      leadingIcon: {
-        container: {
-          props: {
-            style: "compact-leading",
+        content: {
+          leadingIcon: {
+            container: {
+              props: {
+                style: "compact-leading",
+              },
+            },
+            icon: {
+              props: {
+                name: "hammer-outline",
+                size: 14,
+                color: "#555",
+              },
+            },
           },
-        },
-        icon: {
-          props: {
-            name: "hammer-outline",
-            size: 14,
-            color: "#555",
+          name: {
+            props: {
+              text: "read_file",
+              props: {
+                style: [
+                  "compact-name",
+                  "compact-name-pending",
+                  false,
+                  false,
+                ],
+                numberOfLines: 1,
+                ellipsizeMode: "tail",
+              },
+            },
           },
-        },
-      },
-      name: {
-        props: {
-          text: "read_file",
-          props: {
-            style: [
-              "compact-name",
-              "compact-name-pending",
-              false,
-              false,
-            ],
-            numberOfLines: 1,
-            ellipsizeMode: "tail",
+          statusIndicator: {
+            container: {
+              props: {
+                style: "compact-status",
+              },
+            },
+            spinner: {
+              shouldRender: true,
+              props: {
+                size: "small",
+                color: "#888",
+              },
+            },
+            icon: {
+              shouldRender: false,
+              props: {
+                name: "checkmark-circle",
+                size: 12,
+                color: "#0f0",
+              },
+            },
           },
-        },
-      },
-      statusIndicator: {
-        container: {
-          props: {
-            style: "compact-status",
-          },
-        },
-        spinner: {
-          shouldRender: true,
-          props: {
-            size: "small",
-            color: "#888",
-          },
-        },
-        icon: {
-          shouldRender: false,
-          props: {
-            name: "checkmark-circle",
-            size: 12,
-            color: "#0f0",
-          },
-        },
-      },
-      toggleIcon: {
-        container: {
-          props: {
-            style: "compact-toggle",
-          },
-        },
-        icon: {
-          props: {
-            name: "chevron-forward",
-            size: 16,
-            color: "#999",
+          toggleIcon: {
+            container: {
+              props: {
+                style: "compact-toggle",
+              },
+            },
+            icon: {
+              props: {
+                name: "chevron-forward",
+                size: 16,
+                color: "#999",
+              },
+            },
           },
         },
       },
@@ -13676,7 +13678,7 @@ describe("session presentation semantics", () => {
         toggleIcon: "compact-toggle",
       },
     })
-    expect(compactRowIconParts.statusIndicator).toEqual({
+    expect(compactRowIconParts.container.content.statusIndicator).toEqual({
       container: {
         props: {
           style: "compact-status",

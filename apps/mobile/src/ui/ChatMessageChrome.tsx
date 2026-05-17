@@ -1996,27 +1996,27 @@ type ChatMessageToolExecutionCompactRowContainerProps =
 
 type ChatMessageToolExecutionCompactRowIconCellProps =
   (
-    | ChatMessageToolExecutionCompactRowParts['leadingIcon']['container']['props']
-    | ChatMessageToolExecutionCompactRowParts['toggleIcon']['container']['props']
+    | ChatMessageToolExecutionCompactRowParts['container']['content']['leadingIcon']['container']['props']
+    | ChatMessageToolExecutionCompactRowParts['container']['content']['toggleIcon']['container']['props']
   ) & {
     children: ReactNode;
   };
 
 type ChatMessageToolExecutionCompactRowIconProps =
-  | ChatMessageToolExecutionCompactRowParts['leadingIcon']['icon']['props']
-  | ChatMessageToolExecutionCompactRowParts['statusIndicator']['icon']['props']
-  | ChatMessageToolExecutionCompactRowParts['toggleIcon']['icon']['props'];
+  | ChatMessageToolExecutionCompactRowParts['container']['content']['leadingIcon']['icon']['props']
+  | ChatMessageToolExecutionCompactRowParts['container']['content']['statusIndicator']['icon']['props']
+  | ChatMessageToolExecutionCompactRowParts['container']['content']['toggleIcon']['icon']['props'];
 
 type ChatMessageToolExecutionCompactRowNameProps =
-  ChatMessageToolExecutionCompactRowParts['name']['props'];
+  ChatMessageToolExecutionCompactRowParts['container']['content']['name']['props'];
 
 type ChatMessageToolExecutionCompactRowStatusIndicatorProps =
-  ChatMessageToolExecutionCompactRowParts['statusIndicator']['container']['props'] & {
+  ChatMessageToolExecutionCompactRowParts['container']['content']['statusIndicator']['container']['props'] & {
     children: ReactNode;
   };
 
 type ChatMessageToolExecutionCompactRowSpinnerProps =
-  ChatMessageToolExecutionCompactRowParts['statusIndicator']['spinner']['props'];
+  ChatMessageToolExecutionCompactRowParts['container']['content']['statusIndicator']['spinner']['props'];
 
 type ChatMessageToolExecutionCompactListRow = {
   key: string;
@@ -9018,39 +9018,40 @@ export function ChatMessageToolExecutionCompactRow({
     renderState,
     styles,
   });
+  const compactRowContent = compactRowParts.container.content;
 
   return (
     <ChatMessageToolExecutionCompactRowContainer
       {...compactRowParts.container.props}
     >
       <ChatMessageToolExecutionCompactRowIconCell
-        {...compactRowParts.leadingIcon.container.props}
+        {...compactRowContent.leadingIcon.container.props}
       >
         <ChatMessageToolExecutionCompactRowIcon
-          {...compactRowParts.leadingIcon.icon.props}
+          {...compactRowContent.leadingIcon.icon.props}
         />
       </ChatMessageToolExecutionCompactRowIconCell>
       <ChatMessageToolExecutionCompactRowName
-        {...compactRowParts.name.props}
+        {...compactRowContent.name.props}
       />
       <ChatMessageToolExecutionCompactRowStatusIndicator
-        {...compactRowParts.statusIndicator.container.props}
+        {...compactRowContent.statusIndicator.container.props}
       >
-        {compactRowParts.statusIndicator.spinner.shouldRender ? (
+        {compactRowContent.statusIndicator.spinner.shouldRender ? (
           <ChatMessageToolExecutionCompactRowSpinner
-            {...compactRowParts.statusIndicator.spinner.props}
+            {...compactRowContent.statusIndicator.spinner.props}
           />
-        ) : compactRowParts.statusIndicator.icon.shouldRender ? (
+        ) : compactRowContent.statusIndicator.icon.shouldRender ? (
           <ChatMessageToolExecutionCompactRowIcon
-            {...compactRowParts.statusIndicator.icon.props}
+            {...compactRowContent.statusIndicator.icon.props}
           />
         ) : null}
       </ChatMessageToolExecutionCompactRowStatusIndicator>
       <ChatMessageToolExecutionCompactRowIconCell
-        {...compactRowParts.toggleIcon.container.props}
+        {...compactRowContent.toggleIcon.container.props}
       >
         <ChatMessageToolExecutionCompactRowIcon
-          {...compactRowParts.toggleIcon.icon.props}
+          {...compactRowContent.toggleIcon.icon.props}
         />
       </ChatMessageToolExecutionCompactRowIconCell>
     </ChatMessageToolExecutionCompactRowContainer>

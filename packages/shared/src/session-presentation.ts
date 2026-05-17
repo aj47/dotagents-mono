@@ -4147,54 +4147,56 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
       style: TStyles["line"]
       accessibilityLabel: string
     }
-  }
-  leadingIcon: {
-    container: {
-      props: {
-        style: TStyles["leadingIcon"]
+    content: {
+      leadingIcon: {
+        container: {
+          props: {
+            style: TStyles["leadingIcon"]
+          }
+        }
+        icon: {
+          props: TRenderState["toolIcon"]
+        }
       }
-    }
-    icon: {
-      props: TRenderState["toolIcon"]
-    }
-  }
-  name: {
-    props: {
-      text: string
-      props: {
-        style: Array<
-          | TStyles["name"]
-          | TStyles["namePending"]
-          | TStyles["nameSuccess"]
-          | TStyles["nameError"]
-          | false
+      name: {
+        props: {
+          text: string
+          props: {
+            style: Array<
+              | TStyles["name"]
+              | TStyles["namePending"]
+              | TStyles["nameSuccess"]
+              | TStyles["nameError"]
+              | false
+            >
+            numberOfLines: TRenderState["name"]["numberOfLines"]
+            ellipsizeMode: TRenderState["name"]["ellipsizeMode"]
+          }
+        }
+      }
+      statusIndicator: {
+        container: {
+          props: {
+            style: TStyles["statusIndicator"]
+          }
+        }
+        spinner: ChatRuntimeToolExecutionCompactRowStatusIndicatorPropsPart<
+          TRenderState["statusIndicator"]["spinner"]
         >
-        numberOfLines: TRenderState["name"]["numberOfLines"]
-        ellipsizeMode: TRenderState["name"]["ellipsizeMode"]
+        icon: ChatRuntimeToolExecutionCompactRowStatusIndicatorPropsPart<
+          TRenderState["statusIndicator"]["icon"]
+        >
       }
-    }
-  }
-  statusIndicator: {
-    container: {
-      props: {
-        style: TStyles["statusIndicator"]
+      toggleIcon: {
+        container: {
+          props: {
+            style: TStyles["toggleIcon"]
+          }
+        }
+        icon: {
+          props: TRenderState["toggleIcon"]
+        }
       }
-    }
-    spinner: ChatRuntimeToolExecutionCompactRowStatusIndicatorPropsPart<
-      TRenderState["statusIndicator"]["spinner"]
-    >
-    icon: ChatRuntimeToolExecutionCompactRowStatusIndicatorPropsPart<
-      TRenderState["statusIndicator"]["icon"]
-    >
-  }
-  toggleIcon: {
-    container: {
-      props: {
-        style: TStyles["toggleIcon"]
-      }
-    }
-    icon: {
-      props: TRenderState["toggleIcon"]
     }
   }
 }
@@ -21853,55 +21855,57 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
         style: styles.line,
         accessibilityLabel: renderState.accessibilityLabel,
       },
-    },
-    leadingIcon: {
-      container: {
-        props: {
-          style: styles.leadingIcon,
+      content: {
+        leadingIcon: {
+          container: {
+            props: {
+              style: styles.leadingIcon,
+            },
+          },
+          icon: {
+            props: renderState.toolIcon,
+          },
         },
-      },
-      icon: {
-        props: renderState.toolIcon,
-      },
-    },
-    name: {
-      props: {
-        text: renderState.preview,
-        props: {
-          style: [
-            styles.name,
-            renderState.isPending && styles.namePending,
-            renderState.isSuccess && styles.nameSuccess,
-            renderState.isError && styles.nameError,
-          ],
-          numberOfLines: renderState.name.numberOfLines,
-          ellipsizeMode: renderState.name.ellipsizeMode,
+        name: {
+          props: {
+            text: renderState.preview,
+            props: {
+              style: [
+                styles.name,
+                renderState.isPending && styles.namePending,
+                renderState.isSuccess && styles.nameSuccess,
+                renderState.isError && styles.nameError,
+              ],
+              numberOfLines: renderState.name.numberOfLines,
+              ellipsizeMode: renderState.name.ellipsizeMode,
+            },
+          },
         },
-      },
-    },
-    statusIndicator: {
-      container: {
-        props: {
-          style: styles.statusIndicator,
+        statusIndicator: {
+          container: {
+            props: {
+              style: styles.statusIndicator,
+            },
+          },
+          spinner: {
+            shouldRender: spinnerShouldRender,
+            props: spinnerProps as Omit<TRenderState["statusIndicator"]["spinner"], "shouldRender">,
+          },
+          icon: {
+            shouldRender: !spinnerShouldRender && iconShouldRender,
+            props: iconProps as Omit<TRenderState["statusIndicator"]["icon"], "shouldRender">,
+          },
         },
-      },
-      spinner: {
-        shouldRender: spinnerShouldRender,
-        props: spinnerProps as Omit<TRenderState["statusIndicator"]["spinner"], "shouldRender">,
-      },
-      icon: {
-        shouldRender: !spinnerShouldRender && iconShouldRender,
-        props: iconProps as Omit<TRenderState["statusIndicator"]["icon"], "shouldRender">,
-      },
-    },
-    toggleIcon: {
-      container: {
-        props: {
-          style: styles.toggleIcon,
+        toggleIcon: {
+          container: {
+            props: {
+              style: styles.toggleIcon,
+            },
+          },
+          icon: {
+            props: renderState.toggleIcon,
+          },
         },
-      },
-      icon: {
-        props: renderState.toggleIcon,
       },
     },
   }
