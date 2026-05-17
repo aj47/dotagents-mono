@@ -8471,13 +8471,7 @@ export function ChatMessageToolExecutionCallList({
       {callListParts.rows.map((row) => (
         <ChatMessageToolExecutionCallDetail
           key={row.key}
-          renderState={row.renderState}
-          toolName={row.toolName}
-          onHeaderPress={row.onHeaderPress}
-          input={row.input}
-          result={row.result}
-          pendingResult={row.pendingResult}
-          styles={row.styles}
+          {...row.props}
         />
       ))}
     </>

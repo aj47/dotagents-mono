@@ -3098,13 +3098,15 @@ export interface ChatRuntimeToolExecutionCallListMobilePropsParts<
 > {
   rows: Array<{
     key: TRow["key"]
-    renderState: TRow["renderState"]
-    toolName: string
-    onHeaderPress: TRow["onHeaderPress"]
-    input: TRow["input"]
-    result: TRow["result"]
-    pendingResult: TRow["pendingResult"]
-    styles: TStyles
+    props: {
+      renderState: TRow["renderState"]
+      toolName: TRow["toolName"]
+      onHeaderPress: TRow["onHeaderPress"]
+      input: TRow["input"]
+      result: TRow["result"]
+      pendingResult: TRow["pendingResult"]
+      styles: TStyles
+    }
   }>
 }
 
@@ -20301,13 +20303,15 @@ export function createChatRuntimeToolExecutionCallListMobilePropsParts<
   return {
     rows: rows.map((row) => ({
       key: row.key,
-      renderState: row.renderState,
-      toolName: row.toolName,
-      onHeaderPress: row.onHeaderPress,
-      input: row.input,
-      result: row.result,
-      pendingResult: row.pendingResult,
-      styles,
+      props: {
+        renderState: row.renderState,
+        toolName: row.toolName,
+        onHeaderPress: row.onHeaderPress,
+        input: row.input,
+        result: row.result,
+        pendingResult: row.pendingResult,
+        styles,
+      },
     })),
   }
 }
