@@ -2079,10 +2079,10 @@ type ChatMessageToolExecutionCollapseControlPressableProps =
   };
 
 type ChatMessageToolExecutionCollapseControlIconProps =
-  ChatMessageToolExecutionCollapseControlParts['icon']['props'];
+  ChatMessageToolExecutionCollapseControlParts['container']['content']['icon']['props'];
 
 type ChatMessageToolExecutionCollapseControlLabelProps =
-  ChatMessageToolExecutionCollapseControlParts['label']['props'];
+  ChatMessageToolExecutionCollapseControlParts['container']['content']['label']['props'];
 
 type ChatMessageToolExecutionExpandedGroupStyles = {
   container: StyleProp<ViewStyle>;
@@ -2183,10 +2183,10 @@ type ChatMessageToolExecutionCopyButtonPressableProps =
   };
 
 type ChatMessageToolExecutionCopyButtonIconProps =
-  ChatMessageToolExecutionCopyButtonParts['icon']['props'];
+  ChatMessageToolExecutionCopyButtonParts['container']['content']['icon']['props'];
 
 type ChatMessageToolExecutionCopyButtonLabelProps =
-  ChatMessageToolExecutionCopyButtonParts['label']['props'];
+  ChatMessageToolExecutionCopyButtonParts['container']['content']['label']['props'];
 
 type ChatMessageToolExecutionDetailHeaderStyles = {
   header: StyleProp<ViewStyle>;
@@ -2223,10 +2223,10 @@ type ChatMessageToolExecutionDetailHeaderExpandHintProps =
   };
 
 type ChatMessageToolExecutionDetailHeaderIconProps =
-  ChatMessageToolExecutionDetailHeaderParts['expandHint']['icon']['props'];
+  ChatMessageToolExecutionDetailHeaderParts['expandHint']['content']['icon']['props'];
 
 type ChatMessageToolExecutionDetailHeaderExpandLabelProps =
-  ChatMessageToolExecutionDetailHeaderParts['expandHint']['label']['props'];
+  ChatMessageToolExecutionDetailHeaderParts['expandHint']['content']['label']['props'];
 
 type ChatMessageToolExecutionCallSectionStyles = {
   section: StyleProp<ViewStyle>;
@@ -9153,16 +9153,17 @@ export function ChatMessageToolExecutionCollapseControl({
     onPress,
     styles,
   });
+  const collapseControlContent = collapseControlParts.container.content;
 
   return (
     <ChatMessageToolExecutionCollapseControlPressable
       {...collapseControlParts.container.props}
     >
       <ChatMessageToolExecutionCollapseControlIcon
-        {...collapseControlParts.icon.props}
+        {...collapseControlContent.icon.props}
       />
       <ChatMessageToolExecutionCollapseControlLabel
-        {...collapseControlParts.label.props}
+        {...collapseControlContent.label.props}
       />
     </ChatMessageToolExecutionCollapseControlPressable>
   );
@@ -9343,16 +9344,17 @@ export function ChatMessageToolExecutionCopyButton({
     onPress,
     styles,
   });
+  const copyButtonContent = copyButtonParts.container.content;
 
   return (
     <ChatMessageToolExecutionCopyButtonPressable
       {...copyButtonParts.container.props}
     >
       <ChatMessageToolExecutionCopyButtonIcon
-        {...copyButtonParts.icon.props}
+        {...copyButtonContent.icon.props}
       />
       <ChatMessageToolExecutionCopyButtonLabel
-        {...copyButtonParts.label.props}
+        {...copyButtonContent.label.props}
       />
     </ChatMessageToolExecutionCopyButtonPressable>
   );
@@ -9398,6 +9400,7 @@ export function ChatMessageToolExecutionDetailHeader({
     onPress,
     styles,
   });
+  const expandHintContent = detailHeaderParts.expandHint.content;
 
   return (
     <ChatMessageToolExecutionDetailHeaderPressable
@@ -9410,10 +9413,10 @@ export function ChatMessageToolExecutionDetailHeader({
         {...detailHeaderParts.expandHint.props}
       >
         <ChatMessageToolExecutionDetailHeaderIcon
-          {...detailHeaderParts.expandHint.icon.props}
+          {...expandHintContent.icon.props}
         />
         <ChatMessageToolExecutionDetailHeaderExpandLabel
-          {...detailHeaderParts.expandHint.label.props}
+          {...expandHintContent.label.props}
         />
       </ChatMessageToolExecutionDetailHeaderExpandHint>
     </ChatMessageToolExecutionDetailHeaderPressable>

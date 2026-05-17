@@ -13444,20 +13444,22 @@ describe("session presentation semantics", () => {
           accessibilityLabel: "Collapse tool details",
           accessibilityHint: "Hides tool details",
         },
-      },
-      icon: {
-        props: {
-          name: "chevron-up",
-          size: 12,
-          color: "#555",
-        },
-      },
-      label: {
-        props: {
-          props: {
-            style: "collapse-text",
+        content: {
+          icon: {
+            props: {
+              name: "chevron-up",
+              size: 12,
+              color: "#555",
+            },
           },
-          text: "Collapse",
+          label: {
+            props: {
+              props: {
+                style: "collapse-text",
+              },
+              text: "Collapse",
+            },
+          },
         },
       },
     })
@@ -13922,19 +13924,21 @@ describe("session presentation semantics", () => {
         props: {
           style: "detail-expand-hint",
         },
-        icon: {
-          props: {
-            name: "chevron-down",
-            size: 12,
-            color: "#777",
-          },
-        },
-        label: {
-          props: {
+        content: {
+          icon: {
             props: {
-              style: "detail-expand-hint-text",
+              name: "chevron-down",
+              size: 12,
+              color: "#777",
             },
-            text: "Show",
+          },
+          label: {
+            props: {
+              props: {
+                style: "detail-expand-hint-text",
+              },
+              text: "Show",
+            },
           },
         },
       },
@@ -13995,20 +13999,22 @@ describe("session presentation semantics", () => {
           accessibilityRole: "button",
           accessibilityLabel: "Copy input payload",
         },
-      },
-      icon: {
-        props: {
-          name: "copy-outline",
-          size: 12,
-          color: "#555",
-        },
-      },
-      label: {
-        props: {
-          props: {
-            style: "copy-button-text",
+        content: {
+          icon: {
+            props: {
+              name: "copy-outline",
+              size: 12,
+              color: "#555",
+            },
           },
-          text: "Copy",
+          label: {
+            props: {
+              props: {
+                style: "copy-button-text",
+              },
+              text: "Copy",
+            },
+          },
         },
       },
     })

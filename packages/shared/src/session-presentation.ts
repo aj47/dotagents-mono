@@ -3694,16 +3694,18 @@ export interface ChatRuntimeToolExecutionCopyButtonMobilePropsParts<
       accessibilityLabel: string
       style: (state: { pressed: boolean }) => Array<TStyles["button"] | TStyles["pressed"] | false>
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
-  }
-  label: {
-    props: {
-      props: {
-        style: TStyles["text"]
+    content: {
+      icon: {
+        props: TRenderState["icon"]
       }
-      text: string
+      label: {
+        props: {
+          props: {
+            style: TStyles["text"]
+          }
+          text: string
+        }
+      }
     }
   }
 }
@@ -3803,15 +3805,17 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
     props: {
       style: TStyles["expandHint"]
     }
-    icon: {
-      props: TRenderState["toggleIcon"]
-    }
-    label: {
-      props: {
+    content: {
+      icon: {
+        props: TRenderState["toggleIcon"]
+      }
+      label: {
         props: {
-          style: TStyles["expandHintText"]
+          props: {
+            style: TStyles["expandHintText"]
+          }
+          text: string
         }
-        text: string
       }
     }
   }
@@ -3929,16 +3933,18 @@ export interface ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
         TStyles["button"] | TStyles["pressed"] | TStyles["placement"] | false | undefined
       >
     }
-  }
-  icon: {
-    props: TRenderState["icon"]
-  }
-  label: {
-    props: {
-      props: {
-        style: TStyles["text"]
+    content: {
+      icon: {
+        props: TRenderState["icon"]
       }
-      text: string
+      label: {
+        props: {
+          props: {
+            style: TStyles["text"]
+          }
+          text: string
+        }
+      }
     }
   }
 }
@@ -21545,16 +21551,18 @@ export function createChatRuntimeToolExecutionCopyButtonMobilePropsParts<
           pressed && styles.pressed,
         ],
       },
-    },
-    icon: {
-      props: renderState.icon,
-    },
-    label: {
-      props: {
-        props: {
-          style: styles.text,
+      content: {
+        icon: {
+          props: renderState.icon,
         },
-        text: renderState.label,
+        label: {
+          props: {
+            props: {
+              style: styles.text,
+            },
+            text: renderState.label,
+          },
+        },
       },
     },
   }
@@ -21619,15 +21627,17 @@ export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
       props: {
         style: styles.expandHint,
       },
-      icon: {
-        props: renderState.toggleIcon,
-      },
-      label: {
-        props: {
+      content: {
+        icon: {
+          props: renderState.toggleIcon,
+        },
+        label: {
           props: {
-            style: styles.expandHintText,
+            props: {
+              style: styles.expandHintText,
+            },
+            text: renderState.toggleLabel,
           },
-          text: renderState.toggleLabel,
         },
       },
     },
@@ -21713,16 +21723,18 @@ export function createChatRuntimeToolExecutionCollapseControlMobilePropsParts<
           styles.placement,
         ],
       },
-    },
-    icon: {
-      props: renderState.icon,
-    },
-    label: {
-      props: {
-        props: {
-          style: styles.text,
+      content: {
+        icon: {
+          props: renderState.icon,
         },
-        text: renderState.label,
+        label: {
+          props: {
+            props: {
+              style: styles.text,
+            },
+            text: renderState.label,
+          },
+        },
       },
     },
   }
