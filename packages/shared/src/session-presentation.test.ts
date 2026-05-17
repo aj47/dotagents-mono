@@ -120,6 +120,7 @@ import {
   createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobileProps,
+  createChatRuntimeConversationThreadBodyMobilePropsFromActionInput,
   createChatRuntimeConversationScrollViewportMobilePropsParts,
   createChatRuntimeConversationDockShellMobilePropsParts,
   createChatRuntimeConversationViewportContentMobilePropsParts,
@@ -11280,6 +11281,60 @@ describe("session presentation semantics", () => {
       },
       inlineActivity: null,
       conversation: conversationBodyProps,
+    })
+    const threadBodyPropsFromActionInput = createChatRuntimeConversationThreadBodyMobilePropsFromActionInput({
+      bodyDisplayMode: "delegationCard",
+      retryStatus: {
+        renderState: null,
+      },
+      delegationCard: {
+        ...delegationCardState,
+        delegation: delegationProgress,
+        toolEntries: delegationToolEntries,
+        displayToolCallCount: 1,
+      },
+      toolApproval: approvalState,
+      inlineActivity: null,
+      conversation: {
+        contentDisplayMode: contentState.contentDisplayMode,
+        actionSet: "action-input",
+        expanded: contentState.expanded,
+        collapsed: contentState.collapsed,
+        toolExecutionStack: conversationToolExecutionStackState,
+      },
+      createActionSet: (actionInput) => {
+        expect(actionInput).toBe("action-input")
+        return actionSetProps
+      },
+    })
+    expect(threadBodyPropsFromActionInput).toMatchObject({
+      bodyDisplayMode: threadBodyProps.bodyDisplayMode,
+      retryStatus: threadBodyProps.retryStatus,
+      delegationCard: {
+        runId: "run-1",
+      },
+      toolApproval: {
+        toolName: "write_file",
+      },
+      inlineActivity: null,
+      conversation: {
+        content: {
+          contentDisplayMode: "expanded",
+          shouldRenderActionSlots: true,
+          entries: actionSetProps.entries,
+          expanded: {
+            markdownContent: "Working",
+          },
+        },
+        standaloneActions: {
+          shouldRender: false,
+          entries: actionSetProps.entries,
+        },
+        toolExecutionStack: {
+          shouldRender: true,
+          detailRows: conversationToolExecutionStackState.detailRows,
+        },
+      },
     })
     conversationToolExecutionStackState.detailRows[0].onHeaderPress()
     conversationToolExecutionStackState.detailRows[0].input?.onCopyPress()

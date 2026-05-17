@@ -7173,6 +7173,42 @@ export interface ChatRuntimeConversationThreadBodyMobilePropsInput<
   conversation: TConversation
 }
 
+export interface ChatRuntimeConversationThreadBodyMobilePropsFromActionInput<
+  TActionInput,
+  TActionEntry,
+  TSpinnerSource,
+  TInlineActivity = unknown,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TCollapsedPreviewPress = () => void,
+> extends Omit<
+    ChatRuntimeConversationThreadBodyMobilePropsInput<
+      ChatRuntimeConversationBodyMobileProps<
+        TActionEntry,
+        TSpinnerSource,
+        TAssetBaseUrl,
+        TAssetAuthToken,
+        TCollapsedPreviewPress
+      >,
+      TInlineActivity
+    >,
+    "conversation"
+  > {
+  conversation: Omit<
+    ChatRuntimeConversationBodyMobilePropsInput<
+      TActionEntry,
+      TSpinnerSource,
+      TAssetBaseUrl,
+      TAssetAuthToken,
+      TCollapsedPreviewPress
+    >,
+    "actionSet"
+  > & {
+    actionSet: TActionInput
+  }
+  createActionSet: (input: TActionInput) => ChatRuntimeConversationActionSetMobileProps<TActionEntry>
+}
+
 export type ChatRuntimeConversationTurnDurationMobileState =
   Pick<ChatRuntimeTurnDurationMessageMobileRenderStateInput, "durationMs" | "isLive">
 
@@ -23559,6 +23595,64 @@ export function createChatRuntimeConversationThreadBodyMobileProps<
     inlineActivity: inlineActivity ?? null,
     conversation,
   }
+}
+
+export function createChatRuntimeConversationThreadBodyMobilePropsFromActionInput<
+  TActionInput,
+  TActionEntry,
+  TSpinnerSource,
+  TInlineActivity = unknown,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TCollapsedPreviewPress = () => void,
+>({
+  bodyDisplayMode,
+  retryStatus,
+  delegationCard,
+  toolApproval,
+  inlineActivity,
+  conversation,
+  createActionSet,
+}: ChatRuntimeConversationThreadBodyMobilePropsFromActionInput<
+  TActionInput,
+  TActionEntry,
+  TSpinnerSource,
+  TInlineActivity,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TCollapsedPreviewPress
+>): ChatRuntimeConversationThreadBodyMobileProps<
+  ChatRuntimeConversationBodyMobileProps<
+    TActionEntry,
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken,
+    TCollapsedPreviewPress
+  >,
+  TInlineActivity
+> {
+  const {
+    contentDisplayMode,
+    actionSet: actionSetInput,
+    expanded,
+    collapsed,
+    toolExecutionStack,
+  } = conversation
+
+  return createChatRuntimeConversationThreadBodyMobileProps({
+    bodyDisplayMode,
+    retryStatus,
+    delegationCard,
+    toolApproval,
+    inlineActivity,
+    conversation: createChatRuntimeConversationBodyMobileProps({
+      contentDisplayMode,
+      actionSet: createActionSet(actionSetInput),
+      expanded,
+      collapsed,
+      toolExecutionStack,
+    }),
+  })
 }
 
 export function getChatRuntimeConversationTurnDurationMobileState<

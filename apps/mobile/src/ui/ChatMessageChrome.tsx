@@ -107,7 +107,6 @@ import {
   createChatRuntimeMessageStandaloneActionsMobilePropsParts,
   createChatRuntimeMessageThreadItemMobilePropsParts,
   createChatRuntimeMessageThreadSurfaceMobilePropsParts,
-  createChatRuntimeConversationBodyMobileProps,
   createChatRuntimeConversationDockShellMobilePropsParts,
   createChatRuntimeConversationDockMobilePropsParts,
   createChatRuntimeConversationRuntimeThreadListMobilePropsParts,
@@ -118,7 +117,7 @@ import {
   createChatRuntimeConversationSurfaceMobilePropsParts,
   createChatRuntimeConversationThreadBodyMobilePropsParts,
   createChatRuntimeConversationViewportMobilePropsParts,
-  createChatRuntimeConversationThreadBodyMobileProps,
+  createChatRuntimeConversationThreadBodyMobilePropsFromActionInput,
   createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   createChatRuntimeToolActivityGroupFooterMobilePropsParts,
   createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
@@ -6450,39 +6449,6 @@ export function useChatMessageRuntimeClipboardChromeActionsState(
   });
 }
 
-function createChatMessageThreadBodyProps({
-  bodyDisplayMode,
-  retryStatus,
-  delegationCard,
-  toolApproval,
-  inlineActivity,
-  conversation,
-}: ChatMessageThreadBodyPropsInput): Omit<ChatMessageThreadBodyProps, 'styles'> {
-  const {
-    contentDisplayMode,
-    actionSet: actionSetInput,
-    expanded,
-    collapsed,
-    toolExecutionStack,
-  } = conversation;
-  const actionSet = createChatMessageActionSet(actionSetInput);
-
-  return createChatRuntimeConversationThreadBodyMobileProps({
-    bodyDisplayMode,
-    retryStatus,
-    delegationCard,
-    toolApproval,
-    inlineActivity,
-    conversation: createChatRuntimeConversationBodyMobileProps({
-      contentDisplayMode,
-      actionSet,
-      expanded,
-      collapsed,
-      toolExecutionStack,
-    }),
-  });
-}
-
 export function useChatRuntimeNavigationHeaderRenderState({
   agentName,
   isPinned = false,
@@ -7337,7 +7303,10 @@ export function ChatMessageRuntimeThread({
 
   if (!runtimeThreadParts.bodySurface) return null;
 
-  const resolvedBody = createChatMessageThreadBodyProps(runtimeThreadParts.bodySurface.body);
+  const resolvedBody = createChatRuntimeConversationThreadBodyMobilePropsFromActionInput({
+    ...runtimeThreadParts.bodySurface.body,
+    createActionSet: createChatMessageActionSet,
+  });
 
   return (
     <ChatMessageToolActivityGroupThreadSurface
