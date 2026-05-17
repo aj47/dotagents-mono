@@ -1542,6 +1542,35 @@ type ChatMessageRetryStatusProps = {
 
 type ChatMessageRetryStatusPropsInput = ChatRuntimeConversationRetryStatusMobileState;
 
+type ChatMessageRetryStatusParts = ReturnType<typeof createChatRuntimeRetryStatusMobilePropsParts<
+  ChatRuntimeRetryStatusMobileRenderState,
+  ChatMessageRetryStatusStyles
+>>;
+
+type ChatMessageRetryStatusCardProps =
+  ChatMessageRetryStatusParts['card']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageRetryStatusViewProps =
+  (ChatMessageRetryStatusParts['header']['props'] | ChatMessageRetryStatusParts['meta']['props']) & {
+    children: ReactNode;
+  };
+
+type ChatMessageRetryStatusIconProps =
+  ChatMessageRetryStatusParts['icon']['props'];
+
+type ChatMessageRetryStatusTitleProps =
+  ChatMessageRetryStatusParts['title']['props'];
+
+type ChatMessageRetryStatusSpinnerProps =
+  ChatMessageRetryStatusParts['spinner']['props'];
+
+type ChatMessageRetryStatusTextProps =
+  | ChatMessageRetryStatusParts['attempt']['props']
+  | ChatMessageRetryStatusParts['countdown']['props']
+  | ChatMessageRetryStatusParts['description']['props'];
+
 type ChatMessageToolApprovalStyles = {
   card: StyleProp<ViewStyle>;
   header: StyleProp<ViewStyle>;
@@ -7429,41 +7458,118 @@ export function ChatMessageRetryStatus({
   if (!retryStatusParts.shouldRenderRetryStatus) return null;
 
   return (
-    <View
-      accessible={retryStatusParts.card.accessible}
-      accessibilityRole={retryStatusParts.card.accessibilityRole}
-      accessibilityLabel={retryStatusParts.card.accessibilityLabel}
-      style={retryStatusParts.card.style}
+    <ChatMessageRetryStatusCard
+      {...retryStatusParts.card.props}
     >
-      <View style={retryStatusParts.header.style}>
-        <Ionicons
-          name={retryStatusParts.icon.name}
-          size={retryStatusParts.icon.size}
-          color={retryStatusParts.icon.color}
+      <ChatMessageRetryStatusView
+        {...retryStatusParts.header.props}
+      >
+        <ChatMessageRetryStatusIcon
+          {...retryStatusParts.icon.props}
         />
-        <Text
-          style={retryStatusParts.title.style}
-          numberOfLines={retryStatusParts.title.numberOfLines}
-        >
-          {retryStatusParts.title.text}
-        </Text>
-        <ActivityIndicator
-          size={retryStatusParts.spinner.size}
-          color={retryStatusParts.spinner.color}
+        <ChatMessageRetryStatusTitle
+          {...retryStatusParts.title.props}
         />
-      </View>
-      <View style={retryStatusParts.meta.style}>
-        <Text style={retryStatusParts.attempt.style}>
-          {retryStatusParts.attempt.text}
-        </Text>
-        <Text style={retryStatusParts.countdown.style}>
-          {retryStatusParts.countdown.text}
-        </Text>
-      </View>
-      <Text style={retryStatusParts.description.style}>
-        {retryStatusParts.description.text}
-      </Text>
+        <ChatMessageRetryStatusSpinner
+          {...retryStatusParts.spinner.props}
+        />
+      </ChatMessageRetryStatusView>
+      <ChatMessageRetryStatusView
+        {...retryStatusParts.meta.props}
+      >
+        <ChatMessageRetryStatusText
+          {...retryStatusParts.attempt.props}
+        />
+        <ChatMessageRetryStatusText
+          {...retryStatusParts.countdown.props}
+        />
+      </ChatMessageRetryStatusView>
+      <ChatMessageRetryStatusText
+        {...retryStatusParts.description.props}
+      />
+    </ChatMessageRetryStatusCard>
+  );
+}
+
+export function ChatMessageRetryStatusCard({
+  accessible,
+  accessibilityRole,
+  accessibilityLabel,
+  style,
+  children,
+}: ChatMessageRetryStatusCardProps) {
+  return (
+    <View
+      accessible={accessible}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      style={style}
+    >
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageRetryStatusView({
+  style,
+  children,
+}: ChatMessageRetryStatusViewProps) {
+  return (
+    <View style={style}>
+      {children}
+    </View>
+  );
+}
+
+export function ChatMessageRetryStatusIcon({
+  name,
+  size,
+  color,
+}: ChatMessageRetryStatusIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageRetryStatusSpinner({
+  size,
+  color,
+}: ChatMessageRetryStatusSpinnerProps) {
+  return (
+    <ActivityIndicator
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageRetryStatusTitle({
+  style,
+  numberOfLines,
+  text,
+}: ChatMessageRetryStatusTitleProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageRetryStatusText({
+  style,
+  text,
+}: ChatMessageRetryStatusTextProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 

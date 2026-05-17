@@ -6246,35 +6246,53 @@ export interface ChatRuntimeRetryStatusMobilePropsParts<
 > {
   shouldRenderRetryStatus: boolean
   card: {
-    accessible: true
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    style: TStyles["card"]
+    props: {
+      accessible: true
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      style: TStyles["card"]
+    }
   }
   header: {
-    style: TStyles["header"]
+    props: {
+      style: TStyles["header"]
+    }
   }
-  icon: TRenderState["icon"]
+  icon: {
+    props: TRenderState["icon"]
+  }
   title: {
-    style: TStyles["title"]
-    numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
-    text: string
+    props: {
+      style: TStyles["title"]
+      numberOfLines: TRenderState["surface"]["titleNumberOfLines"]
+      text: string
+    }
   }
-  spinner: TRenderState["spinner"]
+  spinner: {
+    props: TRenderState["spinner"]
+  }
   meta: {
-    style: TStyles["metaRow"]
+    props: {
+      style: TStyles["metaRow"]
+    }
   }
   attempt: {
-    style: TStyles["attempt"]
-    text: string
+    props: {
+      style: TStyles["attempt"]
+      text: string
+    }
   }
   countdown: {
-    style: TStyles["countdown"]
-    text: string
+    props: {
+      style: TStyles["countdown"]
+      text: string
+    }
   }
   description: {
-    style: TStyles["description"]
-    text: string
+    props: {
+      style: TStyles["description"]
+      text: string
+    }
   }
 }
 
@@ -22761,35 +22779,53 @@ export function createChatRuntimeRetryStatusMobilePropsParts<
   return {
     shouldRenderRetryStatus: renderState.shouldRender,
     card: {
-      accessible: true,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      style: styles.card,
+      props: {
+        accessible: true,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        style: styles.card,
+      },
     },
     header: {
-      style: styles.header,
+      props: {
+        style: styles.header,
+      },
     },
-    icon: renderState.icon,
+    icon: {
+      props: renderState.icon,
+    },
     title: {
-      style: styles.title,
-      numberOfLines: renderState.surface.titleNumberOfLines,
-      text: renderState.title,
+      props: {
+        style: styles.title,
+        numberOfLines: renderState.surface.titleNumberOfLines,
+        text: renderState.title,
+      },
     },
-    spinner: renderState.spinner,
+    spinner: {
+      props: renderState.spinner,
+    },
     meta: {
-      style: styles.metaRow,
+      props: {
+        style: styles.metaRow,
+      },
     },
     attempt: {
-      style: styles.attempt,
-      text: renderState.attemptLabel,
+      props: {
+        style: styles.attempt,
+        text: renderState.attemptLabel,
+      },
     },
     countdown: {
-      style: styles.countdown,
-      text: renderState.countdownLabel,
+      props: {
+        style: styles.countdown,
+        text: renderState.countdownLabel,
+      },
     },
     description: {
-      style: styles.description,
-      text: renderState.description,
+      props: {
+        style: styles.description,
+        text: renderState.description,
+      },
     },
   }
 }

@@ -4606,42 +4606,60 @@ describe("session presentation semantics", () => {
     })).toEqual({
       shouldRenderRetryStatus: true,
       card: {
-        accessible: true,
-        accessibilityRole: "text",
-        accessibilityLabel: "Rate limit reached. Attempt 2/5. Retrying in 7s. The agent will automatically retry when the API is available.",
-        style: "retry-card-style",
+        props: {
+          accessible: true,
+          accessibilityRole: "text",
+          accessibilityLabel: "Rate limit reached. Attempt 2/5. Retrying in 7s. The agent will automatically retry when the API is available.",
+          style: "retry-card-style",
+        },
       },
       header: {
-        style: "retry-header-style",
+        props: {
+          style: "retry-header-style",
+        },
       },
       icon: {
-        name: "time-outline",
-        size: 14,
-        color: "#d97706",
+        props: {
+          name: "time-outline",
+          size: 14,
+          color: "#d97706",
+        },
       },
       title: {
-        style: "retry-title-style",
-        numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.retryStatus.titleNumberOfLines,
-        text: "Rate limit reached",
+        props: {
+          style: "retry-title-style",
+          numberOfLines: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.retryStatus.titleNumberOfLines,
+          text: "Rate limit reached",
+        },
       },
       spinner: {
-        size: "small",
-        color: "#d97706",
+        props: {
+          size: "small",
+          color: "#d97706",
+        },
       },
       meta: {
-        style: "retry-meta-style",
+        props: {
+          style: "retry-meta-style",
+        },
       },
       attempt: {
-        style: "retry-attempt-style",
-        text: "Attempt 2/5",
+        props: {
+          style: "retry-attempt-style",
+          text: "Attempt 2/5",
+        },
       },
       countdown: {
-        style: "retry-countdown-style",
-        text: "Retrying in 7s",
+        props: {
+          style: "retry-countdown-style",
+          text: "Retrying in 7s",
+        },
       },
       description: {
-        style: "retry-description-style",
-        text: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
+        props: {
+          style: "retry-description-style",
+          text: CHAT_RUNTIME_PRESENTATION.retryStatus.autoRetryDescription,
+        },
       },
     })
     expect(createChatRuntimeRetryStatusMobilePropsParts({
