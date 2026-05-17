@@ -10402,25 +10402,17 @@ export function ChatMessageHistoryBanner({
   if (!historyBannerParts.shouldRenderBanner) return null;
 
   return (
-    <View style={historyBannerParts.container.style}>
-      <Text style={historyBannerParts.summary.style}>
+    <View {...historyBannerParts.container.props}>
+      <Text {...historyBannerParts.summary.props}>
         {historyBannerParts.summary.text}
       </Text>
       <Pressable
-        onPress={historyBannerParts.loadButton.onPress}
-        accessibilityRole={historyBannerParts.loadButton.accessibilityRole}
-        accessibilityLabel={historyBannerParts.loadButton.accessibilityLabel}
-        style={({ pressed }) => [
-          historyBannerParts.loadButton.style,
-          pressed && historyBannerParts.loadButton.pressedStyle,
-        ]}
+        {...historyBannerParts.loadButton.props}
       >
         <Ionicons
-          name={historyBannerParts.icon.name}
-          size={historyBannerParts.icon.size}
-          color={historyBannerParts.icon.color}
+          {...historyBannerParts.icon.props}
         />
-        <Text style={historyBannerParts.loadButtonLabel.style}>
+        <Text {...historyBannerParts.loadButtonLabel.props}>
           {historyBannerParts.loadButtonLabel.text}
         </Text>
       </Pressable>

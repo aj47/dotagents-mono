@@ -7115,23 +7115,32 @@ export interface ChatRuntimeMessageHistoryBannerMobilePropsParts<
 > {
   shouldRenderBanner: boolean
   container: {
-    style: TStyles["container"]
+    props: {
+      style: TStyles["container"]
+    }
   }
   summary: {
-    style: TStyles["summary"]
     text: string
+    props: {
+      style: TStyles["summary"]
+    }
   }
   loadButton: {
-    onPress: TOnLoadEarlier | undefined
-    accessibilityRole: TRenderState["loadButton"]["accessibilityRole"]
-    accessibilityLabel: string
-    style: TStyles["loadButton"]
-    pressedStyle: TStyles["loadButtonPressed"]
+    props: {
+      onPress: TOnLoadEarlier | undefined
+      accessibilityRole: TRenderState["loadButton"]["accessibilityRole"]
+      accessibilityLabel: string
+      style: (state: { pressed: boolean }) => Array<TStyles["loadButton"] | TStyles["loadButtonPressed"] | false>
+    }
   }
-  icon: TRenderState["loadButton"]["icon"]
+  icon: {
+    props: TRenderState["loadButton"]["icon"]
+  }
   loadButtonLabel: {
-    style: TStyles["loadButtonText"]
     text: string
+    props: {
+      style: TStyles["loadButtonText"]
+    }
   }
 }
 
@@ -24333,23 +24342,35 @@ export function createChatRuntimeMessageHistoryBannerMobilePropsParts<
   return {
     shouldRenderBanner: renderState.shouldRender,
     container: {
-      style: styles.container,
+      props: {
+        style: styles.container,
+      },
     },
     summary: {
-      style: styles.summary,
       text: renderState.summaryLabel,
+      props: {
+        style: styles.summary,
+      },
     },
     loadButton: {
-      onPress: onLoadEarlier,
-      accessibilityRole: renderState.loadButton.accessibilityRole,
-      accessibilityLabel: renderState.loadButton.accessibilityLabel,
-      style: styles.loadButton,
-      pressedStyle: styles.loadButtonPressed,
+      props: {
+        onPress: onLoadEarlier,
+        accessibilityRole: renderState.loadButton.accessibilityRole,
+        accessibilityLabel: renderState.loadButton.accessibilityLabel,
+        style: ({ pressed }) => [
+          styles.loadButton,
+          pressed && styles.loadButtonPressed,
+        ],
+      },
     },
-    icon: renderState.loadButton.icon,
+    icon: {
+      props: renderState.loadButton.icon,
+    },
     loadButtonLabel: {
-      style: styles.loadButtonText,
       text: renderState.loadButton.label,
+      props: {
+        style: styles.loadButtonText,
+      },
     },
   }
 }

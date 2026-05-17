@@ -4673,16 +4673,15 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageHistoryBannerMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const historyBannerParts = createChatRuntimeMessageHistoryBannerMobilePropsParts\(\{\s+renderState,\s+onLoadEarlier,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!historyBannerParts\.shouldRenderBanner\) return null;/);
-  assert.match(chatMessageChromeSource, /style=\{historyBannerParts\.container\.style\}/);
+  assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.historyBannerParts\.container\.props\}>/);
   assert.match(chatMessageChromeSource, /\{historyBannerParts\.summary\.text\}/);
-  assert.match(chatMessageChromeSource, /onPress=\{historyBannerParts\.loadButton\.onPress\}/);
-  assert.match(chatMessageChromeSource, /accessibilityRole=\{historyBannerParts\.loadButton\.accessibilityRole\}/);
-  assert.match(chatMessageChromeSource, /accessibilityLabel=\{historyBannerParts\.loadButton\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /historyBannerParts\.loadButton\.style,\s+pressed && historyBannerParts\.loadButton\.pressedStyle,/);
-  assert.match(chatMessageChromeSource, /name=\{historyBannerParts\.icon\.name\}/);
-  assert.match(chatMessageChromeSource, /size=\{historyBannerParts\.icon\.size\}/);
-  assert.match(chatMessageChromeSource, /color=\{historyBannerParts\.icon\.color\}/);
+  assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.historyBannerParts\.summary\.props\}>/);
+  assert.match(chatMessageChromeSource, /<Pressable\s+\{\.\.\.historyBannerParts\.loadButton\.props\}/);
+  assert.match(chatMessageChromeSource, /<Ionicons\s+\{\.\.\.historyBannerParts\.icon\.props\}/);
   assert.match(chatMessageChromeSource, /\{historyBannerParts\.loadButtonLabel\.text\}/);
+  assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.historyBannerParts\.loadButtonLabel\.props\}>/);
+  assert.doesNotMatch(chatMessageChromeSource, /historyBannerParts\.loadButton\.(onPress|accessibilityRole|accessibilityLabel|style|pressedStyle)/);
+  assert.doesNotMatch(chatMessageChromeSource, /historyBannerParts\.icon\.(name|size|color)/);
   assert.match(sessionPresentationSource, /shouldRenderBanner: renderState\.shouldRender/);
   assert.doesNotMatch(
     chatMessageChromeSource,

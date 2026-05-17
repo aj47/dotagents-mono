@@ -6333,32 +6333,48 @@ describe("session presentation semantics", () => {
         loadButtonText: "load-button-text-style",
       },
     })
-    expect(historyBannerParts).toEqual({
+    expect(historyBannerParts).toMatchObject({
       shouldRenderBanner: true,
       container: {
-        style: "container-style",
+        props: {
+          style: "container-style",
+        },
       },
       summary: {
-        style: "summary-style",
         text: "Showing latest 40 of 100 messages",
+        props: {
+          style: "summary-style",
+        },
       },
       loadButton: {
-        onPress: "load-earlier",
-        accessibilityRole: "button",
-        accessibilityLabel: "Load 30 earlier messages",
-        style: "load-button-style",
-        pressedStyle: "load-button-pressed-style",
+        props: {
+          onPress: "load-earlier",
+          accessibilityRole: "button",
+          accessibilityLabel: "Load 30 earlier messages",
+        },
       },
       icon: {
-        name: "chevron-up",
-        size: 13,
-        color: "#0f172a",
+        props: {
+          name: "chevron-up",
+          size: 13,
+          color: "#0f172a",
+        },
       },
       loadButtonLabel: {
-        style: "load-button-text-style",
         text: "Load earlier",
+        props: {
+          style: "load-button-text-style",
+        },
       },
     })
+    expect(historyBannerParts.loadButton.props.style({ pressed: false })).toEqual([
+      "load-button-style",
+      false,
+    ])
+    expect(historyBannerParts.loadButton.props.style({ pressed: true })).toEqual([
+      "load-button-style",
+      "load-button-pressed-style",
+    ])
     expect(createChatRuntimeMessageHistoryBannerMobilePropsParts({
       renderState: {
         shouldRender: false,
