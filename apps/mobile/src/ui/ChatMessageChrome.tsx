@@ -1333,6 +1333,9 @@ type ChatRuntimeHeaderConversationStatusContainerProps =
     children: ReactNode;
   };
 
+type ChatRuntimeHeaderConversationStatusContainerContentProps =
+  ChatRuntimeHeaderConversationStatusParts['container']['content'];
+
 type ChatRuntimeHeaderConversationStatusRunningIndicatorProps =
   ChatRuntimeHeaderConversationStatusParts['container']['content']['runningIndicator']['props'];
 
@@ -1360,6 +1363,9 @@ type ChatRuntimeHeaderTurnDurationContainerProps =
   ChatRuntimeHeaderTurnDurationParts['container']['props'] & {
     children: ReactNode;
   };
+
+type ChatRuntimeHeaderTurnDurationContainerContentProps =
+  ChatRuntimeHeaderTurnDurationParts['container']['content'];
 
 type ChatRuntimeHeaderTurnDurationIconProps =
   ChatRuntimeHeaderTurnDurationParts['container']['content']['icon']['props'];
@@ -8593,21 +8599,32 @@ export function ChatRuntimeHeaderConversationStatus({
 
   if (!conversationStatusContainer.shouldRender) return null;
 
-  const containerContent = conversationStatusContainer.content;
-
   return (
     <ChatRuntimeHeaderConversationStatusContainer
       {...conversationStatusContainer.props}
     >
-      {containerContent.runningIndicator.shouldRender ? (
+      <ChatRuntimeHeaderConversationStatusContainerContent
+        {...conversationStatusContainer.content}
+      />
+    </ChatRuntimeHeaderConversationStatusContainer>
+  );
+}
+
+export function ChatRuntimeHeaderConversationStatusContainerContent({
+  runningIndicator,
+  label,
+}: ChatRuntimeHeaderConversationStatusContainerContentProps) {
+  return (
+    <>
+      {runningIndicator.shouldRender ? (
         <ChatRuntimeHeaderConversationStatusRunningIndicator
-          {...containerContent.runningIndicator.props}
+          {...runningIndicator.props}
         />
       ) : null}
       <ChatRuntimeHeaderConversationStatusLabel
-        {...containerContent.label.props}
+        {...label.props}
       />
-    </ChatRuntimeHeaderConversationStatusContainer>
+    </>
   );
 }
 
@@ -8653,19 +8670,30 @@ export function ChatRuntimeHeaderTurnDuration({
 
   if (!turnDurationContainer.shouldRender) return null;
 
-  const containerContent = turnDurationContainer.content;
-
   return (
     <ChatRuntimeHeaderTurnDurationContainer
       {...turnDurationContainer.props}
     >
-      <ChatRuntimeHeaderTurnDurationIcon
-        {...containerContent.icon.props}
-      />
-      <ChatRuntimeHeaderTurnDurationLabel
-        {...containerContent.label.props}
+      <ChatRuntimeHeaderTurnDurationContainerContent
+        {...turnDurationContainer.content}
       />
     </ChatRuntimeHeaderTurnDurationContainer>
+  );
+}
+
+export function ChatRuntimeHeaderTurnDurationContainerContent({
+  icon,
+  label,
+}: ChatRuntimeHeaderTurnDurationContainerContentProps) {
+  return (
+    <>
+      <ChatRuntimeHeaderTurnDurationIcon
+        {...icon.props}
+      />
+      <ChatRuntimeHeaderTurnDurationLabel
+        {...label.props}
+      />
+    </>
   );
 }
 

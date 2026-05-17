@@ -354,12 +354,15 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(headerConversationStatusSource, /const conversationStatusParts = createChatRuntimeHeaderConversationStatusMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+styles,\s+\}\);/);
   assert.match(headerConversationStatusSource, /const conversationStatusContainer = conversationStatusParts\.container;/);
   assert.match(headerConversationStatusSource, /if \(!conversationStatusContainer\.shouldRender\) return null;/);
-  assert.match(headerConversationStatusSource, /const containerContent = conversationStatusContainer\.content;/);
-  assert.match(headerConversationStatusSource, /containerContent\.runningIndicator\.shouldRender \? \(/);
-  assert.doesNotMatch(headerConversationStatusSource, /containerContent\.runningIndicator\.shouldRender && \(/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusContainerContentProps =\s+ChatRuntimeHeaderConversationStatusParts\['container'\]\['content'\];/);
   assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusContainer\s+\{\.\.\.conversationStatusContainer\.props\}/);
-  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusRunningIndicator\s+\{\.\.\.containerContent\.runningIndicator\.props\}/);
-  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusLabel\s+\{\.\.\.containerContent\.label\.props\}/);
+  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusContainerContent\s+\{\.\.\.conversationStatusContainer\.content\}\s+\/>/);
+  assert.match(headerConversationStatusSource, /export function ChatRuntimeHeaderConversationStatusContainerContent/);
+  assert.match(headerConversationStatusSource, /runningIndicator\.shouldRender \? \(/);
+  assert.doesNotMatch(headerConversationStatusSource, /runningIndicator\.shouldRender && \(/);
+  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusRunningIndicator\s+\{\.\.\.runningIndicator\.props\}/);
+  assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusLabel\s+\{\.\.\.label\.props\}/);
+  assert.doesNotMatch(headerConversationStatusSource, /const containerContent = conversationStatusContainer\.content;/);
   assert.match(
     headerConversationStatusSource,
     /export function ChatRuntimeHeaderConversationStatusContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatRuntimeHeaderConversationStatusRunningIndicator/
@@ -468,10 +471,13 @@ test('shows the shared total agent time in the mobile chat header', () => {
   assert.match(headerTurnDurationSource, /const turnDurationParts = createChatRuntimeHeaderTurnDurationMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(headerTurnDurationSource, /const turnDurationContainer = turnDurationParts\.container;/);
   assert.match(headerTurnDurationSource, /if \(!turnDurationContainer\.shouldRender\) return null;/);
-  assert.match(headerTurnDurationSource, /const containerContent = turnDurationContainer\.content;/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationContainerContentProps =\s+ChatRuntimeHeaderTurnDurationParts\['container'\]\['content'\];/);
   assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationContainer\s+\{\.\.\.turnDurationContainer\.props\}/);
-  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.containerContent\.icon\.props\}/);
-  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.containerContent\.label\.props\}/);
+  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationContainerContent\s+\{\.\.\.turnDurationContainer\.content\}\s+\/>/);
+  assert.match(headerTurnDurationSource, /export function ChatRuntimeHeaderTurnDurationContainerContent/);
+  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.label\.props\}/);
+  assert.doesNotMatch(headerTurnDurationSource, /const containerContent = turnDurationContainer\.content;/);
   assert.match(
     headerTurnDurationSource,
     /export function ChatRuntimeHeaderTurnDurationContainer[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatRuntimeHeaderTurnDurationIcon/
@@ -6477,8 +6483,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   );
   assert.doesNotMatch(actionIconButtonSource, /style=\{\(\{ pressed \}\) => \[/);
   assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationContainer\s+\{\.\.\.turnDurationContainer\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.containerContent\.icon\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.containerContent\.label\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationContainerContent\s+\{\.\.\.turnDurationContainer\.content\}\s+\/>/);
+  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationIcon\s+\{\.\.\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderTurnDurationLabel\s+\{\.\.\.label\.props\}/);
   const contentRowSource =
     chatMessageChromeSource.match(/export function ChatMessageContentRow[\s\S]*?export function ChatMessageStandaloneActions/)?.[0] ?? '';
   const standaloneActionsSource =
