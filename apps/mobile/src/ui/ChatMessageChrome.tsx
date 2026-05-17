@@ -3223,6 +3223,22 @@ type ChatMessageScrollViewportProps = {
   scrollEventThrottle: number;
 };
 
+type ChatMessageScrollViewportParts = ReturnType<typeof createChatRuntimeConversationScrollViewportMobilePropsParts<
+  ChatMessageScrollViewportProps['children'],
+  ChatMessageScrollViewportProps['scrollRef'],
+  ChatMessageScrollViewportProps['style'],
+  ChatMessageScrollViewportProps['contentContainerStyle'],
+  ChatMessageScrollViewportProps['keyboardShouldPersistTaps'],
+  ChatMessageScrollViewportProps['contentInsetAdjustmentBehavior'],
+  ChatMessageScrollViewportProps['onScroll'],
+  ChatMessageScrollViewportProps['onScrollBeginDrag'],
+  ChatMessageScrollViewportProps['onScrollEndDrag'],
+  ChatMessageScrollViewportProps['scrollEventThrottle']
+>>;
+
+type ChatMessageScrollViewportContentProps =
+  ChatMessageScrollViewportParts['scrollView']['content'];
+
 type ChatMessageConversationViewportContentProps = {
   loadingState?: ReactNode;
   homeState?: ReactNode;
@@ -12062,8 +12078,20 @@ export function ChatMessageScrollViewport({
     <ScrollView
       {...scrollViewportParts.scrollView.props}
     >
-      {scrollViewportParts.scrollView.content.children}
+      <ChatMessageScrollViewportContent
+        {...scrollViewportParts.scrollView.content}
+      />
     </ScrollView>
+  );
+}
+
+export function ChatMessageScrollViewportContent({
+  children,
+}: ChatMessageScrollViewportContentProps) {
+  return (
+    <>
+      {children}
+    </>
   );
 }
 

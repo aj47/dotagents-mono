@@ -2276,7 +2276,10 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(scrollViewportSource, /<ScrollView\s+\{\.\.\.scrollViewportParts\.scrollView\.props\}/);
   assert.match(sessionPresentationSource, /scrollView: \{\s+props: \{\s+ref: scrollRef,/);
   assert.match(sessionPresentationSource, /content: \{\s+children,\s+\},\s+\},\s+\}/);
-  assert.match(scrollViewportSource, /\{scrollViewportParts\.scrollView\.content\.children\}/);
+  assert.match(scrollViewportSource, /<ChatMessageScrollViewportContent\s+\{\.\.\.scrollViewportParts\.scrollView\.content\}\s+\/>/);
+  assert.match(scrollViewportSource, /export function ChatMessageScrollViewportContent/);
+  assert.match(scrollViewportSource, /\{children\}[\s\S]*?export function ChatMessageConversationViewportContent/);
+  assert.doesNotMatch(scrollViewportSource, /\{scrollViewportParts\.scrollView\.content\.children\}/);
   assert.doesNotMatch(scrollViewportSource, /scrollViewportParts\.content\.children/);
   assert.doesNotMatch(scrollViewportSource, /scrollViewportParts\.scrollView\.(ref|style|contentContainerStyle|keyboardShouldPersistTaps|contentInsetAdjustmentBehavior|onScroll|onScrollBeginDrag|onScrollEndDrag|scrollEventThrottle)/);
   assert.doesNotMatch(scrollViewportSource, /ref=\{scrollRef\}/);
@@ -6351,6 +6354,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationOverlaysContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeOverlays/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewport/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageScrollViewportContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewportContent/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeViewport/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeSurface/);
