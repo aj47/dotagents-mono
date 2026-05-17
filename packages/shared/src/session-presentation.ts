@@ -1968,7 +1968,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
   header: {
     style: TStyles["header"]
   }
-  headerIcon: ChatRuntimeToolApprovalMobileRenderState["headerIcon"]
+  headerIcon: {
+    props: ChatRuntimeToolApprovalMobileRenderState["headerIcon"]
+  }
   title: {
     style: TStyles["title"]
     numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["title"]["numberOfLines"]
@@ -22783,7 +22785,9 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
     header: {
       style: styles.header,
     },
-    headerIcon: renderState.headerIcon,
+    headerIcon: {
+      props: renderState.headerIcon,
+    },
     title: {
       style: styles.title,
       numberOfLines: renderState.surface.title.numberOfLines,

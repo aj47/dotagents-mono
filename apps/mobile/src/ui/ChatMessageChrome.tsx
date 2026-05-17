@@ -1577,6 +1577,16 @@ type ChatMessageToolApprovalProps = {
   styles: ChatMessageToolApprovalStyles;
 };
 
+type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolApprovalMobilePropsParts<
+  ChatMessageToolApprovalProps['onToggleArguments'],
+  ChatMessageToolApprovalProps['onDeny'],
+  ChatMessageToolApprovalProps['onApprove'],
+  ChatMessageToolApprovalStyles
+>>;
+
+type ChatMessageToolApprovalIconProps =
+  ChatMessageToolApprovalParts['headerIcon']['props'];
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7421,10 +7431,8 @@ export function ChatMessageToolApproval({
   return (
     <View style={toolApprovalParts.card.style}>
       <View style={toolApprovalParts.header.style}>
-        <Ionicons
-          name={toolApprovalParts.headerIcon.name}
-          size={toolApprovalParts.headerIcon.size}
-          color={toolApprovalParts.headerIcon.color}
+        <ChatMessageToolApprovalIcon
+          {...toolApprovalParts.headerIcon.props}
         />
         <Text
           style={toolApprovalParts.title.style}
@@ -7532,6 +7540,20 @@ export function ChatMessageToolApproval({
         </View>
       </View>
     </View>
+  );
+}
+
+export function ChatMessageToolApprovalIcon({
+  name,
+  size,
+  color,
+}: ChatMessageToolApprovalIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
   );
 }
 

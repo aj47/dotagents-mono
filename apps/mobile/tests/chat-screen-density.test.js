@@ -641,9 +641,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /onPress=\{toolApprovalParts\.denyButton\.onPress\}/);
   assert.match(toolApprovalComponentSource, /onPress=\{toolApprovalParts\.approveButton\.onPress\}/);
   assert.match(toolApprovalComponentSource, /<View style=\{toolApprovalParts\.header\.style\}>/);
-  assert.match(toolApprovalComponentSource, /name=\{toolApprovalParts\.headerIcon\.name\}/);
-  assert.match(toolApprovalComponentSource, /size=\{toolApprovalParts\.headerIcon\.size\}/);
-  assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.headerIcon\.color\}/);
+  assert.match(sessionPresentationSource, /headerIcon: \{[\s\S]*?props: renderState\.headerIcon,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalIcon/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.toolApprovalParts\.headerIcon\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalIcon[\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerIcon\.(name|size|color)/);
   assert.match(toolApprovalComponentSource, /numberOfLines=\{toolApprovalParts\.title\.numberOfLines\}/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.title\.text\}/);
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner\.shouldRender \? \(/);

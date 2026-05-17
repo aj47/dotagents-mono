@@ -8162,7 +8162,9 @@ describe("session presentation semantics", () => {
     })
     expect(toolApprovalParts.card.style).toBe("tool-approval-card-style")
     expect(toolApprovalParts.header.style).toBe("tool-approval-header-style")
-    expect(toolApprovalParts.headerIcon).toEqual(toolApprovalProps.renderState.headerIcon)
+    expect(toolApprovalParts.headerIcon).toEqual({
+      props: toolApprovalProps.renderState.headerIcon,
+    })
     expect(toolApprovalParts.title).toEqual({
       style: "tool-approval-title-style",
       numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.title.numberOfLines,
