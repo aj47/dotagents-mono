@@ -2838,6 +2838,16 @@ type ChatMessageToolExecutionPayloadBlockParts = ReturnType<typeof createChatRun
   ChatMessageToolExecutionPayloadBlockProps['styles']
 >>;
 
+type ChatMessageToolExecutionPayloadBlockContentProps =
+  ChatMessageToolExecutionPayloadBlockParts['content'];
+
+type ChatMessageToolExecutionPayloadPreviewBlockProps = {
+  preview: ChatMessageToolExecutionPayloadBlockParts['content']['preview'];
+};
+
+type ChatMessageToolExecutionPayloadScrollContentProps =
+  ChatMessageToolExecutionPayloadBlockParts['content']['scroll']['content'];
+
 type ChatMessageToolExecutionPayloadPreviewProps =
   ChatMessageToolExecutionPayloadBlockParts['content']['preview']['props'];
 
@@ -11198,24 +11208,45 @@ export function ChatMessageToolExecutionPayloadBlock({
     previewNumberOfLines,
     styles,
   });
-  const payloadBlockContent = payloadBlockParts.content;
-  const payloadBlockScrollContent = payloadBlockContent.scroll.content;
 
   return (
+    <ChatMessageToolExecutionPayloadBlockContent
+      {...payloadBlockParts.content}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionPayloadBlockContent({
+  preview,
+  scroll,
+}: ChatMessageToolExecutionPayloadBlockContentProps) {
+  return (
     <>
-      {payloadBlockContent.preview.shouldRender ? (
-        <ChatMessageToolExecutionPayloadPreview
-          {...payloadBlockContent.preview.props}
-        />
-      ) : null}
-      <ChatMessageToolExecutionPayloadScroll
-        {...payloadBlockContent.scroll.props}
-      >
-        <ChatMessageToolExecutionPayloadCode
-          {...payloadBlockScrollContent.code.props}
-        />
+      <ChatMessageToolExecutionPayloadPreviewBlock preview={preview} />
+      <ChatMessageToolExecutionPayloadScroll {...scroll.props}>
+        <ChatMessageToolExecutionPayloadScrollContent {...scroll.content} />
       </ChatMessageToolExecutionPayloadScroll>
     </>
+  );
+}
+
+export function ChatMessageToolExecutionPayloadPreviewBlock({
+  preview,
+}: ChatMessageToolExecutionPayloadPreviewBlockProps) {
+  if (!preview.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageToolExecutionPayloadPreview {...preview.props} />
+  );
+}
+
+export function ChatMessageToolExecutionPayloadScrollContent({
+  code,
+}: ChatMessageToolExecutionPayloadScrollContentProps) {
+  return (
+    <ChatMessageToolExecutionPayloadCode {...code.props} />
   );
 }
 

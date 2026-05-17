@@ -4731,16 +4731,28 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionPayloadBlock\s+compactText=\{toolArgumentsPayload\?\.compactText\}\s+content=\{toolArgumentsText\}\s+isExpanded=\{isToolCallFullyExpanded\}\s+previewNumberOfLines=\{toolExecutionDetailStyleState\.payloadPreview\.numberOfLines\}/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionPayloadBlock\s+compactText=\{toolResultPayload\?\.compactText\}\s+content=\{toolResultContent\}\s+isExpanded=\{isToolCallFullyExpanded\}\s+previewNumberOfLines=\{toolExecutionDetailStyleState\.payloadPreview\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadBlock/);
+  const toolExecutionPayloadBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadBlock\([\s\S]*?export function ChatMessageToolExecutionPayloadBlockContent/)?.[0] ?? '';
+  const toolExecutionPayloadBlockContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadBlockContent[\s\S]*?export function ChatMessageToolExecutionPayloadPreviewBlock/)?.[0] ?? '';
+  const toolExecutionPayloadPreviewBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadPreviewBlock[\s\S]*?export function ChatMessageToolExecutionPayloadScrollContent/)?.[0] ?? '';
+  const toolExecutionPayloadScrollContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionPayloadScrollContent[\s\S]*?export function ChatMessageToolExecutionPayloadPreview/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const payloadBlockParts = createChatRuntimeToolExecutionPayloadBlockMobilePropsParts\(\{\s+compactText,\s+content,\s+isExpanded,\s+previewNumberOfLines,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const payloadBlockContent = payloadBlockParts\.content;/);
-  assert.match(chatMessageChromeSource, /const payloadBlockScrollContent = payloadBlockContent\.scroll\.content;/);
-  assert.match(chatMessageChromeSource, /payloadBlockContent\.preview\.shouldRender \? \(/);
+  assert.doesNotMatch(chatMessageChromeSource, /const payloadBlockContent = payloadBlockParts\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const payloadBlockScrollContent = payloadBlockContent\.scroll\.content;/);
+  assert.match(toolExecutionPayloadBlockSource, /<ChatMessageToolExecutionPayloadBlockContent\s+\{\.\.\.payloadBlockParts\.content\}/);
+  assert.match(toolExecutionPayloadBlockContentSource, /<ChatMessageToolExecutionPayloadPreviewBlock\s+preview=\{preview\}/);
+  assert.match(toolExecutionPayloadPreviewBlockSource, /if \(!preview\.shouldRender\) \{\s+return null;\s+\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /payloadBlockContent\.preview\.shouldRender \? \(/);
   assert.doesNotMatch(chatMessageChromeSource, /payloadBlockParts\.preview \? \(/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadPreview\s+\{\.\.\.payloadBlockContent\.preview\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadScroll\s+\{\.\.\.payloadBlockContent\.scroll\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadCode\s+\{\.\.\.payloadBlockScrollContent\.code\.props\}/);
+  assert.match(toolExecutionPayloadPreviewBlockSource, /<ChatMessageToolExecutionPayloadPreview\s+\{\.\.\.preview\.props\}/);
+  assert.match(toolExecutionPayloadBlockContentSource, /<ChatMessageToolExecutionPayloadScroll\s+\{\.\.\.scroll\.props\}/);
+  assert.match(toolExecutionPayloadBlockContentSource, /<ChatMessageToolExecutionPayloadScrollContent\s+\{\.\.\.scroll\.content\}/);
+  assert.match(toolExecutionPayloadScrollContentSource, /<ChatMessageToolExecutionPayloadCode\s+\{\.\.\.code\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadPreview[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageToolExecutionPayloadScroll\(\{/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadPreview[\s\S]*?(style=\{style\}|numberOfLines=\{numberOfLines\})[\s\S]*?export function ChatMessageToolExecutionPayloadScroll\(\{/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadScroll[\s\S]*?<ScrollView\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionPayloadCode/);
