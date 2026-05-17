@@ -2003,8 +2003,10 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /const scrollToBottomButton = scrollToBottomButtonParts\.button;/);
   assert.match(chatMessageChromeSource, /if \(!scrollToBottomButton\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonTouchable\s+\{\.\.\.scrollToBottomButton\.props\}/);
-  assert.match(chatMessageChromeSource, /const buttonContent = scrollToBottomButton\.content;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonIcon\s+\{\.\.\.buttonContent\.icon\.props\}/);
+  assert.match(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonContentProps =\s+ChatMessageScrollToBottomButtonParts\['button'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonContent\s+\{\.\.\.scrollToBottomButton\.content\}\s+\/>/);
+  assert.match(scrollToBottomButtonSource, /export function ChatMessageScrollToBottomButtonContent\(\{\s+icon,\s+\}: ChatMessageScrollToBottomButtonContentProps\) \{\s+return \(\s+<ChatMessageScrollToBottomButtonIcon\s+\{\.\.\.icon\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const buttonContent = scrollToBottomButton\.content;/);
   assert.match(
     scrollToBottomButtonSource,
     /export function ChatMessageScrollToBottomButtonTouchable\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageScrollToBottomButtonTouchableProps\) \{\s+return \(\s+<TouchableOpacity \{\.\.\.props\}>[\s\S]*?export function ChatMessageScrollToBottomButtonIcon/
@@ -2391,8 +2393,10 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /container: \{[\s\S]*?props: \{[\s\S]*?accessible: true,[\s\S]*?accessibilityRole: renderState\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.accessibilityLabel,[\s\S]*?accessibilityState: renderState\.accessibilityState,[\s\S]*?style,/);
   assert.match(sessionPresentationSource, /content: \{[\s\S]*?spinner: \{[\s\S]*?props: \{[\s\S]*?source: spinnerSource,[\s\S]*?style: spinnerStyle,[\s\S]*?resizeMode: renderState\.spinnerResizeMode,/);
   assert.match(chatMessageChromeSource, /<ChatMessageLoadingStateContainer\s+\{\.\.\.loadingStateContainer\.props\}/);
-  assert.match(chatMessageChromeSource, /const containerContent = loadingStateContainer\.content;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageLoadingStateSpinner\s+\{\.\.\.containerContent\.spinner\.props\}/);
+  assert.match(chatMessageChromeSource, /type ChatMessageLoadingStateContainerContentProps =\s+ChatMessageLoadingStateParts\['container'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /<ChatMessageLoadingStateContainerContent\s+\{\.\.\.loadingStateContainer\.content\}\s+\/>/);
+  assert.match(loadingStateSource, /export function ChatMessageLoadingStateContainerContent\(\{\s+spinner,\s+\}: ChatMessageLoadingStateContainerContentProps\) \{\s+return \(\s+<ChatMessageLoadingStateSpinner\s+\{\.\.\.spinner\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const containerContent = loadingStateContainer\.content;/);
   assert.match(loadingStateSource, /export function ChatMessageLoadingStateContainer\(\{\s+children,\s+\.\.\.props\s+\}: ChatMessageLoadingStateContainerProps\) \{\s+return \(\s+<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
   assert.match(loadingStateSource, /export function ChatMessageLoadingStateSpinner\(\s+props: ChatMessageLoadingStateSpinnerProps\s+\) \{\s+return <Image \{\.\.\.props\} \/>;\s+\}/);
   assert.doesNotMatch(

@@ -3352,6 +3352,9 @@ type ChatMessageScrollToBottomButtonTouchableProps =
     children: ReactNode;
   };
 
+type ChatMessageScrollToBottomButtonContentProps =
+  ChatMessageScrollToBottomButtonParts['button']['content'];
+
 type ChatMessageScrollToBottomButtonIconProps =
   ChatMessageScrollToBottomButtonParts['button']['content']['icon']['props'];
 
@@ -3373,6 +3376,9 @@ type ChatMessageLoadingStateContainerProps =
   ChatMessageLoadingStateParts['container']['props'] & {
     children: ReactNode;
   };
+
+type ChatMessageLoadingStateContainerContentProps =
+  ChatMessageLoadingStateParts['container']['content'];
 
 type ChatMessageLoadingStateSpinnerProps =
   ChatMessageLoadingStateParts['container']['content']['spinner']['props'];
@@ -12489,14 +12495,12 @@ export function ChatMessageScrollToBottomButton({
 
   if (!scrollToBottomButton.shouldRender) return null;
 
-  const buttonContent = scrollToBottomButton.content;
-
   return (
     <ChatMessageScrollToBottomButtonTouchable
       {...scrollToBottomButton.props}
     >
-      <ChatMessageScrollToBottomButtonIcon
-        {...buttonContent.icon.props}
+      <ChatMessageScrollToBottomButtonContent
+        {...scrollToBottomButton.content}
       />
     </ChatMessageScrollToBottomButtonTouchable>
   );
@@ -12510,6 +12514,16 @@ export function ChatMessageScrollToBottomButtonTouchable({
     <TouchableOpacity {...props}>
       {children}
     </TouchableOpacity>
+  );
+}
+
+export function ChatMessageScrollToBottomButtonContent({
+  icon,
+}: ChatMessageScrollToBottomButtonContentProps) {
+  return (
+    <ChatMessageScrollToBottomButtonIcon
+      {...icon.props}
+    />
   );
 }
 
@@ -12535,14 +12549,12 @@ export function ChatMessageLoadingState({
 
   if (!loadingStateContainer.shouldRender) return null;
 
-  const containerContent = loadingStateContainer.content;
-
   return (
     <ChatMessageLoadingStateContainer
       {...loadingStateContainer.props}
     >
-      <ChatMessageLoadingStateSpinner
-        {...containerContent.spinner.props}
+      <ChatMessageLoadingStateContainerContent
+        {...loadingStateContainer.content}
       />
     </ChatMessageLoadingStateContainer>
   );
@@ -12556,6 +12568,16 @@ export function ChatMessageLoadingStateContainer({
     <View {...props}>
       {children}
     </View>
+  );
+}
+
+export function ChatMessageLoadingStateContainerContent({
+  spinner,
+}: ChatMessageLoadingStateContainerContentProps) {
+  return (
+    <ChatMessageLoadingStateSpinner
+      {...spinner.props}
+    />
   );
 }
 
