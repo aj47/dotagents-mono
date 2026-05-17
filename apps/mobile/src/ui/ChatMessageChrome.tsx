@@ -8572,29 +8572,15 @@ export function ChatMessageToolApprovalView({
   );
 }
 
-export function ChatMessageToolApprovalIcon({
-  name,
-  size,
-  color,
-}: ChatMessageToolApprovalIconProps) {
+export function ChatMessageToolApprovalIcon(props: ChatMessageToolApprovalIconProps) {
   return (
-    <Ionicons
-      name={name}
-      size={size}
-      color={color}
-    />
+    <Ionicons {...props} />
   );
 }
 
-export function ChatMessageToolApprovalSpinner({
-  size,
-  color,
-}: ChatMessageToolApprovalSpinnerProps) {
+export function ChatMessageToolApprovalSpinner(props: ChatMessageToolApprovalSpinnerProps) {
   return (
-    <ActivityIndicator
-      size={size}
-      color={color}
-    />
+    <ActivityIndicator {...props} />
   );
 }
 

@@ -758,7 +758,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(sessionPresentationSource, /headerIcon: \{[\s\S]*?props: renderState\.headerIcon,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalIcon/);
   assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.toolApprovalParts\.headerIcon\.props\}/);
-  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalIcon[\s\S]*?name=\{name\}[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalIcon\(props: ChatMessageToolApprovalIconProps\)[\s\S]*?<Ionicons\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalIcon[\s\S]*?(name=\{name\}|size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolApprovalSpinner/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerIcon\.(name|size|color)/);
   assert.match(sessionPresentationSource, /title: \{[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?style: styles\.title,[\s\S]*?numberOfLines: renderState\.surface\.title\.numberOfLines,[\s\S]*?text: renderState\.title,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalTitle/);
@@ -798,7 +799,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(sessionPresentationSource, /approveButton: \{[\s\S]*?spinner: \{[\s\S]*?shouldRender: renderState\.approveButton\.isDisabled,[\s\S]*?props: renderState\.approveButton\.spinner,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalSpinner/);
   assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalSpinner\s+\{\.\.\.toolApprovalParts\.approveButton\.spinner\.props\}/);
-  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalSpinner[\s\S]*?size=\{size\}[\s\S]*?color=\{color\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalSpinner\(props: ChatMessageToolApprovalSpinnerProps\)[\s\S]*?<ActivityIndicator\s+\{\.\.\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /export function ChatMessageToolApprovalSpinner[\s\S]*?(size=\{size\}|color=\{color\})[\s\S]*?export function ChatMessageToolApprovalTitle/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.approveButton\.spinner\.(size|color)/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.approveButton\.spinner\.shouldRender \? \(/);
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.approveButton\.icon\.shouldRender \? \(/);
