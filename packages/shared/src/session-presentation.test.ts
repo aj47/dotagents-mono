@@ -90,6 +90,7 @@ import {
   createChatMessageRuntimeChromeStyleSlots,
   createChatMessageRuntimeSurfaceChromeSlots,
   createChatRuntimeChromeSlots,
+  createChatRuntimeConversationMobileStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobilePropsParts,
   createChatRuntimeDelegationCardMobileStyleSlots,
@@ -4639,9 +4640,10 @@ describe("session presentation semantics", () => {
       border: "#e2e8f0",
       muted: "#f1f5f9",
     }
-    expect(getChatRuntimeConversationChromeMobileStyleRenderState({
+    const conversationChromeMobileStyleState = getChatRuntimeConversationChromeMobileStyleRenderState({
       colors: conversationChromeStyleColors,
-    })).toEqual({
+    })
+    expect(conversationChromeMobileStyleState).toEqual({
       viewport: getChatRuntimeViewportMobileRenderState({
         colors: conversationChromeStyleColors,
       }),
@@ -4665,6 +4667,66 @@ describe("session presentation semantics", () => {
       }),
       messageHistoryBanner: getChatRuntimeMessageHistoryBannerMobileRenderState({
         colors: conversationChromeStyleColors,
+      }),
+    })
+    const conversationMobileSpacing = {
+      xs: 4,
+      sm: 8,
+      md: 12,
+      lg: 16,
+    }
+    const conversationMobileRadius = {
+      sm: 4,
+      md: 8,
+    }
+    expect(createChatRuntimeConversationMobileStyleSlots({
+      renderState: conversationChromeMobileStyleState,
+      spacing: conversationMobileSpacing,
+      radius: conversationMobileRadius,
+      toolPreviewStatusIconWidth: 20,
+    })).toEqual({
+      viewport: createChatRuntimeViewportChromeMobileStyleSlots({
+        renderState: conversationChromeMobileStyleState.viewport,
+        spacing: conversationMobileSpacing,
+      }).viewport,
+      activity: createChatRuntimeViewportChromeMobileStyleSlots({
+        renderState: conversationChromeMobileStyleState.viewport,
+        spacing: conversationMobileSpacing,
+      }).activity,
+      streamingContent: createChatRuntimeStreamingContentMobileStyleSlots({
+        renderState: conversationChromeMobileStyleState.streamingContent,
+        spacing: conversationMobileSpacing,
+        radius: conversationMobileRadius,
+      }),
+      connectionBanner: createChatRuntimeConnectionBannerMobileStyleSlots({
+        renderState: conversationChromeMobileStyleState.connectionBanner,
+        spacing: conversationMobileSpacing,
+        radius: conversationMobileRadius,
+      }),
+      retryStatus: createChatRuntimeRetryStatusMobileStyleSlots({
+        renderState: conversationChromeMobileStyleState.retryStatus,
+        spacing: conversationMobileSpacing,
+        radius: conversationMobileRadius,
+      }),
+      stepSummary: createChatRuntimeStepSummaryMobileStyleSlots({
+        renderState: conversationChromeMobileStyleState.stepSummary,
+        spacing: conversationMobileSpacing,
+        radius: conversationMobileRadius,
+      }),
+      delegationCard: createChatRuntimeDelegationCardMobileStyleSlots({
+        renderState: conversationChromeMobileStyleState.delegationCard,
+        spacing: conversationMobileSpacing,
+        radius: conversationMobileRadius,
+        toolPreviewStatusIconWidth: 20,
+      }),
+      scrollToBottom: createChatRuntimeScrollToBottomMobileStyleSlots({
+        renderState: conversationChromeMobileStyleState.scrollToBottom,
+        spacing: conversationMobileSpacing,
+      }),
+      messageHistoryBanner: createChatRuntimeMessageHistoryBannerMobileStyleSlots({
+        renderState: conversationChromeMobileStyleState.messageHistoryBanner,
+        spacing: conversationMobileSpacing,
+        radius: conversationMobileRadius,
       }),
     })
     expect(CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.loadingState.spinnerSize).toBe(32)

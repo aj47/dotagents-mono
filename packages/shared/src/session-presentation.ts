@@ -9816,6 +9816,39 @@ export interface ChatRuntimeConversationChromeMobileStyleRenderState {
   messageHistoryBanner: ChatRuntimeMessageHistoryBannerMobileRenderState
 }
 
+export interface ChatRuntimeConversationMobileStyleSlotsInput {
+  renderState: ChatRuntimeConversationChromeMobileStyleRenderState
+  spacing:
+    & ChatRuntimeViewportChromeMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeStreamingContentMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeConnectionBannerMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeRetryStatusMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeStepSummaryMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeDelegationCardMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeScrollToBottomMobileStyleSlotsInput["spacing"]
+    & ChatRuntimeMessageHistoryBannerMobileStyleSlotsInput["spacing"]
+  radius:
+    & ChatRuntimeStreamingContentMobileStyleSlotsInput["radius"]
+    & ChatRuntimeConnectionBannerMobileStyleSlotsInput["radius"]
+    & ChatRuntimeRetryStatusMobileStyleSlotsInput["radius"]
+    & ChatRuntimeStepSummaryMobileStyleSlotsInput["radius"]
+    & ChatRuntimeDelegationCardMobileStyleSlotsInput["radius"]
+    & ChatRuntimeMessageHistoryBannerMobileStyleSlotsInput["radius"]
+  toolPreviewStatusIconWidth?: ChatRuntimeDelegationCardMobileStyleSlotsInput["toolPreviewStatusIconWidth"]
+}
+
+export interface ChatRuntimeConversationMobileStyleSlots {
+  viewport: ChatRuntimeViewportMobileStyleSlots
+  activity: ChatRuntimeViewportActivityMobileStyleSlots
+  streamingContent: ChatRuntimeStreamingContentMobileStyleSlots
+  connectionBanner: ChatRuntimeConnectionBannerMobileStyleSlots
+  retryStatus: ChatRuntimeRetryStatusMobileStyleSlots
+  stepSummary: ChatRuntimeStepSummaryMobileStyleSlots
+  delegationCard: ChatRuntimeDelegationCardMobileStyleSlots
+  scrollToBottom: ChatRuntimeScrollToBottomMobileStyleSlots
+  messageHistoryBanner: ChatRuntimeMessageHistoryBannerMobileStyleSlots
+}
+
 export type ChatRuntimeMobileChromeStyleColorPalette =
   & ChatRuntimeHeaderChromeMobileStyleRenderStateInput["colors"]
   & ChatRuntimeConversationChromeMobileStyleRenderStateInput["colors"]
@@ -27464,6 +27497,58 @@ export function createChatRuntimeViewportChromeMobileStyleSlots({
     }),
     activity: createChatRuntimeViewportActivityMobileStyleSlots({
       renderState,
+    }),
+  }
+}
+
+export function createChatRuntimeConversationMobileStyleSlots({
+  renderState,
+  spacing,
+  radius,
+  toolPreviewStatusIconWidth,
+}: ChatRuntimeConversationMobileStyleSlotsInput): ChatRuntimeConversationMobileStyleSlots {
+  const viewportStyleSlots = createChatRuntimeViewportChromeMobileStyleSlots({
+    renderState: renderState.viewport,
+    spacing,
+  })
+
+  return {
+    viewport: viewportStyleSlots.viewport,
+    activity: viewportStyleSlots.activity,
+    streamingContent: createChatRuntimeStreamingContentMobileStyleSlots({
+      renderState: renderState.streamingContent,
+      spacing,
+      radius,
+    }),
+    connectionBanner: createChatRuntimeConnectionBannerMobileStyleSlots({
+      renderState: renderState.connectionBanner,
+      spacing,
+      radius,
+    }),
+    retryStatus: createChatRuntimeRetryStatusMobileStyleSlots({
+      renderState: renderState.retryStatus,
+      spacing,
+      radius,
+    }),
+    stepSummary: createChatRuntimeStepSummaryMobileStyleSlots({
+      renderState: renderState.stepSummary,
+      spacing,
+      radius,
+    }),
+    delegationCard: createChatRuntimeDelegationCardMobileStyleSlots({
+      renderState: renderState.delegationCard,
+      spacing,
+      radius,
+      toolPreviewStatusIconWidth,
+    }),
+    scrollToBottom: createChatRuntimeScrollToBottomMobileStyleSlots({
+      renderState: renderState.scrollToBottom,
+      spacing,
+    }),
+    messageHistoryBanner: createChatRuntimeMessageHistoryBannerMobileStyleSlots({
+      renderState: renderState.messageHistoryBanner,
+      spacing,
+      radius,
     }),
   }
 }

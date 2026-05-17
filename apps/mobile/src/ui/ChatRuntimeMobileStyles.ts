@@ -20,27 +20,20 @@ import {
   createChatMessageRuntimeSurfaceChromeSlots,
   createChatMessageRuntimeViewportStyleSlots,
   createChatRuntimeChromeSlots,
-  createChatRuntimeConnectionBannerMobileStyleSlots,
-  createChatRuntimeDelegationCardMobileStyleSlots,
+  createChatRuntimeConversationMobileStyleSlots,
   createChatRuntimeHeaderChromeSlots,
   createChatRuntimeHeaderMobileStyleSlots,
   createChatRuntimeHeaderStyleSlotsFromStyleSource,
-  createChatRuntimeMessageHistoryBannerMobileStyleSlots,
   createChatRuntimeMessageActionMobileStyleSlots,
   createChatRuntimeMessageMobileStyleSlots,
   createChatRuntimeMobileSafeAreaStyleSlots,
-  createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeSafeAreaMergedStyleSlots,
-  createChatRuntimeScrollToBottomMobileStyleSlots,
-  createChatRuntimeStepSummaryMobileStyleSlots,
-  createChatRuntimeStreamingContentMobileStyleSlots,
   createChatRuntimeToolActivityGroupMobileStyleSlots,
   createChatRuntimeToolApprovalMobileStyleSlots,
   createChatRuntimeToolExecutionCompactMobileStyleSlots,
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlotVariants,
   createChatRuntimeThemeSpinnerSource,
-  createChatRuntimeViewportChromeMobileStyleSlots,
   createChatConversationHomePromptEditorMobileStyleSlots,
   createChatConversationHomePromptLibraryMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
@@ -93,51 +86,11 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     platform: mobilePlatform,
   });
   const conversationChromeStyleState = chatChromeStyleState.conversation;
-  const viewportChromeStyleSlots = createChatRuntimeViewportChromeMobileStyleSlots({
-    renderState: conversationChromeStyleState.viewport,
-    spacing,
-  });
-  const streamingContentStyleState = conversationChromeStyleState.streamingContent;
-  const streamingContentStyleSlots = createChatRuntimeStreamingContentMobileStyleSlots({
-    renderState: streamingContentStyleState,
-    spacing,
-    radius,
-  });
-  const connectionBannerStyleState = conversationChromeStyleState.connectionBanner;
-  const connectionBannerStyleSlots = createChatRuntimeConnectionBannerMobileStyleSlots({
-    renderState: connectionBannerStyleState,
-    spacing,
-    radius,
-  });
-  const retryStatusStyleState = conversationChromeStyleState.retryStatus;
-  const retryStatusStyleSlots = createChatRuntimeRetryStatusMobileStyleSlots({
-    renderState: retryStatusStyleState,
-    spacing,
-    radius,
-  });
-  const stepSummaryStyleState = conversationChromeStyleState.stepSummary;
-  const stepSummaryStyleSlots = createChatRuntimeStepSummaryMobileStyleSlots({
-    renderState: stepSummaryStyleState,
-    spacing,
-    radius,
-  });
-  const delegationCardStyleState = conversationChromeStyleState.delegationCard;
-  const delegationCardStyleSlots = createChatRuntimeDelegationCardMobileStyleSlots({
-    renderState: delegationCardStyleState,
+  const conversationMobileStyleSlots = createChatRuntimeConversationMobileStyleSlots({
+    renderState: conversationChromeStyleState,
     spacing,
     radius,
     toolPreviewStatusIconWidth: compactToolExecutionStyleSlots.statusIndicator.width,
-  });
-  const scrollToBottomStyleState = conversationChromeStyleState.scrollToBottom;
-  const scrollToBottomStyleSlots = createChatRuntimeScrollToBottomMobileStyleSlots({
-    renderState: scrollToBottomStyleState,
-    spacing,
-  });
-  const messageHistoryBannerStyleState = conversationChromeStyleState.messageHistoryBanner;
-  const messageHistoryBannerStyleSlots = createChatRuntimeMessageHistoryBannerMobileStyleSlots({
-    renderState: messageHistoryBannerStyleState,
-    spacing,
-    radius,
   });
   const composerChromeStyleState = chatChromeStyleState.composer;
   const composerStyleState = composerChromeStyleState.composer;
@@ -221,52 +174,52 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   return StyleSheet.create({
     keyboardAvoidingContainer: {
-      ...viewportChromeStyleSlots.viewport.keyboardAvoidingContainer,
+      ...conversationMobileStyleSlots.viewport.keyboardAvoidingContainer,
     },
     chatRoot: {
-      ...viewportChromeStyleSlots.viewport.root,
+      ...conversationMobileStyleSlots.viewport.root,
     },
     chatScroll: {
-      ...viewportChromeStyleSlots.viewport.scroll,
+      ...conversationMobileStyleSlots.viewport.scroll,
     },
     chatScrollContent: {
-      ...viewportChromeStyleSlots.viewport.scrollContent,
+      ...conversationMobileStyleSlots.viewport.scrollContent,
     },
     loadingState: {
-      ...viewportChromeStyleSlots.activity.loadingState,
+      ...conversationMobileStyleSlots.activity.loadingState,
     },
     loadingSpinner: {
-      ...viewportChromeStyleSlots.activity.loadingSpinner,
+      ...conversationMobileStyleSlots.activity.loadingSpinner,
     },
     inlineActivityIndicator: {
-      ...viewportChromeStyleSlots.activity.inlineActivityIndicator,
+      ...conversationMobileStyleSlots.activity.inlineActivityIndicator,
     },
     inlineActivitySpinner: {
-      ...viewportChromeStyleSlots.activity.inlineActivitySpinner,
+      ...conversationMobileStyleSlots.activity.inlineActivitySpinner,
     },
     streamingContentHeader: {
-      ...streamingContentStyleSlots.header,
+      ...conversationMobileStyleSlots.streamingContent.header,
     },
     streamingContentTitle: {
-      ...streamingContentStyleSlots.title,
+      ...conversationMobileStyleSlots.streamingContent.title,
     },
     streamingContentSpinner: {
-      ...streamingContentStyleSlots.spinner,
+      ...conversationMobileStyleSlots.streamingContent.spinner,
     },
     streamingContentBadge: {
-      ...streamingContentStyleSlots.badge,
+      ...conversationMobileStyleSlots.streamingContent.badge,
     },
     streamingContentBadgeText: {
-      ...streamingContentStyleSlots.badgeText,
+      ...conversationMobileStyleSlots.streamingContent.badgeText,
     },
     streamingContentBodyRow: {
-      ...streamingContentStyleSlots.bodyRow,
+      ...conversationMobileStyleSlots.streamingContent.bodyRow,
     },
     streamingContentText: {
-      ...streamingContentStyleSlots.text,
+      ...conversationMobileStyleSlots.streamingContent.text,
     },
     streamingContentCaret: {
-      ...streamingContentStyleSlots.caret,
+      ...conversationMobileStyleSlots.streamingContent.caret,
     },
     messageQueuePanelWrapper: {
       ...messageQueuePanelWrapperStyleSlots.wrapper,
@@ -319,19 +272,19 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...headerMobileStyleSlots.iconContainer.handsFree,
     },
     loadOlderContainer: {
-      ...messageHistoryBannerStyleSlots.container,
+      ...conversationMobileStyleSlots.messageHistoryBanner.container,
     },
     loadOlderText: {
-      ...messageHistoryBannerStyleSlots.summaryText,
+      ...conversationMobileStyleSlots.messageHistoryBanner.summaryText,
     },
     loadOlderButton: {
-      ...messageHistoryBannerStyleSlots.loadButton,
+      ...conversationMobileStyleSlots.messageHistoryBanner.loadButton,
     },
     loadOlderButtonPressed: {
-      ...messageHistoryBannerStyleSlots.loadButtonPressed,
+      ...conversationMobileStyleSlots.messageHistoryBanner.loadButtonPressed,
     },
     loadOlderButtonText: {
-      ...messageHistoryBannerStyleSlots.loadButtonText,
+      ...conversationMobileStyleSlots.messageHistoryBanner.loadButtonText,
     },
     // Compact desktop-style messages: full-width role cards with shared tone semantics.
     msg: {
@@ -342,124 +295,124 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     assistantFinal: mobileMessageStyleSlots.assistantFinal,
     tool: mobileMessageStyleSlots.tool,
     retryStatusCard: {
-      ...retryStatusStyleSlots.card,
+      ...conversationMobileStyleSlots.retryStatus.card,
     },
     retryStatusHeader: {
-      ...retryStatusStyleSlots.header,
+      ...conversationMobileStyleSlots.retryStatus.header,
     },
     retryStatusTitle: {
-      ...retryStatusStyleSlots.title,
+      ...conversationMobileStyleSlots.retryStatus.title,
     },
     retryStatusMetaRow: {
-      ...retryStatusStyleSlots.metaRow,
+      ...conversationMobileStyleSlots.retryStatus.metaRow,
     },
     retryStatusAttempt: {
-      ...retryStatusStyleSlots.attempt,
+      ...conversationMobileStyleSlots.retryStatus.attempt,
     },
     retryStatusCountdown: {
-      ...retryStatusStyleSlots.countdown,
+      ...conversationMobileStyleSlots.retryStatus.countdown,
     },
     retryStatusDescription: {
-      ...retryStatusStyleSlots.description,
+      ...conversationMobileStyleSlots.retryStatus.description,
     },
     stepSummaryCard: {
-      ...stepSummaryStyleSlots.card,
+      ...conversationMobileStyleSlots.stepSummary.card,
     },
     stepSummaryHeader: {
-      ...stepSummaryStyleSlots.header,
+      ...conversationMobileStyleSlots.stepSummary.header,
     },
     stepSummaryTitle: {
-      ...stepSummaryStyleSlots.title,
+      ...conversationMobileStyleSlots.stepSummary.title,
     },
     stepSummaryBadge: {
-      ...stepSummaryStyleSlots.badge,
+      ...conversationMobileStyleSlots.stepSummary.badge,
     },
     stepSummaryBadgeText: {
-      ...stepSummaryStyleSlots.badgeText,
+      ...conversationMobileStyleSlots.stepSummary.badgeText,
     },
     stepSummaryAction: {
-      ...stepSummaryStyleSlots.action,
+      ...conversationMobileStyleSlots.stepSummary.action,
     },
     stepSummaryMeta: {
-      ...stepSummaryStyleSlots.meta,
+      ...conversationMobileStyleSlots.stepSummary.meta,
     },
     stepSummaryPreview: {
-      ...stepSummaryStyleSlots.preview,
+      ...conversationMobileStyleSlots.stepSummary.preview,
     },
     delegationCard: {
-      ...delegationCardStyleSlots.card,
+      ...conversationMobileStyleSlots.delegationCard.card,
     },
     delegationHeader: {
-      ...delegationCardStyleSlots.header,
+      ...conversationMobileStyleSlots.delegationCard.header,
     },
     delegationTitle: {
-      ...delegationCardStyleSlots.title,
+      ...conversationMobileStyleSlots.delegationCard.title,
     },
     delegationStatusBadge: {
-      ...delegationCardStyleSlots.statusBadge,
+      ...conversationMobileStyleSlots.delegationCard.statusBadge,
     },
     delegationStatusText: {
-      ...delegationCardStyleSlots.statusText,
+      ...conversationMobileStyleSlots.delegationCard.statusText,
     },
     delegationLiveText: {
-      ...delegationCardStyleSlots.liveText,
+      ...conversationMobileStyleSlots.delegationCard.liveText,
     },
     delegationSubtitle: {
-      ...delegationCardStyleSlots.subtitle,
+      ...conversationMobileStyleSlots.delegationCard.subtitle,
     },
     delegationMetaRow: {
-      ...delegationCardStyleSlots.metaRow,
+      ...conversationMobileStyleSlots.delegationCard.metaRow,
     },
     delegationMetaText: {
-      ...delegationCardStyleSlots.metaText,
+      ...conversationMobileStyleSlots.delegationCard.metaText,
     },
     delegationConversationPreview: {
-      ...delegationCardStyleSlots.conversationPreview,
+      ...conversationMobileStyleSlots.delegationCard.conversationPreview,
     },
     delegationConversationPreviewLine: {
-      ...delegationCardStyleSlots.conversationPreviewLine,
+      ...conversationMobileStyleSlots.delegationCard.conversationPreviewLine,
     },
     delegationConversationPreviewRole: {
-      ...delegationCardStyleSlots.conversationPreviewRole,
+      ...conversationMobileStyleSlots.delegationCard.conversationPreviewRole,
     },
     delegationConversationPreviewContent: {
-      ...delegationCardStyleSlots.conversationPreviewContent,
+      ...conversationMobileStyleSlots.delegationCard.conversationPreviewContent,
     },
     delegationConversationPreviewTimestamp: {
-      ...delegationCardStyleSlots.conversationPreviewTimestamp,
+      ...conversationMobileStyleSlots.delegationCard.conversationPreviewTimestamp,
     },
     delegationConversationPreviewMoreButton: {
-      ...delegationCardStyleSlots.conversationPreviewMoreButton,
+      ...conversationMobileStyleSlots.delegationCard.conversationPreviewMoreButton,
     },
     delegationConversationPreviewMoreButtonPressed: {
-      ...delegationCardStyleSlots.conversationPreviewMoreButtonPressed,
+      ...conversationMobileStyleSlots.delegationCard.conversationPreviewMoreButtonPressed,
     },
     delegationConversationPreviewMore: {
-      ...delegationCardStyleSlots.conversationPreviewMore,
+      ...conversationMobileStyleSlots.delegationCard.conversationPreviewMore,
     },
     delegationToolPreview: {
-      ...delegationCardStyleSlots.toolPreview,
+      ...conversationMobileStyleSlots.delegationCard.toolPreview,
     },
     delegationToolPreviewLabel: {
-      ...delegationCardStyleSlots.toolPreviewLabel,
+      ...conversationMobileStyleSlots.delegationCard.toolPreviewLabel,
     },
     delegationToolPreviewLine: {
-      ...delegationCardStyleSlots.toolPreviewLine,
+      ...conversationMobileStyleSlots.delegationCard.toolPreviewLine,
     },
     delegationToolPreviewStatusIcon: {
-      ...delegationCardStyleSlots.toolPreviewStatusIcon,
+      ...conversationMobileStyleSlots.delegationCard.toolPreviewStatusIcon,
     },
     delegationToolPreviewName: {
-      ...delegationCardStyleSlots.toolPreviewName,
+      ...conversationMobileStyleSlots.delegationCard.toolPreviewName,
     },
     delegationToolPreviewMoreButton: {
-      ...delegationCardStyleSlots.toolPreviewMoreButton,
+      ...conversationMobileStyleSlots.delegationCard.toolPreviewMoreButton,
     },
     delegationToolPreviewMoreButtonPressed: {
-      ...delegationCardStyleSlots.toolPreviewMoreButtonPressed,
+      ...conversationMobileStyleSlots.delegationCard.toolPreviewMoreButtonPressed,
     },
     delegationToolPreviewMore: {
-      ...delegationCardStyleSlots.toolPreviewMore,
+      ...conversationMobileStyleSlots.delegationCard.toolPreviewMore,
     },
     inputArea: {
       ...composerStyleSlots.inputArea,
@@ -648,37 +601,37 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
       ...handsFreeStyleSlots.debugText,
     },
     connectionBanner: {
-      ...connectionBannerStyleSlots.banner,
+      ...conversationMobileStyleSlots.connectionBanner.banner,
     },
     connectionBannerReconnecting: {
-      ...connectionBannerStyleSlots.reconnecting,
+      ...conversationMobileStyleSlots.connectionBanner.reconnecting,
     },
     connectionBannerFailed: {
-      ...connectionBannerStyleSlots.failed,
+      ...conversationMobileStyleSlots.connectionBanner.failed,
     },
     connectionBannerContent: {
-      ...connectionBannerStyleSlots.content,
+      ...conversationMobileStyleSlots.connectionBanner.content,
     },
     connectionBannerIcon: {
-      ...connectionBannerStyleSlots.icon,
+      ...conversationMobileStyleSlots.connectionBanner.icon,
     },
     connectionBannerTextContainer: {
-      ...connectionBannerStyleSlots.textContainer,
+      ...conversationMobileStyleSlots.connectionBanner.textContainer,
     },
     connectionBannerText: {
-      ...connectionBannerStyleSlots.title,
+      ...conversationMobileStyleSlots.connectionBanner.title,
     },
     connectionBannerSubtext: {
-      ...connectionBannerStyleSlots.subtitle,
+      ...conversationMobileStyleSlots.connectionBanner.subtitle,
     },
     retryButton: {
-      ...connectionBannerStyleSlots.retryButton,
+      ...conversationMobileStyleSlots.connectionBanner.retryButton,
     },
     retryButtonText: {
-      ...connectionBannerStyleSlots.retryButtonText,
+      ...conversationMobileStyleSlots.connectionBanner.retryButtonText,
     },
     scrollToBottomButton: {
-      ...scrollToBottomStyleSlots.button,
+      ...conversationMobileStyleSlots.scrollToBottom.button,
     },
     overlay: {
       ...composerStyleSlots.overlay,
