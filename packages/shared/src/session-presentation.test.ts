@@ -13474,8 +13474,11 @@ describe("session presentation semantics", () => {
         styles: "expanded-group-styles",
       },
       emptyState: {
-        renderState: "empty-state",
-        style: "empty-state-text-styles",
+        shouldRender: true,
+        props: {
+          renderState: "empty-state",
+          style: "empty-state-text-styles",
+        },
       },
       callList: {
         rows: ["detail-row"],
@@ -13500,7 +13503,10 @@ describe("session presentation semantics", () => {
         emptyStateText: "empty-state-text-styles",
         callDetail: "call-detail-styles",
       },
-    }).emptyState).toBeNull()
+    }).emptyState).toEqual({
+      shouldRender: false,
+      props: null,
+    })
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.messageTitle).toBe("Agent turn duration")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.liveMessageTitle).toBe("Agent turn in progress")
     expect(CHAT_RUNTIME_PRESENTATION.turnDuration.totalTitle).toBe("Total agent time")

@@ -3484,11 +3484,12 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /styles=\{styles\.callDetail\}/);
   assert.match(chatMessageChromeSource, /const stackPanelParts = createChatRuntimeToolExecutionStackPanelMobilePropsParts\(\{\s+compact,\s+expanded,\s+detailRows,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /compact=\{stackPanelParts\.compact\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyState\s+\{\.\.\.stackPanelParts\.emptyState\}/);
+  assert.match(chatMessageChromeSource, /stackPanelParts\.emptyState\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionEmptyState\s+\{\.\.\.stackPanelParts\.emptyState\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /stackPanelParts\.emptyState \? \(/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallList\s+\{\.\.\.stackPanelParts\.callList\}/);
   assert.match(sessionPresentationSource, /compact: \{\s+\.\.\.compact,\s+groupStyles: styles\.compactGroup,\s+rowStyles: styles\.compactRow,/);
   assert.match(sessionPresentationSource, /expandedGroup: \{\s+\.\.\.expandedGroup,\s+styles: styles\.expandedGroup,/);
-  assert.match(sessionPresentationSource, /emptyState: emptyState\?\.shouldRender \? \{\s+renderState: emptyState\.renderState,\s+style: styles\.emptyStateText,/);
+  assert.match(sessionPresentationSource, /emptyState: emptyState\?\.shouldRender \? \{\s+shouldRender: true,\s+props: \{\s+renderState: emptyState\.renderState,\s+style: styles\.emptyStateText,/);
   assert.match(sessionPresentationSource, /callList: \{\s+rows: detailRows,\s+styles: styles\.callDetail,/);
   assert.match(sessionPresentationSource, /styles\.card,[\s\S]*?isPending && styles\.pending,[\s\S]*?allSuccess && styles\.success,[\s\S]*?hasErrors && styles\.error/);
   assert.match(chatMessageChromeSource, /\{expandedGroupParts\.emptyState\}/);

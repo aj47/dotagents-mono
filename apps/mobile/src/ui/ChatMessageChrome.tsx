@@ -8004,9 +8004,9 @@ export function ChatMessageToolExecutionStack({
       compact={stackPanelParts.compact}
       expanded={{
         ...stackPanelParts.expandedGroup,
-        emptyState: stackPanelParts.emptyState ? (
+        emptyState: stackPanelParts.emptyState.shouldRender ? (
           <ChatMessageToolExecutionEmptyState
-            {...stackPanelParts.emptyState}
+            {...stackPanelParts.emptyState.props}
           />
         ) : null,
       }}
