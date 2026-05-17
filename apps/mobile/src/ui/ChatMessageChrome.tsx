@@ -1670,6 +1670,28 @@ type ChatConversationHomeQuickStartCardProps = {
   actions: ChatConversationHomeQuickStartActionsPart;
 };
 
+type ChatConversationHomeQuickStartCardPart =
+  ChatConversationHomeQuickStartCardProps & {
+    key: string;
+  };
+
+type ChatConversationHomeQuickStartsGridPart = {
+  shouldRender: boolean;
+  props: ComponentProps<typeof View>;
+  content: {
+    items: readonly ChatConversationHomeQuickStartCardPart[];
+  };
+};
+
+type ChatConversationHomeQuickStartsGridProps = {
+  grid: ChatConversationHomeQuickStartsGridPart;
+};
+
+type ChatConversationHomeQuickStartsContentProps = {
+  grid: ChatConversationHomeQuickStartsGridPart;
+  emptyState: ChatConversationHomeQuickStartsEmptyStatePart;
+};
+
 type ChatConversationHomePromptEditorModalStyles = {
   keyboardAvoidingView: StyleProp<ViewStyle>;
   overlay: StyleProp<ViewStyle>;
@@ -8039,29 +8061,53 @@ export function ChatConversationHomeQuickStarts<
 
   if (!quickStartsContainer.shouldRender) return null;
 
-  const quickStartsGridContent = quickStartsParts.grid.content;
-
   return (
     <View {...quickStartsContainer.props}>
-      {quickStartsParts.grid.shouldRender ? (
-        <View {...quickStartsParts.grid.props}>
-          {quickStartsGridContent.items.map((item) => (
-            <ChatConversationHomeQuickStartCard
-              key={item.key}
-              pressable={item.pressable}
-              sourcePill={item.sourcePill}
-              addIcon={item.addIcon}
-              title={item.title}
-              description={item.description}
-              actions={item.actions}
-            />
-          ))}
-        </View>
-      ) : (
-        <ChatConversationHomeQuickStartsEmptyState
-          emptyState={quickStartsParts.emptyState}
+      <ChatConversationHomeQuickStartsContent
+        grid={quickStartsParts.grid}
+        emptyState={quickStartsParts.emptyState}
+      />
+    </View>
+  );
+}
+
+export function ChatConversationHomeQuickStartsContent({
+  grid,
+  emptyState,
+}: ChatConversationHomeQuickStartsContentProps) {
+  if (grid.shouldRender) {
+    return (
+      <ChatConversationHomeQuickStartsGrid
+        grid={grid}
+      />
+    );
+  }
+
+  return (
+    <ChatConversationHomeQuickStartsEmptyState
+      emptyState={emptyState}
+    />
+  );
+}
+
+export function ChatConversationHomeQuickStartsGrid({
+  grid,
+}: ChatConversationHomeQuickStartsGridProps) {
+  if (!grid.shouldRender) return null;
+
+  return (
+    <View {...grid.props}>
+      {grid.content.items.map((item) => (
+        <ChatConversationHomeQuickStartCard
+          key={item.key}
+          pressable={item.pressable}
+          sourcePill={item.sourcePill}
+          addIcon={item.addIcon}
+          title={item.title}
+          description={item.description}
+          actions={item.actions}
         />
-      )}
+      ))}
     </View>
   );
 }
