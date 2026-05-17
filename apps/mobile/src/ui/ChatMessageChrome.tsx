@@ -2933,6 +2933,12 @@ type ChatMessageToolExecutionErrorBlockParts = ReturnType<typeof createChatRunti
   ChatMessageToolExecutionErrorBlockProps['styles']
 >>;
 
+type ChatMessageToolExecutionErrorBlockContentProps =
+  ChatMessageToolExecutionErrorBlockParts['section']['content'];
+
+type ChatMessageToolExecutionErrorBlockHeaderContentProps =
+  ChatMessageToolExecutionErrorBlockParts['section']['content']['headerRow']['content'];
+
 type ChatMessageToolExecutionErrorBlockViewProps =
   (
     | ChatMessageToolExecutionErrorBlockParts['section']['props']
@@ -11432,27 +11438,51 @@ export function ChatMessageToolExecutionErrorBlock({
     onCopyPress,
     styles,
   });
-  const errorBlockContent = errorBlockParts.section.content;
-  const errorBlockHeaderContent = errorBlockContent.headerRow.content;
 
   return (
     <ChatMessageToolExecutionErrorBlockView
       {...errorBlockParts.section.props}
     >
+      <ChatMessageToolExecutionErrorBlockContent
+        {...errorBlockParts.section.content}
+      />
+    </ChatMessageToolExecutionErrorBlockView>
+  );
+}
+
+export function ChatMessageToolExecutionErrorBlockContent({
+  headerRow,
+  error,
+}: ChatMessageToolExecutionErrorBlockContentProps) {
+  return (
+    <>
       <ChatMessageToolExecutionErrorBlockView
-        {...errorBlockContent.headerRow.props}
+        {...headerRow.props}
       >
-        <ChatMessageToolExecutionErrorBlockText
-          {...errorBlockHeaderContent.label.props}
-        />
-        <ChatMessageToolExecutionCopyButton
-          {...errorBlockHeaderContent.copyButton.props}
+        <ChatMessageToolExecutionErrorBlockHeaderContent
+          {...headerRow.content}
         />
       </ChatMessageToolExecutionErrorBlockView>
       <ChatMessageToolExecutionErrorBlockText
-        {...errorBlockContent.error.props}
+        {...error.props}
       />
-    </ChatMessageToolExecutionErrorBlockView>
+    </>
+  );
+}
+
+export function ChatMessageToolExecutionErrorBlockHeaderContent({
+  label,
+  copyButton,
+}: ChatMessageToolExecutionErrorBlockHeaderContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionErrorBlockText
+        {...label.props}
+      />
+      <ChatMessageToolExecutionCopyButton
+        {...copyButton.props}
+      />
+    </>
   );
 }
 

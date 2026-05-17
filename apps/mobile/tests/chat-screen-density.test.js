@@ -4719,16 +4719,24 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMeta[\s\S]*?renderState\.payloadTypeLabel \?[\s\S]*?export function ChatMessageToolExecutionErrorBlock/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionErrorBlock\s+renderState=\{toolErrorHeaderState\}\s+error=\{toolResultDetail\.error\}\s+copyButtonRenderState=\{toolErrorCopyButtonState\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlock/);
+  const toolExecutionErrorBlockSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionErrorBlock\([\s\S]*?export function ChatMessageToolExecutionErrorBlockContent/)?.[0] ?? '';
+  const toolExecutionErrorBlockContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionErrorBlockContent[\s\S]*?export function ChatMessageToolExecutionErrorBlockHeaderContent/)?.[0] ?? '';
+  const toolExecutionErrorBlockHeaderContentSource =
+    chatMessageChromeSource.match(/export function ChatMessageToolExecutionErrorBlockHeaderContent[\s\S]*?export function ChatMessageToolExecutionErrorBlockView/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionErrorBlockMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const errorBlockParts = createChatRuntimeToolExecutionErrorBlockMobilePropsParts\(\{\s+renderState,\s+error,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const errorBlockContent = errorBlockParts\.section\.content;/);
-  assert.match(chatMessageChromeSource, /const errorBlockHeaderContent = errorBlockContent\.headerRow\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const errorBlockContent = errorBlockParts\.section\.content;/);
+  assert.doesNotMatch(chatMessageChromeSource, /const errorBlockHeaderContent = errorBlockContent\.headerRow\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockView\s+\{\.\.\.errorBlockParts\.section\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockView\s+\{\.\.\.errorBlockContent\.headerRow\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockText\s+\{\.\.\.errorBlockHeaderContent\.label\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.errorBlockHeaderContent\.copyButton\.props\}/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockText\s+\{\.\.\.errorBlockContent\.error\.props\}/);
+  assert.match(toolExecutionErrorBlockSource, /<ChatMessageToolExecutionErrorBlockContent\s+\{\.\.\.errorBlockParts\.section\.content\}/);
+  assert.match(toolExecutionErrorBlockContentSource, /<ChatMessageToolExecutionErrorBlockView\s+\{\.\.\.headerRow\.props\}/);
+  assert.match(toolExecutionErrorBlockContentSource, /<ChatMessageToolExecutionErrorBlockHeaderContent\s+\{\.\.\.headerRow\.content\}/);
+  assert.match(toolExecutionErrorBlockHeaderContentSource, /<ChatMessageToolExecutionErrorBlockText\s+\{\.\.\.label\.props\}/);
+  assert.match(toolExecutionErrorBlockHeaderContentSource, /<ChatMessageToolExecutionCopyButton\s+\{\.\.\.copyButton\.props\}/);
+  assert.match(toolExecutionErrorBlockContentSource, /<ChatMessageToolExecutionErrorBlockText\s+\{\.\.\.error\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlockView[\s\S]*?<View\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionErrorBlockText/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlockView[\s\S]*?style=\{style\}[\s\S]*?export function ChatMessageToolExecutionErrorBlockText/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlockText[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageToolExecutionResultSection\(\{/);
