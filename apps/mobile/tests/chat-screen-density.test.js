@@ -7812,6 +7812,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalFrame/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalFrame\s+modal=\{modalParts\.modal\}\s+keyboardAvoidingView=\{modalParts\.keyboardAvoidingView\}\s+overlay=\{modalParts\.overlay\}\s+content=\{modalParts\.content\}/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalFrame[\s\S]*?<Modal \{\.\.\.modal\.props\}>[\s\S]*?<KeyboardAvoidingView \{\.\.\.keyboardAvoidingView\.props\}>[\s\S]*?<View \{\.\.\.overlay\.props\}>[\s\S]*?<View \{\.\.\.content\.props\}>[\s\S]*?\{children\}/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalBody/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalBody\s+header=\{modalParts\.header\}\s+title=\{modalParts\.title\}\s+closeButton=\{modalParts\.closeButton\}\s+closeIcon=\{modalParts\.closeIcon\}\s+nameLabel=\{modalParts\.nameLabel\}\s+nameInput=\{modalParts\.nameInput\}\s+contentLabel=\{modalParts\.contentLabel\}\s+contentInput=\{modalParts\.contentInput\}\s+actions=\{modalParts\.actions\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<Modal \{\.\.\.modalParts\.modal\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /transparent=\{modalParts\.modal\.transparent\}/);
   assert.doesNotMatch(chatMessageChromeSource, /animationType=\{modalParts\.modal\.animationType\}/);
@@ -7825,7 +7827,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /closeIconColors: promptLibraryEditorCloseIconColors/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalIconButton/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalHeader/);
-  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalHeader\s+header=\{modalParts\.header\}\s+title=\{modalParts\.title\}\s+closeButton=\{modalParts\.closeButton\}\s+closeIcon=\{modalParts\.closeIcon\}/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalHeader\s+header=\{header\}\s+title=\{title\}\s+closeButton=\{closeButton\}\s+closeIcon=\{closeIcon\}/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalHeader[\s\S]*?<View \{\.\.\.header\.props\}>[\s\S]*?<Text \{\.\.\.title\.props\}>\{title\.text\}<\/Text>[\s\S]*?<ChatConversationHomePromptEditorModalIconButton\s+button=\{closeButton\}\s+icon=\{closeIcon\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalIconButton\s+button=\{modalParts\.closeButton\}\s+icon=\{modalParts\.closeIcon\}/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalIconButton[\s\S]*?<TouchableOpacity \{\.\.\.button\.props\}>[\s\S]*?<Ionicons \{\.\.\.icon\.props\} \/>/);
@@ -7847,14 +7849,14 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(chatMessageChromeSource, /color=\{modalParts\.closeIcon\.color\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<Text \{\.\.\.modalParts\.title\.props\}>\{modalParts\.title\.text\}<\/Text>/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalField/);
-  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalField\s+label=\{modalParts\.nameLabel\}\s+input=\{modalParts\.nameInput\}/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalField\s+label=\{nameLabel\}\s+input=\{nameInput\}/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalField[\s\S]*?<Text \{\.\.\.label\.props\}>\{label\.text\}<\/Text>[\s\S]*?<TextInput \{\.\.\.input\.props\} \/>/);
   assert.doesNotMatch(chatMessageChromeSource, /<Text \{\.\.\.modalParts\.nameLabel\.props\}>\{modalParts\.nameLabel\.text\}<\/Text>/);
   assert.doesNotMatch(chatMessageChromeSource, /\{modalParts\.nameLabel\.text\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<TextInput \{\.\.\.modalParts\.nameInput\.props\} \/>/);
   assert.doesNotMatch(chatMessageChromeSource, /accessibilityLabel=\{modalParts\.nameInput\.accessibilityLabel\}/);
   assert.doesNotMatch(chatMessageChromeSource, /placeholder=\{modalParts\.nameInput\.placeholder\}/);
-  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalField\s+label=\{modalParts\.contentLabel\}\s+input=\{modalParts\.contentInput\}/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalField\s+label=\{contentLabel\}\s+input=\{contentInput\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<Text \{\.\.\.modalParts\.contentLabel\.props\}>\{modalParts\.contentLabel\.text\}<\/Text>/);
   assert.doesNotMatch(chatMessageChromeSource, /\{modalParts\.contentLabel\.text\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<TextInput \{\.\.\.modalParts\.contentInput\.props\} \/>/);
@@ -7898,7 +7900,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(screenSource, /modalInputMultiline:\s*\{\s+\.\.\.promptEditorModalStyleSlots\.modalInputMultiline,\s+\}/);
   assert.match(screenSource, /modalActions:\s*\{\s+\.\.\.promptEditorModalStyleSlots\.modalActions,\s+\}/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalActions/);
-  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalActions\s+actions=\{modalParts\.actions\}\s+cancelButton=\{modalParts\.cancelButton\}\s+cancelLabel=\{modalParts\.cancelLabel\}\s+saveButton=\{modalParts\.saveButton\}\s+saveLabel=\{modalParts\.saveLabel\}/);
+  assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalActions\s+actions=\{actions\}\s+cancelButton=\{cancelButton\}\s+cancelLabel=\{cancelLabel\}\s+saveButton=\{saveButton\}\s+saveLabel=\{saveLabel\}/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalActions[\s\S]*?<View \{\.\.\.actions\.props\}>/);
   assert.doesNotMatch(chatMessageChromeSource, /<View \{\.\.\.modalParts\.actions\.props\}>/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModalActionButton/);

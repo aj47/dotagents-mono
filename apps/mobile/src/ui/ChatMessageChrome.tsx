@@ -1812,6 +1812,16 @@ type ChatConversationHomePromptEditorModalActionsProps = {
   saveLabel: ChatConversationHomePromptEditorModalTextPart;
 };
 
+type ChatConversationHomePromptEditorModalBodyProps =
+  ChatConversationHomePromptEditorModalHeaderProps
+  & {
+    nameLabel: ChatConversationHomePromptEditorModalTextPart;
+    nameInput: ChatConversationHomePromptEditorModalInputPart;
+    contentLabel: ChatConversationHomePromptEditorModalTextPart;
+    contentInput: ChatConversationHomePromptEditorModalInputPart;
+  }
+  & ChatConversationHomePromptEditorModalActionsProps;
+
 type ChatMessageRuntimeOverlaysProps = {
   agentSelector: ComponentProps<typeof AgentSelectorSheet>;
   promptEditor: ChatConversationHomePromptEditorModalProps;
@@ -8324,24 +8334,15 @@ export function ChatConversationHomePromptEditorModal({
       overlay={modalParts.overlay}
       content={modalParts.content}
     >
-      <ChatConversationHomePromptEditorModalHeader
+      <ChatConversationHomePromptEditorModalBody
         header={modalParts.header}
         title={modalParts.title}
         closeButton={modalParts.closeButton}
         closeIcon={modalParts.closeIcon}
-      />
-
-      <ChatConversationHomePromptEditorModalField
-        label={modalParts.nameLabel}
-        input={modalParts.nameInput}
-      />
-
-      <ChatConversationHomePromptEditorModalField
-        label={modalParts.contentLabel}
-        input={modalParts.contentInput}
-      />
-
-      <ChatConversationHomePromptEditorModalActions
+        nameLabel={modalParts.nameLabel}
+        nameInput={modalParts.nameInput}
+        contentLabel={modalParts.contentLabel}
+        contentInput={modalParts.contentInput}
         actions={modalParts.actions}
         cancelButton={modalParts.cancelButton}
         cancelLabel={modalParts.cancelLabel}
@@ -8349,6 +8350,51 @@ export function ChatConversationHomePromptEditorModal({
         saveLabel={modalParts.saveLabel}
       />
     </ChatConversationHomePromptEditorModalFrame>
+  );
+}
+
+export function ChatConversationHomePromptEditorModalBody({
+  header,
+  title,
+  closeButton,
+  closeIcon,
+  nameLabel,
+  nameInput,
+  contentLabel,
+  contentInput,
+  actions,
+  cancelButton,
+  cancelLabel,
+  saveButton,
+  saveLabel,
+}: ChatConversationHomePromptEditorModalBodyProps) {
+  return (
+    <>
+      <ChatConversationHomePromptEditorModalHeader
+        header={header}
+        title={title}
+        closeButton={closeButton}
+        closeIcon={closeIcon}
+      />
+
+      <ChatConversationHomePromptEditorModalField
+        label={nameLabel}
+        input={nameInput}
+      />
+
+      <ChatConversationHomePromptEditorModalField
+        label={contentLabel}
+        input={contentInput}
+      />
+
+      <ChatConversationHomePromptEditorModalActions
+        actions={actions}
+        cancelButton={cancelButton}
+        cancelLabel={cancelLabel}
+        saveButton={saveButton}
+        saveLabel={saveLabel}
+      />
+    </>
   );
 }
 
