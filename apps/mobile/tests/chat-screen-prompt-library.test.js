@@ -297,6 +297,12 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(sessionPresentationSource, /createChatConversationHomePromptEditorSaveActionState\(\{\s+draft: \{ name: nameValue, content: contentValue \},\s+isEditing,\s+isSaving,\s+\}\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalChromeProps/);
   assert.match(chatMessageChromeSource, /const modalParts = createChatConversationHomePromptEditorModalMobilePropsParts\(\{/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalParts =\s+ChatConversationHomePromptEditorModalMobilePropsParts<ChatConversationHomePromptEditorModalStyles>;/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalFrameProps = Pick<[\s\S]*?ChatConversationHomePromptEditorModalParts,[\s\S]*?'modal' \| 'keyboardAvoidingView' \| 'overlay' \| 'content'/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalModalPart = \{/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalKeyboardAvoidingViewPart = \{/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModal(View|IconButton|Icon|ActionButton|Actions|Header|Text|Input)Part = \{/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalBody\s+header=\{modalParts\.header\}/);
   assert.match(sessionPresentationSource, /style: styles\.header/);
   assert.match(sessionPresentationSource, /style: styles\.closeButton/);
