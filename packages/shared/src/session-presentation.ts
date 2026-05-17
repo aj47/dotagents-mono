@@ -2264,66 +2264,70 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
   }
   conversationPreview: {
     shouldRender: boolean
-    style: TStyles["conversationPreview"]
-    rows: Array<{
-      key: string
-      props: {
-        line: {
-          style: TStyles["conversationPreviewLine"]
-        }
-        role: {
-          style: Array<
-            | TStyles["conversationPreviewRole"]
-            | ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots[
-              keyof ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
-            ]
-          >
-          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleNumberOfLines"]
-          ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleEllipsizeMode"]
-          text: string
-        }
-        content: {
-          style: TStyles["conversationPreviewContent"]
-          numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentNumberOfLines"]
-          ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentEllipsizeMode"]
-          text: string
-        }
-        timestamp:
-          | {
-            shouldRender: true
-            style: TStyles["conversationPreviewTimestamp"]
-            numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
+    props: {
+      container: {
+        style: TStyles["conversationPreview"]
+      }
+      rows: Array<{
+        key: string
+        props: {
+          line: {
+            style: TStyles["conversationPreviewLine"]
+          }
+          role: {
+            style: Array<
+              | TStyles["conversationPreviewRole"]
+              | ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots[
+                keyof ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots
+              ]
+            >
+            numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleNumberOfLines"]
+            ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewRoleEllipsizeMode"]
             text: string
           }
-          | {
+          content: {
+            style: TStyles["conversationPreviewContent"]
+            numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentNumberOfLines"]
+            ellipsizeMode: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewContentEllipsizeMode"]
+            text: string
+          }
+          timestamp:
+            | {
+              shouldRender: true
+              style: TStyles["conversationPreviewTimestamp"]
+              numberOfLines: ChatRuntimeDelegationCardMobilePresentationState["surface"]["conversationPreviewTimestampNumberOfLines"]
+              text: string
+            }
+            | {
+              shouldRender: false
+            }
+        }
+      }>
+      moreAction:
+        | {
+            shouldRender: true
+            props: {
+              button: {
+                onPress: TConversationPreviewOnShowAll
+                accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
+                accessibilityLabel: string
+                style: (state: { pressed: boolean }) => Array<
+                  | TStyles["conversationPreviewMoreButton"]
+                  | TStyles["conversationPreviewMoreButtonPressed"]
+                  | false
+                >
+              }
+              label: {
+                style: TStyles["conversationPreviewMore"]
+                numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
+                text: string
+              }
+            }
+          }
+        | {
             shouldRender: false
           }
-      }
-    }>
-    moreAction:
-      | {
-        shouldRender: true
-        props: {
-          button: {
-            onPress: TConversationPreviewOnShowAll
-            accessibilityRole: ChatRuntimeDelegationMorePreviewActionState["accessibilityRole"]
-            accessibilityLabel: string
-            style: (state: { pressed: boolean }) => Array<
-              | TStyles["conversationPreviewMoreButton"]
-              | TStyles["conversationPreviewMoreButtonPressed"]
-              | false
-            >
-          }
-          label: {
-            style: TStyles["conversationPreviewMore"]
-            numberOfLines: ChatRuntimeDelegationMorePreviewActionState["numberOfLines"]
-            text: string
-          }
-        }
-      }
-      | {
-        shouldRender: false
-      }
+    }
   }
   toolPreview: {
     shouldRender: boolean
@@ -22962,58 +22966,62 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
     },
     conversationPreview: {
       shouldRender: shouldRenderConversationPreview,
-      style: styles.conversationPreview,
-      rows: shouldRenderConversationPreview ? conversationPreview.rows.map((row, rowIndex) => ({
-        key: `${row.timestamp}-${row.role}-${rowIndex}`,
-        props: {
-          line: {
-            style: styles.conversationPreviewLine,
-          },
-          role: {
-            style: [
-              styles.conversationPreviewRole,
-              conversationPreview.roleStyles[row.role],
-            ],
-            numberOfLines: surface.conversationPreviewRoleNumberOfLines,
-            ellipsizeMode: surface.conversationPreviewRoleEllipsizeMode,
-            text: row.roleLabel,
-          },
-          content: {
-            style: styles.conversationPreviewContent,
-            numberOfLines: surface.conversationPreviewContentNumberOfLines,
-            ellipsizeMode: surface.conversationPreviewContentEllipsizeMode,
-            text: row.content,
-          },
-          timestamp: row.timestampLabel ? {
-            shouldRender: true,
-            style: styles.conversationPreviewTimestamp,
-            numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
-            text: row.timestampLabel,
-          } : {
-            shouldRender: false,
-          },
+      props: {
+        container: {
+          style: styles.conversationPreview,
         },
-      })) : [],
-      moreAction: shouldRenderConversationPreview && conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? {
-        shouldRender: true,
-        props: {
-          button: {
-            onPress: conversationPreview.onShowAll,
-            accessibilityRole: conversationPreview.moreAction.accessibilityRole,
-            accessibilityLabel: conversationPreview.moreAction.accessibilityLabel,
-            style: ({ pressed }: { pressed: boolean }) => [
-              styles.conversationPreviewMoreButton,
-              pressed && styles.conversationPreviewMoreButtonPressed,
-            ],
+        rows: shouldRenderConversationPreview ? conversationPreview.rows.map((row, rowIndex) => ({
+          key: `${row.timestamp}-${row.role}-${rowIndex}`,
+          props: {
+            line: {
+              style: styles.conversationPreviewLine,
+            },
+            role: {
+              style: [
+                styles.conversationPreviewRole,
+                conversationPreview.roleStyles[row.role],
+              ],
+              numberOfLines: surface.conversationPreviewRoleNumberOfLines,
+              ellipsizeMode: surface.conversationPreviewRoleEllipsizeMode,
+              text: row.roleLabel,
+            },
+            content: {
+              style: styles.conversationPreviewContent,
+              numberOfLines: surface.conversationPreviewContentNumberOfLines,
+              ellipsizeMode: surface.conversationPreviewContentEllipsizeMode,
+              text: row.content,
+            },
+            timestamp: row.timestampLabel ? {
+              shouldRender: true,
+              style: styles.conversationPreviewTimestamp,
+              numberOfLines: surface.conversationPreviewTimestampNumberOfLines,
+              text: row.timestampLabel,
+            } : {
+              shouldRender: false,
+            },
           },
-          label: {
-            style: styles.conversationPreviewMore,
-            numberOfLines: conversationPreview.moreAction.numberOfLines,
-            text: conversationPreview.moreAction.label,
+        })) : [],
+        moreAction: shouldRenderConversationPreview && conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? {
+          shouldRender: true,
+          props: {
+            button: {
+              onPress: conversationPreview.onShowAll,
+              accessibilityRole: conversationPreview.moreAction.accessibilityRole,
+              accessibilityLabel: conversationPreview.moreAction.accessibilityLabel,
+              style: ({ pressed }: { pressed: boolean }) => [
+                styles.conversationPreviewMoreButton,
+                pressed && styles.conversationPreviewMoreButtonPressed,
+              ],
+            },
+            label: {
+              style: styles.conversationPreviewMore,
+              numberOfLines: conversationPreview.moreAction.numberOfLines,
+              text: conversationPreview.moreAction.label,
+            },
           },
+        } : {
+          shouldRender: false,
         },
-      } : {
-        shouldRender: false,
       },
     },
     toolPreview: {

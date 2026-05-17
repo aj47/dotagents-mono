@@ -11039,7 +11039,10 @@ describe("session presentation semantics", () => {
       throw new Error("Expected a delegation conversation preview row")
     }
     expect(delegationCardParts.conversationPreview.shouldRender).toBe(true)
-    const delegationConversationPreviewRowParts = delegationCardParts.conversationPreview.rows[0]
+    expect(delegationCardParts.conversationPreview.props.container).toEqual({
+      style: "delegation-conversation-preview-style",
+    })
+    const delegationConversationPreviewRowParts = delegationCardParts.conversationPreview.props.rows[0]
     if (!delegationConversationPreviewRowParts) {
       throw new Error("Expected delegation conversation preview row parts")
     }
@@ -11075,15 +11078,15 @@ describe("session presentation semantics", () => {
       numberOfLines: delegationCardProps.surface.conversationPreviewTimestampNumberOfLines,
       text: delegationConversationPreviewRow.timestampLabel,
     })
-    expect(delegationCardParts.conversationPreview.moreAction.shouldRender).toBe(true)
-    if (!delegationCardParts.conversationPreview.moreAction.shouldRender) {
+    expect(delegationCardParts.conversationPreview.props.moreAction.shouldRender).toBe(true)
+    if (!delegationCardParts.conversationPreview.props.moreAction.shouldRender) {
       throw new Error("Expected delegation conversation preview more action")
     }
-    expect(delegationCardParts.conversationPreview.moreAction.props.button.style({ pressed: true })).toEqual([
+    expect(delegationCardParts.conversationPreview.props.moreAction.props.button.style({ pressed: true })).toEqual([
       "delegation-conversation-preview-more-button-style",
       "delegation-conversation-preview-more-button-pressed-style",
     ])
-    delegationCardParts.conversationPreview.moreAction.props.button.onPress()
+    delegationCardParts.conversationPreview.props.moreAction.props.button.onPress()
     expect(delegationCardParts.toolPreview.shouldRender).toBe(true)
     expect(delegationCardParts.toolPreview.label.props).toMatchObject({
       style: "delegation-tool-preview-label-style",
