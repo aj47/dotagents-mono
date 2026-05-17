@@ -5139,8 +5139,10 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(sessionPresentationSource, /container: \{[\s\S]*?props: \{[\s\S]*?accessible: true,[\s\S]*?accessibilityRole: renderState\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.accessibilityLabel,[\s\S]*?accessibilityState: renderState\.accessibilityState,[\s\S]*?style,/);
   assert.match(sessionPresentationSource, /content: \{[\s\S]*?spinner: \{[\s\S]*?props: \{[\s\S]*?source: spinnerSource,[\s\S]*?style: spinnerStyle,[\s\S]*?resizeMode: renderState\.spinnerResizeMode,/);
   assert.match(chatMessageChromeSource, /<ChatMessageInlineActivityContainer\s+\{\.\.\.inlineActivityParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /const containerContent = inlineActivityParts\.container\.content;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageInlineActivitySpinner\s+\{\.\.\.containerContent\.spinner\.props\}/);
+  assert.match(chatMessageChromeSource, /type ChatMessageInlineActivityContainerContentProps =\s+ChatMessageInlineActivityParts\['container'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /<ChatMessageInlineActivityContainerContent\s+\{\.\.\.inlineActivityParts\.container\.content\}\s+\/>/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageInlineActivityContainerContent\(\{\s+spinner,\s+\}: ChatMessageInlineActivityContainerContentProps\) \{\s+return \(\s+<ChatMessageInlineActivitySpinner\s+\{\.\.\.spinner\.props\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /const containerContent = inlineActivityParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /export function ChatMessageInlineActivityContainer[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?\{children\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageInlineActivitySpinner\(props: ChatMessageInlineActivitySpinnerProps\)[\s\S]*?<Image \{\.\.\.props\} \/>/);
   assert.doesNotMatch(chatMessageChromeSource, /inlineActivityParts\.(container|spinner)\.(accessible|accessibilityLabel|accessibilityRole|accessibilityState|style|source|resizeMode)/);

@@ -4315,6 +4315,9 @@ type ChatMessageInlineActivityContainerProps =
     children: ReactNode;
   };
 
+type ChatMessageInlineActivityContainerContentProps =
+  ChatMessageInlineActivityParts['container']['content'];
+
 type ChatMessageInlineActivitySpinnerProps =
   ChatMessageInlineActivityParts['container']['content']['spinner']['props'];
 
@@ -13820,14 +13823,12 @@ export function ChatMessageInlineActivity({
 
   if (!inlineActivityParts.container.shouldRender) return null;
 
-  const containerContent = inlineActivityParts.container.content;
-
   return (
     <ChatMessageInlineActivityContainer
       {...inlineActivityParts.container.props}
     >
-      <ChatMessageInlineActivitySpinner
-        {...containerContent.spinner.props}
+      <ChatMessageInlineActivityContainerContent
+        {...inlineActivityParts.container.content}
       />
     </ChatMessageInlineActivityContainer>
   );
@@ -13841,6 +13842,16 @@ export function ChatMessageInlineActivityContainer({
     <View {...props}>
       {children}
     </View>
+  );
+}
+
+export function ChatMessageInlineActivityContainerContent({
+  spinner,
+}: ChatMessageInlineActivityContainerContentProps) {
+  return (
+    <ChatMessageInlineActivitySpinner
+      {...spinner.props}
+    />
   );
 }
 
