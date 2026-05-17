@@ -684,7 +684,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.approveButton\.icon\.shouldRender \? \(/);
   assert.doesNotMatch(toolApprovalComponentSource, /\{toolApprovalParts\.approveButton\.spinner \? \(/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.approveButton\.icon \? \(/);
-  assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.approveButton\.label\.text\}/);
+  assert.match(sessionPresentationSource, /approveButton: \{[\s\S]*?label: \{[\s\S]*?props: \{[\s\S]*?style: styles\.approveButtonText,[\s\S]*?text: renderState\.approveButton\.label,/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalActionLabel\s+\{\.\.\.toolApprovalParts\.approveButton\.label\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.approveButton\.label\.text/);
   assert.doesNotMatch(toolApprovalComponentSource, /numberOfLines=\{renderState\.surface\.argumentsPreview\.numberOfLines\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /name=\{renderState\.argumentsToggle\.icon\.name\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /<ScrollView style=\{styles\.argumentsScroll\} nestedScrollEnabled>/);

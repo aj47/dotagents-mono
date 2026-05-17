@@ -2069,8 +2069,10 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
       shouldRender: boolean
     }
     label: {
-      style: TStyles["approveButtonText"]
-      text: string
+      props: {
+        style: TStyles["approveButtonText"]
+        text: string
+      }
     }
   }
 }
@@ -22907,8 +22909,10 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         shouldRender: renderState.approveButton.isDisabled,
       },
       label: {
-        style: styles.approveButtonText,
-        text: renderState.approveButton.label,
+        props: {
+          style: styles.approveButtonText,
+          text: renderState.approveButton.label,
+        },
       },
     },
   }

@@ -8272,8 +8272,10 @@ describe("session presentation semantics", () => {
         shouldRender: true,
       },
       label: {
-        style: "tool-approval-approve-button-text-style",
-        text: CHAT_RUNTIME_PRESENTATION.approval.processingLabel,
+        props: {
+          style: "tool-approval-approve-button-text-style",
+          text: CHAT_RUNTIME_PRESENTATION.approval.processingLabel,
+        },
       },
     })
     expect(createChatRuntimeConversationToolApprovalMobileProps({

@@ -1594,7 +1594,8 @@ type ChatMessageToolApprovalArgumentsToggleLabelProps =
   ChatMessageToolApprovalParts['argumentsToggle']['label']['props'];
 
 type ChatMessageToolApprovalActionLabelProps =
-  ChatMessageToolApprovalParts['denyButton']['label']['props'];
+  | ChatMessageToolApprovalParts['denyButton']['label']['props']
+  | ChatMessageToolApprovalParts['approveButton']['label']['props'];
 
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
@@ -7536,9 +7537,9 @@ export function ChatMessageToolApproval({
                 {...toolApprovalParts.approveButton.icon.props}
               />
             ) : null}
-            <Text style={toolApprovalParts.approveButton.label.style}>
-              {toolApprovalParts.approveButton.label.text}
-            </Text>
+            <ChatMessageToolApprovalActionLabel
+              {...toolApprovalParts.approveButton.label.props}
+            />
           </TouchableOpacity>
         </View>
       </View>
