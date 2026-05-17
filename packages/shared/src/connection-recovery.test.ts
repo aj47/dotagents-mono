@@ -5,9 +5,12 @@ import {
   clearRecoveryContent,
   CONNECTION_STATUS_INDICATOR_PRESENTATION,
   CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION,
+  createConnectionStatusIndicatorMobilePropsParts,
+  createConnectionStatusIndicatorMobileStyleSlots,
   createStreamingCheckpoint,
   formatConnectionStatusIndicatorLabel,
   getConnectionStatusIndicatorMobileColorToken,
+  getConnectionStatusIndicatorMobilePulseAnimationState,
   getConnectionStatusIndicatorMobileRenderState,
   getConnectionStatusIndicatorMobileSurfaceColors,
   getConnectionStatusIndicatorMobileSurfaceState,
@@ -259,6 +262,13 @@ describe('connection status indicator presentation', () => {
     expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse.left).toBe(0)
     expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse.minOpacity).toBe(0.3)
     expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse.maxOpacity).toBe(0.8)
+    expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse.useNativeDriver).toBe(true)
+    expect(getConnectionStatusIndicatorMobilePulseAnimationState()).toEqual({
+      minOpacity: 0.3,
+      maxOpacity: 0.8,
+      durationMs: 800,
+      useNativeDriver: true,
+    })
     expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.statusColorTokenByStatus.connected).toBe('success')
     expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.statusColorTokenByStatus.failed).toBe('destructive')
     expect(CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.text.colorToken).toBe('mutedForeground')
@@ -339,6 +349,12 @@ describe('connection status indicator presentation', () => {
           color: '#737373',
         },
       },
+      animation: {
+        minOpacity: 0.3,
+        maxOpacity: 0.8,
+        durationMs: 800,
+        useNativeDriver: true,
+      },
     })
     expect(getConnectionStatusIndicatorMobileRenderState({
       status: 'connected',
@@ -354,6 +370,100 @@ describe('connection status indicator presentation', () => {
       isPulsing: false,
       shouldRenderPulse: false,
       shouldRenderText: false,
+    })
+  })
+
+  it('creates native mobile style slots and props parts from the shared indicator state', () => {
+    const renderState = getConnectionStatusIndicatorMobileRenderState({
+      status: 'connecting',
+      compact: false,
+      colors: {
+        destructive: '#dc2626',
+        mutedForeground: '#737373',
+        success: '#16a34a',
+        warning: '#f59e0b',
+      },
+    })
+    const styleSlots = createConnectionStatusIndicatorMobileStyleSlots({ renderState })
+
+    expect(styleSlots).toMatchObject({
+      container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+      },
+      containerCompact: {
+        paddingVertical: 2,
+        paddingHorizontal: 4,
+      },
+      dotContainer: {
+        position: 'relative',
+        width: 10,
+        height: 10,
+        marginRight: 6,
+      },
+      dot: {
+        position: 'absolute',
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        top: 1,
+        left: 1,
+      },
+      dotPulsing: {
+        opacity: 1,
+      },
+      dotPulse: {
+        position: 'absolute',
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        opacity: 0.3,
+        top: 0,
+        left: 0,
+      },
+      dotColor: {
+        backgroundColor: '#f59e0b',
+      },
+      pulseColor: {
+        backgroundColor: '#f59e0b',
+      },
+      text: {
+        fontSize: 12,
+        fontWeight: '500',
+      },
+      textColor: {
+        color: '#737373',
+      },
+    })
+
+    const pulseAnimatedStyle = { opacity: 'animated-opacity' }
+    const propsParts = createConnectionStatusIndicatorMobilePropsParts({
+      renderState,
+      styles: styleSlots,
+      pulseAnimatedStyle,
+      compact: false,
+    })
+
+    expect(propsParts.container).toEqual({
+      style: [styleSlots.container, false],
+      accessibilityLabel: 'Connecting...',
+      accessibilityRole: 'text',
+    })
+    expect(propsParts.dot.style).toEqual([
+      styleSlots.dot,
+      styleSlots.dotColor,
+      styleSlots.dotPulsing,
+    ])
+    expect(propsParts.pulse?.style).toEqual([
+      styleSlots.dotPulse,
+      styleSlots.pulseColor,
+      pulseAnimatedStyle,
+    ])
+    expect(propsParts.text).toEqual({
+      style: [styleSlots.text, styleSlots.textColor],
+      text: 'Connecting...',
     })
   })
 })

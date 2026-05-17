@@ -55,6 +55,7 @@ export const CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION = {
       minOpacity: 0.3,
       maxOpacity: 0.8,
       durationMs: 800,
+      useNativeDriver: true,
     },
     text: {
       fontSize: 12,
@@ -98,6 +99,13 @@ export interface ConnectionStatusIndicatorMobileVisualColors {
   };
 }
 
+export interface ConnectionStatusIndicatorMobilePulseAnimationState {
+  minOpacity: number;
+  maxOpacity: number;
+  durationMs: number;
+  useNativeDriver: boolean;
+}
+
 export interface ConnectionStatusIndicatorMobileRenderStateInput {
   status: ConnectionStatus;
   retryCount?: number;
@@ -114,6 +122,113 @@ export interface ConnectionStatusIndicatorMobileRenderState {
   shouldRenderPulse: boolean;
   shouldRenderText: boolean;
   colors: ConnectionStatusIndicatorMobileVisualColors;
+  animation: ConnectionStatusIndicatorMobilePulseAnimationState;
+}
+
+type ConnectionStatusIndicatorMobileSurface =
+  typeof CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile;
+
+export interface ConnectionStatusIndicatorMobileStyleSlotsInput {
+  renderState: Pick<ConnectionStatusIndicatorMobileRenderState, 'surface' | 'colors'>;
+}
+
+export interface ConnectionStatusIndicatorMobileStyleSlots {
+  container: {
+    flexDirection: ConnectionStatusIndicatorMobileSurface['container']['flexDirection'];
+    alignItems: ConnectionStatusIndicatorMobileSurface['container']['alignItems'];
+    paddingVertical: number;
+    paddingHorizontal: number;
+  };
+  containerCompact: {
+    paddingVertical: number;
+    paddingHorizontal: number;
+  };
+  dotContainer: {
+    position: ConnectionStatusIndicatorMobileSurface['dotContainer']['position'];
+    width: number;
+    height: number;
+    marginRight: number;
+  };
+  dot: {
+    width: number;
+    height: number;
+    borderRadius: number;
+    position: ConnectionStatusIndicatorMobileSurface['dot']['position'];
+    top: number;
+    left: number;
+  };
+  dotPulsing: {
+    opacity: number;
+  };
+  dotPulse: {
+    width: number;
+    height: number;
+    borderRadius: number;
+    opacity: number;
+    position: ConnectionStatusIndicatorMobileSurface['pulse']['position'];
+    top: number;
+    left: number;
+  };
+  dotColor: {
+    backgroundColor: string;
+  };
+  pulseColor: {
+    backgroundColor: string;
+  };
+  text: {
+    fontSize: number;
+    fontWeight: ConnectionStatusIndicatorMobileSurface['text']['fontWeight'];
+  };
+  textColor: {
+    color: string;
+  };
+}
+
+export interface ConnectionStatusIndicatorMobileStylesLike {
+  container: unknown;
+  containerCompact: unknown;
+  dotContainer: unknown;
+  dot: unknown;
+  dotPulsing: unknown;
+  dotPulse: unknown;
+  dotColor: unknown;
+  pulseColor: unknown;
+  text: unknown;
+  textColor: unknown;
+}
+
+export interface ConnectionStatusIndicatorMobilePropsPartsInput<
+  TStyles extends ConnectionStatusIndicatorMobileStylesLike = ConnectionStatusIndicatorMobileStylesLike,
+  TAnimatedStyle = unknown,
+> {
+  renderState: ConnectionStatusIndicatorMobileRenderState;
+  styles: TStyles;
+  pulseAnimatedStyle: TAnimatedStyle;
+  compact: boolean;
+}
+
+export interface ConnectionStatusIndicatorMobilePropsParts<
+  TStyles extends ConnectionStatusIndicatorMobileStylesLike = ConnectionStatusIndicatorMobileStylesLike,
+  TAnimatedStyle = unknown,
+> {
+  container: {
+    style: Array<TStyles['container'] | TStyles['containerCompact'] | false>;
+    accessibilityLabel: string;
+    accessibilityRole: ConnectionStatusIndicatorMobileRenderState['accessibilityRole'];
+  };
+  dotContainer: {
+    style: TStyles['dotContainer'];
+  };
+  dot: {
+    style: Array<TStyles['dot'] | TStyles['dotColor'] | TStyles['dotPulsing'] | false>;
+  };
+  pulse: {
+    style: Array<TStyles['dotPulse'] | TStyles['pulseColor'] | TAnimatedStyle>;
+  } | null;
+  text: {
+    style: Array<TStyles['text'] | TStyles['textColor']>;
+    text: string;
+  } | null;
 }
 
 export function getConnectionStatusIndicatorMobileSurfaceState(): typeof CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile {
@@ -175,6 +290,120 @@ export function getConnectionStatusIndicatorMobileRenderState({
     shouldRenderPulse: isPulsing,
     shouldRenderText: !compact,
     colors: getConnectionStatusIndicatorMobileVisualColors(status, colors),
+    animation: getConnectionStatusIndicatorMobilePulseAnimationState(),
+  };
+}
+
+export function getConnectionStatusIndicatorMobilePulseAnimationState(): ConnectionStatusIndicatorMobilePulseAnimationState {
+  const pulse = CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION.mobile.pulse;
+
+  return {
+    minOpacity: pulse.minOpacity,
+    maxOpacity: pulse.maxOpacity,
+    durationMs: pulse.durationMs,
+    useNativeDriver: pulse.useNativeDriver,
+  };
+}
+
+export function createConnectionStatusIndicatorMobileStyleSlots({
+  renderState,
+}: ConnectionStatusIndicatorMobileStyleSlotsInput): ConnectionStatusIndicatorMobileStyleSlots {
+  const surface = renderState.surface;
+  const colors = renderState.colors;
+
+  return {
+    container: {
+      flexDirection: surface.container.flexDirection,
+      alignItems: surface.container.alignItems,
+      paddingVertical: surface.container.paddingVertical,
+      paddingHorizontal: surface.container.paddingHorizontal,
+    },
+    containerCompact: {
+      paddingVertical: surface.container.compactPaddingVertical,
+      paddingHorizontal: surface.container.compactPaddingHorizontal,
+    },
+    dotContainer: {
+      position: surface.dotContainer.position,
+      width: surface.dotContainer.size,
+      height: surface.dotContainer.size,
+      marginRight: surface.dotContainer.marginRight,
+    },
+    dot: {
+      width: surface.dot.size,
+      height: surface.dot.size,
+      borderRadius: surface.dot.borderRadius,
+      position: surface.dot.position,
+      top: surface.dot.offset,
+      left: surface.dot.offset,
+    },
+    dotPulsing: {
+      opacity: surface.dot.pulsingOpacity,
+    },
+    dotPulse: {
+      width: surface.pulse.size,
+      height: surface.pulse.size,
+      borderRadius: surface.pulse.borderRadius,
+      opacity: surface.pulse.minOpacity,
+      position: surface.pulse.position,
+      top: surface.pulse.top,
+      left: surface.pulse.left,
+    },
+    dotColor: {
+      backgroundColor: colors.dot.backgroundColor,
+    },
+    pulseColor: {
+      backgroundColor: colors.pulse.backgroundColor,
+    },
+    text: {
+      fontSize: surface.text.fontSize,
+      fontWeight: surface.text.fontWeight,
+    },
+    textColor: {
+      color: colors.text.color,
+    },
+  };
+}
+
+export function createConnectionStatusIndicatorMobilePropsParts<
+  TStyles extends ConnectionStatusIndicatorMobileStylesLike,
+  TAnimatedStyle,
+>({
+  renderState,
+  styles,
+  pulseAnimatedStyle,
+  compact,
+}: ConnectionStatusIndicatorMobilePropsPartsInput<TStyles, TAnimatedStyle>): ConnectionStatusIndicatorMobilePropsParts<TStyles, TAnimatedStyle> {
+  return {
+    container: {
+      style: [styles.container, compact && styles.containerCompact],
+      accessibilityLabel: renderState.accessibilityLabel,
+      accessibilityRole: renderState.accessibilityRole,
+    },
+    dotContainer: {
+      style: styles.dotContainer,
+    },
+    dot: {
+      style: [
+        styles.dot,
+        styles.dotColor,
+        renderState.isPulsing && styles.dotPulsing,
+      ],
+    },
+    pulse: renderState.shouldRenderPulse
+      ? {
+          style: [
+            styles.dotPulse,
+            styles.pulseColor,
+            pulseAnimatedStyle,
+          ],
+        }
+      : null,
+    text: renderState.shouldRenderText
+      ? {
+          style: [styles.text, styles.textColor],
+          text: renderState.statusText,
+        }
+      : null,
   };
 }
 

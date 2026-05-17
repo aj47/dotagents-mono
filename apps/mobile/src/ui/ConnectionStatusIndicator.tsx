@@ -2,8 +2,9 @@ import React, { useRef, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useTheme } from './ThemeProvider';
 import {
+  createConnectionStatusIndicatorMobilePropsParts,
+  createConnectionStatusIndicatorMobileStyleSlots,
   getConnectionStatusIndicatorMobileRenderState,
-  type ConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatus,
 } from '@dotagents/shared/connection-recovery';
 
@@ -32,127 +33,102 @@ export function ConnectionStatusIndicator({
     }),
     [compact, retryCount, state, theme.colors],
   );
-  const connectionStatusSurface = connectionStatusState.surface;
-  const pulseAnim = useRef(new Animated.Value(connectionStatusSurface.pulse.minOpacity)).current;
-  const styles = useMemo(
-    () => createStyles(connectionStatusSurface),
-    [connectionStatusSurface],
+  const connectionStatusAnimation = connectionStatusState.animation;
+  const pulseAnim = useRef(new Animated.Value(connectionStatusAnimation.minOpacity)).current;
+  const connectionStatusStyleSlots = useMemo(
+    () => createConnectionStatusIndicatorMobileStyleSlots({
+      renderState: connectionStatusState,
+    }),
+    [connectionStatusState],
   );
-  const colorStyles = useMemo(
+  const styles = useMemo(
     () => StyleSheet.create({
-      dot: {
-        backgroundColor: connectionStatusState.colors.dot.backgroundColor,
+      container: {
+        ...connectionStatusStyleSlots.container,
       },
-      pulse: {
-        backgroundColor: connectionStatusState.colors.pulse.backgroundColor,
+      containerCompact: {
+        ...connectionStatusStyleSlots.containerCompact,
+      },
+      dotContainer: {
+        ...connectionStatusStyleSlots.dotContainer,
+      },
+      dot: {
+        ...connectionStatusStyleSlots.dot,
+      },
+      dotPulsing: {
+        ...connectionStatusStyleSlots.dotPulsing,
+      },
+      dotPulse: {
+        ...connectionStatusStyleSlots.dotPulse,
+      },
+      dotColor: {
+        ...connectionStatusStyleSlots.dotColor,
+      },
+      pulseColor: {
+        ...connectionStatusStyleSlots.pulseColor,
       },
       text: {
-        color: connectionStatusState.colors.text.color,
+        ...connectionStatusStyleSlots.text,
+      },
+      textColor: {
+        ...connectionStatusStyleSlots.textColor,
       },
     }),
-    [connectionStatusState.colors],
+    [connectionStatusStyleSlots],
   );
   const pulseAnimatedStyle = useMemo(() => ({ opacity: pulseAnim }), [pulseAnim]);
+  const connectionStatusParts = useMemo(
+    () => createConnectionStatusIndicatorMobilePropsParts({
+      renderState: connectionStatusState,
+      styles,
+      pulseAnimatedStyle,
+      compact,
+    }),
+    [compact, connectionStatusState, pulseAnimatedStyle, styles],
+  );
 
   useEffect(() => {
     if (connectionStatusState.isPulsing) {
       const animation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: connectionStatusSurface.pulse.maxOpacity,
-            duration: connectionStatusSurface.pulse.durationMs,
-            useNativeDriver: true,
+            toValue: connectionStatusAnimation.maxOpacity,
+            duration: connectionStatusAnimation.durationMs,
+            useNativeDriver: connectionStatusAnimation.useNativeDriver,
           }),
           Animated.timing(pulseAnim, {
-            toValue: connectionStatusSurface.pulse.minOpacity,
-            duration: connectionStatusSurface.pulse.durationMs,
-            useNativeDriver: true,
+            toValue: connectionStatusAnimation.minOpacity,
+            duration: connectionStatusAnimation.durationMs,
+            useNativeDriver: connectionStatusAnimation.useNativeDriver,
           }),
         ])
       );
       animation.start();
       return () => animation.stop();
     } else {
-      pulseAnim.setValue(connectionStatusSurface.pulse.minOpacity);
+      pulseAnim.setValue(connectionStatusAnimation.minOpacity);
     }
-  }, [connectionStatusState.isPulsing, connectionStatusSurface, pulseAnim]);
+  }, [connectionStatusState.isPulsing, connectionStatusAnimation, pulseAnim]);
 
   return (
     <View
-      style={[styles.container, compact && styles.containerCompact]}
-      accessibilityLabel={connectionStatusState.accessibilityLabel}
-      accessibilityRole={connectionStatusState.accessibilityRole}
+      style={connectionStatusParts.container.style}
+      accessibilityLabel={connectionStatusParts.container.accessibilityLabel}
+      accessibilityRole={connectionStatusParts.container.accessibilityRole}
     >
-      <View style={styles.dotContainer}>
-        <View
-          style={[
-            styles.dot,
-            colorStyles.dot,
-            connectionStatusState.isPulsing && styles.dotPulsing,
-          ]}
-        />
-        {connectionStatusState.shouldRenderPulse && (
-          <Animated.View
-            style={[
-              styles.dotPulse,
-              colorStyles.pulse,
-              pulseAnimatedStyle,
-            ]}
-          />
+      <View style={connectionStatusParts.dotContainer.style}>
+        <View style={connectionStatusParts.dot.style} />
+        {connectionStatusParts.pulse && (
+          <Animated.View style={connectionStatusParts.pulse.style} />
         )}
       </View>
-      {connectionStatusState.shouldRenderText && (
-        <Text style={[styles.text, colorStyles.text]}>
-          {connectionStatusState.statusText}
+      {connectionStatusParts.text && (
+        <Text style={connectionStatusParts.text.style}>
+          {connectionStatusParts.text.text}
         </Text>
       )}
     </View>
   );
-}
-
-function createStyles(connectionStatusSurface: ConnectionStatusIndicatorMobileRenderState['surface']) {
-  return StyleSheet.create({
-    container: {
-      flexDirection: connectionStatusSurface.container.flexDirection,
-      alignItems: connectionStatusSurface.container.alignItems,
-      paddingVertical: connectionStatusSurface.container.paddingVertical,
-      paddingHorizontal: connectionStatusSurface.container.paddingHorizontal,
-    },
-    containerCompact: {
-      paddingVertical: connectionStatusSurface.container.compactPaddingVertical,
-      paddingHorizontal: connectionStatusSurface.container.compactPaddingHorizontal,
-    },
-    dotContainer: {
-      position: connectionStatusSurface.dotContainer.position,
-      width: connectionStatusSurface.dotContainer.size,
-      height: connectionStatusSurface.dotContainer.size,
-      marginRight: connectionStatusSurface.dotContainer.marginRight,
-    },
-    dot: {
-      width: connectionStatusSurface.dot.size,
-      height: connectionStatusSurface.dot.size,
-      borderRadius: connectionStatusSurface.dot.borderRadius,
-      position: connectionStatusSurface.dot.position,
-      top: connectionStatusSurface.dot.offset,
-      left: connectionStatusSurface.dot.offset,
-    },
-    dotPulsing: {
-      opacity: connectionStatusSurface.dot.pulsingOpacity,
-    },
-    dotPulse: {
-      width: connectionStatusSurface.pulse.size,
-      height: connectionStatusSurface.pulse.size,
-      borderRadius: connectionStatusSurface.pulse.borderRadius,
-      opacity: connectionStatusSurface.pulse.minOpacity,
-      position: connectionStatusSurface.pulse.position,
-      top: connectionStatusSurface.pulse.top,
-      left: connectionStatusSurface.pulse.left,
-    },
-    text: {
-      fontSize: connectionStatusSurface.text.fontSize,
-      fontWeight: connectionStatusSurface.text.fontWeight,
-    },
-  });
 }
 
 export default ConnectionStatusIndicator;
