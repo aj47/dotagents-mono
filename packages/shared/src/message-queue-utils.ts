@@ -1255,6 +1255,18 @@ export interface QueuedMessageActionButtonMobileStyleSlotsInput {
   colors: MessageQueuePanelMobileSurfaceRenderState['colors']['actions'];
 }
 
+export interface QueuedMessageActionRowMobileStyleSlotInput {
+  surface: QueuedMessageMobileActionSurface;
+}
+
+export interface QueuedMessageActionRowMobileStyleSlot {
+  flexDirection: QueuedMessageMobileActionSurface['flexDirection'];
+  flexWrap: QueuedMessageMobileActionSurface['flexWrap'];
+  alignItems: QueuedMessageMobileActionSurface['alignItems'];
+  gap: number;
+  marginTop: number;
+}
+
 export interface QueuedMessageActionButtonMobileStyleSlot {
   alignSelf: QueuedMessageMobileActionSurface['buttonAlignSelf'];
   minHeight: number;
@@ -1511,6 +1523,18 @@ export function createQueuedMessageActionButtonMobileStyleSlots({
     retryText: createTextStyle(colors.retryTextColor),
     editText: createTextStyle(colors.editTextColor),
     removeText: createTextStyle(colors.removeTextColor),
+  };
+}
+
+export function createQueuedMessageActionRowMobileStyleSlot({
+  surface,
+}: QueuedMessageActionRowMobileStyleSlotInput): QueuedMessageActionRowMobileStyleSlot {
+  return {
+    flexDirection: surface.flexDirection,
+    flexWrap: surface.flexWrap,
+    alignItems: surface.alignItems,
+    gap: surface.gap,
+    marginTop: surface.marginTop,
   };
 }
 

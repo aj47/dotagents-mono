@@ -10,6 +10,7 @@ import {
   createMessageQueuePanelMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
+  createQueuedMessageActionRowMobileStyleSlot,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
   enqueueQueuedMessage,
@@ -657,6 +658,15 @@ describe('message-queue-utils', () => {
         fontSize: 12,
         fontWeight: '500',
       },
+    });
+    expect(createQueuedMessageActionRowMobileStyleSlot({
+      surface: mobileQueueSurfaceRenderState.surface.actions,
+    })).toEqual({
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 6,
     });
     expect(createQueuedMessageEditMobileStyleSlots({
       surface: mobileQueueSurfaceRenderState.surface.edit,

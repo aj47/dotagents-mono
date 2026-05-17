@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   createMessageQueuePanelMobileStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
+  createQueuedMessageActionRowMobileStyleSlot,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
   formatQueuedMessageMetaLabel,
@@ -98,6 +99,9 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     surface: actionSurface,
     colors: actionColors,
   });
+  const actionRowStyleSlot = createQueuedMessageActionRowMobileStyleSlot({
+    surface: actionSurface,
+  });
   const editStyleSlots = createQueuedMessageEditMobileStyleSlots({
     surface: editSurface,
     colors: editColors,
@@ -163,11 +167,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
       ...itemStyleSlots.expandText,
     },
     actions: {
-      flexDirection: actionSurface.flexDirection,
-      flexWrap: actionSurface.flexWrap,
-      alignItems: actionSurface.alignItems,
-      gap: actionSurface.gap,
-      marginTop: actionSurface.marginTop,
+      ...actionRowStyleSlot,
     },
     actionButton: {
       ...actionButtonStyleSlots.button,

@@ -403,6 +403,7 @@ export {
   createMessageQueuePanelMobileWrapperStyleSlots,
   createMessageQueuePanelMobileStyleSlots,
   createQueuedMessageActionButtonMobileStyleSlots,
+  createQueuedMessageActionRowMobileStyleSlot,
   createQueuedMessageEditMobileStyleSlots,
   createQueuedMessageItemMobileStyleSlots,
   formatQueuedMessageMetaLabel,
