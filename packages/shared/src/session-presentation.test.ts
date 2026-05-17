@@ -90,6 +90,7 @@ import {
   createChatMessageRuntimeChromeStyleSlots,
   createChatMessageRuntimeSurfaceChromeSlots,
   createChatRuntimeChromeSlots,
+  createChatRuntimeMobileChromeSlotsFromStyleSource,
   createChatRuntimeConversationMobileStyleSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
   createChatRuntimeDelegationCardMobilePropsParts,
@@ -3779,6 +3780,153 @@ describe("session presentation semantics", () => {
       messageRuntime: "message-runtime",
       surface: "surface",
     })
+    const mobileChromeStyleSource = {
+      headerActionsRow: "header-actions-row",
+      headerAgentSelectorButton: "header-agent-button",
+      headerAgentSelectorChip: "header-agent-chip",
+      headerAgentSelectorText: "header-agent-text",
+      headerConversationChip: "header-conversation-chip",
+      headerConversationChipText: "header-conversation-text",
+      headerConversationSpinner: "header-conversation-spinner",
+      headerDurationChip: "header-duration-chip",
+      headerDurationChipLive: "header-duration-chip-live",
+      headerDurationChipText: "header-duration-text",
+      headerDurationChipTextLive: "header-duration-text-live",
+      headerEdgeActionButton: "header-edge-button",
+      headerPinButton: "header-pin-button",
+      headerPinButtonActive: "header-pin-button-active",
+      headerActionButton: "header-action-button",
+      headerKillSwitchIconContainer: "header-kill-switch-icon",
+      headerHandsFreeIconContainer: "header-hands-free-icon",
+      modalKeyboardAvoidingView: "prompt-keyboard",
+      modalOverlay: "prompt-overlay",
+      modalContent: "prompt-content",
+      modalHeader: "prompt-header",
+      modalTitle: "prompt-title",
+      modalCloseButton: "prompt-close",
+      modalLabel: "prompt-label",
+      modalInput: "prompt-input",
+      modalInputMultiline: "prompt-input-multiline",
+      modalActions: "prompt-actions",
+      modalCancelButton: "prompt-cancel",
+      modalCancelButtonText: "prompt-cancel-text",
+      modalSaveButton: "prompt-save",
+      modalSaveButtonDisabled: "prompt-save-disabled",
+      modalSaveButtonText: "prompt-save-text",
+      messageQueuePanelWrapper: "queue-wrapper",
+      connectionBanner: "connection-banner",
+      connectionBannerReconnecting: "connection-reconnecting",
+      connectionBannerFailed: "connection-failed",
+      connectionBannerContent: "connection-content",
+      connectionBannerIcon: "connection-icon",
+      connectionBannerTextContainer: "connection-text-container",
+      connectionBannerText: "connection-text",
+      connectionBannerSubtext: "connection-subtext",
+      retryButton: "retry-button",
+      retryButtonText: "retry-button-text",
+      keyboardAvoidingContainer: "keyboard-container",
+      chatRoot: "chat-root",
+      chatScroll: "chat-scroll",
+      chatScrollContent: "chat-scroll-content",
+      loadingState: "loading-state",
+      loadingSpinner: "loading-spinner",
+      chatHomeCard: "home-card",
+      chatHomeEmptyText: "home-empty",
+      loadOlderContainer: "load-older",
+      loadOlderText: "load-older-text",
+      loadOlderButton: "load-older-button",
+      loadOlderButtonPressed: "load-older-button-pressed",
+      loadOlderButtonText: "load-older-button-text",
+      stepSummaryCard: "step-card",
+      stepSummaryHeader: "step-header",
+      stepSummaryTitle: "step-title",
+      stepSummaryBadge: "step-badge",
+      stepSummaryBadgeText: "step-badge-text",
+      stepSummaryAction: "step-action",
+      stepSummaryMeta: "step-meta",
+      stepSummaryPreview: "step-preview",
+      debugInfo: "debug-panel",
+      debugText: "debug-text",
+      sttPreviewBox: "speech-preview",
+      pendingImagesRow: "pending-images",
+      overlay: "voice-overlay",
+      inputArea: "input-area",
+      inputRow: "input-row",
+      micWrapper: "mic-wrapper",
+      msg: "message-surface",
+    } as any
+    const mobileChromeSafeAreaLayout = getChatRuntimeMobileSafeAreaLayoutState(24)
+    const getMobileChromeToneStyle = (toneStyleSlot: string) => mobileChromeStyleSource[toneStyleSlot]
+    const mobileChromeConversationThreadStyles = createChatMessageConversationThreadStyleSlotsFromStyleSource({
+      styles: mobileChromeStyleSource,
+      getToneStyle: getMobileChromeToneStyle,
+    })
+    const mobileChromeComposerStyles = createChatComposerStyleSlotsFromStyleSource({
+      styles: mobileChromeStyleSource,
+    })
+    const mobileChromeConversationDockStyles = createChatMessageConversationDockStyleSlotsFromStyleSource({
+      styles: mobileChromeStyleSource,
+    })
+    const mobileChromeConversationViewportStyles = createChatMessageConversationViewportStyleSlotsFromStyleSource({
+      styles: mobileChromeStyleSource,
+    })
+    const mobileChromeSafeAreaStyles = createChatRuntimeMobileSafeAreaStyleSlots(mobileChromeSafeAreaLayout)
+    const mobileChromeMergedSafeAreaStyles = createChatRuntimeSafeAreaMergedStyleSlots({
+      chatComposerStyles: mobileChromeComposerStyles,
+      conversationDockStyles: mobileChromeConversationDockStyles,
+      conversationViewportStyles: mobileChromeConversationViewportStyles,
+      safeAreaStyles: mobileChromeSafeAreaStyles,
+    })
+    const mobileChromeComposerRuntimeDockStyles = createChatComposerRuntimeDockStyleSlots({
+      chatComposerStyles: mobileChromeComposerStyles,
+      safeAreaStyles: mobileChromeMergedSafeAreaStyles,
+    })
+    const mobileChromeRuntimeDockStyles = createChatMessageRuntimeDockStyleSlots({
+      conversationDockStyles: mobileChromeConversationDockStyles,
+      composerStyles: mobileChromeComposerRuntimeDockStyles,
+      safeAreaStyles: mobileChromeMergedSafeAreaStyles,
+    })
+    const mobileChromeRuntimeViewportStyles = createChatMessageRuntimeViewportStyleSlots({
+      conversationViewportStyles: mobileChromeConversationViewportStyles,
+      safeAreaStyles: mobileChromeMergedSafeAreaStyles,
+    })
+    expect(createChatRuntimeMobileChromeSlotsFromStyleSource({
+      colors: "theme-colors",
+      platform: "ios",
+      spinnerSource: "spinner-source",
+      styles: mobileChromeStyleSource,
+      safeAreaLayout: mobileChromeSafeAreaLayout,
+      getToneStyle: getMobileChromeToneStyle,
+    })).toEqual(createChatRuntimeChromeSlots({
+      environment: {
+        platform: "ios",
+      },
+      header: createChatRuntimeHeaderChromeSlots({
+        colors: "theme-colors",
+        spinnerSource: "spinner-source",
+        styles: createChatRuntimeHeaderStyleSlotsFromStyleSource({
+          styles: mobileChromeStyleSource,
+        }),
+      }),
+      messageRuntime: createChatMessageRuntimeChromeSlots({
+        colors: "theme-colors",
+        platform: "ios",
+        spinnerSource: "spinner-source",
+        styles: createChatMessageRuntimeChromeStyleSlots({
+          conversationThreadStyles: mobileChromeConversationThreadStyles,
+          promptEditorStyles: createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource({
+            styles: mobileChromeStyleSource,
+          }),
+        }),
+      }),
+      surface: createChatMessageRuntimeSurfaceChromeSlots({
+        surfaceStyles: createChatMessageRuntimeSurfaceStyleSlots({
+          conversationViewportStyles: mobileChromeConversationViewportStyles,
+          dockStyles: mobileChromeRuntimeDockStyles,
+          viewportStyles: mobileChromeRuntimeViewportStyles,
+        }),
+      }),
+    }))
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.alignItems).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.justifyContent).toBe("center")
     expect(CHAT_RUNTIME_HEADER_SURFACE_PRESENTATION.mobile.agentSelectorButton.height).toBe("100%")

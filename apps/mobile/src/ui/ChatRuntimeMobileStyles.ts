@@ -6,33 +6,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  createChatComposerRuntimeDockStyleSlots,
-  createChatMessageConversationDockStyleSlotsFromStyleSource,
-  createChatMessageConversationThreadStyleSlotsFromStyleSource,
-  createChatMessageConversationViewportStyleSlotsFromStyleSource,
-  createChatMessageRuntimeDockStyleSlots,
-  createChatMessageRuntimeChromeSlots,
-  createChatMessageRuntimeChromeStyleSlots,
-  createChatMessageRuntimeSurfaceStyleSlots,
-  createChatMessageRuntimeSurfaceChromeSlots,
-  createChatMessageRuntimeViewportStyleSlots,
-  createChatRuntimeChromeSlots,
-  createChatRuntimeHeaderChromeSlots,
-  createChatRuntimeHeaderStyleSlotsFromStyleSource,
+  createChatRuntimeMobileChromeSlotsFromStyleSource,
   createChatRuntimeMobileChromeStyleSlots,
-  createChatRuntimeMobileSafeAreaStyleSlots,
-  createChatRuntimeSafeAreaMergedStyleSlots,
   createChatRuntimeThemeSpinnerSource,
-  createChatComposerStyleSlotsFromStyleSource,
-  createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
 } from '@dotagents/shared/session-presentation';
-import type {
-  ChatMessageConversationThreadStyleSlots,
-  ChatMessageThreadBodyStyleSlots,
-} from './ChatMessageChrome';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing, type Theme } from './theme';
 
@@ -872,12 +852,6 @@ export function useChatRuntimeMobileStyleSlots() {
     () => createChatRuntimeMobileChromeEnvironment(theme),
     [theme],
   );
-  const chatRuntimeChromeEnvironmentProps = useMemo(
-    () => ({
-      platform: chatRuntimeChromeEnvironment.platform,
-    }),
-    [chatRuntimeChromeEnvironment],
-  );
   const chatRuntimeSpinnerSource = useMemo(
     () => createChatRuntimeThemeSpinnerSource({
       isDark,
@@ -887,137 +861,24 @@ export function useChatRuntimeMobileStyleSlots() {
     [isDark],
   );
   const styles = useMemo(() => createChatRuntimeMobileStyles(theme), [theme]);
-  const chatMessageConversationThreadStyles = useMemo(
-    () => createChatMessageConversationThreadStyleSlotsFromStyleSource<
-      ReturnType<typeof createChatRuntimeMobileStyles>,
-      ChatRuntimeConversationSurfaceToneMobileStyleSlot,
-      ReturnType<typeof createChatRuntimeMobileStyles>[ChatRuntimeConversationSurfaceToneMobileStyleSlot],
-      ChatMessageThreadBodyStyleSlots
-    >({
-      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
-      getToneStyle: (toneStyleSlot) => styles[toneStyleSlot],
-    }) as ChatMessageConversationThreadStyleSlots,
-    [styles],
-  );
-  const chatRuntimeHeaderStyles = useMemo(
-    () => createChatRuntimeHeaderStyleSlotsFromStyleSource({
-      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
-    }),
-    [styles],
-  );
-  const chatComposerStyles = useMemo(
-    () => createChatComposerStyleSlotsFromStyleSource({
-      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
-    }),
-    [styles],
-  );
-  const conversationDockStyles = useMemo(
-    () => createChatMessageConversationDockStyleSlotsFromStyleSource({
-      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
-    }),
-    [styles],
-  );
-  const conversationViewportStyles = useMemo(
-    () => createChatMessageConversationViewportStyleSlotsFromStyleSource({
-      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
-    }),
-    [styles],
-  );
-  const promptEditorModalStyles = useMemo(
-    () => createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource({
-      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
-    }),
-    [styles],
-  );
-  const chatMessageRuntimeChromeStyles = useMemo(
-    () => createChatMessageRuntimeChromeStyleSlots({
-      conversationThreadStyles: chatMessageConversationThreadStyles,
-      promptEditorStyles: promptEditorModalStyles,
-    }),
-    [chatMessageConversationThreadStyles, promptEditorModalStyles],
-  );
-  const chatRuntimeHeaderChrome = useMemo(
-    () => createChatRuntimeHeaderChromeSlots({
-      colors: chatRuntimeChromeEnvironment.colors,
-      spinnerSource: chatRuntimeSpinnerSource,
-      styles: chatRuntimeHeaderStyles,
-    }),
-    [chatRuntimeChromeEnvironment, chatRuntimeHeaderStyles, chatRuntimeSpinnerSource],
-  );
-  const chatMessageRuntimeChrome = useMemo(
-    () => createChatMessageRuntimeChromeSlots({
-      colors: chatRuntimeChromeEnvironment.colors,
-      platform: chatRuntimeChromeEnvironment.platform,
-      spinnerSource: chatRuntimeSpinnerSource,
-      styles: chatMessageRuntimeChromeStyles,
-    }),
-    [chatMessageRuntimeChromeStyles, chatRuntimeChromeEnvironment, chatRuntimeSpinnerSource],
-  );
   const mobileSafeAreaLayout = useMemo(
     () => getChatRuntimeMobileSafeAreaLayoutState(bottomInset),
     [bottomInset],
   );
-  const mobileSafeAreaStyles = useMemo(
-    () => createChatRuntimeMobileSafeAreaStyleSlots(mobileSafeAreaLayout),
-    [mobileSafeAreaLayout],
-  );
-  const chatSafeAreaStyles = useMemo(
-    () => createChatRuntimeSafeAreaMergedStyleSlots({
-      chatComposerStyles,
-      conversationDockStyles,
-      conversationViewportStyles,
-      safeAreaStyles: mobileSafeAreaStyles,
-    }),
-    [chatComposerStyles, conversationDockStyles, conversationViewportStyles, mobileSafeAreaStyles],
-  );
-  const chatComposerRuntimeDockStyles = useMemo(
-    () => createChatComposerRuntimeDockStyleSlots({
-      chatComposerStyles,
-      safeAreaStyles: chatSafeAreaStyles,
-    }),
-    [chatComposerStyles, chatSafeAreaStyles],
-  );
-  const chatMessageRuntimeDockStyles = useMemo(
-    () => createChatMessageRuntimeDockStyleSlots({
-      conversationDockStyles,
-      composerStyles: chatComposerRuntimeDockStyles,
-      safeAreaStyles: chatSafeAreaStyles,
-    }),
-    [conversationDockStyles, chatComposerRuntimeDockStyles, chatSafeAreaStyles],
-  );
-  const chatMessageRuntimeViewportStyles = useMemo(
-    () => createChatMessageRuntimeViewportStyleSlots({
-      conversationViewportStyles,
-      safeAreaStyles: chatSafeAreaStyles,
-    }),
-    [conversationViewportStyles, chatSafeAreaStyles],
-  );
-  const chatMessageRuntimeSurfaceStyles = useMemo(
-    () => createChatMessageRuntimeSurfaceStyleSlots({
-      conversationViewportStyles,
-      dockStyles: chatMessageRuntimeDockStyles,
-      viewportStyles: chatMessageRuntimeViewportStyles,
-    }),
-    [conversationViewportStyles, chatMessageRuntimeDockStyles, chatMessageRuntimeViewportStyles],
-  );
-  const chatMessageRuntimeSurfaceChrome = useMemo(
-    () => createChatMessageRuntimeSurfaceChromeSlots({
-      surfaceStyles: chatMessageRuntimeSurfaceStyles,
-    }),
-    [chatMessageRuntimeSurfaceStyles],
-  );
   const chatRuntimeChrome = useMemo(
-    () => createChatRuntimeChromeSlots({
-      environment: chatRuntimeChromeEnvironmentProps,
-      header: chatRuntimeHeaderChrome,
-      messageRuntime: chatMessageRuntimeChrome,
-      surface: chatMessageRuntimeSurfaceChrome,
+    () => createChatRuntimeMobileChromeSlotsFromStyleSource({
+      colors: chatRuntimeChromeEnvironment.colors,
+      platform: chatRuntimeChromeEnvironment.platform,
+      spinnerSource: chatRuntimeSpinnerSource,
+      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
+      safeAreaLayout: mobileSafeAreaLayout,
+      getToneStyle: (toneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot) => styles[toneStyleSlot],
     }),
     [
-      chatMessageRuntimeChrome,
-      chatMessageRuntimeSurfaceChrome,
-      chatRuntimeChromeEnvironmentProps,
-      chatRuntimeHeaderChrome,
+      chatRuntimeChromeEnvironment,
+      chatRuntimeSpinnerSource,
+      mobileSafeAreaLayout,
+      styles,
     ],
   );
 

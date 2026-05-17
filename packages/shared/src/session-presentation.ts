@@ -26514,6 +26514,79 @@ type ChatMessageConversationThreadStyleSource =
   ChatMessageThreadBodyStyleSource
   & Record<ChatMessageConversationThreadStyleSourceKey, unknown>
 
+type ChatMessageToolActivityGroupBoundaryStylesFromStyleSource<
+  TStyles extends ChatMessageConversationThreadStyleSource,
+> = {
+  toggle: {
+    container: TStyles["toolActivityGroupCollapsed"]
+    pressed: TStyles["toolActivityGroupPressed"]
+    headerRow: TStyles["toolActivityGroupHeaderRow"]
+    countBadge: TStyles["toolActivityGroupCountBadge"]
+    countBadgeText: TStyles["toolActivityGroupCountBadgeText"]
+    previewLine: TStyles["toolActivityGroupPreviewLine"]
+  }
+  footer: {
+    button: TStyles["toolActivityGroupFooterButton"]
+    pressed: TStyles["toolActivityGroupPressed"]
+    text: TStyles["toolActivityGroupFooterText"]
+  }
+}
+
+type ChatMessageActionStylesFromStyleSource<
+  TStyles extends ChatMessageConversationThreadStyleSource,
+> = {
+  turnDuration: {
+    style: TStyles["messageTurnDurationBadge"]
+    liveStyle: TStyles["messageTurnDurationBadgeLive"]
+    textStyle: TStyles["messageTurnDurationText"]
+    liveTextStyle: TStyles["messageTurnDurationTextLive"]
+  }
+  speech: {
+    style: TStyles["speakButton"]
+    activeStyle: TStyles["speakButtonActive"]
+    pressedStyle: TStyles["speakButtonPressed"]
+  } & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["speech"]["hitSlop"]
+  }
+  branch: {
+    style: TStyles["messageBranchButton"]
+    pressedStyle: TStyles["messageBranchButtonPressed"]
+    disabledStyle: TStyles["messageBranchButtonDisabled"]
+  } & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["branch"]["hitSlop"]
+  }
+  copy: {
+    style: TStyles["messageCopyButton"]
+    activeStyle: TStyles["messageCopyButtonCopied"]
+    pressedStyle: TStyles["messageCopyButtonPressed"]
+  } & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["copy"]["hitSlop"]
+  }
+  expansion: {
+    style: TStyles["messageExpandButton"]
+    pressedStyle: TStyles["messageExpandButtonPressed"]
+  } & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["expansion"]["hitSlop"]
+  }
+}
+
+type ChatMessageConversationThreadStyleSlotsFromStyleSource<
+  TStyles extends ChatMessageConversationThreadStyleSource,
+  TToneStyleSlot,
+  TToneStyle,
+  TThreadBodyStyleSlots = ChatMessageThreadBodyStyleSlots<TStyles>,
+> = {
+  runtimeThread: {
+    surface: {
+      surfaceStyle: TStyles["msg"]
+      boundary: ChatMessageToolActivityGroupBoundaryStylesFromStyleSource<TStyles>
+      getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
+    }
+    body: TThreadBodyStyleSlots
+  }
+  actionSet: ChatMessageActionStylesFromStyleSource<TStyles>
+}
+
 export function createChatMessageConversationThreadStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationThreadStyleSource,
   TToneStyleSlot,
@@ -26525,7 +26598,12 @@ export function createChatMessageConversationThreadStyleSlotsFromStyleSource<
 }: {
   styles: TStyles
   getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
-}) {
+}): ChatMessageConversationThreadStyleSlotsFromStyleSource<
+  TStyles,
+  TToneStyleSlot,
+  TToneStyle,
+  TThreadBodyStyleSlots
+> {
   return createChatMessageConversationThreadStyleSlots({
     threadSurfaceStyles: createChatMessageToolActivityGroupThreadSurfaceStyleSlots({
       surfaceStyle: styles.msg,
@@ -26855,6 +26933,106 @@ export function createChatRuntimeChromeSlots<TEnvironment, THeader, TMessageRunt
     messageRuntime,
     surface,
   }
+}
+
+type ChatRuntimeMobileChromeStyleSource =
+  & ChatComposerStyleSource
+  & ChatConversationHomePromptEditorModalStyleSource
+  & ChatMessageConversationDockStyleSource
+  & ChatMessageConversationViewportStyleSource
+  & ChatMessageConversationThreadStyleSource
+  & ChatRuntimeHeaderStyleSource
+
+export function createChatRuntimeMobileChromeSlotsFromStyleSource<
+  TStyles extends ChatRuntimeMobileChromeStyleSource,
+  TToneStyleSlot,
+  TToneStyle,
+  TColors,
+  TPlatform,
+  TSpinnerSource,
+>({
+  colors,
+  platform,
+  spinnerSource,
+  styles,
+  safeAreaLayout,
+  getToneStyle,
+}: {
+  colors: TColors
+  platform: TPlatform
+  spinnerSource: TSpinnerSource
+  styles: TStyles
+  safeAreaLayout: ChatRuntimeMobileSafeAreaLayoutState
+  getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
+}) {
+  const conversationThreadStyles = createChatMessageConversationThreadStyleSlotsFromStyleSource({
+    styles,
+    getToneStyle,
+  })
+  const headerStyles = createChatRuntimeHeaderStyleSlotsFromStyleSource({
+    styles,
+  })
+  const composerStyles = createChatComposerStyleSlotsFromStyleSource({
+    styles,
+  })
+  const conversationDockStyles = createChatMessageConversationDockStyleSlotsFromStyleSource({
+    styles,
+  })
+  const conversationViewportStyles = createChatMessageConversationViewportStyleSlotsFromStyleSource({
+    styles,
+  })
+  const promptEditorStyles = createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource({
+    styles,
+  })
+  const messageRuntimeChromeStyles = createChatMessageRuntimeChromeStyleSlots({
+    conversationThreadStyles,
+    promptEditorStyles,
+  })
+  const safeAreaStyles = createChatRuntimeMobileSafeAreaStyleSlots(safeAreaLayout)
+  const mergedSafeAreaStyles = createChatRuntimeSafeAreaMergedStyleSlots({
+    chatComposerStyles: composerStyles,
+    conversationDockStyles,
+    conversationViewportStyles,
+    safeAreaStyles,
+  })
+  const composerRuntimeDockStyles = createChatComposerRuntimeDockStyleSlots({
+    chatComposerStyles: composerStyles,
+    safeAreaStyles: mergedSafeAreaStyles,
+  })
+  const messageRuntimeDockStyles = createChatMessageRuntimeDockStyleSlots({
+    conversationDockStyles,
+    composerStyles: composerRuntimeDockStyles,
+    safeAreaStyles: mergedSafeAreaStyles,
+  })
+  const messageRuntimeViewportStyles = createChatMessageRuntimeViewportStyleSlots({
+    conversationViewportStyles,
+    safeAreaStyles: mergedSafeAreaStyles,
+  })
+  const messageRuntimeSurfaceStyles = createChatMessageRuntimeSurfaceStyleSlots({
+    conversationViewportStyles,
+    dockStyles: messageRuntimeDockStyles,
+    viewportStyles: messageRuntimeViewportStyles,
+  })
+
+  return createChatRuntimeChromeSlots({
+    environment: {
+      platform,
+    },
+    header: createChatRuntimeHeaderChromeSlots({
+      colors,
+      spinnerSource,
+      styles: headerStyles,
+    }),
+    messageRuntime: createChatMessageRuntimeChromeSlots({
+      colors,
+      platform,
+      spinnerSource,
+      styles: messageRuntimeChromeStyles,
+    }),
+    surface: createChatMessageRuntimeSurfaceChromeSlots({
+      surfaceStyles: messageRuntimeSurfaceStyles,
+    }),
+  })
 }
 
 export function getChatRuntimeRetryStatusMobileRenderState({
