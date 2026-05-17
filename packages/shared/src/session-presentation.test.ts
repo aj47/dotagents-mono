@@ -338,10 +338,12 @@ import {
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
   getChatRuntimeConversationContentMobileState,
   getChatRuntimeConversationItemThreadMobileState,
+  getChatRuntimeConversationItemThreadMobileStateFromBodyInput,
   getChatRuntimeConversationMessageActionsMobileRenderState,
   getChatRuntimeConversationMessageRuntimeThreadState,
   getChatRuntimeConversationMessageRenderContextMobileState,
   getChatRuntimeConversationMessageThreadMobileState,
+  getChatRuntimeConversationMessageThreadMobileStateFromBodyInput,
   getChatRuntimeConversationMessageMobileRenderState,
   getChatRuntimeConversationRuntimeThreadListMobileState,
   getChatRuntimeConversationRuntimeThreadState,
@@ -11689,6 +11691,97 @@ describe("session presentation semantics", () => {
       body: {
         bodyDisplayMode: "conversation",
         visibleMessageContent: "Shared message thread",
+      },
+    })
+    const sharedMessageThreadStateInput = {
+      itemKey: 8,
+      groupRenderState: null,
+      groupThreadState: getChatRuntimeConversationToolActivityGroupThreadState({
+        group: null,
+        groupRenderState: null,
+        itemKey: 8,
+        onToggleGroup: () => {},
+      }),
+      lastConversationContentMessageIndex: 8,
+      expandedMessages: {},
+      resultOnlyToolLabel: "Tool result",
+      message: {
+        id: "message-8",
+        role: "assistant" as const,
+        content: "Shared body input helper",
+      },
+      messageIndex: 8,
+      turnDurationsByUserTimestamp: new Map(),
+      conversationId: "conversation-1",
+      pendingBranchMessageIndex: null,
+      isResponding: false,
+      isSpeaking: false,
+      isCopied: false,
+      ttsEnabled: true,
+      colors: threadBodyColors,
+      actionStyles: {
+        turnDuration: { styleId: "duration" },
+        speech: { styleId: "speech" },
+        branch: { styleId: "branch" },
+        copy: { styleId: "copy" },
+        expansion: { styleId: "expansion" },
+      },
+      spinnerSource: "spinner",
+      presentation: threadBodyPresentation,
+      expandedDelegationConversationPreviews: {},
+      expandedDelegationToolPreviews: {},
+      setExpandedDelegationConversationPreviews: (
+        _updater: (state: Record<string, boolean>) => Record<string, boolean>,
+      ) => {},
+      setExpandedDelegationToolPreviews: (
+        _updater: (state: Record<string, boolean>) => Record<string, boolean>,
+      ) => {},
+      expandedToolApprovals: {},
+      pendingApprovalResponseId: null,
+      onToggleToolApprovalArguments: (_approvalId: string) => {},
+      onRespondToToolApproval: (_approvalId: string, _approved: boolean) => {},
+      expandedToolCalls: {},
+      onToggleToolCall: (_stableMessageKey: string | number, _toolEntryIndex: number) => {},
+      onCopyToolPayload: (_content: string) => {},
+      onSpeakMessage: (_messageIndex: number, _content: string) => {},
+      onBranchMessage: (_messageIndex: number) => {},
+      onCopyMessage: (_messageIndex: number, _content: string) => {},
+      onToggleMessageExpansion: (_messageIndex: number) => {},
+    }
+    expect(getChatRuntimeConversationMessageThreadMobileStateFromBodyInput(
+      sharedMessageThreadStateInput,
+    )).toMatchObject({
+      threadKey: 8,
+      shouldRenderThread: true,
+      body: {
+        bodyDisplayMode: "conversation",
+        conversation: {
+          expanded: {
+            markdownContent: "Shared body input helper",
+          },
+        },
+      },
+    })
+    expect(getChatRuntimeConversationItemThreadMobileStateFromBodyInput({
+      ...sharedMessageThreadStateInput,
+      group: null,
+      itemIndex: 8,
+      groupState: {},
+      inheritedState: {},
+      groupKey: "tools-8",
+      inheritedKey: 8,
+      defaultExpanded: false,
+      onToggleGroup: () => {},
+    })).toMatchObject({
+      threadKey: 8,
+      shouldRenderThread: true,
+      body: {
+        bodyDisplayMode: "conversation",
+        conversation: {
+          expanded: {
+            markdownContent: "Shared body input helper",
+          },
+        },
       },
     })
     const threadListMessages = [

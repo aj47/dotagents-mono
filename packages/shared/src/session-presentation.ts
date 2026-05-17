@@ -1677,6 +1677,91 @@ export interface ChatRuntimeConversationRuntimeThreadListMobileState<TThread> {
   hiddenMessageCount: number
 }
 
+export type ChatRuntimeConversationMessageThreadMobileStateFromBodyInput<
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+  TContentColors = unknown,
+  TSpinnerSource = unknown,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+  TDelegation = unknown,
+> =
+  Omit<
+    ChatRuntimeConversationThreadBodyMobileStateInput<
+      TTurnDurationStyle,
+      TSpeechStyle,
+      TBranchStyle,
+      TCopyStyle,
+      TExpansionStyle,
+      TContentColors,
+      TSpinnerSource,
+      TAssetBaseUrl,
+      TAssetAuthToken,
+      TRetryInfo,
+      TDelegation
+    >,
+    "renderContext"
+  >
+  & Pick<
+    ChatRuntimeConversationMessageRuntimeThreadStateInput<
+      ChatRuntimeConversationThreadBodyMobileState<
+        TTurnDurationStyle,
+        TSpeechStyle,
+        TBranchStyle,
+        TCopyStyle,
+        TExpansionStyle,
+        TContentColors,
+        TSpinnerSource,
+        TAssetBaseUrl,
+        TAssetAuthToken,
+        TRetryInfo,
+        TDelegation
+      >
+    >,
+    "itemKey" | "groupRenderState" | "groupThreadState"
+  >
+  & Pick<
+    ChatRuntimeConversationMessageRenderContextMobileStateInput,
+    "lastConversationContentMessageIndex" | "expandedMessages" | "resultOnlyToolLabel"
+  >
+
+export type ChatRuntimeConversationItemThreadMobileStateFromBodyInput<
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+  TContentColors = unknown,
+  TSpinnerSource = unknown,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+  TDelegation = unknown,
+> =
+  ChatRuntimeConversationToolActivityGroupThreadRenderStateInput
+  & Omit<
+    ChatRuntimeConversationMessageThreadMobileStateFromBodyInput<
+      TTurnDurationStyle,
+      TSpeechStyle,
+      TBranchStyle,
+      TCopyStyle,
+      TExpansionStyle,
+      TContentColors,
+      TSpinnerSource,
+      TAssetBaseUrl,
+      TAssetAuthToken,
+      TRetryInfo,
+      TDelegation
+    >,
+    "itemKey" | "groupRenderState" | "groupThreadState"
+  >
+
 export type ChatRuntimeConversationContentMobileRenderState = Pick<
   ChatMessageContentRenderState,
   "shouldRenderExpandedContent" | "shouldRenderCollapsedTextPreview"
@@ -18526,6 +18611,66 @@ export function getChatRuntimeConversationMessageThreadMobileState<
   })
 }
 
+export function getChatRuntimeConversationMessageThreadMobileStateFromBodyInput<
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+  TContentColors = unknown,
+  TSpinnerSource = unknown,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+  TDelegation = unknown,
+>({
+  itemKey,
+  groupRenderState,
+  groupThreadState,
+  lastConversationContentMessageIndex,
+  expandedMessages,
+  resultOnlyToolLabel,
+  ...bodyInput
+}: ChatRuntimeConversationMessageThreadMobileStateFromBodyInput<
+  TTurnDurationStyle,
+  TSpeechStyle,
+  TBranchStyle,
+  TCopyStyle,
+  TExpansionStyle,
+  TContentColors,
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TRetryInfo,
+  TDelegation
+>): ChatRuntimeConversationMessageRuntimeThreadState<
+  ChatRuntimeConversationThreadBodyMobileState<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle,
+    TContentColors,
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken,
+    TRetryInfo,
+    TDelegation
+  >
+> {
+  return getChatRuntimeConversationMessageThreadMobileState({
+    itemKey,
+    groupRenderState,
+    groupThreadState,
+    lastConversationContentMessageIndex,
+    expandedMessages,
+    resultOnlyToolLabel,
+    bodyInput,
+    createBodyState: getChatRuntimeConversationThreadBodyMobileState,
+  })
+}
+
 export function getChatRuntimeConversationItemThreadMobileState<
   TMessageThreadInput,
   TBody extends { bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode },
@@ -18572,6 +18717,73 @@ export function getChatRuntimeConversationItemThreadMobileState<
     itemKey,
     groupRenderState,
     groupThreadState,
+  })
+}
+
+export function getChatRuntimeConversationItemThreadMobileStateFromBodyInput<
+  TTurnDurationStyle extends object = Record<string, never>,
+  TSpeechStyle extends object = Record<string, never>,
+  TBranchStyle extends object = Record<string, never>,
+  TCopyStyle extends object = Record<string, never>,
+  TExpansionStyle extends object = Record<string, never>,
+  TContentColors = unknown,
+  TSpinnerSource = unknown,
+  TAssetBaseUrl = string,
+  TAssetAuthToken = string,
+  TRetryInfo extends ChatRuntimeRetryInfoLike | null | undefined =
+    ChatRuntimeRetryInfoLike | null | undefined,
+  TDelegation = unknown,
+>({
+  group,
+  itemIndex,
+  itemKey,
+  groupState,
+  inheritedState,
+  groupKey,
+  inheritedKey,
+  defaultExpanded,
+  onToggleGroup,
+  ...messageThreadInput
+}: ChatRuntimeConversationItemThreadMobileStateFromBodyInput<
+  TTurnDurationStyle,
+  TSpeechStyle,
+  TBranchStyle,
+  TCopyStyle,
+  TExpansionStyle,
+  TContentColors,
+  TSpinnerSource,
+  TAssetBaseUrl,
+  TAssetAuthToken,
+  TRetryInfo,
+  TDelegation
+>): ChatRuntimeConversationRenderableRuntimeThreadState<
+  ChatRuntimeConversationThreadBodyMobileState<
+    TTurnDurationStyle,
+    TSpeechStyle,
+    TBranchStyle,
+    TCopyStyle,
+    TExpansionStyle,
+    TContentColors,
+    TSpinnerSource,
+    TAssetBaseUrl,
+    TAssetAuthToken,
+    TRetryInfo,
+    TDelegation
+  > | null
+> {
+  return getChatRuntimeConversationItemThreadMobileState({
+    group,
+    itemIndex,
+    itemKey,
+    groupState,
+    inheritedState,
+    groupKey,
+    inheritedKey,
+    defaultExpanded,
+    colors: messageThreadInput.colors,
+    onToggleGroup,
+    messageThreadInput,
+    createMessageThreadState: getChatRuntimeConversationMessageThreadMobileStateFromBodyInput,
   })
 }
 

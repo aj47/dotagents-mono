@@ -80,10 +80,8 @@ import {
   getChatRuntimeMessageHistoryWindowMobileIsAtBottom,
   getChatRuntimeMessageHistoryWindowMobileShouldLoadEarlier,
   getChatRuntimeMessageHistoryWindowMobileState,
-  getChatRuntimeConversationItemThreadMobileState,
-  getChatRuntimeConversationMessageThreadMobileState,
+  getChatRuntimeConversationItemThreadMobileStateFromBodyInput,
   getChatRuntimeConversationRuntimeThreadListMobileState,
-  getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
   createChatRuntimeConnectionBannerMobilePropsParts,
@@ -256,7 +254,6 @@ import {
   type ChatRuntimeConversationMessageMobileRenderStateInput,
   type ChatRuntimeConversationMessageMobileRenderState,
   type ChatRuntimeConversationRetryStatusMobileState,
-  type ChatRuntimeConversationMessageRuntimeThreadState,
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
   type ChatRuntimeConversationRenderableRuntimeThreadState,
   type ChatRuntimeConversationThreadBodyMobileDisplayMode,
@@ -2940,9 +2937,6 @@ type ChatMessageConversationRenderableRuntimeThreadState =
 type ChatMessageConversationMessageRuntimeThreadStateInput =
   ChatRuntimeConversationMessageRuntimeThreadStateInput<ChatMessageThreadBodyPropsInput>;
 
-type ChatMessageConversationMessageRuntimeThreadState =
-  ChatRuntimeConversationMessageRuntimeThreadState<ChatMessageThreadBodyPropsInput>;
-
 type ChatMessageConversationMessageThreadRenderStateInput =
   Omit<ChatMessageConversationThreadBodyInput, 'renderContext'>
   & Pick<
@@ -3321,55 +3315,6 @@ function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {
       {...actionButtonProps}
     />
   );
-}
-
-function createChatMessageConversationMessageThreadState({
-  itemKey,
-  groupRenderState,
-  groupThreadState,
-  lastConversationContentMessageIndex,
-  expandedMessages,
-  resultOnlyToolLabel,
-  ...bodyInput
-}: ChatMessageConversationMessageThreadRenderStateInput): ChatMessageConversationMessageRuntimeThreadState {
-  return getChatRuntimeConversationMessageThreadMobileState({
-    itemKey,
-    groupRenderState,
-    groupThreadState,
-    lastConversationContentMessageIndex,
-    expandedMessages,
-    resultOnlyToolLabel,
-    bodyInput,
-    createBodyState: getChatRuntimeConversationThreadBodyMobileState,
-  });
-}
-
-function createChatMessageConversationItemThreadState({
-  group,
-  itemIndex,
-  itemKey,
-  groupState,
-  inheritedState,
-  groupKey,
-  inheritedKey,
-  defaultExpanded,
-  onToggleGroup,
-  ...messageThreadInput
-}: ChatMessageConversationItemThreadRenderStateInput): ChatMessageConversationRenderableRuntimeThreadState {
-  return getChatRuntimeConversationItemThreadMobileState({
-    messageThreadInput,
-    createMessageThreadState: createChatMessageConversationMessageThreadState,
-    colors: messageThreadInput.colors,
-    group,
-    itemIndex,
-    itemKey,
-    groupState,
-    inheritedState,
-    groupKey,
-    inheritedKey,
-    defaultExpanded,
-    onToggleGroup,
-  });
 }
 
 export function useChatMessageRuntimeHistoryWindowState({
@@ -3857,7 +3802,7 @@ export function createChatMessageRuntimeChromeProps<
     visibleMessageCount: threadListVisibleMessageCount,
     ...threadListInput,
     colors,
-    createThreadState: (itemState) => createChatMessageConversationItemThreadState({
+    createThreadState: (itemState) => getChatRuntimeConversationItemThreadMobileStateFromBodyInput({
       ...threadListInput,
       ...itemState,
       colors,
