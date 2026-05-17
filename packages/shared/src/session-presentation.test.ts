@@ -87,6 +87,7 @@ import {
   createChatRuntimeDelegationCardMobileProps,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
+  createChatRuntimeMessageActionIconButtonMobileProps,
   createChatRuntimeMessageActionIconButtonMobilePropsParts,
   createChatRuntimeMessageActionSlotListMobilePropsParts,
   createChatRuntimeMessageContentRowMobilePropsParts,
@@ -9516,6 +9517,49 @@ describe("session presentation semantics", () => {
         { slot: "branch", item: "branch" },
         { slot: "copy", item: "copy" },
       ],
+    })
+    expect(createChatRuntimeMessageActionIconButtonMobileProps({
+      spec: {
+        renderState: {
+          isDisabled: true,
+          accessibilityRole: "button",
+          accessibilityLabel: "Copy message",
+          accessibilityHint: null,
+          accessibilityState: { disabled: true },
+          ariaExpanded: false,
+          icon: {
+            name: "copy",
+            size: 16,
+            color: "#ffffff",
+          },
+        },
+        onPress: "press-action",
+        hitSlop: 8,
+        style: "button-style",
+        activeStyle: "button-active-style",
+        pressedStyle: "button-pressed-style",
+        disabledStyle: "button-disabled-style",
+        isActive: true,
+      },
+    })).toEqual({
+      onPress: "press-action",
+      disabled: true,
+      accessibilityRole: "button",
+      accessibilityLabel: "Copy message",
+      accessibilityHint: undefined,
+      accessibilityState: { disabled: true },
+      ariaExpanded: false,
+      hitSlop: 8,
+      style: "button-style",
+      activeStyle: "button-active-style",
+      pressedStyle: "button-pressed-style",
+      disabledStyle: "button-disabled-style",
+      isActive: true,
+      icon: {
+        name: "copy",
+        size: 16,
+        color: "#ffffff",
+      },
     })
     const actionIconButtonParts = createChatRuntimeMessageActionIconButtonMobilePropsParts({
       icon: {

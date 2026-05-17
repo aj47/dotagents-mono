@@ -2199,6 +2199,87 @@ export interface ChatRuntimeMessageActionIconButtonMobilePropsParts<
   icon: TIcon | null
 }
 
+export interface ChatRuntimeMessageActionIconButtonMobilePropsInput<
+  TIcon extends {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  } = {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  },
+  TOnPress = unknown,
+  TAccessibilityRole = unknown,
+  TAccessibilityState extends object | undefined = object | undefined,
+  TAriaExpanded = unknown,
+  THitSlop = unknown,
+  TStyle = unknown,
+  TActiveStyle = unknown,
+  TPressedStyle = unknown,
+  TDisabledStyle = unknown,
+> {
+  spec: {
+    renderState: {
+      isDisabled?: boolean
+      accessibilityRole: TAccessibilityRole
+      accessibilityLabel: string
+      accessibilityHint?: string | null
+      accessibilityState?: TAccessibilityState
+      ariaExpanded?: TAriaExpanded
+      icon: TIcon
+    }
+    onPress?: TOnPress
+    hitSlop?: THitSlop
+    style: TStyle
+    activeStyle?: TActiveStyle
+    pressedStyle?: TPressedStyle
+    disabledStyle?: TDisabledStyle
+    isActive?: boolean
+  }
+}
+
+export type ChatRuntimeMessageActionIconButtonMobileProps<
+  TIcon extends {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  } = {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  },
+  TOnPress = unknown,
+  TAccessibilityRole = unknown,
+  TAccessibilityState extends object | undefined = object | undefined,
+  TAriaExpanded = unknown,
+  THitSlop = unknown,
+  TStyle = unknown,
+  TActiveStyle = unknown,
+  TPressedStyle = unknown,
+  TDisabledStyle = unknown,
+> = Omit<
+  ChatRuntimeMessageActionIconButtonMobilePropsPartsInput<
+    TIcon,
+    TOnPress,
+    TAccessibilityRole,
+    TAccessibilityState,
+    TAriaExpanded,
+    THitSlop,
+    TStyle,
+    TActiveStyle,
+    TPressedStyle,
+    TDisabledStyle
+  >,
+  "accessibilityHint"
+> & {
+  accessibilityHint?: string
+}
+
 export interface ChatRuntimeMessageActionSlotListMobilePropsPartsInput<
   TEntry extends {
     slot: string | number
@@ -17402,6 +17483,65 @@ export function createChatRuntimeMessageActionIconButtonMobilePropsParts<
     },
     activityIndicator: icon.isPending ? icon : null,
     icon: icon.isPending ? null : icon,
+  }
+}
+
+export function createChatRuntimeMessageActionIconButtonMobileProps<
+  TIcon extends {
+    isPending?: boolean
+    name: unknown
+    size: unknown
+    color: unknown
+  },
+  TOnPress,
+  TAccessibilityRole,
+  TAccessibilityState extends object | undefined,
+  TAriaExpanded,
+  THitSlop,
+  TStyle,
+  TActiveStyle,
+  TPressedStyle,
+  TDisabledStyle,
+>({
+  spec,
+}: ChatRuntimeMessageActionIconButtonMobilePropsInput<
+  TIcon,
+  TOnPress,
+  TAccessibilityRole,
+  TAccessibilityState,
+  TAriaExpanded,
+  THitSlop,
+  TStyle,
+  TActiveStyle,
+  TPressedStyle,
+  TDisabledStyle
+>): ChatRuntimeMessageActionIconButtonMobileProps<
+  TIcon,
+  TOnPress,
+  TAccessibilityRole,
+  TAccessibilityState,
+  TAriaExpanded,
+  THitSlop,
+  TStyle,
+  TActiveStyle,
+  TPressedStyle,
+  TDisabledStyle
+> {
+  return {
+    onPress: spec.onPress,
+    disabled: spec.renderState.isDisabled,
+    accessibilityRole: spec.renderState.accessibilityRole,
+    accessibilityLabel: spec.renderState.accessibilityLabel,
+    accessibilityHint: spec.renderState.accessibilityHint ?? undefined,
+    accessibilityState: spec.renderState.accessibilityState,
+    ariaExpanded: spec.renderState.ariaExpanded,
+    hitSlop: spec.hitSlop,
+    style: spec.style,
+    activeStyle: spec.activeStyle,
+    pressedStyle: spec.pressedStyle,
+    disabledStyle: spec.disabledStyle,
+    isActive: spec.isActive,
+    icon: spec.renderState.icon,
   }
 }
 

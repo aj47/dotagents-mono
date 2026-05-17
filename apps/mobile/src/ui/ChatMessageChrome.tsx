@@ -92,6 +92,7 @@ import {
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
   createChatRuntimeConversationActionComponentsMobileProps,
   createChatRuntimeConversationActionSetMobileProps,
+  createChatRuntimeMessageActionIconButtonMobileProps,
   createChatRuntimeMessageActionIconButtonMobilePropsParts,
   createChatRuntimeMessageActionSlotListMobilePropsParts,
   createChatRuntimeMessageContentRowMobilePropsParts,
@@ -3293,22 +3294,13 @@ export function ChatMessageActionIconButton({
 }
 
 function renderChatMessageActionButton(spec: ChatMessageActionButtonSpec) {
+  const actionButtonProps = createChatRuntimeMessageActionIconButtonMobileProps({
+    spec,
+  });
+
   return (
     <ChatMessageActionIconButton
-      onPress={spec.onPress}
-      disabled={spec.renderState.isDisabled}
-      accessibilityRole={spec.renderState.accessibilityRole}
-      accessibilityLabel={spec.renderState.accessibilityLabel}
-      accessibilityHint={spec.renderState.accessibilityHint ?? undefined}
-      accessibilityState={spec.renderState.accessibilityState}
-      ariaExpanded={spec.renderState.ariaExpanded}
-      hitSlop={spec.hitSlop}
-      style={spec.style}
-      activeStyle={spec.activeStyle}
-      pressedStyle={spec.pressedStyle}
-      disabledStyle={spec.disabledStyle}
-      isActive={spec.isActive}
-      icon={spec.renderState.icon}
+      {...actionButtonProps}
     />
   );
 }
