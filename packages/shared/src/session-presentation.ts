@@ -7874,23 +7874,25 @@ export interface ChatRuntimeConversationDockShellMobilePropsParts<
   TConnectionBanner = unknown,
   TComposer = unknown,
 > {
-  responseHistoryPanel: {
-    children: TResponseHistoryPanel | undefined
-  }
-  scrollToBottomButton: {
-    children: TScrollToBottomButton | undefined
-  }
-  voiceOverlay: {
-    children: TVoiceOverlay | undefined
-  }
-  queuePanel: {
-    children: TQueuePanel | undefined
-  }
-  connectionBanner: {
-    children: TConnectionBanner | undefined
-  }
-  composer: {
-    children: TComposer | undefined
+  content: {
+    responseHistoryPanel: {
+      children: TResponseHistoryPanel | undefined
+    }
+    scrollToBottomButton: {
+      children: TScrollToBottomButton | undefined
+    }
+    voiceOverlay: {
+      children: TVoiceOverlay | undefined
+    }
+    queuePanel: {
+      children: TQueuePanel | undefined
+    }
+    connectionBanner: {
+      children: TConnectionBanner | undefined
+    }
+    composer: {
+      children: TComposer | undefined
+    }
   }
 }
 
@@ -25472,23 +25474,25 @@ export function createChatRuntimeConversationDockShellMobilePropsParts<
   TComposer
 > {
   return {
-    responseHistoryPanel: {
-      children: responseHistoryPanel,
-    },
-    scrollToBottomButton: {
-      children: scrollToBottomButton,
-    },
-    voiceOverlay: {
-      children: voiceOverlay,
-    },
-    queuePanel: {
-      children: queuePanel,
-    },
-    connectionBanner: {
-      children: connectionBanner,
-    },
-    composer: {
-      children: composer,
+    content: {
+      responseHistoryPanel: {
+        children: responseHistoryPanel,
+      },
+      scrollToBottomButton: {
+        children: scrollToBottomButton,
+      },
+      voiceOverlay: {
+        children: voiceOverlay,
+      },
+      queuePanel: {
+        children: queuePanel,
+      },
+      connectionBanner: {
+        children: connectionBanner,
+      },
+      composer: {
+        children: composer,
+      },
     },
   }
 }

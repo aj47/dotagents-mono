@@ -9826,23 +9826,25 @@ describe("session presentation semantics", () => {
       connectionBanner: "connection-banner",
       composer: "composer",
     })).toEqual({
-      responseHistoryPanel: {
-        children: "response-history",
-      },
-      scrollToBottomButton: {
-        children: "scroll-button",
-      },
-      voiceOverlay: {
-        children: "voice-overlay",
-      },
-      queuePanel: {
-        children: "queue-panel",
-      },
-      connectionBanner: {
-        children: "connection-banner",
-      },
-      composer: {
-        children: "composer",
+      content: {
+        responseHistoryPanel: {
+          children: "response-history",
+        },
+        scrollToBottomButton: {
+          children: "scroll-button",
+        },
+        voiceOverlay: {
+          children: "voice-overlay",
+        },
+        queuePanel: {
+          children: "queue-panel",
+        },
+        connectionBanner: {
+          children: "connection-banner",
+        },
+        composer: {
+          children: "composer",
+        },
       },
     })
     const composerDockParts = createChatComposerRuntimeDockMobilePropsParts({

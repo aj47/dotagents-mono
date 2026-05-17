@@ -10574,15 +10574,16 @@ export function ChatMessageConversationDock({
     connectionBanner,
     composer,
   });
+  const dockShellContent = dockShellParts.content;
 
   return (
     <>
-      {dockShellParts.responseHistoryPanel.children}
-      {dockShellParts.scrollToBottomButton.children}
-      {dockShellParts.voiceOverlay.children}
-      {dockShellParts.queuePanel.children}
-      {dockShellParts.connectionBanner.children}
-      {dockShellParts.composer.children}
+      {dockShellContent.responseHistoryPanel.children}
+      {dockShellContent.scrollToBottomButton.children}
+      {dockShellContent.voiceOverlay.children}
+      {dockShellContent.queuePanel.children}
+      {dockShellContent.connectionBanner.children}
+      {dockShellContent.composer.children}
     </>
   );
 }
