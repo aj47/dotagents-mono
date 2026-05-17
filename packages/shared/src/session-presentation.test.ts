@@ -7965,9 +7965,7 @@ describe("session presentation semantics", () => {
         accessible: true,
         accessibilityRole: "text",
         accessibilityLabel: "Agent turn in progress: 12s",
-        style: "badge-style",
-        liveStyle: "badge-live-style",
-        isLive: true,
+        style: ["badge-style", "badge-live-style"],
       },
       icon: {
         name: "time",
@@ -7975,9 +7973,7 @@ describe("session presentation semantics", () => {
         color: "#d97706",
       },
       label: {
-        style: "text-style",
-        liveStyle: "text-live-style",
-        isLive: true,
+        style: ["text-style", "text-live-style"],
         numberOfLines: 1,
         text: "12s",
       },

@@ -9938,10 +9938,7 @@ export function ChatMessageTurnDurationBadge({
       accessible={turnDurationBadgeParts.container.accessible}
       accessibilityRole={turnDurationBadgeParts.container.accessibilityRole}
       accessibilityLabel={turnDurationBadgeParts.container.accessibilityLabel}
-      style={[
-        turnDurationBadgeParts.container.style,
-        turnDurationBadgeParts.container.isLive && turnDurationBadgeParts.container.liveStyle,
-      ]}
+      style={turnDurationBadgeParts.container.style}
     >
       <Ionicons
         name={turnDurationBadgeParts.icon.name}
@@ -9949,10 +9946,7 @@ export function ChatMessageTurnDurationBadge({
         color={turnDurationBadgeParts.icon.color}
       />
       <Text
-        style={[
-          turnDurationBadgeParts.label.style,
-          turnDurationBadgeParts.label.isLive && turnDurationBadgeParts.label.liveStyle,
-        ]}
+        style={turnDurationBadgeParts.label.style}
         numberOfLines={turnDurationBadgeParts.label.numberOfLines}
       >
         {turnDurationBadgeParts.label.text}

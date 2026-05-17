@@ -5597,14 +5597,16 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(chatMessageChromeSource, /accessible=\{turnDurationBadgeParts\.container\.accessible\}/);
   assert.match(chatMessageChromeSource, /accessibilityRole=\{turnDurationBadgeParts\.container\.accessibilityRole\}/);
   assert.match(chatMessageChromeSource, /accessibilityLabel=\{turnDurationBadgeParts\.container\.accessibilityLabel\}/);
-  assert.match(chatMessageChromeSource, /turnDurationBadgeParts\.container\.style,\s+turnDurationBadgeParts\.container\.isLive && turnDurationBadgeParts\.container\.liveStyle,/);
+  assert.match(chatMessageChromeSource, /style=\{turnDurationBadgeParts\.container\.style\}/);
   assert.match(chatMessageChromeSource, /name=\{turnDurationBadgeParts\.icon\.name\}/);
   assert.match(chatMessageChromeSource, /size=\{turnDurationBadgeParts\.icon\.size\}/);
   assert.match(chatMessageChromeSource, /color=\{turnDurationBadgeParts\.icon\.color\}/);
-  assert.match(chatMessageChromeSource, /turnDurationBadgeParts\.label\.style,\s+turnDurationBadgeParts\.label\.isLive && turnDurationBadgeParts\.label\.liveStyle,/);
+  assert.match(chatMessageChromeSource, /style=\{turnDurationBadgeParts\.label\.style\}/);
   assert.match(chatMessageChromeSource, /numberOfLines=\{turnDurationBadgeParts\.label\.numberOfLines\}/);
   assert.match(chatMessageChromeSource, /\{turnDurationBadgeParts\.label\.text\}/);
   assert.match(sessionPresentationSource, /shouldRenderBadge: renderState\.shouldRender/);
+  assert.match(sessionPresentationSource, /style: \[style, renderState\.isLive && liveStyle\]/);
+  assert.match(sessionPresentationSource, /style: \[textStyle, renderState\.isLive && liveTextStyle\]/);
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageTurnDurationBadge[\s\S]*?accessibilityRole=\{renderState\.accessibilityRole\}[\s\S]*?export function ChatMessageExpandedContent/
