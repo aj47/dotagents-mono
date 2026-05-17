@@ -2044,7 +2044,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     accessibilityRole: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["accessibilityRole"]
     accessibilityLabel: string
     accessibilityState: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["accessibilityState"]
-    icon: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["icon"]
+    icon: {
+      props: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["icon"]
+    }
     label: {
       style: TStyles["denyButtonText"]
       text: string
@@ -22872,7 +22874,9 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       accessibilityRole: renderState.denyButton.accessibilityRole,
       accessibilityLabel: renderState.denyButton.accessibilityLabel,
       accessibilityState: renderState.denyButton.accessibilityState,
-      icon: renderState.denyButton.icon,
+      icon: {
+        props: renderState.denyButton.icon,
+      },
       label: {
         style: styles.denyButtonText,
         text: renderState.denyButton.label,

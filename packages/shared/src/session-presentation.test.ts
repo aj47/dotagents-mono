@@ -8241,7 +8241,9 @@ describe("session presentation semantics", () => {
       accessibilityState: {
         disabled: true,
       },
-      icon: toolApprovalProps.renderState.denyButton.icon,
+      icon: {
+        props: toolApprovalProps.renderState.denyButton.icon,
+      },
       label: {
         style: "tool-approval-deny-button-text-style",
         text: CHAT_RUNTIME_PRESENTATION.approval.denyLabel,

@@ -1586,7 +1586,8 @@ type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolAppro
 
 type ChatMessageToolApprovalIconProps =
   | ChatMessageToolApprovalParts['headerIcon']['props']
-  | ChatMessageToolApprovalParts['argumentsToggle']['icon']['props'];
+  | ChatMessageToolApprovalParts['argumentsToggle']['icon']['props']
+  | ChatMessageToolApprovalParts['denyButton']['icon']['props'];
 
 type ChatMessageToolApprovalArgumentsToggleLabelProps =
   ChatMessageToolApprovalParts['argumentsToggle']['label']['props'];
@@ -7506,10 +7507,8 @@ export function ChatMessageToolApproval({
             accessibilityLabel={toolApprovalParts.denyButton.accessibilityLabel}
             accessibilityState={toolApprovalParts.denyButton.accessibilityState}
           >
-            <Ionicons
-              name={toolApprovalParts.denyButton.icon.name}
-              size={toolApprovalParts.denyButton.icon.size}
-              color={toolApprovalParts.denyButton.icon.color}
+            <ChatMessageToolApprovalIcon
+              {...toolApprovalParts.denyButton.icon.props}
             />
             <Text style={toolApprovalParts.denyButton.label.style}>
               {toolApprovalParts.denyButton.label.text}
