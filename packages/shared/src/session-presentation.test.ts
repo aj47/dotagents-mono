@@ -137,6 +137,7 @@ import {
   createChatRuntimeConnectionBannerMobilePropsParts,
   createChatRuntimeRetryStatusMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
+  createChatRuntimeConversationContentMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
   createChatRuntimeConversationCollapsedPreviewMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
@@ -5281,6 +5282,77 @@ describe("session presentation semantics", () => {
       "preview-style",
       false,
     ])
+    const conversationActionEntries = [
+      { slot: "copy", item: "copy" },
+    ]
+    const conversationExpandedContentParts = createChatRuntimeConversationContentMobilePropsParts({
+      contentDisplayMode: "expanded",
+      rowStyle: "content-row-style",
+      shouldRenderActionSlots: true,
+      entries: conversationActionEntries,
+      expanded: {
+        streamingRenderState: expandedContentParts.header,
+        markdownContent: "Markdown content",
+        assetBaseUrl: "asset-base",
+        assetAuthToken: "asset-token",
+        spinnerSource: "spinner-source",
+        streamingStyles: expandedContentStyles,
+        bodyStyle: "expanded-body-style",
+      },
+      collapsed: collapsedPreviewParts,
+    })
+    expect(conversationExpandedContentParts).toEqual({
+      expandedContent: {
+        row: {
+          rowStyle: "content-row-style",
+          bodyStyle: "expanded-body-style",
+          shouldRenderActionSlots: true,
+          entries: conversationActionEntries,
+        },
+        content: {
+          streamingRenderState: expandedContentParts.header,
+          markdownContent: "Markdown content",
+          assetBaseUrl: "asset-base",
+          assetAuthToken: "asset-token",
+          spinnerSource: "spinner-source",
+          streamingStyles: expandedContentStyles,
+        },
+      },
+      collapsedContent: null,
+    })
+    expect(createChatRuntimeConversationContentMobilePropsParts({
+      contentDisplayMode: "collapsed",
+      rowStyle: "content-row-style",
+      shouldRenderActionSlots: false,
+      entries: conversationActionEntries,
+      expanded: {
+        bodyStyle: "expanded-body-style",
+      },
+      collapsed: collapsedPreviewParts,
+    })).toEqual({
+      expandedContent: null,
+      collapsedContent: {
+        row: {
+          rowStyle: "content-row-style",
+          shouldRenderActionSlots: false,
+          entries: conversationActionEntries,
+        },
+        preview: collapsedPreviewParts,
+      },
+    })
+    expect(createChatRuntimeConversationContentMobilePropsParts({
+      contentDisplayMode: "hidden",
+      rowStyle: "content-row-style",
+      shouldRenderActionSlots: false,
+      entries: conversationActionEntries,
+      expanded: {
+        bodyStyle: "expanded-body-style",
+      },
+      collapsed: collapsedPreviewParts,
+    })).toEqual({
+      expandedContent: null,
+      collapsedContent: null,
+    })
     expect(getChatRuntimeStreamingContentMobileRenderState({
       colors: {
         info: "#2563eb",

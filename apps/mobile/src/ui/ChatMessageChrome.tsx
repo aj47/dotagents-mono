@@ -84,6 +84,7 @@ import {
   createChatRuntimeToolApprovalMobilePropsParts,
   createChatRuntimeDelegationCardMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
+  createChatRuntimeConversationContentMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
   createChatRuntimeConversationCollapsedPreviewMobilePropsParts,
   createChatRuntimeMessageHistoryBannerMobilePropsParts,
@@ -9949,40 +9950,34 @@ export function ChatMessageConversationContent({
   expanded,
   collapsed,
 }: ChatMessageConversationContentProps) {
-  if (contentDisplayMode === 'expanded') {
+  const conversationContentParts = createChatRuntimeConversationContentMobilePropsParts({
+    contentDisplayMode,
+    rowStyle,
+    shouldRenderActionSlots,
+    entries,
+    expanded,
+    collapsed,
+  });
+
+  if (conversationContentParts.expandedContent) {
     return (
       <ChatMessageContentRow
-        rowStyle={rowStyle}
-        bodyStyle={expanded.bodyStyle}
-        shouldRenderActionSlots={shouldRenderActionSlots}
-        entries={entries}
+        {...conversationContentParts.expandedContent.row}
       >
         <ChatMessageExpandedContent
-          streamingRenderState={expanded.streamingRenderState}
-          markdownContent={expanded.markdownContent}
-          assetBaseUrl={expanded.assetBaseUrl}
-          assetAuthToken={expanded.assetAuthToken}
-          spinnerSource={expanded.spinnerSource}
-          streamingStyles={expanded.streamingStyles}
+          {...conversationContentParts.expandedContent.content}
         />
       </ChatMessageContentRow>
     );
   }
 
-  if (contentDisplayMode === 'collapsed') {
+  if (conversationContentParts.collapsedContent) {
     return (
       <ChatMessageContentRow
-        rowStyle={rowStyle}
-        shouldRenderActionSlots={shouldRenderActionSlots}
-        entries={entries}
+        {...conversationContentParts.collapsedContent.row}
       >
         <ChatMessageCollapsedPreview
-          renderState={collapsed.renderState}
-          actionState={collapsed.actionState}
-          onPress={collapsed.onPress}
-          style={collapsed.style}
-          pressedStyle={collapsed.pressedStyle}
-          textStyle={collapsed.textStyle}
+          {...conversationContentParts.collapsedContent.preview}
         />
       </ChatMessageContentRow>
     );

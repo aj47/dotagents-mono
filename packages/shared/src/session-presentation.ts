@@ -2078,6 +2078,45 @@ export interface ChatRuntimeMessageStandaloneActionsMobilePropsParts<
   } | null
 }
 
+export interface ChatRuntimeConversationContentMobilePropsPartsInput<
+  TEntry = unknown,
+  TExpanded extends { bodyStyle: unknown } = { bodyStyle: unknown },
+  TCollapsed = unknown,
+  TRowStyle = unknown,
+> {
+  contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode
+  rowStyle: TRowStyle
+  shouldRenderActionSlots: boolean
+  entries: readonly TEntry[]
+  expanded: TExpanded
+  collapsed: TCollapsed
+}
+
+export interface ChatRuntimeConversationContentMobilePropsParts<
+  TEntry = unknown,
+  TExpanded extends { bodyStyle: unknown } = { bodyStyle: unknown },
+  TCollapsed = unknown,
+  TRowStyle = unknown,
+> {
+  expandedContent: {
+    row: {
+      rowStyle: TRowStyle
+      bodyStyle: TExpanded["bodyStyle"]
+      shouldRenderActionSlots: boolean
+      entries: readonly TEntry[]
+    }
+    content: Omit<TExpanded, "bodyStyle">
+  } | null
+  collapsedContent: {
+    row: {
+      rowStyle: TRowStyle
+      shouldRenderActionSlots: boolean
+      entries: readonly TEntry[]
+    }
+    preview: TCollapsed
+  } | null
+}
+
 export interface ChatRuntimeMessageActionIconButtonMobilePropsPartsInput<
   TIcon extends {
     isPending?: boolean
@@ -17041,6 +17080,52 @@ export function createChatRuntimeMessageStandaloneActionsMobilePropsParts<
     actionSlotList: shouldRender ? {
       entries,
       rowStyle,
+    } : null,
+  }
+}
+
+export function createChatRuntimeConversationContentMobilePropsParts<
+  TEntry,
+  TExpanded extends { bodyStyle: unknown },
+  TCollapsed,
+  TRowStyle,
+>({
+  contentDisplayMode,
+  rowStyle,
+  shouldRenderActionSlots,
+  entries,
+  expanded,
+  collapsed,
+}: ChatRuntimeConversationContentMobilePropsPartsInput<
+  TEntry,
+  TExpanded,
+  TCollapsed,
+  TRowStyle
+>): ChatRuntimeConversationContentMobilePropsParts<
+  TEntry,
+  TExpanded,
+  TCollapsed,
+  TRowStyle
+> {
+  const { bodyStyle, ...expandedContent } = expanded
+
+  return {
+    expandedContent: contentDisplayMode === "expanded" ? {
+      row: {
+        rowStyle,
+        bodyStyle,
+        shouldRenderActionSlots,
+        entries,
+      },
+      content: expandedContent,
+    } : null,
+    collapsedContent: contentDisplayMode === "collapsed" ? {
+      row: {
+        rowStyle,
+        shouldRenderActionSlots,
+        entries,
+      },
+      preview: collapsed,
     } : null,
   }
 }
