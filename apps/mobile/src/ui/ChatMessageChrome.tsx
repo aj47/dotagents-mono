@@ -2728,6 +2728,9 @@ type ChatMessageToolExecutionPendingResultContainerProps =
     children: ReactNode;
   };
 
+type ChatMessageToolExecutionPendingResultContentProps =
+  ChatMessageToolExecutionPendingResultParts['container']['content'];
+
 type ChatMessageToolExecutionPendingResultSpinnerProps =
   ChatMessageToolExecutionPendingResultParts['container']['content']['spinner']['props'];
 
@@ -10946,17 +10949,13 @@ export function ChatMessageToolExecutionPendingResult({
     renderState,
     styles,
   });
-  const pendingResultContent = pendingResultParts.container.content;
 
   return (
     <ChatMessageToolExecutionPendingResultContainer
       {...pendingResultParts.container.props}
     >
-      <ChatMessageToolExecutionPendingResultSpinner
-        {...pendingResultContent.spinner.props}
-      />
-      <ChatMessageToolExecutionPendingResultLabel
-        {...pendingResultContent.label.props}
+      <ChatMessageToolExecutionPendingResultContent
+        {...pendingResultParts.container.content}
       />
     </ChatMessageToolExecutionPendingResultContainer>
   );
@@ -10970,6 +10969,22 @@ export function ChatMessageToolExecutionPendingResultContainer({
     <View {...props}>
       {children}
     </View>
+  );
+}
+
+export function ChatMessageToolExecutionPendingResultContent({
+  spinner,
+  label,
+}: ChatMessageToolExecutionPendingResultContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionPendingResultSpinner
+        {...spinner.props}
+      />
+      <ChatMessageToolExecutionPendingResultLabel
+        {...label.props}
+      />
+    </>
   );
 }
 
