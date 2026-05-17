@@ -5410,11 +5410,12 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(sessionPresentationSource, /const headerState = headerKind === "collapsed"[\s\S]*?\? renderState\.collapsedHeader[\s\S]*?: renderState\.expandedHeader/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /const \{ headerState, summary \}/);
   assert.doesNotMatch(chatMessageChromeSource, /const headerState = headerKind === 'collapsed'/);
-  assert.match(toolActivityGroupToggleComponentSource, /accessibilityRole=\{toggleParts\.pressable\.accessibilityRole\}/);
-  assert.match(toolActivityGroupToggleComponentSource, /accessibilityLabel=\{toggleParts\.pressable\.accessibilityLabel\}/);
-  assert.match(toolActivityGroupToggleComponentSource, /accessibilityState=\{toggleParts\.pressable\.accessibilityState\}/);
-  assert.match(toolActivityGroupToggleComponentSource, /aria-expanded=\{toggleParts\.pressable\.ariaExpanded\}/);
-  assert.match(toolActivityGroupToggleComponentSource, /style=\{toggleParts\.pressable\.style\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /<Pressable\s+\{\.\.\.toggleParts\.pressable\.props\}/);
+  assert.match(toolActivityGroupToggleComponentSource, /<View\s+\{\.\.\.toggleParts\.headerRow\.props\}/);
+  assert.match(sessionPresentationSource, /pressable: \{[\s\S]*?props: \{[\s\S]*?onPress,[\s\S]*?accessibilityRole: headerState\.accessibilityRole,[\s\S]*?accessibilityLabel: headerState\.accessibilityLabel,[\s\S]*?accessibilityState: headerState\.accessibilityState,[\s\S]*?ariaExpanded: headerState\.ariaExpanded,/);
+  assert.match(sessionPresentationSource, /headerRow: \{[\s\S]*?props: \{[\s\S]*?style: styles\.headerRow,/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.pressable\.(onPress|accessibilityRole|accessibilityLabel|accessibilityState|ariaExpanded|style)/);
+  assert.doesNotMatch(toolActivityGroupToggleComponentSource, /toggleParts\.headerRow\.style/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /accessibilityRole=\{headerState\.accessibilityRole\}/);
   assert.doesNotMatch(screenSource, /const groupSummary = group\s+\? getToolActivityGroupSummaryState/);
   assert.doesNotMatch(screenSource, /const groupSummary = groupRenderState\?\.summary \?\? null;/);

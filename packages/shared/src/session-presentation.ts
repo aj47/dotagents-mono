@@ -5691,15 +5691,19 @@ export interface ChatRuntimeToolActivityGroupToggleMobilePropsParts<
 > {
   headerState: TRenderState["collapsedHeader"] | TRenderState["expandedHeader"]
   pressable: {
-    onPress: TOnPress | undefined
-    accessibilityRole: TRenderState["collapsedHeader"]["accessibilityRole"] | TRenderState["expandedHeader"]["accessibilityRole"]
-    accessibilityLabel: string
-    accessibilityState: TRenderState["collapsedHeader"]["accessibilityState"] | TRenderState["expandedHeader"]["accessibilityState"]
-    ariaExpanded: TRenderState["collapsedHeader"]["ariaExpanded"] | TRenderState["expandedHeader"]["ariaExpanded"]
-    style: (state: { pressed: boolean }) => Array<TStyles["container"] | TStyles["pressed"] | false>
+    props: {
+      onPress: TOnPress | undefined
+      accessibilityRole: TRenderState["collapsedHeader"]["accessibilityRole"] | TRenderState["expandedHeader"]["accessibilityRole"]
+      accessibilityLabel: string
+      accessibilityState: TRenderState["collapsedHeader"]["accessibilityState"] | TRenderState["expandedHeader"]["accessibilityState"]
+      ariaExpanded: TRenderState["collapsedHeader"]["ariaExpanded"] | TRenderState["expandedHeader"]["ariaExpanded"]
+      style: (state: { pressed: boolean }) => Array<TStyles["container"] | TStyles["pressed"] | false>
+    }
   }
   headerRow: {
-    style: TStyles["headerRow"]
+    props: {
+      style: TStyles["headerRow"]
+    }
   }
   leadingIcon: {
     props: TRenderState["leadingIcon"]
@@ -22684,18 +22688,22 @@ export function createChatRuntimeToolActivityGroupToggleMobilePropsParts<
   return {
     headerState,
     pressable: {
-      onPress,
-      accessibilityRole: headerState.accessibilityRole,
-      accessibilityLabel: headerState.accessibilityLabel,
-      accessibilityState: headerState.accessibilityState,
-      ariaExpanded: headerState.ariaExpanded,
-      style: ({ pressed }: { pressed: boolean }) => [
-        styles.container,
-        pressed && styles.pressed,
-      ],
+      props: {
+        onPress,
+        accessibilityRole: headerState.accessibilityRole,
+        accessibilityLabel: headerState.accessibilityLabel,
+        accessibilityState: headerState.accessibilityState,
+        ariaExpanded: headerState.ariaExpanded,
+        style: ({ pressed }: { pressed: boolean }) => [
+          styles.container,
+          pressed && styles.pressed,
+        ],
+      },
     },
     headerRow: {
-      style: styles.headerRow,
+      props: {
+        style: styles.headerRow,
+      },
     },
     leadingIcon: {
       props: renderState.leadingIcon,

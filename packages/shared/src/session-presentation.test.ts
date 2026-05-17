@@ -8997,22 +8997,22 @@ describe("session presentation semantics", () => {
       },
     })
     expect(activityGroupToggleParts.headerState).toBe(activityGroupToggleRenderState.collapsedHeader)
-    expect(activityGroupToggleParts.pressable).toMatchObject({
+    expect(activityGroupToggleParts.pressable.props).toMatchObject({
       onPress: "toggle-group",
       accessibilityRole: "button",
       accessibilityLabel: "Collapsed tool activities",
       accessibilityState: { expanded: false },
       ariaExpanded: false,
     })
-    expect(activityGroupToggleParts.pressable.style({ pressed: false })).toEqual([
+    expect(activityGroupToggleParts.pressable.props.style({ pressed: false })).toEqual([
       "toggle-container",
       false,
     ])
-    expect(activityGroupToggleParts.pressable.style({ pressed: true })).toEqual([
+    expect(activityGroupToggleParts.pressable.props.style({ pressed: true })).toEqual([
       "toggle-container",
       "toggle-pressed",
     ])
-    expect(activityGroupToggleParts.headerRow.style).toBe("toggle-header-row")
+    expect(activityGroupToggleParts.headerRow.props.style).toBe("toggle-header-row")
     expect(activityGroupToggleParts.leadingIcon).toEqual({
       props: "leading-icon-state",
     })

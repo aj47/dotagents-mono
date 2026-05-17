@@ -9066,14 +9066,9 @@ export function ChatMessageToolActivityGroupToggle({
 
   return (
     <Pressable
-      onPress={toggleParts.pressable.onPress}
-      accessibilityRole={toggleParts.pressable.accessibilityRole}
-      accessibilityLabel={toggleParts.pressable.accessibilityLabel}
-      accessibilityState={toggleParts.pressable.accessibilityState}
-      aria-expanded={toggleParts.pressable.ariaExpanded}
-      style={toggleParts.pressable.style}
+      {...toggleParts.pressable.props}
     >
-      <View style={toggleParts.headerRow.style}>
+      <View {...toggleParts.headerRow.props}>
         <ChatMessageToolActivityGroupIcon
           {...toggleParts.leadingIcon.props}
         />
