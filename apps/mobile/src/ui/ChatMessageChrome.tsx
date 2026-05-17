@@ -145,7 +145,7 @@ import {
   createChatRuntimeToolExecutionResultSectionMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   getChatRuntimeMessageThreadMobileStyleRenderState,
-  getChatComposerRuntimeDockMobileRenderState,
+  createChatComposerRuntimeDockMobileChromeProps,
   createChatRuntimeSurfaceChromeMobileProps,
   createChatRuntimeViewportChromeMobileProps,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
@@ -3809,10 +3809,11 @@ export function createChatMessageRuntimeChromeProps<
       spinnerSource,
     }),
   });
-  const chatComposerRuntimeDockChrome = createChatComposerRuntimeDockChromeProps({
-    colors,
-    platform,
-  });
+  const chatComposerRuntimeDockChrome =
+    createChatComposerRuntimeDockMobileChromeProps<ChatComposerMicButtonProps['webPressedStyle']>({
+      colors,
+      platform,
+    });
   const chatComposerRuntimeDock = createChatComposerRuntimeDockProps({
     chrome: chatComposerRuntimeDockChrome,
     ...composer,
@@ -6662,23 +6663,6 @@ export function useChatRuntimeNavigationHeaderChromeOptions({
     onHandsFreeButtonPress,
     styles,
   });
-}
-
-export function createChatComposerRuntimeDockChromeProps({
-  colors,
-  platform,
-}: ChatComposerRuntimeDockChromeInput): ChatComposerRuntimeDockChromeProps {
-  const dockRenderState = getChatComposerRuntimeDockMobileRenderState({
-    colors,
-    platform,
-  });
-
-  return {
-    ...dockRenderState,
-    micButton: {
-      webPressedStyle: dockRenderState.micButton.webPressedStyle as ChatComposerMicButtonProps['webPressedStyle'],
-    },
-  };
 }
 
 export function createChatComposerRuntimeDockProps({

@@ -10971,6 +10971,14 @@ export interface ChatComposerRuntimeDockMobileRenderState {
   }
 }
 
+export type ChatComposerRuntimeDockMobileChromeProps<
+  TWebPressedStyle = ChatComposerRuntimeDockMobileRenderState["micButton"]["webPressedStyle"],
+> = Omit<ChatComposerRuntimeDockMobileRenderState, "micButton"> & {
+  micButton: {
+    webPressedStyle: TWebPressedStyle
+  }
+}
+
 export interface ChatComposerSubmitMobileIconStateInput {
   mode?: FollowUpInputMode
   isHandsFree?: boolean
@@ -15984,6 +15992,21 @@ export function getChatComposerRuntimeDockMobileRenderState({
     },
     micButton: {
       webPressedStyle: isWebPlatform ? getChatComposerMicMobileWebPressStyleState() : undefined,
+    },
+  }
+}
+
+export function createChatComposerRuntimeDockMobileChromeProps<
+  TWebPressedStyle = ChatComposerRuntimeDockMobileRenderState["micButton"]["webPressedStyle"],
+>(
+  input: ChatComposerRuntimeDockMobileRenderStateInput,
+): ChatComposerRuntimeDockMobileChromeProps<TWebPressedStyle> {
+  const dockRenderState = getChatComposerRuntimeDockMobileRenderState(input)
+
+  return {
+    ...dockRenderState,
+    micButton: {
+      webPressedStyle: dockRenderState.micButton.webPressedStyle as TWebPressedStyle,
     },
   }
 }

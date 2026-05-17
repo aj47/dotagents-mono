@@ -72,6 +72,7 @@ import {
   createChatComposerSpeechPreviewMobilePropsParts,
   createChatComposerTextEntryMobilePropsParts,
   createChatComposerVoiceOverlayMobilePropsParts,
+  createChatComposerRuntimeDockMobileChromeProps,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
   createChatComposerRuntimeDockStyleSlots,
@@ -2839,6 +2840,14 @@ describe("session presentation semantics", () => {
       CHAT_COMPOSER_SURFACE_PRESENTATION.mobile.submitButton.pressedOpacity,
     )
     expect(composerDockChrome.micButton.webPressedStyle).toEqual(getChatComposerMicMobileWebPressStyleState())
+    expect(createChatComposerRuntimeDockMobileChromeProps<string>({
+      colors: chatRuntimeMobileChromeColors,
+      platform: "ios",
+    }).micButton.webPressedStyle).toBeUndefined()
+    expect(createChatComposerRuntimeDockMobileChromeProps({
+      colors: chatRuntimeMobileChromeColors,
+      platform: "web",
+    })).toEqual(composerDockChrome)
     const composerDockProps = createChatComposerRuntimeDockMobileProps({
       chrome: {
         handsFreeControls: { controlPressedOpacity: 0.7 },
