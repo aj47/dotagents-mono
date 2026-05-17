@@ -8473,15 +8473,17 @@ describe("session presentation semantics", () => {
         },
         "aria-expanded": true,
       },
-      icon: {
-        props: toolApprovalProps.renderState.argumentsToggle.icon,
-      },
-      label: {
-        props: {
+      content: {
+        icon: {
+          props: toolApprovalProps.renderState.argumentsToggle.icon,
+        },
+        label: {
           props: {
-            style: "tool-approval-arguments-toggle-text-style",
+            props: {
+              style: "tool-approval-arguments-toggle-text-style",
+            },
+            text: CHAT_RUNTIME_PRESENTATION.approval.hideArgumentsLabel,
           },
-          text: CHAT_RUNTIME_PRESENTATION.approval.hideArgumentsLabel,
         },
       },
     })
@@ -8522,15 +8524,17 @@ describe("session presentation semantics", () => {
           disabled: true,
         },
       },
-      icon: {
-        props: toolApprovalProps.renderState.denyButton.icon,
-      },
-      label: {
-        props: {
+      content: {
+        icon: {
+          props: toolApprovalProps.renderState.denyButton.icon,
+        },
+        label: {
           props: {
-            style: "tool-approval-deny-button-text-style",
+            props: {
+              style: "tool-approval-deny-button-text-style",
+            },
+            text: CHAT_RUNTIME_PRESENTATION.approval.denyLabel,
           },
-          text: CHAT_RUNTIME_PRESENTATION.approval.denyLabel,
         },
       },
     })
@@ -8549,20 +8553,22 @@ describe("session presentation semantics", () => {
           disabled: true,
         },
       },
-      icon: {
-        shouldRender: false,
-        props: toolApprovalProps.renderState.approveButton.icon,
-      },
-      spinner: {
-        shouldRender: true,
-        props: toolApprovalProps.renderState.approveButton.spinner,
-      },
-      label: {
-        props: {
+      content: {
+        icon: {
+          shouldRender: false,
+          props: toolApprovalProps.renderState.approveButton.icon,
+        },
+        spinner: {
+          shouldRender: true,
+          props: toolApprovalProps.renderState.approveButton.spinner,
+        },
+        label: {
           props: {
-            style: "tool-approval-approve-button-text-style",
+            props: {
+              style: "tool-approval-approve-button-text-style",
+            },
+            text: CHAT_RUNTIME_PRESENTATION.approval.processingLabel,
           },
-          text: CHAT_RUNTIME_PRESENTATION.approval.processingLabel,
         },
       },
     })

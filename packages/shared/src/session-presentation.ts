@@ -2077,15 +2077,17 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
         | false
       >
     }
-    icon: {
-      props: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["icon"]
-    }
-    label: {
-      props: {
+    content: {
+      icon: {
+        props: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["icon"]
+      }
+      label: {
         props: {
-          style: TStyles["argumentsToggleText"]
+          props: {
+            style: TStyles["argumentsToggleText"]
+          }
+          text: string
         }
-        text: string
       }
     }
   }
@@ -2120,15 +2122,17 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
       accessibilityLabel: string
       accessibilityState: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["accessibilityState"]
     }
-    icon: {
-      props: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["icon"]
-    }
-    label: {
-      props: {
+    content: {
+      icon: {
+        props: ChatRuntimeToolApprovalMobileRenderState["denyButton"]["icon"]
+      }
+      label: {
         props: {
-          style: TStyles["denyButtonText"]
+          props: {
+            style: TStyles["denyButtonText"]
+          }
+          text: string
         }
-        text: string
       }
     }
   }
@@ -2141,20 +2145,22 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
       accessibilityLabel: string
       accessibilityState: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["accessibilityState"]
     }
-    icon: {
-      shouldRender: boolean
-      props: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["icon"]
-    }
-    spinner: {
-      shouldRender: boolean
-      props: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["spinner"]
-    }
-    label: {
-      props: {
+    content: {
+      icon: {
+        shouldRender: boolean
+        props: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["icon"]
+      }
+      spinner: {
+        shouldRender: boolean
+        props: ChatRuntimeToolApprovalMobileRenderState["approveButton"]["spinner"]
+      }
+      label: {
         props: {
-          style: TStyles["approveButtonText"]
+          props: {
+            style: TStyles["approveButtonText"]
+          }
+          text: string
         }
-        text: string
       }
     }
   }
@@ -24187,15 +24193,17 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
           renderState.argumentsToggle.isDisabled && styles.buttonDisabled,
         ],
       },
-      icon: {
-        props: renderState.argumentsToggle.icon,
-      },
-      label: {
-        props: {
+      content: {
+        icon: {
+          props: renderState.argumentsToggle.icon,
+        },
+        label: {
           props: {
-            style: styles.argumentsToggleText,
+            props: {
+              style: styles.argumentsToggleText,
+            },
+            text: renderState.argumentsToggle.label,
           },
-          text: renderState.argumentsToggle.label,
         },
       },
     },
@@ -24234,15 +24242,17 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         accessibilityLabel: renderState.denyButton.accessibilityLabel,
         accessibilityState: renderState.denyButton.accessibilityState,
       },
-      icon: {
-        props: renderState.denyButton.icon,
-      },
-      label: {
-        props: {
+      content: {
+        icon: {
+          props: renderState.denyButton.icon,
+        },
+        label: {
           props: {
-            style: styles.denyButtonText,
+            props: {
+              style: styles.denyButtonText,
+            },
+            text: renderState.denyButton.label,
           },
-          text: renderState.denyButton.label,
         },
       },
     },
@@ -24259,20 +24269,22 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         accessibilityLabel: renderState.approveButton.accessibilityLabel,
         accessibilityState: renderState.approveButton.accessibilityState,
       },
-      icon: {
-        shouldRender: !renderState.approveButton.isDisabled,
-        props: renderState.approveButton.icon,
-      },
-      spinner: {
-        shouldRender: renderState.approveButton.isDisabled,
-        props: renderState.approveButton.spinner,
-      },
-      label: {
-        props: {
+      content: {
+        icon: {
+          shouldRender: !renderState.approveButton.isDisabled,
+          props: renderState.approveButton.icon,
+        },
+        spinner: {
+          shouldRender: renderState.approveButton.isDisabled,
+          props: renderState.approveButton.spinner,
+        },
+        label: {
           props: {
-            style: styles.approveButtonText,
+            props: {
+              style: styles.approveButtonText,
+            },
+            text: renderState.approveButton.label,
           },
-          text: renderState.approveButton.label,
         },
       },
     },
