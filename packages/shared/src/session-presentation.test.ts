@@ -192,6 +192,7 @@ import {
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
   createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeViewportActivityMobileStyleSlots,
+  createChatRuntimeViewportChromeMobileStyleSlots,
   createChatRuntimeViewportMobileStyleSlots,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerImageAttachmentMobileStyleSlots,
@@ -4604,6 +4605,27 @@ describe("session presentation semantics", () => {
         width: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerSize,
         height: CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.inlineActivity.spinnerSize,
       },
+    })
+    const viewportMobileRenderState = getChatRuntimeViewportMobileRenderState({
+      colors: {
+        background: "#ffffff",
+      },
+    })
+    const viewportMobileSpacing = {
+      sm: 8,
+      xs: 4,
+    }
+    expect(createChatRuntimeViewportChromeMobileStyleSlots({
+      renderState: viewportMobileRenderState,
+      spacing: viewportMobileSpacing,
+    })).toEqual({
+      viewport: createChatRuntimeViewportMobileStyleSlots({
+        renderState: viewportMobileRenderState,
+        spacing: viewportMobileSpacing,
+      }),
+      activity: createChatRuntimeViewportActivityMobileStyleSlots({
+        renderState: viewportMobileRenderState,
+      }),
     })
     const conversationChromeStyleColors = {
       background: "#ffffff",

@@ -611,6 +611,18 @@ export interface ChatRuntimeViewportActivityMobileStyleSlots {
   }
 }
 
+export interface ChatRuntimeViewportChromeMobileStyleSlotsInput {
+  renderState:
+    & ChatRuntimeViewportMobileStyleSlotsInput["renderState"]
+    & ChatRuntimeViewportActivityMobileStyleSlotsInput["renderState"]
+  spacing: ChatRuntimeViewportMobileStyleSlotsInput["spacing"]
+}
+
+export interface ChatRuntimeViewportChromeMobileStyleSlots {
+  viewport: ChatRuntimeViewportMobileStyleSlots
+  activity: ChatRuntimeViewportActivityMobileStyleSlots
+}
+
 export interface ChatRuntimeSurfaceChromeMobileRenderStateInput {
   platform?: string | null
   colors: Parameters<typeof getPromptLibraryEditorMobileRenderState>[0]["colors"]
@@ -27438,6 +27450,21 @@ export function createChatRuntimeViewportActivityMobileStyleSlots({
       width: inlineActivity.spinnerSize,
       height: inlineActivity.spinnerSize,
     },
+  }
+}
+
+export function createChatRuntimeViewportChromeMobileStyleSlots({
+  renderState,
+  spacing,
+}: ChatRuntimeViewportChromeMobileStyleSlotsInput): ChatRuntimeViewportChromeMobileStyleSlots {
+  return {
+    viewport: createChatRuntimeViewportMobileStyleSlots({
+      renderState,
+      spacing,
+    }),
+    activity: createChatRuntimeViewportActivityMobileStyleSlots({
+      renderState,
+    }),
   }
 }
 

@@ -40,8 +40,7 @@ import {
   createChatRuntimeToolExecutionDetailMobileStyleSlots,
   createChatRuntimeTurnDurationMessageMobileStyleSlotVariants,
   createChatRuntimeThemeSpinnerSource,
-  createChatRuntimeViewportActivityMobileStyleSlots,
-  createChatRuntimeViewportMobileStyleSlots,
+  createChatRuntimeViewportChromeMobileStyleSlots,
   createChatConversationHomePromptEditorMobileStyleSlots,
   createChatConversationHomePromptLibraryMobileStyleSlots,
   createMessageQueuePanelMobileWrapperStyleSlots,
@@ -94,13 +93,9 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     platform: mobilePlatform,
   });
   const conversationChromeStyleState = chatChromeStyleState.conversation;
-  const viewportStyleState = conversationChromeStyleState.viewport;
-  const viewportStyleSlots = createChatRuntimeViewportMobileStyleSlots({
-    renderState: viewportStyleState,
+  const viewportChromeStyleSlots = createChatRuntimeViewportChromeMobileStyleSlots({
+    renderState: conversationChromeStyleState.viewport,
     spacing,
-  });
-  const viewportActivityStyleSlots = createChatRuntimeViewportActivityMobileStyleSlots({
-    renderState: viewportStyleState,
   });
   const streamingContentStyleState = conversationChromeStyleState.streamingContent;
   const streamingContentStyleSlots = createChatRuntimeStreamingContentMobileStyleSlots({
@@ -226,28 +221,28 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
   return StyleSheet.create({
     keyboardAvoidingContainer: {
-      ...viewportStyleSlots.keyboardAvoidingContainer,
+      ...viewportChromeStyleSlots.viewport.keyboardAvoidingContainer,
     },
     chatRoot: {
-      ...viewportStyleSlots.root,
+      ...viewportChromeStyleSlots.viewport.root,
     },
     chatScroll: {
-      ...viewportStyleSlots.scroll,
+      ...viewportChromeStyleSlots.viewport.scroll,
     },
     chatScrollContent: {
-      ...viewportStyleSlots.scrollContent,
+      ...viewportChromeStyleSlots.viewport.scrollContent,
     },
     loadingState: {
-      ...viewportActivityStyleSlots.loadingState,
+      ...viewportChromeStyleSlots.activity.loadingState,
     },
     loadingSpinner: {
-      ...viewportActivityStyleSlots.loadingSpinner,
+      ...viewportChromeStyleSlots.activity.loadingSpinner,
     },
     inlineActivityIndicator: {
-      ...viewportActivityStyleSlots.inlineActivityIndicator,
+      ...viewportChromeStyleSlots.activity.inlineActivityIndicator,
     },
     inlineActivitySpinner: {
-      ...viewportActivityStyleSlots.inlineActivitySpinner,
+      ...viewportChromeStyleSlots.activity.inlineActivitySpinner,
     },
     streamingContentHeader: {
       ...streamingContentStyleSlots.header,

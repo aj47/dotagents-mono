@@ -1620,6 +1620,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /content: getChatRuntimeViewportContentMobileRenderState\(\{\s+isLoadingMessages,\s+messageCount,\s+\}\),/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeViewportMobileStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeViewportActivityMobileStyleSlots/);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeViewportChromeMobileStyleSlots\(\{/);
   assert.match(sessionPresentationSource, /quickStartItems: getChatRuntimeHomeQuickStartItemsMobileState\(\{/);
   assert.match(sessionPresentationSource, /shortcutRenderState: getPromptLibraryMobileShortcutRenderState\(colors\),/);
   assert.match(sessionPresentationSource, /debugPanels: getChatRuntimeDebugPanelsMobileDisplayState\(\{/);
@@ -1630,11 +1631,13 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /const mobileRuntimeViewportRenderState = useMemo/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeViewport = mobileRuntimeViewportRenderState\.surface;/);
   assert.doesNotMatch(screenSource, /const mobileRuntimeLoadingState = mobileRuntimeViewportRenderState\.loadingState;/);
-  assert.match(screenSource, /const viewportStyleState = conversationChromeStyleState\.viewport;/);
-  assert.match(screenSource, /createChatRuntimeViewportMobileStyleSlots,/);
-  assert.match(screenSource, /const viewportStyleSlots = createChatRuntimeViewportMobileStyleSlots\(\{\s+renderState: viewportStyleState,\s+spacing,\s+\}\);/);
-  assert.match(screenSource, /createChatRuntimeViewportActivityMobileStyleSlots,/);
-  assert.match(screenSource, /const viewportActivityStyleSlots = createChatRuntimeViewportActivityMobileStyleSlots\(\{\s+renderState: viewportStyleState,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const viewportStyleState = conversationChromeStyleState\.viewport;/);
+  assert.match(screenSource, /createChatRuntimeViewportChromeMobileStyleSlots,/);
+  assert.match(screenSource, /const viewportChromeStyleSlots = createChatRuntimeViewportChromeMobileStyleSlots\(\{\s+renderState: conversationChromeStyleState\.viewport,\s+spacing,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /createChatRuntimeViewportMobileStyleSlots,/);
+  assert.doesNotMatch(screenSource, /const viewportStyleSlots = createChatRuntimeViewportMobileStyleSlots/);
+  assert.doesNotMatch(screenSource, /createChatRuntimeViewportActivityMobileStyleSlots,/);
+  assert.doesNotMatch(screenSource, /const viewportActivityStyleSlots = createChatRuntimeViewportActivityMobileStyleSlots/);
   assert.doesNotMatch(screenSource, /const viewportSurface = viewportStyleState\.surface;/);
   assert.doesNotMatch(screenSource, /const viewportSurfaceColors = viewportStyleState\.colors;/);
   assert.doesNotMatch(screenSource, /const loadingStateSurface = viewportStyleState\.loadingState;/);
@@ -1874,12 +1877,12 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
     chatMessageChromeSource,
     /export function ChatMessageLoadingState[\s\S]*?resizeMode=\{renderState\.spinnerResizeMode\}[\s\S]*?export function ChatMessageDebugPanel/
   );
-  assert.match(screenSource, /keyboardAvoidingContainer:\s*\{[\s\S]*?\.\.\.viewportStyleSlots\.keyboardAvoidingContainer/);
-  assert.match(screenSource, /chatRoot:\s*\{[\s\S]*?\.\.\.viewportStyleSlots\.root/);
-  assert.match(screenSource, /chatScroll:\s*\{[\s\S]*?\.\.\.viewportStyleSlots\.scroll/);
-  assert.match(screenSource, /chatScrollContent:\s*\{[\s\S]*?\.\.\.viewportStyleSlots\.scrollContent/);
-  assert.match(screenSource, /loadingState:\s*\{[\s\S]*?\.\.\.viewportActivityStyleSlots\.loadingState/);
-  assert.match(screenSource, /loadingSpinner:\s*\{[\s\S]*?\.\.\.viewportActivityStyleSlots\.loadingSpinner/);
+  assert.match(screenSource, /keyboardAvoidingContainer:\s*\{[\s\S]*?\.\.\.viewportChromeStyleSlots\.viewport\.keyboardAvoidingContainer/);
+  assert.match(screenSource, /chatRoot:\s*\{[\s\S]*?\.\.\.viewportChromeStyleSlots\.viewport\.root/);
+  assert.match(screenSource, /chatScroll:\s*\{[\s\S]*?\.\.\.viewportChromeStyleSlots\.viewport\.scroll/);
+  assert.match(screenSource, /chatScrollContent:\s*\{[\s\S]*?\.\.\.viewportChromeStyleSlots\.viewport\.scrollContent/);
+  assert.match(screenSource, /loadingState:\s*\{[\s\S]*?\.\.\.viewportChromeStyleSlots\.activity\.loadingState/);
+  assert.match(screenSource, /loadingSpinner:\s*\{[\s\S]*?\.\.\.viewportChromeStyleSlots\.activity\.loadingSpinner/);
   assert.doesNotMatch(screenSource, /paddingHorizontal:\s*spacing\[viewportSurface\.paddingHorizontal\]/);
   assert.doesNotMatch(screenSource, /backgroundColor:\s*viewportSurfaceColors\.backgroundColor/);
   assert.doesNotMatch(screenSource, /paddingVertical:\s*loadingStateSurface\.paddingVertical/);
@@ -4086,8 +4089,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.doesNotMatch(screenSource, /<View style=\{styles\.loadOlderContainer\}>/);
   assert.doesNotMatch(screenSource, /accessibilityRole=\{messageHistoryBannerRenderState\.loadButton\.accessibilityRole\}/);
   assert.doesNotMatch(screenSource, /name=\{messageHistoryBannerRenderState\.loadIcon\.name\}/);
-  assert.match(screenSource, /inlineActivityIndicator:\s*\{[\s\S]*?\.\.\.viewportActivityStyleSlots\.inlineActivityIndicator/);
-  assert.match(screenSource, /inlineActivitySpinner:\s*\{[\s\S]*?\.\.\.viewportActivityStyleSlots\.inlineActivitySpinner/);
+  assert.match(screenSource, /inlineActivityIndicator:\s*\{[\s\S]*?\.\.\.viewportChromeStyleSlots\.activity\.inlineActivityIndicator/);
+  assert.match(screenSource, /inlineActivitySpinner:\s*\{[\s\S]*?\.\.\.viewportChromeStyleSlots\.activity\.inlineActivitySpinner/);
   assert.doesNotMatch(screenSource, /flexDirection:\s*inlineActivitySurface\.flexDirection/);
   assert.doesNotMatch(screenSource, /width:\s*inlineActivitySurface\.spinnerSize/);
   assert.match(screenSource, /loadOlderContainer:\s*\{[\s\S]*?\.\.\.messageHistoryBannerStyleSlots\.container/);
