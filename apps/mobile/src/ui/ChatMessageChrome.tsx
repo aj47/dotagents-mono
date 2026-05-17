@@ -2165,6 +2165,10 @@ type ChatMessageDelegationHeaderProps =
 type ChatMessageDelegationSubtitleProps =
   ChatMessageDelegationCardParts['card']['content']['subtitle']['props'];
 
+type ChatMessageDelegationSubtitleBlockProps = {
+  subtitle: ChatMessageDelegationCardParts['card']['content']['subtitle'];
+};
+
 type ChatMessageDelegationMetaRowProps =
   ChatMessageDelegationCardParts['card']['content']['meta']['props'];
 
@@ -9624,6 +9628,20 @@ export function ChatMessageDelegationMetaRow({
   );
 }
 
+export function ChatMessageDelegationSubtitleBlock({
+  subtitle,
+}: ChatMessageDelegationSubtitleBlockProps) {
+  if (!subtitle.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageDelegationSubtitle
+      {...subtitle.props}
+    />
+  );
+}
+
 export function ChatMessageDelegationSubtitle({
   props,
   text,
@@ -9706,11 +9724,9 @@ export function ChatMessageDelegationCard({
       <ChatMessageDelegationHeader
         {...cardContent.header.props}
       />
-      {cardContent.subtitle.shouldRender ? (
-        <ChatMessageDelegationSubtitle
-          {...cardContent.subtitle.props}
-        />
-      ) : null}
+      <ChatMessageDelegationSubtitleBlock
+        subtitle={cardContent.subtitle}
+      />
       <ChatMessageDelegationMetaRow
         {...cardContent.meta.props}
       />
