@@ -1591,6 +1591,33 @@ type ChatConversationHomePromptEditorModalProps = {
   styles: ChatConversationHomePromptEditorModalStyles;
 };
 
+type ChatConversationHomePromptEditorModalIconButtonPart = {
+  props: ComponentProps<typeof TouchableOpacity>;
+};
+
+type ChatConversationHomePromptEditorModalIconPart = {
+  props: ComponentProps<typeof Ionicons>;
+};
+
+type ChatConversationHomePromptEditorModalActionButtonPart = {
+  props: ComponentProps<typeof TouchableOpacity>;
+};
+
+type ChatConversationHomePromptEditorModalActionLabelPart = {
+  text: string;
+  props: ComponentProps<typeof Text>;
+};
+
+type ChatConversationHomePromptEditorModalIconButtonProps = {
+  button: ChatConversationHomePromptEditorModalIconButtonPart;
+  icon: ChatConversationHomePromptEditorModalIconPart;
+};
+
+type ChatConversationHomePromptEditorModalActionButtonProps = {
+  button: ChatConversationHomePromptEditorModalActionButtonPart;
+  label: ChatConversationHomePromptEditorModalActionLabelPart;
+};
+
 type ChatMessageRuntimeOverlaysProps = {
   agentSelector: ComponentProps<typeof AgentSelectorSheet>;
   promptEditor: ChatConversationHomePromptEditorModalProps;
@@ -7983,9 +8010,10 @@ export function ChatConversationHomePromptEditorModal({
           <View {...modalParts.content.props}>
             <View {...modalParts.header.props}>
               <Text {...modalParts.title.props}>{modalParts.title.text}</Text>
-              <TouchableOpacity {...modalParts.closeButton.props}>
-                <Ionicons {...modalParts.closeIcon.props} />
-              </TouchableOpacity>
+              <ChatConversationHomePromptEditorModalIconButton
+                button={modalParts.closeButton}
+                icon={modalParts.closeIcon}
+              />
             </View>
 
             <Text {...modalParts.nameLabel.props}>{modalParts.nameLabel.text}</Text>
@@ -7995,17 +8023,41 @@ export function ChatConversationHomePromptEditorModal({
             <TextInput {...modalParts.contentInput.props} />
 
             <View {...modalParts.actions.props}>
-              <TouchableOpacity {...modalParts.cancelButton.props}>
-                <Text {...modalParts.cancelLabel.props}>{modalParts.cancelLabel.text}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity {...modalParts.saveButton.props}>
-                <Text {...modalParts.saveLabel.props}>{modalParts.saveLabel.text}</Text>
-              </TouchableOpacity>
+              <ChatConversationHomePromptEditorModalActionButton
+                button={modalParts.cancelButton}
+                label={modalParts.cancelLabel}
+              />
+              <ChatConversationHomePromptEditorModalActionButton
+                button={modalParts.saveButton}
+                label={modalParts.saveLabel}
+              />
             </View>
           </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+export function ChatConversationHomePromptEditorModalIconButton({
+  button,
+  icon,
+}: ChatConversationHomePromptEditorModalIconButtonProps) {
+  return (
+    <TouchableOpacity {...button.props}>
+      <Ionicons {...icon.props} />
+    </TouchableOpacity>
+  );
+}
+
+export function ChatConversationHomePromptEditorModalActionButton({
+  button,
+  label,
+}: ChatConversationHomePromptEditorModalActionButtonProps) {
+  return (
+    <TouchableOpacity {...button.props}>
+      <Text {...label.props}>{label.text}</Text>
+    </TouchableOpacity>
   );
 }
 
