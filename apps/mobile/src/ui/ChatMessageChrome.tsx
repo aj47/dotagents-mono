@@ -2114,6 +2114,22 @@ type ChatMessageToolExecutionResultBadgeProps = {
   styles: ChatMessageToolExecutionResultBadgeStyles;
 };
 
+type ChatMessageToolExecutionResultBadgeParts = ReturnType<typeof createChatRuntimeToolExecutionResultBadgeMobilePropsParts<
+  ChatMessageToolExecutionResultBadgeProps['badge'],
+  ChatMessageToolExecutionResultBadgeProps['styles']
+>>;
+
+type ChatMessageToolExecutionResultBadgeContainerProps =
+  ChatMessageToolExecutionResultBadgeParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionResultBadgeIconProps =
+  ChatMessageToolExecutionResultBadgeParts['icon']['props'];
+
+type ChatMessageToolExecutionResultBadgeLabelProps =
+  ChatMessageToolExecutionResultBadgeParts['label']['props'];
+
 type ChatMessageToolExecutionPendingResultStyles = {
   row: StyleProp<ViewStyle>;
   text: StyleProp<TextStyle>;
@@ -2124,10 +2140,34 @@ type ChatMessageToolExecutionPendingResultProps = {
   styles: ChatMessageToolExecutionPendingResultStyles;
 };
 
+type ChatMessageToolExecutionPendingResultParts = ReturnType<typeof createChatRuntimeToolExecutionPendingResultMobilePropsParts<
+  ChatMessageToolExecutionPendingResultProps['renderState'],
+  ChatMessageToolExecutionPendingResultProps['styles']
+>>;
+
+type ChatMessageToolExecutionPendingResultContainerProps =
+  ChatMessageToolExecutionPendingResultParts['container']['props'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionPendingResultSpinnerProps =
+  ChatMessageToolExecutionPendingResultParts['spinner']['props'];
+
+type ChatMessageToolExecutionPendingResultLabelProps =
+  ChatMessageToolExecutionPendingResultParts['label']['props'];
+
 type ChatMessageToolExecutionEmptyStateProps = {
   renderState: ToolExecutionDetailMobileEmptyStateRenderState;
   style: StyleProp<TextStyle>;
 };
+
+type ChatMessageToolExecutionEmptyStateParts = ReturnType<typeof createChatRuntimeToolExecutionEmptyStateMobilePropsParts<
+  ChatMessageToolExecutionEmptyStateProps['renderState'],
+  ChatMessageToolExecutionEmptyStateProps['style']
+>>;
+
+type ChatMessageToolExecutionEmptyStateLabelProps =
+  ChatMessageToolExecutionEmptyStateParts['label']['props'];
 
 type ChatMessageToolExecutionPayloadMetaStyles = {
   row?: StyleProp<ViewStyle>;
@@ -9395,23 +9435,60 @@ export function ChatMessageToolExecutionResultBadge({
   });
 
   return (
-    <View
-      accessible={resultBadgeParts.container.accessible}
-      accessibilityRole={resultBadgeParts.container.accessibilityRole}
-      accessibilityLabel={resultBadgeParts.container.accessibilityLabel}
-      style={resultBadgeParts.container.style}
+    <ChatMessageToolExecutionResultBadgeContainer
+      {...resultBadgeParts.container.props}
     >
-      <Ionicons
-        name={resultBadgeParts.icon.name}
-        size={resultBadgeParts.icon.size}
-        color={resultBadgeParts.icon.color}
+      <ChatMessageToolExecutionResultBadgeIcon
+        {...resultBadgeParts.icon.props}
       />
-      <Text
-        style={resultBadgeParts.label.style}
-      >
-        {resultBadgeParts.label.text}
-      </Text>
+      <ChatMessageToolExecutionResultBadgeLabel
+        {...resultBadgeParts.label.props}
+      />
+    </ChatMessageToolExecutionResultBadgeContainer>
+  );
+}
+
+export function ChatMessageToolExecutionResultBadgeContainer({
+  accessible,
+  accessibilityRole,
+  accessibilityLabel,
+  style,
+  children,
+}: ChatMessageToolExecutionResultBadgeContainerProps) {
+  return (
+    <View
+      accessible={accessible}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      style={style}
+    >
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageToolExecutionResultBadgeIcon({
+  name,
+  size,
+  color,
+}: ChatMessageToolExecutionResultBadgeIconProps) {
+  return (
+    <Ionicons
+      name={name}
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionResultBadgeLabel({
+  style,
+  text,
+}: ChatMessageToolExecutionResultBadgeLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 
@@ -9425,20 +9502,58 @@ export function ChatMessageToolExecutionPendingResult({
   });
 
   return (
-    <View
-      accessible={pendingResultParts.container.accessible}
-      accessibilityRole={pendingResultParts.container.accessibilityRole}
-      accessibilityLabel={pendingResultParts.container.accessibilityLabel}
-      style={pendingResultParts.container.style}
+    <ChatMessageToolExecutionPendingResultContainer
+      {...pendingResultParts.container.props}
     >
-      <ActivityIndicator
-        size={pendingResultParts.spinner.size}
-        color={pendingResultParts.spinner.color}
+      <ChatMessageToolExecutionPendingResultSpinner
+        {...pendingResultParts.spinner.props}
       />
-      <Text style={pendingResultParts.label.style}>
-        {pendingResultParts.label.text}
-      </Text>
+      <ChatMessageToolExecutionPendingResultLabel
+        {...pendingResultParts.label.props}
+      />
+    </ChatMessageToolExecutionPendingResultContainer>
+  );
+}
+
+export function ChatMessageToolExecutionPendingResultContainer({
+  accessible,
+  accessibilityRole,
+  accessibilityLabel,
+  style,
+  children,
+}: ChatMessageToolExecutionPendingResultContainerProps) {
+  return (
+    <View
+      accessible={accessible}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      style={style}
+    >
+      {children}
     </View>
+  );
+}
+
+export function ChatMessageToolExecutionPendingResultSpinner({
+  size,
+  color,
+}: ChatMessageToolExecutionPendingResultSpinnerProps) {
+  return (
+    <ActivityIndicator
+      size={size}
+      color={color}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionPendingResultLabel({
+  style,
+  text,
+}: ChatMessageToolExecutionPendingResultLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
   );
 }
 
@@ -9452,12 +9567,25 @@ export function ChatMessageToolExecutionEmptyState({
   });
 
   return (
+    <ChatMessageToolExecutionEmptyStateLabel
+      {...emptyStateParts.label.props}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionEmptyStateLabel({
+  accessibilityRole,
+  accessibilityLabel,
+  style,
+  text,
+}: ChatMessageToolExecutionEmptyStateLabelProps) {
+  return (
     <Text
-      accessibilityRole={emptyStateParts.label.accessibilityRole}
-      accessibilityLabel={emptyStateParts.label.accessibilityLabel}
-      style={emptyStateParts.label.style}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      style={style}
     >
-      {emptyStateParts.label.text}
+      {text}
     </Text>
   );
 }

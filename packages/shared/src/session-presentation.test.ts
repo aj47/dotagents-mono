@@ -13664,25 +13664,31 @@ describe("session presentation semantics", () => {
     })
     expect(resultBadgeParts).toEqual({
       container: {
-        accessible: true,
-        accessibilityRole: "text",
-        accessibilityLabel: "Tool result succeeded",
-        style: [
-          "result-badge",
-          "result-badge-success",
-        ],
+        props: {
+          accessible: true,
+          accessibilityRole: "text",
+          accessibilityLabel: "Tool result succeeded",
+          style: [
+            "result-badge",
+            "result-badge-success",
+          ],
+        },
       },
       icon: {
-        name: "checkmark-circle",
-        size: 12,
-        color: "#0f0",
+        props: {
+          name: "checkmark-circle",
+          size: 12,
+          color: "#0f0",
+        },
       },
       label: {
-        text: "Succeeded",
-        style: [
-          "result-badge-text",
-          "result-badge-text-success",
-        ],
+        props: {
+          style: [
+            "result-badge-text",
+            "result-badge-text-success",
+          ],
+          text: "Succeeded",
+        },
       },
     })
     expect(createChatRuntimeToolExecutionResultBadgeMobilePropsParts({
@@ -13707,16 +13713,20 @@ describe("session presentation semantics", () => {
       },
     })).toMatchObject({
       container: {
-        style: [
-          "result-badge",
-          "result-badge-error",
-        ],
+        props: {
+          style: [
+            "result-badge",
+            "result-badge-error",
+          ],
+        },
       },
       label: {
-        style: [
-          "result-badge-text",
-          "result-badge-text-error",
-        ],
+        props: {
+          style: [
+            "result-badge-text",
+            "result-badge-text-error",
+          ],
+        },
       },
     })
     const pendingResultParts = createChatRuntimeToolExecutionPendingResultMobilePropsParts({
@@ -13736,18 +13746,24 @@ describe("session presentation semantics", () => {
     })
     expect(pendingResultParts).toEqual({
       container: {
-        accessible: true,
-        accessibilityRole: "text",
-        accessibilityLabel: "Waiting for tool result",
-        style: "pending-row",
+        props: {
+          accessible: true,
+          accessibilityRole: "text",
+          accessibilityLabel: "Waiting for tool result",
+          style: "pending-row",
+        },
       },
       spinner: {
-        size: "small",
-        color: "#888",
+        props: {
+          size: "small",
+          color: "#888",
+        },
       },
       label: {
-        text: "Waiting...",
-        style: "pending-text",
+        props: {
+          style: "pending-text",
+          text: "Waiting...",
+        },
       },
     })
     const emptyStateParts = createChatRuntimeToolExecutionEmptyStateMobilePropsParts({
@@ -13760,10 +13776,12 @@ describe("session presentation semantics", () => {
     })
     expect(emptyStateParts).toEqual({
       label: {
-        accessibilityRole: "text",
-        accessibilityLabel: "No tool calls",
-        style: "empty-state-text",
-        text: "No tool calls",
+        props: {
+          accessibilityRole: "text",
+          accessibilityLabel: "No tool calls",
+          style: "empty-state-text",
+          text: "No tool calls",
+        },
       },
     })
     const resultHeaderParts = createChatRuntimeToolExecutionResultHeaderMobilePropsParts({

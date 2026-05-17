@@ -3447,15 +3447,21 @@ export interface ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
   },
 > {
   container: {
-    accessible: true
-    accessibilityRole: TBadge["accessibilityRole"]
-    accessibilityLabel: string
-    style: Array<TStyles["badge"] | TStyles["badgeSuccess"] | TStyles["badgeError"]>
+    props: {
+      accessible: true
+      accessibilityRole: TBadge["accessibilityRole"]
+      accessibilityLabel: string
+      style: Array<TStyles["badge"] | TStyles["badgeSuccess"] | TStyles["badgeError"]>
+    }
   }
-  icon: TBadge["icon"]
+  icon: {
+    props: TBadge["icon"]
+  }
   label: {
-    text: string
-    style: Array<TStyles["text"] | TStyles["textSuccess"] | TStyles["textError"]>
+    props: {
+      style: Array<TStyles["text"] | TStyles["textSuccess"] | TStyles["textError"]>
+      text: string
+    }
   }
 }
 
@@ -4035,15 +4041,21 @@ export interface ChatRuntimeToolExecutionPendingResultMobilePropsParts<
   },
 > {
   container: {
-    accessible: true
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    style: TStyles["row"]
+    props: {
+      accessible: true
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      style: TStyles["row"]
+    }
   }
-  spinner: TRenderState["spinner"]
+  spinner: {
+    props: TRenderState["spinner"]
+  }
   label: {
-    text: string
-    style: TStyles["text"]
+    props: {
+      style: TStyles["text"]
+      text: string
+    }
   }
 }
 
@@ -4076,10 +4088,12 @@ export interface ChatRuntimeToolExecutionEmptyStateMobilePropsParts<
   TStyle = unknown,
 > {
   label: {
-    accessibilityRole: TRenderState["accessibilityRole"]
-    accessibilityLabel: string
-    style: TStyle
-    text: string
+    props: {
+      accessibilityRole: TRenderState["accessibilityRole"]
+      accessibilityLabel: string
+      style: TStyle
+      text: string
+    }
   }
 }
 
@@ -20766,21 +20780,27 @@ export function createChatRuntimeToolExecutionResultBadgeMobilePropsParts<
 > {
   return {
     container: {
-      accessible: true,
-      accessibilityRole: badge.accessibilityRole,
-      accessibilityLabel: badge.accessibilityLabel,
-      style: [
-        styles.badge,
-        badge.isSuccess ? styles.badgeSuccess : styles.badgeError,
-      ],
+      props: {
+        accessible: true,
+        accessibilityRole: badge.accessibilityRole,
+        accessibilityLabel: badge.accessibilityLabel,
+        style: [
+          styles.badge,
+          badge.isSuccess ? styles.badgeSuccess : styles.badgeError,
+        ],
+      },
     },
-    icon: badge.icon,
+    icon: {
+      props: badge.icon,
+    },
     label: {
-      text: badge.label,
-      style: [
-        styles.text,
-        badge.isSuccess ? styles.textSuccess : styles.textError,
-      ],
+      props: {
+        style: [
+          styles.text,
+          badge.isSuccess ? styles.textSuccess : styles.textError,
+        ],
+        text: badge.label,
+      },
     },
   }
 }
@@ -21157,15 +21177,21 @@ export function createChatRuntimeToolExecutionPendingResultMobilePropsParts<
 > {
   return {
     container: {
-      accessible: true,
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      style: styles.row,
+      props: {
+        accessible: true,
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        style: styles.row,
+      },
     },
-    spinner: renderState.spinner,
+    spinner: {
+      props: renderState.spinner,
+    },
     label: {
-      text: renderState.label,
-      style: styles.text,
+      props: {
+        style: styles.text,
+        text: renderState.label,
+      },
     },
   }
 }
@@ -21189,10 +21215,12 @@ export function createChatRuntimeToolExecutionEmptyStateMobilePropsParts<
 > {
   return {
     label: {
-      accessibilityRole: renderState.accessibilityRole,
-      accessibilityLabel: renderState.accessibilityLabel,
-      style,
-      text: renderState.label,
+      props: {
+        accessibilityRole: renderState.accessibilityRole,
+        accessibilityLabel: renderState.accessibilityLabel,
+        style,
+        text: renderState.label,
+      },
     },
   }
 }
