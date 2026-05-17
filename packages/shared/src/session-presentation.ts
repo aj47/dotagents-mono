@@ -7471,7 +7471,9 @@ export interface ChatRuntimeConversationScrollViewportMobilePropsParts<
       scrollEventThrottle: TScrollEventThrottle
     }
   }
-  children: TChildren
+  content: {
+    children: TChildren
+  }
 }
 
 export interface ChatRuntimeConversationViewportContentMobilePropsPartsInput<
@@ -24860,7 +24862,9 @@ export function createChatRuntimeConversationScrollViewportMobilePropsParts<
         scrollEventThrottle,
       },
     },
-    children,
+    content: {
+      children,
+    },
   }
 }
 

@@ -2073,7 +2073,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
     chatMessageChromeSource.match(/export function ChatMessageScrollViewport[\s\S]*?export function ChatMessageConversationViewportContent/)?.[0] ?? '';
   assert.match(scrollViewportSource, /const scrollViewportParts = createChatRuntimeConversationScrollViewportMobilePropsParts\(\{\s+children,\s+scrollRef,\s+style,\s+contentContainerStyle,\s+keyboardShouldPersistTaps,\s+contentInsetAdjustmentBehavior,\s+onScroll,\s+onScrollBeginDrag,\s+onScrollEndDrag,\s+scrollEventThrottle,\s+\}\);/);
   assert.match(scrollViewportSource, /<ScrollView\s+\{\.\.\.scrollViewportParts\.scrollView\.props\}/);
-  assert.match(scrollViewportSource, /\{scrollViewportParts\.children\}/);
+  assert.match(scrollViewportSource, /\{scrollViewportParts\.content\.children\}/);
   assert.doesNotMatch(scrollViewportSource, /scrollViewportParts\.scrollView\.(ref|style|contentContainerStyle|keyboardShouldPersistTaps|contentInsetAdjustmentBehavior|onScroll|onScrollBeginDrag|onScrollEndDrag|scrollEventThrottle)/);
   assert.doesNotMatch(scrollViewportSource, /ref=\{scrollRef\}/);
   assert.doesNotMatch(scrollViewportSource, /contentContainerStyle=\{contentContainerStyle\}/);

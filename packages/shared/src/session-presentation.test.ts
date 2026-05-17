@@ -9570,7 +9570,9 @@ describe("session presentation semantics", () => {
           scrollEventThrottle: 16,
         },
       },
-      children: "thread-list",
+      content: {
+        children: "thread-list",
+      },
     })
     expect(createChatRuntimeConversationViewportContentMobilePropsParts({
       loadingState: "loading-state",
