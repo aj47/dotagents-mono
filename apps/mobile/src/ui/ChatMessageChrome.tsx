@@ -2527,10 +2527,19 @@ type ChatMessageToolExecutionExpandedGroupContainerProps =
     children: ReactNode;
   };
 
+type ChatMessageToolExecutionExpandedGroupContentProps =
+  ChatMessageToolExecutionExpandedGroupParts['container']['content'] & {
+    children: ReactNode;
+  };
+
 type ChatMessageToolExecutionExpandedGroupCardProps =
   ChatMessageToolExecutionExpandedGroupParts['container']['content']['card']['props'] & {
     children: ReactNode;
   };
+
+type ChatMessageToolExecutionExpandedGroupEmptyStateBlockProps = {
+  emptyState: ChatMessageToolExecutionExpandedGroupParts['container']['content']['emptyState'];
+};
 
 type ChatMessageToolExecutionPanelProps = {
   shouldRender: boolean;
@@ -10489,26 +10498,55 @@ export function ChatMessageToolExecutionExpandedGroup({
     emptyState,
     styles,
   });
-  const expandedGroupContent = expandedGroupParts.container.content;
 
   return (
     <ChatMessageToolExecutionExpandedGroupContainer
       {...expandedGroupParts.container.props}
     >
-      <ChatMessageToolExecutionCollapseControl
-        {...expandedGroupContent.topCollapseControl.props}
-      />
-      <ChatMessageToolExecutionExpandedGroupCard
-        {...expandedGroupContent.card.props}
+      <ChatMessageToolExecutionExpandedGroupContent
+        {...expandedGroupParts.container.content}
       >
         {children}
-        {expandedGroupContent.emptyState.shouldRender ? expandedGroupContent.emptyState.props : null}
-      </ChatMessageToolExecutionExpandedGroupCard>
-      <ChatMessageToolExecutionCollapseControl
-        {...expandedGroupContent.bottomCollapseControl.props}
-      />
+      </ChatMessageToolExecutionExpandedGroupContent>
     </ChatMessageToolExecutionExpandedGroupContainer>
   );
+}
+
+export function ChatMessageToolExecutionExpandedGroupContent({
+  topCollapseControl,
+  bottomCollapseControl,
+  card,
+  emptyState,
+  children,
+}: ChatMessageToolExecutionExpandedGroupContentProps) {
+  return (
+    <>
+      <ChatMessageToolExecutionCollapseControl
+        {...topCollapseControl.props}
+      />
+      <ChatMessageToolExecutionExpandedGroupCard
+        {...card.props}
+      >
+        {children}
+        <ChatMessageToolExecutionExpandedGroupEmptyStateBlock
+          emptyState={emptyState}
+        />
+      </ChatMessageToolExecutionExpandedGroupCard>
+      <ChatMessageToolExecutionCollapseControl
+        {...bottomCollapseControl.props}
+      />
+    </>
+  );
+}
+
+export function ChatMessageToolExecutionExpandedGroupEmptyStateBlock({
+  emptyState,
+}: ChatMessageToolExecutionExpandedGroupEmptyStateBlockProps) {
+  if (!emptyState.shouldRender) {
+    return null;
+  }
+
+  return emptyState.props;
 }
 
 export function ChatMessageToolExecutionExpandedGroupContainer({
