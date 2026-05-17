@@ -9616,33 +9616,45 @@ describe("session presentation semantics", () => {
     })
     expect(viewportParts).toEqual({
       scrollViewport: {
-        style: "scroll-viewport-style",
-        contentContainerStyle: "scroll-content-style",
+        props: {
+          style: "scroll-viewport-style",
+          contentContainerStyle: "scroll-content-style",
+        },
       },
       loadingState: {
-        renderState: "loading-render-state",
-        spinnerSource: "spinner-source",
-        style: "loading-state-style",
-        spinnerStyle: "loading-spinner-style",
+        props: {
+          renderState: "loading-render-state",
+          spinnerSource: "spinner-source",
+          style: "loading-state-style",
+          spinnerStyle: "loading-spinner-style",
+        },
       },
       homeQuickStarts: {
-        shouldRender: true,
-        items: ["quick-start-item"],
-        styles: "home-quick-starts-styles",
+        props: {
+          shouldRender: true,
+          items: ["quick-start-item"],
+          styles: "home-quick-starts-styles",
+        },
       },
       historyBanner: {
-        renderState: "history-banner-state",
-        styles: "history-banner-styles",
+        props: {
+          renderState: "history-banner-state",
+          styles: "history-banner-styles",
+        },
       },
       stepSummary: {
-        renderState: "step-summary-state",
-        styles: "step-summary-styles",
+        props: {
+          renderState: "step-summary-state",
+          styles: "step-summary-styles",
+        },
       },
       debugPanels: {
-        requestRows: ["request-row"],
-        voiceRows: ["voice-row"],
-        panelStyle: "debug-panel-style",
-        textStyle: "debug-text-style",
+        props: {
+          requestRows: ["request-row"],
+          voiceRows: ["voice-row"],
+          panelStyle: "debug-panel-style",
+          textStyle: "debug-text-style",
+        },
       },
     })
     expect(createChatRuntimeDebugPanelStackMobilePropsParts({

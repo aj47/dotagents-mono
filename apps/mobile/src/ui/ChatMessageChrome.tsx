@@ -10216,30 +10216,30 @@ export function ChatMessageRuntimeViewport<
   return (
     <ChatMessageConversationViewport
       {...scrollViewportProps}
-      {...viewportParts.scrollViewport}
+      {...viewportParts.scrollViewport.props}
       loadingState={(
         <ChatMessageLoadingState
-          {...viewportParts.loadingState}
+          {...viewportParts.loadingState.props}
         />
       )}
       homeState={(
         <ChatConversationHomeQuickStarts
-          {...viewportParts.homeQuickStarts}
+          {...viewportParts.homeQuickStarts.props}
         />
       )}
       historyBanner={(
         <ChatMessageHistoryBanner
-          {...viewportParts.historyBanner}
+          {...viewportParts.historyBanner.props}
         />
       )}
       stepSummary={(
         <ChatMessageStepSummaryCard
-          {...viewportParts.stepSummary}
+          {...viewportParts.stepSummary.props}
         />
       )}
       debugPanels={(
         <ChatMessageDebugPanelStack
-          {...viewportParts.debugPanels}
+          {...viewportParts.debugPanels.props}
         />
       )}
     >

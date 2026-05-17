@@ -7563,25 +7563,37 @@ export interface ChatRuntimeConversationViewportMobilePropsParts<
   TDebugPanelTextStyle = unknown,
 > {
   scrollViewport: {
-    style: TScrollViewportStyle
-    contentContainerStyle: TScrollViewportContentContainerStyle
+    props: {
+      style: TScrollViewportStyle
+      contentContainerStyle: TScrollViewportContentContainerStyle
+    }
   }
-  loadingState: TLoadingState & {
-    style: TLoadingStateStyle
-    spinnerStyle: TLoadingStateSpinnerStyle
+  loadingState: {
+    props: TLoadingState & {
+      style: TLoadingStateStyle
+      spinnerStyle: TLoadingStateSpinnerStyle
+    }
   }
-  homeQuickStarts: THomeQuickStarts & {
-    styles: THomeQuickStartsStyles
+  homeQuickStarts: {
+    props: THomeQuickStarts & {
+      styles: THomeQuickStartsStyles
+    }
   }
-  historyBanner: THistoryBanner & {
-    styles: THistoryBannerStyles
+  historyBanner: {
+    props: THistoryBanner & {
+      styles: THistoryBannerStyles
+    }
   }
-  stepSummary: TStepSummary & {
-    styles: TStepSummaryStyles
+  stepSummary: {
+    props: TStepSummary & {
+      styles: TStepSummaryStyles
+    }
   }
-  debugPanels: TDebugPanels & {
-    panelStyle: TDebugPanelStyle
-    textStyle: TDebugPanelTextStyle
+  debugPanels: {
+    props: TDebugPanels & {
+      panelStyle: TDebugPanelStyle
+      textStyle: TDebugPanelTextStyle
+    }
   }
 }
 
@@ -24900,30 +24912,42 @@ export function createChatRuntimeConversationViewportMobilePropsParts<
 > {
   return {
     scrollViewport: {
-      style: styles.scrollViewport.style,
-      contentContainerStyle: styles.scrollViewport.contentContainerStyle,
+      props: {
+        style: styles.scrollViewport.style,
+        contentContainerStyle: styles.scrollViewport.contentContainerStyle,
+      },
     },
     loadingState: {
-      ...loadingState,
-      style: styles.loadingState.style,
-      spinnerStyle: styles.loadingState.spinnerStyle,
+      props: {
+        ...loadingState,
+        style: styles.loadingState.style,
+        spinnerStyle: styles.loadingState.spinnerStyle,
+      },
     },
     homeQuickStarts: {
-      ...homeQuickStarts,
-      styles: styles.homeQuickStarts,
+      props: {
+        ...homeQuickStarts,
+        styles: styles.homeQuickStarts,
+      },
     },
     historyBanner: {
-      ...historyBanner,
-      styles: styles.historyBanner,
+      props: {
+        ...historyBanner,
+        styles: styles.historyBanner,
+      },
     },
     stepSummary: {
-      ...stepSummary,
-      styles: styles.stepSummary,
+      props: {
+        ...stepSummary,
+        styles: styles.stepSummary,
+      },
     },
     debugPanels: {
-      ...debugPanels,
-      panelStyle: styles.debugPanels.panelStyle,
-      textStyle: styles.debugPanels.textStyle,
+      props: {
+        ...debugPanels,
+        panelStyle: styles.debugPanels.panelStyle,
+        textStyle: styles.debugPanels.textStyle,
+      },
     },
   }
 }
