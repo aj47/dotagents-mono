@@ -6008,70 +6008,74 @@ describe("session presentation semantics", () => {
       streamingStyles: expandedContentStyles,
     })
     expect(expandedContentParts).toEqual({
-      shouldRenderStreamingContent: true,
       markdown: {
         content: "Markdown content",
         assetBaseUrl: "asset-base",
         assetAuthToken: "asset-token",
       },
-      header: {
-        props: {
-          accessible: true,
-          accessibilityRole: "text",
-          accessibilityLabel: "Generating response...",
-          style: "header-style",
-        },
+      streamingContent: {
+        shouldRender: true,
         content: {
-          icon: {
+          header: {
             props: {
-              name: "sparkles",
-              size: 14,
-              color: "#2563eb",
-            },
-          },
-          title: {
-            text: "Generating response...",
-            props: {
-              style: "title-style",
-              numberOfLines: 1,
-            },
-          },
-          spinner: {
-            props: {
-              source: "spinner-source",
-              style: "spinner-style",
-              resizeMode: "contain",
-            },
-          },
-          badge: {
-            props: {
-              style: "badge-style",
+              accessible: true,
+              accessibilityRole: "text",
+              accessibilityLabel: "Generating response...",
+              style: "header-style",
             },
             content: {
-              label: {
-                text: "Streaming",
+              icon: {
                 props: {
-                  style: "badge-text-style",
+                  name: "sparkles",
+                  size: 14,
+                  color: "#2563eb",
+                },
+              },
+              title: {
+                text: "Generating response...",
+                props: {
+                  style: "title-style",
+                  numberOfLines: 1,
+                },
+              },
+              spinner: {
+                props: {
+                  source: "spinner-source",
+                  style: "spinner-style",
+                  resizeMode: "contain",
+                },
+              },
+              badge: {
+                props: {
+                  style: "badge-style",
+                },
+                content: {
+                  label: {
+                    text: "Streaming",
+                    props: {
+                      style: "badge-text-style",
+                    },
+                  },
                 },
               },
             },
           },
-        },
-      },
-      body: {
-        props: {
-          style: "body-row-style",
-        },
-        content: {
-          text: {
-            text: "Hello live",
+          body: {
             props: {
-              style: "text-style",
+              style: "body-row-style",
             },
-          },
-          caret: {
-            props: {
-              style: "caret-style",
+            content: {
+              text: {
+                text: "Hello live",
+                props: {
+                  style: "text-style",
+                },
+              },
+              caret: {
+                props: {
+                  style: "caret-style",
+                },
+              },
             },
           },
         },
@@ -6100,7 +6104,7 @@ describe("session presentation semantics", () => {
       markdownContent: "Markdown content",
       spinnerSource: "spinner-source",
       streamingStyles: expandedContentStyles,
-    }).shouldRenderStreamingContent).toBe(false)
+    }).streamingContent.shouldRender).toBe(false)
     const collapsedPreviewParts = createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
       renderState: {
         accessibilityRole: "button",
@@ -6187,7 +6191,7 @@ describe("session presentation semantics", () => {
       shouldRenderActionSlots: true,
       entries: conversationActionEntries,
       expanded: {
-        streamingRenderState: expandedContentParts.header,
+        streamingRenderState: expandedContentParts.streamingContent.content.header,
         markdownContent: "Markdown content",
         assetBaseUrl: "asset-base",
         assetAuthToken: "asset-token",
@@ -6211,7 +6215,7 @@ describe("session presentation semantics", () => {
           },
           content: {
             props: {
-              streamingRenderState: expandedContentParts.header,
+              streamingRenderState: expandedContentParts.streamingContent.content.header,
               markdownContent: "Markdown content",
               assetBaseUrl: "asset-base",
               assetAuthToken: "asset-token",

@@ -4967,12 +4967,15 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(markdownRendererSource, /resolveMobileMarkdownSpacing/);
   assert.doesNotMatch(markdownRendererSource, /resolveChatRuntimeMobileFontFamily/);
   assert.doesNotMatch(markdownRendererSource, /color: markdownContentColors\.body\.color/);
-  assert.match(chatMessageChromeSource, /if \(!expandedContentParts\.shouldRenderStreamingContent\) \{/);
+  assert.match(chatMessageChromeSource, /const expandedStreamingContent = expandedContentParts\.streamingContent;/);
+  assert.match(chatMessageChromeSource, /if \(!expandedStreamingContent\.shouldRender\) \{/);
   assert.match(chatMessageChromeSource, /<MarkdownRenderer[\s\S]*?content=\{expandedContentParts\.markdown\.content\}[\s\S]*?assetBaseUrl=\{expandedContentParts\.markdown\.assetBaseUrl\}[\s\S]*?assetAuthToken=\{expandedContentParts\.markdown\.assetAuthToken\}/);
-  assert.match(chatMessageChromeSource, /const expandedHeaderContent = expandedContentParts\.header\.content;/);
+  assert.match(chatMessageChromeSource, /const expandedHeaderPart = expandedStreamingContent\.content\.header;/);
+  assert.match(chatMessageChromeSource, /const expandedHeaderContent = expandedHeaderPart\.content;/);
   assert.match(chatMessageChromeSource, /const expandedBadgeContent = expandedHeaderContent\.badge\.content;/);
-  assert.match(chatMessageChromeSource, /const expandedBodyContent = expandedContentParts\.body\.content;/);
-  assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.expandedContentParts\.header\.props\}>/);
+  assert.match(chatMessageChromeSource, /const expandedBodyPart = expandedStreamingContent\.content\.body;/);
+  assert.match(chatMessageChromeSource, /const expandedBodyContent = expandedBodyPart\.content;/);
+  assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.expandedHeaderPart\.props\}>/);
   assert.match(chatMessageChromeSource, /<Ionicons\s+\{\.\.\.expandedHeaderContent\.icon\.props\}/);
   assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.expandedHeaderContent\.title\.props\}>/);
   assert.match(chatMessageChromeSource, /\{expandedHeaderContent\.title\.text\}/);
@@ -4980,14 +4983,17 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.expandedHeaderContent\.badge\.props\}>/);
   assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.expandedBadgeContent\.label\.props\}>/);
   assert.match(chatMessageChromeSource, /\{expandedBadgeContent\.label\.text\}/);
-  assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.expandedContentParts\.body\.props\}>/);
+  assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.expandedBodyPart\.props\}>/);
   assert.match(chatMessageChromeSource, /<Text\s+\{\.\.\.expandedBodyContent\.text\.props\}>/);
   assert.match(chatMessageChromeSource, /\{expandedBodyContent\.text\.text\}/);
   assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.expandedBodyContent\.caret\.props\} \/>/);
+  assert.doesNotMatch(chatMessageChromeSource, /expandedContentParts\.shouldRenderStreamingContent/);
+  assert.doesNotMatch(chatMessageChromeSource, /expandedContentParts\.(header|body)\./);
   assert.doesNotMatch(chatMessageChromeSource, /expandedContentParts\.(icon|title|spinner|badge|badgeLabel|text|caret)/);
   assert.doesNotMatch(chatMessageChromeSource, /expandedContentParts\.(header|icon|title|spinner|badge|badgeLabel|body|text|caret)\.(accessible|accessibilityRole|accessibilityLabel|style|numberOfLines|source|resizeMode|name|size|color)/);
   assert.match(sessionPresentationSource, /streamingStyles: \{\s+header: styles\.streamingContentHeader,\s+title: styles\.streamingContentTitle,\s+spinner: styles\.streamingContentSpinner,\s+badge: styles\.streamingContentBadge,\s+badgeText: styles\.streamingContentBadgeText,\s+bodyRow: styles\.streamingContentBodyRow,\s+text: styles\.streamingContentText,\s+caret: styles\.streamingContentCaret,\s+\}/);
-  assert.match(sessionPresentationSource, /shouldRenderStreamingContent: streamingRenderState\.shouldRender/);
+  assert.match(sessionPresentationSource, /streamingContent: \{\s+shouldRender: streamingRenderState\.shouldRender,\s+content: \{/);
+  assert.doesNotMatch(sessionPresentationSource, /shouldRenderStreamingContent:/);
   assert.doesNotMatch(
     chatMessageChromeSource,
     /export function ChatMessageExpandedContent[\s\S]*?accessibilityRole=\{streamingRenderState\.accessibilityRole\}[\s\S]*?export function ChatMessageCollapsedPreview/

@@ -7174,66 +7174,70 @@ export interface ChatRuntimeConversationExpandedContentMobilePropsParts<
     caret: unknown
   },
 > {
-  shouldRenderStreamingContent: boolean
   markdown: {
     content: TMarkdownContent
     assetBaseUrl?: TAssetBaseUrl
     assetAuthToken?: TAssetAuthToken
   }
-  header: {
-    props: {
-      accessible: true
-      accessibilityRole: TStreamingRenderState["accessibilityRole"]
-      accessibilityLabel: string
-      style: TStreamingStyles["header"]
-    }
+  streamingContent: {
+    shouldRender: boolean
     content: {
-      icon: {
-        props: TStreamingRenderState["icon"]
-      }
-      title: {
-        text: string
+      header: {
         props: {
-          style: TStreamingStyles["title"]
-          numberOfLines: TStreamingRenderState["surface"]["titleNumberOfLines"]
-        }
-      }
-      spinner: {
-        props: {
-          source: TSpinnerSource
-          style: TStreamingStyles["spinner"]
-          resizeMode: TStreamingRenderState["spinner"]["resizeMode"]
-        }
-      }
-      badge: {
-        props: {
-          style: TStreamingStyles["badge"]
+          accessible: true
+          accessibilityRole: TStreamingRenderState["accessibilityRole"]
+          accessibilityLabel: string
+          style: TStreamingStyles["header"]
         }
         content: {
-          label: {
+          icon: {
+            props: TStreamingRenderState["icon"]
+          }
+          title: {
             text: string
             props: {
-              style: TStreamingStyles["badgeText"]
+              style: TStreamingStyles["title"]
+              numberOfLines: TStreamingRenderState["surface"]["titleNumberOfLines"]
+            }
+          }
+          spinner: {
+            props: {
+              source: TSpinnerSource
+              style: TStreamingStyles["spinner"]
+              resizeMode: TStreamingRenderState["spinner"]["resizeMode"]
+            }
+          }
+          badge: {
+            props: {
+              style: TStreamingStyles["badge"]
+            }
+            content: {
+              label: {
+                text: string
+                props: {
+                  style: TStreamingStyles["badgeText"]
+                }
+              }
             }
           }
         }
       }
-    }
-  }
-  body: {
-    props: {
-      style: TStreamingStyles["bodyRow"]
-    }
-    content: {
-      text: {
-        text: string
+      body: {
         props: {
-          style: TStreamingStyles["text"]
+          style: TStreamingStyles["bodyRow"]
         }
-      }
-      caret: {
-        props: {
-          style: TStreamingStyles["caret"]
+        content: {
+          text: {
+            text: string
+            props: {
+              style: TStreamingStyles["text"]
+            }
+          }
+          caret: {
+            props: {
+              style: TStreamingStyles["caret"]
+            }
+          }
         }
       }
     }
@@ -24912,66 +24916,70 @@ export function createChatRuntimeConversationExpandedContentMobilePropsParts<
   TStreamingStyles
 > {
   return {
-    shouldRenderStreamingContent: streamingRenderState.shouldRender,
     markdown: {
       content: markdownContent,
       assetBaseUrl,
       assetAuthToken,
     },
-    header: {
-      props: {
-        accessible: true,
-        accessibilityRole: streamingRenderState.accessibilityRole,
-        accessibilityLabel: streamingRenderState.accessibilityLabel,
-        style: streamingStyles.header,
-      },
+    streamingContent: {
+      shouldRender: streamingRenderState.shouldRender,
       content: {
-        icon: {
-          props: streamingRenderState.icon,
-        },
-        title: {
-          text: streamingRenderState.title,
+        header: {
           props: {
-            style: streamingStyles.title,
-            numberOfLines: streamingRenderState.surface.titleNumberOfLines,
-          },
-        },
-        spinner: {
-          props: {
-            source: spinnerSource,
-            style: streamingStyles.spinner,
-            resizeMode: streamingRenderState.spinner.resizeMode,
-          },
-        },
-        badge: {
-          props: {
-            style: streamingStyles.badge,
+            accessible: true,
+            accessibilityRole: streamingRenderState.accessibilityRole,
+            accessibilityLabel: streamingRenderState.accessibilityLabel,
+            style: streamingStyles.header,
           },
           content: {
-            label: {
-              text: streamingRenderState.badgeLabel,
+            icon: {
+              props: streamingRenderState.icon,
+            },
+            title: {
+              text: streamingRenderState.title,
               props: {
-                style: streamingStyles.badgeText,
+                style: streamingStyles.title,
+                numberOfLines: streamingRenderState.surface.titleNumberOfLines,
+              },
+            },
+            spinner: {
+              props: {
+                source: spinnerSource,
+                style: streamingStyles.spinner,
+                resizeMode: streamingRenderState.spinner.resizeMode,
+              },
+            },
+            badge: {
+              props: {
+                style: streamingStyles.badge,
+              },
+              content: {
+                label: {
+                  text: streamingRenderState.badgeLabel,
+                  props: {
+                    style: streamingStyles.badgeText,
+                  },
+                },
               },
             },
           },
         },
-      },
-    },
-    body: {
-      props: {
-        style: streamingStyles.bodyRow,
-      },
-      content: {
-        text: {
-          text: streamingRenderState.content,
+        body: {
           props: {
-            style: streamingStyles.text,
+            style: streamingStyles.bodyRow,
           },
-        },
-        caret: {
-          props: {
-            style: streamingStyles.caret,
+          content: {
+            text: {
+              text: streamingRenderState.content,
+              props: {
+                style: streamingStyles.text,
+              },
+            },
+            caret: {
+              props: {
+                style: streamingStyles.caret,
+              },
+            },
           },
         },
       },

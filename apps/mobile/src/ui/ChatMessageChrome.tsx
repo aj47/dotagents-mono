@@ -11754,8 +11754,9 @@ export function ChatMessageExpandedContent({
     spinnerSource,
     streamingStyles,
   });
+  const expandedStreamingContent = expandedContentParts.streamingContent;
 
-  if (!expandedContentParts.shouldRenderStreamingContent) {
+  if (!expandedStreamingContent.shouldRender) {
     return (
       <MarkdownRenderer
         content={expandedContentParts.markdown.content}
@@ -11765,13 +11766,15 @@ export function ChatMessageExpandedContent({
     );
   }
 
-  const expandedHeaderContent = expandedContentParts.header.content;
+  const expandedHeaderPart = expandedStreamingContent.content.header;
+  const expandedHeaderContent = expandedHeaderPart.content;
   const expandedBadgeContent = expandedHeaderContent.badge.content;
-  const expandedBodyContent = expandedContentParts.body.content;
+  const expandedBodyPart = expandedStreamingContent.content.body;
+  const expandedBodyContent = expandedBodyPart.content;
 
   return (
     <>
-      <View {...expandedContentParts.header.props}>
+      <View {...expandedHeaderPart.props}>
         <Ionicons {...expandedHeaderContent.icon.props} />
         <Text {...expandedHeaderContent.title.props}>
           {expandedHeaderContent.title.text}
@@ -11783,7 +11786,7 @@ export function ChatMessageExpandedContent({
           </Text>
         </View>
       </View>
-      <View {...expandedContentParts.body.props}>
+      <View {...expandedBodyPart.props}>
         <Text {...expandedBodyContent.text.props}>
           {expandedBodyContent.text.text}
         </Text>
