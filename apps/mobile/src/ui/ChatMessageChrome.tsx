@@ -79,6 +79,7 @@ import {
   getChatRuntimeConversationThreadBodyMobileState,
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
+  createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeMessageHistoryBannerMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -9772,29 +9773,39 @@ export function ChatMessageTurnDurationBadge({
   textStyle,
   liveTextStyle,
 }: ChatMessageTurnDurationBadgeProps) {
+  const turnDurationBadgeParts = createChatRuntimeTurnDurationBadgeMobilePropsParts({
+    renderState,
+    style,
+    liveStyle,
+    textStyle,
+    liveTextStyle,
+  });
+
+  if (!turnDurationBadgeParts.shouldRenderBadge) return null;
+
   return (
     <View
-      accessible
-      accessibilityRole={renderState.accessibilityRole}
-      accessibilityLabel={renderState.accessibilityLabel}
+      accessible={turnDurationBadgeParts.container.accessible}
+      accessibilityRole={turnDurationBadgeParts.container.accessibilityRole}
+      accessibilityLabel={turnDurationBadgeParts.container.accessibilityLabel}
       style={[
-        style,
-        renderState.isLive && liveStyle,
+        turnDurationBadgeParts.container.style,
+        turnDurationBadgeParts.container.isLive && turnDurationBadgeParts.container.liveStyle,
       ]}
     >
       <Ionicons
-        name={renderState.icon.name}
-        size={renderState.icon.size}
-        color={renderState.icon.color}
+        name={turnDurationBadgeParts.icon.name}
+        size={turnDurationBadgeParts.icon.size}
+        color={turnDurationBadgeParts.icon.color}
       />
       <Text
         style={[
-          textStyle,
-          renderState.isLive && liveTextStyle,
+          turnDurationBadgeParts.label.style,
+          turnDurationBadgeParts.label.isLive && turnDurationBadgeParts.label.liveStyle,
         ]}
-        numberOfLines={renderState.badge.numberOfLines}
+        numberOfLines={turnDurationBadgeParts.label.numberOfLines}
       >
-        {renderState.label}
+        {turnDurationBadgeParts.label.text}
       </Text>
     </View>
   );

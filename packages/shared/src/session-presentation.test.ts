@@ -124,6 +124,7 @@ import {
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeLoadingStateMobilePropsParts,
   createChatRuntimeInlineActivityMobilePropsParts,
+  createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeStepSummaryCardMobilePropsParts,
   createChatRuntimeRetryStatusMobileStyleSlots,
   createChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -7047,6 +7048,71 @@ describe("session presentation semantics", () => {
         color: "#d97706",
       },
     })
+    const turnDurationBadgeParts = createChatRuntimeTurnDurationBadgeMobilePropsParts({
+      renderState: {
+        shouldRender: true,
+        isLive: true,
+        accessibilityRole: "text",
+        accessibilityLabel: "Agent turn in progress: 12s",
+        icon: {
+          name: "time",
+          size: 12,
+          color: "#d97706",
+        },
+        label: "12s",
+        badge: {
+          numberOfLines: 1,
+        },
+      },
+      style: "badge-style",
+      liveStyle: "badge-live-style",
+      textStyle: "text-style",
+      liveTextStyle: "text-live-style",
+    })
+    expect(turnDurationBadgeParts).toEqual({
+      shouldRenderBadge: true,
+      container: {
+        accessible: true,
+        accessibilityRole: "text",
+        accessibilityLabel: "Agent turn in progress: 12s",
+        style: "badge-style",
+        liveStyle: "badge-live-style",
+        isLive: true,
+      },
+      icon: {
+        name: "time",
+        size: 12,
+        color: "#d97706",
+      },
+      label: {
+        style: "text-style",
+        liveStyle: "text-live-style",
+        isLive: true,
+        numberOfLines: 1,
+        text: "12s",
+      },
+    })
+    expect(createChatRuntimeTurnDurationBadgeMobilePropsParts({
+      renderState: {
+        shouldRender: false,
+        isLive: false,
+        accessibilityRole: "text",
+        accessibilityLabel: "",
+        icon: {
+          name: "time",
+          size: 12,
+          color: "#64748b",
+        },
+        label: "",
+        badge: {
+          numberOfLines: 1,
+        },
+      },
+      style: "badge-style",
+      liveStyle: "badge-live-style",
+      textStyle: "text-style",
+      liveTextStyle: "text-live-style",
+    }).shouldRenderBadge).toBe(false)
     const messageThreadStyleColors = {
       ...messageTurnDurationColors,
       info: "#0ea5e9",

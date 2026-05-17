@@ -3695,6 +3695,86 @@ export interface ChatRuntimeInlineActivityMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeTurnDurationBadgeMobilePropsPartsInput<
+  TRenderState extends {
+    shouldRender: boolean
+    isLive: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    label: string
+    badge: {
+      numberOfLines: unknown
+    }
+  } = {
+    shouldRender: boolean
+    isLive: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    label: string
+    badge: {
+      numberOfLines: unknown
+    }
+  },
+  TStyle = unknown,
+  TLiveStyle = unknown,
+  TTextStyle = unknown,
+  TLiveTextStyle = unknown,
+> {
+  renderState: TRenderState
+  style: TStyle
+  liveStyle: TLiveStyle
+  textStyle: TTextStyle
+  liveTextStyle: TLiveTextStyle
+}
+
+export interface ChatRuntimeTurnDurationBadgeMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    isLive: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    label: string
+    badge: {
+      numberOfLines: unknown
+    }
+  } = {
+    shouldRender: boolean
+    isLive: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    label: string
+    badge: {
+      numberOfLines: unknown
+    }
+  },
+  TStyle = unknown,
+  TLiveStyle = unknown,
+  TTextStyle = unknown,
+  TLiveTextStyle = unknown,
+> {
+  shouldRenderBadge: boolean
+  container: {
+    accessible: true
+    accessibilityRole: TRenderState["accessibilityRole"]
+    accessibilityLabel: string
+    style: TStyle
+    liveStyle: TLiveStyle
+    isLive: boolean
+  }
+  icon: TRenderState["icon"]
+  label: {
+    style: TTextStyle
+    liveStyle: TLiveTextStyle
+    isLive: boolean
+    numberOfLines: TRenderState["badge"]["numberOfLines"]
+    text: string
+  }
+}
+
 export interface ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -17197,6 +17277,62 @@ export function createChatRuntimeInlineActivityMobilePropsParts<
       source: spinnerSource,
       style: spinnerStyle,
       resizeMode: renderState.spinnerResizeMode,
+    },
+  }
+}
+
+export function createChatRuntimeTurnDurationBadgeMobilePropsParts<
+  TRenderState extends {
+    shouldRender: boolean
+    isLive: boolean
+    accessibilityRole: unknown
+    accessibilityLabel: string
+    icon: unknown
+    label: string
+    badge: {
+      numberOfLines: unknown
+    }
+  },
+  TStyle,
+  TLiveStyle,
+  TTextStyle,
+  TLiveTextStyle,
+>({
+  renderState,
+  style,
+  liveStyle,
+  textStyle,
+  liveTextStyle,
+}: ChatRuntimeTurnDurationBadgeMobilePropsPartsInput<
+  TRenderState,
+  TStyle,
+  TLiveStyle,
+  TTextStyle,
+  TLiveTextStyle
+>): ChatRuntimeTurnDurationBadgeMobilePropsParts<
+  TRenderState,
+  TStyle,
+  TLiveStyle,
+  TTextStyle,
+  TLiveTextStyle
+> {
+  return {
+    shouldRenderBadge: renderState.shouldRender,
+    container: {
+      accessible: true,
+      accessibilityRole: renderState.accessibilityRole,
+      accessibilityLabel: renderState.accessibilityLabel,
+      style,
+      liveStyle,
+      isLive: renderState.isLive,
+    },
+    icon: renderState.icon,
+    label: {
+      style: textStyle,
+      liveStyle: liveTextStyle,
+      isLive: renderState.isLive,
+      numberOfLines: renderState.badge.numberOfLines,
+      text: renderState.label,
     },
   }
 }
