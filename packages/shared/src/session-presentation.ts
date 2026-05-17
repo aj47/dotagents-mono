@@ -2013,7 +2013,9 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
       | TStyles["buttonDisabled"]
       | false
     >
-    icon: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["icon"]
+    icon: {
+      props: ChatRuntimeToolApprovalMobileRenderState["argumentsToggle"]["icon"]
+    }
     label: {
       style: TStyles["argumentsToggleText"]
       text: string
@@ -22833,7 +22835,9 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
         pressed && styles.argumentsTogglePressed,
         renderState.argumentsToggle.isDisabled && styles.buttonDisabled,
       ],
-      icon: renderState.argumentsToggle.icon,
+      icon: {
+        props: renderState.argumentsToggle.icon,
+      },
       label: {
         style: styles.argumentsToggleText,
         text: renderState.argumentsToggle.label,

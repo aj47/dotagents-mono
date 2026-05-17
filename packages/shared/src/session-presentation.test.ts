@@ -8207,7 +8207,9 @@ describe("session presentation semantics", () => {
         disabled: true,
       },
       ariaExpanded: true,
-      icon: toolApprovalProps.renderState.argumentsToggle.icon,
+      icon: {
+        props: toolApprovalProps.renderState.argumentsToggle.icon,
+      },
       label: {
         style: "tool-approval-arguments-toggle-text-style",
         text: CHAT_RUNTIME_PRESENTATION.approval.hideArgumentsLabel,

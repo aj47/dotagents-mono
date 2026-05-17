@@ -631,9 +631,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview\.shouldRender \? \(/);
   assert.match(toolApprovalComponentSource, /numberOfLines=\{toolApprovalParts\.argumentsPreview\.numberOfLines\}/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsPreview \? \(/);
-  assert.match(toolApprovalComponentSource, /name=\{toolApprovalParts\.argumentsToggle\.icon\.name\}/);
-  assert.match(toolApprovalComponentSource, /size=\{toolApprovalParts\.argumentsToggle\.icon\.size\}/);
-  assert.match(toolApprovalComponentSource, /color=\{toolApprovalParts\.argumentsToggle\.icon\.color\}/);
+  assert.match(sessionPresentationSource, /argumentsToggle: \{[\s\S]*?icon: \{[\s\S]*?props: renderState\.argumentsToggle\.icon,/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalIcon\s+\{\.\.\.toolApprovalParts\.argumentsToggle\.icon\.props\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.argumentsToggle\.icon\.(name|size|color)/);
   assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.argumentsToggle\.label\.text\}/);
   assert.match(toolApprovalComponentSource, /toolApprovalParts\.fullArguments\.shouldRender \? \(/);
   assert.match(toolApprovalComponentSource, /<ScrollView[\s\S]*?style=\{toolApprovalParts\.fullArguments\.scroll\.style\}[\s\S]*?nestedScrollEnabled=\{toolApprovalParts\.fullArguments\.scroll\.nestedScrollEnabled\}/);

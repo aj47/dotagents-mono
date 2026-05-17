@@ -1585,7 +1585,8 @@ type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolAppro
 >>;
 
 type ChatMessageToolApprovalIconProps =
-  ChatMessageToolApprovalParts['headerIcon']['props'];
+  | ChatMessageToolApprovalParts['headerIcon']['props']
+  | ChatMessageToolApprovalParts['argumentsToggle']['icon']['props'];
 
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
@@ -7476,10 +7477,8 @@ export function ChatMessageToolApproval({
           aria-expanded={toolApprovalParts.argumentsToggle.ariaExpanded}
           style={toolApprovalParts.argumentsToggle.style}
         >
-          <Ionicons
-            name={toolApprovalParts.argumentsToggle.icon.name}
-            size={toolApprovalParts.argumentsToggle.icon.size}
-            color={toolApprovalParts.argumentsToggle.icon.color}
+          <ChatMessageToolApprovalIcon
+            {...toolApprovalParts.argumentsToggle.icon.props}
           />
           <Text style={toolApprovalParts.argumentsToggle.label.style}>
             {toolApprovalParts.argumentsToggle.label.text}
