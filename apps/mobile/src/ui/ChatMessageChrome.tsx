@@ -1745,6 +1745,10 @@ type ChatConversationHomePromptEditorModalActionButtonPart = {
   props: ComponentProps<typeof TouchableOpacity>;
 };
 
+type ChatConversationHomePromptEditorModalActionsPart = {
+  props: ComponentProps<typeof View>;
+};
+
 type ChatConversationHomePromptEditorModalHeaderPart = {
   props: ComponentProps<typeof View>;
 };
@@ -1778,6 +1782,14 @@ type ChatConversationHomePromptEditorModalFieldProps = {
 type ChatConversationHomePromptEditorModalActionButtonProps = {
   button: ChatConversationHomePromptEditorModalActionButtonPart;
   label: ChatConversationHomePromptEditorModalTextPart;
+};
+
+type ChatConversationHomePromptEditorModalActionsProps = {
+  actions: ChatConversationHomePromptEditorModalActionsPart;
+  cancelButton: ChatConversationHomePromptEditorModalActionButtonPart;
+  cancelLabel: ChatConversationHomePromptEditorModalTextPart;
+  saveButton: ChatConversationHomePromptEditorModalActionButtonPart;
+  saveLabel: ChatConversationHomePromptEditorModalTextPart;
 };
 
 type ChatMessageRuntimeOverlaysProps = {
@@ -8307,20 +8319,38 @@ export function ChatConversationHomePromptEditorModal({
               input={modalParts.contentInput}
             />
 
-            <View {...modalParts.actions.props}>
-              <ChatConversationHomePromptEditorModalActionButton
-                button={modalParts.cancelButton}
-                label={modalParts.cancelLabel}
-              />
-              <ChatConversationHomePromptEditorModalActionButton
-                button={modalParts.saveButton}
-                label={modalParts.saveLabel}
-              />
-            </View>
+            <ChatConversationHomePromptEditorModalActions
+              actions={modalParts.actions}
+              cancelButton={modalParts.cancelButton}
+              cancelLabel={modalParts.cancelLabel}
+              saveButton={modalParts.saveButton}
+              saveLabel={modalParts.saveLabel}
+            />
           </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+export function ChatConversationHomePromptEditorModalActions({
+  actions,
+  cancelButton,
+  cancelLabel,
+  saveButton,
+  saveLabel,
+}: ChatConversationHomePromptEditorModalActionsProps) {
+  return (
+    <View {...actions.props}>
+      <ChatConversationHomePromptEditorModalActionButton
+        button={cancelButton}
+        label={cancelLabel}
+      />
+      <ChatConversationHomePromptEditorModalActionButton
+        button={saveButton}
+        label={saveLabel}
+      />
+    </View>
   );
 }
 
