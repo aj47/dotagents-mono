@@ -3132,10 +3132,12 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
   },
 > {
   callSection: {
-    renderState: TRenderState
-    toolName: string
-    onHeaderPress: TOnHeaderPress | undefined
-    styles: TStyles["callSection"]
+    props: {
+      renderState: TRenderState
+      toolName: string
+      onHeaderPress: TOnHeaderPress | undefined
+      styles: TStyles["callSection"]
+    }
   }
   inputSection: ChatRuntimeMobilePropsPart<TInput & {
     styles: TStyles["payloadSection"]
@@ -20633,10 +20635,12 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
 
   return {
     callSection: {
-      renderState,
-      toolName,
-      onHeaderPress,
-      styles: styles.callSection,
+      props: {
+        renderState,
+        toolName,
+        onHeaderPress,
+        styles: styles.callSection,
+      },
     },
     inputSection,
     resultSection,

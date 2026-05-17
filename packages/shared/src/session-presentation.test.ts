@@ -13298,10 +13298,12 @@ describe("session presentation semantics", () => {
     })
     expect(callDetailParts).toEqual({
       callSection: {
-        renderState: "detail-header-state",
-        toolName: "read_file",
-        onHeaderPress: "toggle-detail",
-        styles: "call-section-styles",
+        props: {
+          renderState: "detail-header-state",
+          toolName: "read_file",
+          onHeaderPress: "toggle-detail",
+          styles: "call-section-styles",
+        },
       },
       inputSection: {
         shouldRender: true,

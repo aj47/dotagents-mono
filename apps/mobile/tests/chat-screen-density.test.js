@@ -4038,8 +4038,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallDetailMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallDetailMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const callDetailParts = createChatRuntimeToolExecutionCallDetailMobilePropsParts\(\{\s+renderState,\s+toolName,\s+onHeaderPress,\s+input,\s+result,\s+pendingResult,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallSection\s+\{\.\.\.callDetailParts\.callSection\}/);
-  assert.match(sessionPresentationSource, /callSection: \{\s+renderState,\s+toolName,\s+onHeaderPress,\s+styles: styles\.callSection,/);
+  assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallSection\s+\{\.\.\.callDetailParts\.callSection\.props\}/);
+  assert.match(sessionPresentationSource, /callSection: \{\s+props: \{\s+renderState,\s+toolName,\s+onHeaderPress,\s+styles: styles\.callSection,/);
+  assert.doesNotMatch(chatMessageChromeSource, /callDetailParts\.callSection\.(renderState|toolName|onHeaderPress|styles)/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSection/);
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallSectionMobilePropsParts/);

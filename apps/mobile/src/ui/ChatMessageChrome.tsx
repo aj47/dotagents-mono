@@ -10383,7 +10383,7 @@ export function ChatMessageToolExecutionCallDetail({
 
   return (
     <ChatMessageToolExecutionCallSection
-      {...callDetailParts.callSection}
+      {...callDetailParts.callSection.props}
     >
       {callDetailParts.inputSection.shouldRender ? (
         <ChatMessageToolExecutionPayloadSection
