@@ -11180,7 +11180,7 @@ describe("session presentation semantics", () => {
         toolPreviewMore: "delegation-tool-preview-more-style",
       },
     })
-    expect(delegationCardParts.card).toEqual({
+    expect(delegationCardParts.card.props).toEqual({
       accessible: true,
       accessibilityRole: delegationCardProps.surface.accessibilityRole,
       accessibilityLabel: delegationCardProps.accessibilityLabel,

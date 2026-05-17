@@ -2252,10 +2252,12 @@ export interface ChatRuntimeDelegationCardMobilePropsParts<
     ChatRuntimeDelegationCardMobilePropsPartsStyleSlots,
 > {
   card: {
-    accessible: true
-    accessibilityRole: ChatRuntimeDelegationCardMobilePresentationState["surface"]["accessibilityRole"]
-    accessibilityLabel: string
-    style: TStyles["card"]
+    props: {
+      accessible: true
+      accessibilityRole: ChatRuntimeDelegationCardMobilePresentationState["surface"]["accessibilityRole"]
+      accessibilityLabel: string
+      style: TStyles["card"]
+    }
   }
   header: {
     props: {
@@ -23565,10 +23567,12 @@ export function createChatRuntimeDelegationCardMobilePropsParts<
 
   return {
     card: {
-      accessible: true,
-      accessibilityRole: surface.accessibilityRole,
-      accessibilityLabel,
-      style: styles.card,
+      props: {
+        accessible: true,
+        accessibilityRole: surface.accessibilityRole,
+        accessibilityLabel,
+        style: styles.card,
+      },
     },
     header: {
       props: {

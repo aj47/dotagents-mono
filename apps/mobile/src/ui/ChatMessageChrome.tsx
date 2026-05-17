@@ -9021,10 +9021,7 @@ export function ChatMessageDelegationCard({
 
   return (
     <View
-      accessible={delegationCardParts.card.accessible}
-      accessibilityRole={delegationCardParts.card.accessibilityRole}
-      accessibilityLabel={delegationCardParts.card.accessibilityLabel}
-      style={delegationCardParts.card.style}
+      {...delegationCardParts.card.props}
     >
       <ChatMessageDelegationHeader
         {...delegationCardParts.header.props}
