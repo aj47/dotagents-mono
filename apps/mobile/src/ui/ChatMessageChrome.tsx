@@ -2549,6 +2549,24 @@ type ChatMessageToolExecutionPanelProps = {
   children: ReactNode;
 };
 
+type ChatMessageToolExecutionPanelParts = ReturnType<typeof createChatRuntimeToolExecutionPanelMobilePropsParts<
+  ChatMessageToolExecutionPanelProps['compact'],
+  ChatMessageToolExecutionPanelProps['expanded']
+>>;
+
+type ChatMessageToolExecutionPanelContentProps =
+  ChatMessageToolExecutionPanelParts['content'] & {
+    children: ReactNode;
+  };
+
+type ChatMessageToolExecutionPanelShellParts = ReturnType<typeof createChatRuntimeToolExecutionPanelShellMobilePropsParts<
+  ReactNode,
+  ReactNode
+>>;
+
+type ChatMessageToolExecutionPanelShellContentProps =
+  ChatMessageToolExecutionPanelShellParts['content'];
+
 type ChatMessageToolExecutionStackStyles = {
   compactGroup: ChatMessageToolExecutionCompactGroupStyles;
   compactRow: ChatMessageToolExecutionCompactRowStyles;
@@ -10675,28 +10693,52 @@ export function ChatMessageToolExecutionPanel({
     compact,
     expanded,
   });
-  const panelContent = panelParts.content;
 
-  if (!panelContent.shouldRender) return null;
+  return (
+    <ChatMessageToolExecutionPanelContent
+      {...panelParts.content}
+    >
+      {children}
+    </ChatMessageToolExecutionPanelContent>
+  );
+}
+
+export function ChatMessageToolExecutionPanelContent({
+  shouldRender,
+  compactList,
+  expandedGroup,
+  children,
+}: ChatMessageToolExecutionPanelContentProps) {
+  if (!shouldRender) return null;
 
   const panelShellParts = createChatRuntimeToolExecutionPanelShellMobilePropsParts({
     compactList: (
       <ChatMessageToolExecutionCompactList
-        {...panelContent.compactList.props}
+        {...compactList.props}
       />
     ),
-    expandedGroup: panelContent.expandedGroup.shouldRender ? (
-      <ChatMessageToolExecutionExpandedGroup {...panelContent.expandedGroup.props}>
+    expandedGroup: expandedGroup.shouldRender ? (
+      <ChatMessageToolExecutionExpandedGroup {...expandedGroup.props}>
         {children}
       </ChatMessageToolExecutionExpandedGroup>
     ) : null,
   });
-  const panelShellContent = panelShellParts.content;
 
   return (
+    <ChatMessageToolExecutionPanelShellContent
+      {...panelShellParts.content}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionPanelShellContent({
+  compactList,
+  expandedGroup,
+}: ChatMessageToolExecutionPanelShellContentProps) {
+  return (
     <>
-      {panelShellContent.compactList}
-      {panelShellContent.expandedGroup.shouldRender ? panelShellContent.expandedGroup.props : null}
+      {compactList}
+      {expandedGroup.shouldRender ? expandedGroup.props : null}
     </>
   );
 }
