@@ -82,6 +82,7 @@ import {
   createChatMessageRuntimeSurfaceChromeSlots,
   createChatRuntimeChromeSlots,
   createChatRuntimeConnectionBannerMobileStyleSlots,
+  createChatRuntimeDelegationCardMobilePropsParts,
   createChatRuntimeDelegationCardMobileStyleSlots,
   createChatRuntimeDelegationCardMobileProps,
   createChatRuntimeConversationActionComponentsMobileProps,
@@ -8845,6 +8846,147 @@ describe("session presentation semantics", () => {
     expect(delegationCardProps?.conversationPreview.rows[0]?.content).toBe("Looking through the changed files.")
     delegationCardProps?.conversationPreview.onShowAll?.()
     delegationCardProps?.toolPreview.onShowAll?.()
+    expect(delegationPropEvents).toEqual(["conversation:run-1", "tools:run-1"])
+    if (!delegationCardProps) {
+      throw new Error("Expected delegation card props")
+    }
+    delegationPropEvents.length = 0
+    const delegationCardParts = createChatRuntimeDelegationCardMobilePropsParts({
+      ...delegationCardProps,
+      conversationPreview: {
+        ...delegationCardProps.conversationPreview,
+        hiddenCount: 2,
+      },
+      toolPreview: {
+        ...delegationCardProps.toolPreview,
+        hiddenCount: 3,
+      },
+      styles: {
+        card: "delegation-card-style",
+        header: "delegation-header-style",
+        title: "delegation-title-style",
+        statusBadge: "delegation-status-badge-style",
+        statusText: "delegation-status-text-style",
+        liveText: "delegation-live-text-style",
+        subtitle: "delegation-subtitle-style",
+        metaRow: "delegation-meta-row-style",
+        metaText: "delegation-meta-text-style",
+        conversationPreview: "delegation-conversation-preview-style",
+        conversationPreviewLine: "delegation-conversation-preview-line-style",
+        conversationPreviewRole: "delegation-conversation-preview-role-style",
+        conversationPreviewContent: "delegation-conversation-preview-content-style",
+        conversationPreviewTimestamp: "delegation-conversation-preview-timestamp-style",
+        conversationPreviewMoreButton: "delegation-conversation-preview-more-button-style",
+        conversationPreviewMoreButtonPressed: "delegation-conversation-preview-more-button-pressed-style",
+        conversationPreviewMore: "delegation-conversation-preview-more-style",
+        toolPreview: "delegation-tool-preview-style",
+        toolPreviewLabel: "delegation-tool-preview-label-style",
+        toolPreviewLine: "delegation-tool-preview-line-style",
+        toolPreviewStatusIcon: "delegation-tool-preview-status-icon-style",
+        toolPreviewName: "delegation-tool-preview-name-style",
+        toolPreviewNamePending: "delegation-tool-preview-name-pending-style",
+        toolPreviewNameSuccess: "delegation-tool-preview-name-success-style",
+        toolPreviewNameError: "delegation-tool-preview-name-error-style",
+        toolPreviewMoreButton: "delegation-tool-preview-more-button-style",
+        toolPreviewMoreButtonPressed: "delegation-tool-preview-more-button-pressed-style",
+        toolPreviewMore: "delegation-tool-preview-more-style",
+      },
+    })
+    expect(delegationCardParts.card).toEqual({
+      accessible: true,
+      accessibilityRole: delegationCardProps.surface.accessibilityRole,
+      accessibilityLabel: delegationCardProps.accessibilityLabel,
+      style: "delegation-card-style",
+    })
+    expect(delegationCardParts.title).toEqual({
+      style: "delegation-title-style",
+      numberOfLines: delegationCardProps.surface.titleNumberOfLines,
+      text: "Worker",
+    })
+    expect(delegationCardParts.statusBadge.style).toEqual([
+      "delegation-status-badge-style",
+      delegationCardProps.statusStyles.chip,
+    ])
+    expect(delegationCardParts.statusText).toEqual({
+      style: [
+        "delegation-status-text-style",
+        delegationCardProps.statusStyles.text,
+      ],
+      numberOfLines: delegationCardProps.surface.statusNumberOfLines,
+      text: delegationCardProps.presentation.statusLabel,
+    })
+    expect(delegationCardParts.liveText).toEqual({
+      style: "delegation-live-text-style",
+      text: delegationCardProps.surface.liveLabel,
+    })
+    expect(delegationCardParts.subtitle?.text).toBe(delegationCardProps.presentation.subtitle)
+    expect(delegationCardParts.meta.items.map((item) => item.text)).toEqual([
+      delegationCardProps.presentation.sourceLabel,
+      delegationCardProps.presentation.trackingLabel,
+      delegationCardProps.messageCountLabel,
+    ].filter(Boolean))
+    const delegationConversationPreviewRow = delegationCardProps.conversationPreview.rows[0]
+    if (!delegationConversationPreviewRow) {
+      throw new Error("Expected a delegation conversation preview row")
+    }
+    expect(delegationCardParts.conversationPreview?.rows[0]).toMatchObject({
+      key: `${delegationConversationPreviewRow.timestamp}-${delegationConversationPreviewRow.role}-0`,
+      line: {
+        style: "delegation-conversation-preview-line-style",
+      },
+      role: {
+        style: [
+          "delegation-conversation-preview-role-style",
+          delegationCardProps.conversationPreview.roleStyles.assistant,
+        ],
+        numberOfLines: delegationCardProps.surface.conversationPreviewRoleNumberOfLines,
+        ellipsizeMode: delegationCardProps.surface.conversationPreviewRoleEllipsizeMode,
+        text: delegationConversationPreviewRow.roleLabel,
+      },
+      content: {
+        style: "delegation-conversation-preview-content-style",
+        numberOfLines: delegationCardProps.surface.conversationPreviewContentNumberOfLines,
+        ellipsizeMode: delegationCardProps.surface.conversationPreviewContentEllipsizeMode,
+        text: delegationConversationPreviewRow.content,
+      },
+    })
+    expect(delegationCardParts.conversationPreview?.moreAction?.button.style({ pressed: true })).toEqual([
+      "delegation-conversation-preview-more-button-style",
+      "delegation-conversation-preview-more-button-pressed-style",
+    ])
+    delegationCardParts.conversationPreview?.moreAction?.button.onPress?.()
+    expect(delegationCardParts.toolPreview?.label.text).toBe("Tool activity · 1 tool call")
+    const delegationToolPreviewRow = delegationCardProps.toolPreview.rows[0]
+    if (!delegationToolPreviewRow) {
+      throw new Error("Expected a delegation tool preview row")
+    }
+    expect(delegationCardParts.toolPreview?.rows[0]).toMatchObject({
+      key: delegationToolPreviewRow.key,
+      line: {
+        style: "delegation-tool-preview-line-style",
+        accessibilityLabel: delegationToolPreviewRow.renderState.accessibilityLabel,
+      },
+      statusIcon: {
+        style: "delegation-tool-preview-status-icon-style",
+        accessibilityElementsHidden: true,
+        importantForAccessibility: "no-hide-descendants",
+        spinner: null,
+      },
+      name: {
+        style: [
+          "delegation-tool-preview-name-style",
+          false,
+          "delegation-tool-preview-name-success-style",
+          false,
+        ],
+        text: delegationToolPreviewRow.preview,
+      },
+    })
+    expect(delegationCardParts.toolPreview?.moreAction?.button.style({ pressed: true })).toEqual([
+      "delegation-tool-preview-more-button-style",
+      "delegation-tool-preview-more-button-pressed-style",
+    ])
+    delegationCardParts.toolPreview?.moreAction?.button.onPress?.()
     expect(delegationPropEvents).toEqual(["conversation:run-1", "tools:run-1"])
     delegationCardState.onShowAllConversationPreview("run-1")
     delegationCardState.onShowAllToolPreview("run-2")

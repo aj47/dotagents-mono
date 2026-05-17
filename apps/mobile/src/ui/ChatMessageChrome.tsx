@@ -82,6 +82,7 @@ import {
   createChatRuntimeConnectionBannerMobilePropsParts,
   createChatRuntimeRetryStatusMobilePropsParts,
   createChatRuntimeToolApprovalMobilePropsParts,
+  createChatRuntimeDelegationCardMobilePropsParts,
   createChatRuntimeTurnDurationBadgeMobilePropsParts,
   createChatRuntimeConversationExpandedContentMobilePropsParts,
   createChatRuntimeConversationCollapsedPreviewMobilePropsParts,
@@ -7661,189 +7662,166 @@ export function ChatMessageDelegationCard({
   toolPreview,
   styles,
 }: ChatMessageDelegationCardProps) {
+  const delegationCardParts = createChatRuntimeDelegationCardMobilePropsParts({
+    surface,
+    agentName,
+    presentation,
+    accessibilityLabel,
+    messageCountLabel,
+    statusStyles,
+    conversationPreview,
+    toolPreview,
+    styles,
+  });
+
   return (
     <View
-      accessible
-      accessibilityRole={surface.accessibilityRole}
-      accessibilityLabel={accessibilityLabel}
-      style={styles.card}
+      accessible={delegationCardParts.card.accessible}
+      accessibilityRole={delegationCardParts.card.accessibilityRole}
+      accessibilityLabel={delegationCardParts.card.accessibilityLabel}
+      style={delegationCardParts.card.style}
     >
-      <View style={styles.header}>
+      <View style={delegationCardParts.header.style}>
         <Text
-          style={styles.title}
-          numberOfLines={surface.titleNumberOfLines}
+          style={delegationCardParts.title.style}
+          numberOfLines={delegationCardParts.title.numberOfLines}
         >
-          {agentName}
+          {delegationCardParts.title.text}
         </Text>
-        <View
-          style={[
-            styles.statusBadge,
-            statusStyles?.chip,
-          ]}
-        >
+        <View style={delegationCardParts.statusBadge.style}>
           <Text
-            style={[
-              styles.statusText,
-              statusStyles?.text,
-            ]}
-            numberOfLines={surface.statusNumberOfLines}
+            style={delegationCardParts.statusText.style}
+            numberOfLines={delegationCardParts.statusText.numberOfLines}
           >
-            {presentation.statusLabel}
+            {delegationCardParts.statusText.text}
           </Text>
         </View>
-        {presentation.isActive ? (
-          <Text style={styles.liveText}>
-            {surface.liveLabel}
+        {delegationCardParts.liveText ? (
+          <Text style={delegationCardParts.liveText.style}>
+            {delegationCardParts.liveText.text}
           </Text>
         ) : null}
       </View>
-      {presentation.subtitle ? (
+      {delegationCardParts.subtitle ? (
         <Text
-          style={styles.subtitle}
-          numberOfLines={surface.subtitleNumberOfLines}
+          style={delegationCardParts.subtitle.style}
+          numberOfLines={delegationCardParts.subtitle.numberOfLines}
         >
-          {presentation.subtitle}
+          {delegationCardParts.subtitle.text}
         </Text>
       ) : null}
-      <View style={styles.metaRow}>
-        <Text
-          style={styles.metaText}
-          numberOfLines={surface.metaNumberOfLines}
-        >
-          {presentation.sourceLabel}
-        </Text>
-        {presentation.trackingLabel ? (
+      <View style={delegationCardParts.meta.style}>
+        {delegationCardParts.meta.items.map((metaItem) => (
           <Text
-            style={styles.metaText}
-            numberOfLines={surface.metaNumberOfLines}
+            key={metaItem.key}
+            style={metaItem.style}
+            numberOfLines={metaItem.numberOfLines}
           >
-            {presentation.trackingLabel}
+            {metaItem.text}
           </Text>
-        ) : null}
-        {messageCountLabel ? (
-          <Text
-            style={styles.metaText}
-            numberOfLines={surface.metaNumberOfLines}
-          >
-            {messageCountLabel}
-          </Text>
-        ) : null}
+        ))}
       </View>
-      {conversationPreview.rows.length > 0 ? (
-        <View style={styles.conversationPreview}>
-          {conversationPreview.rows.map((row, rowIndex) => (
+      {delegationCardParts.conversationPreview ? (
+        <View style={delegationCardParts.conversationPreview.style}>
+          {delegationCardParts.conversationPreview.rows.map((row) => (
             <View
-              key={`${row.timestamp}-${row.role}-${rowIndex}`}
-              style={styles.conversationPreviewLine}
+              key={row.key}
+              style={row.line.style}
             >
               <Text
-                style={[
-                  styles.conversationPreviewRole,
-                  conversationPreview.roleStyles[row.role],
-                ]}
-                numberOfLines={surface.conversationPreviewRoleNumberOfLines}
-                ellipsizeMode={surface.conversationPreviewRoleEllipsizeMode}
+                style={row.role.style}
+                numberOfLines={row.role.numberOfLines}
+                ellipsizeMode={row.role.ellipsizeMode}
               >
-                {row.roleLabel}
+                {row.role.text}
               </Text>
               <Text
-                style={styles.conversationPreviewContent}
-                numberOfLines={surface.conversationPreviewContentNumberOfLines}
-                ellipsizeMode={surface.conversationPreviewContentEllipsizeMode}
+                style={row.content.style}
+                numberOfLines={row.content.numberOfLines}
+                ellipsizeMode={row.content.ellipsizeMode}
               >
-                {row.content}
+                {row.content.text}
               </Text>
-              {row.timestampLabel ? (
+              {row.timestamp ? (
                 <Text
-                  style={styles.conversationPreviewTimestamp}
-                  numberOfLines={surface.conversationPreviewTimestampNumberOfLines}
+                  style={row.timestamp.style}
+                  numberOfLines={row.timestamp.numberOfLines}
                 >
-                  {row.timestampLabel}
+                  {row.timestamp.text}
                 </Text>
               ) : null}
             </View>
           ))}
-          {conversationPreview.hiddenCount > 0 && conversationPreview.onShowAll ? (
+          {delegationCardParts.conversationPreview.moreAction ? (
             <Pressable
-              onPress={conversationPreview.onShowAll}
-              accessibilityRole={conversationPreview.moreAction.accessibilityRole}
-              accessibilityLabel={conversationPreview.moreAction.accessibilityLabel}
-              style={({ pressed }) => [
-                styles.conversationPreviewMoreButton,
-                pressed && styles.conversationPreviewMoreButtonPressed,
-              ]}
+              onPress={delegationCardParts.conversationPreview.moreAction.button.onPress}
+              accessibilityRole={delegationCardParts.conversationPreview.moreAction.button.accessibilityRole}
+              accessibilityLabel={delegationCardParts.conversationPreview.moreAction.button.accessibilityLabel}
+              style={delegationCardParts.conversationPreview.moreAction.button.style}
             >
               <Text
-                style={styles.conversationPreviewMore}
-                numberOfLines={conversationPreview.moreAction.numberOfLines}
+                style={delegationCardParts.conversationPreview.moreAction.label.style}
+                numberOfLines={delegationCardParts.conversationPreview.moreAction.label.numberOfLines}
               >
-                {conversationPreview.moreAction.label}
+                {delegationCardParts.conversationPreview.moreAction.label.text}
               </Text>
             </Pressable>
           ) : null}
         </View>
       ) : null}
-      {toolPreview.shouldRender ? (
-        <View style={styles.toolPreview}>
+      {delegationCardParts.toolPreview ? (
+        <View style={delegationCardParts.toolPreview.style}>
           <Text
-            style={styles.toolPreviewLabel}
-            numberOfLines={surface.toolPreviewLabelNumberOfLines}
+            style={delegationCardParts.toolPreview.label.style}
+            numberOfLines={delegationCardParts.toolPreview.label.numberOfLines}
           >
-            {toolPreview.label}
+            {delegationCardParts.toolPreview.label.text}
           </Text>
-          {toolPreview.rows.map(({ key, preview, renderState }) => (
+          {delegationCardParts.toolPreview.rows.map((row) => (
             <View
-              key={key}
-              style={styles.toolPreviewLine}
-              accessibilityLabel={renderState.accessibilityLabel}
+              key={row.key}
+              style={row.line.style}
+              accessibilityLabel={row.line.accessibilityLabel}
             >
               <View
-                style={styles.toolPreviewStatusIcon}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
+                style={row.statusIcon.style}
+                accessibilityElementsHidden={row.statusIcon.accessibilityElementsHidden}
+                importantForAccessibility={row.statusIcon.importantForAccessibility}
               >
-                {renderState.statusIndicator.spinner.shouldRender ? (
+                {row.statusIcon.spinner ? (
                   <ActivityIndicator
-                    size={renderState.statusIndicator.spinner.size}
-                    color={renderState.statusIndicator.spinner.color}
+                    size={row.statusIcon.spinner.size}
+                    color={row.statusIcon.spinner.color}
                   />
-                ) : renderState.statusIndicator.icon.shouldRender ? (
+                ) : row.statusIcon.icon ? (
                   <Ionicons
-                    name={renderState.statusIndicator.icon.name}
-                    size={renderState.statusIndicator.icon.size}
-                    color={renderState.statusIndicator.icon.color}
+                    name={row.statusIcon.icon.name}
+                    size={row.statusIcon.icon.size}
+                    color={row.statusIcon.icon.color}
                   />
                 ) : null}
               </View>
               <Text
-                style={[
-                  styles.toolPreviewName,
-                  renderState.isPending && styles.toolPreviewNamePending,
-                  renderState.isSuccess && styles.toolPreviewNameSuccess,
-                  renderState.isError && styles.toolPreviewNameError,
-                ]}
-                numberOfLines={renderState.name.numberOfLines}
-                ellipsizeMode={renderState.name.ellipsizeMode}
+                style={row.name.style}
+                numberOfLines={row.name.numberOfLines}
+                ellipsizeMode={row.name.ellipsizeMode}
               >
-                {preview}
+                {row.name.text}
               </Text>
             </View>
           ))}
-          {toolPreview.hiddenCount > 0 && toolPreview.onShowAll ? (
+          {delegationCardParts.toolPreview.moreAction ? (
             <Pressable
-              onPress={toolPreview.onShowAll}
-              accessibilityRole={toolPreview.moreAction.accessibilityRole}
-              accessibilityLabel={toolPreview.moreAction.accessibilityLabel}
-              style={({ pressed }) => [
-                styles.toolPreviewMoreButton,
-                pressed && styles.toolPreviewMoreButtonPressed,
-              ]}
+              onPress={delegationCardParts.toolPreview.moreAction.button.onPress}
+              accessibilityRole={delegationCardParts.toolPreview.moreAction.button.accessibilityRole}
+              accessibilityLabel={delegationCardParts.toolPreview.moreAction.button.accessibilityLabel}
+              style={delegationCardParts.toolPreview.moreAction.button.style}
             >
               <Text
-                style={styles.toolPreviewMore}
-                numberOfLines={toolPreview.moreAction.numberOfLines}
+                style={delegationCardParts.toolPreview.moreAction.label.style}
+                numberOfLines={delegationCardParts.toolPreview.moreAction.label.numberOfLines}
               >
-                {toolPreview.moreAction.label}
+                {delegationCardParts.toolPreview.moreAction.label.text}
               </Text>
             </Pressable>
           ) : null}
