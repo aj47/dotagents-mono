@@ -14,8 +14,10 @@ test('mobile queued-message rows use text-first actions with explicit accessibil
   assert.match(source, /createQueuedMessageItemMobilePropsParts/);
   assert.match(source, /actions: actionParts,/);
   assert.match(source, /createQueuedMessageItemMobilePropsParts\(\{[\s\S]*?renderState: queuedMessageRenderState,[\s\S]*?message,[\s\S]*?editDraftState,[\s\S]*?isExpanded,[\s\S]*?styles,[\s\S]*?onRetry,[\s\S]*?onEdit: \(\) => setIsEditing\(true\),[\s\S]*?onRemove,[\s\S]*?onToggleExpanded: \(\) => setIsExpanded\(!isExpanded\),[\s\S]*?onCancelEdit: handleCancelEdit,[\s\S]*?onSaveEdit: handleSaveEdit,/);
-  assert.match(source, /<TouchableOpacity\s+key=\{action\.key\}\s+\{\.\.\.action\.props\}/);
-  assert.match(source, /<Text\s+\{\.\.\.action\.label\.props\}>\{action\.label\.text\}<\/Text>/);
+  assert.match(source, /function MessageQueuePanelActionButton/);
+  assert.match(source, /<TouchableOpacity\s+\{\.\.\.action\.props\}/);
+  assert.match(source, /<MessageQueuePanelActionButton\s+key=\{action\.key\}\s+action=\{action\}/);
+  assert.match(source, /<Text \{\.\.\.actionLabel\.props\}>\{actionLabel\.text\}<\/Text>/);
   assert.match(source, /<TextInput\s+\{\.\.\.editParts\.input\.props\}/);
   assert.match(source, /<TouchableOpacity\s+\{\.\.\.editParts\.cancelButton\.props\}/);
   assert.match(source, /<TouchableOpacity\s+\{\.\.\.editParts\.saveButton\.props\}/);
@@ -58,7 +60,7 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.doesNotMatch(source, /const actionSurface = queuedMessageRenderState\.surface\.actions;/);
   assert.doesNotMatch(source, /createQueuedMessageActionRowMobileStyleSlot/);
   assert.doesNotMatch(source, /createQueuedMessageActionButtonMobileStyleSlots/);
-  assert.match(source, /<TouchableOpacity\s+key=\{action\.key\}\s+\{\.\.\.action\.props\}/);
+  assert.match(source, /<MessageQueuePanelActionButton\s+key=\{action\.key\}\s+action=\{action\}/);
   assert.match(source, /const expandButtonPressable = expandButtonParts\.pressable;/);
   assert.match(source, /<TouchableOpacity\s+\{\.\.\.expandButtonPressable\.props\}/);
   assert.doesNotMatch(source, /hitSlop=\{action\.hitSlop\}/);
@@ -75,7 +77,8 @@ test('mobile queue panel exposes an explicit send-next action for queued drafts'
   assert.match(source, /canProcessNext\?: boolean;/);
   assert.match(source, /createMessageQueuePanelMobilePropsParts/);
   assert.match(source, /headerActionParts\.actions\.map\(\(action\) =>/);
-  assert.match(source, /<Text\s+\{\.\.\.action\.label\.props\}>\{action\.label\.text\}<\/Text>/);
+  assert.match(source, /<MessageQueuePanelActionButton\s+key=\{action\.key\}\s+action=\{action\}/);
+  assert.match(source, /<Text \{\.\.\.actionLabel\.props\}>\{actionLabel\.text\}<\/Text>/);
 });
 
 test('mobile queue panel mirrors desktop paused queue chrome with shared copy', () => {
@@ -100,11 +103,11 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /<ActivityIndicator\s+\{\.\.\.itemChromeParts\.processingStatusIndicator\.props\}/);
   assert.match(source, /<Ionicons\s+\{\.\.\.expandButtonPressable\.content\.icon\.props\}/);
   assert.match(source, /compactActionParts\.actions\.map\(\(action\) =>/);
-  assert.match(source, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<TouchableOpacity\s+key=\{action\.key\}[\s\S]*?\{\.\.\.action\.props\}/);
-  assert.match(source, /<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
+  assert.match(source, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<MessageQueuePanelActionButton\s+key=\{action\.key\}[\s\S]*?action=\{action\}/);
+  assert.match(source, /<Ionicons\s+\{\.\.\.actionIcon\.props\}/);
   assert.match(source, /headerActionParts\.actions\.map\(\(action\) =>/);
-  assert.match(source, /headerActionParts\.actions\.map\(\(action\) => \([\s\S]*?<TouchableOpacity\s+key=\{action\.key\}[\s\S]*?\{\.\.\.action\.props\}/);
-  assert.match(source, /action\.label\.shouldRender \? \(/);
+  assert.match(source, /headerActionParts\.actions\.map\(\(action\) => \([\s\S]*?<MessageQueuePanelActionButton\s+key=\{action\.key\}[\s\S]*?action=\{action\}/);
+  assert.match(source, /actionLabel && actionLabel\.shouldRender !== false \? \(/);
   assert.match(source, /panelChromeParts\.pausedNotice/);
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.pausedNotice\.container\.props\}>/);
   assert.match(source, /<Text\s+\{\.\.\.panelChromeParts\.pausedNotice\.message\.props\}>/);
@@ -212,8 +215,9 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.container\.props\}>/);
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.headerContainer\.props\}>/);
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.headerActions\.props\}>/);
-  assert.match(source, /<Ionicons\s+\{\.\.\.action\.icon\.props\}/);
-  assert.match(source, /<TouchableOpacity\s+key=\{action\.key\}\s+\{\.\.\.action\.props\}/);
+  assert.match(source, /<Ionicons\s+\{\.\.\.actionIcon\.props\}/);
+  assert.match(source, /<TouchableOpacity\s+\{\.\.\.action\.props\}/);
+  assert.match(source, /<MessageQueuePanelActionButton\s+key=\{action\.key\}\s+action=\{action\}/);
   assert.doesNotMatch(source, /style=\{action\.style\}/);
   assert.doesNotMatch(source, /activeOpacity=\{action\.activeOpacity\}/);
   assert.doesNotMatch(source, /accessibilityRole=\{action\.accessibilityRole\}/);

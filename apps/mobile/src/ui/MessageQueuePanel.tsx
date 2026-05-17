@@ -4,7 +4,7 @@
  * Displays queued messages with options to view, edit, remove, and retry.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { type ComponentProps, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -53,6 +53,48 @@ interface QueuedMessageItemProps {
   onRemove: () => void;
   onUpdate: (text: string) => void;
   onRetry: () => void;
+}
+
+type MessageQueuePanelActionButtonPart = {
+  key: string;
+  props: ComponentProps<typeof TouchableOpacity>;
+  icon?:
+    | { shouldRender: false }
+    | {
+        shouldRender?: boolean;
+        props: ComponentProps<typeof Ionicons>;
+      };
+  label?:
+    | { shouldRender: false }
+    | {
+        shouldRender?: boolean;
+        text: string;
+        props: ComponentProps<typeof Text>;
+      };
+};
+
+interface MessageQueuePanelActionButtonProps {
+  action: MessageQueuePanelActionButtonPart;
+}
+
+function MessageQueuePanelActionButton({ action }: MessageQueuePanelActionButtonProps) {
+  const actionIcon = action.icon;
+  const actionLabel = action.label;
+
+  return (
+    <TouchableOpacity
+      {...action.props}
+    >
+      {actionIcon && actionIcon.shouldRender !== false ? (
+        <Ionicons
+          {...actionIcon.props}
+        />
+      ) : null}
+      {actionLabel && actionLabel.shouldRender !== false ? (
+        <Text {...actionLabel.props}>{actionLabel.text}</Text>
+      ) : null}
+    </TouchableOpacity>
+  );
 }
 
 function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: QueuedMessageItemProps) {
@@ -198,15 +240,10 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
           {itemChromeParts.actions.shouldRender ? (
             <View {...itemChromeParts.actions.props}>
               {actionParts.actions.map((action) => (
-                <TouchableOpacity
+                <MessageQueuePanelActionButton
                   key={action.key}
-                  {...action.props}
-                >
-                  <Ionicons
-                    {...action.icon.props}
-                  />
-                  <Text {...action.label.props}>{action.label.text}</Text>
-                </TouchableOpacity>
+                  action={action}
+                />
               ))}
             </View>
           ) : null}
@@ -279,14 +316,10 @@ export function MessageQueuePanel({
           {panelChromeParts.compactLabel.text}
         </Text>
         {compactActionParts.actions.map((action) => (
-          <TouchableOpacity
+          <MessageQueuePanelActionButton
             key={action.key}
-            {...action.props}
-          >
-            <Ionicons
-              {...action.icon.props}
-            />
-          </TouchableOpacity>
+            action={action}
+          />
         ))}
       </View>
     );
@@ -305,19 +338,10 @@ export function MessageQueuePanel({
         </View>
         <View {...panelChromeParts.headerActions.props}>
           {headerActionParts.actions.map((action) => (
-            <TouchableOpacity
+            <MessageQueuePanelActionButton
               key={action.key}
-              {...action.props}
-            >
-              {action.label.shouldRender ? (
-                <Text {...action.label.props}>{action.label.text}</Text>
-              ) : null}
-              {action.icon.shouldRender ? (
-                <Ionicons
-                  {...action.icon.props}
-                />
-              ) : null}
-            </TouchableOpacity>
+              action={action}
+            />
           ))}
         </View>
       </View>
