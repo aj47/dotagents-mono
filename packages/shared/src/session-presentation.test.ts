@@ -8181,13 +8181,17 @@ describe("session presentation semantics", () => {
       "tool-approval-content-disabled-style",
     ])
     expect(toolApprovalParts.toolLabel).toEqual({
-      style: "tool-approval-tool-label-style",
-      text: CHAT_RUNTIME_PRESENTATION.approval.toolLabel,
+      props: {
+        style: "tool-approval-tool-label-style",
+        text: `${CHAT_RUNTIME_PRESENTATION.approval.toolLabel}:`,
+      },
     })
     expect(toolApprovalParts.toolName).toEqual({
-      style: "tool-approval-tool-name-style",
-      numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.toolName.numberOfLines,
-      text: "write_file",
+      props: {
+        style: "tool-approval-tool-name-style",
+        numberOfLines: TOOL_APPROVAL_SURFACE_PRESENTATION.mobile.toolName.numberOfLines,
+        text: "write_file",
+      },
     })
     expect(toolApprovalParts.argumentsPreview).toEqual({
       shouldRender: true,

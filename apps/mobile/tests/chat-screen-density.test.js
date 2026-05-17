@@ -661,8 +661,16 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner\.(size|color)/);
   assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.headerSpinner \? \(/);
   assert.match(toolApprovalComponentSource, /style=\{toolApprovalParts\.content\.style\}/);
-  assert.match(toolApprovalComponentSource, /\{toolApprovalParts\.toolLabel\.text\}:/);
-  assert.match(toolApprovalComponentSource, /numberOfLines=\{toolApprovalParts\.toolName\.numberOfLines\}/);
+  assert.match(sessionPresentationSource, /toolLabel: \{[\s\S]*?props: \{[\s\S]*?style: styles\.toolLabel,[\s\S]*?text: `\$\{renderState\.copy\.toolLabel\}:`,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalToolLabel/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalToolLabel\s+\{\.\.\.toolApprovalParts\.toolLabel\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalToolLabel[\s\S]*?style=\{style\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.toolLabel\.(style|text)/);
+  assert.match(sessionPresentationSource, /toolName: \{[\s\S]*?props: \{[\s\S]*?style: styles\.toolName,[\s\S]*?numberOfLines: renderState\.surface\.toolName\.numberOfLines,[\s\S]*?text: toolName,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolApprovalToolName/);
+  assert.match(toolApprovalComponentSource, /<ChatMessageToolApprovalToolName\s+\{\.\.\.toolApprovalParts\.toolName\.props\}/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApprovalToolName[\s\S]*?numberOfLines=\{numberOfLines\}[\s\S]*?\{text\}/);
+  assert.doesNotMatch(toolApprovalComponentSource, /toolApprovalParts\.toolName\.(style|numberOfLines|text)/);
   assert.match(toolApprovalComponentSource, /accessibilityRole=\{toolApprovalParts\.denyButton\.accessibilityRole\}/);
   assert.match(toolApprovalComponentSource, /accessibilityLabel=\{toolApprovalParts\.denyButton\.accessibilityLabel\}/);
   assert.match(toolApprovalComponentSource, /accessibilityState=\{toolApprovalParts\.denyButton\.accessibilityState\}/);

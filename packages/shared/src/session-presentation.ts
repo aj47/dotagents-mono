@@ -1989,13 +1989,17 @@ export interface ChatRuntimeToolApprovalMobilePropsParts<
     style: TStyles["toolRow"]
   }
   toolLabel: {
-    style: TStyles["toolLabel"]
-    text: string
+    props: {
+      style: TStyles["toolLabel"]
+      text: string
+    }
   }
   toolName: {
-    style: TStyles["toolName"]
-    numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["toolName"]["numberOfLines"]
-    text: string
+    props: {
+      style: TStyles["toolName"]
+      numberOfLines: ChatRuntimeToolApprovalMobileRenderState["surface"]["toolName"]["numberOfLines"]
+      text: string
+    }
   }
   argumentsPreview: {
     shouldRender: boolean
@@ -22824,13 +22828,17 @@ export function createChatRuntimeToolApprovalMobilePropsParts<
       style: styles.toolRow,
     },
     toolLabel: {
-      style: styles.toolLabel,
-      text: renderState.copy.toolLabel,
+      props: {
+        style: styles.toolLabel,
+        text: `${renderState.copy.toolLabel}:`,
+      },
     },
     toolName: {
-      style: styles.toolName,
-      numberOfLines: renderState.surface.toolName.numberOfLines,
-      text: toolName,
+      props: {
+        style: styles.toolName,
+        numberOfLines: renderState.surface.toolName.numberOfLines,
+        text: toolName,
+      },
     },
     argumentsPreview: {
       shouldRender: Boolean(argumentsPreview),

@@ -1604,6 +1604,12 @@ type ChatMessageToolApprovalSpinnerProps =
 type ChatMessageToolApprovalTitleProps =
   ChatMessageToolApprovalParts['title']['props'];
 
+type ChatMessageToolApprovalToolLabelProps =
+  ChatMessageToolApprovalParts['toolLabel']['props'];
+
+type ChatMessageToolApprovalToolNameProps =
+  ChatMessageToolApprovalParts['toolName']['props'];
+
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles = {
@@ -7462,15 +7468,12 @@ export function ChatMessageToolApproval({
       </View>
       <View style={toolApprovalParts.content.style}>
         <View style={toolApprovalParts.toolRow.style}>
-          <Text style={toolApprovalParts.toolLabel.style}>
-            {toolApprovalParts.toolLabel.text}:
-          </Text>
-          <Text
-            style={toolApprovalParts.toolName.style}
-            numberOfLines={toolApprovalParts.toolName.numberOfLines}
-          >
-            {toolApprovalParts.toolName.text}
-          </Text>
+          <ChatMessageToolApprovalToolLabel
+            {...toolApprovalParts.toolLabel.props}
+          />
+          <ChatMessageToolApprovalToolName
+            {...toolApprovalParts.toolName.props}
+          />
         </View>
         {toolApprovalParts.argumentsPreview.shouldRender ? (
           <Text
@@ -7580,6 +7583,32 @@ export function ChatMessageToolApprovalTitle({
   numberOfLines,
   text,
 }: ChatMessageToolApprovalTitleProps) {
+  return (
+    <Text
+      style={style}
+      numberOfLines={numberOfLines}
+    >
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageToolApprovalToolLabel({
+  style,
+  text,
+}: ChatMessageToolApprovalToolLabelProps) {
+  return (
+    <Text style={style}>
+      {text}
+    </Text>
+  );
+}
+
+export function ChatMessageToolApprovalToolName({
+  style,
+  numberOfLines,
+  text,
+}: ChatMessageToolApprovalToolNameProps) {
   return (
     <Text
       style={style}
