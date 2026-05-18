@@ -5313,14 +5313,33 @@ type ChatComposerTextEntryParts =
     ChatComposerTextEntryStyles
   >;
 
-type ChatComposerTextEntryInputProps =
-  ChatComposerTextEntryParts['input']['props'];
+type ChatComposerTextEntryInputProps = {
+  ref: Ref<TextInput> | undefined;
+  style: ChatComposerTextEntryStyles['input'];
+  value: string;
+  onChangeText: ComponentProps<typeof TextInput>['onChangeText'];
+  onKeyPress: ComponentProps<typeof TextInput>['onKeyPress'] | undefined;
+  accessibilityLabel: string;
+  accessibilityHint: string;
+  'aria-describedby': string | undefined;
+  placeholder: string;
+  placeholderTextColor: string;
+  multiline: true;
+};
 
-type ChatComposerTextEntryInputDescriptionProps =
-  ChatComposerTextEntryParts['inputDescription']['props'];
+type ChatComposerTextEntryInputDescriptionProps = {
+  nativeID: string;
+  style: ChatComposerTextEntryStyles['visuallyHiddenHint'];
+  text: string;
+};
 
-type ChatComposerTextEntryVoiceStatusLiveRegionProps =
-  ChatComposerTextEntryParts['voiceStatusLiveRegion']['props'];
+type ChatComposerTextEntryVoiceStatusLiveRegionProps = {
+  nativeID: string;
+  style: ChatComposerTextEntryStyles['visuallyHiddenHint'];
+  accessibilityLiveRegion: ChatComposerTextEntryWebAccessibility['voiceStatusLiveRegionPoliteness'];
+  'aria-live': 'off' | 'polite' | 'assertive';
+  text: string;
+};
 
 type ChatComposerInputDockStyles =
   SharedChatComposerInputDockStyleSlots<
