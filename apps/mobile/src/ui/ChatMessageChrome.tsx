@@ -343,7 +343,9 @@ import {
   type ChatRuntimeMessageActionSlotListMobilePropsPartsInput,
   type ChatRuntimeMessageActionSlotListMobilePropsParts,
   type ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput,
+  type ChatRuntimeMessageContentRowMobilePropsPartsInput,
   type ChatRuntimeMessageContentRowMobilePropsParts,
+  type ChatRuntimeConversationContentMobilePropsPartsInput,
   type ChatRuntimeMessageStandaloneActionsMobilePropsParts,
   type ChatRuntimeMessageSurfaceMobilePropsParts,
   type ChatRuntimeConnectionBannerMobilePropsParts,
@@ -4643,13 +4645,14 @@ type ChatMessageInlineActivityContainerContentProps =
 type ChatMessageInlineActivitySpinnerProps =
   ChatMessageInlineActivityParts['container']['content']['spinner']['props'];
 
-type ChatMessageContentRowProps = {
-  children: ReactNode;
-  shouldRenderActionSlots: boolean;
-  entries: readonly ChatMessageActionEntry[];
-  rowStyle: StyleProp<ViewStyle>;
-  bodyStyle?: StyleProp<ViewStyle>;
-};
+type ChatMessageContentRowProps =
+  ChatRuntimeMessageContentRowMobilePropsPartsInput<
+    ChatMessageActionEntry,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  > & {
+    children: ReactNode;
+  };
 
 type ChatMessageContentRowParts =
   ChatRuntimeMessageContentRowMobilePropsParts<
@@ -4754,16 +4757,15 @@ type ChatMessageCollapsedPreviewTextProps = {
   part: ChatMessageCollapsedPreviewContentProps['text'];
 };
 
-type ChatMessageConversationContentProps = {
-  contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode;
-  rowStyle: StyleProp<ViewStyle>;
-  shouldRenderActionSlots: boolean;
-  entries: readonly ChatMessageActionEntry[];
-  expanded: ChatMessageExpandedContentProps & {
-    bodyStyle: StyleProp<ViewStyle>;
-  };
-  collapsed: ChatMessageCollapsedPreviewProps;
-};
+type ChatMessageConversationContentProps =
+  ChatRuntimeConversationContentMobilePropsPartsInput<
+    ChatMessageActionEntry,
+    ChatMessageExpandedContentProps & {
+      bodyStyle: StyleProp<ViewStyle>;
+    },
+    ChatMessageCollapsedPreviewProps,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatMessageConversationContentParts =
   ChatRuntimeConversationContentMobilePropsParts<
