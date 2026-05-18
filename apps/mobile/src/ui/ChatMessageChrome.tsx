@@ -296,6 +296,7 @@ import {
   type ChatRuntimeConversationToolExecutionStackMobileState,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
   type ChatRuntimeToolActivityGroupBoundaryMobileKind,
+  type ChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   type ChatRuntimeToolActivityGroupFooterMobilePropsParts,
   type ChatRuntimeToolActivityGroupHeaderMobileKind,
   type ChatRuntimeToolActivityGroupToggleMobilePropsParts,
@@ -2408,6 +2409,14 @@ type ChatMessageToolActivityGroupBoundaryProps = {
   onPress?: (event: GestureResponderEvent) => void;
   styles: ChatMessageToolActivityGroupBoundaryStyles;
 };
+
+type ChatMessageToolActivityGroupBoundaryParts =
+  ChatRuntimeToolActivityGroupBoundaryMobilePropsParts<
+    ToolActivityGroupMobileRenderState,
+    ChatMessageToolActivityGroupBoundaryProps['onPress'],
+    ChatMessageToolActivityGroupToggleStyles,
+    ChatMessageToolActivityGroupFooterStyles
+  >;
 
 type ChatMessageToolExecutionCompactRowStyles = {
   line: StyleProp<ViewStyle>;
@@ -9719,16 +9728,17 @@ export function ChatMessageToolApproval({
   onApprove,
   styles,
 }: ChatMessageToolApprovalProps) {
-  const toolApprovalParts = createChatRuntimeToolApprovalMobilePropsParts({
-    renderState,
-    toolName,
-    argumentsPreview,
-    argumentsContent,
-    onToggleArguments,
-    onDeny,
-    onApprove,
-    styles,
-  });
+  const toolApprovalParts: ChatMessageToolApprovalParts =
+    createChatRuntimeToolApprovalMobilePropsParts({
+      renderState,
+      toolName,
+      argumentsPreview,
+      argumentsContent,
+      onToggleArguments,
+      onDeny,
+      onApprove,
+      styles,
+    });
 
   return (
     <ChatMessageToolApprovalView
@@ -10528,17 +10538,18 @@ export function ChatMessageDelegationCard({
   toolPreview,
   styles,
 }: ChatMessageDelegationCardProps) {
-  const delegationCardParts = createChatRuntimeDelegationCardMobilePropsParts({
-    surface,
-    agentName,
-    presentation,
-    accessibilityLabel,
-    messageCountLabel,
-    statusStyles,
-    conversationPreview,
-    toolPreview,
-    styles,
-  });
+  const delegationCardParts: ChatMessageDelegationCardParts =
+    createChatRuntimeDelegationCardMobilePropsParts({
+      surface,
+      agentName,
+      presentation,
+      accessibilityLabel,
+      messageCountLabel,
+      statusStyles,
+      conversationPreview,
+      toolPreview,
+      styles,
+    });
 
   return (
     <View
@@ -10557,12 +10568,13 @@ export function ChatMessageToolActivityGroupToggle({
   onPress,
   styles,
 }: ChatMessageToolActivityGroupToggleProps) {
-  const toggleParts = createChatRuntimeToolActivityGroupToggleMobilePropsParts({
-    renderState,
-    headerKind,
-    onPress,
-    styles,
-  });
+  const toggleParts: ChatMessageToolActivityGroupToggleParts =
+    createChatRuntimeToolActivityGroupToggleMobilePropsParts({
+      renderState,
+      headerKind,
+      onPress,
+      styles,
+    });
 
   return (
     <Pressable
@@ -10661,11 +10673,12 @@ export function ChatMessageToolActivityGroupFooter({
   onPress,
   styles,
 }: ChatMessageToolActivityGroupFooterProps) {
-  const footerParts = createChatRuntimeToolActivityGroupFooterMobilePropsParts({
-    renderState,
-    onPress,
-    styles,
-  });
+  const footerParts: ChatMessageToolActivityGroupFooterParts =
+    createChatRuntimeToolActivityGroupFooterMobilePropsParts({
+      renderState,
+      onPress,
+      styles,
+    });
 
   return (
     <Pressable
@@ -10711,12 +10724,13 @@ export function ChatMessageToolActivityGroupBoundary({
   onPress,
   styles,
 }: ChatMessageToolActivityGroupBoundaryProps) {
-  const boundaryParts = createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
-    renderState,
-    kind,
-    onPress,
-    styles,
-  });
+  const boundaryParts: ChatMessageToolActivityGroupBoundaryParts =
+    createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
+      renderState,
+      kind,
+      onPress,
+      styles,
+    });
 
   if (boundaryParts.footer.shouldRender) {
     return (

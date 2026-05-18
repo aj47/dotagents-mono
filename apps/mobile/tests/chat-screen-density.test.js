@@ -730,7 +730,7 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalParts =\s+ChatRuntimeToolApprovalMobilePropsParts<[\s\S]*?ChatMessageToolApprovalProps\['onToggleArguments'\],[\s\S]*?ChatMessageToolApprovalProps\['onDeny'\],[\s\S]*?ChatMessageToolApprovalProps\['onApprove'\],[\s\S]*?ChatMessageToolApprovalStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolApprovalMobilePropsParts/);
-  assert.match(toolApprovalComponentSource, /const toolApprovalParts = createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
+  assert.match(toolApprovalComponentSource, /const toolApprovalParts: ChatMessageToolApprovalParts =\s+createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
   assert.doesNotMatch(toolApprovalComponentSource, /const argumentsToggleContent = toolApprovalParts\.argumentsToggle\.content;/);
   const toolApprovalContentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalContent[\s\S]*?export function ChatMessageToolApprovalToolRow/)?.[0] ?? '';
@@ -1264,7 +1264,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /type ChatMessageDelegationCardParts =\s+ChatRuntimeDelegationCardMobilePropsParts<[\s\S]*?GestureResponderEvent[\s\S]*?GestureResponderEvent[\s\S]*?ChatMessageDelegationCardStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegationCardMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeDelegationCardMobilePropsParts/);
-  assert.match(delegationCardComponentSource, /const delegationCardParts = createChatRuntimeDelegationCardMobilePropsParts\(\{\s+surface,\s+agentName,\s+presentation,\s+accessibilityLabel,\s+messageCountLabel,\s+statusStyles,\s+conversationPreview,\s+toolPreview,\s+styles,\s+\}\);/);
+  assert.match(delegationCardComponentSource, /const delegationCardParts: ChatMessageDelegationCardParts =\s+createChatRuntimeDelegationCardMobilePropsParts\(\{\s+surface,\s+agentName,\s+presentation,\s+accessibilityLabel,\s+messageCountLabel,\s+statusStyles,\s+conversationPreview,\s+toolPreview,\s+styles,\s+\}\);/);
   assert.match(delegationCardComponentSource, /<View\s+\{\.\.\.delegationCardParts\.card\.props\}/);
   assert.match(delegationCardComponentSource, /<ChatMessageDelegationContent\s+\{\.\.\.delegationCardParts\.card\.content\}/);
   assert.doesNotMatch(delegationCardComponentSource, /const cardContent = delegationCardParts\.card\.content;/);
@@ -6353,8 +6353,11 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatMessageChromeSource, /trailingActivity=\{groupRenderState\?\.shouldRenderExpandedFooter \? \(/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupBoundary/);
   assert.match(chatMessageChromeSource, /createChatRuntimeToolActivityGroupBoundaryMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolActivityGroupBoundaryMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupBoundaryParts =\s+ChatRuntimeToolActivityGroupBoundaryMobilePropsParts<[\s\S]*?ToolActivityGroupMobileRenderState,[\s\S]*?ChatMessageToolActivityGroupBoundaryProps\['onPress'\],[\s\S]*?ChatMessageToolActivityGroupToggleStyles,[\s\S]*?ChatMessageToolActivityGroupFooterStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupBoundaryParts = ReturnType<typeof createChatRuntimeToolActivityGroupBoundaryMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupBoundaryMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const boundaryParts = createChatRuntimeToolActivityGroupBoundaryMobilePropsParts\(\{\s+renderState,\s+kind,\s+onPress,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const boundaryParts: ChatMessageToolActivityGroupBoundaryParts =\s+createChatRuntimeToolActivityGroupBoundaryMobilePropsParts\(\{\s+renderState,\s+kind,\s+onPress,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(boundaryParts\.footer\.shouldRender\) \{[\s\S]*?<ChatMessageToolActivityGroupFooter\s+\{\.\.\.boundaryParts\.footer\.props\}/);
   assert.match(chatMessageChromeSource, /if \(!boundaryParts\.toggle\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupToggle\s+\{\.\.\.boundaryParts\.toggle\.props\}/);
@@ -6389,8 +6392,8 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupFooterParts = ReturnType<typeof createChatRuntimeToolActivityGroupFooterMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupToggleMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupFooterMobilePropsParts/);
-  assert.match(toolActivityGroupToggleComponentSource, /const toggleParts = createChatRuntimeToolActivityGroupToggleMobilePropsParts\(\{\s+renderState,\s+headerKind,\s+onPress,\s+styles,\s+\}\);/);
-  assert.match(toolActivityGroupFooterComponentSource, /const footerParts = createChatRuntimeToolActivityGroupFooterMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\);/);
+  assert.match(toolActivityGroupToggleComponentSource, /const toggleParts: ChatMessageToolActivityGroupToggleParts =\s+createChatRuntimeToolActivityGroupToggleMobilePropsParts\(\{\s+renderState,\s+headerKind,\s+onPress,\s+styles,\s+\}\);/);
+  assert.match(toolActivityGroupFooterComponentSource, /const footerParts: ChatMessageToolActivityGroupFooterParts =\s+createChatRuntimeToolActivityGroupFooterMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\);/);
   assert.match(sessionPresentationSource, /const headerState = headerKind === "collapsed"[\s\S]*?\? renderState\.collapsedHeader[\s\S]*?: renderState\.expandedHeader/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /const \{ headerState, summary \}/);
   assert.doesNotMatch(chatMessageChromeSource, /const headerState = headerKind === 'collapsed'/);
