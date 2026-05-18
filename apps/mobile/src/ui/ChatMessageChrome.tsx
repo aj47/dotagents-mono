@@ -2191,10 +2191,10 @@ type ChatMessageActionSlotListParts =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageActionSlotListRowProps =
-  ChatMessageActionSlotListParts['row']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageActionSlotListRowProps = {
+  children: ReactNode;
+  style: StyleProp<ViewStyle>;
+};
 
 type ChatMessageStandaloneActionsProps =
   ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput<

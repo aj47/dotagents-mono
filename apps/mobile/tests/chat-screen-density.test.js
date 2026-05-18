@@ -7345,6 +7345,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListParts =\s+ChatRuntimeMessageActionSlotListMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?StyleProp<ViewStyle>/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionSlotListProps = \{[\s\S]*?entries: readonly ChatMessageActionEntry\[\];[\s\S]*?rowStyle\?: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionSlotListParts = ReturnType<typeof createChatRuntimeMessageActionSlotListMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionSlotListRowProps =\s+ChatMessageActionSlotListParts\['row'\]\['props'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListRowProps = \{[\s\S]*?children: ReactNode;[\s\S]*?style: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageActionSlotListMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionSlotListMobilePropsParts/);
   assert.match(actionSlotListSource, /const actionSlotListParts: ChatMessageActionSlotListParts =\s+createChatRuntimeMessageActionSlotListMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
