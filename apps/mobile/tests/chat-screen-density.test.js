@@ -3202,7 +3202,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerVoiceOverlayMobileStyleSlots as SharedChatComposerVoiceOverlayStyleSlots,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerHandsFreeControlsMobileStyleSlots as SharedChatComposerHandsFreeControlsStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerHandsFreeControlsMobileControlStateLike,/);
-  assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonMobileStyleSlots as SharedChatComposerLabeledActionButtonStyleSlots,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerLabeledActionButtonMobileStyleSlots as SharedChatComposerLabeledActionButtonStyleSlots,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerMicButtonMobileStyleSlots as SharedChatComposerMicButtonStyleSlots,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerTextEntryMobileStyleSlots as SharedChatComposerTextEntryStyleSlots,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerInputDockMobileStyleSlots as SharedChatComposerInputDockStyleSlots,/);
@@ -3222,7 +3222,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerHandsFreeControlButtonProps = \{[\s\S]*?style: ChatComposerHandsFreeControlsStyles\['controlButton'\];[\s\S]*?onPress: \(event: GestureResponderEvent\) => void;[\s\S]*?activeOpacity: number;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerHandsFreeControlPart = \{[\s\S]*?touchable: \{[\s\S]*?props: Omit<ChatComposerHandsFreeControlButtonProps, 'children'>;[\s\S]*?\};[\s\S]*?content: \{[\s\S]*?label: \{[\s\S]*?props: ChatComposerHandsFreeControlLabelProps;[\s\S]*?\};[\s\S]*?\};[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerHandsFreeControlsRowContentProps = \{[\s\S]*?primaryControl: ChatComposerHandsFreeControlPart;[\s\S]*?secondaryControl: ChatComposerHandsFreeControlPart;[\s\S]*?\};/);
-  assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonStyles =\s+SharedChatComposerLabeledActionButtonStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonStyles =\s+\| ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['composer'\]\['queueAction'\][\s\S]*?\| ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['composer'\]\['submitAction'\];/);
   assert.match(chatMessageChromeSource, /type ChatComposerMicButtonStyles =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['composer'\]\['micButton'\];/);
   assert.match(chatMessageChromeSource, /type ChatComposerTextEntryStyles =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['composer'\]\['textEntry'\];/);
   assert.match(chatMessageChromeSource, /type ChatComposerInputDockStyles =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['composer'\]\['inputDock'\];/);

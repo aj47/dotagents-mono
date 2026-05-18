@@ -250,7 +250,6 @@ import {
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
   type ChatRuntimeMessageHistoryBannerMobilePropsPartsInput,
-  type ChatComposerLabeledActionButtonMobileStyleSlots as SharedChatComposerLabeledActionButtonStyleSlots,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
   type ChatComposerRuntimeDockMobilePropsParts,
@@ -5448,11 +5447,8 @@ type ChatComposerLabeledActionRenderState = {
 };
 
 type ChatComposerLabeledActionButtonStyles =
-  SharedChatComposerLabeledActionButtonStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  | ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer']['queueAction']
+  | ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer']['submitAction'];
 
 type ChatComposerLabeledActionButtonProps = {
   shouldRender?: boolean;
