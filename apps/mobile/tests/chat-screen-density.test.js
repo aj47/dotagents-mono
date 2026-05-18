@@ -140,6 +140,9 @@ test('keeps mobile chat runtime stylesheet in the ui layer', () => {
 });
 
 test('keeps mobile chat shared domain types routed through session presentation', () => {
+  assert.match(chatScreenSource, /from '\.\.\/ui\/ChatMessageChrome';/);
+  assert.doesNotMatch(chatScreenSource, /from '\.\.\/(?:store|lib)\//);
+  assert.doesNotMatch(chatScreenSource, /from '\.\.\/ui\/(?!ChatMessageChrome')/);
   assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/(agent-progress|conversation-state|api-types)';/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/(agent-progress|conversation-state|voice-debug-log|types|api-types)';/);
   assert.doesNotMatch(handsFreeStatusChipSource, /from '@dotagents\/shared\/(hands-free-controller|types)';/);
