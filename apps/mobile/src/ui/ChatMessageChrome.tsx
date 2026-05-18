@@ -320,6 +320,7 @@ import {
   type ChatRuntimeConversationActionSetMobileProps,
   type ChatRuntimeConversationCollapsedPreviewMobilePropsParts,
   type ChatRuntimeConversationContentMobileDisplayMode,
+  type ChatRuntimeConversationCollapsedPreviewMobileRenderState,
   type ChatRuntimeConversationExpandedContentMobilePropsParts,
   type ChatRuntimeConversationExpandedContentMobileStyleSlots as SharedChatMessageExpandedContentStyleSlots,
   type ChatRuntimeConversationContentMobilePropsParts,
@@ -5536,7 +5537,7 @@ type ChatMessageExpandedContentBodyProps = {
 
 type ChatMessageCollapsedPreviewProps =
   ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput<
-    ChatRuntimeConversationMessageMobileRenderState['collapsedPreview'],
+    ChatMessageCollapsedPreviewNativeRenderState,
     ChatMessageCollapsedPreviewMobileActionState,
     (event: GestureResponderEvent) => void,
     StyleProp<ViewStyle>,
@@ -5551,7 +5552,7 @@ type ChatMessageCollapsedPreviewPropsInput = Pick<
 
 type ChatMessageCollapsedPreviewParts =
   ChatRuntimeConversationCollapsedPreviewMobilePropsParts<
-    ChatRuntimeConversationMessageMobileRenderState['collapsedPreview'],
+    ChatMessageCollapsedPreviewNativeRenderState,
     ChatMessageCollapsedPreviewMobileActionState,
     (event: GestureResponderEvent) => void,
     StyleProp<ViewStyle>,
@@ -5559,11 +5560,19 @@ type ChatMessageCollapsedPreviewParts =
     StyleProp<TextStyle>
   >;
 
+type ChatMessageCollapsedPreviewNativeRenderState =
+  ChatRuntimeConversationCollapsedPreviewMobileRenderState & {
+    accessibilityRole: AccessibilityRole;
+    hitSlop: ComponentProps<typeof Pressable>['hitSlop'];
+    numberOfLines: TextProps['numberOfLines'];
+    text: string;
+  };
+
 type ChatMessageCollapsedPreviewTextPart = {
   text: string;
   props: {
     style: StyleProp<TextStyle>;
-    numberOfLines: number;
+    numberOfLines: TextProps['numberOfLines'];
   };
 };
 
