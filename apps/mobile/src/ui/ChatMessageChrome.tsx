@@ -30,6 +30,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
+import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import {
   createChatRuntimeMessageQueuePanelStyleSheetSlots,
@@ -906,6 +907,12 @@ type ChatComposerRuntimeHandsFreeControllerStateInput =
 
 type ChatComposerRuntimeHandsFreeControllerState =
   ReturnType<typeof useHandsFreeController>;
+
+type ChatComposerRuntimeSpeechRecognizerStateInput =
+  Parameters<typeof useSpeechRecognizer>[0];
+
+type ChatComposerRuntimeSpeechRecognizerState =
+  ReturnType<typeof useSpeechRecognizer>;
 
 type ChatComposerRuntimeVoiceDebugResetStateInput = {
   isVoiceDebugEnabled: boolean;
@@ -9056,6 +9063,12 @@ export function useChatComposerRuntimeHandsFreeControllerState(
   input: ChatComposerRuntimeHandsFreeControllerStateInput,
 ): ChatComposerRuntimeHandsFreeControllerState {
   return useHandsFreeController(input);
+}
+
+export function useChatComposerRuntimeSpeechRecognizerState(
+  input: ChatComposerRuntimeSpeechRecognizerStateInput,
+): ChatComposerRuntimeSpeechRecognizerState {
+  return useSpeechRecognizer(input);
 }
 
 export function useChatComposerRuntimeVoiceDebugState(
