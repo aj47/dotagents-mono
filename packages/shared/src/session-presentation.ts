@@ -3717,6 +3717,16 @@ export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionPayloadMetaMobileStyleSlots<
+  TRowStyle = unknown,
+  TLabelStyle = unknown,
+  TPayloadTypeStyle = unknown,
+> {
+  row?: TRowStyle
+  label: TLabelStyle
+  payloadType: TPayloadTypeStyle
+}
+
 export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsPartsInput<
   TRenderState extends {
     label: string
@@ -3725,15 +3735,8 @@ export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsPartsInput<
     label: string
     payloadTypeLabel?: string | null
   },
-  TStyles extends {
-    row?: unknown
-    label: unknown
-    payloadType: unknown
-  } = {
-    row?: unknown
-    label: unknown
-    payloadType: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPayloadMetaMobileStyleSlots =
+    ChatRuntimeToolExecutionPayloadMetaMobileStyleSlots,
 > {
   renderState: TRenderState
   styles: TStyles
@@ -3747,15 +3750,8 @@ export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
     label: string
     payloadTypeLabel?: string | null
   },
-  TStyles extends {
-    row?: unknown
-    label: unknown
-    payloadType: unknown
-  } = {
-    row?: unknown
-    label: unknown
-    payloadType: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPayloadMetaMobileStyleSlots =
+    ChatRuntimeToolExecutionPayloadMetaMobileStyleSlots,
 > {
   row: ChatRuntimeMobilePropsPart<{
     style: TStyles["row"]
@@ -3781,18 +3777,21 @@ export interface ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots<
+  TPreviewStyle = unknown,
+  TScrollStyle = unknown,
+  TScrollExpandedStyle = unknown,
+  TCodeStyle = unknown,
+> {
+  preview: TPreviewStyle
+  scroll: TScrollStyle
+  scrollExpanded: TScrollExpandedStyle
+  code: TCodeStyle
+}
+
 export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<
-  TStyles extends {
-    preview: unknown
-    scroll: unknown
-    scrollExpanded: unknown
-    code: unknown
-  } = {
-    preview: unknown
-    scroll: unknown
-    scrollExpanded: unknown
-    code: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots =
+    ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots,
 > {
   compactText?: string | null
   content: string
@@ -3802,17 +3801,8 @@ export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<
 }
 
 export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
-  TStyles extends {
-    preview: unknown
-    scroll: unknown
-    scrollExpanded: unknown
-    code: unknown
-  } = {
-    preview: unknown
-    scroll: unknown
-    scrollExpanded: unknown
-    code: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots =
+    ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots,
 > {
   content: {
     preview: {
@@ -3844,6 +3834,22 @@ export interface ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionResultBadgeMobileStyleSlots<
+  TBadgeStyle = unknown,
+  TBadgeSuccessStyle = unknown,
+  TBadgeErrorStyle = unknown,
+  TTextStyle = unknown,
+  TTextSuccessStyle = unknown,
+  TTextErrorStyle = unknown,
+> {
+  badge: TBadgeStyle
+  badgeSuccess: TBadgeSuccessStyle
+  badgeError: TBadgeErrorStyle
+  text: TTextStyle
+  textSuccess: TTextSuccessStyle
+  textError: TTextErrorStyle
+}
+
 export interface ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput<
   TBadge extends {
     accessibilityRole: unknown
@@ -3858,21 +3864,8 @@ export interface ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput<
     icon: unknown
     label: string
   },
-  TStyles extends {
-    badge: unknown
-    badgeSuccess: unknown
-    badgeError: unknown
-    text: unknown
-    textSuccess: unknown
-    textError: unknown
-  } = {
-    badge: unknown
-    badgeSuccess: unknown
-    badgeError: unknown
-    text: unknown
-    textSuccess: unknown
-    textError: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionResultBadgeMobileStyleSlots =
+    ChatRuntimeToolExecutionResultBadgeMobileStyleSlots,
 > {
   badge: TBadge
   styles: TStyles
@@ -3892,21 +3885,8 @@ export interface ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
     icon: unknown
     label: string
   },
-  TStyles extends {
-    badge: unknown
-    badgeSuccess: unknown
-    badgeError: unknown
-    text: unknown
-    textSuccess: unknown
-    textError: unknown
-  } = {
-    badge: unknown
-    badgeSuccess: unknown
-    badgeError: unknown
-    text: unknown
-    textSuccess: unknown
-    textError: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionResultBadgeMobileStyleSlots =
+    ChatRuntimeToolExecutionResultBadgeMobileStyleSlots,
 > {
   container: {
     props: {
@@ -4513,6 +4493,14 @@ export interface ChatRuntimeToolExecutionCompactListMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionPendingResultMobileStyleSlots<
+  TRowStyle = unknown,
+  TTextStyle = unknown,
+> {
+  row: TRowStyle
+  text: TTextStyle
+}
+
 export interface ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -4525,13 +4513,8 @@ export interface ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
     spinner: unknown
     label: string
   },
-  TStyles extends {
-    row: unknown
-    text: unknown
-  } = {
-    row: unknown
-    text: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPendingResultMobileStyleSlots =
+    ChatRuntimeToolExecutionPendingResultMobileStyleSlots,
 > {
   renderState: TRenderState
   styles: TStyles
@@ -4549,13 +4532,8 @@ export interface ChatRuntimeToolExecutionPendingResultMobilePropsParts<
     spinner: unknown
     label: string
   },
-  TStyles extends {
-    row: unknown
-    text: unknown
-  } = {
-    row: unknown
-    text: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPendingResultMobileStyleSlots =
+    ChatRuntimeToolExecutionPendingResultMobileStyleSlots,
 > {
   container: {
     props: {
@@ -21747,11 +21725,7 @@ export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
     label: string
     payloadTypeLabel?: string | null
   },
-  TStyles extends {
-    row?: unknown
-    label: unknown
-    payloadType: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPayloadMetaMobileStyleSlots,
 >({
   renderState,
   styles,
@@ -21795,12 +21769,7 @@ export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
 }
 
 export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
-  TStyles extends {
-    preview: unknown
-    scroll: unknown
-    scrollExpanded: unknown
-    code: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots,
 >({
   compactText,
   content,
@@ -21848,14 +21817,7 @@ export function createChatRuntimeToolExecutionResultBadgeMobilePropsParts<
     icon: unknown
     label: string
   },
-  TStyles extends {
-    badge: unknown
-    badgeSuccess: unknown
-    badgeError: unknown
-    text: unknown
-    textSuccess: unknown
-    textError: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionResultBadgeMobileStyleSlots,
 >({
   badge,
   styles,
@@ -22304,10 +22266,7 @@ export function createChatRuntimeToolExecutionPendingResultMobilePropsParts<
     spinner: unknown
     label: string
   },
-  TStyles extends {
-    row: unknown
-    text: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPendingResultMobileStyleSlots,
 >({
   renderState,
   styles,

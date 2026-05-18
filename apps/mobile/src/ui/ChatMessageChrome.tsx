@@ -341,10 +341,14 @@ import {
   type ChatRuntimeToolExecutionPanelMobilePropsParts,
   type ChatRuntimeToolExecutionPanelShellMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
+  type ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots as SharedChatMessageToolExecutionPayloadBlockStyleSlots,
   type ChatRuntimeToolExecutionPayloadMetaMobilePropsParts,
+  type ChatRuntimeToolExecutionPayloadMetaMobileStyleSlots as SharedChatMessageToolExecutionPayloadMetaStyleSlots,
   type ChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   type ChatRuntimeToolExecutionPendingResultMobilePropsParts,
+  type ChatRuntimeToolExecutionPendingResultMobileStyleSlots as SharedChatMessageToolExecutionPendingResultStyleSlots,
   type ChatRuntimeToolExecutionResultBadgeMobilePropsParts,
+  type ChatRuntimeToolExecutionResultBadgeMobileStyleSlots as SharedChatMessageToolExecutionResultBadgeStyleSlots,
   type ChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   type ChatRuntimeToolExecutionResultSectionMobilePropsParts,
   type ChatRuntimeToolExecutionStackPanelMobilePropsParts,
@@ -2864,14 +2868,15 @@ type ChatMessageToolExecutionCallSectionContentProps =
     children: ReactNode;
   };
 
-type ChatMessageToolExecutionResultBadgeStyles = {
-  badge: StyleProp<ViewStyle>;
-  badgeSuccess: StyleProp<ViewStyle>;
-  badgeError: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-  textSuccess: StyleProp<TextStyle>;
-  textError: StyleProp<TextStyle>;
-};
+type ChatMessageToolExecutionResultBadgeStyles =
+  SharedChatMessageToolExecutionResultBadgeStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolExecutionResultBadgeProps = {
   badge: ToolExecutionDetailMobileHeaderRenderState['resultBadge'];
@@ -2898,10 +2903,11 @@ type ChatMessageToolExecutionResultBadgeIconProps =
 type ChatMessageToolExecutionResultBadgeLabelProps =
   ChatMessageToolExecutionResultBadgeParts['container']['content']['label']['props'];
 
-type ChatMessageToolExecutionPendingResultStyles = {
-  row: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-};
+type ChatMessageToolExecutionPendingResultStyles =
+  SharedChatMessageToolExecutionPendingResultStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolExecutionPendingResultProps = {
   renderState: ToolExecutionDetailMobilePendingResultRenderState;
@@ -2942,11 +2948,12 @@ type ChatMessageToolExecutionEmptyStateParts =
 type ChatMessageToolExecutionEmptyStateLabelProps =
   ChatMessageToolExecutionEmptyStateParts['content']['label']['props'];
 
-type ChatMessageToolExecutionPayloadMetaStyles = {
-  row?: StyleProp<ViewStyle>;
-  label: StyleProp<TextStyle>;
-  payloadType: StyleProp<TextStyle>;
-};
+type ChatMessageToolExecutionPayloadMetaStyles =
+  SharedChatMessageToolExecutionPayloadMetaStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolExecutionPayloadMetaProps = {
   renderState: ToolExecutionDetailMobileSectionHeaderRenderState;
@@ -3019,12 +3026,13 @@ type ChatMessageToolExecutionResultHeaderViewProps =
 type ChatMessageToolExecutionResultCharacterCountProps =
   ChatMessageToolExecutionResultHeaderParts['header']['content']['meta']['content']['characterCount']['props'];
 
-type ChatMessageToolExecutionPayloadBlockStyles = {
-  preview: StyleProp<TextStyle>;
-  scroll: StyleProp<ViewStyle>;
-  scrollExpanded: StyleProp<ViewStyle>;
-  code: StyleProp<TextStyle>;
-};
+type ChatMessageToolExecutionPayloadBlockStyles =
+  SharedChatMessageToolExecutionPayloadBlockStyleSlots<
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolExecutionPayloadBlockProps = {
   compactText?: string | null;
