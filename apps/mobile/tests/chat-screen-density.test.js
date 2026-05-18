@@ -2531,7 +2531,11 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeSurfaceChromeProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeChromeProps,/);
   assert.match(screenSource, /type ChatScreenRuntimeChromeInput = ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>;/);
-  assert.match(screenSource, /const chatMessageRuntimeComposer = useMemo<\s+ChatScreenRuntimeChromeInput\['composer'\]\s+>\(\(\) => \(\{/);
+  assert.match(screenSource, /useChatMessageRuntimeComposerInputState,/);
+  assert.match(screenSource, /const chatMessageRuntimeComposer = useChatMessageRuntimeComposerInputState<\s+PredefinedPromptSummary,\s+Loop\s+>\(\{/);
+  assert.doesNotMatch(screenSource, /const chatMessageRuntimeComposer = useMemo<\s+ChatScreenRuntimeChromeInput\['composer'\]\s+>\(\(\) => \(\{/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeComposerInputState<[\s\S]*?\): ChatMessageRuntimeComposerInputStateInput<TPrompt, TTask>/);
+  assert.match(chatMessageChromeSource, /const chatMessageRuntimeComposerInputState = useMemo<ChatMessageRuntimeComposerInputStateInput<TPrompt, TTask>>\(/);
   assert.match(screenSource, /const chatMessageRuntimeSurface = useChatMessageRuntimeChromeInputState<\s+PredefinedPromptSummary,\s+Loop\s+>\(\{\s+messageRuntime: chatRuntimeChrome\.messageRuntime,/);
   assert.doesNotMatch(screenSource, /const chatMessageRuntimeSurface = useMemo<\s+ChatScreenRuntimeChromeInput\s+>\(\(\) => \(\{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.doesNotMatch(screenSource, /const chatMessageRuntimeSurface: ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop> = \{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
