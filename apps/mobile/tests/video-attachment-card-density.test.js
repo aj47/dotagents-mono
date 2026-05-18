@@ -18,6 +18,7 @@ test('mobile video attachment card uses shared copy and accessibility labels', (
   assert.match(source, /const videoAttachmentCopy = videoAttachmentRenderState\.copy;/);
   assert.match(source, /createChatVideoAttachmentMobilePropsParts,/);
   assert.match(source, /type ChatVideoAttachmentMobilePropsParts,/);
+  assert.match(source, /type ChatVideoAttachmentMobilePropsStylesLike,/);
   assert.match(source, /type VideoAttachmentCardParts =\s+ChatVideoAttachmentMobilePropsParts<[\s\S]*?VideoAttachmentCardStyles,[\s\S]*?VideoAttachmentPressHandler/);
   assert.match(source, /const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts\(\{/);
   assert.match(conversationMediaAssetsSource, /export function createChatVideoAttachmentMobilePropsParts/);
@@ -59,6 +60,8 @@ test('mobile video attachment card uses shared copy and accessibility labels', (
 test('mobile video attachment card reads compact sizing from shared surface tokens', () => {
   assert.match(source, /createChatVideoAttachmentMobileStyleSlots,/);
   assert.match(source, /createChatVideoAttachmentMobilePropsParts,/);
+  assert.match(source, /type VideoAttachmentCardStyles =\s+ChatVideoAttachmentMobilePropsStylesLike<\s+StyleProp<ViewStyle>,[\s\S]*?StyleProp<TextStyle>\s+>;/);
+  assert.doesNotMatch(source, /type VideoAttachmentCardStyles = \{[\s\S]*?card: StyleProp<ViewStyle>;[\s\S]*?errorText: StyleProp<TextStyle>;[\s\S]*?\};/);
   assert.match(source, /createChatVideoAttachmentMobileStyleSlots\(\{\s+renderState: videoAttachmentRenderState,\s+spacing,\s+radius,\s+\}\)/);
   assert.match(source, /card:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.card,\s+\}/);
   assert.match(source, /header:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.header,\s+\}/);

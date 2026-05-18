@@ -637,23 +637,40 @@ export interface ChatVideoAttachmentMobileStyleSlots {
   };
 }
 
-export interface ChatVideoAttachmentMobilePropsStylesLike {
-  card: unknown;
-  header: unknown;
-  loadButton: unknown;
-  loadButtonPressed: unknown;
-  loadButtonDisabled: unknown;
-  playIconWrapper: unknown;
-  textWrapper: unknown;
-  title: unknown;
-  subtitle: unknown;
-  video: unknown;
-  fallbackLink: unknown;
-  fallbackLinkPressed: unknown;
-  fallbackLinkText: unknown;
-  externalLink: unknown;
-  externalLinkPressed: unknown;
-  errorText: unknown;
+export interface ChatVideoAttachmentMobilePropsStylesLike<
+  TCardStyle = unknown,
+  THeaderStyle = unknown,
+  TLoadButtonStyle = unknown,
+  TLoadButtonPressedStyle = unknown,
+  TLoadButtonDisabledStyle = unknown,
+  TPlayIconWrapperStyle = unknown,
+  TTextWrapperStyle = unknown,
+  TTitleStyle = unknown,
+  TSubtitleStyle = unknown,
+  TVideoStyle = unknown,
+  TFallbackLinkStyle = unknown,
+  TFallbackLinkPressedStyle = unknown,
+  TFallbackLinkTextStyle = unknown,
+  TExternalLinkStyle = unknown,
+  TExternalLinkPressedStyle = unknown,
+  TErrorTextStyle = unknown,
+> {
+  card: TCardStyle;
+  header: THeaderStyle;
+  loadButton: TLoadButtonStyle;
+  loadButtonPressed: TLoadButtonPressedStyle;
+  loadButtonDisabled: TLoadButtonDisabledStyle;
+  playIconWrapper: TPlayIconWrapperStyle;
+  textWrapper: TTextWrapperStyle;
+  title: TTitleStyle;
+  subtitle: TSubtitleStyle;
+  video: TVideoStyle;
+  fallbackLink: TFallbackLinkStyle;
+  fallbackLinkPressed: TFallbackLinkPressedStyle;
+  fallbackLinkText: TFallbackLinkTextStyle;
+  externalLink: TExternalLinkStyle;
+  externalLinkPressed: TExternalLinkPressedStyle;
+  errorText: TErrorTextStyle;
 }
 
 export interface ChatVideoAttachmentMobilePropsPartsInput<

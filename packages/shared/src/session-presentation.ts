@@ -196,6 +196,7 @@ export {
   type ChatImageAttachmentMobileRenderState,
   type ChatVideoAttachmentMobilePropsParts,
   type ChatVideoAttachmentMobilePropsPartsInput,
+  type ChatVideoAttachmentMobilePropsStylesLike,
   type ChatVideoAttachmentMobileStyleSlots,
   type ImageMimeTypeSource,
 } from "./conversation-media-assets"

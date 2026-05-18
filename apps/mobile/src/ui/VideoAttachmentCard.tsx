@@ -23,6 +23,7 @@ import {
   isRenderableVideoUrl,
   parseConversationVideoAssetUrl,
   type ChatVideoAttachmentMobilePropsParts,
+  type ChatVideoAttachmentMobilePropsStylesLike,
 } from '@dotagents/shared/session-presentation';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { useTheme } from './ThemeProvider';
@@ -37,24 +38,25 @@ interface VideoAttachmentCardProps {
 
 type VideoAttachmentPressHandler = () => void | Promise<void>;
 
-type VideoAttachmentCardStyles = {
-  card: StyleProp<ViewStyle>;
-  header: StyleProp<ViewStyle>;
-  loadButton: StyleProp<ViewStyle>;
-  loadButtonPressed: StyleProp<ViewStyle>;
-  loadButtonDisabled: StyleProp<ViewStyle>;
-  playIconWrapper: StyleProp<ViewStyle>;
-  textWrapper: StyleProp<ViewStyle>;
-  title: StyleProp<TextStyle>;
-  subtitle: StyleProp<TextStyle>;
-  video: StyleProp<ViewStyle>;
-  fallbackLink: StyleProp<ViewStyle>;
-  fallbackLinkPressed: StyleProp<ViewStyle>;
-  fallbackLinkText: StyleProp<TextStyle>;
-  externalLink: StyleProp<ViewStyle>;
-  externalLinkPressed: StyleProp<ViewStyle>;
-  errorText: StyleProp<TextStyle>;
-};
+type VideoAttachmentCardStyles =
+  ChatVideoAttachmentMobilePropsStylesLike<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type VideoAttachmentCardParts =
   ChatVideoAttachmentMobilePropsParts<
