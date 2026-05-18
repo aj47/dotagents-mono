@@ -3889,16 +3889,26 @@ type ChatMessageLoadingStateParts =
     StyleProp<ImageStyle>
   >;
 
-type ChatMessageLoadingStateContainerProps =
-  ChatMessageLoadingStateParts['container']['props'] & {
-    children: ReactNode;
+type ChatMessageLoadingStateSpinnerProps = {
+  source: ImageSourcePropType;
+  style: StyleProp<ImageStyle>;
+  resizeMode: ChatRuntimeLoadingStateMobileRenderState['spinnerResizeMode'];
+};
+
+type ChatMessageLoadingStateContainerContentProps = {
+  spinner: {
+    props: ChatMessageLoadingStateSpinnerProps;
   };
+};
 
-type ChatMessageLoadingStateContainerContentProps =
-  ChatMessageLoadingStateParts['container']['content'];
-
-type ChatMessageLoadingStateSpinnerProps =
-  ChatMessageLoadingStateParts['container']['content']['spinner']['props'];
+type ChatMessageLoadingStateContainerProps = {
+  children: ReactNode;
+  accessible: true;
+  accessibilityRole: ChatRuntimeLoadingStateMobileRenderState['accessibilityRole'];
+  accessibilityLabel: string;
+  accessibilityState: ChatRuntimeLoadingStateMobileRenderState['accessibilityState'];
+  style: StyleProp<ViewStyle>;
+};
 
 type ChatMessageDebugPanelRow = ChatRuntimeDebugPanelsMobileRenderState['requestRows'][number];
 type ChatMessageDebugPanelRowProps = ChatMessageDebugPanelRow & {
@@ -5112,16 +5122,26 @@ type ChatMessageInlineActivityParts =
     StyleProp<ImageStyle>
   >;
 
-type ChatMessageInlineActivityContainerProps =
-  ChatMessageInlineActivityParts['container']['props'] & {
-    children: ReactNode;
+type ChatMessageInlineActivitySpinnerProps = {
+  source: ImageSourcePropType;
+  style: StyleProp<ImageStyle>;
+  resizeMode: ChatRuntimeInlineActivityMobileRenderState['spinnerResizeMode'];
+};
+
+type ChatMessageInlineActivityContainerContentProps = {
+  spinner: {
+    props: ChatMessageInlineActivitySpinnerProps;
   };
+};
 
-type ChatMessageInlineActivityContainerContentProps =
-  ChatMessageInlineActivityParts['container']['content'];
-
-type ChatMessageInlineActivitySpinnerProps =
-  ChatMessageInlineActivityParts['container']['content']['spinner']['props'];
+type ChatMessageInlineActivityContainerProps = {
+  children: ReactNode;
+  accessible: true;
+  accessibilityRole: ChatRuntimeInlineActivityMobileRenderState['accessibilityRole'];
+  accessibilityLabel: string;
+  accessibilityState: ChatRuntimeInlineActivityMobileRenderState['accessibilityState'];
+  style: StyleProp<ViewStyle>;
+};
 
 type ChatMessageContentRowProps =
   ChatRuntimeMessageContentRowMobilePropsPartsInput<
