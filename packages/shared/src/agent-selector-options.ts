@@ -262,15 +262,24 @@ export interface AgentSelectorMobileProfileItemRenderState {
   }
 }
 
-export interface AgentSelectorProfileItemMobilePropsStylesLike {
-  profileItem: unknown
-  profileItemSelected: unknown
-  profileAvatar: unknown
-  profileAvatarImage: unknown
-  profileInfo: unknown
-  profileName: unknown
-  profileNameSelected: unknown
-  profileDescription: unknown
+export interface AgentSelectorProfileItemMobilePropsStylesLike<
+  TProfileItemStyle = unknown,
+  TProfileItemSelectedStyle = unknown,
+  TProfileAvatarStyle = unknown,
+  TProfileAvatarImageStyle = unknown,
+  TProfileInfoStyle = unknown,
+  TProfileNameStyle = unknown,
+  TProfileNameSelectedStyle = unknown,
+  TProfileDescriptionStyle = unknown,
+> {
+  profileItem: TProfileItemStyle
+  profileItemSelected: TProfileItemSelectedStyle
+  profileAvatar: TProfileAvatarStyle
+  profileAvatarImage: TProfileAvatarImageStyle
+  profileInfo: TProfileInfoStyle
+  profileName: TProfileNameStyle
+  profileNameSelected: TProfileNameSelectedStyle
+  profileDescription: TProfileDescriptionStyle
 }
 
 export interface AgentSelectorProfileItemMobilePropsPartsInput<
@@ -362,22 +371,38 @@ export interface AgentSelectorProfileItemMobilePropsParts<
   }
 }
 
-export interface AgentSelectorSheetMobilePropsStylesLike {
-  backdrop: unknown
-  backdropSpacer: unknown
-  sheet: unknown
-  handle: unknown
-  header: unknown
-  title: unknown
-  headerCloseButton: unknown
-  list: unknown
-  loadingContainer: unknown
-  loadingText: unknown
-  errorContainer: unknown
-  errorText: unknown
-  retryButton: unknown
-  retryButtonText: unknown
-  emptyText: unknown
+export interface AgentSelectorSheetMobilePropsStylesLike<
+  TBackdropStyle = unknown,
+  TBackdropSpacerStyle = unknown,
+  TSheetStyle = unknown,
+  THandleStyle = unknown,
+  THeaderStyle = unknown,
+  TTitleStyle = unknown,
+  THeaderCloseButtonStyle = unknown,
+  TListStyle = unknown,
+  TLoadingContainerStyle = unknown,
+  TLoadingTextStyle = unknown,
+  TErrorContainerStyle = unknown,
+  TErrorTextStyle = unknown,
+  TRetryButtonStyle = unknown,
+  TRetryButtonTextStyle = unknown,
+  TEmptyTextStyle = unknown,
+> {
+  backdrop: TBackdropStyle
+  backdropSpacer: TBackdropSpacerStyle
+  sheet: TSheetStyle
+  handle: THandleStyle
+  header: THeaderStyle
+  title: TTitleStyle
+  headerCloseButton: THeaderCloseButtonStyle
+  list: TListStyle
+  loadingContainer: TLoadingContainerStyle
+  loadingText: TLoadingTextStyle
+  errorContainer: TErrorContainerStyle
+  errorText: TErrorTextStyle
+  retryButton: TRetryButtonStyle
+  retryButtonText: TRetryButtonTextStyle
+  emptyText: TEmptyTextStyle
 }
 
 export interface AgentSelectorSheetMobilePropsPartsInput<

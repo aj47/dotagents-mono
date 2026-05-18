@@ -34,7 +34,9 @@ import {
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
   type AgentSelectorProfileItemMobilePropsParts,
+  type AgentSelectorProfileItemMobilePropsStylesLike,
   type AgentSelectorSheetMobilePropsParts,
+  type AgentSelectorSheetMobilePropsStylesLike,
   type SelectableAgentProfile as SelectableProfile,
 } from '@dotagents/shared/session-presentation';
 
@@ -51,31 +53,34 @@ type AgentSelectorAvatarImageSource = {
   uri: string;
 };
 
-type AgentSelectorSheetStyles = {
-  backdrop: StyleProp<ViewStyle>;
-  backdropSpacer: StyleProp<ViewStyle>;
-  sheet: StyleProp<ViewStyle>;
-  handle: StyleProp<ViewStyle>;
-  header: StyleProp<ViewStyle>;
-  title: StyleProp<TextStyle>;
-  headerCloseButton: StyleProp<ViewStyle>;
-  list: StyleProp<ViewStyle>;
-  profileItem: StyleProp<ViewStyle>;
-  profileItemSelected: StyleProp<ViewStyle>;
-  profileAvatar: StyleProp<ViewStyle>;
-  profileAvatarImage: StyleProp<ImageStyle>;
-  profileInfo: StyleProp<ViewStyle>;
-  profileName: StyleProp<TextStyle>;
-  profileNameSelected: StyleProp<TextStyle>;
-  profileDescription: StyleProp<TextStyle>;
-  loadingContainer: StyleProp<ViewStyle>;
-  loadingText: StyleProp<TextStyle>;
-  errorContainer: StyleProp<ViewStyle>;
-  errorText: StyleProp<TextStyle>;
-  retryButton: StyleProp<ViewStyle>;
-  retryButtonText: StyleProp<TextStyle>;
-  emptyText: StyleProp<TextStyle>;
-};
+type AgentSelectorSheetStyles =
+  AgentSelectorSheetMobilePropsStylesLike<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  > &
+  AgentSelectorProfileItemMobilePropsStylesLike<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ImageStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type AgentSelectorSheetParts =
   AgentSelectorSheetMobilePropsParts<

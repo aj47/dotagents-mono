@@ -11,6 +11,10 @@ const sessionPresentationSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
   'utf8'
 );
+const selectorOptionsSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'agent-selector-options.ts'),
+  'utf8'
+);
 const selectorOptionsTestSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'agentSelectorOptions.test.ts'),
   'utf8'
@@ -64,16 +68,21 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.doesNotMatch(sheetSource, /from '@dotagents\/shared\/agent-selector-options';/);
   assert.match(selectorOptionsTestSource, /from '@dotagents\/shared\/session-presentation';/);
   assert.doesNotMatch(selectorOptionsTestSource, /from '@dotagents\/shared\/agent-selector-options';/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?buildSelectorProfiles,[\s\S]*?createAgentSelectorProfileItemMobilePropsParts,[\s\S]*?createAgentSelectorSheetMobilePropsParts,[\s\S]*?createAgentSelectorMobileStyleSlots,[\s\S]*?getAgentSelectorMobileProfileItemRenderState,[\s\S]*?getAgentSelectorMobileRenderState,[\s\S]*?type AgentSelectorProfileItemMobilePropsParts,[\s\S]*?type AgentSelectorProfileItemMobilePropsPartsInput,[\s\S]*?type AgentSelectorSheetMobilePropsParts,[\s\S]*?type AgentSelectorSheetMobilePropsPartsInput,[\s\S]*?type SelectableAgentProfile,[\s\S]*?\} from "\.\/agent-selector-options"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?buildSelectorProfiles,[\s\S]*?createAgentSelectorProfileItemMobilePropsParts,[\s\S]*?createAgentSelectorSheetMobilePropsParts,[\s\S]*?createAgentSelectorMobileStyleSlots,[\s\S]*?getAgentSelectorMobileProfileItemRenderState,[\s\S]*?getAgentSelectorMobileRenderState,[\s\S]*?type AgentSelectorProfileItemMobilePropsParts,[\s\S]*?type AgentSelectorProfileItemMobilePropsPartsInput,[\s\S]*?type AgentSelectorProfileItemMobilePropsStylesLike,[\s\S]*?type AgentSelectorSheetMobilePropsParts,[\s\S]*?type AgentSelectorSheetMobilePropsPartsInput,[\s\S]*?type AgentSelectorSheetMobilePropsStylesLike,[\s\S]*?type SelectableAgentProfile,[\s\S]*?\} from "\.\/agent-selector-options"/);
   assert.match(sheetSource, /getAgentSelectorMobileRenderState/);
   assert.match(sheetSource, /getAgentSelectorMobileProfileItemRenderState/);
   assert.match(sheetSource, /createAgentSelectorProfileItemMobilePropsParts,/);
   assert.match(sheetSource, /createAgentSelectorSheetMobilePropsParts,/);
+  assert.match(sheetSource, /type AgentSelectorProfileItemMobilePropsStylesLike,/);
+  assert.match(sheetSource, /type AgentSelectorSheetMobilePropsStylesLike,/);
   assert.match(sheetSource, /const agentSelectorRenderState = React\.useMemo\([\s\S]*?getAgentSelectorMobileRenderState\(\{[\s\S]*?selectorMode,[\s\S]*?colors: theme\.colors,/);
   assert.match(sheetSource, /const agentSelectorCopy = agentSelectorRenderState\.copy;/);
   assert.match(sheetSource, /createAgentSelectorMobileStyleSlots,/);
   assert.match(sheetSource, /const agentSelectorStyleSlots = React\.useMemo\(\s+\(\) => createAgentSelectorMobileStyleSlots\(\{\s+renderState: agentSelectorRenderState,\s+spacing,\s+radius,\s+\}\),/);
-  assert.match(sheetSource, /type AgentSelectorSheetStyles = \{[\s\S]*?backdrop: StyleProp<ViewStyle>;[\s\S]*?title: StyleProp<TextStyle>;[\s\S]*?profileAvatarImage: StyleProp<ImageStyle>;[\s\S]*?emptyText: StyleProp<TextStyle>;[\s\S]*?\};/);
+  assert.match(selectorOptionsSource, /export interface AgentSelectorProfileItemMobilePropsStylesLike<\s+TProfileItemStyle = unknown,/);
+  assert.match(selectorOptionsSource, /export interface AgentSelectorSheetMobilePropsStylesLike<\s+TBackdropStyle = unknown,/);
+  assert.match(sheetSource, /type AgentSelectorSheetStyles =\s+AgentSelectorSheetMobilePropsStylesLike<\s+StyleProp<ViewStyle>,[\s\S]*?StyleProp<TextStyle>\s+> &\s+AgentSelectorProfileItemMobilePropsStylesLike<\s+StyleProp<ViewStyle>,[\s\S]*?StyleProp<ImageStyle>,[\s\S]*?StyleProp<TextStyle>\s+>;/);
+  assert.doesNotMatch(sheetSource, /type AgentSelectorSheetStyles = \{[\s\S]*?backdrop: StyleProp<ViewStyle>;[\s\S]*?title: StyleProp<TextStyle>;[\s\S]*?profileAvatarImage: StyleProp<ImageStyle>;[\s\S]*?emptyText: StyleProp<TextStyle>;[\s\S]*?\};/);
   assert.match(sheetSource, /const styles = React\.useMemo<AgentSelectorSheetStyles>\(\s+\(\) => StyleSheet\.create\(\{/);
   assert.match(sheetSource, /sheet:\s*\{\s+\.\.\.agentSelectorStyleSlots\.sheet,/);
   assert.match(sheetSource, /profileItem:\s*\{\s+\.\.\.agentSelectorStyleSlots\.profileItem,/);

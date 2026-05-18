@@ -241,8 +241,10 @@ export {
   getAgentSelectorMobileRenderState,
   type AgentSelectorProfileItemMobilePropsParts,
   type AgentSelectorProfileItemMobilePropsPartsInput,
+  type AgentSelectorProfileItemMobilePropsStylesLike,
   type AgentSelectorSheetMobilePropsParts,
   type AgentSelectorSheetMobilePropsPartsInput,
+  type AgentSelectorSheetMobilePropsStylesLike,
   type SelectableAgentProfile,
 } from "./agent-selector-options"
 export {
