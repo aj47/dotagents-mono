@@ -354,6 +354,7 @@ import {
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageExpansionMobileRenderState,
   type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,
+  type ChatMessageConnectionBannerStyleSlots as SharedChatMessageConnectionBannerStyleSlots,
   type ChatMessageConversationViewportStyleSlots as SharedChatMessageConversationViewportStyleSlots,
   type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
   type ChatMessageRuntimeDockStyleSlots as SharedChatMessageRuntimeDockStyleSlots,
@@ -3771,18 +3772,19 @@ type ChatMessageConversationDockParts =
 type ChatMessageConversationDockContentProps =
   ChatMessageConversationDockParts['content'];
 
-type ChatMessageConnectionBannerStyles = {
-  banner: StyleProp<ViewStyle>;
-  reconnecting: StyleProp<ViewStyle>;
-  failed: StyleProp<ViewStyle>;
-  content: StyleProp<ViewStyle>;
-  icon: StyleProp<ViewStyle>;
-  textContainer: StyleProp<ViewStyle>;
-  title: StyleProp<TextStyle>;
-  subtitle: StyleProp<TextStyle>;
-  retryButton: StyleProp<ViewStyle>;
-  retryButtonText: StyleProp<TextStyle>;
-};
+type ChatMessageConnectionBannerStyles =
+  SharedChatMessageConnectionBannerStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageConnectionBannerProps = {
   renderState: ChatRuntimeConnectionBannerMobileRenderState;

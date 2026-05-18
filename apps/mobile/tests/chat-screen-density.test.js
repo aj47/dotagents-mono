@@ -2028,9 +2028,14 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(sessionPresentationSource, /composerStyles: composerRuntimeDockStyles,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationDockStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageConnectionBannerStyleSlots/);
+  assert.match(sessionPresentationSource, /export type ChatMessageConnectionBannerStyleSlots<\s+TBannerStyle,\s+TReconnectingStyle,\s+TFailedStyle,\s+TContentStyle,/);
+  assert.match(sessionPresentationSource, /\}\): ChatMessageConnectionBannerStyleSlots<\s+TBannerStyle,\s+TReconnectingStyle,\s+TFailedStyle,\s+TContentStyle,\s+TIconStyle,\s+TTextContainerStyle,\s+TTitleStyle,\s+TSubtitleStyle,\s+TRetryButtonStyle,\s+TRetryButtonTextStyle\s+> \{/);
   assert.match(sessionPresentationSource, /export function createChatMessageConversationDockStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageConversationDockStyleSlotsFromStyleSource/);
   assert.match(sessionPresentationSource, /connectionBanner: connectionBannerStyles,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerStyleSlots as SharedChatMessageConnectionBannerStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerStyles =\s+SharedChatMessageConnectionBannerStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConnectionBannerStyles = \{\s+banner: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeDockStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeDockStyleSlots/);
   assert.match(sessionPresentationSource, /export type ChatMessageRuntimeDockStyleSlots<\s+TScrollToBottomButtonStyle,\s+TVoiceOverlayStyles,\s+TQueuePanelStyle,\s+TConnectionBannerStyles,\s+TComposerStyles,/);

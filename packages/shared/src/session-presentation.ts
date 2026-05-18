@@ -28310,6 +28310,30 @@ export function createChatConversationHomePromptEditorModalStyleSlotsFromStyleSo
   })
 }
 
+export type ChatMessageConnectionBannerStyleSlots<
+  TBannerStyle,
+  TReconnectingStyle,
+  TFailedStyle,
+  TContentStyle,
+  TIconStyle,
+  TTextContainerStyle,
+  TTitleStyle,
+  TSubtitleStyle,
+  TRetryButtonStyle,
+  TRetryButtonTextStyle,
+> = {
+  banner: TBannerStyle
+  reconnecting: TReconnectingStyle
+  failed: TFailedStyle
+  content: TContentStyle
+  icon: TIconStyle
+  textContainer: TTextContainerStyle
+  title: TTitleStyle
+  subtitle: TSubtitleStyle
+  retryButton: TRetryButtonStyle
+  retryButtonText: TRetryButtonTextStyle
+}
+
 export function createChatMessageConnectionBannerStyleSlots<
   TBannerStyle,
   TReconnectingStyle,
@@ -28343,18 +28367,18 @@ export function createChatMessageConnectionBannerStyleSlots<
   subtitleStyle: TSubtitleStyle
   retryButtonStyle: TRetryButtonStyle
   retryButtonTextStyle: TRetryButtonTextStyle
-}): {
-  banner: TBannerStyle
-  reconnecting: TReconnectingStyle
-  failed: TFailedStyle
-  content: TContentStyle
-  icon: TIconStyle
-  textContainer: TTextContainerStyle
-  title: TTitleStyle
-  subtitle: TSubtitleStyle
-  retryButton: TRetryButtonStyle
-  retryButtonText: TRetryButtonTextStyle
-} {
+}): ChatMessageConnectionBannerStyleSlots<
+  TBannerStyle,
+  TReconnectingStyle,
+  TFailedStyle,
+  TContentStyle,
+  TIconStyle,
+  TTextContainerStyle,
+  TTitleStyle,
+  TSubtitleStyle,
+  TRetryButtonStyle,
+  TRetryButtonTextStyle
+> {
   return {
     banner: bannerStyle,
     reconnecting: reconnectingStyle,
@@ -28412,18 +28436,18 @@ type ChatMessageConversationDockStyleSource =
 
 type ChatMessageConnectionBannerStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationDockStyleSource,
-> = {
-  banner: TStyles["connectionBanner"]
-  reconnecting: TStyles["connectionBannerReconnecting"]
-  failed: TStyles["connectionBannerFailed"]
-  content: TStyles["connectionBannerContent"]
-  icon: TStyles["connectionBannerIcon"]
-  textContainer: TStyles["connectionBannerTextContainer"]
-  title: TStyles["connectionBannerText"]
-  subtitle: TStyles["connectionBannerSubtext"]
-  retryButton: TStyles["retryButton"]
-  retryButtonText: TStyles["retryButtonText"]
-}
+> = ChatMessageConnectionBannerStyleSlots<
+  TStyles["connectionBanner"],
+  TStyles["connectionBannerReconnecting"],
+  TStyles["connectionBannerFailed"],
+  TStyles["connectionBannerContent"],
+  TStyles["connectionBannerIcon"],
+  TStyles["connectionBannerTextContainer"],
+  TStyles["connectionBannerText"],
+  TStyles["connectionBannerSubtext"],
+  TStyles["retryButton"],
+  TStyles["retryButtonText"]
+>
 
 type ChatMessageConversationDockStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationDockStyleSource,
