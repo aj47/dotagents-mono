@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import QRCode from "qrcode"
+import { spawnSync } from "node:child_process"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -11,29 +13,18 @@ import {
   TextRenderable,
   createCliRenderer,
 } from "@opentui/core"
-import {
-  REMOTE_SERVER_API_BUILDERS,
-  REMOTE_SERVER_API_PATHS,
-  REMOTE_SERVER_API_PREFIX,
-  getRemoteServerApiRoutePath,
-} from "@dotagents/shared/remote-server-api"
-
-type Config = { remoteServerPort?: number; remoteServerApiKey?: string }
-type StreamHandlers = {
-  step?: (title: string, description?: string) => void
-  text?: (text: string) => void
-  done?: (content: string, conversationId?: string) => void
-}
-type ServerSettings = {
-  url: string
-  apiKey: string
-  configPath: string
-  apiKeySource: string
-}
-
-const SECRET_REF_PREFIX = "dotagents-secret://"
-const SECRETS_LOCAL_JSON = "secrets.local.json"
-
+import { getAgentsKnowledgeDir, getAgentsLayerPaths, getAgentsSkillsDir, getDebugFlags, getPrimaryAgentsKnowledgeDir, globalAgentsFolder, loadAgentsKnowledgeNotesLayer, loadAgentsSkillsLayer, loadTasksLayer, resolveWorkspaceAgentsFolder, skillIdToFilePath, taskIdToFilePath, writeAgentsSkillFile, writeKnowledgeNoteFile, writeTaskFile, type KnowledgeNote } from "@dotagents/core"
+import { deleteSlot, getSandboxState, renameSlot, restoreBaseline, saveBaseline, saveCurrentAsSlot, switchToSlot } from "../apps/desktop/src/main/sandbox-service"
+import { REMOTE_SERVER_API_PREFIX } from "@dotagents/shared/remote-server-api"
+import { buildDotAgentsConfigDeepLink, ensureRemoteServerV1BaseUrl, redactSecretForDisplay } from "@dotagents/shared/remote-pairing"
+import { ExtendedSettingsApiClient } from "@dotagents/shared/settings-api-client"
+import { isInstalled as isLangfuseInstalled } from "../apps/desktop/src/main/langfuse-loader"
+import { DEFAULT_SYSTEM_PROMPT } from "../apps/desktop/src/main/system-prompts-default"
+type Config = Record<string, unknown> & { remoteServerPort?: number; remoteServerApiKey?: string }
+type StreamHandlers = { step?: (title: string, description?: string) => void; text?: (text: string) => void; done?: (content: string, conversationId?: string) => void }
+type ServerSettings = { url: string; apiKey: string; configPath: string; apiKeySource: string }
+const SECRET_REF_PREFIX = "dotagents-secret://", SECRETS_LOCAL_JSON = "secrets.local.json"
+const FOLDER_OPEN_TARGETS = "global|workspace|skills|knowledge|global-skills|workspace-skills|global-knowledge|workspace-knowledge|system-prompt|agents-guidelines"
 const COLORS = {
   bg: "#0b0f14",
   panel: "#101820",
@@ -44,106 +35,29 @@ const COLORS = {
   agent: "#f8fafc",
   error: "#f87171",
 }
-
-const COMMAND_HELP = [
-  "Slash commands:",
-  "  /status                         Show server, health, session, and integration status",
-  "  /health                         Show health checks",
-  "  /agents                         List agent profiles",
-  "  /profiles                       List legacy profiles",
-  "  /use <profile-id>               Select the current legacy profile",
-  "  /profile export <profile-id>    Print profile JSON",
-  "  /profile import <json>          Import profile JSON",
-  "  /settings                       Show remote settings",
-  "  /settings patch <json>          Patch remote settings",
-  "  /presets                        List model endpoints",
-  "  /preset use <preset-id>         Select a model endpoint",
-  "  /preset create <json>           Create a model endpoint",
-  "  /preset update <id> <json>      Update a model endpoint",
-  "  /preset delete <id>             Delete a model endpoint",
-  "  /skills                         List skills and current-profile enablement",
-  "  /skill <skill-id>               Toggle a skill for the current profile",
-  "  /skill show <id>                Show skill details",
-  "  /skill create <json>            Create a skill",
-  "  /skill update <id> <json>       Update a skill",
-  "  /skill delete <id>              Delete a skill",
-  "  /notes                          List knowledge notes",
-  "  /note show <id>                 Show note details",
-  "  /note create <json>             Create a note",
-  "  /note update <id> <json>        Update a note",
-  "  /note delete <id>               Delete a note",
-  "  /loops                          List repeat tasks",
-  "  /loop create <json>             Create a repeat task",
-  "  /loop update <id> <json>        Update a repeat task",
-  "  /loop delete <id>               Delete a repeat task",
-  "  /loop run <loop-id>             Run a repeat task now",
-  "  /loop toggle <loop-id>          Toggle a repeat task",
-  "  /agent show <id>                Show agent profile details",
-  "  /agent create <json>            Create an agent profile",
-  "  /agent update <id> <json>       Update an agent profile",
-  "  /agent delete <id>              Delete an agent profile",
-  "  /agent toggle <id>              Toggle an agent profile",
-  "  /mcp                            Show MCP server status",
-  "  /mcp servers                    List saved MCP servers",
-  "  /mcp tools [server]             List MCP tools",
-  "  /mcp logs <server> [count]      Show MCP server logs",
-  "  /mcp test <server>              Test an MCP server",
-  "  /mcp start|stop|restart <server> Control an MCP server",
-  "  /mcp enable-tool|disable-tool <tool> Toggle a tool",
-  "  /mcp enable-server|disable-server <server> Toggle saved MCP server",
-  "  /mcp clear-logs <server>        Clear MCP server logs",
-  "  /errors [count]                 Show recent operator errors",
-  "  /logs [count] [level]           Show operator logs",
-  "  /audit [count]                  Show operator audit entries",
-  "  /conversations                  List recent server conversations",
-  "  /session stop <session-id>      Stop an active agent session",
-  "  /queues                         List queued desktop messages",
-  "  /queue pause|resume|clear <conversation-id>",
-  "  /queue msg delete|retry|update <conversation-id> <message-id> [text]",
-  "  /remote-server                  Show remote server status",
-  "  /tunnel [setup|start|stop]      Show or control the Cloudflare tunnel",
-  "  /integrations                   Show integration status",
-  "  /discord [logs|connect|disconnect|clear-logs]",
-  "  /whatsapp [connect|logout]      Show or control WhatsApp",
-  "  /updater [check|download|reveal|open|releases]",
-  "  /speech [show|download] <provider>",
-  "  /run-agent <prompt-or-json>     Run the desktop agent",
-  "  /server restart                 Restart the remote server",
-  "  /app restart                    Restart the desktop app",
-  "  /key rotate                     Rotate the remote server API key",
-  "  /stop                           Emergency-stop active agent sessions",
-  "  /clear                          Clear the TUI log",
-  "  /quit                           Exit",
-].join("\n")
-
+const COMMAND_HELP = `Slash commands:
+  Runtime: /status, /health, /models [provider], /settings [patch <json>], /presets, /preset use|create|update|delete
+  Config: /profiles, /use <profile-id>, /profile current|export|import, /config [path|patch <json>], /folders [open <target>], /system-prompt default, /sandbox [...], /debug-flags, /agents [reload], /agent show|verify|create|update|delete|toggle
+  Content: /bundle items|export|preview|import, /skills, /skill show|create|update|delete|delete-many|import-file|import-folder|import-parent-folder|import-markdown|import-github|export|export-file|open, /notes, /note show|create|update|delete|open, /loops, /loop create|import-markdown|export|update|delete|run|toggle|start|stop|open
+  Operator: /mcp [...], /errors [count|clear], /diagnostics [save [path]], /logs [count] [level], /audit [count], /approvals [limit], /approval <id> approve|reject
+  Sessions/Queues: /conversations, /conversation [...], /session show|stop|snooze|unsnooze|clear, /sessions clear-inactive|snooze-hide, /queues, /queue pause|resume|clear, /queue msg delete|retry|update
+  Integrations/Desktop: /provider chatgpt-web [login|logout], /integrations, /langfuse [installed], /discord [...], /whatsapp [...], /push [...], /permissions open-microphone-settings, /clipboard write <text>, /remote-server [qr [url]], /tunnel [setup|start|stop], /updater [...], /speech [show|download] <provider>, /tts stop|speak <json>, /window main|panel <action>
+  Actions: /run-agent <prompt-or-json>, /server restart, /app restart, /key rotate, /stop, /clear, /quit`
 function configFilePath() {
   const home = os.homedir()
-  const linux = path.join(home, ".config", "app.dotagents", "config.json")
-  const mac = path.join(
-    home,
-    "Library",
-    "Application Support",
-    "app.dotagents",
-    "config.json",
-  )
-  const windows = process.env.APPDATA
-    ? path.join(process.env.APPDATA, "app.dotagents", "config.json")
-    : path.join(home, "AppData", "Roaming", "app.dotagents", "config.json")
-  const candidates =
-    process.platform === "win32"
-      ? [windows, linux, mac]
-      : [linux, mac]
+  const linux = path.join(home, ".config", "app.dotagents", "config.json"), mac = path.join(home, "Library", "Application Support", "app.dotagents", "config.json")
+  const windows = path.join(process.env.APPDATA || path.join(home, "AppData", "Roaming"), "app.dotagents", "config.json")
+  const candidates = process.platform === "win32" ? [windows, linux, mac] : [linux, mac]
   return candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0]
 }
-
-function readConfig(): Config {
-  try {
-    return JSON.parse(fs.readFileSync(configFilePath(), "utf8"))
-  } catch {
-    return {}
-  }
+function readConfig(): Config { try { return JSON.parse(fs.readFileSync(configFilePath(), "utf8")) } catch { return {} } }
+function formatLocalConfig(config = readConfig()): string { const display = { ...config }; if (typeof display.remoteServerApiKey === "string") display.remoteServerApiKey = redactSecretForDisplay(display.remoteServerApiKey); return formatJsonObject(display) }
+function patchLocalConfig(value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "Expected JSON object"
+  const filePath = configFilePath(), next = { ...readConfig(), ...(value as Record<string, unknown>) }
+  fs.mkdirSync(path.dirname(filePath), { recursive: true }); fs.writeFileSync(filePath, JSON.stringify(next, null, 2))
+  return formatLocalConfig(next)
 }
-
 function secretReferenceCandidates(secretId: string): string[] {
   const candidates = new Set([secretId])
   let current = secretId
@@ -151,15 +65,11 @@ function secretReferenceCandidates(secretId: string): string[] {
     try {
       const decoded = decodeURIComponent(current)
       if (decoded === current) break
-      candidates.add(decoded)
-      current = decoded
-    } catch {
-      break
-    }
+      candidates.add(decoded); current = decoded
+    } catch { break }
   }
   return [...candidates]
 }
-
 function resolveSecretReference(value: string): string | undefined {
   if (!value.startsWith(SECRET_REF_PREFIX)) return value
   const secretId = value.slice(SECRET_REF_PREFIX.length)
@@ -181,7 +91,6 @@ function resolveSecretReference(value: string): string | undefined {
   }
   return undefined
 }
-
 function serverSettings(): ServerSettings {
   const configPath = configFilePath()
   const cfg = readConfig()
@@ -203,23 +112,17 @@ function serverSettings(): ServerSettings {
         : "missing"
   return { url: normalizeServerUrl(url), apiKey, configPath, apiKeySource }
 }
-
+function settingsApiClient(): ExtendedSettingsApiClient { const { url, apiKey } = serverSettings(); return new ExtendedSettingsApiClient(url, apiKey) }
 function normalizeServerUrl(value: string): string {
   const trimmed = value.replace(/\/+$/, "")
   return trimmed.endsWith(REMOTE_SERVER_API_PREFIX)
     ? trimmed.slice(0, -REMOTE_SERVER_API_PREFIX.length)
     : trimmed
 }
-
 function parseArgs() {
-  const args = process.argv.slice(2)
-  const onceIndex = args.findIndex((arg) => arg === "--once")
-  return {
-    help: args.includes("--help") || args.includes("-h"),
-    once: onceIndex >= 0 ? args.slice(onceIndex + 1).join(" ") : "",
-  }
+  const args = process.argv.slice(2), onceIndex = args.findIndex((arg) => arg === "--once")
+  return { help: args.includes("--help") || args.includes("-h"), once: onceIndex >= 0 ? args.slice(onceIndex + 1).join(" ") : "" }
 }
-
 function textDelta(previous: string, next: string) {
   if (!next) return ""
   if (!previous) return next
@@ -227,69 +130,19 @@ function textDelta(previous: string, next: string) {
   if (previous.startsWith(next)) return ""
   return `\n${next}`
 }
-
-function routeUrl(pathname: string): string {
-  return `${serverSettings().url}${getRemoteServerApiRoutePath(pathname)}`
-}
-
-async function apiRequest<T>(pathname: string, options: RequestInit = {}): Promise<T> {
-  const { apiKey, apiKeySource } = serverSettings()
-  const headers = new Headers(options.headers)
-  if (apiKey) headers.set("authorization", `Bearer ${apiKey}`)
-  if (options.body !== undefined && options.body !== null && !headers.has("content-type")) {
-    headers.set("content-type", "application/json")
-  }
-
-  const res = await fetch(routeUrl(pathname), {
-    ...options,
-    headers,
-  })
-
-  if (!res.ok) {
-    const details = await res
-      .clone()
-      .json()
-      .then((body) => body?.error || body?.message || JSON.stringify(body))
-      .catch(async () => await res.text().catch(() => res.statusText))
-    const authHint =
-      res.status === 401
-        ? ` Check API key source: ${apiKeySource}. You can override with DOTAGENTS_API_KEY.`
-        : ""
-    throw new Error(`Server returned HTTP ${res.status}${details ? `: ${details}` : ""}.${authHint}`)
-  }
-
-  if (res.status === 204) return undefined as T
-  const contentType = res.headers.get("content-type") || ""
-  if (contentType.includes("application/json")) return await res.json()
-  return (await res.text()) as T
-}
-
-function boolLabel(value: unknown): string {
-  return value ? "yes" : "no"
-}
-
+function boolLabel(value: unknown): string { return value ? "yes" : "no" }
 function compactText(value: unknown, fallback = "-"): string {
-  if (typeof value === "string" && value.trim()) return value.trim()
-  if (typeof value === "number" || typeof value === "boolean") return String(value)
-  return fallback
+  return typeof value === "string" && value.trim() ? value.trim() : typeof value === "number" || typeof value === "boolean" ? String(value) : fallback
 }
-
 function compactSnippet(value: unknown, maxLength = 96): string {
   const text = compactText(value, "").replace(/\s+/g, " ").trim()
-  if (text.length <= maxLength) return text
-  return `${text.slice(0, Math.max(0, maxLength - 3))}...`
+  return text.length <= maxLength ? text : `${text.slice(0, Math.max(0, maxLength - 3))}...`
 }
-
 function positiveNumberArg(value: string | undefined, fallback: number): number {
-  if (!value) return fallback
-  const parsed = Number(value)
+  const parsed = value ? Number(value) : fallback
   return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : fallback
 }
-
-function formatTimestamp(timestamp?: number): string {
-  return timestamp ? new Date(timestamp).toLocaleString() : "-"
-}
-
+function formatTimestamp(timestamp?: number): string { return timestamp ? new Date(timestamp).toLocaleString() : "-" }
 function listLines<T>(
   items: T[] | undefined,
   empty: string,
@@ -298,7 +151,6 @@ function listLines<T>(
   if (!items || items.length === 0) return [`  ${empty}`]
   return items.map((item, index) => formatter(item, index))
 }
-
 function parseJsonPayload(args: string[], usage: string, startIndex = 0): { ok: true; value: unknown } | { ok: false; message: string } {
   const payload = args.slice(startIndex).join(" ").trim()
   if (!payload) return { ok: false, message: `Usage: ${usage}` }
@@ -309,18 +161,16 @@ function parseJsonPayload(args: string[], usage: string, startIndex = 0): { ok: 
     return { ok: false, message: `Invalid JSON payload: ${message}\nUsage: ${usage}` }
   }
 }
-
-function formatJsonObject(value: unknown): string {
-  return JSON.stringify(value ?? {}, null, 2)
+function withJsonPayload(args: string[], usage: string, startIndex: number, run: (value: unknown) => string | Promise<string>): string | Promise<string> {
+  const parsed = parseJsonPayload(args, usage, startIndex)
+  return parsed.ok ? run(parsed.value) : parsed.message
 }
-
+function textPayload(args: string[], startIndex = 0): string { return args.slice(startIndex).join(" ").trim() }
+function formatJsonObject(value: unknown): string { return JSON.stringify(value ?? {}, null, 2) }
 function formatActionResponse(response: any, fallbackAction: string): string {
   const success = response?.success === false ? "failed" : "ok"
-  const action = compactText(response?.action, fallbackAction)
-  const message = compactText(response?.message || response?.error, "")
-  return [action, success, message].filter(Boolean).join(": ")
+  return [compactText(response?.action, fallbackAction), success, compactText(response?.message || response?.error, "")].filter(Boolean).join(": ")
 }
-
 function formatStatus(status: any): string {
   const remote = status?.remoteServer || {}
   const tunnel = status?.tunnel || {}
@@ -331,7 +181,6 @@ function formatStatus(status: any): string {
   const push = integrations.pushNotifications || {}
   const system = status?.system || {}
   const url = remote.url || remote.connectableUrl || `${remote.bind || "127.0.0.1"}:${remote.port || "?"}`
-
   return [
     "Status",
     `  Health: ${compactText(status?.health?.overall)}`,
@@ -345,7 +194,6 @@ function formatStatus(status: any): string {
     `  Recent errors: ${status?.recentErrors?.total ?? 0} total, ${status?.recentErrors?.errorsInLastFiveMinutes ?? 0} in last 5m`,
   ].join("\n")
 }
-
 function formatHealth(health: any): string {
   const checks: Array<[string, any]> =
     health?.checks && typeof health.checks === "object" ? Object.entries(health.checks) : []
@@ -356,7 +204,6 @@ function formatHealth(health: any): string {
     }),
   ].join("\n")
 }
-
 function formatAgentProfiles(response: any): string {
   return [
     `Agent profiles (${response?.profiles?.length ?? 0})`,
@@ -366,7 +213,36 @@ function formatAgentProfiles(response: any): string {
     }),
   ].join("\n")
 }
-
+function formatAgentsFolders(): string {
+  const formatLayer = (label: string, agentsDir: string) => {
+    const layer = getAgentsLayerPaths(agentsDir)
+    return [
+      `  ${label}: ${agentsDir}`,
+      `    system prompt: ${layer.systemPromptMdPath} (${fs.existsSync(layer.systemPromptMdPath) ? "exists" : "missing"})`,
+      `    agents guidelines: ${layer.agentsMdPath}`,
+      `    skills: ${getAgentsSkillsDir(layer)}`,
+      `    knowledge: ${getAgentsKnowledgeDir(layer)}`,
+    ].join("\n")
+  }
+  const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+  return [
+    "Agents folders",
+    formatLayer("global", globalAgentsFolder),
+    workspaceAgentsFolder ? formatLayer("workspace", workspaceAgentsFolder) : "  workspace: none",
+  ].join("\n")
+}
+function formatSandboxState(): string {
+  const state = getSandboxState(globalAgentsFolder)
+  return [
+    `Sandbox slots${state.activeSlot ? ` - active ${state.activeSlot}` : ""}`,
+    ...listLines(state.slots, "No sandbox slots", (slot: any) =>
+      `  ${slot.name} (${slot.isDefault ? "default" : "slot"}${slot.name === state.activeSlot ? ", active" : ""}${slot.sourceBundleName ? `, from ${slot.sourceBundleName}` : ""}) - ${slot.updatedAt}`),
+  ].join("\n")
+}
+function formatSandboxResult(response: any, action: string): string {
+  if (response?.success === false) return `sandbox-${action}: failed: ${compactText(response.error)}`
+  return [`sandbox-${action}: ok`, response?.slot?.name || response?.activeSlot ? `  Slot: ${response?.slot?.name || response.activeSlot}` : ""].filter(Boolean).join("\n")
+}
 function formatProfiles(response: any): string {
   return [
     `Profiles (${response?.profiles?.length ?? 0})${response?.currentProfileId ? ` - current ${response.currentProfileId}` : ""}`,
@@ -376,7 +252,6 @@ function formatProfiles(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatSettings(response: any): string {
   const provider = response?.agentProviderId || response?.providerId
   return [
@@ -390,12 +265,10 @@ function formatSettings(response: any): string {
     `  Langfuse: ${boolLabel(response?.langfuseEnabled)}`,
   ].join("\n")
 }
-
 function formatSettingsPatch(response: any): string {
   const updated = Array.isArray(response?.updated) ? response.updated.join(", ") : ""
   return `Settings updated${updated ? `: ${updated}` : ""}`
 }
-
 function formatModelPresets(response: any): string {
   return [
     `Model endpoints (${response?.presets?.length ?? 0})${response?.currentModelPresetId ? ` - current ${response.currentModelPresetId}` : ""}`,
@@ -406,13 +279,11 @@ function formatModelPresets(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatModelPresetMutation(response: any, action: string): string {
   const preset = response?.preset
   const id = preset?.id || response?.deletedPresetId || response?.currentModelPresetId
   return `Model endpoint ${action}: ${compactText(id)}`
 }
-
 function formatSkills(response: any): string {
   return [
     `Skills (${response?.skills?.length ?? 0})${response?.currentProfileId ? ` - profile ${response.currentProfileId}` : ""}`,
@@ -422,21 +293,17 @@ function formatSkills(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatSkillToggle(response: any): string {
   return `Skill ${compactText(response?.skillId)} is now ${response?.enabledForProfile ? "enabled" : "disabled"} for the current profile.`
 }
-
 function formatSkillResponse(response: any, action = "saved"): string {
   const skill = response?.skill
   if (!skill) return formatActionResponse(response, `skill-${action}`)
   return `Skill ${action}: ${compactText(skill.id)} - ${compactText(skill.name)}`
 }
-
 function formatDeleteResponse(response: any, resource: string): string {
   return `${resource} deleted: ${compactText(response?.id)}`
 }
-
 function formatKnowledgeNotes(response: any): string {
   return [
     `Knowledge notes (${response?.notes?.length ?? 0})`,
@@ -446,13 +313,11 @@ function formatKnowledgeNotes(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatKnowledgeNoteResponse(response: any, action = "saved"): string {
   const note = response?.note
   if (!note) return formatActionResponse(response, `note-${action}`)
   return `Note ${action}: ${compactText(note.id)} - ${compactText(note.title)}`
 }
-
 function formatLoops(response: any): string {
   return [
     `Repeat tasks (${response?.loops?.length ?? 0})`,
@@ -463,14 +328,12 @@ function formatLoops(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatLoopAction(response: any, action: string): string {
   if (response?.loop) {
     return `Loop ${compactText(response.loop.id)} ${action}: ${compactText(response.loop.name)}`
   }
   return formatActionResponse(response, `loop-${action}`)
 }
-
 function formatAgentProfileResponse(response: any, action = "saved"): string {
   const profile = response?.profile
   if (profile) return `Agent ${action}: ${compactText(profile.id)} - ${compactText(profile.displayName || profile.name)}`
@@ -479,7 +342,6 @@ function formatAgentProfileResponse(response: any, action = "saved"): string {
   }
   return formatActionResponse(response, `agent-${action}`)
 }
-
 function formatMcpStatus(response: any): string {
   return [
     `MCP: ${response?.connectedServers ?? 0}/${response?.totalServers ?? 0} servers connected, ${response?.totalTools ?? 0} tools`,
@@ -491,7 +353,6 @@ function formatMcpStatus(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatSavedMcpServers(response: any): string {
   return [
     `Saved MCP servers (${response?.servers?.length ?? 0})`,
@@ -503,7 +364,6 @@ function formatSavedMcpServers(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatMcpTools(response: any): string {
   return [
     `MCP tools (${response?.count ?? response?.tools?.length ?? 0})${response?.server ? ` - ${response.server}` : ""}`,
@@ -513,7 +373,6 @@ function formatMcpTools(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatMcpLogs(response: any): string {
   return [
     `MCP logs: ${compactText(response?.server)} (${response?.logs?.length ?? 0})`,
@@ -522,7 +381,6 @@ function formatMcpLogs(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatConversations(response: any): string {
   return [
     `Conversations (${response?.count ?? response?.conversations?.length ?? 0})`,
@@ -531,7 +389,6 @@ function formatConversations(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatRecentEvents(response: any, title: string, field: "errors" | "logs"): string {
   const entries = response?.[field]
   return [
@@ -541,7 +398,6 @@ function formatRecentEvents(response: any, title: string, field: "errors" | "log
     }),
   ].join("\n")
 }
-
 function formatAuditEntries(response: any): string {
   return [
     `Audit (${response?.count ?? response?.entries?.length ?? 0})`,
@@ -553,7 +409,6 @@ function formatAuditEntries(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatRemoteServer(response: any): string {
   const url = response?.connectableUrl || response?.url || `${compactText(response?.bind)}:${compactText(response?.port)}`
   return [
@@ -563,7 +418,26 @@ function formatRemoteServer(response: any): string {
     response?.lastError ? `  Last error: ${response.lastError}` : "",
   ].filter(Boolean).join("\n")
 }
-
+async function formatRemoteServerQr(client: ExtendedSettingsApiClient, urlOverride?: string): Promise<string> {
+  const settings = serverSettings()
+  if (!settings.apiKey) {
+    return `Cannot print QR code: missing remote server API key (${settings.apiKeySource})`
+  }
+  const status = await client.getOperatorRemoteServer()
+  const baseUrl = urlOverride || status?.connectableUrl || status?.url || settings.url
+  const serverUrl = ensureRemoteServerV1BaseUrl(normalizeServerUrl(baseUrl))
+  const qrString = await QRCode.toString(
+    buildDotAgentsConfigDeepLink({ baseUrl: serverUrl, apiKey: settings.apiKey }),
+    { type: "terminal", small: true, errorCorrectionLevel: "M" },
+  )
+  return [
+    "Mobile App Connection QR Code",
+    "",
+    qrString.trimEnd(),
+    `Server URL: ${serverUrl}`,
+    `API Key: ${redactSecretForDisplay(settings.apiKey)}`,
+  ].join("\n")
+}
 function formatTunnel(response: any): string {
   return [
     "Tunnel",
@@ -573,7 +447,6 @@ function formatTunnel(response: any): string {
     response?.error ? `  Error: ${response.error}` : "",
   ].filter(Boolean).join("\n")
 }
-
 function formatTunnelSetup(response: any): string {
   return [
     "Tunnel setup",
@@ -591,7 +464,6 @@ function formatTunnelSetup(response: any): string {
     response?.error ? `  Error: ${response.error}` : "",
   ].filter(Boolean).join("\n")
 }
-
 function formatIntegrations(response: any): string {
   const discord = response?.discord || {}
   const whatsapp = response?.whatsapp || {}
@@ -603,7 +475,6 @@ function formatIntegrations(response: any): string {
     `  Push notifications: enabled ${boolLabel(push.enabled)}, tokens ${push.tokenCount ?? 0}`,
   ].join("\n")
 }
-
 function formatDiscord(response: any): string {
   return [
     "Discord",
@@ -617,7 +488,6 @@ function formatDiscord(response: any): string {
     response?.lastError ? `  Last error: ${response.lastError}` : "",
   ].filter(Boolean).join("\n")
 }
-
 function formatDiscordLogs(response: any): string {
   return [
     `Discord logs (${response?.count ?? response?.logs?.length ?? 0})`,
@@ -626,7 +496,6 @@ function formatDiscordLogs(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatWhatsApp(response: any): string {
   return [
     "WhatsApp",
@@ -640,7 +509,6 @@ function formatWhatsApp(response: any): string {
     response?.lastError ? `  Last error: ${response.lastError}` : "",
   ].filter(Boolean).join("\n")
 }
-
 function formatUpdater(response: any): string {
   return [
     "Updater",
@@ -655,7 +523,6 @@ function formatUpdater(response: any): string {
     response?.lastCheckError ? `  Last check error: ${response.lastCheckError}` : "",
   ].filter(Boolean).join("\n")
 }
-
 function formatLocalSpeechModels(response: any): string {
   const models = response?.models && typeof response.models === "object"
     ? Object.entries(response.models)
@@ -669,7 +536,6 @@ function formatLocalSpeechModels(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatLocalSpeechModel(providerId: string, response: any): string {
   const state = response?.downloaded ? "downloaded" : response?.downloading ? `downloading ${response.progress ?? 0}%` : "missing"
   return [
@@ -679,7 +545,6 @@ function formatLocalSpeechModel(providerId: string, response: any): string {
     response?.error ? `  Error: ${response.error}` : "",
   ].filter(Boolean).join("\n")
 }
-
 function formatMessageQueues(response: any): string {
   return [
     `Message queues (${response?.count ?? response?.queues?.length ?? 0} conversations, ${response?.totalMessages ?? 0} messages)`,
@@ -693,7 +558,6 @@ function formatMessageQueues(response: any): string {
     }),
   ].join("\n")
 }
-
 function formatRunAgent(response: any): string {
   if (response?.success === false) return formatActionResponse(response, "run-agent")
   return [
@@ -702,7 +566,6 @@ function formatRunAgent(response: any): string {
     `  Content: ${compactSnippet(response?.content, 200)}`,
   ].join("\n")
 }
-
 function formatApiKeyRotation(response: any): string {
   const scheduled = response?.restartScheduled || response?.scheduled
   return [
@@ -711,392 +574,538 @@ function formatApiKeyRotation(response: any): string {
     response?.apiKey ? "New API key returned by server; update clients before old credentials are discarded." : "",
   ].filter(Boolean).join("\n")
 }
-
+async function saveResponseBody(response: Response, outputPath: string, action: string): Promise<string> {
+  if (!response.ok) throw new Error(`${action} failed: HTTP ${response.status}`)
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  const resolvedPath = path.resolve(outputPath)
+  fs.writeFileSync(resolvedPath, bytes)
+  return [
+    `${action}: ok: ${resolvedPath}`,
+    `  MIME: ${compactText(response.headers.get("content-type"))}`,
+    `  Bytes: ${bytes.byteLength}`,
+  ].join("\n")
+}
+function writeClipboardText(text: string): string {
+  const file = process.env.DOTAGENTS_TUI_CLIPBOARD_FILE
+  if (file) { fs.writeFileSync(file, text); return "clipboard-write: ok" }
+  const candidates: Array<[string, string[]]> = process.platform === "darwin"
+    ? [["pbcopy", []]]
+    : process.platform === "win32"
+      ? [["clip.exe", []]]
+      : [["wl-copy", []], ["xclip", ["-selection", "clipboard"]], ["xsel", ["--clipboard", "--input"]]]
+  let lastError = "no clipboard command available"
+  for (const [command, args] of candidates) {
+    const { error, status, stderr } = spawnSync(command, args, { input: text, encoding: "utf8" })
+    if (!error && status === 0) return "clipboard-write: ok"
+    lastError = error?.message || stderr || `exit ${status ?? "unknown"}`
+  }
+  return `clipboard-write: failed: ${compactText(lastError)}`
+}
+function openTarget(target: string, label: string): string {
+  const captureFile = process.env.DOTAGENTS_TUI_OPEN_PATH_FILE
+  if (captureFile) { fs.appendFileSync(captureFile, `${target}\n`); return `${label}: ok: ${target}` }
+  const candidates: Array<[string, string[]]> = process.platform === "darwin" ? [["open", [target]]] : process.platform === "win32" ? [["cmd.exe", ["/c", "start", "", target]]] : [["xdg-open", [target]]]
+  let lastError = "no open command available"
+  for (const [command, args] of candidates) {
+    const { error, status, stderr } = spawnSync(command, args, { encoding: "utf8" })
+    if (!error && status === 0) return `${label}: ok: ${target}`
+    lastError = error?.message || stderr || `exit ${status ?? "unknown"}`
+  }
+  return `${label}: failed: ${compactText(lastError)}`
+}
+function openLocalPath(targetPath: string, isFile = false): string {
+  const resolvedPath = path.resolve(targetPath)
+  fs.mkdirSync(isFile ? path.dirname(resolvedPath) : resolvedPath, { recursive: true })
+  if (isFile && !fs.existsSync(resolvedPath)) fs.writeFileSync(resolvedPath, "")
+  return openTarget(resolvedPath, "open-path")
+}
+function openMicrophoneSettings(): string {
+  return openTarget(process.platform === "win32" ? "ms-settings:privacy-microphone" : "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone", "open-microphone-settings")
+}
+function readSkillMarkdown(importPath: string, isFolder = false): string {
+  return fs.readFileSync(path.resolve(isFolder ? path.join(importPath, "SKILL.md") : importPath), "utf8")
+}
+function currentAgentsLayers() {
+  const workspace = resolveWorkspaceAgentsFolder(), globalLayer = getAgentsLayerPaths(globalAgentsFolder), workspaceLayer = workspace ? getAgentsLayerPaths(workspace) : null
+  return { workspace, globalLayer, workspaceLayer, layer: workspaceLayer || globalLayer, layers: [workspaceLayer, globalLayer].filter(Boolean) as ReturnType<typeof getAgentsLayerPaths>[] }
+}
+function openAgentsPathTarget(target = "global"): string {
+  const { workspace, globalLayer, workspaceLayer, layer } = currentAgentsLayers()
+  const item = ({
+    global: { path: globalAgentsFolder },
+    workspace: { path: workspace || "" },
+    skills: { path: getAgentsSkillsDir(layer) },
+    knowledge: { path: getPrimaryAgentsKnowledgeDir(layer) },
+    "global-skills": { path: getAgentsSkillsDir(globalLayer) },
+    "workspace-skills": { path: workspaceLayer ? getAgentsSkillsDir(workspaceLayer) : "" },
+    "global-knowledge": { path: getPrimaryAgentsKnowledgeDir(globalLayer) },
+    "workspace-knowledge": { path: workspaceLayer ? getPrimaryAgentsKnowledgeDir(workspaceLayer) : "" },
+    "system-prompt": { path: layer.systemPromptMdPath, file: true },
+    "agents-guidelines": { path: layer.agentsMdPath, file: true },
+  } as Record<string, { path: string; file?: boolean }>)[target]
+  if (!item) return `Usage: /folders open ${FOLDER_OPEN_TARGETS}`
+  return item.path ? openLocalPath(item.path, item.file) : "open-path: failed: no workspace .agents folder configured"
+}
+async function openLoopTaskFileTarget(client: ExtendedSettingsApiClient, loopId?: string): Promise<string> {
+  if (!loopId) return "Usage: /loop open <id>"
+  const { globalLayer, layers } = currentAgentsLayers()
+  for (const layer of layers) {
+    const filePath = loadTasksLayer(layer).originById.get(loopId)?.filePath
+    if (filePath) return openLocalPath(filePath, true)
+  }
+  const loop = (await client.getLoops()).loops?.find((item: any) => item.id === loopId)
+  if (!loop) return `open-path: failed: task with id ${loopId} not found`
+  writeTaskFile(globalLayer, loop, { maxBackups: 10 })
+  return openLocalPath(taskIdToFilePath(globalLayer, loopId), true)
+}
+async function openSkillFileTarget(client: ExtendedSettingsApiClient, skillId?: string): Promise<string> {
+  if (!skillId) return "Usage: /skill open <id>"
+  const { globalLayer, layers } = currentAgentsLayers()
+  for (const layer of layers) {
+    const filePath = loadAgentsSkillsLayer(layer).originById.get(skillId)?.filePath
+    if (filePath) return openLocalPath(filePath, true)
+  }
+  const skill = (await client.getSkill(skillId)).skill
+  if (!skill) return `open-path: failed: skill with id ${skillId} not found`
+  writeAgentsSkillFile(globalLayer, skill, { maxBackups: 10 })
+  return openLocalPath(skillIdToFilePath(globalLayer, skillId), true)
+}
+async function openKnowledgeNoteFileTarget(client: ExtendedSettingsApiClient, noteId?: string): Promise<string> {
+  if (!noteId) return "Usage: /note open <id>"
+  const { globalLayer, layers } = currentAgentsLayers()
+  for (const layer of layers) {
+    const filePath = loadAgentsKnowledgeNotesLayer(layer).originById.get(noteId)?.filePath
+    if (filePath) return openLocalPath(filePath, true)
+  }
+  const note = (await client.getKnowledgeNote(noteId)).note
+  const { filePath } = writeKnowledgeNoteFile(globalLayer, note as KnowledgeNote, { knowledgeRootPath: getPrimaryAgentsKnowledgeDir(globalLayer), maxBackups: 10 })
+  return openLocalPath(filePath, true)
+}
 async function runServerCommand(input: string): Promise<string | undefined> {
   const message = input.trim()
   if (!message.startsWith("/")) return undefined
 
   const [command, ...args] = message.slice(1).split(/\s+/).filter(Boolean)
   if (!command || command === "help") return COMMAND_HELP
-
-  if (command === "status") {
-    return formatStatus(await apiRequest(REMOTE_SERVER_API_PATHS.operatorStatus))
-  }
-
-  if (command === "health") {
-    return formatHealth(await apiRequest(REMOTE_SERVER_API_PATHS.operatorHealth))
-  }
-
+  const client = settingsApiClient()
+  if (command === "status") return formatStatus(await client.getOperatorStatus())
+  if (command === "health") return formatHealth(await client.getOperatorHealth())
   if (command === "agents") {
-    return formatAgentProfiles(await apiRequest(REMOTE_SERVER_API_PATHS.agentProfiles))
+    if (args[0] === "reload") return formatActionResponse(await client.reloadAgentProfiles(), "agents-reload")
+    if (args.length > 0) return "Usage: /agents [reload]"
+    return formatAgentProfiles(await client.getAgentProfiles())
   }
-
-  if (command === "profiles") {
-    return formatProfiles(await apiRequest(REMOTE_SERVER_API_PATHS.profiles))
-  }
-
+  if (command === "profiles") return formatProfiles(await client.getProfiles())
   if (command === "use") {
     const profileId = args[0]
     if (!profileId) return "Usage: /use <profile-id>"
-    const response = await apiRequest(REMOTE_SERVER_API_PATHS.currentProfile, {
-      method: "POST",
-      body: JSON.stringify({ profileId }),
-    })
+    const response = await client.setCurrentProfile(profileId)
     return `Current profile: ${compactText((response as any)?.profile?.id || profileId)}`
   }
-
   if (command === "profile") {
     const action = args[0]
+    if (action === "current") return formatJsonObject(await client.getCurrentProfile())
     if (action === "export") {
       const profileId = args[1]
       if (!profileId) return "Usage: /profile export <profile-id>"
-      const response = await apiRequest<{ profileJson?: string }>(REMOTE_SERVER_API_BUILDERS.profileExport(profileId))
+      const response = await client.exportProfile(profileId)
       return response.profileJson || ""
     }
-
     if (action === "import") {
-      const profileJson = args.slice(1).join(" ").trim()
+      const profileJson = textPayload(args, 1)
       if (!profileJson) return "Usage: /profile import <json>"
-      const response = await apiRequest(REMOTE_SERVER_API_PATHS.profileImport, {
-        method: "POST",
-        body: JSON.stringify({ profileJson }),
-      })
+      const response = await client.importProfile(profileJson)
       return `Profile imported: ${compactText((response as any)?.profile?.id)}`
     }
-
-    return "Usage: /profile export <profile-id> | /profile import <json>"
+    return "Usage: /profile current | /profile export <profile-id> | /profile import <json>"
   }
-
+  if (command === "models") return formatJsonObject(args[0] ? await client.getModels(args[0] as any) : await client.getOpenAICompatibleModels())
   if (command === "settings") {
     const action = args[0]
-    if (!action) return formatSettings(await apiRequest(REMOTE_SERVER_API_PATHS.settings))
-    if (action === "patch") {
-      const parsed = parseJsonPayload(args, "/settings patch <json>", 1)
-      if (!parsed.ok) return parsed.message
-      return formatSettingsPatch(await apiRequest(REMOTE_SERVER_API_PATHS.settings, {
-        method: "PATCH",
-        body: JSON.stringify(parsed.value),
-      }))
-    }
+    if (!action) return formatSettings(await client.getSettings())
+    if (action === "patch") return withJsonPayload(args, "/settings patch <json>", 1, async (value) => formatSettingsPatch(await client.updateSettings(value as any)))
     return "Usage: /settings [patch <json>]"
   }
-
-  if (command === "presets") {
-    return formatModelPresets(await apiRequest(REMOTE_SERVER_API_PATHS.operatorModelPresets))
+  if (command === "config") {
+    const action = args[0]
+    if (!action) return formatLocalConfig()
+    if (action === "path") return configFilePath()
+    if (action === "patch") return withJsonPayload(args, "/config patch <json>", 1, patchLocalConfig)
+    return "Usage: /config [path|patch <json>]"
   }
-
+  if (command === "presets") return formatModelPresets(await client.getModelPresets())
+  if (command === "folders") {
+    if (args[0] === "open") return openAgentsPathTarget(args[1])
+    if (args.length > 0) return `Usage: /folders [open ${FOLDER_OPEN_TARGETS}]`
+    return formatAgentsFolders()
+  }
+  if (command === "system-prompt") return args[0] === "default" ? DEFAULT_SYSTEM_PROMPT : "Usage: /system-prompt default"
+  if (command === "debug-flags") return formatJsonObject(getDebugFlags())
+  if (command === "sandbox") {
+    const action = args[0]
+    if (!action || action === "list") return formatSandboxState()
+    if (action === "save-baseline") return formatSandboxResult(saveBaseline(globalAgentsFolder), "save-baseline")
+    if (action === "restore") return formatSandboxResult(restoreBaseline(globalAgentsFolder), "restore")
+    if (action === "save" || action === "switch" || action === "delete") {
+      const name = textPayload(args, 1)
+      if (!name) return `Usage: /sandbox ${action} <slot-name>`
+      const result = action === "save"
+        ? saveCurrentAsSlot(globalAgentsFolder, name)
+        : action === "switch"
+          ? switchToSlot(globalAgentsFolder, name)
+          : deleteSlot(globalAgentsFolder, name)
+      return formatSandboxResult(result, action)
+    }
+    if (action === "rename") {
+      const oldName = args[1]
+      const newName = textPayload(args, 2)
+      if (!oldName || !newName) return "Usage: /sandbox rename <old-name> <new-name>"
+      return formatSandboxResult(renameSlot(globalAgentsFolder, oldName, newName), "rename")
+    }
+    return "Usage: /sandbox [list|save-baseline|save|switch|restore|delete|rename]"
+  }
   if (command === "preset") {
     const action = args[0]
     if (!action) return "Usage: /preset use|create|update|delete"
-
     if (action === "use") {
       const presetId = args[1]
       if (!presetId) return "Usage: /preset use <preset-id>"
-      return formatSettingsPatch(await apiRequest(REMOTE_SERVER_API_PATHS.settings, {
-        method: "PATCH",
-        body: JSON.stringify({ currentModelPresetId: presetId }),
-      }))
+      return formatSettingsPatch(await client.updateSettings({ currentModelPresetId: presetId } as any))
     }
-
     if (action === "create") {
-      const parsed = parseJsonPayload(args, "/preset create <json>", 1)
-      if (!parsed.ok) return parsed.message
-      return formatModelPresetMutation(await apiRequest(REMOTE_SERVER_API_PATHS.operatorModelPresets, {
-        method: "POST",
-        body: JSON.stringify(parsed.value),
-      }), "created")
+      return withJsonPayload(args, "/preset create <json>", 1, async (value) => formatModelPresetMutation(await client.createModelPreset(value as any), "created"))
     }
-
     if (action === "update") {
       const presetId = args[1]
       if (!presetId) return "Usage: /preset update <id> <json>"
-      const parsed = parseJsonPayload(args, "/preset update <id> <json>", 2)
-      if (!parsed.ok) return parsed.message
-      return formatModelPresetMutation(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorModelPreset(presetId), {
-        method: "PATCH",
-        body: JSON.stringify(parsed.value),
-      }), "updated")
+      return withJsonPayload(args, "/preset update <id> <json>", 2, async (value) => formatModelPresetMutation(await client.updateModelPreset(presetId, value as any), "updated"))
     }
-
     if (action === "delete") {
       const presetId = args[1]
       if (!presetId) return "Usage: /preset delete <id>"
-      return formatModelPresetMutation(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorModelPreset(presetId), {
-        method: "DELETE",
-      }), "deleted")
+      return formatModelPresetMutation(await client.deleteModelPreset(presetId), "deleted")
     }
-
     return "Usage: /preset use|create|update|delete"
   }
-
-  if (command === "skills") {
-    return formatSkills(await apiRequest(REMOTE_SERVER_API_PATHS.skills))
-  }
-
+  if (command === "skills") return formatSkills(await client.getSkills())
   if (command === "skill") {
     const action = args[0]
-    if (!action) return "Usage: /skill <skill-id> | /skill show|toggle|create|update|delete"
-
+    if (!action) return "Usage: /skill <skill-id> | /skill show|toggle|create|update|delete|open"
+    if (action === "open") return openSkillFileTarget(client, args[1])
     if (action === "show") {
       const skillId = args[1]
       if (!skillId) return "Usage: /skill show <id>"
-      return formatJsonObject(await apiRequest(REMOTE_SERVER_API_BUILDERS.skill(skillId)))
+      return formatJsonObject(await client.getSkill(skillId))
     }
-
     if (action === "create") {
-      const parsed = parseJsonPayload(args, "/skill create <json>", 1)
-      if (!parsed.ok) return parsed.message
-      return formatSkillResponse(await apiRequest(REMOTE_SERVER_API_PATHS.skills, {
-        method: "POST",
-        body: JSON.stringify(parsed.value),
-      }), "created")
+      return withJsonPayload(args, "/skill create <json>", 1, async (value) => formatSkillResponse(await client.createSkill(value as any), "created"))
     }
-
     if (action === "update") {
       const skillId = args[1]
       if (!skillId) return "Usage: /skill update <id> <json>"
-      const parsed = parseJsonPayload(args, "/skill update <id> <json>", 2)
-      if (!parsed.ok) return parsed.message
-      return formatSkillResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.skill(skillId), {
-        method: "PATCH",
-        body: JSON.stringify(parsed.value),
-      }), "updated")
+      return withJsonPayload(args, "/skill update <id> <json>", 2, async (value) => formatSkillResponse(await client.updateSkill(skillId, value as any), "updated"))
     }
-
     if (action === "delete") {
       const skillId = args[1]
       if (!skillId) return "Usage: /skill delete <id>"
-      return formatDeleteResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.skill(skillId), {
-        method: "DELETE",
-      }), "Skill")
+      return formatDeleteResponse(await client.deleteSkill(skillId), "Skill")
+    }
+    if (action === "delete-many") {
+      const ids = args.slice(1)
+      if (ids.length === 0) return "Usage: /skill delete-many <ids...>"
+      return formatJsonObject(await client.deleteSkills(ids))
+    }
+    if (action === "import-markdown") {
+      const content = textPayload(args, 1)
+      if (!content) return "Usage: /skill import-markdown <markdown>"
+      return formatSkillResponse(await client.importSkillFromMarkdown(content), "imported")
+    }
+    if (action === "import-file" || action === "import-folder") {
+      const importPath = textPayload(args, 1)
+      if (!importPath) return `Usage: /skill ${action} <path>`
+      return formatSkillResponse(await client.importSkillFromMarkdown(readSkillMarkdown(importPath, action === "import-folder")), "imported")
+    }
+    if (action === "import-parent-folder") {
+      const parentPath = textPayload(args, 1)
+      if (!parentPath) return "Usage: /skill import-parent-folder <path>"
+      const imported: any[] = [], errors: Array<{ folder: string; error: string }> = []
+      for (const entry of fs.readdirSync(path.resolve(parentPath), { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue
+        const childPath = path.join(parentPath, entry.name)
+        if (!fs.existsSync(path.join(childPath, "SKILL.md"))) continue
+        try { imported.push((await client.importSkillFromMarkdown(readSkillMarkdown(childPath, true))).skill) }
+        catch (error) { errors.push({ folder: entry.name, error: error instanceof Error ? error.message : String(error) }) }
+      }
+      return formatJsonObject({ imported, skipped: [], errors })
+    }
+    if (action === "import-github") {
+      const repoIdentifier = args[1]
+      if (!repoIdentifier) return "Usage: /skill import-github <owner/repo>"
+      return formatJsonObject(await client.importSkillFromGitHub(repoIdentifier))
+    }
+    if (action === "export") {
+      const skillId = args[1]
+      if (!skillId) return "Usage: /skill export <id>"
+      return (await client.exportSkillToMarkdown(skillId)).content || ""
+    }
+    if (action === "export-file") {
+      const skillId = args[1], outputPath = textPayload(args, 2)
+      if (!skillId || !outputPath) return "Usage: /skill export-file <id> <path>"
+      const resolvedPath = path.resolve(outputPath)
+      fs.mkdirSync(path.dirname(resolvedPath), { recursive: true })
+      fs.writeFileSync(resolvedPath, (await client.exportSkillToMarkdown(skillId)).content || "")
+      return `skill-export-file: ok: ${resolvedPath}`
     }
 
     const skillId = action === "toggle" ? args[1] : action
     if (!skillId) return "Usage: /skill <skill-id> | /skill toggle <skill-id>"
-    return formatSkillToggle(await apiRequest(REMOTE_SERVER_API_BUILDERS.skillToggleProfile(skillId), {
-      method: "POST",
-    }))
+    return formatSkillToggle(await client.toggleSkillForProfile(skillId))
   }
-
   if (command === "notes") {
-    return formatKnowledgeNotes(await apiRequest(REMOTE_SERVER_API_PATHS.knowledgeNotes))
+    const action = args[0]
+    if (!action) return formatKnowledgeNotes(await client.getKnowledgeNotes())
+    if (action === "search") {
+      const payload = textPayload(args, 1)
+      if (!payload) return "Usage: /notes search <json|query>"
+      const parsed = payload.startsWith("{") ? parseJsonPayload(args, "/notes search <json>", 1) : undefined
+      if (parsed && !parsed.ok) return parsed.message
+      const request = parsed?.value ?? { query: payload, limit: 100 }
+      return formatKnowledgeNotes(await client.searchKnowledgeNotes(request as any))
+    }
+    if (action === "delete-many") {
+      const ids = args.slice(1)
+      if (ids.length === 0) return "Usage: /notes delete-many <ids...>"
+      return formatJsonObject(await client.deleteKnowledgeNotes(ids))
+    }
+    if (action === "delete-all") return formatJsonObject(await client.deleteAllKnowledgeNotes())
+    return "Usage: /notes [search|delete-many|delete-all]"
   }
-
   if (command === "note") {
     const action = args[0]
-    if (!action) return "Usage: /note show|create|update|delete"
-
+    if (!action) return "Usage: /note show|create|update|delete|open"
     if (action === "show") {
       const noteId = args[1]
       if (!noteId) return "Usage: /note show <id>"
-      return formatJsonObject(await apiRequest(REMOTE_SERVER_API_BUILDERS.knowledgeNote(noteId)))
+      return formatJsonObject(await client.getKnowledgeNote(noteId))
     }
-
+    if (action === "open") return openKnowledgeNoteFileTarget(client, args[1])
     if (action === "create") {
-      const parsed = parseJsonPayload(args, "/note create <json>", 1)
-      if (!parsed.ok) return parsed.message
-      return formatKnowledgeNoteResponse(await apiRequest(REMOTE_SERVER_API_PATHS.knowledgeNotes, {
-        method: "POST",
-        body: JSON.stringify(parsed.value),
-      }), "created")
+      return withJsonPayload(args, "/note create <json>", 1, async (value) => formatKnowledgeNoteResponse(await client.createKnowledgeNote(value as any), "created"))
     }
-
     if (action === "update") {
       const noteId = args[1]
       if (!noteId) return "Usage: /note update <id> <json>"
-      const parsed = parseJsonPayload(args, "/note update <id> <json>", 2)
-      if (!parsed.ok) return parsed.message
-      return formatKnowledgeNoteResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.knowledgeNote(noteId), {
-        method: "PATCH",
-        body: JSON.stringify(parsed.value),
-      }), "updated")
+      return withJsonPayload(args, "/note update <id> <json>", 2, async (value) => formatKnowledgeNoteResponse(await client.updateKnowledgeNote(noteId, value as any), "updated"))
     }
-
     if (action === "delete") {
       const noteId = args[1]
       if (!noteId) return "Usage: /note delete <id>"
-      return formatDeleteResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.knowledgeNote(noteId), {
-        method: "DELETE",
-      }), "Note")
+      return formatDeleteResponse(await client.deleteKnowledgeNote(noteId), "Note")
     }
-
-    return "Usage: /note show|create|update|delete"
+    return "Usage: /note show|create|update|delete|open"
   }
-
   if (command === "loops") {
-    return formatLoops(await apiRequest(REMOTE_SERVER_API_PATHS.loops))
+    const action = args[0]
+    if (!action) return formatLoops(await client.getLoops())
+    if (action === "statuses") return formatJsonObject(await client.getLoopStatuses())
+    if (action === "start-all") return formatActionResponse(await client.startAllLoops(), "loops-start-all")
+    if (action === "stop-all") return formatActionResponse(await client.stopAllLoops(), "loops-stop-all")
+    return "Usage: /loops [statuses|start-all|stop-all]"
   }
-
   if (command === "loop") {
     const action = args[0]
-    if (!action) {
-      return "Usage: /loop create|update|delete|run|toggle"
-    }
-
+    if (!action) return "Usage: /loop create|import-markdown|export|update|delete|run|toggle|start|stop|open"
     if (action === "create") {
-      const parsed = parseJsonPayload(args, "/loop create <json>", 1)
-      if (!parsed.ok) return parsed.message
-      return formatLoopAction(await apiRequest(REMOTE_SERVER_API_PATHS.loops, {
-        method: "POST",
-        body: JSON.stringify(parsed.value),
-      }), "created")
+      return withJsonPayload(args, "/loop create <json>", 1, async (value) => formatLoopAction(await client.createLoop(value as any), "created"))
     }
-
+    if (action === "import-markdown") {
+      const content = textPayload(args, 1)
+      if (!content) return "Usage: /loop import-markdown <markdown>"
+      return formatLoopAction(await client.importLoopFromMarkdown(content), "imported")
+    }
+    if (action === "export") {
+      const loopId = args[1]
+      if (!loopId) return "Usage: /loop export <id>"
+      return (await client.exportLoopToMarkdown(loopId)).content || ""
+    }
     if (action === "update") {
       const loopId = args[1]
       if (!loopId) return "Usage: /loop update <id> <json>"
-      const parsed = parseJsonPayload(args, "/loop update <id> <json>", 2)
-      if (!parsed.ok) return parsed.message
-      return formatLoopAction(await apiRequest(REMOTE_SERVER_API_BUILDERS.loop(loopId), {
-        method: "PATCH",
-        body: JSON.stringify(parsed.value),
-      }), "updated")
+      return withJsonPayload(args, "/loop update <id> <json>", 2, async (value) => formatLoopAction(await client.updateLoop(loopId, value as any), "updated"))
     }
-
     if (action === "delete") {
       const loopId = args[1]
       if (!loopId) return "Usage: /loop delete <id>"
-      return formatDeleteResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.loop(loopId), {
-        method: "DELETE",
-      }), "Loop")
+      return formatDeleteResponse(await client.deleteLoop(loopId), "Loop")
     }
+    if (action === "open") return openLoopTaskFileTarget(client, args[1])
 
     const loopId = args[1]
-    if (!loopId || !["run", "toggle"].includes(action)) {
-      return "Usage: /loop create|update|delete|run|toggle"
+    if (!loopId || !["run", "toggle", "start", "stop"].includes(action)) {
+      return "Usage: /loop create|import-markdown|export|update|delete|run|toggle|start|stop|open"
     }
-    const path = action === "run"
-      ? REMOTE_SERVER_API_BUILDERS.loopRun(loopId)
-      : REMOTE_SERVER_API_BUILDERS.loopToggle(loopId)
-    return formatLoopAction(await apiRequest(path, { method: "POST" }), action)
+    if (action === "run") return formatLoopAction(await client.runLoop(loopId), action)
+    if (action === "toggle") return formatLoopAction(await client.toggleLoop(loopId), action)
+    if (action === "start") return formatLoopAction(await client.startLoop(loopId), action)
+    return formatLoopAction(await client.stopLoop(loopId), action)
   }
-
   if (command === "agent") {
     const action = args[0]
     if (!action) return "Usage: /agent show|create|update|delete|toggle"
-
     if (action === "show") {
       const agentId = args[1]
       if (!agentId) return "Usage: /agent show <id>"
-      return formatJsonObject(await apiRequest(REMOTE_SERVER_API_BUILDERS.agentProfile(agentId)))
+      return formatJsonObject(await client.getAgentProfile(agentId))
     }
-
+    if (action === "verify") {
+      return withJsonPayload(args, "/agent verify <json>", 1, async (value) => formatJsonObject(await client.verifyExternalAgentCommand(value as any)))
+    }
     if (action === "create") {
-      const parsed = parseJsonPayload(args, "/agent create <json>", 1)
-      if (!parsed.ok) return parsed.message
-      return formatAgentProfileResponse(await apiRequest(REMOTE_SERVER_API_PATHS.agentProfiles, {
-        method: "POST",
-        body: JSON.stringify(parsed.value),
-      }), "created")
+      return withJsonPayload(args, "/agent create <json>", 1, async (value) => formatAgentProfileResponse(await client.createAgentProfile(value as any), "created"))
     }
-
     if (action === "update") {
       const agentId = args[1]
       if (!agentId) return "Usage: /agent update <id> <json>"
-      const parsed = parseJsonPayload(args, "/agent update <id> <json>", 2)
-      if (!parsed.ok) return parsed.message
-      return formatAgentProfileResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.agentProfile(agentId), {
-        method: "PATCH",
-        body: JSON.stringify(parsed.value),
-      }), "updated")
+      return withJsonPayload(args, "/agent update <id> <json>", 2, async (value) => formatAgentProfileResponse(await client.updateAgentProfile(agentId, value as any), "updated"))
     }
-
     if (action === "delete") {
       const agentId = args[1]
       if (!agentId) return "Usage: /agent delete <id>"
-      await apiRequest(REMOTE_SERVER_API_BUILDERS.agentProfile(agentId), { method: "DELETE" })
+      await client.deleteAgentProfile(agentId)
       return `Agent deleted: ${agentId}`
     }
-
     if (action === "toggle") {
       const agentId = args[1]
       if (!agentId) return "Usage: /agent toggle <id>"
-      return formatAgentProfileResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.agentProfileToggle(agentId), {
-        method: "POST",
-      }), "toggled")
+      return formatAgentProfileResponse(await client.toggleAgentProfile(agentId), "toggled")
     }
-
-    return "Usage: /agent show|create|update|delete|toggle"
+    return "Usage: /agent show|verify|create|update|delete|toggle"
   }
-
+  if (command === "bundle" || command === "bundles") {
+    const action = args[0]
+    if (action === "items") return formatJsonObject(await client.getBundleExportableItems())
+    if (action === "export" || action === "export-file") {
+      const parsed = action === "export-file" ? (args.length > 2 ? parseJsonPayload(args, "/bundle export-file <path> [json]", 2) : undefined) : (args.length > 1 ? parseJsonPayload(args, "/bundle export [json]", 1) : undefined)
+      if (parsed && !parsed.ok) return parsed.message
+      const response = await client.exportBundle((parsed?.value ?? {}) as any)
+      if (action === "export") return formatJsonObject(response)
+      const outputPath = args[1]
+      if (!outputPath) return "Usage: /bundle export-file <path> [json]"
+      fs.mkdirSync(path.dirname(path.resolve(outputPath)), { recursive: true })
+      fs.writeFileSync(path.resolve(outputPath), response.bundleJson)
+      return `bundle-export-file: ok: ${path.resolve(outputPath)}`
+    }
+    if (action === "preview" || action === "preview-file") {
+      const bundleJson = action === "preview-file" && args[1] ? fs.readFileSync(path.resolve(args[1]), "utf8") : textPayload(args, 1)
+      if (!bundleJson) return "Usage: /bundle preview <bundle-json>"
+      return formatJsonObject(await client.previewBundleImport({ bundleJson }))
+    }
+    if (action === "import" || action === "import-file") {
+      const parsed = action === "import-file" && args.length <= 2 ? { ok: true, value: {} } as const : parseJsonPayload(args, action === "import-file" ? "/bundle import-file <path> [json-options]" : "/bundle import <json-request>", action === "import-file" ? 2 : 1)
+      if (!parsed.ok) return parsed.message
+      const value = parsed.value as any, bundleJson = action === "import-file" && args[1] ? fs.readFileSync(path.resolve(args[1]), "utf8") : undefined
+      const request = typeof value?.bundleJson === "string"
+        ? value
+        : { bundleJson: bundleJson ?? JSON.stringify(value), conflictStrategy: "rename", ...value }
+      return formatJsonObject(await client.importBundle(request))
+    }
+    return "Usage: /bundle items|export [json]|export-file <path> [json]|preview <bundle-json>|preview-file <path>|import <json-request>|import-file <path> [json-options]"
+  }
   if (command === "mcp") {
     const action = args[0]
-    if (!action) return formatMcpStatus(await apiRequest(REMOTE_SERVER_API_PATHS.operatorMcp))
-
+    if (!action) return formatMcpStatus(await client.getOperatorMCP())
     if (action === "tools") {
-      return formatMcpTools(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorMcpTools(args[1])))
+      return formatMcpTools(await client.getOperatorMCPTools(args[1]))
     }
-
     if (action === "servers") {
-      return formatSavedMcpServers(await apiRequest(REMOTE_SERVER_API_PATHS.mcpServers))
+      return formatSavedMcpServers(await client.getMCPServers())
     }
-
     if (action === "logs") {
       const server = args[1]
       if (!server) return "Usage: /mcp logs <server> [count]"
       const count = args[2] ? Number(args[2]) : undefined
-      return formatMcpLogs(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorMcpServerLogs(server, count)))
+      return formatMcpLogs(await client.getOperatorMCPServerLogs(server, count))
     }
-
     if (action === "clear-logs") {
       const server = args[1]
       if (!server) return "Usage: /mcp clear-logs <server>"
-      return formatActionResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorMcpServerLogsClear(server), {
-        method: "POST",
-      }), "mcp-clear-logs")
+      return formatActionResponse(await client.clearOperatorMCPServerLogs(server), "mcp-clear-logs")
     }
-
     if (action === "test") {
       const server = args[1]
       if (!server) return "Usage: /mcp test <server>"
-      return formatActionResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorMcpServerTest(server), {
-        method: "POST",
-      }), "mcp-test")
+      return formatActionResponse(await client.testOperatorMCPServer(server), "mcp-test")
     }
-
     if (["start", "stop", "restart"].includes(action)) {
       const server = args[1]
       if (!server) return `Usage: /mcp ${action} <server>`
-      const path =
-        action === "start"
-          ? REMOTE_SERVER_API_PATHS.operatorMcpStart
-          : action === "stop"
-            ? REMOTE_SERVER_API_PATHS.operatorMcpStop
-            : REMOTE_SERVER_API_PATHS.operatorMcpRestart
-      return formatActionResponse(await apiRequest(path, {
-        method: "POST",
-        body: JSON.stringify({ server }),
-      }), `mcp-${action}`)
+      const response = action === "start"
+        ? await client.startMCPServer(server)
+        : action === "stop"
+          ? await client.stopMCPServer(server)
+          : await client.restartMCPServer(server)
+      return formatActionResponse(response, `mcp-${action}`)
     }
-
     if (action === "enable-tool" || action === "disable-tool") {
       const toolName = args[1]
       if (!toolName) return `Usage: /mcp ${action} <tool-name>`
-      const response = await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorMcpToolToggle(toolName), {
-        method: "POST",
-        body: JSON.stringify({ enabled: action === "enable-tool" }),
-      })
+      const response = await client.setOperatorMCPToolEnabled(toolName, action === "enable-tool")
       return formatActionResponse(response, "mcp-tool-toggle")
     }
-
     if (action === "enable-server" || action === "disable-server") {
       const server = args[1]
       if (!server) return `Usage: /mcp ${action} <server>`
-      const response = await apiRequest(REMOTE_SERVER_API_BUILDERS.mcpServerToggle(server), {
-        method: "POST",
-        body: JSON.stringify({ enabled: action === "enable-server" }),
-      })
+      const response = await client.toggleMCPServer(server, action === "enable-server")
       return formatActionResponse(response, "mcp-server-toggle")
     }
-
-    return "Usage: /mcp [servers|tools|logs|clear-logs|test|start|stop|restart|enable-tool|disable-tool|enable-server|disable-server]"
+    if (action === "export-config") return formatJsonObject(await client.exportMCPServerConfigs())
+    if (action === "export-config-file") {
+      const outputPath = args[1]
+      if (!outputPath) return "Usage: /mcp export-config-file <path>"
+      const resolvedPath = path.resolve(outputPath)
+      fs.mkdirSync(path.dirname(resolvedPath), { recursive: true })
+      fs.writeFileSync(resolvedPath, formatJsonObject(await client.exportMCPServerConfigs()))
+      return `mcp-export-config-file: ok: ${resolvedPath}`
+    }
+    if (action === "import-config") {
+      return withJsonPayload(args, "/mcp import-config <json>", 1, async (value) => formatJsonObject(await client.importMCPServerConfigs(value as any)))
+    }
+    if (action === "import-config-file") {
+      const inputPath = args[1]
+      if (!inputPath) return "Usage: /mcp import-config-file <path>"
+      return formatJsonObject(await client.importMCPServerConfigs(JSON.parse(fs.readFileSync(path.resolve(inputPath), "utf8")) as any))
+    }
+    if (action === "upsert-server") {
+      const server = args[1]
+      if (!server) return "Usage: /mcp upsert-server <server> <json>"
+      return withJsonPayload(args, "/mcp upsert-server <server> <json>", 2, async (value) => formatJsonObject(await client.upsertMCPServerConfig(server, value as any)))
+    }
+    if (action === "delete-server-config") {
+      const server = args[1]
+      if (!server) return "Usage: /mcp delete-server-config <server>"
+      return formatJsonObject(await client.deleteMCPServerConfig(server))
+    }
+    if (action === "oauth") {
+      const server = args[1]
+      const oauthAction = args[2] || "status"
+      if (!server) return "Usage: /mcp oauth <server> [status|start|revoke]"
+      if (oauthAction === "status") return formatJsonObject(await client.getMcpOAuthStatus(server))
+      if (oauthAction === "start") return formatActionResponse(await client.initiateMcpOAuthFlow(server), "mcp-oauth-start")
+      if (oauthAction === "revoke") return formatActionResponse(await client.revokeMcpOAuthTokens(server), "mcp-oauth-revoke")
+      return "Usage: /mcp oauth <server> [status|start|revoke]"
+    }
+    return "Usage: /mcp [servers|tools|logs|clear-logs|test|start|stop|restart|enable-tool|disable-tool|enable-server|disable-server|export-config|export-config-file|import-config|import-config-file|upsert-server|delete-server-config|oauth]"
   }
-
   if (command === "errors") {
+    if (args[0] === "clear") return formatActionResponse(await client.clearOperatorErrors(), "operator-clear-errors")
     const count = positiveNumberArg(args[0], 10)
-    return formatRecentEvents(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorErrors(count)), "Errors", "errors")
+    return formatRecentEvents(await client.getOperatorErrors(count), "Errors", "errors")
   }
-
+  if (command === "diagnostics") {
+    if (args[0] === "save") return formatActionResponse(await client.saveOperatorDiagnosticReport(args[1]), "operator-save-diagnostic-report")
+    if (args.length > 0) return "Usage: /diagnostics [save [path]]"
+    return formatJsonObject(await client.getOperatorDiagnosticReport())
+  }
   if (command === "logs") {
     const count = positiveNumberArg(args[0], 20)
     const level = args[1]
@@ -1104,49 +1113,102 @@ async function runServerCommand(input: string): Promise<string | undefined> {
       return "Usage: /logs [count] [error|warning|info]"
     }
     return formatRecentEvents(
-      await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorLogs(count, level as "error" | "warning" | "info" | undefined)),
+      await client.getOperatorLogs(count, level as "error" | "warning" | "info" | undefined),
       "Logs",
       "logs",
     )
   }
-
   if (command === "audit") {
     const count = positiveNumberArg(args[0], 20)
-    return formatAuditEntries(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorAudit(count)))
+    return formatAuditEntries(await client.getOperatorAudit(count))
   }
-
   if (command === "conversations") {
-    return formatConversations(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorConversations(20)))
+    return formatConversations(await client.getOperatorConversations(20))
   }
-
+  if (command === "conversation") {
+    const action = args[0]
+    if (action === "list") return formatJsonObject(await client.getConversations())
+    if (action === "asset") {
+      const kind = args[1]
+      const id = args[2]
+      const fileName = args[3]
+      const outputPath = args[4]
+      if (!["image", "video"].includes(kind || "") || !id || !fileName || !outputPath) return "Usage: /conversation asset image|video <id> <file> <output-path>"
+      const response = kind === "image"
+        ? await client.getConversationImageAssetResponse(id, fileName)
+        : await client.getConversationVideoAssetResponse(id, fileName)
+      return saveResponseBody(response, outputPath, `conversation-${kind}-asset`)
+    }
+    if (action === "show") {
+      const id = args[1]
+      if (!id) return "Usage: /conversation show <id>"
+      return formatJsonObject(await client.getConversation(id))
+    }
+    if (action === "create") {
+      return withJsonPayload(args, "/conversation create <json>", 1, async (value) => formatJsonObject(await client.createConversation(value as any)))
+    }
+    if (action === "update") {
+      const id = args[1]
+      if (!id) return "Usage: /conversation update <id> <json>"
+      return withJsonPayload(args, "/conversation update <id> <json>", 2, async (value) => formatJsonObject(await client.updateConversation(id, value as any)))
+    }
+    if (action === "branch") {
+      const id = args[1]
+      if (!id) return "Usage: /conversation branch <id> <json>"
+      return withJsonPayload(args, "/conversation branch <id> <json>", 2, async (value) => formatJsonObject(await client.branchConversation(id, value as any)))
+    }
+    if (action === "delete") {
+      const id = args[1]
+      if (!id) return "Usage: /conversation delete <id>"
+      return formatJsonObject(await client.deleteConversation(id))
+    }
+    if (action === "delete-all") return formatJsonObject(await client.deleteAllConversations())
+    return "Usage: /conversation list|asset|show|create|update|branch|delete|delete-all"
+  }
+  if (command === "approvals") {
+    const limit = positiveNumberArg(args[0], 20)
+    return formatJsonObject(await client.getAgentSessionCandidates(limit))
+  }
+  if (command === "approval") {
+    const approvalId = args[0]
+    const action = args[1]
+    if (!approvalId || !["approve", "reject"].includes(action || "")) return "Usage: /approval <id> approve|reject"
+    return formatJsonObject(await client.respondToToolApproval(approvalId, action === "approve"))
+  }
   if (command === "session") {
     const action = args[0]
     const sessionId = args[1]
-    if (action !== "stop" || !sessionId) return "Usage: /session stop <session-id>"
-    return formatActionResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorAgentSessionStop(sessionId), {
-      method: "POST",
-    }), "session-stop")
+    const run = sessionId ? ({
+      show: () => client.showOperatorAgentSession(sessionId),
+      stop: () => client.stopOperatorAgentSession(sessionId),
+      snooze: () => client.snoozeOperatorAgentSession(sessionId),
+      unsnooze: () => client.unsnoozeOperatorAgentSession(sessionId),
+      clear: () => client.clearOperatorAgentSession(sessionId),
+    } as Record<string, () => Promise<any>>)[action || ""] : undefined
+    return run ? formatActionResponse(await run(), `session-${action}`) : "Usage: /session show|stop|snooze|unsnooze|clear <session-id>"
   }
-
+  if (command === "sessions") {
+    const action = args[0]
+    if (action === "clear-inactive") return formatActionResponse(await client.clearInactiveOperatorAgentSessions(), "sessions-clear-inactive")
+    if (action === "snooze-hide") return formatActionResponse(await client.snoozeOperatorAgentSessionsAndHidePanel(args.slice(1)), "sessions-snooze-hide")
+    return "Usage: /sessions clear-inactive|snooze-hide [session-ids...]"
+  }
   if (command === "queues") {
-    return formatMessageQueues(await apiRequest(REMOTE_SERVER_API_PATHS.operatorMessageQueues))
+    return formatMessageQueues(await client.getOperatorMessageQueues())
   }
-
   if (command === "queue") {
     const action = args[0]
     const conversationId = args[1]
-
     if (["pause", "resume", "clear"].includes(action || "")) {
       if (!conversationId) return `Usage: /queue ${action} <conversation-id>`
       const path =
         action === "pause"
-          ? REMOTE_SERVER_API_BUILDERS.operatorMessageQueuePause(conversationId)
+          ? client.pauseOperatorMessageQueue(conversationId)
           : action === "resume"
-            ? REMOTE_SERVER_API_BUILDERS.operatorMessageQueueResume(conversationId)
-            : REMOTE_SERVER_API_BUILDERS.operatorMessageQueueClear(conversationId)
-      return formatActionResponse(await apiRequest(path, { method: "POST" }), `message-queue-${action}`)
+            ? client.resumeOperatorMessageQueue(conversationId)
+            : client.clearOperatorMessageQueue(conversationId)
+      return formatActionResponse(await path, `message-queue-${action}`)
     }
-
     if (action === "msg") {
       const messageAction = args[1]
       const queuedConversationId = args[2]
@@ -1155,122 +1217,149 @@ async function runServerCommand(input: string): Promise<string | undefined> {
         return "Usage: /queue msg delete|retry|update <conversation-id> <message-id> [text]"
       }
       if (messageAction === "delete" || messageAction === "remove") {
-        return formatActionResponse(await apiRequest(
-          REMOTE_SERVER_API_BUILDERS.operatorMessageQueueMessage(queuedConversationId, messageId),
-          { method: "DELETE" },
-        ), "message-queue-message-delete")
+        return formatActionResponse(await client.removeOperatorQueuedMessage(queuedConversationId, messageId), "message-queue-message-delete")
       }
       if (messageAction === "retry") {
-        return formatActionResponse(await apiRequest(
-          REMOTE_SERVER_API_BUILDERS.operatorMessageQueueMessageRetry(queuedConversationId, messageId),
-          { method: "POST" },
-        ), "message-queue-message-retry")
+        return formatActionResponse(await client.retryOperatorQueuedMessage(queuedConversationId, messageId), "message-queue-message-retry")
       }
       if (messageAction === "update") {
         const text = args.slice(4).join(" ").trim()
         if (!text) return "Usage: /queue msg update <conversation-id> <message-id> <text>"
-        return formatActionResponse(await apiRequest(
-          REMOTE_SERVER_API_BUILDERS.operatorMessageQueueMessage(queuedConversationId, messageId),
-          {
-            method: "PATCH",
-            body: JSON.stringify({ text }),
-          },
-        ), "message-queue-message-update")
+        return formatActionResponse(await client.updateOperatorQueuedMessageText(queuedConversationId, messageId, text), "message-queue-message-update")
       }
     }
-
     return "Usage: /queue pause|resume|clear <conversation-id> | /queue msg delete|retry|update <conversation-id> <message-id> [text]"
   }
-
-  if (command === "remote-server") {
-    return formatRemoteServer(await apiRequest(REMOTE_SERVER_API_PATHS.operatorRemoteServer))
+  if (command === "provider") {
+    const provider = args[0]
+    const action = args[1]
+    if (provider !== "chatgpt-web") return "Usage: /provider chatgpt-web [login|logout]"
+    if (!action) return formatJsonObject(await client.getChatGptWebAuthStatus())
+    if (action === "login") return formatActionResponse(await client.loginChatGptWebOAuth(), "chatgpt-web-login")
+    if (action === "logout") return formatActionResponse(await client.logoutChatGptWebOAuth(), "chatgpt-web-logout")
+    return "Usage: /provider chatgpt-web [login|logout]"
   }
-
+  if (command === "langfuse") {
+    return args.length === 0 || args[0] === "installed" ? `Langfuse installed: ${boolLabel(isLangfuseInstalled)}` : "Usage: /langfuse [installed]"
+  }
+  if (command === "permissions") {
+    return args[0] === "open-microphone-settings" ? openMicrophoneSettings() : "Usage: /permissions open-microphone-settings"
+  }
+  if (command === "clipboard") {
+    const text = textPayload(args, 1)
+    if (args[0] !== "write" || !text) return "Usage: /clipboard write <text>"
+    return writeClipboardText(text)
+  }
+  if (command === "remote-server") {
+    if (args[0] === "qr") return formatRemoteServerQr(client, textPayload(args, 1) || undefined)
+    if (args.length > 0) return "Usage: /remote-server [qr [url]]"
+    return formatRemoteServer(await client.getOperatorRemoteServer())
+  }
   if (command === "tunnel") {
     const action = args[0]
-    if (!action) return formatTunnel(await apiRequest(REMOTE_SERVER_API_PATHS.operatorTunnel))
-    if (action === "setup") return formatTunnelSetup(await apiRequest(REMOTE_SERVER_API_PATHS.operatorTunnelSetup))
+    if (!action) return formatTunnel(await client.getOperatorTunnel())
+    if (action === "setup") return formatTunnelSetup(await client.getOperatorTunnelSetup())
     if (action === "start" || action === "stop") {
-      const path = action === "start"
-        ? REMOTE_SERVER_API_PATHS.operatorTunnelStart
-        : REMOTE_SERVER_API_PATHS.operatorTunnelStop
-      return formatActionResponse(await apiRequest(path, { method: "POST" }), `tunnel-${action}`)
+      return formatActionResponse(
+        action === "start" ? await client.startOperatorTunnel() : await client.stopOperatorTunnel(),
+        `tunnel-${action}`,
+      )
     }
     return "Usage: /tunnel [setup|start|stop]"
   }
-
   if (command === "integrations") {
-    return formatIntegrations(await apiRequest(REMOTE_SERVER_API_PATHS.operatorIntegrations))
+    return formatIntegrations(await client.getOperatorIntegrations())
   }
-
   if (command === "discord") {
     const action = args[0]
-    if (!action) return formatDiscord(await apiRequest(REMOTE_SERVER_API_PATHS.operatorDiscord))
+    if (!action) return formatDiscord(await client.getOperatorDiscord())
     if (action === "logs") {
       const count = positiveNumberArg(args[1], 20)
-      return formatDiscordLogs(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorDiscordLogs(count)))
+      return formatDiscordLogs(await client.getOperatorDiscordLogs(count))
     }
-    if (["connect", "disconnect", "clear-logs"].includes(action)) {
-      const path =
-        action === "connect"
-          ? REMOTE_SERVER_API_PATHS.operatorDiscordConnect
-          : action === "disconnect"
-            ? REMOTE_SERVER_API_PATHS.operatorDiscordDisconnect
-            : REMOTE_SERVER_API_PATHS.operatorDiscordClearLogs
-      return formatActionResponse(await apiRequest(path, { method: "POST" }), `discord-${action}`)
-    }
-    return "Usage: /discord [logs|connect|disconnect|clear-logs]"
+    const run = ({ connect: () => client.connectOperatorDiscord(), disconnect: () => client.disconnectOperatorDiscord(), "clear-logs": () => client.clearOperatorDiscordLogs() } as Record<string, () => Promise<any>>)[action]
+    return run ? formatActionResponse(await run(), `discord-${action}`) : "Usage: /discord [logs|connect|disconnect|clear-logs]"
   }
-
   if (command === "whatsapp") {
     const action = args[0]
-    if (!action) return formatWhatsApp(await apiRequest(REMOTE_SERVER_API_PATHS.operatorWhatsApp))
+    if (!action) return formatWhatsApp(await client.getOperatorWhatsApp())
     if (action === "connect" || action === "logout") {
-      const path = action === "connect"
-        ? REMOTE_SERVER_API_PATHS.operatorWhatsAppConnect
-        : REMOTE_SERVER_API_PATHS.operatorWhatsAppLogout
-      return formatActionResponse(await apiRequest(path, { method: "POST" }), `whatsapp-${action}`)
+      return formatActionResponse(
+        action === "connect" ? await client.connectOperatorWhatsApp() : await client.logoutOperatorWhatsApp(),
+        `whatsapp-${action}`,
+      )
     }
     return "Usage: /whatsapp [connect|logout]"
   }
-
   if (command === "updater") {
     const action = args[0]
-    if (!action) return formatUpdater(await apiRequest(REMOTE_SERVER_API_PATHS.operatorUpdater))
-    if (["check", "download", "reveal", "open", "releases"].includes(action)) {
-      const path =
-        action === "check"
-          ? REMOTE_SERVER_API_PATHS.operatorUpdaterCheck
-          : action === "download"
-            ? REMOTE_SERVER_API_PATHS.operatorUpdaterDownloadLatest
-            : action === "reveal"
-              ? REMOTE_SERVER_API_PATHS.operatorUpdaterRevealDownload
-              : action === "open"
-                ? REMOTE_SERVER_API_PATHS.operatorUpdaterOpenDownload
-                : REMOTE_SERVER_API_PATHS.operatorUpdaterOpenReleases
-      return formatActionResponse(await apiRequest(path, { method: "POST" }), `updater-${action}`)
-    }
-    return "Usage: /updater [check|download|reveal|open|releases]"
+    if (!action) return formatUpdater(await client.getOperatorUpdater())
+    const run = ({ check: () => client.checkOperatorUpdater(), download: () => client.downloadOperatorUpdateAsset(), reveal: () => client.revealOperatorUpdateAsset(), open: () => client.openOperatorUpdateAsset(), releases: () => client.openOperatorReleasesPage() } as Record<string, () => Promise<any>>)[action]
+    return run ? formatActionResponse(await run(), `updater-${action}`) : "Usage: /updater [check|download|reveal|open|releases]"
   }
-
   if (command === "speech") {
     const action = args[0]
-    if (!action) return formatLocalSpeechModels(await apiRequest(REMOTE_SERVER_API_PATHS.operatorLocalSpeechModels))
+    if (!action) return formatLocalSpeechModels(await client.getLocalSpeechModelStatuses())
     const providerId = args[1]
     if ((action === "show" || action === "download") && !providerId) return `Usage: /speech ${action} <provider>`
     if (action === "show") {
-      return formatLocalSpeechModel(providerId, await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorLocalSpeechModel(providerId)))
+      return formatLocalSpeechModel(providerId, await client.getLocalSpeechModelStatus(providerId as any))
     }
     if (action === "download") {
-      return formatActionResponse(await apiRequest(REMOTE_SERVER_API_BUILDERS.operatorLocalSpeechModelDownload(providerId), {
-        method: "POST",
-      }), "local-speech-download")
+      return formatActionResponse(await client.downloadLocalSpeechModel(providerId as any), "local-speech-download")
     }
     return "Usage: /speech [show|download] <provider>"
   }
-
+  if (command === "tts") {
+    const action = args[0]
+    if (action === "stop") return formatActionResponse(await client.stopOperatorTtsPlayback(), "stop-tts")
+    if (action === "speak") {
+      const parsed = parseJsonPayload(args, "/tts speak <json>", 1)
+      if (!parsed.ok) return parsed.message
+      const response = await client.synthesizeSpeech(parsed.value as any)
+      return [
+        "tts-speak: ok",
+        `  MIME: ${response.mimeType}`,
+        `  Provider: ${compactText(response.provider)}`,
+        `  Bytes: ${response.audio.byteLength}`,
+      ].join("\n")
+    }
+    return "Usage: /tts stop|speak <json>"
+  }
+  if (command === "push") {
+    const action = args[0]
+    if (action === "status") return formatJsonObject(await client.getPushStatus())
+    if (action === "register") {
+      return withJsonPayload(args, "/push register <json>", 1, async (value) => formatActionResponse(await client.registerPushToken(value as any), "push-register"))
+    }
+    if (action === "unregister") {
+      const token = args[1]
+      if (!token) return "Usage: /push unregister <token>"
+      return formatActionResponse(await client.unregisterPushToken(token), "push-unregister")
+    }
+    if (action === "clear-badge") {
+      const token = args[1]
+      if (!token) return "Usage: /push clear-badge <token>"
+      return formatActionResponse(await client.clearPushBadge(token), "push-clear-badge")
+    }
+    return "Usage: /push status|register <json>|unregister <token>|clear-badge <token>"
+  }
+  if (command === "window") {
+    const target = args[0]
+    const action = args[1]
+    if (target === "main" && (!action || action === "show")) {
+      const route = args[2] ? { path: args[2] } : undefined
+      return formatActionResponse(await client.showOperatorMainWindow(route as any), "window-main-show")
+    }
+    if (target === "panel") {
+      if (action === "show") return formatActionResponse(await client.showOperatorPanelWindow(), "window-panel-show")
+      if (action === "hide") return formatActionResponse(await client.hideOperatorPanelWindow(), "window-panel-hide")
+      if (action === "reset") return formatActionResponse(await client.resetOperatorPanelWindow(), "window-panel-reset")
+    }
+    return "Usage: /window main [show] [route] | /window panel show|hide|reset"
+  }
   if (command === "run-agent") {
-    const payload = args.join(" ").trim()
+    const payload = textPayload(args)
     if (!payload) return "Usage: /run-agent <prompt-or-json>"
     const parsedBody = payload.startsWith("{") ? parseJsonPayload(args, "/run-agent <json>") : undefined
     if (parsedBody && !parsedBody.ok) {
@@ -1281,64 +1370,41 @@ async function runServerCommand(input: string): Promise<string | undefined> {
       const parsed = parseJsonPayload(args, "/run-agent <json>")
       return parsed.ok ? "Usage: /run-agent <prompt-or-json>" : parsed.message
     }
-    return formatRunAgent(await apiRequest(REMOTE_SERVER_API_PATHS.operatorRunAgent, {
-      method: "POST",
-      body: JSON.stringify(body),
-    }))
+    return formatRunAgent(await client.runOperatorAgent(body as any))
   }
-
   if (command === "server") {
     if (args[0] !== "restart") return "Usage: /server restart"
-    return formatActionResponse(await apiRequest(REMOTE_SERVER_API_PATHS.operatorRestartRemoteServer, {
-      method: "POST",
-    }), "restart-remote-server")
+    return formatActionResponse(await client.restartRemoteServer(), "restart-remote-server")
   }
-
   if (command === "app") {
     if (args[0] !== "restart") return "Usage: /app restart"
-    return formatActionResponse(await apiRequest(REMOTE_SERVER_API_PATHS.operatorRestartApp, {
-      method: "POST",
-    }), "restart-app")
+    return formatActionResponse(await client.restartApp(), "restart-app")
   }
-
   if (command === "key") {
     if (args[0] !== "rotate") return "Usage: /key rotate"
-    return formatApiKeyRotation(await apiRequest(REMOTE_SERVER_API_PATHS.operatorRotateApiKey, {
-      method: "POST",
-    }))
+    return formatApiKeyRotation(await client.rotateOperatorApiKey())
   }
-
   if (command === "stop") {
-    return formatActionResponse(await apiRequest(REMOTE_SERVER_API_PATHS.emergencyStop, {
-      method: "POST",
-    }), "emergency-stop")
+    return formatActionResponse(await client.emergencyStop(), "emergency-stop")
   }
-
   if (command === "quit" || command === "exit" || command === "clear") {
     return ""
   }
-
   return `Unknown command: /${command}\n${COMMAND_HELP}`
 }
-
 async function streamChat(
   message: string,
   conversationId: string | undefined,
   handlers: StreamHandlers,
 ) {
-  const { apiKey, apiKeySource } = serverSettings()
-  const res = await fetch(routeUrl(REMOTE_SERVER_API_PATHS.chatCompletions), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
-    },
-    body: JSON.stringify({
+  const { apiKeySource } = serverSettings()
+  const res = await settingsApiClient().requestChatCompletionResponse(
+    {
       messages: [{ role: "user", content: message }],
       stream: true,
       conversation_id: conversationId,
-    }),
-  })
+    },
+  )
   if (!res.ok || !res.body) {
     const authHint =
       res.status === 401
@@ -1403,13 +1469,11 @@ async function streamChat(
   }
   if (buffer.trim()) handleEvent(buffer.trim())
 }
-
 function usage() {
   console.log(
     `DotAgents OpenTUI client\n\nRun:   pnpm tui\nSmoke: pnpm tui -- --once "hello"\nOps:   pnpm tui -- --once "/status"\nEnv:   DOTAGENTS_SERVER_URL=http://127.0.0.1:3210 DOTAGENTS_API_KEY=...`,
   )
 }
-
 async function runOnce(message: string) {
   const commandOutput = await runServerCommand(message)
   if (commandOutput !== undefined) {
@@ -1432,7 +1496,6 @@ async function runOnce(message: string) {
     },
   })
 }
-
 async function runTui() {
   if (!process.stdout.isTTY)
     throw new Error(
@@ -1575,7 +1638,6 @@ async function runTui() {
   input.focus()
   renderer.start()
 }
-
 const args = parseArgs()
 if (args.help) usage()
 else if (args.once) await runOnce(args.once)
