@@ -400,6 +400,7 @@ import {
   type ChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   type ChatRuntimeToolExecutionEmptyStateMobilePropsPartsInput,
   type ChatRuntimeToolExecutionErrorBlockMobilePropsParts,
+  type ChatRuntimeToolExecutionErrorBlockMobilePropsPartsInput,
   type ChatRuntimeToolExecutionErrorBlockMobileStyleSlots as SharedChatMessageToolExecutionErrorBlockStyleSlots,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput,
@@ -408,10 +409,13 @@ import {
   type ChatRuntimeToolExecutionPanelMobilePropsPartsInput,
   type ChatRuntimeToolExecutionPanelShellMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
+  type ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput,
   type ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots as SharedChatMessageToolExecutionPayloadBlockStyleSlots,
   type ChatRuntimeToolExecutionPayloadMetaMobilePropsParts,
+  type ChatRuntimeToolExecutionPayloadMetaMobilePropsPartsInput,
   type ChatRuntimeToolExecutionPayloadMetaMobileStyleSlots as SharedChatMessageToolExecutionPayloadMetaStyleSlots,
   type ChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
+  type ChatRuntimeToolExecutionPayloadSectionMobilePropsPartsInput,
   type ChatRuntimeToolExecutionPayloadSectionMobileStyleSlots as SharedChatMessageToolExecutionPayloadSectionStyleSlots,
   type ChatRuntimeToolExecutionPendingResultMobilePropsParts,
   type ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput,
@@ -3025,15 +3029,16 @@ type ChatMessageToolExecutionPayloadMetaStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolExecutionPayloadMetaProps = {
-  renderState: ToolExecutionDetailMobileSectionHeaderRenderState;
-  styles: ChatMessageToolExecutionPayloadMetaStyles;
-};
+type ChatMessageToolExecutionPayloadMetaProps =
+  ChatRuntimeToolExecutionPayloadMetaMobilePropsPartsInput<
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ChatMessageToolExecutionPayloadMetaStyles
+  >;
 
 type ChatMessageToolExecutionPayloadMetaParts =
   ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
-    ChatMessageToolExecutionPayloadMetaProps['renderState'],
-    ChatMessageToolExecutionPayloadMetaProps['styles']
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ChatMessageToolExecutionPayloadMetaStyles
   >;
 
 type ChatMessageToolExecutionPayloadMetaRowProps =
@@ -3105,17 +3110,14 @@ type ChatMessageToolExecutionPayloadBlockStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolExecutionPayloadBlockProps = {
-  compactText?: string | null;
-  content: string;
-  isExpanded: boolean;
-  previewNumberOfLines: number;
-  styles: ChatMessageToolExecutionPayloadBlockStyles;
-};
+type ChatMessageToolExecutionPayloadBlockProps =
+  ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<
+    ChatMessageToolExecutionPayloadBlockStyles
+  >;
 
 type ChatMessageToolExecutionPayloadBlockParts =
   ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
-    ChatMessageToolExecutionPayloadBlockProps['styles']
+    ChatMessageToolExecutionPayloadBlockStyles
   >;
 
 type ChatMessageToolExecutionPayloadBlockContentProps =
@@ -3148,23 +3150,20 @@ type ChatMessageToolExecutionPayloadSectionStyles =
     ChatMessageToolExecutionPayloadBlockStyles
   >;
 
-type ChatMessageToolExecutionPayloadSectionProps = {
-  payloadRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;
-  compactText?: string | null;
-  content: string;
-  isExpanded: boolean;
-  previewNumberOfLines: number;
-  copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;
-  onCopyPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolExecutionPayloadSectionStyles;
-};
+type ChatMessageToolExecutionPayloadSectionProps =
+  ChatRuntimeToolExecutionPayloadSectionMobilePropsPartsInput<
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionPayloadSectionStyles
+  >;
 
 type ChatMessageToolExecutionPayloadSectionParts =
   ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
-    ChatMessageToolExecutionPayloadSectionProps['payloadRenderState'],
-    ChatMessageToolExecutionPayloadSectionProps['copyButtonRenderState'],
-    ChatMessageToolExecutionPayloadSectionProps['onCopyPress'],
-    ChatMessageToolExecutionPayloadSectionProps['styles']
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionPayloadSectionStyles
   >;
 
 type ChatMessageToolExecutionPayloadSectionContentProps =
@@ -3190,20 +3189,20 @@ type ChatMessageToolExecutionErrorBlockStyles =
     ChatMessageToolExecutionCopyButtonStyles
   >;
 
-type ChatMessageToolExecutionErrorBlockProps = {
-  renderState: ToolExecutionDetailMobileSectionHeaderRenderState;
-  error: string;
-  copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;
-  onCopyPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolExecutionErrorBlockStyles;
-};
+type ChatMessageToolExecutionErrorBlockProps =
+  ChatRuntimeToolExecutionErrorBlockMobilePropsPartsInput<
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionErrorBlockStyles
+  >;
 
 type ChatMessageToolExecutionErrorBlockParts =
   ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
-    ChatMessageToolExecutionErrorBlockProps['renderState'],
-    ChatMessageToolExecutionErrorBlockProps['copyButtonRenderState'],
-    ChatMessageToolExecutionErrorBlockProps['onCopyPress'],
-    ChatMessageToolExecutionErrorBlockProps['styles']
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionErrorBlockStyles
   >;
 
 type ChatMessageToolExecutionErrorBlockContentProps =
