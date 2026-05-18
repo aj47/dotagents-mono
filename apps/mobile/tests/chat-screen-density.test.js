@@ -126,6 +126,8 @@ test('keeps mobile chat shared domain types routed through session presentation'
   assert.match(chatRuntimeMobileStylesSource, /getHandsFreeStatusChipMobileRenderState,/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeHandsFreeStatusChipStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeHandsFreeStatusChipStyleSheetSlotsInput\): HandsFreeStatusChipMobileStyleSheetSlots \{[\s\S]*?createHandsFreeStatusChipMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?\}\);[\s\S]*?\}/);
   assert.match(chatRuntimeMobileStylesSource, /export function useChatRuntimeHandsFreeStatusChipMobileStyleSlots\(\{[\s\S]*?phase,[\s\S]*?label,[\s\S]*?subtitle,[\s\S]*?\}: ChatRuntimeHandsFreeStatusChipMobileStyleSlotsInput\): ChatRuntimeHandsFreeStatusChipMobileStyleSlots/);
+  assert.match(chatRuntimeMobileStylesSource, /const handsFreeStatusChipStyleSlots = useMemo<ChatRuntimeHandsFreeStatusChipMobileStyleSlots>\(\s+\(\) => \(\{\s+handsFreeStatusChipRenderState,\s+handsFreeStatusChipStyles,\s+\}\),\s+\[handsFreeStatusChipRenderState, handsFreeStatusChipStyles\],\s+\);/);
+  assert.match(chatRuntimeMobileStylesSource, /return handsFreeStatusChipStyleSlots;/);
   assert.doesNotMatch(handsFreeStatusChipSource, /createHandsFreeStatusChipMobileStyleSheetSlots,/);
   assert.doesNotMatch(handsFreeStatusChipSource, /getHandsFreeStatusChipMobileRenderState,/);
   assert.doesNotMatch(handsFreeStatusChipSource, /from '\.\/theme'/);
@@ -295,6 +297,9 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatRuntimeMobileStylesSource, /getAgentSelectorMobileRenderState,/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeAgentSelectorSheetStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeAgentSelectorSheetStyleSheetSlotsInput\): AgentSelectorMobileStyleSheetSlots \{[\s\S]*?createAgentSelectorMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?\}\);[\s\S]*?\}/);
   assert.match(chatRuntimeMobileStylesSource, /export function useChatRuntimeAgentSelectorSheetMobileStyleSlots\(\{[\s\S]*?selectorMode,[\s\S]*?\}: ChatRuntimeAgentSelectorSheetMobileStyleSlotsInput\): ChatRuntimeAgentSelectorSheetMobileStyleSlots/);
+  assert.match(chatRuntimeMobileStylesSource, /const agentSelectorSheetBottomPadding = agentSelectorStyleSheetSlots\.sheet\.paddingBottom;/);
+  assert.match(chatRuntimeMobileStylesSource, /const agentSelectorSheetStyleSlots = useMemo<ChatRuntimeAgentSelectorSheetMobileStyleSlots>\(\s+\(\) => \(\{\s+agentSelectorRenderState,\s+agentSelectorStyles,\s+agentSelectorSheetBottomPadding,\s+\}\),/);
+  assert.match(chatRuntimeMobileStylesSource, /return agentSelectorSheetStyleSlots;/);
   assert.doesNotMatch(agentSelectorSheetSource, /createAgentSelectorMobileStyleSheetSlots,/);
   assert.doesNotMatch(agentSelectorSheetSource, /getAgentSelectorMobileRenderState,/);
   assert.doesNotMatch(agentSelectorSheetSource, /from '\.\/theme'/);
@@ -6480,6 +6485,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatRuntimeMobileStylesSource, /getChatVideoAttachmentMobileRenderState,/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeVideoAttachmentStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeVideoAttachmentStyleSheetSlotsInput\): ChatVideoAttachmentMobileStyleSheetSlots \{[\s\S]*?createChatVideoAttachmentMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?\}\);[\s\S]*?\}/);
   assert.match(chatRuntimeMobileStylesSource, /export function useChatRuntimeVideoAttachmentMobileStyleSlots\(\{[\s\S]*?sourceUrl,[\s\S]*?label,[\s\S]*?loading,[\s\S]*?\}: ChatRuntimeVideoAttachmentMobileStyleSlotsInput\): ChatRuntimeVideoAttachmentMobileStyleSlots/);
+  assert.match(chatRuntimeMobileStylesSource, /const videoAttachmentMobileStyleSlots = useMemo<ChatRuntimeVideoAttachmentMobileStyleSlots>\(\s+\(\) => \(\{\s+videoAttachmentRenderState,\s+videoAttachmentStyles,\s+\}\),\s+\[videoAttachmentRenderState, videoAttachmentStyles\],\s+\);/);
+  assert.match(chatRuntimeMobileStylesSource, /return videoAttachmentMobileStyleSlots;/);
   assert.match(videoAttachmentCardSource, /createChatVideoAttachmentMobilePropsParts,/);
   assert.doesNotMatch(videoAttachmentCardSource, /createChatVideoAttachmentMobileStyleSheetSlots,/);
   assert.doesNotMatch(videoAttachmentCardSource, /getChatVideoAttachmentMobileRenderState,/);
@@ -6500,6 +6507,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMarkdownContentStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeMarkdownContentStyleSheetSlotsInput\): MarkdownContentMobileStyleSheetSlots \{[\s\S]*?createMarkdownContentMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?platform: Platform\.OS,[\s\S]*?\}\);[\s\S]*?\}/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMarkdownThinkSectionStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeMarkdownThinkSectionStyleSheetSlotsInput\): MarkdownThinkSectionMobileStyleSheetSlots \{[\s\S]*?createMarkdownThinkSectionMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?\}\);[\s\S]*?\}/);
   assert.match(chatRuntimeMobileStylesSource, /export function useChatRuntimeMarkdownMobileStyleSlots\(\): ChatRuntimeMarkdownMobileStyleSlots/);
+  assert.match(chatRuntimeMobileStylesSource, /const markdownMobileStyleSlots = useMemo<ChatRuntimeMarkdownMobileStyleSlots>\(\s+\(\) => \(\{\s+markdownContentRenderState,\s+markdownContentStyles,\s+markdownThinkSectionRenderState,\s+markdownThinkSectionStyles,\s+\}\),/);
+  assert.match(chatRuntimeMobileStylesSource, /return markdownMobileStyleSlots;/);
   assert.match(markdownRendererSource, /import \{ useChatRuntimeMarkdownMobileStyleSlots \} from '\.\/ChatRuntimeMobileStyles';/);
   assert.doesNotMatch(markdownRendererSource, /createMarkdownContentMobileStyleSheetSlots,/);
   assert.doesNotMatch(markdownRendererSource, /createMarkdownThinkSectionMobileStyleSheetSlots,/);

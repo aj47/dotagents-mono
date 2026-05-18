@@ -986,13 +986,22 @@ export function useChatRuntimeMarkdownMobileStyleSlots(): ChatRuntimeMarkdownMob
     () => StyleSheet.create({ ...markdownThinkSectionStyleSheetSlots }),
     [markdownThinkSectionStyleSheetSlots],
   );
+  const markdownMobileStyleSlots = useMemo<ChatRuntimeMarkdownMobileStyleSlots>(
+    () => ({
+      markdownContentRenderState,
+      markdownContentStyles,
+      markdownThinkSectionRenderState,
+      markdownThinkSectionStyles,
+    }),
+    [
+      markdownContentRenderState,
+      markdownContentStyles,
+      markdownThinkSectionRenderState,
+      markdownThinkSectionStyles,
+    ],
+  );
 
-  return {
-    markdownContentRenderState,
-    markdownContentStyles,
-    markdownThinkSectionRenderState,
-    markdownThinkSectionStyles,
-  };
+  return markdownMobileStyleSlots;
 }
 
 export type ChatRuntimeVideoAttachmentStyleSheetSlotsInput = Pick<
@@ -1049,11 +1058,15 @@ export function useChatRuntimeVideoAttachmentMobileStyleSlots({
     () => StyleSheet.create({ ...videoAttachmentStyleSheetSlots }),
     [videoAttachmentStyleSheetSlots],
   );
+  const videoAttachmentMobileStyleSlots = useMemo<ChatRuntimeVideoAttachmentMobileStyleSlots>(
+    () => ({
+      videoAttachmentRenderState,
+      videoAttachmentStyles,
+    }),
+    [videoAttachmentRenderState, videoAttachmentStyles],
+  );
 
-  return {
-    videoAttachmentRenderState,
-    videoAttachmentStyles,
-  };
+  return videoAttachmentMobileStyleSlots;
 }
 
 export type ChatRuntimeHandsFreeStatusChipStyleSheetSlotsInput = Pick<
@@ -1109,11 +1122,15 @@ export function useChatRuntimeHandsFreeStatusChipMobileStyleSlots({
     () => StyleSheet.create({ ...handsFreeStatusChipStyleSheetSlots }),
     [handsFreeStatusChipStyleSheetSlots],
   );
+  const handsFreeStatusChipStyleSlots = useMemo<ChatRuntimeHandsFreeStatusChipMobileStyleSlots>(
+    () => ({
+      handsFreeStatusChipRenderState,
+      handsFreeStatusChipStyles,
+    }),
+    [handsFreeStatusChipRenderState, handsFreeStatusChipStyles],
+  );
 
-  return {
-    handsFreeStatusChipRenderState,
-    handsFreeStatusChipStyles,
-  };
+  return handsFreeStatusChipStyleSlots;
 }
 
 export type ChatRuntimeAgentSelectorSheetStyleSheetSlotsInput = Pick<
@@ -1166,12 +1183,21 @@ export function useChatRuntimeAgentSelectorSheetMobileStyleSlots({
     () => StyleSheet.create({ ...agentSelectorStyleSheetSlots }),
     [agentSelectorStyleSheetSlots],
   );
+  const agentSelectorSheetBottomPadding = agentSelectorStyleSheetSlots.sheet.paddingBottom;
+  const agentSelectorSheetStyleSlots = useMemo<ChatRuntimeAgentSelectorSheetMobileStyleSlots>(
+    () => ({
+      agentSelectorRenderState,
+      agentSelectorStyles,
+      agentSelectorSheetBottomPadding,
+    }),
+    [
+      agentSelectorRenderState,
+      agentSelectorSheetBottomPadding,
+      agentSelectorStyles,
+    ],
+  );
 
-  return {
-    agentSelectorRenderState,
-    agentSelectorStyles,
-    agentSelectorSheetBottomPadding: agentSelectorStyleSheetSlots.sheet.paddingBottom,
-  };
+  return agentSelectorSheetStyleSlots;
 }
 
 export type ChatRuntimeMobileChromeSlots = ChatRuntimeMobileChromeSlotsFromStyleSource<
