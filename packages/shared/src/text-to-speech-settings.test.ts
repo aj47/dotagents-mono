@@ -21,6 +21,7 @@ import {
   clampTextToSpeechPlaybackRate,
   createChatRuntimeEffectiveRemoteSpeechSettingsState,
   createChatRuntimeRemoteSpeechSettingsState,
+  createSpeechSelectorMobileStyleSheetSlots,
   formatSpeechSelectorMicrophoneEnumerationError,
   formatLocalSpeechModelProgress,
   getChatRuntimeDefaultRemoteSpeechSettingsState,
@@ -163,6 +164,70 @@ describe("text to speech settings helpers", () => {
       itemSubtext: { color: "#777777" },
       selectedIcon: { color: "#123456" },
     })
+  })
+
+  it("builds shared mobile speech selector style sheet slots", () => {
+    const colors = getSpeechSelectorMobileSurfaceColors({
+      foreground: "#111111",
+      mutedForeground: "#777777",
+      muted: "#eeeeee",
+      primary: "#123456",
+      destructive: "#ff0000",
+      card: "#ffffff",
+      border: "#dedede",
+    })
+    const spacing = {
+      xs: 4,
+      sm: 8,
+      md: 12,
+      lg: 16,
+    }
+    const radius = {
+      md: 6,
+      lg: 10,
+    }
+
+    const slots = createSpeechSelectorMobileStyleSheetSlots({ colors, spacing, radius })
+
+    expect(slots.container).toEqual({ marginTop: 8 })
+    expect(slots.row).toMatchObject({
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 8,
+      paddingVertical: 8,
+    })
+    expect(slots.label).toMatchObject({
+      fontSize: 16,
+      color: "#111111",
+      flexGrow: 1,
+      flexShrink: 1,
+    })
+    expect(slots.voiceSelector).toMatchObject({
+      backgroundColor: "#eeeeee",
+      paddingHorizontal: 8,
+      borderRadius: 6,
+      minWidth: 140,
+    })
+    expect(slots.selector).toEqual(slots.voiceSelector)
+    expect(slots.modalHeader).toMatchObject({
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 16,
+      borderBottomColor: "#dedede",
+    })
+    expect(slots.modalTitle).toMatchObject({
+      flex: 1,
+      flexShrink: 1,
+      paddingRight: 4,
+    })
+    expect(slots.voiceItemBody).toEqual({ flex: 1, minWidth: 0 })
+    expect(slots.deviceItemText).toMatchObject({ flex: 1, minWidth: 0 })
+    expect(slots.voiceItemSelected).toEqual({ backgroundColor: "rgba(18, 52, 86, 0.125)" })
+    expect(slots.deviceItemSelected).toEqual(slots.voiceItemSelected)
   })
 
   it("formats microphone enumeration errors for shared selector surfaces", () => {

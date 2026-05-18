@@ -7,15 +7,19 @@ const ttsSettingsSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'TTSSettings.tsx'),
   'utf8'
 );
+const speechSettingsSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'text-to-speech-settings.ts'),
+  'utf8'
+);
 
-function extractBetween(startMarker, endMarker) {
-  const start = ttsSettingsSource.indexOf(startMarker);
+function extractBetween(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
   assert.notEqual(start, -1, `Missing start marker: ${startMarker}`);
 
-  const end = ttsSettingsSource.indexOf(endMarker, start);
+  const end = source.indexOf(endMarker, start);
   assert.notEqual(end, -1, `Missing end marker: ${endMarker}`);
 
-  return ttsSettingsSource.slice(start, end);
+  return source.slice(start, end);
 }
 
 test('keeps mobile TTS settings actions explicit while using shared icon chrome for modal close', () => {
@@ -40,25 +44,27 @@ test('keeps mobile TTS settings actions explicit while using shared icon chrome 
 });
 
 test('keeps the mobile TTS voice picker header flex-safe on narrow widths', () => {
-  const modalHeaderStyles = extractBetween('modalHeader: {', 'modalTitle: {');
-  assert.match(modalHeaderStyles, /flexDirection:\s*speechSelectorSurface\.header\.flexDirection/);
-  assert.match(modalHeaderStyles, /justifyContent:\s*speechSelectorSurface\.header\.justifyContent/);
-  assert.match(modalHeaderStyles, /alignItems:\s*speechSelectorSurface\.header\.alignItems/);
-  assert.match(modalHeaderStyles, /gap:\s*spacing\[speechSelectorSurface\.header\.gap\]/);
+  const modalHeaderStyles = extractBetween(speechSettingsSource, 'modalHeader: {', 'modalTitle: {');
+  assert.match(modalHeaderStyles, /flexDirection:\s*surface\.header\.flexDirection/);
+  assert.match(modalHeaderStyles, /justifyContent:\s*surface\.header\.justifyContent/);
+  assert.match(modalHeaderStyles, /alignItems:\s*surface\.header\.alignItems/);
+  assert.match(modalHeaderStyles, /gap:\s*spacing\[surface\.header\.gap\]/);
 
-  const modalTitleStyles = extractBetween('modalTitle: {', 'modalCloseButton: {');
-  assert.match(modalTitleStyles, /flex:\s*speechSelectorSurface\.title\.flex/);
-  assert.match(modalTitleStyles, /flexShrink:\s*speechSelectorSurface\.title\.flexShrink/);
-  assert.match(modalTitleStyles, /paddingRight:\s*spacing\[speechSelectorSurface\.title\.paddingRight\]/);
+  const modalTitleStyles = extractBetween(speechSettingsSource, 'modalTitle: {', 'modalCloseButton: {');
+  assert.match(modalTitleStyles, /flex:\s*surface\.title\.flex/);
+  assert.match(modalTitleStyles, /flexShrink:\s*surface\.title\.flexShrink/);
+  assert.match(modalTitleStyles, /paddingRight:\s*spacing\[surface\.title\.paddingRight\]/);
 });
 
 test('uses the shared speech selector presentation for the mobile voice picker', () => {
   assert.match(ttsSettingsSource, /getSpeechSelectorCopyState/);
+  assert.match(ttsSettingsSource, /createSpeechSelectorMobileStyleSheetSlots/);
   assert.match(ttsSettingsSource, /getSpeechSelectorMobileSurfaceColors/);
   assert.match(ttsSettingsSource, /getSpeechSelectorMobileSurfaceState/);
   assert.match(ttsSettingsSource, /const speechSelectorCopy = getSpeechSelectorCopyState\(\)/);
   assert.match(ttsSettingsSource, /const speechSelectorSurface = getSpeechSelectorMobileSurfaceState\(\)/);
   assert.match(ttsSettingsSource, /const speechSelectorColors = useMemo\(\s*\(\) => getSpeechSelectorMobileSurfaceColors\(theme\.colors\),/);
+  assert.match(ttsSettingsSource, /StyleSheet\.create\(createSpeechSelectorMobileStyleSheetSlots\(\{\s+colors: speechSelectorColors,\s+spacing,\s+radius,\s+\}\)\)/);
   assert.match(ttsSettingsSource, /<Text style=\{styles\.label\}>\{speechSelectorCopy\.voice\.label\}<\/Text>/);
   assert.match(ttsSettingsSource, /activeOpacity=\{speechSelectorSurface\.trigger\.pressedOpacity\}/);
   assert.match(ttsSettingsSource, /accessibilityRole=\{speechSelectorSurface\.trigger\.accessibilityRole\}/);
@@ -66,32 +72,39 @@ test('uses the shared speech selector presentation for the mobile voice picker',
   assert.match(ttsSettingsSource, /accessibilityRole=\{speechSelectorSurface\.item\.accessibilityRole\}/);
   assert.match(ttsSettingsSource, /accessibilityState=\{\{ selected: !selectedVoice \}\}/);
   assert.match(ttsSettingsSource, /accessibilityState=\{\{ selected: isSelected \}\}/);
-  assert.match(ttsSettingsSource, /container:\s*\{[\s\S]*?marginTop:\s*spacing\[speechSelectorSurface\.container\.marginTop\]/);
-  assert.match(ttsSettingsSource, /flexDirection:\s*speechSelectorSurface\.row\.flexDirection/);
-  assert.match(ttsSettingsSource, /gap:\s*spacing\[speechSelectorSurface\.row\.gap\]/);
-  assert.match(ttsSettingsSource, /fontSize:\s*speechSelectorSurface\.label\.fontSize/);
-  assert.match(ttsSettingsSource, /color:\s*speechSelectorColors\.label\.color/);
+  assert.match(speechSettingsSource, /export function createSpeechSelectorMobileStyleSheetSlots/);
+  const sharedStyleSource = extractBetween(
+    speechSettingsSource,
+    'export function createSpeechSelectorMobileStyleSheetSlots',
+    'export function formatSpeechSelectorMicrophoneEnumerationError',
+  );
+  assert.match(sharedStyleSource, /container:\s*\{[\s\S]*?marginTop:\s*spacing\[surface\.container\.marginTop\]/);
+  assert.match(sharedStyleSource, /flexDirection:\s*surface\.row\.flexDirection/);
+  assert.match(sharedStyleSource, /gap:\s*spacing\[surface\.row\.gap\]/);
+  assert.match(sharedStyleSource, /fontSize:\s*surface\.label\.fontSize/);
+  assert.match(sharedStyleSource, /color:\s*colors\.label\.color/);
   assert.match(ttsSettingsSource, /numberOfLines=\{speechSelectorSurface\.trigger\.textNumberOfLines\}/);
   assert.match(ttsSettingsSource, /numberOfLines=\{speechSelectorSurface\.itemText\.numberOfLines\}/);
   assert.match(ttsSettingsSource, /numberOfLines=\{speechSelectorSurface\.itemSubtext\.numberOfLines\}/);
-  assert.match(ttsSettingsSource, /voiceSelectorText:\s*\{[\s\S]*?flex:\s*speechSelectorSurface\.triggerText\.flex,[\s\S]*?flexShrink:\s*speechSelectorSurface\.triggerText\.flexShrink,/);
-  assert.match(ttsSettingsSource, /sliderRow:\s*\{[\s\S]*?paddingVertical:\s*spacing\[speechSelectorSurface\.sliderRow\.paddingVertical\]/);
-  assert.match(ttsSettingsSource, /sliderHeader:\s*\{[\s\S]*?flexDirection:\s*speechSelectorSurface\.sliderHeader\.flexDirection,[\s\S]*?justifyContent:\s*speechSelectorSurface\.sliderHeader\.justifyContent,[\s\S]*?alignItems:\s*speechSelectorSurface\.sliderHeader\.alignItems/);
-  assert.match(ttsSettingsSource, /sliderValue:\s*\{[\s\S]*?fontSize:\s*speechSelectorSurface\.sliderValue\.fontSize,[\s\S]*?color:\s*speechSelectorColors\.sliderValue\.color/);
-  assert.match(ttsSettingsSource, /slider:\s*\{[\s\S]*?width:\s*speechSelectorSurface\.slider\.width,[\s\S]*?height:\s*speechSelectorSurface\.slider\.height/);
+  assert.match(sharedStyleSource, /const triggerTextStyles = \{[\s\S]*?flex:\s*surface\.triggerText\.flex,[\s\S]*?flexShrink:\s*surface\.triggerText\.flexShrink,/);
+  assert.match(sharedStyleSource, /voiceSelectorText: triggerTextStyles/);
+  assert.match(sharedStyleSource, /sliderRow:\s*\{[\s\S]*?paddingVertical:\s*spacing\[surface\.sliderRow\.paddingVertical\]/);
+  assert.match(sharedStyleSource, /sliderHeader:\s*\{[\s\S]*?flexDirection:\s*surface\.sliderHeader\.flexDirection,[\s\S]*?justifyContent:\s*surface\.sliderHeader\.justifyContent,[\s\S]*?alignItems:\s*surface\.sliderHeader\.alignItems/);
+  assert.match(sharedStyleSource, /sliderValue:\s*\{[\s\S]*?fontSize:\s*surface\.sliderValue\.fontSize,[\s\S]*?color:\s*colors\.sliderValue\.color/);
+  assert.match(sharedStyleSource, /slider:\s*\{[\s\S]*?width:\s*surface\.slider\.width,[\s\S]*?height:\s*surface\.slider\.height/);
   assert.match(ttsSettingsSource, /minimumTrackTintColor=\{speechSelectorColors\.slider\.minimumTrackTintColor\}/);
   assert.match(ttsSettingsSource, /maximumTrackTintColor=\{speechSelectorColors\.slider\.maximumTrackTintColor\}/);
   assert.match(ttsSettingsSource, /thumbTintColor=\{speechSelectorColors\.slider\.thumbTintColor\}/);
-  assert.match(ttsSettingsSource, /testButton:\s*\{[\s\S]*?backgroundColor:\s*speechSelectorColors\.testButton\.backgroundColor,[\s\S]*?alignItems:\s*speechSelectorSurface\.testButton\.alignItems/);
-  assert.match(ttsSettingsSource, /testButtonText:\s*\{[\s\S]*?fontSize:\s*speechSelectorSurface\.testButtonText\.fontSize,[\s\S]*?color:\s*speechSelectorColors\.testButtonText\.color/);
+  assert.match(sharedStyleSource, /testButton:\s*\{[\s\S]*?backgroundColor:\s*colors\.testButton\.backgroundColor,[\s\S]*?alignItems:\s*surface\.testButton\.alignItems/);
+  assert.match(sharedStyleSource, /testButtonText:\s*\{[\s\S]*?fontSize:\s*surface\.testButtonText\.fontSize,[\s\S]*?color:\s*colors\.testButtonText\.color/);
   assert.match(ttsSettingsSource, /name=\{speechSelectorSurface\.disclosureIcon\.name\}/);
   assert.match(ttsSettingsSource, /color=\{speechSelectorColors\.disclosureIcon\.color\}/);
-  assert.match(ttsSettingsSource, /backgroundColor:\s*speechSelectorColors\.modalOverlay\.backgroundColor/);
-  assert.match(ttsSettingsSource, /modalOverlay:\s*\{[\s\S]*?flex:\s*speechSelectorSurface\.modalOverlay\.flex,[\s\S]*?justifyContent:\s*speechSelectorSurface\.modalOverlay\.justifyContent,/);
-  assert.match(ttsSettingsSource, /modalCloseButton:\s*\{[\s\S]*?width:\s*speechSelectorSurface\.closeButton\.width,[\s\S]*?height:\s*speechSelectorSurface\.closeButton\.height,[\s\S]*?alignItems:\s*speechSelectorSurface\.closeButton\.alignItems,[\s\S]*?justifyContent:\s*speechSelectorSurface\.closeButton\.justifyContent/);
-  assert.match(ttsSettingsSource, /backgroundColor:\s*speechSelectorColors\.selectedItem\.backgroundColor/);
+  assert.match(sharedStyleSource, /backgroundColor:\s*colors\.modalOverlay\.backgroundColor/);
+  assert.match(sharedStyleSource, /modalOverlay:\s*\{[\s\S]*?flex:\s*surface\.modalOverlay\.flex,[\s\S]*?justifyContent:\s*surface\.modalOverlay\.justifyContent,/);
+  assert.match(sharedStyleSource, /modalCloseButton:\s*\{[\s\S]*?width:\s*surface\.closeButton\.width,[\s\S]*?height:\s*surface\.closeButton\.height,[\s\S]*?alignItems:\s*surface\.closeButton\.alignItems,[\s\S]*?justifyContent:\s*surface\.closeButton\.justifyContent/);
+  assert.match(sharedStyleSource, /backgroundColor:\s*colors\.selectedItem\.backgroundColor/);
   assert.match(ttsSettingsSource, /name=\{speechSelectorSurface\.selectedIcon\.name\}/);
-  assert.match(ttsSettingsSource, /voiceItemBody:\s*\{[\s\S]*?minWidth:\s*speechSelectorSurface\.itemBody\.minWidth/);
+  assert.match(sharedStyleSource, /voiceItemBody:\s*\{[\s\S]*?minWidth:\s*surface\.itemBody\.minWidth/);
   assert.doesNotMatch(ttsSettingsSource, /SPEECH_SELECTOR_PRESENTATION/);
   assert.doesNotMatch(ttsSettingsSource, /theme\.colors\[[^\]]+\]/);
   assert.doesNotMatch(ttsSettingsSource, /theme\.colors\.[A-Za-z]/);
@@ -101,16 +114,18 @@ test('uses the shared speech selector presentation for the mobile voice picker',
   assert.doesNotMatch(ttsSettingsSource, /backgroundColor:\s*'rgba\(0, 0, 0, 0\.5\)'/);
   assert.doesNotMatch(ttsSettingsSource, /justifyContent:\s*'flex-end'/);
   assert.doesNotMatch(ttsSettingsSource, /theme\.colors\.primary \+ '20'/);
+  assert.doesNotMatch(ttsSettingsSource, /container:\s*\{[\s\S]*?marginTop:\s*spacing\[speechSelectorSurface\.container\.marginTop\]/);
+  assert.doesNotMatch(ttsSettingsSource, /voiceSelectorText:\s*\{[\s\S]*?flex:\s*speechSelectorSurface\.triggerText\.flex/);
 
-  const rowStyles = extractBetween('row: {', 'label: {');
+  const rowStyles = extractBetween(sharedStyleSource, 'row: {', 'label: {');
   assert.doesNotMatch(rowStyles, /flexDirection:\s*'row'/);
   assert.doesNotMatch(rowStyles, /gap:\s*spacing\.sm/);
 
-  const labelStyles = extractBetween('label: {', 'voiceSelector: {');
+  const labelStyles = extractBetween(sharedStyleSource, 'label: {', 'nativeHint: {');
   assert.doesNotMatch(labelStyles, /fontSize:\s*16/);
   assert.doesNotMatch(labelStyles, /theme\.colors\.foreground/);
 
-  const sliderHeaderStyles = extractBetween('sliderHeader: {', 'sliderValue: {');
+  const sliderHeaderStyles = extractBetween(sharedStyleSource, 'sliderHeader: {', 'sliderValue: {');
   assert.doesNotMatch(sliderHeaderStyles, /flexDirection:\s*'row'/);
   assert.doesNotMatch(sliderHeaderStyles, /justifyContent:\s*'space-between'/);
   assert.doesNotMatch(sliderHeaderStyles, /alignItems:\s*'center'/);
@@ -118,7 +133,7 @@ test('uses the shared speech selector presentation for the mobile voice picker',
   assert.doesNotMatch(ttsSettingsSource, /maximumTrackTintColor=\{theme\.colors\.muted\}/);
   assert.doesNotMatch(ttsSettingsSource, /thumbTintColor=\{theme\.colors\.primary\}/);
 
-  const testButtonStyles = extractBetween('testButton: {', 'testButtonText: {');
+  const testButtonStyles = extractBetween(sharedStyleSource, 'testButton: {', 'testButtonText: {');
   assert.doesNotMatch(testButtonStyles, /theme\.colors\.muted/);
   assert.doesNotMatch(testButtonStyles, /alignItems:\s*'center'/);
   assert.doesNotMatch(ttsSettingsSource, /marginTop:\s*spacing\.sm/);

@@ -305,6 +305,59 @@ export interface SpeechSelectorMobileCloseIconState {
   colorToken: typeof SPEECH_SELECTOR_PRESENTATION.mobile.closeIcon.colorToken
 }
 
+export type SpeechSelectorMobileStyleSheetSpacing = Record<string, number>
+export type SpeechSelectorMobileStyleSheetRadius = Record<string, number>
+
+export type SpeechSelectorMobileStyleSheetSlot =
+  Readonly<Record<string, any>>
+
+export type SpeechSelectorMobileStyleSheetSlotName =
+  | "container"
+  | "row"
+  | "label"
+  | "nativeHint"
+  | "helperText"
+  | "errorText"
+  | "selector"
+  | "selectorText"
+  | "voiceSelector"
+  | "voiceSelectorText"
+  | "sliderRow"
+  | "sliderHeader"
+  | "sliderValue"
+  | "slider"
+  | "testButton"
+  | "testButtonText"
+  | "modalOverlay"
+  | "modalContent"
+  | "modalHeader"
+  | "modalTitle"
+  | "modalCloseButton"
+  | "voiceList"
+  | "deviceList"
+  | "voiceGroupHeader"
+  | "voiceItem"
+  | "voiceItemSelected"
+  | "voiceItemBody"
+  | "voiceItemText"
+  | "voiceItemTextSelected"
+  | "voiceItemSubtext"
+  | "deviceItem"
+  | "deviceItemSelected"
+  | "deviceItemText"
+  | "deviceItemTextSelected"
+
+export type SpeechSelectorMobileStyleSheetSlots = Record<
+  SpeechSelectorMobileStyleSheetSlotName,
+  SpeechSelectorMobileStyleSheetSlot
+>
+
+export interface SpeechSelectorMobileStyleSheetSlotsInput {
+  colors: SpeechSelectorMobileSurfaceColors
+  spacing: SpeechSelectorMobileStyleSheetSpacing
+  radius: SpeechSelectorMobileStyleSheetRadius
+}
+
 export type SpeechSelectorMobileSurfaceColorToken =
   | typeof SPEECH_SELECTOR_PRESENTATION.mobile.label.colorToken
   | typeof SPEECH_SELECTOR_PRESENTATION.mobile.nativeHint.colorToken
@@ -457,6 +510,194 @@ export function getSpeechSelectorMobileCloseIconState(): SpeechSelectorMobileClo
     name: closeIcon.name,
     size: closeIcon.size,
     colorToken: closeIcon.colorToken,
+  }
+}
+
+export function createSpeechSelectorMobileStyleSheetSlots({
+  colors,
+  spacing,
+  radius,
+}: SpeechSelectorMobileStyleSheetSlotsInput): SpeechSelectorMobileStyleSheetSlots {
+  const surface = SPEECH_SELECTOR_PRESENTATION.mobile
+  const triggerStyles = {
+    flexDirection: surface.trigger.flexDirection,
+    alignItems: surface.trigger.alignItems,
+    backgroundColor: colors.trigger.backgroundColor,
+    paddingHorizontal: spacing[surface.trigger.paddingHorizontal],
+    paddingVertical: spacing[surface.trigger.paddingVertical],
+    borderRadius: radius[surface.trigger.borderRadius],
+    gap: spacing[surface.trigger.gap],
+    flexGrow: surface.trigger.flexGrow,
+    maxWidth: surface.trigger.maxWidth,
+    minWidth: surface.trigger.minWidth,
+  }
+  const triggerTextStyles = {
+    fontSize: surface.triggerText.fontSize,
+    color: colors.triggerText.color,
+    flex: surface.triggerText.flex,
+    flexShrink: surface.triggerText.flexShrink,
+  }
+  const itemStyles = {
+    flexDirection: surface.item.flexDirection,
+    justifyContent: surface.item.justifyContent,
+    alignItems: surface.item.alignItems,
+    paddingVertical: spacing[surface.item.paddingVertical],
+    paddingHorizontal: spacing[surface.item.paddingHorizontal],
+    borderRadius: radius[surface.item.borderRadius],
+    gap: spacing[surface.item.gap],
+  }
+  const itemSelectedStyles = {
+    backgroundColor: colors.selectedItem.backgroundColor,
+  }
+  const itemTextSelectedStyles = {
+    color: colors.itemText.selectedColor,
+    fontWeight: surface.itemText.selectedFontWeight,
+  }
+
+  return {
+    container: {
+      marginTop: spacing[surface.container.marginTop],
+    },
+    row: {
+      flexDirection: surface.row.flexDirection,
+      flexWrap: surface.row.flexWrap,
+      justifyContent: surface.row.justifyContent,
+      alignItems: surface.row.alignItems,
+      gap: spacing[surface.row.gap],
+      paddingVertical: spacing[surface.row.paddingVertical],
+    },
+    label: {
+      fontSize: surface.label.fontSize,
+      color: colors.label.color,
+      flexGrow: surface.label.flexGrow,
+      flexShrink: surface.label.flexShrink,
+    },
+    nativeHint: {
+      fontSize: surface.nativeHint.fontSize,
+      color: colors.nativeHint.color,
+    },
+    helperText: {
+      fontSize: surface.helperText.fontSize,
+      color: colors.helperText.color,
+      marginTop: spacing[surface.helperText.marginTop],
+    },
+    errorText: {
+      fontSize: surface.errorText.fontSize,
+      color: colors.errorText.color,
+      marginTop: spacing[surface.errorText.marginTop],
+    },
+    selector: triggerStyles,
+    selectorText: triggerTextStyles,
+    voiceSelector: triggerStyles,
+    voiceSelectorText: triggerTextStyles,
+    sliderRow: {
+      paddingVertical: spacing[surface.sliderRow.paddingVertical],
+    },
+    sliderHeader: {
+      flexDirection: surface.sliderHeader.flexDirection,
+      justifyContent: surface.sliderHeader.justifyContent,
+      alignItems: surface.sliderHeader.alignItems,
+      marginBottom: spacing[surface.sliderHeader.marginBottom],
+    },
+    sliderValue: {
+      fontSize: surface.sliderValue.fontSize,
+      color: colors.sliderValue.color,
+    },
+    slider: {
+      width: surface.slider.width,
+      height: surface.slider.height,
+    },
+    testButton: {
+      backgroundColor: colors.testButton.backgroundColor,
+      paddingVertical: spacing[surface.testButton.paddingVertical],
+      paddingHorizontal: spacing[surface.testButton.paddingHorizontal],
+      borderRadius: radius[surface.testButton.borderRadius],
+      alignItems: surface.testButton.alignItems,
+      marginTop: spacing[surface.testButton.marginTop],
+    },
+    testButtonText: {
+      fontSize: surface.testButtonText.fontSize,
+      color: colors.testButtonText.color,
+    },
+    modalOverlay: {
+      flex: surface.modalOverlay.flex,
+      backgroundColor: colors.modalOverlay.backgroundColor,
+      justifyContent: surface.modalOverlay.justifyContent,
+    },
+    modalContent: {
+      backgroundColor: colors.sheet.backgroundColor,
+      borderTopLeftRadius: radius[surface.sheet.borderTopRadius],
+      borderTopRightRadius: radius[surface.sheet.borderTopRadius],
+      maxHeight: surface.sheet.maxHeight,
+    },
+    modalHeader: {
+      flexDirection: surface.header.flexDirection,
+      justifyContent: surface.header.justifyContent,
+      alignItems: surface.header.alignItems,
+      gap: spacing[surface.header.gap],
+      paddingHorizontal: spacing[surface.header.paddingHorizontal],
+      paddingVertical: spacing[surface.header.paddingVertical],
+      borderBottomWidth: surface.header.borderBottomWidth,
+      borderBottomColor: colors.header.borderBottomColor,
+    },
+    modalTitle: {
+      flex: surface.title.flex,
+      flexShrink: surface.title.flexShrink,
+      fontSize: surface.title.fontSize,
+      fontWeight: surface.title.fontWeight,
+      color: colors.title.color,
+      paddingRight: spacing[surface.title.paddingRight],
+    },
+    modalCloseButton: {
+      width: surface.closeButton.width,
+      height: surface.closeButton.height,
+      borderRadius: radius[surface.closeButton.borderRadius],
+      alignItems: surface.closeButton.alignItems,
+      justifyContent: surface.closeButton.justifyContent,
+      paddingHorizontal: spacing[surface.closeButton.paddingHorizontal],
+      paddingVertical: spacing[surface.closeButton.paddingVertical],
+    },
+    voiceList: {
+      padding: spacing[surface.list.padding],
+    },
+    deviceList: {
+      padding: spacing[surface.list.padding],
+    },
+    voiceGroupHeader: {
+      fontSize: surface.groupHeader.fontSize,
+      fontWeight: surface.groupHeader.fontWeight,
+      color: colors.groupHeader.color,
+      textTransform: surface.groupHeader.textTransform,
+      letterSpacing: surface.groupHeader.letterSpacing,
+      marginTop: spacing[surface.groupHeader.marginTop],
+      marginBottom: spacing[surface.groupHeader.marginBottom],
+      paddingHorizontal: spacing[surface.groupHeader.paddingHorizontal],
+    },
+    voiceItem: itemStyles,
+    voiceItemSelected: itemSelectedStyles,
+    voiceItemBody: {
+      flex: surface.itemBody.flex,
+      minWidth: surface.itemBody.minWidth,
+    },
+    voiceItemText: {
+      fontSize: surface.itemText.fontSize,
+      color: colors.itemText.color,
+    },
+    voiceItemTextSelected: itemTextSelectedStyles,
+    voiceItemSubtext: {
+      fontSize: surface.itemSubtext.fontSize,
+      color: colors.itemSubtext.color,
+      marginTop: surface.itemSubtext.marginTop,
+    },
+    deviceItem: itemStyles,
+    deviceItemSelected: itemSelectedStyles,
+    deviceItemText: {
+      fontSize: surface.itemText.fontSize,
+      color: colors.itemText.color,
+      flex: 1,
+      minWidth: 0,
+    },
+    deviceItemTextSelected: itemTextSelectedStyles,
   }
 }
 

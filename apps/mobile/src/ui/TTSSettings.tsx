@@ -10,11 +10,11 @@ import {
   EDGE_TTS_VOICES,
 } from '@dotagents/shared/providers';
 import {
+  createSpeechSelectorMobileStyleSheetSlots,
   getSpeechSelectorCopyState,
   getSpeechSelectorMobileCloseIconState,
   getSpeechSelectorMobileSurfaceColors,
   getSpeechSelectorMobileSurfaceState,
-  type SpeechSelectorMobileSurfaceColors,
 } from '@dotagents/shared/text-to-speech-settings';
 import {
   isEnglishTtsVoice as isEnglishVoice,
@@ -428,150 +428,11 @@ export function TTSSettings({
   );
 }
 
-const createStyles = (speechSelectorColors: SpeechSelectorMobileSurfaceColors) =>
-  StyleSheet.create({
-    container: {
-      marginTop: spacing[speechSelectorSurface.container.marginTop],
-    },
-    row: {
-      flexDirection: speechSelectorSurface.row.flexDirection,
-      flexWrap: speechSelectorSurface.row.flexWrap,
-      justifyContent: speechSelectorSurface.row.justifyContent,
-      alignItems: speechSelectorSurface.row.alignItems,
-      gap: spacing[speechSelectorSurface.row.gap],
-      paddingVertical: spacing[speechSelectorSurface.row.paddingVertical],
-    },
-    label: {
-      fontSize: speechSelectorSurface.label.fontSize,
-      color: speechSelectorColors.label.color,
-      flexGrow: speechSelectorSurface.label.flexGrow,
-      flexShrink: speechSelectorSurface.label.flexShrink,
-    },
-    voiceSelector: {
-      flexDirection: speechSelectorSurface.trigger.flexDirection,
-      alignItems: speechSelectorSurface.trigger.alignItems,
-      backgroundColor: speechSelectorColors.trigger.backgroundColor,
-      paddingHorizontal: spacing[speechSelectorSurface.trigger.paddingHorizontal],
-      paddingVertical: spacing[speechSelectorSurface.trigger.paddingVertical],
-      borderRadius: radius[speechSelectorSurface.trigger.borderRadius],
-      gap: spacing[speechSelectorSurface.trigger.gap],
-      flexGrow: speechSelectorSurface.trigger.flexGrow,
-      maxWidth: speechSelectorSurface.trigger.maxWidth,
-      minWidth: speechSelectorSurface.trigger.minWidth,
-    },
-    voiceSelectorText: {
-      fontSize: speechSelectorSurface.triggerText.fontSize,
-      color: speechSelectorColors.triggerText.color,
-      flex: speechSelectorSurface.triggerText.flex,
-      flexShrink: speechSelectorSurface.triggerText.flexShrink,
-    },
-    sliderRow: {
-      paddingVertical: spacing[speechSelectorSurface.sliderRow.paddingVertical],
-    },
-    sliderHeader: {
-      flexDirection: speechSelectorSurface.sliderHeader.flexDirection,
-      justifyContent: speechSelectorSurface.sliderHeader.justifyContent,
-      alignItems: speechSelectorSurface.sliderHeader.alignItems,
-      marginBottom: spacing[speechSelectorSurface.sliderHeader.marginBottom],
-    },
-    sliderValue: {
-      fontSize: speechSelectorSurface.sliderValue.fontSize,
-      color: speechSelectorColors.sliderValue.color,
-    },
-    slider: {
-      width: speechSelectorSurface.slider.width,
-      height: speechSelectorSurface.slider.height,
-    },
-    testButton: {
-      backgroundColor: speechSelectorColors.testButton.backgroundColor,
-      paddingVertical: spacing[speechSelectorSurface.testButton.paddingVertical],
-      paddingHorizontal: spacing[speechSelectorSurface.testButton.paddingHorizontal],
-      borderRadius: radius[speechSelectorSurface.testButton.borderRadius],
-      alignItems: speechSelectorSurface.testButton.alignItems,
-      marginTop: spacing[speechSelectorSurface.testButton.marginTop],
-    },
-    testButtonText: {
-      fontSize: speechSelectorSurface.testButtonText.fontSize,
-      color: speechSelectorColors.testButtonText.color,
-    },
-    modalOverlay: {
-      flex: speechSelectorSurface.modalOverlay.flex,
-      backgroundColor: speechSelectorColors.modalOverlay.backgroundColor,
-      justifyContent: speechSelectorSurface.modalOverlay.justifyContent,
-    },
-    modalContent: {
-      backgroundColor: speechSelectorColors.sheet.backgroundColor,
-      borderTopLeftRadius: radius[speechSelectorSurface.sheet.borderTopRadius],
-      borderTopRightRadius: radius[speechSelectorSurface.sheet.borderTopRadius],
-      maxHeight: speechSelectorSurface.sheet.maxHeight,
-    },
-    modalHeader: {
-      flexDirection: speechSelectorSurface.header.flexDirection,
-      justifyContent: speechSelectorSurface.header.justifyContent,
-      alignItems: speechSelectorSurface.header.alignItems,
-      gap: spacing[speechSelectorSurface.header.gap],
-      paddingHorizontal: spacing[speechSelectorSurface.header.paddingHorizontal],
-      paddingVertical: spacing[speechSelectorSurface.header.paddingVertical],
-      borderBottomWidth: speechSelectorSurface.header.borderBottomWidth,
-      borderBottomColor: speechSelectorColors.header.borderBottomColor,
-    },
-    modalTitle: {
-      flex: speechSelectorSurface.title.flex,
-      flexShrink: speechSelectorSurface.title.flexShrink,
-      fontSize: speechSelectorSurface.title.fontSize,
-      fontWeight: speechSelectorSurface.title.fontWeight,
-      color: speechSelectorColors.title.color,
-      paddingRight: spacing[speechSelectorSurface.title.paddingRight],
-    },
-    modalCloseButton: {
-      width: speechSelectorSurface.closeButton.width,
-      height: speechSelectorSurface.closeButton.height,
-      borderRadius: radius[speechSelectorSurface.closeButton.borderRadius],
-      alignItems: speechSelectorSurface.closeButton.alignItems,
-      justifyContent: speechSelectorSurface.closeButton.justifyContent,
-      paddingHorizontal: spacing[speechSelectorSurface.closeButton.paddingHorizontal],
-      paddingVertical: spacing[speechSelectorSurface.closeButton.paddingVertical],
-    },
-    voiceList: {
-      padding: spacing[speechSelectorSurface.list.padding],
-    },
-    voiceGroupHeader: {
-      fontSize: speechSelectorSurface.groupHeader.fontSize,
-      fontWeight: speechSelectorSurface.groupHeader.fontWeight,
-      color: speechSelectorColors.groupHeader.color,
-      textTransform: speechSelectorSurface.groupHeader.textTransform,
-      letterSpacing: speechSelectorSurface.groupHeader.letterSpacing,
-      marginTop: spacing[speechSelectorSurface.groupHeader.marginTop],
-      marginBottom: spacing[speechSelectorSurface.groupHeader.marginBottom],
-      paddingHorizontal: spacing[speechSelectorSurface.groupHeader.paddingHorizontal],
-    },
-    voiceItem: {
-      flexDirection: speechSelectorSurface.item.flexDirection,
-      justifyContent: speechSelectorSurface.item.justifyContent,
-      alignItems: speechSelectorSurface.item.alignItems,
-      paddingVertical: spacing[speechSelectorSurface.item.paddingVertical],
-      paddingHorizontal: spacing[speechSelectorSurface.item.paddingHorizontal],
-      borderRadius: radius[speechSelectorSurface.item.borderRadius],
-      gap: spacing[speechSelectorSurface.item.gap],
-    },
-    voiceItemSelected: {
-      backgroundColor: speechSelectorColors.selectedItem.backgroundColor,
-    },
-    voiceItemBody: {
-      flex: speechSelectorSurface.itemBody.flex,
-      minWidth: speechSelectorSurface.itemBody.minWidth,
-    },
-    voiceItemText: {
-      fontSize: speechSelectorSurface.itemText.fontSize,
-      color: speechSelectorColors.itemText.color,
-    },
-    voiceItemTextSelected: {
-      color: speechSelectorColors.itemText.selectedColor,
-      fontWeight: speechSelectorSurface.itemText.selectedFontWeight,
-    },
-    voiceItemSubtext: {
-      fontSize: speechSelectorSurface.itemSubtext.fontSize,
-      color: speechSelectorColors.itemSubtext.color,
-      marginTop: speechSelectorSurface.itemSubtext.marginTop,
-    },
-  });
+const createStyles = (
+  speechSelectorColors: ReturnType<typeof getSpeechSelectorMobileSurfaceColors>,
+) =>
+  StyleSheet.create(createSpeechSelectorMobileStyleSheetSlots({
+    colors: speechSelectorColors,
+    spacing,
+    radius,
+  }));
