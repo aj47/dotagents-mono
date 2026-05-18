@@ -10040,8 +10040,16 @@ export function useChatRuntimeNavigationHeaderChromeOptions({
 }
 
 export function ChatRuntimeHeaderAgentSelector(props: ChatRuntimeHeaderAgentSelectorProps) {
-  const agentSelectorParts: ChatRuntimeHeaderAgentSelectorParts =
-    createChatRuntimeHeaderAgentSelectorMobilePropsParts(props);
+  const { renderState, onPress, labelNumberOfLines, styles } = props;
+  const agentSelectorParts = useMemo<ChatRuntimeHeaderAgentSelectorParts>(
+    () => createChatRuntimeHeaderAgentSelectorMobilePropsParts({
+      renderState,
+      onPress,
+      labelNumberOfLines,
+      styles,
+    }),
+    [labelNumberOfLines, onPress, renderState, styles],
+  );
 
   return (
     <ChatRuntimeHeaderAgentSelectorTouchable
@@ -10135,8 +10143,35 @@ export function ChatRuntimeHeaderActionsRow({
 }
 
 export function ChatRuntimeHeaderIconButton(props: ChatRuntimeHeaderIconButtonProps) {
-  const iconButtonParts: ChatRuntimeHeaderIconButtonParts =
-    createChatRuntimeHeaderIconButtonMobilePropsParts(props);
+  const {
+    shouldRender,
+    renderState,
+    onPress,
+    style,
+    activeStyle,
+    iconContainerStyle,
+    isActive,
+  } = props;
+  const iconButtonParts = useMemo<ChatRuntimeHeaderIconButtonParts>(
+    () => createChatRuntimeHeaderIconButtonMobilePropsParts({
+      shouldRender,
+      renderState,
+      onPress,
+      style,
+      activeStyle,
+      iconContainerStyle,
+      isActive,
+    }),
+    [
+      activeStyle,
+      iconContainerStyle,
+      isActive,
+      onPress,
+      renderState,
+      shouldRender,
+      style,
+    ],
+  );
   const iconButtonTouchable = iconButtonParts.touchable;
 
   if (!iconButtonTouchable.shouldRender) return null;
@@ -10210,8 +10245,15 @@ export function ChatRuntimeHeaderIconButtonIcon(props: ChatRuntimeHeaderIconButt
 }
 
 export function ChatRuntimeHeaderConversationStatus(props: ChatRuntimeHeaderConversationStatusProps) {
-  const conversationStatusParts: ChatRuntimeHeaderConversationStatusParts =
-    createChatRuntimeHeaderConversationStatusMobilePropsParts(props);
+  const { renderState, spinnerSource, styles } = props;
+  const conversationStatusParts = useMemo<ChatRuntimeHeaderConversationStatusParts>(
+    () => createChatRuntimeHeaderConversationStatusMobilePropsParts({
+      renderState,
+      spinnerSource,
+      styles,
+    }),
+    [renderState, spinnerSource, styles],
+  );
   const conversationStatusContainer = conversationStatusParts.container;
 
   if (!conversationStatusContainer.shouldRender) return null;
@@ -10276,8 +10318,14 @@ export function ChatRuntimeHeaderConversationStatusLabel({
 }
 
 export function ChatRuntimeHeaderTurnDuration(props: ChatRuntimeHeaderTurnDurationProps) {
-  const turnDurationParts: ChatRuntimeHeaderTurnDurationParts =
-    createChatRuntimeHeaderTurnDurationMobilePropsParts(props);
+  const { renderState, styles } = props;
+  const turnDurationParts = useMemo<ChatRuntimeHeaderTurnDurationParts>(
+    () => createChatRuntimeHeaderTurnDurationMobilePropsParts({
+      renderState,
+      styles,
+    }),
+    [renderState, styles],
+  );
   const turnDurationContainer = turnDurationParts.container;
 
   if (!turnDurationContainer.shouldRender) return null;
