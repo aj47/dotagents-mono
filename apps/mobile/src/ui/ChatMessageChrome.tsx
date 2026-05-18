@@ -9964,8 +9964,8 @@ export function useChatRuntimeNavigationHeaderOptions({
   onHandsFreeButtonPress,
   styles,
 }: ChatRuntimeNavigationHeaderOptionsEffectInput): void {
-  useLayoutEffect(() => {
-    navigation?.setOptions?.(createChatRuntimeNavigationHeaderOptions({
+  const navigationHeaderOptions = useMemo<ChatRuntimeNavigationHeaderOptions>(
+    () => createChatRuntimeNavigationHeaderOptions({
       agentSelectorRenderState,
       onAgentSelectorPress,
       agentSelectorLabelNumberOfLines,
@@ -9983,26 +9983,33 @@ export function useChatRuntimeNavigationHeaderOptions({
       handsFreeButtonRenderState,
       onHandsFreeButtonPress,
       styles,
-    }));
+    }),
+    [
+      agentSelectorLabelNumberOfLines,
+      agentSelectorRenderState,
+      backButtonRenderState,
+      conversationStatusRenderState,
+      conversationStatusSpinnerSource,
+      handsFreeButtonRenderState,
+      killSwitchButtonRenderState,
+      killSwitchButtonShouldRender,
+      onAgentSelectorPress,
+      onBackButtonPress,
+      onHandsFreeButtonPress,
+      onKillSwitchButtonPress,
+      onPinButtonPress,
+      pinButtonIsActive,
+      pinButtonRenderState,
+      styles,
+      turnDurationRenderState,
+    ],
+  );
+
+  useLayoutEffect(() => {
+    navigation?.setOptions?.(navigationHeaderOptions);
   }, [
-    agentSelectorLabelNumberOfLines,
-    agentSelectorRenderState,
-    backButtonRenderState,
-    conversationStatusRenderState,
-    conversationStatusSpinnerSource,
-    handsFreeButtonRenderState,
-    killSwitchButtonRenderState,
-    killSwitchButtonShouldRender,
     navigation,
-    onAgentSelectorPress,
-    onBackButtonPress,
-    onHandsFreeButtonPress,
-    onKillSwitchButtonPress,
-    onPinButtonPress,
-    pinButtonIsActive,
-    pinButtonRenderState,
-    styles,
-    turnDurationRenderState,
+    navigationHeaderOptions,
   ]);
 }
 

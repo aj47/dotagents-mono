@@ -215,7 +215,9 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderOptions/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationHeaderChromeOptions/);
   assert.match(chatMessageChromeSource, /useChatRuntimeNavigationHeaderOptions\(\{\s+navigation,\s+\.\.\.headerRenderState,/);
-  assert.match(chatMessageChromeSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
+  assert.match(chatMessageChromeSource, /const navigationHeaderOptions = useMemo<ChatRuntimeNavigationHeaderOptions>\(\s+\(\) => createChatRuntimeNavigationHeaderOptions\(\{/);
+  assert.match(chatMessageChromeSource, /navigation\?\.setOptions\?\.\(navigationHeaderOptions\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /navigation\?\.setOptions\?\.\(createChatRuntimeNavigationHeaderOptions\(\{/);
   assert.match(chatMessageChromeSource, /getChatRuntimeNavigationHeaderMobileRenderState,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeNavigationHeaderOptionsParts,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeNavigationHeaderOptionsMobilePropsParts,/);
