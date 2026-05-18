@@ -252,12 +252,16 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderAgentSelector/);
   assert.match(chatMessageChromeSource, /createChatRuntimeHeaderAgentSelectorMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderAgentSelectorMobileStyleSlots<\s+TButtonStyle = unknown,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /TStyles extends ChatRuntimeHeaderAgentSelectorMobileStyleSlots/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorMobileStyleSlots as SharedChatRuntimeHeaderAgentSelectorStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorStyles =\s+SharedChatRuntimeHeaderAgentSelectorStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorStyles = \{\s+button: StyleProp<ViewStyle>;/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorParts =\s+ChatRuntimeHeaderAgentSelectorMobilePropsParts<[\s\S]*?ChatRuntimeAgentSelectorMobileRenderState,[\s\S]*?ChatRuntimeHeaderAgentSelectorProps\['onPress'\],[\s\S]*?ChatRuntimeHeaderAgentSelectorProps\['labelNumberOfLines'\],[\s\S]*?ChatRuntimeHeaderAgentSelectorProps\['styles'\]/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorProps =\s+ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput<\s+ChatRuntimeAgentSelectorMobileRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?number,[\s\S]*?ChatRuntimeHeaderAgentSelectorStyles\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorParts =\s+ChatRuntimeHeaderAgentSelectorMobilePropsParts<[\s\S]*?ChatRuntimeAgentSelectorMobileRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?number,[\s\S]*?ChatRuntimeHeaderAgentSelectorStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorProps = \{[\s\S]*?renderState: ChatRuntimeAgentSelectorMobileRenderState;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorParts = ReturnType<typeof createChatRuntimeHeaderAgentSelectorMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderAgentSelectorMobilePropsParts/);
   const agentSelectorSource =
@@ -388,12 +392,16 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderConversationStatus/);
   assert.match(chatMessageChromeSource, /createChatRuntimeHeaderConversationStatusMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusMobilePropsPartsInput,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderConversationStatusMobileStyleSlots<\s+TChipStyle = unknown,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderConversationStatusMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /TStyles extends ChatRuntimeHeaderConversationStatusMobileStyleSlots/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusMobileStyleSlots as SharedChatRuntimeHeaderConversationStatusStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusStyles =\s+SharedChatRuntimeHeaderConversationStatusStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ImageStyle>\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusStyles = \{\s+chip: StyleProp<ViewStyle>;/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusParts =\s+ChatRuntimeHeaderConversationStatusMobilePropsParts<[\s\S]*?ChatSessionStatusMobileRenderState,[\s\S]*?ChatRuntimeHeaderConversationStatusProps\['spinnerSource'\],[\s\S]*?ChatRuntimeHeaderConversationStatusProps\['styles'\]/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusProps =\s+ChatRuntimeHeaderConversationStatusMobilePropsPartsInput<\s+ChatSessionStatusMobileRenderState,[\s\S]*?ImageSourcePropType,[\s\S]*?ChatRuntimeHeaderConversationStatusStyles\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusParts =\s+ChatRuntimeHeaderConversationStatusMobilePropsParts<[\s\S]*?ChatSessionStatusMobileRenderState,[\s\S]*?ImageSourcePropType,[\s\S]*?ChatRuntimeHeaderConversationStatusStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusProps = \{[\s\S]*?renderState: ChatSessionStatusMobileRenderState;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusParts = ReturnType<typeof createChatRuntimeHeaderConversationStatusMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderConversationStatusMobilePropsParts/);
   const headerConversationStatusSource =
@@ -513,12 +521,16 @@ test('shows the shared total agent time in the mobile chat header', () => {
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderTurnDuration/);
   assert.match(chatMessageChromeSource, /createChatRuntimeHeaderTurnDurationMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationMobilePropsPartsInput,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderTurnDurationMobileStyleSlots<\s+TChipStyle = unknown,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderTurnDurationMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /TStyles extends ChatRuntimeHeaderTurnDurationMobileStyleSlots/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationMobileStyleSlots as SharedChatRuntimeHeaderTurnDurationStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationStyles =\s+SharedChatRuntimeHeaderTurnDurationStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationStyles = \{\s+chip: StyleProp<ViewStyle>;/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationParts =\s+ChatRuntimeHeaderTurnDurationMobilePropsParts<[\s\S]*?ChatRuntimeTurnDurationHeaderMobileRenderState,[\s\S]*?ChatRuntimeHeaderTurnDurationProps\['styles'\]/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationProps =\s+ChatRuntimeHeaderTurnDurationMobilePropsPartsInput<\s+ChatRuntimeTurnDurationHeaderMobileRenderState,[\s\S]*?ChatRuntimeHeaderTurnDurationStyles\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationParts =\s+ChatRuntimeHeaderTurnDurationMobilePropsParts<[\s\S]*?ChatRuntimeTurnDurationHeaderMobileRenderState,[\s\S]*?ChatRuntimeHeaderTurnDurationStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationProps = \{[\s\S]*?renderState: ChatRuntimeTurnDurationHeaderMobileRenderState;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationParts = ReturnType<typeof createChatRuntimeHeaderTurnDurationMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderTurnDurationMobilePropsParts/);
   const headerTurnDurationSource =
@@ -1802,7 +1814,11 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.match(chatMessageChromeSource, /export function ChatRuntimeHeaderIconButton/);
   assert.match(chatMessageChromeSource, /createChatRuntimeHeaderIconButtonMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonMobilePropsParts,/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonParts =\s+ChatRuntimeHeaderIconButtonMobilePropsParts<[\s\S]*?ChatRuntimeHeaderIconButtonRenderState,[\s\S]*?ChatRuntimeHeaderIconButtonProps\['onPress'\],[\s\S]*?ChatRuntimeHeaderIconButtonProps\['style'\],[\s\S]*?ChatRuntimeHeaderIconButtonProps\['activeStyle'\],[\s\S]*?ChatRuntimeHeaderIconButtonProps\['iconContainerStyle'\]/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonMobilePropsPartsInput,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderIconButtonMobilePropsPartsInput</);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonProps =\s+ChatRuntimeHeaderIconButtonMobilePropsPartsInput<\s+ChatRuntimeHeaderIconButtonRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonParts =\s+ChatRuntimeHeaderIconButtonMobilePropsParts<[\s\S]*?ChatRuntimeHeaderIconButtonRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonProps = \{[\s\S]*?renderState: ChatRuntimeHeaderIconButtonRenderState;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonParts = ReturnType<typeof createChatRuntimeHeaderIconButtonMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderIconButtonMobilePropsParts/);
   const headerIconButtonSource =

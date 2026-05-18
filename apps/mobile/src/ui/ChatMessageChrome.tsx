@@ -277,13 +277,17 @@ import {
   type ChatRuntimeDelegationCardMobilePropsParts,
   type ChatRuntimeDelegationCardMobilePropsPartsInput,
   type ChatRuntimeHeaderAgentSelectorMobilePropsParts,
+  type ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput,
   type ChatRuntimeHeaderAgentSelectorMobileStyleSlots as SharedChatRuntimeHeaderAgentSelectorStyleSlots,
   type ChatRuntimeHeaderConversationStatusMobilePropsParts,
+  type ChatRuntimeHeaderConversationStatusMobilePropsPartsInput,
   type ChatRuntimeHeaderConversationStatusMobileStyleSlots as SharedChatRuntimeHeaderConversationStatusStyleSlots,
   type ChatRuntimeHeaderIconButtonMobileStyleSlots as SharedChatRuntimeHeaderIconButtonStyleSlots,
   type ChatRuntimeHeaderIconButtonMobilePropsParts,
+  type ChatRuntimeHeaderIconButtonMobilePropsPartsInput,
   type ChatRuntimeHeaderStyleSlots as SharedChatRuntimeHeaderStyleSlots,
   type ChatRuntimeHeaderTurnDurationMobilePropsParts,
+  type ChatRuntimeHeaderTurnDurationMobilePropsPartsInput,
   type ChatRuntimeHeaderTurnDurationMobileStyleSlots as SharedChatRuntimeHeaderTurnDurationStyleSlots,
   type ChatRuntimeTurnDurationBadgeMobilePropsParts,
   type ChatRuntimeTurnDurationBadgeMobilePropsPartsInput,
@@ -1428,19 +1432,20 @@ type ChatRuntimeHeaderAgentSelectorStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatRuntimeHeaderAgentSelectorProps = {
-  renderState: ChatRuntimeAgentSelectorMobileRenderState;
-  onPress?: (event: GestureResponderEvent) => void;
-  labelNumberOfLines: number;
-  styles: ChatRuntimeHeaderAgentSelectorStyles;
-};
+type ChatRuntimeHeaderAgentSelectorProps =
+  ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput<
+    ChatRuntimeAgentSelectorMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    number,
+    ChatRuntimeHeaderAgentSelectorStyles
+  >;
 
 type ChatRuntimeHeaderAgentSelectorParts =
   ChatRuntimeHeaderAgentSelectorMobilePropsParts<
     ChatRuntimeAgentSelectorMobileRenderState,
-    ChatRuntimeHeaderAgentSelectorProps['onPress'],
-    ChatRuntimeHeaderAgentSelectorProps['labelNumberOfLines'],
-    ChatRuntimeHeaderAgentSelectorProps['styles']
+    (event: GestureResponderEvent) => void,
+    number,
+    ChatRuntimeHeaderAgentSelectorStyles
   >;
 
 type ChatRuntimeHeaderAgentSelectorTouchableProps =
@@ -1476,23 +1481,22 @@ type ChatRuntimeHeaderIconButtonRenderState =
   | ChatRuntimeKillSwitchMobileRenderState
   | ChatRuntimeHandsFreeMobileRenderState;
 
-type ChatRuntimeHeaderIconButtonProps = {
-  shouldRender?: boolean;
-  renderState: ChatRuntimeHeaderIconButtonRenderState;
-  onPress?: (event: GestureResponderEvent) => void;
-  style: StyleProp<ViewStyle>;
-  activeStyle?: StyleProp<ViewStyle>;
-  iconContainerStyle?: StyleProp<ViewStyle>;
-  isActive?: boolean;
-};
+type ChatRuntimeHeaderIconButtonProps =
+  ChatRuntimeHeaderIconButtonMobilePropsPartsInput<
+    ChatRuntimeHeaderIconButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatRuntimeHeaderIconButtonParts =
   ChatRuntimeHeaderIconButtonMobilePropsParts<
     ChatRuntimeHeaderIconButtonRenderState,
-    ChatRuntimeHeaderIconButtonProps['onPress'],
-    ChatRuntimeHeaderIconButtonProps['style'],
-    ChatRuntimeHeaderIconButtonProps['activeStyle'],
-    ChatRuntimeHeaderIconButtonProps['iconContainerStyle']
+    (event: GestureResponderEvent) => void,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
   >;
 
 type ChatRuntimeHeaderIconButtonTouchableProps =
@@ -1518,17 +1522,18 @@ type ChatRuntimeHeaderConversationStatusStyles =
     StyleProp<ImageStyle>
   >;
 
-type ChatRuntimeHeaderConversationStatusProps = {
-  renderState: ChatSessionStatusMobileRenderState;
-  spinnerSource: ImageSourcePropType;
-  styles: ChatRuntimeHeaderConversationStatusStyles;
-};
+type ChatRuntimeHeaderConversationStatusProps =
+  ChatRuntimeHeaderConversationStatusMobilePropsPartsInput<
+    ChatSessionStatusMobileRenderState,
+    ImageSourcePropType,
+    ChatRuntimeHeaderConversationStatusStyles
+  >;
 
 type ChatRuntimeHeaderConversationStatusParts =
   ChatRuntimeHeaderConversationStatusMobilePropsParts<
     ChatSessionStatusMobileRenderState,
-    ChatRuntimeHeaderConversationStatusProps['spinnerSource'],
-    ChatRuntimeHeaderConversationStatusProps['styles']
+    ImageSourcePropType,
+    ChatRuntimeHeaderConversationStatusStyles
   >;
 
 type ChatRuntimeHeaderConversationStatusContainerProps =
@@ -1553,15 +1558,16 @@ type ChatRuntimeHeaderTurnDurationStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatRuntimeHeaderTurnDurationProps = {
-  renderState: ChatRuntimeTurnDurationHeaderMobileRenderState;
-  styles: ChatRuntimeHeaderTurnDurationStyles;
-};
+type ChatRuntimeHeaderTurnDurationProps =
+  ChatRuntimeHeaderTurnDurationMobilePropsPartsInput<
+    ChatRuntimeTurnDurationHeaderMobileRenderState,
+    ChatRuntimeHeaderTurnDurationStyles
+  >;
 
 type ChatRuntimeHeaderTurnDurationParts =
   ChatRuntimeHeaderTurnDurationMobilePropsParts<
     ChatRuntimeTurnDurationHeaderMobileRenderState,
-    ChatRuntimeHeaderTurnDurationProps['styles']
+    ChatRuntimeHeaderTurnDurationStyles
   >;
 
 type ChatRuntimeHeaderTurnDurationContainerProps =
