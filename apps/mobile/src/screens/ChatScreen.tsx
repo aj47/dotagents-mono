@@ -62,6 +62,7 @@ import {
   useChatMessageRuntimeScrollController,
   useChatMessageRuntimeKillSwitchChromeActionsState,
   useChatRuntimeCurrentSessionSnapshotState,
+  useChatRuntimeCurrentAgentProfileState,
   useChatMessageRuntimeKeyboardOffsetState,
   useChatRuntimeBackToSessionsActionsState,
   useChatRuntimeNavigateToChatActionsState,
@@ -84,7 +85,6 @@ import {
   useChatMessageRuntimeComposerInputState,
 } from '../ui/ChatMessageChrome';
 import { useConnectionManager } from '../store/connectionManager';
-import { useProfile } from '../store/profile';
 import type { ChatMessage } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import {
@@ -123,7 +123,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
   const connectionManager = useConnectionManager();
-  const { currentProfile } = useProfile();
+  const { currentAgentName } = useChatRuntimeCurrentAgentProfileState();
   const {
     currentSession,
     isCurrentSessionPinned,
@@ -560,7 +560,7 @@ export default function ChatScreen({ route, navigation }: any) {
   useChatRuntimeNavigationHeaderChromeOptions({
     navigation,
     ...chatRuntimeChrome.header,
-    agentName: currentProfile?.name,
+    agentName: currentAgentName,
     isPinned: isCurrentSessionPinned,
     handsFree,
     conversationState,

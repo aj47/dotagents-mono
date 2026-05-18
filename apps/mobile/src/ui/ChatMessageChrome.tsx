@@ -34,6 +34,7 @@ import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
+import { useProfile } from '../store/profile';
 import {
   createChatRuntimeMessageQueuePanelStyleSheetSlots,
   createChatRuntimeResponseHistoryPanelStyleSheetSlots,
@@ -515,6 +516,10 @@ type ChatMessageRuntimeKeyboardOffsetState = {
 
 type ChatMessageRuntimeChromeStyleState = ReturnType<typeof useChatRuntimeMobileStyleSlots>;
 
+type ChatRuntimeCurrentAgentProfileState = {
+  currentAgentName: string | undefined;
+};
+
 type ChatRuntimeMobileChromeConfigState = ChatRuntimeMobileConfigState & {
   handsFree: boolean;
 };
@@ -548,6 +553,19 @@ export function useChatRuntimeMobileConfigState(config: MobileAppConfig): ChatRu
 
 export function useChatMessageRuntimeChromeStyleState(): ChatMessageRuntimeChromeStyleState {
   return useChatRuntimeMobileStyleSlots();
+}
+
+export function useChatRuntimeCurrentAgentProfileState(): ChatRuntimeCurrentAgentProfileState {
+  const { currentProfile } = useProfile();
+
+  const currentAgentProfileState = useMemo<ChatRuntimeCurrentAgentProfileState>(
+    () => ({
+      currentAgentName: currentProfile?.name,
+    }),
+    [currentProfile?.name],
+  );
+
+  return currentAgentProfileState;
 }
 
 export function useChatMessageRuntimeKeyboardOffsetState(): ChatMessageRuntimeKeyboardOffsetState {
