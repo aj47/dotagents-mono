@@ -165,6 +165,7 @@ import {
   createChatComposerRuntimeDockMobileChromeProps,
   createChatRuntimeSurfaceChromeMobileProps,
   createChatRuntimeViewportChromeMobileProps,
+  createChatRuntimeMobileConfigState,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
@@ -440,6 +441,8 @@ import {
   type ChatMessageRuntimeToolCallExpansionState,
   type ChatMessageRuntimeTurnDurations,
   type ChatMessageRuntimeTurnDurationStateInput,
+  type ChatRuntimeMobileConfigState,
+  type MobileAppConfig,
   type ToolActivityGroupMobileRenderState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
@@ -490,6 +493,13 @@ type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
   setRemoteTtsRate: Dispatch<SetStateAction<number>>;
   applyRemoteSpeechSettings: (settings: ChatRuntimeRemoteSpeechSettingsState) => void;
 };
+
+export function useChatRuntimeMobileConfigState(config: MobileAppConfig): ChatRuntimeMobileConfigState {
+  return useMemo(
+    () => createChatRuntimeMobileConfigState(config),
+    [config],
+  );
+}
 
 type ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput = {
   config: ChatRuntimeEffectiveRemoteSpeechSettingsStateInput['config'];

@@ -6911,8 +6911,12 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
 
 test('uses shared message queue surface tokens for the chat-adjacent queue wrapper', () => {
   assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/mobile-app-config';/);
-  assert.match(sessionPresentationSource, /export \{ createChatRuntimeMobileConfigState \} from "\.\/mobile-app-config"/);
-  assert.match(screenSource, /const chatRuntimeConfig = useMemo\(\s+\(\) => createChatRuntimeMobileConfigState\(config\),\s+\[config\],\s+\);/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createChatRuntimeMobileConfigState,[\s\S]*?type ChatRuntimeMobileConfigState,[\s\S]*?type MobileAppConfig,[\s\S]*?\} from "\.\/mobile-app-config"/);
+  assert.doesNotMatch(screenSource, /createChatRuntimeMobileConfigState/);
+  assert.match(screenSource, /useChatRuntimeMobileConfigState,/);
+  assert.match(screenSource, /const chatRuntimeConfig = useChatRuntimeMobileConfigState\(config\);/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeMobileConfigState\(config: MobileAppConfig\): ChatRuntimeMobileConfigState/);
+  assert.match(chatMessageChromeSource, /return useMemo\(\s+\(\) => createChatRuntimeMobileConfigState\(config\),\s+\[config\],\s+\);/);
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileDockRenderState,/);

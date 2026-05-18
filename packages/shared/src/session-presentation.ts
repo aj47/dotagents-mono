@@ -178,7 +178,11 @@ export {
   buildContentTTSKey,
   buildResponseEventTTSKey,
 } from "./tts-tracking"
-export { createChatRuntimeMobileConfigState } from "./mobile-app-config"
+export {
+  createChatRuntimeMobileConfigState,
+  type ChatRuntimeMobileConfigState,
+  type MobileAppConfig,
+} from "./mobile-app-config"
 export {
   DEFAULT_EDGE_TTS_VOICE,
   DEFAULT_MODEL_PRESET_ID,

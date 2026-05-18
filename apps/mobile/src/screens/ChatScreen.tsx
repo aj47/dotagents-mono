@@ -64,6 +64,7 @@ import {
   scheduleChatMessageRuntimeNextQueuedMessage,
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardChromeActionsState,
+  useChatRuntimeMobileConfigState,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatMessageRuntimeChromePropsInput,
@@ -94,7 +95,6 @@ import {
   createChatMessageRuntimeStreamingTurnState,
   createChatRuntimeCompletedDebugState,
   createChatRuntimeErrorLogDetailsState,
-  createChatRuntimeMobileConfigState,
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
   createChatRuntimeRequestSentDebugState,
@@ -216,10 +216,7 @@ export default function ChatScreen({ route, navigation }: any) {
     beginPromptEditorSave,
     clearPromptEditorSave,
   } = useChatConversationHomePromptEditorState();
-  const chatRuntimeConfig = useMemo(
-    () => createChatRuntimeMobileConfigState(config),
-    [config],
-  );
+  const chatRuntimeConfig = useChatRuntimeMobileConfigState(config);
   const {
     handsFreeMessageDebounceMs,
     handsFreeWakePhrase,
