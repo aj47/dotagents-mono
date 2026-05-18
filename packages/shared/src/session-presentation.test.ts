@@ -1636,6 +1636,25 @@ describe("session presentation semantics", () => {
       { id: "a2", role: "assistant", content: "Final" },
     ])
     expect(displayMessages[1]?.toolResults).toEqual([{ success: true, content: "result-1" }])
+    const historyMessagesWithInternalNudge: RuntimeTestMessage[] = [
+      { id: "u2", role: "user", content: "Visible user question", timestamp: 10 },
+      { id: "nudge", role: "user", content: INTERNAL_COMPLETION_NUDGE_TEXT, timestamp: 11 },
+      { id: "a3", role: "assistant", content: "Visible answer", timestamp: 12 },
+    ]
+    expect(createChatMessageRuntimeHistoryDisplayMessages(
+      historyMessagesWithInternalNudge,
+      { includeId: true },
+    ).map((message) => ({
+      id: message.id,
+      role: message.role,
+      content: message.content,
+    }))).toEqual([
+      { id: "u2", role: "user", content: "Visible user question" },
+      { id: "a3", role: "assistant", content: "Visible answer" },
+    ])
+    expect(createChatMessageRuntimeFinalHistoryTurnMessages<RuntimeTestMessage>(
+      historyMessagesWithInternalNudge,
+    ).map((message) => message.content)).toEqual(["Visible answer"])
     expect(createChatMessageRuntimeHistoryDisplayMessage(
       { role: "tool", content: "Tool content" },
     )).toMatchObject({
@@ -1724,6 +1743,10 @@ describe("session presentation semantics", () => {
       content: "Question",
       timestamp: 1,
     })
+    expect(createChatMessageRuntimeSessionDisplayMessages(
+      historyMessagesWithInternalNudge,
+      { includeId: true },
+    ).map((message) => message.id)).toEqual(["u2", "a3"])
     expect(createChatMessageRuntimeResponseHistoryEvents([
       {
         role: "assistant",

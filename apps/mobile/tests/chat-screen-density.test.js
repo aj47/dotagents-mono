@@ -4282,6 +4282,10 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeSessionDisplayMessages<ChatMessage>\(/);
   assert.match(chatMessageChromeSource, /createChatMessageRuntimeSessionDisplayMessages<TMessage>\(\s+sessionMessages,\s+options,\s+\)/);
   assert.match(chatMessageChromeSource, /applySessionMessages\(result\.messages, \{ includeId: true \}\)/);
+  assert.doesNotMatch(screenSource, /isChatRuntimeInternalCompletionNudgeContent/);
+  assert.doesNotMatch(chatMessageChromeSource, /isChatRuntimeInternalCompletionNudgeContent/);
+  assert.match(sessionPresentationSource, /isChatRuntimeInternalCompletionNudgeContent\(message\.content\)/);
+  assert.match(sessionPresentationSource, /isChatRuntimeInternalCompletionNudgeContent\(historyMessage\.content\)/);
   assert.doesNotMatch(screenSource, /currentSession\.messages\.map\(m => \(\{/);
   assert.doesNotMatch(screenSource, /result\.messages\.map\(m => \(\{/);
   assert.doesNotMatch(screenSource, /displayContent: \(m as ChatMessage\)\.displayContent/);
@@ -8676,8 +8680,8 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/text-to-speech-settings';/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/text-to-speech-settings';/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/providers';/);
-  assert.match(sessionPresentationSource, /export \{ DEFAULT_EDGE_TTS_VOICE \} from "\.\/providers"/);
-  assert.match(sessionPresentationSource, /export \{\s+createChatRuntimeEffectiveRemoteSpeechSettingsState,\s+createChatRuntimeRemoteSpeechSettingsState,\s+getChatRuntimeDefaultRemoteSpeechSettingsState,\s+type ChatRuntimeRemoteSpeechProvider,\s+type ChatRuntimeRemoteSpeechSettingsState,\s+\} from "\.\/text-to-speech-settings"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?DEFAULT_EDGE_TTS_VOICE,[\s\S]*?\} from "\.\/providers"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createChatRuntimeEffectiveRemoteSpeechSettingsState,[\s\S]*?createChatRuntimeRemoteSpeechSettingsState,[\s\S]*?getChatRuntimeDefaultRemoteSpeechSettingsState,[\s\S]*?type ChatRuntimeRemoteSpeechProvider,[\s\S]*?type ChatRuntimeRemoteSpeechSettingsState,[\s\S]*?\} from "\.\/text-to-speech-settings"/);
   assert.match(screenSource, /const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatRuntimeDefaultRemoteSpeechSettingsState\(\);/);
   assert.match(screenSource, /useChatMessageRuntimeRemoteSpeechSettingsState,/);
   assert.match(screenSource, /const \{\s+remoteTtsProvider,\s+remoteTtsVoice,\s+remoteTtsModel,\s+remoteTtsRate,\s+applyRemoteSpeechSettings,\s+\} = useChatMessageRuntimeRemoteSpeechSettingsState\(DEFAULT_REMOTE_SPEECH_SETTINGS\);/);

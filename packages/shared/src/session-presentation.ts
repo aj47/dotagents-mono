@@ -16099,15 +16099,19 @@ export function createChatMessageRuntimeSessionDisplayMessages<
     includeId = false,
   }: ChatMessageRuntimeSessionDisplayMessagesOptions = {},
 ): TMessage[] {
-  return sessionMessages.map((message) => ({
-    ...(includeId ? { id: message.id } : {}),
-    role: message.role,
-    content: message.content,
-    displayContent: message.displayContent,
-    timestamp: message.timestamp,
-    toolCalls: message.toolCalls,
-    toolResults: message.toolResults,
-  }) as TMessage)
+  return sessionMessages
+    .filter((message) => (
+      message.role !== "user" || !isChatRuntimeInternalCompletionNudgeContent(message.content)
+    ))
+    .map((message) => ({
+      ...(includeId ? { id: message.id } : {}),
+      role: message.role,
+      content: message.content,
+      displayContent: message.displayContent,
+      timestamp: message.timestamp,
+      toolCalls: message.toolCalls,
+      toolResults: message.toolResults,
+    }) as TMessage)
 }
 
 export function createChatMessageRuntimeResponseHistoryEvents(
@@ -16202,6 +16206,12 @@ export function createChatMessageRuntimeHistoryDisplayMessages<TToolCall, TToolR
   const messages: ChatMessageRuntimeHistoryDisplayMessage<TToolCall, TToolResult>[] = []
   for (let i = startIndex; i < historyMessages.length; i++) {
     const historyMessage = historyMessages[i]
+    if (
+      historyMessage.role === "user" &&
+      isChatRuntimeInternalCompletionNudgeContent(historyMessage.content)
+    ) {
+      continue
+    }
     if (skipUserMessages && historyMessage.role === "user") {
       continue
     }
