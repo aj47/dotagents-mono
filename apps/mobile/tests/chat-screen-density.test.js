@@ -3935,6 +3935,15 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(chatMessageChromeSource, /export function ChatComposerPendingImagesRail/);
   const pendingImagesRailSource =
     chatMessageChromeSource.match(/export function ChatComposerPendingImagesRail[\s\S]*?export function ChatComposerVoiceOverlay/)?.[0] ?? '';
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerPendingImagesRail(?:ScrollViewProps|ScrollViewContentProps|ItemParts)\s*=\s+ChatComposerPendingImagesRailParts\['/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerPendingImage(?:CardProps|PreviewProps|RemoveButtonProps|RemoveIconProps)\s*=\s+ChatComposerPendingImagesRailItemParts\['/);
+  assert.match(chatMessageChromeSource, /type ChatComposerPendingImagesRailScrollViewProps = \{[\s\S]*?horizontal: true;[\s\S]*?showsHorizontalScrollIndicator: boolean;[\s\S]*?contentContainerStyle: ChatComposerPendingImagesRailStyles\['row'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerPendingImagesRailScrollViewContentProps = \{[\s\S]*?items: ChatComposerPendingImagesRailItemPart\[\];[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerPendingImagesRailItemPart = \{[\s\S]*?key: string;[\s\S]*?card: \{[\s\S]*?props: Omit<ChatComposerPendingImageCardProps, 'children'>;[\s\S]*?\};[\s\S]*?preview: \{[\s\S]*?props: ChatComposerPendingImagePreviewProps;[\s\S]*?\};[\s\S]*?removeButton: \{[\s\S]*?props: Omit<ChatComposerPendingImageRemoveButtonProps, 'children'>;[\s\S]*?\};[\s\S]*?removeIcon: \{[\s\S]*?props: ChatComposerPendingImageRemoveIconProps;[\s\S]*?\};[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerPendingImageCardProps = \{[\s\S]*?style: ChatComposerPendingImagesRailStyles\['card'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerPendingImagePreviewProps = \{[\s\S]*?source: \{[\s\S]*?uri: string;[\s\S]*?\};[\s\S]*?style: ChatComposerPendingImagesRailStyles\['preview'\];[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerPendingImageRemoveButtonProps = \{[\s\S]*?style: ChatComposerPendingImagesRailStyles\['removeButton'\];[\s\S]*?onPress: \(\) => void;[\s\S]*?activeOpacity: number;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerPendingImageRemoveIconProps = ChatMessageActionIcon;/);
   assert.match(pendingImagesRailSource, /const pendingImagesRailParts: ChatComposerPendingImagesRailParts =\s+createChatComposerPendingImagesRailMobilePropsParts\(\{\s+images,\s+renderState,\s+onRemove,\s+styles,\s+\}\);/);
   assert.match(sessionPresentationSource, /scrollView: \{\s+shouldRender: images\.length > 0,\s+props: \{[\s\S]*?contentContainerStyle: styles\.row,[\s\S]*?content: \{\s+items: images\.map\(\(image\) => \(\{/);
   assert.match(pendingImagesRailSource, /const pendingImagesRailScrollView = pendingImagesRailParts\.scrollView;/);

@@ -4946,32 +4946,55 @@ type ChatComposerPendingImagesRailParts =
     ChatComposerPendingImagesRailStyles
   >;
 
-type ChatComposerPendingImagesRailScrollViewProps =
-  ChatComposerPendingImagesRailParts['scrollView']['props'] & {
-    children: ReactNode;
+type ChatComposerPendingImagesRailScrollViewProps = {
+  horizontal: true;
+  showsHorizontalScrollIndicator: boolean;
+  contentContainerStyle: ChatComposerPendingImagesRailStyles['row'];
+  children: ReactNode;
+};
+
+type ChatComposerPendingImagesRailScrollViewContentProps = {
+  items: ChatComposerPendingImagesRailItemPart[];
+};
+
+type ChatComposerPendingImagesRailItemPart = {
+  key: string;
+  card: {
+    props: Omit<ChatComposerPendingImageCardProps, 'children'>;
   };
-
-type ChatComposerPendingImagesRailScrollViewContentProps =
-  ChatComposerPendingImagesRailParts['scrollView']['content'];
-
-type ChatComposerPendingImagesRailItemParts =
-  ChatComposerPendingImagesRailParts['scrollView']['content']['items'][number];
-
-type ChatComposerPendingImageCardProps =
-  ChatComposerPendingImagesRailItemParts['card']['props'] & {
-    children: ReactNode;
+  preview: {
+    props: ChatComposerPendingImagePreviewProps;
   };
-
-type ChatComposerPendingImagePreviewProps =
-  ChatComposerPendingImagesRailItemParts['preview']['props'];
-
-type ChatComposerPendingImageRemoveButtonProps =
-  ChatComposerPendingImagesRailItemParts['removeButton']['props'] & {
-    children: ReactNode;
+  removeButton: {
+    props: Omit<ChatComposerPendingImageRemoveButtonProps, 'children'>;
   };
+  removeIcon: {
+    props: ChatComposerPendingImageRemoveIconProps;
+  };
+};
 
-type ChatComposerPendingImageRemoveIconProps =
-  ChatComposerPendingImagesRailItemParts['removeIcon']['props'];
+type ChatComposerPendingImageCardProps = {
+  style: ChatComposerPendingImagesRailStyles['card'];
+  children: ReactNode;
+};
+
+type ChatComposerPendingImagePreviewProps = {
+  source: {
+    uri: string;
+  };
+  style: ChatComposerPendingImagesRailStyles['preview'];
+};
+
+type ChatComposerPendingImageRemoveButtonProps = {
+  style: ChatComposerPendingImagesRailStyles['removeButton'];
+  onPress: () => void;
+  activeOpacity: number;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  children: ReactNode;
+};
+
+type ChatComposerPendingImageRemoveIconProps = ChatMessageActionIcon;
 
 type ChatComposerVoiceOverlayStyles =
   SharedChatComposerVoiceOverlayStyleSlots<
