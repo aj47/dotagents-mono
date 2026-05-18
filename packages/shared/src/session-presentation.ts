@@ -30252,9 +30252,9 @@ type ChatRuntimeHeaderStyleSourceKey =
   | "headerKillSwitchIconContainer"
   | "headerHandsFreeIconContainer"
 
-type ChatRuntimeHeaderStyleSource = Record<ChatRuntimeHeaderStyleSourceKey, unknown>
+export type ChatRuntimeHeaderStyleSource = Record<ChatRuntimeHeaderStyleSourceKey, unknown>
 
-type ChatRuntimeHeaderStyleSlotsFromStyleSource<
+export type ChatRuntimeHeaderStyleSlotsFromStyleSource<
   TStyles extends ChatRuntimeHeaderStyleSource,
 > = ChatRuntimeHeaderStyleSlots<
   TStyles["headerActionsRow"],

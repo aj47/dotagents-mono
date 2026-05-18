@@ -29,6 +29,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
+import type { ChatRuntimeMobileStyles } from './ChatRuntimeMobileStyles';
 import {
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   applyChatMessageRuntimeAutoExpansionState,
@@ -281,17 +282,13 @@ import {
   type ChatRuntimeDelegationCardMobilePropsPartsInput,
   type ChatRuntimeHeaderAgentSelectorMobilePropsParts,
   type ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput,
-  type ChatRuntimeHeaderAgentSelectorMobileStyleSlots as SharedChatRuntimeHeaderAgentSelectorStyleSlots,
   type ChatRuntimeHeaderConversationStatusMobilePropsParts,
   type ChatRuntimeHeaderConversationStatusMobilePropsPartsInput,
-  type ChatRuntimeHeaderConversationStatusMobileStyleSlots as SharedChatRuntimeHeaderConversationStatusStyleSlots,
-  type ChatRuntimeHeaderIconButtonMobileStyleSlots as SharedChatRuntimeHeaderIconButtonStyleSlots,
   type ChatRuntimeHeaderIconButtonMobilePropsParts,
   type ChatRuntimeHeaderIconButtonMobilePropsPartsInput,
-  type ChatRuntimeHeaderStyleSlots as SharedChatRuntimeHeaderStyleSlots,
+  type ChatRuntimeHeaderStyleSlotsFromStyleSource as SharedChatRuntimeHeaderStyleSlotsFromStyleSource,
   type ChatRuntimeHeaderTurnDurationMobilePropsParts,
   type ChatRuntimeHeaderTurnDurationMobilePropsPartsInput,
-  type ChatRuntimeHeaderTurnDurationMobileStyleSlots as SharedChatRuntimeHeaderTurnDurationStyleSlots,
   type ChatRuntimeTurnDurationBadgeMobilePropsParts,
   type ChatRuntimeTurnDurationBadgeMobilePropsPartsInput,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
@@ -1463,12 +1460,11 @@ export type ChatMessageActionStyleSlots = SharedChatMessageActionStyleSlots<
   ChatMessageExpansionActionStyles
 >;
 
+type ChatRuntimeHeaderStyleSlots =
+  SharedChatRuntimeHeaderStyleSlotsFromStyleSource<ChatRuntimeMobileStyles>;
+
 type ChatRuntimeHeaderAgentSelectorStyles =
-  SharedChatRuntimeHeaderAgentSelectorStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeHeaderStyleSlots['agentSelector'];
 
 type ChatRuntimeHeaderAgentSelectorProps =
   ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput<
@@ -1597,11 +1593,7 @@ type ChatRuntimeHeaderIconButtonTouchableContentProps = {
 };
 
 type ChatRuntimeHeaderConversationStatusStyles =
-  SharedChatRuntimeHeaderConversationStatusStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ImageStyle>
-  >;
+  ChatRuntimeHeaderStyleSlots['conversationStatus'];
 
 type ChatRuntimeHeaderConversationStatusProps =
   ChatRuntimeHeaderConversationStatusMobilePropsPartsInput<
@@ -1646,12 +1638,7 @@ type ChatRuntimeHeaderConversationStatusContainerContentProps = {
 };
 
 type ChatRuntimeHeaderTurnDurationStyles =
-  SharedChatRuntimeHeaderTurnDurationStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeHeaderStyleSlots['turnDuration'];
 
 type ChatRuntimeHeaderTurnDurationProps =
   ChatRuntimeHeaderTurnDurationMobilePropsPartsInput<
@@ -1700,23 +1687,7 @@ type ChatRuntimeHeaderTurnDurationContainerContentProps = {
 };
 
 type ChatRuntimeHeaderIconButtonStyles =
-  SharedChatRuntimeHeaderIconButtonStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>
-  >;
-
-type ChatRuntimeHeaderStyleSlots =
-  SharedChatRuntimeHeaderStyleSlots<
-    StyleProp<ViewStyle>,
-    ChatRuntimeHeaderAgentSelectorStyles,
-    ChatRuntimeHeaderConversationStatusStyles,
-    ChatRuntimeHeaderTurnDurationStyles,
-    ChatRuntimeHeaderIconButtonStyles
-  >;
+  ChatRuntimeHeaderStyleSlots['iconButtons'];
 
 type ChatRuntimeNavigationHeaderOptionParts =
   ChatRuntimeNavigationHeaderOptionsParts<
