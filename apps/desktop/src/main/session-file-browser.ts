@@ -380,10 +380,10 @@ export function listTrackedSessionFiles(input: {
   if (!stats.isDirectory()) throw new Error("Only directories can be listed")
 
   return fs.readdirSync(directoryPath, { withFileTypes: true })
-    .filter((entry) => !entry.name.startsWith(".") && !NOISY_ENTRY_NAMES.has(entry.name))
+    .filter((entry) => !entry.name.startsWith(".") && !NOISY_ENTRY_NAMES.has(entry.name) && !entry.isSymbolicLink())
     .map((entry) => {
       const entryPath = path.join(directoryPath, entry.name)
-      const entryStats = ensureNonSymlink(entryPath)
+      const entryStats = fs.lstatSync(entryPath)
       return {
         path: entryPath,
         relativePath: path.relative(rootPath, entryPath) || ".",
