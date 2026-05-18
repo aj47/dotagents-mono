@@ -11091,16 +11091,10 @@ export function ChatConversationHomePromptEditorModalActionButton({
   );
 }
 
-export function ChatMessageSurface({
-  children,
-  style,
-  toneStyle,
-}: ChatMessageSurfaceProps) {
+export function ChatMessageSurface(props: ChatMessageSurfaceProps) {
   const surfaceParts: ChatMessageSurfaceParts =
-    createChatRuntimeMessageSurfaceMobilePropsParts({
-      style,
-      toneStyle,
-    });
+    createChatRuntimeMessageSurfaceMobilePropsParts(props);
+  const { children } = props;
 
   return (
     <ChatMessageSurfaceContainer
@@ -11122,16 +11116,10 @@ export function ChatMessageSurfaceContainer({
   );
 }
 
-export function ChatMessageThreadItem({
-  children,
-  leadingActivity,
-  trailingActivity,
-}: ChatMessageThreadItemProps) {
+export function ChatMessageThreadItem(props: ChatMessageThreadItemProps) {
   const threadItemParts: ChatMessageThreadItemParts =
-    createChatRuntimeMessageThreadItemMobilePropsParts({
-      leadingActivity,
-      trailingActivity,
-    });
+    createChatRuntimeMessageThreadItemMobilePropsParts(props);
+  const { children } = props;
 
   return (
     <View>
@@ -11142,20 +11130,10 @@ export function ChatMessageThreadItem({
   );
 }
 
-export function ChatMessageThreadSurface({
-  children,
-  leadingActivity,
-  trailingActivity,
-  surfaceStyle,
-  surfaceToneStyle,
-}: ChatMessageThreadSurfaceProps) {
+export function ChatMessageThreadSurface(props: ChatMessageThreadSurfaceProps) {
   const threadSurfaceParts: ChatMessageThreadSurfaceParts =
-    createChatRuntimeMessageThreadSurfaceMobilePropsParts({
-      leadingActivity,
-      trailingActivity,
-      surfaceStyle,
-      surfaceToneStyle,
-    });
+    createChatRuntimeMessageThreadSurfaceMobilePropsParts(props);
+  const { children } = props;
 
   return (
     <ChatMessageThreadItem
@@ -11170,20 +11148,12 @@ export function ChatMessageThreadSurface({
   );
 }
 
-export function ChatMessageToolActivityGroupThreadSurface({
-  children,
-  groupRenderState,
-  onToggleGroup,
-  styles,
-  surfaceToneStyle,
-}: ChatMessageToolActivityGroupThreadSurfaceProps) {
+export function ChatMessageToolActivityGroupThreadSurface(
+  props: ChatMessageToolActivityGroupThreadSurfaceProps,
+) {
   const surfaceParts: ChatMessageToolActivityGroupThreadSurfaceParts =
-    createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts({
-      groupRenderState,
-      onToggleGroup,
-      surfaceToneStyle,
-      styles,
-    });
+    createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts(props);
+  const { children } = props;
 
   return (
     <ChatMessageThreadSurface
@@ -11204,19 +11174,9 @@ export function ChatMessageToolActivityGroupThreadSurface({
   );
 }
 
-export function ChatMessageRuntimeThread({
-  groupRenderState,
-  onToggleGroup,
-  body,
-  styles,
-}: ChatMessageRuntimeThreadProps) {
+export function ChatMessageRuntimeThread(props: ChatMessageRuntimeThreadProps) {
   const runtimeThreadParts: ChatMessageRuntimeThreadParts =
-    createChatRuntimeConversationRuntimeThreadMobilePropsParts({
-      groupRenderState,
-      onToggleGroup,
-      body,
-      styles,
-    });
+    createChatRuntimeConversationRuntimeThreadMobilePropsParts(props);
 
   if (runtimeThreadParts.shouldSkipThread) return null;
 
@@ -11247,15 +11207,11 @@ export function ChatMessageRuntimeThread({
   );
 }
 
-export function ChatMessageConversationRuntimeThreadList({
-  threadStates,
-  styles,
-}: ChatMessageConversationRuntimeThreadListProps) {
+export function ChatMessageConversationRuntimeThreadList(
+  props: ChatMessageConversationRuntimeThreadListProps,
+) {
   const threadListParts: ChatMessageConversationRuntimeThreadListParts =
-    createChatRuntimeConversationRuntimeThreadListMobilePropsParts({
-      threadStates,
-      styles,
-    });
+    createChatRuntimeConversationRuntimeThreadListMobilePropsParts(props);
 
   return (
     <ChatMessageConversationRuntimeThreadListContent
@@ -11279,25 +11235,9 @@ export function ChatMessageConversationRuntimeThreadListContent({
   );
 }
 
-export function ChatMessageThreadBody({
-  bodyDisplayMode,
-  styles,
-  retryStatus,
-  delegationCard,
-  toolApproval,
-  inlineActivity,
-  conversation,
-}: ChatMessageThreadBodyProps) {
+export function ChatMessageThreadBody(props: ChatMessageThreadBodyProps) {
   const threadBodyParts: ChatMessageThreadBodyParts =
-    createChatRuntimeConversationThreadBodyMobilePropsParts({
-      bodyDisplayMode,
-      retryStatus,
-      delegationCard,
-      toolApproval,
-      inlineActivity,
-      conversation,
-      styles,
-    });
+    createChatRuntimeConversationThreadBodyMobilePropsParts(props);
 
   if (threadBodyParts.retryStatus.shouldRender) {
     return (
