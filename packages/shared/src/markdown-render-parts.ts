@@ -502,12 +502,18 @@ export interface MarkdownCodeBlockCopyMobileRenderState {
   }
 }
 
-export interface MarkdownCodeBlockCopyMobilePropsStylesLike {
-  codeBlockCopyContainer: unknown
-  codeBlockCopyText: unknown
-  codeBlockCopyButton: unknown
-  codeBlockCopyButtonCopied: unknown
-  codeBlockCopyButtonPressed: unknown
+export interface MarkdownCodeBlockCopyMobilePropsStylesLike<
+  TCodeBlockCopyContainerStyle = unknown,
+  TCodeBlockCopyTextStyle = unknown,
+  TCodeBlockCopyButtonStyle = unknown,
+  TCodeBlockCopyButtonCopiedStyle = unknown,
+  TCodeBlockCopyButtonPressedStyle = unknown,
+> {
+  codeBlockCopyContainer: TCodeBlockCopyContainerStyle
+  codeBlockCopyText: TCodeBlockCopyTextStyle
+  codeBlockCopyButton: TCodeBlockCopyButtonStyle
+  codeBlockCopyButtonCopied: TCodeBlockCopyButtonCopiedStyle
+  codeBlockCopyButtonPressed: TCodeBlockCopyButtonPressedStyle
 }
 
 export interface MarkdownCodeBlockCopyMobilePropsPartsInput<
@@ -604,14 +610,22 @@ export interface MarkdownThinkSectionMobileSurfaceRenderState {
   colors: MarkdownThinkSectionMobileSurfaceColors
 }
 
-export interface MarkdownThinkSectionMobilePropsStylesLike {
-  container: unknown
-  containerCollapsed: unknown
-  containerExpanded: unknown
-  header: unknown
-  headerPressed: unknown
-  label: unknown
-  content: unknown
+export interface MarkdownThinkSectionMobilePropsStylesLike<
+  TContainerStyle = unknown,
+  TContainerCollapsedStyle = unknown,
+  TContainerExpandedStyle = unknown,
+  THeaderStyle = unknown,
+  THeaderPressedStyle = unknown,
+  TLabelStyle = unknown,
+  TContentStyle = unknown,
+> {
+  container: TContainerStyle
+  containerCollapsed: TContainerCollapsedStyle
+  containerExpanded: TContainerExpandedStyle
+  header: THeaderStyle
+  headerPressed: THeaderPressedStyle
+  label: TLabelStyle
+  content: TContentStyle
 }
 
 export interface MarkdownThinkSectionMobilePropsPartsInput<

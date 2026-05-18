@@ -37,10 +37,12 @@ import {
   parseConversationImageAssetUrl,
   splitMarkdownContent,
   type MarkdownCodeBlockCopyMobilePropsParts,
+  type MarkdownCodeBlockCopyMobilePropsStylesLike,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownImageMobilePropsParts,
   type MarkdownThinkSectionControlOptions,
   type MarkdownThinkSectionMobilePropsParts,
+  type MarkdownThinkSectionMobilePropsStylesLike,
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from '@dotagents/shared/session-presentation';
 import { useTheme } from './ThemeProvider';
@@ -56,15 +58,16 @@ interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
 
 type MarkdownPressHandler = () => void | Promise<void>;
 
-type MarkdownThinkSectionStyles = {
-  container: StyleProp<ViewStyle>;
-  containerCollapsed: StyleProp<ViewStyle>;
-  containerExpanded: StyleProp<ViewStyle>;
-  header: StyleProp<ViewStyle>;
-  headerPressed: StyleProp<ViewStyle>;
-  label: StyleProp<TextStyle>;
-  content: StyleProp<ViewStyle>;
-};
+type MarkdownThinkSectionStyles =
+  MarkdownThinkSectionMobilePropsStylesLike<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type MarkdownThinkSectionParts =
   MarkdownThinkSectionMobilePropsParts<MarkdownThinkSectionStyles, MarkdownPressHandler>;
@@ -76,13 +79,14 @@ type MarkdownImageSource = {
 
 type MarkdownImageParts = MarkdownImageMobilePropsParts<MarkdownImageSource, StyleProp<ImageStyle>>;
 
-type MarkdownCodeBlockCopyStyles = {
-  codeBlockCopyContainer: StyleProp<ViewStyle>;
-  codeBlockCopyText: StyleProp<TextStyle>;
-  codeBlockCopyButton: StyleProp<ViewStyle>;
-  codeBlockCopyButtonCopied: StyleProp<ViewStyle>;
-  codeBlockCopyButtonPressed: StyleProp<ViewStyle>;
-};
+type MarkdownCodeBlockCopyStyles =
+  MarkdownCodeBlockCopyMobilePropsStylesLike<
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type MarkdownCodeBlockCopyParts =
   MarkdownCodeBlockCopyMobilePropsParts<MarkdownCodeBlockCopyStyles, MarkdownPressHandler>;

@@ -96,6 +96,7 @@ export {
   transformMarkdownContentUrl,
   type MarkdownCodeBlockCopyMobilePropsParts,
   type MarkdownCodeBlockCopyMobilePropsPartsInput,
+  type MarkdownCodeBlockCopyMobilePropsStylesLike,
   type MarkdownContentMobileStyleSlotsInput,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownImageMobilePropsParts,
@@ -105,6 +106,7 @@ export {
   type MarkdownThinkSectionControlOptions,
   type MarkdownThinkSectionMobilePropsParts,
   type MarkdownThinkSectionMobilePropsPartsInput,
+  type MarkdownThinkSectionMobilePropsStylesLike,
   type MarkdownThinkSectionMobileStyleSlotsInput,
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from "./markdown-render-parts"
