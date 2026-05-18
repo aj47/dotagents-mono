@@ -3619,30 +3619,73 @@ type ChatMessageToolExecutionDetailHeaderParts =
     ChatMessageToolExecutionDetailHeaderStyles
   >;
 
-type ChatMessageToolExecutionDetailHeaderPressableProps =
-  ChatMessageToolExecutionDetailHeaderParts['container']['props'] & {
-    children: ReactNode;
+type ChatMessageToolExecutionDetailHeaderPressableState = {
+  pressed: boolean;
+};
+
+type ChatMessageToolExecutionDetailHeaderPressableProps = {
+  children: ReactNode;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  style: (state: ChatMessageToolExecutionDetailHeaderPressableState) => Array<
+    | ChatMessageToolExecutionDetailHeaderStyles['header']
+    | ChatMessageToolExecutionDetailHeaderStyles['headerPressed']
+    | false
+  >;
+  accessibilityRole: ToolExecutionDetailMobileHeaderRenderState['accessibilityRole'];
+  accessibilityLabel: string;
+  accessibilityState: ToolExecutionDetailMobileHeaderRenderState['accessibilityState'];
+  'aria-expanded': ToolExecutionDetailMobileHeaderRenderState['ariaExpanded'];
+  accessibilityHint: string;
+};
+
+type ChatMessageToolExecutionDetailHeaderToolNameProps = {
+  props: {
+    style: ChatMessageToolExecutionDetailHeaderStyles['toolName'];
   };
+  text: string;
+};
 
-type ChatMessageToolExecutionDetailHeaderContentProps =
-  ChatMessageToolExecutionDetailHeaderParts['container']['content'];
+type ChatMessageToolExecutionDetailHeaderToolNamePart = {
+  props: ChatMessageToolExecutionDetailHeaderToolNameProps;
+};
 
-type ChatMessageToolExecutionDetailHeaderToolNameProps =
-  ChatMessageToolExecutionDetailHeaderParts['container']['content']['toolName']['props'];
-
-type ChatMessageToolExecutionDetailHeaderExpandHintProps =
-  ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['props'] & {
-    children: ReactNode;
-  };
-
-type ChatMessageToolExecutionDetailHeaderExpandHintContentProps =
-  ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['content'];
+type ChatMessageToolExecutionDetailHeaderExpandHintProps = {
+  style: ChatMessageToolExecutionDetailHeaderStyles['expandHint'];
+  children: ReactNode;
+};
 
 type ChatMessageToolExecutionDetailHeaderIconProps =
-  ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['content']['icon']['props'];
+  ComponentProps<typeof Ionicons>;
 
-type ChatMessageToolExecutionDetailHeaderExpandLabelProps =
-  ChatMessageToolExecutionDetailHeaderParts['container']['content']['expandHint']['content']['label']['props'];
+type ChatMessageToolExecutionDetailHeaderIconPart = {
+  props: ChatMessageToolExecutionDetailHeaderIconProps;
+};
+
+type ChatMessageToolExecutionDetailHeaderExpandLabelProps = {
+  props: {
+    style: ChatMessageToolExecutionDetailHeaderStyles['expandHintText'];
+  };
+  text: string;
+};
+
+type ChatMessageToolExecutionDetailHeaderExpandLabelPart = {
+  props: ChatMessageToolExecutionDetailHeaderExpandLabelProps;
+};
+
+type ChatMessageToolExecutionDetailHeaderExpandHintContentProps = {
+  icon: ChatMessageToolExecutionDetailHeaderIconPart;
+  label: ChatMessageToolExecutionDetailHeaderExpandLabelPart;
+};
+
+type ChatMessageToolExecutionDetailHeaderExpandHintPart = {
+  props: Omit<ChatMessageToolExecutionDetailHeaderExpandHintProps, 'children'>;
+  content: ChatMessageToolExecutionDetailHeaderExpandHintContentProps;
+};
+
+type ChatMessageToolExecutionDetailHeaderContentProps = {
+  toolName: ChatMessageToolExecutionDetailHeaderToolNamePart;
+  expandHint: ChatMessageToolExecutionDetailHeaderExpandHintPart;
+};
 
 type ChatMessageToolExecutionCallSectionStyles =
   SharedChatMessageToolExecutionCallSectionStyleSlots<
