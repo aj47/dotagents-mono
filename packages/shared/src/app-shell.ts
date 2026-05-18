@@ -1,5 +1,6 @@
 import { SIDEBAR_DIMENSIONS } from "./sidebar-persistence"
 import type { BundleComponentKey } from "./bundle-api"
+import { createButtonAccessibilityLabel } from "./accessibility-utils"
 
 export const APP_SHELL_PRODUCT_LABEL = "DotAgents"
 
@@ -317,6 +318,88 @@ export interface AppShellHeaderActionMobileIconColors {
   color: string
 }
 
+export interface AppShellHeaderIconActionMobileStylesLike {
+  button: unknown
+}
+
+export interface AppShellHeaderIconActionMobilePropsPartsInput<
+  TActionId extends AppShellHeaderActionWithMobileIconId =
+    AppShellHeaderActionWithMobileIconId,
+  TOnPress = unknown,
+  TStyles extends AppShellHeaderIconActionMobileStylesLike =
+    AppShellHeaderIconActionMobileStylesLike,
+> {
+  id: TActionId
+  colors: AppShellHeaderActionMobileIconColorPalette
+  onPress: TOnPress
+  styles: TStyles
+}
+
+export interface AppShellHeaderIconActionMobilePropsParts<
+  TOnPress = unknown,
+  TStyles extends AppShellHeaderIconActionMobileStylesLike =
+    AppShellHeaderIconActionMobileStylesLike,
+> {
+  touchable: {
+    props: {
+      onPress: TOnPress
+      style: TStyles["button"]
+      accessibilityRole: "button"
+      accessibilityLabel: string
+      accessibilityHint: string | undefined
+    }
+    content: {
+      icon: {
+        props: {
+          name: AppShellHeaderActionMobileIconState["name"]
+          size: AppShellHeaderActionMobileIconState["size"]
+          color: string
+        }
+      }
+    }
+  }
+}
+
+export interface AppShellHeaderTextActionMobileStylesLike {
+  button: unknown
+  label: unknown
+}
+
+export interface AppShellHeaderTextActionMobilePropsPartsInput<
+  TActionId extends AppShellHeaderActionId = AppShellHeaderActionId,
+  TOnPress = unknown,
+  TStyles extends AppShellHeaderTextActionMobileStylesLike =
+    AppShellHeaderTextActionMobileStylesLike,
+> {
+  id: TActionId
+  onPress: TOnPress
+  styles: TStyles
+}
+
+export interface AppShellHeaderTextActionMobilePropsParts<
+  TOnPress = unknown,
+  TStyles extends AppShellHeaderTextActionMobileStylesLike =
+    AppShellHeaderTextActionMobileStylesLike,
+> {
+  touchable: {
+    props: {
+      onPress: TOnPress
+      style: TStyles["button"]
+      accessibilityRole: "button"
+      accessibilityLabel: string
+      accessibilityHint: string | undefined
+    }
+    content: {
+      label: {
+        text: string
+        props: {
+          style: TStyles["label"]
+        }
+      }
+    }
+  }
+}
+
 type AppShellHeaderActionPresentation = {
   label: string
   displayLabel?: string
@@ -365,6 +448,83 @@ export function getAppShellHeaderActionMobileIconColors(
   const icon = getAppShellHeaderActionMobileIconState(id)
   return {
     color: colors[icon.colorToken],
+  }
+}
+
+export function createAppShellHeaderIconActionMobilePropsParts<
+  TActionId extends AppShellHeaderActionWithMobileIconId,
+  TOnPress,
+  TStyles extends AppShellHeaderIconActionMobileStylesLike,
+>({
+  id,
+  colors,
+  onPress,
+  styles,
+}: AppShellHeaderIconActionMobilePropsPartsInput<
+  TActionId,
+  TOnPress,
+  TStyles
+>): AppShellHeaderIconActionMobilePropsParts<TOnPress, TStyles> {
+  const icon = getAppShellHeaderActionMobileIconState(id)
+  const iconColors = getAppShellHeaderActionMobileIconColors(colors, id)
+
+  return {
+    touchable: {
+      props: {
+        onPress,
+        style: styles.button,
+        accessibilityRole: "button",
+        accessibilityLabel: createButtonAccessibilityLabel(
+          getAppShellHeaderActionLabel(id),
+        ),
+        accessibilityHint: getAppShellHeaderActionHint(id),
+      },
+      content: {
+        icon: {
+          props: {
+            name: icon.name,
+            size: icon.size,
+            color: iconColors.color,
+          },
+        },
+      },
+    },
+  }
+}
+
+export function createAppShellHeaderTextActionMobilePropsParts<
+  TActionId extends AppShellHeaderActionId,
+  TOnPress,
+  TStyles extends AppShellHeaderTextActionMobileStylesLike,
+>({
+  id,
+  onPress,
+  styles,
+}: AppShellHeaderTextActionMobilePropsPartsInput<
+  TActionId,
+  TOnPress,
+  TStyles
+>): AppShellHeaderTextActionMobilePropsParts<TOnPress, TStyles> {
+  return {
+    touchable: {
+      props: {
+        onPress,
+        style: styles.button,
+        accessibilityRole: "button",
+        accessibilityLabel: createButtonAccessibilityLabel(
+          getAppShellHeaderActionLabel(id),
+        ),
+        accessibilityHint: getAppShellHeaderActionHint(id),
+      },
+      content: {
+        label: {
+          text: getAppShellHeaderActionDisplayLabel(id),
+          props: {
+            style: styles.label,
+          },
+        },
+      },
+    },
   }
 }
 

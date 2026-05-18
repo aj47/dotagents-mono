@@ -98,6 +98,8 @@ import {
   getAppShellEditorActionLabel,
   getAppShellEditorTitle,
   APP_SHELL_PRODUCT_LABEL,
+  createAppShellHeaderIconActionMobilePropsParts,
+  createAppShellHeaderTextActionMobilePropsParts,
   getAppShellGlobalTtsToggleLabel,
   getAppShellHeaderActionDisplayLabel,
   getAppShellHeaderActionHint,
@@ -293,6 +295,58 @@ describe("app shell", () => {
       ),
     ).toEqual({
       color: "#123456",
+    })
+    expect(
+      createAppShellHeaderIconActionMobilePropsParts({
+        id: "openSplitView",
+        colors: { foreground: "#123456" },
+        onPress: "open-split",
+        styles: { button: "icon-button" },
+      }),
+    ).toEqual({
+      touchable: {
+        props: {
+          onPress: "open-split",
+          style: "icon-button",
+          accessibilityRole: "button",
+          accessibilityLabel: "Open split view button",
+          accessibilityHint: "Opens two chats at once for comparison",
+        },
+        content: {
+          icon: {
+            props: {
+              name: "git-compare-outline",
+              size: 18,
+              color: "#123456",
+            },
+          },
+        },
+      },
+    })
+    expect(
+      createAppShellHeaderTextActionMobilePropsParts({
+        id: "newChat",
+        onPress: "new-chat",
+        styles: { button: "new-button", label: "new-label" },
+      }),
+    ).toEqual({
+      touchable: {
+        props: {
+          onPress: "new-chat",
+          style: "new-button",
+          accessibilityRole: "button",
+          accessibilityLabel: "New chat button",
+          accessibilityHint: "Creates and opens a new chat.",
+        },
+        content: {
+          label: {
+            text: "+ New Chat",
+            props: {
+              style: "new-label",
+            },
+          },
+        },
+      },
     })
     expect(getAppShellGlobalTtsToggleLabel(true)).toBe("Disable global TTS")
     expect(getAppShellGlobalTtsToggleLabel(false)).toBe("Enable global TTS")

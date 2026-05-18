@@ -72,10 +72,9 @@ import {
   type ConversationListMobileSurfaceColors,
 } from "@dotagents/shared/conversation-list-presentation"
 import {
-  APP_SHELL_HEADER_ACTIONS,
   APP_SHELL_MOBILE_ROUTE_TITLES,
-  getAppShellHeaderActionMobileIconColors,
-  getAppShellHeaderActionMobileIconState,
+  createAppShellHeaderIconActionMobilePropsParts,
+  createAppShellHeaderTextActionMobilePropsParts,
 } from "@dotagents/shared/app-shell"
 import {
   createChatRuntimeHeaderAgentSelectorMobilePropsParts,
@@ -87,9 +86,6 @@ import {
 } from "@dotagents/shared/session-presentation"
 
 const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState()
-const openSplitViewIcon =
-  getAppShellHeaderActionMobileIconState("openSplitView")
-const openSettingsIcon = getAppShellHeaderActionMobileIconState("openSettings")
 const conversationListSurface = getConversationListMobileSurfaceState()
 
 const darkSpinner = require("../../assets/loading-spinner.gif")
@@ -108,19 +104,6 @@ export default function SessionListScreen({ navigation }: Props) {
   )
   const headerAgentSelectorColors = useMemo(
     () => getChatRuntimeAgentSelectorMobileColors(theme.colors),
-    [theme.colors],
-  )
-  const headerActionIconColors = useMemo(
-    () => ({
-      openSplitView: getAppShellHeaderActionMobileIconColors(
-        theme.colors,
-        "openSplitView",
-      ),
-      openSettings: getAppShellHeaderActionMobileIconColors(
-        theme.colors,
-        "openSettings",
-      ),
-    }),
     [theme.colors],
   )
   const styles = useMemo(
@@ -911,6 +894,45 @@ export default function SessionListScreen({ navigation }: Props) {
     [handleOpenAgentSelector, headerAgentSelectorRenderState, styles],
   )
 
+  const openSplitViewActionParts = useMemo(
+    () =>
+      createAppShellHeaderIconActionMobilePropsParts({
+        id: "openSplitView",
+        colors: theme.colors,
+        onPress: handleOpenSplitView,
+        styles: {
+          button: styles.headerSettingsButton,
+        },
+      }),
+    [handleOpenSplitView, styles.headerSettingsButton, theme.colors],
+  )
+
+  const newChatActionParts = useMemo(
+    () =>
+      createAppShellHeaderTextActionMobilePropsParts({
+        id: "newChat",
+        onPress: handleCreateSession,
+        styles: {
+          button: styles.headerNewChatButton,
+          label: styles.headerNewChatButtonText,
+        },
+      }),
+    [handleCreateSession, styles.headerNewChatButton, styles.headerNewChatButtonText],
+  )
+
+  const openSettingsActionParts = useMemo(
+    () =>
+      createAppShellHeaderIconActionMobilePropsParts({
+        id: "openSettings",
+        colors: theme.colors,
+        onPress: handleOpenSettings,
+        styles: {
+          button: styles.headerSettingsButton,
+        },
+      }),
+    [handleOpenSettings, styles.headerSettingsButton, theme.colors],
+  )
+
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
@@ -942,46 +964,24 @@ export default function SessionListScreen({ navigation }: Props) {
             compact
           />
           <TouchableOpacity
-            onPress={handleOpenSplitView}
-            style={styles.headerSettingsButton}
-            accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel(
-              APP_SHELL_HEADER_ACTIONS.openSplitView.label,
-            )}
-            accessibilityHint={APP_SHELL_HEADER_ACTIONS.openSplitView.hint}
+            {...openSplitViewActionParts.touchable.props}
           >
             <Ionicons
-              name={openSplitViewIcon.name}
-              size={openSplitViewIcon.size}
-              color={headerActionIconColors.openSplitView.color}
+              {...openSplitViewActionParts.touchable.content.icon.props}
             />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={handleCreateSession}
-            style={styles.headerNewChatButton}
-            accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel(
-              APP_SHELL_HEADER_ACTIONS.newChat.label,
-            )}
-            accessibilityHint={APP_SHELL_HEADER_ACTIONS.newChat.hint}
+            {...newChatActionParts.touchable.props}
           >
-            <Text style={styles.headerNewChatButtonText}>
-              {APP_SHELL_HEADER_ACTIONS.newChat.displayLabel}
+            <Text {...newChatActionParts.touchable.content.label.props}>
+              {newChatActionParts.touchable.content.label.text}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={handleOpenSettings}
-            style={styles.headerSettingsButton}
-            accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel(
-              APP_SHELL_HEADER_ACTIONS.openSettings.label,
-            )}
-            accessibilityHint={APP_SHELL_HEADER_ACTIONS.openSettings.hint}
+            {...openSettingsActionParts.touchable.props}
           >
             <Ionicons
-              name={openSettingsIcon.name}
-              size={openSettingsIcon.size}
-              color={headerActionIconColors.openSettings.color}
+              {...openSettingsActionParts.touchable.content.icon.props}
             />
           </TouchableOpacity>
         </View>
@@ -990,13 +990,12 @@ export default function SessionListScreen({ navigation }: Props) {
   }, [
     navigation,
     styles,
-    headerActionIconColors,
     headerAgentSelectorParts,
+    newChatActionParts,
+    openSettingsActionParts,
+    openSplitViewActionParts,
     connectionInfo.state,
     connectionInfo.retryCount,
-    handleCreateSession,
-    handleOpenSettings,
-    handleOpenSplitView,
   ])
 
   if (!sessionStore.ready || !isInitialized) {

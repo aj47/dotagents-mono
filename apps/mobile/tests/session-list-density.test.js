@@ -20,6 +20,10 @@ const sharedConversationListSource = fs.readFileSync(
   ),
   "utf8",
 )
+const sharedAppShellSource = fs.readFileSync(
+  path.join(__dirname, "..", "..", "..", "packages", "shared", "src", "app-shell.ts"),
+  "utf8",
+)
 
 test("avoids redundant desktop emoji chrome in stub session rows", () => {
   assert.doesNotMatch(screenSource, /💻/)
@@ -79,9 +83,20 @@ test("moves new chat into the navigation header and removes the old inline actio
   assert.match(sharedConversationListSource, /screen:\s*\{/)
   assert.match(sharedConversationListSource, /header:\s*\{/)
   assert.match(screenSource, /APP_CONVERSATION_LIST_COPY\.loadingLabel/)
-  assert.match(screenSource, /style=\{styles\.headerNewChatButton\}/)
   assert.match(screenSource, /style=\{styles\.headerActionsRow\}/)
-  assert.match(screenSource, /APP_SHELL_HEADER_ACTIONS\.newChat\.displayLabel/)
+  assert.match(screenSource, /createAppShellHeaderTextActionMobilePropsParts,/)
+  assert.match(
+    screenSource,
+    /const newChatActionParts = useMemo\([\s\S]*?createAppShellHeaderTextActionMobilePropsParts\(\{[\s\S]*?id: "newChat",[\s\S]*?onPress: handleCreateSession,[\s\S]*?button: styles\.headerNewChatButton,[\s\S]*?label: styles\.headerNewChatButtonText,/,
+  )
+  assert.match(
+    screenSource,
+    /\{\.\.\.newChatActionParts\.touchable\.props\}/,
+  )
+  assert.match(
+    screenSource,
+    /\{newChatActionParts\.touchable\.content\.label\.text\}/,
+  )
   assert.match(
     screenSource,
     /const screenChrome = conversationListSurface\.screen/,
@@ -106,43 +121,60 @@ test("moves new chat into the navigation header and removes the old inline actio
     screenSource,
     /headerNewChatButtonText:\s*\{[\s\S]*?color:\s*conversationListColors\.header\.newChatTextColor,[\s\S]*?fontSize:\s*conversationHeader\.newChatText\.fontSize/,
   )
+  assert.doesNotMatch(screenSource, /APP_SHELL_HEADER_ACTIONS\.newChat\.displayLabel/)
   assert.doesNotMatch(screenSource, /styles\.clearButton/)
 })
 
 test("uses shared mobile icons for session list header actions", () => {
-  assert.match(screenSource, /getAppShellHeaderActionMobileIconColors,/)
-  assert.match(screenSource, /getAppShellHeaderActionMobileIconState,/)
+  assert.match(sharedAppShellSource, /createAppShellHeaderIconActionMobilePropsParts/)
+  assert.match(sharedAppShellSource, /getAppShellHeaderActionMobileIconColors/)
+  assert.match(sharedAppShellSource, /getAppShellHeaderActionMobileIconState/)
+  assert.match(
+    sharedAppShellSource,
+    /accessibilityLabel: createButtonAccessibilityLabel\([\s\S]*?getAppShellHeaderActionLabel\(id\),/,
+  )
+  assert.match(screenSource, /createAppShellHeaderIconActionMobilePropsParts,/)
   assert.match(
     screenSource,
-    /const openSplitViewIcon =\s*getAppShellHeaderActionMobileIconState\("openSplitView"\)/,
+    /const openSplitViewActionParts = useMemo\([\s\S]*?createAppShellHeaderIconActionMobilePropsParts\(\{[\s\S]*?id: "openSplitView",[\s\S]*?colors: theme\.colors,[\s\S]*?onPress: handleOpenSplitView,[\s\S]*?button: styles\.headerSettingsButton,/,
   )
   assert.match(
     screenSource,
-    /const openSettingsIcon = getAppShellHeaderActionMobileIconState\("openSettings"\)/,
-  )
-  assert.match(screenSource, /name=\{openSplitViewIcon\.name\}/)
-  assert.match(screenSource, /size=\{openSplitViewIcon\.size\}/)
-  assert.match(
-    screenSource,
-    /color=\{headerActionIconColors\.openSplitView\.color\}/,
-  )
-  assert.match(screenSource, /name=\{openSettingsIcon\.name\}/)
-  assert.match(screenSource, /size=\{openSettingsIcon\.size\}/)
-  assert.match(
-    screenSource,
-    /color=\{headerActionIconColors\.openSettings\.color\}/,
+    /const openSettingsActionParts = useMemo\([\s\S]*?createAppShellHeaderIconActionMobilePropsParts\(\{[\s\S]*?id: "openSettings",[\s\S]*?colors: theme\.colors,[\s\S]*?onPress: handleOpenSettings,[\s\S]*?button: styles\.headerSettingsButton,/,
   )
   assert.match(
     screenSource,
-    /openSplitView:\s*getAppShellHeaderActionMobileIconColors\([\s\S]*?theme\.colors,[\s\S]*?"openSplitView"/,
+    /\{\.\.\.openSplitViewActionParts\.touchable\.props\}/,
   )
   assert.match(
     screenSource,
-    /openSettings:\s*getAppShellHeaderActionMobileIconColors\([\s\S]*?theme\.colors,[\s\S]*?"openSettings"/,
+    /\{\.\.\.openSplitViewActionParts\.touchable\.content\.icon\.props\}/,
   )
+  assert.match(
+    screenSource,
+    /\{\.\.\.openSettingsActionParts\.touchable\.props\}/,
+  )
+  assert.match(
+    screenSource,
+    /\{\.\.\.openSettingsActionParts\.touchable\.content\.icon\.props\}/,
+  )
+  assert.doesNotMatch(screenSource, /getAppShellHeaderActionMobileIconColors,/)
+  assert.doesNotMatch(screenSource, /getAppShellHeaderActionMobileIconState,/)
   assert.doesNotMatch(
     screenSource,
     /APP_SHELL_HEADER_ACTIONS\.(openSplitView|openSettings)\.mobileIcon/,
+  )
+  assert.doesNotMatch(screenSource, /name=\{openSplitViewIcon\.name\}/)
+  assert.doesNotMatch(screenSource, /size=\{openSplitViewIcon\.size\}/)
+  assert.doesNotMatch(
+    screenSource,
+    /color=\{headerActionIconColors\.openSplitView\.color\}/,
+  )
+  assert.doesNotMatch(screenSource, /name=\{openSettingsIcon\.name\}/)
+  assert.doesNotMatch(screenSource, /size=\{openSettingsIcon\.size\}/)
+  assert.doesNotMatch(
+    screenSource,
+    /color=\{headerActionIconColors\.openSettings\.color\}/,
   )
   assert.doesNotMatch(
     screenSource,
