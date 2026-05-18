@@ -7243,6 +7243,26 @@ export interface ChatRuntimeTurnDurationBadgeMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeConversationExpandedContentMobileStyleSlots<
+  THeaderStyle = unknown,
+  TTitleStyle = unknown,
+  TSpinnerStyle = unknown,
+  TBadgeStyle = unknown,
+  TBadgeTextStyle = unknown,
+  TBodyRowStyle = unknown,
+  TTextStyle = unknown,
+  TCaretStyle = unknown,
+> {
+  header: THeaderStyle
+  title: TTitleStyle
+  spinner: TSpinnerStyle
+  badge: TBadgeStyle
+  badgeText: TBadgeTextStyle
+  bodyRow: TBodyRowStyle
+  text: TTextStyle
+  caret: TCaretStyle
+}
+
 export interface ChatRuntimeConversationExpandedContentMobilePropsPartsInput<
   TStreamingRenderState extends {
     shouldRender: boolean
@@ -7285,25 +7305,8 @@ export interface ChatRuntimeConversationExpandedContentMobilePropsPartsInput<
   TAssetBaseUrl = unknown,
   TAssetAuthToken = unknown,
   TSpinnerSource = unknown,
-  TStreamingStyles extends {
-    header: unknown
-    title: unknown
-    spinner: unknown
-    badge: unknown
-    badgeText: unknown
-    bodyRow: unknown
-    text: unknown
-    caret: unknown
-  } = {
-    header: unknown
-    title: unknown
-    spinner: unknown
-    badge: unknown
-    badgeText: unknown
-    bodyRow: unknown
-    text: unknown
-    caret: unknown
-  },
+  TStreamingStyles extends ChatRuntimeConversationExpandedContentMobileStyleSlots =
+    ChatRuntimeConversationExpandedContentMobileStyleSlots,
 > {
   streamingRenderState: TStreamingRenderState
   markdownContent: TMarkdownContent
@@ -7355,25 +7358,8 @@ export interface ChatRuntimeConversationExpandedContentMobilePropsParts<
   TAssetBaseUrl = unknown,
   TAssetAuthToken = unknown,
   TSpinnerSource = unknown,
-  TStreamingStyles extends {
-    header: unknown
-    title: unknown
-    spinner: unknown
-    badge: unknown
-    badgeText: unknown
-    bodyRow: unknown
-    text: unknown
-    caret: unknown
-  } = {
-    header: unknown
-    title: unknown
-    spinner: unknown
-    badge: unknown
-    badgeText: unknown
-    bodyRow: unknown
-    text: unknown
-    caret: unknown
-  },
+  TStreamingStyles extends ChatRuntimeConversationExpandedContentMobileStyleSlots =
+    ChatRuntimeConversationExpandedContentMobileStyleSlots,
 > {
   markdown: {
     content: TMarkdownContent
@@ -7542,6 +7528,20 @@ export interface ChatRuntimeConversationCollapsedPreviewMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots<
+  TContainerStyle = unknown,
+  TSummaryStyle = unknown,
+  TLoadButtonStyle = unknown,
+  TLoadButtonPressedStyle = unknown,
+  TLoadButtonTextStyle = unknown,
+> {
+  container: TContainerStyle
+  summary: TSummaryStyle
+  loadButton: TLoadButtonStyle
+  loadButtonPressed: TLoadButtonPressedStyle
+  loadButtonText: TLoadButtonTextStyle
+}
+
 export interface ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -7563,19 +7563,8 @@ export interface ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
     }
   },
   TOnLoadEarlier = unknown,
-  TStyles extends {
-    container: unknown
-    summary: unknown
-    loadButton: unknown
-    loadButtonPressed: unknown
-    loadButtonText: unknown
-  } = {
-    container: unknown
-    summary: unknown
-    loadButton: unknown
-    loadButtonPressed: unknown
-    loadButtonText: unknown
-  },
+  TStyles extends ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots =
+    ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots,
 > {
   renderState: TRenderState
   onLoadEarlier?: TOnLoadEarlier
@@ -7603,19 +7592,8 @@ export interface ChatRuntimeMessageHistoryBannerMobilePropsParts<
     }
   },
   TOnLoadEarlier = unknown,
-  TStyles extends {
-    container: unknown
-    summary: unknown
-    loadButton: unknown
-    loadButtonPressed: unknown
-    loadButtonText: unknown
-  } = {
-    container: unknown
-    summary: unknown
-    loadButton: unknown
-    loadButtonPressed: unknown
-    loadButtonText: unknown
-  },
+  TStyles extends ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots =
+    ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots,
 > {
   container: {
     shouldRender: boolean
@@ -7652,6 +7630,26 @@ export interface ChatRuntimeMessageHistoryBannerMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeStepSummaryCardMobileStyleSlots<
+  TCardStyle = unknown,
+  THeaderStyle = unknown,
+  TTitleStyle = unknown,
+  TBadgeStyle = unknown,
+  TBadgeTextStyle = unknown,
+  TActionStyle = unknown,
+  TMetaStyle = unknown,
+  TPreviewStyle = unknown,
+> {
+  card: TCardStyle
+  header: THeaderStyle
+  title: TTitleStyle
+  badge: TBadgeStyle
+  badgeText: TBadgeTextStyle
+  action: TActionStyle
+  meta: TMetaStyle
+  preview: TPreviewStyle
+}
+
 export interface ChatRuntimeStepSummaryCardMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -7686,25 +7684,8 @@ export interface ChatRuntimeStepSummaryCardMobilePropsPartsInput<
       previewNumberOfLines: unknown
     }
   },
-  TStyles extends {
-    card: unknown
-    header: unknown
-    title: unknown
-    badge: unknown
-    badgeText: unknown
-    action: unknown
-    meta: unknown
-    preview: unknown
-  } = {
-    card: unknown
-    header: unknown
-    title: unknown
-    badge: unknown
-    badgeText: unknown
-    action: unknown
-    meta: unknown
-    preview: unknown
-  },
+  TStyles extends ChatRuntimeStepSummaryCardMobileStyleSlots =
+    ChatRuntimeStepSummaryCardMobileStyleSlots,
 > {
   renderState: TRenderState
   styles: TStyles
@@ -7744,25 +7725,8 @@ export interface ChatRuntimeStepSummaryCardMobilePropsParts<
       previewNumberOfLines: unknown
     }
   },
-  TStyles extends {
-    card: unknown
-    header: unknown
-    title: unknown
-    badge: unknown
-    badgeText: unknown
-    action: unknown
-    meta: unknown
-    preview: unknown
-  } = {
-    card: unknown
-    header: unknown
-    title: unknown
-    badge: unknown
-    badgeText: unknown
-    action: unknown
-    meta: unknown
-    preview: unknown
-  },
+  TStyles extends ChatRuntimeStepSummaryCardMobileStyleSlots =
+    ChatRuntimeStepSummaryCardMobileStyleSlots,
 > {
   card: {
     shouldRender: boolean
@@ -25007,16 +24971,7 @@ export function createChatRuntimeConversationExpandedContentMobilePropsParts<
   TAssetBaseUrl,
   TAssetAuthToken,
   TSpinnerSource,
-  TStreamingStyles extends {
-    header: unknown
-    title: unknown
-    spinner: unknown
-    badge: unknown
-    badgeText: unknown
-    bodyRow: unknown
-    text: unknown
-    caret: unknown
-  },
+  TStreamingStyles extends ChatRuntimeConversationExpandedContentMobileStyleSlots,
 >({
   streamingRenderState,
   markdownContent,
@@ -25192,13 +25147,7 @@ export function createChatRuntimeMessageHistoryBannerMobilePropsParts<
     }
   },
   TOnLoadEarlier,
-  TStyles extends {
-    container: unknown
-    summary: unknown
-    loadButton: unknown
-    loadButtonPressed: unknown
-    loadButtonText: unknown
-  },
+  TStyles extends ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots,
 >({
   renderState,
   onLoadEarlier,
@@ -25270,16 +25219,7 @@ export function createChatRuntimeStepSummaryCardMobilePropsParts<
       previewNumberOfLines: unknown
     }
   },
-  TStyles extends {
-    card: unknown
-    header: unknown
-    title: unknown
-    badge: unknown
-    badgeText: unknown
-    action: unknown
-    meta: unknown
-    preview: unknown
-  },
+  TStyles extends ChatRuntimeStepSummaryCardMobileStyleSlots,
 >({
   renderState,
   styles,

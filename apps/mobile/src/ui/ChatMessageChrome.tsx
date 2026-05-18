@@ -239,6 +239,7 @@ import {
   type ChatRuntimeLoadingStateMobilePropsParts,
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
+  type ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots as SharedChatMessageHistoryBannerStyleSlots,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
   type ChatComposerRuntimeDockMobilePropsParts,
@@ -248,6 +249,7 @@ import {
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
   type ChatRuntimeStepSummaryCardMobilePropsParts,
+  type ChatRuntimeStepSummaryCardMobileStyleSlots as SharedChatMessageStepSummaryCardStyleSlots,
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeToolApprovalMobilePropsParts,
   type ChatRuntimeToolApprovalMobileRenderState,
@@ -282,6 +284,7 @@ import {
   type ChatRuntimeConversationCollapsedPreviewMobilePropsParts,
   type ChatRuntimeConversationContentMobileDisplayMode,
   type ChatRuntimeConversationExpandedContentMobilePropsParts,
+  type ChatRuntimeConversationExpandedContentMobileStyleSlots as SharedChatMessageExpandedContentStyleSlots,
   type ChatRuntimeConversationContentMobilePropsParts,
   type ChatRuntimeConversationDelegationExpansionState,
   type ChatDisplayMessageLike,
@@ -3280,13 +3283,14 @@ type ChatMessageToolExecutionCallListParts =
 type ChatMessageToolExecutionCallListContentProps =
   ChatMessageToolExecutionCallListParts['content'];
 
-type ChatMessageHistoryBannerStyles = {
-  container: StyleProp<ViewStyle>;
-  summary: StyleProp<TextStyle>;
-  loadButton: StyleProp<ViewStyle>;
-  loadButtonPressed: StyleProp<ViewStyle>;
-  loadButtonText: StyleProp<TextStyle>;
-};
+type ChatMessageHistoryBannerStyles =
+  SharedChatMessageHistoryBannerStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageHistoryBannerProps = {
   renderState: ChatRuntimeMessageHistoryBannerMobileRenderState;
@@ -3432,16 +3436,17 @@ type ChatMessageConversationViewportProps =
   Omit<ChatMessageScrollViewportProps, 'children'>
   & ChatMessageConversationViewportContentProps;
 
-type ChatMessageStepSummaryCardStyles = {
-  card: StyleProp<ViewStyle>;
-  header: StyleProp<ViewStyle>;
-  title: StyleProp<TextStyle>;
-  badge: StyleProp<ViewStyle>;
-  badgeText: StyleProp<TextStyle>;
-  action: StyleProp<TextStyle>;
-  meta: StyleProp<TextStyle>;
-  preview: StyleProp<TextStyle>;
-};
+type ChatMessageStepSummaryCardStyles =
+  SharedChatMessageStepSummaryCardStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageStepSummaryCardProps = {
   renderState: ChatRuntimeStepSummaryMobileRenderState;
@@ -4636,16 +4641,17 @@ type ChatMessageContentBodyProps =
     children: ReactNode;
   };
 
-type ChatMessageExpandedContentStyles = {
-  header: StyleProp<ViewStyle>;
-  title: StyleProp<TextStyle>;
-  spinner: StyleProp<ImageStyle>;
-  badge: StyleProp<ViewStyle>;
-  badgeText: StyleProp<TextStyle>;
-  bodyRow: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-  caret: StyleProp<ViewStyle>;
-};
+type ChatMessageExpandedContentStyles =
+  SharedChatMessageExpandedContentStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ImageStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatMessageExpandedContentProps = {
   streamingRenderState: ChatRuntimeStreamingContentMobileRenderState;

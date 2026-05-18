@@ -5400,6 +5400,11 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(chatMessageChromeSource, /export function ChatMessageHistoryBanner/);
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageHistoryBannerMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageHistoryBannerMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots<\s+TContainerStyle = unknown,/);
+  assert.match(sessionPresentationSource, /TStyles extends ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots as SharedChatMessageHistoryBannerStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageHistoryBannerStyles =\s+SharedChatMessageHistoryBannerStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageHistoryBannerStyles = \{\s+container: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageHistoryBannerParts =\s+ChatRuntimeMessageHistoryBannerMobilePropsParts<[\s\S]*?ChatRuntimeMessageHistoryBannerMobileRenderState,[\s\S]*?GestureResponderEvent[\s\S]*?ChatMessageHistoryBannerStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageHistoryBanner(Text|Icon|LoadButton|Container)Part = \{/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageHistoryBannerMobilePropsParts/);
@@ -5589,6 +5594,11 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationExpandedContentMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeConversationExpandedContentMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationExpandedContentMobileStyleSlots<\s+THeaderStyle = unknown,/);
+  assert.match(sessionPresentationSource, /TStreamingStyles extends ChatRuntimeConversationExpandedContentMobileStyleSlots/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeConversationExpandedContentMobileStyleSlots as SharedChatMessageExpandedContentStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentStyles =\s+SharedChatMessageExpandedContentStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ImageStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentStyles = \{\s+header: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentParts =\s+ChatRuntimeConversationExpandedContentMobilePropsParts<[\s\S]*?ChatMessageExpandedContentProps\['streamingRenderState'\],[\s\S]*?ChatMessageExpandedContentProps\['markdownContent'\],[\s\S]*?ChatMessageExpandedContentProps\['assetBaseUrl'\],[\s\S]*?ChatMessageExpandedContentProps\['assetAuthToken'\],[\s\S]*?ChatMessageExpandedContentProps\['spinnerSource'\],[\s\S]*?ChatMessageExpandedContentProps\['streamingStyles'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentParts = ReturnType<typeof createChatRuntimeConversationExpandedContentMobilePropsParts/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContent(Text|Badge|Header|Body)Part = \{/);
@@ -5748,6 +5758,11 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.match(chatMessageChromeSource, /export function ChatMessageStepSummaryCard/);
   assert.match(chatMessageChromeSource, /createChatRuntimeStepSummaryCardMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeStepSummaryCardMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeStepSummaryCardMobileStyleSlots<\s+TCardStyle = unknown,/);
+  assert.match(sessionPresentationSource, /TStyles extends ChatRuntimeStepSummaryCardMobileStyleSlots/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeStepSummaryCardMobileStyleSlots as SharedChatMessageStepSummaryCardStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageStepSummaryCardStyles =\s+SharedChatMessageStepSummaryCardStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummaryCardStyles = \{\s+card: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageStepSummaryCardParts =\s+ChatRuntimeStepSummaryCardMobilePropsParts<[\s\S]*?ChatMessageStepSummaryCardProps\['renderState'\],[\s\S]*?ChatMessageStepSummaryCardProps\['styles'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummary(Text|Badge|Header)Part = \{/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummaryCardParts = ReturnType<typeof createChatRuntimeStepSummaryCardMobilePropsParts/);
