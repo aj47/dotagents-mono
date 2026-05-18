@@ -4,7 +4,7 @@
  * Displays queued messages with options to view, edit, remove, and retry.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type ComponentProps } from 'react';
 import {
   View,
   Text,
@@ -23,9 +23,7 @@ import {
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
   getQueuedMessageItemMobileRenderState,
-  type MessageQueuePanelMobilePropsParts,
   type MessageQueuePanelMobileStyleSheetSlots,
-  type QueuedMessageItemMobilePropsParts,
   type QueuedMessageItemMobileStyleSheetSlots,
   type QueuedMessage,
 } from '@dotagents/shared/session-presentation';
@@ -59,29 +57,43 @@ interface QueuedMessageItemProps {
   onRetry: () => void;
 }
 
-type QueuedMessageItemParts =
-  QueuedMessageItemMobilePropsParts<QueuedMessageItemMobileStyleSheetSlots>;
+type MessageQueuePanelActionButtonIconPart =
+  | {
+      props: ComponentProps<typeof Ionicons>;
+    }
+  | {
+      shouldRender: false;
+    };
 
-type MessageQueuePanelActionButtonPart =
-  | MessageQueuePanelMobilePropsParts<
-      QueuedMessage,
-      MessageQueuePanelMobileStyleSheetSlots,
-      () => void
-    >['compactActions']['actions'][number]
-  | MessageQueuePanelMobilePropsParts<
-      QueuedMessage,
-      MessageQueuePanelMobileStyleSheetSlots,
-      () => void
-    >['headerActions']['actions'][number]
-  | QueuedMessageItemParts['actions']['actions'][number];
+type MessageQueuePanelActionButtonLabelPart =
+  | {
+      text: string;
+      props: ComponentProps<typeof Text>;
+    }
+  | {
+      shouldRender: false;
+    };
+
+type MessageQueuePanelActionButtonPart = {
+  key: string;
+  props: ComponentProps<typeof TouchableOpacity>;
+  icon?: MessageQueuePanelActionButtonIconPart;
+  label?: MessageQueuePanelActionButtonLabelPart;
+};
 
 interface MessageQueuePanelActionButtonProps {
   action: MessageQueuePanelActionButtonPart;
 }
 
-type MessageQueuePanelEditButtonPart =
-  | QueuedMessageItemParts['edit']['cancelButton']
-  | QueuedMessageItemParts['edit']['saveButton'];
+type MessageQueuePanelEditButtonTextPart = {
+  text: string;
+  props: ComponentProps<typeof Text>;
+};
+
+type MessageQueuePanelEditButtonPart = {
+  props: ComponentProps<typeof TouchableOpacity>;
+  text: MessageQueuePanelEditButtonTextPart;
+};
 
 interface MessageQueuePanelEditButtonProps {
   button: MessageQueuePanelEditButtonPart;
@@ -133,9 +145,10 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
     isProcessing,
   } = messagePresentation;
   const editDraftState = getQueuedMessageEditDraftState(editText, message.text);
-  const itemStyleSheetSlots = createQueuedMessageItemMobileStyleSheetSlots({
-    renderState: queuedMessageRenderState,
-  });
+  const itemStyleSheetSlots: QueuedMessageItemMobileStyleSheetSlots =
+    createQueuedMessageItemMobileStyleSheetSlots({
+      renderState: queuedMessageRenderState,
+    });
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -289,9 +302,10 @@ export function MessageQueuePanel({
     isListCollapsed,
     canProcessNext,
   });
-  const panelStyleSheetSlots = createMessageQueuePanelMobileStyleSheetSlots({
-    renderState: queuePanelRenderState,
-  });
+  const panelStyleSheetSlots: MessageQueuePanelMobileStyleSheetSlots =
+    createMessageQueuePanelMobileStyleSheetSlots({
+      renderState: queuePanelRenderState,
+    });
 
   if (!queuePanelRenderState.shouldRender) {
     return null;

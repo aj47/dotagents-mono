@@ -17,15 +17,17 @@ const messageQueueUtilsSource = fs.readFileSync(
 );
 
 test('mobile queue panel uses shared prop-part contracts for reusable button chrome', () => {
-  assert.match(source, /type MessageQueuePanelMobilePropsParts,/);
+  assert.match(source, /import React, \{ useState, useEffect, type ComponentProps \} from 'react';/);
   assert.match(source, /type MessageQueuePanelMobileStyleSheetSlots,/);
-  assert.match(source, /type QueuedMessageItemMobilePropsParts,/);
   assert.match(source, /type QueuedMessageItemMobileStyleSheetSlots,/);
-  assert.match(source, /type MessageQueuePanelActionButtonPart =[\s\S]*?MessageQueuePanelMobilePropsParts<[\s\S]*?compactActions[\s\S]*?MessageQueuePanelMobilePropsParts<[\s\S]*?headerActions[\s\S]*?QueuedMessageItemParts\['actions'\]\['actions'\]\[number\]/);
-  assert.match(source, /type MessageQueuePanelEditButtonPart =[\s\S]*?QueuedMessageItemParts\['edit'\]\['cancelButton'\][\s\S]*?QueuedMessageItemParts\['edit'\]\['saveButton'\]/);
-  assert.doesNotMatch(source, /type MessageQueuePanelActionButtonPart = \{/);
-  assert.doesNotMatch(source, /type MessageQueuePanelEditButtonPart = \{/);
-  assert.doesNotMatch(source, /type ComponentProps/);
+  assert.match(source, /type MessageQueuePanelActionButtonIconPart =[\s\S]*?props: ComponentProps<typeof Ionicons>;/);
+  assert.match(source, /type MessageQueuePanelActionButtonLabelPart =[\s\S]*?props: ComponentProps<typeof Text>;/);
+  assert.match(source, /type MessageQueuePanelActionButtonPart = \{[\s\S]*?key: string;[\s\S]*?props: ComponentProps<typeof TouchableOpacity>;[\s\S]*?icon\?: MessageQueuePanelActionButtonIconPart;[\s\S]*?label\?: MessageQueuePanelActionButtonLabelPart;[\s\S]*?\};/);
+  assert.match(source, /type MessageQueuePanelEditButtonTextPart = \{[\s\S]*?text: string;[\s\S]*?props: ComponentProps<typeof Text>;[\s\S]*?\};/);
+  assert.match(source, /type MessageQueuePanelEditButtonPart = \{[\s\S]*?props: ComponentProps<typeof TouchableOpacity>;[\s\S]*?text: MessageQueuePanelEditButtonTextPart;[\s\S]*?\};/);
+  assert.doesNotMatch(source, /type QueuedMessageItemParts/);
+  assert.doesNotMatch(source, /MessageQueuePanelMobilePropsParts</);
+  assert.doesNotMatch(source, /QueuedMessageItemParts\['/);
   assert.match(sessionPresentationSource, /type MessageQueuePanelMobilePropsParts,/);
   assert.match(sessionPresentationSource, /type MessageQueuePanelMobilePropsPartsStylesLike,/);
   assert.match(sessionPresentationSource, /type QueuedMessageItemMobilePropsParts,/);
@@ -81,7 +83,7 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.doesNotMatch(source, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
   assert.match(source, /const queuedMessageRenderState = getQueuedMessageItemMobileRenderState\(\{[\s\S]*?message,[\s\S]*?isExpanded,[\s\S]*?colors,[\s\S]*?\}\);/);
   assert.match(source, /createQueuedMessageItemMobileStyleSheetSlots/);
-  assert.match(source, /const itemStyleSheetSlots = createQueuedMessageItemMobileStyleSheetSlots\(\{\s+renderState: queuedMessageRenderState,\s+\}\);/);
+  assert.match(source, /const itemStyleSheetSlots: QueuedMessageItemMobileStyleSheetSlots =\s+createQueuedMessageItemMobileStyleSheetSlots\(\{\s+renderState: queuedMessageRenderState,\s+\}\);/);
   assert.match(source, /const styles = StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\);/);
   assert.match(source, /createQueuedMessageItemMobilePropsParts/);
   assert.match(source, /chrome: itemChromeParts,/);
@@ -217,7 +219,7 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.doesNotMatch(source, /const queuePanelColors = queuePanelRenderState\.colors;/);
   assert.doesNotMatch(source, /const panelSurface = queuePanelRenderState\.surface\.panel;/);
   assert.doesNotMatch(source, /const panelColors = queuePanelColors\.panel;/);
-  assert.match(source, /const itemStyleSheetSlots = createQueuedMessageItemMobileStyleSheetSlots\(\{[\s\S]*?renderState: queuedMessageRenderState,/);
+  assert.match(source, /const itemStyleSheetSlots: QueuedMessageItemMobileStyleSheetSlots =\s+createQueuedMessageItemMobileStyleSheetSlots\(\{[\s\S]*?renderState: queuedMessageRenderState,/);
   assert.match(source, /const styles = StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\);/);
   assert.match(source, /<View\s+\{\.\.\.itemChromeParts\.container\.props\}>/);
   assert.match(source, /<View\s+\{\.\.\.itemChromeParts\.row\.props\}>/);
@@ -241,7 +243,7 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.doesNotMatch(source, /createQueuedMessageItemMobileStyleSlots/);
   assert.doesNotMatch(source, /createQueuedMessageEditMobileStyleSlots/);
   assert.match(source, /createMessageQueuePanelMobileStyleSheetSlots/);
-  assert.match(source, /const panelStyleSheetSlots = createMessageQueuePanelMobileStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\);/);
+  assert.match(source, /const panelStyleSheetSlots: MessageQueuePanelMobileStyleSheetSlots =\s+createMessageQueuePanelMobileStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\);/);
   assert.match(source, /const styles = StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\);/);
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.container\.props\}>/);
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.headerContainer\.props\}>/);

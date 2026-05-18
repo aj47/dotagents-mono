@@ -6567,7 +6567,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /if \(!queuePanelRenderState\.shouldRender\) \{\s+return null;\s+\}/);
   assert.doesNotMatch(messageQueuePanelSource, /if \(messages\.length === 0\) \{\s+return null;\s+\}/);
   assert.match(messageQueuePanelSource, /createMessageQueuePanelMobileStyleSheetSlots,/);
-  assert.match(messageQueuePanelSource, /const panelStyleSheetSlots = createMessageQueuePanelMobileStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /const panelStyleSheetSlots: MessageQueuePanelMobileStyleSheetSlots =\s+createMessageQueuePanelMobileStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\);/);
   assert.match(messageQueuePanelSource, /const styles = StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\);/);
   assert.match(messageQueuePanelSource, /createMessageQueuePanelMobilePropsParts,/);
   assert.match(messageQueuePanelSource, /const \{[\s\S]*?compactActions: compactActionParts,[\s\S]*?headerActions: headerActionParts,[\s\S]*?chrome: panelChromeParts,[\s\S]*?list: panelListParts,[\s\S]*?\} = createMessageQueuePanelMobilePropsParts\(\{\s+renderState: queuePanelRenderState,\s+styles,\s+onPause,\s+onResume,\s+onProcessNext,\s+onClear,\s+onToggleListCollapsed,\s+onRemove,\s+onUpdate,\s+onRetry,\s+\}\);/);
@@ -6661,7 +6661,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSaveActionState\(editText\)/);
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSubmitState\(editText, message\.text\)/);
   assert.match(messageQueuePanelSource, /createQueuedMessageItemMobileStyleSheetSlots,/);
-  assert.match(messageQueuePanelSource, /const itemStyleSheetSlots = createQueuedMessageItemMobileStyleSheetSlots\(\{\s+renderState: queuedMessageRenderState,\s+\}\);/);
+  assert.match(messageQueuePanelSource, /const itemStyleSheetSlots: QueuedMessageItemMobileStyleSheetSlots =\s+createQueuedMessageItemMobileStyleSheetSlots\(\{\s+renderState: queuedMessageRenderState,\s+\}\);/);
   assert.match(messageQueuePanelSource, /const styles = StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\);/);
   assert.match(messageQueuePanelSource, /createQueuedMessageItemMobilePropsParts,/);
   assert.match(messageQueuePanelSource, /const \{[\s\S]*?edit: editParts,[\s\S]*?actions: actionParts,[\s\S]*?expandButton: expandButtonParts,[\s\S]*?content: contentParts,[\s\S]*?chrome: itemChromeParts,[\s\S]*?\} = createQueuedMessageItemMobilePropsParts\(\{\s+renderState: queuedMessageRenderState,\s+message,\s+editDraftState,\s+isExpanded,\s+styles,\s+onRetry,\s+onEdit: \(\) => setIsEditing\(true\),\s+onRemove,\s+onToggleExpanded: \(\) => setIsExpanded\(!isExpanded\),\s+onCancelEdit: handleCancelEdit,\s+onSaveEdit: handleSaveEdit,\s+\}\);/);
