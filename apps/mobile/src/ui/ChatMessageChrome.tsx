@@ -11292,15 +11292,9 @@ export function ChatMessageThreadBody(props: ChatMessageThreadBodyProps) {
   );
 }
 
-export function ChatMessageRetryStatus({
-  renderState,
-  styles,
-}: ChatMessageRetryStatusProps) {
+export function ChatMessageRetryStatus(props: ChatMessageRetryStatusProps) {
   const retryStatusParts: ChatMessageRetryStatusParts =
-    createChatRuntimeRetryStatusMobilePropsParts({
-      renderState,
-      styles,
-    });
+    createChatRuntimeRetryStatusMobilePropsParts(props);
   const retryStatusCard = retryStatusParts.card;
 
   if (!retryStatusCard.shouldRender) return null;
@@ -11452,27 +11446,9 @@ export function ChatMessageRetryStatusText({
   );
 }
 
-export function ChatMessageToolApproval({
-  renderState,
-  toolName,
-  argumentsPreview,
-  argumentsContent,
-  onToggleArguments,
-  onDeny,
-  onApprove,
-  styles,
-}: ChatMessageToolApprovalProps) {
+export function ChatMessageToolApproval(props: ChatMessageToolApprovalProps) {
   const toolApprovalParts: ChatMessageToolApprovalParts =
-    createChatRuntimeToolApprovalMobilePropsParts({
-      renderState,
-      toolName,
-      argumentsPreview,
-      argumentsContent,
-      onToggleArguments,
-      onDeny,
-      onApprove,
-      styles,
-    });
+    createChatRuntimeToolApprovalMobilePropsParts(props);
 
   return (
     <ChatMessageToolApprovalView
@@ -12261,29 +12237,9 @@ export function ChatMessageDelegationContent({
   );
 }
 
-export function ChatMessageDelegationCard({
-  surface,
-  agentName,
-  presentation,
-  accessibilityLabel,
-  messageCountLabel,
-  statusStyles,
-  conversationPreview,
-  toolPreview,
-  styles,
-}: ChatMessageDelegationCardProps) {
+export function ChatMessageDelegationCard(props: ChatMessageDelegationCardProps) {
   const delegationCardParts: ChatMessageDelegationCardParts =
-    createChatRuntimeDelegationCardMobilePropsParts({
-      surface,
-      agentName,
-      presentation,
-      accessibilityLabel,
-      messageCountLabel,
-      statusStyles,
-      conversationPreview,
-      toolPreview,
-      styles,
-    });
+    createChatRuntimeDelegationCardMobilePropsParts(props);
 
   return (
     <View

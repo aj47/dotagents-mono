@@ -831,7 +831,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalActionButtonProps = \{[\s\S]*?ChatMessageToolApprovalParts\['denyButton'\]\['props'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolApprovalParts\['/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolApprovalMobilePropsParts/);
-  assert.match(toolApprovalComponentSource, /const toolApprovalParts: ChatMessageToolApprovalParts =\s+createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
+  assert.match(toolApprovalComponentSource, /export function ChatMessageToolApproval\(props: ChatMessageToolApprovalProps\)/);
+  assert.match(toolApprovalComponentSource, /const toolApprovalParts: ChatMessageToolApprovalParts =\s+createChatRuntimeToolApprovalMobilePropsParts\(props\);/);
   assert.doesNotMatch(toolApprovalComponentSource, /const argumentsToggleContent = toolApprovalParts\.argumentsToggle\.content;/);
   const toolApprovalContentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApprovalContent[\s\S]*?export function ChatMessageToolApprovalToolRow/)?.[0] ?? '';
@@ -1157,7 +1158,8 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusCardContentProps = \{[\s\S]*?header: ChatMessageRetryStatusHeaderPart;[\s\S]*?meta: ChatMessageRetryStatusMetaPart;[\s\S]*?description: ChatMessageRetryStatusTextPart;[\s\S]*?\};/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeRetryStatusMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeRetryStatusMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const retryStatusParts: ChatMessageRetryStatusParts =\s+createChatRuntimeRetryStatusMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatus\(props: ChatMessageRetryStatusProps\)/);
+  assert.match(chatMessageChromeSource, /const retryStatusParts: ChatMessageRetryStatusParts =\s+createChatRuntimeRetryStatusMobilePropsParts\(props\);/);
   assert.match(chatMessageChromeSource, /const retryStatusCard = retryStatusParts\.card;/);
   assert.match(chatMessageChromeSource, /if \(!retryStatusCard\.shouldRender\) return null;/);
   assert.match(sessionPresentationSource, /card: \{[\s\S]*?props: \{[\s\S]*?accessible: true,[\s\S]*?accessibilityRole: renderState\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.accessibilityLabel,[\s\S]*?style: styles\.card,/);
@@ -1409,7 +1411,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationHeaderProps =\s+ChatMessageDelegationCardParts\['card'\]\['content'\]\['header'\]\['props'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageDelegationCardParts\['/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeDelegationCardMobilePropsParts/);
-  assert.match(delegationCardComponentSource, /const delegationCardParts: ChatMessageDelegationCardParts =\s+createChatRuntimeDelegationCardMobilePropsParts\(\{\s+surface,\s+agentName,\s+presentation,\s+accessibilityLabel,\s+messageCountLabel,\s+statusStyles,\s+conversationPreview,\s+toolPreview,\s+styles,\s+\}\);/);
+  assert.match(delegationCardComponentSource, /export function ChatMessageDelegationCard\(props: ChatMessageDelegationCardProps\)/);
+  assert.match(delegationCardComponentSource, /const delegationCardParts: ChatMessageDelegationCardParts =\s+createChatRuntimeDelegationCardMobilePropsParts\(props\);/);
   assert.match(delegationCardComponentSource, /<View\s+\{\.\.\.delegationCardParts\.card\.props\}/);
   assert.match(delegationCardComponentSource, /<ChatMessageDelegationContent\s+\{\.\.\.delegationCardParts\.card\.content\}/);
   assert.doesNotMatch(delegationCardComponentSource, /const cardContent = delegationCardParts\.card\.content;/);
