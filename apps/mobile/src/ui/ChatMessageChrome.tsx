@@ -375,15 +375,12 @@ import {
   type ChatRuntimeToolExecutionCallSectionMobileStyleSlots as SharedChatMessageToolExecutionCallSectionStyleSlots,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionCollapseControlMobileStyleSlots as SharedChatMessageToolExecutionCollapseControlStyleSlots,
   type ChatRuntimeToolExecutionCompactGroupMobilePropsParts,
   type ChatRuntimeToolExecutionCompactGroupMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionCompactGroupMobileStyleSlots as SharedChatMessageToolExecutionCompactGroupStyleSlots,
   type ChatRuntimeToolExecutionCompactListMobilePropsParts,
   type ChatRuntimeToolExecutionCompactListMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCompactRowMobilePropsParts,
   type ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionCompactRowMobileStyleSlots as SharedChatMessageToolExecutionCompactRowStyleSlots,
   type ChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   type ChatRuntimeToolExecutionCopyButtonMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCopyButtonMobileStyleSlots as SharedChatMessageToolExecutionCopyButtonStyleSlots,
@@ -395,9 +392,9 @@ import {
   type ChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   type ChatRuntimeToolExecutionErrorBlockMobilePropsPartsInput,
   type ChatRuntimeToolExecutionErrorBlockMobileStyleSlots as SharedChatMessageToolExecutionErrorBlockStyleSlots,
+  type ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionExpandedGroupMobileStyleSlotsBase as SharedChatMessageToolExecutionExpandedGroupStyleSlots,
   type ChatRuntimeToolExecutionPanelMobilePropsParts,
   type ChatRuntimeToolExecutionPanelMobilePropsPartsInput,
   type ChatRuntimeToolExecutionPanelShellMobilePropsParts,
@@ -424,7 +421,6 @@ import {
   type ChatRuntimeToolExecutionResultSectionMobileStyleSlots as SharedChatMessageToolExecutionResultSectionStyleSlots,
   type ChatRuntimeToolExecutionStatsMobileRenderState,
   type ChatRuntimeToolExecutionStackPanelMobilePropsParts,
-  type ChatRuntimeToolExecutionStackPanelMobileStyleSlots as SharedChatMessageToolExecutionStackStyleSlots,
   type ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
   type ChatRuntimeConversationRuntimeThreadMobilePropsParts,
   type ChatRuntimeRetryStatusMobileRenderState,
@@ -2927,16 +2923,7 @@ type ChatMessageToolActivityGroupBoundaryParts =
   >;
 
 type ChatMessageToolExecutionCompactRowStyles =
-  SharedChatMessageToolExecutionCompactRowStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['compactRow'];
 
 type ChatMessageToolExecutionCompactRowProps =
   ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
@@ -3049,10 +3036,7 @@ type ChatMessageToolExecutionCompactListRow = {
 };
 
 type ChatMessageToolExecutionCompactGroupStyles =
-  SharedChatMessageToolExecutionCompactGroupStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['compactGroup'];
 
 type ChatMessageToolExecutionCompactGroupProps =
   ChatRuntimeToolExecutionCompactGroupMobilePropsPartsInput<
@@ -3116,13 +3100,17 @@ type ChatMessageToolExecutionCompactListContentProps = {
   rows: ChatMessageToolExecutionCompactListRowPart[];
 };
 
+type ChatMessageToolExecutionExpandedGroupStyles =
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['expandedGroup'];
+
 type ChatMessageToolExecutionCollapseControlStyles =
-  SharedChatMessageToolExecutionCollapseControlStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots<
+    ChatMessageToolExecutionExpandedGroupStyles['collapseButton'],
+    ChatMessageToolExecutionExpandedGroupStyles['collapsePressed'],
+    ChatMessageToolExecutionExpandedGroupStyles['collapseTopPlacement'],
+    ChatMessageToolExecutionExpandedGroupStyles['collapseBottomPlacement'],
+    ChatMessageToolExecutionExpandedGroupStyles['collapseText']
+  >['top' | 'bottom'];
 
 type ChatMessageToolExecutionCollapseControlProps =
   ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput<
@@ -3179,20 +3167,6 @@ type ChatMessageToolExecutionCollapseControlContentProps = {
   icon: ChatMessageToolExecutionCollapseControlIconPart;
   label: ChatMessageToolExecutionCollapseControlLabelPart;
 };
-
-type ChatMessageToolExecutionExpandedGroupStyles =
-  SharedChatMessageToolExecutionExpandedGroupStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
 
 type ChatMessageToolExecutionExpandedGroupProps =
   ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput<
@@ -3319,13 +3293,7 @@ type ChatMessageToolExecutionPanelShellContentProps = {
 };
 
 type ChatMessageToolExecutionStackStyles =
-  SharedChatMessageToolExecutionStackStyleSlots<
-    ChatMessageToolExecutionCompactGroupStyles,
-    ChatMessageToolExecutionCompactRowStyles,
-    ChatMessageToolExecutionExpandedGroupStyles,
-    StyleProp<TextStyle>,
-    ChatMessageToolExecutionCallDetailStyles
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack'];
 
 type ChatMessageToolExecutionStackProps = {
   shouldRender: boolean;
