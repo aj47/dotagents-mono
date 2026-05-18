@@ -108,7 +108,9 @@ interface MessageQueuePanelEditButtonProps {
   button: MessageQueuePanelEditButtonPart;
 }
 
-function MessageQueuePanelActionButton({ action }: MessageQueuePanelActionButtonProps) {
+const MessageQueuePanelActionButton = React.memo(function MessageQueuePanelActionButton({
+  action,
+}: MessageQueuePanelActionButtonProps) {
   const actionIcon = action.icon;
   const actionLabel = 'label' in action ? action.label : undefined;
 
@@ -126,9 +128,11 @@ function MessageQueuePanelActionButton({ action }: MessageQueuePanelActionButton
       ) : null}
     </TouchableOpacity>
   );
-}
+});
 
-function MessageQueuePanelEditButton({ button }: MessageQueuePanelEditButtonProps) {
+const MessageQueuePanelEditButton = React.memo(function MessageQueuePanelEditButton({
+  button,
+}: MessageQueuePanelEditButtonProps) {
   return (
     <TouchableOpacity
       {...button.props}
@@ -138,9 +142,9 @@ function MessageQueuePanelEditButton({ button }: MessageQueuePanelEditButtonProp
       </Text>
     </TouchableOpacity>
   );
-}
+});
 
-function QueuedMessageItem({
+const QueuedMessageItem = React.memo(function QueuedMessageItem({
   message,
   colors,
   onRemove,
@@ -325,7 +329,7 @@ function QueuedMessageItem({
       </View>
     </View>
   );
-}
+});
 
 /**
  * Panel component for displaying and managing queued messages.
