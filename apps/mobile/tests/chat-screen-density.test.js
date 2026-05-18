@@ -9178,7 +9178,11 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeAssistantErrorTurnState,/);
   assert.doesNotMatch(screenSource, /const errorTurnState = createChatMessageRuntimeAssistantErrorTurnState<ChatMessage>\(\s+errorMessage,\s+partialContent,\s+\);/);
   assert.match(screenSource, /createChatMessageRuntimeConnectionErrorTurnState,/);
-  assert.match(screenSource, /const errorTurnState = createChatMessageRuntimeConnectionErrorTurnState<ChatMessage>\(\{\s+message: e\.message,\s+recoveryState: connectionState,\s+partialContent,\s+\}\);/);
+  assert.match(screenSource, /createChatRuntimeErrorLogDetailsState,/);
+  assert.match(screenSource, /const errorDetails = createChatRuntimeErrorLogDetailsState\(error\);/);
+  assert.doesNotMatch(screenSource, /catch \(e: any\)/);
+  assert.doesNotMatch(screenSource, /message: e\.message/);
+  assert.match(screenSource, /const errorTurnState = createChatMessageRuntimeConnectionErrorTurnState<ChatMessage>\(\{\s+message: errorDetails\.message,\s+recoveryState: connectionState,\s+partialContent,\s+\}\);/);
   assert.match(screenSource, /setDebugInfo\(errorTurnState\.debugInfo\)/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeStartingRequestDebugMessage\(config\.baseUrl\)/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeConnectionErrorMessage\(e\.message, recoveryState\)/);
@@ -9286,7 +9290,8 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(chatMessageChromeSource, /export function formatChatMessageRuntimeAssistantErrorContent/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeAlertMessage,/);
   assert.doesNotMatch(screenSource, /const queuedErrorMessage = formatChatMessageRuntimeAlertMessage\(e, getChatMessageRuntimeDebugMessage\('unknownError'\)\)/);
-  assert.match(screenSource, /const queuedErrorState = createChatMessageRuntimeQueuedErrorState<ChatMessage>\(e\);/);
+  assert.match(screenSource, /const queuedErrorState = createChatMessageRuntimeQueuedErrorState<ChatMessage>\(error\);/);
+  assert.match(screenSource, /catch \(error: unknown\) \{[\s\S]*?const queuedErrorState = createChatMessageRuntimeQueuedErrorState<ChatMessage>\(error\);/);
   assert.match(screenSource, /messageQueue\.markFailed\(currentConversationId, queuedMsg\.id, queuedErrorState\.message\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeQueuedErrorState/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeQueuedErrorState/);

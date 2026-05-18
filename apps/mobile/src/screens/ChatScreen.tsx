@@ -92,6 +92,7 @@ import {
   createChatMessageRuntimeQueuedErrorState,
   createChatMessageRuntimeStreamingTurnState,
   createChatRuntimeCompletedDebugState,
+  createChatRuntimeErrorLogDetailsState,
   createChatRuntimeMobileConfigState,
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
@@ -1049,13 +1050,10 @@ export default function ChatScreen({ route, navigation }: any) {
 	      } else if (handsFree) {
 	        handsFreeController.onRequestCompleted();
       }
-    } catch (e: any) {
-      console.error('[ChatScreen] Chat error:', e);
-      console.error('[ChatScreen] Error details:', {
-        message: e.message,
-        stack: e.stack,
-        name: e.name
-      });
+    } catch (error: unknown) {
+      const errorDetails = createChatRuntimeErrorLogDetailsState(error);
+      console.error('[ChatScreen] Chat error:', error);
+      console.error('[ChatScreen] Error details:', errorDetails);
 
       // Guard: skip error message if session has changed since request started
       // Use currentSessionIdRef.current to avoid stale closure issue (useSessions returns new object each render)
@@ -1090,7 +1088,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const partialContent = client.getPartialContent();
 
       const errorTurnState = createChatMessageRuntimeConnectionErrorTurnState<ChatMessage>({
-        message: e.message,
+        message: errorDetails.message,
         recoveryState: connectionState,
         partialContent,
       });
@@ -1394,9 +1392,9 @@ export default function ChatScreen({ route, navigation }: any) {
 
       // Mark as processed on success
       messageQueue.markProcessed(currentConversationId, queuedMsg.id);
-    } catch (e: any) {
-      console.error('[ChatScreen] Queued message error:', e);
-      const queuedErrorState = createChatMessageRuntimeQueuedErrorState<ChatMessage>(e);
+    } catch (error: unknown) {
+      console.error('[ChatScreen] Queued message error:', error);
+      const queuedErrorState = createChatMessageRuntimeQueuedErrorState<ChatMessage>(error);
       messageQueue.markFailed(currentConversationId, queuedMsg.id, queuedErrorState.message);
       applyChatMessageRuntimeBlockedTurnStatusState({
         setConversationState,

@@ -14717,6 +14717,35 @@ export function getChatRuntimeAlertMessage(error: unknown, fallback: string): st
   return fallback
 }
 
+export interface ChatRuntimeErrorLogDetailsState {
+  message: string
+  name: string
+  stack?: string
+}
+
+function getChatRuntimeErrorLogStringField(
+  error: unknown,
+  field: "message" | "name" | "stack",
+): string | undefined {
+  if (!error || typeof error !== "object") return undefined
+  const value = (error as Record<string, unknown>)[field]
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  return trimmed || undefined
+}
+
+export function createChatRuntimeErrorLogDetailsState(
+  error: unknown,
+): ChatRuntimeErrorLogDetailsState {
+  const message = getChatRuntimeErrorLogStringField(error, "message")
+    ?? getChatRuntimeAlertMessage(error, getChatRuntimeDebugMessage("unknownError"))
+  const name = getChatRuntimeErrorLogStringField(error, "name")
+    ?? (error instanceof Error ? "Error" : typeof error === "string" ? "String" : "UnknownError")
+  const stack = getChatRuntimeErrorLogStringField(error, "stack")
+
+  return stack ? { message, name, stack } : { message, name }
+}
+
 export function getChatConversationHomePromptSaveSuccessAlertState(
   isEditing: boolean,
 ): ChatRuntimeResolvedAlertState {

@@ -135,6 +135,7 @@ import {
   createChatRuntimeToolExecutionPanelMobilePropsParts,
   createChatRuntimeToolExecutionPanelShellMobilePropsParts,
   createChatRuntimeCompletedDebugState,
+  createChatRuntimeErrorLogDetailsState,
   createChatRuntimeHeaderChromeSlots,
   createChatRuntimeHeaderStyleSlots,
   createChatRuntimeHeaderStyleSlotsFromStyleSource,
@@ -7976,6 +7977,28 @@ describe("session presentation semantics", () => {
     expect(formatChatRuntimeWebConfirmMessage("Title", "Body")).toBe("Title\n\nBody")
     expect(getChatRuntimeAlertMessage(new Error("Network"), "Fallback")).toBe("Network")
     expect(getChatRuntimeAlertMessage("", "Fallback")).toBe("Fallback")
+    const loggedError = new TypeError("Typed failure")
+    expect(createChatRuntimeErrorLogDetailsState(loggedError)).toMatchObject({
+      message: "Typed failure",
+      name: "TypeError",
+    })
+    expect(createChatRuntimeErrorLogDetailsState("String failure")).toEqual({
+      message: "String failure",
+      name: "String",
+    })
+    expect(createChatRuntimeErrorLogDetailsState({
+      message: "Object failure",
+      name: "ObjectFailure",
+      stack: "trace",
+    })).toEqual({
+      message: "Object failure",
+      name: "ObjectFailure",
+      stack: "trace",
+    })
+    expect(createChatRuntimeErrorLogDetailsState(null)).toEqual({
+      message: CHAT_RUNTIME_PRESENTATION.debug.unknownError,
+      name: "UnknownError",
+    })
     expect(getChatMessageCopyFeedbackState()).toEqual({
       feedbackResetDelayMs: 2000,
       failedTitle: "Copy Failed",
