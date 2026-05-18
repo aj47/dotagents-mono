@@ -51,7 +51,7 @@ test('exposes the chat composer send control as an accessible button', () => {
   assert.match(chatMessageChromeSource, /createChatComposerRuntimeDockMobilePropsParts,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
   assert.match(chatMessageChromeSource, /<ChatComposerLabeledActionButton\s+\{\.\.\.composerDockParts\.submitAction\.props\}/);
-  assert.match(actionButtonSource, /createChatComposerLabeledActionButtonMobilePropsParts\(\{/);
+  assert.match(actionButtonSource, /createChatComposerLabeledActionButtonMobilePropsParts\(props\);/);
   assert.match(actionButtonSource, /<ChatComposerLabeledActionButtonTouchable\s+\{\.\.\.actionButtonTouchable\.props\}/);
   assert.match(sessionPresentationSource, /accessibilityRole: renderState\.accessibilityRole/);
   assert.match(sessionPresentationSource, /accessibilityLabel: renderState\.accessibilityLabel/);
@@ -123,7 +123,7 @@ test('uses shared mobile composer control accessibility state', () => {
   assert.match(sessionPresentationSource, /accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
   assert.match(chatMessageChromeSource, /createChatComposerIconButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatComposerIconButtonMobilePropsParts/);
-  assert.match(iconButtonSource, /const iconButtonParts: ChatComposerIconButtonParts =\s+createChatComposerIconButtonMobilePropsParts\(\{/);
+  assert.match(iconButtonSource, /const iconButtonParts: ChatComposerIconButtonParts =\s+createChatComposerIconButtonMobilePropsParts\(props\);/);
   assert.match(iconButtonSource, /<ChatComposerIconButtonTouchable\s+\{\.\.\.iconButtonTouchable\.props\}/);
   assert.match(iconButtonSource, /<ChatComposerIconButtonTouchableContent\s+\{\.\.\.iconButtonTouchable\.content\}/);
   assert.doesNotMatch(iconButtonSource, /const touchableContent = iconButtonParts\.touchable\.content;/);

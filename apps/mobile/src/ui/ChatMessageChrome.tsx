@@ -15759,23 +15759,9 @@ export function ChatComposerHandsFreeControlLabel({
   );
 }
 
-export function ChatComposerIconButton({
-  shouldRender = true,
-  renderState,
-  onPress,
-  activeOpacity,
-  style,
-  activeStyle,
-}: ChatComposerIconButtonProps) {
+export function ChatComposerIconButton(props: ChatComposerIconButtonProps) {
   const iconButtonParts: ChatComposerIconButtonParts =
-    createChatComposerIconButtonMobilePropsParts({
-      shouldRender,
-      renderState,
-      onPress,
-      activeOpacity,
-      style,
-      activeStyle,
-    });
+    createChatComposerIconButtonMobilePropsParts(props);
   const iconButtonTouchable = iconButtonParts.touchable;
 
   if (!iconButtonTouchable.shouldRender) return null;
@@ -15816,21 +15802,9 @@ export function ChatComposerIconButtonIcon(props: ChatComposerIconButtonIconProp
   );
 }
 
-export function ChatComposerLabeledActionButton({
-  shouldRender = true,
-  renderState,
-  onPress,
-  activeOpacity,
-  styles,
-}: ChatComposerLabeledActionButtonProps) {
+export function ChatComposerLabeledActionButton(props: ChatComposerLabeledActionButtonProps) {
   const actionButtonParts: ChatComposerLabeledActionButtonParts =
-    createChatComposerLabeledActionButtonMobilePropsParts({
-      shouldRender,
-      renderState,
-      onPress,
-      activeOpacity,
-      styles,
-    });
+    createChatComposerLabeledActionButtonMobilePropsParts(props);
   const actionButtonTouchable = actionButtonParts.touchable;
 
   if (!actionButtonTouchable.shouldRender) return null;
@@ -15890,23 +15864,9 @@ export function ChatComposerLabeledActionButtonLabel({
   );
 }
 
-export function ChatComposerMicButton({
-  renderState,
-  onPressIn,
-  onPressOut,
-  onPress,
-  webPressedStyle,
-  styles,
-}: ChatComposerMicButtonProps) {
+export function ChatComposerMicButton(props: ChatComposerMicButtonProps) {
   const micButtonParts: ChatComposerMicButtonParts =
-    createChatComposerMicButtonMobilePropsParts({
-      renderState,
-      onPressIn,
-      onPressOut,
-      onPress,
-      webPressedStyle,
-      styles,
-    });
+    createChatComposerMicButtonMobilePropsParts(props);
   const micButtonPressable = micButtonParts.pressable;
 
   return (
@@ -15962,33 +15922,9 @@ export function ChatComposerMicButtonLabel({
   );
 }
 
-export function ChatComposerTextEntry({
-  inputRef,
-  value,
-  onChangeText,
-  onKeyPress,
-  accessibilityLabel,
-  accessibilityHint,
-  placeholder,
-  placeholderTextColor,
-  voiceStatusLiveRegionAnnouncement,
-  webAccessibility,
-  styles,
-}: ChatComposerTextEntryProps) {
+export function ChatComposerTextEntry(props: ChatComposerTextEntryProps) {
   const textEntryParts: ChatComposerTextEntryParts =
-    createChatComposerTextEntryMobilePropsParts({
-      inputRef,
-      value,
-      onChangeText,
-      onKeyPress,
-      accessibilityLabel,
-      accessibilityHint,
-      placeholder,
-      placeholderTextColor,
-      voiceStatusLiveRegionAnnouncement,
-      webAccessibility,
-      styles,
-    });
+    createChatComposerTextEntryMobilePropsParts(props);
   const textEntryInput = textEntryParts.input;
   const textEntryInputDescription = textEntryParts.inputDescription;
   const textEntryVoiceStatusLiveRegion = textEntryParts.voiceStatusLiveRegion;

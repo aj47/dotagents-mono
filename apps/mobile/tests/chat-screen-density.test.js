@@ -3480,7 +3480,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerIconButtonTouchableProps = \{[\s\S]*?style: Array<StyleProp<ViewStyle> \| false \| undefined>;[\s\S]*?onPress: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?activeOpacity: number \| undefined;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?accessibilityHint: string \| undefined;[\s\S]*?accessibilityState: AccessibilityState \| undefined;[\s\S]*?'aria-checked': boolean \| undefined;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerIconButtonTouchableContentProps = \{[\s\S]*?icon: \{[\s\S]*?props: ChatComposerIconButtonIconProps;[\s\S]*?\};[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerIconButtonIconProps = ChatMessageActionIcon;/);
-  assert.match(composerIconButtonSource, /const iconButtonParts: ChatComposerIconButtonParts =\s+createChatComposerIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+activeOpacity,\s+style,\s+activeStyle,\s+\}\);/);
+  assert.match(composerIconButtonSource, /export function ChatComposerIconButton\(props: ChatComposerIconButtonProps\)/);
+  assert.match(composerIconButtonSource, /const iconButtonParts: ChatComposerIconButtonParts =\s+createChatComposerIconButtonMobilePropsParts\(props\);/);
+  assert.doesNotMatch(composerIconButtonSource, /shouldRender = true/);
   assert.match(composerIconButtonSource, /const iconButtonTouchable = iconButtonParts\.touchable;/);
   assert.match(composerIconButtonSource, /if \(!iconButtonTouchable\.shouldRender\) return null;/);
   assert.match(composerIconButtonSource, /<ChatComposerIconButtonTouchable\s+\{\.\.\.iconButtonTouchable\.props\}/);
@@ -3583,7 +3585,9 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonTouchableContentProps = \{[\s\S]*?icon: \{[\s\S]*?props: ChatComposerLabeledActionButtonIconProps;[\s\S]*?\};[\s\S]*?label: \{[\s\S]*?shouldRender: boolean;[\s\S]*?props: ChatComposerLabeledActionButtonLabelProps;[\s\S]*?\};[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonIconProps = ChatMessageActionIcon;/);
   assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonLabelProps = \{[\s\S]*?style: ChatComposerLabeledActionButtonStyles\['text'\];[\s\S]*?text: string;[\s\S]*?\};/);
-  assert.match(composerLabeledActionButtonSource, /const actionButtonParts: ChatComposerLabeledActionButtonParts =\s+createChatComposerLabeledActionButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+activeOpacity,\s+styles,\s+\}\);/);
+  assert.match(composerLabeledActionButtonSource, /export function ChatComposerLabeledActionButton\(props: ChatComposerLabeledActionButtonProps\)/);
+  assert.match(composerLabeledActionButtonSource, /const actionButtonParts: ChatComposerLabeledActionButtonParts =\s+createChatComposerLabeledActionButtonMobilePropsParts\(props\);/);
+  assert.doesNotMatch(composerLabeledActionButtonSource, /shouldRender = true/);
   assert.match(composerLabeledActionButtonSource, /const actionButtonTouchable = actionButtonParts\.touchable;/);
   assert.match(composerLabeledActionButtonSource, /if \(!actionButtonTouchable\.shouldRender\) return null;/);
   assert.doesNotMatch(screenSource, /const composerQueueDebugMessage = getChatComposerRuntimeQueueDebugMessage\(\);/);
@@ -3670,7 +3674,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerMicButtonPressableContentProps = \{[\s\S]*?icon: \{[\s\S]*?props: ChatComposerMicButtonIconProps;[\s\S]*?\};[\s\S]*?label: \{[\s\S]*?props: ChatComposerMicButtonLabelProps;[\s\S]*?\};[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerMicButtonIconProps = ChatMessageActionIcon;/);
   assert.match(chatMessageChromeSource, /type ChatComposerMicButtonLabelProps = \{[\s\S]*?style: Array<StyleProp<TextStyle> \| false \| undefined>;[\s\S]*?selectable: boolean \| undefined;[\s\S]*?text: string;[\s\S]*?\};/);
-  assert.match(composerMicButtonSource, /const micButtonParts: ChatComposerMicButtonParts =\s+createChatComposerMicButtonMobilePropsParts\(\{\s+renderState,\s+onPressIn,\s+onPressOut,\s+onPress,\s+webPressedStyle,\s+styles,\s+\}\);/);
+  assert.match(composerMicButtonSource, /export function ChatComposerMicButton\(props: ChatComposerMicButtonProps\)/);
+  assert.match(composerMicButtonSource, /const micButtonParts: ChatComposerMicButtonParts =\s+createChatComposerMicButtonMobilePropsParts\(props\);/);
   assert.match(composerMicButtonSource, /const micButtonPressable = micButtonParts\.pressable;/);
   assert.doesNotMatch(composerMicButtonSource, /const pressableContent = micButtonPressable\.content;/);
   assert.match(composerMicButtonSource, /<ChatComposerMicButtonPressable\s+\{\.\.\.micButtonPressable\.props\}/);
@@ -3760,7 +3765,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerTextEntryInputProps = \{[\s\S]*?ref: Ref<TextInput> \| undefined;[\s\S]*?style: ChatComposerTextEntryStyles\['input'\];[\s\S]*?value: string;[\s\S]*?onChangeText: ComponentProps<typeof TextInput>\['onChangeText'\];[\s\S]*?onKeyPress: ComponentProps<typeof TextInput>\['onKeyPress'\] \| undefined;[\s\S]*?accessibilityLabel: string;[\s\S]*?accessibilityHint: string;[\s\S]*?'aria-describedby': string \| undefined;[\s\S]*?placeholder: string;[\s\S]*?placeholderTextColor: string;[\s\S]*?multiline: true;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerTextEntryInputDescriptionProps = \{[\s\S]*?nativeID: string;[\s\S]*?style: ChatComposerTextEntryStyles\['visuallyHiddenHint'\];[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerTextEntryVoiceStatusLiveRegionProps = \{[\s\S]*?nativeID: string;[\s\S]*?style: ChatComposerTextEntryStyles\['visuallyHiddenHint'\];[\s\S]*?accessibilityLiveRegion: ChatComposerTextEntryWebAccessibility\['voiceStatusLiveRegionPoliteness'\];[\s\S]*?'aria-live': 'off' \| 'polite' \| 'assertive';[\s\S]*?text: string;[\s\S]*?\};/);
-  assert.match(textEntrySource, /const textEntryParts: ChatComposerTextEntryParts =\s+createChatComposerTextEntryMobilePropsParts\(\{\s+inputRef,\s+value,\s+onChangeText,\s+onKeyPress,\s+accessibilityLabel,\s+accessibilityHint,\s+placeholder,\s+placeholderTextColor,\s+voiceStatusLiveRegionAnnouncement,\s+webAccessibility,\s+styles,\s+\}\);/);
+  assert.match(textEntrySource, /export function ChatComposerTextEntry\(props: ChatComposerTextEntryProps\)/);
+  assert.match(textEntrySource, /const textEntryParts: ChatComposerTextEntryParts =\s+createChatComposerTextEntryMobilePropsParts\(props\);/);
   assert.match(textEntrySource, /const textEntryInput = textEntryParts\.input;/);
   assert.match(textEntrySource, /const textEntryInputDescription = textEntryParts\.inputDescription;/);
   assert.match(textEntrySource, /const textEntryVoiceStatusLiveRegion = textEntryParts\.voiceStatusLiveRegion;/);
