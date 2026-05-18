@@ -5366,7 +5366,7 @@ type ChatMessageInlineActivityParts =
 type ChatMessageInlineActivitySpinnerProps = {
   source: ImageSourcePropType;
   style: StyleProp<ImageStyle>;
-  resizeMode: ChatRuntimeInlineActivityMobileRenderState['spinnerResizeMode'];
+  resizeMode: ComponentProps<typeof Image>['resizeMode'];
 };
 
 type ChatMessageInlineActivityContainerContentProps = {
@@ -5378,9 +5378,9 @@ type ChatMessageInlineActivityContainerContentProps = {
 type ChatMessageInlineActivityContainerProps = {
   children: ReactNode;
   accessible: true;
-  accessibilityRole: ChatRuntimeInlineActivityMobileRenderState['accessibilityRole'];
+  accessibilityRole: AccessibilityRole;
   accessibilityLabel: string;
-  accessibilityState: ChatRuntimeInlineActivityMobileRenderState['accessibilityState'];
+  accessibilityState: AccessibilityState;
   style: StyleProp<ViewStyle>;
 };
 
