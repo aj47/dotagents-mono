@@ -28746,6 +28746,16 @@ export function createChatMessageRuntimeViewportStyleSlots<
   }
 }
 
+export type ChatMessageRuntimeSurfaceStyleSlots<
+  TFrameStyles,
+  TDockStyles,
+  TViewportStyles,
+> = {
+  frame: TFrameStyles
+  dock: TDockStyles
+  viewport: TViewportStyles
+}
+
 export function createChatMessageRuntimeSurfaceStyleSlots<
   TConversationViewportStyles extends { frame: unknown },
   TDockStyles,
@@ -28758,11 +28768,11 @@ export function createChatMessageRuntimeSurfaceStyleSlots<
   conversationViewportStyles: TConversationViewportStyles
   dockStyles: TDockStyles
   viewportStyles: TViewportStyles
-}): {
-  frame: TConversationViewportStyles["frame"]
-  dock: TDockStyles
-  viewport: TViewportStyles
-} {
+}): ChatMessageRuntimeSurfaceStyleSlots<
+  TConversationViewportStyles["frame"],
+  TDockStyles,
+  TViewportStyles
+> {
   return {
     frame: conversationViewportStyles.frame,
     dock: dockStyles,

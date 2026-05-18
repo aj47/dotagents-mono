@@ -355,6 +355,7 @@ import {
   type ChatMessageExpansionMobileRenderState,
   type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,
   type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
+  type ChatMessageRuntimeSurfaceStyleSlots as SharedChatMessageRuntimeSurfaceStyleSlots,
   type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
@@ -3935,11 +3936,12 @@ type ChatMessageRuntimeDockChromePropsInput = {
   composer: ChatMessageRuntimeDockChromeProps['composer'];
 };
 
-type ChatMessageRuntimeSurfaceStyleSlots = {
-  frame: ChatMessageConversationViewportStyleSlots['frame'];
-  dock: ChatMessageRuntimeDockStyleSlots;
-  viewport: ChatMessageRuntimeViewportStyleSlots;
-};
+type ChatMessageRuntimeSurfaceStyleSlots =
+  SharedChatMessageRuntimeSurfaceStyleSlots<
+    ChatMessageConversationViewportStyleSlots['frame'],
+    ChatMessageRuntimeDockStyleSlots,
+    ChatMessageRuntimeViewportStyleSlots
+  >;
 
 type ChatMessageRuntimeSurfaceProps<
   TPrompt extends PredefinedPromptSummary,

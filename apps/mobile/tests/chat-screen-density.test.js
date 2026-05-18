@@ -2209,6 +2209,11 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /import \{[^;]*createChatMessageRuntimeSurfaceStyleSlots[^;]*\} from '\.\/ChatMessageChrome';/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeSurfaceStyleSlots/);
+  assert.match(sessionPresentationSource, /export type ChatMessageRuntimeSurfaceStyleSlots<\s+TFrameStyles,\s+TDockStyles,\s+TViewportStyles,/);
+  assert.match(sessionPresentationSource, /\}\): ChatMessageRuntimeSurfaceStyleSlots<\s+TConversationViewportStyles\["frame"\],\s+TDockStyles,\s+TViewportStyles\s+> \{/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeSurfaceStyleSlots as SharedChatMessageRuntimeSurfaceStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeSurfaceStyleSlots =\s+SharedChatMessageRuntimeSurfaceStyleSlots<\s+ChatMessageConversationViewportStyleSlots\['frame'\],\s+ChatMessageRuntimeDockStyleSlots,\s+ChatMessageRuntimeViewportStyleSlots\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeSurfaceStyleSlots = \{\s+frame: ChatMessageConversationViewportStyleSlots\['frame'\];/);
   assert.match(sessionPresentationSource, /const messageRuntimeSurfaceStyles = createChatMessageRuntimeSurfaceStyleSlots\(\{/);
   assert.doesNotMatch(screenSource, /const chatMessageRuntimeSurfaceStyles = useMemo/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /const chatMessageRuntimeSurfaceChrome = useMemo/);
