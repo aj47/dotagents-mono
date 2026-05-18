@@ -454,7 +454,6 @@ import {
   type ChatMessageExpansionMobileRenderState,
   type ChatMessageConnectionBannerStyleSlots as SharedChatMessageConnectionBannerStyleSlots,
   type ChatMessageDelegationCardStyleSlots as SharedChatMessageDelegationCardStyleSlots,
-  type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
   type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,
   type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,
   type ChatMessageActionSlotRenderEntry,
@@ -6527,13 +6526,6 @@ type ChatMessageConversationThreadBodyInput = ChatMessageConversationThreadBodyS
 
 export type ChatMessageRuntimeThreadStyleSlots =
   ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles'];
-
-export type ChatMessageConversationThreadStyleSlots =
-  SharedChatMessageConversationThreadStyleSlots<
-    ChatMessageToolActivityGroupThreadSurfaceStyleSlots,
-    ChatMessageThreadBodyStyleSlots,
-    ChatMessageActionStyleSlots
-  >;
 
 type ChatMessageRuntimeThreadProps = Omit<
   ChatMessageToolActivityGroupThreadSurfaceProps,
