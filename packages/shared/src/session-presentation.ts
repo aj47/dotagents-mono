@@ -29887,6 +29887,118 @@ export type ChatRuntimeMobileChromeStyleSource =
   & ChatMessageConversationThreadStyleSource
   & ChatRuntimeHeaderStyleSource
 
+type ChatRuntimeMobileConversationThreadStyleSlotsFromStyleSource<
+  TStyles extends ChatRuntimeMobileChromeStyleSource,
+  TToneStyleSlot,
+  TToneStyle,
+> = ChatMessageConversationThreadStyleSlotsFromStyleSource<
+  TStyles,
+  TToneStyleSlot,
+  TToneStyle
+>
+
+type ChatRuntimeMobileSafeAreaMergedStyleSlotsFromStyleSource<
+  TStyles extends ChatRuntimeMobileChromeStyleSource,
+> = ChatRuntimeSafeAreaMergedStyleSlots<
+  ChatMessageConversationDockStyleSlotsFromStyleSource<TStyles>["scrollToBottomButtonStyle"],
+  ChatMessageConversationViewportStyleSlotsFromStyleSource<TStyles>["scrollViewport"]["contentContainerStyle"],
+  ChatComposerStyleSlotsFromStyleSource<TStyles>["voiceOverlay"],
+  ChatComposerStyleSlotsFromStyleSource<TStyles>["inputDock"]
+>
+
+type ChatRuntimeMobileComposerRuntimeDockStyleSlotsFromStyleSource<
+  TStyles extends ChatRuntimeMobileChromeStyleSource,
+> = Omit<ChatComposerStyleSlotsFromStyleSource<TStyles>, "inputDock"> & {
+  inputDock: ChatRuntimeMobileSafeAreaMergedStyleSlotsFromStyleSource<TStyles>["inputDock"]
+}
+
+type ChatRuntimeMobileMessageRuntimeChromeStyleSlotsFromStyleSource<
+  TStyles extends ChatRuntimeMobileChromeStyleSource,
+  TToneStyleSlot,
+  TToneStyle,
+> = {
+  actionStyles: ChatRuntimeMobileConversationThreadStyleSlotsFromStyleSource<
+    TStyles,
+    TToneStyleSlot,
+    TToneStyle
+  >["actionSet"]
+  threadStyles: ChatRuntimeMobileConversationThreadStyleSlotsFromStyleSource<
+    TStyles,
+    TToneStyleSlot,
+    TToneStyle
+  >["runtimeThread"]
+  promptEditorStyles: ChatConversationHomePromptEditorModalStyleSlotsFromStyleSource<TStyles>
+}
+
+type ChatRuntimeMobileMessageRuntimeDockStyleSlotsFromStyleSource<
+  TStyles extends ChatRuntimeMobileChromeStyleSource,
+> = {
+  scrollToBottomButtonStyle:
+    ChatRuntimeMobileSafeAreaMergedStyleSlotsFromStyleSource<TStyles>["scrollToBottomButtonStyle"]
+  voiceOverlay: ChatRuntimeMobileSafeAreaMergedStyleSlotsFromStyleSource<TStyles>["voiceOverlay"]
+  queuePanelStyle: ChatMessageConversationDockStyleSlotsFromStyleSource<TStyles>["queuePanelStyle"]
+  connectionBanner: ChatMessageConversationDockStyleSlotsFromStyleSource<TStyles>["connectionBanner"]
+  composer: ChatRuntimeMobileComposerRuntimeDockStyleSlotsFromStyleSource<TStyles>
+}
+
+type ChatRuntimeMobileMessageRuntimeViewportStyleSlotsFromStyleSource<
+  TStyles extends ChatRuntimeMobileChromeStyleSource,
+> = {
+  scrollViewport: {
+    style: ChatMessageConversationViewportStyleSlotsFromStyleSource<TStyles>["scrollViewport"]["style"]
+    contentContainerStyle:
+      ChatRuntimeMobileSafeAreaMergedStyleSlotsFromStyleSource<TStyles>["scrollViewportContentContainerStyle"]
+  }
+  loadingState: ChatMessageConversationViewportStyleSlotsFromStyleSource<TStyles>["loadingState"]
+  homeQuickStarts: ChatMessageConversationViewportStyleSlotsFromStyleSource<TStyles>["homeQuickStarts"]
+  historyBanner: ChatMessageConversationViewportStyleSlotsFromStyleSource<TStyles>["historyBanner"]
+  stepSummary: ChatMessageConversationViewportStyleSlotsFromStyleSource<TStyles>["stepSummary"]
+  debugPanels: ChatMessageConversationViewportStyleSlotsFromStyleSource<TStyles>["debugPanels"]
+}
+
+type ChatRuntimeMobileMessageRuntimeSurfaceStyleSlotsFromStyleSource<
+  TStyles extends ChatRuntimeMobileChromeStyleSource,
+> = {
+  frame: ChatMessageConversationViewportStyleSlotsFromStyleSource<TStyles>["frame"]
+  dock: ChatRuntimeMobileMessageRuntimeDockStyleSlotsFromStyleSource<TStyles>
+  viewport: ChatRuntimeMobileMessageRuntimeViewportStyleSlotsFromStyleSource<TStyles>
+}
+
+export type ChatRuntimeMobileChromeSlotsFromStyleSource<
+  TStyles extends ChatRuntimeMobileChromeStyleSource,
+  TToneStyleSlot,
+  TToneStyle,
+  TColors,
+  TPlatform,
+  TSpinnerSource,
+> = {
+  environment: {
+    platform: TPlatform
+  }
+  header: {
+    colors: TColors
+    spinnerSource: TSpinnerSource
+    styles: ChatRuntimeHeaderStyleSlotsFromStyleSource<TStyles>
+  }
+  messageRuntime: {
+    colors: TColors
+    platform: TPlatform
+    spinnerSource: TSpinnerSource
+    styles: ChatRuntimeMobileMessageRuntimeChromeStyleSlotsFromStyleSource<
+      TStyles,
+      TToneStyleSlot,
+      TToneStyle
+    >
+  }
+  surface: {
+    runtimeSurface: {
+      props: {
+        styles: ChatRuntimeMobileMessageRuntimeSurfaceStyleSlotsFromStyleSource<TStyles>
+      }
+    }
+  }
+}
+
 export function createChatRuntimeMobileChromeSlotsFromStyleSource<
   TStyles extends ChatRuntimeMobileChromeStyleSource,
   TToneStyleSlot,
@@ -29908,7 +30020,14 @@ export function createChatRuntimeMobileChromeSlotsFromStyleSource<
   styles: TStyles
   safeAreaLayout: ChatRuntimeMobileSafeAreaLayoutState
   getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
-}) {
+}): ChatRuntimeMobileChromeSlotsFromStyleSource<
+  TStyles,
+  TToneStyleSlot,
+  TToneStyle,
+  TColors,
+  TPlatform,
+  TSpinnerSource
+> {
   const conversationThreadStyles = createChatMessageConversationThreadStyleSlotsFromStyleSource({
     styles,
     getToneStyle,
