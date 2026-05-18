@@ -282,7 +282,8 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderAgentSelectorMobilePropsParts/);
   const agentSelectorSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderAgentSelector[\s\S]*?export function ChatRuntimeHeaderActionsRow/)?.[0] ?? '';
-  assert.match(agentSelectorSource, /const agentSelectorParts: ChatRuntimeHeaderAgentSelectorParts =\s+createChatRuntimeHeaderAgentSelectorMobilePropsParts\(\{\s+renderState,\s+onPress,\s+labelNumberOfLines,\s+styles,\s+\}\);/);
+  assert.match(agentSelectorSource, /export function ChatRuntimeHeaderAgentSelector\(props: ChatRuntimeHeaderAgentSelectorProps\)/);
+  assert.match(agentSelectorSource, /const agentSelectorParts: ChatRuntimeHeaderAgentSelectorParts =\s+createChatRuntimeHeaderAgentSelectorMobilePropsParts\(props\);/);
   assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorTouchable\s+\{\.\.\.agentSelectorParts\.touchable\.props\}/);
   assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorTouchableContent\s+\{\.\.\.agentSelectorParts\.touchable\.content\}\s+\/>/);
   assert.match(agentSelectorSource, /export function ChatRuntimeHeaderAgentSelectorTouchableContent/);
@@ -428,7 +429,8 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderConversationStatusMobilePropsParts/);
   const headerConversationStatusSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderConversationStatus[\s\S]*?export function ChatRuntimeHeaderTurnDuration/)?.[0] ?? '';
-  assert.match(headerConversationStatusSource, /const conversationStatusParts: ChatRuntimeHeaderConversationStatusParts =\s+createChatRuntimeHeaderConversationStatusMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+styles,\s+\}\);/);
+  assert.match(headerConversationStatusSource, /export function ChatRuntimeHeaderConversationStatus\(props: ChatRuntimeHeaderConversationStatusProps\)/);
+  assert.match(headerConversationStatusSource, /const conversationStatusParts: ChatRuntimeHeaderConversationStatusParts =\s+createChatRuntimeHeaderConversationStatusMobilePropsParts\(props\);/);
   assert.match(headerConversationStatusSource, /const conversationStatusContainer = conversationStatusParts\.container;/);
   assert.match(headerConversationStatusSource, /if \(!conversationStatusContainer\.shouldRender\) return null;/);
   assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusContainer\s+\{\.\.\.conversationStatusContainer\.props\}/);
@@ -564,7 +566,8 @@ test('shows the shared total agent time in the mobile chat header', () => {
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderTurnDurationMobilePropsParts/);
   const headerTurnDurationSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderTurnDuration[\s\S]*?export function ChatConversationHomeQuickStarts/)?.[0] ?? '';
-  assert.match(headerTurnDurationSource, /const turnDurationParts: ChatRuntimeHeaderTurnDurationParts =\s+createChatRuntimeHeaderTurnDurationMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
+  assert.match(headerTurnDurationSource, /export function ChatRuntimeHeaderTurnDuration\(props: ChatRuntimeHeaderTurnDurationProps\)/);
+  assert.match(headerTurnDurationSource, /const turnDurationParts: ChatRuntimeHeaderTurnDurationParts =\s+createChatRuntimeHeaderTurnDurationMobilePropsParts\(props\);/);
   assert.match(headerTurnDurationSource, /const turnDurationContainer = turnDurationParts\.container;/);
   assert.match(headerTurnDurationSource, /if \(!turnDurationContainer\.shouldRender\) return null;/);
   assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationContainer\s+\{\.\.\.turnDurationContainer\.props\}/);
@@ -1933,7 +1936,9 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderIconButtonMobilePropsParts/);
   const headerIconButtonSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderIconButton[\s\S]*?export function ChatRuntimeHeaderConversationStatus/)?.[0] ?? '';
-  assert.match(headerIconButtonSource, /const iconButtonParts: ChatRuntimeHeaderIconButtonParts =\s+createChatRuntimeHeaderIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+style,\s+activeStyle,\s+iconContainerStyle,\s+isActive,\s+\}\);/);
+  assert.match(headerIconButtonSource, /export function ChatRuntimeHeaderIconButton\(props: ChatRuntimeHeaderIconButtonProps\)/);
+  assert.match(headerIconButtonSource, /const iconButtonParts: ChatRuntimeHeaderIconButtonParts =\s+createChatRuntimeHeaderIconButtonMobilePropsParts\(props\);/);
+  assert.doesNotMatch(headerIconButtonSource, /shouldRender = true/);
   assert.match(headerIconButtonSource, /const iconButtonTouchable = iconButtonParts\.touchable;/);
   assert.match(headerIconButtonSource, /if \(!iconButtonTouchable\.shouldRender\) return null;/);
   assert.match(headerIconButtonSource, /<ChatRuntimeHeaderIconButtonTouchable\s+\{\.\.\.iconButtonTouchable\.props\}/);
