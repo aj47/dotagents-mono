@@ -2526,11 +2526,11 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /const viewportSurfaceColors = viewportStyleState\.colors;/);
   assert.doesNotMatch(screenSource, /const loadingStateSurface = viewportStyleState\.loadingState;/);
   assert.match(screenSource, /ChatMessageRuntimeChromeSurface,/);
-  assert.match(screenSource, /ChatMessageRuntimeChromePropsInput,/);
+  assert.doesNotMatch(screenSource, /ChatMessageRuntimeChromePropsInput,/);
   assert.match(screenSource, /useChatMessageRuntimeChromeInputState,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeSurfaceChromeProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeChromeProps,/);
-  assert.match(screenSource, /type ChatScreenRuntimeChromeInput = ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>;/);
+  assert.doesNotMatch(screenSource, /type ChatScreenRuntimeChromeInput = ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>;/);
   assert.match(screenSource, /useChatMessageRuntimeComposerInputState,/);
   assert.match(screenSource, /const chatMessageRuntimeComposer = useChatMessageRuntimeComposerInputState<\s+PredefinedPromptSummary,\s+Loop\s+>\(\{/);
   assert.doesNotMatch(screenSource, /const chatMessageRuntimeComposer = useMemo<\s+ChatScreenRuntimeChromeInput\['composer'\]\s+>\(\(\) => \(\{/);

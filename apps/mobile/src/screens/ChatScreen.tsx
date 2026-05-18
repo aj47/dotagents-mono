@@ -74,9 +74,6 @@ import {
   useChatMessageRuntimeThreadListInputState,
   useChatMessageRuntimeComposerInputState,
 } from '../ui/ChatMessageChrome';
-import type {
-  ChatMessageRuntimeChromePropsInput,
-} from '../ui/ChatMessageChrome';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
@@ -116,8 +113,6 @@ import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
-
-type ChatScreenRuntimeChromeInput = ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>;
 
 export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
