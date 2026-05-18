@@ -2838,6 +2838,22 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /<ChatComposerMicButton\s+\{\.\.\.composerDockParts\.micButton\.props\}/);
   assert.match(chatMessageChromeSource, /\{\.\.\.composerDockParts\.inputDock\.props\}/);
   assert.match(chatMessageChromeSource, /createChatComposerInputDockMobilePropsParts,/);
+  const composerPropContracts = [
+    ['ChatComposerSpeechPreviewParts', 'ChatComposerSpeechPreviewMobilePropsParts', 'createChatComposerSpeechPreviewMobilePropsParts'],
+    ['ChatComposerPendingImagesRailParts', 'ChatComposerPendingImagesRailMobilePropsParts', 'createChatComposerPendingImagesRailMobilePropsParts'],
+    ['ChatComposerVoiceOverlayParts', 'ChatComposerVoiceOverlayMobilePropsParts', 'createChatComposerVoiceOverlayMobilePropsParts'],
+    ['ChatComposerHandsFreeControlsParts', 'ChatComposerHandsFreeControlsMobilePropsParts', 'createChatComposerHandsFreeControlsMobilePropsParts'],
+    ['ChatComposerIconButtonParts', 'ChatComposerIconButtonMobilePropsParts', 'createChatComposerIconButtonMobilePropsParts'],
+    ['ChatComposerLabeledActionButtonParts', 'ChatComposerLabeledActionButtonMobilePropsParts', 'createChatComposerLabeledActionButtonMobilePropsParts'],
+    ['ChatComposerMicButtonParts', 'ChatComposerMicButtonMobilePropsParts', 'createChatComposerMicButtonMobilePropsParts'],
+    ['ChatComposerTextEntryParts', 'ChatComposerTextEntryMobilePropsParts', 'createChatComposerTextEntryMobilePropsParts'],
+    ['ChatComposerInputDockParts', 'ChatComposerInputDockMobilePropsParts', 'createChatComposerInputDockMobilePropsParts'],
+  ];
+  for (const [localAlias, sharedContract, factoryName] of composerPropContracts) {
+    assert.match(chatMessageChromeSource, new RegExp(`type ${sharedContract},`));
+    assert.match(chatMessageChromeSource, new RegExp(`type ${localAlias} =\\s+${sharedContract}<`));
+    assert.doesNotMatch(chatMessageChromeSource, new RegExp(`type ${localAlias} = ReturnType<typeof ${factoryName}`));
+  }
   assert.match(sessionPresentationSource, /export function createChatComposerInputDockMobilePropsParts/);
   const inputDockSource =
     chatMessageChromeSource.match(/export function ChatComposerInputDock[\s\S]*?export function ChatComposerSpeechPreview/)?.[0] ?? '';

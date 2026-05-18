@@ -44,6 +44,15 @@ import {
   createChatComposerSpeechPreviewMobilePropsParts,
   createChatComposerTextEntryMobilePropsParts,
   createChatComposerVoiceOverlayMobilePropsParts,
+  type ChatComposerHandsFreeControlsMobilePropsParts,
+  type ChatComposerIconButtonMobilePropsParts,
+  type ChatComposerInputDockMobilePropsParts,
+  type ChatComposerLabeledActionButtonMobilePropsParts,
+  type ChatComposerMicButtonMobilePropsParts,
+  type ChatComposerPendingImagesRailMobilePropsParts,
+  type ChatComposerSpeechPreviewMobilePropsParts,
+  type ChatComposerTextEntryMobilePropsParts,
+  type ChatComposerVoiceOverlayMobilePropsParts,
   createChatMessageRuntimeLogMeta,
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
@@ -3915,10 +3924,11 @@ type ChatComposerSpeechPreviewProps = {
   styles: ChatComposerSpeechPreviewStyles;
 };
 
-type ChatComposerSpeechPreviewParts = ReturnType<typeof createChatComposerSpeechPreviewMobilePropsParts<
-  ChatComposerSpeechPreviewProps['text'],
-  ChatComposerSpeechPreviewProps['styles']
->>;
+type ChatComposerSpeechPreviewParts =
+  ChatComposerSpeechPreviewMobilePropsParts<
+    ChatComposerSpeechPreviewProps['text'],
+    ChatComposerSpeechPreviewProps['styles']
+  >;
 
 type ChatComposerSpeechPreviewContainerProps =
   ChatComposerSpeechPreviewParts['container']['props'] & {
@@ -3950,11 +3960,12 @@ type ChatComposerPendingImagesRailProps = {
   styles: ChatComposerPendingImagesRailStyles;
 };
 
-type ChatComposerPendingImagesRailParts = ReturnType<typeof createChatComposerPendingImagesRailMobilePropsParts<
-  ChatComposerPendingImageItem,
-  ChatComposerPendingImagesRailProps['renderState'],
-  ChatComposerPendingImagesRailProps['styles']
->>;
+type ChatComposerPendingImagesRailParts =
+  ChatComposerPendingImagesRailMobilePropsParts<
+    ChatComposerPendingImageItem,
+    ChatComposerPendingImagesRailProps['renderState'],
+    ChatComposerPendingImagesRailProps['styles']
+  >;
 
 type ChatComposerPendingImagesRailScrollViewProps =
   ChatComposerPendingImagesRailParts['scrollView']['props'] & {
@@ -3998,11 +4009,12 @@ type ChatComposerVoiceOverlayProps = {
   styles: ChatComposerVoiceOverlayStyles;
 };
 
-type ChatComposerVoiceOverlayParts = ReturnType<typeof createChatComposerVoiceOverlayMobilePropsParts<
-  ChatComposerVoiceOverlayProps['transcript'],
-  ChatComposerVoiceOverlayProps['transcriptNumberOfLines'],
-  ChatComposerVoiceOverlayProps['styles']
->>;
+type ChatComposerVoiceOverlayParts =
+  ChatComposerVoiceOverlayMobilePropsParts<
+    ChatComposerVoiceOverlayProps['transcript'],
+    ChatComposerVoiceOverlayProps['transcriptNumberOfLines'],
+    ChatComposerVoiceOverlayProps['styles']
+  >;
 
 type ChatComposerVoiceOverlayContainerProps =
   ChatComposerVoiceOverlayParts['overlay']['props'] & {
@@ -4039,16 +4051,17 @@ type ChatComposerHandsFreeControlsProps = {
   styles: ChatComposerHandsFreeControlsStyles;
 };
 
-type ChatComposerHandsFreeControlsParts = ReturnType<typeof createChatComposerHandsFreeControlsMobilePropsParts<
-  ChatComposerHandsFreeControlsProps['status'],
-  ChatComposerHandsFreeControlsProps['controlState'],
-  ChatComposerHandsFreeControlsProps['onWake'],
-  ChatComposerHandsFreeControlsProps['onSleep'],
-  ChatComposerHandsFreeControlsProps['onResume'],
-  ChatComposerHandsFreeControlsProps['onPause'],
-  ChatComposerHandsFreeControlsProps['controlPressedOpacity'],
-  ChatComposerHandsFreeControlsProps['styles']
->>;
+type ChatComposerHandsFreeControlsParts =
+  ChatComposerHandsFreeControlsMobilePropsParts<
+    ChatComposerHandsFreeControlsProps['status'],
+    ChatComposerHandsFreeControlsProps['controlState'],
+    ChatComposerHandsFreeControlsProps['onWake'],
+    ChatComposerHandsFreeControlsProps['onSleep'],
+    ChatComposerHandsFreeControlsProps['onResume'],
+    ChatComposerHandsFreeControlsProps['onPause'],
+    ChatComposerHandsFreeControlsProps['controlPressedOpacity'],
+    ChatComposerHandsFreeControlsProps['styles']
+  >;
 
 type ChatComposerHandsFreeStatusRowProps =
   ChatComposerHandsFreeControlsParts['statusRow']['props'] & {
@@ -4101,13 +4114,14 @@ type ChatComposerIconButtonProps = {
   activeStyle?: StyleProp<ViewStyle>;
 };
 
-type ChatComposerIconButtonParts = ReturnType<typeof createChatComposerIconButtonMobilePropsParts<
-  ChatComposerIconButtonRenderState,
-  ChatComposerIconButtonProps['onPress'],
-  ChatComposerIconButtonProps['activeOpacity'],
-  ChatComposerIconButtonProps['style'],
-  ChatComposerIconButtonProps['activeStyle']
->>;
+type ChatComposerIconButtonParts =
+  ChatComposerIconButtonMobilePropsParts<
+    ChatComposerIconButtonRenderState,
+    ChatComposerIconButtonProps['onPress'],
+    ChatComposerIconButtonProps['activeOpacity'],
+    ChatComposerIconButtonProps['style'],
+    ChatComposerIconButtonProps['activeStyle']
+  >;
 
 type ChatComposerIconButtonTouchableProps =
   ChatComposerIconButtonParts['touchable']['props'] & {
@@ -4144,12 +4158,13 @@ type ChatComposerLabeledActionButtonProps = {
   styles: ChatComposerLabeledActionButtonStyles;
 };
 
-type ChatComposerLabeledActionButtonParts = ReturnType<typeof createChatComposerLabeledActionButtonMobilePropsParts<
-  ChatComposerLabeledActionRenderState,
-  ChatComposerLabeledActionButtonProps['onPress'],
-  ChatComposerLabeledActionButtonProps['activeOpacity'],
-  ChatComposerLabeledActionButtonProps['styles']
->>;
+type ChatComposerLabeledActionButtonParts =
+  ChatComposerLabeledActionButtonMobilePropsParts<
+    ChatComposerLabeledActionRenderState,
+    ChatComposerLabeledActionButtonProps['onPress'],
+    ChatComposerLabeledActionButtonProps['activeOpacity'],
+    ChatComposerLabeledActionButtonProps['styles']
+  >;
 
 type ChatComposerLabeledActionButtonTouchableProps =
   ChatComposerLabeledActionButtonParts['touchable']['props'] & {
@@ -4187,14 +4202,15 @@ type ChatComposerMicButtonProps = {
   styles: ChatComposerMicButtonStyles;
 };
 
-type ChatComposerMicButtonParts = ReturnType<typeof createChatComposerMicButtonMobilePropsParts<
-  ChatComposerMicButtonRenderState,
-  ChatComposerMicButtonProps['onPressIn'],
-  ChatComposerMicButtonProps['onPressOut'],
-  ChatComposerMicButtonProps['onPress'],
-  ChatComposerMicButtonProps['webPressedStyle'],
-  ChatComposerMicButtonProps['styles']
->>;
+type ChatComposerMicButtonParts =
+  ChatComposerMicButtonMobilePropsParts<
+    ChatComposerMicButtonRenderState,
+    ChatComposerMicButtonProps['onPressIn'],
+    ChatComposerMicButtonProps['onPressOut'],
+    ChatComposerMicButtonProps['onPress'],
+    ChatComposerMicButtonProps['webPressedStyle'],
+    ChatComposerMicButtonProps['styles']
+  >;
 
 type ChatComposerMicButtonPressableProps =
   ChatComposerMicButtonParts['pressable']['props'] & {
@@ -4236,15 +4252,16 @@ type ChatComposerTextEntryProps = {
   styles: ChatComposerTextEntryStyles;
 };
 
-type ChatComposerTextEntryParts = ReturnType<typeof createChatComposerTextEntryMobilePropsParts<
-  ChatComposerTextEntryProps['inputRef'],
-  ChatComposerTextEntryProps['value'],
-  ChatComposerTextEntryProps['onChangeText'],
-  ChatComposerTextEntryProps['onKeyPress'],
-  ChatComposerTextEntryProps['placeholderTextColor'],
-  ChatComposerTextEntryProps['webAccessibility'],
-  ChatComposerTextEntryProps['styles']
->>;
+type ChatComposerTextEntryParts =
+  ChatComposerTextEntryMobilePropsParts<
+    ChatComposerTextEntryProps['inputRef'],
+    ChatComposerTextEntryProps['value'],
+    ChatComposerTextEntryProps['onChangeText'],
+    ChatComposerTextEntryProps['onKeyPress'],
+    ChatComposerTextEntryProps['placeholderTextColor'],
+    ChatComposerTextEntryProps['webAccessibility'],
+    ChatComposerTextEntryProps['styles']
+  >;
 
 type ChatComposerTextEntryInputProps =
   ChatComposerTextEntryParts['input']['props'];
@@ -4276,20 +4293,21 @@ type ChatComposerInputDockProps = {
   styles: ChatComposerInputDockStyles;
 };
 
-type ChatComposerInputDockParts = ReturnType<typeof createChatComposerInputDockMobilePropsParts<
-  ChatComposerInputDockProps['speechPreview'],
-  ChatComposerInputDockProps['pendingImagesRail'],
-  ChatComposerInputDockProps['handsFreeControls'],
-  ChatComposerInputDockProps['imageAttachmentControl'],
-  ChatComposerInputDockProps['textToSpeechControl'],
-  ChatComposerInputDockProps['editBeforeSendControl'],
-  ChatComposerInputDockProps['textEntry'],
-  ChatComposerInputDockProps['queueAction'],
-  ChatComposerInputDockProps['submitAction'],
-  ChatComposerInputDockProps['micButton'],
-  ChatComposerInputDockProps['micWrapperRef'],
-  ChatComposerInputDockProps['styles']
->>;
+type ChatComposerInputDockParts =
+  ChatComposerInputDockMobilePropsParts<
+    ChatComposerInputDockProps['speechPreview'],
+    ChatComposerInputDockProps['pendingImagesRail'],
+    ChatComposerInputDockProps['handsFreeControls'],
+    ChatComposerInputDockProps['imageAttachmentControl'],
+    ChatComposerInputDockProps['textToSpeechControl'],
+    ChatComposerInputDockProps['editBeforeSendControl'],
+    ChatComposerInputDockProps['textEntry'],
+    ChatComposerInputDockProps['queueAction'],
+    ChatComposerInputDockProps['submitAction'],
+    ChatComposerInputDockProps['micButton'],
+    ChatComposerInputDockProps['micWrapperRef'],
+    ChatComposerInputDockProps['styles']
+  >;
 
 type ChatComposerInputDockAreaProps =
   ChatComposerInputDockParts['area']['props'] & {
