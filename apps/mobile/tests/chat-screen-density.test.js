@@ -2939,6 +2939,8 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeConnectionBannerMobilePropsParts',
     'createChatRuntimeInlineActivityMobilePropsParts',
     'createChatRuntimeTurnDurationBadgeMobilePropsParts',
+    'createChatRuntimeConversationExpandedContentMobilePropsParts',
+    'createChatRuntimeConversationCollapsedPreviewMobilePropsParts',
     'createChatRuntimeConversationContentMobilePropsParts',
     'createChatRuntimeMessageContentRowMobilePropsParts',
     'createChatRuntimeMessageStandaloneActionsMobilePropsParts',
@@ -4623,7 +4625,8 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageCollapsedPreview\(\s+props: ChatMessageCollapsedPreviewProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const collapsedPreviewParts: ChatMessageCollapsedPreviewParts =\s+createChatRuntimeConversationCollapsedPreviewMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{\s+renderState,\s+actionState,\s+onPress,\s+style,\s+pressedStyle,\s+textStyle,\s+\} = props;/);
+  assert.match(chatMessageChromeSource, /const collapsedPreviewParts = useMemo<ChatMessageCollapsedPreviewParts>\(\s+\(\) => createChatRuntimeConversationCollapsedPreviewMobilePropsParts\(\{\s+renderState,\s+actionState,\s+onPress,\s+style,\s+pressedStyle,\s+textStyle,\s+\}\),\s+\[actionState, onPress, pressedStyle, renderState, style, textStyle\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeConversationCollapsedPreviewMobileRenderState,/);
   assert.match(chatMessageChromeSource, /type ChatMessageCollapsedPreviewNativeRenderState =\s+ChatRuntimeConversationCollapsedPreviewMobileRenderState & \{[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?hitSlop: ComponentProps<typeof Pressable>\['hitSlop'\];[\s\S]*?numberOfLines: TextProps\['numberOfLines'\];[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageCollapsedPreviewTextPart = \{[\s\S]*?text: string;[\s\S]*?style: StyleProp<TextStyle>;[\s\S]*?numberOfLines: TextProps\['numberOfLines'\];[\s\S]*?\};/);
@@ -6421,7 +6424,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationExpandedContentMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationExpandedContentMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent\(\s+props: ChatMessageExpandedContentProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const expandedContentParts: ChatMessageExpandedContentParts =\s+createChatRuntimeConversationExpandedContentMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{\s+streamingRenderState,\s+markdownContent,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+streamingStyles,\s+\} = props;/);
+  assert.match(chatMessageChromeSource, /const expandedContentParts = useMemo<ChatMessageExpandedContentParts>\(\s+\(\) => createChatRuntimeConversationExpandedContentMobilePropsParts\(\{\s+streamingRenderState,\s+markdownContent,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+streamingStyles,\s+\}\),\s+\[\s+assetAuthToken,\s+assetBaseUrl,\s+markdownContent,\s+spinnerSource,\s+streamingRenderState,\s+streamingStyles,\s+\],\s+\);/);
   assert.doesNotMatch(markdownRendererSource, /from '@dotagents\/shared\/(conversation-media-assets|markdown-render-parts)'/);
   assert.doesNotMatch(videoAttachmentCardSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.match(markdownRendererSource, /from '@dotagents\/shared\/session-presentation'/);

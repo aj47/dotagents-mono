@@ -15651,8 +15651,32 @@ export function ChatMessageTurnDurationBadgeLabel({
 export function ChatMessageExpandedContent(
   props: ChatMessageExpandedContentProps,
 ) {
-  const expandedContentParts: ChatMessageExpandedContentParts =
-    createChatRuntimeConversationExpandedContentMobilePropsParts(props);
+  const {
+    streamingRenderState,
+    markdownContent,
+    assetBaseUrl,
+    assetAuthToken,
+    spinnerSource,
+    streamingStyles,
+  } = props;
+  const expandedContentParts = useMemo<ChatMessageExpandedContentParts>(
+    () => createChatRuntimeConversationExpandedContentMobilePropsParts({
+      streamingRenderState,
+      markdownContent,
+      assetBaseUrl,
+      assetAuthToken,
+      spinnerSource,
+      streamingStyles,
+    }),
+    [
+      assetAuthToken,
+      assetBaseUrl,
+      markdownContent,
+      spinnerSource,
+      streamingRenderState,
+      streamingStyles,
+    ],
+  );
   const expandedStreamingContent = expandedContentParts.streamingContent;
 
   if (!expandedStreamingContent.shouldRender) {
@@ -15756,8 +15780,25 @@ export function ChatMessageExpandedContentText({
 export function ChatMessageCollapsedPreview(
   props: ChatMessageCollapsedPreviewProps,
 ) {
-  const collapsedPreviewParts: ChatMessageCollapsedPreviewParts =
-    createChatRuntimeConversationCollapsedPreviewMobilePropsParts(props);
+  const {
+    renderState,
+    actionState,
+    onPress,
+    style,
+    pressedStyle,
+    textStyle,
+  } = props;
+  const collapsedPreviewParts = useMemo<ChatMessageCollapsedPreviewParts>(
+    () => createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
+      renderState,
+      actionState,
+      onPress,
+      style,
+      pressedStyle,
+      textStyle,
+    }),
+    [actionState, onPress, pressedStyle, renderState, style, textStyle],
+  );
 
   return (
     <Pressable
