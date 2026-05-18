@@ -355,6 +355,7 @@ import {
   type ChatMessageExpansionMobileRenderState,
   type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,
   type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
+  type ChatMessageRuntimeDockStyleSlots as SharedChatMessageRuntimeDockStyleSlots,
   type ChatMessageRuntimeSurfaceStyleSlots as SharedChatMessageRuntimeSurfaceStyleSlots,
   type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,
   type ChatMessageActionSlotRenderEntry,
@@ -3862,13 +3863,14 @@ type ChatMessageConnectionBannerRetryButtonProps =
     children: ReactNode;
   };
 
-type ChatMessageRuntimeDockStyleSlots = {
-  scrollToBottomButtonStyle: ChatMessageScrollToBottomButtonProps['style'];
-  voiceOverlay: ChatComposerVoiceOverlayStyles;
-  queuePanelStyle: ChatMessageQueuePanelDockContainerProps['style'];
-  connectionBanner: ChatMessageConnectionBannerStyles;
-  composer: ChatComposerRuntimeDockStyleSlots;
-};
+type ChatMessageRuntimeDockStyleSlots =
+  SharedChatMessageRuntimeDockStyleSlots<
+    ChatMessageScrollToBottomButtonProps['style'],
+    ChatComposerVoiceOverlayStyles,
+    ChatMessageQueuePanelDockContainerProps['style'],
+    ChatMessageConnectionBannerStyles,
+    ChatComposerRuntimeDockStyleSlots
+  >;
 
 type ChatMessageRuntimeDockProps = {
   responseHistoryPanel: ChatMessageResponseHistoryPanelDockProps;

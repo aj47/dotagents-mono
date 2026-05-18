@@ -2033,6 +2033,11 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(sessionPresentationSource, /connectionBanner: connectionBannerStyles,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeDockStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeDockStyleSlots/);
+  assert.match(sessionPresentationSource, /export type ChatMessageRuntimeDockStyleSlots<\s+TScrollToBottomButtonStyle,\s+TVoiceOverlayStyles,\s+TQueuePanelStyle,\s+TConnectionBannerStyles,\s+TComposerStyles,/);
+  assert.match(sessionPresentationSource, /\}\): ChatMessageRuntimeDockStyleSlots<\s+TSafeAreaStyles\["scrollToBottomButtonStyle"\],\s+TSafeAreaStyles\["voiceOverlay"\],\s+TConversationDockStyles\["queuePanelStyle"\],\s+TConversationDockStyles\["connectionBanner"\],\s+TComposerStyles\s+> \{/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeDockStyleSlots as SharedChatMessageRuntimeDockStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeDockStyleSlots =\s+SharedChatMessageRuntimeDockStyleSlots<\s+ChatMessageScrollToBottomButtonProps\['style'\],\s+ChatComposerVoiceOverlayStyles,\s+ChatMessageQueuePanelDockContainerProps\['style'\],\s+ChatMessageConnectionBannerStyles,\s+ChatComposerRuntimeDockStyleSlots\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeDockStyleSlots = \{\s+scrollToBottomButtonStyle: ChatMessageScrollToBottomButtonProps\['style'\];/);
   assert.doesNotMatch(screenSource, /const handleScrollToBottomPress = \(\) => \{\s+setShouldAutoScroll\(true\);\s+scrollViewRef\.current\?\.scrollToEnd\(\{ animated: true \}\);\s+\};/);
   assert.match(screenSource, /scrollToBottom: handleScrollToBottomPress,/);
   assert.match(chatMessageChromeSource, /const scrollToBottom = useCallback\(\(\) => \{\s+setShouldAutoScroll\(true\);\s+scrollRef\.current\?\.scrollToEnd\(\{ animated: true \}\);/);

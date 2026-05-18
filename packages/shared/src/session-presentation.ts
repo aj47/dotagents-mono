@@ -28458,6 +28458,20 @@ export function createChatMessageConversationDockStyleSlotsFromStyleSource<
   })
 }
 
+export type ChatMessageRuntimeDockStyleSlots<
+  TScrollToBottomButtonStyle,
+  TVoiceOverlayStyles,
+  TQueuePanelStyle,
+  TConnectionBannerStyles,
+  TComposerStyles,
+> = {
+  scrollToBottomButtonStyle: TScrollToBottomButtonStyle
+  voiceOverlay: TVoiceOverlayStyles
+  queuePanelStyle: TQueuePanelStyle
+  connectionBanner: TConnectionBannerStyles
+  composer: TComposerStyles
+}
+
 export function createChatMessageRuntimeDockStyleSlots<
   TConversationDockStyles extends {
     queuePanelStyle: unknown
@@ -28476,13 +28490,13 @@ export function createChatMessageRuntimeDockStyleSlots<
   conversationDockStyles: TConversationDockStyles
   composerStyles: TComposerStyles
   safeAreaStyles: TSafeAreaStyles
-}): {
-  scrollToBottomButtonStyle: TSafeAreaStyles["scrollToBottomButtonStyle"]
-  voiceOverlay: TSafeAreaStyles["voiceOverlay"]
-  queuePanelStyle: TConversationDockStyles["queuePanelStyle"]
-  connectionBanner: TConversationDockStyles["connectionBanner"]
-  composer: TComposerStyles
-} {
+}): ChatMessageRuntimeDockStyleSlots<
+  TSafeAreaStyles["scrollToBottomButtonStyle"],
+  TSafeAreaStyles["voiceOverlay"],
+  TConversationDockStyles["queuePanelStyle"],
+  TConversationDockStyles["connectionBanner"],
+  TComposerStyles
+> {
   return {
     scrollToBottomButtonStyle: safeAreaStyles.scrollToBottomButtonStyle,
     voiceOverlay: safeAreaStyles.voiceOverlay,
