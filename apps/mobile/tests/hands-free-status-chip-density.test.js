@@ -12,6 +12,9 @@ test('uses shared hands-free status chip colors and surface tokens', () => {
   assert.match(chipSource, /getHandsFreeStatusChipMobileRenderState/);
   assert.match(chipSource, /createHandsFreeStatusChipMobileStyleSlots/);
   assert.match(chipSource, /createHandsFreeStatusChipMobilePropsParts/);
+  assert.match(chipSource, /type HandsFreeStatusChipMobilePropsParts,/);
+  assert.match(chipSource, /type HandsFreeStatusChipStyles = \{[\s\S]*?container: StyleProp<ViewStyle>;[\s\S]*?label: StyleProp<TextStyle>;[\s\S]*?subtitle: StyleProp<TextStyle>;[\s\S]*?\};/);
+  assert.match(chipSource, /type HandsFreeStatusChipParts =\s+HandsFreeStatusChipMobilePropsParts<HandsFreeStatusChipStyles>;/);
   assert.match(chipSource, /const renderState = useMemo\(/);
   assert.match(chipSource, /getHandsFreeStatusChipMobileRenderState\(\{[\s\S]*?phase,[\s\S]*?label,[\s\S]*?subtitle,[\s\S]*?colors: theme\.colors,/);
   assert.match(chipSource, /const styleSlots = useMemo\(/);
@@ -19,7 +22,8 @@ test('uses shared hands-free status chip colors and surface tokens', () => {
   assert.match(chipSource, /container:\s*\{[\s\S]*?\.\.\.styleSlots\.container/);
   assert.match(chipSource, /label:\s*\{[\s\S]*?\.\.\.styleSlots\.label/);
   assert.match(chipSource, /subtitle:\s*\{[\s\S]*?\.\.\.styleSlots\.subtitle/);
-  assert.match(chipSource, /const statusChipParts = createHandsFreeStatusChipMobilePropsParts\(\{[\s\S]*?renderState,[\s\S]*?styles,/);
+  assert.match(chipSource, /const styles = useMemo<HandsFreeStatusChipStyles>\(\(\) => StyleSheet\.create\(\{/);
+  assert.match(chipSource, /const statusChipParts: HandsFreeStatusChipParts = createHandsFreeStatusChipMobilePropsParts\(\{[\s\S]*?renderState,[\s\S]*?styles,/);
   assert.match(chipSource, /<View\s+\{\.\.\.statusChipParts\.container\.props\}>/);
   assert.match(chipSource, /<Text\s+\{\.\.\.statusChipParts\.label\.props\}>\{statusChipParts\.label\.text\}<\/Text>/);
   assert.match(chipSource, /\{statusChipParts\.label\.text\}/);
