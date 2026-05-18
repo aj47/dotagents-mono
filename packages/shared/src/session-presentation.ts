@@ -537,6 +537,7 @@ import {
   type ToolActivityGroupMobileRenderState,
   type ToolActivityGroupMobileRenderStateInput,
   type ToolActivityGroupMobileSurfaceRenderState,
+  type ToolActivityGroups,
   type ToolActivityGroupSourceMessage,
 } from "./tool-activity-grouping"
 export {
@@ -548,6 +549,7 @@ export {
   getToolActivityGroupSummaryState,
 } from "./tool-activity-grouping"
 export type {
+  ToolActivityGroups,
   ToolActivityGroupMobileRenderState,
   ToolActivityGroupSourceMessage,
 } from "./tool-activity-grouping"
@@ -15223,7 +15225,7 @@ export interface ChatMessageRuntimeLogMeta {
 }
 
 export type ChatMessageRuntimeToolActivityGroup = ToolActivityGroup
-export type ChatMessageRuntimeToolActivityGroups = ReturnType<typeof groupToolActivity>
+export type ChatMessageRuntimeToolActivityGroups = ToolActivityGroups
 export type ChatMessageRuntimeToolActivityGroupSourceMessage = ToolActivityGroupSourceMessage
 export type ChatMessageRuntimeMessageExpansionState = ChatDisplayExpansionStateMap<number>
 export type ChatMessageRuntimeToolCallExpansionState = ChatDisplayExpansionStateMap<string>

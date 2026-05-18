@@ -82,6 +82,11 @@ export interface ToolActivityGroup {
   previewLines: string[]
 }
 
+export interface ToolActivityGroups {
+  groupByIndex: Map<number, ToolActivityGroup>
+  groups: ToolActivityGroup[]
+}
+
 export interface ToolActivityGroupMobileIconState {
   name: typeof TOOL_ACTIVITY_GROUP_SURFACE_PRESENTATION.mobile.icon.name
   size: number
@@ -753,10 +758,7 @@ export function getToolActivityRunSummary(
  * an O(1) lookup per message index to decide whether to render normally
  * or as part of a collapsed group.
  */
-export function groupToolActivity(messages: ToolActivityGroupSourceMessage[]): {
-  groupByIndex: Map<number, ToolActivityGroup>
-  groups: ToolActivityGroup[]
-} {
+export function groupToolActivity(messages: ToolActivityGroupSourceMessage[]): ToolActivityGroups {
   const groups: ToolActivityGroup[] = []
   const groupByIndex = new Map<number, ToolActivityGroup>()
 

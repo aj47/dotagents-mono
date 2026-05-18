@@ -7285,7 +7285,9 @@ test('colors compact tool call labels by result status', () => {
 
 test('uses tool activities wording consistently for grouped tool activity labels', () => {
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/tool-activity-grouping';/);
-  assert.match(sessionPresentationSource, /export type \{\s+ToolActivityGroupMobileRenderState,[\s\S]*?ToolActivityGroupSourceMessage,[\s\S]*?\} from "\.\/tool-activity-grouping"/);
+  assert.match(sessionPresentationSource, /export type \{\s+ToolActivityGroups,[\s\S]*?ToolActivityGroupMobileRenderState,[\s\S]*?ToolActivityGroupSourceMessage,[\s\S]*?\} from "\.\/tool-activity-grouping"/);
+  assert.match(sessionPresentationSource, /export type ChatMessageRuntimeToolActivityGroups = ToolActivityGroups/);
+  assert.doesNotMatch(sessionPresentationSource, /export type ChatMessageRuntimeToolActivityGroups = ReturnType<typeof groupToolActivity>/);
   assert.match(sessionPresentationSource, /export type ChatMessageRuntimeToolActivityGroupSourceMessage = ToolActivityGroupSourceMessage/);
   assert.doesNotMatch(screenSource, /getToolActivityGroupExpansionInheritanceItems,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeToolActivityGroups,/);
