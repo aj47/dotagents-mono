@@ -2021,6 +2021,9 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   const scrollToBottomButtonSource =
     chatMessageChromeSource.match(/export function ChatMessageScrollToBottomButton[\s\S]*?export function ChatMessageLoadingState/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeScrollToBottomButtonMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeScrollToBottomButtonMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonParts =\s+ChatRuntimeScrollToBottomButtonMobilePropsParts<[\s\S]*?ChatRuntimeScrollToBottomMobileRenderState,[\s\S]*?ChatMessageScrollToBottomButtonProps\['onPress'\],[\s\S]*?ChatMessageScrollToBottomButtonProps\['style'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonParts = ReturnType<typeof createChatRuntimeScrollToBottomButtonMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeScrollToBottomButtonMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const scrollToBottomButtonParts = createChatRuntimeScrollToBottomButtonMobilePropsParts\(\{\s+renderState,\s+onPress,\s+style,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const scrollToBottomButton = scrollToBottomButtonParts\.button;/);
@@ -2412,6 +2415,9 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   const loadingStateSource =
     chatMessageChromeSource.match(/export function ChatMessageLoadingState[\s\S]*?export function ChatMessageDebugPanel/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeLoadingStateMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeLoadingStateMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageLoadingStateParts =\s+ChatRuntimeLoadingStateMobilePropsParts<[\s\S]*?ChatRuntimeLoadingStateMobileRenderState,[\s\S]*?ImageSourcePropType,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ImageStyle>/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageLoadingStateParts = ReturnType<typeof createChatRuntimeLoadingStateMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeLoadingStateMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const loadingStateParts = createChatRuntimeLoadingStateMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+style,\s+spinnerStyle,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const loadingStateContainer = loadingStateParts\.container;/);
@@ -7153,6 +7159,9 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.doesNotMatch(screenSource, /<ChatMessageTurnDurationBadge\s+renderState=\{messageTurnDurationRenderState\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadge/);
   assert.match(chatMessageChromeSource, /createChatRuntimeTurnDurationBadgeMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeTurnDurationBadgeMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeParts =\s+ChatRuntimeTurnDurationBadgeMobilePropsParts<[\s\S]*?ChatMessageTurnDurationBadgeProps\['renderState'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['style'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['liveStyle'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['textStyle'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['liveTextStyle'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeParts = ReturnType<typeof createChatRuntimeTurnDurationBadgeMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeTurnDurationBadgeMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const turnDurationBadgeParts = createChatRuntimeTurnDurationBadgeMobilePropsParts\(\{\s+renderState,\s+style,\s+liveStyle,\s+textStyle,\s+liveTextStyle,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!turnDurationBadgeParts\.container\.shouldRender\) return null;/);

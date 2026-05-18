@@ -218,17 +218,20 @@ import {
   type ChatRuntimeKillSwitchConfirmationAlertState,
   type ChatRuntimeKillSwitchMobileRenderState,
   type ChatRuntimeKillSwitchResultLike,
+  type ChatRuntimeLoadingStateMobilePropsParts,
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
   type ChatRuntimePinMobileRenderState,
+  type ChatRuntimeScrollToBottomButtonMobilePropsParts,
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
   type ChatRuntimeStepSummaryCardMobilePropsParts,
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeToolApprovalMobileRenderState,
+  type ChatRuntimeTurnDurationBadgeMobilePropsParts,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
   type ChatRuntimeInlineActivityMobileRenderState,
@@ -1804,13 +1807,14 @@ type ChatMessageTurnDurationBadgeProps = {
   liveTextStyle?: StyleProp<TextStyle>;
 };
 
-type ChatMessageTurnDurationBadgeParts = ReturnType<typeof createChatRuntimeTurnDurationBadgeMobilePropsParts<
-  ChatMessageTurnDurationBadgeProps['renderState'],
-  ChatMessageTurnDurationBadgeProps['style'],
-  ChatMessageTurnDurationBadgeProps['liveStyle'],
-  ChatMessageTurnDurationBadgeProps['textStyle'],
-  ChatMessageTurnDurationBadgeProps['liveTextStyle']
->>;
+type ChatMessageTurnDurationBadgeParts =
+  ChatRuntimeTurnDurationBadgeMobilePropsParts<
+    ChatMessageTurnDurationBadgeProps['renderState'],
+    ChatMessageTurnDurationBadgeProps['style'],
+    ChatMessageTurnDurationBadgeProps['liveStyle'],
+    ChatMessageTurnDurationBadgeProps['textStyle'],
+    ChatMessageTurnDurationBadgeProps['liveTextStyle']
+  >;
 
 type ChatMessageTurnDurationBadgeContainerProps =
   ChatMessageTurnDurationBadgeParts['container']['props'] & {
@@ -3280,11 +3284,12 @@ type ChatMessageScrollToBottomButtonProps = {
   style: StyleProp<ViewStyle>;
 };
 
-type ChatMessageScrollToBottomButtonParts = ReturnType<typeof createChatRuntimeScrollToBottomButtonMobilePropsParts<
-  ChatRuntimeScrollToBottomMobileRenderState,
-  ChatMessageScrollToBottomButtonProps['onPress'],
-  ChatMessageScrollToBottomButtonProps['style']
->>;
+type ChatMessageScrollToBottomButtonParts =
+  ChatRuntimeScrollToBottomButtonMobilePropsParts<
+    ChatRuntimeScrollToBottomMobileRenderState,
+    ChatMessageScrollToBottomButtonProps['onPress'],
+    ChatMessageScrollToBottomButtonProps['style']
+  >;
 
 type ChatMessageScrollToBottomButtonTouchableProps =
   ChatMessageScrollToBottomButtonParts['button']['props'] & {
@@ -3304,12 +3309,13 @@ type ChatMessageLoadingStateProps = {
   spinnerStyle: StyleProp<ImageStyle>;
 };
 
-type ChatMessageLoadingStateParts = ReturnType<typeof createChatRuntimeLoadingStateMobilePropsParts<
-  ChatRuntimeLoadingStateMobileRenderState,
-  ImageSourcePropType,
-  StyleProp<ViewStyle>,
-  StyleProp<ImageStyle>
->>;
+type ChatMessageLoadingStateParts =
+  ChatRuntimeLoadingStateMobilePropsParts<
+    ChatRuntimeLoadingStateMobileRenderState,
+    ImageSourcePropType,
+    StyleProp<ViewStyle>,
+    StyleProp<ImageStyle>
+  >;
 
 type ChatMessageLoadingStateContainerProps =
   ChatMessageLoadingStateParts['container']['props'] & {
