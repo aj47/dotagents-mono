@@ -1,4 +1,5 @@
 import fs from "fs"
+import os from "os"
 import path from "path"
 
 import type { AgentProgressUpdate, ConversationMessage } from "../shared/types"
@@ -66,6 +67,7 @@ const BLOCKED_ROOT_PATHS = new Set([
   path.resolve(path.sep, "sys"),
   path.resolve(path.sep, "usr"),
   path.resolve(path.sep, "var"),
+  path.resolve(os.homedir()),
 ])
 const MARKDOWN_EXTENSIONS = new Set([".markdown", ".md", ".mdx"])
 const TEXT_EXTENSIONS = new Set([
