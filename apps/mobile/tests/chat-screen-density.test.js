@@ -8958,6 +8958,21 @@ test('keeps message runtime refs in chat chrome state hooks', () => {
   assert.doesNotMatch(screenSource, /const sendRef = useRef<\(text: string\) => Promise<void>>\(async \(\) => \{\}\);/);
 });
 
+test('memoizes remaining mobile chat chrome hook state objects', () => {
+  assert.match(chatMessageChromeSource, /const threadExpansionState = useMemo\(\s+\(\) => \(\{\s+expandedMessages,\s+expandedToolCalls,\s+expandedGroups,\s+expandedToolApprovals,\s+expandedDelegationConversationPreviews,\s+expandedDelegationToolPreviews,\s+setExpandedDelegationConversationPreviews,\s+setExpandedDelegationToolPreviews,\s+toolActivityGroups,\s+toggleMessageExpansion,\s+toggleToolCallExpansion,\s+toggleGroupExpansion,\s+toggleToolApprovalArguments,\s+resetThreadExpansionState,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /return threadExpansionState;/);
+  assert.match(chatMessageChromeSource, /const imageAttachmentPickerState = useMemo<ChatComposerRuntimeImageAttachmentPickerState>\(\s+\(\) => \(\{\s+handlePickImages,\s+\}\),\s+\[handlePickImages\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return imageAttachmentPickerState;/);
+  assert.match(chatMessageChromeSource, /const textEntrySubmissionState = useMemo<ChatComposerRuntimeTextEntrySubmissionState>\(\s+\(\) => \(\{\s+onChangeText: handleTextEntryChangeText,\s+onKeyPress: handleTextEntryKeyPress,\s+\}\),\s+\[handleTextEntryChangeText, handleTextEntryKeyPress\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return textEntrySubmissionState;/);
+  assert.match(chatMessageChromeSource, /const handsFreeControlActionsState = useMemo<ChatComposerRuntimeHandsFreeControlActionsState>\(\s+\(\) => \(\{\s+wakeHandsFreeByUser,\s+sleepHandsFreeByUser,\s+resumeHandsFreeByUser,\s+pauseHandsFreeByUser,\s+handleHandsFreePrimaryControl,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /return handsFreeControlActionsState;/);
+  assert.match(chatMessageChromeSource, /const foregroundState = useMemo<ChatRuntimeForegroundState>\(\s+\(\) => \(\{\s+appState,\s+isAppActive,\s+handsFreeRuntimeActive: handsFree && isFocused && isAppActive,\s+\}\),\s+\[appState, handsFree, isAppActive, isFocused\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return foregroundState;/);
+  assert.match(chatMessageChromeSource, /const handsFreeMutableState = useMemo<ChatRuntimeHandsFreeMutableState>\(\s+\(\) => \(\{\s+handsFreeRef,\s+handsFreePhaseRef,\s+ttsEnabledRef,\s+setHandsFreeRefValue,\s+setHandsFreePhaseRefValue,\s+\}\),\s+\[setHandsFreeRefValue, setHandsFreePhaseRefValue\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return handsFreeMutableState;/);
+});
+
 test('keeps session lifecycle refs in chat chrome state hooks', () => {
   assert.match(screenSource, /useChatMessageRuntimeSessionRefState,/);
   assert.match(screenSource, /useChatMessageRuntimeInitialMessageState,/);

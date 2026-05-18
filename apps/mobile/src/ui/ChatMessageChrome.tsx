@@ -7032,9 +7032,14 @@ export function useChatComposerRuntimeImageAttachmentPickerState({
     }
   }, [now, pendingImages, pickImages, setPendingImages, showImageAttachmentAlert]);
 
-  return {
-    handlePickImages,
-  };
+  const imageAttachmentPickerState = useMemo<ChatComposerRuntimeImageAttachmentPickerState>(
+    () => ({
+      handlePickImages,
+    }),
+    [handlePickImages],
+  );
+
+  return imageAttachmentPickerState;
 }
 
 export function useChatComposerRuntimeImageLibraryPickerState(
@@ -7195,22 +7200,40 @@ export function useChatMessageRuntimeThreadExpansionState<TMessage extends ChatM
     }));
   }, [isResponding, messages]);
 
-  return {
-    expandedMessages,
-    expandedToolCalls,
-    expandedGroups,
-    expandedToolApprovals,
-    expandedDelegationConversationPreviews,
-    expandedDelegationToolPreviews,
-    setExpandedDelegationConversationPreviews,
-    setExpandedDelegationToolPreviews,
-    toolActivityGroups,
-    toggleMessageExpansion,
-    toggleToolCallExpansion,
-    toggleGroupExpansion,
-    toggleToolApprovalArguments,
-    resetThreadExpansionState,
-  };
+  const threadExpansionState = useMemo(
+    () => ({
+      expandedMessages,
+      expandedToolCalls,
+      expandedGroups,
+      expandedToolApprovals,
+      expandedDelegationConversationPreviews,
+      expandedDelegationToolPreviews,
+      setExpandedDelegationConversationPreviews,
+      setExpandedDelegationToolPreviews,
+      toolActivityGroups,
+      toggleMessageExpansion,
+      toggleToolCallExpansion,
+      toggleGroupExpansion,
+      toggleToolApprovalArguments,
+      resetThreadExpansionState,
+    }),
+    [
+      expandedDelegationConversationPreviews,
+      expandedDelegationToolPreviews,
+      expandedGroups,
+      expandedMessages,
+      expandedToolApprovals,
+      expandedToolCalls,
+      resetThreadExpansionState,
+      toolActivityGroups,
+      toggleGroupExpansion,
+      toggleMessageExpansion,
+      toggleToolApprovalArguments,
+      toggleToolCallExpansion,
+    ],
+  );
+
+  return threadExpansionState;
 }
 
 export function createChatMessageRuntimeChromeProps<
@@ -8062,10 +8085,15 @@ export function useChatComposerRuntimeTextEntrySubmissionState({
     onChangeText(text);
   }, [onChangeText]);
 
-  return {
-    onChangeText: handleTextEntryChangeText,
-    onKeyPress: handleTextEntryKeyPress,
-  };
+  const textEntrySubmissionState = useMemo<ChatComposerRuntimeTextEntrySubmissionState>(
+    () => ({
+      onChangeText: handleTextEntryChangeText,
+      onKeyPress: handleTextEntryKeyPress,
+    }),
+    [handleTextEntryChangeText, handleTextEntryKeyPress],
+  );
+
+  return textEntrySubmissionState;
 }
 
 export function useChatComposerRuntimeHandsFreeControlActionsState({
@@ -8125,13 +8153,24 @@ export function useChatComposerRuntimeHandsFreeControlActionsState({
     pauseHandsFreeByUser();
   }, [pauseHandsFreeByUser, resumeHandsFreeByUser, state.phase, wakeHandsFreeByUser]);
 
-  return {
-    wakeHandsFreeByUser,
-    sleepHandsFreeByUser,
-    resumeHandsFreeByUser,
-    pauseHandsFreeByUser,
-    handleHandsFreePrimaryControl,
-  };
+  const handsFreeControlActionsState = useMemo<ChatComposerRuntimeHandsFreeControlActionsState>(
+    () => ({
+      wakeHandsFreeByUser,
+      sleepHandsFreeByUser,
+      resumeHandsFreeByUser,
+      pauseHandsFreeByUser,
+      handleHandsFreePrimaryControl,
+    }),
+    [
+      handleHandsFreePrimaryControl,
+      pauseHandsFreeByUser,
+      resumeHandsFreeByUser,
+      sleepHandsFreeByUser,
+      wakeHandsFreeByUser,
+    ],
+  );
+
+  return handsFreeControlActionsState;
 }
 
 export function useChatComposerRuntimeHandsFreeControlChromeActionsState(
@@ -9313,11 +9352,16 @@ export function useChatRuntimeForegroundState({
 
   const isAppActive = appState === 'active';
 
-  return {
-    appState,
-    isAppActive,
-    handsFreeRuntimeActive: handsFree && isFocused && isAppActive,
-  };
+  const foregroundState = useMemo<ChatRuntimeForegroundState>(
+    () => ({
+      appState,
+      isAppActive,
+      handsFreeRuntimeActive: handsFree && isFocused && isAppActive,
+    }),
+    [appState, handsFree, isAppActive, isFocused],
+  );
+
+  return foregroundState;
 }
 
 export function useChatRuntimeHandsFreeMutableState({
@@ -9344,13 +9388,18 @@ export function useChatRuntimeHandsFreeMutableState({
     handsFreePhaseRef.current = phase;
   }, []);
 
-  return {
-    handsFreeRef,
-    handsFreePhaseRef,
-    ttsEnabledRef,
-    setHandsFreeRefValue,
-    setHandsFreePhaseRefValue,
-  };
+  const handsFreeMutableState = useMemo<ChatRuntimeHandsFreeMutableState>(
+    () => ({
+      handsFreeRef,
+      handsFreePhaseRef,
+      ttsEnabledRef,
+      setHandsFreeRefValue,
+      setHandsFreePhaseRefValue,
+    }),
+    [setHandsFreeRefValue, setHandsFreePhaseRefValue],
+  );
+
+  return handsFreeMutableState;
 }
 
 export function useChatRuntimeHandsFreeToggleActionsState<TConfig extends object>({
