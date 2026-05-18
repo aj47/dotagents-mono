@@ -1494,9 +1494,9 @@ export default function ChatScreen({ route, navigation }: any) {
     send,
   });
 
-  const chatMessageRuntimeSurface: ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop> = {
-    ...chatRuntimeChrome.messageRuntime,
-    composer: {
+  const chatMessageRuntimeComposer = useMemo<
+    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['composer']
+  >(() => ({
       speechPreviewText: sttPreview,
       pendingImages,
       onRemovePendingImage: removePendingImage,
@@ -1538,8 +1538,47 @@ export default function ChatScreen({ route, navigation }: any) {
       onMicPressOut: handlePushToTalkPressOut,
       onMicPress: handleHandsFreePrimaryControl,
       micWrapperRef: micButtonRef,
-    },
-    dock: {
+    }), [
+      composerHasContent,
+      composerTextEntrySubmissionState.onChangeText,
+      composerTextEntrySubmissionState.onKeyPress,
+      conversationState,
+      handleHandsFreePrimaryControl,
+      handlePickImages,
+      handlePushToTalkPressIn,
+      handlePushToTalkPressOut,
+      handsFree,
+      handsFreeController.state.lastError,
+      handsFreeController.state.phase,
+      handsFreeController.statusLabel,
+      handsFreeForegroundOnly,
+      handsFreeSleepPhrase,
+      handsFreeWakePhrase,
+      input,
+      inputRef,
+      listening,
+      liveTranscript,
+      messageQueueEnabled,
+      micButtonRef,
+      pauseHandsFreeByUser,
+      pendingImages,
+      queueComposerInput,
+      removePendingImage,
+      responding,
+      resumeHandsFreeByUser,
+      sendComposerInput,
+      sleepHandsFreeByUser,
+      sttPreview,
+      toggleEditBeforeSend,
+      toggleTts,
+      ttsEnabled,
+      wakeHandsFreeByUser,
+      willCancel,
+    ]);
+
+  const chatMessageRuntimeDock = useMemo<
+    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['dock']
+  >(() => ({
       responseHistoryResponses: respondToUserHistory,
       responseHistoryTtsProvider: effectiveTtsProvider,
       responseHistoryRemoteTtsVoice: effectiveRemoteTtsVoice,
@@ -1571,8 +1610,43 @@ export default function ChatScreen({ route, navigation }: any) {
       lastFailedMessage,
       isResponding: responding,
       onConnectionBannerRetry: handleRetryLastFailedMessagePress,
-    },
-    threadList: {
+    }), [
+      config.apiKey,
+      config.baseUrl,
+      config.ttsPitch,
+      config.ttsVoiceId,
+      connectionState,
+      currentConversationId,
+      effectiveRemoteTtsModel,
+      effectiveRemoteTtsRate,
+      effectiveRemoteTtsVoice,
+      effectiveTtsProvider,
+      handleClearQueuedMessages,
+      handleProcessNextQueuedMessage,
+      handleRemoveQueuedMessage,
+      handleResumeMessageQueue,
+      handleRetryLastFailedMessagePress,
+      handleRetryQueuedMessage,
+      handleScrollToBottomPress,
+      handlePauseMessageQueue,
+      handleUpdateQueuedMessage,
+      handsFree,
+      isMessageQueuePaused,
+      lastFailedMessage,
+      listening,
+      liveTranscript,
+      messageQueueEnabled,
+      nextQueuedMessage,
+      queuedMessages,
+      respondToUserHistory,
+      responding,
+      shouldAutoScroll,
+      willCancel,
+    ]);
+
+  const chatMessageRuntimeThreadList = useMemo<
+    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['threadList']
+  >(() => ({
       messages,
       visibleMessageCount,
       groupByIndex: toolActivityGroups.groupByIndex,
@@ -1604,8 +1678,42 @@ export default function ChatScreen({ route, navigation }: any) {
       onBranchMessage: handleBranchFromMessagePress,
       onCopyMessage: handleCopyMessage,
       onToggleMessageExpansion: toggleMessageExpansion,
-    },
-    viewport: {
+    }), [
+      config.apiKey,
+      config.baseUrl,
+      copiedMessageIndex,
+      currentSession?.serverConversationId,
+      expandedDelegationConversationPreviews,
+      expandedDelegationToolPreviews,
+      expandedGroups,
+      expandedMessages,
+      expandedToolApprovals,
+      expandedToolCalls,
+      handleBranchFromMessagePress,
+      handleCopyMessage,
+      handleCopyToolPayload,
+      messages,
+      pendingBranchMessageIndex,
+      pendingToolApprovalResponseId,
+      respondToToolApproval,
+      responding,
+      setExpandedDelegationConversationPreviews,
+      setExpandedDelegationToolPreviews,
+      speakMessage,
+      speakingMessageIndex,
+      toggleGroupExpansion,
+      toggleMessageExpansion,
+      toggleToolApprovalArguments,
+      toggleToolCallExpansion,
+      toolActivityGroups.groupByIndex,
+      ttsEnabled,
+      turnDurations.byUserTimestamp,
+      visibleMessageCount,
+    ]);
+
+  const chatMessageRuntimeViewport = useMemo<
+    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['viewport']
+  >(() => ({
       scrollRef: scrollViewRef,
       onScroll: handleScroll,
       onScrollBeginDrag: handleScrollBeginDrag,
@@ -1628,8 +1736,34 @@ export default function ChatScreen({ route, navigation }: any) {
       requestDebugText: debugInfo,
       voiceDebugEnabled: handsFreeDebugEnabled,
       voiceEvents,
-    },
-    surface: {
+    }), [
+      availableSkills,
+      availableTasks,
+      debugInfo,
+      handleDeletePrompt,
+      handleQuickStartPress,
+      handleScroll,
+      handleScrollBeginDrag,
+      handleScrollEndDrag,
+      handsFreeDebugEnabled,
+      isLoadingQuickStartPrompts,
+      latestStepSummary,
+      loadEarlierMessages,
+      messageHistoryLoadIncrement,
+      messages.length,
+      openEditPromptModal,
+      predefinedPrompts,
+      runningPromptTaskId,
+      scrollViewRef,
+      scrollEventThrottleMs,
+      sessionStore.isLoadingMessages,
+      settingsClient,
+      voiceEvents,
+    ]);
+
+  const chatMessageRuntimeSurfaceInput = useMemo<
+    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['surface']
+  >(() => ({
       keyboardVerticalOffset: headerHeight,
       agentSelectorVisible,
       onAgentSelectorClose: closeAgentSelector,
@@ -1642,8 +1776,38 @@ export default function ChatScreen({ route, navigation }: any) {
       promptEditorIsSaving: isSavingPrompt,
       onPromptEditorClose: closePromptModal,
       onPromptEditorSave: handleSavePrompt,
-    },
-  };
+    }), [
+      addPromptModalVisible,
+      agentSelectorVisible,
+      closeAgentSelector,
+      closePromptModal,
+      handleSavePrompt,
+      headerHeight,
+      isSavingPrompt,
+      newPromptContent,
+      newPromptName,
+      promptEditorIsEditing,
+      setNewPromptContent,
+      setNewPromptName,
+    ]);
+
+  const chatMessageRuntimeSurface = useMemo<
+    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>
+  >(() => ({
+      ...chatRuntimeChrome.messageRuntime,
+      composer: chatMessageRuntimeComposer,
+      dock: chatMessageRuntimeDock,
+      threadList: chatMessageRuntimeThreadList,
+      viewport: chatMessageRuntimeViewport,
+      surface: chatMessageRuntimeSurfaceInput,
+    }), [
+      chatMessageRuntimeComposer,
+      chatMessageRuntimeDock,
+      chatMessageRuntimeSurfaceInput,
+      chatMessageRuntimeThreadList,
+      chatMessageRuntimeViewport,
+      chatRuntimeChrome.messageRuntime,
+    ]);
 
   return (
     <ChatMessageRuntimeChromeSurface<PredefinedPromptSummary, Loop>
