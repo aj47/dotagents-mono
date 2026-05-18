@@ -324,13 +324,16 @@ import {
   type ChatRuntimeToolExecutionCallListMobilePropsParts,
   type ChatRuntimeToolExecutionCallSectionMobilePropsParts,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsParts,
+  type ChatRuntimeToolExecutionCollapseControlMobileStyleSlots as SharedChatMessageToolExecutionCollapseControlStyleSlots,
   type ChatRuntimeToolExecutionCompactGroupMobilePropsParts,
   type ChatRuntimeToolExecutionCompactGroupMobileStyleSlots as SharedChatMessageToolExecutionCompactGroupStyleSlots,
   type ChatRuntimeToolExecutionCompactListMobilePropsParts,
   type ChatRuntimeToolExecutionCompactRowMobilePropsParts,
   type ChatRuntimeToolExecutionCompactRowMobileStyleSlots as SharedChatMessageToolExecutionCompactRowStyleSlots,
   type ChatRuntimeToolExecutionCopyButtonMobilePropsParts,
+  type ChatRuntimeToolExecutionCopyButtonMobileStyleSlots as SharedChatMessageToolExecutionCopyButtonStyleSlots,
   type ChatRuntimeToolExecutionDetailHeaderMobilePropsParts,
+  type ChatRuntimeToolExecutionDetailHeaderMobileStyleSlots as SharedChatMessageToolExecutionDetailHeaderStyleSlots,
   type ChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   type ChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
@@ -2588,12 +2591,13 @@ type ChatMessageToolExecutionCompactListParts =
 type ChatMessageToolExecutionCompactListContentProps =
   ChatMessageToolExecutionCompactListParts['group']['content'];
 
-type ChatMessageToolExecutionCollapseControlStyles = {
-  button: StyleProp<ViewStyle>;
-  pressed: StyleProp<ViewStyle>;
-  placement?: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-};
+type ChatMessageToolExecutionCollapseControlStyles =
+  SharedChatMessageToolExecutionCollapseControlStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolExecutionCollapseControlProps = {
   renderState: ToolExecutionDetailMobileCollapseControlRenderState;
@@ -2748,11 +2752,12 @@ type ChatMessageToolExecutionStackEmptyStateBlockProps = {
   emptyState: ChatMessageToolExecutionStackPanelParts['expandedGroup']['content']['emptyState'];
 };
 
-type ChatMessageToolExecutionCopyButtonStyles = {
-  button: StyleProp<ViewStyle>;
-  pressed: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-};
+type ChatMessageToolExecutionCopyButtonStyles =
+  SharedChatMessageToolExecutionCopyButtonStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolExecutionCopyButtonProps = {
   renderState: ToolExecutionDetailMobileCopyButtonRenderState;
@@ -2781,13 +2786,14 @@ type ChatMessageToolExecutionCopyButtonIconProps =
 type ChatMessageToolExecutionCopyButtonLabelProps =
   ChatMessageToolExecutionCopyButtonParts['container']['content']['label']['props'];
 
-type ChatMessageToolExecutionDetailHeaderStyles = {
-  header: StyleProp<ViewStyle>;
-  headerPressed: StyleProp<ViewStyle>;
-  toolName: StyleProp<TextStyle>;
-  expandHint: StyleProp<ViewStyle>;
-  expandHintText: StyleProp<TextStyle>;
-};
+type ChatMessageToolExecutionDetailHeaderStyles =
+  SharedChatMessageToolExecutionDetailHeaderStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolExecutionDetailHeaderProps = {
   renderState: ToolExecutionDetailMobileHeaderRenderState;

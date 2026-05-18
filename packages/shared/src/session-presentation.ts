@@ -3931,6 +3931,16 @@ export interface ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCopyButtonMobileStyleSlots<
+  TButtonStyle = unknown,
+  TPressedStyle = unknown,
+  TTextStyle = unknown,
+> {
+  button: TButtonStyle
+  pressed: TPressedStyle
+  text: TTextStyle
+}
+
 export interface ChatRuntimeToolExecutionCopyButtonMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -3944,15 +3954,8 @@ export interface ChatRuntimeToolExecutionCopyButtonMobilePropsPartsInput<
     label: string
   },
   TOnPress = unknown,
-  TStyles extends {
-    button: unknown
-    pressed: unknown
-    text: unknown
-  } = {
-    button: unknown
-    pressed: unknown
-    text: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCopyButtonMobileStyleSlots =
+    ChatRuntimeToolExecutionCopyButtonMobileStyleSlots,
 > {
   renderState: TRenderState
   onPress?: TOnPress
@@ -3972,15 +3975,8 @@ export interface ChatRuntimeToolExecutionCopyButtonMobilePropsParts<
     label: string
   },
   TOnPress = unknown,
-  TStyles extends {
-    button: unknown
-    pressed: unknown
-    text: unknown
-  } = {
-    button: unknown
-    pressed: unknown
-    text: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCopyButtonMobileStyleSlots =
+    ChatRuntimeToolExecutionCopyButtonMobileStyleSlots,
 > {
   container: {
     props: {
@@ -4005,6 +4001,20 @@ export interface ChatRuntimeToolExecutionCopyButtonMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionDetailHeaderMobileStyleSlots<
+  THeaderStyle = unknown,
+  THeaderPressedStyle = unknown,
+  TToolNameStyle = unknown,
+  TExpandHintStyle = unknown,
+  TExpandHintTextStyle = unknown,
+> {
+  header: THeaderStyle
+  headerPressed: THeaderPressedStyle
+  toolName: TToolNameStyle
+  expandHint: TExpandHintStyle
+  expandHintText: TExpandHintTextStyle
+}
+
 export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -4024,19 +4034,8 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsPartsInput<
     toggleLabel: string
   },
   TOnPress = unknown,
-  TStyles extends {
-    header: unknown
-    headerPressed: unknown
-    toolName: unknown
-    expandHint: unknown
-    expandHintText: unknown
-  } = {
-    header: unknown
-    headerPressed: unknown
-    toolName: unknown
-    expandHint: unknown
-    expandHintText: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionDetailHeaderMobileStyleSlots =
+    ChatRuntimeToolExecutionDetailHeaderMobileStyleSlots,
 > {
   renderState: TRenderState
   toolName: string
@@ -4063,19 +4062,8 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
     toggleLabel: string
   },
   TOnPress = unknown,
-  TStyles extends {
-    header: unknown
-    headerPressed: unknown
-    toolName: unknown
-    expandHint: unknown
-    expandHintText: unknown
-  } = {
-    header: unknown
-    headerPressed: unknown
-    toolName: unknown
-    expandHint: unknown
-    expandHintText: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionDetailHeaderMobileStyleSlots =
+    ChatRuntimeToolExecutionDetailHeaderMobileStyleSlots,
 > {
   container: {
     props: {
@@ -4163,6 +4151,18 @@ export interface ChatRuntimeToolExecutionCallSectionMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCollapseControlMobileStyleSlots<
+  TButtonStyle = unknown,
+  TPressedStyle = unknown,
+  TPlacementStyle = unknown,
+  TTextStyle = unknown,
+> {
+  button: TButtonStyle
+  pressed: TPressedStyle
+  placement?: TPlacementStyle
+  text: TTextStyle
+}
+
 export interface ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -4178,17 +4178,8 @@ export interface ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput<
     label: string
   },
   TOnPress = unknown,
-  TStyles extends {
-    button: unknown
-    pressed: unknown
-    placement?: unknown
-    text: unknown
-  } = {
-    button: unknown
-    pressed: unknown
-    placement?: unknown
-    text: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCollapseControlMobileStyleSlots =
+    ChatRuntimeToolExecutionCollapseControlMobileStyleSlots,
 > {
   renderState: TRenderState
   onPress?: TOnPress
@@ -4210,17 +4201,8 @@ export interface ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
     label: string
   },
   TOnPress = unknown,
-  TStyles extends {
-    button: unknown
-    pressed: unknown
-    placement?: unknown
-    text: unknown
-  } = {
-    button: unknown
-    pressed: unknown
-    placement?: unknown
-    text: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCollapseControlMobileStyleSlots =
+    ChatRuntimeToolExecutionCollapseControlMobileStyleSlots,
 > {
   container: {
     props: {
@@ -21923,11 +21905,7 @@ export function createChatRuntimeToolExecutionCopyButtonMobilePropsParts<
     label: string
   },
   TOnPress,
-  TStyles extends {
-    button: unknown
-    pressed: unknown
-    text: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCopyButtonMobileStyleSlots,
 >({
   renderState,
   onPress,
@@ -21980,13 +21958,7 @@ export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
     toggleLabel: string
   },
   TOnPress,
-  TStyles extends {
-    header: unknown
-    headerPressed: unknown
-    toolName: unknown
-    expandHint: unknown
-    expandHintText: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionDetailHeaderMobileStyleSlots,
 >({
   renderState,
   toolName,
@@ -22096,12 +22068,7 @@ export function createChatRuntimeToolExecutionCollapseControlMobilePropsParts<
     label: string
   },
   TOnPress,
-  TStyles extends {
-    button: unknown
-    pressed: unknown
-    placement?: unknown
-    text: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCollapseControlMobileStyleSlots,
 >({
   renderState,
   onPress,
