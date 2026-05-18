@@ -278,6 +278,7 @@ import {
   type ChatRuntimeHomeQuickStartItemsMobileStateInput,
   type ChatRuntimeHomeQuickStartsMobilePropsParts,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
+  type ChatRuntimeHomeQuickStartsMobileStyleSlots as SharedChatConversationHomeQuickStartsStyleSlots,
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
@@ -1708,26 +1709,27 @@ export function useChatConversationHomeQuickStartActionsState<
   };
 }
 
-type ChatConversationHomeQuickStartsStyles = {
-  card: StyleProp<ViewStyle>;
-  emptyText: StyleProp<TextStyle>;
-  grid: StyleProp<ViewStyle>;
-  shortcutCard: StyleProp<ViewStyle>;
-  shortcutCardAdd: StyleProp<ViewStyle>;
-  shortcutCardDisabled: StyleProp<ViewStyle>;
-  shortcutCardPressed: StyleProp<ViewStyle>;
-  sourcePill: StyleProp<ViewStyle>;
-  sourceLabel: StyleProp<TextStyle>;
-  addIcon: StyleProp<TextStyle>;
-  title: StyleProp<TextStyle>;
-  titleAdd: StyleProp<TextStyle>;
-  description: StyleProp<TextStyle>;
-  actions: StyleProp<ViewStyle>;
-  actionButton: StyleProp<ViewStyle>;
-  actionButtonPressed: StyleProp<ViewStyle>;
-  actionText: StyleProp<TextStyle>;
-  actionDangerText: StyleProp<TextStyle>;
-};
+type ChatConversationHomeQuickStartsStyles =
+  SharedChatConversationHomeQuickStartsStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatConversationHomeQuickStartsProps<
   TPrompt extends PredefinedPromptSummary,

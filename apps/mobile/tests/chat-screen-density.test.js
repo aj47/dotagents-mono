@@ -2447,6 +2447,12 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /export type ChatMessageConversationViewportStyleSlots<\s+TFrameStyles,\s+TScrollViewportStyles,\s+TLoadingStateStyles,\s+THomeQuickStartStyles,\s+THistoryBannerStyles,\s+TStepSummaryStyles,\s+TDebugPanelStyles,/);
   assert.match(sessionPresentationSource, /\}\): ChatMessageConversationViewportStyleSlots<\s+TFrameStyles,\s+TScrollViewportStyles,\s+TLoadingStateStyles,\s+THomeQuickStartStyles,\s+THistoryBannerStyles,\s+TStepSummaryStyles,\s+TDebugPanelStyles\s+> \{/);
   assert.match(sessionPresentationSource, /type ChatMessageConversationViewportStyleSlotsFromStyleSource<[\s\S]*?> = ChatMessageConversationViewportStyleSlots</);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeHomeQuickStartsMobileStyleSlots<\s+TCardStyle = unknown,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeHomeQuickStartsMobileStylesLike\s+extends ChatRuntimeHomeQuickStartsMobileStyleSlots/);
+  assert.match(sessionPresentationSource, /ChatRuntimeHomeQuickStartsMobileStyleSlots<\s+TStyles\["chatHomeCard"\],/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHomeQuickStartsMobileStyleSlots as SharedChatConversationHomeQuickStartsStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomeQuickStartsStyles =\s+SharedChatConversationHomeQuickStartsStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomeQuickStartsStyles = \{\s+card: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationViewportStyleSlots as SharedChatMessageConversationViewportStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationViewportStyleSlots =\s+SharedChatMessageConversationViewportStyleSlots<\s+Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingStyle' \| 'rootStyle'>,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationViewportStyleSlots = \{\s+frame: Pick<ChatMessageConversationFrameProps,/);

@@ -733,26 +733,48 @@ export interface ChatRuntimeHomeQuickStartItemsMobileStateInput<
   canAddPrompt?: boolean
 }
 
-export interface ChatRuntimeHomeQuickStartsMobileStylesLike {
-  card: unknown
-  emptyText: unknown
-  grid: unknown
-  shortcutCard: unknown
-  shortcutCardAdd: unknown
-  shortcutCardDisabled: unknown
-  shortcutCardPressed: unknown
-  sourcePill: unknown
-  sourceLabel: unknown
-  addIcon: unknown
-  title: unknown
-  titleAdd: unknown
-  description: unknown
-  actions: unknown
-  actionButton: unknown
-  actionButtonPressed: unknown
-  actionText: unknown
-  actionDangerText: unknown
+export interface ChatRuntimeHomeQuickStartsMobileStyleSlots<
+  TCardStyle = unknown,
+  TEmptyTextStyle = unknown,
+  TGridStyle = unknown,
+  TShortcutCardStyle = unknown,
+  TShortcutCardAddStyle = unknown,
+  TShortcutCardDisabledStyle = unknown,
+  TShortcutCardPressedStyle = unknown,
+  TSourcePillStyle = unknown,
+  TSourceLabelStyle = unknown,
+  TAddIconStyle = unknown,
+  TTitleStyle = unknown,
+  TTitleAddStyle = unknown,
+  TDescriptionStyle = unknown,
+  TActionsStyle = unknown,
+  TActionButtonStyle = unknown,
+  TActionButtonPressedStyle = unknown,
+  TActionTextStyle = unknown,
+  TActionDangerTextStyle = unknown,
+> {
+  card: TCardStyle
+  emptyText: TEmptyTextStyle
+  grid: TGridStyle
+  shortcutCard: TShortcutCardStyle
+  shortcutCardAdd: TShortcutCardAddStyle
+  shortcutCardDisabled: TShortcutCardDisabledStyle
+  shortcutCardPressed: TShortcutCardPressedStyle
+  sourcePill: TSourcePillStyle
+  sourceLabel: TSourceLabelStyle
+  addIcon: TAddIconStyle
+  title: TTitleStyle
+  titleAdd: TTitleAddStyle
+  description: TDescriptionStyle
+  actions: TActionsStyle
+  actionButton: TActionButtonStyle
+  actionButtonPressed: TActionButtonPressedStyle
+  actionText: TActionTextStyle
+  actionDangerText: TActionDangerTextStyle
 }
+
+export interface ChatRuntimeHomeQuickStartsMobileStylesLike
+  extends ChatRuntimeHomeQuickStartsMobileStyleSlots {}
 
 export interface ChatRuntimeHomeQuickStartsMobileStopPropagationEventLike {
   stopPropagation: () => void
@@ -28486,26 +28508,26 @@ type ChatMessageConversationViewportStyleSlotsFromStyleSource<
     style: TStyles["loadingState"]
     spinnerStyle: TStyles["loadingSpinner"]
   },
-  {
-    card: TStyles["chatHomeCard"]
-    emptyText: TStyles["chatHomeEmptyText"]
-    grid: TStyles["chatHomeShortcutGrid"]
-    shortcutCard: TStyles["chatHomeShortcutCard"]
-    shortcutCardAdd: TStyles["chatHomeShortcutCardAdd"]
-    shortcutCardDisabled: TStyles["chatHomeShortcutCardDisabled"]
-    shortcutCardPressed: TStyles["chatHomeShortcutCardPressed"]
-    sourcePill: TStyles["chatHomeShortcutSourcePill"]
-    sourceLabel: TStyles["chatHomeShortcutSourceLabel"]
-    addIcon: TStyles["chatHomeShortcutAddIcon"]
-    title: TStyles["chatHomeShortcutTitle"]
-    titleAdd: TStyles["chatHomeShortcutTitleAdd"]
-    description: TStyles["chatHomeShortcutDescription"]
-    actions: TStyles["chatHomeShortcutActions"]
-    actionButton: TStyles["chatHomeShortcutActionButton"]
-    actionButtonPressed: TStyles["chatHomeShortcutActionButtonPressed"]
-    actionText: TStyles["chatHomeShortcutActionText"]
-    actionDangerText: TStyles["chatHomeShortcutActionDangerText"]
-  },
+  ChatRuntimeHomeQuickStartsMobileStyleSlots<
+    TStyles["chatHomeCard"],
+    TStyles["chatHomeEmptyText"],
+    TStyles["chatHomeShortcutGrid"],
+    TStyles["chatHomeShortcutCard"],
+    TStyles["chatHomeShortcutCardAdd"],
+    TStyles["chatHomeShortcutCardDisabled"],
+    TStyles["chatHomeShortcutCardPressed"],
+    TStyles["chatHomeShortcutSourcePill"],
+    TStyles["chatHomeShortcutSourceLabel"],
+    TStyles["chatHomeShortcutAddIcon"],
+    TStyles["chatHomeShortcutTitle"],
+    TStyles["chatHomeShortcutTitleAdd"],
+    TStyles["chatHomeShortcutDescription"],
+    TStyles["chatHomeShortcutActions"],
+    TStyles["chatHomeShortcutActionButton"],
+    TStyles["chatHomeShortcutActionButtonPressed"],
+    TStyles["chatHomeShortcutActionText"],
+    TStyles["chatHomeShortcutActionDangerText"]
+  >,
   {
     container: TStyles["loadOlderContainer"]
     summary: TStyles["loadOlderText"]
