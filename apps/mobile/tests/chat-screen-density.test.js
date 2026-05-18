@@ -2489,6 +2489,9 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationViewportMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationViewportMobilePropsParts/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeViewportChromeMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeViewportChromePropsInput<[\s\S]*?> =[\s\S]*?onQuickStartPress: \(item: ChatConversationHomeQuickStartItem<TPrompt, TTask>\) => void;[\s\S]*?onEditPrompt: \(prompt: TPrompt\) => void;[\s\S]*?onDeletePrompt: \(prompt: TPrompt\) => void;[\s\S]*?onLoadEarlierMessages\?: \(event: GestureResponderEvent\) => void;/);
+  assert.doesNotMatch(chatMessageChromeSource, /onQuickStartPress: ChatConversationHomeQuickStartsProps<TPrompt, TTask>\['onPress'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /onLoadEarlierMessages\?: ChatMessageHistoryBannerProps\['onLoadEarlier'\]/);
   assert.match(chatMessageChromeSource, /const chatMessageRuntimeViewport = createChatRuntimeViewportChromeMobileProps<[\s\S]*?>\(\{\s+\.\.\.viewport,\s+colors,\s+loadingSpinnerSource: spinnerSource,\s+visibleMessageCount: conversationThreadListState\.visibleMessageCount,\s+totalMessageCount: conversationThreadListState\.totalMessageCount,\s+hiddenMessageCount: conversationThreadListState\.hiddenMessageCount,/);
   assert.match(sessionPresentationSource, /loadingState: \{\s+renderState: viewportChromeRenderState\.content\.loading,\s+spinnerSource: loadingSpinnerSource,\s+\}/);
   assert.match(sessionPresentationSource, /homeQuickStarts: \{\s+shouldRender: viewportChromeRenderState\.content\.homeQuickStarts\.shouldRender,\s+items: viewportChromeRenderState\.quickStartItems,[\s\S]*?onPress: onQuickStartPress,/);

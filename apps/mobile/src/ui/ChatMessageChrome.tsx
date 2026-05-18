@@ -3794,9 +3794,9 @@ type ChatMessageRuntimeViewportChromePropsInput<
     >['canAddPrompt'];
     isLoadingQuickStartPrompts: boolean;
     runningPromptTaskId?: string | null;
-    onQuickStartPress: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onPress'];
-    onEditPrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onEditPrompt'];
-    onDeletePrompt: ChatConversationHomeQuickStartsProps<TPrompt, TTask>['onDeletePrompt'];
+    onQuickStartPress: (item: ChatConversationHomeQuickStartItem<TPrompt, TTask>) => void;
+    onEditPrompt: (prompt: TPrompt) => void;
+    onDeletePrompt: (prompt: TPrompt) => void;
     visibleMessageCount: ChatRuntimeViewportChromeMobileRenderStateInput<
       TPrompt,
       PromptLibrarySkillLike & { id: string },
@@ -3827,7 +3827,7 @@ type ChatMessageRuntimeViewportChromePropsInput<
       PromptLibrarySkillLike & { id: string },
       TTask
     >['colors'];
-    onLoadEarlierMessages?: ChatMessageHistoryBannerProps['onLoadEarlier'];
+    onLoadEarlierMessages?: (event: GestureResponderEvent) => void;
     requestDebugText?: ChatRuntimeViewportChromeMobileRenderStateInput<
       TPrompt,
       PromptLibrarySkillLike & { id: string },
