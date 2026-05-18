@@ -2602,7 +2602,7 @@ type ChatMessageToolExecutionExpandedGroupParts =
     ChatMessageToolExecutionExpandedGroupProps['topCollapseRenderState'],
     ChatMessageToolExecutionExpandedGroupProps['bottomCollapseRenderState'],
     ChatMessageToolExecutionExpandedGroupProps['onCollapsePress'],
-    NonNullable<ChatMessageToolExecutionExpandedGroupProps['emptyState']>,
+    ChatMessageToolExecutionExpandedGroupProps['emptyState'],
     ChatMessageToolExecutionExpandedGroupProps['styles']
   >;
 
@@ -10755,11 +10755,12 @@ export function ChatMessageToolExecutionCompactGroup({
   styles,
   children,
 }: ChatMessageToolExecutionCompactGroupProps) {
-  const compactGroupParts = createChatRuntimeToolExecutionCompactGroupMobilePropsParts({
-    renderState,
-    onPress,
-    styles,
-  });
+  const compactGroupParts: ChatMessageToolExecutionCompactGroupParts =
+    createChatRuntimeToolExecutionCompactGroupMobilePropsParts({
+      renderState,
+      onPress,
+      styles,
+    });
 
   return (
     <ChatMessageToolExecutionCompactGroupPressable
@@ -10785,10 +10786,11 @@ export function ChatMessageToolExecutionCompactRow({
   renderState,
   styles,
 }: ChatMessageToolExecutionCompactRowProps) {
-  const compactRowParts = createChatRuntimeToolExecutionCompactRowMobilePropsParts({
-    renderState,
-    styles,
-  });
+  const compactRowParts: ChatMessageToolExecutionCompactRowParts =
+    createChatRuntimeToolExecutionCompactRowMobilePropsParts({
+      renderState,
+      styles,
+    });
 
   return (
     <ChatMessageToolExecutionCompactRowContainer
@@ -10941,14 +10943,15 @@ export function ChatMessageToolExecutionCompactList({
   groupStyles,
   rowStyles,
 }: ChatMessageToolExecutionCompactListProps) {
-  const compactListParts = createChatRuntimeToolExecutionCompactListMobilePropsParts({
-    shouldRender,
-    renderState,
-    rows,
-    onPress,
-    groupStyles,
-    rowStyles,
-  });
+  const compactListParts: ChatMessageToolExecutionCompactListParts =
+    createChatRuntimeToolExecutionCompactListMobilePropsParts({
+      shouldRender,
+      renderState,
+      rows,
+      onPress,
+      groupStyles,
+      rowStyles,
+    });
 
   if (!compactListParts.group.shouldRender) return null;
 
@@ -10983,11 +10986,12 @@ export function ChatMessageToolExecutionCollapseControl({
   onPress,
   styles,
 }: ChatMessageToolExecutionCollapseControlProps) {
-  const collapseControlParts = createChatRuntimeToolExecutionCollapseControlMobilePropsParts({
-    renderState,
-    onPress,
-    styles,
-  });
+  const collapseControlParts: ChatMessageToolExecutionCollapseControlParts =
+    createChatRuntimeToolExecutionCollapseControlMobilePropsParts({
+      renderState,
+      onPress,
+      styles,
+    });
 
   return (
     <ChatMessageToolExecutionCollapseControlPressable
@@ -11055,16 +11059,17 @@ export function ChatMessageToolExecutionExpandedGroup({
   styles,
   children,
 }: ChatMessageToolExecutionExpandedGroupProps) {
-  const expandedGroupParts = createChatRuntimeToolExecutionExpandedGroupMobilePropsParts({
-    topCollapseRenderState,
-    bottomCollapseRenderState,
-    onCollapsePress,
-    isPending,
-    allSuccess,
-    hasErrors,
-    emptyState,
-    styles,
-  });
+  const expandedGroupParts: ChatMessageToolExecutionExpandedGroupParts =
+    createChatRuntimeToolExecutionExpandedGroupMobilePropsParts({
+      topCollapseRenderState,
+      bottomCollapseRenderState,
+      onCollapsePress,
+      isPending,
+      allSuccess,
+      hasErrors,
+      emptyState,
+      styles,
+    });
 
   return (
     <ChatMessageToolExecutionExpandedGroupContainer
@@ -11145,12 +11150,13 @@ export function ChatMessageToolExecutionPanel({
   expanded,
   children,
 }: ChatMessageToolExecutionPanelProps) {
-  const panelParts = createChatRuntimeToolExecutionPanelMobilePropsParts({
-    shouldRender,
-    isExpanded,
-    compact,
-    expanded,
-  });
+  const panelParts: ChatMessageToolExecutionPanelParts =
+    createChatRuntimeToolExecutionPanelMobilePropsParts({
+      shouldRender,
+      isExpanded,
+      compact,
+      expanded,
+    });
 
   return (
     <ChatMessageToolExecutionPanelContent
@@ -11169,18 +11175,19 @@ export function ChatMessageToolExecutionPanelContent({
 }: ChatMessageToolExecutionPanelContentProps) {
   if (!shouldRender) return null;
 
-  const panelShellParts = createChatRuntimeToolExecutionPanelShellMobilePropsParts({
-    compactList: (
-      <ChatMessageToolExecutionCompactList
-        {...compactList.props}
-      />
-    ),
-    expandedGroup: expandedGroup.shouldRender ? (
-      <ChatMessageToolExecutionExpandedGroup {...expandedGroup.props}>
-        {children}
-      </ChatMessageToolExecutionExpandedGroup>
-    ) : null,
-  });
+  const panelShellParts: ChatMessageToolExecutionPanelShellParts =
+    createChatRuntimeToolExecutionPanelShellMobilePropsParts({
+      compactList: (
+        <ChatMessageToolExecutionCompactList
+          {...compactList.props}
+        />
+      ),
+      expandedGroup: expandedGroup.shouldRender ? (
+        <ChatMessageToolExecutionExpandedGroup {...expandedGroup.props}>
+          {children}
+        </ChatMessageToolExecutionExpandedGroup>
+      ) : null,
+    });
 
   return (
     <ChatMessageToolExecutionPanelShellContent
@@ -11209,12 +11216,13 @@ export function ChatMessageToolExecutionStack({
   detailRows,
   styles,
 }: ChatMessageToolExecutionStackProps) {
-  const stackPanelParts = createChatRuntimeToolExecutionStackPanelMobilePropsParts({
-    compact,
-    expanded,
-    detailRows,
-    styles,
-  });
+  const stackPanelParts: ChatMessageToolExecutionStackPanelParts =
+    createChatRuntimeToolExecutionStackPanelMobilePropsParts({
+      compact,
+      expanded,
+      detailRows,
+      styles,
+    });
 
   return (
     <ChatMessageToolExecutionStackContent
