@@ -775,7 +775,7 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolApprovalMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalProps =\s+ChatRuntimeToolApprovalMobilePropsPartsInput<\s+\(event: GestureResponderEvent\) => void,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ChatMessageToolApprovalStyles\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalProps = \{[\s\S]*?renderState: ChatRuntimeToolApprovalMobileRenderState;[\s\S]*?styles: ChatMessageToolApprovalStyles;[\s\S]*?\};/);
-  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalParts =\s+ChatRuntimeToolApprovalMobilePropsParts<[\s\S]*?ChatMessageToolApprovalProps\['onToggleArguments'\],[\s\S]*?ChatMessageToolApprovalProps\['onDeny'\],[\s\S]*?ChatMessageToolApprovalProps\['onApprove'\],[\s\S]*?ChatMessageToolApprovalStyles/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalParts =\s+ChatRuntimeToolApprovalMobilePropsParts<[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ChatMessageToolApprovalStyles/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeToolApprovalMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export type ChatMessageToolApprovalStyleSlots<\s+TCardStyle,\s+THeaderStyle,\s+TContentStyle,\s+TContentDisabledStyle,/);
   assert.match(sessionPresentationSource, /toolApproval: ChatMessageToolApprovalStyleSlots<\s+TStyles\["toolApprovalCard"\],\s+TStyles\["toolApprovalHeader"\],\s+TStyles\["toolApprovalContent"\],/);
@@ -2138,7 +2138,7 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /type ChatRuntimeScrollToBottomButtonMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonProps =\s+ChatRuntimeScrollToBottomButtonMobilePropsPartsInput<\s+ChatRuntimeScrollToBottomMobileRenderState,[\s\S]*?GestureResponderEvent[\s\S]*?StyleProp<ViewStyle>\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonProps = \{[\s\S]*?renderState: ChatRuntimeScrollToBottomMobileRenderState;[\s\S]*?style: StyleProp<ViewStyle>;[\s\S]*?\};/);
-  assert.match(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonParts =\s+ChatRuntimeScrollToBottomButtonMobilePropsParts<[\s\S]*?ChatRuntimeScrollToBottomMobileRenderState,[\s\S]*?ChatMessageScrollToBottomButtonProps\['onPress'\],[\s\S]*?ChatMessageScrollToBottomButtonProps\['style'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonParts =\s+ChatRuntimeScrollToBottomButtonMobilePropsParts<[\s\S]*?ChatRuntimeScrollToBottomMobileRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?StyleProp<ViewStyle>/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonParts = ReturnType<typeof createChatRuntimeScrollToBottomButtonMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeScrollToBottomButtonMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeScrollToBottomButtonMobilePropsParts/);
@@ -2714,7 +2714,7 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /type ChatRuntimeConnectionBannerMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerProps =\s+ChatRuntimeConnectionBannerMobilePropsPartsInput<\s+ChatRuntimeConnectionBannerMobileRenderState,[\s\S]*?GestureResponderEvent[\s\S]*?ChatMessageConnectionBannerStyles\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConnectionBannerProps = \{[\s\S]*?renderState: ChatRuntimeConnectionBannerMobileRenderState;[\s\S]*?styles: ChatMessageConnectionBannerStyles;[\s\S]*?\};/);
-  assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerParts =\s+ChatRuntimeConnectionBannerMobilePropsParts<[\s\S]*?ChatMessageConnectionBannerProps\['renderState'\],[\s\S]*?ChatMessageConnectionBannerProps\['onRetry'\],[\s\S]*?ChatMessageConnectionBannerProps\['styles'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerParts =\s+ChatRuntimeConnectionBannerMobilePropsParts<[\s\S]*?ChatRuntimeConnectionBannerMobileRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ChatMessageConnectionBannerStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConnectionBannerParts = ReturnType<typeof createChatRuntimeConnectionBannerMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConnectionBannerMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConnectionBannerMobilePropsParts/);
@@ -5994,7 +5994,7 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummaryCardStyles = \{\s+card: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageStepSummaryCardProps =\s+ChatRuntimeStepSummaryCardMobilePropsPartsInput<\s+ChatRuntimeStepSummaryMobileRenderState,[\s\S]*?ChatMessageStepSummaryCardStyles\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummaryCardProps = \{[\s\S]*?renderState: ChatRuntimeStepSummaryMobileRenderState;[\s\S]*?styles: ChatMessageStepSummaryCardStyles;[\s\S]*?\};/);
-  assert.match(chatMessageChromeSource, /type ChatMessageStepSummaryCardParts =\s+ChatRuntimeStepSummaryCardMobilePropsParts<[\s\S]*?ChatMessageStepSummaryCardProps\['renderState'\],[\s\S]*?ChatMessageStepSummaryCardProps\['styles'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageStepSummaryCardParts =\s+ChatRuntimeStepSummaryCardMobilePropsParts<[\s\S]*?ChatRuntimeStepSummaryMobileRenderState,[\s\S]*?ChatMessageStepSummaryCardStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummary(Text|Badge|Header)Part = \{/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummaryCardParts = ReturnType<typeof createChatRuntimeStepSummaryCardMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeStepSummaryCardMobilePropsPartsInput</);
@@ -8474,7 +8474,7 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   const debugPanelStackSource =
     chatMessageChromeSource.match(/export function ChatMessageDebugPanelStack[\s\S]*?export function ChatMessageConversationDock/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /type ChatRuntimeDebugPanelStackMobilePropsParts,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageDebugPanelStackParts =\s+ChatRuntimeDebugPanelStackMobilePropsParts</);
+  assert.match(chatMessageChromeSource, /type ChatMessageDebugPanelStackParts =\s+ChatRuntimeDebugPanelStackMobilePropsParts<\s+ChatRuntimeDebugPanelsMobileRenderState\['requestShouldRender'\],[\s\S]*?ChatRuntimeDebugPanelsMobileRenderState\['requestRows'\],[\s\S]*?ChatRuntimeDebugPanelsMobileRenderState\['voiceShouldRender'\],[\s\S]*?ChatRuntimeDebugPanelsMobileRenderState\['voiceRows'\],[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<TextStyle>\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDebugPanelStackParts = ReturnType<typeof createChatRuntimeDebugPanelStackMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeDebugPanelStackMobilePropsPartsInput</);
   assert.match(debugPanelStackSource, /const debugPanelStackParts: ChatMessageDebugPanelStackParts =\s+createChatRuntimeDebugPanelStackMobilePropsParts\(\{\s+requestShouldRender,\s+requestRows,\s+voiceShouldRender,\s+voiceRows,\s+panelStyle,\s+textStyle,\s+\}\);/);

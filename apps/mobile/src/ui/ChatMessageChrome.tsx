@@ -2178,9 +2178,9 @@ type ChatMessageToolApprovalProps =
 
 type ChatMessageToolApprovalParts =
   ChatRuntimeToolApprovalMobilePropsParts<
-    ChatMessageToolApprovalProps['onToggleArguments'],
-    ChatMessageToolApprovalProps['onDeny'],
-    ChatMessageToolApprovalProps['onApprove'],
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
     ChatMessageToolApprovalStyles
   >;
 
@@ -3524,8 +3524,8 @@ type ChatMessageStepSummaryCardProps =
 
 type ChatMessageStepSummaryCardParts =
   ChatRuntimeStepSummaryCardMobilePropsParts<
-    ChatMessageStepSummaryCardProps['renderState'],
-    ChatMessageStepSummaryCardProps['styles']
+    ChatRuntimeStepSummaryMobileRenderState,
+    ChatMessageStepSummaryCardStyles
   >;
 
 type ChatMessageStepSummaryCardViewProps =
@@ -3573,8 +3573,8 @@ type ChatMessageScrollToBottomButtonProps =
 type ChatMessageScrollToBottomButtonParts =
   ChatRuntimeScrollToBottomButtonMobilePropsParts<
     ChatRuntimeScrollToBottomMobileRenderState,
-    ChatMessageScrollToBottomButtonProps['onPress'],
-    ChatMessageScrollToBottomButtonProps['style']
+    (event: GestureResponderEvent) => void,
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageScrollToBottomButtonTouchableProps =
@@ -3644,12 +3644,12 @@ type ChatMessageDebugPanelStackProps =
 
 type ChatMessageDebugPanelStackParts =
   ChatRuntimeDebugPanelStackMobilePropsParts<
-    ChatMessageDebugPanelStackProps['requestShouldRender'],
-    ChatMessageDebugPanelStackProps['requestRows'],
-    ChatMessageDebugPanelStackProps['voiceShouldRender'],
-    ChatMessageDebugPanelStackProps['voiceRows'],
-    ChatMessageDebugPanelStackProps['panelStyle'],
-    ChatMessageDebugPanelStackProps['textStyle']
+    ChatRuntimeDebugPanelsMobileRenderState['requestShouldRender'],
+    ChatRuntimeDebugPanelsMobileRenderState['requestRows'],
+    ChatRuntimeDebugPanelsMobileRenderState['voiceShouldRender'],
+    ChatRuntimeDebugPanelsMobileRenderState['voiceRows'],
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
   >;
 
 type ChatMessageConversationViewportStyleSlots =
@@ -3931,9 +3931,9 @@ type ChatMessageConnectionBannerProps =
 
 type ChatMessageConnectionBannerParts =
   ChatRuntimeConnectionBannerMobilePropsParts<
-    ChatMessageConnectionBannerProps['renderState'],
-    ChatMessageConnectionBannerProps['onRetry'],
-    ChatMessageConnectionBannerProps['styles']
+    ChatRuntimeConnectionBannerMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageConnectionBannerStyles
   >;
 
 type ChatMessageConnectionBannerReconnectingBody =
