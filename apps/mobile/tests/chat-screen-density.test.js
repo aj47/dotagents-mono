@@ -5706,6 +5706,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionEmptyStateMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionEmptyStateMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const emptyStateParts: ChatMessageToolExecutionEmptyStateParts =\s+createChatRuntimeToolExecutionEmptyStateMobilePropsParts\(\{\s+renderState,\s+style,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionEmptyStateLabelProps = \{\s+props: \{\s+accessibilityRole: ToolExecutionDetailMobileEmptyStateRenderState\['accessibilityRole'\];\s+accessibilityLabel: string;\s+style: StyleProp<TextStyle>;\s+\};\s+text: string;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionEmptyStateParts\['/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyStateLabel\s+\{\.\.\.emptyStateParts\.content\.label\.props\}/);
   assert.match(sessionPresentationSource, /content: \{\s+label: \{\s+props: \{\s+props: \{\s+accessibilityRole: renderState\.accessibilityRole,\s+accessibilityLabel: renderState\.accessibilityLabel,\s+style,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyStateLabel[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageToolExecutionPayloadMeta\(\{/);

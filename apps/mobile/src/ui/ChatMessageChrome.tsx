@@ -3858,8 +3858,14 @@ type ChatMessageToolExecutionEmptyStateParts =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolExecutionEmptyStateLabelProps =
-  ChatMessageToolExecutionEmptyStateParts['content']['label']['props'];
+type ChatMessageToolExecutionEmptyStateLabelProps = {
+  props: {
+    accessibilityRole: ToolExecutionDetailMobileEmptyStateRenderState['accessibilityRole'];
+    accessibilityLabel: string;
+    style: StyleProp<TextStyle>;
+  };
+  text: string;
+};
 
 type ChatMessageToolExecutionPayloadMetaStyles =
   SharedChatMessageToolExecutionPayloadMetaStyleSlots<
