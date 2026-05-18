@@ -168,6 +168,7 @@ import {
   getToolExecutionStatusCopyState,
   getToolExecutionStatusDesktopClassName,
   getToolExecutionStructuredPayloadChildEntries,
+  type ToolExecutionStatsLike,
   type ToolExecutionStructuredPayloadValue,
 } from "@dotagents/shared/session-presentation"
 import { computeTurnDurations, createTurnDurationMessages } from "@dotagents/shared/turn-duration"
@@ -262,11 +263,7 @@ type DisplayItem =
       isComplete: boolean
       calls: Array<{ name: string; arguments: any }>
       results: Array<{ success: boolean; content: string; error?: string } | undefined>
-      executionStats?: {
-        durationMs?: number
-        totalTokens?: number
-        model?: string
-      }
+      executionStats?: ToolExecutionStatsLike
     } }
   | { kind: "tool_approval"; id: string; data: {
       approvalId: string
@@ -1580,14 +1577,7 @@ const CompactToolExecutionList: React.FC<{
   onToggleDetails: () => void
   rowClassName?: string
   detailsClassName?: string
-  executionStats?: {
-    durationMs?: number
-    totalTokens?: number
-    model?: string
-    toolUseCount?: number
-    inputTokens?: number
-    outputTokens?: number
-  }
+  executionStats?: ToolExecutionStatsLike
 }> = ({
   calls,
   results,
@@ -1786,11 +1776,7 @@ const AssistantWithToolsBubble: React.FC<{
     isComplete: boolean
     calls: Array<{ name: string; arguments: any }>
     results: Array<{ success: boolean; content: string; error?: string } | undefined>
-    executionStats?: {
-      durationMs?: number
-      totalTokens?: number
-      model?: string
-    }
+    executionStats?: ToolExecutionStatsLike
   }
   isExpanded: boolean
   onToggleExpand: () => void
@@ -3914,9 +3900,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               // Some visible calls may still be pending while later visible calls already have results.
               results: visibleToolEntries.map(({ result }) => result),
               executionStats: matchingStep?.executionStats ? {
-                durationMs: matchingStep.executionStats.durationMs,
-                totalTokens: matchingStep.executionStats.totalTokens,
-                model: matchingStep.subagentId,
+                ...matchingStep.executionStats,
+                subagentId: matchingStep.subagentId,
               } : undefined,
             },
           })
