@@ -255,9 +255,14 @@ import {
   type ChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeDelegationCardMobilePropsParts,
   type ChatRuntimeHeaderAgentSelectorMobilePropsParts,
+  type ChatRuntimeHeaderAgentSelectorMobileStyleSlots as SharedChatRuntimeHeaderAgentSelectorStyleSlots,
   type ChatRuntimeHeaderConversationStatusMobilePropsParts,
+  type ChatRuntimeHeaderConversationStatusMobileStyleSlots as SharedChatRuntimeHeaderConversationStatusStyleSlots,
+  type ChatRuntimeHeaderIconButtonMobileStyleSlots as SharedChatRuntimeHeaderIconButtonStyleSlots,
   type ChatRuntimeHeaderIconButtonMobilePropsParts,
+  type ChatRuntimeHeaderStyleSlots as SharedChatRuntimeHeaderStyleSlots,
   type ChatRuntimeHeaderTurnDurationMobilePropsParts,
+  type ChatRuntimeHeaderTurnDurationMobileStyleSlots as SharedChatRuntimeHeaderTurnDurationStyleSlots,
   type ChatRuntimeTurnDurationBadgeMobilePropsParts,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
@@ -1358,11 +1363,12 @@ export type ChatMessageActionStyleSlots = SharedChatMessageActionStyleSlots<
   ChatMessageExpansionActionStyles
 >;
 
-type ChatRuntimeHeaderAgentSelectorStyles = {
-  button: StyleProp<ViewStyle>;
-  chip: StyleProp<ViewStyle>;
-  label: StyleProp<TextStyle>;
-};
+type ChatRuntimeHeaderAgentSelectorStyles =
+  SharedChatRuntimeHeaderAgentSelectorStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatRuntimeHeaderAgentSelectorProps = {
   renderState: ChatRuntimeAgentSelectorMobileRenderState;
@@ -1447,11 +1453,12 @@ type ChatRuntimeHeaderIconButtonIconContainerProps =
 type ChatRuntimeHeaderIconButtonIconProps =
   ChatRuntimeHeaderIconButtonParts['touchable']['content']['icon']['props'];
 
-type ChatRuntimeHeaderConversationStatusStyles = {
-  chip: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-  spinner: StyleProp<ImageStyle>;
-};
+type ChatRuntimeHeaderConversationStatusStyles =
+  SharedChatRuntimeHeaderConversationStatusStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ImageStyle>
+  >;
 
 type ChatRuntimeHeaderConversationStatusProps = {
   renderState: ChatSessionStatusMobileRenderState;
@@ -1480,12 +1487,13 @@ type ChatRuntimeHeaderConversationStatusRunningIndicatorProps =
 type ChatRuntimeHeaderConversationStatusLabelProps =
   ChatRuntimeHeaderConversationStatusParts['container']['content']['label']['props'];
 
-type ChatRuntimeHeaderTurnDurationStyles = {
-  chip: StyleProp<ViewStyle>;
-  liveChip: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-  liveText: StyleProp<TextStyle>;
-};
+type ChatRuntimeHeaderTurnDurationStyles =
+  SharedChatRuntimeHeaderTurnDurationStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatRuntimeHeaderTurnDurationProps = {
   renderState: ChatRuntimeTurnDurationHeaderMobileRenderState;
@@ -1512,20 +1520,24 @@ type ChatRuntimeHeaderTurnDurationIconProps =
 type ChatRuntimeHeaderTurnDurationLabelProps =
   ChatRuntimeHeaderTurnDurationParts['container']['content']['label']['props'];
 
-type ChatRuntimeHeaderStyleSlots = {
-  actionsRowStyle: ChatRuntimeHeaderActionsRowProps['style'];
-  agentSelector: ChatRuntimeHeaderAgentSelectorStyles;
-  conversationStatus: ChatRuntimeHeaderConversationStatusStyles;
-  turnDuration: ChatRuntimeHeaderTurnDurationStyles;
-  iconButtons: {
-    edgeStyle: ChatRuntimeHeaderIconButtonProps['style'];
-    pinStyle: ChatRuntimeHeaderIconButtonProps['style'];
-    pinActiveStyle: ChatRuntimeHeaderIconButtonProps['activeStyle'];
-    actionStyle: ChatRuntimeHeaderIconButtonProps['style'];
-    killSwitchIconContainerStyle: ChatRuntimeHeaderIconButtonProps['iconContainerStyle'];
-    handsFreeIconContainerStyle: ChatRuntimeHeaderIconButtonProps['iconContainerStyle'];
-  };
-};
+type ChatRuntimeHeaderIconButtonStyles =
+  SharedChatRuntimeHeaderIconButtonStyleSlots<
+    ChatRuntimeHeaderIconButtonProps['style'],
+    ChatRuntimeHeaderIconButtonProps['style'],
+    ChatRuntimeHeaderIconButtonProps['activeStyle'],
+    ChatRuntimeHeaderIconButtonProps['style'],
+    ChatRuntimeHeaderIconButtonProps['iconContainerStyle'],
+    ChatRuntimeHeaderIconButtonProps['iconContainerStyle']
+  >;
+
+type ChatRuntimeHeaderStyleSlots =
+  SharedChatRuntimeHeaderStyleSlots<
+    ChatRuntimeHeaderActionsRowProps['style'],
+    ChatRuntimeHeaderAgentSelectorStyles,
+    ChatRuntimeHeaderConversationStatusStyles,
+    ChatRuntimeHeaderTurnDurationStyles,
+    ChatRuntimeHeaderIconButtonStyles
+  >;
 
 type ChatRuntimeNavigationHeaderOptionParts =
   ChatRuntimeNavigationHeaderOptionsParts<

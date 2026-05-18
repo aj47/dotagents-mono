@@ -9686,6 +9686,16 @@ export type ChatRuntimeNavigationHeaderOptionsMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeHeaderAgentSelectorMobileStyleSlots<
+  TButtonStyle = unknown,
+  TChipStyle = unknown,
+  TLabelStyle = unknown,
+> {
+  button: TButtonStyle
+  chip: TChipStyle
+  label: TLabelStyle
+}
+
 export interface ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput<
   TRenderState extends {
     pressedOpacity: unknown
@@ -9704,15 +9714,8 @@ export interface ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput<
   },
   TOnPress = unknown,
   TLabelNumberOfLines = unknown,
-  TStyles extends {
-    button: unknown
-    chip: unknown
-    label: unknown
-  } = {
-    button: unknown
-    chip: unknown
-    label: unknown
-  },
+  TStyles extends ChatRuntimeHeaderAgentSelectorMobileStyleSlots =
+    ChatRuntimeHeaderAgentSelectorMobileStyleSlots,
 > {
   renderState: TRenderState
   onPress?: TOnPress
@@ -9738,15 +9741,8 @@ export interface ChatRuntimeHeaderAgentSelectorMobilePropsParts<
   },
   TOnPress = unknown,
   TLabelNumberOfLines = unknown,
-  TStyles extends {
-    button: unknown
-    chip: unknown
-    label: unknown
-  } = {
-    button: unknown
-    chip: unknown
-    label: unknown
-  },
+  TStyles extends ChatRuntimeHeaderAgentSelectorMobileStyleSlots =
+    ChatRuntimeHeaderAgentSelectorMobileStyleSlots,
 > {
   touchable: {
     props: {
@@ -9842,6 +9838,16 @@ export interface ChatRuntimeHeaderIconButtonMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeHeaderConversationStatusMobileStyleSlots<
+  TChipStyle = unknown,
+  TTextStyle = unknown,
+  TSpinnerStyle = unknown,
+> {
+  chip: TChipStyle
+  text: TTextStyle
+  spinner: TSpinnerStyle
+}
+
 export interface ChatRuntimeHeaderConversationStatusMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -9867,15 +9873,8 @@ export interface ChatRuntimeHeaderConversationStatusMobilePropsPartsInput<
     label: string
   },
   TSpinnerSource = unknown,
-  TStyles extends {
-    chip: unknown
-    text: unknown
-    spinner: unknown
-  } = {
-    chip: unknown
-    text: unknown
-    spinner: unknown
-  },
+  TStyles extends ChatRuntimeHeaderConversationStatusMobileStyleSlots =
+    ChatRuntimeHeaderConversationStatusMobileStyleSlots,
 > {
   renderState: TRenderState
   spinnerSource: TSpinnerSource
@@ -9907,15 +9906,8 @@ export interface ChatRuntimeHeaderConversationStatusMobilePropsParts<
     label: string
   },
   TSpinnerSource = unknown,
-  TStyles extends {
-    chip: unknown
-    text: unknown
-    spinner: unknown
-  } = {
-    chip: unknown
-    text: unknown
-    spinner: unknown
-  },
+  TStyles extends ChatRuntimeHeaderConversationStatusMobileStyleSlots =
+    ChatRuntimeHeaderConversationStatusMobileStyleSlots,
 > {
   container: {
     shouldRender: boolean
@@ -9943,6 +9935,18 @@ export interface ChatRuntimeHeaderConversationStatusMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeHeaderTurnDurationMobileStyleSlots<
+  TChipStyle = unknown,
+  TLiveChipStyle = unknown,
+  TTextStyle = unknown,
+  TLiveTextStyle = unknown,
+> {
+  chip: TChipStyle
+  liveChip?: TLiveChipStyle
+  text: TTextStyle
+  liveText?: TLiveTextStyle
+}
+
 export interface ChatRuntimeHeaderTurnDurationMobilePropsPartsInput<
   TRenderState extends {
     shouldRender: boolean
@@ -9965,17 +9969,8 @@ export interface ChatRuntimeHeaderTurnDurationMobilePropsPartsInput<
     }
     label: string
   },
-  TStyles extends {
-    chip: unknown
-    liveChip?: unknown
-    text: unknown
-    liveText?: unknown
-  } = {
-    chip: unknown
-    liveChip?: unknown
-    text: unknown
-    liveText?: unknown
-  },
+  TStyles extends ChatRuntimeHeaderTurnDurationMobileStyleSlots =
+    ChatRuntimeHeaderTurnDurationMobileStyleSlots,
 > {
   renderState: TRenderState
   styles: TStyles
@@ -10003,17 +9998,8 @@ export interface ChatRuntimeHeaderTurnDurationMobilePropsParts<
     }
     label: string
   },
-  TStyles extends {
-    chip: unknown
-    liveChip?: unknown
-    text: unknown
-    liveText?: unknown
-  } = {
-    chip: unknown
-    liveChip?: unknown
-    text: unknown
-    liveText?: unknown
-  },
+  TStyles extends ChatRuntimeHeaderTurnDurationMobileStyleSlots =
+    ChatRuntimeHeaderTurnDurationMobileStyleSlots,
 > {
   container: {
     shouldRender: boolean
@@ -29700,6 +29686,36 @@ export function createChatMessageActionStyleSlots<
   }
 }
 
+export interface ChatRuntimeHeaderIconButtonMobileStyleSlots<
+  TEdgeStyle = unknown,
+  TPinStyle = unknown,
+  TPinActiveStyle = unknown,
+  TActionStyle = unknown,
+  TKillSwitchIconContainerStyle = unknown,
+  THandsFreeIconContainerStyle = unknown,
+> {
+  edgeStyle: TEdgeStyle
+  pinStyle: TPinStyle
+  pinActiveStyle: TPinActiveStyle
+  actionStyle: TActionStyle
+  killSwitchIconContainerStyle: TKillSwitchIconContainerStyle
+  handsFreeIconContainerStyle: THandsFreeIconContainerStyle
+}
+
+export type ChatRuntimeHeaderStyleSlots<
+  TActionsRowStyle,
+  TAgentSelectorStyles,
+  TConversationStatusStyles,
+  TTurnDurationStyles,
+  TIconButtonStyles,
+> = {
+  actionsRowStyle: TActionsRowStyle
+  agentSelector: TAgentSelectorStyles
+  conversationStatus: TConversationStatusStyles
+  turnDuration: TTurnDurationStyles
+  iconButtons: TIconButtonStyles
+}
+
 export function createChatRuntimeHeaderStyleSlots<
   TActionsRowStyle,
   TAgentSelectorStyles,
@@ -29718,13 +29734,13 @@ export function createChatRuntimeHeaderStyleSlots<
   conversationStatusStyles: TConversationStatusStyles
   turnDurationStyles: TTurnDurationStyles
   iconButtonStyles: TIconButtonStyles
-}): {
-  actionsRowStyle: TActionsRowStyle
-  agentSelector: TAgentSelectorStyles
-  conversationStatus: TConversationStatusStyles
-  turnDuration: TTurnDurationStyles
-  iconButtons: TIconButtonStyles
-} {
+}): ChatRuntimeHeaderStyleSlots<
+  TActionsRowStyle,
+  TAgentSelectorStyles,
+  TConversationStatusStyles,
+  TTurnDurationStyles,
+  TIconButtonStyles
+> {
   return {
     actionsRowStyle,
     agentSelector: agentSelectorStyles,
@@ -29757,33 +29773,33 @@ type ChatRuntimeHeaderStyleSource = Record<ChatRuntimeHeaderStyleSourceKey, unkn
 
 type ChatRuntimeHeaderStyleSlotsFromStyleSource<
   TStyles extends ChatRuntimeHeaderStyleSource,
-> = {
-  actionsRowStyle: TStyles["headerActionsRow"]
-  agentSelector: {
-    button: TStyles["headerAgentSelectorButton"]
-    chip: TStyles["headerAgentSelectorChip"]
-    label: TStyles["headerAgentSelectorText"]
-  }
-  conversationStatus: {
-    chip: TStyles["headerConversationChip"]
-    text: TStyles["headerConversationChipText"]
-    spinner: TStyles["headerConversationSpinner"]
-  }
-  turnDuration: {
-    chip: TStyles["headerDurationChip"]
-    liveChip: TStyles["headerDurationChipLive"]
-    text: TStyles["headerDurationChipText"]
-    liveText: TStyles["headerDurationChipTextLive"]
-  }
-  iconButtons: {
-    edgeStyle: TStyles["headerEdgeActionButton"]
-    pinStyle: TStyles["headerPinButton"]
-    pinActiveStyle: TStyles["headerPinButtonActive"]
-    actionStyle: TStyles["headerActionButton"]
-    killSwitchIconContainerStyle: TStyles["headerKillSwitchIconContainer"]
-    handsFreeIconContainerStyle: TStyles["headerHandsFreeIconContainer"]
-  }
-}
+> = ChatRuntimeHeaderStyleSlots<
+  TStyles["headerActionsRow"],
+  ChatRuntimeHeaderAgentSelectorMobileStyleSlots<
+    TStyles["headerAgentSelectorButton"],
+    TStyles["headerAgentSelectorChip"],
+    TStyles["headerAgentSelectorText"]
+  >,
+  ChatRuntimeHeaderConversationStatusMobileStyleSlots<
+    TStyles["headerConversationChip"],
+    TStyles["headerConversationChipText"],
+    TStyles["headerConversationSpinner"]
+  >,
+  ChatRuntimeHeaderTurnDurationMobileStyleSlots<
+    TStyles["headerDurationChip"],
+    TStyles["headerDurationChipLive"],
+    TStyles["headerDurationChipText"],
+    TStyles["headerDurationChipTextLive"]
+  >,
+  ChatRuntimeHeaderIconButtonMobileStyleSlots<
+    TStyles["headerEdgeActionButton"],
+    TStyles["headerPinButton"],
+    TStyles["headerPinButtonActive"],
+    TStyles["headerActionButton"],
+    TStyles["headerKillSwitchIconContainer"],
+    TStyles["headerHandsFreeIconContainer"]
+  >
+>
 
 export function createChatRuntimeHeaderStyleSlotsFromStyleSource<
   TStyles extends ChatRuntimeHeaderStyleSource,
