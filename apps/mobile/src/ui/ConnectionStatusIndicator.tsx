@@ -1,13 +1,13 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Animated, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useTheme } from './ThemeProvider';
 import {
   createConnectionStatusIndicatorMobilePropsParts,
-  createConnectionStatusIndicatorMobileStyleSlots,
+  createConnectionStatusIndicatorMobileStyleSheetSlots,
   getConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatus,
   type ConnectionStatusIndicatorMobilePropsParts,
-  type ConnectionStatusIndicatorMobileStylesLike,
+  type ConnectionStatusIndicatorMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
 
 export interface ConnectionStatusIndicatorProps {
@@ -16,19 +16,7 @@ export interface ConnectionStatusIndicatorProps {
   compact?: boolean;
 }
 
-type ConnectionStatusIndicatorStyles =
-  ConnectionStatusIndicatorMobileStylesLike<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+type ConnectionStatusIndicatorStyles = ConnectionStatusIndicatorMobileStyleSheetSlots;
 
 type ConnectionStatusPulseAnimatedStyle = {
   opacity: Animated.Value;
@@ -61,46 +49,15 @@ export function ConnectionStatusIndicator({
   );
   const connectionStatusAnimation = connectionStatusState.animation;
   const pulseAnim = useRef(new Animated.Value(connectionStatusAnimation.minOpacity)).current;
-  const connectionStatusStyleSlots = useMemo(
-    () => createConnectionStatusIndicatorMobileStyleSlots({
+  const connectionStatusStyleSheetSlots = useMemo(
+    () => createConnectionStatusIndicatorMobileStyleSheetSlots({
       renderState: connectionStatusState,
     }),
     [connectionStatusState],
   );
   const styles = useMemo<ConnectionStatusIndicatorStyles>(
-    () => StyleSheet.create({
-      container: {
-        ...connectionStatusStyleSlots.container,
-      },
-      containerCompact: {
-        ...connectionStatusStyleSlots.containerCompact,
-      },
-      dotContainer: {
-        ...connectionStatusStyleSlots.dotContainer,
-      },
-      dot: {
-        ...connectionStatusStyleSlots.dot,
-      },
-      dotPulsing: {
-        ...connectionStatusStyleSlots.dotPulsing,
-      },
-      dotPulse: {
-        ...connectionStatusStyleSlots.dotPulse,
-      },
-      dotColor: {
-        ...connectionStatusStyleSlots.dotColor,
-      },
-      pulseColor: {
-        ...connectionStatusStyleSlots.pulseColor,
-      },
-      text: {
-        ...connectionStatusStyleSlots.text,
-      },
-      textColor: {
-        ...connectionStatusStyleSlots.textColor,
-      },
-    }),
-    [connectionStatusStyleSlots],
+    () => StyleSheet.create({ ...connectionStatusStyleSheetSlots }),
+    [connectionStatusStyleSheetSlots],
   );
   const pulseAnimatedStyle = useMemo<ConnectionStatusPulseAnimatedStyle>(() => ({ opacity: pulseAnim }), [pulseAnim]);
   const connectionStatusParts = useMemo(

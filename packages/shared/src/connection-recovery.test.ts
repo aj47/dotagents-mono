@@ -6,6 +6,7 @@ import {
   CONNECTION_STATUS_INDICATOR_PRESENTATION,
   CONNECTION_STATUS_INDICATOR_SURFACE_PRESENTATION,
   createConnectionStatusIndicatorMobilePropsParts,
+  createConnectionStatusIndicatorMobileStyleSheetSlots,
   createConnectionStatusIndicatorMobileStyleSlots,
   createStreamingCheckpoint,
   formatConnectionStatusIndicatorLabel,
@@ -385,6 +386,7 @@ describe('connection status indicator presentation', () => {
       },
     })
     const styleSlots = createConnectionStatusIndicatorMobileStyleSlots({ renderState })
+    expect(createConnectionStatusIndicatorMobileStyleSheetSlots({ renderState })).toEqual(styleSlots)
 
     expect(styleSlots).toMatchObject({
       container: {

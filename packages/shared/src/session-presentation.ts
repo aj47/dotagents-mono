@@ -90,12 +90,15 @@ export { formatConnectionStatus, type RecoveryState } from "./connection-recover
 export { createExpandCollapseAccessibilityLabel } from "./accessibility-utils"
 export {
   createConnectionStatusIndicatorMobilePropsParts,
+  createConnectionStatusIndicatorMobileStyleSheetSlots,
   createConnectionStatusIndicatorMobileStyleSlots,
   getConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatus,
   type ConnectionStatusIndicatorMobilePropsParts,
   type ConnectionStatusIndicatorMobilePulseAnimationState,
   type ConnectionStatusIndicatorMobileRenderState,
+  type ConnectionStatusIndicatorMobileStyleSheetSlots,
+  type ConnectionStatusIndicatorMobileStyleSheetSlotsInput,
   type ConnectionStatusIndicatorMobileStyleSlots,
   type ConnectionStatusIndicatorMobileStylesLike,
 } from "./connection-recovery"

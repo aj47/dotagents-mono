@@ -208,6 +208,23 @@ export interface ConnectionStatusIndicatorMobileStylesLike<
   textColor: TTextColorStyle;
 }
 
+export type ConnectionStatusIndicatorMobileStyleSheetSlotsInput =
+  ConnectionStatusIndicatorMobileStyleSlotsInput;
+
+export type ConnectionStatusIndicatorMobileStyleSheetSlots =
+  ConnectionStatusIndicatorMobileStylesLike<
+    ConnectionStatusIndicatorMobileStyleSlots["container"],
+    ConnectionStatusIndicatorMobileStyleSlots["containerCompact"],
+    ConnectionStatusIndicatorMobileStyleSlots["dotContainer"],
+    ConnectionStatusIndicatorMobileStyleSlots["dot"],
+    ConnectionStatusIndicatorMobileStyleSlots["dotPulsing"],
+    ConnectionStatusIndicatorMobileStyleSlots["dotPulse"],
+    ConnectionStatusIndicatorMobileStyleSlots["dotColor"],
+    ConnectionStatusIndicatorMobileStyleSlots["pulseColor"],
+    ConnectionStatusIndicatorMobileStyleSlots["text"],
+    ConnectionStatusIndicatorMobileStyleSlots["textColor"]
+  >;
+
 export interface ConnectionStatusIndicatorMobilePropsPartsInput<
   TStyles extends ConnectionStatusIndicatorMobileStylesLike = ConnectionStatusIndicatorMobileStylesLike,
   TAnimatedStyle = unknown,
@@ -383,6 +400,14 @@ export function createConnectionStatusIndicatorMobileStyleSlots({
       color: colors.text.color,
     },
   };
+}
+
+export function createConnectionStatusIndicatorMobileStyleSheetSlots({
+  renderState,
+}: ConnectionStatusIndicatorMobileStyleSheetSlotsInput): ConnectionStatusIndicatorMobileStyleSheetSlots {
+  return createConnectionStatusIndicatorMobileStyleSlots({
+    renderState,
+  });
 }
 
 export function createConnectionStatusIndicatorMobilePropsParts<

@@ -3060,9 +3060,17 @@ test('routes mobile connection status indicator presentation through the session
 
   assert.match(connectionIndicatorSource, /from '@dotagents\/shared\/session-presentation';/);
   assert.match(sessionPresentationSource, /createConnectionStatusIndicatorMobilePropsParts/);
+  assert.match(sessionPresentationSource, /createConnectionStatusIndicatorMobileStyleSheetSlots/);
   assert.match(sessionPresentationSource, /createConnectionStatusIndicatorMobileStyleSlots/);
   assert.match(sessionPresentationSource, /getConnectionStatusIndicatorMobileRenderState/);
+  assert.match(connectionIndicatorSource, /createConnectionStatusIndicatorMobileStyleSheetSlots,/);
+  assert.match(connectionIndicatorSource, /type ConnectionStatusIndicatorMobileStyleSheetSlots,/);
+  assert.match(connectionIndicatorSource, /type ConnectionStatusIndicatorStyles = ConnectionStatusIndicatorMobileStyleSheetSlots;/);
+  assert.match(connectionIndicatorSource, /StyleSheet\.create\(\{ \.\.\.connectionStatusStyleSheetSlots \}\)/);
   assert.doesNotMatch(connectionIndicatorSource, /from '@dotagents\/shared\/connection-recovery';/);
+  assert.doesNotMatch(connectionIndicatorSource, /createConnectionStatusIndicatorMobileStyleSlots,/);
+  assert.doesNotMatch(connectionIndicatorSource, /ConnectionStatusIndicatorMobileStylesLike/);
+  assert.doesNotMatch(connectionIndicatorSource, /StyleProp/);
 });
 
 test('does not render a duplicate composer agent chip above the mobile chat input row', () => {
