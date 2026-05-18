@@ -870,7 +870,7 @@ export function useChatRuntimeMobileStyleSlots() {
       colors: chatRuntimeChromeEnvironment.colors,
       platform: chatRuntimeChromeEnvironment.platform,
       spinnerSource: chatRuntimeSpinnerSource,
-      styles: styles as ReturnType<typeof createChatRuntimeMobileStyles>,
+      styles,
       safeAreaLayout: mobileSafeAreaLayout,
       getToneStyle: (toneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot) => styles[toneStyleSlot],
     }),

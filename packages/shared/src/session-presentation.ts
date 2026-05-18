@@ -29638,7 +29638,7 @@ export function createChatRuntimeChromeSlots<TEnvironment, THeader, TMessageRunt
   }
 }
 
-type ChatRuntimeMobileChromeStyleSource =
+export type ChatRuntimeMobileChromeStyleSource =
   & ChatComposerStyleSource
   & ChatConversationHomePromptEditorModalStyleSource
   & ChatMessageConversationDockStyleSource
