@@ -10,10 +10,10 @@ const source = fs.readFileSync(
 
 test('mobile response history panel uses shared copy, actions, and accessibility labels', () => {
   assert.match(source, /createAgentResponseHistoryMobilePropsParts,/);
-  assert.match(source, /createAgentResponseHistoryMobileStyleSlots,/);
+  assert.match(source, /createAgentResponseHistoryMobileStyleSheetSlots,/);
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /type AgentResponseHistoryMobilePropsParts,/);
-  assert.match(source, /type AgentResponseHistoryMobileStylesLike,/);
+  assert.match(source, /type AgentResponseHistoryMobileStyleSheetSlots,/);
   assert.match(source, /type ResponseHistoryPanelParts =\s+AgentResponseHistoryMobilePropsParts<[\s\S]*?ResponseHistoryEntry,[\s\S]*?ResponseHistoryPanelStyles,[\s\S]*?ResponseHistoryToggleHandler/);
   assert.match(source, /export type ResponseHistoryPanelColors =\s+Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
   assert.match(source, /colors: ResponseHistoryPanelColors;/);
@@ -55,7 +55,7 @@ test('mobile response history panel uses shared copy, actions, and accessibility
 
 test('mobile response history panel reads compact sizing from shared surface tokens', () => {
   assert.match(source, /type AgentResponseHistoryMobileAnimationState,/);
-  assert.match(source, /type ResponseHistoryPanelStyles =\s+AgentResponseHistoryMobileStylesLike<\s+StyleProp<ViewStyle>,[\s\S]*?StyleProp<TextStyle>\s+>;/);
+  assert.match(source, /type ResponseHistoryPanelStyles = AgentResponseHistoryMobileStyleSheetSlots;/);
   assert.doesNotMatch(source, /type ResponseHistoryPanelStyles = \{[\s\S]*?container: StyleProp<ViewStyle>;[\s\S]*?headerTitle: StyleProp<TextStyle>;[\s\S]*?collapsedPreviewText: StyleProp<TextStyle>;[\s\S]*?\};/);
   assert.match(source, /new Animated\.Value\([\s\S]*?animation\.newestInitialOpacity[\s\S]*?: animation\.visibleOpacity/);
   assert.match(source, /const animatedStyle = useMemo\(\(\) => \(\{ opacity: fadeAnim \}\), \[fadeAnim\]\);/);
@@ -65,16 +65,12 @@ test('mobile response history panel reads compact sizing from shared surface tok
   assert.doesNotMatch(source, /useNativeDriver: true/);
   assert.match(source, /<Animated\.View style=\{animatedStyle\}>/);
   assert.match(source, /import \{ spacing, radius \} from '\.\/theme';/);
-  assert.match(source, /const responseHistoryStyleSlots = createAgentResponseHistoryMobileStyleSlots\(\{\s+renderState: responseHistoryRenderState,\s+spacing,\s+radius,\s+\}\);/);
-  assert.match(source, /const styles: ResponseHistoryPanelStyles = StyleSheet\.create\(\{/);
-  assert.match(source, /container:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.container/);
-  assert.match(source, /header:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.header/);
-  assert.match(source, /headerLeft:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.headerLeft/);
-  assert.match(source, /badge:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.badge/);
-  assert.match(source, /list:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.list/);
-  assert.match(source, /responseHeader:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.responseHeader/);
-  assert.match(source, /separator:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.separator/);
-  assert.match(source, /collapsedPreviewText:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.collapsedPreviewText/);
+  assert.match(source, /const responseHistoryStyleSheetSlots = createAgentResponseHistoryMobileStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+spacing,\s+radius,\s+\}\);/);
+  assert.match(source, /const styles: ResponseHistoryPanelStyles = StyleSheet\.create\(\{\s+\.\.\.responseHistoryStyleSheetSlots,\s+\}\);/);
+  assert.doesNotMatch(source, /responseHistoryStyleSlots\.container/);
+  assert.doesNotMatch(source, /responseHistoryStyleSlots\.header/);
+  assert.doesNotMatch(source, /responseHistoryStyleSlots\.responseItem/);
+  assert.doesNotMatch(source, /responseHistoryStyleSlots\.collapsedPreviewText/);
   assert.match(source, /<Text\s+\{\.\.\.responseHistoryParts\.collapsedPreview\.preview\.props\}/);
   assert.match(source, /<Ionicons\s+\{\.\.\.responseHistoryParts\.header\.icon\.props\}/);
   assert.match(source, /<Ionicons\s+\{\.\.\.item\.speakIcon\.props\}/);

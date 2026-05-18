@@ -11,18 +11,15 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   createAgentResponseHistoryMobilePropsParts,
-  createAgentResponseHistoryMobileStyleSlots,
+  createAgentResponseHistoryMobileStyleSheetSlots,
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
   type AgentResponseHistoryMobilePropsParts,
-  type AgentResponseHistoryMobileStylesLike,
+  type AgentResponseHistoryMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
@@ -51,24 +48,7 @@ interface ResponseHistoryPanelProps {
   onSpeakResponse: ResponseHistorySpeakHandler;
 }
 
-type ResponseHistoryPanelStyles =
-  AgentResponseHistoryMobileStylesLike<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+type ResponseHistoryPanelStyles = AgentResponseHistoryMobileStyleSheetSlots;
 
 type ResponseHistoryPanelParts =
   AgentResponseHistoryMobilePropsParts<
@@ -139,7 +119,7 @@ export function ResponseHistoryPanel({
     animateNewest: shouldAnimateNewest,
     speakingIndex,
   });
-  const responseHistoryStyleSlots = createAgentResponseHistoryMobileStyleSlots({
+  const responseHistoryStyleSheetSlots = createAgentResponseHistoryMobileStyleSheetSlots({
     renderState: responseHistoryRenderState,
     spacing,
     radius,
@@ -150,51 +130,7 @@ export function ResponseHistoryPanel({
   }
 
   const styles: ResponseHistoryPanelStyles = StyleSheet.create({
-    container: {
-      ...responseHistoryStyleSlots.container,
-    },
-    header: {
-      ...responseHistoryStyleSlots.header,
-    },
-    headerLeft: {
-      ...responseHistoryStyleSlots.headerLeft,
-    },
-    headerTitle: {
-      ...responseHistoryStyleSlots.headerTitle,
-    },
-    badge: {
-      ...responseHistoryStyleSlots.badge,
-    },
-    badgeText: {
-      ...responseHistoryStyleSlots.badgeText,
-    },
-    list: {
-      ...responseHistoryStyleSlots.list,
-    },
-    responseItem: {
-      ...responseHistoryStyleSlots.responseItem,
-    },
-    responseHeader: {
-      ...responseHistoryStyleSlots.responseHeader,
-    },
-    timestamp: {
-      ...responseHistoryStyleSlots.timestamp,
-    },
-    speakButton: {
-      ...responseHistoryStyleSlots.speakButton,
-    },
-    separator: {
-      ...responseHistoryStyleSlots.separator,
-    },
-    collapsedPreview: {
-      ...responseHistoryStyleSlots.collapsedPreview,
-    },
-    collapsedPreviewTimestamp: {
-      ...responseHistoryStyleSlots.collapsedPreviewTimestamp,
-    },
-    collapsedPreviewText: {
-      ...responseHistoryStyleSlots.collapsedPreviewText,
-    },
+    ...responseHistoryStyleSheetSlots,
   });
   const responseHistoryParts: ResponseHistoryPanelParts = createAgentResponseHistoryMobilePropsParts({
     renderState: responseHistoryRenderState,

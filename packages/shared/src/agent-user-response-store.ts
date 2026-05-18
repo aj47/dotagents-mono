@@ -414,6 +414,28 @@ export interface AgentResponseHistoryMobileStylesLike<
   collapsedPreviewText: TCollapsedPreviewTextStyle;
 }
 
+export type AgentResponseHistoryMobileStyleSheetSlotsInput =
+  AgentResponseHistoryMobileStyleSlotsInput;
+
+export type AgentResponseHistoryMobileStyleSheetSlots =
+  AgentResponseHistoryMobileStylesLike<
+    AgentResponseHistoryMobileStyleSlots['container'],
+    AgentResponseHistoryMobileStyleSlots['header'],
+    AgentResponseHistoryMobileStyleSlots['headerLeft'],
+    AgentResponseHistoryMobileStyleSlots['headerTitle'],
+    AgentResponseHistoryMobileStyleSlots['badge'],
+    AgentResponseHistoryMobileStyleSlots['badgeText'],
+    AgentResponseHistoryMobileStyleSlots['list'],
+    AgentResponseHistoryMobileStyleSlots['responseItem'],
+    AgentResponseHistoryMobileStyleSlots['responseHeader'],
+    AgentResponseHistoryMobileStyleSlots['timestamp'],
+    AgentResponseHistoryMobileStyleSlots['speakButton'],
+    AgentResponseHistoryMobileStyleSlots['separator'],
+    AgentResponseHistoryMobileStyleSlots['collapsedPreview'],
+    AgentResponseHistoryMobileStyleSlots['collapsedPreviewTimestamp'],
+    AgentResponseHistoryMobileStyleSlots['collapsedPreviewText']
+  >;
+
 export interface AgentResponseHistoryMobilePropsPartsInput<
   T extends { id?: string | null; text: string; timestamp: number },
   TStyles extends AgentResponseHistoryMobileStylesLike = AgentResponseHistoryMobileStylesLike,
@@ -791,6 +813,18 @@ export function createAgentResponseHistoryMobileStyleSlots({
       color: colors.collapsedPreview.previewColor,
     },
   };
+}
+
+export function createAgentResponseHistoryMobileStyleSheetSlots({
+  renderState,
+  spacing,
+  radius,
+}: AgentResponseHistoryMobileStyleSheetSlotsInput): AgentResponseHistoryMobileStyleSheetSlots {
+  return createAgentResponseHistoryMobileStyleSlots({
+    renderState,
+    spacing,
+    radius,
+  });
 }
 
 export function createAgentResponseHistoryMobilePropsParts<

@@ -6,10 +6,12 @@ import {
 export type { AgentConversationState } from "./conversation-state"
 export {
   createAgentResponseHistoryMobilePropsParts,
+  createAgentResponseHistoryMobileStyleSheetSlots,
   createAgentResponseHistoryMobileStyleSlots,
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
   type AgentResponseHistoryMobilePropsParts,
+  type AgentResponseHistoryMobileStyleSheetSlots,
   type AgentResponseHistoryMobileStylesLike,
 } from "./agent-user-response-store"
 import {

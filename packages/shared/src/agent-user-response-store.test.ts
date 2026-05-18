@@ -6,6 +6,7 @@ import {
   appendAgentUserResponseEvent,
   clearAgentUserResponseEvents,
   createAgentResponseHistoryMobilePropsParts,
+  createAgentResponseHistoryMobileStyleSheetSlots,
   createAgentResponseHistoryMobileStyleSlots,
   createAgentUserResponseStoreState,
   formatAgentResponseHistoryPreviewText,
@@ -181,6 +182,15 @@ describe('agent-user-response-store', () => {
       lineHeight: AGENT_RESPONSE_HISTORY_SURFACE_PRESENTATION.mobile.collapsedPreview.previewLineHeight,
       color: '#171717',
     });
+    expect(createAgentResponseHistoryMobileStyleSheetSlots({
+      renderState: responseHistoryRenderState,
+      spacing: {
+        sm: 8,
+      },
+      radius: {
+        md: 8,
+      },
+    })).toEqual(responseHistoryStyleSlots);
     const responseHistorySpeakCalls: Array<{ text: string; index: number }> = [];
     const responseHistoryParts = createAgentResponseHistoryMobilePropsParts({
       renderState: responseHistoryRenderState,
