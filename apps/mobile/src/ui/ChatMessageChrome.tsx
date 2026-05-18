@@ -3557,19 +3557,44 @@ type ChatMessageToolExecutionCopyButtonParts =
     ChatMessageToolExecutionCopyButtonStyles
   >;
 
-type ChatMessageToolExecutionCopyButtonPressableProps =
-  ChatMessageToolExecutionCopyButtonParts['container']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageToolExecutionCopyButtonPressableState = {
+  pressed: boolean;
+};
 
-type ChatMessageToolExecutionCopyButtonContentProps =
-  ChatMessageToolExecutionCopyButtonParts['container']['content'];
+type ChatMessageToolExecutionCopyButtonPressableProps = {
+  children: ReactNode;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  accessibilityRole: ToolExecutionDetailMobileCopyButtonRenderState['accessibilityRole'];
+  accessibilityLabel: string;
+  style: (state: ChatMessageToolExecutionCopyButtonPressableState) => Array<
+    | ChatMessageToolExecutionCopyButtonStyles['button']
+    | ChatMessageToolExecutionCopyButtonStyles['pressed']
+    | false
+  >;
+};
 
 type ChatMessageToolExecutionCopyButtonIconProps =
-  ChatMessageToolExecutionCopyButtonParts['container']['content']['icon']['props'];
+  ComponentProps<typeof Ionicons>;
 
-type ChatMessageToolExecutionCopyButtonLabelProps =
-  ChatMessageToolExecutionCopyButtonParts['container']['content']['label']['props'];
+type ChatMessageToolExecutionCopyButtonIconPart = {
+  props: ChatMessageToolExecutionCopyButtonIconProps;
+};
+
+type ChatMessageToolExecutionCopyButtonLabelProps = {
+  props: {
+    style: ChatMessageToolExecutionCopyButtonStyles['text'];
+  };
+  text: string;
+};
+
+type ChatMessageToolExecutionCopyButtonLabelPart = {
+  props: ChatMessageToolExecutionCopyButtonLabelProps;
+};
+
+type ChatMessageToolExecutionCopyButtonContentProps = {
+  icon: ChatMessageToolExecutionCopyButtonIconPart;
+  label: ChatMessageToolExecutionCopyButtonLabelPart;
+};
 
 type ChatMessageToolExecutionDetailHeaderStyles =
   SharedChatMessageToolExecutionDetailHeaderStyleSlots<

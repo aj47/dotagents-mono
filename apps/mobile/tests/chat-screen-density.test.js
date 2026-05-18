@@ -5137,6 +5137,12 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCopyButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCopyButtonMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const copyButtonParts: ChatMessageToolExecutionCopyButtonParts =\s+createChatRuntimeToolExecutionCopyButtonMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCopyButtonPressableProps = \{[\s\S]*?onPress: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?accessibilityRole: ToolExecutionDetailMobileCopyButtonRenderState\['accessibilityRole'\];[\s\S]*?accessibilityLabel: string;[\s\S]*?style: \(state: ChatMessageToolExecutionCopyButtonPressableState\) => Array<[\s\S]*?ChatMessageToolExecutionCopyButtonStyles\['button'\][\s\S]*?ChatMessageToolExecutionCopyButtonStyles\['pressed'\][\s\S]*?false[\s\S]*?>;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCopyButtonIconProps =\s+ComponentProps<typeof Ionicons>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCopyButtonLabelProps = \{\s+props: \{\s+style: ChatMessageToolExecutionCopyButtonStyles\['text'\];\s+\};\s+text: string;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCopyButtonLabelPart = \{\s+props: ChatMessageToolExecutionCopyButtonLabelProps;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCopyButtonContentProps = \{\s+icon: ChatMessageToolExecutionCopyButtonIconPart;\s+label: ChatMessageToolExecutionCopyButtonLabelPart;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionCopyButtonParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const copyButtonContent = copyButtonParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCopyButtonPressable\s+\{\.\.\.copyButtonParts\.container\.props\}/);
   assert.match(toolExecutionCopyButtonSource, /<ChatMessageToolExecutionCopyButtonContent\s+\{\.\.\.copyButtonParts\.container\.content\}/);
