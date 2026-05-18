@@ -8821,7 +8821,9 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatScreenSource, /\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.doesNotMatch(chatScreenSource, /surface: \{[\s\S]*?promptEditorStyles: promptEditorModalStyles,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalStyleSlots/);
+  assert.match(sessionPresentationSource, /export interface ChatConversationHomePromptEditorModalMobileStylesLike<\s+TKeyboardAvoidingViewStyle = unknown,/);
   assert.match(sessionPresentationSource, /export type ChatConversationHomePromptEditorModalStyleSlots<\s+TKeyboardAvoidingViewStyle,/);
+  assert.match(sessionPresentationSource, /ChatConversationHomePromptEditorModalStyleSlots<[\s\S]*?> = ChatConversationHomePromptEditorModalMobileStylesLike</);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalStyleSlots<[\s\S]*?\): ChatConversationHomePromptEditorModalStyleSlots</);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource/);

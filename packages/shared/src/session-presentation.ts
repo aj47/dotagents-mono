@@ -8966,22 +8966,38 @@ export interface ChatConversationHomePromptEditorSaveActionInput {
   isSaving: boolean
 }
 
-export interface ChatConversationHomePromptEditorModalMobileStylesLike {
-  keyboardAvoidingView: unknown
-  overlay: unknown
-  content: unknown
-  header: unknown
-  title: unknown
-  closeButton: unknown
-  label: unknown
-  input: unknown
-  inputMultiline: unknown
-  actions: unknown
-  cancelButton: unknown
-  cancelButtonText: unknown
-  saveButton: unknown
-  saveButtonDisabled: unknown
-  saveButtonText: unknown
+export interface ChatConversationHomePromptEditorModalMobileStylesLike<
+  TKeyboardAvoidingViewStyle = unknown,
+  TOverlayStyle = unknown,
+  TContentStyle = unknown,
+  THeaderStyle = unknown,
+  TTitleStyle = unknown,
+  TCloseButtonStyle = unknown,
+  TLabelStyle = unknown,
+  TInputStyle = unknown,
+  TInputMultilineStyle = unknown,
+  TActionsStyle = unknown,
+  TCancelButtonStyle = unknown,
+  TCancelButtonTextStyle = unknown,
+  TSaveButtonStyle = unknown,
+  TSaveButtonDisabledStyle = unknown,
+  TSaveButtonTextStyle = unknown,
+> {
+  keyboardAvoidingView: TKeyboardAvoidingViewStyle
+  overlay: TOverlayStyle
+  content: TContentStyle
+  header: THeaderStyle
+  title: TTitleStyle
+  closeButton: TCloseButtonStyle
+  label: TLabelStyle
+  input: TInputStyle
+  inputMultiline: TInputMultilineStyle
+  actions: TActionsStyle
+  cancelButton: TCancelButtonStyle
+  cancelButtonText: TCancelButtonTextStyle
+  saveButton: TSaveButtonStyle
+  saveButtonDisabled: TSaveButtonDisabledStyle
+  saveButtonText: TSaveButtonTextStyle
 }
 
 export interface ChatConversationHomePromptEditorModalMobilePropsPartsInput<
@@ -28077,23 +28093,23 @@ export type ChatConversationHomePromptEditorModalStyleSlots<
   TSaveButtonStyle,
   TSaveButtonDisabledStyle,
   TSaveButtonTextStyle,
-> = {
-  keyboardAvoidingView: TKeyboardAvoidingViewStyle
-  overlay: TOverlayStyle
-  content: TContentStyle
-  header: THeaderStyle
-  title: TTitleStyle
-  closeButton: TCloseButtonStyle
-  label: TLabelStyle
-  input: TInputStyle
-  inputMultiline: TInputMultilineStyle
-  actions: TActionsStyle
-  cancelButton: TCancelButtonStyle
-  cancelButtonText: TCancelButtonTextStyle
-  saveButton: TSaveButtonStyle
-  saveButtonDisabled: TSaveButtonDisabledStyle
-  saveButtonText: TSaveButtonTextStyle
-}
+> = ChatConversationHomePromptEditorModalMobileStylesLike<
+  TKeyboardAvoidingViewStyle,
+  TOverlayStyle,
+  TContentStyle,
+  THeaderStyle,
+  TTitleStyle,
+  TCloseButtonStyle,
+  TLabelStyle,
+  TInputStyle,
+  TInputMultilineStyle,
+  TActionsStyle,
+  TCancelButtonStyle,
+  TCancelButtonTextStyle,
+  TSaveButtonStyle,
+  TSaveButtonDisabledStyle,
+  TSaveButtonTextStyle
+>
 
 export function createChatConversationHomePromptEditorModalStyleSlots<
   TKeyboardAvoidingViewStyle,
