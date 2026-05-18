@@ -1,15 +1,11 @@
-import { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import {
   createHandsFreeStatusChipMobilePropsParts,
-  createHandsFreeStatusChipMobileStyleSheetSlots,
-  getHandsFreeStatusChipMobileRenderState,
   type HandsFreeStatusChipMobilePropsParts,
   type HandsFreeStatusChipMobileStyleSheetSlots,
   type HandsFreePhase,
 } from '@dotagents/shared/session-presentation';
-import { useTheme } from './ThemeProvider';
-import { spacing, radius } from './theme';
+import { useChatRuntimeHandsFreeStatusChipMobileStyleSlots } from './ChatRuntimeMobileStyles';
 
 type HandsFreeStatusChipProps = {
   phase: HandsFreePhase;
@@ -23,31 +19,17 @@ type HandsFreeStatusChipParts =
   HandsFreeStatusChipMobilePropsParts<HandsFreeStatusChipStyles>;
 
 export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusChipProps) {
-  const { theme } = useTheme();
-  const renderState = useMemo(
-    () => getHandsFreeStatusChipMobileRenderState({
-      phase,
-      label,
-      subtitle,
-      colors: theme.colors,
-    }),
-    [label, phase, subtitle, theme.colors],
-  );
-  const styleSheetSlots = useMemo(
-    () => createHandsFreeStatusChipMobileStyleSheetSlots({
-      renderState,
-      spacing,
-      radius,
-    }),
-    [renderState],
-  );
-  const styles = useMemo<HandsFreeStatusChipStyles>(
-    () => StyleSheet.create({ ...styleSheetSlots }),
-    [styleSheetSlots],
-  );
+  const {
+    handsFreeStatusChipRenderState,
+    handsFreeStatusChipStyles,
+  } = useChatRuntimeHandsFreeStatusChipMobileStyleSlots({
+    phase,
+    label,
+    subtitle,
+  });
   const statusChipParts: HandsFreeStatusChipParts = createHandsFreeStatusChipMobilePropsParts({
-    renderState,
-    styles,
+    renderState: handsFreeStatusChipRenderState,
+    styles: handsFreeStatusChipStyles,
   });
 
   return (

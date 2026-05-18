@@ -14,15 +14,18 @@ import {
   createChatRuntimeThemeSpinnerSource,
   createMarkdownContentMobileStyleSheetSlots,
   createMarkdownThinkSectionMobileStyleSheetSlots,
+  createHandsFreeStatusChipMobileStyleSheetSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatVideoAttachmentMobileRenderState,
+  getHandsFreeStatusChipMobileRenderState,
   getMarkdownContentMobileSurfaceRenderState,
   getMarkdownThinkSectionMobileSurfaceRenderState,
   type AgentResponseHistoryMobileStyleSheetSlots,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
   type ChatRuntimeMobileChromeSlotsFromStyleSource,
   type ChatVideoAttachmentMobileStyleSheetSlots,
+  type HandsFreeStatusChipMobileStyleSheetSlots,
   type MarkdownContentMobileStyleSheetSlots,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownThinkSectionMobileStyleSheetSlots,
@@ -1021,6 +1024,66 @@ export function useChatRuntimeVideoAttachmentMobileStyleSlots({
   return {
     videoAttachmentRenderState,
     videoAttachmentStyles,
+  };
+}
+
+export type ChatRuntimeHandsFreeStatusChipStyleSheetSlotsInput = Pick<
+  Parameters<typeof createHandsFreeStatusChipMobileStyleSheetSlots>[0],
+  'renderState'
+>;
+
+export type ChatRuntimeHandsFreeStatusChipMobileRenderState =
+  ReturnType<typeof getHandsFreeStatusChipMobileRenderState>;
+
+export type ChatRuntimeHandsFreeStatusChipMobileStyleSlotsInput = Pick<
+  Parameters<typeof getHandsFreeStatusChipMobileRenderState>[0],
+  'phase' | 'label' | 'subtitle'
+>;
+
+export type ChatRuntimeHandsFreeStatusChipMobileStyleSlots = {
+  handsFreeStatusChipRenderState: ChatRuntimeHandsFreeStatusChipMobileRenderState;
+  handsFreeStatusChipStyles: HandsFreeStatusChipMobileStyleSheetSlots;
+};
+
+export function createChatRuntimeHandsFreeStatusChipStyleSheetSlots({
+  renderState,
+}: ChatRuntimeHandsFreeStatusChipStyleSheetSlotsInput): HandsFreeStatusChipMobileStyleSheetSlots {
+  return createHandsFreeStatusChipMobileStyleSheetSlots({
+    renderState,
+    spacing,
+    radius,
+  });
+}
+
+export function useChatRuntimeHandsFreeStatusChipMobileStyleSlots({
+  phase,
+  label,
+  subtitle,
+}: ChatRuntimeHandsFreeStatusChipMobileStyleSlotsInput): ChatRuntimeHandsFreeStatusChipMobileStyleSlots {
+  const { theme } = useTheme();
+  const handsFreeStatusChipRenderState = useMemo(
+    () => getHandsFreeStatusChipMobileRenderState({
+      phase,
+      label,
+      subtitle,
+      colors: theme.colors,
+    }),
+    [label, phase, subtitle, theme.colors],
+  );
+  const handsFreeStatusChipStyleSheetSlots = useMemo(
+    () => createChatRuntimeHandsFreeStatusChipStyleSheetSlots({
+      renderState: handsFreeStatusChipRenderState,
+    }),
+    [handsFreeStatusChipRenderState],
+  );
+  const handsFreeStatusChipStyles = useMemo(
+    () => StyleSheet.create({ ...handsFreeStatusChipStyleSheetSlots }),
+    [handsFreeStatusChipStyleSheetSlots],
+  );
+
+  return {
+    handsFreeStatusChipRenderState,
+    handsFreeStatusChipStyles,
   };
 }
 
