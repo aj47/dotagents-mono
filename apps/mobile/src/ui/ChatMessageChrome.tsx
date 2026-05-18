@@ -241,6 +241,7 @@ import {
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
   type ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots as SharedChatMessageHistoryBannerStyleSlots,
+  type ChatComposerHandsFreeControlsMobileStyleSlots as SharedChatComposerHandsFreeControlsStyleSlots,
   type ChatComposerPendingImagesRailMobileStyleSlots as SharedChatComposerPendingImagesRailStyleSlots,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
@@ -248,6 +249,7 @@ import {
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
   type ChatComposerSpeechPreviewMobileStyleSlots as SharedChatComposerSpeechPreviewStyleSlots,
   type ChatComposerStyleSlots as SharedChatComposerStyleSlots,
+  type ChatComposerVoiceOverlayMobileStyleSlots as SharedChatComposerVoiceOverlayStyleSlots,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomButtonMobilePropsParts,
   type ChatRuntimeScrollToBottomMobileRenderState,
@@ -4213,12 +4215,13 @@ type ChatComposerPendingImageRemoveButtonProps =
 type ChatComposerPendingImageRemoveIconProps =
   ChatComposerPendingImagesRailItemParts['removeIcon']['props'];
 
-type ChatComposerVoiceOverlayStyles = {
-  overlay: StyleProp<ViewStyle>;
-  card: StyleProp<ViewStyle>;
-  label: StyleProp<TextStyle>;
-  transcript: StyleProp<TextStyle>;
-};
+type ChatComposerVoiceOverlayStyles =
+  SharedChatComposerVoiceOverlayStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatComposerVoiceOverlayProps = {
   isVisible: boolean;
@@ -4251,12 +4254,13 @@ type ChatComposerVoiceOverlayLabelProps =
 type ChatComposerVoiceOverlayTranscriptProps =
   ChatComposerVoiceOverlayParts['transcript']['props'];
 
-type ChatComposerHandsFreeControlsStyles = {
-  statusRow: StyleProp<ViewStyle>;
-  controlsRow: StyleProp<ViewStyle>;
-  controlButton: StyleProp<ViewStyle>;
-  controlButtonText: StyleProp<TextStyle>;
-};
+type ChatComposerHandsFreeControlsStyles =
+  SharedChatComposerHandsFreeControlsStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatComposerHandsFreeControlsProps = {
   isVisible: boolean;

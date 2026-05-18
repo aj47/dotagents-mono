@@ -5056,12 +5056,20 @@ export interface ChatComposerHandsFreeControlsMobileControlStateLike {
   }
 }
 
-export interface ChatComposerHandsFreeControlsMobileStylesLike {
-  statusRow: unknown
-  controlsRow: unknown
-  controlButton: unknown
-  controlButtonText: unknown
+export interface ChatComposerHandsFreeControlsMobileStyleSlots<
+  TStatusRowStyle = unknown,
+  TControlsRowStyle = unknown,
+  TControlButtonStyle = unknown,
+  TControlButtonTextStyle = unknown,
+> {
+  statusRow: TStatusRowStyle
+  controlsRow: TControlsRowStyle
+  controlButton: TControlButtonStyle
+  controlButtonText: TControlButtonTextStyle
 }
+
+export interface ChatComposerHandsFreeControlsMobileStylesLike
+  extends ChatComposerHandsFreeControlsMobileStyleSlots {}
 
 export interface ChatComposerHandsFreeControlsMobilePropsPartsInput<
   TStatus = unknown,
@@ -5153,12 +5161,20 @@ export interface ChatComposerHandsFreeControlsMobilePropsParts<
   }
 }
 
-export interface ChatComposerVoiceOverlayMobileStylesLike {
-  overlay: unknown
-  card: unknown
-  label: unknown
-  transcript: unknown
+export interface ChatComposerVoiceOverlayMobileStyleSlots<
+  TOverlayStyle = unknown,
+  TCardStyle = unknown,
+  TLabelStyle = unknown,
+  TTranscriptStyle = unknown,
+> {
+  overlay: TOverlayStyle
+  card: TCardStyle
+  label: TLabelStyle
+  transcript: TTranscriptStyle
 }
+
+export interface ChatComposerVoiceOverlayMobileStylesLike
+  extends ChatComposerVoiceOverlayMobileStyleSlots {}
 
 export interface ChatComposerVoiceOverlayMobilePropsPartsInput<
   TTranscript = string | null | undefined,
