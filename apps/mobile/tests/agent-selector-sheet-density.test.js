@@ -25,6 +25,7 @@ const selectorOptionsTestSource = fs.readFileSync(
 );
 
 test('keeps the mobile agent selector close affordance in a compact header instead of a footer band', () => {
+  assert.match(sheetSource, /export interface AgentSelectorSheetProps/);
   assert.match(sheetSource, /<View \{\.\.\.agentSelectorSheetParts\.header\.props\}>/);
   assert.match(sheetSource, /useChatRuntimeAgentSelectorSheetMobileStyleSlots/);
   assert.match(chatRuntimeMobileStylesSource, /getAgentSelectorMobileRenderState/);

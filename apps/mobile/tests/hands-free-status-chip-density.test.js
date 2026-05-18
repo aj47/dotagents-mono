@@ -17,6 +17,7 @@ const sessionPresentationSource = fs.readFileSync(
 );
 
 test('uses shared hands-free status chip colors and surface tokens', () => {
+  assert.match(chipSource, /export interface HandsFreeStatusChipProps/);
   assert.match(chipSource, /useChatRuntimeHandsFreeStatusChipMobileStyleSlots/);
   assert.match(chipSource, /createHandsFreeStatusChipMobilePropsParts/);
   assert.match(chipSource, /type HandsFreeStatusChipMobilePropsParts,/);

@@ -8,11 +8,11 @@ import {
 } from '@dotagents/shared/session-presentation';
 import { useChatRuntimeHandsFreeStatusChipMobileStyleSlots } from './ChatRuntimeMobileStyles';
 
-type HandsFreeStatusChipProps = {
+export interface HandsFreeStatusChipProps {
   phase: HandsFreePhase;
   label: string;
   subtitle?: string;
-};
+}
 
 type HandsFreeStatusChipStyles = HandsFreeStatusChipMobileStyleSheetSlots;
 

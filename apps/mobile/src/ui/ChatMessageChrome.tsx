@@ -447,8 +447,8 @@ import {
   type ToolExecutionDetailMobileSectionHeaderRenderState,
   type QueuedMessage,
 } from '@dotagents/shared/session-presentation';
-import { AgentSelectorSheet } from './AgentSelectorSheet';
-import { HandsFreeStatusChip } from './HandsFreeStatusChip';
+import { AgentSelectorSheet, type AgentSelectorSheetProps } from './AgentSelectorSheet';
+import { HandsFreeStatusChip, type HandsFreeStatusChipProps } from './HandsFreeStatusChip';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import {
   MessageQueuePanel,
@@ -2029,7 +2029,7 @@ type ChatConversationHomePromptEditorModalBodyProps =
   };
 
 type ChatMessageRuntimeOverlaysProps = {
-  agentSelector: ComponentProps<typeof AgentSelectorSheet>;
+  agentSelector: AgentSelectorSheetProps;
   promptEditor: ChatConversationHomePromptEditorModalProps;
 };
 
@@ -5404,7 +5404,7 @@ type ChatComposerHandsFreeControlsRowContentProps = {
   secondaryControl: ChatComposerHandsFreeControlPart;
 };
 
-type ChatComposerHandsFreeRuntimeStatusProps = ComponentProps<typeof HandsFreeStatusChip>;
+type ChatComposerHandsFreeRuntimeStatusProps = HandsFreeStatusChipProps;
 
 type ChatComposerRuntimeHandsFreeControlsProps =
   Omit<ChatComposerHandsFreeControlsProps, 'status' | 'styles'>

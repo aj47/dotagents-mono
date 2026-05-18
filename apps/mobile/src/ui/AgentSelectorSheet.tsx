@@ -34,7 +34,7 @@ import {
   type SelectableAgentProfile as SelectableProfile,
 } from '@dotagents/shared/session-presentation';
 
-interface AgentSelectorSheetProps {
+export interface AgentSelectorSheetProps {
   visible: boolean;
   onClose: () => void;
 }

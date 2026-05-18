@@ -144,6 +144,10 @@ test('keeps mobile chat shared domain types routed through session presentation'
   assert.match(sessionPresentationSource, /export type \{ HandsFreePhase \} from "\.\/types"/);
   assert.match(sessionPresentationSource, /export type \{ VoiceDebugEntry, VoiceDebugLog \} from "\.\/voice-debug-log"/);
   assert.match(sessionPresentationSource, /export \{[\s\S]*?createHandsFreeStatusChipMobilePropsParts,[\s\S]*?createHandsFreeStatusChipMobileStyleSheetSlots,[\s\S]*?createHandsFreeStatusChipMobileStyleSlots,[\s\S]*?getHandsFreeStatusChipMobileRenderState,[\s\S]*?HandsFreeStatusChipMobileColors,[\s\S]*?HandsFreeStatusChipMobileRenderState,[\s\S]*?HandsFreeStatusChipMobileStyleSheetSlots,[\s\S]*?\} from "\.\/hands-free-controller"/);
+  assert.match(handsFreeStatusChipSource, /export interface HandsFreeStatusChipProps/);
+  assert.match(chatMessageChromeSource, /import \{ HandsFreeStatusChip, type HandsFreeStatusChipProps \} from '\.\/HandsFreeStatusChip';/);
+  assert.match(chatMessageChromeSource, /type ChatComposerHandsFreeRuntimeStatusProps = HandsFreeStatusChipProps;/);
+  assert.doesNotMatch(chatMessageChromeSource, /ComponentProps<typeof HandsFreeStatusChip>/);
   assert.match(handsFreeStatusChipSource, /import \{ useChatRuntimeHandsFreeStatusChipMobileStyleSlots \} from '\.\/ChatRuntimeMobileStyles';/);
   assert.match(chatRuntimeMobileStylesSource, /createHandsFreeStatusChipMobileStyleSheetSlots,/);
   assert.match(chatRuntimeMobileStylesSource, /getHandsFreeStatusChipMobileRenderState,/);
@@ -323,6 +327,10 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /createChatRuntimeHeaderAgentSelectorMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput,/);
+  assert.match(agentSelectorSheetSource, /export interface AgentSelectorSheetProps/);
+  assert.match(chatMessageChromeSource, /import \{ AgentSelectorSheet, type AgentSelectorSheetProps \} from '\.\/AgentSelectorSheet';/);
+  assert.match(chatMessageChromeSource, /agentSelector: AgentSelectorSheetProps;/);
+  assert.doesNotMatch(chatMessageChromeSource, /ComponentProps<typeof AgentSelectorSheet>/);
   assert.match(agentSelectorSheetSource, /import \{[\s\S]*?useChatRuntimeAgentSelectorSheetMobileStyleSlots,[\s\S]*?type ChatRuntimeAgentSelectorSheetMobileRenderState,[\s\S]*?\} from '\.\/ChatRuntimeMobileStyles';/);
   assert.match(chatRuntimeMobileStylesSource, /createAgentSelectorMobileStyleSheetSlots,/);
   assert.match(chatRuntimeMobileStylesSource, /getAgentSelectorMobileRenderState,/);
