@@ -5570,6 +5570,10 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.match(sessionPresentationSource, /stepSummaryStyles: \{\s+card: styles\.stepSummaryCard,\s+header: styles\.stepSummaryHeader,\s+title: styles\.stepSummaryTitle,\s+badge: styles\.stepSummaryBadge,\s+badgeText: styles\.stepSummaryBadgeText,\s+action: styles\.stepSummaryAction,\s+meta: styles\.stepSummaryMeta,\s+preview: styles\.stepSummaryPreview,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageStepSummaryCard/);
   assert.match(chatMessageChromeSource, /createChatRuntimeStepSummaryCardMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeStepSummaryCardMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageStepSummaryCardParts =\s+ChatRuntimeStepSummaryCardMobilePropsParts<[\s\S]*?ChatMessageStepSummaryCardProps\['renderState'\],[\s\S]*?ChatMessageStepSummaryCardProps\['styles'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummary(Text|Badge|Header)Part = \{/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummaryCardParts = ReturnType<typeof createChatRuntimeStepSummaryCardMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeStepSummaryCardMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const stepSummaryCardParts = createChatRuntimeStepSummaryCardMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const stepSummaryCardPart = stepSummaryCardParts\.card;/);

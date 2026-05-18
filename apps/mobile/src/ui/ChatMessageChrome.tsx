@@ -226,6 +226,7 @@ import {
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
+  type ChatRuntimeStepSummaryCardMobilePropsParts,
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
@@ -3231,10 +3232,11 @@ type ChatMessageStepSummaryCardProps = {
   styles: ChatMessageStepSummaryCardStyles;
 };
 
-type ChatMessageStepSummaryCardParts = ReturnType<typeof createChatRuntimeStepSummaryCardMobilePropsParts<
-  ChatMessageStepSummaryCardProps['renderState'],
-  ChatMessageStepSummaryCardProps['styles']
->>;
+type ChatMessageStepSummaryCardParts =
+  ChatRuntimeStepSummaryCardMobilePropsParts<
+    ChatMessageStepSummaryCardProps['renderState'],
+    ChatMessageStepSummaryCardProps['styles']
+  >;
 
 type ChatMessageStepSummaryCardViewProps =
   ChatMessageStepSummaryCardParts['card']['props'] & {
@@ -3244,43 +3246,28 @@ type ChatMessageStepSummaryCardViewProps =
 type ChatMessageStepSummaryCardContentProps =
   ChatMessageStepSummaryCardParts['card']['content'];
 
-type ChatMessageStepSummaryTextPart = {
-  text: string;
-  props: ComponentProps<typeof Text>;
-};
-
 type ChatMessageStepSummaryTextProps = {
-  part: ChatMessageStepSummaryTextPart;
-};
-
-type ChatMessageStepSummaryBadgePart = {
-  props: ComponentProps<typeof View>;
-  content: {
-    label: ChatMessageStepSummaryTextPart;
-  };
+  part:
+    | ChatMessageStepSummaryCardParts['card']['content']['header']['content']['title']
+    | ChatMessageStepSummaryCardParts['card']['content']['header']['content']['badge']['content']['label']
+    | ChatMessageStepSummaryCardParts['card']['content']['action']
+    | ChatMessageStepSummaryCardParts['card']['content']['meta']
+    | ChatMessageStepSummaryCardParts['card']['content']['preview'];
 };
 
 type ChatMessageStepSummaryBadgeProps = {
-  badge: ChatMessageStepSummaryBadgePart;
+  badge: ChatMessageStepSummaryCardParts['card']['content']['header']['content']['badge'];
 };
 
 type ChatMessageStepSummaryBadgeContentProps =
-  ChatMessageStepSummaryBadgePart['content'];
-
-type ChatMessageStepSummaryHeaderPart = {
-  props: ComponentProps<typeof View>;
-  content: {
-    title: ChatMessageStepSummaryTextPart;
-    badge: ChatMessageStepSummaryBadgePart;
-  };
-};
+  ChatMessageStepSummaryCardParts['card']['content']['header']['content']['badge']['content'];
 
 type ChatMessageStepSummaryHeaderProps = {
-  header: ChatMessageStepSummaryHeaderPart;
+  header: ChatMessageStepSummaryCardParts['card']['content']['header'];
 };
 
 type ChatMessageStepSummaryHeaderContentProps =
-  ChatMessageStepSummaryHeaderPart['content'];
+  ChatMessageStepSummaryCardParts['card']['content']['header']['content'];
 
 type ChatMessageStepSummaryPreviewBlockProps = {
   preview: ChatMessageStepSummaryCardParts['card']['content']['preview'];
