@@ -29474,43 +29474,57 @@ type ChatMessageToolActivityGroupBoundaryStylesFromStyleSource<
   }
 }
 
+export type ChatMessageActionStyleSlots<
+  TTurnDurationStyles,
+  TSpeechStyles,
+  TBranchStyles,
+  TCopyStyles,
+  TExpansionStyles,
+> = {
+  turnDuration: TTurnDurationStyles
+  speech: TSpeechStyles & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["speech"]["hitSlop"]
+  }
+  branch: TBranchStyles & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["branch"]["hitSlop"]
+  }
+  copy: TCopyStyles & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["copy"]["hitSlop"]
+  }
+  expansion: TExpansionStyles & {
+    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["expansion"]["hitSlop"]
+  }
+}
+
 type ChatMessageActionStylesFromStyleSource<
   TStyles extends ChatMessageConversationThreadStyleSource,
-> = {
-  turnDuration: {
+> = ChatMessageActionStyleSlots<
+  {
     style: TStyles["messageTurnDurationBadge"]
     liveStyle: TStyles["messageTurnDurationBadgeLive"]
     textStyle: TStyles["messageTurnDurationText"]
     liveTextStyle: TStyles["messageTurnDurationTextLive"]
-  }
-  speech: {
+  },
+  {
     style: TStyles["speakButton"]
     activeStyle: TStyles["speakButtonActive"]
     pressedStyle: TStyles["speakButtonPressed"]
-  } & {
-    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["speech"]["hitSlop"]
-  }
-  branch: {
+  },
+  {
     style: TStyles["messageBranchButton"]
     pressedStyle: TStyles["messageBranchButtonPressed"]
     disabledStyle: TStyles["messageBranchButtonDisabled"]
-  } & {
-    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["branch"]["hitSlop"]
-  }
-  copy: {
+  },
+  {
     style: TStyles["messageCopyButton"]
     activeStyle: TStyles["messageCopyButtonCopied"]
     pressedStyle: TStyles["messageCopyButtonPressed"]
-  } & {
-    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["copy"]["hitSlop"]
-  }
-  expansion: {
+  },
+  {
     style: TStyles["messageExpandButton"]
     pressedStyle: TStyles["messageExpandButtonPressed"]
-  } & {
-    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["expansion"]["hitSlop"]
   }
-}
+>
 
 type ChatMessageConversationThreadStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationThreadStyleSource,
@@ -29632,21 +29646,13 @@ export function createChatMessageActionStyleSlots<
   branchStyles: TBranchStyles
   copyStyles: TCopyStyles
   expansionStyles: TExpansionStyles
-}): {
-  turnDuration: TTurnDurationStyles
-  speech: TSpeechStyles & {
-    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["speech"]["hitSlop"]
-  }
-  branch: TBranchStyles & {
-    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["branch"]["hitSlop"]
-  }
-  copy: TCopyStyles & {
-    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["copy"]["hitSlop"]
-  }
-  expansion: TExpansionStyles & {
-    hitSlop: ReturnType<typeof getChatMessageActionMobileButtonStatesBySlot>["expansion"]["hitSlop"]
-  }
-} {
+}): ChatMessageActionStyleSlots<
+  TTurnDurationStyles,
+  TSpeechStyles,
+  TBranchStyles,
+  TCopyStyles,
+  TExpansionStyles
+> {
   const actionButtons = getChatMessageActionMobileButtonStatesBySlot()
 
   return {

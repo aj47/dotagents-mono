@@ -352,6 +352,7 @@ import {
   type ChatMessageRuntimeSessionMessageLike,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageExpansionMobileRenderState,
+  type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageRuntimeSessionDisplayMessagesOptions,
@@ -1301,16 +1302,30 @@ export type ChatMessageActionSet = {
   shouldRenderStandaloneActions: boolean;
 };
 
-export type ChatMessageActionStyleSlots = {
-  turnDuration: Pick<
+type ChatMessageTurnDurationActionStyles = Pick<
     ChatMessageTurnDurationActionSpec,
     'style' | 'liveStyle' | 'textStyle' | 'liveTextStyle'
   >;
-  speech: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'activeStyle' | 'pressedStyle'>;
-  branch: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'pressedStyle' | 'disabledStyle'>;
-  copy: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'activeStyle' | 'pressedStyle'>;
-  expansion: Pick<ChatMessageActionButtonSpec, 'hitSlop' | 'style' | 'pressedStyle'>;
-};
+
+type ChatMessageSpeechActionStyles =
+  Pick<ChatMessageActionButtonSpec, 'style' | 'activeStyle' | 'pressedStyle'>;
+
+type ChatMessageBranchActionStyles =
+  Pick<ChatMessageActionButtonSpec, 'style' | 'pressedStyle' | 'disabledStyle'>;
+
+type ChatMessageCopyActionStyles =
+  Pick<ChatMessageActionButtonSpec, 'style' | 'activeStyle' | 'pressedStyle'>;
+
+type ChatMessageExpansionActionStyles =
+  Pick<ChatMessageActionButtonSpec, 'style' | 'pressedStyle'>;
+
+export type ChatMessageActionStyleSlots = SharedChatMessageActionStyleSlots<
+  ChatMessageTurnDurationActionStyles,
+  ChatMessageSpeechActionStyles,
+  ChatMessageBranchActionStyles,
+  ChatMessageCopyActionStyles,
+  ChatMessageExpansionActionStyles
+>;
 
 type ChatRuntimeHeaderAgentSelectorStyles = {
   button: StyleProp<ViewStyle>;

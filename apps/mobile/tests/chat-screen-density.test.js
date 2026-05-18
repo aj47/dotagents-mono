@@ -6891,7 +6891,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationMessageRenderContextMobileState/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationRenderContext/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,/);
+  assert.match(chatMessageChromeSource, /export type ChatMessageActionStyleSlots = SharedChatMessageActionStyleSlots<\s+ChatMessageTurnDurationActionStyles,\s+ChatMessageSpeechActionStyles,\s+ChatMessageBranchActionStyles,\s+ChatMessageCopyActionStyles,\s+ChatMessageExpansionActionStyles\s+>;/);
+  assert.match(sessionPresentationSource, /export type ChatMessageActionStyleSlots<\s+TTurnDurationStyles,\s+TSpeechStyles,\s+TBranchStyles,\s+TCopyStyles,\s+TExpansionStyles,/);
   assert.match(sessionPresentationSource, /export function createChatMessageActionStyleSlots/);
+  assert.match(sessionPresentationSource, /\}\): ChatMessageActionStyleSlots<\s+TTurnDurationStyles,\s+TSpeechStyles,\s+TBranchStyles,\s+TCopyStyles,\s+TExpansionStyles\s+> \{/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageThreadBodyProps/);
   assert.doesNotMatch(chatMessageChromeSource, /function createChatMessageThreadBodyProps\(\{/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationThreadBodyMobileProps/);
