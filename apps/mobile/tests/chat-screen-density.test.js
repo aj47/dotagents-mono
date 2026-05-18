@@ -536,13 +536,20 @@ test('shows the shared total agent time in the mobile chat header', () => {
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationParts =\s+ChatRuntimeHeaderTurnDurationMobilePropsParts<[\s\S]*?ChatRuntimeTurnDurationHeaderMobileRenderState,[\s\S]*?ChatRuntimeHeaderTurnDurationStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationProps = \{[\s\S]*?renderState: ChatRuntimeTurnDurationHeaderMobileRenderState;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationParts = ReturnType<typeof createChatRuntimeHeaderTurnDurationMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationContainerProps =\s+ChatRuntimeHeaderTurnDurationParts\['container'\]\['props'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationContainerContentProps =\s+ChatRuntimeHeaderTurnDurationParts\['container'\]\['content'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationIconProps =\s+ChatRuntimeHeaderTurnDurationParts\['container'\]\['content'\]\['icon'\]\['props'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationLabelProps =\s+ChatRuntimeHeaderTurnDurationParts\['container'\]\['content'\]\['label'\]\['props'\];/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationContainerProps = \{[\s\S]*?children: ReactNode;[\s\S]*?accessible: true;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?style: ChatRuntimeHeaderTurnDurationContainerStyle;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationIconProps = \{[\s\S]*?name: IoniconName;[\s\S]*?size: number;[\s\S]*?color: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationLabelProps = \{[\s\S]*?props: \{[\s\S]*?style: Array<StyleProp<TextStyle> \| false \| undefined>;[\s\S]*?numberOfLines: number;[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationContainerContentProps = \{[\s\S]*?icon: \{[\s\S]*?props: ChatRuntimeHeaderTurnDurationIconProps;[\s\S]*?label: \{[\s\S]*?props: ChatRuntimeHeaderTurnDurationLabelProps;/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderTurnDurationMobilePropsParts/);
   const headerTurnDurationSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderTurnDuration[\s\S]*?export function ChatConversationHomeQuickStarts/)?.[0] ?? '';
   assert.match(headerTurnDurationSource, /const turnDurationParts: ChatRuntimeHeaderTurnDurationParts =\s+createChatRuntimeHeaderTurnDurationMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(headerTurnDurationSource, /const turnDurationContainer = turnDurationParts\.container;/);
   assert.match(headerTurnDurationSource, /if \(!turnDurationContainer\.shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationContainerContentProps =\s+ChatRuntimeHeaderTurnDurationParts\['container'\]\['content'\];/);
   assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationContainer\s+\{\.\.\.turnDurationContainer\.props\}/);
   assert.match(headerTurnDurationSource, /<ChatRuntimeHeaderTurnDurationContainerContent\s+\{\.\.\.turnDurationContainer\.content\}\s+\/>/);
   assert.match(headerTurnDurationSource, /export function ChatRuntimeHeaderTurnDurationContainerContent/);

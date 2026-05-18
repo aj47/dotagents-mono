@@ -1627,19 +1627,39 @@ type ChatRuntimeHeaderTurnDurationParts =
     ChatRuntimeHeaderTurnDurationStyles
   >;
 
-type ChatRuntimeHeaderTurnDurationContainerProps =
-  ChatRuntimeHeaderTurnDurationParts['container']['props'] & {
-    children: ReactNode;
+type ChatRuntimeHeaderTurnDurationContainerStyle =
+  Array<StyleProp<ViewStyle> | false | undefined>;
+
+type ChatRuntimeHeaderTurnDurationContainerProps = {
+  children: ReactNode;
+  accessible: true;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  style: ChatRuntimeHeaderTurnDurationContainerStyle;
+};
+
+type ChatRuntimeHeaderTurnDurationIconProps = {
+  name: IoniconName;
+  size: number;
+  color: string;
+};
+
+type ChatRuntimeHeaderTurnDurationLabelProps = {
+  props: {
+    style: Array<StyleProp<TextStyle> | false | undefined>;
+    numberOfLines: number;
   };
+  text: string;
+};
 
-type ChatRuntimeHeaderTurnDurationContainerContentProps =
-  ChatRuntimeHeaderTurnDurationParts['container']['content'];
-
-type ChatRuntimeHeaderTurnDurationIconProps =
-  ChatRuntimeHeaderTurnDurationParts['container']['content']['icon']['props'];
-
-type ChatRuntimeHeaderTurnDurationLabelProps =
-  ChatRuntimeHeaderTurnDurationParts['container']['content']['label']['props'];
+type ChatRuntimeHeaderTurnDurationContainerContentProps = {
+  icon: {
+    props: ChatRuntimeHeaderTurnDurationIconProps;
+  };
+  label: {
+    props: ChatRuntimeHeaderTurnDurationLabelProps;
+  };
+};
 
 type ChatRuntimeHeaderIconButtonStyles =
   SharedChatRuntimeHeaderIconButtonStyleSlots<
