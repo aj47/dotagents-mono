@@ -16137,21 +16137,9 @@ export function ChatMessageInlineActivitySpinner(props: ChatMessageInlineActivit
   );
 }
 
-export function ChatMessageTurnDurationBadge({
-  renderState,
-  style,
-  liveStyle,
-  textStyle,
-  liveTextStyle,
-}: ChatMessageTurnDurationBadgeProps) {
+export function ChatMessageTurnDurationBadge(props: ChatMessageTurnDurationBadgeProps) {
   const turnDurationBadgeParts: ChatMessageTurnDurationBadgeParts =
-    createChatRuntimeTurnDurationBadgeMobilePropsParts({
-      renderState,
-      style,
-      liveStyle,
-      textStyle,
-      liveTextStyle,
-    });
+    createChatRuntimeTurnDurationBadgeMobilePropsParts(props);
 
   if (!turnDurationBadgeParts.container.shouldRender) return null;
 
