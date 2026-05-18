@@ -794,6 +794,38 @@ export interface AgentSelectorMobileStyleSlots {
   }
 }
 
+export type AgentSelectorMobileStyleSheetSlotsInput =
+  AgentSelectorMobileStyleSlotsInput
+
+export type AgentSelectorMobileStyleSheetSlots =
+  AgentSelectorSheetMobilePropsStylesLike<
+    AgentSelectorMobileStyleSlots["backdrop"],
+    AgentSelectorMobileStyleSlots["backdropSpacer"],
+    AgentSelectorMobileStyleSlots["sheet"],
+    AgentSelectorMobileStyleSlots["handle"],
+    AgentSelectorMobileStyleSlots["header"],
+    AgentSelectorMobileStyleSlots["title"],
+    AgentSelectorMobileStyleSlots["headerCloseButton"],
+    AgentSelectorMobileStyleSlots["list"],
+    AgentSelectorMobileStyleSlots["loadingContainer"],
+    AgentSelectorMobileStyleSlots["loadingText"],
+    AgentSelectorMobileStyleSlots["errorContainer"],
+    AgentSelectorMobileStyleSlots["errorText"],
+    AgentSelectorMobileStyleSlots["retryButton"],
+    AgentSelectorMobileStyleSlots["retryButtonText"],
+    AgentSelectorMobileStyleSlots["emptyText"]
+  > &
+  AgentSelectorProfileItemMobilePropsStylesLike<
+    AgentSelectorMobileStyleSlots["profileItem"],
+    AgentSelectorMobileStyleSlots["profileItemSelected"],
+    AgentSelectorMobileStyleSlots["profileAvatar"],
+    AgentSelectorMobileStyleSlots["profileAvatarImage"],
+    AgentSelectorMobileStyleSlots["profileInfo"],
+    AgentSelectorMobileStyleSlots["profileName"],
+    AgentSelectorMobileStyleSlots["profileNameSelected"],
+    AgentSelectorMobileStyleSlots["profileDescription"]
+  >
+
 export function getAgentSelectorSheetCopyState(): typeof AGENT_SELECTOR_PRESENTATION.sheet {
   return AGENT_SELECTOR_PRESENTATION.sheet
 }
@@ -1044,6 +1076,18 @@ export function createAgentSelectorMobileStyleSlots({
       paddingVertical: spacing[surface.emptyText.paddingVertical],
     },
   }
+}
+
+export function createAgentSelectorMobileStyleSheetSlots({
+  renderState,
+  spacing,
+  radius,
+}: AgentSelectorMobileStyleSheetSlotsInput): AgentSelectorMobileStyleSheetSlots {
+  return createAgentSelectorMobileStyleSlots({
+    renderState,
+    spacing,
+    radius,
+  })
 }
 
 export function getAgentSelectorMobileProfileItemRenderState({

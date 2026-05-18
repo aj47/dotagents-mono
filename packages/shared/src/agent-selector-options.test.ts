@@ -5,6 +5,7 @@ import {
   buildSelectorProfiles,
   createAgentSelectorProfileItemMobilePropsParts,
   createAgentSelectorSheetMobilePropsParts,
+  createAgentSelectorMobileStyleSheetSlots,
   createAgentSelectorMobileStyleSlots,
   formatAgentSelectorEditLabel,
   formatAgentSelectorSelectAccessibilityLabel,
@@ -297,6 +298,21 @@ describe("agent selector option helpers", () => {
         xl: 16,
       },
     })
+    expect(createAgentSelectorMobileStyleSheetSlots({
+      renderState: agentSelectorRenderState,
+      spacing: {
+        xs: 4,
+        sm: 8,
+        md: 12,
+        lg: 16,
+        xl: 24,
+      },
+      radius: {
+        md: 8,
+        lg: 12,
+        xl: 16,
+      },
+    })).toEqual(agentSelectorStyleSlots)
     expect(agentSelectorStyleSlots).toEqual({
       backdrop: {
         flex: 1,

@@ -14,10 +14,6 @@ import {
   ActivityIndicator,
   Pressable,
   Image,
-  type ImageStyle,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,13 +26,12 @@ import {
   buildSelectorProfiles,
   createAgentSelectorProfileItemMobilePropsParts,
   createAgentSelectorSheetMobilePropsParts,
-  createAgentSelectorMobileStyleSlots,
+  createAgentSelectorMobileStyleSheetSlots,
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
+  type AgentSelectorMobileStyleSheetSlots,
   type AgentSelectorProfileItemMobilePropsParts,
-  type AgentSelectorProfileItemMobilePropsStylesLike,
   type AgentSelectorSheetMobilePropsParts,
-  type AgentSelectorSheetMobilePropsStylesLike,
   type SelectableAgentProfile as SelectableProfile,
 } from '@dotagents/shared/session-presentation';
 
@@ -53,34 +48,7 @@ type AgentSelectorAvatarImageSource = {
   uri: string;
 };
 
-type AgentSelectorSheetStyles =
-  AgentSelectorSheetMobilePropsStylesLike<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  > &
-  AgentSelectorProfileItemMobilePropsStylesLike<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ImageStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+type AgentSelectorSheetStyles = AgentSelectorMobileStyleSheetSlots;
 
 type AgentSelectorSheetParts =
   AgentSelectorSheetMobilePropsParts<
@@ -115,8 +83,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     [selectorMode, theme.colors],
   );
   const agentSelectorCopy = agentSelectorRenderState.copy;
-  const agentSelectorStyleSlots = React.useMemo(
-    () => createAgentSelectorMobileStyleSlots({
+  const agentSelectorStyleSheetSlots = React.useMemo(
+    () => createAgentSelectorMobileStyleSheetSlots({
       renderState: agentSelectorRenderState,
       spacing,
       radius,
@@ -124,78 +92,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     [agentSelectorRenderState],
   );
   const styles = React.useMemo<AgentSelectorSheetStyles>(
-    () => StyleSheet.create({
-      backdrop: {
-        ...agentSelectorStyleSlots.backdrop,
-      },
-      backdropSpacer: {
-        ...agentSelectorStyleSlots.backdropSpacer,
-      },
-      sheet: {
-        ...agentSelectorStyleSlots.sheet,
-      },
-      handle: {
-        ...agentSelectorStyleSlots.handle,
-      },
-      header: {
-        ...agentSelectorStyleSlots.header,
-      },
-      title: {
-        ...agentSelectorStyleSlots.title,
-      },
-      headerCloseButton: {
-        ...agentSelectorStyleSlots.headerCloseButton,
-      },
-      list: {
-        ...agentSelectorStyleSlots.list,
-      },
-      profileItem: {
-        ...agentSelectorStyleSlots.profileItem,
-      },
-      profileItemSelected: {
-        ...agentSelectorStyleSlots.profileItemSelected,
-      },
-      profileAvatar: {
-        ...agentSelectorStyleSlots.profileAvatar,
-      },
-      profileAvatarImage: {
-        ...agentSelectorStyleSlots.profileAvatarImage,
-      },
-      profileInfo: {
-        ...agentSelectorStyleSlots.profileInfo,
-      },
-      profileName: {
-        ...agentSelectorStyleSlots.profileName,
-      },
-      profileNameSelected: {
-        ...agentSelectorStyleSlots.profileNameSelected,
-      },
-      profileDescription: {
-        ...agentSelectorStyleSlots.profileDescription,
-      },
-      loadingContainer: {
-        ...agentSelectorStyleSlots.loadingContainer,
-      },
-      loadingText: {
-        ...agentSelectorStyleSlots.loadingText,
-      },
-      errorContainer: {
-        ...agentSelectorStyleSlots.errorContainer,
-      },
-      errorText: {
-        ...agentSelectorStyleSlots.errorText,
-      },
-      retryButton: {
-        ...agentSelectorStyleSlots.retryButton,
-      },
-      retryButtonText: {
-        ...agentSelectorStyleSlots.retryButtonText,
-      },
-      emptyText: {
-        ...agentSelectorStyleSlots.emptyText,
-      },
-    }),
-    [agentSelectorStyleSlots],
+    () => StyleSheet.create({ ...agentSelectorStyleSheetSlots }),
+    [agentSelectorStyleSheetSlots],
   );
   const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
   const missingConfigError = agentSelectorCopy.missingConfigError;
@@ -238,7 +136,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     visible,
     renderState: agentSelectorRenderState,
     styles,
-    sheetBottomPadding: agentSelectorStyleSlots.sheet.paddingBottom,
+    sheetBottomPadding: agentSelectorStyleSheetSlots.sheet.paddingBottom,
     safeAreaBottom: insets.bottom,
     isLoading,
     error,
