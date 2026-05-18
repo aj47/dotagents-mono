@@ -3977,7 +3977,10 @@ export const router = {
         messageLimit: input.messageLimit,
       })
 
-      if (input.sessionId && conversation) {
+      // Skip synthetic `pending-*` IDs: they are never added to
+      // `agentSessionTracker`, so `clearSessionFileActivity` would never fire
+      // for them and `trackedSessionFileRoots` would grow unbounded.
+      if (input.sessionId && !input.sessionId.startsWith("pending-") && conversation) {
         // `loadConversationForDisplay` already returns the stored raw messages
         // (via `buildDisplayLoadedConversation`/`getStoredRawMessages`), so we
         // can hydrate file-activity from those without a second disk read.
