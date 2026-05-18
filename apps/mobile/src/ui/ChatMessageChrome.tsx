@@ -458,7 +458,6 @@ import {
   type ChatMessageConversationViewportStyleSlots as SharedChatMessageConversationViewportStyleSlots,
   type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
   type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,
-  type ChatMessageThreadBodyStyleSlots as SharedChatMessageThreadBodyStyleSlots,
   type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
@@ -471,7 +470,6 @@ import {
   type ChatMessageRuntimeToolCallExpansionState,
   type ChatMessageRuntimeTurnDurationStateInput,
   type ChatMessageToolActivityGroupBoundaryStyleSlots as SharedChatMessageToolActivityGroupBoundaryStyleSlots,
-  type ChatMessageToolActivityGroupThreadSurfaceStyleSlots as SharedChatMessageToolActivityGroupThreadSurfaceStyleSlots,
   type ToolActivityGroupMobileRenderState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
@@ -6464,30 +6462,10 @@ type ChatComposerRuntimeDockChromePropsInput = {
 };
 
 export type ChatMessageThreadBodyStyleSlots =
-  SharedChatMessageThreadBodyStyleSlots<
-    ChatMessageRetryStatusStyles,
-    ChatMessageDelegationCardStyles,
-    ChatMessageToolApprovalStyles,
-    Pick<ChatMessageInlineActivityProps, 'style' | 'spinnerStyle'>,
-    {
-      rowStyle: StyleProp<ViewStyle>;
-      expandedBodyStyle: StyleProp<ViewStyle>;
-      streamingStyles: ChatMessageExpandedContentStyles;
-      collapsedStyle: StyleProp<ViewStyle>;
-      collapsedPressedStyle: StyleProp<ViewStyle>;
-      collapsedTextStyle: StyleProp<TextStyle>;
-    },
-    ChatMessageToolExecutionStackStyles,
-    Pick<ChatMessageStandaloneActionsProps, 'rowStyle'>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body'];
 
 type ChatMessageToolActivityGroupThreadSurfaceStyleSlots =
-  SharedChatMessageToolActivityGroupThreadSurfaceStyleSlots<
-    StyleProp<ViewStyle>,
-    ChatMessageToolActivityGroupBoundaryStyles,
-    ChatRuntimeConversationSurfaceToneMobileStyleSlot,
-    StyleProp<ViewStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['surface'];
 
 type ChatMessageThreadBodyContentProps =
   Omit<ChatMessageConversationContentProps, 'rowStyle' | 'expanded' | 'collapsed'>
