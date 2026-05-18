@@ -2233,10 +2233,13 @@ type ChatMessageRetryStatusParts =
     ChatMessageRetryStatusStyles
   >;
 
-type ChatMessageRetryStatusCardProps =
-  ChatMessageRetryStatusParts['card']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageRetryStatusCardProps = {
+  children: ReactNode;
+  accessible: true;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  style: StyleProp<ViewStyle>;
+};
 
 type ChatMessageRetryStatusContent =
   ChatMessageRetryStatusParts['card']['content'];
@@ -2258,24 +2261,32 @@ type ChatMessageRetryStatusMetaProps = {
 type ChatMessageRetryStatusMetaContentProps =
   ChatMessageRetryStatusContent['meta']['content'];
 
-type ChatMessageRetryStatusViewProps =
-  (ChatMessageRetryStatusContent['header']['props'] | ChatMessageRetryStatusContent['meta']['props']) & {
-    children: ReactNode;
-  };
+type ChatMessageRetryStatusViewProps = {
+  children: ReactNode;
+  style: StyleProp<ViewStyle>;
+};
 
-type ChatMessageRetryStatusIconProps =
-  ChatMessageRetryStatusContent['header']['content']['icon']['props'];
+type ChatMessageRetryStatusIconProps = {
+  name: IoniconName;
+  size: number;
+  color: string;
+};
 
-type ChatMessageRetryStatusTitleProps =
-  ChatMessageRetryStatusContent['header']['content']['title']['props'];
+type ChatMessageRetryStatusTitleProps = {
+  text: string;
+  style: StyleProp<TextStyle>;
+  numberOfLines: number;
+};
 
-type ChatMessageRetryStatusSpinnerProps =
-  ChatMessageRetryStatusContent['header']['content']['spinner']['props'];
+type ChatMessageRetryStatusSpinnerProps = {
+  size: ComponentProps<typeof ActivityIndicator>['size'];
+  color: string;
+};
 
-type ChatMessageRetryStatusTextProps =
-  | ChatMessageRetryStatusContent['meta']['content']['attempt']['props']
-  | ChatMessageRetryStatusContent['meta']['content']['countdown']['props']
-  | ChatMessageRetryStatusContent['description']['props'];
+type ChatMessageRetryStatusTextProps = {
+  text: string;
+  style: StyleProp<TextStyle>;
+};
 
 type ChatMessageToolApprovalStyles =
   SharedChatMessageToolApprovalStyleSlots<

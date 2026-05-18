@@ -1112,6 +1112,18 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusProps = \{[\s\S]*?renderState: ChatRuntimeRetryStatusMobileRenderState;[\s\S]*?styles: ChatMessageRetryStatusStyles;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusParts =\s+ChatRuntimeRetryStatusMobilePropsParts<[\s\S]*?ChatRuntimeRetryStatusMobileRenderState,[\s\S]*?ChatMessageRetryStatusStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusParts = ReturnType<typeof createChatRuntimeRetryStatusMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusCardProps =\s+ChatMessageRetryStatusParts\['card'\]\['props'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusViewProps =\s+\(ChatMessageRetryStatusContent\['header'\]\['props'\] \| ChatMessageRetryStatusContent\['meta'\]\['props'\]\)/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusIconProps =\s+ChatMessageRetryStatusContent\['header'\]\['content'\]\['icon'\]\['props'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusTitleProps =\s+ChatMessageRetryStatusContent\['header'\]\['content'\]\['title'\]\['props'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusSpinnerProps =\s+ChatMessageRetryStatusContent\['header'\]\['content'\]\['spinner'\]\['props'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusTextProps =\s+\| ChatMessageRetryStatusContent\['meta'\]\['content'\]\['attempt'\]\['props'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusCardProps = \{[\s\S]*?children: ReactNode;[\s\S]*?accessible: true;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?style: StyleProp<ViewStyle>;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusViewProps = \{[\s\S]*?children: ReactNode;[\s\S]*?style: StyleProp<ViewStyle>;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusIconProps = \{[\s\S]*?name: IoniconName;[\s\S]*?size: number;[\s\S]*?color: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusTitleProps = \{[\s\S]*?text: string;[\s\S]*?style: StyleProp<TextStyle>;[\s\S]*?numberOfLines: number;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusSpinnerProps = \{[\s\S]*?size: ComponentProps<typeof ActivityIndicator>\['size'\];[\s\S]*?color: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusTextProps = \{[\s\S]*?text: string;[\s\S]*?style: StyleProp<TextStyle>;[\s\S]*?\};/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeRetryStatusMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeRetryStatusMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const retryStatusParts: ChatMessageRetryStatusParts =\s+createChatRuntimeRetryStatusMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
