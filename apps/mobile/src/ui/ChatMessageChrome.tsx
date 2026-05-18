@@ -484,12 +484,13 @@ import {
   type ToolExecutionDetailMobileHeaderRenderState,
   type ToolExecutionDetailMobilePendingResultRenderState,
   type ToolExecutionDetailMobileSectionHeaderRenderState,
+  type QueuedMessage,
 } from '@dotagents/shared/session-presentation';
 import { AgentSelectorSheet } from './AgentSelectorSheet';
 import { HandsFreeStatusChip } from './HandsFreeStatusChip';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { MessageQueuePanel } from './MessageQueuePanel';
-import { ResponseHistoryPanel } from './ResponseHistoryPanel';
+import { ResponseHistoryPanel, type ResponseHistoryEntry } from './ResponseHistoryPanel';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -4070,33 +4071,33 @@ type ChatMessageRuntimeDockParts =
 type ChatMessageRuntimeDockChromeProps = Omit<ChatMessageRuntimeDockProps, 'styles'>;
 
 type ChatMessageRuntimeDockChromePropsInput = {
-  responseHistoryResponses: ChatMessageResponseHistoryPanelDockProps['responses'];
-  responseHistoryTtsProvider: ChatMessageResponseHistoryPanelDockProps['ttsProvider'];
-  responseHistoryRemoteTtsVoice: ChatMessageResponseHistoryPanelDockProps['remoteTtsVoice'];
-  responseHistoryRemoteTtsModel: ChatMessageResponseHistoryPanelDockProps['remoteTtsModel'];
-  responseHistoryTtsRate: ChatMessageResponseHistoryPanelDockProps['ttsRate'];
-  responseHistoryTtsPitch: ChatMessageResponseHistoryPanelDockProps['ttsPitch'];
-  responseHistoryTtsVoiceId: ChatMessageResponseHistoryPanelDockProps['ttsVoiceId'];
-  responseHistoryRemoteBaseUrl: ChatMessageResponseHistoryPanelDockProps['remoteBaseUrl'];
-  responseHistoryRemoteApiKey: ChatMessageResponseHistoryPanelDockProps['remoteApiKey'];
+  responseHistoryResponses: ResponseHistoryEntry[];
+  responseHistoryTtsProvider: ChatMessageRuntimeRemoteSpeechOptions['providerId'] | undefined;
+  responseHistoryRemoteTtsVoice: ChatMessageRuntimeRemoteSpeechOptions['voice'] | null | undefined;
+  responseHistoryRemoteTtsModel: ChatMessageRuntimeRemoteSpeechOptions['model'] | null | undefined;
+  responseHistoryTtsRate: ChatMessageRuntimeRemoteSpeechOptions['rate'] | null | undefined;
+  responseHistoryTtsPitch: ChatMessageRuntimeNativeSpeechOptions['pitch'] | null | undefined;
+  responseHistoryTtsVoiceId: ChatMessageRuntimeNativeSpeechOptions['voice'] | null | undefined;
+  responseHistoryRemoteBaseUrl: string | undefined;
+  responseHistoryRemoteApiKey: string | undefined;
   scrollToBottomVisible: ChatRuntimeDockChromeMobileRenderStateInput['scrollToBottomVisible'];
-  onScrollToBottom?: ChatMessageScrollToBottomButtonProps['onPress'];
+  onScrollToBottom?: (event: GestureResponderEvent) => void;
   voiceOverlayListening: boolean;
   voiceOverlayHandsFree: ChatRuntimeDockChromeMobileRenderStateInput['voiceOverlayHandsFree'];
   voiceOverlayWillCancel: ChatRuntimeDockChromeMobileRenderStateInput['voiceOverlayWillCancel'];
-  voiceOverlayTranscript: ChatComposerVoiceOverlayProps['transcript'];
+  voiceOverlayTranscript: string | null | undefined;
   queuePanelEnabled: ChatRuntimeDockChromeMobileRenderStateInput['queuePanelEnabled'];
-  queuePanelConversationId: ChatMessageQueuePanelDockProps['panel']['conversationId'];
-  queuedMessages: ChatMessageQueuePanelDockProps['panel']['messages'];
-  onRemoveQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onRemove'];
-  onUpdateQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onUpdate'];
-  onRetryQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onRetry'];
-  onProcessNextQueuedMessage: ChatMessageQueuePanelDockProps['panel']['onProcessNext'];
-  canProcessNextQueuedMessage: ChatMessageQueuePanelDockProps['panel']['canProcessNext'];
-  onClearQueuedMessages: ChatMessageQueuePanelDockProps['panel']['onClear'];
-  isMessageQueuePaused: ChatMessageQueuePanelDockProps['panel']['isPaused'];
-  onPauseMessageQueue: ChatMessageQueuePanelDockProps['panel']['onPause'];
-  onResumeMessageQueue: ChatMessageQueuePanelDockProps['panel']['onResume'];
+  queuePanelConversationId: string;
+  queuedMessages: QueuedMessage[];
+  onRemoveQueuedMessage: (messageId: string) => void;
+  onUpdateQueuedMessage: (messageId: string, text: string) => void;
+  onRetryQueuedMessage: (messageId: string) => void;
+  onProcessNextQueuedMessage: (() => void) | undefined;
+  canProcessNextQueuedMessage: boolean | undefined;
+  onClearQueuedMessages: () => void;
+  isMessageQueuePaused: boolean | undefined;
+  onPauseMessageQueue: (() => void) | undefined;
+  onResumeMessageQueue: (() => void) | undefined;
   connectionState: ChatRuntimeDockChromeMobileRenderStateInput['connectionState'];
   lastFailedMessage: ChatRuntimeDockChromeMobileRenderStateInput['lastFailedMessage'];
   isResponding: ChatRuntimeDockChromeMobileRenderStateInput['isResponding'];
@@ -4104,8 +4105,8 @@ type ChatMessageRuntimeDockChromePropsInput = {
     & ChatRuntimeDockChromeMobileRenderStateInput['colors']
     & ChatMessageResponseHistoryPanelDockProps['colors']
     & ChatMessageQueuePanelDockProps['panel']['colors'];
-  onConnectionBannerRetry?: ChatMessageConnectionBannerProps['onRetry'];
-  composer: ChatMessageRuntimeDockChromeProps['composer'];
+  onConnectionBannerRetry?: (event: GestureResponderEvent) => void;
+  composer: Omit<ChatComposerRuntimeDockProps, 'styles'>;
 };
 
 type ChatMessageRuntimeSurfaceStyleSlots =
