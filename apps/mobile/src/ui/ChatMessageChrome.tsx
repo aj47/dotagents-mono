@@ -29,6 +29,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
+import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import {
   createChatRuntimeMessageQueuePanelStyleSheetSlots,
   createChatRuntimeResponseHistoryPanelStyleSheetSlots,
@@ -901,6 +902,12 @@ type ChatComposerRuntimeHandsFreeDebugActionsState = {
 
 type ChatComposerRuntimeVoiceDebugResetStateInput = {
   isVoiceDebugEnabled: boolean;
+  clearVoiceDebug: () => void;
+};
+
+type ChatComposerRuntimeVoiceDebugState = {
+  voiceEvents: VoiceDebugEntry[];
+  voiceLog: VoiceDebugLog;
   clearVoiceDebug: () => void;
 };
 
@@ -9036,6 +9043,27 @@ export function useChatComposerRuntimeHandsFreeDebugActionsState({
   );
 
   return handsFreeDebugActionsState;
+}
+
+export function useChatComposerRuntimeVoiceDebugState(
+  isVoiceDebugEnabled: boolean,
+): ChatComposerRuntimeVoiceDebugState {
+  const {
+    events: voiceEvents,
+    log: voiceLog,
+    clear: clearVoiceDebug,
+  } = useVoiceDebug(isVoiceDebugEnabled);
+
+  const voiceDebugState = useMemo<ChatComposerRuntimeVoiceDebugState>(
+    () => ({
+      voiceEvents,
+      voiceLog,
+      clearVoiceDebug,
+    }),
+    [clearVoiceDebug, voiceEvents, voiceLog],
+  );
+
+  return voiceDebugState;
 }
 
 export function useChatComposerRuntimeVoiceDebugResetState({

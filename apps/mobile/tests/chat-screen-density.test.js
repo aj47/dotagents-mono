@@ -9568,6 +9568,13 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   );
   assert.doesNotMatch(screenSource, /setDebugInfo\(''\)/);
   assert.doesNotMatch(screenSource, /handleNewChat/);
+  assert.match(screenSource, /useChatComposerRuntimeVoiceDebugState,/);
+  assert.match(screenSource, /const \{ voiceEvents, voiceLog, clearVoiceDebug \} = useChatComposerRuntimeVoiceDebugState\(handsFreeDebugEnabled\);/);
+  assert.doesNotMatch(chatScreenSource, /useVoiceDebug/);
+  assert.match(chatMessageChromeSource, /import \{ useVoiceDebug \} from '\.\.\/lib\/voice\/voiceDebug';/);
+  assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeVoiceDebugState\(\s+isVoiceDebugEnabled: boolean,\s+\): ChatComposerRuntimeVoiceDebugState/);
+  assert.match(chatMessageChromeSource, /const \{\s+events: voiceEvents,\s+log: voiceLog,\s+clear: clearVoiceDebug,\s+\} = useVoiceDebug\(isVoiceDebugEnabled\);/);
+  assert.match(chatMessageChromeSource, /const voiceDebugState = useMemo<ChatComposerRuntimeVoiceDebugState>\(\s+\(\) => \(\{\s+voiceEvents,\s+voiceLog,\s+clearVoiceDebug,\s+\}\),\s+\[clearVoiceDebug, voiceEvents, voiceLog\],\s+\);/);
   assert.match(screenSource, /requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
   assert.match(sessionPresentationSource, /debugPanels: getChatRuntimeDebugPanelsMobileDisplayState\(\{\s+requestDebugText,\s+voiceDebugEnabled,\s+voiceEvents,\s+\}\),/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeDebugPanelsRenderState/);

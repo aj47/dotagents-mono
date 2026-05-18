@@ -34,6 +34,7 @@ import {
   useChatComposerRuntimeHandsFreeControlChromeActionsState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeHandsFreeDebugActionsState,
+  useChatComposerRuntimeVoiceDebugState,
   useChatComposerRuntimeVoiceDebugResetState,
   useChatRuntimeNavigationHeaderChromeOptions,
   useChatMessageRuntimeTurnDurations,
@@ -112,7 +113,6 @@ import {
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
-import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 
@@ -451,7 +451,7 @@ export default function ChatScreen({ route, navigation }: any) {
     messages,
     isResponding: responding,
   });
-  const { events: voiceEvents, log: voiceLog, clear: clearVoiceDebug } = useVoiceDebug(handsFreeDebugEnabled);
+  const { voiceEvents, voiceLog, clearVoiceDebug } = useChatComposerRuntimeVoiceDebugState(handsFreeDebugEnabled);
   useChatComposerRuntimeVoiceDebugResetState({
     isVoiceDebugEnabled: handsFreeDebugEnabled,
     clearVoiceDebug,
