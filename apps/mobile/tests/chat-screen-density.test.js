@@ -5397,6 +5397,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionResultSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionResultSectionMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const resultSectionParts: ChatMessageToolExecutionResultSectionParts =\s+createChatRuntimeToolExecutionResultSectionMobilePropsParts\(\{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+resultCompactText,\s+resultContent,\s+isExpanded,\s+previewNumberOfLines,\s+copyButtonRenderState,\s+onCopyPress,\s+errorRenderState,\s+error,\s+errorCopyButtonRenderState,\s+onErrorCopyPress,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultSectionItemProps = \{\s+style: StyleProp<ViewStyle>;\s+children: ReactNode;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultSectionContentProps = \{\s+header: \{\s+props: ChatMessageToolExecutionResultHeaderProps;\s+\};\s+payloadBlock: \{\s+props: ChatMessageToolExecutionPayloadBlockProps;\s+\};\s+errorBlock: ChatMessageToolExecutionResultSectionErrorBlockPart;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionResultSectionParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const resultSectionContent = resultSectionParts\.item\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultSectionItem\s+\{\.\.\.resultSectionParts\.item\.props\}/);
   assert.match(toolExecutionResultSectionSource, /<ChatMessageToolExecutionResultSectionContent\s+\{\.\.\.resultSectionParts\.item\.content\}/);

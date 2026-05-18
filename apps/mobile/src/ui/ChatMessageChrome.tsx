@@ -4203,16 +4203,33 @@ type ChatMessageToolExecutionResultSectionParts =
     ChatMessageToolExecutionResultSectionStyles
   >;
 
-type ChatMessageToolExecutionResultSectionContentProps =
-  ChatMessageToolExecutionResultSectionParts['item']['content'];
+type ChatMessageToolExecutionResultSectionItemProps = {
+  style: StyleProp<ViewStyle>;
+  children: ReactNode;
+};
 
-type ChatMessageToolExecutionResultSectionItemProps =
-  ChatMessageToolExecutionResultSectionParts['item']['props'] & {
-    children: ReactNode;
+type ChatMessageToolExecutionResultSectionErrorBlockPart =
+  | {
+      shouldRender: true;
+      props: ChatMessageToolExecutionErrorBlockProps;
+    }
+  | {
+      shouldRender: false;
+      props: null;
+    };
+
+type ChatMessageToolExecutionResultSectionContentProps = {
+  header: {
+    props: ChatMessageToolExecutionResultHeaderProps;
   };
+  payloadBlock: {
+    props: ChatMessageToolExecutionPayloadBlockProps;
+  };
+  errorBlock: ChatMessageToolExecutionResultSectionErrorBlockPart;
+};
 
 type ChatMessageToolExecutionResultSectionErrorBlockProps = {
-  errorBlock: ChatMessageToolExecutionResultSectionParts['item']['content']['errorBlock'];
+  errorBlock: ChatMessageToolExecutionResultSectionErrorBlockPart;
 };
 
 type ChatMessageToolExecutionCallDetailInput = {
