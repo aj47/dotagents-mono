@@ -8855,22 +8855,23 @@ export function ChatConversationHomeQuickStarts<
   shortcutRenderState,
   styles,
 }: ChatConversationHomeQuickStartsProps<TPrompt, TTask>) {
-  const quickStartsParts = createChatRuntimeHomeQuickStartsMobilePropsParts<
-    TPrompt,
-    TTask,
-    GestureResponderEvent,
-    ChatConversationHomeQuickStartsStyles
-  >({
-    shouldRender,
-    items,
-    isLoading,
-    runningTaskId,
-    onPress,
-    onEditPrompt,
-    onDeletePrompt,
-    shortcutRenderState,
-    styles,
-  });
+  const quickStartsParts: ChatConversationHomeQuickStartsParts<TPrompt, TTask> =
+    createChatRuntimeHomeQuickStartsMobilePropsParts<
+      TPrompt,
+      TTask,
+      GestureResponderEvent,
+      ChatConversationHomeQuickStartsStyles
+    >({
+      shouldRender,
+      items,
+      isLoading,
+      runningTaskId,
+      onPress,
+      onEditPrompt,
+      onDeletePrompt,
+      shortcutRenderState,
+      styles,
+    });
   const quickStartsContainer = quickStartsParts.container;
 
   if (!quickStartsContainer.shouldRender) return null;
@@ -9065,19 +9066,20 @@ export function ChatConversationHomePromptEditorModal({
   renderState,
   styles,
 }: ChatConversationHomePromptEditorModalProps) {
-  const modalParts = createChatConversationHomePromptEditorModalMobilePropsParts({
-    visible,
-    isEditing,
-    nameValue,
-    onNameChange,
-    contentValue,
-    onContentChange,
-    isSaving,
-    onClose,
-    onSave,
-    renderState,
-    styles,
-  });
+  const modalParts: ChatConversationHomePromptEditorModalParts =
+    createChatConversationHomePromptEditorModalMobilePropsParts({
+      visible,
+      isEditing,
+      nameValue,
+      onNameChange,
+      contentValue,
+      onContentChange,
+      isSaving,
+      onClose,
+      onSave,
+      renderState,
+      styles,
+    });
 
   return (
     <ChatConversationHomePromptEditorModalFrame

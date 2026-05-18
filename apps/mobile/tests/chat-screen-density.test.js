@@ -8058,7 +8058,9 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.doesNotMatch(chatMessageChromeSource, /getPromptLibraryMobileShortcutEmptyRenderState,/);
   assert.match(sessionPresentationSource, /getPromptLibraryMobileShortcutEmptyRenderState/);
   assert.match(chatMessageChromeSource, /createChatRuntimeHomeQuickStartsMobilePropsParts,/);
-  assert.match(chatMessageChromeSource, /const quickStartsParts = createChatRuntimeHomeQuickStartsMobilePropsParts</);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomeQuickStartsParts<[\s\S]*?> = ChatRuntimeHomeQuickStartsMobilePropsParts</);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomeQuickStartsParts[\s\S]*?ReturnType<typeof createChatRuntimeHomeQuickStartsMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const quickStartsParts: ChatConversationHomeQuickStartsParts<TPrompt, TTask> =\s+createChatRuntimeHomeQuickStartsMobilePropsParts</);
   assert.match(chatMessageChromeSource, /const quickStartsContainer = quickStartsParts\.container;/);
   assert.match(chatMessageChromeSource, /if \(!quickStartsContainer\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartsContainer/);
@@ -8431,7 +8433,9 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorSaveActionState/);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorSaveActionState/);
   assert.match(chatMessageChromeSource, /createChatConversationHomePromptEditorModalMobilePropsParts,/);
-  assert.match(chatMessageChromeSource, /const modalParts = createChatConversationHomePromptEditorModalMobilePropsParts\(\{/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalParts =\s+ChatConversationHomePromptEditorModalMobilePropsParts<ChatConversationHomePromptEditorModalStyles>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalParts = ReturnType<typeof createChatConversationHomePromptEditorModalMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /const modalParts: ChatConversationHomePromptEditorModalParts =\s+createChatConversationHomePromptEditorModalMobilePropsParts\(\{/);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalMobilePropsParts/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
