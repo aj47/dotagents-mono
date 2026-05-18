@@ -278,6 +278,7 @@ import {
   type ChatSessionStatusMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
+  type ChatRuntimeConversationActionSetMobileProps,
   type ChatRuntimeConversationCollapsedPreviewMobilePropsParts,
   type ChatRuntimeConversationContentMobileDisplayMode,
   type ChatRuntimeConversationExpandedContentMobilePropsParts,
@@ -1296,11 +1297,8 @@ type ChatMessageConversationRenderContext =
 type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;
 type ChatMessageActionEntry = ChatMessageActionSlotRenderEntry<ReactNode>;
 
-export type ChatMessageActionSet = {
-  entries: readonly ChatMessageActionEntry[];
-  shouldRenderActionSlots: boolean;
-  shouldRenderStandaloneActions: boolean;
-};
+export type ChatMessageActionSet =
+  ChatRuntimeConversationActionSetMobileProps<ChatMessageActionEntry>;
 
 type ChatMessageTurnDurationActionStyles = Pick<
     ChatMessageTurnDurationActionSpec,

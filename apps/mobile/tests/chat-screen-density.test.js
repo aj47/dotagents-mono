@@ -6910,6 +6910,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /return createChatMessageActionSlotRenderMap<ReactNode>\(\s+availability,\s+createChatMessageActionRenderers\(input\),\s+\);/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationActionComponentsMobileProps/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationActionSetMobileProps/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeConversationActionSetMobileProps,/);
+  assert.match(chatMessageChromeSource, /export type ChatMessageActionSet =\s+ChatRuntimeConversationActionSetMobileProps<ChatMessageActionEntry>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /export type ChatMessageActionSet = \{\s+entries: readonly ChatMessageActionEntry\[\];/);
   assert.match(sessionPresentationSource, /export \{\s+createChatMessageActionSlotRenderMap,\s+getChatMessageActionMobileButtonStatesBySlot,\s+getChatMessageActionSlotRenderEntries,\s+type ChatMessageCollapsedPreviewMobileActionState,\s+type ChatMessageExpansionMobileRenderState,\s+type ChatMessageActionSlotRenderEntry,\s+type ChatMessageActionSlotRenderMap,\s+\} from "\.\/message-display-utils"/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/message-display-utils';/);
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageActionSlotRenderMap,[\s\S]*from '@dotagents\/shared\/message-display-utils';/);
