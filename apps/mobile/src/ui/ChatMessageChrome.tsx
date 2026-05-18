@@ -11131,8 +11131,38 @@ export function ChatMessageRetryStatusText({
 }
 
 export function ChatMessageToolApproval(props: ChatMessageToolApprovalProps) {
-  const toolApprovalParts: ChatMessageToolApprovalParts =
-    createChatRuntimeToolApprovalMobilePropsParts(props);
+  const {
+    renderState,
+    toolName,
+    argumentsPreview,
+    argumentsContent,
+    onToggleArguments,
+    onDeny,
+    onApprove,
+    styles,
+  } = props;
+  const toolApprovalParts = useMemo<ChatMessageToolApprovalParts>(
+    () => createChatRuntimeToolApprovalMobilePropsParts({
+      renderState,
+      toolName,
+      argumentsPreview,
+      argumentsContent,
+      onToggleArguments,
+      onDeny,
+      onApprove,
+      styles,
+    }),
+    [
+      argumentsContent,
+      argumentsPreview,
+      onApprove,
+      onDeny,
+      onToggleArguments,
+      renderState,
+      styles,
+      toolName,
+    ],
+  );
 
   return (
     <ChatMessageToolApprovalView
@@ -11922,8 +11952,41 @@ export function ChatMessageDelegationContent({
 }
 
 export function ChatMessageDelegationCard(props: ChatMessageDelegationCardProps) {
-  const delegationCardParts: ChatMessageDelegationCardParts =
-    createChatRuntimeDelegationCardMobilePropsParts(props);
+  const {
+    surface,
+    agentName,
+    presentation,
+    accessibilityLabel,
+    messageCountLabel,
+    statusStyles,
+    conversationPreview,
+    toolPreview,
+    styles,
+  } = props;
+  const delegationCardParts = useMemo<ChatMessageDelegationCardParts>(
+    () => createChatRuntimeDelegationCardMobilePropsParts({
+      surface,
+      agentName,
+      presentation,
+      accessibilityLabel,
+      messageCountLabel,
+      statusStyles,
+      conversationPreview,
+      toolPreview,
+      styles,
+    }),
+    [
+      accessibilityLabel,
+      agentName,
+      conversationPreview,
+      messageCountLabel,
+      presentation,
+      statusStyles,
+      styles,
+      surface,
+      toolPreview,
+    ],
+  );
 
   return (
     <View
