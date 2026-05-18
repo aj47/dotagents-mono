@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { useTheme } from './ThemeProvider';
 import {
   createConnectionStatusIndicatorMobilePropsParts,
   createConnectionStatusIndicatorMobileStyleSlots,
   getConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatus,
+  type ConnectionStatusIndicatorMobilePropsParts,
 } from '@dotagents/shared/session-presentation';
 
 export interface ConnectionStatusIndicatorProps {
@@ -13,6 +14,29 @@ export interface ConnectionStatusIndicatorProps {
   retryCount?: number;
   compact?: boolean;
 }
+
+type ConnectionStatusIndicatorStyles = {
+  container: StyleProp<ViewStyle>;
+  containerCompact: StyleProp<ViewStyle>;
+  dotContainer: StyleProp<ViewStyle>;
+  dot: StyleProp<ViewStyle>;
+  dotPulsing: StyleProp<ViewStyle>;
+  dotPulse: StyleProp<ViewStyle>;
+  dotColor: StyleProp<ViewStyle>;
+  pulseColor: StyleProp<ViewStyle>;
+  text: StyleProp<TextStyle>;
+  textColor: StyleProp<TextStyle>;
+};
+
+type ConnectionStatusPulseAnimatedStyle = {
+  opacity: Animated.Value;
+};
+
+type ConnectionStatusIndicatorParts =
+  ConnectionStatusIndicatorMobilePropsParts<
+    ConnectionStatusIndicatorStyles,
+    ConnectionStatusPulseAnimatedStyle
+  >;
 
 /**
  * Visual indicator for tunnel connection status.
@@ -41,7 +65,7 @@ export function ConnectionStatusIndicator({
     }),
     [connectionStatusState],
   );
-  const styles = useMemo(
+  const styles = useMemo<ConnectionStatusIndicatorStyles>(
     () => StyleSheet.create({
       container: {
         ...connectionStatusStyleSlots.container,
@@ -76,9 +100,9 @@ export function ConnectionStatusIndicator({
     }),
     [connectionStatusStyleSlots],
   );
-  const pulseAnimatedStyle = useMemo(() => ({ opacity: pulseAnim }), [pulseAnim]);
+  const pulseAnimatedStyle = useMemo<ConnectionStatusPulseAnimatedStyle>(() => ({ opacity: pulseAnim }), [pulseAnim]);
   const connectionStatusParts = useMemo(
-    () => createConnectionStatusIndicatorMobilePropsParts({
+    (): ConnectionStatusIndicatorParts => createConnectionStatusIndicatorMobilePropsParts({
       renderState: connectionStatusState,
       styles,
       pulseAnimatedStyle,
