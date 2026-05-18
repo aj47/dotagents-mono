@@ -14,6 +14,10 @@ import {
   ActivityIndicator,
   Pressable,
   Image,
+  type ImageStyle,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,6 +33,8 @@ import {
   createAgentSelectorMobileStyleSlots,
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
+  type AgentSelectorProfileItemMobilePropsParts,
+  type AgentSelectorSheetMobilePropsParts,
   type SelectableAgentProfile as SelectableProfile,
 } from '@dotagents/shared/session-presentation';
 
@@ -36,6 +42,54 @@ interface AgentSelectorSheetProps {
   visible: boolean;
   onClose: () => void;
 }
+
+type AgentSelectorSheetCloseHandler = () => void;
+type AgentSelectorSheetRetryHandler = () => void | Promise<void>;
+type AgentSelectorProfilePressHandler = () => void | Promise<void>;
+
+type AgentSelectorAvatarImageSource = {
+  uri: string;
+};
+
+type AgentSelectorSheetStyles = {
+  backdrop: StyleProp<ViewStyle>;
+  backdropSpacer: StyleProp<ViewStyle>;
+  sheet: StyleProp<ViewStyle>;
+  handle: StyleProp<ViewStyle>;
+  header: StyleProp<ViewStyle>;
+  title: StyleProp<TextStyle>;
+  headerCloseButton: StyleProp<ViewStyle>;
+  list: StyleProp<ViewStyle>;
+  profileItem: StyleProp<ViewStyle>;
+  profileItemSelected: StyleProp<ViewStyle>;
+  profileAvatar: StyleProp<ViewStyle>;
+  profileAvatarImage: StyleProp<ImageStyle>;
+  profileInfo: StyleProp<ViewStyle>;
+  profileName: StyleProp<TextStyle>;
+  profileNameSelected: StyleProp<TextStyle>;
+  profileDescription: StyleProp<TextStyle>;
+  loadingContainer: StyleProp<ViewStyle>;
+  loadingText: StyleProp<TextStyle>;
+  errorContainer: StyleProp<ViewStyle>;
+  errorText: StyleProp<TextStyle>;
+  retryButton: StyleProp<ViewStyle>;
+  retryButtonText: StyleProp<TextStyle>;
+  emptyText: StyleProp<TextStyle>;
+};
+
+type AgentSelectorSheetParts =
+  AgentSelectorSheetMobilePropsParts<
+    AgentSelectorSheetStyles,
+    AgentSelectorSheetCloseHandler,
+    AgentSelectorSheetRetryHandler
+  >;
+
+type AgentSelectorProfileItemParts =
+  AgentSelectorProfileItemMobilePropsParts<
+    AgentSelectorSheetStyles,
+    AgentSelectorAvatarImageSource,
+    AgentSelectorProfilePressHandler
+  >;
 
 export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps) {
   const { theme } = useTheme();
@@ -64,7 +118,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     }),
     [agentSelectorRenderState],
   );
-  const styles = React.useMemo(
+  const styles = React.useMemo<AgentSelectorSheetStyles>(
     () => StyleSheet.create({
       backdrop: {
         ...agentSelectorStyleSlots.backdrop,
@@ -175,7 +229,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     }
   }, [visible, fetchProfiles]);
 
-  const agentSelectorSheetParts = createAgentSelectorSheetMobilePropsParts({
+  const agentSelectorSheetParts: AgentSelectorSheetParts = createAgentSelectorSheetMobilePropsParts({
     visible,
     renderState: agentSelectorRenderState,
     styles,
@@ -224,7 +278,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
       currentProfileId: currentProfile?.id,
       isSwitching,
     });
-    const profileItemParts = createAgentSelectorProfileItemMobilePropsParts({
+    const profileItemParts: AgentSelectorProfileItemParts = createAgentSelectorProfileItemMobilePropsParts({
       profile: item,
       renderState: agentSelectorRenderState,
       profileRenderState: profileItemRenderState,
