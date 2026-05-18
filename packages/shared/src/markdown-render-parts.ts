@@ -1023,6 +1023,21 @@ export function createMarkdownContentMobileStyleSlots({
   }
 }
 
+export type MarkdownContentMobileStyleSlots =
+  ReturnType<typeof createMarkdownContentMobileStyleSlots>
+
+export type MarkdownContentMobileStyleSheetSlotsInput =
+  MarkdownContentMobileStyleSlotsInput
+
+export type MarkdownContentMobileStyleSheetSlots =
+  MarkdownContentMobileStyleSlots
+
+export function createMarkdownContentMobileStyleSheetSlots(
+  input: MarkdownContentMobileStyleSheetSlotsInput,
+): MarkdownContentMobileStyleSheetSlots {
+  return createMarkdownContentMobileStyleSlots(input)
+}
+
 export function getMarkdownContentDesktopSurfaceState(): typeof MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop {
   return MARKDOWN_CONTENT_SURFACE_PRESENTATION.desktop
 }
@@ -1125,6 +1140,21 @@ export function createMarkdownThinkSectionMobileStyleSlots({
       paddingBottom: resolveMarkdownMobileSpacing(surface.content.paddingBottom, spacing),
     },
   }
+}
+
+export type MarkdownThinkSectionMobileStyleSlots =
+  ReturnType<typeof createMarkdownThinkSectionMobileStyleSlots>
+
+export type MarkdownThinkSectionMobileStyleSheetSlotsInput =
+  MarkdownThinkSectionMobileStyleSlotsInput
+
+export type MarkdownThinkSectionMobileStyleSheetSlots =
+  MarkdownThinkSectionMobileStyleSlots
+
+export function createMarkdownThinkSectionMobileStyleSheetSlots(
+  input: MarkdownThinkSectionMobileStyleSheetSlotsInput,
+): MarkdownThinkSectionMobileStyleSheetSlots {
+  return createMarkdownThinkSectionMobileStyleSlots(input)
 }
 
 export function getMarkdownThinkSectionMobileIconState(): typeof MARKDOWN_THINK_SECTION_PRESENTATION.mobileIcon {

@@ -8,8 +8,6 @@ import {
   View,
   type ImageStyle,
   type StyleProp,
-  type TextStyle,
-  type ViewStyle,
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import * as Clipboard from 'expo-clipboard';
@@ -17,10 +15,10 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   buildConversationImageAssetHttpUrl,
   createMarkdownCodeBlockCopyMobilePropsParts,
-  createMarkdownContentMobileStyleSlots,
+  createMarkdownContentMobileStyleSheetSlots,
   createMarkdownImageMobilePropsParts,
   createMarkdownThinkSectionMobilePropsParts,
-  createMarkdownThinkSectionMobileStyleSlots,
+  createMarkdownThinkSectionMobileStyleSheetSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockFeedbackResetDelayMs,
   getMarkdownCodeBlockCopyMobileRenderState,
@@ -37,12 +35,12 @@ import {
   parseConversationImageAssetUrl,
   splitMarkdownContent,
   type MarkdownCodeBlockCopyMobilePropsParts,
-  type MarkdownCodeBlockCopyMobilePropsStylesLike,
+  type MarkdownContentMobileStyleSheetSlots,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownImageMobilePropsParts,
   type MarkdownThinkSectionControlOptions,
   type MarkdownThinkSectionMobilePropsParts,
-  type MarkdownThinkSectionMobilePropsStylesLike,
+  type MarkdownThinkSectionMobileStyleSheetSlots,
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from '@dotagents/shared/session-presentation';
 import { useTheme } from './ThemeProvider';
@@ -58,16 +56,9 @@ interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
 
 type MarkdownPressHandler = () => void | Promise<void>;
 
-type MarkdownThinkSectionStyles =
-  MarkdownThinkSectionMobilePropsStylesLike<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>
-  >;
+type MarkdownContentStyles = MarkdownContentMobileStyleSheetSlots;
+
+type MarkdownThinkSectionStyles = MarkdownThinkSectionMobileStyleSheetSlots;
 
 type MarkdownThinkSectionParts =
   MarkdownThinkSectionMobilePropsParts<MarkdownThinkSectionStyles, MarkdownPressHandler>;
@@ -79,14 +70,7 @@ type MarkdownImageSource = {
 
 type MarkdownImageParts = MarkdownImageMobilePropsParts<MarkdownImageSource, StyleProp<ImageStyle>>;
 
-type MarkdownCodeBlockCopyStyles =
-  MarkdownCodeBlockCopyMobilePropsStylesLike<
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>
-  >;
+type MarkdownCodeBlockCopyStyles = MarkdownContentStyles;
 
 type MarkdownCodeBlockCopyParts =
   MarkdownCodeBlockCopyMobilePropsParts<MarkdownCodeBlockCopyStyles, MarkdownPressHandler>;
@@ -336,8 +320,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     [isDark, theme.colors],
   );
   const markdownContentColors = markdownContentRenderState.colors;
-  const markdownContentStyleSlots = React.useMemo(
-    () => createMarkdownContentMobileStyleSlots({
+  const markdownContentStyleSheetSlots = React.useMemo(
+    () => createMarkdownContentMobileStyleSheetSlots({
       renderState: markdownContentRenderState,
       spacing,
       radius,
@@ -345,25 +329,25 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     }),
     [markdownContentRenderState],
   );
-  const markdownStyles = React.useMemo(
-    () => StyleSheet.create(markdownContentStyleSlots),
-    [markdownContentStyleSlots],
+  const markdownStyles = React.useMemo<MarkdownContentStyles>(
+    () => StyleSheet.create({ ...markdownContentStyleSheetSlots }),
+    [markdownContentStyleSheetSlots],
   );
   const thinkSectionRenderState = React.useMemo(
     () => getMarkdownThinkSectionMobileSurfaceRenderState({ isDark }),
     [isDark],
   );
-  const thinkSectionStyleSlots = React.useMemo(
-    () => createMarkdownThinkSectionMobileStyleSlots({
+  const thinkSectionStyleSheetSlots = React.useMemo(
+    () => createMarkdownThinkSectionMobileStyleSheetSlots({
       renderState: thinkSectionRenderState,
       spacing,
       radius,
     }),
     [thinkSectionRenderState],
   );
-  const thinkStyles = React.useMemo(
-    () => StyleSheet.create(thinkSectionStyleSlots),
-    [thinkSectionStyleSlots],
+  const thinkStyles = React.useMemo<MarkdownThinkSectionStyles>(
+    () => StyleSheet.create({ ...thinkSectionStyleSheetSlots }),
+    [thinkSectionStyleSheetSlots],
   );
 
   const parts = splitMarkdownContent(content, getMarkdownRenderOptions());

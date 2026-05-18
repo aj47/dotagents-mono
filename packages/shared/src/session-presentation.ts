@@ -105,9 +105,11 @@ export {
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 export {
   createMarkdownCodeBlockCopyMobilePropsParts,
+  createMarkdownContentMobileStyleSheetSlots,
   createMarkdownContentMobileStyleSlots,
   createMarkdownImageMobilePropsParts,
   createMarkdownThinkSectionMobilePropsParts,
+  createMarkdownThinkSectionMobileStyleSheetSlots,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockCopyDesktopRenderState,
@@ -136,6 +138,9 @@ export {
   type MarkdownCodeBlockCopyMobilePropsParts,
   type MarkdownCodeBlockCopyMobilePropsPartsInput,
   type MarkdownCodeBlockCopyMobilePropsStylesLike,
+  type MarkdownContentMobileStyleSheetSlots,
+  type MarkdownContentMobileStyleSheetSlotsInput,
+  type MarkdownContentMobileStyleSlots,
   type MarkdownContentMobileStyleSlotsInput,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownImageMobilePropsParts,
@@ -146,6 +151,9 @@ export {
   type MarkdownThinkSectionMobilePropsParts,
   type MarkdownThinkSectionMobilePropsPartsInput,
   type MarkdownThinkSectionMobilePropsStylesLike,
+  type MarkdownThinkSectionMobileStyleSheetSlots,
+  type MarkdownThinkSectionMobileStyleSheetSlotsInput,
+  type MarkdownThinkSectionMobileStyleSlots,
   type MarkdownThinkSectionMobileStyleSlotsInput,
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from "./markdown-render-parts"

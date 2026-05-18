@@ -6,9 +6,11 @@ import {
   MARKDOWN_THINK_SECTION_PRESENTATION,
   MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION,
   createMarkdownCodeBlockCopyMobilePropsParts,
+  createMarkdownContentMobileStyleSheetSlots,
   createMarkdownContentMobileStyleSlots,
   createMarkdownImageMobilePropsParts,
   createMarkdownThinkSectionMobilePropsParts,
+  createMarkdownThinkSectionMobileStyleSheetSlots,
   createMarkdownThinkSectionMobileStyleSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockCopyDesktopRenderState,
@@ -220,6 +222,15 @@ describe("markdown render parts", () => {
       radius: { sm: 4, md: 8 },
       platform: "ios",
     })
+    expect(createMarkdownContentMobileStyleSheetSlots({
+      renderState: getMarkdownContentMobileSurfaceRenderState({
+        colors: markdownContentPalette,
+        isDark: false,
+      }),
+      spacing: { xs: 4, sm: 8 },
+      radius: { sm: 4, md: 8 },
+      platform: "ios",
+    })).toEqual(markdownContentStyleSlots)
     expect(markdownContentStyleSlots.body).toEqual({
       color: "#171717",
       fontSize: MARKDOWN_CONTENT_SURFACE_PRESENTATION.mobile.body.fontSize,
@@ -424,6 +435,11 @@ describe("markdown render parts", () => {
       spacing: { xs: 4, sm: 8 },
       radius: { sm: 4, md: 8 },
     })
+    expect(createMarkdownThinkSectionMobileStyleSheetSlots({
+      renderState: getMarkdownThinkSectionMobileSurfaceRenderState({ isDark: false }),
+      spacing: { xs: 4, sm: 8 },
+      radius: { sm: 4, md: 8 },
+    })).toEqual(thinkSectionStyleSlots)
     expect(thinkSectionStyleSlots.container).toEqual({
       overflow: MARKDOWN_THINK_SECTION_SURFACE_PRESENTATION.mobile.container.overflow,
       borderRadius: 8,
