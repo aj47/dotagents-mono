@@ -78,7 +78,6 @@ import {
   useChatMessageRuntimeComposerInputState,
 } from '../ui/ChatMessageChrome';
 import { useConnectionManager } from '../store/connectionManager';
-import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import type { ChatMessage } from '../lib/openaiClient';
 import { ExtendedSettingsApiClient } from '../lib/settingsApi';
@@ -125,7 +124,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
   const connectionManager = useConnectionManager();
-  const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
   const {
     currentSession,

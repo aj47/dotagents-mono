@@ -3120,6 +3120,8 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /logConnectionStatus\(formatConnectionStatus\(state\)\);/);
   assert.doesNotMatch(screenSource, /connectionManager\.subscribeToConnectionStatus/);
   assert.doesNotMatch(screenSource, /connectionManager\.isConnectionActive/);
+  assert.doesNotMatch(chatScreenSource, /useTunnelConnection/);
+  assert.doesNotMatch(chatScreenSource, /connectionInfo/);
   assert.match(screenSource, /useChatRuntimeConnectionRetryActionState,/);
   assert.match(screenSource, /const \{ handleRetryLastFailedMessagePress \} = useChatRuntimeConnectionRetryActionState<ChatMessage>\(\{\s+lastFailedMessage,\s+clearLastFailedMessage,\s+getSessionClient,\s+sessionStore,\s+setMessages,\s+send,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryActionState/);
