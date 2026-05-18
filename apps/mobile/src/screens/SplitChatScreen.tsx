@@ -25,10 +25,10 @@ import type { Theme } from '../ui/theme';
 import ChatScreen from './ChatScreen';
 import {
   formatSplitPaneModalTitle,
+  createSplitPaneEmptyStateActionMobilePropsParts,
   createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
   createSplitPaneToolbarActionMobilePropsParts,
-  getSplitPaneEmptyStateActionMobileIconState,
   getSplitPaneModalCreateMobileIconState,
   getSplitPaneCopyState,
   getSplitPaneMobileSurfaceColors,
@@ -44,8 +44,6 @@ import {
 
 const splitPaneCopy = getSplitPaneCopyState();
 const splitPaneSurface = getSplitPaneMobileSurfaceState();
-const splitPaneEmptyChooseIcon = getSplitPaneEmptyStateActionMobileIconState('choose');
-const splitPaneEmptyNewChatIcon = getSplitPaneEmptyStateActionMobileIconState('newChat');
 const splitPaneModalCreateIcon = getSplitPaneModalCreateMobileIconState();
 
 interface Props {
@@ -192,6 +190,24 @@ export default function SplitChatScreen({ navigation }: Props) {
       iconColor: splitPaneColors.toolbarButton.iconColor,
       styles: toolbarActionStyles,
     });
+    const chooseEmptyStateActionParts = createSplitPaneEmptyStateActionMobilePropsParts({
+      action: 'choose',
+      onPress: () => setPickerPane(pane),
+      iconColor: splitPaneColors.primaryButton.iconColor,
+      styles: {
+        button: styles.primaryButton,
+        label: styles.primaryButtonText,
+      },
+    });
+    const newChatEmptyStateActionParts = createSplitPaneEmptyStateActionMobilePropsParts({
+      action: 'newChat',
+      onPress: () => createSessionForPane(pane),
+      iconColor: splitPaneColors.secondaryButton.iconColor,
+      styles: {
+        button: styles.secondaryButton,
+        label: styles.secondaryButtonText,
+      },
+    });
 
     return (
       <View style={[styles.pane, effectiveOrientation === 'vertical' ? styles.paneVertical : styles.paneHorizontal]}>
@@ -236,32 +252,24 @@ export default function SplitChatScreen({ navigation }: Props) {
               </Text>
               <View style={styles.emptyStateActions}>
                 <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={() => setPickerPane(pane)}
-                  activeOpacity={splitPaneSurface.primaryButton.pressedOpacity}
-                  accessibilityRole={splitPaneSurface.primaryButton.accessibilityRole}
-                  accessibilityLabel={createButtonAccessibilityLabel(splitPaneCopy.emptyState.chooseLabel)}
+                  {...chooseEmptyStateActionParts.touchable.props}
                 >
                   <Ionicons
-                    name={splitPaneEmptyChooseIcon.name}
-                    size={splitPaneEmptyChooseIcon.size}
-                    color={splitPaneColors.primaryButton.iconColor}
+                    {...chooseEmptyStateActionParts.touchable.content.icon.props}
                   />
-                  <Text style={styles.primaryButtonText}>{splitPaneCopy.emptyState.chooseLabel}</Text>
+                  <Text {...chooseEmptyStateActionParts.touchable.content.label.props}>
+                    {chooseEmptyStateActionParts.touchable.content.label.text}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={() => createSessionForPane(pane)}
-                  activeOpacity={splitPaneSurface.secondaryButton.pressedOpacity}
-                  accessibilityRole={splitPaneSurface.secondaryButton.accessibilityRole}
-                  accessibilityLabel={createButtonAccessibilityLabel(splitPaneCopy.emptyState.newChatLabel)}
+                  {...newChatEmptyStateActionParts.touchable.props}
                 >
                   <Ionicons
-                    name={splitPaneEmptyNewChatIcon.name}
-                    size={splitPaneEmptyNewChatIcon.size}
-                    color={splitPaneColors.secondaryButton.iconColor}
+                    {...newChatEmptyStateActionParts.touchable.content.icon.props}
                   />
-                  <Text style={styles.secondaryButtonText}>{splitPaneCopy.emptyState.newChatLabel}</Text>
+                  <Text {...newChatEmptyStateActionParts.touchable.content.label.props}>
+                    {newChatEmptyStateActionParts.touchable.content.label.text}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  createSplitPaneEmptyStateActionMobilePropsParts,
   createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
   createSplitPaneToolbarActionMobilePropsParts,
@@ -409,5 +410,35 @@ describe("split pane selection", () => {
 
     actionParts.touchable.props.onPress()
     expect(opened).toBe(true)
+  })
+
+  it("creates mobile split-pane empty-state action props from shared presentation", () => {
+    let created = false
+    const actionParts = createSplitPaneEmptyStateActionMobilePropsParts({
+      action: "newChat",
+      onPress: () => {
+        created = true
+      },
+      iconColor: "#222222",
+      styles: {
+        button: "button",
+        label: "label",
+      },
+    })
+
+    expect(actionParts.touchable.props.style).toBe("button")
+    expect(actionParts.touchable.props.activeOpacity).toBe(0.78)
+    expect(actionParts.touchable.props.accessibilityRole).toBe("button")
+    expect(actionParts.touchable.props.accessibilityLabel).toBe("New chat button")
+    expect(actionParts.touchable.content.icon.props).toEqual({
+      name: "add-circle-outline",
+      size: 15,
+      color: "#222222",
+    })
+    expect(actionParts.touchable.content.label.text).toBe("New chat")
+    expect(actionParts.touchable.content.label.props.style).toBe("label")
+
+    actionParts.touchable.props.onPress()
+    expect(created).toBe(true)
   })
 })

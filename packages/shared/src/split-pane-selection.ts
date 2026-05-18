@@ -659,6 +659,53 @@ export interface SplitPaneToolbarActionMobilePropsParts<
   }
 }
 
+export interface SplitPaneEmptyStateActionMobileStylesLike {
+  button: unknown
+  label: unknown
+}
+
+export interface SplitPaneEmptyStateActionMobilePropsPartsInput<
+  TStyles extends SplitPaneEmptyStateActionMobileStylesLike = SplitPaneEmptyStateActionMobileStylesLike,
+> {
+  action: SplitPaneEmptyStateAction
+  onPress: () => void
+  iconColor: string
+  styles: TStyles
+}
+
+export interface SplitPaneEmptyStateActionMobilePropsParts<
+  TStyles extends SplitPaneEmptyStateActionMobileStylesLike = SplitPaneEmptyStateActionMobileStylesLike,
+> {
+  touchable: {
+    props: {
+      onPress: () => void
+      style: TStyles["button"]
+      activeOpacity:
+        | typeof SPLIT_PANE_PRESENTATION.mobile.primaryButton.pressedOpacity
+        | typeof SPLIT_PANE_PRESENTATION.mobile.secondaryButton.pressedOpacity
+      accessibilityRole:
+        | typeof SPLIT_PANE_PRESENTATION.mobile.primaryButton.accessibilityRole
+        | typeof SPLIT_PANE_PRESENTATION.mobile.secondaryButton.accessibilityRole
+      accessibilityLabel: string
+    }
+    content: {
+      icon: {
+        props: {
+          name: ReturnType<typeof getSplitPaneEmptyStateActionMobileIconState>["name"]
+          size: ReturnType<typeof getSplitPaneEmptyStateActionMobileIconState>["size"]
+          color: string
+        }
+      }
+      label: {
+        text: string
+        props: {
+          style: TStyles["label"]
+        }
+      }
+    }
+  }
+}
+
 export function createSplitPaneMobileStyleSlots({
   colors,
   spacing,
@@ -982,6 +1029,54 @@ export function createSplitPaneToolbarActionMobilePropsParts<
         accessibilityRole: surface.accessibilityRole,
         accessibilityLabel: createButtonAccessibilityLabel(rawAccessibilityLabel),
         accessibilityState: { disabled: isDisabled },
+      },
+      content: {
+        icon: {
+          props: {
+            name: icon.name,
+            size: icon.size,
+            color: iconColor,
+          },
+        },
+        label: {
+          text: label,
+          props: {
+            style: styles.label,
+          },
+        },
+      },
+    },
+  }
+}
+
+export function createSplitPaneEmptyStateActionMobilePropsParts<
+  TStyles extends SplitPaneEmptyStateActionMobileStylesLike,
+>({
+  action,
+  onPress,
+  iconColor,
+  styles,
+}: SplitPaneEmptyStateActionMobilePropsPartsInput<
+  TStyles
+>): SplitPaneEmptyStateActionMobilePropsParts<TStyles> {
+  const surface =
+    action === "choose"
+      ? SPLIT_PANE_PRESENTATION.mobile.primaryButton
+      : SPLIT_PANE_PRESENTATION.mobile.secondaryButton
+  const icon = getSplitPaneEmptyStateActionMobileIconState(action)
+  const label =
+    action === "choose"
+      ? SPLIT_PANE_PRESENTATION.copy.emptyState.chooseLabel
+      : SPLIT_PANE_PRESENTATION.copy.emptyState.newChatLabel
+
+  return {
+    touchable: {
+      props: {
+        onPress,
+        style: styles.button,
+        activeOpacity: surface.pressedOpacity,
+        accessibilityRole: surface.accessibilityRole,
+        accessibilityLabel: createButtonAccessibilityLabel(label),
       },
       content: {
         icon: {
