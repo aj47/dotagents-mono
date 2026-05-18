@@ -3236,6 +3236,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerInputDockStyles = \{\s+area: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /type ChatComposerStyleSlots as SharedChatComposerStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerStyleSlots =\s+SharedChatComposerStyleSlots<\s+ChatComposerSpeechPreviewStyles,/);
+  assert.match(chatMessageChromeSource, /type ChatComposerRuntimeDockStyleSlots =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['composer'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerStyleSlots = \{\s+speechPreview: ChatComposerSpeechPreviewStyles;/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatComposerStyleSlots/);

@@ -6312,7 +6312,8 @@ type ChatComposerStyleSlots =
     ChatComposerInputDockStyles
   >;
 
-type ChatComposerRuntimeDockStyleSlots = ChatComposerStyleSlots;
+type ChatComposerRuntimeDockStyleSlots =
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer'];
 
 type ChatComposerRuntimeDockProps =
   ChatComposerRuntimeDockMobilePropsPartsInput<
