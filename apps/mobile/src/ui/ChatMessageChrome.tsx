@@ -2362,41 +2362,7 @@ type ChatMessageToolApprovalViewProps = {
   style: StyleProp<ViewStyle> | Array<StyleProp<ViewStyle> | false>;
 };
 
-type ChatMessageToolApprovalHeaderProps = {
-  header: ChatMessageToolApprovalParts['header'];
-  icon: ChatMessageToolApprovalParts['headerIcon'];
-  title: ChatMessageToolApprovalParts['title'];
-  spinner: ChatMessageToolApprovalParts['headerSpinner'];
-};
-
-type ChatMessageToolApprovalContentProps = {
-  content: ChatMessageToolApprovalParts['content'];
-  toolRow: ChatMessageToolApprovalParts['toolRow'];
-  toolLabel: ChatMessageToolApprovalParts['toolLabel'];
-  toolName: ChatMessageToolApprovalParts['toolName'];
-  argumentsPreview: ChatMessageToolApprovalParts['argumentsPreview'];
-  argumentsToggle: ChatMessageToolApprovalParts['argumentsToggle'];
-  fullArguments: ChatMessageToolApprovalParts['fullArguments'];
-  actions: ChatMessageToolApprovalParts['actions'];
-  denyButton: ChatMessageToolApprovalParts['denyButton'];
-  approveButton: ChatMessageToolApprovalParts['approveButton'];
-};
-
-type ChatMessageToolApprovalToolRowProps = {
-  row: ChatMessageToolApprovalParts['toolRow'];
-  label: ChatMessageToolApprovalParts['toolLabel'];
-  name: ChatMessageToolApprovalParts['toolName'];
-};
-
-type ChatMessageToolApprovalArgumentsToggleContentProps = {
-  content: ChatMessageToolApprovalParts['argumentsToggle']['content'];
-};
-
 type ChatMessageToolApprovalIconProps = ComponentProps<typeof Ionicons>;
-
-type ChatMessageToolApprovalArgumentsToggleBlockProps = {
-  argumentsToggle: ChatMessageToolApprovalParts['argumentsToggle'];
-};
 
 type ChatMessageToolApprovalArgumentsToggleProps =
   Omit<ComponentProps<typeof Pressable>, 'children'> & {
@@ -2409,6 +2375,102 @@ type ChatMessageToolApprovalTextProps = {
     numberOfLines?: TextProps['numberOfLines'];
   };
   text: string;
+};
+
+type ChatMessageToolApprovalViewPart = {
+  props: Omit<ChatMessageToolApprovalViewProps, 'children'>;
+};
+
+type ChatMessageToolApprovalIconPart = {
+  props: ChatMessageToolApprovalIconProps;
+};
+
+type ChatMessageToolApprovalSpinnerPart = {
+  shouldRender: boolean;
+  props: ChatMessageToolApprovalSpinnerProps;
+};
+
+type ChatMessageToolApprovalTextPart = {
+  props: ChatMessageToolApprovalTextProps;
+};
+
+type ChatMessageToolApprovalConditionalTextPart =
+  ChatMessageToolApprovalTextPart & {
+    shouldRender: boolean;
+  };
+
+type ChatMessageToolApprovalArgumentsToggleContentPart = {
+  icon: ChatMessageToolApprovalIconPart;
+  label: ChatMessageToolApprovalTextPart;
+};
+
+type ChatMessageToolApprovalArgumentsTogglePart = {
+  props: Omit<ChatMessageToolApprovalArgumentsToggleProps, 'children'>;
+  content: ChatMessageToolApprovalArgumentsToggleContentPart;
+};
+
+type ChatMessageToolApprovalFullArgumentsPart = {
+  shouldRender: boolean;
+  scroll: {
+    props: Omit<ChatMessageToolApprovalFullArgumentsScrollProps, 'children'>;
+  };
+  text: ChatMessageToolApprovalTextPart;
+};
+
+type ChatMessageToolApprovalActionsPart = {
+  props: Omit<ChatMessageToolApprovalActionsProps, 'children'>;
+};
+
+type ChatMessageToolApprovalDenyActionContentPart = {
+  icon: ChatMessageToolApprovalIconPart;
+  label: ChatMessageToolApprovalTextPart;
+};
+
+type ChatMessageToolApprovalApproveActionContentPart = {
+  icon: ChatMessageToolApprovalIconPart & {
+    shouldRender: boolean;
+  };
+  spinner: ChatMessageToolApprovalSpinnerPart;
+  label: ChatMessageToolApprovalTextPart;
+};
+
+type ChatMessageToolApprovalActionButtonPart<TContent> = {
+  props: Omit<ChatMessageToolApprovalActionButtonProps, 'children'>;
+  content: TContent;
+};
+
+type ChatMessageToolApprovalHeaderProps = {
+  header: ChatMessageToolApprovalViewPart;
+  icon: ChatMessageToolApprovalIconPart;
+  title: ChatMessageToolApprovalTextPart;
+  spinner: ChatMessageToolApprovalSpinnerPart;
+};
+
+type ChatMessageToolApprovalContentProps = {
+  content: ChatMessageToolApprovalViewPart;
+  toolRow: ChatMessageToolApprovalViewPart;
+  toolLabel: ChatMessageToolApprovalTextPart;
+  toolName: ChatMessageToolApprovalTextPart;
+  argumentsPreview: ChatMessageToolApprovalConditionalTextPart;
+  argumentsToggle: ChatMessageToolApprovalArgumentsTogglePart;
+  fullArguments: ChatMessageToolApprovalFullArgumentsPart;
+  actions: ChatMessageToolApprovalActionsPart;
+  denyButton: ChatMessageToolApprovalActionButtonPart<ChatMessageToolApprovalDenyActionContentPart>;
+  approveButton: ChatMessageToolApprovalActionButtonPart<ChatMessageToolApprovalApproveActionContentPart>;
+};
+
+type ChatMessageToolApprovalToolRowProps = {
+  row: ChatMessageToolApprovalViewPart;
+  label: ChatMessageToolApprovalTextPart;
+  name: ChatMessageToolApprovalTextPart;
+};
+
+type ChatMessageToolApprovalArgumentsToggleContentProps = {
+  content: ChatMessageToolApprovalArgumentsToggleContentPart;
+};
+
+type ChatMessageToolApprovalArgumentsToggleBlockProps = {
+  argumentsToggle: ChatMessageToolApprovalArgumentsTogglePart;
 };
 
 type ChatMessageToolApprovalArgumentsToggleLabelProps =
@@ -2432,14 +2494,14 @@ type ChatMessageToolApprovalArgumentsPreviewProps =
   ChatMessageToolApprovalTextProps;
 
 type ChatMessageToolApprovalArgumentsPreviewBlockProps = {
-  preview: ChatMessageToolApprovalParts['argumentsPreview'];
+  preview: ChatMessageToolApprovalConditionalTextPart;
 };
 
 type ChatMessageToolApprovalFullArgumentsProps =
   ChatMessageToolApprovalTextProps;
 
 type ChatMessageToolApprovalFullArgumentsBlockProps = {
-  fullArguments: ChatMessageToolApprovalParts['fullArguments'];
+  fullArguments: ChatMessageToolApprovalFullArgumentsPart;
 };
 
 type ChatMessageToolApprovalFullArgumentsScrollProps =
@@ -2453,9 +2515,9 @@ type ChatMessageToolApprovalActionsProps = {
 };
 
 type ChatMessageToolApprovalActionBarProps = {
-  actions: ChatMessageToolApprovalParts['actions'];
-  denyButton: ChatMessageToolApprovalParts['denyButton'];
-  approveButton: ChatMessageToolApprovalParts['approveButton'];
+  actions: ChatMessageToolApprovalActionsPart;
+  denyButton: ChatMessageToolApprovalActionButtonPart<ChatMessageToolApprovalDenyActionContentPart>;
+  approveButton: ChatMessageToolApprovalActionButtonPart<ChatMessageToolApprovalApproveActionContentPart>;
 };
 
 type ChatMessageToolApprovalActionButtonProps = {
@@ -2463,11 +2525,11 @@ type ChatMessageToolApprovalActionButtonProps = {
 } & Omit<ComponentProps<typeof TouchableOpacity>, 'children'>;
 
 type ChatMessageToolApprovalDenyActionContentProps = {
-  content: ChatMessageToolApprovalParts['denyButton']['content'];
+  content: ChatMessageToolApprovalDenyActionContentPart;
 };
 
 type ChatMessageToolApprovalApproveActionContentProps = {
-  content: ChatMessageToolApprovalParts['approveButton']['content'];
+  content: ChatMessageToolApprovalApproveActionContentPart;
 };
 
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;

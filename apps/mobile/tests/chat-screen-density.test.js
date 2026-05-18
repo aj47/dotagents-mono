@@ -814,6 +814,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalViewProps = \{\s+children: ReactNode;\s+style: StyleProp<ViewStyle> \| Array<StyleProp<ViewStyle> \| false>;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalIconProps = ComponentProps<typeof Ionicons>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalTextProps = \{\s+props: \{\s+style: StyleProp<TextStyle>;\s+numberOfLines\?: TextProps\['numberOfLines'\];\s+\};\s+text: string;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalViewPart = \{\s+props: Omit<ChatMessageToolApprovalViewProps, 'children'>;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalArgumentsTogglePart = \{\s+props: Omit<ChatMessageToolApprovalArgumentsToggleProps, 'children'>;\s+content: ChatMessageToolApprovalArgumentsToggleContentPart;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalFullArgumentsPart = \{[\s\S]*?scroll: \{\s+props: Omit<ChatMessageToolApprovalFullArgumentsScrollProps, 'children'>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalArgumentsToggleProps =\s+Omit<ComponentProps<typeof Pressable>, 'children'> & \{\s+children: ReactNode;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalSpinnerProps = ComponentProps<typeof ActivityIndicator>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalFullArgumentsScrollProps =\s+Omit<ComponentProps<typeof ScrollView>, 'children'> & \{\s+children: ReactNode;\s+\};/);
@@ -823,6 +826,7 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalArgumentsToggleProps =\s+ChatMessageToolApprovalParts\['argumentsToggle'\]\['props'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalSpinnerProps =\s+\| ChatMessageToolApprovalParts\['headerSpinner'\]\['props'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalActionButtonProps = \{[\s\S]*?ChatMessageToolApprovalParts\['denyButton'\]\['props'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolApprovalParts\['/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(toolApprovalComponentSource, /const toolApprovalParts: ChatMessageToolApprovalParts =\s+createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
   assert.doesNotMatch(toolApprovalComponentSource, /const argumentsToggleContent = toolApprovalParts\.argumentsToggle\.content;/);
