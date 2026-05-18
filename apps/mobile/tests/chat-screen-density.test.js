@@ -1457,6 +1457,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /conversationPreview: \{[\s\S]*?props: \{[\s\S]*?container: \{[\s\S]*?props: \{[\s\S]*?style: styles\.conversationPreview,/);
   assert.match(sessionPresentationSource, /container: \{[\s\S]*?content: \{[\s\S]*?rows: shouldRenderConversationPreview \? conversationPreview\.rows\.map\(\(row, rowIndex\) =>/);
   assert.match(sessionPresentationSource, /key: `\$\{row\.timestamp\}-\$\{row\.role\}-\$\{rowIndex\}`,[\s\S]*?props: \{[\s\S]*?line: \{[\s\S]*?props: \{[\s\S]*?style: styles\.conversationPreviewLine,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationConversationPreviewRolePart = \{[\s\S]*?ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots[\s\S]*?numberOfLines: number;[\s\S]*?ellipsizeMode: TextProps\['ellipsizeMode'\];[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationConversationPreviewContentPart = \{[\s\S]*?style: ChatMessageDelegationCardStyles\['conversationPreviewContent'\];[\s\S]*?ellipsizeMode: TextProps\['ellipsizeMode'\];[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationConversationPreviewBodyProps = \{[\s\S]*?rows: ChatMessageDelegationConversationPreviewRowPart\[\];[\s\S]*?moreAction: ChatMessageDelegationConversationMorePreviewActionSlot;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationConversationPreviewBodyProps =\s+ChatMessageDelegationConversationPreviewProps\['container'\]\['content'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationConversationPreviewRowProps =\s+ChatMessageDelegationConversationPreviewProps\['container'\]\['content'\]\['rows'\]\[number\]\['props'\]/);
   const delegationConversationPreviewBlockSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationConversationPreviewBlock[\s\S]*?export function ChatMessageDelegationConversationPreview\(/)?.[0] ?? '';
   const delegationConversationPreviewBodySource =
@@ -1560,6 +1565,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(delegationMorePreviewActionBlockSource, /if \(!moreAction\.shouldRender\) \{\s+return null;\s+\}/);
   assert.match(delegationMorePreviewActionBlockSource, /<ChatMessageDelegationMorePreviewAction\s+\{\.\.\.moreAction\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMorePreviewAction/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationMorePreviewActionPart<[\s\S]*?onPress: \(event: GestureResponderEvent\) => void;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?style: \(state: \{ pressed: boolean \}\) => Array<TButtonStyle \| TButtonPressedStyle \| false>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /Extract<ChatMessageDelegationConversationPreviewProps\['container'\]\['content'\]\['moreAction'\], \{ shouldRender: true \}>\['props'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /Extract<ChatMessageDelegationToolPreviewProps\['container'\]\['content'\]\['moreAction'\], \{ shouldRender: true \}>\['props'\]/);
   const delegationMorePreviewActionSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationMorePreviewAction\([\s\S]*?export function ChatMessageDelegationMorePreviewActionLabel/)?.[0] ?? '';
   const delegationMorePreviewActionLabelSource =
