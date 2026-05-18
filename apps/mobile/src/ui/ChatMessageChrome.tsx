@@ -2241,26 +2241,6 @@ type ChatMessageRetryStatusCardProps = {
   style: StyleProp<ViewStyle>;
 };
 
-type ChatMessageRetryStatusContent =
-  ChatMessageRetryStatusParts['card']['content'];
-
-type ChatMessageRetryStatusCardContentProps =
-  ChatMessageRetryStatusContent;
-
-type ChatMessageRetryStatusHeaderProps = {
-  header: ChatMessageRetryStatusContent['header'];
-};
-
-type ChatMessageRetryStatusHeaderContentProps =
-  ChatMessageRetryStatusContent['header']['content'];
-
-type ChatMessageRetryStatusMetaProps = {
-  meta: ChatMessageRetryStatusContent['meta'];
-};
-
-type ChatMessageRetryStatusMetaContentProps =
-  ChatMessageRetryStatusContent['meta']['content'];
-
 type ChatMessageRetryStatusViewProps = {
   children: ReactNode;
   style: StyleProp<ViewStyle>;
@@ -2286,6 +2266,51 @@ type ChatMessageRetryStatusSpinnerProps = {
 type ChatMessageRetryStatusTextProps = {
   text: string;
   style: StyleProp<TextStyle>;
+};
+
+type ChatMessageRetryStatusTextPart = {
+  props: ChatMessageRetryStatusTextProps;
+};
+
+type ChatMessageRetryStatusHeaderContentProps = {
+  icon: {
+    props: ChatMessageRetryStatusIconProps;
+  };
+  title: {
+    props: ChatMessageRetryStatusTitleProps;
+  };
+  spinner: {
+    props: ChatMessageRetryStatusSpinnerProps;
+  };
+};
+
+type ChatMessageRetryStatusHeaderPart = {
+  props: Omit<ChatMessageRetryStatusViewProps, 'children'>;
+  content: ChatMessageRetryStatusHeaderContentProps;
+};
+
+type ChatMessageRetryStatusHeaderProps = {
+  header: ChatMessageRetryStatusHeaderPart;
+};
+
+type ChatMessageRetryStatusMetaContentProps = {
+  attempt: ChatMessageRetryStatusTextPart;
+  countdown: ChatMessageRetryStatusTextPart;
+};
+
+type ChatMessageRetryStatusMetaPart = {
+  props: Omit<ChatMessageRetryStatusViewProps, 'children'>;
+  content: ChatMessageRetryStatusMetaContentProps;
+};
+
+type ChatMessageRetryStatusMetaProps = {
+  meta: ChatMessageRetryStatusMetaPart;
+};
+
+type ChatMessageRetryStatusCardContentProps = {
+  header: ChatMessageRetryStatusHeaderPart;
+  meta: ChatMessageRetryStatusMetaPart;
+  description: ChatMessageRetryStatusTextPart;
 };
 
 type ChatMessageToolApprovalStyles =
