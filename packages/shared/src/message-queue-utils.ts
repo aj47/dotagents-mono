@@ -945,10 +945,33 @@ export interface MessageQueuePanelMobileStyleSheetSlotsInput<T extends Pick<Queu
   renderState: Pick<MessageQueuePanelMobileRenderState<T>, 'surface' | 'colors' | 'panel'>;
 }
 
-export type MessageQueuePanelMobileStyleSheetSlots = MessageQueuePanelMobileStyleSlots;
+export type MessageQueuePanelMobileStyleSheetSlots =
+  MessageQueuePanelMobilePropsPartsStylesLike<
+    MessageQueuePanelMobileStyleSlots['compactAction'],
+    MessageQueuePanelMobileStyleSlots['processButton'],
+    MessageQueuePanelMobileStyleSlots['clearButton'],
+    MessageQueuePanelMobileStyleSlots['queueControlText'],
+    MessageQueuePanelMobileStyleSlots['queueControlTextDisabled'],
+    MessageQueuePanelMobileStyleSlots['processButtonText'],
+    MessageQueuePanelMobileStyleSlots['clearButtonText'],
+    MessageQueuePanelMobileStyleSlots['container'],
+    MessageQueuePanelMobileStyleSlots['compactContainer'],
+    MessageQueuePanelMobileStyleSlots['compactText'],
+    MessageQueuePanelMobileStyleSlots['header'],
+    MessageQueuePanelMobileStyleSlots['headerCollapsed'],
+    MessageQueuePanelMobileStyleSlots['headerLeft'],
+    MessageQueuePanelMobileStyleSlots['headerActions'],
+    MessageQueuePanelMobileStyleSlots['headerTitle'],
+    MessageQueuePanelMobileStyleSlots['pausedNotice'],
+    MessageQueuePanelMobileStyleSlots['pausedNoticeText'],
+    MessageQueuePanelMobileStyleSlots['list'],
+    MessageQueuePanelMobileStyleSlots['separator']
+  >;
 
-export interface MessageQueuePanelCompactActionMobilePropsPartsStylesLike {
-  compactAction: unknown;
+export interface MessageQueuePanelCompactActionMobilePropsPartsStylesLike<
+  TCompactActionStyle = unknown,
+> {
+  compactAction: TCompactActionStyle;
 }
 
 export type MessageQueuePanelCompactActionMobilePropsPartKey =
@@ -1005,13 +1028,20 @@ export interface MessageQueuePanelCompactActionMobilePropsParts<
   actions: MessageQueuePanelCompactActionMobilePropsPart<TStyles['compactAction'], TOnPress>[];
 }
 
-export interface MessageQueuePanelHeaderActionMobilePropsPartsStylesLike {
-  processButton: unknown;
-  clearButton: unknown;
-  queueControlText: unknown;
-  queueControlTextDisabled: unknown;
-  processButtonText: unknown;
-  clearButtonText: unknown;
+export interface MessageQueuePanelHeaderActionMobilePropsPartsStylesLike<
+  TProcessButtonStyle = unknown,
+  TClearButtonStyle = unknown,
+  TQueueControlTextStyle = unknown,
+  TQueueControlTextDisabledStyle = unknown,
+  TProcessButtonTextStyle = unknown,
+  TClearButtonTextStyle = unknown,
+> {
+  processButton: TProcessButtonStyle;
+  clearButton: TClearButtonStyle;
+  queueControlText: TQueueControlTextStyle;
+  queueControlTextDisabled: TQueueControlTextDisabledStyle;
+  processButtonText: TProcessButtonTextStyle;
+  clearButtonText: TClearButtonTextStyle;
 }
 
 export type MessageQueuePanelHeaderActionMobilePropsPartKey =
@@ -1120,18 +1150,30 @@ export interface MessageQueuePanelHeaderActionMobilePropsParts<
   actions: Array<MessageQueuePanelHeaderActionMobilePropsPart<TStyles, TOnPress>>;
 }
 
-export interface MessageQueuePanelChromeMobilePropsPartsStylesLike {
-  container: unknown;
-  compactContainer: unknown;
-  compactText: unknown;
-  header: unknown;
-  headerCollapsed: unknown;
-  headerLeft: unknown;
-  headerActions: unknown;
-  headerTitle: unknown;
-  pausedNotice: unknown;
-  pausedNoticeText: unknown;
-  list: unknown;
+export interface MessageQueuePanelChromeMobilePropsPartsStylesLike<
+  TContainerStyle = unknown,
+  TCompactContainerStyle = unknown,
+  TCompactTextStyle = unknown,
+  THeaderStyle = unknown,
+  THeaderCollapsedStyle = unknown,
+  THeaderLeftStyle = unknown,
+  THeaderActionsStyle = unknown,
+  THeaderTitleStyle = unknown,
+  TPausedNoticeStyle = unknown,
+  TPausedNoticeTextStyle = unknown,
+  TListStyle = unknown,
+> {
+  container: TContainerStyle;
+  compactContainer: TCompactContainerStyle;
+  compactText: TCompactTextStyle;
+  header: THeaderStyle;
+  headerCollapsed: THeaderCollapsedStyle;
+  headerLeft: THeaderLeftStyle;
+  headerActions: THeaderActionsStyle;
+  headerTitle: THeaderTitleStyle;
+  pausedNotice: TPausedNoticeStyle;
+  pausedNoticeText: TPausedNoticeTextStyle;
+  list: TListStyle;
 }
 
 export interface MessageQueuePanelChromeMobilePropsPartsInput<
@@ -1240,8 +1282,10 @@ export interface MessageQueuePanelChromeMobilePropsParts<
       };
 }
 
-export interface MessageQueuePanelListMobilePropsPartsStylesLike {
-  separator: unknown;
+export interface MessageQueuePanelListMobilePropsPartsStylesLike<
+  TSeparatorStyle = unknown,
+> {
+  separator: TSeparatorStyle;
 }
 
 export interface MessageQueuePanelListMobilePropsPartsInput<
@@ -1288,11 +1332,49 @@ export interface MessageQueuePanelListMobilePropsParts<
   items: Array<MessageQueuePanelListMobilePropsPart<T, TStyles>>;
 }
 
-export interface MessageQueuePanelMobilePropsPartsStylesLike
-  extends MessageQueuePanelCompactActionMobilePropsPartsStylesLike,
-    MessageQueuePanelHeaderActionMobilePropsPartsStylesLike,
-    MessageQueuePanelChromeMobilePropsPartsStylesLike,
-    MessageQueuePanelListMobilePropsPartsStylesLike {}
+export interface MessageQueuePanelMobilePropsPartsStylesLike<
+  TCompactActionStyle = unknown,
+  TProcessButtonStyle = unknown,
+  TClearButtonStyle = unknown,
+  TQueueControlTextStyle = unknown,
+  TQueueControlTextDisabledStyle = unknown,
+  TProcessButtonTextStyle = unknown,
+  TClearButtonTextStyle = unknown,
+  TContainerStyle = unknown,
+  TCompactContainerStyle = unknown,
+  TCompactTextStyle = unknown,
+  THeaderStyle = unknown,
+  THeaderCollapsedStyle = unknown,
+  THeaderLeftStyle = unknown,
+  THeaderActionsStyle = unknown,
+  THeaderTitleStyle = unknown,
+  TPausedNoticeStyle = unknown,
+  TPausedNoticeTextStyle = unknown,
+  TListStyle = unknown,
+  TSeparatorStyle = unknown,
+> extends MessageQueuePanelCompactActionMobilePropsPartsStylesLike<TCompactActionStyle>,
+    MessageQueuePanelHeaderActionMobilePropsPartsStylesLike<
+      TProcessButtonStyle,
+      TClearButtonStyle,
+      TQueueControlTextStyle,
+      TQueueControlTextDisabledStyle,
+      TProcessButtonTextStyle,
+      TClearButtonTextStyle
+    >,
+    MessageQueuePanelChromeMobilePropsPartsStylesLike<
+      TContainerStyle,
+      TCompactContainerStyle,
+      TCompactTextStyle,
+      THeaderStyle,
+      THeaderCollapsedStyle,
+      THeaderLeftStyle,
+      THeaderActionsStyle,
+      THeaderTitleStyle,
+      TPausedNoticeStyle,
+      TPausedNoticeTextStyle,
+      TListStyle
+    >,
+    MessageQueuePanelListMobilePropsPartsStylesLike<TSeparatorStyle> {}
 
 export interface MessageQueuePanelMobilePropsPartsInput<
   T extends Pick<QueuedMessage, 'id' | 'status'>,
@@ -2096,12 +2178,18 @@ export interface QueuedMessageStatusIndicatorMobilePropsPartInput {
   presentation: Pick<QueuedMessageItemPresentation, 'isFailed' | 'isProcessing'>;
 }
 
-export interface QueuedMessageContentMobilePropsPartsStylesLike {
-  content: unknown;
-  messageText: unknown;
-  errorText: unknown;
-  metaRow: unknown;
-  metaText: unknown;
+export interface QueuedMessageContentMobilePropsPartsStylesLike<
+  TContentStyle = unknown,
+  TMessageTextStyle = unknown,
+  TErrorTextStyle = unknown,
+  TMetaRowStyle = unknown,
+  TMetaTextStyle = unknown,
+> {
+  content: TContentStyle;
+  messageText: TMessageTextStyle;
+  errorText: TErrorTextStyle;
+  metaRow: TMetaRowStyle;
+  metaText: TMetaTextStyle;
 }
 
 export interface QueuedMessageContentMobilePropsPartsInput<
@@ -2176,9 +2264,12 @@ export type QueuedMessageStatusIndicatorMobilePropsPart =
       };
     };
 
-export interface QueuedMessageExpandButtonMobilePropsPartsStylesLike {
-  expandButton: unknown;
-  expandText: unknown;
+export interface QueuedMessageExpandButtonMobilePropsPartsStylesLike<
+  TExpandButtonStyle = unknown,
+  TExpandTextStyle = unknown,
+> {
+  expandButton: TExpandButtonStyle;
+  expandText: TExpandTextStyle;
 }
 
 export interface QueuedMessageExpandButtonMobilePropsPartsInput<
@@ -2282,11 +2373,16 @@ export interface QueuedMessageActionButtonMobileStyleSlots {
 
 export type QueuedMessageActionButtonMobileActionKey = 'retry' | 'edit' | 'remove';
 
-export interface QueuedMessageActionButtonMobilePropsPartsStylesLike {
-  actionButton: unknown;
-  retryActionText: unknown;
-  editActionText: unknown;
-  removeActionText: unknown;
+export interface QueuedMessageActionButtonMobilePropsPartsStylesLike<
+  TActionButtonStyle = unknown,
+  TRetryActionTextStyle = unknown,
+  TEditActionTextStyle = unknown,
+  TRemoveActionTextStyle = unknown,
+> {
+  actionButton: TActionButtonStyle;
+  retryActionText: TRetryActionTextStyle;
+  editActionText: TEditActionTextStyle;
+  removeActionText: TRemoveActionTextStyle;
 }
 
 export interface QueuedMessageActionButtonMobilePropsPartsInput<
@@ -2346,10 +2442,14 @@ export interface QueuedMessageActionButtonMobilePropsParts<
   actions: Array<QueuedMessageActionButtonMobilePropsPart<TStyles>>;
 }
 
-export interface QueuedMessageItemChromeMobilePropsPartsStylesLike {
-  container: unknown;
-  row: unknown;
-  actions: unknown;
+export interface QueuedMessageItemChromeMobilePropsPartsStylesLike<
+  TContainerStyle = unknown,
+  TRowStyle = unknown,
+  TActionsStyle = unknown,
+> {
+  container: TContainerStyle;
+  row: TRowStyle;
+  actions: TActionsStyle;
 }
 
 export interface QueuedMessageItemChromeMobilePropsPartsInput<
@@ -2459,7 +2559,31 @@ export interface QueuedMessageItemMobileStyleSheetSlotsInput {
   >;
 }
 
-export interface QueuedMessageItemMobileStyleSheetSlots {
+export interface QueuedMessageItemMobileStyleSheetSlots
+  extends QueuedMessageItemMobilePropsPartsStylesLike<
+    QueuedMessageItemMobileStyleSlots['container'],
+    QueuedMessageItemMobileStyleSlots['row'],
+    QueuedMessageItemMobileStyleSlots['content'],
+    QueuedMessageItemMobileStyleSlots['messageText'],
+    QueuedMessageItemMobileStyleSlots['errorText'],
+    QueuedMessageItemMobileStyleSlots['metaRow'],
+    QueuedMessageItemMobileStyleSlots['metaText'],
+    QueuedMessageItemMobileStyleSlots['expandButton'],
+    QueuedMessageItemMobileStyleSlots['expandText'],
+    QueuedMessageActionRowMobileStyleSlot,
+    QueuedMessageActionButtonMobileStyleSlots['button'],
+    QueuedMessageActionButtonMobileStyleSlots['retryText'],
+    QueuedMessageActionButtonMobileStyleSlots['editText'],
+    QueuedMessageActionButtonMobileStyleSlots['removeText'],
+    QueuedMessageEditMobileStyleSlots['container'],
+    QueuedMessageEditMobileStyleSlots['input'],
+    QueuedMessageEditMobileStyleSlots['actions'],
+    QueuedMessageEditMobileStyleSlots['button'],
+    QueuedMessageEditMobileStyleSlots['cancelButton'],
+    QueuedMessageEditMobileStyleSlots['saveButton'],
+    QueuedMessageEditMobileStyleSlots['buttonText'],
+    QueuedMessageEditMobileStyleSlots['saveButtonText']
+  > {
   container: QueuedMessageItemMobileStyleSlots['container'];
   row: QueuedMessageItemMobileStyleSlots['row'];
   content: QueuedMessageItemMobileStyleSlots['content'];
@@ -2484,15 +2608,24 @@ export interface QueuedMessageItemMobileStyleSheetSlots {
   saveButtonText: QueuedMessageEditMobileStyleSlots['saveButtonText'];
 }
 
-export interface QueuedMessageEditMobileStylesLike {
-  editContainer: unknown;
-  editInput: unknown;
-  editActions: unknown;
-  editButton: unknown;
-  cancelButton: unknown;
-  saveButton: unknown;
-  buttonText: unknown;
-  saveButtonText: unknown;
+export interface QueuedMessageEditMobileStylesLike<
+  TEditContainerStyle = unknown,
+  TEditInputStyle = unknown,
+  TEditActionsStyle = unknown,
+  TEditButtonStyle = unknown,
+  TCancelButtonStyle = unknown,
+  TSaveButtonStyle = unknown,
+  TButtonTextStyle = unknown,
+  TSaveButtonTextStyle = unknown,
+> {
+  editContainer: TEditContainerStyle;
+  editInput: TEditInputStyle;
+  editActions: TEditActionsStyle;
+  editButton: TEditButtonStyle;
+  cancelButton: TCancelButtonStyle;
+  saveButton: TSaveButtonStyle;
+  buttonText: TButtonTextStyle;
+  saveButtonText: TSaveButtonTextStyle;
 }
 
 export interface QueuedMessageEditMobilePropsPartsInput<
@@ -2565,12 +2698,58 @@ export interface QueuedMessageEditMobilePropsParts<
   };
 }
 
-export interface QueuedMessageItemMobilePropsPartsStylesLike
-  extends QueuedMessageEditMobileStylesLike,
-    QueuedMessageActionButtonMobilePropsPartsStylesLike,
-    QueuedMessageExpandButtonMobilePropsPartsStylesLike,
-    QueuedMessageContentMobilePropsPartsStylesLike,
-    QueuedMessageItemChromeMobilePropsPartsStylesLike {}
+export interface QueuedMessageItemMobilePropsPartsStylesLike<
+  TContainerStyle = unknown,
+  TRowStyle = unknown,
+  TContentStyle = unknown,
+  TMessageTextStyle = unknown,
+  TErrorTextStyle = unknown,
+  TMetaRowStyle = unknown,
+  TMetaTextStyle = unknown,
+  TExpandButtonStyle = unknown,
+  TExpandTextStyle = unknown,
+  TActionsStyle = unknown,
+  TActionButtonStyle = unknown,
+  TRetryActionTextStyle = unknown,
+  TEditActionTextStyle = unknown,
+  TRemoveActionTextStyle = unknown,
+  TEditContainerStyle = unknown,
+  TEditInputStyle = unknown,
+  TEditActionsStyle = unknown,
+  TEditButtonStyle = unknown,
+  TCancelButtonStyle = unknown,
+  TSaveButtonStyle = unknown,
+  TButtonTextStyle = unknown,
+  TSaveButtonTextStyle = unknown,
+> extends QueuedMessageEditMobileStylesLike<
+      TEditContainerStyle,
+      TEditInputStyle,
+      TEditActionsStyle,
+      TEditButtonStyle,
+      TCancelButtonStyle,
+      TSaveButtonStyle,
+      TButtonTextStyle,
+      TSaveButtonTextStyle
+    >,
+    QueuedMessageActionButtonMobilePropsPartsStylesLike<
+      TActionButtonStyle,
+      TRetryActionTextStyle,
+      TEditActionTextStyle,
+      TRemoveActionTextStyle
+    >,
+    QueuedMessageExpandButtonMobilePropsPartsStylesLike<TExpandButtonStyle, TExpandTextStyle>,
+    QueuedMessageContentMobilePropsPartsStylesLike<
+      TContentStyle,
+      TMessageTextStyle,
+      TErrorTextStyle,
+      TMetaRowStyle,
+      TMetaTextStyle
+    >,
+    QueuedMessageItemChromeMobilePropsPartsStylesLike<
+      TContainerStyle,
+      TRowStyle,
+      TActionsStyle
+    > {}
 
 export interface QueuedMessageItemMobilePropsPartsInput<
   TStyles extends QueuedMessageItemMobilePropsPartsStylesLike =

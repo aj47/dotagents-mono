@@ -11,6 +11,10 @@ const sessionPresentationSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
   'utf8'
 );
+const messageQueueUtilsSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'message-queue-utils.ts'),
+  'utf8'
+);
 
 test('mobile queue panel uses shared prop-part contracts for reusable button chrome', () => {
   assert.match(source, /type MessageQueuePanelMobilePropsParts,/);
@@ -23,7 +27,13 @@ test('mobile queue panel uses shared prop-part contracts for reusable button chr
   assert.doesNotMatch(source, /type MessageQueuePanelEditButtonPart = \{/);
   assert.doesNotMatch(source, /type ComponentProps/);
   assert.match(sessionPresentationSource, /type MessageQueuePanelMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /type MessageQueuePanelMobilePropsPartsStylesLike,/);
   assert.match(sessionPresentationSource, /type QueuedMessageItemMobilePropsParts,/);
+  assert.match(sessionPresentationSource, /type QueuedMessageItemMobilePropsPartsStylesLike,/);
+  assert.match(messageQueueUtilsSource, /export interface MessageQueuePanelMobilePropsPartsStylesLike<\s+TCompactActionStyle = unknown,/);
+  assert.match(messageQueueUtilsSource, /export type MessageQueuePanelMobileStyleSheetSlots =\s+MessageQueuePanelMobilePropsPartsStylesLike<\s+MessageQueuePanelMobileStyleSlots\['compactAction'\],/);
+  assert.match(messageQueueUtilsSource, /export interface QueuedMessageItemMobilePropsPartsStylesLike<\s+TContainerStyle = unknown,/);
+  assert.match(messageQueueUtilsSource, /export interface QueuedMessageItemMobileStyleSheetSlots\s+extends QueuedMessageItemMobilePropsPartsStylesLike<\s+QueuedMessageItemMobileStyleSlots\['container'\],/);
 });
 
 test('mobile queued-message rows use text-first actions with explicit accessibility labels', () => {
