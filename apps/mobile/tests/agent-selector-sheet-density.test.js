@@ -7,6 +7,10 @@ const sheetSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'AgentSelectorSheet.tsx'),
   'utf8'
 );
+const chatRuntimeMobileStylesSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'ChatRuntimeMobileStyles.ts'),
+  'utf8'
+);
 const sessionPresentationSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
   'utf8'
@@ -22,18 +26,21 @@ const selectorOptionsTestSource = fs.readFileSync(
 
 test('keeps the mobile agent selector close affordance in a compact header instead of a footer band', () => {
   assert.match(sheetSource, /<View \{\.\.\.agentSelectorSheetParts\.header\.props\}>/);
-  assert.match(sheetSource, /getAgentSelectorMobileRenderState/);
+  assert.match(sheetSource, /useChatRuntimeAgentSelectorSheetMobileStyleSlots/);
+  assert.match(chatRuntimeMobileStylesSource, /getAgentSelectorMobileRenderState/);
   assert.match(sheetSource, /createAgentSelectorSheetMobilePropsParts,/);
   assert.match(sheetSource, /type AgentSelectorSheetMobilePropsParts,/);
   assert.match(sheetSource, /type AgentSelectorSheetParts =\s+AgentSelectorSheetMobilePropsParts<[\s\S]*?AgentSelectorSheetStyles,[\s\S]*?AgentSelectorSheetCloseHandler,[\s\S]*?AgentSelectorSheetRetryHandler/);
-  assert.match(sheetSource, /const agentSelectorSheetParts: AgentSelectorSheetParts = createAgentSelectorSheetMobilePropsParts\(\{[\s\S]*?visible,[\s\S]*?renderState: agentSelectorRenderState,[\s\S]*?styles,[\s\S]*?sheetBottomPadding: agentSelectorStyleSheetSlots\.sheet\.paddingBottom,[\s\S]*?safeAreaBottom: insets\.bottom,[\s\S]*?isLoading,[\s\S]*?error,[\s\S]*?hasProfiles: profiles\.length > 0,[\s\S]*?onClose,[\s\S]*?onRetry: fetchProfiles,/);
+  assert.match(sheetSource, /const agentSelectorSheetParts: AgentSelectorSheetParts = createAgentSelectorSheetMobilePropsParts\(\{[\s\S]*?visible,[\s\S]*?renderState: agentSelectorRenderState,[\s\S]*?styles,[\s\S]*?sheetBottomPadding: agentSelectorSheetBottomPadding,[\s\S]*?safeAreaBottom: insets\.bottom,[\s\S]*?isLoading,[\s\S]*?error,[\s\S]*?hasProfiles: profiles\.length > 0,[\s\S]*?onClose,[\s\S]*?onRetry: fetchProfiles,/);
   assert.match(sheetSource, /<Modal\s+\{\.\.\.agentSelectorSheetParts\.modal\.props\}/);
   assert.match(sheetSource, /<Pressable \{\.\.\.agentSelectorSheetParts\.backdrop\.props\}>/);
   assert.match(sheetSource, /<View \{\.\.\.agentSelectorSheetParts\.backdropSpacer\.props\} \/>/);
   assert.match(sheetSource, /<TouchableOpacity \{\.\.\.agentSelectorSheetParts\.closeButton\.props\}>/);
   assert.match(sheetSource, /<Ionicons\s+\{\.\.\.agentSelectorSheetParts\.closeButton\.icon\.props\}/);
-  assert.match(sheetSource, /const agentSelectorStyleSheetSlots = React\.useMemo\(\s+\(\) => createAgentSelectorMobileStyleSheetSlots\(\{/);
-  assert.match(sheetSource, /StyleSheet\.create\(\{\s*\.\.\.agentSelectorStyleSheetSlots\s*\}\)/);
+  assert.match(chatRuntimeMobileStylesSource, /const agentSelectorStyleSheetSlots = useMemo\(\s+\(\) => createChatRuntimeAgentSelectorSheetStyleSheetSlots\(\{/);
+  assert.match(chatRuntimeMobileStylesSource, /StyleSheet\.create\(\{\s*\.\.\.agentSelectorStyleSheetSlots\s*\}\)/);
+  assert.doesNotMatch(sheetSource, /const agentSelectorStyleSheetSlots = React\.useMemo/);
+  assert.doesNotMatch(sheetSource, /StyleSheet\.create/);
   assert.match(sheetSource, /<View \{\.\.\.agentSelectorSheetParts\.sheet\.props\}>/);
   assert.doesNotMatch(sheetSource, /<View style=\{\{ flex: 1 \}\} \/>/);
   assert.doesNotMatch(sheetSource, /headerCloseButtonText/);
@@ -50,7 +57,8 @@ test('keeps the mobile agent selector close affordance in a compact header inste
 });
 
 test('keeps the mobile agent selector title shrink-safe beside the header close action', () => {
-  assert.match(sheetSource, /createAgentSelectorMobileStyleSheetSlots\(\{\s+renderState: agentSelectorRenderState,\s+spacing,\s+radius,\s+\}\)/);
+  assert.match(chatRuntimeMobileStylesSource, /createAgentSelectorMobileStyleSheetSlots\(\{\s+renderState,[\s\S]*?spacing,[\s\S]*?radius,/);
+  assert.doesNotMatch(sheetSource, /createAgentSelectorMobileStyleSheetSlots\(\{/);
   assert.match(selectorOptionsSource, /export type AgentSelectorMobileStyleSheetSlots =/);
   assert.match(selectorOptionsSource, /export function createAgentSelectorMobileStyleSheetSlots/);
   assert.doesNotMatch(sheetSource, /header:\s*\{\s+\.\.\.agentSelectorStyleSlots\.header,/);
@@ -71,22 +79,26 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.match(selectorOptionsTestSource, /from '@dotagents\/shared\/session-presentation';/);
   assert.doesNotMatch(selectorOptionsTestSource, /from '@dotagents\/shared\/agent-selector-options';/);
   assert.match(sessionPresentationSource, /export \{[\s\S]*?buildSelectorProfiles,[\s\S]*?createAgentSelectorProfileItemMobilePropsParts,[\s\S]*?createAgentSelectorSheetMobilePropsParts,[\s\S]*?createAgentSelectorMobileStyleSheetSlots,[\s\S]*?createAgentSelectorMobileStyleSlots,[\s\S]*?getAgentSelectorMobileProfileItemRenderState,[\s\S]*?getAgentSelectorMobileRenderState,[\s\S]*?type AgentSelectorMobileStyleSheetSlots,[\s\S]*?type AgentSelectorMobileStyleSheetSlotsInput,[\s\S]*?type AgentSelectorProfileItemMobilePropsParts,[\s\S]*?type AgentSelectorProfileItemMobilePropsPartsInput,[\s\S]*?type AgentSelectorSheetMobilePropsParts,[\s\S]*?type AgentSelectorSheetMobilePropsPartsInput,[\s\S]*?type SelectableAgentProfile,[\s\S]*?\} from "\.\/agent-selector-options"/);
-  assert.match(sheetSource, /getAgentSelectorMobileRenderState/);
+  assert.match(chatRuntimeMobileStylesSource, /getAgentSelectorMobileRenderState/);
+  assert.doesNotMatch(sheetSource, /getAgentSelectorMobileRenderState/);
   assert.match(sheetSource, /getAgentSelectorMobileProfileItemRenderState/);
   assert.match(sheetSource, /createAgentSelectorProfileItemMobilePropsParts,/);
   assert.match(sheetSource, /createAgentSelectorSheetMobilePropsParts,/);
   assert.doesNotMatch(sheetSource, /type AgentSelectorProfileItemMobilePropsStylesLike,/);
   assert.doesNotMatch(sheetSource, /type AgentSelectorSheetMobilePropsStylesLike,/);
-  assert.match(sheetSource, /const agentSelectorRenderState = React\.useMemo\([\s\S]*?getAgentSelectorMobileRenderState\(\{[\s\S]*?selectorMode,[\s\S]*?colors: theme\.colors,/);
+  assert.match(sheetSource, /const \{\s+agentSelectorRenderState,[\s\S]*?agentSelectorStyles: styles,[\s\S]*?agentSelectorSheetBottomPadding,[\s\S]*?\} = useChatRuntimeAgentSelectorSheetMobileStyleSlots\(\{[\s\S]*?selectorMode,[\s\S]*?\}\);/);
+  assert.match(chatRuntimeMobileStylesSource, /const agentSelectorRenderState = useMemo\([\s\S]*?getAgentSelectorMobileRenderState\(\{[\s\S]*?selectorMode,[\s\S]*?colors: theme\.colors,/);
   assert.match(sheetSource, /const agentSelectorCopy = agentSelectorRenderState\.copy;/);
-  assert.match(sheetSource, /createAgentSelectorMobileStyleSheetSlots,/);
-  assert.match(sheetSource, /const agentSelectorStyleSheetSlots = React\.useMemo\(\s+\(\) => createAgentSelectorMobileStyleSheetSlots\(\{\s+renderState: agentSelectorRenderState,\s+spacing,\s+radius,\s+\}\),/);
+  assert.match(chatRuntimeMobileStylesSource, /createAgentSelectorMobileStyleSheetSlots,/);
+  assert.doesNotMatch(sheetSource, /createAgentSelectorMobileStyleSheetSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /const agentSelectorStyleSheetSlots = useMemo\(\s+\(\) => createChatRuntimeAgentSelectorSheetStyleSheetSlots\(\{\s+renderState: agentSelectorRenderState,/);
   assert.match(selectorOptionsSource, /export interface AgentSelectorProfileItemMobilePropsStylesLike<\s+TProfileItemStyle = unknown,/);
   assert.match(selectorOptionsSource, /export interface AgentSelectorSheetMobilePropsStylesLike<\s+TBackdropStyle = unknown,/);
   assert.match(sheetSource, /type AgentSelectorMobileStyleSheetSlots,/);
   assert.match(sheetSource, /type AgentSelectorSheetStyles = AgentSelectorMobileStyleSheetSlots;/);
   assert.doesNotMatch(sheetSource, /type AgentSelectorSheetStyles = \{[\s\S]*?backdrop: StyleProp<ViewStyle>;[\s\S]*?title: StyleProp<TextStyle>;[\s\S]*?profileAvatarImage: StyleProp<ImageStyle>;[\s\S]*?emptyText: StyleProp<TextStyle>;[\s\S]*?\};/);
-  assert.match(sheetSource, /const styles = React\.useMemo<AgentSelectorSheetStyles>\(\s+\(\) => StyleSheet\.create\(\{\s*\.\.\.agentSelectorStyleSheetSlots\s*\}\),/);
+  assert.match(chatRuntimeMobileStylesSource, /const agentSelectorStyles = useMemo\(\s+\(\) => StyleSheet\.create\(\{\s*\.\.\.agentSelectorStyleSheetSlots\s*\}\),/);
+  assert.doesNotMatch(sheetSource, /const styles = React\.useMemo/);
   assert.doesNotMatch(sheetSource, /sheet:\s*\{\s+\.\.\.agentSelectorStyleSlots\.sheet,/);
   assert.doesNotMatch(sheetSource, /profileItem:\s*\{\s+\.\.\.agentSelectorStyleSlots\.profileItem,/);
   assert.doesNotMatch(sheetSource, /profileAvatar:\s*\{\s+\.\.\.agentSelectorStyleSlots\.profileAvatar,/);
