@@ -4,7 +4,7 @@
  * Displays queued messages with options to view, edit, remove, and retry.
  */
 
-import React, { useState, useEffect, useMemo, type ComponentProps } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, type ComponentProps } from 'react';
 import {
   View,
   Text,
@@ -163,7 +163,10 @@ function QueuedMessageItem({
   const {
     isProcessing,
   } = messagePresentation;
-  const editDraftState = getQueuedMessageEditDraftState(editText, message.text);
+  const editDraftState = useMemo(
+    () => getQueuedMessageEditDraftState(editText, message.text),
+    [editText, message.text],
+  );
   const itemStyleSheetSlots = useMemo<QueuedMessageItemMobileStyleSheetSlots>(
     () => createStyleSheetSlots({
       renderState: queuedMessageRenderState,
@@ -186,7 +189,15 @@ function QueuedMessageItem({
     }
   }, [isProcessing, message.text]);
 
-  const handleSaveEdit = () => {
+  const handleStartEdit = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+
+  const handleToggleExpanded = useCallback(() => {
+    setIsExpanded((current) => !current);
+  }, []);
+
+  const handleSaveEdit = useCallback(() => {
     const editSubmitState = editDraftState.submitState;
     if (editSubmitState.shouldSubmit) {
       onUpdate(editSubmitState.trimmedText);
@@ -195,16 +206,44 @@ function QueuedMessageItem({
       setEditText(message.text);
     }
     setIsEditing(false);
-  };
+  }, [editDraftState, message.text, onUpdate]);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setIsEditing(false);
     setEditText(message.text);
-  };
+  }, [message.text]);
 
   const styles = useMemo(
     () => StyleSheet.create({ ...itemStyleSheetSlots }),
     [itemStyleSheetSlots],
+  );
+  const queuedMessageItemParts = useMemo(
+    () => createQueuedMessageItemMobilePropsParts({
+      renderState: queuedMessageRenderState,
+      message,
+      editDraftState,
+      isExpanded,
+      styles,
+      onRetry,
+      onEdit: handleStartEdit,
+      onRemove,
+      onToggleExpanded: handleToggleExpanded,
+      onCancelEdit: handleCancelEdit,
+      onSaveEdit: handleSaveEdit,
+    }),
+    [
+      editDraftState,
+      handleCancelEdit,
+      handleSaveEdit,
+      handleStartEdit,
+      handleToggleExpanded,
+      isExpanded,
+      message,
+      onRemove,
+      onRetry,
+      queuedMessageRenderState,
+      styles,
+    ],
   );
   const {
     edit: editParts,
@@ -212,19 +251,7 @@ function QueuedMessageItem({
     expandButton: expandButtonParts,
     content: contentParts,
     chrome: itemChromeParts,
-  } = createQueuedMessageItemMobilePropsParts({
-    renderState: queuedMessageRenderState,
-    message,
-    editDraftState,
-    isExpanded,
-    styles,
-    onRetry,
-    onEdit: () => setIsEditing(true),
-    onRemove,
-    onToggleExpanded: () => setIsExpanded(!isExpanded),
-    onCancelEdit: handleCancelEdit,
-    onSaveEdit: handleSaveEdit,
-  });
+  } = queuedMessageItemParts;
   const expandButtonPressable = expandButtonParts.pressable;
 
   if (isEditing) {
@@ -342,23 +369,38 @@ export function MessageQueuePanel({
     () => StyleSheet.create({ ...panelStyleSheetSlots }),
     [panelStyleSheetSlots],
   );
+  const messageQueuePanelParts = useMemo(
+    () => createMessageQueuePanelMobilePropsParts({
+      renderState: queuePanelRenderState,
+      styles,
+      onPause,
+      onResume,
+      onProcessNext,
+      onClear,
+      onToggleListCollapsed,
+      onRemove,
+      onUpdate,
+      onRetry,
+    }),
+    [
+      onClear,
+      onPause,
+      onProcessNext,
+      onRemove,
+      onResume,
+      onRetry,
+      onToggleListCollapsed,
+      onUpdate,
+      queuePanelRenderState,
+      styles,
+    ],
+  );
   const {
     compactActions: compactActionParts,
     headerActions: headerActionParts,
     chrome: panelChromeParts,
     list: panelListParts,
-  } = createMessageQueuePanelMobilePropsParts({
-    renderState: queuePanelRenderState,
-    styles,
-    onPause,
-    onResume,
-    onProcessNext,
-    onClear,
-    onToggleListCollapsed,
-    onRemove,
-    onUpdate,
-    onRetry,
-  });
+  } = messageQueuePanelParts;
 
   if (!queuePanelRenderState.shouldRender) {
     return null;
