@@ -6459,6 +6459,11 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageToolActivityGroupBoundaryStyles/);
   assert.match(sessionPresentationSource, /export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots/);
+  assert.match(sessionPresentationSource, /export type ChatMessageToolActivityGroupThreadSurfaceStyleSlots<\s+TSurfaceStyle,/);
+  assert.match(sessionPresentationSource, /\}\): ChatMessageToolActivityGroupThreadSurfaceStyleSlots<\s+TSurfaceStyle,\s+TBoundaryStyles,\s+TToneStyleSlot,\s+TToneStyle\s+> \{/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupThreadSurfaceStyleSlots as SharedChatMessageToolActivityGroupThreadSurfaceStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupThreadSurfaceStyleSlots =\s+SharedChatMessageToolActivityGroupThreadSurfaceStyleSlots<\s+ChatMessageThreadSurfaceProps\['surfaceStyle'\],/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupThreadSurfaceStyleSlots = \{\s+surfaceStyle: ChatMessageThreadSurfaceProps\['surfaceStyle'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeThreadStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeThreadStyleSlots/);
   assert.match(sessionPresentationSource, /runtimeThread: createChatMessageRuntimeThreadStyleSlots\(\{\s+threadSurfaceStyles,\s+threadBodyStyles,\s+\}\),\s+actionSet: actionStyles,/);

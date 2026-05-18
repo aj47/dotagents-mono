@@ -405,6 +405,7 @@ import {
   type ChatMessageRuntimeToolCallExpansionState,
   type ChatMessageRuntimeTurnDurationStateInput,
   type ChatMessageToolActivityGroupBoundaryStyleSlots as SharedChatMessageToolActivityGroupBoundaryStyleSlots,
+  type ChatMessageToolActivityGroupThreadSurfaceStyleSlots as SharedChatMessageToolActivityGroupThreadSurfaceStyleSlots,
   type ToolActivityGroupMobileRenderState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
@@ -4901,13 +4902,13 @@ export type ChatMessageThreadBodyStyleSlots = {
   standaloneActions: Pick<ChatMessageStandaloneActionsProps, 'rowStyle'>;
 };
 
-type ChatMessageToolActivityGroupThreadSurfaceStyleSlots = {
-  surfaceStyle: ChatMessageThreadSurfaceProps['surfaceStyle'];
-  boundary: ChatMessageToolActivityGroupBoundaryStyles;
-  getToneStyle: (
-    toneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot
-  ) => ChatMessageThreadSurfaceProps['surfaceToneStyle'];
-};
+type ChatMessageToolActivityGroupThreadSurfaceStyleSlots =
+  SharedChatMessageToolActivityGroupThreadSurfaceStyleSlots<
+    ChatMessageThreadSurfaceProps['surfaceStyle'],
+    ChatMessageToolActivityGroupBoundaryStyles,
+    ChatRuntimeConversationSurfaceToneMobileStyleSlot,
+    ChatMessageThreadSurfaceProps['surfaceToneStyle']
+  >;
 
 type ChatMessageThreadBodyContentProps =
   Omit<ChatMessageConversationContentProps, 'rowStyle' | 'expanded' | 'collapsed'>

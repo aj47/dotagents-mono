@@ -29454,6 +29454,17 @@ export function createChatMessageToolActivityGroupBoundaryStyles<
   }
 }
 
+export type ChatMessageToolActivityGroupThreadSurfaceStyleSlots<
+  TSurfaceStyle,
+  TBoundaryStyles,
+  TToneStyleSlot,
+  TToneStyle,
+> = {
+  surfaceStyle: TSurfaceStyle
+  boundary: TBoundaryStyles
+  getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
+}
+
 export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots<
   TSurfaceStyle,
   TBoundaryStyles,
@@ -29467,11 +29478,12 @@ export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots<
   surfaceStyle: TSurfaceStyle
   boundaryStyles: TBoundaryStyles
   getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
-}): {
-  surfaceStyle: TSurfaceStyle
-  boundary: TBoundaryStyles
-  getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
-} {
+}): ChatMessageToolActivityGroupThreadSurfaceStyleSlots<
+  TSurfaceStyle,
+  TBoundaryStyles,
+  TToneStyleSlot,
+  TToneStyle
+> {
   return {
     surfaceStyle,
     boundary: boundaryStyles,
