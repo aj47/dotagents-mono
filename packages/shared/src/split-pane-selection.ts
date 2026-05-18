@@ -797,6 +797,39 @@ export interface SplitPaneModalCreateActionMobilePropsParts<
   }
 }
 
+export interface SplitPanePaneHeaderMobileStylesLike {
+  label: unknown
+  title: unknown
+}
+
+export interface SplitPanePaneHeaderMobilePropsPartsInput<
+  TStyles extends SplitPanePaneHeaderMobileStylesLike = SplitPanePaneHeaderMobileStylesLike,
+> {
+  pane: SplitPane
+  title?: string | null
+  styles: TStyles
+}
+
+export interface SplitPanePaneHeaderMobilePropsParts<
+  TStyles extends SplitPanePaneHeaderMobileStylesLike = SplitPanePaneHeaderMobileStylesLike,
+> {
+  content: {
+    label: {
+      text: string
+      props: {
+        style: TStyles["label"]
+      }
+    }
+    title: {
+      text: string
+      props: {
+        style: TStyles["title"]
+        numberOfLines: typeof SPLIT_PANE_PRESENTATION.mobile.paneTitle.numberOfLines
+      }
+    }
+  }
+}
+
 export function createSplitPaneMobileStyleSlots({
   colors,
   spacing,
@@ -1268,6 +1301,36 @@ export function createSplitPaneModalCreateActionMobilePropsParts<
           props: {
             style: styles.label,
           },
+        },
+      },
+    },
+  }
+}
+
+export function createSplitPanePaneHeaderMobilePropsParts<
+  TStyles extends SplitPanePaneHeaderMobileStylesLike,
+>({
+  pane,
+  title,
+  styles,
+}: SplitPanePaneHeaderMobilePropsPartsInput<
+  TStyles
+>): SplitPanePaneHeaderMobilePropsParts<TStyles> {
+  const surface = SPLIT_PANE_PRESENTATION.mobile.paneTitle
+
+  return {
+    content: {
+      label: {
+        text: SPLIT_PANE_PRESENTATION.copy.paneLabel[pane],
+        props: {
+          style: styles.label,
+        },
+      },
+      title: {
+        text: title || SPLIT_PANE_PRESENTATION.copy.noChatSelected,
+        props: {
+          style: styles.title,
+          numberOfLines: surface.numberOfLines,
         },
       },
     },

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   createSplitPaneEmptyStateActionMobilePropsParts,
   createSplitPaneModalCreateActionMobilePropsParts,
+  createSplitPanePaneHeaderMobilePropsParts,
   createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
   createSplitPaneSessionOptionMobilePropsParts,
@@ -513,5 +514,30 @@ describe("split pane selection", () => {
 
     createParts.touchable.props.onPress()
     expect(created).toBe(true)
+  })
+
+  it("creates mobile split-pane pane-header props from shared presentation", () => {
+    const headerParts = createSplitPanePaneHeaderMobilePropsParts({
+      pane: "primary",
+      title: null,
+      styles: {
+        label: "label",
+        title: "title",
+      },
+    })
+
+    expect(headerParts.content.label).toEqual({
+      text: "Primary chat",
+      props: {
+        style: "label",
+      },
+    })
+    expect(headerParts.content.title).toEqual({
+      text: "No chat selected",
+      props: {
+        style: "title",
+        numberOfLines: 1,
+      },
+    })
   })
 })

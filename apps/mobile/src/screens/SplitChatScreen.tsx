@@ -26,13 +26,13 @@ import {
   formatSplitPaneModalTitle,
   createSplitPaneEmptyStateActionMobilePropsParts,
   createSplitPaneModalCreateActionMobilePropsParts,
+  createSplitPanePaneHeaderMobilePropsParts,
   createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
   createSplitPaneSessionOptionMobilePropsParts,
   createSplitPaneToolbarActionMobilePropsParts,
   getSplitPaneCopyState,
   getSplitPaneMobileSurfaceColors,
-  getSplitPaneMobileSurfaceState,
   reconcileSplitPaneSelection,
   replaceSplitPaneSelection,
   resolveSplitOrientation,
@@ -43,7 +43,6 @@ import {
 } from '@dotagents/shared/split-pane-selection';
 
 const splitPaneCopy = getSplitPaneCopyState();
-const splitPaneSurface = getSplitPaneMobileSurfaceState();
 
 interface Props {
   navigation: any;
@@ -169,6 +168,14 @@ export default function SplitChatScreen({ navigation }: Props) {
 
   const renderPane = useCallback((pane: SplitPane, sessionId: string | null, store: SessionStore) => {
     const session = sessionList.find((entry) => entry.id === sessionId) ?? null;
+    const paneHeaderParts = createSplitPanePaneHeaderMobilePropsParts({
+      pane,
+      title: session?.title,
+      styles: {
+        label: styles.paneLabel,
+        title: styles.paneTitle,
+      },
+    });
     const toolbarActionStyles = {
       button: styles.toolbarButton,
       disabledButton: styles.toolbarButtonDisabled,
@@ -212,8 +219,12 @@ export default function SplitChatScreen({ navigation }: Props) {
       <View style={[styles.pane, effectiveOrientation === 'vertical' ? styles.paneVertical : styles.paneHorizontal]}>
         <View style={styles.paneToolbar}>
           <View style={styles.paneToolbarTextWrap}>
-            <Text style={styles.paneLabel}>{splitPaneCopy.paneLabel[pane]}</Text>
-            <Text style={styles.paneTitle} numberOfLines={splitPaneSurface.paneTitle.numberOfLines}>{session?.title || splitPaneCopy.noChatSelected}</Text>
+            <Text {...paneHeaderParts.content.label.props}>
+              {paneHeaderParts.content.label.text}
+            </Text>
+            <Text {...paneHeaderParts.content.title.props}>
+              {paneHeaderParts.content.title.text}
+            </Text>
           </View>
           <View style={styles.paneToolbarActions}>
             <TouchableOpacity
