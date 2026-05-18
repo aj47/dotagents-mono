@@ -223,7 +223,9 @@ import {
   type ChatRuntimeConnectionBannerMobileRenderState,
   type ChatRuntimeDockChromeMobileRenderStateInput,
   type ChatRuntimeConversationDockMobilePropsParts,
+  type ChatRuntimeConversationDockMobilePropsPartsInput,
   type ChatRuntimeConversationDockShellMobilePropsParts,
+  type ChatRuntimeConversationDockShellMobilePropsPartsInput,
   type ChatRuntimeConversationFrameMobilePropsParts,
   type ChatRuntimeConversationFrameMobilePropsPartsInput,
   type ChatRuntimeConversationOverlaysMobilePropsParts,
@@ -3849,14 +3851,15 @@ type ChatMessageQueuePanelDockProps = {
   };
 };
 
-type ChatMessageConversationDockProps = {
-  responseHistoryPanel?: ReactNode;
-  scrollToBottomButton?: ReactNode;
-  voiceOverlay?: ReactNode;
-  queuePanel?: ReactNode;
-  connectionBanner?: ReactNode;
-  composer?: ReactNode;
-};
+type ChatMessageConversationDockProps =
+  ChatRuntimeConversationDockShellMobilePropsPartsInput<
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode
+  >;
 
 type ChatMessageConversationDockParts =
   ChatRuntimeConversationDockShellMobilePropsParts<
@@ -3982,15 +3985,20 @@ type ChatMessageRuntimeDockStyleSlots =
     ChatComposerRuntimeDockStyleSlots
   >;
 
-type ChatMessageRuntimeDockProps = {
-  responseHistoryPanel: ChatMessageResponseHistoryPanelDockProps;
-  scrollToBottomButton: Omit<ChatMessageScrollToBottomButtonProps, 'style'>;
-  voiceOverlay: Omit<ChatComposerVoiceOverlayProps, 'styles'>;
-  queuePanel: Omit<ChatMessageQueuePanelDockProps, 'container'>;
-  connectionBanner: Omit<ChatMessageConnectionBannerProps, 'styles'>;
-  composer: Omit<ChatComposerRuntimeDockProps, 'styles'>;
-  styles: ChatMessageRuntimeDockStyleSlots;
-};
+type ChatMessageRuntimeDockProps =
+  ChatRuntimeConversationDockMobilePropsPartsInput<
+    ChatMessageResponseHistoryPanelDockProps,
+    Omit<ChatMessageScrollToBottomButtonProps, 'style'>,
+    Omit<ChatComposerVoiceOverlayProps, 'styles'>,
+    Omit<ChatMessageQueuePanelDockProps, 'container'>,
+    Omit<ChatMessageConnectionBannerProps, 'styles'>,
+    Omit<ChatComposerRuntimeDockProps, 'styles'>,
+    ChatMessageRuntimeDockStyleSlots['scrollToBottomButtonStyle'],
+    ChatMessageRuntimeDockStyleSlots['voiceOverlay'],
+    ChatMessageRuntimeDockStyleSlots['queuePanelStyle'],
+    ChatMessageRuntimeDockStyleSlots['connectionBanner'],
+    ChatMessageRuntimeDockStyleSlots['composer']
+  >;
 
 type ChatMessageRuntimeDockParts =
   ChatRuntimeConversationDockMobilePropsParts<
