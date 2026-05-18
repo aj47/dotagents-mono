@@ -2494,6 +2494,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeSurfaceChromeProps/);
   assert.match(chatMessageChromeSource, /export function createChatMessageRuntimeChromeProps/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeChromeSurface/);
+  assert.match(chatMessageChromeSource, /const chatMessageRuntimeSurface = useMemo<ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>>\(\s+\(\) => createChatMessageRuntimeChromeProps<TPrompt, TTask>\(\{\s+colors,\s+platform,\s+spinnerSource,\s+styles,\s+composer,\s+dock,\s+threadList,\s+viewport,\s+surface,\s+\}\),\s+\[colors, composer, dock, platform, spinnerSource, styles, surface, threadList, viewport\],\s+\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<TPrompt, TTask>\(chromePropsInput\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageRuntimeSurface\s+\{\.\.\.chatMessageRuntimeSurface\}\s+\{\.\.\.runtimeSurface\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /styles=\{surfaceStyles\}/);
   assert.match(chatMessageChromeSource, /createChatRuntimeSurfaceChromeMobileProps,/);

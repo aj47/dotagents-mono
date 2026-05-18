@@ -7261,10 +7261,31 @@ export function ChatMessageRuntimeChromeSurface<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 >({
+  colors,
+  platform,
+  spinnerSource,
+  styles,
+  composer,
+  dock,
+  threadList,
+  viewport,
+  surface,
   runtimeSurface,
-  ...chromePropsInput
 }: ChatMessageRuntimeChromeSurfaceProps<TPrompt, TTask>) {
-  const chatMessageRuntimeSurface = createChatMessageRuntimeChromeProps<TPrompt, TTask>(chromePropsInput);
+  const chatMessageRuntimeSurface = useMemo<ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>>(
+    () => createChatMessageRuntimeChromeProps<TPrompt, TTask>({
+      colors,
+      platform,
+      spinnerSource,
+      styles,
+      composer,
+      dock,
+      threadList,
+      viewport,
+      surface,
+    }),
+    [colors, composer, dock, platform, spinnerSource, styles, surface, threadList, viewport],
+  );
 
   return (
     <ChatMessageRuntimeSurface
