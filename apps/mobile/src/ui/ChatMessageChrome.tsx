@@ -6996,39 +6996,9 @@ type ChatMessageConversationRuntimeThreadListContentProps = {
   }>;
 };
 
-export function ChatMessageActionIconButton({
-  icon,
-  onPress,
-  disabled = false,
-  isActive = false,
-  accessibilityRole,
-  accessibilityLabel,
-  accessibilityHint,
-  accessibilityState,
-  ariaExpanded,
-  hitSlop,
-  style,
-  activeStyle,
-  pressedStyle,
-  disabledStyle,
-}: ChatMessageActionIconButtonProps) {
+export function ChatMessageActionIconButton(props: ChatMessageActionIconButtonProps) {
   const actionIconButtonParts: ChatMessageActionIconButtonParts =
-    createChatRuntimeMessageActionIconButtonMobilePropsParts({
-      icon,
-      onPress,
-      disabled,
-      isActive,
-      accessibilityRole,
-      accessibilityLabel,
-      accessibilityHint,
-      accessibilityState,
-      ariaExpanded,
-      hitSlop,
-      style,
-      activeStyle,
-      pressedStyle,
-      disabledStyle,
-    });
+    createChatRuntimeMessageActionIconButtonMobilePropsParts(props);
 
   return (
     <ChatMessageActionIconButtonPressable

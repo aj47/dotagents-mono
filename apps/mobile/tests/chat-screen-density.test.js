@@ -7561,7 +7561,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatMessageActionIconButtonParts =\s+ChatRuntimeMessageActionIconButtonMobilePropsParts<[\s\S]*?ChatMessageActionIcon,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?AccessibilityRole,[\s\S]*?AccessibilityState,[\s\S]*?boolean,[\s\S]*?number \| Insets,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionIconButtonParts = ReturnType<typeof createChatRuntimeMessageActionIconButtonMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionIconButtonMobilePropsParts/);
-  assert.match(actionIconButtonSource, /const actionIconButtonParts: ChatMessageActionIconButtonParts =\s+createChatRuntimeMessageActionIconButtonMobilePropsParts\(\{\s+icon,\s+onPress,\s+disabled,\s+isActive,\s+accessibilityRole,\s+accessibilityLabel,\s+accessibilityHint,\s+accessibilityState,\s+ariaExpanded,\s+hitSlop,\s+style,\s+activeStyle,\s+pressedStyle,\s+disabledStyle,\s+\}\);/);
+  assert.match(actionIconButtonSource, /export function ChatMessageActionIconButton\(props: ChatMessageActionIconButtonProps\)/);
+  assert.match(actionIconButtonSource, /const actionIconButtonParts: ChatMessageActionIconButtonParts =\s+createChatRuntimeMessageActionIconButtonMobilePropsParts\(props\);/);
+  assert.doesNotMatch(actionIconButtonSource, /disabled = false/);
+  assert.doesNotMatch(actionIconButtonSource, /isActive = false/);
   assert.match(sessionPresentationSource, /const mergedAccessibilityState = disabled[\s\S]*?\? \{ \.\.\.accessibilityState, disabled: true as const \}[\s\S]*?: accessibilityState/);
   assert.doesNotMatch(actionIconButtonSource, /const mergedAccessibilityState/);
   assert.match(
