@@ -4089,8 +4089,11 @@ type ChatMessageScrollToBottomButtonParts =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageScrollToBottomButtonIconProps =
-  ChatRuntimeScrollToBottomMobileRenderState['button']['icon'];
+type ChatMessageScrollToBottomButtonIconProps = {
+  name: IoniconName;
+  size: number;
+  color: string;
+};
 
 type ChatMessageScrollToBottomButtonContentProps = {
   icon: {
@@ -4102,8 +4105,8 @@ type ChatMessageScrollToBottomButtonTouchableProps = {
   children: ReactNode;
   style: StyleProp<ViewStyle>;
   onPress: ((event: GestureResponderEvent) => void) | undefined;
-  activeOpacity: ChatRuntimeScrollToBottomMobileRenderState['button']['pressedOpacity'];
-  accessibilityRole: ChatRuntimeScrollToBottomMobileRenderState['button']['accessibilityRole'];
+  activeOpacity: number;
+  accessibilityRole: AccessibilityRole;
   accessibilityLabel: string;
   accessibilityHint: string;
 };
