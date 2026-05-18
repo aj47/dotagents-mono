@@ -14024,8 +14024,15 @@ export function ChatMessageRuntimeSurface<
 export function ChatMessageHistoryBanner(
   props: ChatMessageHistoryBannerProps,
 ) {
-  const historyBannerParts: ChatMessageHistoryBannerParts =
-    createChatRuntimeMessageHistoryBannerMobilePropsParts(props);
+  const { renderState, onLoadEarlier, styles } = props;
+  const historyBannerParts = useMemo<ChatMessageHistoryBannerParts>(
+    () => createChatRuntimeMessageHistoryBannerMobilePropsParts({
+      renderState,
+      onLoadEarlier,
+      styles,
+    }),
+    [onLoadEarlier, renderState, styles],
+  );
 
   if (!historyBannerParts.container.shouldRender) return null;
 
@@ -14363,8 +14370,32 @@ export function ChatMessageDebugPanel({
 export function ChatMessageDebugPanelStack(
   props: ChatMessageDebugPanelStackProps,
 ) {
-  const debugPanelStackParts: ChatMessageDebugPanelStackParts =
-    createChatRuntimeDebugPanelStackMobilePropsParts(props);
+  const {
+    requestShouldRender,
+    requestRows,
+    voiceShouldRender,
+    voiceRows,
+    panelStyle,
+    textStyle,
+  } = props;
+  const debugPanelStackParts = useMemo<ChatMessageDebugPanelStackParts>(
+    () => createChatRuntimeDebugPanelStackMobilePropsParts({
+      requestShouldRender,
+      requestRows,
+      voiceShouldRender,
+      voiceRows,
+      panelStyle,
+      textStyle,
+    }),
+    [
+      panelStyle,
+      requestRows,
+      requestShouldRender,
+      textStyle,
+      voiceRows,
+      voiceShouldRender,
+    ],
+  );
 
   return (
     <>
@@ -14566,8 +14597,15 @@ export function ChatMessageQueuePanelDockContainer({
 export function ChatMessageConnectionBanner(
   props: ChatMessageConnectionBannerProps,
 ) {
-  const connectionBannerParts: ChatMessageConnectionBannerParts =
-    createChatRuntimeConnectionBannerMobilePropsParts(props);
+  const { renderState, onRetry, styles } = props;
+  const connectionBannerParts = useMemo<ChatMessageConnectionBannerParts>(
+    () => createChatRuntimeConnectionBannerMobilePropsParts({
+      renderState,
+      onRetry,
+      styles,
+    }),
+    [onRetry, renderState, styles],
+  );
 
   return (
     <>

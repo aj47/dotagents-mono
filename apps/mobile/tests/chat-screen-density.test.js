@@ -2929,11 +2929,14 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeConversationViewportContentMobilePropsParts',
     'createChatRuntimeConversationViewportMobilePropsParts',
     'createChatRuntimeConversationSurfaceMobilePropsParts',
+    'createChatRuntimeMessageHistoryBannerMobilePropsParts',
     'createChatRuntimeStepSummaryCardMobilePropsParts',
     'createChatRuntimeScrollToBottomButtonMobilePropsParts',
     'createChatRuntimeLoadingStateMobilePropsParts',
+    'createChatRuntimeDebugPanelStackMobilePropsParts',
     'createChatRuntimeConversationDockShellMobilePropsParts',
     'createChatRuntimeConversationDockMobilePropsParts',
+    'createChatRuntimeConnectionBannerMobilePropsParts',
     'createChatRuntimeInlineActivityMobilePropsParts',
     'createChatRuntimeTurnDurationBadgeMobilePropsParts',
     'createChatRuntimeConversationContentMobilePropsParts',
@@ -3014,7 +3017,8 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   const connectionBannerSource =
     chatMessageChromeSource.match(/export function ChatMessageConnectionBanner[\s\S]*?export function ChatComposerRuntimeDock/)?.[0] ?? '';
   assert.match(connectionBannerSource, /export function ChatMessageConnectionBanner\(\s+props: ChatMessageConnectionBannerProps,\s+\)/);
-  assert.match(connectionBannerSource, /const connectionBannerParts: ChatMessageConnectionBannerParts =\s+createChatRuntimeConnectionBannerMobilePropsParts\(props\);/);
+  assert.match(connectionBannerSource, /const \{ renderState, onRetry, styles \} = props;/);
+  assert.match(connectionBannerSource, /const connectionBannerParts = useMemo<ChatMessageConnectionBannerParts>\(\s+\(\) => createChatRuntimeConnectionBannerMobilePropsParts\(\{\s+renderState,\s+onRetry,\s+styles,\s+\}\),\s+\[onRetry, renderState, styles\],\s+\);/);
   assert.match(connectionBannerSource, /<ChatMessageConnectionBannerReconnecting\s+reconnecting=\{connectionBannerParts\.reconnecting\}/);
   assert.match(connectionBannerSource, /<ChatMessageConnectionBannerFailed\s+failed=\{connectionBannerParts\.failed\}/);
   assert.match(connectionBannerSource, /export function ChatMessageConnectionBannerReconnecting/);
@@ -6203,7 +6207,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageHistoryBannerMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageHistoryBannerMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageHistoryBanner\(\s+props: ChatMessageHistoryBannerProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const historyBannerParts: ChatMessageHistoryBannerParts =\s+createChatRuntimeMessageHistoryBannerMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{ renderState, onLoadEarlier, styles \} = props;/);
+  assert.match(chatMessageChromeSource, /const historyBannerParts = useMemo<ChatMessageHistoryBannerParts>\(\s+\(\) => createChatRuntimeMessageHistoryBannerMobilePropsParts\(\{\s+renderState,\s+onLoadEarlier,\s+styles,\s+\}\),\s+\[onLoadEarlier, renderState, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /if \(!historyBannerParts\.container\.shouldRender\) return null;/);
   const historyBannerSource =
     chatMessageChromeSource.match(/export function ChatMessageHistoryBanner\([\s\S]*?export function ChatMessageHistoryBannerContainer/)?.[0] ?? '';
@@ -9214,7 +9219,8 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDebugPanelStackParts = ReturnType<typeof createChatRuntimeDebugPanelStackMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeDebugPanelStackMobilePropsPartsInput</);
   assert.match(debugPanelStackSource, /export function ChatMessageDebugPanelStack\(\s+props: ChatMessageDebugPanelStackProps,\s+\)/);
-  assert.match(debugPanelStackSource, /const debugPanelStackParts: ChatMessageDebugPanelStackParts =\s+createChatRuntimeDebugPanelStackMobilePropsParts\(props\);/);
+  assert.match(debugPanelStackSource, /const \{\s+requestShouldRender,\s+requestRows,\s+voiceShouldRender,\s+voiceRows,\s+panelStyle,\s+textStyle,\s+\} = props;/);
+  assert.match(debugPanelStackSource, /const debugPanelStackParts = useMemo<ChatMessageDebugPanelStackParts>\(\s+\(\) => createChatRuntimeDebugPanelStackMobilePropsParts\(\{\s+requestShouldRender,\s+requestRows,\s+voiceShouldRender,\s+voiceRows,\s+panelStyle,\s+textStyle,\s+\}\),\s+\[\s+panelStyle,\s+requestRows,\s+requestShouldRender,\s+textStyle,\s+voiceRows,\s+voiceShouldRender,\s+\],\s+\);/);
   assert.match(debugPanelStackSource, /<ChatMessageDebugPanel\s+\{\.\.\.debugPanelStackParts\.requestPanel\}/);
   assert.match(debugPanelStackSource, /<ChatMessageDebugPanel\s+\{\.\.\.debugPanelStackParts\.voicePanel\}/);
   assert.doesNotMatch(debugPanelStackSource, /<ChatMessageDebugPanel\s+shouldRender=\{requestShouldRender\}\s+rows=\{requestRows\}/);
