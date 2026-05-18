@@ -91,7 +91,9 @@ import { consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey
 import { ttsManager } from "@renderer/lib/tts-manager"
 import {
   applyChatDisplayGroupedExpansionInheritance,
+  computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeResponseHistoryEvents,
+  createChatMessageRuntimeTurnDurationMessages,
   createChatMessageActionSlotRenderState,
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionCopyState,
@@ -172,7 +174,6 @@ import {
   type ToolExecutionStatsLike,
   type ToolExecutionStructuredPayloadValue,
 } from "@dotagents/shared/session-presentation"
-import { computeTurnDurations, createTurnDurationMessages } from "@dotagents/shared/turn-duration"
 import { useNowTick } from "@renderer/lib/turn-duration"
 
 const toolActivityGroupCopy = getToolActivityGroupCopyState()
@@ -3774,11 +3775,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // session is complete so completed sessions don't re-render every second.
   const turnNow = useNowTick(!isComplete)
   const turnDurationMessages = useMemo(
-    () => createTurnDurationMessages(enrichedMessages),
+    () => createChatMessageRuntimeTurnDurationMessages(enrichedMessages),
     [enrichedMessages],
   )
   const turnDurations = useMemo(
-    () => computeTurnDurations(turnDurationMessages, isComplete, turnNow),
+    () => computeChatMessageRuntimeTurnDurations(turnDurationMessages, isComplete, turnNow),
     [isComplete, turnDurationMessages, turnNow],
   )
   const totalTurnDurationBadgeState = useMemo(
