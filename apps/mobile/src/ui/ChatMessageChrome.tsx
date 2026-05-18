@@ -2068,19 +2068,39 @@ type ChatMessageTurnDurationBadgeParts =
     StyleProp<TextStyle> | undefined
   >;
 
-type ChatMessageTurnDurationBadgeContainerProps =
-  ChatMessageTurnDurationBadgeParts['container']['props'] & {
-    children: ReactNode;
-  };
-
-type ChatMessageTurnDurationBadgeContainerContentProps =
-  ChatMessageTurnDurationBadgeParts['container']['content'];
-
 type ChatMessageTurnDurationBadgeIconProps =
-  ChatMessageTurnDurationBadgeParts['container']['content']['icon']['props'];
+  ChatMessageTurnDurationBadgeRenderState['icon'];
 
-type ChatMessageTurnDurationBadgeLabelProps =
-  ChatMessageTurnDurationBadgeParts['container']['content']['label']['props'];
+type ChatMessageTurnDurationBadgeLabelProps = {
+  text: string;
+  props: {
+    style: [
+      StyleProp<TextStyle>,
+      false | StyleProp<TextStyle> | undefined
+    ];
+    numberOfLines: ChatMessageTurnDurationBadgeRenderState['badge']['numberOfLines'];
+  };
+};
+
+type ChatMessageTurnDurationBadgeContainerContentProps = {
+  icon: {
+    props: ChatMessageTurnDurationBadgeIconProps;
+  };
+  label: {
+    props: ChatMessageTurnDurationBadgeLabelProps;
+  };
+};
+
+type ChatMessageTurnDurationBadgeContainerProps = {
+  children: ReactNode;
+  accessible: true;
+  accessibilityRole: ChatMessageTurnDurationBadgeRenderState['accessibilityRole'];
+  accessibilityLabel: string;
+  style: [
+    StyleProp<ViewStyle>,
+    false | StyleProp<ViewStyle> | undefined
+  ];
+};
 
 type ChatMessageActionSlotListProps =
   ChatRuntimeMessageActionSlotListMobilePropsPartsInput<

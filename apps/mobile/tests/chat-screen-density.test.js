@@ -7975,7 +7975,10 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(chatMessageChromeSource, /if \(!turnDurationBadgeParts\.container\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}\s+style=\{turnDuration\.style\}\s+liveStyle=\{turnDuration\.liveStyle\}\s+textStyle=\{turnDuration\.textStyle\}\s+liveTextStyle=\{turnDuration\.liveTextStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeContainer\s+\{\.\.\.turnDurationBadgeParts\.container\.props\}/);
-  assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeContainerContentProps =\s+ChatMessageTurnDurationBadgeParts\['container'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeIconProps =\s+ChatMessageTurnDurationBadgeRenderState\['icon'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeLabelProps = \{[\s\S]*?text: string;[\s\S]*?numberOfLines: ChatMessageTurnDurationBadgeRenderState\['badge'\]\['numberOfLines'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeContainerContentProps = \{[\s\S]*?icon: \{[\s\S]*?props: ChatMessageTurnDurationBadgeIconProps;[\s\S]*?label: \{[\s\S]*?props: ChatMessageTurnDurationBadgeLabelProps;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationBadge(ContainerContent|Icon|Label)Props =\s+ChatMessageTurnDurationBadgeParts\['container'\]/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeContainerContent\s+\{\.\.\.turnDurationBadgeParts\.container\.content\}\s+\/>/);
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadgeContainerContent\(\{\s+icon,\s+label,\s+\}: ChatMessageTurnDurationBadgeContainerContentProps\) \{\s+return \(\s+<>\s+<ChatMessageTurnDurationBadgeIcon\s+\{\.\.\.icon\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeLabel\s+\{\.\.\.label\.props\}/);
