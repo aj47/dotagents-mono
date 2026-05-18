@@ -232,9 +232,9 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(sessionPresentationSource, /export type ChatRuntimeHeaderStyleSlots<\s+TActionsRowStyle,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderIconButtonMobileStyleSlots<\s+TEdgeStyle = unknown,/);
   assert.match(sessionPresentationSource, /export type ChatRuntimeHeaderStyleSlotsFromStyleSource</);
-  assert.match(chatMessageChromeSource, /import type \{ ChatRuntimeMobileChromeSlots, ChatRuntimeMobileStyles \} from '\.\/ChatRuntimeMobileStyles';/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlotsFromStyleSource as SharedChatRuntimeHeaderStyleSlotsFromStyleSource,/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlots =\s+SharedChatRuntimeHeaderStyleSlotsFromStyleSource<ChatRuntimeMobileStyles>;/);
+  assert.match(chatMessageChromeSource, /import type \{ ChatRuntimeMobileChromeSlots \} from '\.\/ChatRuntimeMobileStyles';/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlotsFromStyleSource as SharedChatRuntimeHeaderStyleSlotsFromStyleSource,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlots =\s+ChatRuntimeMobileChromeSlots\['header'\]\['styles'\];/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorStyles =\s+ChatRuntimeHeaderStyleSlots\['agentSelector'\];/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusStyles =\s+ChatRuntimeHeaderStyleSlots\['conversationStatus'\];/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderTurnDurationStyles =\s+ChatRuntimeHeaderStyleSlots\['turnDuration'\];/);
@@ -7943,7 +7943,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationMessageRenderContextMobileState/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationRenderContext/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
-  assert.match(chatMessageChromeSource, /import type \{ ChatRuntimeMobileChromeSlots, ChatRuntimeMobileStyles \} from '\.\/ChatRuntimeMobileStyles';/);
+  assert.match(chatMessageChromeSource, /import type \{ ChatRuntimeMobileChromeSlots \} from '\.\/ChatRuntimeMobileStyles';/);
   assert.match(chatMessageChromeSource, /export type ChatMessageActionStyleSlots =\s+ChatRuntimeMobileChromeSlots\['messageRuntime'\]\['styles'\]\['actionStyles'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationActionStyles = Pick</);

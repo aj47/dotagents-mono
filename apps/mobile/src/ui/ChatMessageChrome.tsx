@@ -29,7 +29,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
-import type { ChatRuntimeMobileChromeSlots, ChatRuntimeMobileStyles } from './ChatRuntimeMobileStyles';
+import type { ChatRuntimeMobileChromeSlots } from './ChatRuntimeMobileStyles';
 import {
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   applyChatMessageRuntimeAutoExpansionState,
@@ -274,7 +274,6 @@ import {
   type ChatRuntimeHeaderConversationStatusMobilePropsPartsInput,
   type ChatRuntimeHeaderIconButtonMobilePropsParts,
   type ChatRuntimeHeaderIconButtonMobilePropsPartsInput,
-  type ChatRuntimeHeaderStyleSlotsFromStyleSource as SharedChatRuntimeHeaderStyleSlotsFromStyleSource,
   type ChatRuntimeHeaderTurnDurationMobilePropsParts,
   type ChatRuntimeHeaderTurnDurationMobilePropsPartsInput,
   type ChatRuntimeTurnDurationBadgeMobilePropsParts,
@@ -1393,7 +1392,7 @@ export type ChatMessageActionStyleSlots =
   ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['actionStyles'];
 
 type ChatRuntimeHeaderStyleSlots =
-  SharedChatRuntimeHeaderStyleSlotsFromStyleSource<ChatRuntimeMobileStyles>;
+  ChatRuntimeMobileChromeSlots['header']['styles'];
 
 type ChatRuntimeHeaderAgentSelectorStyles =
   ChatRuntimeHeaderStyleSlots['agentSelector'];
