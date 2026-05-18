@@ -10691,34 +10691,14 @@ export function ChatRuntimeHeaderTurnDurationLabel({
 export function ChatConversationHomeQuickStarts<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
->({
-  shouldRender,
-  items,
-  isLoading,
-  runningTaskId,
-  onPress,
-  onEditPrompt,
-  onDeletePrompt,
-  shortcutRenderState,
-  styles,
-}: ChatConversationHomeQuickStartsProps<TPrompt, TTask>) {
+>(props: ChatConversationHomeQuickStartsProps<TPrompt, TTask>) {
   const quickStartsParts: ChatConversationHomeQuickStartsParts<TPrompt, TTask> =
     createChatRuntimeHomeQuickStartsMobilePropsParts<
       TPrompt,
       TTask,
       GestureResponderEvent,
       ChatConversationHomeQuickStartsStyles
-    >({
-      shouldRender,
-      items,
-      isLoading,
-      runningTaskId,
-      onPress,
-      onEditPrompt,
-      onDeletePrompt,
-      shortcutRenderState,
-      styles,
-    });
+    >(props);
   const quickStartsContainer = quickStartsParts.container;
 
   if (!quickStartsContainer.shouldRender) return null;

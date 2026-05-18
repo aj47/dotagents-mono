@@ -2842,6 +2842,23 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /<ScrollView\s+ref=\{scrollViewRef\}/);
 });
 
+test('limits mobile props part object literals to composition boundaries', () => {
+  const objectLiteralMobilePropsPartCalls = Array.from(
+    chatMessageChromeSource.matchAll(/\b(create[A-Za-z0-9]+MobilePropsParts)\(\{/g),
+    (match) => match[1]
+  );
+
+  assert.deepEqual(objectLiteralMobilePropsPartCalls, [
+    'createChatRuntimeNavigationHeaderOptionsMobilePropsParts',
+    'createChatRuntimeToolExecutionPanelShellMobilePropsParts',
+    'createChatRuntimeConversationViewportMobilePropsParts',
+  ]);
+  assert.doesNotMatch(chatMessageChromeSource, /\bcreate[A-Za-z0-9]+MobilePropsParts<[^;]*>\(\{/);
+  assert.match(chatMessageChromeSource, /const headerParts: ChatRuntimeNavigationHeaderMobileOptionParts =\s+createChatRuntimeNavigationHeaderOptionsMobilePropsParts\(\{\s+\.\.\.headerOptionParts,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const panelShellParts: ChatMessageToolExecutionPanelShellParts =\s+createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{\s+compactList: \(\s+<ChatMessageToolExecutionCompactList\s+\{\.\.\.compactList\.props\}\s+\/>\s+\),\s+expandedGroup: expandedGroup\.shouldRender \? \(\s+<ChatMessageToolExecutionExpandedGroup \{\.\.\.expandedGroup\.props\}>[\s\S]*?\{children\}[\s\S]*?<\/ChatMessageToolExecutionExpandedGroup>\s+\) : null,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const viewportParts: ChatMessageRuntimeViewportParts<TPrompt, TTask> =\s+createChatRuntimeConversationViewportMobilePropsParts\(\{\s+loadingState,\s+homeQuickStarts,\s+historyBanner,\s+stepSummary,\s+debugPanels,\s+styles,\s+\}\);/);
+});
+
 test('uses shared runtime presentation for mobile connection and retry banners', () => {
   assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.doesNotMatch(screenSource, /const connectionBannerRenderState = useMemo/);
@@ -9156,7 +9173,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /createChatRuntimeHomeQuickStartsMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatConversationHomeQuickStartsParts<[\s\S]*?> = ChatRuntimeHomeQuickStartsMobilePropsParts</);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomeQuickStartsParts[\s\S]*?ReturnType<typeof createChatRuntimeHomeQuickStartsMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const quickStartsParts: ChatConversationHomeQuickStartsParts<TPrompt, TTask> =\s+createChatRuntimeHomeQuickStartsMobilePropsParts</);
+  assert.match(chatMessageChromeSource, /const quickStartsParts: ChatConversationHomeQuickStartsParts<TPrompt, TTask> =\s+createChatRuntimeHomeQuickStartsMobilePropsParts<\s+TPrompt,\s+TTask,\s+GestureResponderEvent,\s+ChatConversationHomeQuickStartsStyles\s+>\(props\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /createChatRuntimeHomeQuickStartsMobilePropsParts<\s+TPrompt,\s+TTask,\s+GestureResponderEvent,\s+ChatConversationHomeQuickStartsStyles\s+>\(\{/);
   assert.match(chatMessageChromeSource, /const quickStartsContainer = quickStartsParts\.container;/);
   assert.match(chatMessageChromeSource, /if \(!quickStartsContainer\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartsContainer/);
