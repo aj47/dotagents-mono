@@ -7084,6 +7084,26 @@ type ChatRuntimeCurrentSessionPinSessionStore = {
   toggleSessionPinned: (sessionId: string) => unknown | Promise<unknown>;
 };
 
+type ChatRuntimeCurrentSessionSnapshotSession = {
+  isPinned?: boolean | null;
+};
+
+type ChatRuntimeCurrentSessionSnapshotStateInput<
+  TSession extends ChatRuntimeCurrentSessionSnapshotSession,
+> = {
+  currentSessionId: string | null;
+  getCurrentSession: () => TSession | null;
+  fallbackConversationId?: string;
+};
+
+type ChatRuntimeCurrentSessionSnapshotState<
+  TSession extends ChatRuntimeCurrentSessionSnapshotSession,
+> = {
+  currentSession: TSession | null;
+  isCurrentSessionPinned: boolean;
+  currentConversationId: string;
+};
+
 type ChatRuntimeCurrentSessionPinActionsStateInput = {
   sessionStore: ChatRuntimeCurrentSessionPinSessionStore;
 };
@@ -10593,6 +10613,29 @@ export function useChatMessageRuntimeBranchChromeActionsState<
     ...input,
     showAlert: Alert.alert,
   });
+}
+
+export function useChatRuntimeCurrentSessionSnapshotState<
+  TSession extends ChatRuntimeCurrentSessionSnapshotSession,
+>({
+  currentSessionId,
+  getCurrentSession,
+  fallbackConversationId = 'default',
+}: ChatRuntimeCurrentSessionSnapshotStateInput<TSession>): ChatRuntimeCurrentSessionSnapshotState<TSession> {
+  const currentSession = getCurrentSession();
+  const isCurrentSessionPinned = Boolean(currentSession?.isPinned);
+  const currentConversationId = currentSessionId || fallbackConversationId;
+
+  const currentSessionSnapshotState = useMemo<ChatRuntimeCurrentSessionSnapshotState<TSession>>(
+    () => ({
+      currentSession,
+      isCurrentSessionPinned,
+      currentConversationId,
+    }),
+    [currentConversationId, currentSession, isCurrentSessionPinned],
+  );
+
+  return currentSessionSnapshotState;
 }
 
 export function useChatRuntimeCurrentSessionPinActionsState({

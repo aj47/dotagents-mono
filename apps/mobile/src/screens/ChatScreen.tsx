@@ -57,6 +57,7 @@ import {
   useChatMessageRuntimeHistoryWindowState,
   useChatMessageRuntimeScrollController,
   useChatMessageRuntimeKillSwitchChromeActionsState,
+  useChatRuntimeCurrentSessionSnapshotState,
   useChatRuntimeBackToSessionsActionsState,
   useChatRuntimeNavigateToChatActionsState,
   useChatRuntimeCurrentSessionPinActionsState,
@@ -126,8 +127,14 @@ export default function ChatScreen({ route, navigation }: any) {
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
-  const currentSession = sessionStore.getCurrentSession();
-  const isCurrentSessionPinned = !!currentSession?.isPinned;
+  const {
+    currentSession,
+    isCurrentSessionPinned,
+    currentConversationId,
+  } = useChatRuntimeCurrentSessionSnapshotState({
+    currentSessionId: sessionStore.currentSessionId,
+    getCurrentSession: sessionStore.getCurrentSession,
+  });
   const handsFree = !!config.handsFree;
   const {
     settingsClient,
@@ -684,9 +691,6 @@ export default function ChatScreen({ route, navigation }: any) {
     skipNextPersistRef,
     persistMessages: sessionStore.setMessages,
   });
-
-  // Get the current conversation ID for queue operations
-  const currentConversationId = sessionStore.currentSessionId || 'default';
 
   const send = async (text: string, options?: { fromComposer?: boolean }) => {
     if (!text.trim()) return;
