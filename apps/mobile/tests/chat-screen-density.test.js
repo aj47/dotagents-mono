@@ -766,6 +766,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeToolApprovalChromeActionsState/);
   assert.match(chatMessageChromeSource, /const \[pendingToolApprovalResponseId, setPendingToolApprovalResponseId\] = useState<string \| null>\(null\);/);
   assert.match(chatMessageChromeSource, /setPendingToolApprovalResponseId\(null\);[\s\S]*?\}, \[sessionId\]\);/);
+  assert.match(chatMessageChromeSource, /const toolApprovalResponseState = useMemo<ChatMessageRuntimeToolApprovalResponseState>\(\s+\(\) => \(\{\s+pendingToolApprovalResponseId,\s+beginToolApprovalResponse,\s+clearToolApprovalResponse,\s+\}\),\s+\[beginToolApprovalResponse, clearToolApprovalResponse, pendingToolApprovalResponseId\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return toolApprovalResponseState;/);
   assert.doesNotMatch(screenSource, /const \[pendingToolApprovalResponseId, setPendingToolApprovalResponseId\] = useState<string \| null>\(null\);/);
   assert.doesNotMatch(screenSource, /beginToolApprovalResponse\(approvalId\);/);
   assert.doesNotMatch(screenSource, /clearToolApprovalResponse\(\);/);
@@ -792,6 +794,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState\(\)/);
   assert.match(chatMessageChromeSource, /showAlert\(connectionRequiredAlert\.title, connectionRequiredAlert\.message\)/);
   assert.match(chatMessageChromeSource, /useChatMessageRuntimeToolApprovalChromeActionsState[\s\S]*?showAlert: Alert\.alert,/);
+  assert.match(chatMessageChromeSource, /const toolApprovalActionsState = useMemo<ChatMessageRuntimeToolApprovalActionsState>\(\s+\(\) => \(\{\s+respondToToolApproval,\s+\}\),\s+\[respondToToolApproval\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return toolApprovalActionsState;/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState\(\)/);
   assert.match(chatMessageChromeSource, /showAlert\(unavailableAlert\.title, unavailableAlert\.message\)/);
   assert.match(chatMessageChromeSource, /getChatRuntimeToolApprovalFailedMobileResolvedAlertState\(error\)/);
@@ -9993,6 +9997,8 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeBranchProgressState/);
   assert.match(chatMessageChromeSource, /const \[pendingBranchMessageIndex, setPendingBranchMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(chatMessageChromeSource, /setPendingBranchMessageIndex\(null\);[\s\S]*?\}, \[sessionId\]\);/);
+  assert.match(chatMessageChromeSource, /const branchProgressState = useMemo<ChatMessageRuntimeBranchProgressState>\(\s+\(\) => \(\{\s+pendingBranchMessageIndex,\s+beginBranchMessage,\s+clearBranchMessage,\s+\}\),\s+\[beginBranchMessage, clearBranchMessage, pendingBranchMessageIndex\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return branchProgressState;/);
   assert.doesNotMatch(screenSource, /const \[branchingMessageIndex, setBranchingMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(screenSource, /useChatRuntimeNavigateToChatActionsState,/);
   assert.match(screenSource, /const \{ navigateToChat \} = useChatRuntimeNavigateToChatActionsState\(\{\s+navigation,\s+\}\);/);
@@ -10006,6 +10012,8 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /useChatMessageRuntimeBranchChromeActionsState[\s\S]*?showAlert: Alert\.alert,/);
   assert.match(chatMessageChromeSource, /handleBranchFromMessagePress: \(messageIndex: number\) => void/);
   assert.match(chatMessageChromeSource, /const handleBranchFromMessagePress = useCallback\(\(messageIndex: number\) => \{\s+void handleBranchFromMessage\(messageIndex\);\s+\}, \[handleBranchFromMessage\]\);/);
+  assert.match(chatMessageChromeSource, /const branchActionsState = useMemo<ChatMessageRuntimeBranchActionsState>\(\s+\(\) => \(\{\s+handleBranchFromMessage,\s+handleBranchFromMessagePress,\s+\}\),\s+\[handleBranchFromMessage, handleBranchFromMessagePress\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return branchActionsState;/);
   assert.doesNotMatch(screenSource, /settingsClient\.branchConversation\(serverConversationId, \{ messageIndex \}\)/);
   assert.match(chatMessageChromeSource, /branchClient\.branchConversation\(serverConversationId, \{ messageIndex \}\)/);
   assert.doesNotMatch(screenSource, /await sessionStore\.syncWithServer\(settingsClient\)/);

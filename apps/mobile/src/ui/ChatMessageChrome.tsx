@@ -9398,11 +9398,16 @@ export function useChatMessageRuntimeBranchProgressState({
     setPendingBranchMessageIndex(null);
   }, []);
 
-  return {
-    pendingBranchMessageIndex,
-    beginBranchMessage,
-    clearBranchMessage,
-  };
+  const branchProgressState = useMemo<ChatMessageRuntimeBranchProgressState>(
+    () => ({
+      pendingBranchMessageIndex,
+      beginBranchMessage,
+      clearBranchMessage,
+    }),
+    [beginBranchMessage, clearBranchMessage, pendingBranchMessageIndex],
+  );
+
+  return branchProgressState;
 }
 
 export function useChatMessageRuntimeBranchActionsState<
@@ -9456,10 +9461,15 @@ export function useChatMessageRuntimeBranchActionsState<
     void handleBranchFromMessage(messageIndex);
   }, [handleBranchFromMessage]);
 
-  return {
-    handleBranchFromMessage,
-    handleBranchFromMessagePress,
-  };
+  const branchActionsState = useMemo<ChatMessageRuntimeBranchActionsState>(
+    () => ({
+      handleBranchFromMessage,
+      handleBranchFromMessagePress,
+    }),
+    [handleBranchFromMessage, handleBranchFromMessagePress],
+  );
+
+  return branchActionsState;
 }
 
 export function useChatMessageRuntimeBranchChromeActionsState<
@@ -9611,11 +9621,16 @@ export function useChatMessageRuntimeToolApprovalResponseState({
     setPendingToolApprovalResponseId(null);
   }, []);
 
-  return {
-    pendingToolApprovalResponseId,
-    beginToolApprovalResponse,
-    clearToolApprovalResponse,
-  };
+  const toolApprovalResponseState = useMemo<ChatMessageRuntimeToolApprovalResponseState>(
+    () => ({
+      pendingToolApprovalResponseId,
+      beginToolApprovalResponse,
+      clearToolApprovalResponse,
+    }),
+    [beginToolApprovalResponse, clearToolApprovalResponse, pendingToolApprovalResponseId],
+  );
+
+  return toolApprovalResponseState;
 }
 
 export function useChatMessageRuntimeToolApprovalActionsState<
@@ -9656,9 +9671,14 @@ export function useChatMessageRuntimeToolApprovalActionsState<
     showAlert,
   ]);
 
-  return {
-    respondToToolApproval,
-  };
+  const toolApprovalActionsState = useMemo<ChatMessageRuntimeToolApprovalActionsState>(
+    () => ({
+      respondToToolApproval,
+    }),
+    [respondToToolApproval],
+  );
+
+  return toolApprovalActionsState;
 }
 
 export function useChatMessageRuntimeToolApprovalChromeActionsState<
