@@ -17,9 +17,12 @@ test('mobile video attachment card uses shared copy and accessibility labels', (
   assert.match(source, /const videoAttachmentRenderState = useMemo\(\s+\(\) => getChatVideoAttachmentMobileRenderState\(\{[\s\S]*?sourceUrl,[\s\S]*?label,[\s\S]*?colors: theme\.colors,[\s\S]*?isDark,[\s\S]*?loading,/);
   assert.match(source, /const videoAttachmentCopy = videoAttachmentRenderState\.copy;/);
   assert.match(source, /createChatVideoAttachmentMobilePropsParts,/);
+  assert.match(source, /type ChatVideoAttachmentMobilePropsParts,/);
+  assert.match(source, /type VideoAttachmentCardParts =\s+ChatVideoAttachmentMobilePropsParts<[\s\S]*?VideoAttachmentCardStyles,[\s\S]*?VideoAttachmentPressHandler/);
+  assert.match(source, /const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts\(\{/);
   assert.match(conversationMediaAssetsSource, /export function createChatVideoAttachmentMobilePropsParts/);
   assert.match(source, /const videoAttachmentStyleSlots = useMemo\(\s+\(\) => createChatVideoAttachmentMobileStyleSlots\(\{/);
-  assert.match(source, /const videoAttachmentParts = createChatVideoAttachmentMobilePropsParts\(\{/);
+  assert.match(source, /const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts\(\{/);
   assert.match(conversationMediaAssetsSource, /text: `\$\{renderState\.copy\.glyphs\.link\} \$\{renderState\.displayLabel\}`/);
   assert.match(conversationMediaAssetsSource, /text: renderState\.title/);
   assert.match(conversationMediaAssetsSource, /text: renderState\.subtitle/);

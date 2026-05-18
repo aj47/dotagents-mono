@@ -1,5 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { File, Paths } from 'expo-file-system';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
@@ -11,6 +22,7 @@ import {
   formatVideoAttachmentRequestFailedMessage,
   isRenderableVideoUrl,
   parseConversationVideoAssetUrl,
+  type ChatVideoAttachmentMobilePropsParts,
 } from '@dotagents/shared/session-presentation';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { useTheme } from './ThemeProvider';
@@ -22,6 +34,33 @@ interface VideoAttachmentCardProps {
   assetBaseUrl?: string;
   authToken?: string;
 }
+
+type VideoAttachmentPressHandler = () => void | Promise<void>;
+
+type VideoAttachmentCardStyles = {
+  card: StyleProp<ViewStyle>;
+  header: StyleProp<ViewStyle>;
+  loadButton: StyleProp<ViewStyle>;
+  loadButtonPressed: StyleProp<ViewStyle>;
+  loadButtonDisabled: StyleProp<ViewStyle>;
+  playIconWrapper: StyleProp<ViewStyle>;
+  textWrapper: StyleProp<ViewStyle>;
+  title: StyleProp<TextStyle>;
+  subtitle: StyleProp<TextStyle>;
+  video: StyleProp<ViewStyle>;
+  fallbackLink: StyleProp<ViewStyle>;
+  fallbackLinkPressed: StyleProp<ViewStyle>;
+  fallbackLinkText: StyleProp<TextStyle>;
+  externalLink: StyleProp<ViewStyle>;
+  externalLinkPressed: StyleProp<ViewStyle>;
+  errorText: StyleProp<TextStyle>;
+};
+
+type VideoAttachmentCardParts =
+  ChatVideoAttachmentMobilePropsParts<
+    VideoAttachmentCardStyles,
+    VideoAttachmentPressHandler
+  >;
 
 function resolveVideoUri(sourceUrl: string, assetBaseUrl?: string): string {
   const remoteAssetUrl = assetBaseUrl
@@ -175,7 +214,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     void Linking.openURL(resolvedUri);
   }, [resolvedUri]);
 
-  const styles = useMemo(() => StyleSheet.create({
+  const styles = useMemo<VideoAttachmentCardStyles>(() => StyleSheet.create({
     card: {
       ...videoAttachmentStyleSlots.card,
     },
@@ -225,7 +264,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       ...videoAttachmentStyleSlots.errorText,
     },
   }), [videoAttachmentStyleSlots]);
-  const videoAttachmentParts = createChatVideoAttachmentMobilePropsParts({
+  const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts({
     renderState: videoAttachmentRenderState,
     styles,
     isLoading: loading,
