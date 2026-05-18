@@ -226,8 +226,10 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderIconButtonMobileStyleSlots<\s+TEdgeStyle = unknown,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlots as SharedChatRuntimeHeaderStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonMobileStyleSlots as SharedChatRuntimeHeaderIconButtonStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlots =\s+SharedChatRuntimeHeaderStyleSlots<\s+ChatRuntimeHeaderActionsRowProps\['style'\],/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonStyles =\s+SharedChatRuntimeHeaderIconButtonStyleSlots<\s+ChatRuntimeHeaderIconButtonProps\['style'\],/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlots =\s+SharedChatRuntimeHeaderStyleSlots<\s+StyleProp<ViewStyle>,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonStyles =\s+SharedChatRuntimeHeaderIconButtonStyleSlots<\s+StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlots =\s+SharedChatRuntimeHeaderStyleSlots<\s+ChatRuntimeHeaderActionsRowProps\['style'\],/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderIconButtonStyles =\s+SharedChatRuntimeHeaderIconButtonStyleSlots<\s+ChatRuntimeHeaderIconButtonProps\['style'\],/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlots = \{\s+actionsRowStyle: ChatRuntimeHeaderActionsRowProps\['style'\];/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderStyleSlotsFromStyleSource/);
   assert.match(sessionPresentationSource, /const headerStyles = createChatRuntimeHeaderStyleSlotsFromStyleSource\(\{\s+styles,\s+\}\)/);
@@ -239,8 +241,10 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.doesNotMatch(chatMessageChromeSource, /const agentSelector = \{\s+renderState: agentSelectorRenderState,\s+onPress: onAgentSelectorPress,\s+labelNumberOfLines: agentSelectorLabelNumberOfLines,\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderOptionsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderOptionsMobilePropsParts,/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderOptionParts =\s+ChatRuntimeNavigationHeaderOptionsParts<[\s\S]*?ChatRuntimeNavigationHeaderOptionsInput\['agentSelectorRenderState'\],[\s\S]*?ChatRuntimeNavigationHeaderOptionsInput\['onAgentSelectorPress'\],[\s\S]*?ChatRuntimeNavigationHeaderOptionsInput\['backButtonRenderState'\]/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderMobileOptionParts =\s+ChatRuntimeNavigationHeaderOptionsMobilePropsParts<[\s\S]*?ChatRuntimeNavigationHeaderOptionParts & \{\s+styles: ChatRuntimeNavigationHeaderOptionsInput\['styles'\];\s+\}/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderOptionParts =\s+ChatRuntimeNavigationHeaderOptionsParts<\s+ChatRuntimeAgentSelectorMobileRenderState,[\s\S]*?GestureResponderEvent[\s\S]*?ChatRuntimeBackMobileRenderState,[\s\S]*?GestureResponderEvent/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderMobileOptionParts =\s+ChatRuntimeNavigationHeaderOptionsMobilePropsParts<[\s\S]*?ChatRuntimeNavigationHeaderOptionParts & \{\s+styles: ChatRuntimeHeaderStyleSlots;\s+\}/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderOptionParts =\s+ChatRuntimeNavigationHeaderOptionsParts<[\s\S]*?ChatRuntimeNavigationHeaderOptionsInput\['agentSelectorRenderState'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderMobileOptionParts =\s+ChatRuntimeNavigationHeaderOptionsMobilePropsParts<[\s\S]*?ChatRuntimeNavigationHeaderOptionsInput\['styles'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderOptionParts = ReturnType<typeof createChatRuntimeNavigationHeaderOptionsParts/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeNavigationHeaderMobileOptionParts = ReturnType<typeof createChatRuntimeNavigationHeaderOptionsMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const headerOptionParts: ChatRuntimeNavigationHeaderOptionParts =\s+createChatRuntimeNavigationHeaderOptionsParts\(\{/);

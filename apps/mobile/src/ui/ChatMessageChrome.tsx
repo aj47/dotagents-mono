@@ -1587,17 +1587,17 @@ type ChatRuntimeHeaderTurnDurationLabelProps =
 
 type ChatRuntimeHeaderIconButtonStyles =
   SharedChatRuntimeHeaderIconButtonStyleSlots<
-    ChatRuntimeHeaderIconButtonProps['style'],
-    ChatRuntimeHeaderIconButtonProps['style'],
-    ChatRuntimeHeaderIconButtonProps['activeStyle'],
-    ChatRuntimeHeaderIconButtonProps['style'],
-    ChatRuntimeHeaderIconButtonProps['iconContainerStyle'],
-    ChatRuntimeHeaderIconButtonProps['iconContainerStyle']
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
   >;
 
 type ChatRuntimeHeaderStyleSlots =
   SharedChatRuntimeHeaderStyleSlots<
-    ChatRuntimeHeaderActionsRowProps['style'],
+    StyleProp<ViewStyle>,
     ChatRuntimeHeaderAgentSelectorStyles,
     ChatRuntimeHeaderConversationStatusStyles,
     ChatRuntimeHeaderTurnDurationStyles,
@@ -1606,47 +1606,47 @@ type ChatRuntimeHeaderStyleSlots =
 
 type ChatRuntimeNavigationHeaderOptionParts =
   ChatRuntimeNavigationHeaderOptionsParts<
-    ChatRuntimeNavigationHeaderOptionsInput['agentSelectorRenderState'],
-    ChatRuntimeNavigationHeaderOptionsInput['onAgentSelectorPress'],
-    ChatRuntimeNavigationHeaderOptionsInput['backButtonRenderState'],
-    ChatRuntimeNavigationHeaderOptionsInput['onBackButtonPress'],
-    ChatRuntimeNavigationHeaderOptionsInput['pinButtonRenderState'],
-    ChatRuntimeNavigationHeaderOptionsInput['onPinButtonPress'],
-    ChatRuntimeNavigationHeaderOptionsInput['pinButtonIsActive'],
-    ChatRuntimeNavigationHeaderOptionsInput['conversationStatusRenderState'],
-    ChatRuntimeNavigationHeaderOptionsInput['conversationStatusSpinnerSource'],
-    ChatRuntimeNavigationHeaderOptionsInput['turnDurationRenderState'],
-    ChatRuntimeNavigationHeaderOptionsInput['killSwitchButtonShouldRender'],
-    ChatRuntimeNavigationHeaderOptionsInput['killSwitchButtonRenderState'],
-    ChatRuntimeNavigationHeaderOptionsInput['onKillSwitchButtonPress'],
-    ChatRuntimeNavigationHeaderOptionsInput['handsFreeButtonRenderState'],
-    ChatRuntimeNavigationHeaderOptionsInput['onHandsFreeButtonPress']
+    ChatRuntimeAgentSelectorMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatRuntimeBackMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatRuntimePinMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    boolean,
+    ChatSessionStatusMobileRenderState,
+    ImageSourcePropType,
+    ChatRuntimeTurnDurationHeaderMobileRenderState,
+    boolean,
+    ChatRuntimeKillSwitchMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatRuntimeHandsFreeMobileRenderState,
+    (event: GestureResponderEvent) => void
   >;
 
 type ChatRuntimeNavigationHeaderMobileOptionParts =
   ChatRuntimeNavigationHeaderOptionsMobilePropsParts<
     ChatRuntimeNavigationHeaderOptionParts & {
-      styles: ChatRuntimeNavigationHeaderOptionsInput['styles'];
+      styles: ChatRuntimeHeaderStyleSlots;
     }
   >;
 
 type ChatRuntimeNavigationHeaderOptionsInput = {
-  agentSelectorRenderState: ChatRuntimeHeaderAgentSelectorProps['renderState'];
-  onAgentSelectorPress: ChatRuntimeHeaderAgentSelectorProps['onPress'];
-  agentSelectorLabelNumberOfLines: ChatRuntimeHeaderAgentSelectorProps['labelNumberOfLines'];
-  backButtonRenderState: ChatRuntimeHeaderIconButtonProps['renderState'];
-  onBackButtonPress: ChatRuntimeHeaderIconButtonProps['onPress'];
-  pinButtonRenderState: ChatRuntimeHeaderIconButtonProps['renderState'];
-  onPinButtonPress: ChatRuntimeHeaderIconButtonProps['onPress'];
-  pinButtonIsActive: ChatRuntimeHeaderIconButtonProps['isActive'];
-  conversationStatusRenderState: ChatRuntimeHeaderConversationStatusProps['renderState'];
-  conversationStatusSpinnerSource: ChatRuntimeHeaderConversationStatusProps['spinnerSource'];
-  turnDurationRenderState: ChatRuntimeHeaderTurnDurationProps['renderState'];
-  killSwitchButtonShouldRender: ChatRuntimeHeaderIconButtonProps['shouldRender'];
-  killSwitchButtonRenderState: ChatRuntimeHeaderIconButtonProps['renderState'];
-  onKillSwitchButtonPress: ChatRuntimeHeaderIconButtonProps['onPress'];
-  handsFreeButtonRenderState: ChatRuntimeHeaderIconButtonProps['renderState'];
-  onHandsFreeButtonPress: ChatRuntimeHeaderIconButtonProps['onPress'];
+  agentSelectorRenderState: ChatRuntimeAgentSelectorMobileRenderState;
+  onAgentSelectorPress: (event: GestureResponderEvent) => void;
+  agentSelectorLabelNumberOfLines: number;
+  backButtonRenderState: ChatRuntimeBackMobileRenderState;
+  onBackButtonPress: (event: GestureResponderEvent) => void;
+  pinButtonRenderState: ChatRuntimePinMobileRenderState;
+  onPinButtonPress: (event: GestureResponderEvent) => void;
+  pinButtonIsActive: boolean;
+  conversationStatusRenderState: ChatSessionStatusMobileRenderState;
+  conversationStatusSpinnerSource: ImageSourcePropType;
+  turnDurationRenderState: ChatRuntimeTurnDurationHeaderMobileRenderState;
+  killSwitchButtonShouldRender: boolean;
+  killSwitchButtonRenderState: ChatRuntimeKillSwitchMobileRenderState;
+  onKillSwitchButtonPress: (event: GestureResponderEvent) => void;
+  handsFreeButtonRenderState: ChatRuntimeHandsFreeMobileRenderState;
+  onHandsFreeButtonPress: (event: GestureResponderEvent) => void;
   styles: ChatRuntimeHeaderStyleSlots;
 };
 
@@ -1681,7 +1681,7 @@ type ChatRuntimeNavigationHeaderChromeOptionsInput =
     | 'styles'
   >
   & {
-    spinnerSource: ChatRuntimeHeaderConversationStatusProps['spinnerSource'];
+    spinnerSource: ImageSourcePropType;
   };
 
 export type ChatConversationHomeQuickStartSource = PromptLibraryLauncherShortcutSource;
