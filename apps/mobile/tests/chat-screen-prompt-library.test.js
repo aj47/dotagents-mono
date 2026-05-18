@@ -50,7 +50,12 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
   assert.match(chatMessageChromeSource, /type PromptLibraryShortcutItem,/);
   assert.match(chatMessageChromeSource, /type PromptLibraryEditorMobileRenderState,/);
   assert.match(chatMessageChromeSource, /type PromptLibraryMobileShortcutRenderState,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHomeQuickStartsMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeHomeQuickStartsMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomeQuickStartsParts<[\s\S]*?ChatRuntimeHomeQuickStartsMobilePropsParts<[\s\S]*?GestureResponderEvent,[\s\S]*?ChatConversationHomeQuickStartsStyles/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomeQuickStartCardProps<[\s\S]*?Pick<[\s\S]*?ChatConversationHomeQuickStartsItemPart/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomeQuickStartsContainerPart = \{/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomeQuickStart(SourcePill|AddIcon|CardPressable|Text|Description|ActionButtonPressable|ActionButtonIcon|ActionButtonLabel|Actions|EmptyState|Card|Grid)Part =/);
   assert.match(sessionPresentationSource, /getPromptLibraryMobileShortcutEmptyRenderState,/);
   assert.match(sessionPresentationSource, /getPromptLibraryMobileShortcutItemRenderState,/);
   assert.match(chatMessageChromeSource, /export type ChatConversationHomeQuickStartSource = PromptLibraryLauncherShortcutSource;/);

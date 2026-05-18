@@ -237,6 +237,7 @@ import {
   type ChatImageAttachmentMobileRenderState,
   type ImageMimeTypeSource,
   type ChatRuntimeHomeQuickStartItemsMobileStateInput,
+  type ChatRuntimeHomeQuickStartsMobilePropsParts,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
   type ChatRuntimeNavigationHeaderMobileRenderState,
@@ -1578,147 +1579,110 @@ type ChatConversationHomeQuickStartsProps<
   styles: ChatConversationHomeQuickStartsStyles;
 };
 
-type ChatConversationHomeQuickStartsContainerPart = {
-  props: ComponentProps<typeof View>;
-};
+type ChatConversationHomeQuickStartsParts<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = ChatRuntimeHomeQuickStartsMobilePropsParts<
+  TPrompt,
+  TTask,
+  GestureResponderEvent,
+  ChatConversationHomeQuickStartsStyles
+>;
 
-type ChatConversationHomeQuickStartsContainerProps = {
-  container: ChatConversationHomeQuickStartsContainerPart;
+type ChatConversationHomeQuickStartsItemPart<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = ChatConversationHomeQuickStartsParts<
+  TPrompt,
+  TTask
+>['grid']['content']['items'][number];
+
+type ChatConversationHomeQuickStartActionsPart<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = ChatConversationHomeQuickStartsItemPart<TPrompt, TTask>['actions'];
+
+type ChatConversationHomeQuickStartVisibleActionsPart<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = Extract<
+  ChatConversationHomeQuickStartActionsPart<TPrompt, TTask>,
+  { shouldRender: true }
+>;
+
+type ChatConversationHomeQuickStartsContainerProps<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = {
+  container: ChatConversationHomeQuickStartsParts<TPrompt, TTask>['container'];
   children: ReactNode;
 };
 
-type ChatConversationHomeQuickStartSourcePillPart =
-  | {
-      shouldRender: false;
-    }
-  | {
-      shouldRender: true;
-      props: ComponentProps<typeof View>;
-      icon: {
-        props: ComponentProps<typeof Ionicons>;
-      };
-      label: {
-        text: string;
-        props: ComponentProps<typeof Text>;
-      };
-    };
+type ChatConversationHomeQuickStartLeadingAccessoryProps<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = Pick<
+  ChatConversationHomeQuickStartsItemPart<TPrompt, TTask>,
+  'sourcePill' | 'addIcon'
+>;
 
-type ChatConversationHomeQuickStartAddIconPart =
-  | {
-      shouldRender: false;
-    }
-  | {
-      shouldRender: true;
-      props: ComponentProps<typeof Ionicons>;
-    };
+type ChatConversationHomeQuickStartTextContentProps<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = Pick<
+  ChatConversationHomeQuickStartsItemPart<TPrompt, TTask>,
+  'title' | 'description'
+>;
 
-type ChatConversationHomeQuickStartLeadingAccessoryProps = {
-  sourcePill: ChatConversationHomeQuickStartSourcePillPart;
-  addIcon: ChatConversationHomeQuickStartAddIconPart;
+type ChatConversationHomeQuickStartActionButtonProps<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = Omit<
+  ChatConversationHomeQuickStartVisibleActionsPart<TPrompt, TTask>['edit'],
+  'prompt'
+>;
+
+type ChatConversationHomeQuickStartActionsProps<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = {
+  actions: ChatConversationHomeQuickStartActionsPart<TPrompt, TTask>;
 };
 
-type ChatConversationHomeQuickStartCardPressablePart = {
-  props: ComponentProps<typeof Pressable>;
+type ChatConversationHomeQuickStartsEmptyStateProps<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = {
+  emptyState: ChatConversationHomeQuickStartsParts<TPrompt, TTask>['emptyState'];
 };
 
-type ChatConversationHomeQuickStartTextPart = {
-  text: string;
-  props: ComponentProps<typeof Text>;
+type ChatConversationHomeQuickStartCardProps<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = Pick<
+  ChatConversationHomeQuickStartsItemPart<TPrompt, TTask>,
+  | 'pressable'
+  | 'sourcePill'
+  | 'addIcon'
+  | 'title'
+  | 'description'
+  | 'actions'
+>;
+
+type ChatConversationHomeQuickStartsGridProps<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = {
+  grid: ChatConversationHomeQuickStartsParts<TPrompt, TTask>['grid'];
 };
 
-type ChatConversationHomeQuickStartDescriptionPart =
-  | {
-      shouldRender: false;
-    }
-  | {
-      shouldRender: true;
-      text: string;
-      props: ComponentProps<typeof Text>;
-    };
-
-type ChatConversationHomeQuickStartTextContentProps = {
-  title: ChatConversationHomeQuickStartTextPart;
-  description: ChatConversationHomeQuickStartDescriptionPart;
-};
-
-type ChatConversationHomeQuickStartActionButtonPressablePart = {
-  props: ComponentProps<typeof Pressable>;
-};
-
-type ChatConversationHomeQuickStartActionButtonIconPart = {
-  props: ComponentProps<typeof Ionicons>;
-};
-
-type ChatConversationHomeQuickStartActionButtonLabelPart = {
-  text: string;
-  props: ComponentProps<typeof Text>;
-};
-
-type ChatConversationHomeQuickStartActionButtonProps = {
-  pressable: ChatConversationHomeQuickStartActionButtonPressablePart;
-  icon: ChatConversationHomeQuickStartActionButtonIconPart;
-  label: ChatConversationHomeQuickStartActionButtonLabelPart;
-};
-
-type ChatConversationHomeQuickStartActionsPart =
-  | {
-      shouldRender: false;
-    }
-  | {
-      shouldRender: true;
-      props: ComponentProps<typeof View>;
-      edit: ChatConversationHomeQuickStartActionButtonProps;
-      delete: ChatConversationHomeQuickStartActionButtonProps;
-    };
-
-type ChatConversationHomeQuickStartActionsProps = {
-  actions: ChatConversationHomeQuickStartActionsPart;
-};
-
-type ChatConversationHomeQuickStartsEmptyStatePart =
-  | {
-      shouldRender: false;
-    }
-  | {
-      shouldRender: true;
-      text: string;
-      props: ComponentProps<typeof Text>;
-    };
-
-type ChatConversationHomeQuickStartsEmptyStateProps = {
-  emptyState: ChatConversationHomeQuickStartsEmptyStatePart;
-};
-
-type ChatConversationHomeQuickStartCardProps = {
-  pressable: ChatConversationHomeQuickStartCardPressablePart;
-  sourcePill: ChatConversationHomeQuickStartSourcePillPart;
-  addIcon: ChatConversationHomeQuickStartAddIconPart;
-  title: ChatConversationHomeQuickStartTextPart;
-  description: ChatConversationHomeQuickStartDescriptionPart;
-  actions: ChatConversationHomeQuickStartActionsPart;
-};
-
-type ChatConversationHomeQuickStartCardPart =
-  ChatConversationHomeQuickStartCardProps & {
-    key: string;
-  };
-
-type ChatConversationHomeQuickStartsGridPart = {
-  shouldRender: boolean;
-  props: ComponentProps<typeof View>;
-  content: {
-    items: readonly ChatConversationHomeQuickStartCardPart[];
-  };
-};
-
-type ChatConversationHomeQuickStartsGridProps = {
-  grid: ChatConversationHomeQuickStartsGridPart;
-};
-
-type ChatConversationHomeQuickStartsContentProps = {
-  grid: ChatConversationHomeQuickStartsGridPart;
-  emptyState: ChatConversationHomeQuickStartsEmptyStatePart;
-};
+type ChatConversationHomeQuickStartsContentProps<
+  TPrompt extends PredefinedPromptSummary = PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string } = PromptLibraryTaskLike & { id: string },
+> = Pick<
+  ChatConversationHomeQuickStartsParts<TPrompt, TTask>,
+  'grid' | 'emptyState'
+>;
 
 type ChatConversationHomePromptEditorModalStyles = {
   keyboardAvoidingView: StyleProp<ViewStyle>;
