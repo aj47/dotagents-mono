@@ -13,6 +13,7 @@ test('mobile response history panel uses shared copy, actions, and accessibility
   assert.match(source, /createAgentResponseHistoryMobileStyleSlots,/);
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /type AgentResponseHistoryMobilePropsParts,/);
+  assert.match(source, /type AgentResponseHistoryMobileStylesLike,/);
   assert.match(source, /type ResponseHistoryPanelParts =\s+AgentResponseHistoryMobilePropsParts<[\s\S]*?ResponseHistoryEntry,[\s\S]*?ResponseHistoryPanelStyles,[\s\S]*?ResponseHistoryToggleHandler/);
   assert.match(source, /colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
   assert.match(source, /isCollapsed: boolean;/);
@@ -53,7 +54,8 @@ test('mobile response history panel uses shared copy, actions, and accessibility
 
 test('mobile response history panel reads compact sizing from shared surface tokens', () => {
   assert.match(source, /type AgentResponseHistoryMobileAnimationState,/);
-  assert.match(source, /type ResponseHistoryPanelStyles = \{[\s\S]*?container: StyleProp<ViewStyle>;[\s\S]*?headerTitle: StyleProp<TextStyle>;[\s\S]*?collapsedPreviewText: StyleProp<TextStyle>;[\s\S]*?\};/);
+  assert.match(source, /type ResponseHistoryPanelStyles =\s+AgentResponseHistoryMobileStylesLike<\s+StyleProp<ViewStyle>,[\s\S]*?StyleProp<TextStyle>\s+>;/);
+  assert.doesNotMatch(source, /type ResponseHistoryPanelStyles = \{[\s\S]*?container: StyleProp<ViewStyle>;[\s\S]*?headerTitle: StyleProp<TextStyle>;[\s\S]*?collapsedPreviewText: StyleProp<TextStyle>;[\s\S]*?\};/);
   assert.match(source, /new Animated\.Value\([\s\S]*?animation\.newestInitialOpacity[\s\S]*?: animation\.visibleOpacity/);
   assert.match(source, /const animatedStyle = useMemo\(\(\) => \(\{ opacity: fadeAnim \}\), \[fadeAnim\]\);/);
   assert.match(source, /duration: animation\.newestFadeDurationMs/);

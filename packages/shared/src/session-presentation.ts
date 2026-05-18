@@ -10,6 +10,7 @@ export {
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
   type AgentResponseHistoryMobilePropsParts,
+  type AgentResponseHistoryMobileStylesLike,
 } from "./agent-user-response-store"
 import {
   applyUserResponseToChatMessages,

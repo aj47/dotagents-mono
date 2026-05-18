@@ -380,22 +380,38 @@ export interface AgentResponseHistoryMobileStyleSlots {
   };
 }
 
-export interface AgentResponseHistoryMobileStylesLike {
-  container: unknown;
-  header: unknown;
-  headerLeft: unknown;
-  headerTitle: unknown;
-  badge: unknown;
-  badgeText: unknown;
-  list: unknown;
-  responseItem: unknown;
-  responseHeader: unknown;
-  timestamp: unknown;
-  speakButton: unknown;
-  separator: unknown;
-  collapsedPreview: unknown;
-  collapsedPreviewTimestamp: unknown;
-  collapsedPreviewText: unknown;
+export interface AgentResponseHistoryMobileStylesLike<
+  TContainerStyle = unknown,
+  THeaderStyle = unknown,
+  THeaderLeftStyle = unknown,
+  THeaderTitleStyle = unknown,
+  TBadgeStyle = unknown,
+  TBadgeTextStyle = unknown,
+  TListStyle = unknown,
+  TResponseItemStyle = unknown,
+  TResponseHeaderStyle = unknown,
+  TTimestampStyle = unknown,
+  TSpeakButtonStyle = unknown,
+  TSeparatorStyle = unknown,
+  TCollapsedPreviewStyle = unknown,
+  TCollapsedPreviewTimestampStyle = unknown,
+  TCollapsedPreviewTextStyle = unknown,
+> {
+  container: TContainerStyle;
+  header: THeaderStyle;
+  headerLeft: THeaderLeftStyle;
+  headerTitle: THeaderTitleStyle;
+  badge: TBadgeStyle;
+  badgeText: TBadgeTextStyle;
+  list: TListStyle;
+  responseItem: TResponseItemStyle;
+  responseHeader: TResponseHeaderStyle;
+  timestamp: TTimestampStyle;
+  speakButton: TSpeakButtonStyle;
+  separator: TSeparatorStyle;
+  collapsedPreview: TCollapsedPreviewStyle;
+  collapsedPreviewTimestamp: TCollapsedPreviewTimestampStyle;
+  collapsedPreviewText: TCollapsedPreviewTextStyle;
 }
 
 export interface AgentResponseHistoryMobilePropsPartsInput<

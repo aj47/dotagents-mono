@@ -22,6 +22,7 @@ import {
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
   type AgentResponseHistoryMobilePropsParts,
+  type AgentResponseHistoryMobileStylesLike,
 } from '@dotagents/shared/session-presentation';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
@@ -47,23 +48,24 @@ interface ResponseHistoryPanelProps {
   onSpeakResponse: ResponseHistorySpeakHandler;
 }
 
-type ResponseHistoryPanelStyles = {
-  container: StyleProp<ViewStyle>;
-  header: StyleProp<ViewStyle>;
-  headerLeft: StyleProp<ViewStyle>;
-  headerTitle: StyleProp<TextStyle>;
-  badge: StyleProp<ViewStyle>;
-  badgeText: StyleProp<TextStyle>;
-  list: StyleProp<ViewStyle>;
-  responseItem: StyleProp<ViewStyle>;
-  responseHeader: StyleProp<ViewStyle>;
-  timestamp: StyleProp<TextStyle>;
-  speakButton: StyleProp<ViewStyle>;
-  separator: StyleProp<ViewStyle>;
-  collapsedPreview: StyleProp<ViewStyle>;
-  collapsedPreviewTimestamp: StyleProp<TextStyle>;
-  collapsedPreviewText: StyleProp<TextStyle>;
-};
+type ResponseHistoryPanelStyles =
+  AgentResponseHistoryMobileStylesLike<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ResponseHistoryPanelParts =
   AgentResponseHistoryMobilePropsParts<
