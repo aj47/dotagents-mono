@@ -6,6 +6,7 @@
  */
 
 import type { ToolCall, ToolResult, ConversationHistoryMessage } from './types'
+import type { ToolExecutionStatsLike } from './tool-execution-display'
 import {
   normalizeAgentConversationState,
   type AgentConversationState,
@@ -191,15 +192,19 @@ export interface AgentProgressStep {
   }
   /** If this step is a delegation to a sub-agent */
   delegation?: ACPDelegationProgress
-  executionStats?: {
-    durationMs?: number
-    totalTokens?: number
-    toolUseCount?: number
-    inputTokens?: number
-    outputTokens?: number
-    cacheHitTokens?: number
-  }
+  executionStats?: Omit<ToolExecutionStatsLike, 'model' | 'subagentId'>
   subagentId?: string
+}
+
+export function getAgentProgressStepToolExecutionStats(
+  step?: Pick<AgentProgressStep, 'executionStats' | 'subagentId'> | null,
+): ToolExecutionStatsLike | undefined {
+  if (!step?.executionStats) return undefined
+
+  return {
+    ...step.executionStats,
+    ...(step.subagentId ? { subagentId: step.subagentId } : {}),
+  }
 }
 
 export type AgentRetryInfo = {

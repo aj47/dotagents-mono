@@ -5924,6 +5924,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
     sessionPresentationSource,
     /createChatMessageRuntimeAssistantFeedbackMessage\(\{\s+thinkingContent,\s+hasToolActivity: hasCurrentToolActivity,\s+toolCalls: currentToolCalls,\s+toolResults: currentToolResults,[\s\S]*?toolExecutionStats: currentToolExecutionStats,[\s\S]*?toolExecutions,/,
   );
+  assert.match(sessionPresentationSource, /getAgentProgressStepToolExecutionStats\(step\)/);
+  assert.doesNotMatch(sessionPresentationSource, /\.\.\.step\.executionStats,[\s\S]*?subagentId: step\.subagentId/);
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageRuntimeActivityMessage\(activeStep\)/);
   assert.match(sessionPresentationSource, /createChatMessageRuntimeActivityMessage\(activeStep\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeAssistantFeedbackMessage/);

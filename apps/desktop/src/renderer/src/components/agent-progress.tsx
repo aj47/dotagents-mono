@@ -45,6 +45,7 @@ import {
   getAgentDelegationConversationRenderItems,
   getAgentDelegationPresentation,
   getAgentDelegationSummaryEntries,
+  getAgentProgressStepToolExecutionStats,
   isAgentDelegationActiveStatus,
   type AgentUserResponseEvent,
 } from "@dotagents/shared/agent-progress"
@@ -3899,10 +3900,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               // Preserve per-call result alignment after hiding completion-control tools.
               // Some visible calls may still be pending while later visible calls already have results.
               results: visibleToolEntries.map(({ result }) => result),
-              executionStats: matchingStep?.executionStats ? {
-                ...matchingStep.executionStats,
-                subagentId: matchingStep.subagentId,
-              } : undefined,
+              executionStats: getAgentProgressStepToolExecutionStats(matchingStep),
             },
           })
         } else if (messageDisplayState.shouldRenderSurface) {

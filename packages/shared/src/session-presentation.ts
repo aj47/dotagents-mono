@@ -36,6 +36,7 @@ export type {
 } from "./chat-utils"
 import {
   createAgentDelegationProgressMessages,
+  getAgentProgressStepToolExecutionStats,
   getAgentDelegationCardState,
   resolveAgentProgressConversationState,
   type ACPDelegationProgress,
@@ -15748,10 +15749,7 @@ export function createChatMessageRuntimeProgressMessages<
       } else if (step.type === "tool_call") {
         if (step.toolCall) {
           currentToolCalls.push(step.toolCall)
-          currentToolExecutionStats.push(step.executionStats ? {
-            ...step.executionStats,
-            subagentId: step.subagentId,
-          } : undefined)
+          currentToolExecutionStats.push(getAgentProgressStepToolExecutionStats(step))
         }
         if (step.toolResult) {
           currentToolResults.push(step.toolResult)

@@ -9,6 +9,7 @@ import {
   getAgentDelegationSourceLabel,
   getAgentDelegationSubtitle,
   getAgentDelegationTrackingLabel,
+  getAgentProgressStepToolExecutionStats,
   resolveAgentProgressConversationState,
   getSubagentParentSessionIdMap,
   getSubagentTitleBySessionIdMap,
@@ -89,6 +90,17 @@ describe('AgentProgressStep', () => {
     assertType<AgentProgressStep>(step)
     expect(step.approvalRequest?.approvalId).toBe('ap-1')
     expect(step.executionStats?.totalTokens).toBe(500)
+    expect(getAgentProgressStepToolExecutionStats(step)).toEqual({
+      durationMs: 1200,
+      totalTokens: 500,
+      inputTokens: 300,
+      outputTokens: 200,
+      cacheHitTokens: 50,
+      toolUseCount: 2,
+      subagentId: 'sub-1',
+    })
+    expect(getAgentProgressStepToolExecutionStats({ subagentId: 'sub-only' })).toBeUndefined()
+    expect(getAgentProgressStepToolExecutionStats(null)).toBeUndefined()
   })
 
   it('accepts mobile-specific step types (response, error, pending_approval)', () => {
