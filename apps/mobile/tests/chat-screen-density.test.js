@@ -6290,6 +6290,11 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatMessageThreadBodyStyleSlots</);
   assert.match(sessionPresentationSource, /export function createChatMessageConversationThreadStyleSlotsFromStyleSource/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionDetailMobileStyleSlots/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionCompactRowMobileStyleSlots<\s+TLineStyle = unknown,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionCompactGroupMobileStyleSlots<\s+TContainerStyle = unknown,/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionExpandedGroupMobileStyleSlotsBase<\s+TContainerStyle = unknown,/);
+  assert.match(sessionPresentationSource, /TStyles extends ChatRuntimeToolExecutionCompactRowMobileStyleSlots/);
+  assert.match(sessionPresentationSource, /TStyles extends ChatRuntimeToolExecutionCompactGroupMobileStyleSlots/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageMobileStyleSlots/);
   assert.doesNotMatch(sessionPresentationSource, /toolExecutionDetail: ReturnType<typeof createChatRuntimeToolExecutionDetailMobileStyleSlots>/);
   assert.doesNotMatch(sessionPresentationSource, /message: ReturnType<typeof createChatRuntimeMessageMobileStyleSlots>/);
@@ -6319,6 +6324,15 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(sessionPresentationSource, /type ChatMessageConversationThreadStyleSlotsFromStyleSource<[\s\S]*?> = ChatMessageConversationThreadStyleSlots</);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolExecutionCompactRowMobileStyleSlots as SharedChatMessageToolExecutionCompactRowStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolExecutionCompactGroupMobileStyleSlots as SharedChatMessageToolExecutionCompactGroupStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolExecutionExpandedGroupMobileStyleSlotsBase as SharedChatMessageToolExecutionExpandedGroupStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowStyles =\s+SharedChatMessageToolExecutionCompactRowStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCompactGroupStyles =\s+SharedChatMessageToolExecutionCompactGroupStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionExpandedGroupStyles =\s+SharedChatMessageToolExecutionExpandedGroupStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowStyles = \{\s+line: StyleProp<ViewStyle>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionCompactGroupStyles = \{\s+container: StyleProp<ViewStyle>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionExpandedGroupStyles = \{\s+container: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /export type ChatMessageRuntimeThreadStyleSlots =\s+SharedChatMessageRuntimeThreadStyleSlots<\s+ChatMessageToolActivityGroupThreadSurfaceStyleSlots,\s+ChatMessageThreadBodyStyleSlots\s+>;/);
   assert.match(chatMessageChromeSource, /export type ChatMessageConversationThreadStyleSlots =\s+SharedChatMessageConversationThreadStyleSlots<\s+ChatMessageToolActivityGroupThreadSurfaceStyleSlots,\s+ChatMessageThreadBodyStyleSlots,\s+ChatMessageActionStyleSlots\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /export type ChatMessageRuntimeThreadStyleSlots = \{\s+surface: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;/);

@@ -4248,6 +4248,14 @@ export interface ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCompactGroupMobileStyleSlots<
+  TContainerStyle = unknown,
+  TPressedStyle = unknown,
+> {
+  container: TContainerStyle
+  pressed: TPressedStyle
+}
+
 export interface ChatRuntimeToolExecutionCompactGroupMobilePropsPartsInput<
   TRenderState extends {
     accessibilityRole: unknown
@@ -4263,13 +4271,8 @@ export interface ChatRuntimeToolExecutionCompactGroupMobilePropsPartsInput<
     ariaExpanded: unknown
   },
   TOnPress = unknown,
-  TStyles extends {
-    container: unknown
-    pressed: unknown
-  } = {
-    container: unknown
-    pressed: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCompactGroupMobileStyleSlots =
+    ChatRuntimeToolExecutionCompactGroupMobileStyleSlots,
 > {
   renderState: TRenderState
   onPress?: TOnPress
@@ -4291,13 +4294,8 @@ export interface ChatRuntimeToolExecutionCompactGroupMobilePropsParts<
     ariaExpanded: unknown
   },
   TOnPress = unknown,
-  TStyles extends {
-    container: unknown
-    pressed: unknown
-  } = {
-    container: unknown
-    pressed: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCompactGroupMobileStyleSlots =
+    ChatRuntimeToolExecutionCompactGroupMobileStyleSlots,
 > {
   container: {
     props: {
@@ -4321,6 +4319,26 @@ type ChatRuntimeToolExecutionCompactRowStatusIndicatorPropsPart<
 > = {
   shouldRender: boolean
   props: Omit<TPart, "shouldRender">
+}
+
+export interface ChatRuntimeToolExecutionCompactRowMobileStyleSlots<
+  TLineStyle = unknown,
+  TLeadingIconStyle = unknown,
+  TNameStyle = unknown,
+  TNamePendingStyle = unknown,
+  TNameSuccessStyle = unknown,
+  TNameErrorStyle = unknown,
+  TStatusIndicatorStyle = unknown,
+  TToggleIconStyle = unknown,
+> {
+  line: TLineStyle
+  leadingIcon: TLeadingIconStyle
+  name: TNameStyle
+  namePending: TNamePendingStyle
+  nameSuccess: TNameSuccessStyle
+  nameError: TNameErrorStyle
+  statusIndicator: TStatusIndicatorStyle
+  toggleIcon: TToggleIconStyle
 }
 
 export interface ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
@@ -4357,25 +4375,8 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
     }
     toggleIcon: unknown
   },
-  TStyles extends {
-    line: unknown
-    leadingIcon: unknown
-    name: unknown
-    namePending: unknown
-    nameSuccess: unknown
-    nameError: unknown
-    statusIndicator: unknown
-    toggleIcon: unknown
-  } = {
-    line: unknown
-    leadingIcon: unknown
-    name: unknown
-    namePending: unknown
-    nameSuccess: unknown
-    nameError: unknown
-    statusIndicator: unknown
-    toggleIcon: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCompactRowMobileStyleSlots =
+    ChatRuntimeToolExecutionCompactRowMobileStyleSlots,
 > {
   renderState: TRenderState
   styles: TStyles
@@ -4415,25 +4416,8 @@ export interface ChatRuntimeToolExecutionCompactRowMobilePropsParts<
     }
     toggleIcon: unknown
   },
-  TStyles extends {
-    line: unknown
-    leadingIcon: unknown
-    name: unknown
-    namePending: unknown
-    nameSuccess: unknown
-    nameError: unknown
-    statusIndicator: unknown
-    toggleIcon: unknown
-  } = {
-    line: unknown
-    leadingIcon: unknown
-    name: unknown
-    namePending: unknown
-    nameSuccess: unknown
-    nameError: unknown
-    statusIndicator: unknown
-    toggleIcon: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCompactRowMobileStyleSlots =
+    ChatRuntimeToolExecutionCompactRowMobileStyleSlots,
 > {
   container: {
     props: {
@@ -22170,10 +22154,7 @@ export function createChatRuntimeToolExecutionCompactGroupMobilePropsParts<
     ariaExpanded: unknown
   },
   TOnPress,
-  TStyles extends {
-    container: unknown
-    pressed: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCompactGroupMobileStyleSlots,
 >({
   renderState,
   onPress,
@@ -22223,16 +22204,7 @@ export function createChatRuntimeToolExecutionCompactRowMobilePropsParts<
     }
     toggleIcon: unknown
   },
-  TStyles extends {
-    line: unknown
-    leadingIcon: unknown
-    name: unknown
-    namePending: unknown
-    nameSuccess: unknown
-    nameError: unknown
-    statusIndicator: unknown
-    toggleIcon: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCompactRowMobileStyleSlots,
 >({
   renderState,
   styles,

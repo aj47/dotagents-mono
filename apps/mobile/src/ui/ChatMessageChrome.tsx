@@ -325,13 +325,16 @@ import {
   type ChatRuntimeToolExecutionCallSectionMobilePropsParts,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   type ChatRuntimeToolExecutionCompactGroupMobilePropsParts,
+  type ChatRuntimeToolExecutionCompactGroupMobileStyleSlots as SharedChatMessageToolExecutionCompactGroupStyleSlots,
   type ChatRuntimeToolExecutionCompactListMobilePropsParts,
   type ChatRuntimeToolExecutionCompactRowMobilePropsParts,
+  type ChatRuntimeToolExecutionCompactRowMobileStyleSlots as SharedChatMessageToolExecutionCompactRowStyleSlots,
   type ChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   type ChatRuntimeToolExecutionDetailHeaderMobilePropsParts,
   type ChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   type ChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
+  type ChatRuntimeToolExecutionExpandedGroupMobileStyleSlotsBase as SharedChatMessageToolExecutionExpandedGroupStyleSlots,
   type ChatRuntimeToolExecutionPanelMobilePropsParts,
   type ChatRuntimeToolExecutionPanelShellMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
@@ -2463,16 +2466,17 @@ type ChatMessageToolActivityGroupBoundaryParts =
     ChatMessageToolActivityGroupFooterStyles
   >;
 
-type ChatMessageToolExecutionCompactRowStyles = {
-  line: StyleProp<ViewStyle>;
-  leadingIcon: StyleProp<ViewStyle>;
-  name: StyleProp<TextStyle>;
-  namePending: StyleProp<TextStyle>;
-  nameSuccess: StyleProp<TextStyle>;
-  nameError: StyleProp<TextStyle>;
-  statusIndicator: StyleProp<ViewStyle>;
-  toggleIcon: StyleProp<ViewStyle>;
-};
+type ChatMessageToolExecutionCompactRowStyles =
+  SharedChatMessageToolExecutionCompactRowStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatMessageToolExecutionCompactRowProps = {
   renderState: ToolExecutionCompactMobileRenderState;
@@ -2538,10 +2542,11 @@ type ChatMessageToolExecutionCompactListRow = {
   renderState: ToolExecutionCompactMobileRenderState;
 };
 
-type ChatMessageToolExecutionCompactGroupStyles = {
-  container: StyleProp<ViewStyle>;
-  pressed: StyleProp<ViewStyle>;
-};
+type ChatMessageToolExecutionCompactGroupStyles =
+  SharedChatMessageToolExecutionCompactGroupStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatMessageToolExecutionCompactGroupProps = {
   renderState: ToolExecutionDetailMobileExpandControlRenderState;
@@ -2617,18 +2622,19 @@ type ChatMessageToolExecutionCollapseControlIconProps =
 type ChatMessageToolExecutionCollapseControlLabelProps =
   ChatMessageToolExecutionCollapseControlParts['container']['content']['label']['props'];
 
-type ChatMessageToolExecutionExpandedGroupStyles = {
-  container: StyleProp<ViewStyle>;
-  card: StyleProp<ViewStyle>;
-  pending: StyleProp<ViewStyle>;
-  success: StyleProp<ViewStyle>;
-  error: StyleProp<ViewStyle>;
-  collapseButton: StyleProp<ViewStyle>;
-  collapsePressed: StyleProp<ViewStyle>;
-  collapseTopPlacement: StyleProp<ViewStyle>;
-  collapseBottomPlacement: StyleProp<ViewStyle>;
-  collapseText: StyleProp<TextStyle>;
-};
+type ChatMessageToolExecutionExpandedGroupStyles =
+  SharedChatMessageToolExecutionExpandedGroupStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolExecutionExpandedGroupProps = {
   topCollapseRenderState: ToolExecutionDetailMobileCollapseControlRenderState;
