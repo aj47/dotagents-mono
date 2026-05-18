@@ -7835,7 +7835,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatMessageCopyActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & \{\s+renderState: ChatMessageActionButtonRenderState;\s+\};/);
   assert.match(sessionPresentationSource, /entries: readonly TEntry\[\]/);
   assert.doesNotMatch(chatMessageChromeSource, /components: Record<ChatMessageActionSlot, ReactNode>;/);
-  assert.match(chatMessageChromeSource, /turnDuration: \(\) => \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
+  assert.match(chatMessageChromeSource, /turnDuration: \(\) => <ChatMessageTurnDurationBadge \{\.\.\.turnDuration\} \/>/);
   assert.match(chatMessageChromeSource, /speech: \(\) => renderChatMessageActionButton\(speech\),/);
   assert.match(chatMessageChromeSource, /function createChatMessageActionSet\(\{\s+renderState: actionRenderState,/);
   assert.match(sessionPresentationSource, /const availability = getChatMessageActionAvailabilityRenderState\(\{\s+turnDuration: turnDurationRenderState\.shouldRender,\s+speech: speechRenderState\.canSpeak,\s+branch: branchRenderState\.canBranch,\s+copy: copyRenderState\.canCopy,\s+expansion: expansionRenderState\.canToggle,\s+\}\)/);
@@ -8288,7 +8288,8 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(sessionPresentationSource, /export function createChatRuntimeTurnDurationBadgeMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const turnDurationBadgeParts: ChatMessageTurnDurationBadgeParts =\s+createChatRuntimeTurnDurationBadgeMobilePropsParts\(\{\s+renderState,\s+style,\s+liveStyle,\s+textStyle,\s+liveTextStyle,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!turnDurationBadgeParts\.container\.shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}\s+style=\{turnDuration\.style\}\s+liveStyle=\{turnDuration\.liveStyle\}\s+textStyle=\{turnDuration\.textStyle\}\s+liveTextStyle=\{turnDuration\.liveTextStyle\}/);
+  assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadge \{\.\.\.turnDuration\} \/>/);
+  assert.doesNotMatch(chatMessageChromeSource, /style=\{turnDuration\.style\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeContainer\s+\{\.\.\.turnDurationBadgeParts\.container\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeIconProps =\s+ChatMessageTurnDurationBadgeRenderState\['icon'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /numberOfLines: ChatMessageTurnDurationBadgeRenderState\['badge'\]\['numberOfLines'\];/);

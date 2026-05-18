@@ -7663,15 +7663,7 @@ function createChatMessageActionRenderers({
   expansion,
 }: Omit<ChatMessageActionComponentsInput, 'availability'>) {
   return {
-    turnDuration: () => (
-      <ChatMessageTurnDurationBadge
-        renderState={turnDuration.renderState}
-        style={turnDuration.style}
-        liveStyle={turnDuration.liveStyle}
-        textStyle={turnDuration.textStyle}
-        liveTextStyle={turnDuration.liveTextStyle}
-      />
-    ),
+    turnDuration: () => <ChatMessageTurnDurationBadge {...turnDuration} />,
     speech: () => renderChatMessageActionButton(speech),
     branch: () => renderChatMessageActionButton(branch),
     copy: () => renderChatMessageActionButton(copy),
