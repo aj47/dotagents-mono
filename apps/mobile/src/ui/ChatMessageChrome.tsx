@@ -210,6 +210,10 @@ import {
   formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
   getChatComposerRuntimeHandsFreeDebugMessage,
   mergeChatComposerRuntimeVoiceText,
+  formatChatRuntimeAssistantSpeechDebugMessage,
+  formatChatRuntimeResponseSpeechEventReason,
+  getChatRuntimeAssistantSpeechDebugState,
+  getChatRuntimeNativeSpeechLanguage,
   sortPredefinedPromptsByUpdatedAt,
   updatePredefinedPromptList,
   formatConnectionStatus,
@@ -520,6 +524,9 @@ export type {
 } from '@dotagents/shared/session-presentation';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
+const chatRuntimeAssistantSpeechDebugState = getChatRuntimeAssistantSpeechDebugState();
+const chatRuntimeNativeSpeechLanguage = getChatRuntimeNativeSpeechLanguage();
 
 export type ChatComposerTextEntryRef = TextInput;
 export type ChatComposerTextEntryKeyPressEvent = Parameters<NonNullable<ComponentProps<typeof TextInput>['onKeyPress']>>[0];
@@ -9662,10 +9669,14 @@ export function useChatMessageRuntimeResponseSpeechQueueActionsState({
     if (!nextEvent) return;
     activeAutoSpeechEventIdRef.current = nextEvent.id;
 
-    const spoken = speakAssistantResponse(nextEvent.text, `response event ${nextEvent.ordinal}`, () => {
-      activeAutoSpeechEventIdRef.current = null;
-      processResponseSpeechQueue();
-    });
+    const spoken = speakAssistantResponse(
+      nextEvent.text,
+      formatChatRuntimeResponseSpeechEventReason(nextEvent.ordinal),
+      () => {
+        activeAutoSpeechEventIdRef.current = null;
+        processResponseSpeechQueue();
+      },
+    );
 
     if (!spoken) {
       activeAutoSpeechEventIdRef.current = null;
@@ -9770,13 +9781,13 @@ export function useChatMessageRuntimeAssistantSpeechActionsState({
       onSettled?.();
       if (handsFree) {
         handsFreeController.onSpeechFinished();
-        voiceLog('tts-stopped', `Assistant speech stopped (${reason}).`);
+        voiceLog('tts-stopped', formatChatRuntimeAssistantSpeechDebugMessage('stopped', reason));
       }
     };
 
     if (handsFree) {
       handsFreeController.onSpeechStarted();
-      voiceLog('tts-started', `Assistant speech started (${reason}).`);
+      voiceLog('tts-started', formatChatRuntimeAssistantSpeechDebugMessage('started', reason));
     }
 
     if (effectiveTtsProvider !== 'native' && config.baseUrl && config.apiKey) {
@@ -9795,7 +9806,7 @@ export function useChatMessageRuntimeAssistantSpeechActionsState({
     }
 
     const speechOptions: ChatMessageRuntimeNativeSpeechOptions = {
-      language: 'en-US',
+      language: chatRuntimeNativeSpeechLanguage,
       rate: config.ttsRate ?? 1.0,
       pitch: config.ttsPitch ?? 1.0,
       onDone: settle,
@@ -9924,7 +9935,7 @@ export function useChatMessageRuntimeSpeechActionsState({
 
   const clearStoppedSpeechMessage = useCallback(() => {
     if (intendedSpeakingIndexRef.current !== null) return;
-    finishHandsFreeSpeech('Assistant speech stopped during message playback.');
+    finishHandsFreeSpeech(chatRuntimeAssistantSpeechDebugState.stoppedDuringMessagePlayback);
     clearSpeakingMessage();
   }, [clearSpeakingMessage, finishHandsFreeSpeech, intendedSpeakingIndexRef]);
 
@@ -9932,7 +9943,7 @@ export function useChatMessageRuntimeSpeechActionsState({
     if (speakingMessageIndex === messageIndex) {
       clearIntendedSpeakingMessage();
       stopNativeSpeech();
-      finishHandsFreeSpeech('Assistant speech stopped from message playback.');
+      finishHandsFreeSpeech(chatRuntimeAssistantSpeechDebugState.stoppedFromMessagePlayback);
       clearSpeakingMessage();
       return;
     }
@@ -9949,7 +9960,7 @@ export function useChatMessageRuntimeSpeechActionsState({
 
     if (handsFree) {
       handsFreeController.onSpeechStarted();
-      voiceLog('tts-started', 'Assistant speech started from message playback.');
+      voiceLog('tts-started', chatRuntimeAssistantSpeechDebugState.startedFromMessagePlayback);
     }
 
     startSpeakingMessage(messageIndex);
@@ -9962,19 +9973,19 @@ export function useChatMessageRuntimeSpeechActionsState({
         voice: effectiveRemoteTtsVoice ?? undefined,
         model: effectiveRemoteTtsModel ?? undefined,
         rate: effectiveRemoteTtsRate ?? undefined,
-        onDone: () => clearFinishedSpeechMessage('Assistant speech finished from message playback.'),
-        onError: () => clearFinishedSpeechMessage('Assistant speech errored during message playback.'),
+        onDone: () => clearFinishedSpeechMessage(chatRuntimeAssistantSpeechDebugState.finishedFromMessagePlayback),
+        onError: () => clearFinishedSpeechMessage(chatRuntimeAssistantSpeechDebugState.erroredFromMessagePlayback),
         onStopped: clearStoppedSpeechMessage,
       });
       return;
     }
 
     const speechOptions: ChatMessageRuntimeNativeSpeechOptions = {
-      language: 'en-US',
+      language: chatRuntimeNativeSpeechLanguage,
       rate: config.ttsRate ?? 1.0,
       pitch: config.ttsPitch ?? 1.0,
-      onDone: () => clearFinishedSpeechMessage('Assistant speech finished from message playback.'),
-      onError: () => clearFinishedSpeechMessage('Assistant speech errored during message playback.'),
+      onDone: () => clearFinishedSpeechMessage(chatRuntimeAssistantSpeechDebugState.finishedFromMessagePlayback),
+      onError: () => clearFinishedSpeechMessage(chatRuntimeAssistantSpeechDebugState.erroredFromMessagePlayback),
       onStopped: clearStoppedSpeechMessage,
     };
     if (config.ttsVoiceId) {
@@ -10153,7 +10164,7 @@ export function useChatMessageRuntimeResponseHistoryPanelChromeState({
     }
 
     const speechOptions: ChatMessageRuntimeNativeSpeechOptions = {
-      language: 'en-US',
+      language: chatRuntimeNativeSpeechLanguage,
       rate: ttsRate ?? 1.0,
       pitch: ttsPitch ?? 1.0,
       onDone: clearIfCurrentRequest,
@@ -10592,7 +10603,7 @@ export function useChatRuntimeTextToSpeechToggleActionsState<TConfig extends obj
       clearSpeakingMessage();
       if (handsFreeRef.current && handsFreePhaseRef.current === 'speaking') {
         handsFreeController.onSpeechFinished();
-        voiceLog('tts-stopped', 'Assistant speech stopped from speaker toggle.');
+        voiceLog('tts-stopped', chatRuntimeAssistantSpeechDebugState.stoppedFromSpeakerToggle);
       }
     }
     const nextConfig = { ...config, ttsEnabled: next };

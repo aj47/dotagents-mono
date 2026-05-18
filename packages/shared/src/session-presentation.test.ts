@@ -221,6 +221,7 @@ import {
   formatChatRuntimeAgentSelectorLabel,
   formatChatRuntimeAssistantErrorContent,
   formatChatRuntimeAssistantFeedbackContent,
+  formatChatRuntimeAssistantSpeechDebugMessage,
   formatChatRuntimeBranchAccessibilityLabel,
   formatChatRuntimeConnectionErrorMessage,
   formatChatRuntimeConversationHistorySummary,
@@ -237,6 +238,7 @@ import {
   formatChatRuntimeRetryAccessibilityLabel,
   formatChatRuntimeRetryAttemptLabel,
   formatChatRuntimeRetryCountdownLabel,
+  formatChatRuntimeResponseSpeechEventReason,
   formatChatRuntimeThinkingPickerTitle,
   formatChatRuntimeStepSummaryAccessibilityLabel,
   formatChatRuntimeStepSummaryKeyFindingsLabel,
@@ -251,6 +253,7 @@ import {
   formatChatRuntimeVerbosityPickerTitle,
   formatChatRuntimeVisibleUpdatesSummary,
   formatChatRuntimeWebConfirmMessage,
+  getChatRuntimeAssistantSpeechDebugState,
   getChatComposerCopyState,
   getChatComposerDesktopSurfaceState,
   getChatComposerEditBeforeSendMobileIconState,
@@ -434,6 +437,7 @@ import {
   getChatRuntimeMobileActivityAccessibilityState,
   getChatRuntimeMessageThreadPresentationMobileRenderState,
   getChatRuntimeNavigationHeaderMobileRenderState,
+  getChatRuntimeNativeSpeechLanguage,
   createChatRuntimeHeaderAgentSelectorMobilePropsParts,
   createChatRuntimeHeaderConversationStatusMobilePropsParts,
   createChatRuntimeHeaderIconButtonMobilePropsParts,
@@ -971,6 +975,23 @@ describe("session presentation semantics", () => {
     expect(formatChatRuntimeStartingRequestDebugMessage("http://localhost:3000")).toBe(
       "Starting request to http://localhost:3000...",
     )
+    expect(getChatRuntimeAssistantSpeechDebugState()).toBe(CHAT_RUNTIME_PRESENTATION.speech)
+    expect(getChatRuntimeNativeSpeechLanguage()).toBe("en-US")
+    expect(formatChatRuntimeResponseSpeechEventReason(4)).toBe("response event 4")
+    expect(formatChatRuntimeAssistantSpeechDebugMessage("started", "response event 4")).toBe(
+      "Assistant speech started (response event 4).",
+    )
+    expect(formatChatRuntimeAssistantSpeechDebugMessage("stopped", "manual playback")).toBe(
+      "Assistant speech stopped (manual playback).",
+    )
+    expect(getChatRuntimeAssistantSpeechDebugState()).toMatchObject({
+      stoppedDuringMessagePlayback: "Assistant speech stopped during message playback.",
+      stoppedFromMessagePlayback: "Assistant speech stopped from message playback.",
+      startedFromMessagePlayback: "Assistant speech started from message playback.",
+      finishedFromMessagePlayback: "Assistant speech finished from message playback.",
+      erroredFromMessagePlayback: "Assistant speech errored during message playback.",
+      stoppedFromSpeakerToggle: "Assistant speech stopped from speaker toggle.",
+    })
     expect(createChatMessageRuntimeUserTextMessage("Run this")).toEqual({
       role: "user",
       content: "Run this",

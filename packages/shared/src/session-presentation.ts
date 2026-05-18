@@ -14220,6 +14220,18 @@ export const CHAT_RUNTIME_PRESENTATION = {
     requestSuperseded: "Request superseded",
     unknownError: "Unknown error",
   },
+  speech: {
+    nativeLanguage: "en-US",
+    responseEventReasonPrefix: "response event",
+    startedPrefix: "Assistant speech started",
+    stoppedPrefix: "Assistant speech stopped",
+    stoppedDuringMessagePlayback: "Assistant speech stopped during message playback.",
+    stoppedFromMessagePlayback: "Assistant speech stopped from message playback.",
+    startedFromMessagePlayback: "Assistant speech started from message playback.",
+    finishedFromMessagePlayback: "Assistant speech finished from message playback.",
+    erroredFromMessagePlayback: "Assistant speech errored during message playback.",
+    stoppedFromSpeakerToggle: "Assistant speech stopped from speaker toggle.",
+  },
   header: {
     defaultAgentLabel: "Default Agent",
     agentSelectorDropdownGlyph: "▼",
@@ -14765,6 +14777,8 @@ export interface ChatRuntimeQueueFailureState {
 export type ChatRuntimeNoSessionAvailableDebugState =
   ChatRuntimeDebugInfoState & ChatRuntimeQueueFailureState
 
+export type ChatRuntimeAssistantSpeechDebugEvent = "started" | "stopped"
+
 export function getChatRuntimeAlertMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim()
   if (typeof error === "string" && error.trim()) return error.trim()
@@ -15083,6 +15097,27 @@ export function formatChatRuntimeDebugError(message: string): string {
 
 export function formatChatRuntimeStartingRequestDebugMessage(baseUrl: string): string {
   return `Starting request to ${baseUrl}...`
+}
+
+export function formatChatRuntimeResponseSpeechEventReason(ordinal: number): string {
+  return `${CHAT_RUNTIME_PRESENTATION.speech.responseEventReasonPrefix} ${ordinal}`
+}
+
+export function formatChatRuntimeAssistantSpeechDebugMessage(
+  event: ChatRuntimeAssistantSpeechDebugEvent,
+  reason: string,
+): string {
+  const speech = CHAT_RUNTIME_PRESENTATION.speech
+  const prefix = event === "started" ? speech.startedPrefix : speech.stoppedPrefix
+  return `${prefix} (${reason}).`
+}
+
+export function getChatRuntimeAssistantSpeechDebugState(): typeof CHAT_RUNTIME_PRESENTATION.speech {
+  return CHAT_RUNTIME_PRESENTATION.speech
+}
+
+export function getChatRuntimeNativeSpeechLanguage(): string {
+  return CHAT_RUNTIME_PRESENTATION.speech.nativeLanguage
 }
 
 export function getChatRuntimeDebugState(): typeof CHAT_RUNTIME_PRESENTATION.debug {
