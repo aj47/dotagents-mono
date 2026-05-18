@@ -362,6 +362,7 @@ import {
   type ChatMessageRuntimeSurfaceStyleSlots as SharedChatMessageRuntimeSurfaceStyleSlots,
   type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,
   type ChatMessageRuntimeViewportStyleSlots as SharedChatMessageRuntimeViewportStyleSlots,
+  type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageRuntimeSessionDisplayMessagesOptions,
@@ -2045,29 +2046,30 @@ type ChatMessageRetryStatusTextProps =
   | ChatMessageRetryStatusContent['meta']['content']['countdown']['props']
   | ChatMessageRetryStatusContent['description']['props'];
 
-type ChatMessageToolApprovalStyles = {
-  card: StyleProp<ViewStyle>;
-  header: StyleProp<ViewStyle>;
-  content: StyleProp<ViewStyle>;
-  contentDisabled: StyleProp<ViewStyle>;
-  title: StyleProp<TextStyle>;
-  toolRow: StyleProp<ViewStyle>;
-  toolLabel: StyleProp<TextStyle>;
-  toolName: StyleProp<TextStyle>;
-  argumentsPreview: StyleProp<TextStyle>;
-  argumentsToggle: StyleProp<ViewStyle>;
-  argumentsTogglePressed: StyleProp<ViewStyle>;
-  argumentsToggleText: StyleProp<TextStyle>;
-  argumentsScroll: StyleProp<ViewStyle>;
-  argumentsFull: StyleProp<TextStyle>;
-  actions: StyleProp<ViewStyle>;
-  button: StyleProp<ViewStyle>;
-  buttonDisabled: StyleProp<ViewStyle>;
-  approveButton: StyleProp<ViewStyle>;
-  approveButtonText: StyleProp<TextStyle>;
-  denyButton: StyleProp<ViewStyle>;
-  denyButtonText: StyleProp<TextStyle>;
-};
+type ChatMessageToolApprovalStyles =
+  SharedChatMessageToolApprovalStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolApprovalProps = {
   renderState: ChatRuntimeToolApprovalMobileRenderState;

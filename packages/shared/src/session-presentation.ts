@@ -29023,6 +29023,52 @@ export type ChatMessageRetryStatusStyleSlots<
   description: TDescriptionStyle
 }
 
+export type ChatMessageToolApprovalStyleSlots<
+  TCardStyle,
+  THeaderStyle,
+  TContentStyle,
+  TContentDisabledStyle,
+  TTitleStyle,
+  TToolRowStyle,
+  TToolLabelStyle,
+  TToolNameStyle,
+  TArgumentsPreviewStyle,
+  TArgumentsToggleStyle,
+  TArgumentsTogglePressedStyle,
+  TArgumentsToggleTextStyle,
+  TArgumentsScrollStyle,
+  TArgumentsFullStyle,
+  TActionsStyle,
+  TButtonStyle,
+  TButtonDisabledStyle,
+  TApproveButtonStyle,
+  TApproveButtonTextStyle,
+  TDenyButtonStyle,
+  TDenyButtonTextStyle,
+> = {
+  card: TCardStyle
+  header: THeaderStyle
+  content: TContentStyle
+  contentDisabled: TContentDisabledStyle
+  title: TTitleStyle
+  toolRow: TToolRowStyle
+  toolLabel: TToolLabelStyle
+  toolName: TToolNameStyle
+  argumentsPreview: TArgumentsPreviewStyle
+  argumentsToggle: TArgumentsToggleStyle
+  argumentsTogglePressed: TArgumentsTogglePressedStyle
+  argumentsToggleText: TArgumentsToggleTextStyle
+  argumentsScroll: TArgumentsScrollStyle
+  argumentsFull: TArgumentsFullStyle
+  actions: TActionsStyle
+  button: TButtonStyle
+  buttonDisabled: TButtonDisabledStyle
+  approveButton: TApproveButtonStyle
+  approveButtonText: TApproveButtonTextStyle
+  denyButton: TDenyButtonStyle
+  denyButtonText: TDenyButtonTextStyle
+}
+
 type ChatMessageThreadBodyStyleSlots<TStyles extends ChatMessageThreadBodyStyleSource> = {
   retryStatus: ChatMessageRetryStatusStyleSlots<
     TStyles["retryStatusCard"],
@@ -29063,29 +29109,29 @@ type ChatMessageThreadBodyStyleSlots<TStyles extends ChatMessageThreadBodyStyleS
     toolPreviewMoreButtonPressed: TStyles["delegationToolPreviewMoreButtonPressed"]
     toolPreviewMore: TStyles["delegationToolPreviewMore"]
   }
-  toolApproval: {
-    card: TStyles["toolApprovalCard"]
-    header: TStyles["toolApprovalHeader"]
-    content: TStyles["toolApprovalContent"]
-    contentDisabled: TStyles["toolApprovalContentDisabled"]
-    title: TStyles["toolApprovalTitle"]
-    toolRow: TStyles["toolApprovalToolRow"]
-    toolLabel: TStyles["toolApprovalToolLabel"]
-    toolName: TStyles["toolApprovalTool"]
-    argumentsPreview: TStyles["toolApprovalArgumentsPreview"]
-    argumentsToggle: TStyles["toolApprovalArgumentsToggle"]
-    argumentsTogglePressed: TStyles["toolApprovalArgumentsTogglePressed"]
-    argumentsToggleText: TStyles["toolApprovalArgumentsToggleText"]
-    argumentsScroll: TStyles["toolApprovalArgumentsScroll"]
-    argumentsFull: TStyles["toolApprovalArgumentsFull"]
-    actions: TStyles["toolApprovalActions"]
-    button: TStyles["toolApprovalButton"]
-    buttonDisabled: TStyles["toolApprovalButtonDisabled"]
-    approveButton: TStyles["toolApprovalApproveButton"]
-    approveButtonText: TStyles["toolApprovalApproveButtonText"]
-    denyButton: TStyles["toolApprovalDenyButton"]
-    denyButtonText: TStyles["toolApprovalDenyButtonText"]
-  }
+  toolApproval: ChatMessageToolApprovalStyleSlots<
+    TStyles["toolApprovalCard"],
+    TStyles["toolApprovalHeader"],
+    TStyles["toolApprovalContent"],
+    TStyles["toolApprovalContentDisabled"],
+    TStyles["toolApprovalTitle"],
+    TStyles["toolApprovalToolRow"],
+    TStyles["toolApprovalToolLabel"],
+    TStyles["toolApprovalTool"],
+    TStyles["toolApprovalArgumentsPreview"],
+    TStyles["toolApprovalArgumentsToggle"],
+    TStyles["toolApprovalArgumentsTogglePressed"],
+    TStyles["toolApprovalArgumentsToggleText"],
+    TStyles["toolApprovalArgumentsScroll"],
+    TStyles["toolApprovalArgumentsFull"],
+    TStyles["toolApprovalActions"],
+    TStyles["toolApprovalButton"],
+    TStyles["toolApprovalButtonDisabled"],
+    TStyles["toolApprovalApproveButton"],
+    TStyles["toolApprovalApproveButtonText"],
+    TStyles["toolApprovalDenyButton"],
+    TStyles["toolApprovalDenyButtonText"]
+  >
   inlineActivity: {
     style: TStyles["inlineActivityIndicator"]
     spinnerStyle: TStyles["inlineActivitySpinner"]

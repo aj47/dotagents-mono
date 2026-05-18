@@ -740,6 +740,11 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(chatMessageChromeSource, /createChatRuntimeToolApprovalMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolApprovalMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalParts =\s+ChatRuntimeToolApprovalMobilePropsParts<[\s\S]*?ChatMessageToolApprovalProps\['onToggleArguments'\],[\s\S]*?ChatMessageToolApprovalProps\['onDeny'\],[\s\S]*?ChatMessageToolApprovalProps\['onApprove'\],[\s\S]*?ChatMessageToolApprovalStyles/);
+  assert.match(sessionPresentationSource, /export type ChatMessageToolApprovalStyleSlots<\s+TCardStyle,\s+THeaderStyle,\s+TContentStyle,\s+TContentDisabledStyle,/);
+  assert.match(sessionPresentationSource, /toolApproval: ChatMessageToolApprovalStyleSlots<\s+TStyles\["toolApprovalCard"\],\s+TStyles\["toolApprovalHeader"\],\s+TStyles\["toolApprovalContent"\],/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalStyles =\s+SharedChatMessageToolApprovalStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalStyles = \{\s+card: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(toolApprovalComponentSource, /const toolApprovalParts: ChatMessageToolApprovalParts =\s+createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
