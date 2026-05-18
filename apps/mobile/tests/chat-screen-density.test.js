@@ -2906,6 +2906,7 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeHeaderIconButtonMobilePropsParts',
     'createChatRuntimeHeaderConversationStatusMobilePropsParts',
     'createChatRuntimeHeaderTurnDurationMobilePropsParts',
+    'createChatConversationHomePromptEditorModalMobilePropsParts',
     'createChatRuntimeMessageSurfaceMobilePropsParts',
     'createChatRuntimeMessageThreadItemMobilePropsParts',
     'createChatRuntimeMessageThreadSurfaceMobilePropsParts',
@@ -2955,6 +2956,8 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeConversationDockShellMobilePropsParts',
     'createChatRuntimeConversationDockMobilePropsParts',
     'createChatRuntimeConnectionBannerMobilePropsParts',
+    'createChatComposerRuntimeDockMobilePropsParts',
+    'createChatComposerInputDockMobilePropsParts',
     'createChatComposerSpeechPreviewMobilePropsParts',
     'createChatComposerPendingImagesRailMobilePropsParts',
     'createChatComposerVoiceOverlayMobilePropsParts',
@@ -3403,7 +3406,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /placeholderTextColor: composerTextColors\.input\.placeholderColor/);
   assert.match(chatMessageChromeSource, /export function ChatComposerRuntimeDock/);
   assert.match(chatMessageChromeSource, /export function ChatComposerRuntimeDock\(\s+props: ChatComposerRuntimeDockProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const composerDockParts: ChatComposerRuntimeDockParts =\s+createChatComposerRuntimeDockMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const composerDockParts = useMemo<ChatComposerRuntimeDockParts>\(\s+\(\) => createChatComposerRuntimeDockMobilePropsParts\(\{\s+speechPreview,\s+pendingImagesRail,\s+handsFreeControls,\s+imageAttachmentControl,\s+textToSpeechControl,\s+editBeforeSendControl,\s+textEntry,\s+queueAction,\s+submitAction,\s+micButton,\s+micWrapperRef,\s+styles,\s+\}\),\s+\[\s+editBeforeSendControl,\s+handsFreeControls,\s+imageAttachmentControl,\s+micButton,\s+micWrapperRef,\s+pendingImagesRail,\s+queueAction,\s+speechPreview,\s+styles,\s+submitAction,\s+textEntry,\s+textToSpeechControl,\s+\],\s+\);/);
   assert.match(chatMessageChromeSource, /<ChatComposerSpeechPreview\s+\{\.\.\.composerDockParts\.speechPreview\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatComposerPendingImagesRail\s+\{\.\.\.composerDockParts\.pendingImagesRail\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatComposerHandsFreeControls\s+\{\.\.\.composerDockParts\.handsFreeControls\.props\}\s+status=\{<HandsFreeStatusChip \{\.\.\.composerDockParts\.handsFreeControls\.content\.status\.props\} \/>\}/);
@@ -3452,7 +3455,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   const inputDockSource =
     chatMessageChromeSource.match(/export function ChatComposerInputDock[\s\S]*?export function ChatComposerSpeechPreview/)?.[0] ?? '';
   assert.match(inputDockSource, /export function ChatComposerInputDock\(\s+props: ChatComposerInputDockProps,\s+\)/);
-  assert.match(inputDockSource, /const inputDockParts: ChatComposerInputDockParts =\s+createChatComposerInputDockMobilePropsParts\(props\);/);
+  assert.match(inputDockSource, /const inputDockParts = useMemo<ChatComposerInputDockParts>\(\s+\(\) => createChatComposerInputDockMobilePropsParts\(\{\s+speechPreview,\s+pendingImagesRail,\s+handsFreeControls,\s+imageAttachmentControl,\s+textToSpeechControl,\s+editBeforeSendControl,\s+textEntry,\s+queueAction,\s+submitAction,\s+micButton,\s+micWrapperRef,\s+styles,\s+\}\),\s+\[\s+editBeforeSendControl,\s+handsFreeControls,\s+imageAttachmentControl,\s+micButton,\s+micWrapperRef,\s+pendingImagesRail,\s+queueAction,\s+speechPreview,\s+styles,\s+submitAction,\s+textEntry,\s+textToSpeechControl,\s+\],\s+\);/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerInputDock(?:AreaProps|AreaContentProps|RowProps|RowContentProps|MicWrapperProps|MicWrapperContentProps)\s*=\s+(?:Omit<)?ChatComposerInputDockParts\['/);
   assert.match(chatMessageChromeSource, /type ChatComposerInputDockChildPart = \{[\s\S]*?children: ReactNode;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerInputDockAreaProps = \{[\s\S]*?style: ChatComposerInputDockStyles\['area'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
@@ -9761,7 +9764,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(chatMessageChromeSource, /ChatConversationHomePromptEditorModalParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /Pick<\s*ChatConversationHomePromptEditorModalParts,/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModal\(\s+props: ChatConversationHomePromptEditorModalProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const modalParts: ChatConversationHomePromptEditorModalParts =\s+createChatConversationHomePromptEditorModalMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const modalParts = useMemo<ChatConversationHomePromptEditorModalParts>\(\s+\(\) => createChatConversationHomePromptEditorModalMobilePropsParts\(\{\s+visible,\s+isEditing,\s+nameValue,\s+onNameChange,\s+contentValue,\s+onContentChange,\s+isSaving,\s+onClose,\s+onSave,\s+renderState,\s+styles,\s+\}\),\s+\[\s+contentValue,\s+isEditing,\s+isSaving,\s+nameValue,\s+onClose,\s+onContentChange,\s+onNameChange,\s+onSave,\s+renderState,\s+styles,\s+visible,\s+\],\s+\);/);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalMobilePropsParts/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);

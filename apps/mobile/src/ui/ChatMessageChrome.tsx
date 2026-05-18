@@ -10580,8 +10580,47 @@ export function ChatConversationHomeQuickStartActionButton({
 export function ChatConversationHomePromptEditorModal(
   props: ChatConversationHomePromptEditorModalProps,
 ) {
-  const modalParts: ChatConversationHomePromptEditorModalParts =
-    createChatConversationHomePromptEditorModalMobilePropsParts(props);
+  const {
+    visible,
+    isEditing,
+    nameValue,
+    onNameChange,
+    contentValue,
+    onContentChange,
+    isSaving,
+    onClose,
+    onSave,
+    renderState,
+    styles,
+  } = props;
+  const modalParts = useMemo<ChatConversationHomePromptEditorModalParts>(
+    () => createChatConversationHomePromptEditorModalMobilePropsParts({
+      visible,
+      isEditing,
+      nameValue,
+      onNameChange,
+      contentValue,
+      onContentChange,
+      isSaving,
+      onClose,
+      onSave,
+      renderState,
+      styles,
+    }),
+    [
+      contentValue,
+      isEditing,
+      isSaving,
+      nameValue,
+      onClose,
+      onContentChange,
+      onNameChange,
+      onSave,
+      renderState,
+      styles,
+      visible,
+    ],
+  );
 
   return (
     <ChatConversationHomePromptEditorModalFrame
@@ -15086,8 +15125,50 @@ export function ChatMessageConnectionBannerRetryButton({
 export function ChatComposerRuntimeDock(
   props: ChatComposerRuntimeDockProps,
 ) {
-  const composerDockParts: ChatComposerRuntimeDockParts =
-    createChatComposerRuntimeDockMobilePropsParts(props);
+  const {
+    speechPreview,
+    pendingImagesRail,
+    handsFreeControls,
+    imageAttachmentControl,
+    textToSpeechControl,
+    editBeforeSendControl,
+    textEntry,
+    queueAction,
+    submitAction,
+    micButton,
+    micWrapperRef,
+    styles,
+  } = props;
+  const composerDockParts = useMemo<ChatComposerRuntimeDockParts>(
+    () => createChatComposerRuntimeDockMobilePropsParts({
+      speechPreview,
+      pendingImagesRail,
+      handsFreeControls,
+      imageAttachmentControl,
+      textToSpeechControl,
+      editBeforeSendControl,
+      textEntry,
+      queueAction,
+      submitAction,
+      micButton,
+      micWrapperRef,
+      styles,
+    }),
+    [
+      editBeforeSendControl,
+      handsFreeControls,
+      imageAttachmentControl,
+      micButton,
+      micWrapperRef,
+      pendingImagesRail,
+      queueAction,
+      speechPreview,
+      styles,
+      submitAction,
+      textEntry,
+      textToSpeechControl,
+    ],
+  );
 
   return (
     <ChatComposerInputDock
@@ -15150,8 +15231,50 @@ export function ChatComposerRuntimeDock(
 export function ChatComposerInputDock(
   props: ChatComposerInputDockProps,
 ) {
-  const inputDockParts: ChatComposerInputDockParts =
-    createChatComposerInputDockMobilePropsParts(props);
+  const {
+    speechPreview,
+    pendingImagesRail,
+    handsFreeControls,
+    imageAttachmentControl,
+    textToSpeechControl,
+    editBeforeSendControl,
+    textEntry,
+    queueAction,
+    submitAction,
+    micButton,
+    micWrapperRef,
+    styles,
+  } = props;
+  const inputDockParts = useMemo<ChatComposerInputDockParts>(
+    () => createChatComposerInputDockMobilePropsParts({
+      speechPreview,
+      pendingImagesRail,
+      handsFreeControls,
+      imageAttachmentControl,
+      textToSpeechControl,
+      editBeforeSendControl,
+      textEntry,
+      queueAction,
+      submitAction,
+      micButton,
+      micWrapperRef,
+      styles,
+    }),
+    [
+      editBeforeSendControl,
+      handsFreeControls,
+      imageAttachmentControl,
+      micButton,
+      micWrapperRef,
+      pendingImagesRail,
+      queueAction,
+      speechPreview,
+      styles,
+      submitAction,
+      textEntry,
+      textToSpeechControl,
+    ],
+  );
 
   return (
     <ChatComposerInputDockArea
