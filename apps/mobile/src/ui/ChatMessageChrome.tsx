@@ -4083,17 +4083,31 @@ type ChatMessageToolExecutionPayloadSectionParts =
     ChatMessageToolExecutionPayloadSectionStyles
   >;
 
-type ChatMessageToolExecutionPayloadSectionContentProps =
-  ChatMessageToolExecutionPayloadSectionParts['section']['content'];
+type ChatMessageToolExecutionPayloadSectionContainerProps = {
+  style: StyleProp<ViewStyle>;
+};
 
-type ChatMessageToolExecutionPayloadSectionHeaderContentProps =
-  ChatMessageToolExecutionPayloadSectionParts['section']['content']['headerRow']['content'];
+type ChatMessageToolExecutionPayloadSectionHeaderContentProps = {
+  payloadMeta: {
+    props: ChatMessageToolExecutionPayloadMetaProps;
+  };
+  copyButton: {
+    props: ChatMessageToolExecutionCopyButtonProps;
+  };
+};
+
+type ChatMessageToolExecutionPayloadSectionContentProps = {
+  headerRow: {
+    props: ChatMessageToolExecutionPayloadSectionContainerProps;
+    content: ChatMessageToolExecutionPayloadSectionHeaderContentProps;
+  };
+  payloadBlock: {
+    props: ChatMessageToolExecutionPayloadBlockProps;
+  };
+};
 
 type ChatMessageToolExecutionPayloadSectionViewProps =
-  (
-    | ChatMessageToolExecutionPayloadSectionParts['section']['props']
-    | ChatMessageToolExecutionPayloadSectionParts['section']['content']['headerRow']['props']
-  ) & {
+  ChatMessageToolExecutionPayloadSectionContainerProps & {
     children: ReactNode;
   };
 

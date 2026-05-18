@@ -5517,6 +5517,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const payloadSectionParts: ChatMessageToolExecutionPayloadSectionParts =\s+createChatRuntimeToolExecutionPayloadSectionMobilePropsParts\(\{\s+payloadRenderState,\s+compactText,\s+content,\s+isExpanded,\s+previewNumberOfLines,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadSectionHeaderContentProps = \{\s+payloadMeta: \{\s+props: ChatMessageToolExecutionPayloadMetaProps;\s+\};\s+copyButton: \{\s+props: ChatMessageToolExecutionCopyButtonProps;\s+\};\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadSectionContentProps = \{\s+headerRow: \{\s+props: ChatMessageToolExecutionPayloadSectionContainerProps;\s+content: ChatMessageToolExecutionPayloadSectionHeaderContentProps;\s+\};\s+payloadBlock: \{\s+props: ChatMessageToolExecutionPayloadBlockProps;\s+\};\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionPayloadSectionParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const payloadSectionContent = payloadSectionParts\.section\.content;/);
   assert.doesNotMatch(chatMessageChromeSource, /const payloadSectionHeaderContent = payloadSectionContent\.headerRow\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPayloadSectionView\s+\{\.\.\.payloadSectionParts\.section\.props\}/);
