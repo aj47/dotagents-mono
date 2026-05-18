@@ -332,10 +332,8 @@ import {
   type ChatRuntimeToolActivityGroupBoundaryMobileKind,
   type ChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
   type ChatRuntimeToolActivityGroupBoundaryMobilePropsPartsInput,
-  type ChatRuntimeToolActivityGroupFooterMobileStyleSlots as SharedChatMessageToolActivityGroupFooterStyleSlots,
   type ChatRuntimeToolActivityGroupFooterMobilePropsParts,
   type ChatRuntimeToolActivityGroupFooterMobilePropsPartsInput,
-  type ChatRuntimeToolActivityGroupToggleMobileStyleSlots as SharedChatMessageToolActivityGroupToggleStyleSlots,
   type ChatRuntimeToolActivityGroupToggleMobilePropsParts,
   type ChatRuntimeToolActivityGroupToggleMobilePropsPartsInput,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
@@ -450,7 +448,6 @@ import {
   type ChatMessageRuntimeToolApprovalStateMessageLike,
   type ChatMessageRuntimeToolCallExpansionState,
   type ChatMessageRuntimeTurnDurationStateInput,
-  type ChatMessageToolActivityGroupBoundaryStyleSlots as SharedChatMessageToolActivityGroupBoundaryStyleSlots,
   type ToolActivityGroupMobileRenderState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
@@ -2812,14 +2809,7 @@ type ChatMessageDelegationMorePreviewActionLabelProps =
     >;
 
 type ChatMessageToolActivityGroupToggleStyles =
-  SharedChatMessageToolActivityGroupToggleStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['surface']['boundary']['toggle'];
 
 type ChatMessageToolActivityGroupToggleProps =
   ChatRuntimeToolActivityGroupToggleMobilePropsPartsInput<
@@ -2889,11 +2879,7 @@ type ChatMessageToolActivityGroupPreviewLineProps =
   ChatMessageToolActivityGroupTextPart;
 
 type ChatMessageToolActivityGroupFooterStyles =
-  SharedChatMessageToolActivityGroupFooterStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['surface']['boundary']['footer'];
 
 type ChatMessageToolActivityGroupFooterProps =
   ChatRuntimeToolActivityGroupFooterMobilePropsPartsInput<
@@ -2922,10 +2908,7 @@ type ChatMessageToolActivityGroupFooterLabelProps =
 type ChatMessageToolActivityGroupBoundaryKind = ChatRuntimeToolActivityGroupBoundaryMobileKind;
 
 type ChatMessageToolActivityGroupBoundaryStyles =
-  SharedChatMessageToolActivityGroupBoundaryStyleSlots<
-    ChatMessageToolActivityGroupToggleStyles,
-    ChatMessageToolActivityGroupFooterStyles
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['surface']['boundary'];
 
 type ChatMessageToolActivityGroupBoundaryProps =
   ChatRuntimeToolActivityGroupBoundaryMobilePropsPartsInput<
