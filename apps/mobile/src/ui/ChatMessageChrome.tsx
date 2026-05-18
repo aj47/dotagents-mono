@@ -4290,16 +4290,49 @@ type ChatMessageToolExecutionCallDetailParts =
     ChatMessageToolExecutionCallDetailStyles
   >;
 
-type ChatMessageToolExecutionCallDetailContentProps =
-  ChatMessageToolExecutionCallDetailParts['callSection']['content'];
+type ChatMessageToolExecutionCallDetailInputSectionPart =
+  | {
+      shouldRender: true;
+      props: ChatMessageToolExecutionPayloadSectionProps;
+    }
+  | {
+      shouldRender: false;
+      props: null;
+    };
+
+type ChatMessageToolExecutionCallDetailResultSectionPart =
+  | {
+      shouldRender: true;
+      props: ChatMessageToolExecutionResultSectionProps;
+    }
+  | {
+      shouldRender: false;
+      props: null;
+    };
+
+type ChatMessageToolExecutionCallDetailPendingResultPart =
+  | {
+      shouldRender: true;
+      props: ChatMessageToolExecutionPendingResultProps;
+    }
+  | {
+      shouldRender: false;
+      props: null;
+    };
+
+type ChatMessageToolExecutionCallDetailContentProps = {
+  inputSection: ChatMessageToolExecutionCallDetailInputSectionPart;
+  resultSection: ChatMessageToolExecutionCallDetailResultSectionPart;
+  pendingResult: ChatMessageToolExecutionCallDetailPendingResultPart;
+};
 
 type ChatMessageToolExecutionCallDetailInputSectionProps = {
-  inputSection: ChatMessageToolExecutionCallDetailParts['callSection']['content']['inputSection'];
+  inputSection: ChatMessageToolExecutionCallDetailInputSectionPart;
 };
 
 type ChatMessageToolExecutionCallDetailResultStateProps = {
-  resultSection: ChatMessageToolExecutionCallDetailParts['callSection']['content']['resultSection'];
-  pendingResult: ChatMessageToolExecutionCallDetailParts['callSection']['content']['pendingResult'];
+  resultSection: ChatMessageToolExecutionCallDetailResultSectionPart;
+  pendingResult: ChatMessageToolExecutionCallDetailPendingResultPart;
 };
 
 type ChatMessageToolExecutionCallListRow = ChatRuntimeConversationToolExecutionDetailMobileRowState;
