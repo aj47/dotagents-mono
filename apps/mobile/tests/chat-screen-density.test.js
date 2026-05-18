@@ -7600,6 +7600,14 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatMessageConversationContentProps =\s+ChatRuntimeConversationContentMobilePropsPartsInput<\s+ChatMessageActionEntry,[\s\S]*?ChatMessageExpandedContentProps & \{[\s\S]*?bodyStyle: StyleProp<ViewStyle>;[\s\S]*?\},[\s\S]*?ChatMessageCollapsedPreviewProps,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationContentParts =\s+ChatRuntimeConversationContentMobilePropsParts<\s+ChatMessageActionEntry,[\s\S]*?ChatMessageExpandedContentProps & \{[\s\S]*?bodyStyle: StyleProp<ViewStyle>;[\s\S]*?\},[\s\S]*?ChatMessageCollapsedPreviewProps,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationContentParts =\s+ChatRuntimeConversationContentMobilePropsParts<\s+ChatMessageActionEntry,\s+ChatMessageConversationContentProps\['expanded'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageThreadBodyExpandedContentProps =\s+Omit<ChatMessageExpandedContentProps, 'streamingStyles'>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageThreadBodyCollapsedPreviewProps =\s+Omit<ChatMessageCollapsedPreviewProps, 'style' \| 'pressedStyle' \| 'textStyle'>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageThreadBodyContentProps =\s+Omit<ChatMessageConversationContentProps, 'rowStyle' \| 'expanded' \| 'collapsed'>[\s\S]*?expanded: ChatMessageThreadBodyExpandedContentProps;[\s\S]*?collapsed: ChatMessageThreadBodyCollapsedPreviewProps;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationBodyProps = \{[\s\S]*?content: ChatMessageThreadBodyContentProps;[\s\S]*?toolExecutionStack: Omit<ChatMessageToolExecutionStackProps, 'styles'>;[\s\S]*?standaloneActions: Omit<ChatMessageStandaloneActionsProps, 'rowStyle'>;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageConversationContentProps\['expanded'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageConversationContentProps\['collapsed'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageThreadBodyContentProps\['expanded'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps\['conversation'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationContentProps = \{[\s\S]*?contentDisplayMode: ChatRuntimeConversationContentMobileDisplayMode;[\s\S]*?collapsed: ChatMessageCollapsedPreviewProps;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationContentParts = ReturnType<typeof createChatRuntimeConversationContentMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationContentMobilePropsPartsInput</);

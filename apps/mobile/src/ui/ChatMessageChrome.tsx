@@ -5157,6 +5157,12 @@ type ChatMessageConversationContentParts =
     StyleProp<ViewStyle>
   >;
 
+type ChatMessageThreadBodyExpandedContentProps =
+  Omit<ChatMessageExpandedContentProps, 'streamingStyles'>;
+
+type ChatMessageThreadBodyCollapsedPreviewProps =
+  Omit<ChatMessageCollapsedPreviewProps, 'style' | 'pressedStyle' | 'textStyle'>;
+
 type ChatComposerStyleSlots =
   SharedChatComposerStyleSlots<
     ChatComposerSpeechPreviewStyles,
@@ -5317,14 +5323,20 @@ type ChatMessageToolActivityGroupThreadSurfaceStyleSlots =
 type ChatMessageThreadBodyContentProps =
   Omit<ChatMessageConversationContentProps, 'rowStyle' | 'expanded' | 'collapsed'>
   & {
-    expanded: Omit<ChatMessageConversationContentProps['expanded'], 'bodyStyle' | 'streamingStyles'>;
-    collapsed: Omit<ChatMessageConversationContentProps['collapsed'], 'style' | 'pressedStyle' | 'textStyle'>;
+    expanded: ChatMessageThreadBodyExpandedContentProps;
+    collapsed: ChatMessageThreadBodyCollapsedPreviewProps;
   };
 
 type ChatMessageExpandedContentPropsInput = Pick<
-  ChatMessageThreadBodyContentProps['expanded'],
+  ChatMessageThreadBodyExpandedContentProps,
   'streamingRenderState' | 'markdownContent' | 'assetBaseUrl' | 'assetAuthToken' | 'spinnerSource'
 >;
+
+type ChatMessageConversationBodyProps = {
+  content: ChatMessageThreadBodyContentProps;
+  toolExecutionStack: Omit<ChatMessageToolExecutionStackProps, 'styles'>;
+  standaloneActions: Omit<ChatMessageStandaloneActionsProps, 'rowStyle'>;
+};
 
 type ChatMessageThreadBodyProps = {
   bodyDisplayMode: ChatRuntimeConversationThreadBodyMobileDisplayMode;
@@ -5333,11 +5345,7 @@ type ChatMessageThreadBodyProps = {
   delegationCard?: Omit<ChatMessageDelegationCardProps, 'styles'> | null;
   toolApproval?: Omit<ChatMessageToolApprovalProps, 'styles'> | null;
   inlineActivity?: Omit<ChatMessageInlineActivityProps, 'style' | 'spinnerStyle'> | null;
-  conversation: {
-    content: ChatMessageThreadBodyContentProps;
-    toolExecutionStack: Omit<ChatMessageToolExecutionStackProps, 'styles'>;
-    standaloneActions: Omit<ChatMessageStandaloneActionsProps, 'rowStyle'>;
-  };
+  conversation: ChatMessageConversationBodyProps;
 };
 
 type ChatMessageThreadBodyParts =
@@ -5363,8 +5371,6 @@ type ChatMessageThreadBodyParts =
     ChatMessageThreadBodyStyleSlots['toolExecutionStack'],
     ChatMessageThreadBodyStyleSlots['standaloneActions']['rowStyle']
   >;
-
-type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
 
 type ChatMessageConversationBodyPropsInput = {
   surfaceToneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot;
