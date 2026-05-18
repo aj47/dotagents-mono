@@ -1356,7 +1356,7 @@ type ChatMessageActionButtonSpec =
   >;
 
 type ChatMessageSpeechActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
-  renderState: ChatRuntimeConversationMessageActionsMobileRenderState['speech'];
+  renderState: ChatMessageActionButtonRenderState;
 };
 
 type ChatMessageBranchActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
@@ -1364,7 +1364,7 @@ type ChatMessageBranchActionSpec = Omit<ChatMessageActionButtonSpec, 'renderStat
 };
 
 type ChatMessageCopyActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
-  renderState: ChatRuntimeConversationMessageActionsMobileRenderState['copy'];
+  renderState: ChatMessageActionButtonRenderState;
 };
 
 type ChatMessageBranchActionSpecInput =

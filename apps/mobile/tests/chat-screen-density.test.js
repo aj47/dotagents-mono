@@ -7634,6 +7634,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatMessageActionComponentMap = ChatMessageActionSlotRenderMap<ReactNode>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionEntry = ChatMessageActionSlotRenderEntry<ReactNode>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListProps =\s+ChatRuntimeMessageActionSlotListMobilePropsPartsInput</);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatRuntime[A-Za-z0-9]+MobileRenderState\[[^\n]+\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageSpeechActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & \{\s+renderState: ChatMessageActionButtonRenderState;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageCopyActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & \{\s+renderState: ChatMessageActionButtonRenderState;\s+\};/);
   assert.match(sessionPresentationSource, /entries: readonly TEntry\[\]/);
   assert.doesNotMatch(chatMessageChromeSource, /components: Record<ChatMessageActionSlot, ReactNode>;/);
   assert.match(chatMessageChromeSource, /turnDuration: \(\) => \([\s\S]*?<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}/);
