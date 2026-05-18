@@ -153,49 +153,54 @@ test("uses shared mobile icons for session list header actions", () => {
 })
 
 test("shares the session list header agent selector chip with the chat runtime header presentation", () => {
-  assert.match(screenSource, /getChatRuntimeCopyState,/)
-  assert.match(
-    screenSource,
-    /formatChatRuntimeAgentSelectorAccessibilityLabel,/,
-  )
-  assert.match(screenSource, /getChatRuntimeAgentSelectorMobileIconState,/)
+  assert.match(screenSource, /createChatRuntimeHeaderAgentSelectorMobilePropsParts,/)
   assert.match(screenSource, /getChatRuntimeAgentSelectorMobileColors,/)
+  assert.match(screenSource, /getChatRuntimeAgentSelectorMobileRenderState,/)
+  assert.match(screenSource, /getChatRuntimeCurrentAgentLabel,/)
   assert.match(screenSource, /getChatRuntimeHeaderMobileSurfaceState,/)
-  assert.match(
-    screenSource,
-    /const chatRuntimeCopy = getChatRuntimeCopyState\(\)/,
-  )
   assert.match(
     screenSource,
     /const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState\(\)/,
   )
   assert.match(
     screenSource,
-    /const headerAgentSelectorIcon = getChatRuntimeAgentSelectorMobileIconState\(\)/,
+    /const currentAgentLabel = getChatRuntimeCurrentAgentLabel\(currentProfile\?\.name\)/,
   )
   assert.match(
     screenSource,
-    /const currentAgentLabel =[\s\S]*?currentProfile\?\.name \|\| chatRuntimeCopy\.header\.defaultAgentLabel/,
+    /const handleOpenAgentSelector = useCallback\(\(\) => \{[\s\S]*?setAgentSelectorVisible\(true\)[\s\S]*?\}, \[\]\)/,
   )
   assert.match(
     screenSource,
-    /accessibilityLabel=\{formatChatRuntimeAgentSelectorAccessibilityLabel\([\s\S]*?currentAgentLabel,[\s\S]*?\)\}/,
+    /const headerAgentSelectorRenderState = useMemo\([\s\S]*?getChatRuntimeAgentSelectorMobileRenderState\(\{[\s\S]*?agentLabel: currentAgentLabel,[\s\S]*?colors: theme\.colors,/,
   )
   assert.match(
     screenSource,
-    /accessibilityHint=\{[\s\S]*?chatRuntimeCopy\.header\.agentSelectorAccessibilityHint[\s\S]*?\}/,
+    /const headerAgentSelectorParts = useMemo\([\s\S]*?createChatRuntimeHeaderAgentSelectorMobilePropsParts\(\{[\s\S]*?renderState: headerAgentSelectorRenderState,[\s\S]*?onPress: handleOpenAgentSelector,[\s\S]*?labelNumberOfLines:[\s\S]*?mobileHeaderSurface\.agentSelectorText\.numberOfLines,/,
   )
-  assert.match(screenSource, /style=\{styles\.headerTitleAgentSelectorButton\}/)
-  assert.match(screenSource, /style=\{styles\.headerAgentSelectorChip\}/)
   assert.match(
     screenSource,
-    /style=\{styles\.headerAgentSelectorText\}[\s\S]*?numberOfLines=\{[\s\S]*?mobileHeaderSurface\.agentSelectorText\.numberOfLines[\s\S]*?\}/,
+    /button: styles\.headerTitleAgentSelectorButton,[\s\S]*?chip: styles\.headerAgentSelectorChip,[\s\S]*?label: styles\.headerAgentSelectorText,/,
   )
-  assert.match(screenSource, /name=\{headerAgentSelectorIcon\.name\}/)
-  assert.match(screenSource, /size=\{headerAgentSelectorIcon\.size\}/)
   assert.match(
     screenSource,
-    /color=\{headerAgentSelectorColors\.icon\.color\}/,
+    /<TouchableOpacity[\s\S]*?\{\.\.\.headerAgentSelectorParts\.touchable\.props\}/,
+  )
+  assert.match(
+    screenSource,
+    /<View[\s\S]*?\{\.\.\.headerAgentSelectorParts\.touchable\.content\.chip\.props\}/,
+  )
+  assert.match(
+    screenSource,
+    /\{\.\.\.headerAgentSelectorParts\.touchable\.content\.chip\.content\.label\.props\.props\}/,
+  )
+  assert.match(
+    screenSource,
+    /\{headerAgentSelectorParts\.touchable\.content\.chip\.content\.label\.props\.text\}/,
+  )
+  assert.match(
+    screenSource,
+    /\{\.\.\.headerAgentSelectorParts\.touchable\.content\.chip\.content\.icon\.props\}/,
   )
   assert.match(
     screenSource,
@@ -225,9 +230,28 @@ test("shares the session list header agent selector chip with the chat runtime h
     screenSource,
     /headerAgentSelectorText:\s*\{[\s\S]*?fontSize:\s*headerSurface\.agentSelectorText\.fontSize,[\s\S]*?color:\s*headerAgentSelectorColors\.text\.color/,
   )
+  assert.doesNotMatch(screenSource, /getChatRuntimeCopyState/)
+  assert.doesNotMatch(
+    screenSource,
+    /formatChatRuntimeAgentSelectorAccessibilityLabel/,
+  )
+  assert.doesNotMatch(screenSource, /getChatRuntimeAgentSelectorMobileIconState/)
+  assert.doesNotMatch(screenSource, /chatRuntimeCopy\.header/)
+  assert.doesNotMatch(
+    screenSource,
+    /currentProfile\?\.name \|\| chatRuntimeCopy\.header\.defaultAgentLabel/,
+  )
+  assert.doesNotMatch(screenSource, /style=\{styles\.headerTitleAgentSelectorButton\}/)
+  assert.doesNotMatch(screenSource, /style=\{styles\.headerAgentSelectorChip\}/)
   assert.doesNotMatch(
     screenSource,
     /style=\{styles\.headerAgentSelectorText\} numberOfLines=\{1\}/,
+  )
+  assert.doesNotMatch(screenSource, /name=\{headerAgentSelectorIcon\.name\}/)
+  assert.doesNotMatch(screenSource, /size=\{headerAgentSelectorIcon\.size\}/)
+  assert.doesNotMatch(
+    screenSource,
+    /color=\{headerAgentSelectorColors\.icon\.color\}/,
   )
   assert.doesNotMatch(
     screenSource,

@@ -78,17 +78,15 @@ import {
   getAppShellHeaderActionMobileIconState,
 } from "@dotagents/shared/app-shell"
 import {
-  formatChatRuntimeAgentSelectorAccessibilityLabel,
+  createChatRuntimeHeaderAgentSelectorMobilePropsParts,
   getChatRuntimeAgentSelectorMobileColors,
-  getChatRuntimeCopyState,
-  getChatRuntimeAgentSelectorMobileIconState,
+  getChatRuntimeAgentSelectorMobileRenderState,
+  getChatRuntimeCurrentAgentLabel,
   getChatRuntimeHeaderMobileSurfaceState,
   type ChatRuntimeAgentSelectorMobileColors,
 } from "@dotagents/shared/session-presentation"
 
-const chatRuntimeCopy = getChatRuntimeCopyState()
 const mobileHeaderSurface = getChatRuntimeHeaderMobileSurfaceState()
-const headerAgentSelectorIcon = getChatRuntimeAgentSelectorMobileIconState()
 const openSplitViewIcon =
   getAppShellHeaderActionMobileIconState("openSplitView")
 const openSettingsIcon = getAppShellHeaderActionMobileIconState("openSettings")
@@ -139,8 +137,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const connectionManager = useConnectionManager()
   const { connectionInfo, isInitialized } = useTunnelConnection()
   const { currentProfile } = useProfile()
-  const currentAgentLabel =
-    currentProfile?.name || chatRuntimeCopy.header.defaultAgentLabel
+  const currentAgentLabel = getChatRuntimeCurrentAgentLabel(currentProfile?.name)
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [sessionListMode, setSessionListMode] =
@@ -885,36 +882,54 @@ export default function SessionListScreen({ navigation }: Props) {
     return undefined
   }, [config.baseUrl, config.apiKey])
 
+  const handleOpenAgentSelector = useCallback(() => {
+    setAgentSelectorVisible(true)
+  }, [])
+
+  const headerAgentSelectorRenderState = useMemo(
+    () =>
+      getChatRuntimeAgentSelectorMobileRenderState({
+        agentLabel: currentAgentLabel,
+        colors: theme.colors,
+      }),
+    [currentAgentLabel, theme.colors],
+  )
+
+  const headerAgentSelectorParts = useMemo(
+    () =>
+      createChatRuntimeHeaderAgentSelectorMobilePropsParts({
+        renderState: headerAgentSelectorRenderState,
+        onPress: handleOpenAgentSelector,
+        labelNumberOfLines:
+          mobileHeaderSurface.agentSelectorText.numberOfLines,
+        styles: {
+          button: styles.headerTitleAgentSelectorButton,
+          chip: styles.headerAgentSelectorChip,
+          label: styles.headerAgentSelectorText,
+        },
+      }),
+    [handleOpenAgentSelector, headerAgentSelectorRenderState, styles],
+  )
+
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
         <TouchableOpacity
-          style={styles.headerTitleAgentSelectorButton}
-          onPress={() => setAgentSelectorVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel={formatChatRuntimeAgentSelectorAccessibilityLabel(
-            currentAgentLabel,
-          )}
-          accessibilityHint={
-            chatRuntimeCopy.header.agentSelectorAccessibilityHint
-          }
+          {...headerAgentSelectorParts.touchable.props}
         >
           <Text style={styles.headerTitleText}>
             {APP_SHELL_MOBILE_ROUTE_TITLES.Sessions}
           </Text>
-          <View style={styles.headerAgentSelectorChip}>
+          <View
+            {...headerAgentSelectorParts.touchable.content.chip.props}
+          >
             <Text
-              style={styles.headerAgentSelectorText}
-              numberOfLines={
-                mobileHeaderSurface.agentSelectorText.numberOfLines
-              }
+              {...headerAgentSelectorParts.touchable.content.chip.content.label.props.props}
             >
-              {currentAgentLabel}
+              {headerAgentSelectorParts.touchable.content.chip.content.label.props.text}
             </Text>
             <Ionicons
-              name={headerAgentSelectorIcon.name}
-              size={headerAgentSelectorIcon.size}
-              color={headerAgentSelectorColors.icon.color}
+              {...headerAgentSelectorParts.touchable.content.chip.content.icon.props}
             />
           </View>
         </TouchableOpacity>
@@ -976,11 +991,9 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation,
     styles,
     headerActionIconColors,
-    headerAgentSelectorColors,
+    headerAgentSelectorParts,
     connectionInfo.state,
     connectionInfo.retryCount,
-    currentAgentLabel,
-    setAgentSelectorVisible,
     handleCreateSession,
     handleOpenSettings,
     handleOpenSplitView,
