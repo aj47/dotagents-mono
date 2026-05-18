@@ -252,7 +252,6 @@ import {
   type ChatRuntimeMessageHistoryBannerMobilePropsPartsInput,
   type ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots as SharedChatMessageHistoryBannerStyleSlots,
   type ChatComposerHandsFreeControlsMobileStyleSlots as SharedChatComposerHandsFreeControlsStyleSlots,
-  type ChatComposerInputDockMobileStyleSlots as SharedChatComposerInputDockStyleSlots,
   type ChatComposerLabeledActionButtonMobileStyleSlots as SharedChatComposerLabeledActionButtonStyleSlots,
   type ChatComposerMicButtonMobileStyleSlots as SharedChatComposerMicButtonStyleSlots,
   type ChatComposerPendingImagesRailMobileStyleSlots as SharedChatComposerPendingImagesRailStyleSlots,
@@ -5868,11 +5867,7 @@ type ChatComposerTextEntryVoiceStatusLiveRegionProps = {
 };
 
 type ChatComposerInputDockStyles =
-  SharedChatComposerInputDockStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer']['inputDock'];
 
 type ChatComposerInputDockProps = {
   speechPreview: ReactNode;

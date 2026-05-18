@@ -3205,7 +3205,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonMobileStyleSlots as SharedChatComposerLabeledActionButtonStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerMicButtonMobileStyleSlots as SharedChatComposerMicButtonStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerTextEntryMobileStyleSlots as SharedChatComposerTextEntryStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatComposerInputDockMobileStyleSlots as SharedChatComposerInputDockStyleSlots,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerInputDockMobileStyleSlots as SharedChatComposerInputDockStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewStyles =\s+SharedChatComposerSpeechPreviewStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatComposerPendingImagesRailStyles =\s+SharedChatComposerPendingImagesRailStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ImageStyle>,\s+StyleProp<ViewStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayStyles =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['voiceOverlay'\];/);
@@ -3225,7 +3225,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonStyles =\s+SharedChatComposerLabeledActionButtonStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatComposerMicButtonStyles =\s+SharedChatComposerMicButtonStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatComposerTextEntryStyles =\s+SharedChatComposerTextEntryStyleSlots<\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
-  assert.match(chatMessageChromeSource, /type ChatComposerInputDockStyles =\s+SharedChatComposerInputDockStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockStyles =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['composer'\]\['inputDock'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerSpeechPreviewStyles = \{\s+box: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerPendingImagesRailStyles = \{\s+row: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerVoiceOverlayStyles = \{\s+overlay: StyleProp<ViewStyle>;/);
