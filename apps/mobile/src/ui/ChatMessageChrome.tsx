@@ -2408,18 +2408,48 @@ type ChatMessageDelegationLiveTextProps = {
   liveText: ChatMessageDelegationLiveTextPart;
 };
 
-type ChatMessageDelegationSubtitleProps =
-  ChatMessageDelegationCardParts['card']['content']['subtitle']['props'];
-
-type ChatMessageDelegationSubtitleBlockProps = {
-  subtitle: ChatMessageDelegationCardParts['card']['content']['subtitle'];
+type ChatMessageDelegationSubtitlePart = {
+  props: {
+    style: ChatMessageDelegationCardStyles['subtitle'];
+    numberOfLines: number;
+  };
+  text: string;
 };
 
-type ChatMessageDelegationMetaRowProps =
-  ChatMessageDelegationCardParts['card']['content']['meta']['props'];
+type ChatMessageDelegationSubtitleSlot = {
+  shouldRender: boolean;
+  props: ChatMessageDelegationSubtitlePart;
+};
 
-type ChatMessageDelegationMetaItemProps =
-  ChatMessageDelegationMetaRowProps['items'][number]['props'];
+type ChatMessageDelegationSubtitleProps = ChatMessageDelegationSubtitlePart;
+
+type ChatMessageDelegationSubtitleBlockProps = {
+  subtitle: ChatMessageDelegationSubtitleSlot;
+};
+
+type ChatMessageDelegationMetaItemPart = {
+  props: {
+    style: ChatMessageDelegationCardStyles['metaText'];
+    numberOfLines: number;
+  };
+  text: string;
+};
+
+type ChatMessageDelegationMetaRowItemPart = {
+  key: string;
+  props: ChatMessageDelegationMetaItemPart;
+};
+
+type ChatMessageDelegationMetaRowProps = {
+  container: {
+    props: {
+      style: ChatMessageDelegationCardStyles['metaRow'];
+    };
+  };
+  items: ChatMessageDelegationMetaRowItemPart[];
+};
+
+type ChatMessageDelegationMetaItemProps = ChatMessageDelegationMetaItemPart;
 
 type ChatMessageDelegationConversationPreviewProps =
   ChatMessageDelegationCardParts['card']['content']['conversationPreview']['props'];

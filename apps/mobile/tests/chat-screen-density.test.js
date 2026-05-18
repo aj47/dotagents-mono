@@ -1395,6 +1395,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(delegationCardComponentSource, /<ChatMessageDelegationSubtitle\s+\{\.\.\.cardContent\.subtitle\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationSubtitle[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageDelegationToolPreviewLabel/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationSubtitle[\s\S]*?(style=\{style\}|numberOfLines=\{numberOfLines\})[\s\S]*?export function ChatMessageDelegationToolPreviewLabel/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationSubtitlePart = \{[\s\S]*?style: ChatMessageDelegationCardStyles\['subtitle'\];[\s\S]*?numberOfLines: number;[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationSubtitleProps =\s+ChatMessageDelegationCardParts\['card'\]\['content'\]\['subtitle'\]\['props'\]/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{delegationCardParts\.subtitle\.numberOfLines\}/);
   assert.match(sessionPresentationSource, /statusStyles\.chip/);
   assert.match(sessionPresentationSource, /statusStyles\.text/);
@@ -1422,6 +1424,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /<ChatMessageDelegationMetaItem\s+key=\{metaItem\.key\}\s+\{\.\.\.metaItem\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationMetaItem[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageDelegationMetaRow/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationMetaItem[\s\S]*?(style=\{style\}|numberOfLines=\{numberOfLines\})[\s\S]*?export function ChatMessageDelegationMetaRow/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationMetaItemPart = \{[\s\S]*?style: ChatMessageDelegationCardStyles\['metaText'\];[\s\S]*?numberOfLines: number;[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationMetaRowProps = \{[\s\S]*?style: ChatMessageDelegationCardStyles\['metaRow'\];[\s\S]*?items: ChatMessageDelegationMetaRowItemPart\[\];[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationMetaItemProps =\s+ChatMessageDelegationMetaRowProps\['items'\]\[number\]\['props'\]/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{metaItem\.numberOfLines\}/);
   assert.match(sessionPresentationSource, /items: metaItems\.map\(\(item\) => \(\{[\s\S]*?key: item\.key,[\s\S]*?props: \{[\s\S]*?props: \{[\s\S]*?numberOfLines: surface\.metaNumberOfLines,/);
   assert.doesNotMatch(screenSource, /const delegationMessageCountLabel = delegationMessageCount > 0\s+\? formatChatRuntimeDelegationMessageCount\(delegationMessageCount\)\s+: null;/);
