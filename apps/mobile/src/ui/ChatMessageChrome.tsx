@@ -10900,33 +10900,11 @@ export function ChatConversationHomeQuickStartActionButton({
   );
 }
 
-export function ChatConversationHomePromptEditorModal({
-  visible,
-  isEditing,
-  nameValue,
-  onNameChange,
-  contentValue,
-  onContentChange,
-  isSaving,
-  onClose,
-  onSave,
-  renderState,
-  styles,
-}: ChatConversationHomePromptEditorModalProps) {
+export function ChatConversationHomePromptEditorModal(
+  props: ChatConversationHomePromptEditorModalProps,
+) {
   const modalParts: ChatConversationHomePromptEditorModalParts =
-    createChatConversationHomePromptEditorModalMobilePropsParts({
-      visible,
-      isEditing,
-      nameValue,
-      onNameChange,
-      contentValue,
-      onContentChange,
-      isSaving,
-      onClose,
-      onSave,
-      renderState,
-      styles,
-    });
+    createChatConversationHomePromptEditorModalMobilePropsParts(props);
 
   return (
     <ChatConversationHomePromptEditorModalFrame

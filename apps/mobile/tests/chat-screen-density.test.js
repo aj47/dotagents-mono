@@ -9536,7 +9536,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalActionButtonProps = \{\s+button: ChatConversationHomePromptEditorModalTouchablePart;\s+label: ChatConversationHomePromptEditorModalTextPart;\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatConversationHomePromptEditorModalParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /Pick<\s*ChatConversationHomePromptEditorModalParts,/);
-  assert.match(chatMessageChromeSource, /const modalParts: ChatConversationHomePromptEditorModalParts =\s+createChatConversationHomePromptEditorModalMobilePropsParts\(\{/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModal\(\s+props: ChatConversationHomePromptEditorModalProps,\s+\)/);
+  assert.match(chatMessageChromeSource, /const modalParts: ChatConversationHomePromptEditorModalParts =\s+createChatConversationHomePromptEditorModalMobilePropsParts\(props\);/);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalMobilePropsParts/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptEditorModalChromeProps,/);
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
