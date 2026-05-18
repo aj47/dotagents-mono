@@ -276,6 +276,7 @@ import {
   type ChatRuntimeConversationCollapsedPreviewMobilePropsParts,
   type ChatRuntimeConversationContentMobileDisplayMode,
   type ChatRuntimeConversationExpandedContentMobilePropsParts,
+  type ChatRuntimeConversationContentMobilePropsParts,
   type ChatRuntimeConversationDelegationExpansionState,
   type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
@@ -4571,6 +4572,14 @@ type ChatMessageConversationContentProps = {
   };
   collapsed: ChatMessageCollapsedPreviewProps;
 };
+
+type ChatMessageConversationContentParts =
+  ChatRuntimeConversationContentMobilePropsParts<
+    ChatMessageActionEntry,
+    ChatMessageConversationContentProps['expanded'],
+    ChatMessageConversationContentProps['collapsed'],
+    ChatMessageConversationContentProps['rowStyle']
+  >;
 
 type ChatComposerStyleSlots = {
   speechPreview: ChatComposerSpeechPreviewStyles;
@@ -14186,12 +14195,13 @@ export function ChatMessageInlineActivity({
   style,
   spinnerStyle,
 }: ChatMessageInlineActivityProps) {
-  const inlineActivityParts = createChatRuntimeInlineActivityMobilePropsParts({
-    renderState,
-    spinnerSource,
-    style,
-    spinnerStyle,
-  });
+  const inlineActivityParts: ChatMessageInlineActivityParts =
+    createChatRuntimeInlineActivityMobilePropsParts({
+      renderState,
+      spinnerSource,
+      style,
+      spinnerStyle,
+    });
 
   if (!inlineActivityParts.container.shouldRender) return null;
 
@@ -14314,14 +14324,15 @@ export function ChatMessageExpandedContent({
   spinnerSource,
   streamingStyles,
 }: ChatMessageExpandedContentProps) {
-  const expandedContentParts = createChatRuntimeConversationExpandedContentMobilePropsParts({
-    streamingRenderState,
-    markdownContent,
-    assetBaseUrl,
-    assetAuthToken,
-    spinnerSource,
-    streamingStyles,
-  });
+  const expandedContentParts: ChatMessageExpandedContentParts =
+    createChatRuntimeConversationExpandedContentMobilePropsParts({
+      streamingRenderState,
+      markdownContent,
+      assetBaseUrl,
+      assetAuthToken,
+      spinnerSource,
+      streamingStyles,
+    });
   const expandedStreamingContent = expandedContentParts.streamingContent;
 
   if (!expandedStreamingContent.shouldRender) {
@@ -14430,14 +14441,15 @@ export function ChatMessageCollapsedPreview({
   pressedStyle,
   textStyle,
 }: ChatMessageCollapsedPreviewProps) {
-  const collapsedPreviewParts = createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
-    renderState,
-    actionState,
-    onPress,
-    style,
-    pressedStyle,
-    textStyle,
-  });
+  const collapsedPreviewParts: ChatMessageCollapsedPreviewParts =
+    createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
+      renderState,
+      actionState,
+      onPress,
+      style,
+      pressedStyle,
+      textStyle,
+    });
 
   return (
     <Pressable
@@ -14476,14 +14488,15 @@ export function ChatMessageConversationContent({
   expanded,
   collapsed,
 }: ChatMessageConversationContentProps) {
-  const conversationContentParts = createChatRuntimeConversationContentMobilePropsParts({
-    contentDisplayMode,
-    rowStyle,
-    shouldRenderActionSlots,
-    entries,
-    expanded,
-    collapsed,
-  });
+  const conversationContentParts: ChatMessageConversationContentParts =
+    createChatRuntimeConversationContentMobilePropsParts({
+      contentDisplayMode,
+      rowStyle,
+      shouldRenderActionSlots,
+      entries,
+      expanded,
+      collapsed,
+    });
 
   if (conversationContentParts.expandedContent.shouldRender) {
     return (
@@ -14519,12 +14532,13 @@ export function ChatMessageContentRow({
   rowStyle,
   bodyStyle,
 }: ChatMessageContentRowProps) {
-  const contentRowParts = createChatRuntimeMessageContentRowMobilePropsParts({
-    shouldRenderActionSlots,
-    entries,
-    rowStyle,
-    bodyStyle,
-  });
+  const contentRowParts: ChatMessageContentRowParts =
+    createChatRuntimeMessageContentRowMobilePropsParts({
+      shouldRenderActionSlots,
+      entries,
+      rowStyle,
+      bodyStyle,
+    });
 
   return (
     <ChatMessageContentRowContainer
