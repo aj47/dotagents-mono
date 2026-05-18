@@ -6238,7 +6238,10 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatMessageActionStyleSlots\(/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatMessageThreadBodyStyleSlots</);
   assert.match(sessionPresentationSource, /export function createChatMessageConversationThreadStyleSlotsFromStyleSource/);
+  assert.doesNotMatch(sessionPresentationSource, /TThreadBodyStyleSlots/);
+  assert.doesNotMatch(sessionPresentationSource, /as unknown as TThreadBodyStyleSlots/);
   assert.match(sessionPresentationSource, /threadSurfaceStyles: createChatMessageToolActivityGroupThreadSurfaceStyleSlots\(\{[\s\S]*?surfaceStyle: styles\.msg,[\s\S]*?boundaryStyles: createChatMessageToolActivityGroupBoundaryStyles\(\{/);
+  assert.match(sessionPresentationSource, /threadBodyStyles: createChatMessageThreadBodyStyleSlots\(styles\),/);
   assert.match(sessionPresentationSource, /speechStyles: \{\s+style: styles\.speakButton,\s+activeStyle: styles\.speakButtonActive,\s+pressedStyle: styles\.speakButtonPressed,/);
   assert.match(sessionPresentationSource, /branchStyles: \{\s+style: styles\.messageBranchButton,\s+pressedStyle: styles\.messageBranchButtonPressed,\s+disabledStyle: styles\.messageBranchButtonDisabled,/);
   assert.match(sessionPresentationSource, /copyStyles: \{\s+style: styles\.messageCopyButton,\s+activeStyle: styles\.messageCopyButtonCopied,\s+pressedStyle: styles\.messageCopyButtonPressed,/);

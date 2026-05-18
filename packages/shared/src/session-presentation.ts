@@ -28862,10 +28862,9 @@ type ChatMessageThreadBodyStyleSlots<TStyles extends ChatMessageThreadBodyStyleS
 
 export function createChatMessageThreadBodyStyleSlots<
   TStyles extends ChatMessageThreadBodyStyleSource,
-  TThreadBodyStyleSlots = ChatMessageThreadBodyStyleSlots<TStyles>,
 >(
   styles: TStyles,
-): TThreadBodyStyleSlots {
+): ChatMessageThreadBodyStyleSlots<TStyles> {
   return {
     retryStatus: {
       card: styles.retryStatusCard,
@@ -29060,7 +29059,7 @@ export function createChatMessageThreadBodyStyleSlots<
     standaloneActions: {
       rowStyle: styles.messageActionsRow,
     },
-  } as unknown as TThreadBodyStyleSlots
+  }
 }
 
 export function createChatMessageToolActivityGroupBoundaryStyles<
@@ -29269,7 +29268,6 @@ type ChatMessageConversationThreadStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationThreadStyleSource,
   TToneStyleSlot,
   TToneStyle,
-  TThreadBodyStyleSlots = ChatMessageThreadBodyStyleSlots<TStyles>,
 > = {
   runtimeThread: {
     surface: {
@@ -29277,7 +29275,7 @@ type ChatMessageConversationThreadStyleSlotsFromStyleSource<
       boundary: ChatMessageToolActivityGroupBoundaryStylesFromStyleSource<TStyles>
       getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
     }
-    body: TThreadBodyStyleSlots
+    body: ChatMessageThreadBodyStyleSlots<TStyles>
   }
   actionSet: ChatMessageActionStylesFromStyleSource<TStyles>
 }
@@ -29286,7 +29284,6 @@ export function createChatMessageConversationThreadStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationThreadStyleSource,
   TToneStyleSlot,
   TToneStyle,
-  TThreadBodyStyleSlots = ChatMessageThreadBodyStyleSlots<TStyles>,
 >({
   styles,
   getToneStyle,
@@ -29296,8 +29293,7 @@ export function createChatMessageConversationThreadStyleSlotsFromStyleSource<
 }): ChatMessageConversationThreadStyleSlotsFromStyleSource<
   TStyles,
   TToneStyleSlot,
-  TToneStyle,
-  TThreadBodyStyleSlots
+  TToneStyle
 > {
   return createChatMessageConversationThreadStyleSlots({
     threadSurfaceStyles: createChatMessageToolActivityGroupThreadSurfaceStyleSlots({
@@ -29315,10 +29311,7 @@ export function createChatMessageConversationThreadStyleSlotsFromStyleSource<
       }),
       getToneStyle,
     }),
-    threadBodyStyles: createChatMessageThreadBodyStyleSlots<
-      TStyles,
-      TThreadBodyStyleSlots
-    >(styles),
+    threadBodyStyles: createChatMessageThreadBodyStyleSlots(styles),
     actionStyles: createChatMessageActionStyleSlots({
       turnDurationStyles: {
         style: styles.messageTurnDurationBadge,
