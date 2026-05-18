@@ -4616,6 +4616,14 @@ test('derives tool execution card status from displayed non-meta tool entries', 
     assert.match(chatMessageChromeSource, new RegExp(`type ${localAlias} =\\s+${sharedContract}<`));
     assert.doesNotMatch(chatMessageChromeSource, new RegExp(`type ${localAlias} = ReturnType<typeof ${factoryName}`));
   }
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionExpandedGroupProps =\s+ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput<\s+ToolExecutionDetailMobileCollapseControlRenderState,[\s\S]*?ToolExecutionDetailMobileCollapseControlRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ReactNode,[\s\S]*?ChatMessageToolExecutionExpandedGroupStyles\s+> & \{\s+children: ReactNode;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionExpandedGroupProps = \{[\s\S]*?topCollapseRenderState: ToolExecutionDetailMobileCollapseControlRenderState;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput</);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolExecutionPanelMobilePropsPartsInput,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPanelProps =\s+ChatRuntimeToolExecutionPanelMobilePropsPartsInput<\s+Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender'>,[\s\S]*?Omit<ChatMessageToolExecutionExpandedGroupProps, 'children'>\s+> & \{\s+children: ReactNode;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionPanelProps = \{[\s\S]*?shouldRender: boolean;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput</);
   assert.match(chatMessageChromeSource, /const expandedGroupParts: ChatMessageToolExecutionExpandedGroupParts =\s+createChatRuntimeToolExecutionExpandedGroupMobilePropsParts\(\{\s+topCollapseRenderState,\s+bottomCollapseRenderState,\s+onCollapsePress,\s+isPending,\s+allSuccess,\s+hasErrors,\s+emptyState,\s+styles,\s+\}\);/);
   assert.doesNotMatch(chatMessageChromeSource, /const expandedGroupContent = expandedGroupParts\.container\.content;/);
   assert.match(toolExecutionPanelContentSource, /<ChatMessageToolExecutionExpandedGroup \{\.\.\.expandedGroup\.props\}>[\s\S]*?\{children\}/);

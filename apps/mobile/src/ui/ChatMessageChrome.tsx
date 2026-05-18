@@ -398,8 +398,10 @@ import {
   type ChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   type ChatRuntimeToolExecutionErrorBlockMobileStyleSlots as SharedChatMessageToolExecutionErrorBlockStyleSlots,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
+  type ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput,
   type ChatRuntimeToolExecutionExpandedGroupMobileStyleSlotsBase as SharedChatMessageToolExecutionExpandedGroupStyleSlots,
   type ChatRuntimeToolExecutionPanelMobilePropsParts,
+  type ChatRuntimeToolExecutionPanelMobilePropsPartsInput,
   type ChatRuntimeToolExecutionPanelShellMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots as SharedChatMessageToolExecutionPayloadBlockStyleSlots,
@@ -2700,25 +2702,24 @@ type ChatMessageToolExecutionExpandedGroupStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolExecutionExpandedGroupProps = {
-  topCollapseRenderState: ToolExecutionDetailMobileCollapseControlRenderState;
-  bottomCollapseRenderState: ToolExecutionDetailMobileCollapseControlRenderState;
-  onCollapsePress?: (event: GestureResponderEvent) => void;
-  isPending: boolean;
-  allSuccess: boolean;
-  hasErrors: boolean;
-  emptyState?: ReactNode;
-  styles: ChatMessageToolExecutionExpandedGroupStyles;
-  children: ReactNode;
-};
+type ChatMessageToolExecutionExpandedGroupProps =
+  ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput<
+    ToolExecutionDetailMobileCollapseControlRenderState,
+    ToolExecutionDetailMobileCollapseControlRenderState,
+    (event: GestureResponderEvent) => void,
+    ReactNode,
+    ChatMessageToolExecutionExpandedGroupStyles
+  > & {
+    children: ReactNode;
+  };
 
 type ChatMessageToolExecutionExpandedGroupParts =
   ChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
-    ChatMessageToolExecutionExpandedGroupProps['topCollapseRenderState'],
-    ChatMessageToolExecutionExpandedGroupProps['bottomCollapseRenderState'],
-    ChatMessageToolExecutionExpandedGroupProps['onCollapsePress'],
-    ChatMessageToolExecutionExpandedGroupProps['emptyState'],
-    ChatMessageToolExecutionExpandedGroupProps['styles']
+    ToolExecutionDetailMobileCollapseControlRenderState,
+    ToolExecutionDetailMobileCollapseControlRenderState,
+    (event: GestureResponderEvent) => void,
+    ReactNode,
+    ChatMessageToolExecutionExpandedGroupStyles
   >;
 
 type ChatMessageToolExecutionExpandedGroupContainerProps =
@@ -2740,13 +2741,13 @@ type ChatMessageToolExecutionExpandedGroupEmptyStateBlockProps = {
   emptyState: ChatMessageToolExecutionExpandedGroupParts['container']['content']['emptyState'];
 };
 
-type ChatMessageToolExecutionPanelProps = {
-  shouldRender: boolean;
-  isExpanded: boolean;
-  compact: Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender'>;
-  expanded: Omit<ChatMessageToolExecutionExpandedGroupProps, 'children'>;
-  children: ReactNode;
-};
+type ChatMessageToolExecutionPanelProps =
+  ChatRuntimeToolExecutionPanelMobilePropsPartsInput<
+    Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender'>,
+    Omit<ChatMessageToolExecutionExpandedGroupProps, 'children'>
+  > & {
+    children: ReactNode;
+  };
 
 type ChatMessageToolExecutionPanelParts =
   ChatRuntimeToolExecutionPanelMobilePropsParts<
