@@ -293,6 +293,7 @@ import {
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
   type ChatRuntimeConversationRenderableRuntimeThreadState,
   type ChatRuntimeConversationRuntimeThreadListMobilePropsParts,
+  type ChatRuntimeConversationThreadBodyMobilePropsParts,
   type ChatRuntimeConversationThreadBodyMobileDisplayMode,
   type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
@@ -312,6 +313,7 @@ import {
   type ChatRuntimeMessageActionIconButtonMobilePropsParts,
   type ChatRuntimeMessageActionSlotListMobilePropsParts,
   type ChatRuntimeMessageContentRowMobilePropsParts,
+  type ChatRuntimeMessageStandaloneActionsMobilePropsParts,
   type ChatRuntimeMessageSurfaceMobilePropsParts,
   type ChatRuntimeConnectionBannerMobilePropsParts,
   type ChatRuntimeRetryStatusMobilePropsParts,
@@ -1947,6 +1949,12 @@ type ChatMessageActionSlotListRowProps =
 type ChatMessageStandaloneActionsProps = ChatMessageActionSlotListProps & {
   shouldRender: boolean;
 };
+
+type ChatMessageStandaloneActionsParts =
+  ChatRuntimeMessageStandaloneActionsMobilePropsParts<
+    ChatMessageActionEntry,
+    ChatMessageStandaloneActionsProps['rowStyle']
+  >;
 
 type ChatMessageRetryStatusStyles = {
   card: StyleProp<ViewStyle>;
@@ -4827,6 +4835,30 @@ type ChatMessageThreadBodyProps = {
     standaloneActions: Omit<ChatMessageStandaloneActionsProps, 'rowStyle'>;
   };
 };
+
+type ChatMessageThreadBodyParts =
+  ChatRuntimeConversationThreadBodyMobilePropsParts<
+    NonNullable<ChatMessageThreadBodyProps['retryStatus']>,
+    NonNullable<ChatMessageThreadBodyProps['delegationCard']>,
+    NonNullable<ChatMessageThreadBodyProps['toolApproval']>,
+    NonNullable<ChatMessageThreadBodyProps['inlineActivity']>,
+    ChatMessageThreadBodyProps['conversation']['content'],
+    ChatMessageThreadBodyProps['conversation']['toolExecutionStack'],
+    ChatMessageThreadBodyProps['conversation']['standaloneActions'],
+    ChatMessageThreadBodyStyleSlots['retryStatus'],
+    ChatMessageThreadBodyStyleSlots['delegationCard'],
+    ChatMessageThreadBodyStyleSlots['toolApproval'],
+    ChatMessageThreadBodyStyleSlots['inlineActivity']['style'],
+    ChatMessageThreadBodyStyleSlots['inlineActivity']['spinnerStyle'],
+    ChatMessageThreadBodyStyleSlots['content']['rowStyle'],
+    ChatMessageThreadBodyStyleSlots['content']['expandedBodyStyle'],
+    ChatMessageThreadBodyStyleSlots['content']['streamingStyles'],
+    ChatMessageThreadBodyStyleSlots['content']['collapsedStyle'],
+    ChatMessageThreadBodyStyleSlots['content']['collapsedPressedStyle'],
+    ChatMessageThreadBodyStyleSlots['content']['collapsedTextStyle'],
+    ChatMessageThreadBodyStyleSlots['toolExecutionStack'],
+    ChatMessageThreadBodyStyleSlots['standaloneActions']['rowStyle']
+  >;
 
 type ChatMessageConversationBodyProps = ChatMessageThreadBodyProps['conversation'];
 
@@ -9587,15 +9619,16 @@ export function ChatMessageThreadBody({
   inlineActivity,
   conversation,
 }: ChatMessageThreadBodyProps) {
-  const threadBodyParts = createChatRuntimeConversationThreadBodyMobilePropsParts({
-    bodyDisplayMode,
-    retryStatus,
-    delegationCard,
-    toolApproval,
-    inlineActivity,
-    conversation,
-    styles,
-  });
+  const threadBodyParts: ChatMessageThreadBodyParts =
+    createChatRuntimeConversationThreadBodyMobilePropsParts({
+      bodyDisplayMode,
+      retryStatus,
+      delegationCard,
+      toolApproval,
+      inlineActivity,
+      conversation,
+      styles,
+    });
 
   if (threadBodyParts.retryStatus.shouldRender) {
     return (
@@ -14737,11 +14770,12 @@ export function ChatMessageStandaloneActions({
   entries,
   rowStyle,
 }: ChatMessageStandaloneActionsProps) {
-  const standaloneActionsParts = createChatRuntimeMessageStandaloneActionsMobilePropsParts({
-    shouldRender,
-    entries,
-    rowStyle,
-  });
+  const standaloneActionsParts: ChatMessageStandaloneActionsParts =
+    createChatRuntimeMessageStandaloneActionsMobilePropsParts({
+      shouldRender,
+      entries,
+      rowStyle,
+    });
 
   return (
     <ChatMessageActionSlotList

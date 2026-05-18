@@ -6725,8 +6725,11 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageContentRowMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageStandaloneActionsMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageContentRowMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageStandaloneActionsMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatMessageContentRowParts =\s+ChatRuntimeMessageContentRowMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?ChatMessageContentRowProps\['rowStyle'\],[\s\S]*?ChatMessageContentRowProps\['bodyStyle'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRowParts = ReturnType<typeof createChatRuntimeMessageContentRowMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /type ChatMessageStandaloneActionsParts =\s+ChatRuntimeMessageStandaloneActionsMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?ChatMessageStandaloneActionsProps\['rowStyle'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStandaloneActionsParts = ReturnType<typeof createChatRuntimeMessageStandaloneActionsMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageContentRowMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageStandaloneActionsMobilePropsParts/);
   assert.match(contentRowSource, /const contentRowParts: ChatMessageContentRowParts =\s+createChatRuntimeMessageContentRowMobilePropsParts\(\{\s+shouldRenderActionSlots,\s+entries,\s+rowStyle,\s+bodyStyle,\s+\}\);/);
@@ -6740,7 +6743,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
     contentRowSource,
     /export function ChatMessageContentBody\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageStandaloneActions/
   );
-  assert.match(standaloneActionsSource, /const standaloneActionsParts = createChatRuntimeMessageStandaloneActionsMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
+  assert.match(standaloneActionsSource, /const standaloneActionsParts: ChatMessageStandaloneActionsParts =\s+createChatRuntimeMessageStandaloneActionsMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
   assert.match(standaloneActionsSource, /<ChatMessageActionSlotList\s+\{\.\.\.standaloneActionsParts\.actionSlotList\.props\}/);
   assert.match(sessionPresentationSource, /row: \{\s+props: \{\s+style: rowStyle,/);
   assert.match(sessionPresentationSource, /body: \{\s+shouldRender: Boolean\(bodyStyle\),\s+props: \{\s+style: bodyStyle,/);
@@ -6920,9 +6923,12 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationThreadBodyInput/);
   assert.match(chatMessageChromeSource, /const resolvedBody = createChatRuntimeConversationThreadBodyMobilePropsFromActionInput\(\{\s+\.\.\.runtimeThreadParts\.bodySurface\.body\.props,\s+createActionSet: createChatMessageActionSet,\s+\}\);/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationThreadBodyMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeConversationThreadBodyMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageThreadBodyParts =\s+ChatRuntimeConversationThreadBodyMobilePropsParts<[\s\S]*?NonNullable<ChatMessageThreadBodyProps\['retryStatus'\]>/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageThreadBodyParts = ReturnType<typeof createChatRuntimeConversationThreadBodyMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationThreadBodyMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const threadBodyParts = createChatRuntimeConversationThreadBodyMobilePropsParts\(\{\s+bodyDisplayMode,\s+retryStatus,\s+delegationCard,\s+toolApproval,\s+inlineActivity,\s+conversation,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const threadBodyParts: ChatMessageThreadBodyParts =\s+createChatRuntimeConversationThreadBodyMobilePropsParts\(\{\s+bodyDisplayMode,\s+retryStatus,\s+delegationCard,\s+toolApproval,\s+inlineActivity,\s+conversation,\s+styles,\s+\}\);/);
   assert.doesNotMatch(chatMessageChromeSource, /const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts/);
   assert.doesNotMatch(chatMessageChromeSource, /styles=\{styles\.retryStatus\}/);
   assert.doesNotMatch(chatMessageChromeSource, /styles=\{styles\.delegationCard\}/);
