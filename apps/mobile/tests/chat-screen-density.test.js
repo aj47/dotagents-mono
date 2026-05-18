@@ -7615,6 +7615,10 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(chatMessageChromeSource, /export function ChatMessageTurnDurationBadge/);
   assert.match(chatMessageChromeSource, /createChatRuntimeTurnDurationBadgeMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeTurnDurationBadgeMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeTurnDurationMessageMobileRenderState,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeRenderState =\s+ChatRuntimeTurnDurationMessageMobileRenderState;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeRenderState = \{[\s\S]*?shouldRender: boolean;[\s\S]*?icon: ChatMessageActionIcon;[\s\S]*?\};/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeTurnDurationMessageMobileRenderState/);
   assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeParts =\s+ChatRuntimeTurnDurationBadgeMobilePropsParts<[\s\S]*?ChatMessageTurnDurationBadgeProps\['renderState'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['style'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['liveStyle'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['textStyle'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['liveTextStyle'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeParts = ReturnType<typeof createChatRuntimeTurnDurationBadgeMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeTurnDurationBadgeMobilePropsParts/);

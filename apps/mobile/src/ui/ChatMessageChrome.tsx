@@ -275,6 +275,7 @@ import {
   type ChatRuntimeHeaderTurnDurationMobileStyleSlots as SharedChatRuntimeHeaderTurnDurationStyleSlots,
   type ChatRuntimeTurnDurationBadgeMobilePropsParts,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
+  type ChatRuntimeTurnDurationMessageMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
   type ChatRuntimeInlineActivityMobileRenderState,
   type ChatRuntimeLoadingStateMobileRenderState,
@@ -1957,17 +1958,8 @@ type ChatMessageRuntimeOverlaysProps = {
   promptEditor: ChatConversationHomePromptEditorModalProps;
 };
 
-type ChatMessageTurnDurationBadgeRenderState = {
-  shouldRender: boolean;
-  accessibilityRole: AccessibilityRole;
-  accessibilityLabel: string;
-  isLive: boolean;
-  label: string;
-  badge: {
-    numberOfLines: number;
-  };
-  icon: ChatMessageActionIcon;
-};
+type ChatMessageTurnDurationBadgeRenderState =
+  ChatRuntimeTurnDurationMessageMobileRenderState;
 
 type ChatMessageTurnDurationBadgeProps = {
   renderState: ChatMessageTurnDurationBadgeRenderState;
