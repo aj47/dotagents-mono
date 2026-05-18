@@ -43,8 +43,8 @@ export const ConnectionStatusIndicator = memo(function ConnectionStatusIndicator
   const connectionStatusAnimation = connectionStatusState.animation;
   const pulseAnim = useRef(new Animated.Value(connectionStatusAnimation.minOpacity)).current;
   const pulseAnimatedStyle = useMemo<ConnectionStatusPulseAnimatedStyle>(() => ({ opacity: pulseAnim }), [pulseAnim]);
-  const connectionStatusParts = useMemo(
-    (): ConnectionStatusIndicatorParts => createConnectionStatusIndicatorMobilePropsParts({
+  const connectionStatusParts = useMemo<ConnectionStatusIndicatorParts>(
+    () => createConnectionStatusIndicatorMobilePropsParts({
       renderState: connectionStatusState,
       styles,
       pulseAnimatedStyle,

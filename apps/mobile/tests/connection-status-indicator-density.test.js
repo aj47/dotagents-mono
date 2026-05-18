@@ -31,7 +31,8 @@ test('uses shared connection status indicator presentation and labels', () => {
   assert.match(indicatorSource, /const \{ connectionStatusState, styles \} = useConnectionStatusIndicatorMobileStyleSlots\(\{[\s\S]*?state,[\s\S]*?retryCount,[\s\S]*?compact,[\s\S]*?\}\);/);
   assert.match(indicatorSource, /const connectionStatusAnimation = connectionStatusState\.animation;/);
   assert.match(indicatorStylesSource, /createConnectionStatusIndicatorMobileStyleSheetSlots\(\{[\s\S]*?renderState: connectionStatusState,/);
-  assert.match(indicatorSource, /const connectionStatusParts = useMemo\(\s+\(\): ConnectionStatusIndicatorParts => createConnectionStatusIndicatorMobilePropsParts\(\{[\s\S]*?renderState: connectionStatusState,[\s\S]*?styles,[\s\S]*?pulseAnimatedStyle,[\s\S]*?compact,/);
+  assert.match(indicatorSource, /const connectionStatusParts = useMemo<ConnectionStatusIndicatorParts>\(\s+\(\) => createConnectionStatusIndicatorMobilePropsParts\(\{[\s\S]*?renderState: connectionStatusState,[\s\S]*?styles,[\s\S]*?pulseAnimatedStyle,[\s\S]*?compact,/);
+  assert.doesNotMatch(indicatorSource, /\(\): ConnectionStatusIndicatorParts => createConnectionStatusIndicatorMobilePropsParts/);
   assert.match(indicatorSource, /<View\s+\{\.\.\.connectionStatusParts\.container\.props\}>/);
   assert.match(indicatorSource, /connectionStatusParts\.pulse/);
   assert.match(indicatorSource, /connectionStatusParts\.text/);
