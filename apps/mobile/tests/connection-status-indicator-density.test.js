@@ -21,8 +21,11 @@ test('uses shared connection status indicator presentation and labels', () => {
   assert.match(indicatorStylesSource, /createConnectionStatusIndicatorMobileStyleSheetSlots/);
   assert.match(indicatorStylesSource, /getConnectionStatusIndicatorMobileRenderState/);
   assert.match(indicatorSource, /type ConnectionStatusIndicatorMobilePropsParts,/);
+  assert.match(indicatorStylesSource, /type ConnectionStatusIndicatorMobileRenderState,/);
   assert.match(indicatorStylesSource, /type ConnectionStatusIndicatorMobileStyleSheetSlots,/);
   assert.match(indicatorStylesSource, /export type ConnectionStatusIndicatorStyles = ConnectionStatusIndicatorMobileStyleSheetSlots;/);
+  assert.match(indicatorStylesSource, /connectionStatusState: ConnectionStatusIndicatorMobileRenderState;/);
+  assert.doesNotMatch(indicatorStylesSource, /ReturnType<typeof getConnectionStatusIndicatorMobileRenderState>/);
   assert.doesNotMatch(indicatorSource, /type ConnectionStatusIndicatorStyles = \{[\s\S]*?container: StyleProp<ViewStyle>;[\s\S]*?dotPulse: StyleProp<ViewStyle>;[\s\S]*?text: StyleProp<TextStyle>;[\s\S]*?\};/);
   assert.match(indicatorSource, /type ConnectionStatusPulseAnimatedStyle = \{[\s\S]*?opacity: Animated\.Value;[\s\S]*?\};/);
   assert.match(indicatorSource, /type ConnectionStatusIndicatorParts =\s+ConnectionStatusIndicatorMobilePropsParts<[\s\S]*?ConnectionStatusIndicatorStyles,[\s\S]*?ConnectionStatusPulseAnimatedStyle/);

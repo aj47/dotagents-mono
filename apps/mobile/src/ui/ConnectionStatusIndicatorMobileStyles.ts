@@ -5,6 +5,7 @@ import {
   createConnectionStatusIndicatorMobileStyleSheetSlots,
   getConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatus,
+  type ConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatusIndicatorMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
 
@@ -17,7 +18,7 @@ export type ConnectionStatusIndicatorMobileStyleSlotsInput = {
 export type ConnectionStatusIndicatorStyles = ConnectionStatusIndicatorMobileStyleSheetSlots;
 
 export type ConnectionStatusIndicatorMobileStyleSlots = {
-  connectionStatusState: ReturnType<typeof getConnectionStatusIndicatorMobileRenderState>;
+  connectionStatusState: ConnectionStatusIndicatorMobileRenderState;
   styles: ConnectionStatusIndicatorStyles;
 };
 

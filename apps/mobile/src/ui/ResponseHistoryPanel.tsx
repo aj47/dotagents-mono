@@ -18,6 +18,7 @@ import {
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
   type AgentResponseHistoryMobilePropsParts,
+  type AgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -35,7 +36,7 @@ export type ResponseHistoryPanelColors =
   Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
 
 export type ResponseHistoryPanelStyleSheetSlotsFactory = (input: {
-  renderState: ReturnType<typeof getAgentResponseHistoryMobileRenderState>;
+  renderState: AgentResponseHistoryMobileRenderState<ResponseHistoryEntry>;
 }) => AgentResponseHistoryMobileStyleSheetSlots;
 
 interface ResponseHistoryPanelProps {

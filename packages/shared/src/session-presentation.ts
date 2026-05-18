@@ -16,6 +16,7 @@ export {
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
   type AgentResponseHistoryMobilePropsParts,
+  type AgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileStyleSheetSlots,
   type AgentResponseHistoryMobileStylesLike,
 } from "./agent-user-response-store"
@@ -583,6 +584,7 @@ export {
   type MessageQueuePanelListMobilePropsPartsStylesLike,
   type MessageQueuePanelMobilePropsParts,
   type MessageQueuePanelMobilePropsPartsStylesLike,
+  type MessageQueuePanelMobileRenderState,
   type MessageQueuePanelMobileStyleSheetSlots,
   type QueuedMessageActionButtonMobilePropsPartsStylesLike,
   type QueuedMessageContentMobilePropsPartsStylesLike,
@@ -591,6 +593,7 @@ export {
   type QueuedMessageItemChromeMobilePropsPartsStylesLike,
   type QueuedMessageItemMobilePropsParts,
   type QueuedMessageItemMobilePropsPartsStylesLike,
+  type QueuedMessageItemMobileRenderState,
   type QueuedMessageItemMobileStyleSheetSlots,
   type QueuedMessage,
 } from "./message-queue-utils"

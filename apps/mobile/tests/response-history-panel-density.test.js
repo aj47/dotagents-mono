@@ -12,10 +12,12 @@ test('mobile response history panel uses shared copy, actions, and accessibility
   assert.match(source, /createAgentResponseHistoryMobilePropsParts,/);
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /type AgentResponseHistoryMobilePropsParts,/);
+  assert.match(source, /type AgentResponseHistoryMobileRenderState,/);
   assert.match(source, /type AgentResponseHistoryMobileStyleSheetSlots,/);
   assert.match(source, /type ResponseHistoryPanelParts =\s+AgentResponseHistoryMobilePropsParts<[\s\S]*?ResponseHistoryEntry,[\s\S]*?ResponseHistoryPanelStyles,[\s\S]*?ResponseHistoryToggleHandler/);
   assert.match(source, /export type ResponseHistoryPanelColors =\s+Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
-  assert.match(source, /export type ResponseHistoryPanelStyleSheetSlotsFactory = \(input: \{\s+renderState: ReturnType<typeof getAgentResponseHistoryMobileRenderState>;\s+\}\) => AgentResponseHistoryMobileStyleSheetSlots;/);
+  assert.match(source, /export type ResponseHistoryPanelStyleSheetSlotsFactory = \(input: \{\s+renderState: AgentResponseHistoryMobileRenderState<ResponseHistoryEntry>;\s+\}\) => AgentResponseHistoryMobileStyleSheetSlots;/);
+  assert.doesNotMatch(source, /ReturnType<typeof getAgentResponseHistoryMobileRenderState>/);
   assert.match(source, /colors: ResponseHistoryPanelColors;/);
   assert.match(source, /isCollapsed: boolean;/);
   assert.match(source, /shouldAnimateNewest: boolean;/);
@@ -107,8 +109,8 @@ test('mobile response history renders list chrome from shared prop parts', () =>
   assert.match(source, /<ScrollView\s+\{\.\.\.responseHistoryParts\.list\.props\}/);
   assert.doesNotMatch(source, /style=\{responseHistoryParts\.list\.style\}/);
   assert.doesNotMatch(source, /showsVerticalScrollIndicator=\{responseHistoryParts\.list\.showsVerticalScrollIndicator\}/);
-  assert.match(source, /\{responseHistoryParts\.list\.items\.map\(\(item\) => \{/);
-  assert.match(source, /<React\.Fragment key=\{item\.key\}>/);
+  assert.match(source, /\{responseHistoryParts\.list\.items\.map\(\(item\) => \(/);
+  assert.match(source, /<ResponseHistoryListItem\s+key=\{item\.key\}\s+item=\{item\}/);
   assert.match(source, /\{item\.separator\.shouldRender \? <View \{\.\.\.item\.separator\.props\} \/> : null\}/);
   assert.doesNotMatch(source, /item\.separator && <View style=\{item\.separator\.style\} \/>/);
   assert.match(source, /<AnimatedResponseItem[\s\S]*?isNewest=\{item\.animated\.isNewest\}[\s\S]*?animation=\{item\.animated\.animation\}/);

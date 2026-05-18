@@ -17,24 +17,28 @@ const messageQueueUtilsSource = fs.readFileSync(
 );
 
 test('mobile queue panel uses shared prop-part contracts for reusable button chrome', () => {
-  assert.match(source, /import React, \{ useState, useEffect, useMemo, useCallback, type ComponentProps \} from 'react';/);
+  assert.match(source, /import React, \{ useState, useEffect, useMemo, useCallback \} from 'react';/);
+  assert.match(source, /type MessageQueuePanelMobileRenderState,/);
   assert.match(source, /type MessageQueuePanelMobileStyleSheetSlots,/);
+  assert.match(source, /type QueuedMessageItemMobileRenderState,/);
   assert.match(source, /type QueuedMessageItemMobileStyleSheetSlots,/);
-  assert.match(source, /export type MessageQueuePanelStyleSheetSlotsFactory = \(input: \{\s+renderState: ReturnType<typeof getMessageQueuePanelMobileRenderState>;\s+\}\) => MessageQueuePanelMobileStyleSheetSlots;/);
-  assert.match(source, /export type QueuedMessageItemStyleSheetSlotsFactory = \(input: \{\s+renderState: ReturnType<typeof getQueuedMessageItemMobileRenderState>;\s+\}\) => QueuedMessageItemMobileStyleSheetSlots;/);
+  assert.match(source, /export type MessageQueuePanelStyleSheetSlotsFactory = \(input: \{\s+renderState: MessageQueuePanelMobileRenderState<QueuedMessage>;\s+\}\) => MessageQueuePanelMobileStyleSheetSlots;/);
+  assert.match(source, /export type QueuedMessageItemStyleSheetSlotsFactory = \(input: \{\s+renderState: QueuedMessageItemMobileRenderState;\s+\}\) => QueuedMessageItemMobileStyleSheetSlots;/);
+  assert.doesNotMatch(source, /ReturnType<typeof getMessageQueuePanelMobileRenderState>/);
+  assert.doesNotMatch(source, /ReturnType<typeof getQueuedMessageItemMobileRenderState>/);
   assert.match(source, /createStyleSheetSlots: MessageQueuePanelStyleSheetSlotsFactory;/);
   assert.match(source, /createItemStyleSheetSlots: QueuedMessageItemStyleSheetSlotsFactory;/);
   assert.match(source, /createStyleSheetSlots: QueuedMessageItemStyleSheetSlotsFactory;/);
   assert.doesNotMatch(source, /createMessageQueuePanelMobileStyleSheetSlots,/);
   assert.doesNotMatch(source, /createQueuedMessageItemMobileStyleSheetSlots,/);
-  assert.match(source, /type MessageQueuePanelActionButtonIconPart =[\s\S]*?props: ComponentProps<typeof Ionicons>;/);
-  assert.match(source, /type MessageQueuePanelActionButtonLabelPart =[\s\S]*?props: ComponentProps<typeof Text>;/);
-  assert.match(source, /type MessageQueuePanelActionButtonPart = \{[\s\S]*?key: string;[\s\S]*?props: ComponentProps<typeof TouchableOpacity>;[\s\S]*?icon\?: MessageQueuePanelActionButtonIconPart;[\s\S]*?label\?: MessageQueuePanelActionButtonLabelPart;[\s\S]*?\};/);
-  assert.match(source, /type MessageQueuePanelEditButtonTextPart = \{[\s\S]*?text: string;[\s\S]*?props: ComponentProps<typeof Text>;[\s\S]*?\};/);
-  assert.match(source, /type MessageQueuePanelEditButtonPart = \{[\s\S]*?props: ComponentProps<typeof TouchableOpacity>;[\s\S]*?text: MessageQueuePanelEditButtonTextPart;[\s\S]*?\};/);
-  assert.doesNotMatch(source, /type QueuedMessageItemParts/);
-  assert.doesNotMatch(source, /MessageQueuePanelMobilePropsParts</);
-  assert.doesNotMatch(source, /QueuedMessageItemParts\['/);
+  assert.doesNotMatch(source, /type ComponentProps/);
+  assert.doesNotMatch(source, /type MessageQueuePanelActionButtonIconPart/);
+  assert.doesNotMatch(source, /type MessageQueuePanelActionButtonLabelPart/);
+  assert.doesNotMatch(source, /type MessageQueuePanelEditButtonTextPart/);
+  assert.match(source, /type MessageQueuePanelParts =\s+MessageQueuePanelMobilePropsParts<\s+QueuedMessage,\s+MessageQueuePanelMobileStyleSheetSlots,\s+\(\) => void\s+>;/);
+  assert.match(source, /type QueuedMessageItemParts =\s+QueuedMessageItemMobilePropsParts<QueuedMessageItemMobileStyleSheetSlots>;/);
+  assert.match(source, /type MessageQueuePanelActionButtonPart =\s+\| MessageQueuePanelParts\['compactActions'\]\['actions'\]\[number\]\s+\| MessageQueuePanelParts\['headerActions'\]\['actions'\]\[number\]\s+\| QueuedMessageItemParts\['actions'\]\['actions'\]\[number\];/);
+  assert.match(source, /type MessageQueuePanelEditButtonPart =\s+\| QueuedMessageItemParts\['edit'\]\['cancelButton'\]\s+\| QueuedMessageItemParts\['edit'\]\['saveButton'\];/);
   assert.match(sessionPresentationSource, /type MessageQueuePanelMobilePropsParts,/);
   assert.match(sessionPresentationSource, /type MessageQueuePanelMobilePropsPartsStylesLike,/);
   assert.match(sessionPresentationSource, /type QueuedMessageItemMobilePropsParts,/);
@@ -52,7 +56,7 @@ test('mobile queued-message rows use text-first actions with explicit accessibil
   assert.match(source, /actions: actionParts,/);
   assert.match(source, /const handleStartEdit = useCallback\(\(\) => \{[\s\S]*?setIsEditing\(true\);[\s\S]*?\}, \[\]\);/);
   assert.match(source, /const handleToggleExpanded = useCallback\(\(\) => \{[\s\S]*?setIsExpanded\(\(current\) => !current\);[\s\S]*?\}, \[\]\);/);
-  assert.match(source, /const queuedMessageItemParts = useMemo\(\s+\(\) => createQueuedMessageItemMobilePropsParts\(\{[\s\S]*?renderState: queuedMessageRenderState,[\s\S]*?message,[\s\S]*?editDraftState,[\s\S]*?isExpanded,[\s\S]*?styles,[\s\S]*?onRetry,[\s\S]*?onEdit: handleStartEdit,[\s\S]*?onRemove,[\s\S]*?onToggleExpanded: handleToggleExpanded,[\s\S]*?onCancelEdit: handleCancelEdit,[\s\S]*?onSaveEdit: handleSaveEdit,[\s\S]*?\}\),/);
+  assert.match(source, /const queuedMessageItemParts = useMemo<QueuedMessageItemParts>\(\s+\(\) => createQueuedMessageItemMobilePropsParts\(\{[\s\S]*?renderState: queuedMessageRenderState,[\s\S]*?message,[\s\S]*?editDraftState,[\s\S]*?isExpanded,[\s\S]*?styles,[\s\S]*?onRetry,[\s\S]*?onEdit: handleStartEdit,[\s\S]*?onRemove,[\s\S]*?onToggleExpanded: handleToggleExpanded,[\s\S]*?onCancelEdit: handleCancelEdit,[\s\S]*?onSaveEdit: handleSaveEdit,[\s\S]*?\}\),/);
   assert.match(source, /function MessageQueuePanelActionButton/);
   assert.match(source, /<TouchableOpacity\s+\{\.\.\.action\.props\}/);
   assert.match(source, /<MessageQueuePanelActionButton\s+key=\{action\.key\}\s+action=\{action\}/);
@@ -132,7 +136,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /getMessageQueuePanelMobileRenderState/);
   assert.match(source, /const queuePanelRenderState = useMemo\(\s+\(\) => getMessageQueuePanelMobileRenderState\(\{[\s\S]*?messages,[\s\S]*?colors,[\s\S]*?isPaused,[\s\S]*?isListCollapsed,[\s\S]*?canProcessNext,/);
   assert.match(source, /createMessageQueuePanelMobilePropsParts/);
-  assert.match(source, /const messageQueuePanelParts = useMemo\(\s+\(\) => createMessageQueuePanelMobilePropsParts\(\{[\s\S]*?renderState: queuePanelRenderState,[\s\S]*?styles,[\s\S]*?onPause,[\s\S]*?onResume,[\s\S]*?onProcessNext,[\s\S]*?onClear,[\s\S]*?onToggleListCollapsed,[\s\S]*?onRemove,[\s\S]*?onUpdate,[\s\S]*?onRetry,[\s\S]*?\}\),/);
+  assert.match(source, /const messageQueuePanelParts = useMemo<MessageQueuePanelParts>\(\s+\(\) => createMessageQueuePanelMobilePropsParts\(\{[\s\S]*?renderState: queuePanelRenderState,[\s\S]*?styles,[\s\S]*?onPause,[\s\S]*?onResume,[\s\S]*?onProcessNext,[\s\S]*?onClear,[\s\S]*?onToggleListCollapsed,[\s\S]*?onRemove,[\s\S]*?onUpdate,[\s\S]*?onRetry,[\s\S]*?\}\),/);
   assert.match(source, /const \{[\s\S]*?compactActions: compactActionParts,[\s\S]*?headerActions: headerActionParts,[\s\S]*?chrome: panelChromeParts,[\s\S]*?list: panelListParts,[\s\S]*?\} = messageQueuePanelParts;/);
   assert.doesNotMatch(source, /const panelStatusColors = panelColors\.status\[queuePanelState\.statusKey\];/);
   assert.match(source, /\{panelChromeParts\.compactLabel\.text\}/);
