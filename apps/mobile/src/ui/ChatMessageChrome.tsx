@@ -5259,6 +5259,11 @@ type ChatMessageRuntimeDockInputStateInput<
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['dock'];
 
+type ChatMessageRuntimeThreadListInputStateInput<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+> = ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['threadList'];
+
 export type ChatMessageRuntimeChromeSurfaceProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
@@ -5490,6 +5495,114 @@ export function useChatMessageRuntimeDockInputState<
   );
 
   return chatMessageRuntimeDockInputState;
+}
+
+export function useChatMessageRuntimeThreadListInputState<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>({
+  messages,
+  visibleMessageCount,
+  groupByIndex,
+  groupState,
+  inheritedState,
+  onToggleGroup,
+  expandedMessages,
+  turnDurationsByUserTimestamp,
+  conversationId,
+  pendingBranchMessageIndex,
+  isResponding,
+  speakingMessageIndex,
+  copiedMessageIndex,
+  ttsEnabled,
+  assetBaseUrl,
+  assetAuthToken,
+  expandedDelegationConversationPreviews,
+  expandedDelegationToolPreviews,
+  setExpandedDelegationConversationPreviews,
+  setExpandedDelegationToolPreviews,
+  expandedToolApprovals,
+  pendingApprovalResponseId,
+  onToggleToolApprovalArguments,
+  onRespondToToolApproval,
+  expandedToolCalls,
+  onToggleToolCall,
+  onCopyToolPayload,
+  onSpeakMessage,
+  onBranchMessage,
+  onCopyMessage,
+  onToggleMessageExpansion,
+}: ChatMessageRuntimeThreadListInputStateInput<TPrompt, TTask>): ChatMessageRuntimeThreadListInputStateInput<TPrompt, TTask> {
+  const chatMessageRuntimeThreadListInputState = useMemo<ChatMessageRuntimeThreadListInputStateInput<TPrompt, TTask>>(
+    () => ({
+      messages,
+      visibleMessageCount,
+      groupByIndex,
+      groupState,
+      inheritedState,
+      onToggleGroup,
+      expandedMessages,
+      turnDurationsByUserTimestamp,
+      conversationId,
+      pendingBranchMessageIndex,
+      isResponding,
+      speakingMessageIndex,
+      copiedMessageIndex,
+      ttsEnabled,
+      assetBaseUrl,
+      assetAuthToken,
+      expandedDelegationConversationPreviews,
+      expandedDelegationToolPreviews,
+      setExpandedDelegationConversationPreviews,
+      setExpandedDelegationToolPreviews,
+      expandedToolApprovals,
+      pendingApprovalResponseId,
+      onToggleToolApprovalArguments,
+      onRespondToToolApproval,
+      expandedToolCalls,
+      onToggleToolCall,
+      onCopyToolPayload,
+      onSpeakMessage,
+      onBranchMessage,
+      onCopyMessage,
+      onToggleMessageExpansion,
+    }),
+    [
+      assetAuthToken,
+      assetBaseUrl,
+      conversationId,
+      copiedMessageIndex,
+      expandedDelegationConversationPreviews,
+      expandedDelegationToolPreviews,
+      expandedMessages,
+      expandedToolApprovals,
+      expandedToolCalls,
+      groupByIndex,
+      groupState,
+      inheritedState,
+      isResponding,
+      messages,
+      onBranchMessage,
+      onCopyMessage,
+      onCopyToolPayload,
+      onRespondToToolApproval,
+      onSpeakMessage,
+      onToggleGroup,
+      onToggleMessageExpansion,
+      onToggleToolApprovalArguments,
+      onToggleToolCall,
+      pendingApprovalResponseId,
+      pendingBranchMessageIndex,
+      setExpandedDelegationConversationPreviews,
+      setExpandedDelegationToolPreviews,
+      speakingMessageIndex,
+      ttsEnabled,
+      turnDurationsByUserTimestamp,
+      visibleMessageCount,
+    ],
+  );
+
+  return chatMessageRuntimeThreadListInputState;
 }
 
 export function useChatMessageRuntimeSurfaceInputState<
