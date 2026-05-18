@@ -11522,6 +11522,9 @@ export interface ChatRuntimeViewportAffordanceMobileRenderState {
   }
 }
 
+export type ChatRuntimeMessageHistoryWindowMobileState =
+  typeof CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryWindow
+
 export interface ChatRuntimeMessageHistoryWindowMobileDisplayStateInput<TMessage> {
   messages: readonly TMessage[]
   visibleMessageCount: number
@@ -31197,7 +31200,7 @@ export function createChatRuntimeStreamingContentMobileStyleSlots({
   }
 }
 
-export function getChatRuntimeMessageHistoryWindowMobileState() {
+export function getChatRuntimeMessageHistoryWindowMobileState(): ChatRuntimeMessageHistoryWindowMobileState {
   return CHAT_RUNTIME_SURFACE_PRESENTATION.mobile.messageHistoryWindow
 }
 

@@ -6121,6 +6121,11 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /useChatMessageRuntimeHistoryWindowState,/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeHistoryWindowState,/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileState,/);
+  assert.match(sessionPresentationSource, /export type ChatRuntimeMessageHistoryWindowMobileState =\s+typeof CHAT_RUNTIME_SURFACE_PRESENTATION\.mobile\.messageHistoryWindow/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeMessageHistoryWindowMobileState\(\): ChatRuntimeMessageHistoryWindowMobileState/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageHistoryWindowMobileState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeHistoryWindowState = ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState>/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeHistoryWindowState = ChatRuntimeMessageHistoryWindowMobileState & \{/);
   assert.match(screenSource, /createChatMessageRuntimeProgressTurnState<ChatMessage>\(update\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeProgressTurnState/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeProgressTurnState/);

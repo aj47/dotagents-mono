@@ -297,6 +297,7 @@ import {
   type ChatRuntimeHomeQuickStartsMobilePropsParts,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
+  type ChatRuntimeMessageHistoryWindowMobileState,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
   type ChatRuntimeNavigationHeaderOptionsMobilePropsParts,
@@ -6321,7 +6322,7 @@ type ChatMessageRuntimeHistoryWindowStateInput = {
   sessionId?: string | null;
 };
 
-type ChatMessageRuntimeHistoryWindowState = ReturnType<typeof getChatRuntimeMessageHistoryWindowMobileState> & {
+type ChatMessageRuntimeHistoryWindowState = ChatRuntimeMessageHistoryWindowMobileState & {
   visibleMessageCount: number;
   loadEarlierMessages: () => void;
 };
