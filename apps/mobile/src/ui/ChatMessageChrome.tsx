@@ -348,7 +348,9 @@ import {
   type ChatRuntimeConversationContentMobilePropsPartsInput,
   type ChatRuntimeMessageStandaloneActionsMobilePropsParts,
   type ChatRuntimeMessageSurfaceMobilePropsParts,
+  type ChatRuntimeConversationExpandedContentMobilePropsPartsInput,
   type ChatRuntimeConnectionBannerMobilePropsParts,
+  type ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput,
   type ChatRuntimeRetryStatusMobilePropsParts,
   type ChatRuntimeToolExecutionCallDetailMobilePropsParts,
   type ChatRuntimeToolExecutionCallDetailMobileStyleSlots as SharedChatMessageToolExecutionCallDetailStyleSlots,
@@ -4683,14 +4685,15 @@ type ChatMessageExpandedContentStyles =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageExpandedContentProps = {
-  streamingRenderState: ChatRuntimeStreamingContentMobileRenderState;
-  markdownContent: string;
-  assetBaseUrl?: string;
-  assetAuthToken?: string;
-  spinnerSource: ImageSourcePropType;
-  streamingStyles: ChatMessageExpandedContentStyles;
-};
+type ChatMessageExpandedContentProps =
+  ChatRuntimeConversationExpandedContentMobilePropsPartsInput<
+    ChatRuntimeStreamingContentMobileRenderState,
+    string,
+    string,
+    string,
+    ImageSourcePropType,
+    ChatMessageExpandedContentStyles
+  >;
 
 type ChatMessageExpandedContentParts =
   ChatRuntimeConversationExpandedContentMobilePropsParts<
@@ -4726,14 +4729,15 @@ type ChatMessageExpandedContentBodyProps = {
 type ChatMessageExpandedContentBodyContentProps =
   ChatMessageExpandedContentParts['streamingContent']['content']['body']['content'];
 
-type ChatMessageCollapsedPreviewProps = {
-  renderState: ChatRuntimeConversationMessageMobileRenderState['collapsedPreview'];
-  actionState: ChatMessageCollapsedPreviewMobileActionState;
-  onPress?: (event: GestureResponderEvent) => void;
-  style: StyleProp<ViewStyle>;
-  pressedStyle?: StyleProp<ViewStyle>;
-  textStyle: StyleProp<TextStyle>;
-};
+type ChatMessageCollapsedPreviewProps =
+  ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput<
+    ChatRuntimeConversationMessageMobileRenderState['collapsedPreview'],
+    ChatMessageCollapsedPreviewMobileActionState,
+    (event: GestureResponderEvent) => void,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageCollapsedPreviewPropsInput = Pick<
   ChatMessageCollapsedPreviewProps,
