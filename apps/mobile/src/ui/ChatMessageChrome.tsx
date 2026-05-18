@@ -454,7 +454,6 @@ import {
   type ChatMessageExpansionMobileRenderState,
   type ChatMessageConnectionBannerStyleSlots as SharedChatMessageConnectionBannerStyleSlots,
   type ChatMessageDelegationCardStyleSlots as SharedChatMessageDelegationCardStyleSlots,
-  type ChatMessageConversationViewportStyleSlots as SharedChatMessageConversationViewportStyleSlots,
   type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
   type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,
   type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,
@@ -4746,17 +4745,6 @@ type ChatMessageDebugPanelStackParts =
     readonly ChatMessageDebugPanelRow[],
     StyleProp<ViewStyle>,
     StyleProp<TextStyle>
-  >;
-
-type ChatMessageConversationViewportStyleSlots =
-  SharedChatMessageConversationViewportStyleSlots<
-    Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingStyle' | 'rootStyle'>,
-    Pick<ChatMessageScrollViewportProps, 'style' | 'contentContainerStyle'>,
-    Pick<ChatMessageLoadingStateProps, 'style' | 'spinnerStyle'>,
-    ChatConversationHomeQuickStartsStyles,
-    ChatMessageHistoryBannerStyles,
-    ChatMessageStepSummaryCardStyles,
-    Pick<ChatMessageDebugPanelStackProps, 'panelStyle' | 'textStyle'>
   >;
 
 type ChatMessageRuntimeViewportStyleSlots =
