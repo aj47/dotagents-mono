@@ -40,6 +40,7 @@ import {
   useChatMessageRuntimeMessageState,
   useChatMessageRuntimeSendRef,
   useChatMessageRuntimeSessionRefState,
+  useChatMessageRuntimeRouteInitialMessageActionsState,
   useChatMessageRuntimeInitialMessageState,
   useChatMessageRuntimeSessionLoadState,
   useChatMessageRuntimeSessionPersistState,
@@ -327,10 +328,6 @@ export default function ChatScreen({ route, navigation }: any) {
     connectionManager,
   });
 
-  const logConnectionStatus = useCallback((statusMessage: string) => {
-    console.log('[ChatScreen] Connection status:', statusMessage);
-  }, []);
-
   useChatRuntimeConnectionStatusSubscription({
     currentSessionId: sessionStore.currentSessionId,
     connectionManager,
@@ -339,7 +336,6 @@ export default function ChatScreen({ route, navigation }: any) {
     setResponding,
     setConversationState,
     setLatestStepSummary,
-    logConnectionStatus,
   });
 
   const { handleKillSwitch } = useChatMessageRuntimeKillSwitchChromeActionsState({
@@ -466,9 +462,9 @@ export default function ChatScreen({ route, navigation }: any) {
   } = useChatComposerRuntimeHandsFreeDebugActionsState({
     setDebugInfo,
   });
-  const clearRouteInitialMessage = useCallback(() => {
-    navigation?.setParams?.({ initialMessage: undefined });
-  }, [navigation]);
+  const { clearRouteInitialMessage } = useChatMessageRuntimeRouteInitialMessageActionsState({
+    navigation,
+  });
   useChatMessageRuntimeInitialMessageState({
     routeInitialMessage: route?.params?.initialMessage,
     currentSessionId: sessionStore.currentSessionId,

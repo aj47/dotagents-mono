@@ -882,6 +882,18 @@ type ChatMessageRuntimeInitialMessageStateInput = {
   autoSendDelayMs?: number;
 };
 
+type ChatMessageRuntimeRouteInitialMessageNavigation = {
+  setParams?: (params: { initialMessage?: undefined }) => void;
+};
+
+type ChatMessageRuntimeRouteInitialMessageActionsStateInput = {
+  navigation?: ChatMessageRuntimeRouteInitialMessageNavigation | null;
+};
+
+type ChatMessageRuntimeRouteInitialMessageActionsState = {
+  clearRouteInitialMessage: () => void;
+};
+
 type ChatMessageRuntimeSessionPersistStateInput<TMessage> = {
   messages: TMessage[];
   currentSessionId?: string | null;
@@ -1174,6 +1186,10 @@ type ChatRuntimeConnectionStatusSubscriptionInput = {
   setConversationState: Dispatch<SetStateAction<AgentConversationState | null>>;
   setLatestStepSummary: Dispatch<SetStateAction<AgentStepSummary | null>>;
   logConnectionStatus?: (statusMessage: string) => void;
+};
+
+const logDefaultChatRuntimeConnectionStatus = (statusMessage: string) => {
+  console.log('[ChatScreen] Connection status:', statusMessage);
 };
 
 type ChatRuntimeForegroundStateInput = {
@@ -9031,6 +9047,24 @@ export function useChatMessageRuntimeSessionRefState({
   return sessionRefState;
 }
 
+export function useChatMessageRuntimeRouteInitialMessageActionsState({
+  navigation,
+}: ChatMessageRuntimeRouteInitialMessageActionsStateInput): ChatMessageRuntimeRouteInitialMessageActionsState {
+  const clearRouteInitialMessage = useCallback(() => {
+    navigation?.setParams?.({ initialMessage: undefined });
+  }, [navigation]);
+
+  const routeInitialMessageActionsState =
+    useMemo<ChatMessageRuntimeRouteInitialMessageActionsState>(
+      () => ({
+        clearRouteInitialMessage,
+      }),
+      [clearRouteInitialMessage],
+    );
+
+  return routeInitialMessageActionsState;
+}
+
 export function useChatMessageRuntimeInitialMessageState({
   routeInitialMessage,
   currentSessionId,
@@ -10083,7 +10117,7 @@ export function useChatRuntimeConnectionStatusSubscription({
   setResponding,
   setConversationState,
   setLatestStepSummary,
-  logConnectionStatus,
+  logConnectionStatus = logDefaultChatRuntimeConnectionStatus,
 }: ChatRuntimeConnectionStatusSubscriptionInput): void {
   useEffect(() => {
     if (!currentSessionId) {
@@ -10106,7 +10140,7 @@ export function useChatRuntimeConnectionStatusSubscription({
     return connectionManager.subscribeToConnectionStatus(currentSessionId, (state) => {
       if (currentSessionIdRef.current !== currentSessionId) return;
       setConnectionState(state);
-      logConnectionStatus?.(formatConnectionStatus(state));
+      logConnectionStatus(formatConnectionStatus(state));
     });
   }, [
     connectionManager,
