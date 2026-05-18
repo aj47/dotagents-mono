@@ -2933,6 +2933,12 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeToolExecutionResultBadgeMobilePropsParts',
     'createChatRuntimeToolExecutionPendingResultMobilePropsParts',
     'createChatRuntimeToolExecutionEmptyStateMobilePropsParts',
+    'createChatRuntimeToolExecutionPayloadMetaMobilePropsParts',
+    'createChatRuntimeToolExecutionResultHeaderMobilePropsParts',
+    'createChatRuntimeToolExecutionPayloadBlockMobilePropsParts',
+    'createChatRuntimeToolExecutionPayloadSectionMobilePropsParts',
+    'createChatRuntimeToolExecutionErrorBlockMobilePropsParts',
+    'createChatRuntimeToolExecutionResultSectionMobilePropsParts',
     'createChatRuntimeToolExecutionCallDetailMobilePropsParts',
     'createChatRuntimeToolExecutionCallListMobilePropsParts',
     'createChatRuntimeConversationFrameMobilePropsParts',
@@ -5599,7 +5605,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionResultSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionResultSectionMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultSection\(\s+props: ChatMessageToolExecutionResultSectionProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const resultSectionParts: ChatMessageToolExecutionResultSectionParts =\s+createChatRuntimeToolExecutionResultSectionMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+resultCompactText,\s+resultContent,\s+isExpanded,\s+previewNumberOfLines,\s+copyButtonRenderState,\s+onCopyPress,\s+errorRenderState,\s+error,\s+errorCopyButtonRenderState,\s+onErrorCopyPress,\s+styles,\s+\} = props;\s+const resultSectionParts = useMemo<ChatMessageToolExecutionResultSectionParts>\(\s+\(\) => createChatRuntimeToolExecutionResultSectionMobilePropsParts\(\{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+resultCompactText,\s+resultContent,\s+isExpanded,\s+previewNumberOfLines,\s+copyButtonRenderState,\s+onCopyPress,\s+errorRenderState,\s+error,\s+errorCopyButtonRenderState,\s+onErrorCopyPress,\s+styles,\s+\}\),\s+\[\s+characterCountLabel,\s+copyButtonRenderState,\s+error,\s+errorCopyButtonRenderState,\s+errorRenderState,\s+isExpanded,\s+onCopyPress,\s+onErrorCopyPress,\s+payloadRenderState,\s+previewNumberOfLines,\s+resultBadge,\s+resultCompactText,\s+resultContent,\s+styles,\s+\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultSectionItemProps = \{\s+style: StyleProp<ViewStyle>;\s+children: ReactNode;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultSectionContentProps = \{\s+header: \{\s+props: ChatMessageToolExecutionResultHeaderProps;\s+\};\s+payloadBlock: \{\s+props: ChatMessageToolExecutionPayloadBlockProps;\s+\};\s+errorBlock: ChatMessageToolExecutionResultSectionErrorBlockPart;\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionResultSectionParts\['/);
@@ -5636,7 +5642,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionResultHeaderMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultHeader\(\s+props: ChatMessageToolExecutionResultHeaderProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const resultHeaderParts: ChatMessageToolExecutionResultHeaderParts =\s+createChatRuntimeToolExecutionResultHeaderMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\} = props;\s+const resultHeaderParts = useMemo<ChatMessageToolExecutionResultHeaderParts>\(\s+\(\) => createChatRuntimeToolExecutionResultHeaderMobilePropsParts\(\{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\}\),\s+\[\s+characterCountLabel,\s+copyButtonRenderState,\s+onCopyPress,\s+payloadRenderState,\s+resultBadge,\s+styles,\s+\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultCharacterCountProps = \{\s+props: \{\s+style: StyleProp<TextStyle>;\s+\};\s+text: string;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultHeaderMetaContentProps = \{[\s\S]*?payloadMeta: \{\s+props: ChatMessageToolExecutionPayloadMetaProps;\s+\};[\s\S]*?resultBadge: \{\s+props: ChatMessageToolExecutionResultBadgeProps;\s+\};[\s\S]*?characterCount: \{\s+props: ChatMessageToolExecutionResultCharacterCountProps;\s+\};[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultHeaderContentProps = \{\s+meta: ChatMessageToolExecutionResultHeaderMetaPart;\s+copyButton: \{\s+props: ChatMessageToolExecutionCopyButtonProps;\s+\};\s+\};/);
@@ -5725,7 +5731,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPayloadSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadSection\(\s+props: ChatMessageToolExecutionPayloadSectionProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const payloadSectionParts: ChatMessageToolExecutionPayloadSectionParts =\s+createChatRuntimeToolExecutionPayloadSectionMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{\s+payloadRenderState,\s+compactText,\s+content,\s+isExpanded,\s+previewNumberOfLines,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\} = props;\s+const payloadSectionParts = useMemo<ChatMessageToolExecutionPayloadSectionParts>\(\s+\(\) => createChatRuntimeToolExecutionPayloadSectionMobilePropsParts\(\{\s+payloadRenderState,\s+compactText,\s+content,\s+isExpanded,\s+previewNumberOfLines,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\}\),\s+\[\s+compactText,\s+content,\s+copyButtonRenderState,\s+isExpanded,\s+onCopyPress,\s+payloadRenderState,\s+previewNumberOfLines,\s+styles,\s+\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadSectionHeaderContentProps = \{\s+payloadMeta: \{\s+props: ChatMessageToolExecutionPayloadMetaProps;\s+\};\s+copyButton: \{\s+props: ChatMessageToolExecutionCopyButtonProps;\s+\};\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadSectionContentProps = \{\s+headerRow: \{\s+props: ChatMessageToolExecutionPayloadSectionContainerProps;\s+content: ChatMessageToolExecutionPayloadSectionHeaderContentProps;\s+\};\s+payloadBlock: \{\s+props: ChatMessageToolExecutionPayloadBlockProps;\s+\};\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionPayloadSectionParts\['/);
@@ -5763,7 +5769,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPayloadMetaMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPayloadMetaMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadMeta\(\s+props: ChatMessageToolExecutionPayloadMetaProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const payloadMetaParts: ChatMessageToolExecutionPayloadMetaParts =\s+createChatRuntimeToolExecutionPayloadMetaMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{ renderState, styles \} = props;\s+const payloadMetaParts = useMemo<ChatMessageToolExecutionPayloadMetaParts>\(\s+\(\) => createChatRuntimeToolExecutionPayloadMetaMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\),\s+\[renderState, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadMetaTextProps = \{\s+props: \{\s+style: StyleProp<TextStyle>;\s+\};\s+text: string;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadMetaPayloadTypePart = \{\s+shouldRender: boolean;\s+props: ChatMessageToolExecutionPayloadMetaTextProps;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadMetaContentProps = \{\s+label: \{\s+props: ChatMessageToolExecutionPayloadMetaTextProps;\s+\};\s+payloadType: ChatMessageToolExecutionPayloadMetaPayloadTypePart;\s+\};/);
@@ -5799,7 +5805,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionErrorBlockMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionErrorBlock\(\s+props: ChatMessageToolExecutionErrorBlockProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const errorBlockParts: ChatMessageToolExecutionErrorBlockParts =\s+createChatRuntimeToolExecutionErrorBlockMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{\s+renderState,\s+error,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\} = props;\s+const errorBlockParts = useMemo<ChatMessageToolExecutionErrorBlockParts>\(\s+\(\) => createChatRuntimeToolExecutionErrorBlockMobilePropsParts\(\{\s+renderState,\s+error,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\}\),\s+\[copyButtonRenderState, error, onCopyPress, renderState, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionErrorBlockTextProps = \{\s+props: \{\s+style: StyleProp<TextStyle>;\s+\};\s+text: string;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionErrorBlockHeaderContentProps = \{\s+label: \{\s+props: ChatMessageToolExecutionErrorBlockTextProps;\s+\};\s+copyButton: \{\s+props: ChatMessageToolExecutionCopyButtonProps;\s+\};\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionErrorBlockContentProps = \{\s+headerRow: \{\s+props: ChatMessageToolExecutionErrorBlockContainerProps;\s+content: ChatMessageToolExecutionErrorBlockHeaderContentProps;\s+\};\s+error: \{\s+props: ChatMessageToolExecutionErrorBlockTextProps;\s+\};\s+\};/);
@@ -5847,7 +5853,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPayloadBlock\(\s+props: ChatMessageToolExecutionPayloadBlockProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const payloadBlockParts: ChatMessageToolExecutionPayloadBlockParts =\s+createChatRuntimeToolExecutionPayloadBlockMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{\s+compactText,\s+content,\s+isExpanded,\s+previewNumberOfLines,\s+styles,\s+\} = props;\s+const payloadBlockParts = useMemo<ChatMessageToolExecutionPayloadBlockParts>\(\s+\(\) => createChatRuntimeToolExecutionPayloadBlockMobilePropsParts\(\{\s+compactText,\s+content,\s+isExpanded,\s+previewNumberOfLines,\s+styles,\s+\}\),\s+\[compactText, content, isExpanded, previewNumberOfLines, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadPreviewProps = \{\s+props: \{\s+style: StyleProp<TextStyle>;\s+numberOfLines: number;\s+\};\s+text: string;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadScrollContainerProps = \{\s+style: StyleProp<ViewStyle>;\s+nestedScrollEnabled: true;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadBlockContentProps = \{\s+preview: ChatMessageToolExecutionPayloadPreviewPart;\s+scroll: \{\s+props: ChatMessageToolExecutionPayloadScrollContainerProps;\s+content: ChatMessageToolExecutionPayloadScrollContentProps;\s+\};\s+\};/);

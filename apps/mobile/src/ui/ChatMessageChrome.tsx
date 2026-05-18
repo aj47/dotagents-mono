@@ -13184,8 +13184,14 @@ export function ChatMessageToolExecutionEmptyStateLabel({
 export function ChatMessageToolExecutionPayloadMeta(
   props: ChatMessageToolExecutionPayloadMetaProps,
 ) {
-  const payloadMetaParts: ChatMessageToolExecutionPayloadMetaParts =
-    createChatRuntimeToolExecutionPayloadMetaMobilePropsParts(props);
+  const { renderState, styles } = props;
+  const payloadMetaParts = useMemo<ChatMessageToolExecutionPayloadMetaParts>(
+    () => createChatRuntimeToolExecutionPayloadMetaMobilePropsParts({
+      renderState,
+      styles,
+    }),
+    [renderState, styles],
+  );
 
   const content = (
     <ChatMessageToolExecutionPayloadMetaContent
@@ -13261,8 +13267,32 @@ export function ChatMessageToolExecutionPayloadMetaText({
 export function ChatMessageToolExecutionResultHeader(
   props: ChatMessageToolExecutionResultHeaderProps,
 ) {
-  const resultHeaderParts: ChatMessageToolExecutionResultHeaderParts =
-    createChatRuntimeToolExecutionResultHeaderMobilePropsParts(props);
+  const {
+    payloadRenderState,
+    resultBadge,
+    characterCountLabel,
+    copyButtonRenderState,
+    onCopyPress,
+    styles,
+  } = props;
+  const resultHeaderParts = useMemo<ChatMessageToolExecutionResultHeaderParts>(
+    () => createChatRuntimeToolExecutionResultHeaderMobilePropsParts({
+      payloadRenderState,
+      resultBadge,
+      characterCountLabel,
+      copyButtonRenderState,
+      onCopyPress,
+      styles,
+    }),
+    [
+      characterCountLabel,
+      copyButtonRenderState,
+      onCopyPress,
+      payloadRenderState,
+      resultBadge,
+      styles,
+    ],
+  );
 
   return (
     <ChatMessageToolExecutionResultHeaderView
@@ -13340,8 +13370,23 @@ export function ChatMessageToolExecutionResultCharacterCount({
 export function ChatMessageToolExecutionPayloadBlock(
   props: ChatMessageToolExecutionPayloadBlockProps,
 ) {
-  const payloadBlockParts: ChatMessageToolExecutionPayloadBlockParts =
-    createChatRuntimeToolExecutionPayloadBlockMobilePropsParts(props);
+  const {
+    compactText,
+    content,
+    isExpanded,
+    previewNumberOfLines,
+    styles,
+  } = props;
+  const payloadBlockParts = useMemo<ChatMessageToolExecutionPayloadBlockParts>(
+    () => createChatRuntimeToolExecutionPayloadBlockMobilePropsParts({
+      compactText,
+      content,
+      isExpanded,
+      previewNumberOfLines,
+      styles,
+    }),
+    [compactText, content, isExpanded, previewNumberOfLines, styles],
+  );
 
   return (
     <ChatMessageToolExecutionPayloadBlockContent
@@ -13420,8 +13465,38 @@ export function ChatMessageToolExecutionPayloadCode({
 export function ChatMessageToolExecutionPayloadSection(
   props: ChatMessageToolExecutionPayloadSectionProps,
 ) {
-  const payloadSectionParts: ChatMessageToolExecutionPayloadSectionParts =
-    createChatRuntimeToolExecutionPayloadSectionMobilePropsParts(props);
+  const {
+    payloadRenderState,
+    compactText,
+    content,
+    isExpanded,
+    previewNumberOfLines,
+    copyButtonRenderState,
+    onCopyPress,
+    styles,
+  } = props;
+  const payloadSectionParts = useMemo<ChatMessageToolExecutionPayloadSectionParts>(
+    () => createChatRuntimeToolExecutionPayloadSectionMobilePropsParts({
+      payloadRenderState,
+      compactText,
+      content,
+      isExpanded,
+      previewNumberOfLines,
+      copyButtonRenderState,
+      onCopyPress,
+      styles,
+    }),
+    [
+      compactText,
+      content,
+      copyButtonRenderState,
+      isExpanded,
+      onCopyPress,
+      payloadRenderState,
+      previewNumberOfLines,
+      styles,
+    ],
+  );
 
   return (
     <ChatMessageToolExecutionPayloadSectionView
@@ -13484,8 +13559,23 @@ export function ChatMessageToolExecutionPayloadSectionView({
 export function ChatMessageToolExecutionErrorBlock(
   props: ChatMessageToolExecutionErrorBlockProps,
 ) {
-  const errorBlockParts: ChatMessageToolExecutionErrorBlockParts =
-    createChatRuntimeToolExecutionErrorBlockMobilePropsParts(props);
+  const {
+    renderState,
+    error,
+    copyButtonRenderState,
+    onCopyPress,
+    styles,
+  } = props;
+  const errorBlockParts = useMemo<ChatMessageToolExecutionErrorBlockParts>(
+    () => createChatRuntimeToolExecutionErrorBlockMobilePropsParts({
+      renderState,
+      error,
+      copyButtonRenderState,
+      onCopyPress,
+      styles,
+    }),
+    [copyButtonRenderState, error, onCopyPress, renderState, styles],
+  );
 
   return (
     <ChatMessageToolExecutionErrorBlockView
@@ -13559,8 +13649,56 @@ export function ChatMessageToolExecutionErrorBlockText({
 export function ChatMessageToolExecutionResultSection(
   props: ChatMessageToolExecutionResultSectionProps,
 ) {
-  const resultSectionParts: ChatMessageToolExecutionResultSectionParts =
-    createChatRuntimeToolExecutionResultSectionMobilePropsParts(props);
+  const {
+    payloadRenderState,
+    resultBadge,
+    characterCountLabel,
+    resultCompactText,
+    resultContent,
+    isExpanded,
+    previewNumberOfLines,
+    copyButtonRenderState,
+    onCopyPress,
+    errorRenderState,
+    error,
+    errorCopyButtonRenderState,
+    onErrorCopyPress,
+    styles,
+  } = props;
+  const resultSectionParts = useMemo<ChatMessageToolExecutionResultSectionParts>(
+    () => createChatRuntimeToolExecutionResultSectionMobilePropsParts({
+      payloadRenderState,
+      resultBadge,
+      characterCountLabel,
+      resultCompactText,
+      resultContent,
+      isExpanded,
+      previewNumberOfLines,
+      copyButtonRenderState,
+      onCopyPress,
+      errorRenderState,
+      error,
+      errorCopyButtonRenderState,
+      onErrorCopyPress,
+      styles,
+    }),
+    [
+      characterCountLabel,
+      copyButtonRenderState,
+      error,
+      errorCopyButtonRenderState,
+      errorRenderState,
+      isExpanded,
+      onCopyPress,
+      onErrorCopyPress,
+      payloadRenderState,
+      previewNumberOfLines,
+      resultBadge,
+      resultCompactText,
+      resultContent,
+      styles,
+    ],
+  );
 
   return (
     <ChatMessageToolExecutionResultSectionItem
