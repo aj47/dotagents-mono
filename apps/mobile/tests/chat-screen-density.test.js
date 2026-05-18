@@ -3491,6 +3491,10 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /export function ChatComposerSpeechPreview/);
   const speechPreviewSource =
     chatMessageChromeSource.match(/export function ChatComposerSpeechPreview[\s\S]*?export function ChatComposerPendingImagesRail/)?.[0] ?? '';
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerSpeechPreview(?:ContainerProps|LabelProps|TextProps)\s*=\s+ChatComposerSpeechPreviewParts\['/);
+  assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewContainerProps = \{[\s\S]*?style: ChatComposerSpeechPreviewStyles\['box'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewLabelProps = \{[\s\S]*?style: ChatComposerSpeechPreviewStyles\['label'\];[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewTextProps = \{[\s\S]*?style: ChatComposerSpeechPreviewStyles\['text'\];[\s\S]*?text: string \| null \| undefined;[\s\S]*?\};/);
   assert.match(speechPreviewSource, /const speechPreviewParts: ChatComposerSpeechPreviewParts =\s+createChatComposerSpeechPreviewMobilePropsParts\(\{\s+label,\s+text,\s+styles,\s+\}\);/);
   assert.match(speechPreviewSource, /const speechPreviewContainer = speechPreviewParts\.container;/);
   assert.match(speechPreviewSource, /if \(!speechPreviewContainer\.shouldRender\) return null;/);

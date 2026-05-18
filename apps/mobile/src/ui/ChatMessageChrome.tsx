@@ -4904,16 +4904,20 @@ type ChatComposerSpeechPreviewParts =
     ChatComposerSpeechPreviewStyles
   >;
 
-type ChatComposerSpeechPreviewContainerProps =
-  ChatComposerSpeechPreviewParts['container']['props'] & {
-    children: ReactNode;
-  };
+type ChatComposerSpeechPreviewContainerProps = {
+  style: ChatComposerSpeechPreviewStyles['box'];
+  children: ReactNode;
+};
 
-type ChatComposerSpeechPreviewLabelProps =
-  ChatComposerSpeechPreviewParts['label']['props'];
+type ChatComposerSpeechPreviewLabelProps = {
+  style: ChatComposerSpeechPreviewStyles['label'];
+  text: string;
+};
 
-type ChatComposerSpeechPreviewTextProps =
-  ChatComposerSpeechPreviewParts['text']['props'];
+type ChatComposerSpeechPreviewTextProps = {
+  style: ChatComposerSpeechPreviewStyles['text'];
+  text: string | null | undefined;
+};
 
 type ChatComposerPendingImageItem = {
   id: string;
