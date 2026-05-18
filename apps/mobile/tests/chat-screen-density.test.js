@@ -2166,6 +2166,8 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(screenSource, /const \{ toggleHandsFree \} = useChatRuntimeHandsFreeToggleChromeActionsState\(\{/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeHandsFreeToggleActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeHandsFreeToggleChromeActionsState/);
+  assert.match(chatMessageChromeSource, /const handsFreeToggleActionsState = useMemo<ChatRuntimeHandsFreeToggleActionsState>\(\s+\(\) => \(\{\s+toggleHandsFree,\s+\}\),\s+\[toggleHandsFree\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return handsFreeToggleActionsState;/);
   assert.match(screenSource, /onHandsFreeButtonPress: toggleHandsFree,/);
   assert.match(sessionPresentationSource, /handsFreeIconContainerStyle: styles\.headerHandsFreeIconContainer,/);
   assert.match(chatMessageChromeSource, /<ChatRuntimeHeaderIconButton\s+\{\.\.\.headerParts\.handsFreeButton\}/);
@@ -3431,6 +3433,10 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeSubmissionActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeSubmissionChromeState/);
   assert.match(chatMessageChromeSource, /const submissionActions = useChatComposerRuntimeSubmissionActionsState\(submissionInput\);/);
+  assert.match(chatMessageChromeSource, /const composerSubmissionActionsState = useMemo<ChatComposerRuntimeSubmissionActionsState>\(\s+\(\) => \(\{\s+composerHasContent,\s+sendComposerInput,\s+queueComposerInput,\s+\}\),\s+\[composerHasContent, queueComposerInput, sendComposerInput\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return composerSubmissionActionsState;/);
+  assert.match(chatMessageChromeSource, /const composerSubmissionChromeState = useMemo<ChatComposerRuntimeSubmissionChromeState>\(\s+\(\) => \(\{\s+\.\.\.submissionActions,\s+textEntrySubmissionState,\s+\}\),\s+\[submissionActions, textEntrySubmissionState\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return composerSubmissionChromeState;/);
   assert.match(chatMessageChromeSource, /const draftMessageState = useMemo\(\s+\(\) => getChatComposerRuntimeDraftMessageState\(\{\s+input,\s+pendingImages,\s+\}\),\s+\[input, pendingImages\],\s+\);/);
   assert.match(chatMessageChromeSource, /const composerHasContent = draftMessageState\.hasContent;/);
   assert.match(chatMessageChromeSource, /const composedMessage = draftMessageState\.content;/);
@@ -3649,6 +3655,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /const \{\s+editBeforeSendEnabled: willCancel,\s+toggleEditBeforeSend,\s+\} = useChatComposerRuntimeEditBeforeSendState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeEditBeforeSendState/);
   assert.match(chatMessageChromeSource, /const \[editBeforeSendEnabled, setEditBeforeSendEnabled\] = useState\(false\);/);
+  assert.match(chatMessageChromeSource, /const editBeforeSendState = useMemo<ChatComposerRuntimeEditBeforeSendState>\(\s+\(\) => \(\{\s+editBeforeSendEnabled,\s+toggleEditBeforeSend,\s+\}\),\s+\[editBeforeSendEnabled, toggleEditBeforeSend\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return editBeforeSendState;/);
   assert.doesNotMatch(screenSource, /const \[willCancel, setWillCancel\] = useState\(false\);/);
   assert.match(screenSource, /composerControlHasContent: composerHasContent,\s+composerControlConversationState: conversationState,\s+composerControlIsResponding: responding,\s+composerControlPendingImageCount: pendingImages\.length,\s+composerControlTtsEnabled: ttsEnabled,\s+composerControlEditBeforeSendEnabled: willCancel,\s+composerControlMicPhase: handsFreeController\.state\.phase,\s+composerControlListening: listening,\s+composerControlMessageQueueEnabled: messageQueueEnabled,\s+onImageAttachmentPress: handlePickImages,/);
   assert.doesNotMatch(screenSource, /composerControlColors: theme\.colors,/);
@@ -3672,6 +3680,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(screenSource, /const \{ toggleTextToSpeech: toggleTts \} = useChatRuntimeTextToSpeechToggleChromeActionsState\(\{\s+ttsEnabled,\s+config,\s+setConfig,\s+saveConfig,\s+handsFreeController,\s+handsFreeRef,\s+handsFreePhaseRef,\s+clearIntendedSpeakingMessage,\s+clearQueuedResponseSpeech,\s+clearSpeakingMessage,\s+voiceLog,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeTextToSpeechToggleActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeTextToSpeechToggleChromeActionsState/);
+  assert.match(chatMessageChromeSource, /const textToSpeechToggleActionsState = useMemo<ChatRuntimeTextToSpeechToggleActionsState>\(\s+\(\) => \(\{\s+toggleTextToSpeech,\s+\}\),\s+\[toggleTextToSpeech\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return textToSpeechToggleActionsState;/);
   assert.match(chatMessageChromeSource, /useChatRuntimeTextToSpeechToggleActionsState\(\{[\s\S]*?stopSpeech: Speech\.stop,[\s\S]*?stopRemoteSpeech: stopRemoteTts,/);
   assert.match(chatMessageChromeSource, /clearQueuedResponseSpeech\(\);[\s\S]*?clearSpeakingMessage\(\);/);
   assert.doesNotMatch(screenSource, /const toggleTts = async \(\) => \{/);

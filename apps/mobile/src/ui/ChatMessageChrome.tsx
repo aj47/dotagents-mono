@@ -7831,11 +7831,16 @@ export function useChatComposerRuntimeSubmissionActionsState({
     setDebugInfo(getChatComposerQueueMobileActionState().debugMessage);
   }, [clearComposerDraft, currentConversationId, draftMessageState.content, queue, setDebugInfo]);
 
-  return {
-    composerHasContent,
-    sendComposerInput,
-    queueComposerInput,
-  };
+  const composerSubmissionActionsState = useMemo<ChatComposerRuntimeSubmissionActionsState>(
+    () => ({
+      composerHasContent,
+      sendComposerInput,
+      queueComposerInput,
+    }),
+    [composerHasContent, queueComposerInput, sendComposerInput],
+  );
+
+  return composerSubmissionActionsState;
 }
 
 export function useChatComposerRuntimeSubmissionChromeState({
@@ -7851,10 +7856,15 @@ export function useChatComposerRuntimeSubmissionChromeState({
     onSubmit: submissionActions.sendComposerInput,
   });
 
-  return {
-    ...submissionActions,
-    textEntrySubmissionState,
-  };
+  const composerSubmissionChromeState = useMemo<ChatComposerRuntimeSubmissionChromeState>(
+    () => ({
+      ...submissionActions,
+      textEntrySubmissionState,
+    }),
+    [submissionActions, textEntrySubmissionState],
+  );
+
+  return composerSubmissionChromeState;
 }
 
 export function useChatComposerRuntimeTextEntrySubmissionState({
@@ -9017,10 +9027,15 @@ export function useChatComposerRuntimeEditBeforeSendState(): ChatComposerRuntime
     setEditBeforeSendEnabled((current) => !current);
   }, []);
 
-  return {
-    editBeforeSendEnabled,
-    toggleEditBeforeSend,
-  };
+  const editBeforeSendState = useMemo<ChatComposerRuntimeEditBeforeSendState>(
+    () => ({
+      editBeforeSendEnabled,
+      toggleEditBeforeSend,
+    }),
+    [editBeforeSendEnabled, toggleEditBeforeSend],
+  );
+
+  return editBeforeSendState;
 }
 
 export function useChatRuntimeStatusState(): ChatRuntimeStatusState {
@@ -9212,9 +9227,14 @@ export function useChatRuntimeHandsFreeToggleActionsState<TConfig extends object
     stopSpeech,
   ]);
 
-  return {
-    toggleHandsFree,
-  };
+  const handsFreeToggleActionsState = useMemo<ChatRuntimeHandsFreeToggleActionsState>(
+    () => ({
+      toggleHandsFree,
+    }),
+    [toggleHandsFree],
+  );
+
+  return handsFreeToggleActionsState;
 }
 
 export function useChatRuntimeHandsFreeToggleChromeActionsState<TConfig extends object>(
@@ -9274,9 +9294,14 @@ export function useChatRuntimeTextToSpeechToggleActionsState<TConfig extends obj
     voiceLog,
   ]);
 
-  return {
-    toggleTextToSpeech,
-  };
+  const textToSpeechToggleActionsState = useMemo<ChatRuntimeTextToSpeechToggleActionsState>(
+    () => ({
+      toggleTextToSpeech,
+    }),
+    [toggleTextToSpeech],
+  );
+
+  return textToSpeechToggleActionsState;
 }
 
 export function useChatRuntimeTextToSpeechToggleChromeActionsState<TConfig extends object>(
