@@ -7446,7 +7446,7 @@ export function useChatConversationHomePromptEditorSaveActionsState<
       dismissPromptEditor();
       const successAlert = getChatConversationHomePromptSaveSuccessAlertState(wasEditingPrompt);
       showAlert(successAlert.title, successAlert.message);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[ChatConversationHome] Error saving prompt:', error);
       const failedAlert = getChatConversationHomePromptSaveFailedAlertState(error);
       showAlert(failedAlert.title, failedAlert.message);
@@ -7510,7 +7510,7 @@ export function useChatConversationHomePromptEditorDeleteActionsState<
         const updatedPrompts = deletePredefinedPromptFromList(predefinedPrompts, prompt.id);
         await promptClient.updateSettings({ predefinedPrompts: updatedPrompts });
         setPredefinedPrompts(updatedPrompts);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('[ChatConversationHome] Error deleting prompt:', error);
         const failedAlert = getChatConversationHomePromptDeleteFailedAlertState(error);
         showAlert(failedAlert.title, failedAlert.message);
@@ -7612,7 +7612,7 @@ export function useChatConversationHomePromptTaskRunActionsState<
       await taskClient.runLoop(task.id);
       const taskStartedAlert = getChatConversationHomePromptTaskStartedAlertState(task.name);
       showAlert(taskStartedAlert.title, taskStartedAlert.message);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const failedAlert = getChatConversationHomePromptTaskRunFailedAlertState(error);
       showAlert(failedAlert.title, failedAlert.message);
     } finally {
@@ -9701,7 +9701,7 @@ export function useChatMessageRuntimeBranchActionsState<
 
       const createdAlert = getChatRuntimeBranchCreatedMobileResolvedAlertState();
       showAlert(createdAlert.title, createdAlert.message);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const failedAlert = getChatRuntimeBranchFailedMobileResolvedAlertState(error);
       showAlert(failedAlert.title, failedAlert.message);
     } finally {
@@ -9823,7 +9823,7 @@ export function useChatMessageRuntimeKillSwitchActionsState<
           return;
         }
         showAlert(resultAlert.title, resultAlert.message);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('[ChatMessageRuntime] Kill switch error:', error);
         const failedAlert = getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState(error);
         if (platform === 'web') {

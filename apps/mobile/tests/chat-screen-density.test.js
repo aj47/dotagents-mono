@@ -2140,6 +2140,7 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(chatMessageChromeSource, /showWebAlert\(resultAlert\.webMessage\)/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeKillSwitchConnectionFailedAlertState\(e\)/);
   assert.match(chatMessageChromeSource, /getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState\(error\)/);
+  assert.match(chatMessageChromeSource, /catch \(error: unknown\) \{[\s\S]*?getChatRuntimeKillSwitchConnectionFailedMobileResolvedAlertState\(error\)/);
   assert.doesNotMatch(screenSource, /window\.alert\(failedAlert\.webMessage\)/);
   assert.match(chatMessageChromeSource, /showWebAlert\(failedAlert\.webMessage\)/);
   assert.doesNotMatch(screenSource, /Alert\.alert\(\s*confirmationAlert\.title,\s*confirmationAlert\.message,/);
@@ -9832,6 +9833,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptSaveSuccessAlertState\(wasEditingPrompt\)/);
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptSaveFailedAlertState\(error\)/);
+  assert.doesNotMatch(chatMessageChromeSource, /catch \(error: any\)/);
+  assert.match(chatMessageChromeSource, /catch \(error: unknown\) \{[\s\S]*?getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(screenSource, /useChatConversationHomePromptEditorDeleteChromeActionsState,/);
   assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteChromeActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+\.\.\.chatRuntimeChrome\.environment,\s+\}\);/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptDeleteNativeConfirmPresenter,/);
@@ -9849,8 +9852,10 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptDeleteConfirmAlertState\(prompt\.name\)/);
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptDeleteFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptDeleteFailedAlertState\(error\)/);
+  assert.match(chatMessageChromeSource, /catch \(error: unknown\) \{[\s\S]*?getChatConversationHomePromptDeleteFailedAlertState\(error\)/);
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptTaskRunFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptTaskRunFailedAlertState\(error\)/);
+  assert.match(chatMessageChromeSource, /catch \(error: unknown\) \{[\s\S]*?getChatConversationHomePromptTaskRunFailedAlertState\(error\)/);
   assert.doesNotMatch(screenSource, /getChatConversationHomePromptTaskStartedAlertState\(task\.name\)/);
   assert.match(chatMessageChromeSource, /getChatConversationHomePromptTaskStartedAlertState\(task\.name\)/);
   assert.doesNotMatch(screenSource, /confirmFn\?\.\(confirmAlert\.webMessage\)/);
@@ -10145,6 +10150,7 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(chatMessageChromeSource, /showAlert\(createdAlert\.title, createdAlert\.message\)/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeBranchFailedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /getChatRuntimeBranchFailedMobileResolvedAlertState\(error\)/);
+  assert.match(chatMessageChromeSource, /catch \(error: unknown\) \{[\s\S]*?getChatRuntimeBranchFailedMobileResolvedAlertState\(error\)/);
   assert.match(chatMessageChromeSource, /showAlert\(failedAlert\.title, failedAlert\.message\)/);
   assert.match(sessionPresentationSource, /message: getChatRuntimeAlertMessage\(error, alerts\.failed\.fallbackMessage\)/);
   assert.doesNotMatch(screenSource, /mobileRuntimeBranchAlerts\.(unavailable|created|failed)\.(title|message|fallbackMessage)/);
