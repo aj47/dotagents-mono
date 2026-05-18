@@ -225,11 +225,15 @@ import {
   type ChatRuntimeConversationDockMobilePropsParts,
   type ChatRuntimeConversationDockShellMobilePropsParts,
   type ChatRuntimeConversationFrameMobilePropsParts,
+  type ChatRuntimeConversationFrameMobilePropsPartsInput,
   type ChatRuntimeConversationOverlaysMobilePropsParts,
+  type ChatRuntimeConversationOverlaysMobilePropsPartsInput,
   type ChatRuntimeConversationScrollViewportMobilePropsParts,
+  type ChatRuntimeConversationScrollViewportMobilePropsPartsInput,
   type ChatRuntimeConversationSurfaceMobilePropsParts,
   type ChatRuntimeConversationViewportMobilePropsParts,
   type ChatRuntimeConversationViewportContentMobilePropsParts,
+  type ChatRuntimeConversationViewportContentMobilePropsPartsInput,
   type ChatConversationHomePromptEditorModalMobilePropsParts,
   type ChatConversationHomePromptEditorModalStyleSlots as SharedChatConversationHomePromptEditorModalStyleSlots,
   type ChatRuntimeDebugPanelStackMobilePropsParts,
@@ -240,6 +244,7 @@ import {
   type ChatRuntimeLoadingStateMobilePropsParts,
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
+  type ChatRuntimeMessageHistoryBannerMobilePropsPartsInput,
   type ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots as SharedChatMessageHistoryBannerStyleSlots,
   type ChatComposerHandsFreeControlsMobileStyleSlots as SharedChatComposerHandsFreeControlsStyleSlots,
   type ChatComposerInputDockMobileStyleSlots as SharedChatComposerInputDockStyleSlots,
@@ -256,6 +261,7 @@ import {
   type ChatComposerVoiceOverlayMobileStyleSlots as SharedChatComposerVoiceOverlayStyleSlots,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomButtonMobilePropsParts,
+  type ChatRuntimeScrollToBottomButtonMobilePropsPartsInput,
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
   type ChatRuntimeStepSummaryCardMobilePropsParts,
@@ -356,6 +362,7 @@ import {
   type ChatRuntimeMessageSurfaceMobilePropsParts,
   type ChatRuntimeConversationExpandedContentMobilePropsPartsInput,
   type ChatRuntimeConnectionBannerMobilePropsParts,
+  type ChatRuntimeConnectionBannerMobilePropsPartsInput,
   type ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput,
   type ChatRuntimeRetryStatusMobilePropsParts,
   type ChatRuntimeToolExecutionCallDetailMobilePropsParts,
@@ -3321,11 +3328,12 @@ type ChatMessageHistoryBannerStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageHistoryBannerProps = {
-  renderState: ChatRuntimeMessageHistoryBannerMobileRenderState;
-  onLoadEarlier?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageHistoryBannerStyles;
-};
+type ChatMessageHistoryBannerProps =
+  ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
+    ChatRuntimeMessageHistoryBannerMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageHistoryBannerStyles
+  >;
 
 type ChatMessageHistoryBannerParts =
   ChatRuntimeMessageHistoryBannerMobilePropsParts<
@@ -3362,15 +3370,16 @@ type ChatMessageHistoryBannerLoadButtonProps = {
 type ChatMessageHistoryBannerLoadButtonContentProps =
   ChatMessageHistoryBannerParts['container']['content']['loadButton']['content'];
 
-type ChatMessageConversationFrameProps = {
-  children: ReactNode;
-  dock?: ReactNode;
-  overlays?: ReactNode;
-  keyboardAvoidingStyle: StyleProp<ViewStyle>;
-  keyboardAvoidingBehavior: ComponentProps<typeof KeyboardAvoidingView>['behavior'];
-  keyboardVerticalOffset: number;
-  rootStyle: StyleProp<ViewStyle>;
-};
+type ChatMessageConversationFrameProps =
+  ChatRuntimeConversationFrameMobilePropsPartsInput<
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    StyleProp<ViewStyle>,
+    ComponentProps<typeof KeyboardAvoidingView>['behavior'],
+    number,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatMessageConversationFrameParts =
   ChatRuntimeConversationFrameMobilePropsParts<
@@ -3395,10 +3404,11 @@ type ChatMessageConversationFrameRootProps =
 type ChatMessageConversationFrameRootContentProps =
   ChatMessageConversationFrameContentProps['root']['content'];
 
-type ChatMessageConversationOverlaysProps = {
-  agentSelector?: ReactNode;
-  promptEditor?: ReactNode;
-};
+type ChatMessageConversationOverlaysProps =
+  ChatRuntimeConversationOverlaysMobilePropsPartsInput<
+    ReactNode,
+    ReactNode
+  >;
 
 type ChatMessageConversationOverlaysParts =
   ChatRuntimeConversationOverlaysMobilePropsParts<
@@ -3409,18 +3419,19 @@ type ChatMessageConversationOverlaysParts =
 type ChatMessageConversationOverlaysContentProps =
   ChatMessageConversationOverlaysParts['content'];
 
-type ChatMessageScrollViewportProps = {
-  children: ReactNode;
-  scrollRef?: Ref<ScrollView>;
-  style: StyleProp<ViewStyle>;
-  contentContainerStyle: StyleProp<ViewStyle>;
-  keyboardShouldPersistTaps: ComponentProps<typeof ScrollView>['keyboardShouldPersistTaps'];
-  contentInsetAdjustmentBehavior: ComponentProps<typeof ScrollView>['contentInsetAdjustmentBehavior'];
-  onScroll?: ComponentProps<typeof ScrollView>['onScroll'];
-  onScrollBeginDrag?: ComponentProps<typeof ScrollView>['onScrollBeginDrag'];
-  onScrollEndDrag?: ComponentProps<typeof ScrollView>['onScrollEndDrag'];
-  scrollEventThrottle: number;
-};
+type ChatMessageScrollViewportProps =
+  ChatRuntimeConversationScrollViewportMobilePropsPartsInput<
+    ReactNode,
+    Ref<ScrollView>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    ComponentProps<typeof ScrollView>['keyboardShouldPersistTaps'],
+    ComponentProps<typeof ScrollView>['contentInsetAdjustmentBehavior'],
+    ComponentProps<typeof ScrollView>['onScroll'],
+    ComponentProps<typeof ScrollView>['onScrollBeginDrag'],
+    ComponentProps<typeof ScrollView>['onScrollEndDrag'],
+    number
+  >;
 
 type ChatMessageScrollViewportParts =
   ChatRuntimeConversationScrollViewportMobilePropsParts<
@@ -3439,14 +3450,15 @@ type ChatMessageScrollViewportParts =
 type ChatMessageScrollViewportContentProps =
   ChatMessageScrollViewportParts['scrollView']['content'];
 
-type ChatMessageConversationViewportContentProps = {
-  loadingState?: ReactNode;
-  homeState?: ReactNode;
-  historyBanner?: ReactNode;
-  stepSummary?: ReactNode;
-  children: ReactNode;
-  debugPanels?: ReactNode;
-};
+type ChatMessageConversationViewportContentProps =
+  ChatRuntimeConversationViewportContentMobilePropsPartsInput<
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode
+  >;
 
 type ChatMessageConversationViewportContentParts =
   ChatRuntimeConversationViewportContentMobilePropsParts<
@@ -3523,11 +3535,12 @@ type ChatMessageStepSummaryPreviewBlockProps = {
   preview: ChatMessageStepSummaryCardParts['card']['content']['preview'];
 };
 
-type ChatMessageScrollToBottomButtonProps = {
-  renderState: ChatRuntimeScrollToBottomMobileRenderState;
-  onPress?: (event: GestureResponderEvent) => void;
-  style: StyleProp<ViewStyle>;
-};
+type ChatMessageScrollToBottomButtonProps =
+  ChatRuntimeScrollToBottomButtonMobilePropsPartsInput<
+    ChatRuntimeScrollToBottomMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatMessageScrollToBottomButtonParts =
   ChatRuntimeScrollToBottomButtonMobilePropsParts<
@@ -3872,11 +3885,12 @@ type ChatMessageConnectionBannerStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageConnectionBannerProps = {
-  renderState: ChatRuntimeConnectionBannerMobileRenderState;
-  onRetry?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageConnectionBannerStyles;
-};
+type ChatMessageConnectionBannerProps =
+  ChatRuntimeConnectionBannerMobilePropsPartsInput<
+    ChatRuntimeConnectionBannerMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageConnectionBannerStyles
+  >;
 
 type ChatMessageConnectionBannerParts =
   ChatRuntimeConnectionBannerMobilePropsParts<
