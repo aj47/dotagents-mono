@@ -3234,8 +3234,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerMicButtonStyles = \{\s+button: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerTextEntryStyles = \{\s+input: StyleProp<TextStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerInputDockStyles = \{\s+area: StyleProp<ViewStyle>;/);
-  assert.match(chatMessageChromeSource, /type ChatComposerStyleSlots as SharedChatComposerStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatComposerStyleSlots =\s+SharedChatComposerStyleSlots<\s+ChatComposerSpeechPreviewStyles,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerStyleSlots as SharedChatComposerStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatComposerStyleSlots =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['composer'\];/);
   assert.match(chatMessageChromeSource, /type ChatComposerRuntimeDockStyleSlots =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['composer'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerStyleSlots = \{\s+speechPreview: ChatComposerSpeechPreviewStyles;/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerStyleSlots/);

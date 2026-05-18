@@ -261,7 +261,6 @@ import {
   type ChatComposerRuntimeDockMobilePropsPartsInput,
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
   type ChatComposerSpeechPreviewMobileStyleSlots as SharedChatComposerSpeechPreviewStyleSlots,
-  type ChatComposerStyleSlots as SharedChatComposerStyleSlots,
   type ChatComposerTextEntryMobileStyleSlots as SharedChatComposerTextEntryStyleSlots,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -6276,18 +6275,7 @@ type ChatMessageThreadBodyCollapsedPreviewProps =
   Omit<ChatMessageCollapsedPreviewProps, 'style' | 'pressedStyle' | 'textStyle'>;
 
 type ChatComposerStyleSlots =
-  SharedChatComposerStyleSlots<
-    ChatComposerSpeechPreviewStyles,
-    ChatComposerPendingImagesRailStyles,
-    ChatComposerVoiceOverlayStyles,
-    ChatComposerHandsFreeControlsStyles,
-    Pick<ChatComposerIconButtonProps, 'style' | 'activeStyle'>,
-    ChatComposerTextEntryStyles,
-    ChatComposerLabeledActionButtonStyles,
-    ChatComposerLabeledActionButtonStyles,
-    ChatComposerMicButtonStyles,
-    ChatComposerInputDockStyles
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer'];
 
 type ChatComposerRuntimeDockStyleSlots =
   ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer'];
