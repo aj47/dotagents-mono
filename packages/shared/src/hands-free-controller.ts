@@ -109,6 +109,16 @@ export interface HandsFreeStatusChipMobileStylesLike<
   subtitle: TSubtitleStyle
 }
 
+export type HandsFreeStatusChipMobileStyleSheetSlotsInput =
+  HandsFreeStatusChipMobileStyleSlotsInput
+
+export type HandsFreeStatusChipMobileStyleSheetSlots =
+  HandsFreeStatusChipMobileStylesLike<
+    HandsFreeStatusChipMobileStyleSlots["container"],
+    HandsFreeStatusChipMobileStyleSlots["label"],
+    HandsFreeStatusChipMobileStyleSlots["subtitle"]
+  >
+
 export interface HandsFreeStatusChipMobilePropsPartsInput<
   TStyles extends HandsFreeStatusChipMobileStylesLike = HandsFreeStatusChipMobileStylesLike,
 > {
@@ -473,6 +483,18 @@ export function createHandsFreeStatusChipMobileStyleSlots({
       color: colors.textColor,
     },
   }
+}
+
+export function createHandsFreeStatusChipMobileStyleSheetSlots({
+  renderState,
+  spacing,
+  radius,
+}: HandsFreeStatusChipMobileStyleSheetSlotsInput): HandsFreeStatusChipMobileStyleSheetSlots {
+  return createHandsFreeStatusChipMobileStyleSlots({
+    renderState,
+    spacing,
+    radius,
+  })
 }
 
 export function createHandsFreeStatusChipMobilePropsParts<

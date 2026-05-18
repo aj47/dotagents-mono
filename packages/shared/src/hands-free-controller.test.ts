@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   createHandsFreeStatusChipMobilePropsParts,
+  createHandsFreeStatusChipMobileStyleSheetSlots,
   createHandsFreeStatusChipMobileStyleSlots,
   createHandsFreeComposerPermissionDeniedDebugState,
   createHandsFreeComposerRecognizerErrorDebugState,
@@ -262,6 +263,16 @@ describe("hands-free controller", () => {
         full: 999,
       },
     })
+    expect(createHandsFreeStatusChipMobileStyleSheetSlots({
+      renderState: listeningStatusChipRenderState,
+      spacing: {
+        xs: 4,
+        md: 12,
+      },
+      radius: {
+        full: 999,
+      },
+    })).toEqual(listeningStatusChipStyleSlots)
     expect(listeningStatusChipStyleSlots.container).toEqual({
       borderRadius: 999,
       borderWidth: 1,

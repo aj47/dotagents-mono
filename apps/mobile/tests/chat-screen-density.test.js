@@ -113,7 +113,14 @@ test('keeps mobile chat shared domain types routed through session presentation'
   assert.match(sessionPresentationSource, /export type \{ Loop, PredefinedPromptSummary, Settings, Skill \} from "\.\/api-types"/);
   assert.match(sessionPresentationSource, /export type \{ HandsFreePhase \} from "\.\/types"/);
   assert.match(sessionPresentationSource, /export type \{ VoiceDebugEntry, VoiceDebugLog \} from "\.\/voice-debug-log"/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?createHandsFreeStatusChipMobilePropsParts,[\s\S]*?createHandsFreeStatusChipMobileStyleSlots,[\s\S]*?getHandsFreeStatusChipMobileRenderState,[\s\S]*?HandsFreeStatusChipMobileColors,[\s\S]*?HandsFreeStatusChipMobileRenderState,[\s\S]*?\} from "\.\/hands-free-controller"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createHandsFreeStatusChipMobilePropsParts,[\s\S]*?createHandsFreeStatusChipMobileStyleSheetSlots,[\s\S]*?createHandsFreeStatusChipMobileStyleSlots,[\s\S]*?getHandsFreeStatusChipMobileRenderState,[\s\S]*?HandsFreeStatusChipMobileColors,[\s\S]*?HandsFreeStatusChipMobileRenderState,[\s\S]*?HandsFreeStatusChipMobileStyleSheetSlots,[\s\S]*?\} from "\.\/hands-free-controller"/);
+  assert.match(handsFreeStatusChipSource, /createHandsFreeStatusChipMobileStyleSheetSlots,/);
+  assert.match(handsFreeStatusChipSource, /type HandsFreeStatusChipMobileStyleSheetSlots,/);
+  assert.match(handsFreeStatusChipSource, /type HandsFreeStatusChipStyles = HandsFreeStatusChipMobileStyleSheetSlots;/);
+  assert.match(handsFreeStatusChipSource, /StyleSheet\.create\(\{\s*\.\.\.styleSheetSlots\s*\}\)/);
+  assert.doesNotMatch(handsFreeStatusChipSource, /createHandsFreeStatusChipMobileStyleSlots,/);
+  assert.doesNotMatch(handsFreeStatusChipSource, /type HandsFreeStatusChipMobileStylesLike,/);
+  assert.doesNotMatch(handsFreeStatusChipSource, /type StyleProp/);
 });
 
 test('resolves mobile monospace typography from shared surface tokens', () => {

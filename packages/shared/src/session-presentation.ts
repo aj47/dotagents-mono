@@ -212,11 +212,14 @@ import {
 } from "./hands-free-controller"
 export {
   createHandsFreeStatusChipMobilePropsParts,
+  createHandsFreeStatusChipMobileStyleSheetSlots,
   createHandsFreeStatusChipMobileStyleSlots,
   getHandsFreeStatusChipMobileRenderState,
   type HandsFreeStatusChipMobileColors,
   type HandsFreeStatusChipMobilePropsParts,
   type HandsFreeStatusChipMobileRenderState,
+  type HandsFreeStatusChipMobileStyleSheetSlots,
+  type HandsFreeStatusChipMobileStyleSheetSlotsInput,
   type HandsFreeStatusChipMobileStyleSlots,
   type HandsFreeStatusChipMobileStylesLike,
 } from "./hands-free-controller"
