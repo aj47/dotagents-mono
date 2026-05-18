@@ -250,7 +250,6 @@ import {
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
   type ChatRuntimeMessageHistoryBannerMobilePropsPartsInput,
-  type ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots as SharedChatMessageHistoryBannerStyleSlots,
   type ChatComposerLabeledActionButtonMobileStyleSlots as SharedChatComposerLabeledActionButtonStyleSlots,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
@@ -264,7 +263,6 @@ import {
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
   type ChatRuntimeStepSummaryCardMobilePropsParts,
   type ChatRuntimeStepSummaryCardMobilePropsPartsInput,
-  type ChatRuntimeStepSummaryCardMobileStyleSlots as SharedChatMessageStepSummaryCardStyleSlots,
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeLoadingStateMobilePropsPartsInput,
   type ChatRuntimeToolApprovalMobilePropsParts,
@@ -4246,13 +4244,7 @@ type ChatMessageToolExecutionCallListContentProps = {
 };
 
 type ChatMessageHistoryBannerStyles =
-  SharedChatMessageHistoryBannerStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['viewport']['historyBanner'];
 
 type ChatMessageHistoryBannerProps =
   ChatRuntimeMessageHistoryBannerMobilePropsPartsInput<
@@ -4470,16 +4462,7 @@ type ChatMessageConversationViewportProps =
   & ChatMessageConversationViewportContentProps;
 
 type ChatMessageStepSummaryCardStyles =
-  SharedChatMessageStepSummaryCardStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['viewport']['stepSummary'];
 
 type ChatMessageStepSummaryCardProps =
   ChatRuntimeStepSummaryCardMobilePropsPartsInput<
