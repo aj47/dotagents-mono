@@ -97,7 +97,6 @@ import {
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
   createChatRuntimeEffectiveRemoteSpeechSettingsState,
-  getChatRuntimeDefaultRemoteSpeechSettingsState,
   createChatRuntimeRequestSentDebugState,
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
@@ -117,8 +116,6 @@ import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
-
-const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatRuntimeDefaultRemoteSpeechSettingsState();
 
 type ChatScreenRuntimeChromeInput = ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>;
 
@@ -165,7 +162,7 @@ export default function ChatScreen({ route, navigation }: any) {
     remoteTtsModel,
     remoteTtsRate,
     applyRemoteSpeechSettings,
-  } = useChatMessageRuntimeRemoteSpeechSettingsState(DEFAULT_REMOTE_SPEECH_SETTINGS);
+  } = useChatMessageRuntimeRemoteSpeechSettingsState();
   const {
     pendingToolApprovalResponseId,
     beginToolApprovalResponse,
