@@ -29,7 +29,10 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
-import type { ChatRuntimeMobileChromeSlots } from './ChatRuntimeMobileStyles';
+import {
+  createChatRuntimeResponseHistoryPanelStyleSheetSlots,
+  type ChatRuntimeMobileChromeSlots,
+} from './ChatRuntimeMobileStyles';
 import {
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   applyChatMessageRuntimeAutoExpansionState,
@@ -14046,6 +14049,7 @@ export function ChatMessageResponseHistoryPanelDock(panelProps: ChatMessageRespo
       colors={colors}
       remoteBaseUrl={remoteBaseUrl}
       remoteApiKey={remoteApiKey}
+      createStyleSheetSlots={createChatRuntimeResponseHistoryPanelStyleSheetSlots}
       {...panelChromeState}
     />
   );

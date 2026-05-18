@@ -7,11 +7,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  createAgentResponseHistoryMobileStyleSheetSlots,
   createChatRuntimeMobileChromeSlotsFromStyleSource,
   createChatRuntimeMobileChromeStyleSlots,
   createChatRuntimeThemeSpinnerSource,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
+  type AgentResponseHistoryMobileStyleSheetSlots,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
   type ChatRuntimeMobileChromeSlotsFromStyleSource,
 } from '@dotagents/shared/session-presentation';
@@ -850,6 +852,25 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
 }
 
 export type ChatRuntimeMobileStyles = ReturnType<typeof createChatRuntimeMobileStyles>;
+
+export type ChatRuntimeResponseHistoryPanelStyleSheetSlotsInput = Pick<
+  Parameters<typeof createAgentResponseHistoryMobileStyleSheetSlots>[0],
+  'renderState'
+>;
+
+export type ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory = (
+  input: ChatRuntimeResponseHistoryPanelStyleSheetSlotsInput,
+) => AgentResponseHistoryMobileStyleSheetSlots;
+
+export function createChatRuntimeResponseHistoryPanelStyleSheetSlots({
+  renderState,
+}: ChatRuntimeResponseHistoryPanelStyleSheetSlotsInput): AgentResponseHistoryMobileStyleSheetSlots {
+  return createAgentResponseHistoryMobileStyleSheetSlots({
+    renderState,
+    spacing,
+    radius,
+  });
+}
 
 export type ChatRuntimeMobileChromeSlots = ChatRuntimeMobileChromeSlotsFromStyleSource<
   ChatRuntimeMobileStyles,

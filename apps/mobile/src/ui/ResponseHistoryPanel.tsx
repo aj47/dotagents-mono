@@ -15,14 +15,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   createAgentResponseHistoryMobilePropsParts,
-  createAgentResponseHistoryMobileStyleSheetSlots,
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
   type AgentResponseHistoryMobilePropsParts,
   type AgentResponseHistoryMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
+import type { ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory } from './ChatRuntimeMobileStyles';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { spacing, radius } from './theme';
 
 export interface ResponseHistoryEntry {
   id?: string;
@@ -32,6 +31,8 @@ export interface ResponseHistoryEntry {
 
 type ResponseHistoryToggleHandler = () => void;
 type ResponseHistorySpeakHandler = (text: string, index: number) => void;
+type ResponseHistoryCreateStyleSheetSlots =
+  ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory;
 
 export type ResponseHistoryPanelColors =
   Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
@@ -44,6 +45,7 @@ interface ResponseHistoryPanelProps {
   isCollapsed: boolean;
   shouldAnimateNewest: boolean;
   speakingIndex: number | null;
+  createStyleSheetSlots: ResponseHistoryCreateStyleSheetSlots;
   onToggleCollapsed: ResponseHistoryToggleHandler;
   onSpeakResponse: ResponseHistorySpeakHandler;
 }
@@ -109,6 +111,7 @@ export function ResponseHistoryPanel({
   isCollapsed,
   shouldAnimateNewest,
   speakingIndex,
+  createStyleSheetSlots,
   onToggleCollapsed,
   onSpeakResponse,
 }: ResponseHistoryPanelProps) {
@@ -119,10 +122,8 @@ export function ResponseHistoryPanel({
     animateNewest: shouldAnimateNewest,
     speakingIndex,
   });
-  const responseHistoryStyleSheetSlots = createAgentResponseHistoryMobileStyleSheetSlots({
+  const responseHistoryStyleSheetSlots = createStyleSheetSlots({
     renderState: responseHistoryRenderState,
-    spacing,
-    radius,
   });
 
   if (!responseHistoryRenderState.shouldRender) {

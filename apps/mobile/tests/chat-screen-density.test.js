@@ -232,7 +232,7 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(sessionPresentationSource, /export type ChatRuntimeHeaderStyleSlots<\s+TActionsRowStyle,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderIconButtonMobileStyleSlots<\s+TEdgeStyle = unknown,/);
   assert.match(sessionPresentationSource, /export type ChatRuntimeHeaderStyleSlotsFromStyleSource</);
-  assert.match(chatMessageChromeSource, /import type \{ ChatRuntimeMobileChromeSlots \} from '\.\/ChatRuntimeMobileStyles';/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMobileChromeSlots,[\s\S]*?\} from '\.\/ChatRuntimeMobileStyles';/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlotsFromStyleSource as SharedChatRuntimeHeaderStyleSlotsFromStyleSource,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderStyleSlots =\s+ChatRuntimeMobileChromeSlots\['header'\]\['styles'\];/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorStyles =\s+ChatRuntimeHeaderStyleSlots\['agentSelector'\];/);
@@ -6869,6 +6869,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(screenSource, /import \{ MessageQueuePanel \} from '\.\.\/ui\/MessageQueuePanel';/);
   assert.doesNotMatch(screenSource, /import \{ ResponseHistoryPanel \} from '\.\.\/ui\/ResponseHistoryPanel';/);
   assert.match(chatMessageChromeSource, /import \{ MessageQueuePanel, type MessageQueuePanelColors \} from '\.\/MessageQueuePanel';/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeResponseHistoryPanelStyleSheetSlots,[\s\S]*?type ChatRuntimeMobileChromeSlots,[\s\S]*?\} from '\.\/ChatRuntimeMobileStyles';/);
   assert.match(chatMessageChromeSource, /import \{ ResponseHistoryPanel, type ResponseHistoryEntry, type ResponseHistoryPanelColors \} from '\.\/ResponseHistoryPanel';/);
   assert.match(chatMessageChromeSource, /export function ChatMessageResponseHistoryPanelDock/);
   assert.match(chatMessageChromeSource, /type ChatMessageResponseHistoryPanelViewProps = ComponentProps<typeof ResponseHistoryPanel>;/);
@@ -6877,13 +6878,19 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /export type MessageQueuePanelColors =\s+Parameters<typeof getMessageQueuePanelMobileRenderState>\[0\]\['colors'\][\s\S]*?& Parameters<typeof getQueuedMessageItemMobileRenderState>\[0\]\['colors'\];/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeResponseHistoryPanelChromeState/);
   assert.match(chatMessageChromeSource, /const panelChromeState = useChatMessageRuntimeResponseHistoryPanelChromeState\(panelProps\);/);
-  assert.match(chatMessageChromeSource, /<ResponseHistoryPanel\s+responses=\{responses\}\s+colors=\{colors\}\s+remoteBaseUrl=\{remoteBaseUrl\}\s+remoteApiKey=\{remoteApiKey\}\s+\{\.\.\.panelChromeState\}/);
+  assert.match(chatMessageChromeSource, /<ResponseHistoryPanel\s+responses=\{responses\}\s+colors=\{colors\}\s+remoteBaseUrl=\{remoteBaseUrl\}\s+remoteApiKey=\{remoteApiKey\}\s+createStyleSheetSlots=\{createChatRuntimeResponseHistoryPanelStyleSheetSlots\}\s+\{\.\.\.panelChromeState\}/);
   assert.doesNotMatch(chatMessageChromeSource, /return <ResponseHistoryPanel \{\.\.\.panelProps\} \/>;/);
   assert.doesNotMatch(responseHistoryPanelSource, /from '@dotagents\/shared\/agent-user-response-store'/);
+  assert.doesNotMatch(responseHistoryPanelSource, /from '\.\/theme'/);
   assert.match(sessionPresentationSource, /export \{[\s\S]*?createAgentResponseHistoryMobilePropsParts,[\s\S]*?createAgentResponseHistoryMobileStyleSheetSlots,[\s\S]*?createAgentResponseHistoryMobileStyleSlots,[\s\S]*?getAgentResponseHistoryMobileRenderState,[\s\S]*?AgentResponseHistoryMobileAnimationState,[\s\S]*?\} from "\.\/agent-user-response-store"/);
+  assert.match(chatRuntimeMobileStylesSource, /createAgentResponseHistoryMobileStyleSheetSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /export type ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory = \(/);
+  assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeResponseHistoryPanelStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeResponseHistoryPanelStyleSheetSlotsInput\): AgentResponseHistoryMobileStyleSheetSlots \{[\s\S]*?createAgentResponseHistoryMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?\}\);[\s\S]*?\}/);
+  assert.match(responseHistoryPanelSource, /import type \{ ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory \} from '\.\/ChatRuntimeMobileStyles';/);
   assert.match(responseHistoryPanelSource, /createAgentResponseHistoryMobilePropsParts,/);
-  assert.match(responseHistoryPanelSource, /createAgentResponseHistoryMobileStyleSheetSlots,/);
-  assert.match(responseHistoryPanelSource, /const responseHistoryStyleSheetSlots = createAgentResponseHistoryMobileStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+spacing,\s+radius,\s+\}\);/);
+  assert.doesNotMatch(responseHistoryPanelSource, /createAgentResponseHistoryMobileStyleSheetSlots,/);
+  assert.match(responseHistoryPanelSource, /createStyleSheetSlots: ResponseHistoryCreateStyleSheetSlots;/);
+  assert.match(responseHistoryPanelSource, /const responseHistoryStyleSheetSlots = createStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+\}\);/);
   assert.match(responseHistoryPanelSource, /const responseHistoryParts: ResponseHistoryPanelParts = createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\);/);
   assert.match(responseHistoryPanelSource, /const styles: ResponseHistoryPanelStyles = StyleSheet\.create\(\{\s+\.\.\.responseHistoryStyleSheetSlots,\s+\}\);/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistoryStyleSlots\.container/);
@@ -7943,7 +7950,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /export function getChatRuntimeConversationMessageRenderContextMobileState/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationRenderContext/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageActionStyleSlots/);
-  assert.match(chatMessageChromeSource, /import type \{ ChatRuntimeMobileChromeSlots \} from '\.\/ChatRuntimeMobileStyles';/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMobileChromeSlots,[\s\S]*?\} from '\.\/ChatRuntimeMobileStyles';/);
   assert.match(chatMessageChromeSource, /export type ChatMessageActionStyleSlots =\s+ChatRuntimeMobileChromeSlots\['messageRuntime'\]\['styles'\]\['actionStyles'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationActionStyles = Pick</);
