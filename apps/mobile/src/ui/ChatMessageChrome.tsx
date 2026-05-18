@@ -5249,6 +5249,11 @@ type ChatMessageRuntimeSurfaceInputStateInput<
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['surface'];
 
+type ChatMessageRuntimeViewportInputStateInput<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+> = ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['viewport'];
+
 export type ChatMessageRuntimeChromeSurfaceProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
@@ -5291,6 +5296,87 @@ export function useChatMessageRuntimeChromeInputState<
   );
 
   return chatMessageRuntimeChromeInputState;
+}
+
+export function useChatMessageRuntimeViewportInputState<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>({
+  scrollRef,
+  onScroll,
+  onScrollBeginDrag,
+  onScrollEndDrag,
+  scrollEventThrottle,
+  viewportContentIsLoadingMessages,
+  viewportContentMessageCount,
+  quickStartPrompts,
+  quickStartSkills,
+  quickStartTasks,
+  quickStartCanAddPrompt,
+  isLoadingQuickStartPrompts,
+  runningPromptTaskId,
+  onQuickStartPress,
+  onEditPrompt,
+  onDeletePrompt,
+  messageHistoryLoadIncrement,
+  latestStepSummary,
+  onLoadEarlierMessages,
+  requestDebugText,
+  voiceDebugEnabled,
+  voiceEvents,
+}: ChatMessageRuntimeViewportInputStateInput<TPrompt, TTask>): ChatMessageRuntimeViewportInputStateInput<TPrompt, TTask> {
+  const chatMessageRuntimeViewportInputState = useMemo<ChatMessageRuntimeViewportInputStateInput<TPrompt, TTask>>(
+    () => ({
+      scrollRef,
+      onScroll,
+      onScrollBeginDrag,
+      onScrollEndDrag,
+      scrollEventThrottle,
+      viewportContentIsLoadingMessages,
+      viewportContentMessageCount,
+      quickStartPrompts,
+      quickStartSkills,
+      quickStartTasks,
+      quickStartCanAddPrompt,
+      isLoadingQuickStartPrompts,
+      runningPromptTaskId,
+      onQuickStartPress,
+      onEditPrompt,
+      onDeletePrompt,
+      messageHistoryLoadIncrement,
+      latestStepSummary,
+      onLoadEarlierMessages,
+      requestDebugText,
+      voiceDebugEnabled,
+      voiceEvents,
+    }),
+    [
+      isLoadingQuickStartPrompts,
+      latestStepSummary,
+      messageHistoryLoadIncrement,
+      onDeletePrompt,
+      onEditPrompt,
+      onLoadEarlierMessages,
+      onQuickStartPress,
+      onScroll,
+      onScrollBeginDrag,
+      onScrollEndDrag,
+      quickStartCanAddPrompt,
+      quickStartPrompts,
+      quickStartSkills,
+      quickStartTasks,
+      requestDebugText,
+      runningPromptTaskId,
+      scrollEventThrottle,
+      scrollRef,
+      viewportContentIsLoadingMessages,
+      viewportContentMessageCount,
+      voiceDebugEnabled,
+      voiceEvents,
+    ],
+  );
+
+  return chatMessageRuntimeViewportInputState;
 }
 
 export function useChatMessageRuntimeSurfaceInputState<

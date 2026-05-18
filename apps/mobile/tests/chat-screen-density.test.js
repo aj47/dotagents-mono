@@ -2678,7 +2678,10 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /import \{[^;]*createChatMessageRuntimeViewportStyleSlots[^;]*\} from '\.\/ChatMessageChrome';/);
   assert.match(sessionPresentationSource, /const messageRuntimeViewportStyles = createChatMessageRuntimeViewportStyleSlots\(\{/);
   assert.doesNotMatch(screenSource, /const chatMessageRuntimeViewportStyles = useMemo/);
-  assert.match(screenSource, /const chatMessageRuntimeViewport = useMemo<[\s\S]*?scrollRef: scrollViewRef,/);
+  assert.match(screenSource, /useChatMessageRuntimeViewportInputState,/);
+  assert.match(screenSource, /const chatMessageRuntimeViewport = useChatMessageRuntimeViewportInputState<[\s\S]*?scrollRef: scrollViewRef,/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeViewportInputState<[\s\S]*?\): ChatMessageRuntimeViewportInputStateInput<TPrompt, TTask>/);
+  assert.match(chatMessageChromeSource, /const chatMessageRuntimeViewportInputState = useMemo<ChatMessageRuntimeViewportInputStateInput<TPrompt, TTask>>\(/);
   assert.match(chatMessageChromeSource, /const chatMessageRuntimeViewport = createChatRuntimeViewportChromeMobileProps<[\s\S]*?>\(\{\s+\.\.\.viewport,\s+colors,\s+loadingSpinnerSource: spinnerSource,\s+visibleMessageCount: conversationThreadListState\.visibleMessageCount,/);
   assert.doesNotMatch(screenSource, /viewport=\{chatMessageRuntimeViewport\}/);
   assert.match(sessionPresentationSource, /viewportStyles: messageRuntimeViewportStyles,/);
@@ -2738,12 +2741,13 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(scrollViewportSource, /contentContainerStyle=\{contentContainerStyle\}/);
   assert.doesNotMatch(scrollViewportSource, /keyboardShouldPersistTaps=\{keyboardShouldPersistTaps\}/);
   assert.doesNotMatch(scrollViewportSource, /contentInsetAdjustmentBehavior=\{contentInsetAdjustmentBehavior\}/);
-  assert.match(screenSource, /const chatMessageRuntimeViewport = useMemo<\s+ChatScreenRuntimeChromeInput\['viewport'\]\s+>\(\(\) => \(\{/);
+  assert.doesNotMatch(screenSource, /const chatMessageRuntimeViewport = useMemo<\s+ChatScreenRuntimeChromeInput\['viewport'\]\s+>\(\(\) => \(\{/);
+  assert.match(screenSource, /const chatMessageRuntimeViewport = useChatMessageRuntimeViewportInputState<\s+PredefinedPromptSummary,\s+Loop\s+>\(\{/);
   assert.match(screenSource, /viewportContentIsLoadingMessages: sessionStore\.isLoadingMessages,\s+viewportContentMessageCount: messages\.length,\s+quickStartPrompts: predefinedPrompts,/);
   assert.doesNotMatch(screenSource, /loadingSpinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,\s+quickStartCanAddPrompt: Boolean\(settingsClient\),[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeViewportChromeMobileProps<[\s\S]*?>\(\{\s+\.\.\.viewport,\s+colors,/);
-  assert.match(screenSource, /const chatMessageRuntimeViewport = useMemo<[\s\S]*?messageHistoryLoadIncrement,\s+latestStepSummary,\s+onLoadEarlierMessages: loadEarlierMessages,/);
+  assert.match(screenSource, /const chatMessageRuntimeViewport = useChatMessageRuntimeViewportInputState<[\s\S]*?messageHistoryLoadIncrement,\s+latestStepSummary,\s+onLoadEarlierMessages: loadEarlierMessages,/);
   assert.match(chatMessageChromeSource, /visibleMessageCount: conversationThreadListState\.visibleMessageCount,\s+totalMessageCount: conversationThreadListState\.totalMessageCount,\s+hiddenMessageCount: conversationThreadListState\.hiddenMessageCount,/);
   assert.match(screenSource, /requestDebugText: debugInfo,\s+voiceDebugEnabled: handsFreeDebugEnabled,\s+voiceEvents,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeViewportChromeProps/);
@@ -6211,7 +6215,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(sessionPresentationSource, /visibleMessages: messages\.slice\(firstVisibleMessageIndex\)/);
   assert.match(sessionPresentationSource, /hiddenMessageCount: firstVisibleMessageIndex/);
   assert.doesNotMatch(screenSource, /const conversationViewportAffordanceRenderState = useMemo/);
-  assert.match(screenSource, /const chatMessageRuntimeViewport = useMemo<[\s\S]*?messageHistoryLoadIncrement,\s+latestStepSummary,\s+onLoadEarlierMessages: loadEarlierMessages,/);
+  assert.match(screenSource, /const chatMessageRuntimeViewport = useChatMessageRuntimeViewportInputState<[\s\S]*?messageHistoryLoadIncrement,\s+latestStepSummary,\s+onLoadEarlierMessages: loadEarlierMessages,/);
   assert.doesNotMatch(screenSource, /const messageHistoryBannerRenderState = useMemo/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationViewportAffordanceRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeViewportAffordanceMobileRenderState,/);
