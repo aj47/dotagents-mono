@@ -452,7 +452,6 @@ import {
   type ChatMessageRuntimeSessionMessageLike,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageExpansionMobileRenderState,
-  type ChatMessageConnectionBannerStyleSlots as SharedChatMessageConnectionBannerStyleSlots,
   type ChatMessageDelegationCardStyleSlots as SharedChatMessageDelegationCardStyleSlots,
   type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,
   type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,
@@ -5003,18 +5002,7 @@ type ChatMessageConversationDockContentProps = {
 };
 
 type ChatMessageConnectionBannerStyles =
-  SharedChatMessageConnectionBannerStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['connectionBanner'];
 
 type ChatMessageConnectionBannerProps =
   ChatRuntimeConnectionBannerMobilePropsPartsInput<

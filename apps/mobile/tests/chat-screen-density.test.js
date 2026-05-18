@@ -2229,8 +2229,8 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(sessionPresentationSource, /export function createChatMessageConversationDockStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageConversationDockStyleSlotsFromStyleSource/);
   assert.match(sessionPresentationSource, /connectionBanner: connectionBannerStyles,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerStyleSlots as SharedChatMessageConnectionBannerStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerStyles =\s+SharedChatMessageConnectionBannerStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConnectionBannerStyleSlots as SharedChatMessageConnectionBannerStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerStyles =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['connectionBanner'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConnectionBannerStyles = \{\s+banner: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeDockStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeDockStyleSlots/);
