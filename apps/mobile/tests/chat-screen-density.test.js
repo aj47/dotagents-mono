@@ -5629,6 +5629,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPayloadBlockMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPayloadBlockMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const payloadBlockParts: ChatMessageToolExecutionPayloadBlockParts =\s+createChatRuntimeToolExecutionPayloadBlockMobilePropsParts\(\{\s+compactText,\s+content,\s+isExpanded,\s+previewNumberOfLines,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadPreviewProps = \{\s+props: \{\s+style: StyleProp<TextStyle>;\s+numberOfLines: number;\s+\};\s+text: string;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadScrollContainerProps = \{\s+style: StyleProp<ViewStyle>;\s+nestedScrollEnabled: true;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPayloadBlockContentProps = \{\s+preview: ChatMessageToolExecutionPayloadPreviewPart;\s+scroll: \{\s+props: ChatMessageToolExecutionPayloadScrollContainerProps;\s+content: ChatMessageToolExecutionPayloadScrollContentProps;\s+\};\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionPayloadBlockParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const payloadBlockContent = payloadBlockParts\.content;/);
   assert.doesNotMatch(chatMessageChromeSource, /const payloadBlockScrollContent = payloadBlockContent\.scroll\.content;/);
   assert.match(toolExecutionPayloadBlockSource, /<ChatMessageToolExecutionPayloadBlockContent\s+\{\.\.\.payloadBlockParts\.content\}/);

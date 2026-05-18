@@ -4010,26 +4010,53 @@ type ChatMessageToolExecutionPayloadBlockParts =
     ChatMessageToolExecutionPayloadBlockStyles
   >;
 
-type ChatMessageToolExecutionPayloadBlockContentProps =
-  ChatMessageToolExecutionPayloadBlockParts['content'];
-
-type ChatMessageToolExecutionPayloadPreviewBlockProps = {
-  preview: ChatMessageToolExecutionPayloadBlockParts['content']['preview'];
+type ChatMessageToolExecutionPayloadPreviewProps = {
+  props: {
+    style: StyleProp<TextStyle>;
+    numberOfLines: number;
+  };
+  text: string;
 };
 
-type ChatMessageToolExecutionPayloadScrollContentProps =
-  ChatMessageToolExecutionPayloadBlockParts['content']['scroll']['content'];
+type ChatMessageToolExecutionPayloadPreviewPart = {
+  shouldRender: boolean;
+  props: ChatMessageToolExecutionPayloadPreviewProps;
+};
 
-type ChatMessageToolExecutionPayloadPreviewProps =
-  ChatMessageToolExecutionPayloadBlockParts['content']['preview']['props'];
+type ChatMessageToolExecutionPayloadCodeProps = {
+  props: {
+    style: StyleProp<TextStyle>;
+  };
+  text: string;
+};
+
+type ChatMessageToolExecutionPayloadScrollContainerProps = {
+  style: StyleProp<ViewStyle>;
+  nestedScrollEnabled: true;
+};
+
+type ChatMessageToolExecutionPayloadScrollContentProps = {
+  code: {
+    props: ChatMessageToolExecutionPayloadCodeProps;
+  };
+};
+
+type ChatMessageToolExecutionPayloadBlockContentProps = {
+  preview: ChatMessageToolExecutionPayloadPreviewPart;
+  scroll: {
+    props: ChatMessageToolExecutionPayloadScrollContainerProps;
+    content: ChatMessageToolExecutionPayloadScrollContentProps;
+  };
+};
+
+type ChatMessageToolExecutionPayloadPreviewBlockProps = {
+  preview: ChatMessageToolExecutionPayloadPreviewPart;
+};
 
 type ChatMessageToolExecutionPayloadScrollProps =
-  ChatMessageToolExecutionPayloadBlockParts['content']['scroll']['props'] & {
+  ChatMessageToolExecutionPayloadScrollContainerProps & {
     children: ReactNode;
   };
-
-type ChatMessageToolExecutionPayloadCodeProps =
-  ChatMessageToolExecutionPayloadBlockParts['content']['scroll']['content']['code']['props'];
 
 type ChatMessageToolExecutionPayloadSectionStyles =
   SharedChatMessageToolExecutionPayloadSectionStyleSlots<
