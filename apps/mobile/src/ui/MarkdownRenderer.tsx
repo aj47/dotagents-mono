@@ -39,13 +39,13 @@ import {
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from '@dotagents/shared/session-presentation';
 import { useChatRuntimeMarkdownMobileStyleSlots } from './ChatRuntimeMobileStyles';
-import { VideoAttachmentCard } from './VideoAttachmentCard';
+import { VideoAttachmentCard, type VideoAttachmentCardProps } from './VideoAttachmentCard';
 import { SettingsApiClient } from '../lib/settingsApi';
 
 export interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
   content: string;
-  assetBaseUrl?: string;
-  assetAuthToken?: string;
+  assetBaseUrl?: VideoAttachmentCardProps['assetBaseUrl'];
+  assetAuthToken?: VideoAttachmentCardProps['authToken'];
 }
 
 type MarkdownPressHandler = () => void | Promise<void>;
