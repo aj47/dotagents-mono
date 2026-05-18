@@ -5087,22 +5087,23 @@ export function ChatMessageActionIconButton({
   pressedStyle,
   disabledStyle,
 }: ChatMessageActionIconButtonProps) {
-  const actionIconButtonParts = createChatRuntimeMessageActionIconButtonMobilePropsParts({
-    icon,
-    onPress,
-    disabled,
-    isActive,
-    accessibilityRole,
-    accessibilityLabel,
-    accessibilityHint,
-    accessibilityState,
-    ariaExpanded,
-    hitSlop,
-    style,
-    activeStyle,
-    pressedStyle,
-    disabledStyle,
-  });
+  const actionIconButtonParts: ChatMessageActionIconButtonParts =
+    createChatRuntimeMessageActionIconButtonMobilePropsParts({
+      icon,
+      onPress,
+      disabled,
+      isActive,
+      accessibilityRole,
+      accessibilityLabel,
+      accessibilityHint,
+      accessibilityState,
+      ariaExpanded,
+      hitSlop,
+      style,
+      activeStyle,
+      pressedStyle,
+      disabledStyle,
+    });
 
   return (
     <ChatMessageActionIconButtonPressable
