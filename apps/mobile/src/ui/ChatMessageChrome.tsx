@@ -290,6 +290,10 @@ import {
   type ChatRuntimeMessageSurfaceMobilePropsParts,
   type ChatRuntimeConnectionBannerMobilePropsParts,
   type ChatRuntimeRetryStatusMobilePropsParts,
+  type ChatRuntimeToolExecutionCollapseControlMobilePropsParts,
+  type ChatRuntimeToolExecutionCompactGroupMobilePropsParts,
+  type ChatRuntimeToolExecutionCompactListMobilePropsParts,
+  type ChatRuntimeToolExecutionCompactRowMobilePropsParts,
   type ChatRuntimeRetryStatusMobileRenderState,
   type ChatRuntimeStreamingContentMobileRenderStateInput,
   type ChatRuntimeStreamingContentMobileRenderState,
@@ -2352,10 +2356,11 @@ type ChatMessageToolExecutionCompactRowProps = {
   styles: ChatMessageToolExecutionCompactRowStyles;
 };
 
-type ChatMessageToolExecutionCompactRowParts = ReturnType<typeof createChatRuntimeToolExecutionCompactRowMobilePropsParts<
-  ChatMessageToolExecutionCompactRowProps['renderState'],
-  ChatMessageToolExecutionCompactRowProps['styles']
->>;
+type ChatMessageToolExecutionCompactRowParts =
+  ChatRuntimeToolExecutionCompactRowMobilePropsParts<
+    ChatMessageToolExecutionCompactRowProps['renderState'],
+    ChatMessageToolExecutionCompactRowProps['styles']
+  >;
 
 type ChatMessageToolExecutionCompactRowContainerProps =
   ChatMessageToolExecutionCompactRowParts['container']['props'] & {
@@ -2422,11 +2427,12 @@ type ChatMessageToolExecutionCompactGroupProps = {
   children: ReactNode;
 };
 
-type ChatMessageToolExecutionCompactGroupParts = ReturnType<typeof createChatRuntimeToolExecutionCompactGroupMobilePropsParts<
-  ChatMessageToolExecutionCompactGroupProps['renderState'],
-  ChatMessageToolExecutionCompactGroupProps['onPress'],
-  ChatMessageToolExecutionCompactGroupProps['styles']
->>;
+type ChatMessageToolExecutionCompactGroupParts =
+  ChatRuntimeToolExecutionCompactGroupMobilePropsParts<
+    ChatMessageToolExecutionCompactGroupProps['renderState'],
+    ChatMessageToolExecutionCompactGroupProps['onPress'],
+    ChatMessageToolExecutionCompactGroupProps['styles']
+  >;
 
 type ChatMessageToolExecutionCompactGroupPressableProps =
   ChatMessageToolExecutionCompactGroupParts['container']['props'] & {
@@ -2442,13 +2448,14 @@ type ChatMessageToolExecutionCompactListProps = {
   rowStyles: ChatMessageToolExecutionCompactRowStyles;
 };
 
-type ChatMessageToolExecutionCompactListParts = ReturnType<typeof createChatRuntimeToolExecutionCompactListMobilePropsParts<
-  ChatMessageToolExecutionCompactListProps['renderState'],
-  ChatMessageToolExecutionCompactListRow,
-  ChatMessageToolExecutionCompactListProps['onPress'],
-  ChatMessageToolExecutionCompactListProps['groupStyles'],
-  ChatMessageToolExecutionCompactListProps['rowStyles']
->>;
+type ChatMessageToolExecutionCompactListParts =
+  ChatRuntimeToolExecutionCompactListMobilePropsParts<
+    ChatMessageToolExecutionCompactListProps['renderState'],
+    ChatMessageToolExecutionCompactListRow,
+    ChatMessageToolExecutionCompactListProps['onPress'],
+    ChatMessageToolExecutionCompactListProps['groupStyles'],
+    ChatMessageToolExecutionCompactListProps['rowStyles']
+  >;
 
 type ChatMessageToolExecutionCompactListContentProps =
   ChatMessageToolExecutionCompactListParts['group']['content'];
@@ -2466,11 +2473,12 @@ type ChatMessageToolExecutionCollapseControlProps = {
   styles: ChatMessageToolExecutionCollapseControlStyles;
 };
 
-type ChatMessageToolExecutionCollapseControlParts = ReturnType<typeof createChatRuntimeToolExecutionCollapseControlMobilePropsParts<
-  ChatMessageToolExecutionCollapseControlProps['renderState'],
-  ChatMessageToolExecutionCollapseControlProps['onPress'],
-  ChatMessageToolExecutionCollapseControlProps['styles']
->>;
+type ChatMessageToolExecutionCollapseControlParts =
+  ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
+    ChatMessageToolExecutionCollapseControlProps['renderState'],
+    ChatMessageToolExecutionCollapseControlProps['onPress'],
+    ChatMessageToolExecutionCollapseControlProps['styles']
+  >;
 
 type ChatMessageToolExecutionCollapseControlPressableProps =
   ChatMessageToolExecutionCollapseControlParts['container']['props'] & {
