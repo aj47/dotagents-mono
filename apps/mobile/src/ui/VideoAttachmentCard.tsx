@@ -22,7 +22,7 @@ import {
 import { SettingsApiClient } from '../lib/settingsApi';
 import { useChatRuntimeVideoAttachmentMobileStyleSlots } from './ChatRuntimeMobileStyles';
 
-interface VideoAttachmentCardProps {
+export interface VideoAttachmentCardProps {
   sourceUrl: string;
   label?: string;
   assetBaseUrl?: string;

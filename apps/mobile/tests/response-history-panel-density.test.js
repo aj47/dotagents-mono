@@ -13,6 +13,7 @@ const sessionPresentationSource = fs.readFileSync(
 );
 
 test('mobile response history panel uses shared copy, actions, and accessibility labels', () => {
+  assert.match(source, /import \{ MarkdownRenderer, type MarkdownRendererProps \} from '\.\/MarkdownRenderer';/);
   assert.match(source, /createAgentResponseHistoryMobilePropsParts,/);
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /type AgentResponseHistoryMobilePropsParts,/);
@@ -20,6 +21,7 @@ test('mobile response history panel uses shared copy, actions, and accessibility
   assert.match(source, /type AgentResponseHistoryMobileSurfaceColorPalette,/);
   assert.match(source, /type AgentResponseHistoryMobileStyleSheetSlots,/);
   assert.match(source, /export interface ResponseHistoryPanelProps/);
+  assert.match(source, /type ResponseHistoryMarkdownAssetProps = Pick<\s+MarkdownRendererProps,\s+'assetBaseUrl' \| 'assetAuthToken'\s+>;/);
   assert.match(source, /type ResponseHistoryPanelParts =\s+AgentResponseHistoryMobilePropsParts<[\s\S]*?ResponseHistoryEntry,[\s\S]*?ResponseHistoryPanelStyles,[\s\S]*?ResponseHistoryToggleHandler/);
   assert.match(sessionPresentationSource, /type AgentResponseHistoryMobileSurfaceColorPalette,/);
   assert.match(source, /export type ResponseHistoryPanelColors = AgentResponseHistoryMobileSurfaceColorPalette;/);
@@ -32,6 +34,8 @@ test('mobile response history panel uses shared copy, actions, and accessibility
   assert.match(source, /speakingIndex: number \| null;/);
   assert.match(source, /onToggleCollapsed: ResponseHistoryToggleHandler;/);
   assert.match(source, /onSpeakResponse: ResponseHistorySpeakHandler;/);
+  assert.match(source, /remoteBaseUrl\?: ResponseHistoryMarkdownAssetProps\['assetBaseUrl'\];/);
+  assert.match(source, /remoteApiKey\?: ResponseHistoryMarkdownAssetProps\['assetAuthToken'\];/);
   assert.match(source, /const responseHistoryRenderState = useMemo\(\s+\(\) => getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+speakingIndex,\s+\}\),\s+\[colors, isCollapsed, responses, shouldAnimateNewest, speakingIndex\],\s+\);/);
   assert.match(source, /const responseHistoryParts = useMemo<ResponseHistoryPanelParts>\(\s+\(\) => createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\),\s+\[onSpeakResponse, onToggleCollapsed, responseHistoryRenderState, styles\],\s+\);/);
   assert.match(source, /if \(!responseHistoryRenderState\.shouldRender\) \{[\s\S]*?return null;/);

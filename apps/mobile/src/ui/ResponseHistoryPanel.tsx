@@ -22,7 +22,7 @@ import {
   type AgentResponseHistoryMobileSurfaceColorPalette,
   type AgentResponseHistoryMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
-import { MarkdownRenderer } from './MarkdownRenderer';
+import { MarkdownRenderer, type MarkdownRendererProps } from './MarkdownRenderer';
 
 export interface ResponseHistoryEntry {
   id?: string;
@@ -34,6 +34,11 @@ type ResponseHistoryToggleHandler = () => void;
 type ResponseHistorySpeakHandler = (text: string, index: number) => void;
 
 export type ResponseHistoryPanelColors = AgentResponseHistoryMobileSurfaceColorPalette;
+
+type ResponseHistoryMarkdownAssetProps = Pick<
+  MarkdownRendererProps,
+  'assetBaseUrl' | 'assetAuthToken'
+>;
 
 export type ResponseHistoryPanelStyleSheetSlotsFactory = (input: {
   renderState: AgentResponseHistoryMobileRenderState<ResponseHistoryEntry>;
@@ -116,8 +121,8 @@ const AnimatedResponseItem = React.memo(function AnimatedResponseItem({
 
 interface ResponseHistoryListItemProps {
   item: ResponseHistoryPanelListItemPart;
-  remoteBaseUrl?: string;
-  remoteApiKey?: string;
+  remoteBaseUrl?: ResponseHistoryMarkdownAssetProps['assetBaseUrl'];
+  remoteApiKey?: ResponseHistoryMarkdownAssetProps['assetAuthToken'];
 }
 
 const ResponseHistoryListItem = React.memo(function ResponseHistoryListItem({

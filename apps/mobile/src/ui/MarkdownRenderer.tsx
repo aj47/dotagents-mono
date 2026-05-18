@@ -42,7 +42,7 @@ import { useChatRuntimeMarkdownMobileStyleSlots } from './ChatRuntimeMobileStyle
 import { VideoAttachmentCard } from './VideoAttachmentCard';
 import { SettingsApiClient } from '../lib/settingsApi';
 
-interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
+export interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
   content: string;
   assetBaseUrl?: string;
   assetAuthToken?: string;

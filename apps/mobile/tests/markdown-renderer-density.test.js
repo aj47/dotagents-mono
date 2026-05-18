@@ -17,6 +17,7 @@ const sessionPresentationSource = fs.readFileSync(
 );
 
 test('mobile markdown renderer uses explicit shared prop-part contracts', () => {
+  assert.match(source, /export interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions/);
   assert.match(source, /type MarkdownCodeBlockCopyMobilePropsParts,/);
   assert.match(source, /type MarkdownContentMobileStyleSheetSlots,/);
   assert.match(source, /type MarkdownImageMobilePropsParts,/);

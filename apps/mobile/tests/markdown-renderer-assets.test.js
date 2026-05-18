@@ -66,7 +66,7 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
   assert.match(rendererSource, /getMarkdownThinkSectionControlState/);
   assert.match(rendererSource, /type MarkdownThinkSectionMobileSurfaceRenderState/);
   assert.match(rendererSource, /type MarkdownThinkSectionControlOptions/);
-  assert.match(rendererSource, /interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions/);
+  assert.match(rendererSource, /export interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions/);
   assert.match(rendererSource, /createMarkdownThinkSectionMobilePropsParts/);
   assert.match(markdownRenderPartsSource, /export function createMarkdownThinkSectionMobilePropsParts/);
   assert.doesNotMatch(rendererSource, /createMarkdownThinkSectionMobileStyle(Sheet)?Slots/);

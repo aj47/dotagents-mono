@@ -21,6 +21,7 @@ const chatRuntimeMobileStylesSource = fs.readFileSync(
 );
 
 test('mobile video attachment card uses shared copy and accessibility labels', () => {
+  assert.match(source, /export interface VideoAttachmentCardProps/);
   assert.match(source, /useChatRuntimeVideoAttachmentMobileStyleSlots/);
   assert.match(chatRuntimeMobileStylesSource, /getChatVideoAttachmentMobileRenderState/);
   assert.match(sessionPresentationSource, /type ChatVideoAttachmentMobileRenderState,/);
