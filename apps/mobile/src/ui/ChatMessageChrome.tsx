@@ -3532,8 +3532,18 @@ type ChatMessageToolExecutionStackContentProps =
   Pick<ChatMessageToolExecutionStackProps, 'shouldRender' | 'isExpanded'>
   & ChatMessageToolExecutionStackPanelParts;
 
+type ChatMessageToolExecutionStackEmptyStateBlockPart =
+  | {
+      shouldRender: true;
+      props: ChatMessageToolExecutionEmptyStateProps;
+    }
+  | {
+      shouldRender: false;
+      props: null;
+    };
+
 type ChatMessageToolExecutionStackEmptyStateBlockProps = {
-  emptyState: ChatMessageToolExecutionStackPanelParts['expandedGroup']['content']['emptyState'];
+  emptyState: ChatMessageToolExecutionStackEmptyStateBlockPart;
 };
 
 type ChatMessageToolExecutionCopyButtonStyles =
