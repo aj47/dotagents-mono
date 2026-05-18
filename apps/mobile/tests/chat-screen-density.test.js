@@ -2455,8 +2455,9 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(screenSource, /ChatMessageRuntimeChromePropsInput,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeSurfaceChromeProps,/);
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeChromeProps,/);
-  assert.match(screenSource, /const chatMessageRuntimeComposer = useMemo<\s+ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>\['composer'\]\s+>\(\(\) => \(\{/);
-  assert.match(screenSource, /const chatMessageRuntimeSurface = useMemo<\s+ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>\s+>\(\(\) => \(\{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
+  assert.match(screenSource, /type ChatScreenRuntimeChromeInput = ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>;/);
+  assert.match(screenSource, /const chatMessageRuntimeComposer = useMemo<\s+ChatScreenRuntimeChromeInput\['composer'\]\s+>\(\(\) => \(\{/);
+  assert.match(screenSource, /const chatMessageRuntimeSurface = useMemo<\s+ChatScreenRuntimeChromeInput\s+>\(\(\) => \(\{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.doesNotMatch(screenSource, /const chatMessageRuntimeSurface: ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop> = \{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.match(chatMessageChromeSource, /export type ChatMessageRuntimeChromePropsInput</);
   assert.match(chatMessageChromeSource, /styles: \{\s+actionStyles: ChatMessageActionStyleSlots;\s+threadStyles: ChatMessageRuntimeThreadStyleSlots;\s+promptEditorStyles: ChatConversationHomePromptEditorModalStyles;\s+\};/);
@@ -2661,7 +2662,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(scrollViewportSource, /contentContainerStyle=\{contentContainerStyle\}/);
   assert.doesNotMatch(scrollViewportSource, /keyboardShouldPersistTaps=\{keyboardShouldPersistTaps\}/);
   assert.doesNotMatch(scrollViewportSource, /contentInsetAdjustmentBehavior=\{contentInsetAdjustmentBehavior\}/);
-  assert.match(screenSource, /const chatMessageRuntimeViewport = useMemo<\s+ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>\['viewport'\]\s+>\(\(\) => \(\{/);
+  assert.match(screenSource, /const chatMessageRuntimeViewport = useMemo<\s+ChatScreenRuntimeChromeInput\['viewport'\]\s+>\(\(\) => \(\{/);
   assert.match(screenSource, /viewportContentIsLoadingMessages: sessionStore\.isLoadingMessages,\s+viewportContentMessageCount: messages\.length,\s+quickStartPrompts: predefinedPrompts,/);
   assert.doesNotMatch(screenSource, /loadingSpinnerSource: isDark \? darkSpinner : lightSpinner,/);
   assert.match(screenSource, /quickStartPrompts: predefinedPrompts,\s+quickStartSkills: availableSkills,\s+quickStartTasks: availableTasks,\s+quickStartCanAddPrompt: Boolean\(settingsClient\),[\s\S]*?onQuickStartPress: handleQuickStartPress,[\s\S]*?onEditPrompt: openEditPromptModal,[\s\S]*?onDeletePrompt: handleDeletePrompt,/);
@@ -9743,7 +9744,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(chatMessageChromeSource, /export function deleteChatConversationHomePromptFromList/);
   assert.doesNotMatch(screenSource, /updatePredefinedPromptList/);
   assert.doesNotMatch(screenSource, /deletePredefinedPromptFromList/);
-  assert.match(screenSource, /const chatMessageRuntimeSurfaceInput = useMemo<\s+ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>\['surface'\]\s+>\(\(\) => \(\{[\s\S]*?promptEditorVisible: addPromptModalVisible,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurfaceInput = useMemo<\s+ChatScreenRuntimeChromeInput\['surface'\]\s+>\(\(\) => \(\{[\s\S]*?promptEditorVisible: addPromptModalVisible,/);
   assert.doesNotMatch(screenSource, /<ChatConversationHomePromptEditorModal/);
   assert.doesNotMatch(screenSource, /<Modal/);
   assert.doesNotMatch(screenSource, /<TouchableOpacity/);

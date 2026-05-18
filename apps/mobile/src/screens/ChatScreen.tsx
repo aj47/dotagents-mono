@@ -119,6 +119,8 @@ import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 
 const DEFAULT_REMOTE_SPEECH_SETTINGS = getChatRuntimeDefaultRemoteSpeechSettingsState();
 
+type ChatScreenRuntimeChromeInput = ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>;
+
 export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
   const isFocused = useIsFocused();
@@ -1495,7 +1497,7 @@ export default function ChatScreen({ route, navigation }: any) {
   });
 
   const chatMessageRuntimeComposer = useMemo<
-    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['composer']
+    ChatScreenRuntimeChromeInput['composer']
   >(() => ({
       speechPreviewText: sttPreview,
       pendingImages,
@@ -1577,7 +1579,7 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
 
   const chatMessageRuntimeDock = useMemo<
-    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['dock']
+    ChatScreenRuntimeChromeInput['dock']
   >(() => ({
       responseHistoryResponses: respondToUserHistory,
       responseHistoryTtsProvider: effectiveTtsProvider,
@@ -1645,7 +1647,7 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
 
   const chatMessageRuntimeThreadList = useMemo<
-    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['threadList']
+    ChatScreenRuntimeChromeInput['threadList']
   >(() => ({
       messages,
       visibleMessageCount,
@@ -1712,7 +1714,7 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
 
   const chatMessageRuntimeViewport = useMemo<
-    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['viewport']
+    ChatScreenRuntimeChromeInput['viewport']
   >(() => ({
       scrollRef: scrollViewRef,
       onScroll: handleScroll,
@@ -1762,7 +1764,7 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
 
   const chatMessageRuntimeSurfaceInput = useMemo<
-    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>['surface']
+    ChatScreenRuntimeChromeInput['surface']
   >(() => ({
       keyboardVerticalOffset: headerHeight,
       agentSelectorVisible,
@@ -1792,7 +1794,7 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
 
   const chatMessageRuntimeSurface = useMemo<
-    ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop>
+    ChatScreenRuntimeChromeInput
   >(() => ({
       ...chatRuntimeChrome.messageRuntime,
       composer: chatMessageRuntimeComposer,
