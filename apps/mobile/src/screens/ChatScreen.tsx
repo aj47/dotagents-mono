@@ -67,6 +67,7 @@ import {
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardChromeActionsState,
   useChatRuntimeMobileConfigState,
+  useChatMessageRuntimeChromeInputState,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatMessageRuntimeChromePropsInput,
@@ -1795,23 +1796,17 @@ export default function ChatScreen({ route, navigation }: any) {
       setNewPromptName,
     ]);
 
-  const chatMessageRuntimeSurface = useMemo<
-    ChatScreenRuntimeChromeInput
-  >(() => ({
-      ...chatRuntimeChrome.messageRuntime,
-      composer: chatMessageRuntimeComposer,
-      dock: chatMessageRuntimeDock,
-      threadList: chatMessageRuntimeThreadList,
-      viewport: chatMessageRuntimeViewport,
-      surface: chatMessageRuntimeSurfaceInput,
-    }), [
-      chatMessageRuntimeComposer,
-      chatMessageRuntimeDock,
-      chatMessageRuntimeSurfaceInput,
-      chatMessageRuntimeThreadList,
-      chatMessageRuntimeViewport,
-      chatRuntimeChrome.messageRuntime,
-    ]);
+  const chatMessageRuntimeSurface = useChatMessageRuntimeChromeInputState<
+    PredefinedPromptSummary,
+    Loop
+  >({
+    messageRuntime: chatRuntimeChrome.messageRuntime,
+    composer: chatMessageRuntimeComposer,
+    dock: chatMessageRuntimeDock,
+    threadList: chatMessageRuntimeThreadList,
+    viewport: chatMessageRuntimeViewport,
+    surface: chatMessageRuntimeSurfaceInput,
+  });
 
   return (
     <ChatMessageRuntimeChromeSurface<PredefinedPromptSummary, Loop>

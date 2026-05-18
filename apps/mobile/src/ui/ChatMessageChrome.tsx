@@ -5224,6 +5224,26 @@ export type ChatMessageRuntimeChromePropsInput<
   >;
 };
 
+type ChatMessageRuntimeChromeBasePropsInput<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+> = Omit<
+  ChatMessageRuntimeChromePropsInput<TPrompt, TTask>,
+  'composer' | 'dock' | 'threadList' | 'viewport' | 'surface'
+>;
+
+type ChatMessageRuntimeChromeInputStateInput<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+> = {
+  messageRuntime: ChatMessageRuntimeChromeBasePropsInput<TPrompt, TTask>;
+  composer: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['composer'];
+  dock: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['dock'];
+  threadList: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['threadList'];
+  viewport: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['viewport'];
+  surface: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['surface'];
+};
+
 export type ChatMessageRuntimeChromeSurfaceProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
@@ -5234,6 +5254,39 @@ export type ChatMessageRuntimeChromeSurfaceProps<
     };
   };
 };
+
+export function useChatMessageRuntimeChromeInputState<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>({
+  messageRuntime,
+  composer,
+  dock,
+  threadList,
+  viewport,
+  surface,
+}: ChatMessageRuntimeChromeInputStateInput<TPrompt, TTask>): ChatMessageRuntimeChromePropsInput<TPrompt, TTask> {
+  const chatMessageRuntimeChromeInputState = useMemo<ChatMessageRuntimeChromePropsInput<TPrompt, TTask>>(
+    () => ({
+      ...messageRuntime,
+      composer,
+      dock,
+      threadList,
+      viewport,
+      surface,
+    }),
+    [
+      composer,
+      dock,
+      messageRuntime,
+      surface,
+      threadList,
+      viewport,
+    ],
+  );
+
+  return chatMessageRuntimeChromeInputState;
+}
 
 type ChatComposerSpeechPreviewStyles =
   ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer']['speechPreview'];
