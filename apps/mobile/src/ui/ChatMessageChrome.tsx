@@ -3410,13 +3410,13 @@ type ChatMessageConversationFrameProps =
 
 type ChatMessageConversationFrameParts =
   ChatRuntimeConversationFrameMobilePropsParts<
-    ChatMessageConversationFrameProps['children'],
-    ChatMessageConversationFrameProps['dock'],
-    ChatMessageConversationFrameProps['overlays'],
-    ChatMessageConversationFrameProps['keyboardAvoidingStyle'],
-    ChatMessageConversationFrameProps['keyboardAvoidingBehavior'],
-    ChatMessageConversationFrameProps['keyboardVerticalOffset'],
-    ChatMessageConversationFrameProps['rootStyle']
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    StyleProp<ViewStyle>,
+    ComponentProps<typeof KeyboardAvoidingView>['behavior'],
+    number,
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageConversationFrameContentProps =
@@ -3439,8 +3439,8 @@ type ChatMessageConversationOverlaysProps =
 
 type ChatMessageConversationOverlaysParts =
   ChatRuntimeConversationOverlaysMobilePropsParts<
-    ChatMessageConversationOverlaysProps['agentSelector'],
-    ChatMessageConversationOverlaysProps['promptEditor']
+    ReactNode,
+    ReactNode
   >;
 
 type ChatMessageConversationOverlaysContentProps =
@@ -3462,16 +3462,16 @@ type ChatMessageScrollViewportProps =
 
 type ChatMessageScrollViewportParts =
   ChatRuntimeConversationScrollViewportMobilePropsParts<
-    ChatMessageScrollViewportProps['children'],
-    ChatMessageScrollViewportProps['scrollRef'],
-    ChatMessageScrollViewportProps['style'],
-    ChatMessageScrollViewportProps['contentContainerStyle'],
-    ChatMessageScrollViewportProps['keyboardShouldPersistTaps'],
-    ChatMessageScrollViewportProps['contentInsetAdjustmentBehavior'],
-    ChatMessageScrollViewportProps['onScroll'],
-    ChatMessageScrollViewportProps['onScrollBeginDrag'],
-    ChatMessageScrollViewportProps['onScrollEndDrag'],
-    ChatMessageScrollViewportProps['scrollEventThrottle']
+    ReactNode,
+    Ref<ScrollView>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    ComponentProps<typeof ScrollView>['keyboardShouldPersistTaps'],
+    ComponentProps<typeof ScrollView>['contentInsetAdjustmentBehavior'],
+    ComponentProps<typeof ScrollView>['onScroll'],
+    ComponentProps<typeof ScrollView>['onScrollBeginDrag'],
+    ComponentProps<typeof ScrollView>['onScrollEndDrag'],
+    number
   >;
 
 type ChatMessageScrollViewportContentProps =
@@ -3489,12 +3489,12 @@ type ChatMessageConversationViewportContentProps =
 
 type ChatMessageConversationViewportContentParts =
   ChatRuntimeConversationViewportContentMobilePropsParts<
-    ChatMessageConversationViewportContentProps['loadingState'],
-    ChatMessageConversationViewportContentProps['homeState'],
-    ChatMessageConversationViewportContentProps['historyBanner'],
-    ChatMessageConversationViewportContentProps['stepSummary'],
-    ChatMessageConversationViewportContentProps['children'],
-    ChatMessageConversationViewportContentProps['debugPanels']
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode
   >;
 
 type ChatMessageConversationViewportContentPartProps =
@@ -3897,12 +3897,12 @@ type ChatMessageConversationDockProps =
 
 type ChatMessageConversationDockParts =
   ChatRuntimeConversationDockShellMobilePropsParts<
-    ChatMessageConversationDockProps['responseHistoryPanel'],
-    ChatMessageConversationDockProps['scrollToBottomButton'],
-    ChatMessageConversationDockProps['voiceOverlay'],
-    ChatMessageConversationDockProps['queuePanel'],
-    ChatMessageConversationDockProps['connectionBanner'],
-    ChatMessageConversationDockProps['composer']
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode
   >;
 
 type ChatMessageConversationDockContentProps =
