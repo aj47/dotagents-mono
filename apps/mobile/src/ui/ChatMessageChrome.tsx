@@ -12688,28 +12688,12 @@ export function ChatMessageToolExecutionCollapseControlLabel({
   );
 }
 
-export function ChatMessageToolExecutionExpandedGroup({
-  topCollapseRenderState,
-  bottomCollapseRenderState,
-  onCollapsePress,
-  isPending,
-  allSuccess,
-  hasErrors,
-  emptyState,
-  styles,
-  children,
-}: ChatMessageToolExecutionExpandedGroupProps) {
+export function ChatMessageToolExecutionExpandedGroup(
+  props: ChatMessageToolExecutionExpandedGroupProps,
+) {
   const expandedGroupParts: ChatMessageToolExecutionExpandedGroupParts =
-    createChatRuntimeToolExecutionExpandedGroupMobilePropsParts({
-      topCollapseRenderState,
-      bottomCollapseRenderState,
-      onCollapsePress,
-      isPending,
-      allSuccess,
-      hasErrors,
-      emptyState,
-      styles,
-    });
+    createChatRuntimeToolExecutionExpandedGroupMobilePropsParts(props);
+  const { children } = props;
 
   return (
     <ChatMessageToolExecutionExpandedGroupContainer
@@ -12783,20 +12767,12 @@ export function ChatMessageToolExecutionExpandedGroupCard({
   );
 }
 
-export function ChatMessageToolExecutionPanel({
-  shouldRender,
-  isExpanded,
-  compact,
-  expanded,
-  children,
-}: ChatMessageToolExecutionPanelProps) {
+export function ChatMessageToolExecutionPanel(
+  props: ChatMessageToolExecutionPanelProps,
+) {
   const panelParts: ChatMessageToolExecutionPanelParts =
-    createChatRuntimeToolExecutionPanelMobilePropsParts({
-      shouldRender,
-      isExpanded,
-      compact,
-      expanded,
-    });
+    createChatRuntimeToolExecutionPanelMobilePropsParts(props);
+  const { children } = props;
 
   return (
     <ChatMessageToolExecutionPanelContent
@@ -12848,21 +12824,12 @@ export function ChatMessageToolExecutionPanelShellContent({
   );
 }
 
-export function ChatMessageToolExecutionStack({
-  shouldRender,
-  isExpanded,
-  compact,
-  expanded,
-  detailRows,
-  styles,
-}: ChatMessageToolExecutionStackProps) {
+export function ChatMessageToolExecutionStack(
+  props: ChatMessageToolExecutionStackProps,
+) {
   const stackPanelParts: ChatMessageToolExecutionStackPanelParts =
-    createChatRuntimeToolExecutionStackPanelMobilePropsParts({
-      compact,
-      expanded,
-      detailRows,
-      styles,
-    });
+    createChatRuntimeToolExecutionStackPanelMobilePropsParts(props);
+  const { shouldRender, isExpanded } = props;
 
   return (
     <ChatMessageToolExecutionStackContent
