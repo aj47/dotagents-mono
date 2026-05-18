@@ -2769,18 +2769,20 @@ type ChatMessageDelegationToolPreviewLabelPart = {
 
 type ChatMessageDelegationToolPreviewStatusIconSpinnerPart = {
   shouldRender: boolean;
-  props: Omit<
-    ChatRuntimeToolExecutionCompactPreviewMobileRowState['renderState']['statusIndicator']['spinner'],
-    'shouldRender'
-  >;
+  props: {
+    size: ComponentProps<typeof ActivityIndicator>['size'];
+    color: string;
+  };
 };
 
 type ChatMessageDelegationToolPreviewStatusIconGlyphPart = {
   shouldRender: boolean;
-  props: Omit<
-    ChatRuntimeToolExecutionCompactPreviewMobileRowState['renderState']['statusIndicator']['icon'],
-    'shouldRender'
-  >;
+  props: {
+    state: string;
+    name: IoniconName;
+    size: number;
+    color: string;
+  };
 };
 
 type ChatMessageDelegationToolPreviewStatusIconPart = {
