@@ -69,7 +69,7 @@ type MarkdownCodeBlockCopyStyles = MarkdownContentStyles;
 type MarkdownCodeBlockCopyParts =
   MarkdownCodeBlockCopyMobilePropsParts<MarkdownCodeBlockCopyStyles, MarkdownPressHandler>;
 
-const ThinkSection: React.FC<{
+interface ThinkSectionProps {
   content: string;
   renderState: MarkdownThinkSectionMobileSurfaceRenderState;
   markdownStyles: any;
@@ -78,7 +78,9 @@ const ThinkSection: React.FC<{
   defaultCollapsed?: boolean;
   isCollapsed?: boolean;
   onToggle?: MarkdownPressHandler;
-}> = ({
+}
+
+const ThinkSection = React.memo(function ThinkSection({
   content,
   renderState,
   markdownStyles,
@@ -87,7 +89,7 @@ const ThinkSection: React.FC<{
   defaultCollapsed = true,
   isCollapsed,
   onToggle,
-}) => {
+}: ThinkSectionProps) {
   const [internalCollapsed, setInternalCollapsed] = React.useState(defaultCollapsed);
   const collapsed = isCollapsed ?? internalCollapsed;
   const handleToggle = React.useCallback(() => {
@@ -130,7 +132,7 @@ const ThinkSection: React.FC<{
       )}
     </View>
   );
-};
+});
 
 function getHeaderRecord(headers: Headers): Record<string, string> {
   const record: Record<string, string> = {};
@@ -140,13 +142,21 @@ function getHeaderRecord(headers: Headers): Record<string, string> {
   return record;
 }
 
-const MarkdownImage: React.FC<{
+interface MarkdownImageProps {
   sourceUrl: string;
   alt?: string;
   assetBaseUrl?: string;
   authToken?: string;
   style?: StyleProp<ImageStyle>;
-}> = ({ sourceUrl, alt, assetBaseUrl, authToken, style }) => {
+}
+
+const MarkdownImage = React.memo(function MarkdownImage({
+  sourceUrl,
+  alt,
+  assetBaseUrl,
+  authToken,
+  style,
+}: MarkdownImageProps) {
   const [imageSource, setImageSource] = React.useState<MarkdownImageSource | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const objectUrlRef = React.useRef<string | null>(null);
@@ -233,7 +243,7 @@ const MarkdownImage: React.FC<{
   }
 
   return <Image {...imageParts.image.props} />;
-};
+});
 
 function getMarkdownCodeContent(node: any): string {
   if (typeof node?.content === 'string') return node.content.replace(/\n$/, '');
@@ -244,11 +254,17 @@ function getMarkdownCodeContent(node: any): string {
   return '';
 }
 
-const MarkdownCodeBlock: React.FC<{
+interface MarkdownCodeBlockProps {
   node: any;
   styles: MarkdownCodeBlockCopyStyles;
   colors: MarkdownContentMobileSurfaceRenderState['colors'];
-}> = ({ node, styles, colors }) => {
+}
+
+const MarkdownCodeBlock = React.memo(function MarkdownCodeBlock({
+  node,
+  styles,
+  colors,
+}: MarkdownCodeBlockProps) {
   const [copied, setCopied] = React.useState(false);
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const codeContent = React.useMemo(() => getMarkdownCodeContent(node), [node]);
@@ -307,16 +323,16 @@ const MarkdownCodeBlock: React.FC<{
       </Pressable>
     </View>
   );
-};
+});
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
+export const MarkdownRenderer = React.memo(function MarkdownRenderer({
   content,
   assetBaseUrl,
   assetAuthToken,
   getThinkKey,
   isThinkExpanded,
   onToggleThink,
-}) => {
+}: MarkdownRendererProps) {
   const {
     markdownContentRenderState,
     markdownContentStyles: markdownStyles,
@@ -418,6 +434,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       })}
     </View>
   );
-};
+});
 
 export default MarkdownRenderer;

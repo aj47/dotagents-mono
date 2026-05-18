@@ -132,8 +132,10 @@ test('keeps mobile chat shared domain types routed through session presentation'
   assert.doesNotMatch(handsFreeStatusChipSource, /getHandsFreeStatusChipMobileRenderState,/);
   assert.doesNotMatch(handsFreeStatusChipSource, /from '\.\/theme'/);
   assert.doesNotMatch(handsFreeStatusChipSource, /from '\.\/ThemeProvider'/);
+  assert.match(handsFreeStatusChipSource, /import \{ memo, useMemo \} from 'react';/);
   assert.match(handsFreeStatusChipSource, /type HandsFreeStatusChipMobileStyleSheetSlots,/);
   assert.match(handsFreeStatusChipSource, /type HandsFreeStatusChipStyles = HandsFreeStatusChipMobileStyleSheetSlots;/);
+  assert.match(handsFreeStatusChipSource, /export const HandsFreeStatusChip = memo\(function HandsFreeStatusChip\(\{/);
   assert.match(handsFreeStatusChipSource, /const \{\s+handsFreeStatusChipRenderState,\s+handsFreeStatusChipStyles,\s+\} = useChatRuntimeHandsFreeStatusChipMobileStyleSlots\(\{\s+phase,\s+label,\s+subtitle,\s+\}\);/);
   assert.match(handsFreeStatusChipSource, /const statusChipParts = useMemo<HandsFreeStatusChipParts>\(\s+\(\) => createHandsFreeStatusChipMobilePropsParts\(\{\s+renderState: handsFreeStatusChipRenderState,\s+styles: handsFreeStatusChipStyles,\s+\}\),\s+\[handsFreeStatusChipRenderState, handsFreeStatusChipStyles\],\s+\);/);
   assert.doesNotMatch(handsFreeStatusChipSource, /StyleSheet\.create/);
@@ -6502,6 +6504,7 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(videoAttachmentCardSource, /from '\.\/ThemeProvider'/);
   assert.match(videoAttachmentCardSource, /type ChatVideoAttachmentMobileStyleSheetSlots,/);
   assert.match(videoAttachmentCardSource, /type VideoAttachmentCardStyles = ChatVideoAttachmentMobileStyleSheetSlots;/);
+  assert.match(videoAttachmentCardSource, /export const VideoAttachmentCard = React\.memo\(function VideoAttachmentCard\(\{/);
   assert.match(videoAttachmentCardSource, /const \{\s+videoAttachmentRenderState,\s+videoAttachmentStyles: styles,\s+\} = useChatRuntimeVideoAttachmentMobileStyleSlots\(\{\s+sourceUrl,\s+label,\s+loading,\s+\}\);/);
   assert.doesNotMatch(videoAttachmentCardSource, /const videoAttachmentStyleSheetSlots = useMemo/);
   assert.doesNotMatch(videoAttachmentCardSource, /StyleSheet\.create/);
@@ -6527,6 +6530,13 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(markdownRendererSource, /type MarkdownContentStyles = MarkdownContentMobileStyleSheetSlots;/);
   assert.match(markdownRendererSource, /type MarkdownThinkSectionStyles = MarkdownThinkSectionMobileStyleSheetSlots;/);
   assert.match(markdownRendererSource, /type MarkdownCodeBlockCopyStyles = MarkdownContentStyles;/);
+  assert.match(markdownRendererSource, /interface ThinkSectionProps \{[\s\S]*?renderState: MarkdownThinkSectionMobileSurfaceRenderState;[\s\S]*?\}/);
+  assert.match(markdownRendererSource, /const ThinkSection = React\.memo\(function ThinkSection\(\{/);
+  assert.match(markdownRendererSource, /interface MarkdownImageProps \{[\s\S]*?sourceUrl: string;[\s\S]*?\}/);
+  assert.match(markdownRendererSource, /const MarkdownImage = React\.memo\(function MarkdownImage\(\{/);
+  assert.match(markdownRendererSource, /interface MarkdownCodeBlockProps \{[\s\S]*?colors: MarkdownContentMobileSurfaceRenderState\['colors'\];[\s\S]*?\}/);
+  assert.match(markdownRendererSource, /const MarkdownCodeBlock = React\.memo\(function MarkdownCodeBlock\(\{/);
+  assert.match(markdownRendererSource, /export const MarkdownRenderer = React\.memo\(function MarkdownRenderer\(\{/);
   assert.match(markdownRendererSource, /const \{\s+markdownContentRenderState,\s+markdownContentStyles: markdownStyles,\s+markdownThinkSectionRenderState: thinkSectionRenderState,\s+markdownThinkSectionStyles: thinkStyles,\s+\} = useChatRuntimeMarkdownMobileStyleSlots\(\);/);
   assert.match(markdownRendererSource, /const thinkSectionParts = React\.useMemo<MarkdownThinkSectionParts>\(\s+\(\) => createMarkdownThinkSectionMobilePropsParts\(\{[\s\S]*?onToggle: handleToggle,[\s\S]*?\}\),\s+\[collapsed, content, handleToggle, renderState, styles\],\s+\);/);
   assert.match(markdownRendererSource, /const imageParts = React\.useMemo<MarkdownImageParts>\(\s+\(\) => createMarkdownImageMobilePropsParts\(\{[\s\S]*?imageLabel,[\s\S]*?style,[\s\S]*?\}\),\s+\[alt, error, imageLabel, imageSource, style\],\s+\);/);

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { View, Text } from 'react-native';
 import {
   createHandsFreeStatusChipMobilePropsParts,
@@ -19,7 +19,11 @@ type HandsFreeStatusChipStyles = HandsFreeStatusChipMobileStyleSheetSlots;
 type HandsFreeStatusChipParts =
   HandsFreeStatusChipMobilePropsParts<HandsFreeStatusChipStyles>;
 
-export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusChipProps) {
+export const HandsFreeStatusChip = memo(function HandsFreeStatusChip({
+  phase,
+  label,
+  subtitle,
+}: HandsFreeStatusChipProps) {
   const {
     handsFreeStatusChipRenderState,
     handsFreeStatusChipStyles,
@@ -46,4 +50,4 @@ export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusC
       ) : null}
     </View>
   );
-}
+});

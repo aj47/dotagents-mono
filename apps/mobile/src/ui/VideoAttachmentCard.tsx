@@ -65,12 +65,12 @@ function getHeaderRecord(headers: Headers): Record<string, string> {
   return record;
 }
 
-export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
+export const VideoAttachmentCard = React.memo(function VideoAttachmentCard({
   sourceUrl,
   label,
   assetBaseUrl,
   authToken,
-}) => {
+}: VideoAttachmentCardProps) {
   const [loading, setLoading] = useState(false);
   const [playbackUri, setPlaybackUri] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -265,6 +265,6 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       )}
     </View>
   );
-};
+});
 
 export default VideoAttachmentCard;
