@@ -15261,8 +15261,15 @@ export function ChatComposerInputDockMicWrapperContent({
 }
 
 export function ChatComposerSpeechPreview(props: ChatComposerSpeechPreviewProps) {
-  const speechPreviewParts: ChatComposerSpeechPreviewParts =
-    createChatComposerSpeechPreviewMobilePropsParts(props);
+  const { label, text, styles } = props;
+  const speechPreviewParts = useMemo<ChatComposerSpeechPreviewParts>(
+    () => createChatComposerSpeechPreviewMobilePropsParts({
+      label,
+      text,
+      styles,
+    }),
+    [label, styles, text],
+  );
   const speechPreviewContainer = speechPreviewParts.container;
 
   if (!speechPreviewContainer.shouldRender) return null;
@@ -15315,8 +15322,16 @@ export function ChatComposerSpeechPreviewText({
 }
 
 export function ChatComposerPendingImagesRail(props: ChatComposerPendingImagesRailProps) {
-  const pendingImagesRailParts: ChatComposerPendingImagesRailParts =
-    createChatComposerPendingImagesRailMobilePropsParts(props);
+  const { images, renderState, onRemove, styles } = props;
+  const pendingImagesRailParts = useMemo<ChatComposerPendingImagesRailParts>(
+    () => createChatComposerPendingImagesRailMobilePropsParts({
+      images,
+      renderState,
+      onRemove,
+      styles,
+    }),
+    [images, onRemove, renderState, styles],
+  );
   const pendingImagesRailScrollView = pendingImagesRailParts.scrollView;
 
   if (!pendingImagesRailScrollView.shouldRender) return null;
@@ -15402,8 +15417,23 @@ export function ChatComposerPendingImageRemoveIcon(props: ChatComposerPendingIma
 }
 
 export function ChatComposerVoiceOverlay(props: ChatComposerVoiceOverlayProps) {
-  const voiceOverlayParts: ChatComposerVoiceOverlayParts =
-    createChatComposerVoiceOverlayMobilePropsParts(props);
+  const {
+    isVisible,
+    label,
+    transcript,
+    transcriptNumberOfLines,
+    styles,
+  } = props;
+  const voiceOverlayParts = useMemo<ChatComposerVoiceOverlayParts>(
+    () => createChatComposerVoiceOverlayMobilePropsParts({
+      isVisible,
+      label,
+      transcript,
+      transcriptNumberOfLines,
+      styles,
+    }),
+    [isVisible, label, styles, transcript, transcriptNumberOfLines],
+  );
   const voiceOverlayContainer = voiceOverlayParts.overlay;
 
   if (!voiceOverlayContainer.shouldRender) return null;
@@ -15473,8 +15503,41 @@ export function ChatComposerVoiceOverlayTranscript({
 }
 
 export function ChatComposerHandsFreeControls(props: ChatComposerHandsFreeControlsProps) {
-  const handsFreeControlsParts: ChatComposerHandsFreeControlsParts =
-    createChatComposerHandsFreeControlsMobilePropsParts(props);
+  const {
+    isVisible,
+    status,
+    controlState,
+    onWake,
+    onSleep,
+    onResume,
+    onPause,
+    controlPressedOpacity,
+    styles,
+  } = props;
+  const handsFreeControlsParts = useMemo<ChatComposerHandsFreeControlsParts>(
+    () => createChatComposerHandsFreeControlsMobilePropsParts({
+      isVisible,
+      status,
+      controlState,
+      onWake,
+      onSleep,
+      onResume,
+      onPause,
+      controlPressedOpacity,
+      styles,
+    }),
+    [
+      controlPressedOpacity,
+      controlState,
+      isVisible,
+      onPause,
+      onResume,
+      onSleep,
+      onWake,
+      status,
+      styles,
+    ],
+  );
   const handsFreeStatusRow = handsFreeControlsParts.statusRow;
   const handsFreeControlsRow = handsFreeControlsParts.controlsRow;
 
@@ -15579,8 +15642,25 @@ export function ChatComposerHandsFreeControlLabel({
 }
 
 export function ChatComposerIconButton(props: ChatComposerIconButtonProps) {
-  const iconButtonParts: ChatComposerIconButtonParts =
-    createChatComposerIconButtonMobilePropsParts(props);
+  const {
+    shouldRender,
+    renderState,
+    onPress,
+    activeOpacity,
+    style,
+    activeStyle,
+  } = props;
+  const iconButtonParts = useMemo<ChatComposerIconButtonParts>(
+    () => createChatComposerIconButtonMobilePropsParts({
+      shouldRender,
+      renderState,
+      onPress,
+      activeOpacity,
+      style,
+      activeStyle,
+    }),
+    [activeOpacity, activeStyle, onPress, renderState, shouldRender, style],
+  );
   const iconButtonTouchable = iconButtonParts.touchable;
 
   if (!iconButtonTouchable.shouldRender) return null;
@@ -15622,8 +15702,23 @@ export function ChatComposerIconButtonIcon(props: ChatComposerIconButtonIconProp
 }
 
 export function ChatComposerLabeledActionButton(props: ChatComposerLabeledActionButtonProps) {
-  const actionButtonParts: ChatComposerLabeledActionButtonParts =
-    createChatComposerLabeledActionButtonMobilePropsParts(props);
+  const {
+    shouldRender,
+    renderState,
+    onPress,
+    activeOpacity,
+    styles,
+  } = props;
+  const actionButtonParts = useMemo<ChatComposerLabeledActionButtonParts>(
+    () => createChatComposerLabeledActionButtonMobilePropsParts({
+      shouldRender,
+      renderState,
+      onPress,
+      activeOpacity,
+      styles,
+    }),
+    [activeOpacity, onPress, renderState, shouldRender, styles],
+  );
   const actionButtonTouchable = actionButtonParts.touchable;
 
   if (!actionButtonTouchable.shouldRender) return null;
@@ -15684,8 +15779,25 @@ export function ChatComposerLabeledActionButtonLabel({
 }
 
 export function ChatComposerMicButton(props: ChatComposerMicButtonProps) {
-  const micButtonParts: ChatComposerMicButtonParts =
-    createChatComposerMicButtonMobilePropsParts(props);
+  const {
+    renderState,
+    onPressIn,
+    onPressOut,
+    onPress,
+    webPressedStyle,
+    styles,
+  } = props;
+  const micButtonParts = useMemo<ChatComposerMicButtonParts>(
+    () => createChatComposerMicButtonMobilePropsParts({
+      renderState,
+      onPressIn,
+      onPressOut,
+      onPress,
+      webPressedStyle,
+      styles,
+    }),
+    [onPress, onPressIn, onPressOut, renderState, styles, webPressedStyle],
+  );
   const micButtonPressable = micButtonParts.pressable;
 
   return (
@@ -15742,8 +15854,47 @@ export function ChatComposerMicButtonLabel({
 }
 
 export function ChatComposerTextEntry(props: ChatComposerTextEntryProps) {
-  const textEntryParts: ChatComposerTextEntryParts =
-    createChatComposerTextEntryMobilePropsParts(props);
+  const {
+    inputRef,
+    value,
+    onChangeText,
+    onKeyPress,
+    accessibilityLabel,
+    accessibilityHint,
+    placeholder,
+    placeholderTextColor,
+    voiceStatusLiveRegionAnnouncement,
+    webAccessibility,
+    styles,
+  } = props;
+  const textEntryParts = useMemo<ChatComposerTextEntryParts>(
+    () => createChatComposerTextEntryMobilePropsParts({
+      inputRef,
+      value,
+      onChangeText,
+      onKeyPress,
+      accessibilityLabel,
+      accessibilityHint,
+      placeholder,
+      placeholderTextColor,
+      voiceStatusLiveRegionAnnouncement,
+      webAccessibility,
+      styles,
+    }),
+    [
+      accessibilityHint,
+      accessibilityLabel,
+      inputRef,
+      onChangeText,
+      onKeyPress,
+      placeholder,
+      placeholderTextColor,
+      styles,
+      value,
+      voiceStatusLiveRegionAnnouncement,
+      webAccessibility,
+    ],
+  );
   const textEntryInput = textEntryParts.input;
   const textEntryInputDescription = textEntryParts.inputDescription;
   const textEntryVoiceStatusLiveRegion = textEntryParts.voiceStatusLiveRegion;

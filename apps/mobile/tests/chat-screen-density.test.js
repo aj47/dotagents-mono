@@ -2955,6 +2955,14 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeConversationDockShellMobilePropsParts',
     'createChatRuntimeConversationDockMobilePropsParts',
     'createChatRuntimeConnectionBannerMobilePropsParts',
+    'createChatComposerSpeechPreviewMobilePropsParts',
+    'createChatComposerPendingImagesRailMobilePropsParts',
+    'createChatComposerVoiceOverlayMobilePropsParts',
+    'createChatComposerHandsFreeControlsMobilePropsParts',
+    'createChatComposerIconButtonMobilePropsParts',
+    'createChatComposerLabeledActionButtonMobilePropsParts',
+    'createChatComposerMicButtonMobilePropsParts',
+    'createChatComposerTextEntryMobilePropsParts',
     'createChatRuntimeInlineActivityMobilePropsParts',
     'createChatRuntimeTurnDurationBadgeMobilePropsParts',
     'createChatRuntimeConversationExpandedContentMobilePropsParts',
@@ -3505,7 +3513,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   const handsFreeControlsSource =
     chatMessageChromeSource.match(/export function ChatComposerHandsFreeControls[\s\S]*?export function ChatComposerIconButton/)?.[0] ?? '';
   assert.match(handsFreeControlsSource, /export function ChatComposerHandsFreeControls\(props: ChatComposerHandsFreeControlsProps\)/);
-  assert.match(handsFreeControlsSource, /const handsFreeControlsParts: ChatComposerHandsFreeControlsParts =\s+createChatComposerHandsFreeControlsMobilePropsParts\(props\);/);
+  assert.match(handsFreeControlsSource, /const handsFreeControlsParts = useMemo<ChatComposerHandsFreeControlsParts>\(\s+\(\) => createChatComposerHandsFreeControlsMobilePropsParts\(\{\s+isVisible,\s+status,\s+controlState,\s+onWake,\s+onSleep,\s+onResume,\s+onPause,\s+controlPressedOpacity,\s+styles,\s+\}\),\s+\[\s+controlPressedOpacity,\s+controlState,\s+isVisible,\s+onPause,\s+onResume,\s+onSleep,\s+onWake,\s+status,\s+styles,\s+\],\s+\);/);
   assert.match(handsFreeControlsSource, /const handsFreeStatusRow = handsFreeControlsParts\.statusRow;/);
   assert.match(handsFreeControlsSource, /const handsFreeControlsRow = handsFreeControlsParts\.controlsRow;/);
   assert.match(handsFreeControlsSource, /if \(!handsFreeStatusRow\.shouldRender && !handsFreeControlsRow\.shouldRender\) return null;/);
@@ -3644,7 +3652,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerIconButtonTouchableContentProps = \{[\s\S]*?icon: \{[\s\S]*?props: ChatComposerIconButtonIconProps;[\s\S]*?\};[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerIconButtonIconProps = ChatMessageActionIcon;/);
   assert.match(composerIconButtonSource, /export function ChatComposerIconButton\(props: ChatComposerIconButtonProps\)/);
-  assert.match(composerIconButtonSource, /const iconButtonParts: ChatComposerIconButtonParts =\s+createChatComposerIconButtonMobilePropsParts\(props\);/);
+  assert.match(composerIconButtonSource, /const iconButtonParts = useMemo<ChatComposerIconButtonParts>\(\s+\(\) => createChatComposerIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+activeOpacity,\s+style,\s+activeStyle,\s+\}\),\s+\[activeOpacity, activeStyle, onPress, renderState, shouldRender, style\],\s+\);/);
   assert.doesNotMatch(composerIconButtonSource, /shouldRender = true/);
   assert.match(composerIconButtonSource, /const iconButtonTouchable = iconButtonParts\.touchable;/);
   assert.match(composerIconButtonSource, /if \(!iconButtonTouchable\.shouldRender\) return null;/);
@@ -3693,7 +3701,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewLabelProps = \{[\s\S]*?style: ChatComposerSpeechPreviewStyles\['label'\];[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewTextProps = \{[\s\S]*?style: ChatComposerSpeechPreviewStyles\['text'\];[\s\S]*?text: string \| null \| undefined;[\s\S]*?\};/);
   assert.match(speechPreviewSource, /export function ChatComposerSpeechPreview\(props: ChatComposerSpeechPreviewProps\)/);
-  assert.match(speechPreviewSource, /const speechPreviewParts: ChatComposerSpeechPreviewParts =\s+createChatComposerSpeechPreviewMobilePropsParts\(props\);/);
+  assert.match(speechPreviewSource, /const speechPreviewParts = useMemo<ChatComposerSpeechPreviewParts>\(\s+\(\) => createChatComposerSpeechPreviewMobilePropsParts\(\{\s+label,\s+text,\s+styles,\s+\}\),\s+\[label, styles, text\],\s+\);/);
   assert.match(speechPreviewSource, /const speechPreviewContainer = speechPreviewParts\.container;/);
   assert.match(speechPreviewSource, /if \(!speechPreviewContainer\.shouldRender\) return null;/);
   assert.match(speechPreviewSource, /<ChatComposerSpeechPreviewContainer\s+\{\.\.\.speechPreviewContainer\.props\}/);
@@ -3750,7 +3758,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonIconProps = ChatMessageActionIcon;/);
   assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonLabelProps = \{[\s\S]*?style: ChatComposerLabeledActionButtonStyles\['text'\];[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(composerLabeledActionButtonSource, /export function ChatComposerLabeledActionButton\(props: ChatComposerLabeledActionButtonProps\)/);
-  assert.match(composerLabeledActionButtonSource, /const actionButtonParts: ChatComposerLabeledActionButtonParts =\s+createChatComposerLabeledActionButtonMobilePropsParts\(props\);/);
+  assert.match(composerLabeledActionButtonSource, /const actionButtonParts = useMemo<ChatComposerLabeledActionButtonParts>\(\s+\(\) => createChatComposerLabeledActionButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+activeOpacity,\s+styles,\s+\}\),\s+\[activeOpacity, onPress, renderState, shouldRender, styles\],\s+\);/);
   assert.doesNotMatch(composerLabeledActionButtonSource, /shouldRender = true/);
   assert.match(composerLabeledActionButtonSource, /const actionButtonTouchable = actionButtonParts\.touchable;/);
   assert.match(composerLabeledActionButtonSource, /if \(!actionButtonTouchable\.shouldRender\) return null;/);
@@ -3839,7 +3847,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerMicButtonIconProps = ChatMessageActionIcon;/);
   assert.match(chatMessageChromeSource, /type ChatComposerMicButtonLabelProps = \{[\s\S]*?style: Array<StyleProp<TextStyle> \| false \| undefined>;[\s\S]*?selectable: boolean \| undefined;[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(composerMicButtonSource, /export function ChatComposerMicButton\(props: ChatComposerMicButtonProps\)/);
-  assert.match(composerMicButtonSource, /const micButtonParts: ChatComposerMicButtonParts =\s+createChatComposerMicButtonMobilePropsParts\(props\);/);
+  assert.match(composerMicButtonSource, /const micButtonParts = useMemo<ChatComposerMicButtonParts>\(\s+\(\) => createChatComposerMicButtonMobilePropsParts\(\{\s+renderState,\s+onPressIn,\s+onPressOut,\s+onPress,\s+webPressedStyle,\s+styles,\s+\}\),\s+\[onPress, onPressIn, onPressOut, renderState, styles, webPressedStyle\],\s+\);/);
   assert.match(composerMicButtonSource, /const micButtonPressable = micButtonParts\.pressable;/);
   assert.doesNotMatch(composerMicButtonSource, /const pressableContent = micButtonPressable\.content;/);
   assert.match(composerMicButtonSource, /<ChatComposerMicButtonPressable\s+\{\.\.\.micButtonPressable\.props\}/);
@@ -3930,7 +3938,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerTextEntryInputDescriptionProps = \{[\s\S]*?nativeID: string;[\s\S]*?style: ChatComposerTextEntryStyles\['visuallyHiddenHint'\];[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerTextEntryVoiceStatusLiveRegionProps = \{[\s\S]*?nativeID: string;[\s\S]*?style: ChatComposerTextEntryStyles\['visuallyHiddenHint'\];[\s\S]*?accessibilityLiveRegion: ChatComposerTextEntryWebAccessibility\['voiceStatusLiveRegionPoliteness'\];[\s\S]*?'aria-live': 'off' \| 'polite' \| 'assertive';[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(textEntrySource, /export function ChatComposerTextEntry\(props: ChatComposerTextEntryProps\)/);
-  assert.match(textEntrySource, /const textEntryParts: ChatComposerTextEntryParts =\s+createChatComposerTextEntryMobilePropsParts\(props\);/);
+  assert.match(textEntrySource, /const textEntryParts = useMemo<ChatComposerTextEntryParts>\(\s+\(\) => createChatComposerTextEntryMobilePropsParts\(\{\s+inputRef,\s+value,\s+onChangeText,\s+onKeyPress,\s+accessibilityLabel,\s+accessibilityHint,\s+placeholder,\s+placeholderTextColor,\s+voiceStatusLiveRegionAnnouncement,\s+webAccessibility,\s+styles,\s+\}\),\s+\[\s+accessibilityHint,\s+accessibilityLabel,\s+inputRef,\s+onChangeText,\s+onKeyPress,\s+placeholder,\s+placeholderTextColor,\s+styles,\s+value,\s+voiceStatusLiveRegionAnnouncement,\s+webAccessibility,\s+\],\s+\);/);
   assert.match(textEntrySource, /const textEntryInput = textEntryParts\.input;/);
   assert.match(textEntrySource, /const textEntryInputDescription = textEntryParts\.inputDescription;/);
   assert.match(textEntrySource, /const textEntryVoiceStatusLiveRegion = textEntryParts\.voiceStatusLiveRegion;/);
@@ -4147,7 +4155,7 @@ test('uses shared mobile icon chrome for pending image removal', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerPendingImageRemoveButtonProps = \{[\s\S]*?style: ChatComposerPendingImagesRailStyles\['removeButton'\];[\s\S]*?onPress: \(\) => void;[\s\S]*?activeOpacity: number;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerPendingImageRemoveIconProps = ChatMessageActionIcon;/);
   assert.match(pendingImagesRailSource, /export function ChatComposerPendingImagesRail\(props: ChatComposerPendingImagesRailProps\)/);
-  assert.match(pendingImagesRailSource, /const pendingImagesRailParts: ChatComposerPendingImagesRailParts =\s+createChatComposerPendingImagesRailMobilePropsParts\(props\);/);
+  assert.match(pendingImagesRailSource, /const pendingImagesRailParts = useMemo<ChatComposerPendingImagesRailParts>\(\s+\(\) => createChatComposerPendingImagesRailMobilePropsParts\(\{\s+images,\s+renderState,\s+onRemove,\s+styles,\s+\}\),\s+\[images, onRemove, renderState, styles\],\s+\);/);
   assert.match(sessionPresentationSource, /scrollView: \{\s+shouldRender: images\.length > 0,\s+props: \{[\s\S]*?contentContainerStyle: styles\.row,[\s\S]*?content: \{\s+items: images\.map\(\(image\) => \(\{/);
   assert.match(pendingImagesRailSource, /const pendingImagesRailScrollView = pendingImagesRailParts\.scrollView;/);
   assert.doesNotMatch(pendingImagesRailSource, /const pendingImagesRailContent = pendingImagesRailScrollView\.content;/);
@@ -4268,7 +4276,7 @@ test('keeps the live voice overlay compact by grouping status and transcript int
   assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayLabelProps = \{[\s\S]*?style: ChatComposerVoiceOverlayStyles\['label'\];[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayTranscriptProps = \{[\s\S]*?style: ChatComposerVoiceOverlayStyles\['transcript'\];[\s\S]*?numberOfLines: number;[\s\S]*?text: string \| null \| undefined;[\s\S]*?\};/);
   assert.match(voiceOverlaySource, /export function ChatComposerVoiceOverlay\(props: ChatComposerVoiceOverlayProps\)/);
-  assert.match(voiceOverlaySource, /const voiceOverlayParts: ChatComposerVoiceOverlayParts =\s+createChatComposerVoiceOverlayMobilePropsParts\(props\);/);
+  assert.match(voiceOverlaySource, /const voiceOverlayParts = useMemo<ChatComposerVoiceOverlayParts>\(\s+\(\) => createChatComposerVoiceOverlayMobilePropsParts\(\{\s+isVisible,\s+label,\s+transcript,\s+transcriptNumberOfLines,\s+styles,\s+\}\),\s+\[isVisible, label, styles, transcript, transcriptNumberOfLines\],\s+\);/);
   assert.match(voiceOverlaySource, /const voiceOverlayContainer = voiceOverlayParts\.overlay;/);
   assert.match(voiceOverlaySource, /if \(!voiceOverlayContainer\.shouldRender\) return null;/);
   assert.match(voiceOverlaySource, /<ChatComposerVoiceOverlayContainer\s+\{\.\.\.voiceOverlayContainer\.props\}/);
