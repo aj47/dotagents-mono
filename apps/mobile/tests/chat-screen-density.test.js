@@ -4294,7 +4294,8 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.doesNotMatch(screenSource, /const extractRespondToUserHistory = /);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeResponseHistoryEvents/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeResponseHistoryEvents/);
-  assert.match(sessionPresentationSource, /return extractRespondToUserResponseEvents\(messages, \{ idPrefix: "mobile-history" \}\)/);
+  assert.match(sessionPresentationSource, /idPrefix = "mobile-history"/);
+  assert.match(sessionPresentationSource, /return extractRespondToUserResponseEvents\(messages, \{ idPrefix \}\)/);
   assert.doesNotMatch(screenSource, /from '@dotagents\/shared\/chat-utils'/);
   assert.doesNotMatch(screenSource, /sortAgentUserResponseEvents,/);
   assert.doesNotMatch(screenSource, /getNextAgentUserResponseEventOrdinal,/);

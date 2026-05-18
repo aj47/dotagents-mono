@@ -29,7 +29,6 @@ import { OverlayFollowUpInput } from "./overlay-follow-up-input"
 import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 import {
-  extractRespondToUserResponseEvents,
   formatToolArguments,
   getToolArgumentEntries,
   getCompactToolExecutionPreview,
@@ -92,6 +91,7 @@ import { consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey
 import { ttsManager } from "@renderer/lib/tts-manager"
 import {
   applyChatDisplayGroupedExpansionInheritance,
+  createChatMessageRuntimeResponseHistoryEvents,
   createChatMessageActionSlotRenderState,
   getChatMessageActionAvailabilityRenderState,
   getChatMessageActionCopyState,
@@ -660,16 +660,6 @@ const StructuredToolPayload: React.FC<{
       })}
     </div>
   )
-}
-
-function extractRespondToUserResponsesFromMessages(
-  messages: Array<{
-    role: "user" | "assistant" | "tool"
-    timestamp?: number
-    toolCalls?: Array<{ name: string; arguments: unknown }>
-  }>,
-): AgentUserResponseEvent[] {
-  return extractRespondToUserResponseEvents(messages, { idPrefix: "desktop-history" })
 }
 
 function messageStableId(message: { timestamp: number; role: string }): string {
@@ -3680,7 +3670,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const fallbackRespondToUserEvents = useMemo(
     () => (progress.userResponse || (progress.responseEvents?.length ?? 0) > 0
       ? []
-      : extractRespondToUserResponsesFromMessages(messages)),
+      : createChatMessageRuntimeResponseHistoryEvents(messages, { idPrefix: "desktop-history" })),
     [messages, progress.responseEvents, progress.userResponse],
   )
   const effectiveResponseEvents = useMemo<AgentUserResponseEvent[]>(() => {

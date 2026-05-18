@@ -15199,6 +15199,10 @@ export interface ChatMessageRuntimeResponseHistorySourceMessage {
   toolCalls?: Array<{ name: string; arguments: unknown }>
 }
 
+export interface ChatMessageRuntimeResponseHistoryEventsOptions {
+  idPrefix?: string
+}
+
 export interface ChatMessageRuntimeSessionDisplayMessagesOptions {
   includeId?: boolean
 }
@@ -16041,8 +16045,11 @@ export function createChatMessageRuntimeSessionDisplayMessages<
 
 export function createChatMessageRuntimeResponseHistoryEvents(
   messages: ChatMessageRuntimeResponseHistorySourceMessage[],
+  {
+    idPrefix = "mobile-history",
+  }: ChatMessageRuntimeResponseHistoryEventsOptions = {},
 ): AgentUserResponseEvent[] {
-  return extractRespondToUserResponseEvents(messages, { idPrefix: "mobile-history" })
+  return extractRespondToUserResponseEvents(messages, { idPrefix })
 }
 
 export function replaceChatMessageRuntimeFinalTurnMessages<

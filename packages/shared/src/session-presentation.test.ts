@@ -1730,6 +1730,19 @@ describe("session presentation semantics", () => {
       text: "Hello user",
       timestamp: 9,
     }])
+    expect(createChatMessageRuntimeResponseHistoryEvents([
+      {
+        role: "assistant",
+        timestamp: 9,
+        toolCalls: [{ name: "respond_to_user", arguments: { text: "Hello desktop" } }],
+      },
+    ], { idPrefix: "desktop-history" })).toMatchObject([{
+      id: "desktop-history-0-0-1",
+      sessionId: "history",
+      ordinal: 1,
+      text: "Hello desktop",
+      timestamp: 9,
+    }])
     expect(createChatMessageRuntimeRecoveredHistoryMessages<RuntimeTestMessage>(
       historyMessages,
     ).map((message) => message.role)).toEqual(["user", "assistant", "assistant"])
