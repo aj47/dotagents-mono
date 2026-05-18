@@ -355,6 +355,7 @@ import {
   type ChatMessageExpansionMobileRenderState,
   type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,
   type ChatMessageConnectionBannerStyleSlots as SharedChatMessageConnectionBannerStyleSlots,
+  type ChatMessageDelegationCardStyleSlots as SharedChatMessageDelegationCardStyleSlots,
   type ChatMessageConversationViewportStyleSlots as SharedChatMessageConversationViewportStyleSlots,
   type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
   type ChatMessageRuntimeDockStyleSlots as SharedChatMessageRuntimeDockStyleSlots,
@@ -2211,36 +2212,37 @@ type ChatMessageToolApprovalApproveActionContentProps = {
 
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
-type ChatMessageDelegationCardStyles = {
-  card: StyleProp<ViewStyle>;
-  header: StyleProp<ViewStyle>;
-  title: StyleProp<TextStyle>;
-  statusBadge: StyleProp<ViewStyle>;
-  statusText: StyleProp<TextStyle>;
-  liveText: StyleProp<TextStyle>;
-  subtitle: StyleProp<TextStyle>;
-  metaRow: StyleProp<ViewStyle>;
-  metaText: StyleProp<TextStyle>;
-  conversationPreview: StyleProp<ViewStyle>;
-  conversationPreviewLine: StyleProp<ViewStyle>;
-  conversationPreviewRole: StyleProp<TextStyle>;
-  conversationPreviewContent: StyleProp<TextStyle>;
-  conversationPreviewTimestamp: StyleProp<TextStyle>;
-  conversationPreviewMoreButton: StyleProp<ViewStyle>;
-  conversationPreviewMoreButtonPressed: StyleProp<ViewStyle>;
-  conversationPreviewMore: StyleProp<TextStyle>;
-  toolPreview: StyleProp<ViewStyle>;
-  toolPreviewLabel: StyleProp<TextStyle>;
-  toolPreviewLine: StyleProp<ViewStyle>;
-  toolPreviewStatusIcon: StyleProp<ViewStyle>;
-  toolPreviewName: StyleProp<TextStyle>;
-  toolPreviewNamePending: StyleProp<TextStyle>;
-  toolPreviewNameSuccess: StyleProp<TextStyle>;
-  toolPreviewNameError: StyleProp<TextStyle>;
-  toolPreviewMoreButton: StyleProp<ViewStyle>;
-  toolPreviewMoreButtonPressed: StyleProp<ViewStyle>;
-  toolPreviewMore: StyleProp<TextStyle>;
-};
+type ChatMessageDelegationCardStyles =
+  SharedChatMessageDelegationCardStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageDelegationCardProps = Omit<
   ChatRuntimeDelegationCardMobilePresentationState,

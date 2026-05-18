@@ -29023,6 +29023,66 @@ export type ChatMessageRetryStatusStyleSlots<
   description: TDescriptionStyle
 }
 
+export type ChatMessageDelegationCardStyleSlots<
+  TCardStyle,
+  THeaderStyle,
+  TTitleStyle,
+  TStatusBadgeStyle,
+  TStatusTextStyle,
+  TLiveTextStyle,
+  TSubtitleStyle,
+  TMetaRowStyle,
+  TMetaTextStyle,
+  TConversationPreviewStyle,
+  TConversationPreviewLineStyle,
+  TConversationPreviewRoleStyle,
+  TConversationPreviewContentStyle,
+  TConversationPreviewTimestampStyle,
+  TConversationPreviewMoreButtonStyle,
+  TConversationPreviewMoreButtonPressedStyle,
+  TConversationPreviewMoreStyle,
+  TToolPreviewStyle,
+  TToolPreviewLabelStyle,
+  TToolPreviewLineStyle,
+  TToolPreviewStatusIconStyle,
+  TToolPreviewNameStyle,
+  TToolPreviewNamePendingStyle,
+  TToolPreviewNameSuccessStyle,
+  TToolPreviewNameErrorStyle,
+  TToolPreviewMoreButtonStyle,
+  TToolPreviewMoreButtonPressedStyle,
+  TToolPreviewMoreStyle,
+> = {
+  card: TCardStyle
+  header: THeaderStyle
+  title: TTitleStyle
+  statusBadge: TStatusBadgeStyle
+  statusText: TStatusTextStyle
+  liveText: TLiveTextStyle
+  subtitle: TSubtitleStyle
+  metaRow: TMetaRowStyle
+  metaText: TMetaTextStyle
+  conversationPreview: TConversationPreviewStyle
+  conversationPreviewLine: TConversationPreviewLineStyle
+  conversationPreviewRole: TConversationPreviewRoleStyle
+  conversationPreviewContent: TConversationPreviewContentStyle
+  conversationPreviewTimestamp: TConversationPreviewTimestampStyle
+  conversationPreviewMoreButton: TConversationPreviewMoreButtonStyle
+  conversationPreviewMoreButtonPressed: TConversationPreviewMoreButtonPressedStyle
+  conversationPreviewMore: TConversationPreviewMoreStyle
+  toolPreview: TToolPreviewStyle
+  toolPreviewLabel: TToolPreviewLabelStyle
+  toolPreviewLine: TToolPreviewLineStyle
+  toolPreviewStatusIcon: TToolPreviewStatusIconStyle
+  toolPreviewName: TToolPreviewNameStyle
+  toolPreviewNamePending: TToolPreviewNamePendingStyle
+  toolPreviewNameSuccess: TToolPreviewNameSuccessStyle
+  toolPreviewNameError: TToolPreviewNameErrorStyle
+  toolPreviewMoreButton: TToolPreviewMoreButtonStyle
+  toolPreviewMoreButtonPressed: TToolPreviewMoreButtonPressedStyle
+  toolPreviewMore: TToolPreviewMoreStyle
+}
+
 export type ChatMessageToolApprovalStyleSlots<
   TCardStyle,
   THeaderStyle,
@@ -29079,36 +29139,36 @@ type ChatMessageThreadBodyStyleSlots<TStyles extends ChatMessageThreadBodyStyleS
     TStyles["retryStatusCountdown"],
     TStyles["retryStatusDescription"]
   >
-  delegationCard: {
-    card: TStyles["delegationCard"]
-    header: TStyles["delegationHeader"]
-    title: TStyles["delegationTitle"]
-    statusBadge: TStyles["delegationStatusBadge"]
-    statusText: TStyles["delegationStatusText"]
-    liveText: TStyles["delegationLiveText"]
-    subtitle: TStyles["delegationSubtitle"]
-    metaRow: TStyles["delegationMetaRow"]
-    metaText: TStyles["delegationMetaText"]
-    conversationPreview: TStyles["delegationConversationPreview"]
-    conversationPreviewLine: TStyles["delegationConversationPreviewLine"]
-    conversationPreviewRole: TStyles["delegationConversationPreviewRole"]
-    conversationPreviewContent: TStyles["delegationConversationPreviewContent"]
-    conversationPreviewTimestamp: TStyles["delegationConversationPreviewTimestamp"]
-    conversationPreviewMoreButton: TStyles["delegationConversationPreviewMoreButton"]
-    conversationPreviewMoreButtonPressed: TStyles["delegationConversationPreviewMoreButtonPressed"]
-    conversationPreviewMore: TStyles["delegationConversationPreviewMore"]
-    toolPreview: TStyles["delegationToolPreview"]
-    toolPreviewLabel: TStyles["delegationToolPreviewLabel"]
-    toolPreviewLine: TStyles["delegationToolPreviewLine"]
-    toolPreviewStatusIcon: TStyles["delegationToolPreviewStatusIcon"]
-    toolPreviewName: TStyles["delegationToolPreviewName"]
-    toolPreviewNamePending: TStyles["toolCallCompactNamePending"]
-    toolPreviewNameSuccess: TStyles["toolCallCompactNameSuccess"]
-    toolPreviewNameError: TStyles["toolCallCompactNameError"]
-    toolPreviewMoreButton: TStyles["delegationToolPreviewMoreButton"]
-    toolPreviewMoreButtonPressed: TStyles["delegationToolPreviewMoreButtonPressed"]
-    toolPreviewMore: TStyles["delegationToolPreviewMore"]
-  }
+  delegationCard: ChatMessageDelegationCardStyleSlots<
+    TStyles["delegationCard"],
+    TStyles["delegationHeader"],
+    TStyles["delegationTitle"],
+    TStyles["delegationStatusBadge"],
+    TStyles["delegationStatusText"],
+    TStyles["delegationLiveText"],
+    TStyles["delegationSubtitle"],
+    TStyles["delegationMetaRow"],
+    TStyles["delegationMetaText"],
+    TStyles["delegationConversationPreview"],
+    TStyles["delegationConversationPreviewLine"],
+    TStyles["delegationConversationPreviewRole"],
+    TStyles["delegationConversationPreviewContent"],
+    TStyles["delegationConversationPreviewTimestamp"],
+    TStyles["delegationConversationPreviewMoreButton"],
+    TStyles["delegationConversationPreviewMoreButtonPressed"],
+    TStyles["delegationConversationPreviewMore"],
+    TStyles["delegationToolPreview"],
+    TStyles["delegationToolPreviewLabel"],
+    TStyles["delegationToolPreviewLine"],
+    TStyles["delegationToolPreviewStatusIcon"],
+    TStyles["delegationToolPreviewName"],
+    TStyles["toolCallCompactNamePending"],
+    TStyles["toolCallCompactNameSuccess"],
+    TStyles["toolCallCompactNameError"],
+    TStyles["delegationToolPreviewMoreButton"],
+    TStyles["delegationToolPreviewMoreButtonPressed"],
+    TStyles["delegationToolPreviewMore"]
+  >
   toolApproval: ChatMessageToolApprovalStyleSlots<
     TStyles["toolApprovalCard"],
     TStyles["toolApprovalHeader"],
