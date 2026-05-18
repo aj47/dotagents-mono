@@ -9134,8 +9134,15 @@ test('memoizes remaining mobile chat chrome hook state objects', () => {
   assert.match(chatMessageChromeSource, /return textEntrySubmissionState;/);
   assert.match(chatMessageChromeSource, /const handsFreeControlActionsState = useMemo<ChatComposerRuntimeHandsFreeControlActionsState>\(\s+\(\) => \(\{\s+wakeHandsFreeByUser,\s+sleepHandsFreeByUser,\s+resumeHandsFreeByUser,\s+pauseHandsFreeByUser,\s+handleHandsFreePrimaryControl,\s+\}\),/);
   assert.match(chatMessageChromeSource, /return handsFreeControlActionsState;/);
+  assert.match(screenSource, /useChatRuntimeNavigationForegroundState,/);
+  assert.match(screenSource, /const \{\s+isFocused,\s+handsFreeRuntimeActive,\s+\} = useChatRuntimeNavigationForegroundState\(\{\s+handsFree,\s+\}\);/);
+  assert.doesNotMatch(chatScreenSource, /useIsFocused/);
+  assert.match(chatMessageChromeSource, /import \{ useIsFocused \} from '@react-navigation\/native';/);
   assert.match(chatMessageChromeSource, /const foregroundState = useMemo<ChatRuntimeForegroundState>\(\s+\(\) => \(\{\s+appState,\s+isAppActive,\s+handsFreeRuntimeActive: handsFree && isFocused && isAppActive,\s+\}\),\s+\[appState, handsFree, isAppActive, isFocused\],\s+\);/);
   assert.match(chatMessageChromeSource, /return foregroundState;/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigationForegroundState\(\{[\s\S]*?handsFree,[\s\S]*?\}: Pick<ChatRuntimeForegroundStateInput, 'handsFree'>\): ChatRuntimeNavigationForegroundState/);
+  assert.match(chatMessageChromeSource, /const isFocused = useIsFocused\(\);[\s\S]*?const foregroundState = useChatRuntimeForegroundState\(\{[\s\S]*?handsFree,[\s\S]*?isFocused,[\s\S]*?\}\);/);
+  assert.match(chatMessageChromeSource, /const navigationForegroundState = useMemo<ChatRuntimeNavigationForegroundState>\(\s+\(\) => \(\{\s+\.\.\.foregroundState,\s+isFocused,\s+\}\),\s+\[foregroundState, isFocused\],\s+\);/);
   assert.match(chatMessageChromeSource, /const handsFreeMutableState = useMemo<ChatRuntimeHandsFreeMutableState>\(\s+\(\) => \(\{\s+handsFreeRef,\s+handsFreePhaseRef,\s+ttsEnabledRef,\s+setHandsFreeRefValue,\s+setHandsFreePhaseRefValue,\s+\}\),\s+\[setHandsFreeRefValue, setHandsFreePhaseRefValue\],\s+\);/);
   assert.match(chatMessageChromeSource, /return handsFreeMutableState;/);
 });

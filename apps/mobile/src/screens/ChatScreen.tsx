@@ -24,7 +24,7 @@ import {
   useChatRuntimeConnectionStatusSubscription,
   useChatRuntimeConnectionRetryState,
   useChatRuntimeConnectionRetryActionState,
-  useChatRuntimeForegroundState,
+  useChatRuntimeNavigationForegroundState,
   useChatRuntimeHandsFreeMutableState,
   useChatRuntimeHandsFreeToggleChromeActionsState,
   useChatRuntimeTextToSpeechToggleChromeActionsState,
@@ -114,11 +114,9 @@ import {
   type Loop,
   type PredefinedPromptSummary,
 } from '@dotagents/shared/session-presentation';
-import { useIsFocused } from '@react-navigation/native';
 import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
 
 export default function ChatScreen({ route, navigation }: any) {
-  const isFocused = useIsFocused();
   const { chatRuntimeChrome } = useChatRuntimeMobileStyleSlots();
   const { keyboardVerticalOffset } = useChatMessageRuntimeKeyboardOffsetState();
   const { config, setConfig } = useConfigContext();
@@ -238,9 +236,11 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFree,
     ttsEnabled,
   });
-  const { handsFreeRuntimeActive } = useChatRuntimeForegroundState({
-    handsFree,
+  const {
     isFocused,
+    handsFreeRuntimeActive,
+  } = useChatRuntimeNavigationForegroundState({
+    handsFree,
   });
 
   const {

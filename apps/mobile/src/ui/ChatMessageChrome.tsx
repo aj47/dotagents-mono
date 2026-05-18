@@ -26,6 +26,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useHeaderHeight } from '@react-navigation/elements';
+import { useIsFocused } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
@@ -1311,6 +1312,10 @@ type ChatRuntimeForegroundState = {
   appState: AppStateStatus;
   isAppActive: boolean;
   handsFreeRuntimeActive: boolean;
+};
+
+type ChatRuntimeNavigationForegroundState = ChatRuntimeForegroundState & {
+  isFocused: boolean;
 };
 
 type ChatRuntimeHandsFreeMutableStateInput = {
@@ -10419,6 +10424,26 @@ export function useChatRuntimeForegroundState({
   );
 
   return foregroundState;
+}
+
+export function useChatRuntimeNavigationForegroundState({
+  handsFree,
+}: Pick<ChatRuntimeForegroundStateInput, 'handsFree'>): ChatRuntimeNavigationForegroundState {
+  const isFocused = useIsFocused();
+  const foregroundState = useChatRuntimeForegroundState({
+    handsFree,
+    isFocused,
+  });
+
+  const navigationForegroundState = useMemo<ChatRuntimeNavigationForegroundState>(
+    () => ({
+      ...foregroundState,
+      isFocused,
+    }),
+    [foregroundState, isFocused],
+  );
+
+  return navigationForegroundState;
 }
 
 export function useChatRuntimeHandsFreeMutableState({
