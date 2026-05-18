@@ -23,9 +23,11 @@ import {
   createChatRuntimeRemoteSpeechSettingsState,
   createSpeechSelectorMobileStyleSheetSlots,
   formatSpeechSelectorMicrophoneEnumerationError,
+  formatSpeechSelectorVoiceMetadata,
   formatLocalSpeechModelProgress,
   getChatRuntimeDefaultRemoteSpeechSettingsState,
   getSpeechSelectorCopyState,
+  getSpeechSelectorNativeVoiceQualityLabel,
   getSpeechSelectorMobileCloseIconState,
   getSpeechSelectorMobileSurfaceColors,
   getSpeechSelectorMobileSurfaceState,
@@ -67,6 +69,12 @@ describe("text to speech settings helpers", () => {
     expect(SPEECH_SELECTOR_PRESENTATION.copy.microphone.enumerationFailedMessage)
       .toBe("Failed to enumerate audio devices.")
     expect(SPEECH_SELECTOR_PRESENTATION.copy.voice.testVoiceLabel).toBe("Test voice")
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.voice.testVoicePhrase)
+      .toBe("Hello! This is a test of the text to speech voice.")
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.voice.edgeVoiceQualityLabel).toBe("Neural")
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.voice.enhancedVoiceQualityLabel).toBe("Enhanced")
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.voice.edgeUnavailableTitle).toBe("Edge TTS unavailable")
+    expect(SPEECH_SELECTOR_PRESENTATION.copy.voice.edgeFailedTitle).toBe("Edge TTS failed")
     expect(SPEECH_SELECTOR_PRESENTATION.mobile.container.marginTop).toBe("sm")
     expect(SPEECH_SELECTOR_PRESENTATION.mobile.row.flexDirection).toBe("row")
     expect(SPEECH_SELECTOR_PRESENTATION.mobile.row.gap).toBe("sm")
@@ -240,6 +248,17 @@ describe("text to speech settings helpers", () => {
       .toBe("Failed to enumerate audio devices.")
     expect(formatSpeechSelectorMicrophoneEnumerationError(null))
       .toBe("Failed to enumerate audio devices.")
+  })
+
+  it("formats shared voice metadata labels for mobile speech selectors", () => {
+    expect(formatSpeechSelectorVoiceMetadata({ language: "en-US", quality: "Neural" }))
+      .toBe("en-US • Neural")
+    expect(formatSpeechSelectorVoiceMetadata({ language: "en-US" })).toBe("en-US")
+    expect(formatSpeechSelectorVoiceMetadata({ quality: "Neural" })).toBe("Neural")
+    expect(formatSpeechSelectorVoiceMetadata({ language: " ", quality: " " })).toBe("")
+    expect(getSpeechSelectorNativeVoiceQualityLabel("Enhanced")).toBe("Enhanced")
+    expect(getSpeechSelectorNativeVoiceQualityLabel("Default")).toBeUndefined()
+    expect(getSpeechSelectorNativeVoiceQualityLabel(undefined)).toBeUndefined()
   })
 
   it("selects provider-specific model values", () => {

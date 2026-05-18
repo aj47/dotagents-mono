@@ -102,11 +102,21 @@ export const SPEECH_SELECTOR_PRESENTATION = {
       speedLabel: "Speed",
       pitchLabel: "Pitch",
       testVoiceLabel: "Test voice",
+      testVoicePhrase: "Hello! This is a test of the text to speech voice.",
       testVoiceAccessibilityLabel: "Test text-to-speech voice",
       pickerTitle: "Select Voice",
       closeAccessibilityLabel: "Close voice picker",
       edgeGroupLabel: "Edge TTS (Free)",
       nativeGroupLabel: "Device Voices",
+      edgeVoiceQualityLabel: "Neural",
+      enhancedVoiceQualityLabel: "Enhanced",
+      metadataSeparator: " • ",
+      edgeUnavailableTitle: "Edge TTS unavailable",
+      edgeUnavailableMessage:
+        "Edge voices now play through your paired desktop. Pair a desktop with Remote Access enabled to use Edge TTS.",
+      edgeFailedTitle: "Edge TTS failed",
+      edgeFailedMessage:
+        "Could not reach the paired desktop to synthesize speech. Make sure the desktop app is running and reachable, then try again.",
     },
   },
   mobile: {
@@ -699,6 +709,31 @@ export function createSpeechSelectorMobileStyleSheetSlots({
     },
     deviceItemTextSelected: itemTextSelectedStyles,
   }
+}
+
+export interface SpeechSelectorVoiceMetadataInput {
+  language?: string | null
+  quality?: string | null
+}
+
+export function formatSpeechSelectorVoiceMetadata({
+  language,
+  quality,
+}: SpeechSelectorVoiceMetadataInput): string {
+  const normalizedLanguage = language?.trim() ?? ""
+  const normalizedQuality = quality?.trim() ?? ""
+
+  if (!normalizedLanguage) return normalizedQuality
+  if (!normalizedQuality) return normalizedLanguage
+  return `${normalizedLanguage}${SPEECH_SELECTOR_PRESENTATION.copy.voice.metadataSeparator}${normalizedQuality}`
+}
+
+export function getSpeechSelectorNativeVoiceQualityLabel(quality?: string | null): string | undefined {
+  const normalizedQuality = quality?.trim()
+  if (normalizedQuality !== SPEECH_SELECTOR_PRESENTATION.copy.voice.enhancedVoiceQualityLabel) {
+    return undefined
+  }
+  return SPEECH_SELECTOR_PRESENTATION.copy.voice.enhancedVoiceQualityLabel
 }
 
 export function formatSpeechSelectorMicrophoneEnumerationError(error: unknown): string {

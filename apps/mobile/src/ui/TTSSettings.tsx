@@ -11,6 +11,8 @@ import {
 } from '@dotagents/shared/providers';
 import {
   createSpeechSelectorMobileStyleSheetSlots,
+  formatSpeechSelectorVoiceMetadata,
+  getSpeechSelectorNativeVoiceQualityLabel,
   getSpeechSelectorCopyState,
   getSpeechSelectorMobileCloseIconState,
   getSpeechSelectorMobileSurfaceColors,
@@ -173,12 +175,12 @@ export function TTSSettings({
     if (selectedVoice?.provider === 'edge') {
       if (!edgeTtsAvailable || !remoteBaseUrl || !remoteApiKey) {
         Alert.alert(
-          'Edge TTS unavailable',
-          'Edge voices now play through your paired desktop. Pair a desktop with Remote Access enabled to use Edge TTS.',
+          speechSelectorCopy.voice.edgeUnavailableTitle,
+          speechSelectorCopy.voice.edgeUnavailableMessage,
         );
         return;
       }
-      void speakRemoteTts('Hello! This is a test of the text to speech voice.', {
+      void speakRemoteTts(speechSelectorCopy.voice.testVoicePhrase, {
         baseUrl: remoteBaseUrl,
         apiKey: remoteApiKey,
         providerId: 'edge',
@@ -186,8 +188,8 @@ export function TTSSettings({
         rate,
         onError: () => {
           Alert.alert(
-            'Edge TTS failed',
-            'Could not reach the paired desktop to synthesize speech. Make sure the desktop app is running and reachable, then try again.',
+            speechSelectorCopy.voice.edgeFailedTitle,
+            speechSelectorCopy.voice.edgeFailedMessage,
           );
         },
       });
@@ -202,7 +204,7 @@ export function TTSSettings({
     if (selectedVoice?.provider === 'native') {
       options.voice = selectedVoice.identifier;
     }
-    Speech.speak('Hello! This is a test of the text to speech voice.', options);
+    Speech.speak(speechSelectorCopy.voice.testVoicePhrase, options);
   };
 
   return (
@@ -352,7 +354,10 @@ export function TTSSettings({
                             style={styles.voiceItemSubtext}
                             numberOfLines={speechSelectorSurface.itemSubtext.numberOfLines}
                           >
-                            {voice.language} • Neural
+                            {formatSpeechSelectorVoiceMetadata({
+                              language: voice.language,
+                              quality: speechSelectorCopy.voice.edgeVoiceQualityLabel,
+                            })}
                           </Text>
                         </View>
                         {isSelected && (
@@ -407,7 +412,10 @@ export function TTSSettings({
                         style={styles.voiceItemSubtext}
                         numberOfLines={speechSelectorSurface.itemSubtext.numberOfLines}
                       >
-                        {voice.language} {voice.quality === 'Enhanced' ? '• Enhanced' : ''}
+                        {formatSpeechSelectorVoiceMetadata({
+                          language: voice.language,
+                          quality: getSpeechSelectorNativeVoiceQualityLabel(voice.quality),
+                        })}
                       </Text>
                     </View>
                     {isSelected && (

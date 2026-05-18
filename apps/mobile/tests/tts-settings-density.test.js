@@ -59,6 +59,8 @@ test('keeps the mobile TTS voice picker header flex-safe on narrow widths', () =
 test('uses the shared speech selector presentation for the mobile voice picker', () => {
   assert.match(ttsSettingsSource, /getSpeechSelectorCopyState/);
   assert.match(ttsSettingsSource, /createSpeechSelectorMobileStyleSheetSlots/);
+  assert.match(ttsSettingsSource, /formatSpeechSelectorVoiceMetadata/);
+  assert.match(ttsSettingsSource, /getSpeechSelectorNativeVoiceQualityLabel/);
   assert.match(ttsSettingsSource, /getSpeechSelectorMobileSurfaceColors/);
   assert.match(ttsSettingsSource, /getSpeechSelectorMobileSurfaceState/);
   assert.match(ttsSettingsSource, /const speechSelectorCopy = getSpeechSelectorCopyState\(\)/);
@@ -72,11 +74,21 @@ test('uses the shared speech selector presentation for the mobile voice picker',
   assert.match(ttsSettingsSource, /accessibilityRole=\{speechSelectorSurface\.item\.accessibilityRole\}/);
   assert.match(ttsSettingsSource, /accessibilityState=\{\{ selected: !selectedVoice \}\}/);
   assert.match(ttsSettingsSource, /accessibilityState=\{\{ selected: isSelected \}\}/);
+  assert.match(ttsSettingsSource, /speechSelectorCopy\.voice\.testVoicePhrase/);
+  assert.match(ttsSettingsSource, /speechSelectorCopy\.voice\.edgeUnavailableTitle/);
+  assert.match(ttsSettingsSource, /speechSelectorCopy\.voice\.edgeUnavailableMessage/);
+  assert.match(ttsSettingsSource, /speechSelectorCopy\.voice\.edgeFailedTitle/);
+  assert.match(ttsSettingsSource, /speechSelectorCopy\.voice\.edgeFailedMessage/);
+  assert.match(ttsSettingsSource, /speechSelectorCopy\.voice\.edgeVoiceQualityLabel/);
+  assert.match(ttsSettingsSource, /formatSpeechSelectorVoiceMetadata\(\{\s+language: voice\.language,\s+quality: speechSelectorCopy\.voice\.edgeVoiceQualityLabel,/);
+  assert.match(ttsSettingsSource, /formatSpeechSelectorVoiceMetadata\(\{\s+language: voice\.language,\s+quality: getSpeechSelectorNativeVoiceQualityLabel\(voice\.quality\),/);
   assert.match(speechSettingsSource, /export function createSpeechSelectorMobileStyleSheetSlots/);
+  assert.match(speechSettingsSource, /export function formatSpeechSelectorVoiceMetadata/);
+  assert.match(speechSettingsSource, /export function getSpeechSelectorNativeVoiceQualityLabel/);
   const sharedStyleSource = extractBetween(
     speechSettingsSource,
     'export function createSpeechSelectorMobileStyleSheetSlots',
-    'export function formatSpeechSelectorMicrophoneEnumerationError',
+    'export interface SpeechSelectorVoiceMetadataInput',
   );
   assert.match(sharedStyleSource, /container:\s*\{[\s\S]*?marginTop:\s*spacing\[surface\.container\.marginTop\]/);
   assert.match(sharedStyleSource, /flexDirection:\s*surface\.row\.flexDirection/);
@@ -111,6 +123,14 @@ test('uses the shared speech selector presentation for the mobile voice picker',
   assert.doesNotMatch(ttsSettingsSource, /hexToRgba\(/);
   assert.doesNotMatch(ttsSettingsSource, /<Text style=\{styles\.chevron\}>▼<\/Text>/);
   assert.doesNotMatch(ttsSettingsSource, /<Text style=\{styles\.checkmark\}>✓<\/Text>/);
+  assert.doesNotMatch(ttsSettingsSource, /'Hello! This is a test of the text to speech voice\.'/);
+  assert.doesNotMatch(ttsSettingsSource, /'Edge TTS unavailable'/);
+  assert.doesNotMatch(ttsSettingsSource, /'Edge voices now play through your paired desktop/);
+  assert.doesNotMatch(ttsSettingsSource, /'Edge TTS failed'/);
+  assert.doesNotMatch(ttsSettingsSource, /'Could not reach the paired desktop/);
+  assert.doesNotMatch(ttsSettingsSource, /'Neural'/);
+  assert.doesNotMatch(ttsSettingsSource, /'Enhanced'/);
+  assert.doesNotMatch(ttsSettingsSource, /voice\.quality === 'Enhanced'/);
   assert.doesNotMatch(ttsSettingsSource, /backgroundColor:\s*'rgba\(0, 0, 0, 0\.5\)'/);
   assert.doesNotMatch(ttsSettingsSource, /justifyContent:\s*'flex-end'/);
   assert.doesNotMatch(ttsSettingsSource, /theme\.colors\.primary \+ '20'/);
