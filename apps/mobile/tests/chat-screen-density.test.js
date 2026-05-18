@@ -5457,6 +5457,12 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionResultBadgeMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionResultBadgeMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const resultBadgeParts: ChatMessageToolExecutionResultBadgeParts =\s+createChatRuntimeToolExecutionResultBadgeMobilePropsParts\(\{\s+badge,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultBadgeContainerProps = \{[\s\S]*?accessible: true;[\s\S]*?accessibilityRole: ChatMessageToolExecutionResultBadgeRenderState\['accessibilityRole'\];[\s\S]*?accessibilityLabel: string;[\s\S]*?style: Array<[\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['badge'\][\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['badgeSuccess'\][\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['badgeError'\][\s\S]*?>;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultBadgeIconProps =\s+ComponentProps<typeof Ionicons>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultBadgeLabelProps = \{[\s\S]*?style: Array<[\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['text'\][\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['textSuccess'\][\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['textError'\][\s\S]*?>;[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultBadgeLabelPart = \{\s+props: ChatMessageToolExecutionResultBadgeLabelProps;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultBadgeContentProps = \{\s+icon: ChatMessageToolExecutionResultBadgeIconPart;\s+label: ChatMessageToolExecutionResultBadgeLabelPart;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionResultBadgeParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const resultBadgeContent = resultBadgeParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultBadgeContainer\s+\{\.\.\.resultBadgeParts\.container\.props\}/);
   assert.match(toolExecutionResultBadgeSource, /<ChatMessageToolExecutionResultBadgeContent\s+\{\.\.\.resultBadgeParts\.container\.content\}/);

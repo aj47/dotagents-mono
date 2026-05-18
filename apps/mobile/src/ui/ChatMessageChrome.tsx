@@ -3758,19 +3758,44 @@ type ChatMessageToolExecutionResultBadgeRenderState = {
   label: string;
 };
 
-type ChatMessageToolExecutionResultBadgeContainerProps =
-  ChatMessageToolExecutionResultBadgeParts['container']['props'] & {
-    children: ReactNode;
-  };
-
-type ChatMessageToolExecutionResultBadgeContentProps =
-  ChatMessageToolExecutionResultBadgeParts['container']['content'];
+type ChatMessageToolExecutionResultBadgeContainerProps = {
+  accessible: true;
+  accessibilityRole: ChatMessageToolExecutionResultBadgeRenderState['accessibilityRole'];
+  accessibilityLabel: string;
+  style: Array<
+    | ChatMessageToolExecutionResultBadgeStyles['badge']
+    | ChatMessageToolExecutionResultBadgeStyles['badgeSuccess']
+    | ChatMessageToolExecutionResultBadgeStyles['badgeError']
+  >;
+  children: ReactNode;
+};
 
 type ChatMessageToolExecutionResultBadgeIconProps =
-  ChatMessageToolExecutionResultBadgeParts['container']['content']['icon']['props'];
+  ComponentProps<typeof Ionicons>;
 
-type ChatMessageToolExecutionResultBadgeLabelProps =
-  ChatMessageToolExecutionResultBadgeParts['container']['content']['label']['props'];
+type ChatMessageToolExecutionResultBadgeIconPart = {
+  props: ChatMessageToolExecutionResultBadgeIconProps;
+};
+
+type ChatMessageToolExecutionResultBadgeLabelProps = {
+  props: {
+    style: Array<
+      | ChatMessageToolExecutionResultBadgeStyles['text']
+      | ChatMessageToolExecutionResultBadgeStyles['textSuccess']
+      | ChatMessageToolExecutionResultBadgeStyles['textError']
+    >;
+  };
+  text: string;
+};
+
+type ChatMessageToolExecutionResultBadgeLabelPart = {
+  props: ChatMessageToolExecutionResultBadgeLabelProps;
+};
+
+type ChatMessageToolExecutionResultBadgeContentProps = {
+  icon: ChatMessageToolExecutionResultBadgeIconPart;
+  label: ChatMessageToolExecutionResultBadgeLabelPart;
+};
 
 type ChatMessageToolExecutionPendingResultStyles =
   SharedChatMessageToolExecutionPendingResultStyleSlots<
