@@ -49,6 +49,11 @@ import {
   getToolResultsSummary,
   hasVisibleChatMessageContent,
   isCompletionControlTool,
+  DEFAULT_TTS_AUTO_PLAY,
+  DEFAULT_TTS_ENABLED,
+  createExpandCollapseAccessibilityLabel,
+  buildContentTTSKey,
+  buildResponseEventTTSKey,
 } from "@dotagents/shared/session-presentation"
 import {
   AGENT_MODEL_FALLBACKS,
@@ -64,11 +69,6 @@ import {
   type CHAT_PROVIDER_ID,
 } from "@dotagents/shared/providers"
 import {
-  DEFAULT_TTS_AUTO_PLAY,
-  DEFAULT_TTS_ENABLED,
-} from "@dotagents/shared/text-to-speech-settings"
-import { createExpandCollapseAccessibilityLabel } from "@dotagents/shared/accessibility-utils"
-import {
   CODEX_TEXT_VERBOSITY_OPTIONS,
   DEFAULT_CODEX_TEXT_VERBOSITY,
   getOpenAiReasoningEffortDefault,
@@ -80,7 +80,6 @@ import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
 import { LoadingSpinner } from "./ui/loading-spinner"
-import { buildContentTTSKey, buildResponseEventTTSKey } from "@dotagents/shared/tts-tracking"
 import { consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { ttsManager } from "@renderer/lib/tts-manager"
 import {

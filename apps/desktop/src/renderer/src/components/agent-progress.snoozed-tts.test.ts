@@ -16,11 +16,12 @@ describe("agent progress TTS guardrails", () => {
 
   it("presents snoozed running sessions as background work instead of paused or complete", () => {
     expect(agentProgressSource).toContain("getSessionPresentation")
-    expect(agentProgressSource).toContain('conversationState === "running" && sessionPresentation.attentionState === "background"')
-    expect(agentProgressSource).toContain("<Moon className=\"h-3.5 w-3.5 text-muted-foreground\" />")
+    expect(agentProgressSource).toContain("getSessionStatusDesktopRenderState(sessionPresentation)")
+    expect(agentProgressSource).toContain('conversationStatusIndicatorState.kind === "background"')
+    expect(agentProgressSource).toContain("<Moon className={conversationStatusIndicatorState.iconClassName} />")
 
-    const backgroundIconIndex = agentProgressSource.indexOf('conversationState === "running" && sessionPresentation.attentionState === "background"')
-    const spinnerIndex = agentProgressSource.indexOf('if (conversationState === "running")', backgroundIconIndex + 1)
+    const backgroundIconIndex = agentProgressSource.indexOf('conversationStatusIndicatorState.kind === "background"')
+    const spinnerIndex = agentProgressSource.indexOf('conversationStatusIndicatorState.kind === "running"', backgroundIconIndex + 1)
     expect(backgroundIconIndex).toBeGreaterThan(-1)
     expect(spinnerIndex).toBeGreaterThan(backgroundIconIndex)
   })
@@ -44,6 +45,8 @@ describe("agent progress TTS guardrails", () => {
   })
 
   it("uses shared TTS defaults when config fields are unset", () => {
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/text-to-speech-settings"')
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/tts-tracking"')
     expect(agentProgressSource).toContain("DEFAULT_TTS_ENABLED")
     expect(agentProgressSource).toContain("DEFAULT_TTS_AUTO_PLAY")
     expect(agentProgressSource).toContain("configQuery.data?.ttsEnabled ?? DEFAULT_TTS_ENABLED")

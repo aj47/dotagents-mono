@@ -82,6 +82,7 @@ export {
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
 export { formatConnectionStatus, type RecoveryState } from "./connection-recovery"
+export { createExpandCollapseAccessibilityLabel } from "./accessibility-utils"
 export {
   createConnectionStatusIndicatorMobilePropsParts,
   createConnectionStatusIndicatorMobileStyleSlots,
@@ -147,10 +148,16 @@ export {
 export {
   createChatRuntimeEffectiveRemoteSpeechSettingsState,
   createChatRuntimeRemoteSpeechSettingsState,
+  DEFAULT_TTS_AUTO_PLAY,
+  DEFAULT_TTS_ENABLED,
   getChatRuntimeDefaultRemoteSpeechSettingsState,
   type ChatRuntimeRemoteSpeechProvider,
   type ChatRuntimeRemoteSpeechSettingsState,
 } from "./text-to-speech-settings"
+export {
+  buildContentTTSKey,
+  buildResponseEventTTSKey,
+} from "./tts-tracking"
 export { createChatRuntimeMobileConfigState } from "./mobile-app-config"
 export { DEFAULT_EDGE_TTS_VOICE } from "./providers"
 import {

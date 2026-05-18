@@ -218,6 +218,7 @@ describe("agent progress tile layout", () => {
   })
 
   it("keeps tile message-stream tool execution rows readable at narrow widths and zoom", () => {
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/accessibility-utils"')
     expect(agentProgressSource).toContain('desktopToolExecutionCompactSurface.previewButtonClassName')
     expect(agentProgressSource).toContain(
       'rowClassName = desktopToolExecutionCompactSurface.tileRowClassName'
