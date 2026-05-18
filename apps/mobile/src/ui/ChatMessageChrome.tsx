@@ -213,6 +213,11 @@ import {
   type ChatRuntimeBranchMobileRenderState,
   type ChatRuntimeConnectionBannerMobileRenderState,
   type ChatRuntimeDockChromeMobileRenderStateInput,
+  type ChatRuntimeConversationDockShellMobilePropsParts,
+  type ChatRuntimeConversationFrameMobilePropsParts,
+  type ChatRuntimeConversationOverlaysMobilePropsParts,
+  type ChatRuntimeConversationScrollViewportMobilePropsParts,
+  type ChatRuntimeConversationViewportContentMobilePropsParts,
   type ChatConversationHomePromptEditorModalMobilePropsParts,
   type ChatRuntimeHandsFreeMobileRenderState,
   type ChatRuntimeKillSwitchConfirmationAlertState,
@@ -3147,15 +3152,16 @@ type ChatMessageConversationFrameProps = {
   rootStyle: StyleProp<ViewStyle>;
 };
 
-type ChatMessageConversationFrameParts = ReturnType<typeof createChatRuntimeConversationFrameMobilePropsParts<
-  ChatMessageConversationFrameProps['children'],
-  ChatMessageConversationFrameProps['dock'],
-  ChatMessageConversationFrameProps['overlays'],
-  ChatMessageConversationFrameProps['keyboardAvoidingStyle'],
-  ChatMessageConversationFrameProps['keyboardAvoidingBehavior'],
-  ChatMessageConversationFrameProps['keyboardVerticalOffset'],
-  ChatMessageConversationFrameProps['rootStyle']
->>;
+type ChatMessageConversationFrameParts =
+  ChatRuntimeConversationFrameMobilePropsParts<
+    ChatMessageConversationFrameProps['children'],
+    ChatMessageConversationFrameProps['dock'],
+    ChatMessageConversationFrameProps['overlays'],
+    ChatMessageConversationFrameProps['keyboardAvoidingStyle'],
+    ChatMessageConversationFrameProps['keyboardAvoidingBehavior'],
+    ChatMessageConversationFrameProps['keyboardVerticalOffset'],
+    ChatMessageConversationFrameProps['rootStyle']
+  >;
 
 type ChatMessageConversationFrameContentProps =
   ChatMessageConversationFrameParts['keyboardAvoidingView']['content'];
@@ -3174,10 +3180,11 @@ type ChatMessageConversationOverlaysProps = {
   promptEditor?: ReactNode;
 };
 
-type ChatMessageConversationOverlaysParts = ReturnType<typeof createChatRuntimeConversationOverlaysMobilePropsParts<
-  ChatMessageConversationOverlaysProps['agentSelector'],
-  ChatMessageConversationOverlaysProps['promptEditor']
->>;
+type ChatMessageConversationOverlaysParts =
+  ChatRuntimeConversationOverlaysMobilePropsParts<
+    ChatMessageConversationOverlaysProps['agentSelector'],
+    ChatMessageConversationOverlaysProps['promptEditor']
+  >;
 
 type ChatMessageConversationOverlaysContentProps =
   ChatMessageConversationOverlaysParts['content'];
@@ -3195,18 +3202,19 @@ type ChatMessageScrollViewportProps = {
   scrollEventThrottle: number;
 };
 
-type ChatMessageScrollViewportParts = ReturnType<typeof createChatRuntimeConversationScrollViewportMobilePropsParts<
-  ChatMessageScrollViewportProps['children'],
-  ChatMessageScrollViewportProps['scrollRef'],
-  ChatMessageScrollViewportProps['style'],
-  ChatMessageScrollViewportProps['contentContainerStyle'],
-  ChatMessageScrollViewportProps['keyboardShouldPersistTaps'],
-  ChatMessageScrollViewportProps['contentInsetAdjustmentBehavior'],
-  ChatMessageScrollViewportProps['onScroll'],
-  ChatMessageScrollViewportProps['onScrollBeginDrag'],
-  ChatMessageScrollViewportProps['onScrollEndDrag'],
-  ChatMessageScrollViewportProps['scrollEventThrottle']
->>;
+type ChatMessageScrollViewportParts =
+  ChatRuntimeConversationScrollViewportMobilePropsParts<
+    ChatMessageScrollViewportProps['children'],
+    ChatMessageScrollViewportProps['scrollRef'],
+    ChatMessageScrollViewportProps['style'],
+    ChatMessageScrollViewportProps['contentContainerStyle'],
+    ChatMessageScrollViewportProps['keyboardShouldPersistTaps'],
+    ChatMessageScrollViewportProps['contentInsetAdjustmentBehavior'],
+    ChatMessageScrollViewportProps['onScroll'],
+    ChatMessageScrollViewportProps['onScrollBeginDrag'],
+    ChatMessageScrollViewportProps['onScrollEndDrag'],
+    ChatMessageScrollViewportProps['scrollEventThrottle']
+  >;
 
 type ChatMessageScrollViewportContentProps =
   ChatMessageScrollViewportParts['scrollView']['content'];
@@ -3220,14 +3228,15 @@ type ChatMessageConversationViewportContentProps = {
   debugPanels?: ReactNode;
 };
 
-type ChatMessageConversationViewportContentParts = ReturnType<typeof createChatRuntimeConversationViewportContentMobilePropsParts<
-  ChatMessageConversationViewportContentProps['loadingState'],
-  ChatMessageConversationViewportContentProps['homeState'],
-  ChatMessageConversationViewportContentProps['historyBanner'],
-  ChatMessageConversationViewportContentProps['stepSummary'],
-  ChatMessageConversationViewportContentProps['children'],
-  ChatMessageConversationViewportContentProps['debugPanels']
->>;
+type ChatMessageConversationViewportContentParts =
+  ChatRuntimeConversationViewportContentMobilePropsParts<
+    ChatMessageConversationViewportContentProps['loadingState'],
+    ChatMessageConversationViewportContentProps['homeState'],
+    ChatMessageConversationViewportContentProps['historyBanner'],
+    ChatMessageConversationViewportContentProps['stepSummary'],
+    ChatMessageConversationViewportContentProps['children'],
+    ChatMessageConversationViewportContentProps['debugPanels']
+  >;
 
 type ChatMessageConversationViewportContentPartProps =
   ChatMessageConversationViewportContentParts['content'];
@@ -3572,14 +3581,15 @@ type ChatMessageConversationDockProps = {
   composer?: ReactNode;
 };
 
-type ChatMessageConversationDockParts = ReturnType<typeof createChatRuntimeConversationDockShellMobilePropsParts<
-  ChatMessageConversationDockProps['responseHistoryPanel'],
-  ChatMessageConversationDockProps['scrollToBottomButton'],
-  ChatMessageConversationDockProps['voiceOverlay'],
-  ChatMessageConversationDockProps['queuePanel'],
-  ChatMessageConversationDockProps['connectionBanner'],
-  ChatMessageConversationDockProps['composer']
->>;
+type ChatMessageConversationDockParts =
+  ChatRuntimeConversationDockShellMobilePropsParts<
+    ChatMessageConversationDockProps['responseHistoryPanel'],
+    ChatMessageConversationDockProps['scrollToBottomButton'],
+    ChatMessageConversationDockProps['voiceOverlay'],
+    ChatMessageConversationDockProps['queuePanel'],
+    ChatMessageConversationDockProps['connectionBanner'],
+    ChatMessageConversationDockProps['composer']
+  >;
 
 type ChatMessageConversationDockContentProps =
   ChatMessageConversationDockParts['content'];
