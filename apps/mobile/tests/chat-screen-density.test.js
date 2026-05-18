@@ -144,11 +144,14 @@ test('keeps mobile chat shared domain types routed through session presentation'
   assert.doesNotMatch(chatScreenSource, /from '\.\.\/(?:store|lib)\//);
   assert.doesNotMatch(chatScreenSource, /from '\.\.\/ui\/(?!ChatMessageChrome')/);
   assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/(agent-progress|conversation-state|api-types)';/);
+  assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/session-presentation';/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/(agent-progress|conversation-state|voice-debug-log|types|api-types)';/);
   assert.doesNotMatch(handsFreeStatusChipSource, /from '@dotagents\/shared\/(hands-free-controller|types)';/);
   assert.match(chatScreenSource, /type ChatMessage,/);
   assert.doesNotMatch(chatScreenSource, /from '\.\.\/lib\/openaiClient';/);
   assert.match(chatMessageChromeSource, /export type \{ ChatMessage \} from '\.\.\/lib\/openaiClient';/);
+  assert.match(chatMessageChromeSource, /export \{[\s\S]*?createChatMessageRuntimeProgressTurnState,[\s\S]*?hasChatMessageRuntimeRequestSessionChanged,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);
+  assert.match(chatMessageChromeSource, /export type \{[\s\S]*?AgentConversationState,[\s\S]*?AgentProgressUpdate,[\s\S]*?AgentUserResponseEvent,[\s\S]*?Loop,[\s\S]*?PredefinedPromptSummary,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);
   assert.match(sessionPresentationSource, /export type \{ AgentConversationState \} from "\.\/conversation-state"/);
   assert.match(sessionPresentationSource, /export type \{[\s\S]*?AgentProgressUpdate,[\s\S]*?AgentUserResponseEvent,[\s\S]*?\} from "\.\/agent-progress"/);
   assert.match(sessionPresentationSource, /export type \{ Loop, PredefinedPromptSummary, Settings, Skill \} from "\.\/api-types"/);
@@ -9321,7 +9324,8 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
 });
 
 test('uses shared runtime presentation for mobile request and queue debug copy', () => {
-  assert.match(chatScreenSource, /from '@dotagents\/shared\/session-presentation'/);
+  assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/session-presentation'/);
+  assert.match(chatScreenSource, /from '\.\.\/ui\/ChatMessageChrome'/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeDebugError,/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeStartingRequestDebugMessage,/);
   assert.doesNotMatch(screenSource, /formatChatRuntimeConnectionErrorMessage,/);

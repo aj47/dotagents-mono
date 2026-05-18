@@ -81,10 +81,6 @@ import {
   useChatMessageRuntimeDockInputState,
   useChatMessageRuntimeThreadListInputState,
   useChatMessageRuntimeComposerInputState,
-  type ChatMessage,
-  type ChatRuntimeExtendedSettingsClient,
-} from '../ui/ChatMessageChrome';
-import {
   applyChatMessageRuntimeBlockedTurnStatusState,
   applyChatMessageRuntimeCompletedTurnStatusState,
   applyChatMessageRuntimePendingTurnStatusState,
@@ -111,7 +107,9 @@ import {
   type AgentUserResponseEvent,
   type Loop,
   type PredefinedPromptSummary,
-} from '@dotagents/shared/session-presentation';
+  type ChatMessage,
+  type ChatRuntimeExtendedSettingsClient,
+} from '../ui/ChatMessageChrome';
 
 export default function ChatScreen({ route, navigation }: any) {
   const { chatRuntimeChrome } = useChatMessageRuntimeChromeStyleState();

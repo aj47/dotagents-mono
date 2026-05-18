@@ -491,6 +491,36 @@ import {
 } from './ResponseHistoryPanel';
 
 export type { ChatMessage } from '../lib/openaiClient';
+export {
+  applyChatMessageRuntimeBlockedTurnStatusState,
+  applyChatMessageRuntimeCompletedTurnStatusState,
+  applyChatMessageRuntimePendingTurnStatusState,
+  applyChatMessageRuntimeProgressTurnStatusState,
+  applyChatMessageRuntimeSettledTurnStatusState,
+  createChatMessageRuntimeConnectionErrorTurnState,
+  createChatMessageRuntimeFinalResponseTurnState,
+  createChatMessageRuntimeFinalResponseTextState,
+  createChatMessageRuntimeLogMeta,
+  createChatMessageRuntimeModelMessages,
+  createChatMessageRuntimePendingTurnState,
+  createChatMessageRuntimeProgressTurnState,
+  createChatMessageRuntimeProgressResponseState,
+  createChatMessageRuntimeQueuedErrorState,
+  createChatMessageRuntimeStreamingTurnState,
+  createChatRuntimeErrorLogDetailsState,
+  createChatRuntimeRequestSupersededQueueFailureState,
+  createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
+  hasChatMessageRuntimeRequestSessionChanged,
+  isChatMessageRuntimeActiveRequest,
+  isChatMessageRuntimeLatestSessionRequest,
+} from '@dotagents/shared/session-presentation';
+export type {
+  AgentConversationState,
+  AgentProgressUpdate,
+  AgentUserResponseEvent,
+  Loop,
+  PredefinedPromptSummary,
+} from '@dotagents/shared/session-presentation';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
