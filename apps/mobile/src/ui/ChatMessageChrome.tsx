@@ -3709,15 +3709,19 @@ type ChatMessageToolExecutionCallSectionParts =
     ChatMessageToolExecutionCallSectionStyles
   >;
 
-type ChatMessageToolExecutionCallSectionContainerProps =
-  ChatMessageToolExecutionCallSectionParts['container']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageToolExecutionCallSectionContainerProps = {
+  style: ChatMessageToolExecutionCallSectionStyles['section'];
+  children: ReactNode;
+};
 
-type ChatMessageToolExecutionCallSectionContentProps =
-  ChatMessageToolExecutionCallSectionParts['container']['content'] & {
-    children: ReactNode;
-  };
+type ChatMessageToolExecutionCallSectionHeaderPart = {
+  props: ChatMessageToolExecutionDetailHeaderProps;
+};
+
+type ChatMessageToolExecutionCallSectionContentProps = {
+  header: ChatMessageToolExecutionCallSectionHeaderPart;
+  children: ReactNode;
+};
 
 type ChatMessageToolExecutionResultBadgeStyles =
   SharedChatMessageToolExecutionResultBadgeStyleSlots<
