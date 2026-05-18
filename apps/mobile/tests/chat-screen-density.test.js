@@ -2022,6 +2022,13 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.doesNotMatch(screenSource, /getChatRuntimeBackMobileIconState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimePinMobileActionState,/);
   assert.doesNotMatch(screenSource, /getChatRuntimePinMobileColors,/);
+  assert.match(chatScreenSource, /useChatRuntimeSessionStoreState,/);
+  assert.match(chatScreenSource, /const sessionStore = useChatRuntimeSessionStoreState\(\);/);
+  assert.doesNotMatch(chatScreenSource, /from '\.\.\/store\/sessions';/);
+  assert.doesNotMatch(chatScreenSource, /useSessionContext/);
+  assert.match(chatMessageChromeSource, /import \{ useSessionContext \} from '\.\.\/store\/sessions';/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeSessionStoreState = ReturnType<typeof useSessionContext>;/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeSessionStoreState\(\): ChatRuntimeSessionStoreState \{\s+return useSessionContext\(\);\s+\}/);
   assert.match(screenSource, /useChatRuntimeCurrentSessionSnapshotState,/);
   assert.match(screenSource, /const \{\s+currentSession,\s+isCurrentSessionPinned,\s+currentConversationId,\s+\} = useChatRuntimeCurrentSessionSnapshotState\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+getCurrentSession: sessionStore\.getCurrentSession,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const currentSession = sessionStore\.getCurrentSession\(\);\s+const isCurrentSessionPinned = !!currentSession\?\.isPinned;/);
