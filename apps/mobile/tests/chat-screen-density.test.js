@@ -5185,6 +5185,11 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPendingResultMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPendingResultMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const pendingResultParts: ChatMessageToolExecutionPendingResultParts =\s+createChatRuntimeToolExecutionPendingResultMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPendingResultContainerProps = \{[\s\S]*?accessible: true;[\s\S]*?accessibilityRole: ToolExecutionDetailMobilePendingResultRenderState\['accessibilityRole'\];[\s\S]*?accessibilityLabel: string;[\s\S]*?style: ChatMessageToolExecutionPendingResultStyles\['row'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPendingResultSpinnerProps =\s+ComponentProps<typeof ActivityIndicator>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPendingResultLabelProps = \{\s+props: \{\s+style: ChatMessageToolExecutionPendingResultStyles\['text'\];\s+\};\s+text: string;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPendingResultContentProps = \{\s+spinner: ChatMessageToolExecutionPendingResultSpinnerPart;\s+label: ChatMessageToolExecutionPendingResultLabelPart;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionPendingResultParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const pendingResultContent = pendingResultParts\.container\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionPendingResultContainer\s+\{\.\.\.pendingResultParts\.container\.props\}/);
   assert.match(toolExecutionPendingResultSource, /<ChatMessageToolExecutionPendingResultContent\s+\{\.\.\.pendingResultParts\.container\.content\}/);

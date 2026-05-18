@@ -3815,19 +3815,36 @@ type ChatMessageToolExecutionPendingResultParts =
     ChatMessageToolExecutionPendingResultStyles
   >;
 
-type ChatMessageToolExecutionPendingResultContainerProps =
-  ChatMessageToolExecutionPendingResultParts['container']['props'] & {
-    children: ReactNode;
-  };
-
-type ChatMessageToolExecutionPendingResultContentProps =
-  ChatMessageToolExecutionPendingResultParts['container']['content'];
+type ChatMessageToolExecutionPendingResultContainerProps = {
+  accessible: true;
+  accessibilityRole: ToolExecutionDetailMobilePendingResultRenderState['accessibilityRole'];
+  accessibilityLabel: string;
+  style: ChatMessageToolExecutionPendingResultStyles['row'];
+  children: ReactNode;
+};
 
 type ChatMessageToolExecutionPendingResultSpinnerProps =
-  ChatMessageToolExecutionPendingResultParts['container']['content']['spinner']['props'];
+  ComponentProps<typeof ActivityIndicator>;
 
-type ChatMessageToolExecutionPendingResultLabelProps =
-  ChatMessageToolExecutionPendingResultParts['container']['content']['label']['props'];
+type ChatMessageToolExecutionPendingResultSpinnerPart = {
+  props: ChatMessageToolExecutionPendingResultSpinnerProps;
+};
+
+type ChatMessageToolExecutionPendingResultLabelProps = {
+  props: {
+    style: ChatMessageToolExecutionPendingResultStyles['text'];
+  };
+  text: string;
+};
+
+type ChatMessageToolExecutionPendingResultLabelPart = {
+  props: ChatMessageToolExecutionPendingResultLabelProps;
+};
+
+type ChatMessageToolExecutionPendingResultContentProps = {
+  spinner: ChatMessageToolExecutionPendingResultSpinnerPart;
+  label: ChatMessageToolExecutionPendingResultLabelPart;
+};
 
 type ChatMessageToolExecutionEmptyStateProps =
   ChatRuntimeToolExecutionEmptyStateMobilePropsPartsInput<
