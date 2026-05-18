@@ -1364,6 +1364,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(delegationContentSource, /<ChatMessageDelegationHeader\s+\{\.\.\.header\.props\}/);
   assert.doesNotMatch(delegationCardComponentSource, /<ChatMessageDelegationHeader\s+\{\.\.\.cardContent\.header\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationHeader[\s\S]*?<View\s+\{\.\.\.container\.props\}[\s\S]*?export function ChatMessageDelegationMetaItem/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationTitlePart = \{[\s\S]*?style: ChatMessageDelegationCardStyles\['title'\];[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationStatusBadgePart = \{[\s\S]*?ChatSessionStatusMobileStyleState\['chip'\][\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationLiveTextPart = \{[\s\S]*?shouldRender: boolean;[\s\S]*?style: ChatMessageDelegationCardStyles\['liveText'\];[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /title: ChatMessageDelegationHeaderProps\['title'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /liveText: ChatMessageDelegationHeaderProps\['liveText'\]/);
   assert.match(delegationHeaderSource, /<ChatMessageDelegationTitle\s+title=\{title\}/);
   assert.match(delegationTitleSource, /<Text\s+\{\.\.\.title\.props\}[\s\S]*?\{title\.text\}/);
   assert.doesNotMatch(delegationHeaderSource, /<Text\s+\{\.\.\.title\.props\}/);

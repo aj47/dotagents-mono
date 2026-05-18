@@ -314,6 +314,7 @@ import {
   type ChatRuntimeNavigationHeaderOptionsParts,
   type ChatRuntimeViewportChromeMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
+  type ChatSessionStatusMobileStyleState,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationActionSetMobileProps,
@@ -2364,17 +2365,47 @@ type ChatMessageDelegationContentProps =
 type ChatMessageDelegationHeaderProps =
   ChatMessageDelegationCardParts['card']['content']['header']['props'];
 
+type ChatMessageDelegationTitlePart = {
+  props: {
+    style: ChatMessageDelegationCardStyles['title'];
+    numberOfLines: number;
+  };
+  text: string;
+};
+
+type ChatMessageDelegationStatusBadgePart = {
+  props: {
+    style: Array<ChatMessageDelegationCardStyles['statusBadge'] | ChatSessionStatusMobileStyleState['chip']>;
+  };
+};
+
+type ChatMessageDelegationStatusTextPart = {
+  props: {
+    style: Array<ChatMessageDelegationCardStyles['statusText'] | ChatSessionStatusMobileStyleState['text']>;
+    numberOfLines: number;
+  };
+  text: string;
+};
+
+type ChatMessageDelegationLiveTextPart = {
+  shouldRender: boolean;
+  props: {
+    style: ChatMessageDelegationCardStyles['liveText'];
+  };
+  text: string;
+};
+
 type ChatMessageDelegationTitleProps = {
-  title: ChatMessageDelegationHeaderProps['title'];
+  title: ChatMessageDelegationTitlePart;
 };
 
 type ChatMessageDelegationStatusBadgeProps = {
-  badge: ChatMessageDelegationHeaderProps['statusBadge'];
-  text: ChatMessageDelegationHeaderProps['statusText'];
+  badge: ChatMessageDelegationStatusBadgePart;
+  text: ChatMessageDelegationStatusTextPart;
 };
 
 type ChatMessageDelegationLiveTextProps = {
-  liveText: ChatMessageDelegationHeaderProps['liveText'];
+  liveText: ChatMessageDelegationLiveTextPart;
 };
 
 type ChatMessageDelegationSubtitleProps =
