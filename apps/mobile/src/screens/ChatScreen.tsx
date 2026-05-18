@@ -62,6 +62,7 @@ import {
   useChatMessageRuntimeScrollController,
   useChatMessageRuntimeKillSwitchChromeActionsState,
   useChatRuntimeCurrentSessionSnapshotState,
+  useChatMessageRuntimeKeyboardOffsetState,
   useChatRuntimeBackToSessionsActionsState,
   useChatRuntimeNavigateToChatActionsState,
   useChatRuntimeCurrentSessionPinActionsState,
@@ -113,14 +114,13 @@ import {
   type Loop,
   type PredefinedPromptSummary,
 } from '@dotagents/shared/session-presentation';
-import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
 
 export default function ChatScreen({ route, navigation }: any) {
-  const headerHeight = useHeaderHeight();
   const isFocused = useIsFocused();
   const { chatRuntimeChrome } = useChatRuntimeMobileStyleSlots();
+  const { keyboardVerticalOffset } = useChatMessageRuntimeKeyboardOffsetState();
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
@@ -1625,7 +1625,7 @@ export default function ChatScreen({ route, navigation }: any) {
     PredefinedPromptSummary,
     Loop
   >({
-    keyboardVerticalOffset: headerHeight,
+    keyboardVerticalOffset,
     agentSelectorVisible,
     onAgentSelectorClose: closeAgentSelector,
     promptEditorVisible: addPromptModalVisible,

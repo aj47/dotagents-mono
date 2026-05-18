@@ -25,6 +25,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useHeaderHeight } from '@react-navigation/elements';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
@@ -506,6 +507,10 @@ type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
   applyRemoteSpeechSettings: (settings: ChatRuntimeRemoteSpeechSettingsState) => void;
 };
 
+type ChatMessageRuntimeKeyboardOffsetState = {
+  keyboardVerticalOffset: number;
+};
+
 type ChatRuntimeMobileChromeConfigState = ChatRuntimeMobileConfigState & {
   handsFree: boolean;
 };
@@ -535,6 +540,19 @@ export function useChatRuntimeMobileConfigState(config: MobileAppConfig): ChatRu
     }),
     [config],
   );
+}
+
+export function useChatMessageRuntimeKeyboardOffsetState(): ChatMessageRuntimeKeyboardOffsetState {
+  const keyboardVerticalOffset = useHeaderHeight();
+
+  const keyboardOffsetState = useMemo<ChatMessageRuntimeKeyboardOffsetState>(
+    () => ({
+      keyboardVerticalOffset,
+    }),
+    [keyboardVerticalOffset],
+  );
+
+  return keyboardOffsetState;
 }
 
 export function useChatRuntimeSettingsClientState<TClient>({

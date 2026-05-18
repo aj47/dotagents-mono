@@ -10170,7 +10170,14 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.doesNotMatch(screenSource, /promptEditorChrome:/);
   assert.doesNotMatch(screenSource, /promptEditorRenderStateInput:/);
-  assert.match(screenSource, /const chatMessageRuntimeSurfaceInput = useChatMessageRuntimeSurfaceInputState<[\s\S]*?keyboardVerticalOffset: headerHeight,/);
+  assert.match(screenSource, /useChatMessageRuntimeKeyboardOffsetState,/);
+  assert.match(screenSource, /const \{ keyboardVerticalOffset \} = useChatMessageRuntimeKeyboardOffsetState\(\);/);
+  assert.doesNotMatch(chatScreenSource, /useHeaderHeight/);
+  assert.match(chatMessageChromeSource, /import \{ useHeaderHeight \} from '@react-navigation\/elements';/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeKeyboardOffsetState\(\): ChatMessageRuntimeKeyboardOffsetState/);
+  assert.match(chatMessageChromeSource, /const keyboardVerticalOffset = useHeaderHeight\(\);/);
+  assert.match(chatMessageChromeSource, /const keyboardOffsetState = useMemo<ChatMessageRuntimeKeyboardOffsetState>\(\s+\(\) => \(\{\s+keyboardVerticalOffset,\s+\}\),\s+\[keyboardVerticalOffset\],\s+\);/);
+  assert.match(screenSource, /const chatMessageRuntimeSurfaceInput = useChatMessageRuntimeSurfaceInputState<[\s\S]*?keyboardVerticalOffset,/);
   assert.match(screenSource, /surface: chatMessageRuntimeSurfaceInput,/);
   assert.doesNotMatch(screenSource, /surface: \{\s+platform: Platform\.OS,\s+colors: theme\.colors,/);
   assert.match(sessionPresentationSource, /renderState: surfaceChromeRenderState\.promptEditor\.renderState,/);
