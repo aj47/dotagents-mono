@@ -12881,17 +12881,11 @@ export function ChatMessageToolExecutionStackEmptyStateBlock({
   );
 }
 
-export function ChatMessageToolExecutionCopyButton({
-  renderState,
-  onPress,
-  styles,
-}: ChatMessageToolExecutionCopyButtonProps) {
+export function ChatMessageToolExecutionCopyButton(
+  props: ChatMessageToolExecutionCopyButtonProps,
+) {
   const copyButtonParts: ChatMessageToolExecutionCopyButtonParts =
-    createChatRuntimeToolExecutionCopyButtonMobilePropsParts({
-      renderState,
-      onPress,
-      styles,
-    });
+    createChatRuntimeToolExecutionCopyButtonMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionCopyButtonPressable
@@ -12948,19 +12942,11 @@ export function ChatMessageToolExecutionCopyButtonLabel({
   );
 }
 
-export function ChatMessageToolExecutionDetailHeader({
-  renderState,
-  toolName,
-  onPress,
-  styles,
-}: ChatMessageToolExecutionDetailHeaderProps) {
+export function ChatMessageToolExecutionDetailHeader(
+  props: ChatMessageToolExecutionDetailHeaderProps,
+) {
   const detailHeaderParts: ChatMessageToolExecutionDetailHeaderParts =
-    createChatRuntimeToolExecutionDetailHeaderMobilePropsParts({
-      renderState,
-      toolName,
-      onPress,
-      styles,
-    });
+    createChatRuntimeToolExecutionDetailHeaderMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionDetailHeaderPressable
@@ -13059,20 +13045,12 @@ export function ChatMessageToolExecutionDetailHeaderExpandLabel({
   );
 }
 
-export function ChatMessageToolExecutionCallSection({
-  renderState,
-  toolName,
-  onHeaderPress,
-  styles,
-  children,
-}: ChatMessageToolExecutionCallSectionProps) {
+export function ChatMessageToolExecutionCallSection(
+  props: ChatMessageToolExecutionCallSectionProps,
+) {
   const callSectionParts: ChatMessageToolExecutionCallSectionParts =
-    createChatRuntimeToolExecutionCallSectionMobilePropsParts({
-      renderState,
-      toolName,
-      onHeaderPress,
-      styles,
-    });
+    createChatRuntimeToolExecutionCallSectionMobilePropsParts(props);
+  const { children } = props;
 
   return (
     <ChatMessageToolExecutionCallSectionContainer
@@ -13112,15 +13090,11 @@ export function ChatMessageToolExecutionCallSectionContainer({
   );
 }
 
-export function ChatMessageToolExecutionResultBadge({
-  badge,
-  styles,
-}: ChatMessageToolExecutionResultBadgeProps) {
+export function ChatMessageToolExecutionResultBadge(
+  props: ChatMessageToolExecutionResultBadgeProps,
+) {
   const resultBadgeParts: ChatMessageToolExecutionResultBadgeParts =
-    createChatRuntimeToolExecutionResultBadgeMobilePropsParts({
-      badge,
-      styles,
-    });
+    createChatRuntimeToolExecutionResultBadgeMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionResultBadgeContainer
@@ -13177,15 +13151,11 @@ export function ChatMessageToolExecutionResultBadgeLabel({
   );
 }
 
-export function ChatMessageToolExecutionPendingResult({
-  renderState,
-  styles,
-}: ChatMessageToolExecutionPendingResultProps) {
+export function ChatMessageToolExecutionPendingResult(
+  props: ChatMessageToolExecutionPendingResultProps,
+) {
   const pendingResultParts: ChatMessageToolExecutionPendingResultParts =
-    createChatRuntimeToolExecutionPendingResultMobilePropsParts({
-      renderState,
-      styles,
-    });
+    createChatRuntimeToolExecutionPendingResultMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionPendingResultContainer
@@ -13242,15 +13212,11 @@ export function ChatMessageToolExecutionPendingResultLabel({
   );
 }
 
-export function ChatMessageToolExecutionEmptyState({
-  renderState,
-  style,
-}: ChatMessageToolExecutionEmptyStateProps) {
+export function ChatMessageToolExecutionEmptyState(
+  props: ChatMessageToolExecutionEmptyStateProps,
+) {
   const emptyStateParts: ChatMessageToolExecutionEmptyStateParts =
-    createChatRuntimeToolExecutionEmptyStateMobilePropsParts({
-      renderState,
-      style,
-    });
+    createChatRuntimeToolExecutionEmptyStateMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionEmptyStateLabel
