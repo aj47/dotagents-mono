@@ -115,7 +115,7 @@ function markProgressCompletedFromSession(
     currentIteration: progress.currentIteration ?? session.currentIteration ?? 0,
     maxIterations: progress.maxIterations ?? session.maxIterations ?? 1,
     steps,
-    isComplete: isSessionSuccessfulCompletion,
+    isComplete: true,
     conversationState: isSessionSuccessfulCompletion ? "complete" : "blocked",
     streamingContent: progress.streamingContent
       ? {

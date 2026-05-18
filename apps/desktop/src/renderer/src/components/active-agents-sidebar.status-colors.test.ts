@@ -31,7 +31,7 @@ describe("active agents sidebar status colors", () => {
     expect(sidebarSource).toContain("existingSession?.status === \"error\"")
     expect(sidebarSource).toContain("existingSession?.status === \"stopped\"")
     expect(sidebarSource).toContain("const isSessionSuccessfulCompletion = session.status === \"completed\"")
-    expect(sidebarSource).toContain("isComplete: isSessionSuccessfulCompletion")
+    expect(sidebarSource).toContain("isComplete: true")
     expect(sidebarSource).toContain("conversationState: isSessionSuccessfulCompletion ? \"complete\" : \"blocked\"")
   })
 
