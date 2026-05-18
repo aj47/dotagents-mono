@@ -195,15 +195,24 @@ export default function ChatScreen({ route, navigation }: any) {
     voice: effectiveRemoteTtsVoice,
     model: effectiveRemoteTtsModel,
     rate: effectiveRemoteTtsRate,
-  } = createChatRuntimeEffectiveRemoteSpeechSettingsState({
-    config,
-    remoteSettings: {
-      provider: remoteTtsProvider,
-      voice: remoteTtsVoice,
-      model: remoteTtsModel,
-      rate: remoteTtsRate,
-    },
-  });
+  } = useMemo(
+    () => createChatRuntimeEffectiveRemoteSpeechSettingsState({
+      config,
+      remoteSettings: {
+        provider: remoteTtsProvider,
+        voice: remoteTtsVoice,
+        model: remoteTtsModel,
+        rate: remoteTtsRate,
+      },
+    }),
+    [
+      config,
+      remoteTtsModel,
+      remoteTtsProvider,
+      remoteTtsRate,
+      remoteTtsVoice,
+    ],
+  );
   const {
     promptEditorVisible: addPromptModalVisible,
     promptEditorEditingPrompt: editingPrompt,
@@ -220,7 +229,10 @@ export default function ChatScreen({ route, navigation }: any) {
     beginPromptEditorSave,
     clearPromptEditorSave,
   } = useChatConversationHomePromptEditorState();
-  const chatRuntimeConfig = createChatRuntimeMobileConfigState(config);
+  const chatRuntimeConfig = useMemo(
+    () => createChatRuntimeMobileConfigState(config),
+    [config],
+  );
   const {
     handsFreeMessageDebounceMs,
     handsFreeWakePhrase,

@@ -6798,7 +6798,7 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
 test('uses shared message queue surface tokens for the chat-adjacent queue wrapper', () => {
   assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/mobile-app-config';/);
   assert.match(sessionPresentationSource, /export \{ createChatRuntimeMobileConfigState \} from "\.\/mobile-app-config"/);
-  assert.match(screenSource, /const chatRuntimeConfig = createChatRuntimeMobileConfigState\(config\);/);
+  assert.match(screenSource, /const chatRuntimeConfig = useMemo\(\s+\(\) => createChatRuntimeMobileConfigState\(config\),\s+\[config\],\s+\);/);
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileDockRenderState,/);
@@ -8944,7 +8944,7 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.match(textToSpeechSettingsSource, /const isLocalEdgeTts = config\.ttsProvider === "edge"/);
   assert.match(textToSpeechSettingsSource, /provider: isLocalEdgeTts \? "edge" : remoteSettings\.provider/);
   assert.match(textToSpeechSettingsSource, /model: isLocalEdgeTts \? undefined : remoteSettings\.model/);
-  assert.match(screenSource, /const \{\s+provider: effectiveTtsProvider,\s+voice: effectiveRemoteTtsVoice,\s+model: effectiveRemoteTtsModel,\s+rate: effectiveRemoteTtsRate,\s+\} = createChatRuntimeEffectiveRemoteSpeechSettingsState\(\{\s+config,\s+remoteSettings: \{\s+provider: remoteTtsProvider,\s+voice: remoteTtsVoice,\s+model: remoteTtsModel,\s+rate: remoteTtsRate,\s+\},\s+\}\);/);
+  assert.match(screenSource, /const \{\s+provider: effectiveTtsProvider,\s+voice: effectiveRemoteTtsVoice,\s+model: effectiveRemoteTtsModel,\s+rate: effectiveRemoteTtsRate,\s+\} = useMemo\(\s+\(\) => createChatRuntimeEffectiveRemoteSpeechSettingsState\(\{\s+config,\s+remoteSettings: \{\s+provider: remoteTtsProvider,\s+voice: remoteTtsVoice,\s+model: remoteTtsModel,\s+rate: remoteTtsRate,\s+\},\s+\}\),\s+\[\s+config,\s+remoteTtsModel,\s+remoteTtsProvider,\s+remoteTtsRate,\s+remoteTtsVoice,\s+\],\s+\);/);
   assert.doesNotMatch(screenSource, /type RemoteDesktopTtsProvider/);
   assert.doesNotMatch(screenSource, /getTextToSpeechVoiceValue\(settings\)/);
   assert.doesNotMatch(screenSource, /getTextToSpeechModelValue\(settings\)/);
