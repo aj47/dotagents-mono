@@ -251,17 +251,12 @@ import {
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
   type ChatRuntimeMessageHistoryBannerMobilePropsPartsInput,
   type ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots as SharedChatMessageHistoryBannerStyleSlots,
-  type ChatComposerHandsFreeControlsMobileStyleSlots as SharedChatComposerHandsFreeControlsStyleSlots,
   type ChatComposerLabeledActionButtonMobileStyleSlots as SharedChatComposerLabeledActionButtonStyleSlots,
-  type ChatComposerMicButtonMobileStyleSlots as SharedChatComposerMicButtonStyleSlots,
-  type ChatComposerPendingImagesRailMobileStyleSlots as SharedChatComposerPendingImagesRailStyleSlots,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
   type ChatComposerRuntimeDockMobilePropsParts,
   type ChatComposerRuntimeDockMobilePropsPartsInput,
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
-  type ChatComposerSpeechPreviewMobileStyleSlots as SharedChatComposerSpeechPreviewStyleSlots,
-  type ChatComposerTextEntryMobileStyleSlots as SharedChatComposerTextEntryStyleSlots,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomButtonMobilePropsParts,
   type ChatRuntimeScrollToBottomButtonMobilePropsPartsInput,
@@ -5382,11 +5377,7 @@ export type ChatMessageRuntimeChromeSurfaceProps<
 };
 
 type ChatComposerSpeechPreviewStyles =
-  SharedChatComposerSpeechPreviewStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer']['speechPreview'];
 
 type ChatComposerSpeechPreviewProps = {
   label: string;
@@ -5421,12 +5412,7 @@ type ChatComposerPendingImageItem = {
 };
 
 type ChatComposerPendingImagesRailStyles =
-  SharedChatComposerPendingImagesRailStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ImageStyle>,
-    StyleProp<ViewStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer']['pendingImagesRail'];
 
 type ChatComposerPendingImagesRailProps = {
   images: readonly ChatComposerPendingImageItem[];
@@ -5533,12 +5519,7 @@ type ChatComposerVoiceOverlayTranscriptProps = {
 };
 
 type ChatComposerHandsFreeControlsStyles =
-  SharedChatComposerHandsFreeControlsStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer']['handsFreeControls'];
 
 type ChatComposerHandsFreeControlState =
   ChatComposerHandsFreeControlsMobileControlStateLike & {
@@ -5741,12 +5722,7 @@ type ChatComposerMicButtonRenderState = ChatComposerIconButtonRenderState & {
 };
 
 type ChatComposerMicButtonStyles =
-  SharedChatComposerMicButtonStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer']['micButton'];
 
 type ChatComposerMicButtonWebPressedStyle = StyleProp<ViewStyle> | undefined;
 
@@ -5800,10 +5776,7 @@ type ChatComposerMicButtonLabelProps = {
 };
 
 type ChatComposerTextEntryStyles =
-  SharedChatComposerTextEntryStyleSlots<
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['composer']['textEntry'];
 
 type ChatComposerTextEntryWebAccessibility = {
   isWebPlatform: boolean;
