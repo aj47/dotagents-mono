@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
   formatSplitPaneChooseAccessibilityLabel,
   formatSplitPaneModalTitle,
@@ -15,6 +16,7 @@ import {
   reconcileSplitPaneSelection,
   replaceSplitPaneSelection,
   resolveSplitOrientation,
+  SPLIT_PANE_ORIENTATION_OPTIONS,
   SPLIT_PANE_PRESENTATION,
 } from "./split-pane-selection"
 
@@ -64,6 +66,10 @@ describe("split pane selection", () => {
   it("chooses explicit layout preferences without auto detection", () => {
     expect(resolveSplitOrientation("horizontal", 1200, 800)).toBe("horizontal")
     expect(resolveSplitOrientation("vertical", 430, 932)).toBe("vertical")
+  })
+
+  it("exposes stable mobile split-pane orientation options", () => {
+    expect(SPLIT_PANE_ORIENTATION_OPTIONS).toEqual(["auto", "horizontal", "vertical"])
   })
 
   it("chooses a side-by-side layout automatically on wide screens", () => {
@@ -298,6 +304,7 @@ describe("split pane selection", () => {
       borderColor: "#123456",
       backgroundColor: "rgba(18, 52, 86, 0.094)",
     })
+    expect(styleSlots.segmentButtonPressed).toEqual({ opacity: 0.78 })
     expect(styleSlots.paneToolbar).toMatchObject({
       flexDirection: "row",
       alignItems: "center",
@@ -333,5 +340,36 @@ describe("split pane selection", () => {
       color: "#123456",
       fontWeight: "700",
     })
+  })
+
+  it("creates mobile split-pane orientation segment props from shared presentation", () => {
+    let selected: string | null = null
+    const segmentParts = createSplitPaneSegmentButtonMobilePropsParts({
+      option: "vertical",
+      isSelected: true,
+      onSelect: (option) => {
+        selected = option
+      },
+      styles: {
+        button: "button",
+        activeButton: "active-button",
+        pressedButton: "pressed-button",
+        label: "label",
+        activeLabel: "active-label",
+      },
+    })
+
+    expect(segmentParts.pressable.props.accessibilityRole).toBe("button")
+    expect(segmentParts.pressable.props.accessibilityState).toEqual({ selected: true })
+    expect(segmentParts.pressable.props.style({ pressed: true })).toEqual([
+      "button",
+      "active-button",
+      "pressed-button",
+    ])
+    expect(segmentParts.pressable.content.label.text).toBe("Vertical")
+    expect(segmentParts.pressable.content.label.props.style).toEqual(["label", "active-label"])
+
+    segmentParts.pressable.props.onPress()
+    expect(selected).toBe("vertical")
   })
 })

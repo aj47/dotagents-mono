@@ -27,6 +27,7 @@ import {
   formatSplitPaneChooseAccessibilityLabel,
   formatSplitPaneModalTitle,
   formatSplitPaneOpenAccessibilityLabel,
+  createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
   getSplitPaneEmptyStateActionMobileIconState,
   getSplitPaneModalCreateMobileIconState,
@@ -37,6 +38,7 @@ import {
   reconcileSplitPaneSelection,
   replaceSplitPaneSelection,
   resolveSplitOrientation,
+  SPLIT_PANE_ORIENTATION_OPTIONS,
   type SplitOrientationPreference,
   type SplitPane,
   type SplitPaneMobileSurfaceColors,
@@ -269,22 +271,27 @@ export default function SplitChatScreen({ navigation }: Props) {
           <Text style={styles.controlBarTitle}>{splitPaneCopy.title}</Text>
           <Text style={styles.controlBarCopy}>{splitPaneCopy.description}</Text>
           <View style={styles.segmentedRow}>
-            {(['auto', 'horizontal', 'vertical'] as SplitOrientationPreference[]).map((option) => {
+            {SPLIT_PANE_ORIENTATION_OPTIONS.map((option) => {
               const isSelected = layoutPreference === option;
+              const segmentButtonParts = createSplitPaneSegmentButtonMobilePropsParts({
+                option,
+                isSelected,
+                onSelect: setLayoutPreference,
+                styles: {
+                  button: styles.segmentButton,
+                  activeButton: styles.segmentButtonActive,
+                  pressedButton: styles.segmentButtonPressed,
+                  label: styles.segmentButtonText,
+                  activeLabel: styles.segmentButtonTextActive,
+                },
+              });
               return (
                 <Pressable
                   key={option}
-                  onPress={() => setLayoutPreference(option)}
-                  accessibilityRole={splitPaneSurface.segmentButton.accessibilityRole}
-                  accessibilityState={{ selected: isSelected }}
-                  style={({ pressed }) => [
-                    styles.segmentButton,
-                    isSelected && styles.segmentButtonActive,
-                    pressed && { opacity: splitPaneSurface.segmentButton.pressedOpacity },
-                  ]}
+                  {...segmentButtonParts.pressable.props}
                 >
-                  <Text style={[styles.segmentButtonText, isSelected && styles.segmentButtonTextActive]}>
-                    {splitPaneCopy.orientationLabel[option]}
+                  <Text {...segmentButtonParts.pressable.content.label.props}>
+                    {segmentButtonParts.pressable.content.label.text}
                   </Text>
                 </Pressable>
               );

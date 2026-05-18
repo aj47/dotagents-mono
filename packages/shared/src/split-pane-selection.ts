@@ -11,6 +11,12 @@ export type SplitPaneSelection = {
   secondary: string | null
 }
 
+export const SPLIT_PANE_ORIENTATION_OPTIONS = [
+  "auto",
+  "horizontal",
+  "vertical",
+] as const satisfies readonly SplitOrientationPreference[]
+
 export const SPLIT_PANE_PRESENTATION = {
   copy: {
     title: "Split view",
@@ -558,6 +564,50 @@ export interface SplitPaneMobileStyleSlotsInput {
   typography: SplitPaneMobileTypographyScale
 }
 
+export interface SplitPaneSegmentButtonMobileStylesLike {
+  button: unknown
+  activeButton: unknown
+  pressedButton: unknown
+  label: unknown
+  activeLabel: unknown
+}
+
+export interface SplitPaneSegmentButtonMobilePropsPartsInput<
+  TStyles extends SplitPaneSegmentButtonMobileStylesLike = SplitPaneSegmentButtonMobileStylesLike,
+> {
+  option: SplitOrientationPreference
+  isSelected: boolean
+  onSelect: (option: SplitOrientationPreference) => void
+  styles: TStyles
+}
+
+export interface SplitPaneSegmentButtonMobilePropsParts<
+  TStyles extends SplitPaneSegmentButtonMobileStylesLike = SplitPaneSegmentButtonMobileStylesLike,
+> {
+  pressable: {
+    props: {
+      onPress: () => void
+      accessibilityRole: typeof SPLIT_PANE_PRESENTATION.mobile.segmentButton.accessibilityRole
+      accessibilityState: {
+        selected: boolean
+      }
+      style: (
+        state: { pressed?: boolean },
+      ) => Array<
+        TStyles["button"] | TStyles["activeButton"] | TStyles["pressedButton"]
+      >
+    }
+    content: {
+      label: {
+        text: string
+        props: {
+          style: Array<TStyles["label"] | TStyles["activeLabel"]>
+        }
+      }
+    }
+  }
+}
+
 export function createSplitPaneMobileStyleSlots({
   colors,
   spacing,
@@ -617,6 +667,7 @@ export function createSplitPaneMobileStyleSlots({
       borderColor: colors.segmentButton.activeBorderColor,
       backgroundColor: colors.segmentButton.activeBackgroundColor,
     },
+    segmentButtonPressed: { opacity: segmentButtonSurface.pressedOpacity },
     segmentButtonText: {
       ...typography.caption,
       color: colors.segmentButton.textColor,
@@ -803,6 +854,45 @@ export function createSplitPaneMobileStyleSlots({
 
 export function getSplitPaneCopyState(): typeof SPLIT_PANE_PRESENTATION.copy {
   return SPLIT_PANE_PRESENTATION.copy
+}
+
+export function createSplitPaneSegmentButtonMobilePropsParts<
+  TStyles extends SplitPaneSegmentButtonMobileStylesLike,
+>({
+  option,
+  isSelected,
+  onSelect,
+  styles,
+}: SplitPaneSegmentButtonMobilePropsPartsInput<
+  TStyles
+>): SplitPaneSegmentButtonMobilePropsParts<TStyles> {
+  const surface = SPLIT_PANE_PRESENTATION.mobile.segmentButton
+
+  return {
+    pressable: {
+      props: {
+        onPress: () => onSelect(option),
+        accessibilityRole: surface.accessibilityRole,
+        accessibilityState: { selected: isSelected },
+        style: ({ pressed }) => [
+          styles.button,
+          ...(isSelected ? [styles.activeButton] : []),
+          ...(pressed ? [styles.pressedButton] : []),
+        ],
+      },
+      content: {
+        label: {
+          text: SPLIT_PANE_PRESENTATION.copy.orientationLabel[option],
+          props: {
+            style: [
+              styles.label,
+              ...(isSelected ? [styles.activeLabel] : []),
+            ],
+          },
+        },
+      },
+    },
+  }
 }
 
 export function getSplitPaneToolbarActionMobileIconState(
