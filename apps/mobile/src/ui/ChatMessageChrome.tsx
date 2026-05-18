@@ -3862,16 +3862,24 @@ type ChatMessageScrollToBottomButtonParts =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageScrollToBottomButtonTouchableProps =
-  ChatMessageScrollToBottomButtonParts['button']['props'] & {
-    children: ReactNode;
-  };
-
-type ChatMessageScrollToBottomButtonContentProps =
-  ChatMessageScrollToBottomButtonParts['button']['content'];
-
 type ChatMessageScrollToBottomButtonIconProps =
-  ChatMessageScrollToBottomButtonParts['button']['content']['icon']['props'];
+  ChatRuntimeScrollToBottomMobileRenderState['button']['icon'];
+
+type ChatMessageScrollToBottomButtonContentProps = {
+  icon: {
+    props: ChatMessageScrollToBottomButtonIconProps;
+  };
+};
+
+type ChatMessageScrollToBottomButtonTouchableProps = {
+  children: ReactNode;
+  style: StyleProp<ViewStyle>;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  activeOpacity: ChatRuntimeScrollToBottomMobileRenderState['button']['pressedOpacity'];
+  accessibilityRole: ChatRuntimeScrollToBottomMobileRenderState['button']['accessibilityRole'];
+  accessibilityLabel: string;
+  accessibilityHint: string;
+};
 
 type ChatMessageLoadingStateProps =
   ChatRuntimeLoadingStateMobilePropsPartsInput<

@@ -2177,7 +2177,10 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /const scrollToBottomButton = scrollToBottomButtonParts\.button;/);
   assert.match(chatMessageChromeSource, /if \(!scrollToBottomButton\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonTouchable\s+\{\.\.\.scrollToBottomButton\.props\}/);
-  assert.match(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonContentProps =\s+ChatMessageScrollToBottomButtonParts\['button'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonIconProps =\s+ChatRuntimeScrollToBottomMobileRenderState\['button'\]\['icon'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonContentProps = \{\s+icon: \{\s+props: ChatMessageScrollToBottomButtonIconProps;\s+\};\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageScrollToBottomButtonTouchableProps = \{[\s\S]*?children: ReactNode;[\s\S]*?onPress: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?accessibilityHint: string;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageScrollToBottomButton(Content|Icon|Touchable)Props =\s+ChatMessageScrollToBottomButtonParts\['button'\]/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButtonContent\s+\{\.\.\.scrollToBottomButton\.content\}\s+\/>/);
   assert.match(scrollToBottomButtonSource, /export function ChatMessageScrollToBottomButtonContent\(\{\s+icon,\s+\}: ChatMessageScrollToBottomButtonContentProps\) \{\s+return \(\s+<ChatMessageScrollToBottomButtonIcon\s+\{\.\.\.icon\.props\}/);
   assert.doesNotMatch(chatMessageChromeSource, /const buttonContent = scrollToBottomButton\.content;/);
