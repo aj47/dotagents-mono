@@ -269,6 +269,7 @@ import {
   type ChatRuntimeScrollToBottomMobileRenderState,
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
   type ChatRuntimeStepSummaryCardMobilePropsParts,
+  type ChatRuntimeStepSummaryCardMobilePropsPartsInput,
   type ChatRuntimeStepSummaryCardMobileStyleSlots as SharedChatMessageStepSummaryCardStyleSlots,
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeLoadingStateMobilePropsPartsInput,
@@ -3493,10 +3494,11 @@ type ChatMessageStepSummaryCardStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageStepSummaryCardProps = {
-  renderState: ChatRuntimeStepSummaryMobileRenderState;
-  styles: ChatMessageStepSummaryCardStyles;
-};
+type ChatMessageStepSummaryCardProps =
+  ChatRuntimeStepSummaryCardMobilePropsPartsInput<
+    ChatRuntimeStepSummaryMobileRenderState,
+    ChatMessageStepSummaryCardStyles
+  >;
 
 type ChatMessageStepSummaryCardParts =
   ChatRuntimeStepSummaryCardMobilePropsParts<

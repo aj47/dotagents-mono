@@ -5889,14 +5889,18 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.match(chatMessageChromeSource, /export function ChatMessageStepSummaryCard/);
   assert.match(chatMessageChromeSource, /createChatRuntimeStepSummaryCardMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeStepSummaryCardMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeStepSummaryCardMobilePropsPartsInput,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeStepSummaryCardMobileStyleSlots<\s+TCardStyle = unknown,/);
   assert.match(sessionPresentationSource, /TStyles extends ChatRuntimeStepSummaryCardMobileStyleSlots/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeStepSummaryCardMobileStyleSlots as SharedChatMessageStepSummaryCardStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatMessageStepSummaryCardStyles =\s+SharedChatMessageStepSummaryCardStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummaryCardStyles = \{\s+card: StyleProp<ViewStyle>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageStepSummaryCardProps =\s+ChatRuntimeStepSummaryCardMobilePropsPartsInput<\s+ChatRuntimeStepSummaryMobileRenderState,[\s\S]*?ChatMessageStepSummaryCardStyles\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummaryCardProps = \{[\s\S]*?renderState: ChatRuntimeStepSummaryMobileRenderState;[\s\S]*?styles: ChatMessageStepSummaryCardStyles;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageStepSummaryCardParts =\s+ChatRuntimeStepSummaryCardMobilePropsParts<[\s\S]*?ChatMessageStepSummaryCardProps\['renderState'\],[\s\S]*?ChatMessageStepSummaryCardProps\['styles'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummary(Text|Badge|Header)Part = \{/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStepSummaryCardParts = ReturnType<typeof createChatRuntimeStepSummaryCardMobilePropsParts/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeStepSummaryCardMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeStepSummaryCardMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const stepSummaryCardParts: ChatMessageStepSummaryCardParts =\s+createChatRuntimeStepSummaryCardMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const stepSummaryCardPart = stepSummaryCardParts\.card;/);
