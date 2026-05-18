@@ -29,15 +29,9 @@ import { MessageQueuePanel } from "@renderer/components/message-queue-panel"
 import { useResizable, TILE_DIMENSIONS } from "@renderer/hooks/use-resizable"
 import {
   formatToolArguments,
-  getToolArgumentEntries,
-  getCompactToolExecutionPreview,
-  getToolResultsSummary,
-  getChatMessageDisplayState,
-  hasVisibleChatMessageContent,
-  isCompletionControlTool,
-} from "@dotagents/shared/chat-utils"
-import {
   formatAgentDelegationConversationTranscript,
+  getChatMessageDisplayState,
+  getCompactToolExecutionPreview,
   getAgentDelegationConversationMessageDisplayState,
   getAgentDelegationConversationPreview,
   getAgentDelegationConversationRenderItems,
@@ -51,6 +45,10 @@ import {
   getToolActivityRunSummary,
   getToolActivityGroupStateKey,
   getToolActivityGroupSummaryState,
+  getToolArgumentEntries,
+  getToolResultsSummary,
+  hasVisibleChatMessageContent,
+  isCompletionControlTool,
 } from "@dotagents/shared/session-presentation"
 import {
   AGENT_MODEL_FALLBACKS,

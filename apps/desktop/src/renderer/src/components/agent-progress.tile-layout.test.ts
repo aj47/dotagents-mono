@@ -415,6 +415,7 @@ describe("agent progress tile layout", () => {
   })
 
   it("uses shared chat message presentation for compact message tone and collapse behavior", () => {
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/chat-utils"')
     expect(agentProgressSource).toContain('getChatMessageActionCopyState')
     expect(agentProgressSource).toContain('getChatMessageActionAvailabilityRenderState')
     expect(agentProgressSource).toContain('chatMessageActionCopy')

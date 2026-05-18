@@ -18,10 +18,14 @@ import {
   applyUserResponseToChatMessages,
   applyChatMessageAutoExpansionState,
   extractRespondToUserResponseEvents,
+  formatToolArguments,
   getNextAgentUserResponseEventOrdinal,
   getChatMessageDisplayState,
   getCompactToolExecutionPreview,
+  getToolArgumentEntries,
+  getToolResultsSummary,
   hasVisibleChatMessageContent,
+  isCompletionControlTool,
   preserveChatMessageDisplayContentFromProgress,
   sortAgentUserResponseEvents,
   type ChatDisplayMessageLike,
@@ -33,6 +37,15 @@ import {
 export type {
   ChatDisplayMessageLike,
   ChatMessageDisplayStateMessageLike,
+} from "./chat-utils"
+export {
+  formatToolArguments,
+  getChatMessageDisplayState,
+  getCompactToolExecutionPreview,
+  getToolArgumentEntries,
+  getToolResultsSummary,
+  hasVisibleChatMessageContent,
+  isCompletionControlTool,
 } from "./chat-utils"
 import {
   createAgentDelegationProgressMessages,
