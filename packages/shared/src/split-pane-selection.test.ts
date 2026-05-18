@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
+  createSplitPaneToolbarActionMobilePropsParts,
   formatSplitPaneChooseAccessibilityLabel,
   formatSplitPaneModalTitle,
   formatSplitPaneOpenAccessibilityLabel,
@@ -371,5 +372,42 @@ describe("split pane selection", () => {
 
     segmentParts.pressable.props.onPress()
     expect(selected).toBe("vertical")
+  })
+
+  it("creates mobile split-pane toolbar action props from shared presentation", () => {
+    let opened = false
+    const actionParts = createSplitPaneToolbarActionMobilePropsParts({
+      action: "open",
+      pane: "secondary",
+      isDisabled: true,
+      onPress: () => {
+        opened = true
+      },
+      iconColor: "#111111",
+      styles: {
+        button: "button",
+        disabledButton: "disabled-button",
+        label: "label",
+      },
+    })
+
+    expect(actionParts.touchable.props.disabled).toBe(true)
+    expect(actionParts.touchable.props.style).toEqual(["button", "disabled-button"])
+    expect(actionParts.touchable.props.activeOpacity).toBe(0.78)
+    expect(actionParts.touchable.props.accessibilityRole).toBe("button")
+    expect(actionParts.touchable.props.accessibilityLabel).toBe(
+      "Open secondary split chat full screen button",
+    )
+    expect(actionParts.touchable.props.accessibilityState).toEqual({ disabled: true })
+    expect(actionParts.touchable.content.icon.props).toEqual({
+      name: "expand-outline",
+      size: 14,
+      color: "#111111",
+    })
+    expect(actionParts.touchable.content.label.text).toBe("Open")
+    expect(actionParts.touchable.content.label.props.style).toBe("label")
+
+    actionParts.touchable.props.onPress()
+    expect(opened).toBe(true)
   })
 })

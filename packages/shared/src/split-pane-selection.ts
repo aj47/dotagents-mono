@@ -1,4 +1,5 @@
 import { APP_SHELL_BREAKPOINTS } from "./app-shell"
+import { createButtonAccessibilityLabel } from "./accessibility-utils"
 import { hexToRgba } from "./colors"
 
 export type SplitOrientationPreference = "auto" | "horizontal" | "vertical"
@@ -608,6 +609,56 @@ export interface SplitPaneSegmentButtonMobilePropsParts<
   }
 }
 
+export interface SplitPaneToolbarActionMobileStylesLike {
+  button: unknown
+  disabledButton: unknown
+  label: unknown
+}
+
+export interface SplitPaneToolbarActionMobilePropsPartsInput<
+  TStyles extends SplitPaneToolbarActionMobileStylesLike = SplitPaneToolbarActionMobileStylesLike,
+> {
+  action: SplitPaneToolbarAction
+  pane: SplitPane
+  isDisabled?: boolean
+  onPress: () => void
+  iconColor: string
+  styles: TStyles
+}
+
+export interface SplitPaneToolbarActionMobilePropsParts<
+  TStyles extends SplitPaneToolbarActionMobileStylesLike = SplitPaneToolbarActionMobileStylesLike,
+> {
+  touchable: {
+    props: {
+      onPress: () => void
+      disabled: boolean
+      style: Array<TStyles["button"] | TStyles["disabledButton"]>
+      activeOpacity: typeof SPLIT_PANE_PRESENTATION.mobile.toolbarButton.pressedOpacity
+      accessibilityRole: typeof SPLIT_PANE_PRESENTATION.mobile.toolbarButton.accessibilityRole
+      accessibilityLabel: string
+      accessibilityState: {
+        disabled: boolean
+      }
+    }
+    content: {
+      icon: {
+        props: {
+          name: ReturnType<typeof getSplitPaneToolbarActionMobileIconState>["name"]
+          size: ReturnType<typeof getSplitPaneToolbarActionMobileIconState>["size"]
+          color: string
+        }
+      }
+      label: {
+        text: string
+        props: {
+          style: TStyles["label"]
+        }
+      }
+    }
+  }
+}
+
 export function createSplitPaneMobileStyleSlots({
   colors,
   spacing,
@@ -888,6 +939,62 @@ export function createSplitPaneSegmentButtonMobilePropsParts<
               styles.label,
               ...(isSelected ? [styles.activeLabel] : []),
             ],
+          },
+        },
+      },
+    },
+  }
+}
+
+export function createSplitPaneToolbarActionMobilePropsParts<
+  TStyles extends SplitPaneToolbarActionMobileStylesLike,
+>({
+  action,
+  pane,
+  isDisabled = false,
+  onPress,
+  iconColor,
+  styles,
+}: SplitPaneToolbarActionMobilePropsPartsInput<
+  TStyles
+>): SplitPaneToolbarActionMobilePropsParts<TStyles> {
+  const surface = SPLIT_PANE_PRESENTATION.mobile.toolbarButton
+  const icon = getSplitPaneToolbarActionMobileIconState(action)
+  const label =
+    action === "choose"
+      ? SPLIT_PANE_PRESENTATION.copy.toolbar.chooseLabel
+      : SPLIT_PANE_PRESENTATION.copy.toolbar.openLabel
+  const rawAccessibilityLabel =
+    action === "choose"
+      ? formatSplitPaneChooseAccessibilityLabel(pane)
+      : formatSplitPaneOpenAccessibilityLabel(pane)
+
+  return {
+    touchable: {
+      props: {
+        onPress,
+        disabled: isDisabled,
+        style: [
+          styles.button,
+          ...(isDisabled ? [styles.disabledButton] : []),
+        ],
+        activeOpacity: surface.pressedOpacity,
+        accessibilityRole: surface.accessibilityRole,
+        accessibilityLabel: createButtonAccessibilityLabel(rawAccessibilityLabel),
+        accessibilityState: { disabled: isDisabled },
+      },
+      content: {
+        icon: {
+          props: {
+            name: icon.name,
+            size: icon.size,
+            color: iconColor,
+          },
+        },
+        label: {
+          text: label,
+          props: {
+            style: styles.label,
           },
         },
       },

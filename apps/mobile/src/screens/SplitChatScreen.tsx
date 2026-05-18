@@ -24,17 +24,15 @@ import { radius, spacing } from '../ui/theme';
 import type { Theme } from '../ui/theme';
 import ChatScreen from './ChatScreen';
 import {
-  formatSplitPaneChooseAccessibilityLabel,
   formatSplitPaneModalTitle,
-  formatSplitPaneOpenAccessibilityLabel,
   createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
+  createSplitPaneToolbarActionMobilePropsParts,
   getSplitPaneEmptyStateActionMobileIconState,
   getSplitPaneModalCreateMobileIconState,
   getSplitPaneCopyState,
   getSplitPaneMobileSurfaceColors,
   getSplitPaneMobileSurfaceState,
-  getSplitPaneToolbarActionMobileIconState,
   reconcileSplitPaneSelection,
   replaceSplitPaneSelection,
   resolveSplitOrientation,
@@ -46,8 +44,6 @@ import {
 
 const splitPaneCopy = getSplitPaneCopyState();
 const splitPaneSurface = getSplitPaneMobileSurfaceState();
-const splitPaneToolbarChooseIcon = getSplitPaneToolbarActionMobileIconState('choose');
-const splitPaneToolbarOpenIcon = getSplitPaneToolbarActionMobileIconState('open');
 const splitPaneEmptyChooseIcon = getSplitPaneEmptyStateActionMobileIconState('choose');
 const splitPaneEmptyNewChatIcon = getSplitPaneEmptyStateActionMobileIconState('newChat');
 const splitPaneModalCreateIcon = getSplitPaneModalCreateMobileIconState();
@@ -176,6 +172,27 @@ export default function SplitChatScreen({ navigation }: Props) {
 
   const renderPane = useCallback((pane: SplitPane, sessionId: string | null, store: SessionStore) => {
     const session = sessionList.find((entry) => entry.id === sessionId) ?? null;
+    const toolbarActionStyles = {
+      button: styles.toolbarButton,
+      disabledButton: styles.toolbarButtonDisabled,
+      label: styles.toolbarButtonText,
+    };
+    const chooseToolbarActionParts = createSplitPaneToolbarActionMobilePropsParts({
+      action: 'choose',
+      pane,
+      onPress: () => setPickerPane(pane),
+      iconColor: splitPaneColors.toolbarButton.iconColor,
+      styles: toolbarActionStyles,
+    });
+    const openToolbarActionParts = createSplitPaneToolbarActionMobilePropsParts({
+      action: 'open',
+      pane,
+      isDisabled: !sessionId,
+      onPress: () => openFullScreenChat(sessionId),
+      iconColor: splitPaneColors.toolbarButton.iconColor,
+      styles: toolbarActionStyles,
+    });
+
     return (
       <View style={[styles.pane, effectiveOrientation === 'vertical' ? styles.paneVertical : styles.paneHorizontal]}>
         <View style={styles.paneToolbar}>
@@ -185,34 +202,24 @@ export default function SplitChatScreen({ navigation }: Props) {
           </View>
           <View style={styles.paneToolbarActions}>
             <TouchableOpacity
-              onPress={() => setPickerPane(pane)}
-              style={styles.toolbarButton}
-              activeOpacity={splitPaneSurface.toolbarButton.pressedOpacity}
-              accessibilityRole={splitPaneSurface.toolbarButton.accessibilityRole}
-              accessibilityLabel={createButtonAccessibilityLabel(formatSplitPaneChooseAccessibilityLabel(pane))}
+              {...chooseToolbarActionParts.touchable.props}
             >
               <Ionicons
-                name={splitPaneToolbarChooseIcon.name}
-                size={splitPaneToolbarChooseIcon.size}
-                color={splitPaneColors.toolbarButton.iconColor}
+                {...chooseToolbarActionParts.touchable.content.icon.props}
               />
-              <Text style={styles.toolbarButtonText}>{splitPaneCopy.toolbar.chooseLabel}</Text>
+              <Text {...chooseToolbarActionParts.touchable.content.label.props}>
+                {chooseToolbarActionParts.touchable.content.label.text}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => openFullScreenChat(sessionId)}
-              disabled={!sessionId}
-              style={[styles.toolbarButton, !sessionId && styles.toolbarButtonDisabled]}
-              activeOpacity={splitPaneSurface.toolbarButton.pressedOpacity}
-              accessibilityRole={splitPaneSurface.toolbarButton.accessibilityRole}
-              accessibilityLabel={createButtonAccessibilityLabel(formatSplitPaneOpenAccessibilityLabel(pane))}
-              accessibilityState={{ disabled: !sessionId }}
+              {...openToolbarActionParts.touchable.props}
             >
               <Ionicons
-                name={splitPaneToolbarOpenIcon.name}
-                size={splitPaneToolbarOpenIcon.size}
-                color={splitPaneColors.toolbarButton.iconColor}
+                {...openToolbarActionParts.touchable.content.icon.props}
               />
-              <Text style={styles.toolbarButtonText}>{splitPaneCopy.toolbar.openLabel}</Text>
+              <Text {...openToolbarActionParts.touchable.content.label.props}>
+                {openToolbarActionParts.touchable.content.label.text}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
