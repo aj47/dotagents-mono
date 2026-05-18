@@ -256,6 +256,7 @@ async function loadAgentProgress(
     OctagonX: icon("OctagonX"),
     MessageSquare: icon("MessageSquare"),
     Brain: icon("Brain"),
+    FolderOpen: icon("FolderOpen"),
     Volume2: icon("Volume2"),
     Wrench: icon("Wrench"),
     Play: icon("Play"),
@@ -359,6 +360,7 @@ async function loadAgentProgress(
   vi.doMock("./tool-execution-stats", () => ({ ToolExecutionStats: Null }))
   vi.doMock("./acp-session-badge", () => ({ ACPSessionBadge: Null }))
   vi.doMock("./agent-summary-view", () => ({ AgentSummaryView: Null }))
+  vi.doMock("./session-file-view", () => ({ SessionFileView: ({ sessionId }: { sessionId?: string }) => `SessionFileView:${sessionId ?? "none"}` }))
   vi.doMock("@renderer/lib/tts-tracking", () => ({
     hasTTSPlayed: () => false,
     markTTSPlayed: vi.fn(),
@@ -1074,6 +1076,33 @@ describe("agent progress response history", () => {
 
     loadButton.props.onClick({ preventDefault: vi.fn(), stopPropagation: vi.fn() })
     expect(onLoadEarlierConversationHistory).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows a Files tab and swaps to the file view for session workspaces", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-files-tab",
+      conversationId: "conversation-files-tab",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [],
+    }
+
+    let tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const filesButton = findAll(
+      tree,
+      (value) => value?.type === "button" && getTextContent(value).includes("Files"),
+    )[0]
+
+    expect(filesButton).toBeTruthy()
+    filesButton.props.onClick({ preventDefault: vi.fn(), stopPropagation: vi.fn() })
+
+    tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    expect(getTextContent(tree)).toContain("SessionFileView:session-files-tab")
   })
 
   it("smartly auto-speaks response-linked assistant messages and keeps replay available before completion", async () => {

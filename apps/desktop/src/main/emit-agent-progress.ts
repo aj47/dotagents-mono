@@ -6,6 +6,7 @@ import { isPanelAutoShowSuppressed, agentSessionStateManager } from "./state"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
 import { sanitizeAgentProgressUpdateForDisplay } from "@dotagents/shared"
+import { recordSessionFileActivity } from "./session-file-browser"
 
 // Throttle interval for non-critical progress updates (ms).
 // Updates within this window are collapsed — only the latest is sent.
@@ -204,6 +205,11 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       state.runId = incomingRunId
     }
   }
+
+  // Record file-activity roots only after the stopped-session and stale-run
+  // guards above have cleared, so updates that will be discarded cannot
+  // contribute workspace roots to a restarted or reused session.
+  recordSessionFileActivity(update)
 
   // Critical updates bypass the throttle entirely
   if (isCriticalUpdate(displayUpdate, state, { isFirstUpdateForSession })) {

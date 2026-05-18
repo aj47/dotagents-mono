@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config, ModelPreset } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch, FolderOpen } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -36,6 +36,7 @@ import {
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
+import { SessionFileView } from "./session-file-view"
 import { LoadingSpinner } from "./ui/loading-spinner"
 import { extractSubAgentToolDisplayContent } from "@shared/delegation-tool-display"
 import { buildContentTTSKey, buildResponseEventTTSKey, consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
@@ -3547,8 +3548,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Expansion state management - preserve across re-renders
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
 
-  // Tab state for Chat/Summary view toggle (only relevant when dual-model is enabled)
-  const [activeTab, setActiveTab] = useState<"chat" | "summary">("chat")
+  // Tab state for Chat/Summary/File View toggle.
+  const [activeTab, setActiveTab] = useState<"chat" | "summary" | "files">("chat")
   const [selectedDelegationRunId, setSelectedDelegationRunId] = useState<string | null>(null)
   const [isDelegationSummaryCollapsed, setIsDelegationSummaryCollapsed] = useState(false)
 
@@ -3791,6 +3792,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     profileName,
     acpSessionInfo,
   } = progress
+  const hasSummaryTab = (progress.stepSummaries?.length ?? 0) > 0
   const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
 
   // Detect if agent was stopped by kill switch
@@ -4920,22 +4922,35 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         {/* Collapsible content */}
         {!isCollapsed && (
           <>
-            {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
-            {(progress.stepSummaries?.length ?? 0) > 0 && (
-              <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
-                  className={cn(
-                    "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-                    activeTab === "chat"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <MessageSquare className="h-3 w-3" />
-                  <span className="truncate">Chat</span>
-                </button>
+            {/* Tab toggle for Chat/Summary/File View */}
+            <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
+                className={cn(
+                  "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                  activeTab === "chat"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <MessageSquare className="h-3 w-3" />
+                <span className="truncate">Chat</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("files"); }}
+                className={cn(
+                  "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                  activeTab === "files"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <FolderOpen className="h-3 w-3" />
+                <span className="truncate">Files</span>
+              </button>
+              {hasSummaryTab && (
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("summary"); }}
@@ -4952,11 +4967,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     {progress.stepSummaries?.length ?? 0}
                   </Badge>
                 </button>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Message Stream (Chat Tab) */}
-            <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+            <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && "hidden")} onClick={(e) => e.stopPropagation()}>
               <DelegationSummaryStrip
                 entries={delegationSummaryEntries}
                 maxItems={delegationSummaryMaxItems}
@@ -5150,12 +5165,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             )}
 
             {/* Summary View Tab */}
-            {activeTab === "summary" && (progress.stepSummaries?.length ?? 0) > 0 && (
+            {activeTab === "summary" && hasSummaryTab && (
               <div className="relative flex-1 min-h-0 overflow-y-auto p-3" onClick={(e) => e.stopPropagation()}>
                 <AgentSummaryView
                   progress={progress}
                   conversationId={progress.conversationId}
                 />
+              </div>
+            )}
+
+            {/* File View Tab */}
+            {activeTab === "files" && (
+              <div className="relative flex-1 min-h-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <SessionFileView sessionId={progress.sessionId} className="h-full" />
               </div>
             )}
 
@@ -5373,22 +5395,35 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         </div>
       </div>
 
-      {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
-      {(progress.stepSummaries?.length ?? 0) > 0 && (
-        <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
-            className={cn(
-              "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-              activeTab === "chat"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <MessageSquare className="h-3 w-3" />
-            <span className="truncate">Chat</span>
-          </button>
+      {/* Tab toggle for Chat/Summary/File View */}
+      <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
+          className={cn(
+            "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+            activeTab === "chat"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <MessageSquare className="h-3 w-3" />
+          <span className="truncate">Chat</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("files"); }}
+          className={cn(
+            "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+            activeTab === "files"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <FolderOpen className="h-3 w-3" />
+          <span className="truncate">Files</span>
+        </button>
+        {hasSummaryTab && (
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("summary"); }}
@@ -5405,11 +5440,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {progress.stepSummaries?.length ?? 0}
             </Badge>
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Message Stream - Left-aligned content (Chat Tab) */}
-      <div className={cn("relative flex min-h-0 flex-1 flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")}>
+      <div className={cn("relative flex min-h-0 flex-1 flex-col", activeTab !== "chat" && "hidden")}>
         <DelegationSummaryStrip
           entries={delegationSummaryEntries}
           maxItems={delegationSummaryMaxItems}
@@ -5612,12 +5647,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       />
 
       {/* Summary View Tab */}
-      {activeTab === "summary" && (progress.stepSummaries?.length ?? 0) > 0 && (
+      {activeTab === "summary" && hasSummaryTab && (
         <div className="relative flex-1 min-h-0 overflow-y-auto p-3" onClick={(e) => e.stopPropagation()}>
           <AgentSummaryView
             progress={progress}
             conversationId={progress.conversationId}
           />
+        </div>
+      )}
+
+      {/* File View Tab */}
+      {activeTab === "files" && (
+        <div className="relative flex-1 min-h-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <SessionFileView sessionId={progress.sessionId} className="h-full" />
         </div>
       )}
 
