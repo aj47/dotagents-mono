@@ -20,6 +20,10 @@ const handsFreeStatusChipSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'HandsFreeStatusChip.tsx'),
   'utf8'
 );
+const agentSelectorSheetSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'AgentSelectorSheet.tsx'),
+  'utf8'
+);
 const messageQueuePanelSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'MessageQueuePanel.tsx'),
   'utf8'
@@ -281,6 +285,18 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /createChatRuntimeHeaderAgentSelectorMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput,/);
+  assert.match(agentSelectorSheetSource, /import \{ useChatRuntimeAgentSelectorSheetMobileStyleSlots \} from '\.\/ChatRuntimeMobileStyles';/);
+  assert.match(chatRuntimeMobileStylesSource, /createAgentSelectorMobileStyleSheetSlots,/);
+  assert.match(chatRuntimeMobileStylesSource, /getAgentSelectorMobileRenderState,/);
+  assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeAgentSelectorSheetStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeAgentSelectorSheetStyleSheetSlotsInput\): AgentSelectorMobileStyleSheetSlots \{[\s\S]*?createAgentSelectorMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?\}\);[\s\S]*?\}/);
+  assert.match(chatRuntimeMobileStylesSource, /export function useChatRuntimeAgentSelectorSheetMobileStyleSlots\(\{[\s\S]*?selectorMode,[\s\S]*?\}: ChatRuntimeAgentSelectorSheetMobileStyleSlotsInput\): ChatRuntimeAgentSelectorSheetMobileStyleSlots/);
+  assert.doesNotMatch(agentSelectorSheetSource, /createAgentSelectorMobileStyleSheetSlots,/);
+  assert.doesNotMatch(agentSelectorSheetSource, /getAgentSelectorMobileRenderState,/);
+  assert.doesNotMatch(agentSelectorSheetSource, /from '\.\/theme'/);
+  assert.doesNotMatch(agentSelectorSheetSource, /from '\.\/ThemeProvider'/);
+  assert.doesNotMatch(agentSelectorSheetSource, /StyleSheet\.create/);
+  assert.match(agentSelectorSheetSource, /const \{\s+agentSelectorRenderState,\s+agentSelectorStyles: styles,\s+agentSelectorSheetBottomPadding,\s+\} = useChatRuntimeAgentSelectorSheetMobileStyleSlots\(\{\s+selectorMode,\s+\}\);/);
+  assert.match(agentSelectorSheetSource, /sheetBottomPadding: agentSelectorSheetBottomPadding,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderAgentSelectorMobileStyleSlots<\s+TButtonStyle = unknown,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /TStyles extends ChatRuntimeHeaderAgentSelectorMobileStyleSlots/);

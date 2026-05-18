@@ -10,15 +10,13 @@ import {
   Modal,
   TouchableOpacity,
   FlatList,
-  StyleSheet,
   ActivityIndicator,
   Pressable,
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from './ThemeProvider';
-import { spacing, radius } from './theme';
+import { useChatRuntimeAgentSelectorSheetMobileStyleSlots } from './ChatRuntimeMobileStyles';
 import { useConfigContext } from '../store/config';
 import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
@@ -26,9 +24,7 @@ import {
   buildSelectorProfiles,
   createAgentSelectorProfileItemMobilePropsParts,
   createAgentSelectorSheetMobilePropsParts,
-  createAgentSelectorMobileStyleSheetSlots,
   getAgentSelectorMobileProfileItemRenderState,
-  getAgentSelectorMobileRenderState,
   type AgentSelectorMobileStyleSheetSlots,
   type AgentSelectorProfileItemMobilePropsParts,
   type AgentSelectorSheetMobilePropsParts,
@@ -65,7 +61,6 @@ type AgentSelectorProfileItemParts =
   >;
 
 export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps) {
-  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { config } = useConfigContext();
   const { currentProfile, setCurrentProfile } = useProfile();
@@ -75,26 +70,14 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
   const [isSwitching, setIsSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectorMode, setSelectorMode] = useState<'profile' | 'acpx'>('profile');
-  const agentSelectorRenderState = React.useMemo(
-    () => getAgentSelectorMobileRenderState({
-      selectorMode,
-      colors: theme.colors,
-    }),
-    [selectorMode, theme.colors],
-  );
+  const {
+    agentSelectorRenderState,
+    agentSelectorStyles: styles,
+    agentSelectorSheetBottomPadding,
+  } = useChatRuntimeAgentSelectorSheetMobileStyleSlots({
+    selectorMode,
+  });
   const agentSelectorCopy = agentSelectorRenderState.copy;
-  const agentSelectorStyleSheetSlots = React.useMemo(
-    () => createAgentSelectorMobileStyleSheetSlots({
-      renderState: agentSelectorRenderState,
-      spacing,
-      radius,
-    }),
-    [agentSelectorRenderState],
-  );
-  const styles = React.useMemo<AgentSelectorSheetStyles>(
-    () => StyleSheet.create({ ...agentSelectorStyleSheetSlots }),
-    [agentSelectorStyleSheetSlots],
-  );
   const hasApiConfig = Boolean(config.baseUrl && config.apiKey);
   const missingConfigError = agentSelectorCopy.missingConfigError;
 
@@ -136,7 +119,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     visible,
     renderState: agentSelectorRenderState,
     styles,
-    sheetBottomPadding: agentSelectorStyleSheetSlots.sheet.paddingBottom,
+    sheetBottomPadding: agentSelectorSheetBottomPadding,
     safeAreaBottom: insets.bottom,
     isLoading,
     error,

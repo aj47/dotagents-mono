@@ -7,6 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  createAgentSelectorMobileStyleSheetSlots,
   createAgentResponseHistoryMobileStyleSheetSlots,
   createChatVideoAttachmentMobileStyleSheetSlots,
   createChatRuntimeMobileChromeSlotsFromStyleSource,
@@ -15,12 +16,14 @@ import {
   createMarkdownContentMobileStyleSheetSlots,
   createMarkdownThinkSectionMobileStyleSheetSlots,
   createHandsFreeStatusChipMobileStyleSheetSlots,
+  getAgentSelectorMobileRenderState,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   getChatVideoAttachmentMobileRenderState,
   getHandsFreeStatusChipMobileRenderState,
   getMarkdownContentMobileSurfaceRenderState,
   getMarkdownThinkSectionMobileSurfaceRenderState,
+  type AgentSelectorMobileStyleSheetSlots,
   type AgentResponseHistoryMobileStyleSheetSlots,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
   type ChatRuntimeMobileChromeSlotsFromStyleSource,
@@ -1084,6 +1087,64 @@ export function useChatRuntimeHandsFreeStatusChipMobileStyleSlots({
   return {
     handsFreeStatusChipRenderState,
     handsFreeStatusChipStyles,
+  };
+}
+
+export type ChatRuntimeAgentSelectorSheetStyleSheetSlotsInput = Pick<
+  Parameters<typeof createAgentSelectorMobileStyleSheetSlots>[0],
+  'renderState'
+>;
+
+export type ChatRuntimeAgentSelectorSheetMobileRenderState =
+  ReturnType<typeof getAgentSelectorMobileRenderState>;
+
+export type ChatRuntimeAgentSelectorSheetMobileStyleSlotsInput = Pick<
+  Parameters<typeof getAgentSelectorMobileRenderState>[0],
+  'selectorMode'
+>;
+
+export type ChatRuntimeAgentSelectorSheetMobileStyleSlots = {
+  agentSelectorRenderState: ChatRuntimeAgentSelectorSheetMobileRenderState;
+  agentSelectorStyles: AgentSelectorMobileStyleSheetSlots;
+  agentSelectorSheetBottomPadding: AgentSelectorMobileStyleSheetSlots['sheet']['paddingBottom'];
+};
+
+export function createChatRuntimeAgentSelectorSheetStyleSheetSlots({
+  renderState,
+}: ChatRuntimeAgentSelectorSheetStyleSheetSlotsInput): AgentSelectorMobileStyleSheetSlots {
+  return createAgentSelectorMobileStyleSheetSlots({
+    renderState,
+    spacing,
+    radius,
+  });
+}
+
+export function useChatRuntimeAgentSelectorSheetMobileStyleSlots({
+  selectorMode,
+}: ChatRuntimeAgentSelectorSheetMobileStyleSlotsInput): ChatRuntimeAgentSelectorSheetMobileStyleSlots {
+  const { theme } = useTheme();
+  const agentSelectorRenderState = useMemo(
+    () => getAgentSelectorMobileRenderState({
+      selectorMode,
+      colors: theme.colors,
+    }),
+    [selectorMode, theme.colors],
+  );
+  const agentSelectorStyleSheetSlots = useMemo(
+    () => createChatRuntimeAgentSelectorSheetStyleSheetSlots({
+      renderState: agentSelectorRenderState,
+    }),
+    [agentSelectorRenderState],
+  );
+  const agentSelectorStyles = useMemo(
+    () => StyleSheet.create({ ...agentSelectorStyleSheetSlots }),
+    [agentSelectorStyleSheetSlots],
+  );
+
+  return {
+    agentSelectorRenderState,
+    agentSelectorStyles,
+    agentSelectorSheetBottomPadding: agentSelectorStyleSheetSlots.sheet.paddingBottom,
   };
 }
 
