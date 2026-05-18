@@ -12477,8 +12477,15 @@ export function ChatMessageToolExecutionCompactListContent({
 export function ChatMessageToolExecutionCollapseControl(
   props: ChatMessageToolExecutionCollapseControlProps,
 ) {
-  const collapseControlParts: ChatMessageToolExecutionCollapseControlParts =
-    createChatRuntimeToolExecutionCollapseControlMobilePropsParts(props);
+  const { renderState, onPress, styles } = props;
+  const collapseControlParts = useMemo<ChatMessageToolExecutionCollapseControlParts>(
+    () => createChatRuntimeToolExecutionCollapseControlMobilePropsParts({
+      renderState,
+      onPress,
+      styles,
+    }),
+    [onPress, renderState, styles],
+  );
 
   return (
     <ChatMessageToolExecutionCollapseControlPressable
@@ -12538,9 +12545,39 @@ export function ChatMessageToolExecutionCollapseControlLabel({
 export function ChatMessageToolExecutionExpandedGroup(
   props: ChatMessageToolExecutionExpandedGroupProps,
 ) {
-  const expandedGroupParts: ChatMessageToolExecutionExpandedGroupParts =
-    createChatRuntimeToolExecutionExpandedGroupMobilePropsParts(props);
-  const { children } = props;
+  const {
+    children,
+    topCollapseRenderState,
+    bottomCollapseRenderState,
+    onCollapsePress,
+    isPending,
+    allSuccess,
+    hasErrors,
+    emptyState,
+    styles,
+  } = props;
+  const expandedGroupParts = useMemo<ChatMessageToolExecutionExpandedGroupParts>(
+    () => createChatRuntimeToolExecutionExpandedGroupMobilePropsParts({
+      topCollapseRenderState,
+      bottomCollapseRenderState,
+      onCollapsePress,
+      isPending,
+      allSuccess,
+      hasErrors,
+      emptyState,
+      styles,
+    }),
+    [
+      allSuccess,
+      bottomCollapseRenderState,
+      emptyState,
+      hasErrors,
+      isPending,
+      onCollapsePress,
+      styles,
+      topCollapseRenderState,
+    ],
+  );
 
   return (
     <ChatMessageToolExecutionExpandedGroupContainer
@@ -12617,9 +12654,16 @@ export function ChatMessageToolExecutionExpandedGroupCard({
 export function ChatMessageToolExecutionPanel(
   props: ChatMessageToolExecutionPanelProps,
 ) {
-  const panelParts: ChatMessageToolExecutionPanelParts =
-    createChatRuntimeToolExecutionPanelMobilePropsParts(props);
-  const { children } = props;
+  const { children, shouldRender, isExpanded, compact, expanded } = props;
+  const panelParts = useMemo<ChatMessageToolExecutionPanelParts>(
+    () => createChatRuntimeToolExecutionPanelMobilePropsParts({
+      shouldRender,
+      isExpanded,
+      compact,
+      expanded,
+    }),
+    [compact, expanded, isExpanded, shouldRender],
+  );
 
   return (
     <ChatMessageToolExecutionPanelContent
@@ -12674,9 +12718,23 @@ export function ChatMessageToolExecutionPanelShellContent({
 export function ChatMessageToolExecutionStack(
   props: ChatMessageToolExecutionStackProps,
 ) {
-  const stackPanelParts: ChatMessageToolExecutionStackPanelParts =
-    createChatRuntimeToolExecutionStackPanelMobilePropsParts(props);
-  const { shouldRender, isExpanded } = props;
+  const {
+    shouldRender,
+    isExpanded,
+    compact,
+    expanded,
+    detailRows,
+    styles,
+  } = props;
+  const stackPanelParts = useMemo<ChatMessageToolExecutionStackPanelParts>(
+    () => createChatRuntimeToolExecutionStackPanelMobilePropsParts({
+      compact,
+      expanded,
+      detailRows,
+      styles,
+    }),
+    [compact, detailRows, expanded, styles],
+  );
 
   return (
     <ChatMessageToolExecutionStackContent
@@ -12731,8 +12789,15 @@ export function ChatMessageToolExecutionStackEmptyStateBlock({
 export function ChatMessageToolExecutionCopyButton(
   props: ChatMessageToolExecutionCopyButtonProps,
 ) {
-  const copyButtonParts: ChatMessageToolExecutionCopyButtonParts =
-    createChatRuntimeToolExecutionCopyButtonMobilePropsParts(props);
+  const { renderState, onPress, styles } = props;
+  const copyButtonParts = useMemo<ChatMessageToolExecutionCopyButtonParts>(
+    () => createChatRuntimeToolExecutionCopyButtonMobilePropsParts({
+      renderState,
+      onPress,
+      styles,
+    }),
+    [onPress, renderState, styles],
+  );
 
   return (
     <ChatMessageToolExecutionCopyButtonPressable
