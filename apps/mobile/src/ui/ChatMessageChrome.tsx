@@ -338,11 +338,13 @@ import {
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
   type ChatRuntimeToolActivityGroupBoundaryMobileKind,
   type ChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
+  type ChatRuntimeToolActivityGroupBoundaryMobilePropsPartsInput,
   type ChatRuntimeToolActivityGroupFooterMobileStyleSlots as SharedChatMessageToolActivityGroupFooterStyleSlots,
   type ChatRuntimeToolActivityGroupFooterMobilePropsParts,
-  type ChatRuntimeToolActivityGroupHeaderMobileKind,
+  type ChatRuntimeToolActivityGroupFooterMobilePropsPartsInput,
   type ChatRuntimeToolActivityGroupToggleMobileStyleSlots as SharedChatMessageToolActivityGroupToggleStyleSlots,
   type ChatRuntimeToolActivityGroupToggleMobilePropsParts,
+  type ChatRuntimeToolActivityGroupToggleMobilePropsPartsInput,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeMessageThreadItemMobilePropsPartsInput,
   type ChatRuntimeMessageThreadItemMobilePropsParts,
@@ -2423,8 +2425,6 @@ type ChatMessageDelegationMorePreviewActionProps =
 type ChatMessageDelegationMorePreviewActionLabelProps =
   ChatMessageDelegationMorePreviewActionProps['label'];
 
-type ChatMessageToolActivityGroupHeaderKind = ChatRuntimeToolActivityGroupHeaderMobileKind;
-
 type ChatMessageToolActivityGroupToggleStyles =
   SharedChatMessageToolActivityGroupToggleStyleSlots<
     StyleProp<ViewStyle>,
@@ -2435,17 +2435,17 @@ type ChatMessageToolActivityGroupToggleStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolActivityGroupToggleProps = {
-  renderState: ToolActivityGroupMobileRenderState;
-  headerKind: ChatMessageToolActivityGroupHeaderKind;
-  onPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolActivityGroupToggleStyles;
-};
+type ChatMessageToolActivityGroupToggleProps =
+  ChatRuntimeToolActivityGroupToggleMobilePropsPartsInput<
+    ToolActivityGroupMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolActivityGroupToggleStyles
+  >;
 
 type ChatMessageToolActivityGroupToggleParts =
   ChatRuntimeToolActivityGroupToggleMobilePropsParts<
     ToolActivityGroupMobileRenderState,
-    ChatMessageToolActivityGroupToggleProps['onPress'],
+    (event: GestureResponderEvent) => void,
     ChatMessageToolActivityGroupToggleStyles
   >;
 
@@ -2472,16 +2472,17 @@ type ChatMessageToolActivityGroupFooterStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolActivityGroupFooterProps = {
-  renderState: ToolActivityGroupMobileRenderState;
-  onPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolActivityGroupFooterStyles;
-};
+type ChatMessageToolActivityGroupFooterProps =
+  ChatRuntimeToolActivityGroupFooterMobilePropsPartsInput<
+    ToolActivityGroupMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolActivityGroupFooterStyles
+  >;
 
 type ChatMessageToolActivityGroupFooterParts =
   ChatRuntimeToolActivityGroupFooterMobilePropsParts<
     ToolActivityGroupMobileRenderState,
-    ChatMessageToolActivityGroupFooterProps['onPress'],
+    (event: GestureResponderEvent) => void,
     ChatMessageToolActivityGroupFooterStyles
   >;
 
@@ -2504,17 +2505,18 @@ type ChatMessageToolActivityGroupBoundaryStyles =
     ChatMessageToolActivityGroupFooterStyles
   >;
 
-type ChatMessageToolActivityGroupBoundaryProps = {
-  renderState: ToolActivityGroupMobileRenderState;
-  kind: ChatMessageToolActivityGroupBoundaryKind;
-  onPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolActivityGroupBoundaryStyles;
-};
+type ChatMessageToolActivityGroupBoundaryProps =
+  ChatRuntimeToolActivityGroupBoundaryMobilePropsPartsInput<
+    ToolActivityGroupMobileRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolActivityGroupToggleStyles,
+    ChatMessageToolActivityGroupFooterStyles
+  >;
 
 type ChatMessageToolActivityGroupBoundaryParts =
   ChatRuntimeToolActivityGroupBoundaryMobilePropsParts<
     ToolActivityGroupMobileRenderState,
-    ChatMessageToolActivityGroupBoundaryProps['onPress'],
+    (event: GestureResponderEvent) => void,
     ChatMessageToolActivityGroupToggleStyles,
     ChatMessageToolActivityGroupFooterStyles
   >;
