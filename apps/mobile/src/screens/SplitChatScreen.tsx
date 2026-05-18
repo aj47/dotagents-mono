@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ChatMessage } from '../lib/openaiClient';
-import { createButtonAccessibilityLabel } from '@dotagents/shared/accessibility-utils';
 import { ConfigContext, useConfigContext } from '../store/config';
 import { SessionContext, useSessionContext } from '../store/sessions';
 import type { SessionStore } from '../store/sessions';
@@ -26,10 +25,11 @@ import ChatScreen from './ChatScreen';
 import {
   formatSplitPaneModalTitle,
   createSplitPaneEmptyStateActionMobilePropsParts,
+  createSplitPaneModalCreateActionMobilePropsParts,
   createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
+  createSplitPaneSessionOptionMobilePropsParts,
   createSplitPaneToolbarActionMobilePropsParts,
-  getSplitPaneModalCreateMobileIconState,
   getSplitPaneCopyState,
   getSplitPaneMobileSurfaceColors,
   getSplitPaneMobileSurfaceState,
@@ -44,7 +44,6 @@ import {
 
 const splitPaneCopy = getSplitPaneCopyState();
 const splitPaneSurface = getSplitPaneMobileSurfaceState();
-const splitPaneModalCreateIcon = getSplitPaneModalCreateMobileIconState();
 
 interface Props {
   navigation: any;
@@ -279,6 +278,18 @@ export default function SplitChatScreen({ navigation }: Props) {
     );
   }, [createSessionForPane, effectiveOrientation, openFullScreenChat, sessionList, splitPaneColors, styles]);
 
+  const modalCreateActionParts = createSplitPaneModalCreateActionMobilePropsParts({
+    onPress: () => {
+      if (pickerPane) createSessionForPane(pickerPane);
+      setPickerPane(null);
+    },
+    iconColor: splitPaneColors.newChatOption.iconColor,
+    styles: {
+      button: styles.newChatOption,
+      label: styles.newChatOptionText,
+    },
+  });
+
   return (
     <ConfigContext.Provider value={splitConfigValue}>
       <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
@@ -328,40 +339,45 @@ export default function SplitChatScreen({ navigation }: Props) {
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => {
                   const isSelected = (pickerPane === 'primary' ? selection.primary : selection.secondary) === item.id;
+                  const sessionOptionParts = createSplitPaneSessionOptionMobilePropsParts({
+                    title: item.title,
+                    preview: item.preview,
+                    isSelected,
+                    onPress: () => {
+                      if (pickerPane === 'primary') setPrimarySessionId(item.id);
+                      if (pickerPane === 'secondary') setSecondarySessionId(item.id);
+                      setPickerPane(null);
+                    },
+                    styles: {
+                      option: styles.sessionOption,
+                      activeOption: styles.sessionOptionActive,
+                      title: styles.sessionOptionTitle,
+                      preview: styles.sessionOptionPreview,
+                    },
+                  });
                   return (
                     <TouchableOpacity
-                      style={[styles.sessionOption, isSelected && styles.sessionOptionActive]}
-                      activeOpacity={splitPaneSurface.sessionOption.pressedOpacity}
-                      accessibilityRole={splitPaneSurface.sessionOption.accessibilityRole}
-                      accessibilityState={{ selected: isSelected }}
-                      onPress={() => {
-                        if (pickerPane === 'primary') setPrimarySessionId(item.id);
-                        if (pickerPane === 'secondary') setSecondarySessionId(item.id);
-                        setPickerPane(null);
-                      }}
+                      {...sessionOptionParts.touchable.props}
                     >
-                      <Text style={styles.sessionOptionTitle} numberOfLines={splitPaneSurface.sessionOption.title.numberOfLines}>{item.title}</Text>
-                      <Text style={styles.sessionOptionPreview} numberOfLines={splitPaneSurface.sessionOption.preview.numberOfLines}>{item.preview || splitPaneCopy.modal.sessionPreviewFallback}</Text>
+                      <Text {...sessionOptionParts.touchable.content.title.props}>
+                        {sessionOptionParts.touchable.content.title.text}
+                      </Text>
+                      <Text {...sessionOptionParts.touchable.content.preview.props}>
+                        {sessionOptionParts.touchable.content.preview.text}
+                      </Text>
                     </TouchableOpacity>
                   );
                 }}
                 ListFooterComponent={(
                   <TouchableOpacity
-                    style={styles.newChatOption}
-                    activeOpacity={splitPaneSurface.newChatOption.pressedOpacity}
-                    accessibilityRole={splitPaneSurface.newChatOption.accessibilityRole}
-                    accessibilityLabel={createButtonAccessibilityLabel(splitPaneCopy.modal.createNewChatLabel)}
-                    onPress={() => {
-                      if (pickerPane) createSessionForPane(pickerPane);
-                      setPickerPane(null);
-                    }}
+                    {...modalCreateActionParts.touchable.props}
                   >
                     <Ionicons
-                      name={splitPaneModalCreateIcon.name}
-                      size={splitPaneModalCreateIcon.size}
-                      color={splitPaneColors.newChatOption.iconColor}
+                      {...modalCreateActionParts.touchable.content.icon.props}
                     />
-                    <Text style={styles.newChatOptionText}>{splitPaneCopy.modal.createNewChatLabel}</Text>
+                    <Text {...modalCreateActionParts.touchable.content.label.props}>
+                      {modalCreateActionParts.touchable.content.label.text}
+                    </Text>
                   </TouchableOpacity>
                 )}
               />

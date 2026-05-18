@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest"
 
 import {
   createSplitPaneEmptyStateActionMobilePropsParts,
+  createSplitPaneModalCreateActionMobilePropsParts,
   createSplitPaneSegmentButtonMobilePropsParts,
   createSplitPaneMobileStyleSlots,
+  createSplitPaneSessionOptionMobilePropsParts,
   createSplitPaneToolbarActionMobilePropsParts,
   formatSplitPaneChooseAccessibilityLabel,
   formatSplitPaneModalTitle,
@@ -439,6 +441,77 @@ describe("split pane selection", () => {
     expect(actionParts.touchable.content.label.props.style).toBe("label")
 
     actionParts.touchable.props.onPress()
+    expect(created).toBe(true)
+  })
+
+  it("creates mobile split-pane session option props from shared presentation", () => {
+    let selected = false
+    const optionParts = createSplitPaneSessionOptionMobilePropsParts({
+      title: "Session title",
+      preview: "",
+      isSelected: true,
+      onPress: () => {
+        selected = true
+      },
+      styles: {
+        option: "option",
+        activeOption: "active-option",
+        title: "title",
+        preview: "preview",
+      },
+    })
+
+    expect(optionParts.touchable.props.style).toEqual(["option", "active-option"])
+    expect(optionParts.touchable.props.activeOpacity).toBe(0.78)
+    expect(optionParts.touchable.props.accessibilityRole).toBe("button")
+    expect(optionParts.touchable.props.accessibilityState).toEqual({ selected: true })
+    expect(optionParts.touchable.content.title).toEqual({
+      text: "Session title",
+      props: {
+        style: "title",
+        numberOfLines: 1,
+      },
+    })
+    expect(optionParts.touchable.content.preview).toEqual({
+      text: "No messages yet",
+      props: {
+        style: "preview",
+        numberOfLines: 2,
+      },
+    })
+
+    optionParts.touchable.props.onPress()
+    expect(selected).toBe(true)
+  })
+
+  it("creates mobile split-pane modal create action props from shared presentation", () => {
+    let created = false
+    const createParts = createSplitPaneModalCreateActionMobilePropsParts({
+      onPress: () => {
+        created = true
+      },
+      iconColor: "#333333",
+      styles: {
+        button: "button",
+        label: "label",
+      },
+    })
+
+    expect(createParts.touchable.props.style).toBe("button")
+    expect(createParts.touchable.props.activeOpacity).toBe(0.78)
+    expect(createParts.touchable.props.accessibilityRole).toBe("button")
+    expect(createParts.touchable.props.accessibilityLabel).toBe(
+      "Create a new chat for this pane button",
+    )
+    expect(createParts.touchable.content.icon.props).toEqual({
+      name: "add-circle-outline",
+      size: 16,
+      color: "#333333",
+    })
+    expect(createParts.touchable.content.label.text).toBe("Create a new chat for this pane")
+    expect(createParts.touchable.content.label.props.style).toBe("label")
+
+    createParts.touchable.props.onPress()
     expect(created).toBe(true)
   })
 })
