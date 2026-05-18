@@ -34,6 +34,7 @@ import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
+import { saveConfig, useConfigContext } from '../store/config';
 import { useConnectionManager } from '../store/connectionManager';
 import { useMessageQueueContext } from '../store/message-queue';
 import { useProfile } from '../store/profile';
@@ -529,6 +530,10 @@ type ChatRuntimeMessageQueueState = ReturnType<typeof useMessageQueueContext>;
 
 type ChatRuntimeSessionStoreState = ReturnType<typeof useSessionContext>;
 
+type ChatRuntimeConfigStoreState = ReturnType<typeof useConfigContext> & {
+  saveConfig: typeof saveConfig;
+};
+
 type ChatRuntimeMobileChromeConfigState = ChatRuntimeMobileConfigState & {
   handsFree: boolean;
 };
@@ -558,6 +563,22 @@ export function useChatRuntimeMobileConfigState(config: MobileAppConfig): ChatRu
     }),
     [config],
   );
+}
+
+export function useChatRuntimeConfigStoreState(): ChatRuntimeConfigStoreState {
+  const { config, setConfig, ready } = useConfigContext();
+
+  const configStoreState = useMemo<ChatRuntimeConfigStoreState>(
+    () => ({
+      config,
+      setConfig,
+      ready,
+      saveConfig,
+    }),
+    [config, ready, setConfig],
+  );
+
+  return configStoreState;
 }
 
 export function useChatMessageRuntimeChromeStyleState(): ChatMessageRuntimeChromeStyleState {

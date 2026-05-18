@@ -7000,6 +7000,14 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(chatScreenSource, /from '@dotagents\/shared\/mobile-app-config';/);
   assert.match(sessionPresentationSource, /export \{[\s\S]*?createChatRuntimeMobileConfigState,[\s\S]*?type ChatRuntimeMobileConfigState,[\s\S]*?type MobileAppConfig,[\s\S]*?\} from "\.\/mobile-app-config"/);
   assert.doesNotMatch(screenSource, /createChatRuntimeMobileConfigState/);
+  assert.match(chatScreenSource, /useChatRuntimeConfigStoreState,/);
+  assert.match(chatScreenSource, /const \{ config, setConfig, saveConfig \} = useChatRuntimeConfigStoreState\(\);/);
+  assert.doesNotMatch(chatScreenSource, /from '\.\.\/store\/config';/);
+  assert.doesNotMatch(chatScreenSource, /useConfigContext/);
+  assert.match(chatMessageChromeSource, /import \{ saveConfig, useConfigContext \} from '\.\.\/store\/config';/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeConfigStoreState = ReturnType<typeof useConfigContext> & \{\s+saveConfig: typeof saveConfig;\s+\};/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeConfigStoreState\(\): ChatRuntimeConfigStoreState \{\s+const \{ config, setConfig, ready \} = useConfigContext\(\);/);
+  assert.match(chatMessageChromeSource, /const configStoreState = useMemo<ChatRuntimeConfigStoreState>\(\s+\(\) => \(\{\s+config,\s+setConfig,\s+ready,\s+saveConfig,\s+\}\),\s+\[config, ready, setConfig\],\s+\);/);
   assert.match(screenSource, /useChatRuntimeMobileConfigState,/);
   assert.match(screenSource, /const chatRuntimeConfig = useChatRuntimeMobileConfigState\(config\);/);
   assert.match(screenSource, /const \{\s+handsFree,\s+handsFreeMessageDebounceMs,\s+handsFreeWakePhrase,\s+handsFreeSleepPhrase,\s+handsFreeDebugEnabled,\s+handsFreeForegroundOnly,\s+messageQueueEnabled,\s+ttsEnabled,\s+\} = chatRuntimeConfig;/);
