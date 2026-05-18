@@ -4018,9 +4018,9 @@ type ChatMessageConnectionBannerRetryButtonProps =
 
 type ChatMessageRuntimeDockStyleSlots =
   SharedChatMessageRuntimeDockStyleSlots<
-    ChatMessageScrollToBottomButtonProps['style'],
+    StyleProp<ViewStyle>,
     ChatComposerVoiceOverlayStyles,
-    ChatMessageQueuePanelDockContainerProps['style'],
+    StyleProp<ViewStyle>,
     ChatMessageConnectionBannerStyles,
     ChatComposerRuntimeDockStyleSlots
   >;
@@ -4033,26 +4033,26 @@ type ChatMessageRuntimeDockProps =
     Omit<ChatMessageQueuePanelDockProps, 'container'>,
     Omit<ChatMessageConnectionBannerProps, 'styles'>,
     Omit<ChatComposerRuntimeDockProps, 'styles'>,
-    ChatMessageRuntimeDockStyleSlots['scrollToBottomButtonStyle'],
-    ChatMessageRuntimeDockStyleSlots['voiceOverlay'],
-    ChatMessageRuntimeDockStyleSlots['queuePanelStyle'],
-    ChatMessageRuntimeDockStyleSlots['connectionBanner'],
-    ChatMessageRuntimeDockStyleSlots['composer']
+    StyleProp<ViewStyle>,
+    ChatComposerVoiceOverlayStyles,
+    StyleProp<ViewStyle>,
+    ChatMessageConnectionBannerStyles,
+    ChatComposerRuntimeDockStyleSlots
   >;
 
 type ChatMessageRuntimeDockParts =
   ChatRuntimeConversationDockMobilePropsParts<
-    ChatMessageRuntimeDockProps['responseHistoryPanel'],
-    ChatMessageRuntimeDockProps['scrollToBottomButton'],
-    ChatMessageRuntimeDockProps['voiceOverlay'],
-    ChatMessageRuntimeDockProps['queuePanel'],
-    ChatMessageRuntimeDockProps['connectionBanner'],
-    ChatMessageRuntimeDockProps['composer'],
-    ChatMessageRuntimeDockStyleSlots['scrollToBottomButtonStyle'],
-    ChatMessageRuntimeDockStyleSlots['voiceOverlay'],
-    ChatMessageRuntimeDockStyleSlots['queuePanelStyle'],
-    ChatMessageRuntimeDockStyleSlots['connectionBanner'],
-    ChatMessageRuntimeDockStyleSlots['composer']
+    ChatMessageResponseHistoryPanelDockProps,
+    Omit<ChatMessageScrollToBottomButtonProps, 'style'>,
+    Omit<ChatComposerVoiceOverlayProps, 'styles'>,
+    Omit<ChatMessageQueuePanelDockProps, 'container'>,
+    Omit<ChatMessageConnectionBannerProps, 'styles'>,
+    Omit<ChatComposerRuntimeDockProps, 'styles'>,
+    StyleProp<ViewStyle>,
+    ChatComposerVoiceOverlayStyles,
+    StyleProp<ViewStyle>,
+    ChatMessageConnectionBannerStyles,
+    ChatComposerRuntimeDockStyleSlots
   >;
 
 type ChatMessageRuntimeDockChromeProps = Omit<ChatMessageRuntimeDockProps, 'styles'>;
