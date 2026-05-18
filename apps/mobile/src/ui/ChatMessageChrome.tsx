@@ -4996,21 +4996,27 @@ type ChatComposerVoiceOverlayParts =
     ChatComposerVoiceOverlayStyles
   >;
 
-type ChatComposerVoiceOverlayContainerProps =
-  ChatComposerVoiceOverlayParts['overlay']['props'] & {
-    children: ReactNode;
-  };
+type ChatComposerVoiceOverlayContainerProps = {
+  style: ChatComposerVoiceOverlayStyles['overlay'];
+  pointerEvents: 'none';
+  children: ReactNode;
+};
 
-type ChatComposerVoiceOverlayCardProps =
-  ChatComposerVoiceOverlayParts['card']['props'] & {
-    children: ReactNode;
-  };
+type ChatComposerVoiceOverlayCardProps = {
+  style: ChatComposerVoiceOverlayStyles['card'];
+  children: ReactNode;
+};
 
-type ChatComposerVoiceOverlayLabelProps =
-  ChatComposerVoiceOverlayParts['label']['props'];
+type ChatComposerVoiceOverlayLabelProps = {
+  style: ChatComposerVoiceOverlayStyles['label'];
+  text: string;
+};
 
-type ChatComposerVoiceOverlayTranscriptProps =
-  ChatComposerVoiceOverlayParts['transcript']['props'];
+type ChatComposerVoiceOverlayTranscriptProps = {
+  style: ChatComposerVoiceOverlayStyles['transcript'];
+  numberOfLines: number;
+  text: string | null | undefined;
+};
 
 type ChatComposerHandsFreeControlsStyles =
   SharedChatComposerHandsFreeControlsStyleSlots<

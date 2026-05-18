@@ -4050,6 +4050,11 @@ test('keeps the live voice overlay compact by grouping status and transcript int
   assert.match(chatMessageChromeSource, /export function ChatComposerVoiceOverlay/);
   const voiceOverlaySource =
     chatMessageChromeSource.match(/export function ChatComposerVoiceOverlay[\s\S]*?export function ChatComposerHandsFreeControls/)?.[0] ?? '';
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerVoiceOverlay(?:ContainerProps|CardProps|LabelProps|TranscriptProps)\s*=\s+ChatComposerVoiceOverlayParts\['/);
+  assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayContainerProps = \{[\s\S]*?style: ChatComposerVoiceOverlayStyles\['overlay'\];[\s\S]*?pointerEvents: 'none';[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayCardProps = \{[\s\S]*?style: ChatComposerVoiceOverlayStyles\['card'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayLabelProps = \{[\s\S]*?style: ChatComposerVoiceOverlayStyles\['label'\];[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayTranscriptProps = \{[\s\S]*?style: ChatComposerVoiceOverlayStyles\['transcript'\];[\s\S]*?numberOfLines: number;[\s\S]*?text: string \| null \| undefined;[\s\S]*?\};/);
   assert.match(voiceOverlaySource, /const voiceOverlayParts: ChatComposerVoiceOverlayParts =\s+createChatComposerVoiceOverlayMobilePropsParts\(\{\s+isVisible,\s+label,\s+transcript,\s+transcriptNumberOfLines,\s+styles,\s+\}\);/);
   assert.match(voiceOverlaySource, /const voiceOverlayContainer = voiceOverlayParts\.overlay;/);
   assert.match(voiceOverlaySource, /if \(!voiceOverlayContainer\.shouldRender\) return null;/);
