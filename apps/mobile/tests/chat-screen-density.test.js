@@ -267,12 +267,22 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorParts =\s+ChatRuntimeHeaderAgentSelectorMobilePropsParts<[\s\S]*?ChatRuntimeAgentSelectorMobileRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?number,[\s\S]*?ChatRuntimeHeaderAgentSelectorStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorProps = \{[\s\S]*?renderState: ChatRuntimeAgentSelectorMobileRenderState;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorParts = ReturnType<typeof createChatRuntimeHeaderAgentSelectorMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorTouchableProps =\s+ChatRuntimeHeaderAgentSelectorParts\['touchable'\]\['props'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorTouchableContentProps =\s+ChatRuntimeHeaderAgentSelectorParts\['touchable'\]\['content'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorChipProps =\s+ChatRuntimeHeaderAgentSelectorParts\['touchable'\]\['content'\]\['chip'\]\['props'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorChipContentProps =\s+ChatRuntimeHeaderAgentSelectorParts\['touchable'\]\['content'\]\['chip'\]\['content'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorLabelProps =\s+ChatRuntimeHeaderAgentSelectorParts\['touchable'\]\['content'\]\['chip'\]\['content'\]\['label'\]\['props'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorIconProps =\s+ChatRuntimeHeaderAgentSelectorParts\['touchable'\]\['content'\]\['chip'\]\['content'\]\['icon'\]\['props'\];/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorTouchableProps = \{[\s\S]*?children: ReactNode;[\s\S]*?style: StyleProp<ViewStyle>;[\s\S]*?onPress: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?activeOpacity: number;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?accessibilityHint: string \| undefined;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorChipProps = \{[\s\S]*?children: ReactNode;[\s\S]*?style: StyleProp<ViewStyle>;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorLabelProps = \{[\s\S]*?props: \{[\s\S]*?style: StyleProp<TextStyle>;[\s\S]*?numberOfLines: number;[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorIconProps = \{[\s\S]*?name: IoniconName;[\s\S]*?size: number;[\s\S]*?color: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorChipContentProps = \{[\s\S]*?label: \{[\s\S]*?props: ChatRuntimeHeaderAgentSelectorLabelProps;[\s\S]*?icon: \{[\s\S]*?props: ChatRuntimeHeaderAgentSelectorIconProps;/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorTouchableContentProps = \{[\s\S]*?chip: \{[\s\S]*?props: Omit<ChatRuntimeHeaderAgentSelectorChipProps, 'children'>;[\s\S]*?content: ChatRuntimeHeaderAgentSelectorChipContentProps;/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderAgentSelectorMobilePropsParts/);
   const agentSelectorSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderAgentSelector[\s\S]*?export function ChatRuntimeHeaderActionsRow/)?.[0] ?? '';
   assert.match(agentSelectorSource, /const agentSelectorParts: ChatRuntimeHeaderAgentSelectorParts =\s+createChatRuntimeHeaderAgentSelectorMobilePropsParts\(\{\s+renderState,\s+onPress,\s+labelNumberOfLines,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorTouchableContentProps =\s+ChatRuntimeHeaderAgentSelectorParts\['touchable'\]\['content'\];/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderAgentSelectorChipContentProps =\s+ChatRuntimeHeaderAgentSelectorParts\['touchable'\]\['content'\]\['chip'\]\['content'\];/);
   assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorTouchable\s+\{\.\.\.agentSelectorParts\.touchable\.props\}/);
   assert.match(agentSelectorSource, /<ChatRuntimeHeaderAgentSelectorTouchableContent\s+\{\.\.\.agentSelectorParts\.touchable\.content\}\s+\/>/);
   assert.match(agentSelectorSource, /export function ChatRuntimeHeaderAgentSelectorTouchableContent/);

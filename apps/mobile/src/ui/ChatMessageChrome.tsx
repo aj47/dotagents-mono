@@ -1485,27 +1485,50 @@ type ChatRuntimeHeaderAgentSelectorParts =
     ChatRuntimeHeaderAgentSelectorStyles
   >;
 
-type ChatRuntimeHeaderAgentSelectorTouchableProps =
-  ChatRuntimeHeaderAgentSelectorParts['touchable']['props'] & {
-    children: ReactNode;
+type ChatRuntimeHeaderAgentSelectorTouchableProps = {
+  children: ReactNode;
+  style: StyleProp<ViewStyle>;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  activeOpacity: number;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  accessibilityHint: string | undefined;
+};
+
+type ChatRuntimeHeaderAgentSelectorChipProps = {
+  children: ReactNode;
+  style: StyleProp<ViewStyle>;
+};
+
+type ChatRuntimeHeaderAgentSelectorLabelProps = {
+  props: {
+    style: StyleProp<TextStyle>;
+    numberOfLines: number;
   };
+  text: string;
+};
 
-type ChatRuntimeHeaderAgentSelectorTouchableContentProps =
-  ChatRuntimeHeaderAgentSelectorParts['touchable']['content'];
+type ChatRuntimeHeaderAgentSelectorIconProps = {
+  name: IoniconName;
+  size: number;
+  color: string;
+};
 
-type ChatRuntimeHeaderAgentSelectorChipProps =
-  ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['props'] & {
-    children: ReactNode;
+type ChatRuntimeHeaderAgentSelectorChipContentProps = {
+  label: {
+    props: ChatRuntimeHeaderAgentSelectorLabelProps;
   };
+  icon: {
+    props: ChatRuntimeHeaderAgentSelectorIconProps;
+  };
+};
 
-type ChatRuntimeHeaderAgentSelectorChipContentProps =
-  ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['content'];
-
-type ChatRuntimeHeaderAgentSelectorLabelProps =
-  ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['content']['label']['props'];
-
-type ChatRuntimeHeaderAgentSelectorIconProps =
-  ChatRuntimeHeaderAgentSelectorParts['touchable']['content']['chip']['content']['icon']['props'];
+type ChatRuntimeHeaderAgentSelectorTouchableContentProps = {
+  chip: {
+    props: Omit<ChatRuntimeHeaderAgentSelectorChipProps, 'children'>;
+    content: ChatRuntimeHeaderAgentSelectorChipContentProps;
+  };
+};
 
 type ChatRuntimeHeaderActionsRowProps = {
   children: ReactNode;
