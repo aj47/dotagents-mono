@@ -2289,6 +2289,9 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatScreenSource, /createChatMessageRuntimeChromeProps,/);
   assert.match(screenSource, /const chatMessageRuntimeSurface: ChatMessageRuntimeChromePropsInput<PredefinedPromptSummary, Loop> = \{\s+\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.match(chatMessageChromeSource, /export type ChatMessageRuntimeChromePropsInput</);
+  assert.match(chatMessageChromeSource, /styles: \{\s+actionStyles: ChatMessageActionStyleSlots;\s+threadStyles: ChatMessageRuntimeThreadStyleSlots;\s+promptEditorStyles: ChatConversationHomePromptEditorModalStyles;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /threadStyles: ChatMessageConversationRuntimeThreadListProps\['styles'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /promptEditorStyles: ChatConversationHomePromptEditorModalProps\['styles'\]/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /createChatMessageRuntimeSurfaceStyleSlots,/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /import \{[^;]*createChatMessageRuntimeSurfaceStyleSlots[^;]*\} from '\.\/ChatMessageChrome';/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeSurfaceStyleSlots/);

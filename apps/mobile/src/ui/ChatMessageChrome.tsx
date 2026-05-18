@@ -4196,8 +4196,8 @@ export type ChatMessageRuntimeChromePropsInput<
   spinnerSource: ImageSourcePropType;
   styles: {
     actionStyles: ChatMessageActionStyleSlots;
-    threadStyles: ChatMessageConversationRuntimeThreadListProps['styles'];
-    promptEditorStyles: ChatConversationHomePromptEditorModalProps['styles'];
+    threadStyles: ChatMessageRuntimeThreadStyleSlots;
+    promptEditorStyles: ChatConversationHomePromptEditorModalStyles;
   };
   composer: Omit<ChatComposerRuntimeDockChromePropsInput, 'chrome' | 'pendingImagesColors' | 'composerControlColors'>;
   dock: Omit<ChatMessageRuntimeDockChromePropsInput, 'composer' | 'colors'>;
