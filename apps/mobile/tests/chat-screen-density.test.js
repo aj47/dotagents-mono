@@ -6271,6 +6271,17 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(screenSource, /const toolActivityGroupBoundaryStyles = \{\s+toggle: \{\s+container: styles\.toolActivityGroupCollapsed,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationThreadStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageConversationThreadStyleSlots/);
+  assert.match(sessionPresentationSource, /export type ChatMessageConversationThreadStyleSlots<\s+TThreadSurfaceStyles,\s+TThreadBodyStyles,\s+TActionStyles,/);
+  assert.match(sessionPresentationSource, /export type ChatMessageRuntimeThreadStyleSlots<\s+TThreadSurfaceStyles,\s+TThreadBodyStyles,/);
+  assert.match(sessionPresentationSource, /\}\): ChatMessageConversationThreadStyleSlots<\s+TThreadSurfaceStyles,\s+TThreadBodyStyles,\s+TActionStyles\s+> \{/);
+  assert.match(sessionPresentationSource, /\}\): ChatMessageRuntimeThreadStyleSlots<\s+TThreadSurfaceStyles,\s+TThreadBodyStyles\s+> \{/);
+  assert.match(sessionPresentationSource, /type ChatMessageConversationThreadStyleSlotsFromStyleSource<[\s\S]*?> = ChatMessageConversationThreadStyleSlots</);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,/);
+  assert.match(chatMessageChromeSource, /export type ChatMessageRuntimeThreadStyleSlots =\s+SharedChatMessageRuntimeThreadStyleSlots<\s+ChatMessageToolActivityGroupThreadSurfaceStyleSlots,\s+ChatMessageThreadBodyStyleSlots\s+>;/);
+  assert.match(chatMessageChromeSource, /export type ChatMessageConversationThreadStyleSlots =\s+SharedChatMessageConversationThreadStyleSlots<\s+ChatMessageToolActivityGroupThreadSurfaceStyleSlots,\s+ChatMessageThreadBodyStyleSlots,\s+ChatMessageActionStyleSlots\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /export type ChatMessageRuntimeThreadStyleSlots = \{\s+surface: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;/);
+  assert.doesNotMatch(chatMessageChromeSource, /export type ChatMessageConversationThreadStyleSlots = \{\s+runtimeThread: ChatMessageRuntimeThreadStyleSlots;/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolActivityGroupBoundaryStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageToolActivityGroupBoundaryStyles/);

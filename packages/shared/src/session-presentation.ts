@@ -28770,16 +28770,27 @@ export function createChatMessageRuntimeSurfaceStyleSlots<
   }
 }
 
-export function createChatMessageRuntimeThreadStyleSlots<TThreadSurfaceStyles, TThreadBodyStyles>({
+export type ChatMessageRuntimeThreadStyleSlots<
+  TThreadSurfaceStyles,
+  TThreadBodyStyles,
+> = {
+  surface: TThreadSurfaceStyles
+  body: TThreadBodyStyles
+}
+
+export function createChatMessageRuntimeThreadStyleSlots<
+  TThreadSurfaceStyles,
+  TThreadBodyStyles,
+>({
   threadSurfaceStyles,
   threadBodyStyles,
 }: {
   threadSurfaceStyles: TThreadSurfaceStyles
   threadBodyStyles: TThreadBodyStyles
-}): {
-  surface: TThreadSurfaceStyles
-  body: TThreadBodyStyles
-} {
+}): ChatMessageRuntimeThreadStyleSlots<
+  TThreadSurfaceStyles,
+  TThreadBodyStyles
+> {
   return {
     surface: threadSurfaceStyles,
     body: threadBodyStyles,
@@ -29397,6 +29408,18 @@ export function createChatMessageToolActivityGroupThreadSurfaceStyleSlots<
   }
 }
 
+export type ChatMessageConversationThreadStyleSlots<
+  TThreadSurfaceStyles,
+  TThreadBodyStyles,
+  TActionStyles,
+> = {
+  runtimeThread: ChatMessageRuntimeThreadStyleSlots<
+    TThreadSurfaceStyles,
+    TThreadBodyStyles
+  >
+  actionSet: TActionStyles
+}
+
 export function createChatMessageConversationThreadStyleSlots<
   TThreadSurfaceStyles,
   TThreadBodyStyles,
@@ -29409,13 +29432,11 @@ export function createChatMessageConversationThreadStyleSlots<
   threadSurfaceStyles: TThreadSurfaceStyles
   threadBodyStyles: TThreadBodyStyles
   actionStyles: TActionStyles
-}): {
-  runtimeThread: {
-    surface: TThreadSurfaceStyles
-    body: TThreadBodyStyles
-  }
-  actionSet: TActionStyles
-} {
+}): ChatMessageConversationThreadStyleSlots<
+  TThreadSurfaceStyles,
+  TThreadBodyStyles,
+  TActionStyles
+> {
   return {
     runtimeThread: createChatMessageRuntimeThreadStyleSlots({
       threadSurfaceStyles,
@@ -29530,17 +29551,15 @@ type ChatMessageConversationThreadStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationThreadStyleSource,
   TToneStyleSlot,
   TToneStyle,
-> = {
-  runtimeThread: {
-    surface: {
-      surfaceStyle: TStyles["msg"]
-      boundary: ChatMessageToolActivityGroupBoundaryStylesFromStyleSource<TStyles>
-      getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
-    }
-    body: ChatMessageThreadBodyStyleSlots<TStyles>
-  }
-  actionSet: ChatMessageActionStylesFromStyleSource<TStyles>
-}
+> = ChatMessageConversationThreadStyleSlots<
+  {
+    surfaceStyle: TStyles["msg"]
+    boundary: ChatMessageToolActivityGroupBoundaryStylesFromStyleSource<TStyles>
+    getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
+  },
+  ChatMessageThreadBodyStyleSlots<TStyles>,
+  ChatMessageActionStylesFromStyleSource<TStyles>
+>
 
 export function createChatMessageConversationThreadStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationThreadStyleSource,

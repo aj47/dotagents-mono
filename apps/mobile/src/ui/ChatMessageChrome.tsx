@@ -354,6 +354,8 @@ import {
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageExpansionMobileRenderState,
   type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,
+  type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
+  type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageRuntimeSessionDisplayMessagesOptions,
@@ -4910,15 +4912,18 @@ type ChatMessageConversationThreadBodySharedInput =
 
 type ChatMessageConversationThreadBodyInput = ChatMessageConversationThreadBodySharedInput;
 
-export type ChatMessageRuntimeThreadStyleSlots = {
-  surface: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;
-  body: ChatMessageThreadBodyStyleSlots;
-};
+export type ChatMessageRuntimeThreadStyleSlots =
+  SharedChatMessageRuntimeThreadStyleSlots<
+    ChatMessageToolActivityGroupThreadSurfaceStyleSlots,
+    ChatMessageThreadBodyStyleSlots
+  >;
 
-export type ChatMessageConversationThreadStyleSlots = {
-  runtimeThread: ChatMessageRuntimeThreadStyleSlots;
-  actionSet: ChatMessageActionStyleSlots;
-};
+export type ChatMessageConversationThreadStyleSlots =
+  SharedChatMessageConversationThreadStyleSlots<
+    ChatMessageToolActivityGroupThreadSurfaceStyleSlots,
+    ChatMessageThreadBodyStyleSlots,
+    ChatMessageActionStyleSlots
+  >;
 
 type ChatMessageRuntimeThreadProps = Omit<
   ChatMessageToolActivityGroupThreadSurfaceProps,
