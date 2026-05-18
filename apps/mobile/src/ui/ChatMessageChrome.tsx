@@ -295,7 +295,6 @@ import {
   type ChatRuntimeTurnDurationBadgeMobilePropsPartsInput,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
   type ChatRuntimeTurnDurationMessageMobileRenderState,
-  type ChatRuntimeDebugPanelsMobileRenderState,
   type ChatRuntimeDebugPanelStackMobilePropsPartsInput,
   type ChatRuntimeInlineActivityMobileRenderState,
   type ChatRuntimeLoadingStateMobileRenderState,
@@ -4148,7 +4147,11 @@ type ChatMessageLoadingStateContainerProps = {
   style: StyleProp<ViewStyle>;
 };
 
-type ChatMessageDebugPanelRow = ChatRuntimeDebugPanelsMobileRenderState['requestRows'][number];
+type ChatMessageDebugPanelRow = {
+  key: string;
+  text: string;
+};
+
 type ChatMessageDebugPanelRowProps = ChatMessageDebugPanelRow & {
   props: {
     style: StyleProp<TextStyle>;
@@ -4167,20 +4170,20 @@ type ChatMessageDebugPanelProps = {
 
 type ChatMessageDebugPanelStackProps =
   ChatRuntimeDebugPanelStackMobilePropsPartsInput<
-    ChatRuntimeDebugPanelsMobileRenderState['requestShouldRender'],
-    ChatRuntimeDebugPanelsMobileRenderState['requestRows'],
-    ChatRuntimeDebugPanelsMobileRenderState['voiceShouldRender'],
-    ChatRuntimeDebugPanelsMobileRenderState['voiceRows'],
+    boolean,
+    readonly ChatMessageDebugPanelRow[],
+    boolean,
+    readonly ChatMessageDebugPanelRow[],
     StyleProp<ViewStyle>,
     StyleProp<TextStyle>
   >;
 
 type ChatMessageDebugPanelStackParts =
   ChatRuntimeDebugPanelStackMobilePropsParts<
-    ChatRuntimeDebugPanelsMobileRenderState['requestShouldRender'],
-    ChatRuntimeDebugPanelsMobileRenderState['requestRows'],
-    ChatRuntimeDebugPanelsMobileRenderState['voiceShouldRender'],
-    ChatRuntimeDebugPanelsMobileRenderState['voiceRows'],
+    boolean,
+    readonly ChatMessageDebugPanelRow[],
+    boolean,
+    readonly ChatMessageDebugPanelRow[],
     StyleProp<ViewStyle>,
     StyleProp<TextStyle>
   >;

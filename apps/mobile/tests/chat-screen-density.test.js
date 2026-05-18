@@ -8689,9 +8689,11 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(sessionPresentationSource, /\{ key: "voice-debug-title", text: handsFreeCopy\.debug\.voiceDebugTitle \}/);
   assert.match(sessionPresentationSource, /text: formatVoiceDebugEntry\(entry\)/);
   assert.match(chatMessageChromeSource, /<ChatMessageDebugPanelStack\s+\{\.\.\.viewportParts\.debugPanels\.props\}/);
-  assert.match(chatMessageChromeSource, /ChatRuntimeDebugPanelsMobileRenderState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatRuntimeDebugPanelsMobileRenderState,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeDebugPanelStackMobilePropsPartsInput,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageDebugPanelStackProps =\s+ChatRuntimeDebugPanelStackMobilePropsPartsInput<\s+ChatRuntimeDebugPanelsMobileRenderState\['requestShouldRender'\],[\s\S]*?ChatRuntimeDebugPanelsMobileRenderState\['voiceRows'\],[\s\S]*?StyleProp<TextStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatRuntimeDebugPanelsMobileRenderState\['(requestShouldRender|requestRows|voiceShouldRender|voiceRows)'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDebugPanelRow = \{[\s\S]*?key: string;[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDebugPanelStackProps =\s+ChatRuntimeDebugPanelStackMobilePropsPartsInput<\s+boolean,\s+readonly ChatMessageDebugPanelRow\[\],[\s\S]*?boolean,\s+readonly ChatMessageDebugPanelRow\[\],[\s\S]*?StyleProp<TextStyle>\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDebugPanelStackProps = ChatRuntimeDebugPanelsMobileRenderState & \{[\s\S]*?panelStyle: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.doesNotMatch(screenSource, /panelStyle=\{conversationViewportStyles\.debugPanels\.panelStyle\}\s+textStyle=\{conversationViewportStyles\.debugPanels\.textStyle\}/);
   assert.doesNotMatch(screenSource, /panelStyle=\{styles\.debugInfo\}\s+textStyle=\{styles\.debugText\}/);
@@ -8705,7 +8707,7 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   const debugPanelStackSource =
     chatMessageChromeSource.match(/export function ChatMessageDebugPanelStack[\s\S]*?export function ChatMessageConversationDock/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /type ChatRuntimeDebugPanelStackMobilePropsParts,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageDebugPanelStackParts =\s+ChatRuntimeDebugPanelStackMobilePropsParts<\s+ChatRuntimeDebugPanelsMobileRenderState\['requestShouldRender'\],[\s\S]*?ChatRuntimeDebugPanelsMobileRenderState\['requestRows'\],[\s\S]*?ChatRuntimeDebugPanelsMobileRenderState\['voiceShouldRender'\],[\s\S]*?ChatRuntimeDebugPanelsMobileRenderState\['voiceRows'\],[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<TextStyle>\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDebugPanelStackParts =\s+ChatRuntimeDebugPanelStackMobilePropsParts<\s+boolean,\s+readonly ChatMessageDebugPanelRow\[\],[\s\S]*?boolean,\s+readonly ChatMessageDebugPanelRow\[\],[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<TextStyle>\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDebugPanelStackParts = ReturnType<typeof createChatRuntimeDebugPanelStackMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeDebugPanelStackMobilePropsPartsInput</);
   assert.match(debugPanelStackSource, /const debugPanelStackParts: ChatMessageDebugPanelStackParts =\s+createChatRuntimeDebugPanelStackMobilePropsParts\(\{\s+requestShouldRender,\s+requestRows,\s+voiceShouldRender,\s+voiceRows,\s+panelStyle,\s+textStyle,\s+\}\);/);
