@@ -8735,6 +8735,9 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.doesNotMatch(screenSource, /const hasLiveAgentTurn =/);
   assert.doesNotMatch(screenSource, /const \[turnNow, setTurnNow\]/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeTurnDurations/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeTurnDurations,/);
+  assert.match(chatMessageChromeSource, /\}: ChatMessageRuntimeTurnDurationStateInput\): ChatMessageRuntimeTurnDurations/);
+  assert.doesNotMatch(chatMessageChromeSource, /ReturnType<typeof computeChatMessageRuntimeTurnDurations>/);
   assert.match(chatMessageChromeSource, /const hasLiveAgentTurn = hasChatMessageRuntimeLiveAgentTurn\(\{\s+conversationState,\s+isResponding,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const \[turnNow, setTurnNow\] = useState\(\(\) => Date\.now\(\)\);/);
   assert.match(chatMessageChromeSource, /const id = setInterval\(\(\) => setTurnNow\(Date\.now\(\)\), 1000\);/);
@@ -8751,6 +8754,9 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(sessionPresentationSource, /computeTurnDurations,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function computeChatMessageRuntimeTurnDurations/);
   assert.match(sessionPresentationSource, /export function computeChatMessageRuntimeTurnDurations/);
+  assert.match(sessionPresentationSource, /export type ChatMessageRuntimeTurnDurations = TurnDurationsResult/);
+  assert.match(sessionPresentationSource, /computeChatMessageRuntimeTurnDurations\(\s+messages: TurnDurationMessage\[\],\s+isComplete: boolean,\s+nowMs: number,\s+\): ChatMessageRuntimeTurnDurations/);
+  assert.doesNotMatch(sessionPresentationSource, /computeChatMessageRuntimeTurnDurations\([\s\S]*?\): ReturnType<typeof computeTurnDurations>/);
   assert.match(sessionPresentationSource, /return computeTurnDurations\(messages, isComplete, nowMs\)/);
   assert.doesNotMatch(chatMessageChromeSource, /export function hasChatMessageRuntimeLiveAgentTurn/);
   assert.match(sessionPresentationSource, /export function hasChatMessageRuntimeLiveAgentTurn/);

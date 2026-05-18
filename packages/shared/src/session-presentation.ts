@@ -616,6 +616,7 @@ import {
   createTurnDurationMessages,
   formatTurnDuration,
   type TurnDurationMessage,
+  type TurnDurationsResult,
 } from "./turn-duration"
 
 export type SessionLifecycleState = AgentConversationState
@@ -15219,6 +15220,8 @@ export interface ChatMessageRuntimeTurnDurationStateInput {
   isResponding?: boolean
 }
 
+export type ChatMessageRuntimeTurnDurations = TurnDurationsResult
+
 export interface ChatMessageRuntimeLogMeta {
   length: number
   inlineImageCount: number
@@ -16019,7 +16022,7 @@ export function computeChatMessageRuntimeTurnDurations(
   messages: TurnDurationMessage[],
   isComplete: boolean,
   nowMs: number,
-): ReturnType<typeof computeTurnDurations> {
+): ChatMessageRuntimeTurnDurations {
   return computeTurnDurations(messages, isComplete, nowMs)
 }
 

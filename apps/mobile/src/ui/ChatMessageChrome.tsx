@@ -436,6 +436,7 @@ import {
   type ChatMessageRuntimeToolApprovalExpansionState,
   type ChatMessageRuntimeToolApprovalStateMessageLike,
   type ChatMessageRuntimeToolCallExpansionState,
+  type ChatMessageRuntimeTurnDurations,
   type ChatMessageRuntimeTurnDurationStateInput,
   type ToolActivityGroupMobileRenderState,
   type ToolExecutionCompactMobileRenderState,
@@ -7081,7 +7082,7 @@ export function useChatMessageRuntimeTurnDurations({
   messages,
   conversationState,
   isResponding = false,
-}: ChatMessageRuntimeTurnDurationStateInput): ReturnType<typeof computeChatMessageRuntimeTurnDurations> {
+}: ChatMessageRuntimeTurnDurationStateInput): ChatMessageRuntimeTurnDurations {
   const hasLiveAgentTurn = hasChatMessageRuntimeLiveAgentTurn({
     conversationState,
     isResponding,
