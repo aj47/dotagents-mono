@@ -7079,6 +7079,12 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(responseHistoryPanelSource, /const responseHistoryStyleSheetSlots = useMemo\(\s+\(\) => createStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+\}\),\s+\[createStyleSheetSlots, responseHistoryRenderState\],\s+\);/);
   assert.match(responseHistoryPanelSource, /const responseHistoryParts = useMemo<ResponseHistoryPanelParts>\(\s+\(\) => createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\),\s+\[onSpeakResponse, onToggleCollapsed, responseHistoryRenderState, styles\],\s+\);/);
   assert.match(responseHistoryPanelSource, /const styles = useMemo<ResponseHistoryPanelStyles>\(\s+\(\) => StyleSheet\.create\(\{\s+\.\.\.responseHistoryStyleSheetSlots,\s+\}\),\s+\[responseHistoryStyleSheetSlots\],\s+\);/);
+  assert.match(responseHistoryPanelSource, /type ResponseHistoryPanelListParts = Extract<\s+ResponseHistoryPanelParts\['list'\],\s+\{ shouldRender: true \}\s+>;/);
+  assert.match(responseHistoryPanelSource, /type ResponseHistoryPanelListItemPart = ResponseHistoryPanelListParts\['items'\]\[number\];/);
+  assert.match(responseHistoryPanelSource, /const AnimatedResponseItem = React\.memo\(function AnimatedResponseItem/);
+  assert.match(responseHistoryPanelSource, /const ResponseHistoryListItem = React\.memo\(function ResponseHistoryListItem\(\{/);
+  assert.match(responseHistoryPanelSource, /<MarkdownRenderer\s+content=\{item\.entry\.text\}\s+assetBaseUrl=\{remoteBaseUrl\}\s+assetAuthToken=\{remoteApiKey\}/);
+  assert.match(responseHistoryPanelSource, /responseHistoryParts\.list\.items\.map\(\(item\) => \(\s+<ResponseHistoryListItem\s+key=\{item\.key\}\s+item=\{item\}\s+remoteBaseUrl=\{remoteBaseUrl\}\s+remoteApiKey=\{remoteApiKey\}/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistoryStyleSlots\.container/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistoryStyleSlots\.header/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistoryStyleSlots\.responseItem/);
@@ -7096,7 +7102,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(responseHistoryPanelSource, /showsVerticalScrollIndicator=\{responseHistoryParts\.list\.showsVerticalScrollIndicator\}/);
   assert.match(responseHistoryPanelSource, /<TouchableOpacity\s+\{\.\.\.item\.speakButton\.props\}/);
   assert.doesNotMatch(responseHistoryPanelSource, /onPress=\{item\.speakButton\.onPress\}/);
-  assert.match(responseHistoryPanelSource, /responseHistoryParts\.list\.items\.map\(\(item\) => \{/);
+  assert.match(responseHistoryPanelSource, /responseHistoryParts\.list\.items\.map\(\(item\) => \(\s+<ResponseHistoryListItem/);
   assert.match(responseHistoryPanelSource, /item\.separator\.shouldRender \? <View \{\.\.\.item\.separator\.props\} \/> : null/);
   assert.doesNotMatch(responseHistoryPanelSource, /item\.separator && <View style=\{item\.separator\.style\} \/>/);
   assert.doesNotMatch(responseHistoryPanelSource, /item\.shouldRenderSeparator &&/);

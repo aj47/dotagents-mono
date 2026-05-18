@@ -60,18 +60,27 @@ type ResponseHistoryPanelParts =
     ResponseHistoryToggleHandler
   >;
 
-/**
- * Animated wrapper for response items - fades in when first rendered as newest
- */
-function AnimatedResponseItem({
-  children,
-  isNewest,
-  animation,
-}: {
+type ResponseHistoryPanelListParts = Extract<
+  ResponseHistoryPanelParts['list'],
+  { shouldRender: true }
+>;
+
+type ResponseHistoryPanelListItemPart = ResponseHistoryPanelListParts['items'][number];
+
+interface AnimatedResponseItemProps {
   children: React.ReactNode;
   isNewest: boolean;
   animation: AgentResponseHistoryMobileAnimationState;
-}) {
+}
+
+/**
+ * Animated wrapper for response items - fades in when first rendered as newest
+ */
+const AnimatedResponseItem = React.memo(function AnimatedResponseItem({
+  children,
+  isNewest,
+  animation,
+}: AnimatedResponseItemProps) {
   const fadeAnim = useRef(
     new Animated.Value(
       isNewest
@@ -102,7 +111,49 @@ function AnimatedResponseItem({
       {children}
     </Animated.View>
   );
+});
+
+interface ResponseHistoryListItemProps {
+  item: ResponseHistoryPanelListItemPart;
+  remoteBaseUrl?: string;
+  remoteApiKey?: string;
 }
+
+const ResponseHistoryListItem = React.memo(function ResponseHistoryListItem({
+  item,
+  remoteBaseUrl,
+  remoteApiKey,
+}: ResponseHistoryListItemProps) {
+  return (
+    <>
+      {item.separator.shouldRender ? <View {...item.separator.props} /> : null}
+      <AnimatedResponseItem
+        isNewest={item.animated.isNewest}
+        animation={item.animated.animation}
+      >
+        <View {...item.container.props}>
+          <View {...item.header.props}>
+            <Text {...item.timestamp.props}>
+              {item.timestamp.text}
+            </Text>
+            <TouchableOpacity
+              {...item.speakButton.props}
+            >
+              <Ionicons
+                {...item.speakIcon.props}
+              />
+            </TouchableOpacity>
+          </View>
+          <MarkdownRenderer
+            content={item.entry.text}
+            assetBaseUrl={remoteBaseUrl}
+            assetAuthToken={remoteApiKey}
+          />
+        </View>
+      </AnimatedResponseItem>
+    </>
+  );
+});
 
 export function ResponseHistoryPanel({
   responses,
@@ -190,37 +241,14 @@ export function ResponseHistoryPanel({
         <ScrollView
           {...responseHistoryParts.list.props}
         >
-          {responseHistoryParts.list.items.map((item) => {
-            return (
-              <React.Fragment key={item.key}>
-                {item.separator.shouldRender ? <View {...item.separator.props} /> : null}
-                <AnimatedResponseItem
-                  isNewest={item.animated.isNewest}
-                  animation={item.animated.animation}
-                >
-                  <View {...item.container.props}>
-                    <View {...item.header.props}>
-                      <Text {...item.timestamp.props}>
-                        {item.timestamp.text}
-                      </Text>
-                      <TouchableOpacity
-                        {...item.speakButton.props}
-                      >
-                        <Ionicons
-                          {...item.speakIcon.props}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                    <MarkdownRenderer
-                      content={item.entry.text}
-                      assetBaseUrl={remoteBaseUrl}
-                      assetAuthToken={remoteApiKey}
-                    />
-                  </View>
-                </AnimatedResponseItem>
-              </React.Fragment>
-            );
-          })}
+          {responseHistoryParts.list.items.map((item) => (
+            <ResponseHistoryListItem
+              key={item.key}
+              item={item}
+              remoteBaseUrl={remoteBaseUrl}
+              remoteApiKey={remoteApiKey}
+            />
+          ))}
         </ScrollView>
       ) : null}
     </View>
