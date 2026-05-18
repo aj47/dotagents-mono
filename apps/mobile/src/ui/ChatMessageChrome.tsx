@@ -8966,13 +8966,24 @@ export function useChatMessageRuntimeResponseHistoryPanelChromeState({
     ttsVoiceId,
   ]);
 
-  return {
-    isCollapsed,
-    shouldAnimateNewest,
-    speakingIndex,
-    onToggleCollapsed,
-    onSpeakResponse,
-  };
+  const responseHistoryPanelChromeState = useMemo<ChatMessageRuntimeResponseHistoryPanelChromeState>(
+    () => ({
+      isCollapsed,
+      shouldAnimateNewest,
+      speakingIndex,
+      onToggleCollapsed,
+      onSpeakResponse,
+    }),
+    [
+      isCollapsed,
+      onSpeakResponse,
+      onToggleCollapsed,
+      shouldAnimateNewest,
+      speakingIndex,
+    ],
+  );
+
+  return responseHistoryPanelChromeState;
 }
 
 export function useChatMessageRuntimeQueuePanelDockChromeState({
@@ -8988,10 +8999,15 @@ export function useChatMessageRuntimeQueuePanelDockChromeState({
     setIsListCollapsed((current) => !current);
   }, []);
 
-  return {
-    isListCollapsed,
-    onToggleListCollapsed,
-  };
+  const queuePanelDockChromeState = useMemo<ChatMessageRuntimeQueuePanelDockChromeState>(
+    () => ({
+      isListCollapsed,
+      onToggleListCollapsed,
+    }),
+    [isListCollapsed, onToggleListCollapsed],
+  );
+
+  return queuePanelDockChromeState;
 }
 
 export function useChatComposerRuntimeEditBeforeSendState(): ChatComposerRuntimeEditBeforeSendState {

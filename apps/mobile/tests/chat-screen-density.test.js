@@ -6875,6 +6875,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /type ChatMessageQueuePanelViewProps = ComponentProps<typeof MessageQueuePanel>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageQueuePanelDockPanelProps = Omit<[\s\S]*?ChatMessageQueuePanelViewProps,[\s\S]*?'isListCollapsed'[\s\S]*?\| 'onToggleListCollapsed'[\s\S]*?\| 'createStyleSheetSlots'[\s\S]*?\| 'createItemStyleSheetSlots'[\s\S]*?> & \{\s+conversationId: string;/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeQueuePanelDockChromeState/);
+  assert.match(chatMessageChromeSource, /const queuePanelDockChromeState = useMemo<ChatMessageRuntimeQueuePanelDockChromeState>\(\s+\(\) => \(\{\s+isListCollapsed,\s+onToggleListCollapsed,\s+\}\),\s+\[isListCollapsed, onToggleListCollapsed\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return queuePanelDockChromeState;/);
   assert.match(chatMessageChromeSource, /const queuePanelChromeState = useChatMessageRuntimeQueuePanelDockChromeState\(\{[\s\S]*?conversationId,[\s\S]*?\}\);/);
   assert.match(chatMessageChromeSource, /if \(!shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageQueuePanelDockContainer\s+\{\.\.\.container\.props\}>[\s\S]*?<MessageQueuePanel\s+\{\.\.\.panelProps\}\s+\{\.\.\.queuePanelChromeState\}[\s\S]*?createStyleSheetSlots=\{createChatRuntimeMessageQueuePanelStyleSheetSlots\}[\s\S]*?createItemStyleSheetSlots=\{createChatRuntimeQueuedMessageItemStyleSheetSlots\}/);
@@ -7076,6 +7078,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(responseHistoryPanelSource, /export type ResponseHistoryPanelColors =\s+Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
   assert.match(messageQueuePanelSource, /export type MessageQueuePanelColors =\s+Parameters<typeof getMessageQueuePanelMobileRenderState>\[0\]\['colors'\][\s\S]*?& Parameters<typeof getQueuedMessageItemMobileRenderState>\[0\]\['colors'\];/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeResponseHistoryPanelChromeState/);
+  assert.match(chatMessageChromeSource, /const responseHistoryPanelChromeState = useMemo<ChatMessageRuntimeResponseHistoryPanelChromeState>\(\s+\(\) => \(\{\s+isCollapsed,\s+shouldAnimateNewest,\s+speakingIndex,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /return responseHistoryPanelChromeState;/);
   assert.match(chatMessageChromeSource, /const panelChromeState = useChatMessageRuntimeResponseHistoryPanelChromeState\(panelProps\);/);
   assert.match(chatMessageChromeSource, /<ResponseHistoryPanel\s+responses=\{responses\}\s+colors=\{colors\}\s+remoteBaseUrl=\{remoteBaseUrl\}\s+remoteApiKey=\{remoteApiKey\}\s+createStyleSheetSlots=\{createChatRuntimeResponseHistoryPanelStyleSheetSlots\}\s+\{\.\.\.panelChromeState\}/);
   assert.doesNotMatch(chatMessageChromeSource, /return <ResponseHistoryPanel \{\.\.\.panelProps\} \/>;/);
