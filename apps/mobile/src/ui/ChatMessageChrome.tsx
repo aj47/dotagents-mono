@@ -3896,21 +3896,33 @@ type ChatMessageToolExecutionPayloadMetaParts =
     ChatMessageToolExecutionPayloadMetaStyles
   >;
 
-type ChatMessageToolExecutionPayloadMetaRowProps =
-  ChatMessageToolExecutionPayloadMetaParts['row']['props'] & {
-    children: ReactNode;
+type ChatMessageToolExecutionPayloadMetaTextProps = {
+  props: {
+    style: StyleProp<TextStyle>;
   };
-
-type ChatMessageToolExecutionPayloadMetaContentProps =
-  ChatMessageToolExecutionPayloadMetaParts['content'];
-
-type ChatMessageToolExecutionPayloadMetaPayloadTypeBlockProps = {
-  payloadType: ChatMessageToolExecutionPayloadMetaParts['content']['payloadType'];
+  text: string;
 };
 
-type ChatMessageToolExecutionPayloadMetaTextProps =
-  | ChatMessageToolExecutionPayloadMetaParts['content']['label']['props']
-  | ChatMessageToolExecutionPayloadMetaParts['content']['payloadType']['props'];
+type ChatMessageToolExecutionPayloadMetaPayloadTypePart = {
+  shouldRender: boolean;
+  props: ChatMessageToolExecutionPayloadMetaTextProps;
+};
+
+type ChatMessageToolExecutionPayloadMetaContentProps = {
+  label: {
+    props: ChatMessageToolExecutionPayloadMetaTextProps;
+  };
+  payloadType: ChatMessageToolExecutionPayloadMetaPayloadTypePart;
+};
+
+type ChatMessageToolExecutionPayloadMetaPayloadTypeBlockProps = {
+  payloadType: ChatMessageToolExecutionPayloadMetaPayloadTypePart;
+};
+
+type ChatMessageToolExecutionPayloadMetaRowProps = {
+  style: ChatMessageToolExecutionPayloadMetaStyles['row'];
+  children: ReactNode;
+};
 
 type ChatMessageToolExecutionResultHeaderStyles =
   SharedChatMessageToolExecutionResultHeaderStyleSlots<
