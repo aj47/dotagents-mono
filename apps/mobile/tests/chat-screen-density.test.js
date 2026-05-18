@@ -6916,13 +6916,16 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionIconLike,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionIconButtonRenderState,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionIconButtonSpec,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionIconButtonMobileProps,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeConversationActionComponentsMobileProps,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeConversationActionComponentsMobilePropsInput,/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionIcon = ChatRuntimeMessageActionIconLike<IoniconName, number, string>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionIconButtonProps =\s+ChatRuntimeMessageActionIconButtonMobileProps<\s+ChatMessageActionIcon,[\s\S]*?GestureResponderEvent[\s\S]*?StyleProp<ViewStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionButtonRenderState =\s+ChatRuntimeMessageActionIconButtonRenderState<\s+ChatMessageActionIcon,[\s\S]*?AccessibilityState,[\s\S]*?boolean\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionButtonSpec =\s+ChatRuntimeMessageActionIconButtonSpec<\s+ChatMessageActionIcon,[\s\S]*?GestureResponderEvent[\s\S]*?StyleProp<ViewStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionComponentsInput =\s+ChatRuntimeConversationActionComponentsMobileProps<\s+ChatMessageTurnDurationActionSpec,[\s\S]*?ChatMessageExpansionActionSpec\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionSetInput =\s+ChatRuntimeConversationActionComponentsMobilePropsInput<\s+ChatMessageTurnDurationActionSpecInput,[\s\S]*?ChatMessageExpansionActionSpecInput\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionIconButtonProps = \{[\s\S]*?icon: ChatMessageActionIcon;[\s\S]*?disabledStyle\?: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionButtonRenderState = \{[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?icon: ChatMessageActionIcon;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionButtonSpec = \{[\s\S]*?renderState: ChatMessageActionButtonRenderState;[\s\S]*?disabledStyle\?: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionComponentsInput = \{[\s\S]*?availability: ChatRuntimeConversationMessageActionsMobileRenderState\['availability'\];[\s\S]*?expansion: ChatMessageExpansionActionSpec;[\s\S]*?\};/);

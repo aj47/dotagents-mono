@@ -337,6 +337,7 @@ import {
   type ChatRuntimeMessageActionIconLike,
   type ChatRuntimeMessageActionIconButtonRenderState,
   type ChatRuntimeMessageActionIconButtonSpec,
+  type ChatRuntimeMessageActionIconButtonMobileProps,
   type ChatRuntimeInlineActivityMobilePropsParts,
   type ChatRuntimeMessageActionIconButtonMobilePropsParts,
   type ChatRuntimeMessageActionSlotListMobilePropsParts,
@@ -1201,22 +1202,19 @@ type ChatRuntimeConnectionRetryActionState = {
 
 type ChatMessageActionIcon = ChatRuntimeMessageActionIconLike<IoniconName, number, string>;
 
-type ChatMessageActionIconButtonProps = {
-  icon: ChatMessageActionIcon;
-  onPress?: (event: GestureResponderEvent) => void;
-  disabled?: boolean;
-  isActive?: boolean;
-  accessibilityRole: AccessibilityRole;
-  accessibilityLabel: string;
-  accessibilityHint?: string;
-  accessibilityState?: AccessibilityState;
-  ariaExpanded?: boolean;
-  hitSlop?: number | Insets;
-  style: StyleProp<ViewStyle>;
-  activeStyle?: StyleProp<ViewStyle>;
-  pressedStyle?: StyleProp<ViewStyle>;
-  disabledStyle?: StyleProp<ViewStyle>;
-};
+type ChatMessageActionIconButtonProps =
+  ChatRuntimeMessageActionIconButtonMobileProps<
+    ChatMessageActionIcon,
+    (event: GestureResponderEvent) => void,
+    AccessibilityRole,
+    AccessibilityState,
+    boolean,
+    number | Insets,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatMessageActionIconButtonParts =
   ChatRuntimeMessageActionIconButtonMobilePropsParts<
