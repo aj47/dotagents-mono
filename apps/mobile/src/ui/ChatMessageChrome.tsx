@@ -449,7 +449,7 @@ import {
 } from '@dotagents/shared/session-presentation';
 import { AgentSelectorSheet, type AgentSelectorSheetProps } from './AgentSelectorSheet';
 import { HandsFreeStatusChip, type HandsFreeStatusChipProps } from './HandsFreeStatusChip';
-import { MarkdownRenderer } from './MarkdownRenderer';
+import { MarkdownRenderer, type MarkdownRendererProps } from './MarkdownRenderer';
 import {
   MessageQueuePanel,
   type MessageQueuePanelColors,
@@ -5859,12 +5859,16 @@ type ChatMessageContentBodyProps = {
 type ChatMessageExpandedContentStyles =
   ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['content']['streamingStyles'];
 
+type ChatMessageMarkdownContent = MarkdownRendererProps['content'];
+type ChatMessageMarkdownAssetBaseUrl = MarkdownRendererProps['assetBaseUrl'];
+type ChatMessageMarkdownAssetAuthToken = MarkdownRendererProps['assetAuthToken'];
+
 type ChatMessageExpandedContentProps =
   ChatRuntimeConversationExpandedContentMobilePropsPartsInput<
     ChatRuntimeStreamingContentMobileRenderState,
-    string,
-    string,
-    string,
+    ChatMessageMarkdownContent,
+    ChatMessageMarkdownAssetBaseUrl,
+    ChatMessageMarkdownAssetAuthToken,
     ImageSourcePropType,
     ChatMessageExpandedContentStyles
   >;
@@ -5872,9 +5876,9 @@ type ChatMessageExpandedContentProps =
 type ChatMessageExpandedContentParts =
   ChatRuntimeConversationExpandedContentMobilePropsParts<
     ChatRuntimeStreamingContentMobileRenderState,
-    string,
-    string,
-    string,
+    ChatMessageMarkdownContent,
+    ChatMessageMarkdownAssetBaseUrl,
+    ChatMessageMarkdownAssetAuthToken,
     ImageSourcePropType,
     ChatMessageExpandedContentStyles
   >;

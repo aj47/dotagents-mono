@@ -6546,7 +6546,11 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentStyles = \{\s+header: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentProps =\s+ChatRuntimeConversationExpandedContentMobilePropsPartsInput<\s+ChatRuntimeStreamingContentMobileRenderState,[\s\S]*?ImageSourcePropType,[\s\S]*?ChatMessageExpandedContentStyles\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentProps = \{[\s\S]*?streamingRenderState: ChatRuntimeStreamingContentMobileRenderState;[\s\S]*?streamingStyles: ChatMessageExpandedContentStyles;[\s\S]*?\};/);
-  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentParts =\s+ChatRuntimeConversationExpandedContentMobilePropsParts<\s+ChatRuntimeStreamingContentMobileRenderState,[\s\S]*?string,[\s\S]*?string,[\s\S]*?string,[\s\S]*?ImageSourcePropType,[\s\S]*?ChatMessageExpandedContentStyles/);
+  assert.match(chatMessageChromeSource, /import \{ MarkdownRenderer, type MarkdownRendererProps \} from '\.\/MarkdownRenderer';/);
+  assert.match(chatMessageChromeSource, /type ChatMessageMarkdownContent = MarkdownRendererProps\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageMarkdownAssetBaseUrl = MarkdownRendererProps\['assetBaseUrl'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageMarkdownAssetAuthToken = MarkdownRendererProps\['assetAuthToken'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentParts =\s+ChatRuntimeConversationExpandedContentMobilePropsParts<\s+ChatRuntimeStreamingContentMobileRenderState,[\s\S]*?ChatMessageMarkdownContent,[\s\S]*?ChatMessageMarkdownAssetBaseUrl,[\s\S]*?ChatMessageMarkdownAssetAuthToken,[\s\S]*?ImageSourcePropType,[\s\S]*?ChatMessageExpandedContentStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentParts =\s+ChatRuntimeConversationExpandedContentMobilePropsParts<[\s\S]*?ChatMessageExpandedContentProps\['streamingRenderState'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentParts = ReturnType<typeof createChatRuntimeConversationExpandedContentMobilePropsParts/);
   const expandedContentTypes =
