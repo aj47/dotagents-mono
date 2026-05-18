@@ -6997,9 +6997,13 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   const actionSlotListSource =
     chatMessageChromeSource.match(/export function ChatMessageActionSlotList[\s\S]*$/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageActionSlotListMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionSlotListMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionSlotListMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListProps =\s+ChatRuntimeMessageActionSlotListMobilePropsPartsInput<\s+ChatMessageActionEntry,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListParts =\s+ChatRuntimeMessageActionSlotListMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?ChatMessageActionSlotListProps\['rowStyle'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionSlotListProps = \{[\s\S]*?entries: readonly ChatMessageActionEntry\[\];[\s\S]*?rowStyle\?: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionSlotListParts = ReturnType<typeof createChatRuntimeMessageActionSlotListMobilePropsParts/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageActionSlotListMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionSlotListMobilePropsParts/);
   assert.match(actionSlotListSource, /const actionSlotListParts: ChatMessageActionSlotListParts =\s+createChatRuntimeMessageActionSlotListMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
   assert.match(actionSlotListSource, /const actionSlotList = actionSlotListParts\.list;/);
@@ -7019,12 +7023,16 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageContentRowMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageStandaloneActionsMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageContentRowMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageStandaloneActionsMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatMessageContentRowParts =\s+ChatRuntimeMessageContentRowMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?ChatMessageContentRowProps\['rowStyle'\],[\s\S]*?ChatMessageContentRowProps\['bodyStyle'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRowParts = ReturnType<typeof createChatRuntimeMessageContentRowMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /type ChatMessageStandaloneActionsProps =\s+ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput<\s+ChatMessageActionEntry,[\s\S]*?ChatMessageActionSlotListProps\['rowStyle'\]\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageStandaloneActionsParts =\s+ChatRuntimeMessageStandaloneActionsMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?ChatMessageStandaloneActionsProps\['rowStyle'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStandaloneActionsProps = ChatMessageActionSlotListProps & \{[\s\S]*?shouldRender: boolean;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStandaloneActionsParts = ReturnType<typeof createChatRuntimeMessageStandaloneActionsMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageContentRowMobilePropsParts/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageStandaloneActionsMobilePropsParts/);
   assert.match(contentRowSource, /const contentRowParts: ChatMessageContentRowParts =\s+createChatRuntimeMessageContentRowMobilePropsParts\(\{\s+shouldRenderActionSlots,\s+entries,\s+rowStyle,\s+bodyStyle,\s+\}\);/);
   assert.match(contentRowSource, /<ChatMessageContentRowContainer\s+\{\.\.\.contentRowParts\.row\.props\}[\s\S]*?contentRowParts\.body\.shouldRender \? \(/);

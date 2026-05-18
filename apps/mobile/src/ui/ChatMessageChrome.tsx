@@ -340,7 +340,9 @@ import {
   type ChatRuntimeMessageActionIconButtonMobileProps,
   type ChatRuntimeInlineActivityMobilePropsParts,
   type ChatRuntimeMessageActionIconButtonMobilePropsParts,
+  type ChatRuntimeMessageActionSlotListMobilePropsPartsInput,
   type ChatRuntimeMessageActionSlotListMobilePropsParts,
+  type ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput,
   type ChatRuntimeMessageContentRowMobilePropsParts,
   type ChatRuntimeMessageStandaloneActionsMobilePropsParts,
   type ChatRuntimeMessageSurfaceMobilePropsParts,
@@ -1990,11 +1992,11 @@ type ChatMessageTurnDurationBadgeIconProps =
 type ChatMessageTurnDurationBadgeLabelProps =
   ChatMessageTurnDurationBadgeParts['container']['content']['label']['props'];
 
-type ChatMessageActionSlotListProps = {
-  shouldRender?: boolean;
-  entries: readonly ChatMessageActionEntry[];
-  rowStyle?: StyleProp<ViewStyle>;
-};
+type ChatMessageActionSlotListProps =
+  ChatRuntimeMessageActionSlotListMobilePropsPartsInput<
+    ChatMessageActionEntry,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatMessageActionSlotListParts =
   ChatRuntimeMessageActionSlotListMobilePropsParts<
@@ -2007,9 +2009,11 @@ type ChatMessageActionSlotListRowProps =
     children: ReactNode;
   };
 
-type ChatMessageStandaloneActionsProps = ChatMessageActionSlotListProps & {
-  shouldRender: boolean;
-};
+type ChatMessageStandaloneActionsProps =
+  ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput<
+    ChatMessageActionEntry,
+    ChatMessageActionSlotListProps['rowStyle']
+  >;
 
 type ChatMessageStandaloneActionsParts =
   ChatRuntimeMessageStandaloneActionsMobilePropsParts<
