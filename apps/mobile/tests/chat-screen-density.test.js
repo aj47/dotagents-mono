@@ -3199,7 +3199,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /export interface ChatComposerInputDockMobileStylesLike\s+extends ChatComposerInputDockMobileStyleSlots/);
   assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewMobileStyleSlots as SharedChatComposerSpeechPreviewStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerPendingImagesRailMobileStyleSlots as SharedChatComposerPendingImagesRailStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayMobileStyleSlots as SharedChatComposerVoiceOverlayStyleSlots,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerVoiceOverlayMobileStyleSlots as SharedChatComposerVoiceOverlayStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerHandsFreeControlsMobileStyleSlots as SharedChatComposerHandsFreeControlsStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerHandsFreeControlsMobileControlStateLike,/);
   assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonMobileStyleSlots as SharedChatComposerLabeledActionButtonStyleSlots,/);
@@ -3208,7 +3208,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /type ChatComposerInputDockMobileStyleSlots as SharedChatComposerInputDockStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewStyles =\s+SharedChatComposerSpeechPreviewStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatComposerPendingImagesRailStyles =\s+SharedChatComposerPendingImagesRailStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ImageStyle>,\s+StyleProp<ViewStyle>\s+>;/);
-  assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayStyles =\s+SharedChatComposerVoiceOverlayStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerVoiceOverlayStyles =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['dock'\]\['voiceOverlay'\];/);
   assert.match(chatMessageChromeSource, /type ChatComposerHandsFreeControlsStyles =\s+SharedChatComposerHandsFreeControlsStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatComposerHandsFreeControlState =\s+ChatComposerHandsFreeControlsMobileControlStateLike & \{[\s\S]*?primary: \{ accessibilityRole: AccessibilityRole \};[\s\S]*?secondary: \{ accessibilityRole: AccessibilityRole \};[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatComposerRuntimeHandsFreeControlsRenderState\['controlState'\]/);

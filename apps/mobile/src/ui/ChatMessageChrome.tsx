@@ -264,7 +264,6 @@ import {
   type ChatComposerSpeechPreviewMobileStyleSlots as SharedChatComposerSpeechPreviewStyleSlots,
   type ChatComposerStyleSlots as SharedChatComposerStyleSlots,
   type ChatComposerTextEntryMobileStyleSlots as SharedChatComposerTextEntryStyleSlots,
-  type ChatComposerVoiceOverlayMobileStyleSlots as SharedChatComposerVoiceOverlayStyleSlots,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomButtonMobilePropsParts,
   type ChatRuntimeScrollToBottomButtonMobilePropsPartsInput,
@@ -5496,12 +5495,7 @@ type ChatComposerPendingImageRemoveButtonProps = {
 type ChatComposerPendingImageRemoveIconProps = ChatMessageActionIcon;
 
 type ChatComposerVoiceOverlayStyles =
-  SharedChatComposerVoiceOverlayStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['dock']['voiceOverlay'];
 
 type ChatComposerVoiceOverlayProps = {
   isVisible: boolean;
