@@ -29005,16 +29005,34 @@ type ChatMessageThreadBodyStyleKey =
 
 type ChatMessageThreadBodyStyleSource = Record<ChatMessageThreadBodyStyleKey, unknown>
 
+export type ChatMessageRetryStatusStyleSlots<
+  TCardStyle,
+  THeaderStyle,
+  TTitleStyle,
+  TMetaRowStyle,
+  TAttemptStyle,
+  TCountdownStyle,
+  TDescriptionStyle,
+> = {
+  card: TCardStyle
+  header: THeaderStyle
+  title: TTitleStyle
+  metaRow: TMetaRowStyle
+  attempt: TAttemptStyle
+  countdown: TCountdownStyle
+  description: TDescriptionStyle
+}
+
 type ChatMessageThreadBodyStyleSlots<TStyles extends ChatMessageThreadBodyStyleSource> = {
-  retryStatus: {
-    card: TStyles["retryStatusCard"]
-    header: TStyles["retryStatusHeader"]
-    title: TStyles["retryStatusTitle"]
-    metaRow: TStyles["retryStatusMetaRow"]
-    attempt: TStyles["retryStatusAttempt"]
-    countdown: TStyles["retryStatusCountdown"]
-    description: TStyles["retryStatusDescription"]
-  }
+  retryStatus: ChatMessageRetryStatusStyleSlots<
+    TStyles["retryStatusCard"],
+    TStyles["retryStatusHeader"],
+    TStyles["retryStatusTitle"],
+    TStyles["retryStatusMetaRow"],
+    TStyles["retryStatusAttempt"],
+    TStyles["retryStatusCountdown"],
+    TStyles["retryStatusDescription"]
+  >
   delegationCard: {
     card: TStyles["delegationCard"]
     header: TStyles["delegationHeader"]

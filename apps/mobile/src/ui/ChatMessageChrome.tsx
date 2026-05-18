@@ -358,6 +358,7 @@ import {
   type ChatMessageConversationViewportStyleSlots as SharedChatMessageConversationViewportStyleSlots,
   type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
   type ChatMessageRuntimeDockStyleSlots as SharedChatMessageRuntimeDockStyleSlots,
+  type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,
   type ChatMessageRuntimeSurfaceStyleSlots as SharedChatMessageRuntimeSurfaceStyleSlots,
   type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,
   type ChatMessageRuntimeViewportStyleSlots as SharedChatMessageRuntimeViewportStyleSlots,
@@ -1976,15 +1977,16 @@ type ChatMessageStandaloneActionsParts =
     ChatMessageStandaloneActionsProps['rowStyle']
   >;
 
-type ChatMessageRetryStatusStyles = {
-  card: StyleProp<ViewStyle>;
-  header: StyleProp<ViewStyle>;
-  title: StyleProp<TextStyle>;
-  metaRow: StyleProp<ViewStyle>;
-  attempt: StyleProp<TextStyle>;
-  countdown: StyleProp<TextStyle>;
-  description: StyleProp<TextStyle>;
-};
+type ChatMessageRetryStatusStyles =
+  SharedChatMessageRetryStatusStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageRetryStatusProps = {
   renderState: ChatRuntimeRetryStatusMobileRenderState;

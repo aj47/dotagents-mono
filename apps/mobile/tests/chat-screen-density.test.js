@@ -1027,6 +1027,11 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationRetryStatusMobileProps/);
   assert.match(sessionPresentationSource, /return renderState\s+\? \{\s+renderState,\s+\}\s+: null/);
   assert.match(sessionPresentationSource, /retryStatus: \{[\s\S]*?card: styles\.retryStatusCard,[\s\S]*?description: styles\.retryStatusDescription,/);
+  assert.match(sessionPresentationSource, /export type ChatMessageRetryStatusStyleSlots<\s+TCardStyle,\s+THeaderStyle,\s+TTitleStyle,\s+TMetaRowStyle,/);
+  assert.match(sessionPresentationSource, /retryStatus: ChatMessageRetryStatusStyleSlots<\s+TStyles\["retryStatusCard"\],\s+TStyles\["retryStatusHeader"\],\s+TStyles\["retryStatusTitle"\],/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusStyles =\s+SharedChatMessageRetryStatusStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusStyles = \{\s+card: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatus/);
   const retryStatusSource =
     chatMessageChromeSource.match(/export function ChatMessageRetryStatus[\s\S]*?export function ChatMessageToolApproval/)?.[0] ?? '';
