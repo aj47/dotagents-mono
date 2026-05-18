@@ -45,6 +45,7 @@ import {
   createChatComposerSpeechPreviewMobilePropsParts,
   createChatComposerTextEntryMobilePropsParts,
   createChatComposerVoiceOverlayMobilePropsParts,
+  type ChatComposerHandsFreeControlsMobileControlStateLike,
   type ChatComposerHandsFreeControlsMobilePropsParts,
   type ChatComposerIconButtonMobilePropsParts,
   type ChatComposerInputDockMobilePropsParts,
@@ -5015,10 +5016,16 @@ type ChatComposerHandsFreeControlsStyles =
     StyleProp<TextStyle>
   >;
 
+type ChatComposerHandsFreeControlState =
+  ChatComposerHandsFreeControlsMobileControlStateLike & {
+    primary: { accessibilityRole: AccessibilityRole };
+    secondary: { accessibilityRole: AccessibilityRole };
+  };
+
 type ChatComposerHandsFreeControlsProps = {
   isVisible: boolean;
   status: ReactNode;
-  controlState: ChatComposerRuntimeHandsFreeControlsRenderState['controlState'];
+  controlState: ChatComposerHandsFreeControlState;
   onWake: (event: GestureResponderEvent) => void;
   onSleep: (event: GestureResponderEvent) => void;
   onResume: (event: GestureResponderEvent) => void;
@@ -5030,7 +5037,7 @@ type ChatComposerHandsFreeControlsProps = {
 type ChatComposerHandsFreeControlsParts =
   ChatComposerHandsFreeControlsMobilePropsParts<
     ReactNode,
-    ChatComposerRuntimeHandsFreeControlsRenderState['controlState'],
+    ChatComposerHandsFreeControlState,
     (event: GestureResponderEvent) => void,
     (event: GestureResponderEvent) => void,
     (event: GestureResponderEvent) => void,
