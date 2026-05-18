@@ -14040,17 +14040,11 @@ export function ChatMessageRuntimeSurface<
   );
 }
 
-export function ChatMessageHistoryBanner({
-  renderState,
-  onLoadEarlier,
-  styles,
-}: ChatMessageHistoryBannerProps) {
+export function ChatMessageHistoryBanner(
+  props: ChatMessageHistoryBannerProps,
+) {
   const historyBannerParts: ChatMessageHistoryBannerParts =
-    createChatRuntimeMessageHistoryBannerMobilePropsParts({
-      renderState,
-      onLoadEarlier,
-      styles,
-    });
+    createChatRuntimeMessageHistoryBannerMobilePropsParts(props);
 
   if (!historyBannerParts.container.shouldRender) return null;
 
@@ -14137,15 +14131,11 @@ export function ChatMessageHistoryBannerText({
   );
 }
 
-export function ChatMessageStepSummaryCard({
-  renderState,
-  styles,
-}: ChatMessageStepSummaryCardProps) {
+export function ChatMessageStepSummaryCard(
+  props: ChatMessageStepSummaryCardProps,
+) {
   const stepSummaryCardParts: ChatMessageStepSummaryCardParts =
-    createChatRuntimeStepSummaryCardMobilePropsParts({
-      renderState,
-      styles,
-    });
+    createChatRuntimeStepSummaryCardMobilePropsParts(props);
   const stepSummaryCardPart = stepSummaryCardParts.card;
 
   if (!stepSummaryCardPart.shouldRender) return null;
@@ -14254,17 +14244,11 @@ export function ChatMessageStepSummaryText({
   );
 }
 
-export function ChatMessageScrollToBottomButton({
-  renderState,
-  onPress,
-  style,
-}: ChatMessageScrollToBottomButtonProps) {
+export function ChatMessageScrollToBottomButton(
+  props: ChatMessageScrollToBottomButtonProps,
+) {
   const scrollToBottomButtonParts: ChatMessageScrollToBottomButtonParts =
-    createChatRuntimeScrollToBottomButtonMobilePropsParts({
-      renderState,
-      onPress,
-      style,
-    });
+    createChatRuntimeScrollToBottomButtonMobilePropsParts(props);
   const scrollToBottomButton = scrollToBottomButtonParts.button;
 
   if (!scrollToBottomButton.shouldRender) return null;
@@ -14307,19 +14291,11 @@ export function ChatMessageScrollToBottomButtonIcon(
   return <Ionicons {...props} />;
 }
 
-export function ChatMessageLoadingState({
-  renderState,
-  spinnerSource,
-  style,
-  spinnerStyle,
-}: ChatMessageLoadingStateProps) {
+export function ChatMessageLoadingState(
+  props: ChatMessageLoadingStateProps,
+) {
   const loadingStateParts: ChatMessageLoadingStateParts =
-    createChatRuntimeLoadingStateMobilePropsParts({
-      renderState,
-      spinnerSource,
-      style,
-      spinnerStyle,
-    });
+    createChatRuntimeLoadingStateMobilePropsParts(props);
   const loadingStateContainer = loadingStateParts.container;
 
   if (!loadingStateContainer.shouldRender) return null;
@@ -14382,23 +14358,11 @@ export function ChatMessageDebugPanel({
   );
 }
 
-export function ChatMessageDebugPanelStack({
-  requestShouldRender,
-  requestRows,
-  voiceShouldRender,
-  voiceRows,
-  panelStyle,
-  textStyle,
-}: ChatMessageDebugPanelStackProps) {
+export function ChatMessageDebugPanelStack(
+  props: ChatMessageDebugPanelStackProps,
+) {
   const debugPanelStackParts: ChatMessageDebugPanelStackParts =
-    createChatRuntimeDebugPanelStackMobilePropsParts({
-      requestShouldRender,
-      requestRows,
-      voiceShouldRender,
-      voiceRows,
-      panelStyle,
-      textStyle,
-    });
+    createChatRuntimeDebugPanelStackMobilePropsParts(props);
 
   return (
     <>
