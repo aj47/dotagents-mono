@@ -367,12 +367,10 @@ import {
   type ChatRuntimeRetryStatusMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCallDetailMobilePropsParts,
   type ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionCallDetailMobileStyleSlots as SharedChatMessageToolExecutionCallDetailStyleSlots,
   type ChatRuntimeToolExecutionCallListMobilePropsParts,
   type ChatRuntimeToolExecutionCallListMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCallSectionMobilePropsParts,
   type ChatRuntimeToolExecutionCallSectionMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionCallSectionMobileStyleSlots as SharedChatMessageToolExecutionCallSectionStyleSlots,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCompactGroupMobilePropsParts,
@@ -383,15 +381,12 @@ import {
   type ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   type ChatRuntimeToolExecutionCopyButtonMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionCopyButtonMobileStyleSlots as SharedChatMessageToolExecutionCopyButtonStyleSlots,
   type ChatRuntimeToolExecutionDetailHeaderMobilePropsParts,
   type ChatRuntimeToolExecutionDetailHeaderMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionDetailHeaderMobileStyleSlots as SharedChatMessageToolExecutionDetailHeaderStyleSlots,
   type ChatRuntimeToolExecutionEmptyStateMobilePropsParts,
   type ChatRuntimeToolExecutionEmptyStateMobilePropsPartsInput,
   type ChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   type ChatRuntimeToolExecutionErrorBlockMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionErrorBlockMobileStyleSlots as SharedChatMessageToolExecutionErrorBlockStyleSlots,
   type ChatRuntimeToolExecutionExpandedGroupCollapseControlMobileStyleSlots,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput,
@@ -400,25 +395,18 @@ import {
   type ChatRuntimeToolExecutionPanelShellMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionPayloadBlockMobileStyleSlots as SharedChatMessageToolExecutionPayloadBlockStyleSlots,
   type ChatRuntimeToolExecutionPayloadMetaMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadMetaMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionPayloadMetaMobileStyleSlots as SharedChatMessageToolExecutionPayloadMetaStyleSlots,
   type ChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadSectionMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionPayloadSectionMobileStyleSlots as SharedChatMessageToolExecutionPayloadSectionStyleSlots,
   type ChatRuntimeToolExecutionPendingResultMobilePropsParts,
   type ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionPendingResultMobileStyleSlots as SharedChatMessageToolExecutionPendingResultStyleSlots,
   type ChatRuntimeToolExecutionResultBadgeMobilePropsParts,
   type ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionResultBadgeMobileStyleSlots as SharedChatMessageToolExecutionResultBadgeStyleSlots,
   type ChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   type ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionResultHeaderMobileStyleSlots as SharedChatMessageToolExecutionResultHeaderStyleSlots,
   type ChatRuntimeToolExecutionResultSectionMobilePropsParts,
   type ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput,
-  type ChatRuntimeToolExecutionResultSectionMobileStyleSlots as SharedChatMessageToolExecutionResultSectionStyleSlots,
   type ChatRuntimeToolExecutionStatsMobileRenderState,
   type ChatRuntimeToolExecutionStackPanelMobilePropsParts,
   type ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
@@ -3347,11 +3335,7 @@ type ChatMessageToolExecutionStackEmptyStateBlockProps = {
 };
 
 type ChatMessageToolExecutionCopyButtonStyles =
-  SharedChatMessageToolExecutionCopyButtonStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['payloadSection']['copyButton'];
 
 type ChatMessageToolExecutionCopyButtonProps =
   ChatRuntimeToolExecutionCopyButtonMobilePropsPartsInput<
@@ -3407,13 +3391,7 @@ type ChatMessageToolExecutionCopyButtonContentProps = {
 };
 
 type ChatMessageToolExecutionDetailHeaderStyles =
-  SharedChatMessageToolExecutionDetailHeaderStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['callSection']['header'];
 
 type ChatMessageToolExecutionDetailHeaderProps =
   ChatRuntimeToolExecutionDetailHeaderMobilePropsPartsInput<
@@ -3498,10 +3476,7 @@ type ChatMessageToolExecutionDetailHeaderContentProps = {
 };
 
 type ChatMessageToolExecutionCallSectionStyles =
-  SharedChatMessageToolExecutionCallSectionStyleSlots<
-    StyleProp<ViewStyle>,
-    ChatMessageToolExecutionDetailHeaderStyles
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['callSection'];
 
 type ChatMessageToolExecutionCallSectionProps =
   ChatRuntimeToolExecutionCallSectionMobilePropsPartsInput<
@@ -3534,14 +3509,7 @@ type ChatMessageToolExecutionCallSectionContentProps = {
 };
 
 type ChatMessageToolExecutionResultBadgeStyles =
-  SharedChatMessageToolExecutionResultBadgeStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['resultSection']['header']['badge'];
 
 type ChatMessageToolExecutionResultBadgeProps =
   ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput<
@@ -3608,10 +3576,7 @@ type ChatMessageToolExecutionResultBadgeContentProps = {
 };
 
 type ChatMessageToolExecutionPendingResultStyles =
-  SharedChatMessageToolExecutionPendingResultStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['pendingResult'];
 
 type ChatMessageToolExecutionPendingResultProps =
   ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
@@ -3678,11 +3643,13 @@ type ChatMessageToolExecutionEmptyStateLabelProps = {
 };
 
 type ChatMessageToolExecutionPayloadMetaStyles =
-  SharedChatMessageToolExecutionPayloadMetaStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  Pick<
+    ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['payloadSection']['payloadMeta'],
+    'label' | 'payloadType'
+  > & Partial<Pick<
+    ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['payloadSection']['payloadMeta'],
+    'row'
+  >>;
 
 type ChatMessageToolExecutionPayloadMetaProps =
   ChatRuntimeToolExecutionPayloadMetaMobilePropsPartsInput<
@@ -3725,14 +3692,7 @@ type ChatMessageToolExecutionPayloadMetaRowProps = {
 };
 
 type ChatMessageToolExecutionResultHeaderStyles =
-  SharedChatMessageToolExecutionResultHeaderStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    Omit<ChatMessageToolExecutionPayloadMetaStyles, 'row'>,
-    ChatMessageToolExecutionResultBadgeStyles,
-    StyleProp<TextStyle>,
-    ChatMessageToolExecutionCopyButtonStyles
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['resultSection']['header'];
 
 type ChatMessageToolExecutionResultHeaderProps =
   ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
@@ -3793,12 +3753,8 @@ type ChatMessageToolExecutionResultHeaderContentProps = {
 };
 
 type ChatMessageToolExecutionPayloadBlockStyles =
-  SharedChatMessageToolExecutionPayloadBlockStyleSlots<
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  | ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['payloadSection']['payloadBlock']
+  | ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['resultSection']['payloadBlock'];
 
 type ChatMessageToolExecutionPayloadBlockProps =
   ChatRuntimeToolExecutionPayloadBlockMobilePropsPartsInput<
@@ -3859,13 +3815,7 @@ type ChatMessageToolExecutionPayloadScrollProps =
   };
 
 type ChatMessageToolExecutionPayloadSectionStyles =
-  SharedChatMessageToolExecutionPayloadSectionStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    ChatMessageToolExecutionPayloadMetaStyles,
-    ChatMessageToolExecutionCopyButtonStyles,
-    ChatMessageToolExecutionPayloadBlockStyles
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['payloadSection'];
 
 type ChatMessageToolExecutionPayloadSectionProps =
   ChatRuntimeToolExecutionPayloadSectionMobilePropsPartsInput<
@@ -3912,13 +3862,7 @@ type ChatMessageToolExecutionPayloadSectionViewProps =
   };
 
 type ChatMessageToolExecutionErrorBlockStyles =
-  SharedChatMessageToolExecutionErrorBlockStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    ChatMessageToolExecutionCopyButtonStyles
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['resultSection']['errorBlock'];
 
 type ChatMessageToolExecutionErrorBlockProps =
   ChatRuntimeToolExecutionErrorBlockMobilePropsPartsInput<
@@ -3972,12 +3916,7 @@ type ChatMessageToolExecutionErrorBlockViewProps =
   };
 
 type ChatMessageToolExecutionResultSectionStyles =
-  SharedChatMessageToolExecutionResultSectionStyleSlots<
-    StyleProp<ViewStyle>,
-    ChatMessageToolExecutionResultHeaderStyles,
-    ChatMessageToolExecutionPayloadBlockStyles,
-    ChatMessageToolExecutionErrorBlockStyles
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail']['resultSection'];
 
 type ChatMessageToolExecutionResultSectionProps =
   ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput<
@@ -4077,13 +4016,7 @@ type ChatMessageToolExecutionStatsLinePart = {
 };
 
 type ChatMessageToolExecutionCallDetailStyles =
-  SharedChatMessageToolExecutionCallDetailStyleSlots<
-    ChatMessageToolExecutionCallSectionStyles,
-    ChatMessageToolExecutionPayloadSectionStyles,
-    ChatMessageToolExecutionResultSectionStyles,
-    ChatMessageToolExecutionPendingResultStyles,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolExecutionStack']['callDetail'];
 
 type ChatMessageToolExecutionCallDetailProps =
   ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
