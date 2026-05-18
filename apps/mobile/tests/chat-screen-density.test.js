@@ -3095,6 +3095,13 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /return connectionRetryState;/);
   assert.doesNotMatch(screenSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
   assert.match(screenSource, /useChatRuntimeConnectionStatusSubscription,/);
+  assert.match(screenSource, /useChatRuntimeSessionClientState,/);
+  assert.match(screenSource, /const \{ getSessionClient \} = useChatRuntimeSessionClientState\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+connectionManager,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const getSessionClient = useCallback\(\(\) => \{/);
+  assert.doesNotMatch(screenSource, /connectionManager\.getOrCreateConnection\(currentSessionId\)/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeSessionClientState<TClient>/);
+  assert.match(chatMessageChromeSource, /const getSessionClient = useCallback\(\(\) => \{[\s\S]*?const connection = connectionManager\.getOrCreateConnection\(currentSessionId\);[\s\S]*?return connection\.client;/);
+  assert.match(chatMessageChromeSource, /const sessionClientState = useMemo<ChatRuntimeSessionClientState<TClient>>/);
   assert.match(screenSource, /const logConnectionStatus = useCallback\(\(statusMessage: string\) => \{\s+console\.log\('\[ChatScreen\] Connection status:', statusMessage\);\s+\}, \[\]\);/);
   assert.match(screenSource, /useChatRuntimeConnectionStatusSubscription\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+connectionManager,\s+currentSessionIdRef,\s+setConnectionState,\s+setResponding,\s+setConversationState,\s+setLatestStepSummary,\s+logConnectionStatus,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionStatusSubscription/);

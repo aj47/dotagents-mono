@@ -1139,6 +1139,22 @@ type ChatRuntimeRequestTrackingState = {
   currentSessionIdRef: ChatRuntimeMutableRef<string | null>;
 };
 
+type ChatRuntimeSessionClientManager<TClient> = {
+  getOrCreateConnection: (sessionId: string) => {
+    client: TClient;
+  };
+};
+
+type ChatRuntimeSessionClientStateInput<TClient> = {
+  currentSessionId: string | null;
+  connectionManager: ChatRuntimeSessionClientManager<TClient>;
+  logNoSessionClientWarning?: (message: string) => void;
+};
+
+type ChatRuntimeSessionClientState<TClient> = {
+  getSessionClient: () => TClient | null;
+};
+
 type ChatRuntimeConnectionStatusManager = {
   getConnectionState: (sessionId: string) => RecoveryState | null | undefined;
   isConnectionActive: (sessionId: string) => boolean;
@@ -10032,6 +10048,31 @@ export function useChatRuntimeRequestTrackingState({
   );
 
   return requestTrackingState;
+}
+
+export function useChatRuntimeSessionClientState<TClient>({
+  currentSessionId,
+  connectionManager,
+  logNoSessionClientWarning = console.warn,
+}: ChatRuntimeSessionClientStateInput<TClient>): ChatRuntimeSessionClientState<TClient> {
+  const getSessionClient = useCallback(() => {
+    if (!currentSessionId) {
+      logNoSessionClientWarning('[ChatScreen] No current session ID, cannot get client');
+      return null;
+    }
+
+    const connection = connectionManager.getOrCreateConnection(currentSessionId);
+    return connection.client;
+  }, [connectionManager, currentSessionId, logNoSessionClientWarning]);
+
+  const sessionClientState = useMemo<ChatRuntimeSessionClientState<TClient>>(
+    () => ({
+      getSessionClient,
+    }),
+    [getSessionClient],
+  );
+
+  return sessionClientState;
 }
 
 export function useChatRuntimeConnectionStatusSubscription({

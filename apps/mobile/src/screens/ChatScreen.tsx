@@ -20,6 +20,7 @@ import {
   useChatRuntimeRequestDebugState,
   useChatRuntimeRequestDebugActionsState,
   useChatRuntimeRequestTrackingState,
+  useChatRuntimeSessionClientState,
   useChatRuntimeConnectionStatusSubscription,
   useChatRuntimeConnectionRetryState,
   useChatRuntimeConnectionRetryActionState,
@@ -321,20 +322,10 @@ export default function ChatScreen({ route, navigation }: any) {
   } = useChatRuntimeRequestTrackingState({
     currentSessionId: sessionStore.currentSessionId,
   });
-
-  // Get or create a connection for the current session using the connection manager
-  // This preserves connections when switching between sessions (fixes #608)
-  const getSessionClient = useCallback(() => {
-    const currentSessionId = sessionStore.currentSessionId;
-    if (!currentSessionId) {
-      console.warn('[ChatScreen] No current session ID, cannot get client');
-      return null;
-    }
-    const connection = connectionManager.getOrCreateConnection(currentSessionId);
-    // Note: Connection status is subscribed through useChatRuntimeConnectionStatusSubscription below
-    // This avoids overwriting the SessionConnectionManager's internal callback (PR review fix)
-    return connection.client;
-  }, [connectionManager, sessionStore.currentSessionId]);
+  const { getSessionClient } = useChatRuntimeSessionClientState({
+    currentSessionId: sessionStore.currentSessionId,
+    connectionManager,
+  });
 
   const logConnectionStatus = useCallback((statusMessage: string) => {
     console.log('[ChatScreen] Connection status:', statusMessage);
