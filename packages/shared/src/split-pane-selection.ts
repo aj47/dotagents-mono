@@ -545,6 +545,262 @@ export function getSplitPaneMobileSurfaceColors(
   }
 }
 
+export interface SplitPaneMobileTypographyScale {
+  h2: object
+  body: object
+  caption: object
+}
+
+export interface SplitPaneMobileStyleSlotsInput {
+  colors: SplitPaneMobileSurfaceColors
+  spacing: Readonly<Record<string, number>>
+  radius: Readonly<Record<string, number>>
+  typography: SplitPaneMobileTypographyScale
+}
+
+export function createSplitPaneMobileStyleSlots({
+  colors,
+  spacing,
+  radius,
+  typography,
+}: SplitPaneMobileStyleSlotsInput) {
+  const surface = getSplitPaneMobileSurfaceState()
+  const screenSurface = surface.screen
+  const controlBarSurface = surface.controlBar
+  const segmentedRowSurface = surface.segmentedRow
+  const segmentButtonSurface = surface.segmentButton
+  const splitContainerSurface = surface.splitContainer
+  const paneSurface = surface.pane
+  const paneToolbarSurface = surface.paneToolbar
+  const toolbarButtonSurface = surface.toolbarButton
+  const emptyStateSurface = surface.emptyState
+  const emptyStateActionsSurface = surface.emptyStateActions
+  const primaryButtonSurface = surface.primaryButton
+  const secondaryButtonSurface = surface.secondaryButton
+  const modalOverlaySurface = surface.modalOverlay
+  const modalCardSurface = surface.modalCard
+  const sessionOptionSurface = surface.sessionOption
+  const newChatOptionSurface = surface.newChatOption
+  const newChatOptionTextSurface = surface.newChatOptionText
+
+  return {
+    screen: {
+      flex: screenSurface.flex,
+      backgroundColor: colors.screen.backgroundColor,
+      padding: spacing[screenSurface.padding],
+      gap: spacing[screenSurface.gap],
+    },
+    controlBar: {
+      backgroundColor: colors.controlBar.backgroundColor,
+      borderRadius: radius[controlBarSurface.borderRadius],
+      padding: spacing[controlBarSurface.padding],
+      borderWidth: controlBarSurface.borderWidth,
+      borderColor: colors.controlBar.borderColor,
+      gap: spacing[controlBarSurface.gap],
+    },
+    controlBarTitle: { ...typography.h2, color: colors.controlBarTitle.color },
+    controlBarCopy: { ...typography.body, color: colors.controlBarCopy.color },
+    segmentedRow: {
+      flexDirection: segmentedRowSurface.flexDirection,
+      gap: spacing[segmentedRowSurface.gap],
+      flexWrap: segmentedRowSurface.flexWrap,
+    },
+    segmentButton: {
+      borderRadius: radius[segmentButtonSurface.borderRadius],
+      borderWidth: segmentButtonSurface.borderWidth,
+      borderColor: colors.segmentButton.borderColor,
+      paddingHorizontal: spacing[segmentButtonSurface.paddingHorizontal],
+      paddingVertical: spacing[segmentButtonSurface.paddingVertical],
+      backgroundColor: colors.segmentButton.backgroundColor,
+    },
+    segmentButtonActive: {
+      borderColor: colors.segmentButton.activeBorderColor,
+      backgroundColor: colors.segmentButton.activeBackgroundColor,
+    },
+    segmentButtonText: {
+      ...typography.caption,
+      color: colors.segmentButton.textColor,
+      fontWeight: segmentButtonSurface.fontWeight,
+    },
+    segmentButtonTextActive: { color: colors.segmentButton.activeTextColor },
+    splitContainer: {
+      flex: splitContainerSurface.flex,
+      gap: spacing[splitContainerSurface.gap],
+    },
+    splitHorizontal: { flexDirection: surface.splitHorizontal.flexDirection },
+    splitVertical: { flexDirection: surface.splitVertical.flexDirection },
+    pane: {
+      flex: paneSurface.flex,
+      minHeight: paneSurface.minHeight,
+      backgroundColor: colors.pane.backgroundColor,
+      borderRadius: radius[paneSurface.borderRadius],
+      borderWidth: paneSurface.borderWidth,
+      borderColor: colors.pane.borderColor,
+      overflow: paneSurface.overflow,
+    },
+    paneHorizontal: { minHeight: surface.paneHorizontal.minHeight },
+    paneVertical: { minWidth: surface.paneVertical.minWidth },
+    paneToolbar: {
+      flexDirection: paneToolbarSurface.flexDirection,
+      alignItems: paneToolbarSurface.alignItems,
+      justifyContent: paneToolbarSurface.justifyContent,
+      gap: spacing[paneToolbarSurface.gap],
+      paddingHorizontal: spacing[paneToolbarSurface.paddingHorizontal],
+      paddingVertical: spacing[paneToolbarSurface.paddingVertical],
+      borderBottomWidth: paneToolbarSurface.borderBottomWidth,
+      borderBottomColor: colors.paneToolbar.borderBottomColor,
+      backgroundColor: colors.paneToolbar.backgroundColor,
+    },
+    paneToolbarTextWrap: {
+      flex: surface.paneToolbarTextWrap.flex,
+      minWidth: surface.paneToolbarTextWrap.minWidth,
+    },
+    paneLabel: {
+      ...typography.caption,
+      color: colors.paneLabel.color,
+      textTransform: surface.paneLabel.textTransform,
+      letterSpacing: surface.paneLabel.letterSpacing,
+    },
+    paneTitle: {
+      ...typography.body,
+      color: colors.paneTitle.color,
+      fontWeight: surface.paneTitle.fontWeight,
+    },
+    paneToolbarActions: {
+      flexDirection: surface.paneToolbarActions.flexDirection,
+      gap: spacing[surface.paneToolbarActions.gap],
+    },
+    toolbarButton: {
+      flexDirection: toolbarButtonSurface.flexDirection,
+      alignItems: toolbarButtonSurface.alignItems,
+      justifyContent: toolbarButtonSurface.justifyContent,
+      gap: toolbarButtonSurface.gap,
+      borderRadius: radius[toolbarButtonSurface.borderRadius],
+      paddingHorizontal: spacing[toolbarButtonSurface.paddingHorizontal],
+      paddingVertical: spacing[toolbarButtonSurface.paddingVertical],
+      backgroundColor: colors.toolbarButton.backgroundColor,
+      borderWidth: toolbarButtonSurface.borderWidth,
+      borderColor: colors.toolbarButton.borderColor,
+    },
+    toolbarButtonDisabled: { opacity: toolbarButtonSurface.disabledOpacity },
+    toolbarButtonText: {
+      ...typography.caption,
+      color: colors.toolbarButton.textColor,
+      fontWeight: toolbarButtonSurface.fontWeight,
+    },
+    paneBody: { flex: paneSurface.flex, minHeight: paneSurface.minHeight },
+    emptyState: {
+      flex: emptyStateSurface.flex,
+      alignItems: emptyStateSurface.alignItems,
+      justifyContent: emptyStateSurface.justifyContent,
+      padding: spacing[emptyStateSurface.padding],
+      gap: spacing[emptyStateSurface.gap],
+    },
+    emptyStateTitle: {
+      ...typography.h2,
+      color: colors.emptyStateTitle.color,
+      textAlign: surface.emptyStateTitle.textAlign,
+    },
+    emptyStateCopy: {
+      ...typography.body,
+      color: colors.emptyStateCopy.color,
+      textAlign: surface.emptyStateCopy.textAlign,
+      maxWidth: surface.emptyStateCopy.maxWidth,
+    },
+    emptyStateActions: {
+      flexDirection: emptyStateActionsSurface.flexDirection,
+      flexWrap: emptyStateActionsSurface.flexWrap,
+      justifyContent: emptyStateActionsSurface.justifyContent,
+      gap: spacing[emptyStateActionsSurface.gap],
+    },
+    primaryButton: {
+      flexDirection: primaryButtonSurface.flexDirection,
+      alignItems: primaryButtonSurface.alignItems,
+      justifyContent: primaryButtonSurface.justifyContent,
+      gap: spacing[primaryButtonSurface.gap],
+      borderRadius: radius[primaryButtonSurface.borderRadius],
+      backgroundColor: colors.primaryButton.backgroundColor,
+      paddingHorizontal: spacing[primaryButtonSurface.paddingHorizontal],
+      paddingVertical: spacing[primaryButtonSurface.paddingVertical],
+    },
+    primaryButtonText: {
+      ...typography.body,
+      color: colors.primaryButton.textColor,
+      fontWeight: primaryButtonSurface.fontWeight,
+    },
+    secondaryButton: {
+      flexDirection: secondaryButtonSurface.flexDirection,
+      alignItems: secondaryButtonSurface.alignItems,
+      justifyContent: secondaryButtonSurface.justifyContent,
+      gap: spacing[secondaryButtonSurface.gap],
+      borderRadius: radius[secondaryButtonSurface.borderRadius],
+      borderWidth: secondaryButtonSurface.borderWidth,
+      borderColor: colors.secondaryButton.borderColor,
+      paddingHorizontal: spacing[secondaryButtonSurface.paddingHorizontal],
+      paddingVertical: spacing[secondaryButtonSurface.paddingVertical],
+      backgroundColor: colors.secondaryButton.backgroundColor,
+    },
+    secondaryButtonText: {
+      ...typography.body,
+      color: colors.secondaryButton.textColor,
+      fontWeight: secondaryButtonSurface.fontWeight,
+    },
+    modalOverlay: {
+      flex: modalOverlaySurface.flex,
+      backgroundColor: colors.modalOverlay.backgroundColor,
+      justifyContent: modalOverlaySurface.justifyContent,
+      padding: spacing[modalOverlaySurface.padding],
+    },
+    modalCard: {
+      maxHeight: modalCardSurface.maxHeight,
+      borderRadius: radius[modalCardSurface.borderRadius],
+      backgroundColor: colors.modalCard.backgroundColor,
+      borderWidth: modalCardSurface.borderWidth,
+      borderColor: colors.modalCard.borderColor,
+      padding: spacing[modalCardSurface.padding],
+      gap: spacing[modalCardSurface.gap],
+    },
+    modalTitle: {
+      ...typography.h2,
+      color: colors.modalTitle.color,
+    },
+    sessionOption: {
+      borderRadius: radius[sessionOptionSurface.borderRadius],
+      borderWidth: sessionOptionSurface.borderWidth,
+      borderColor: colors.sessionOption.borderColor,
+      padding: spacing[sessionOptionSurface.padding],
+      marginBottom: spacing[sessionOptionSurface.marginBottom],
+      backgroundColor: colors.sessionOption.backgroundColor,
+    },
+    sessionOptionActive: {
+      borderColor: colors.sessionOption.activeBorderColor,
+      backgroundColor: colors.sessionOption.activeBackgroundColor,
+    },
+    sessionOptionTitle: {
+      ...typography.body,
+      color: colors.sessionOptionTitle.color,
+      fontWeight: sessionOptionSurface.title.fontWeight,
+      marginBottom: sessionOptionSurface.title.marginBottom,
+    },
+    sessionOptionPreview: {
+      ...typography.caption,
+      color: colors.sessionOptionPreview.color,
+    },
+    newChatOption: {
+      flexDirection: newChatOptionSurface.flexDirection,
+      alignItems: newChatOptionSurface.alignItems,
+      justifyContent: newChatOptionSurface.justifyContent,
+      gap: spacing[newChatOptionSurface.gap],
+      paddingVertical: spacing[newChatOptionSurface.paddingVertical],
+    },
+    newChatOptionText: {
+      ...typography.body,
+      color: colors.newChatOptionText.color,
+      fontWeight: newChatOptionTextSurface.fontWeight,
+    },
+  }
+}
+
 export function getSplitPaneCopyState(): typeof SPLIT_PANE_PRESENTATION.copy {
   return SPLIT_PANE_PRESENTATION.copy
 }

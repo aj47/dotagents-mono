@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  createSplitPaneMobileStyleSlots,
   formatSplitPaneChooseAccessibilityLabel,
   formatSplitPaneModalTitle,
   formatSplitPaneOpenAccessibilityLabel,
@@ -247,6 +248,90 @@ describe("split pane selection", () => {
       sessionOptionPreview: { color: "#777777" },
       newChatOption: { iconColor: "#123456" },
       newChatOptionText: { color: "#123456" },
+    })
+  })
+
+  it("creates mobile split-pane style slots from shared presentation tokens", () => {
+    const colors = getSplitPaneMobileSurfaceColors({
+      background: "#fdfdfd",
+      card: "#ffffff",
+      border: "#dedede",
+      foreground: "#111111",
+      mutedForeground: "#777777",
+      primary: "#123456",
+    })
+    const styleSlots = createSplitPaneMobileStyleSlots({
+      colors,
+      spacing: {
+        xs: 4,
+        sm: 8,
+        md: 12,
+        lg: 16,
+      },
+      radius: {
+        md: 6,
+        lg: 8,
+        xl: 12,
+      },
+      typography: {
+        h2: { fontSize: 20 },
+        body: { fontSize: 16 },
+        caption: { fontSize: 12 },
+      },
+    })
+
+    expect(styleSlots.screen).toMatchObject({
+      flex: 1,
+      backgroundColor: "#fdfdfd",
+      padding: 8,
+      gap: 8,
+    })
+    expect(styleSlots.controlBar).toMatchObject({
+      backgroundColor: "#ffffff",
+      borderRadius: 12,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: "#dedede",
+      gap: 4,
+    })
+    expect(styleSlots.segmentButtonActive).toEqual({
+      borderColor: "#123456",
+      backgroundColor: "rgba(18, 52, 86, 0.094)",
+    })
+    expect(styleSlots.paneToolbar).toMatchObject({
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: "#dedede",
+      backgroundColor: "#fdfdfd",
+    })
+    expect(styleSlots.toolbarButtonDisabled).toEqual({ opacity: 0.45 })
+    expect(styleSlots.primaryButton).toMatchObject({
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      borderRadius: 8,
+      backgroundColor: "#123456",
+    })
+    expect(styleSlots.modalOverlay).toMatchObject({
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.4)",
+      justifyContent: "center",
+      padding: 16,
+    })
+    expect(styleSlots.sessionOptionTitle).toMatchObject({
+      fontSize: 16,
+      color: "#111111",
+      fontWeight: "600",
+      marginBottom: 4,
+    })
+    expect(styleSlots.newChatOptionText).toMatchObject({
+      fontSize: 16,
+      color: "#123456",
+      fontWeight: "700",
     })
   })
 })
