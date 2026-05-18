@@ -123,7 +123,7 @@ test('uses shared mobile composer control accessibility state', () => {
   assert.match(sessionPresentationSource, /accessibilityLabel: mobileComposerControls\.field\.accessibilityLabel/);
   assert.match(chatMessageChromeSource, /createChatComposerIconButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatComposerIconButtonMobilePropsParts/);
-  assert.match(iconButtonSource, /const iconButtonParts = createChatComposerIconButtonMobilePropsParts\(\{/);
+  assert.match(iconButtonSource, /const iconButtonParts: ChatComposerIconButtonParts =\s+createChatComposerIconButtonMobilePropsParts\(\{/);
   assert.match(iconButtonSource, /<ChatComposerIconButtonTouchable\s+\{\.\.\.iconButtonTouchable\.props\}/);
   assert.match(iconButtonSource, /<ChatComposerIconButtonTouchableContent\s+\{\.\.\.iconButtonTouchable\.content\}/);
   assert.doesNotMatch(iconButtonSource, /const touchableContent = iconButtonParts\.touchable\.content;/);

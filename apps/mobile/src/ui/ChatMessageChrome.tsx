@@ -241,6 +241,7 @@ import {
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
+  type ChatComposerRuntimeDockMobilePropsParts,
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -4685,6 +4686,31 @@ type ChatComposerRuntimeDockProps = {
   micWrapperRef?: ChatComposerInputDockProps['micWrapperRef'];
   styles: ChatComposerRuntimeDockStyleSlots;
 };
+
+type ChatComposerRuntimeDockParts =
+  ChatComposerRuntimeDockMobilePropsParts<
+    ChatComposerRuntimeDockProps['speechPreview'],
+    ChatComposerRuntimeDockProps['pendingImagesRail'],
+    ChatComposerRuntimeDockProps['handsFreeControls'],
+    ChatComposerRuntimeDockProps['imageAttachmentControl'],
+    ChatComposerRuntimeDockProps['textToSpeechControl'],
+    ChatComposerRuntimeDockProps['editBeforeSendControl'],
+    ChatComposerRuntimeDockProps['textEntry'],
+    ChatComposerRuntimeDockProps['queueAction'],
+    ChatComposerRuntimeDockProps['submitAction'],
+    ChatComposerRuntimeDockProps['micButton'],
+    ChatComposerRuntimeDockProps['micWrapperRef'],
+    ChatComposerRuntimeDockProps['styles']['speechPreview'],
+    ChatComposerRuntimeDockProps['styles']['pendingImagesRail'],
+    ChatComposerRuntimeDockProps['styles']['handsFreeControls'],
+    ChatComposerRuntimeDockProps['styles']['accessoryButton']['style'],
+    ChatComposerRuntimeDockProps['styles']['accessoryButton']['activeStyle'],
+    ChatComposerRuntimeDockProps['styles']['textEntry'],
+    ChatComposerRuntimeDockProps['styles']['queueAction'],
+    ChatComposerRuntimeDockProps['styles']['submitAction'],
+    ChatComposerRuntimeDockProps['styles']['micButton'],
+    ChatComposerRuntimeDockProps['styles']['inputDock']
+  >;
 
 type ChatComposerRuntimeDockChromeProps = {
   handsFreeControls: Pick<ChatComposerRuntimeHandsFreeControlsProps, 'controlPressedOpacity'>;
@@ -13452,20 +13478,21 @@ export function ChatComposerRuntimeDock({
   micWrapperRef,
   styles,
 }: ChatComposerRuntimeDockProps) {
-  const composerDockParts = createChatComposerRuntimeDockMobilePropsParts({
-    speechPreview,
-    pendingImagesRail,
-    handsFreeControls,
-    imageAttachmentControl,
-    textToSpeechControl,
-    editBeforeSendControl,
-    textEntry,
-    queueAction,
-    submitAction,
-    micButton,
-    micWrapperRef,
-    styles,
-  });
+  const composerDockParts: ChatComposerRuntimeDockParts =
+    createChatComposerRuntimeDockMobilePropsParts({
+      speechPreview,
+      pendingImagesRail,
+      handsFreeControls,
+      imageAttachmentControl,
+      textToSpeechControl,
+      editBeforeSendControl,
+      textEntry,
+      queueAction,
+      submitAction,
+      micButton,
+      micWrapperRef,
+      styles,
+    });
 
   return (
     <ChatComposerInputDock
@@ -13539,20 +13566,21 @@ export function ChatComposerInputDock({
   micWrapperRef,
   styles,
 }: ChatComposerInputDockProps) {
-  const inputDockParts = createChatComposerInputDockMobilePropsParts({
-    speechPreview,
-    pendingImagesRail,
-    handsFreeControls,
-    imageAttachmentControl,
-    textToSpeechControl,
-    editBeforeSendControl,
-    textEntry,
-    queueAction,
-    submitAction,
-    micButton,
-    micWrapperRef,
-    styles,
-  });
+  const inputDockParts: ChatComposerInputDockParts =
+    createChatComposerInputDockMobilePropsParts({
+      speechPreview,
+      pendingImagesRail,
+      handsFreeControls,
+      imageAttachmentControl,
+      textToSpeechControl,
+      editBeforeSendControl,
+      textEntry,
+      queueAction,
+      submitAction,
+      micButton,
+      micWrapperRef,
+      styles,
+    });
 
   return (
     <ChatComposerInputDockArea
@@ -13666,11 +13694,12 @@ export function ChatComposerSpeechPreview({
   text,
   styles,
 }: ChatComposerSpeechPreviewProps) {
-  const speechPreviewParts = createChatComposerSpeechPreviewMobilePropsParts({
-    label,
-    text,
-    styles,
-  });
+  const speechPreviewParts: ChatComposerSpeechPreviewParts =
+    createChatComposerSpeechPreviewMobilePropsParts({
+      label,
+      text,
+      styles,
+    });
   const speechPreviewContainer = speechPreviewParts.container;
 
   if (!speechPreviewContainer.shouldRender) return null;
@@ -13728,12 +13757,13 @@ export function ChatComposerPendingImagesRail({
   onRemove,
   styles,
 }: ChatComposerPendingImagesRailProps) {
-  const pendingImagesRailParts = createChatComposerPendingImagesRailMobilePropsParts({
-    images,
-    renderState,
-    onRemove,
-    styles,
-  });
+  const pendingImagesRailParts: ChatComposerPendingImagesRailParts =
+    createChatComposerPendingImagesRailMobilePropsParts({
+      images,
+      renderState,
+      onRemove,
+      styles,
+    });
   const pendingImagesRailScrollView = pendingImagesRailParts.scrollView;
 
   if (!pendingImagesRailScrollView.shouldRender) return null;
@@ -13825,13 +13855,14 @@ export function ChatComposerVoiceOverlay({
   transcriptNumberOfLines,
   styles,
 }: ChatComposerVoiceOverlayProps) {
-  const voiceOverlayParts = createChatComposerVoiceOverlayMobilePropsParts({
-    isVisible,
-    label,
-    transcript,
-    transcriptNumberOfLines,
-    styles,
-  });
+  const voiceOverlayParts: ChatComposerVoiceOverlayParts =
+    createChatComposerVoiceOverlayMobilePropsParts({
+      isVisible,
+      label,
+      transcript,
+      transcriptNumberOfLines,
+      styles,
+    });
   const voiceOverlayContainer = voiceOverlayParts.overlay;
 
   if (!voiceOverlayContainer.shouldRender) return null;
@@ -13911,17 +13942,18 @@ export function ChatComposerHandsFreeControls({
   controlPressedOpacity,
   styles,
 }: ChatComposerHandsFreeControlsProps) {
-  const handsFreeControlsParts = createChatComposerHandsFreeControlsMobilePropsParts({
-    isVisible,
-    status,
-    controlState,
-    onWake,
-    onSleep,
-    onResume,
-    onPause,
-    controlPressedOpacity,
-    styles,
-  });
+  const handsFreeControlsParts: ChatComposerHandsFreeControlsParts =
+    createChatComposerHandsFreeControlsMobilePropsParts({
+      isVisible,
+      status,
+      controlState,
+      onWake,
+      onSleep,
+      onResume,
+      onPause,
+      controlPressedOpacity,
+      styles,
+    });
   const handsFreeStatusRow = handsFreeControlsParts.statusRow;
   const handsFreeControlsRow = handsFreeControlsParts.controlsRow;
 
@@ -14033,14 +14065,15 @@ export function ChatComposerIconButton({
   style,
   activeStyle,
 }: ChatComposerIconButtonProps) {
-  const iconButtonParts = createChatComposerIconButtonMobilePropsParts({
-    shouldRender,
-    renderState,
-    onPress,
-    activeOpacity,
-    style,
-    activeStyle,
-  });
+  const iconButtonParts: ChatComposerIconButtonParts =
+    createChatComposerIconButtonMobilePropsParts({
+      shouldRender,
+      renderState,
+      onPress,
+      activeOpacity,
+      style,
+      activeStyle,
+    });
   const iconButtonTouchable = iconButtonParts.touchable;
 
   if (!iconButtonTouchable.shouldRender) return null;
@@ -14088,13 +14121,14 @@ export function ChatComposerLabeledActionButton({
   activeOpacity,
   styles,
 }: ChatComposerLabeledActionButtonProps) {
-  const actionButtonParts = createChatComposerLabeledActionButtonMobilePropsParts({
-    shouldRender,
-    renderState,
-    onPress,
-    activeOpacity,
-    styles,
-  });
+  const actionButtonParts: ChatComposerLabeledActionButtonParts =
+    createChatComposerLabeledActionButtonMobilePropsParts({
+      shouldRender,
+      renderState,
+      onPress,
+      activeOpacity,
+      styles,
+    });
   const actionButtonTouchable = actionButtonParts.touchable;
 
   if (!actionButtonTouchable.shouldRender) return null;
@@ -14162,14 +14196,15 @@ export function ChatComposerMicButton({
   webPressedStyle,
   styles,
 }: ChatComposerMicButtonProps) {
-  const micButtonParts = createChatComposerMicButtonMobilePropsParts({
-    renderState,
-    onPressIn,
-    onPressOut,
-    onPress,
-    webPressedStyle,
-    styles,
-  });
+  const micButtonParts: ChatComposerMicButtonParts =
+    createChatComposerMicButtonMobilePropsParts({
+      renderState,
+      onPressIn,
+      onPressOut,
+      onPress,
+      webPressedStyle,
+      styles,
+    });
   const micButtonPressable = micButtonParts.pressable;
 
   return (
@@ -14238,19 +14273,20 @@ export function ChatComposerTextEntry({
   webAccessibility,
   styles,
 }: ChatComposerTextEntryProps) {
-  const textEntryParts = createChatComposerTextEntryMobilePropsParts({
-    inputRef,
-    value,
-    onChangeText,
-    onKeyPress,
-    accessibilityLabel,
-    accessibilityHint,
-    placeholder,
-    placeholderTextColor,
-    voiceStatusLiveRegionAnnouncement,
-    webAccessibility,
-    styles,
-  });
+  const textEntryParts: ChatComposerTextEntryParts =
+    createChatComposerTextEntryMobilePropsParts({
+      inputRef,
+      value,
+      onChangeText,
+      onKeyPress,
+      accessibilityLabel,
+      accessibilityHint,
+      placeholder,
+      placeholderTextColor,
+      voiceStatusLiveRegionAnnouncement,
+      webAccessibility,
+      styles,
+    });
   const textEntryInput = textEntryParts.input;
   const textEntryInputDescription = textEntryParts.inputDescription;
   const textEntryVoiceStatusLiveRegion = textEntryParts.voiceStatusLiveRegion;
