@@ -3883,6 +3883,9 @@ test('derives visible assistant content from respond_to_user output and suppress
   assert.match(sessionPresentationSource, /return getChatRuntimeConversationMessageRuntimeThreadState\(\{\s+itemKey,\s+groupRenderState,\s+groupThreadState,\s+renderContext,\s+body,/);
   assert.match(sessionPresentationSource, /shouldRenderThread: shouldRenderChatRuntimeConversationThread\(\{\s+renderContext,\s+body: runtimeThreadInput\.body,\s+\}\),/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationRuntimeThreadListMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeConversationRuntimeThreadListMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationRuntimeThreadListParts =\s+ChatRuntimeConversationRuntimeThreadListMobilePropsParts<[\s\S]*?ChatMessageConversationRenderableRuntimeThreadState,[\s\S]*?ChatMessageRuntimeThreadStyleSlots/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationRuntimeThreadListParts = ReturnType<typeof createChatRuntimeConversationRuntimeThreadListMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationRuntimeThreadListMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const threadListParts = createChatRuntimeConversationRuntimeThreadListMobilePropsParts\(\{\s+threadStates,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationRuntimeThreadListContentProps =\s+ChatMessageConversationRuntimeThreadListParts\['content'\];/);

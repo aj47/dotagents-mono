@@ -275,6 +275,7 @@ import {
   type ChatRuntimeConversationRetryStatusMobileState,
   type ChatRuntimeConversationMessageRuntimeThreadStateInput,
   type ChatRuntimeConversationRenderableRuntimeThreadState,
+  type ChatRuntimeConversationRuntimeThreadListMobilePropsParts,
   type ChatRuntimeConversationThreadBodyMobileDisplayMode,
   type ChatRuntimeConversationThreadBodyMobileStateInput,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
@@ -5015,10 +5016,11 @@ type ChatMessageConversationRuntimeThreadListProps = {
   styles: ChatMessageRuntimeThreadStyleSlots;
 };
 
-type ChatMessageConversationRuntimeThreadListParts = ReturnType<typeof createChatRuntimeConversationRuntimeThreadListMobilePropsParts<
-  ChatMessageConversationRenderableRuntimeThreadState,
-  ChatMessageRuntimeThreadStyleSlots
->>;
+type ChatMessageConversationRuntimeThreadListParts =
+  ChatRuntimeConversationRuntimeThreadListMobilePropsParts<
+    ChatMessageConversationRenderableRuntimeThreadState,
+    ChatMessageRuntimeThreadStyleSlots
+  >;
 
 type ChatMessageConversationRuntimeThreadListContentProps =
   ChatMessageConversationRuntimeThreadListParts['content'];
