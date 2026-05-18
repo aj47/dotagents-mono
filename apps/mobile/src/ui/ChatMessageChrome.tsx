@@ -5046,29 +5046,51 @@ type ChatComposerHandsFreeControlsParts =
     ChatComposerHandsFreeControlsStyles
   >;
 
-type ChatComposerHandsFreeStatusRowProps =
-  ChatComposerHandsFreeControlsParts['statusRow']['props'] & {
+type ChatComposerHandsFreeStatusRowProps = {
+  style: ChatComposerHandsFreeControlsStyles['statusRow'];
+  children: ReactNode;
+};
+
+type ChatComposerHandsFreeStatusRowContentProps = {
+  status: {
     children: ReactNode;
   };
+};
 
-type ChatComposerHandsFreeStatusRowContentProps =
-  ChatComposerHandsFreeControlsParts['statusRow']['content'];
+type ChatComposerHandsFreeControlsRowProps = {
+  style: ChatComposerHandsFreeControlsStyles['controlsRow'];
+  children: ReactNode;
+};
 
-type ChatComposerHandsFreeControlsRowProps =
-  ChatComposerHandsFreeControlsParts['controlsRow']['props'] & {
-    children: ReactNode;
+type ChatComposerHandsFreeControlLabelProps = {
+  style: ChatComposerHandsFreeControlsStyles['controlButtonText'];
+  text: string;
+};
+
+type ChatComposerHandsFreeControlButtonProps = {
+  style: ChatComposerHandsFreeControlsStyles['controlButton'];
+  onPress: (event: GestureResponderEvent) => void;
+  activeOpacity: number;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  children: ReactNode;
+};
+
+type ChatComposerHandsFreeControlPart = {
+  touchable: {
+    props: Omit<ChatComposerHandsFreeControlButtonProps, 'children'>;
   };
-
-type ChatComposerHandsFreeControlsRowContentProps =
-  ChatComposerHandsFreeControlsParts['controlsRow']['content'];
-
-type ChatComposerHandsFreeControlButtonProps =
-  ChatComposerHandsFreeControlsParts['controlsRow']['content']['primaryControl']['touchable']['props'] & {
-    children: ReactNode;
+  content: {
+    label: {
+      props: ChatComposerHandsFreeControlLabelProps;
+    };
   };
+};
 
-type ChatComposerHandsFreeControlLabelProps =
-  ChatComposerHandsFreeControlsParts['controlsRow']['content']['primaryControl']['content']['label']['props'];
+type ChatComposerHandsFreeControlsRowContentProps = {
+  primaryControl: ChatComposerHandsFreeControlPart;
+  secondaryControl: ChatComposerHandsFreeControlPart;
+};
 
 type ChatComposerHandsFreeRuntimeStatusProps = ComponentProps<typeof HandsFreeStatusChip>;
 
