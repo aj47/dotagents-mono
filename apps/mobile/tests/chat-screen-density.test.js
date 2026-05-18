@@ -6039,7 +6039,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(responseHistoryPanelSource, /createAgentResponseHistoryMobilePropsParts,/);
   assert.match(responseHistoryPanelSource, /createAgentResponseHistoryMobileStyleSlots,/);
   assert.match(responseHistoryPanelSource, /const responseHistoryStyleSlots = createAgentResponseHistoryMobileStyleSlots\(\{\s+renderState: responseHistoryRenderState,\s+spacing,\s+radius,\s+\}\);/);
-  assert.match(responseHistoryPanelSource, /const responseHistoryParts = createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\);/);
+  assert.match(responseHistoryPanelSource, /const responseHistoryParts: ResponseHistoryPanelParts = createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\);/);
   assert.match(responseHistoryPanelSource, /container:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.container/);
   assert.match(responseHistoryPanelSource, /header:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.header/);
   assert.match(responseHistoryPanelSource, /responseItem:\s*\{[\s\S]*?\.\.\.responseHistoryStyleSlots\.responseItem/);

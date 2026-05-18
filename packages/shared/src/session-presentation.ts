@@ -9,6 +9,7 @@ export {
   createAgentResponseHistoryMobileStyleSlots,
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
+  type AgentResponseHistoryMobilePropsParts,
 } from "./agent-user-response-store"
 import {
   applyUserResponseToChatMessages,

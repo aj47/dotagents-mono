@@ -11,6 +11,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -18,6 +21,7 @@ import {
   createAgentResponseHistoryMobileStyleSlots,
   getAgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileAnimationState,
+  type AgentResponseHistoryMobilePropsParts,
 } from '@dotagents/shared/session-presentation';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
@@ -28,6 +32,9 @@ export interface ResponseHistoryEntry {
   timestamp: number;
 }
 
+type ResponseHistoryToggleHandler = () => void;
+type ResponseHistorySpeakHandler = (text: string, index: number) => void;
+
 interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
   colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
@@ -36,9 +43,34 @@ interface ResponseHistoryPanelProps {
   isCollapsed: boolean;
   shouldAnimateNewest: boolean;
   speakingIndex: number | null;
-  onToggleCollapsed: () => void;
-  onSpeakResponse: (text: string, index: number) => void;
+  onToggleCollapsed: ResponseHistoryToggleHandler;
+  onSpeakResponse: ResponseHistorySpeakHandler;
 }
+
+type ResponseHistoryPanelStyles = {
+  container: StyleProp<ViewStyle>;
+  header: StyleProp<ViewStyle>;
+  headerLeft: StyleProp<ViewStyle>;
+  headerTitle: StyleProp<TextStyle>;
+  badge: StyleProp<ViewStyle>;
+  badgeText: StyleProp<TextStyle>;
+  list: StyleProp<ViewStyle>;
+  responseItem: StyleProp<ViewStyle>;
+  responseHeader: StyleProp<ViewStyle>;
+  timestamp: StyleProp<TextStyle>;
+  speakButton: StyleProp<ViewStyle>;
+  separator: StyleProp<ViewStyle>;
+  collapsedPreview: StyleProp<ViewStyle>;
+  collapsedPreviewTimestamp: StyleProp<TextStyle>;
+  collapsedPreviewText: StyleProp<TextStyle>;
+};
+
+type ResponseHistoryPanelParts =
+  AgentResponseHistoryMobilePropsParts<
+    ResponseHistoryEntry,
+    ResponseHistoryPanelStyles,
+    ResponseHistoryToggleHandler
+  >;
 
 /**
  * Animated wrapper for response items - fades in when first rendered as newest
@@ -112,7 +144,7 @@ export function ResponseHistoryPanel({
     return null;
   }
 
-  const styles = StyleSheet.create({
+  const styles: ResponseHistoryPanelStyles = StyleSheet.create({
     container: {
       ...responseHistoryStyleSlots.container,
     },
@@ -159,7 +191,7 @@ export function ResponseHistoryPanel({
       ...responseHistoryStyleSlots.collapsedPreviewText,
     },
   });
-  const responseHistoryParts = createAgentResponseHistoryMobilePropsParts({
+  const responseHistoryParts: ResponseHistoryPanelParts = createAgentResponseHistoryMobilePropsParts({
     renderState: responseHistoryRenderState,
     styles,
     onToggleCollapsed,
