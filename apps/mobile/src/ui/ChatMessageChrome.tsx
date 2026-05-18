@@ -275,6 +275,8 @@ import {
   type ChatRuntimeToolActivityGroupHeaderMobileKind,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeInlineActivityMobilePropsParts,
+  type ChatRuntimeMessageActionIconButtonMobilePropsParts,
+  type ChatRuntimeMessageActionSlotListMobilePropsParts,
   type ChatRuntimeMessageContentRowMobilePropsParts,
   type ChatRuntimeMessageSurfaceMobilePropsParts,
   type ChatRuntimeRetryStatusMobileRenderState,
@@ -1100,18 +1102,19 @@ type ChatMessageActionIconButtonProps = {
   disabledStyle?: StyleProp<ViewStyle>;
 };
 
-type ChatMessageActionIconButtonParts = ReturnType<typeof createChatRuntimeMessageActionIconButtonMobilePropsParts<
-  ChatMessageActionIcon,
-  ChatMessageActionIconButtonProps['onPress'],
-  ChatMessageActionIconButtonProps['accessibilityRole'],
-  ChatMessageActionIconButtonProps['accessibilityState'],
-  ChatMessageActionIconButtonProps['ariaExpanded'],
-  ChatMessageActionIconButtonProps['hitSlop'],
-  ChatMessageActionIconButtonProps['style'],
-  ChatMessageActionIconButtonProps['activeStyle'],
-  ChatMessageActionIconButtonProps['pressedStyle'],
-  ChatMessageActionIconButtonProps['disabledStyle']
->>;
+type ChatMessageActionIconButtonParts =
+  ChatRuntimeMessageActionIconButtonMobilePropsParts<
+    ChatMessageActionIcon,
+    ChatMessageActionIconButtonProps['onPress'],
+    ChatMessageActionIconButtonProps['accessibilityRole'],
+    ChatMessageActionIconButtonProps['accessibilityState'],
+    ChatMessageActionIconButtonProps['ariaExpanded'],
+    ChatMessageActionIconButtonProps['hitSlop'],
+    ChatMessageActionIconButtonProps['style'],
+    ChatMessageActionIconButtonProps['activeStyle'],
+    ChatMessageActionIconButtonProps['pressedStyle'],
+    ChatMessageActionIconButtonProps['disabledStyle']
+  >;
 
 type ChatMessageActionIconButtonPressableProps =
   ChatMessageActionIconButtonParts['pressable']['props'] & {
@@ -1840,10 +1843,11 @@ type ChatMessageActionSlotListProps = {
   rowStyle?: StyleProp<ViewStyle>;
 };
 
-type ChatMessageActionSlotListParts = ReturnType<typeof createChatRuntimeMessageActionSlotListMobilePropsParts<
-  ChatMessageActionEntry,
-  ChatMessageActionSlotListProps['rowStyle']
->>;
+type ChatMessageActionSlotListParts =
+  ChatRuntimeMessageActionSlotListMobilePropsParts<
+    ChatMessageActionEntry,
+    ChatMessageActionSlotListProps['rowStyle']
+  >;
 
 type ChatMessageActionSlotListRowProps =
   ChatMessageActionSlotListParts['row']['props'] & {
