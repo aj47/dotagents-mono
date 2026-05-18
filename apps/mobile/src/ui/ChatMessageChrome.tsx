@@ -380,11 +380,15 @@ import {
   type ChatRuntimeToolExecutionCallSectionMobilePropsParts,
   type ChatRuntimeToolExecutionCallSectionMobileStyleSlots as SharedChatMessageToolExecutionCallSectionStyleSlots,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsParts,
+  type ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCollapseControlMobileStyleSlots as SharedChatMessageToolExecutionCollapseControlStyleSlots,
   type ChatRuntimeToolExecutionCompactGroupMobilePropsParts,
+  type ChatRuntimeToolExecutionCompactGroupMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCompactGroupMobileStyleSlots as SharedChatMessageToolExecutionCompactGroupStyleSlots,
   type ChatRuntimeToolExecutionCompactListMobilePropsParts,
+  type ChatRuntimeToolExecutionCompactListMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCompactRowMobilePropsParts,
+  type ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCompactRowMobileStyleSlots as SharedChatMessageToolExecutionCompactRowStyleSlots,
   type ChatRuntimeToolExecutionCopyButtonMobilePropsParts,
   type ChatRuntimeToolExecutionCopyButtonMobileStyleSlots as SharedChatMessageToolExecutionCopyButtonStyleSlots,
@@ -2533,15 +2537,16 @@ type ChatMessageToolExecutionCompactRowStyles =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageToolExecutionCompactRowProps = {
-  renderState: ToolExecutionCompactMobileRenderState;
-  styles: ChatMessageToolExecutionCompactRowStyles;
-};
+type ChatMessageToolExecutionCompactRowProps =
+  ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput<
+    ToolExecutionCompactMobileRenderState,
+    ChatMessageToolExecutionCompactRowStyles
+  >;
 
 type ChatMessageToolExecutionCompactRowParts =
   ChatRuntimeToolExecutionCompactRowMobilePropsParts<
-    ChatMessageToolExecutionCompactRowProps['renderState'],
-    ChatMessageToolExecutionCompactRowProps['styles']
+    ToolExecutionCompactMobileRenderState,
+    ChatMessageToolExecutionCompactRowStyles
   >;
 
 type ChatMessageToolExecutionCompactRowContainerProps =
@@ -2603,18 +2608,20 @@ type ChatMessageToolExecutionCompactGroupStyles =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageToolExecutionCompactGroupProps = {
-  renderState: ToolExecutionDetailMobileExpandControlRenderState;
-  onPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolExecutionCompactGroupStyles;
+type ChatMessageToolExecutionCompactGroupProps =
+  ChatRuntimeToolExecutionCompactGroupMobilePropsPartsInput<
+    ToolExecutionDetailMobileExpandControlRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCompactGroupStyles
+  > & {
   children: ReactNode;
-};
+  };
 
 type ChatMessageToolExecutionCompactGroupParts =
   ChatRuntimeToolExecutionCompactGroupMobilePropsParts<
-    ChatMessageToolExecutionCompactGroupProps['renderState'],
-    ChatMessageToolExecutionCompactGroupProps['onPress'],
-    ChatMessageToolExecutionCompactGroupProps['styles']
+    ToolExecutionDetailMobileExpandControlRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCompactGroupStyles
   >;
 
 type ChatMessageToolExecutionCompactGroupPressableProps =
@@ -2622,22 +2629,22 @@ type ChatMessageToolExecutionCompactGroupPressableProps =
     children: ReactNode;
   };
 
-type ChatMessageToolExecutionCompactListProps = {
-  shouldRender: boolean;
-  renderState: ToolExecutionDetailMobileExpandControlRenderState;
-  rows: readonly ChatMessageToolExecutionCompactListRow[];
-  onPress?: (event: GestureResponderEvent) => void;
-  groupStyles: ChatMessageToolExecutionCompactGroupStyles;
-  rowStyles: ChatMessageToolExecutionCompactRowStyles;
-};
+type ChatMessageToolExecutionCompactListProps =
+  ChatRuntimeToolExecutionCompactListMobilePropsPartsInput<
+    ToolExecutionDetailMobileExpandControlRenderState,
+    ChatMessageToolExecutionCompactListRow,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCompactGroupStyles,
+    ChatMessageToolExecutionCompactRowStyles
+  >;
 
 type ChatMessageToolExecutionCompactListParts =
   ChatRuntimeToolExecutionCompactListMobilePropsParts<
-    ChatMessageToolExecutionCompactListProps['renderState'],
+    ToolExecutionDetailMobileExpandControlRenderState,
     ChatMessageToolExecutionCompactListRow,
-    ChatMessageToolExecutionCompactListProps['onPress'],
-    ChatMessageToolExecutionCompactListProps['groupStyles'],
-    ChatMessageToolExecutionCompactListProps['rowStyles']
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCompactGroupStyles,
+    ChatMessageToolExecutionCompactRowStyles
   >;
 
 type ChatMessageToolExecutionCompactListContentProps =
@@ -2651,17 +2658,18 @@ type ChatMessageToolExecutionCollapseControlStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolExecutionCollapseControlProps = {
-  renderState: ToolExecutionDetailMobileCollapseControlRenderState;
-  onPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolExecutionCollapseControlStyles;
-};
+type ChatMessageToolExecutionCollapseControlProps =
+  ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput<
+    ToolExecutionDetailMobileCollapseControlRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCollapseControlStyles
+  >;
 
 type ChatMessageToolExecutionCollapseControlParts =
   ChatRuntimeToolExecutionCollapseControlMobilePropsParts<
-    ChatMessageToolExecutionCollapseControlProps['renderState'],
-    ChatMessageToolExecutionCollapseControlProps['onPress'],
-    ChatMessageToolExecutionCollapseControlProps['styles']
+    ToolExecutionDetailMobileCollapseControlRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCollapseControlStyles
   >;
 
 type ChatMessageToolExecutionCollapseControlPressableProps =
