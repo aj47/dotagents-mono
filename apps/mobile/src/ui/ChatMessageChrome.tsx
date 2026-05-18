@@ -222,12 +222,16 @@ import {
   type ChatRuntimeBranchMobileRenderState,
   type ChatRuntimeConnectionBannerMobileRenderState,
   type ChatRuntimeDockChromeMobileRenderStateInput,
+  type ChatRuntimeConversationDockMobilePropsParts,
   type ChatRuntimeConversationDockShellMobilePropsParts,
   type ChatRuntimeConversationFrameMobilePropsParts,
   type ChatRuntimeConversationOverlaysMobilePropsParts,
   type ChatRuntimeConversationScrollViewportMobilePropsParts,
+  type ChatRuntimeConversationSurfaceMobilePropsParts,
+  type ChatRuntimeConversationViewportMobilePropsParts,
   type ChatRuntimeConversationViewportContentMobilePropsParts,
   type ChatConversationHomePromptEditorModalMobilePropsParts,
+  type ChatRuntimeDebugPanelStackMobilePropsParts,
   type ChatRuntimeHandsFreeMobileRenderState,
   type ChatRuntimeKillSwitchConfirmationAlertState,
   type ChatRuntimeKillSwitchMobileRenderState,
@@ -3482,6 +3486,16 @@ type ChatMessageDebugPanelStackProps = ChatRuntimeDebugPanelsMobileRenderState &
   textStyle: StyleProp<TextStyle>;
 };
 
+type ChatMessageDebugPanelStackParts =
+  ChatRuntimeDebugPanelStackMobilePropsParts<
+    ChatMessageDebugPanelStackProps['requestShouldRender'],
+    ChatMessageDebugPanelStackProps['requestRows'],
+    ChatMessageDebugPanelStackProps['voiceShouldRender'],
+    ChatMessageDebugPanelStackProps['voiceRows'],
+    ChatMessageDebugPanelStackProps['panelStyle'],
+    ChatMessageDebugPanelStackProps['textStyle']
+  >;
+
 type ChatMessageConversationViewportStyleSlots = {
   frame: Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingStyle' | 'rootStyle'>;
   scrollViewport: Pick<ChatMessageScrollViewportProps, 'style' | 'contentContainerStyle'>;
@@ -3517,6 +3531,27 @@ type ChatMessageRuntimeViewportProps<
   debugPanels: Omit<ChatMessageDebugPanelStackProps, 'panelStyle' | 'textStyle'>;
   styles: ChatMessageRuntimeViewportStyleSlots;
 };
+
+type ChatMessageRuntimeViewportParts<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+> =
+  ChatRuntimeConversationViewportMobilePropsParts<
+    ChatMessageRuntimeViewportProps<TPrompt, TTask>['loadingState'],
+    ChatMessageRuntimeViewportProps<TPrompt, TTask>['homeQuickStarts'],
+    ChatMessageRuntimeViewportProps<TPrompt, TTask>['historyBanner'],
+    ChatMessageRuntimeViewportProps<TPrompt, TTask>['stepSummary'],
+    ChatMessageRuntimeViewportProps<TPrompt, TTask>['debugPanels'],
+    ChatMessageRuntimeViewportStyleSlots['scrollViewport']['style'],
+    ChatMessageRuntimeViewportStyleSlots['scrollViewport']['contentContainerStyle'],
+    ChatMessageRuntimeViewportStyleSlots['loadingState']['style'],
+    ChatMessageRuntimeViewportStyleSlots['loadingState']['spinnerStyle'],
+    ChatMessageRuntimeViewportStyleSlots['homeQuickStarts'],
+    ChatMessageRuntimeViewportStyleSlots['historyBanner'],
+    ChatMessageRuntimeViewportStyleSlots['stepSummary'],
+    ChatMessageRuntimeViewportStyleSlots['debugPanels']['panelStyle'],
+    ChatMessageRuntimeViewportStyleSlots['debugPanels']['textStyle']
+  >;
 
 type ChatMessageRuntimeViewportChromeProps<
   TPrompt extends PredefinedPromptSummary,
@@ -3820,6 +3855,21 @@ type ChatMessageRuntimeDockProps = {
   styles: ChatMessageRuntimeDockStyleSlots;
 };
 
+type ChatMessageRuntimeDockParts =
+  ChatRuntimeConversationDockMobilePropsParts<
+    ChatMessageRuntimeDockProps['responseHistoryPanel'],
+    ChatMessageRuntimeDockProps['scrollToBottomButton'],
+    ChatMessageRuntimeDockProps['voiceOverlay'],
+    ChatMessageRuntimeDockProps['queuePanel'],
+    ChatMessageRuntimeDockProps['connectionBanner'],
+    ChatMessageRuntimeDockProps['composer'],
+    ChatMessageRuntimeDockStyleSlots['scrollToBottomButtonStyle'],
+    ChatMessageRuntimeDockStyleSlots['voiceOverlay'],
+    ChatMessageRuntimeDockStyleSlots['queuePanelStyle'],
+    ChatMessageRuntimeDockStyleSlots['connectionBanner'],
+    ChatMessageRuntimeDockStyleSlots['composer']
+  >;
+
 type ChatMessageRuntimeDockChromeProps = Omit<ChatMessageRuntimeDockProps, 'styles'>;
 
 type ChatMessageRuntimeDockChromePropsInput = {
@@ -3878,6 +3928,22 @@ type ChatMessageRuntimeSurfaceProps<
   viewport: Omit<ChatMessageRuntimeViewportProps<TPrompt, TTask>, 'children' | 'styles'>;
   styles: ChatMessageRuntimeSurfaceStyleSlots;
 };
+
+type ChatMessageRuntimeSurfaceParts<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string },
+> =
+  ChatRuntimeConversationSurfaceMobilePropsParts<
+    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['frame'],
+    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['dock'],
+    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['overlays'],
+    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['threadList'],
+    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['viewport'],
+    ChatMessageRuntimeSurfaceStyleSlots['frame']['keyboardAvoidingStyle'],
+    ChatMessageRuntimeSurfaceStyleSlots['frame']['rootStyle'],
+    ChatMessageRuntimeSurfaceStyleSlots['dock'],
+    ChatMessageRuntimeSurfaceStyleSlots['viewport']
+  >;
 
 type ChatMessageRuntimeSurfaceChromeProps<
   TPrompt extends PredefinedPromptSummary,
@@ -12307,15 +12373,16 @@ export function ChatMessageConversationFrame({
   keyboardVerticalOffset,
   rootStyle,
 }: ChatMessageConversationFrameProps) {
-  const frameParts = createChatRuntimeConversationFrameMobilePropsParts({
-    children,
-    dock,
-    overlays,
-    keyboardAvoidingStyle,
-    keyboardAvoidingBehavior,
-    keyboardVerticalOffset,
-    rootStyle,
-  });
+  const frameParts: ChatMessageConversationFrameParts =
+    createChatRuntimeConversationFrameMobilePropsParts({
+      children,
+      dock,
+      overlays,
+      keyboardAvoidingStyle,
+      keyboardAvoidingBehavior,
+      keyboardVerticalOffset,
+      rootStyle,
+    });
 
   return (
     <KeyboardAvoidingView
@@ -12369,10 +12436,11 @@ export function ChatMessageConversationOverlays({
   agentSelector,
   promptEditor,
 }: ChatMessageConversationOverlaysProps) {
-  const overlayParts = createChatRuntimeConversationOverlaysMobilePropsParts({
-    agentSelector,
-    promptEditor,
-  });
+  const overlayParts: ChatMessageConversationOverlaysParts =
+    createChatRuntimeConversationOverlaysMobilePropsParts({
+      agentSelector,
+      promptEditor,
+    });
 
   return (
     <ChatMessageConversationOverlaysContent
@@ -12419,18 +12487,19 @@ export function ChatMessageScrollViewport({
   onScrollEndDrag,
   scrollEventThrottle,
 }: ChatMessageScrollViewportProps) {
-  const scrollViewportParts = createChatRuntimeConversationScrollViewportMobilePropsParts({
-    children,
-    scrollRef,
-    style,
-    contentContainerStyle,
-    keyboardShouldPersistTaps,
-    contentInsetAdjustmentBehavior,
-    onScroll,
-    onScrollBeginDrag,
-    onScrollEndDrag,
-    scrollEventThrottle,
-  });
+  const scrollViewportParts: ChatMessageScrollViewportParts =
+    createChatRuntimeConversationScrollViewportMobilePropsParts({
+      children,
+      scrollRef,
+      style,
+      contentContainerStyle,
+      keyboardShouldPersistTaps,
+      contentInsetAdjustmentBehavior,
+      onScroll,
+      onScrollBeginDrag,
+      onScrollEndDrag,
+      scrollEventThrottle,
+    });
 
   return (
     <ScrollView
@@ -12461,14 +12530,15 @@ export function ChatMessageConversationViewportContent({
   children,
   debugPanels,
 }: ChatMessageConversationViewportContentProps) {
-  const viewportContentParts = createChatRuntimeConversationViewportContentMobilePropsParts({
-    loadingState,
-    homeState,
-    historyBanner,
-    stepSummary,
-    children,
-    debugPanels,
-  });
+  const viewportContentParts: ChatMessageConversationViewportContentParts =
+    createChatRuntimeConversationViewportContentMobilePropsParts({
+      loadingState,
+      homeState,
+      historyBanner,
+      stepSummary,
+      children,
+      debugPanels,
+    });
 
   return (
     <ChatMessageConversationViewportContentPart
@@ -12534,14 +12604,15 @@ export function ChatMessageRuntimeViewport<
   styles,
   ...scrollViewportProps
 }: ChatMessageRuntimeViewportProps<TPrompt, TTask>) {
-  const viewportParts = createChatRuntimeConversationViewportMobilePropsParts({
-    loadingState,
-    homeQuickStarts,
-    historyBanner,
-    stepSummary,
-    debugPanels,
-    styles,
-  });
+  const viewportParts: ChatMessageRuntimeViewportParts<TPrompt, TTask> =
+    createChatRuntimeConversationViewportMobilePropsParts({
+      loadingState,
+      homeQuickStarts,
+      historyBanner,
+      stepSummary,
+      debugPanels,
+      styles,
+    });
 
   return (
     <ChatMessageConversationViewport
@@ -12589,14 +12660,15 @@ export function ChatMessageRuntimeSurface<
   viewport,
   styles,
 }: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>) {
-  const surfaceParts = createChatRuntimeConversationSurfaceMobilePropsParts({
-    frame,
-    dock,
-    overlays,
-    threadList,
-    viewport,
-    styles,
-  });
+  const surfaceParts: ChatMessageRuntimeSurfaceParts<TPrompt, TTask> =
+    createChatRuntimeConversationSurfaceMobilePropsParts({
+      frame,
+      dock,
+      overlays,
+      threadList,
+      viewport,
+      styles,
+    });
 
   return (
     <ChatMessageConversationFrame
@@ -12626,11 +12698,12 @@ export function ChatMessageHistoryBanner({
   onLoadEarlier,
   styles,
 }: ChatMessageHistoryBannerProps) {
-  const historyBannerParts = createChatRuntimeMessageHistoryBannerMobilePropsParts({
-    renderState,
-    onLoadEarlier,
-    styles,
-  });
+  const historyBannerParts: ChatMessageHistoryBannerParts =
+    createChatRuntimeMessageHistoryBannerMobilePropsParts({
+      renderState,
+      onLoadEarlier,
+      styles,
+    });
 
   if (!historyBannerParts.container.shouldRender) return null;
 
@@ -12721,10 +12794,11 @@ export function ChatMessageStepSummaryCard({
   renderState,
   styles,
 }: ChatMessageStepSummaryCardProps) {
-  const stepSummaryCardParts = createChatRuntimeStepSummaryCardMobilePropsParts({
-    renderState,
-    styles,
-  });
+  const stepSummaryCardParts: ChatMessageStepSummaryCardParts =
+    createChatRuntimeStepSummaryCardMobilePropsParts({
+      renderState,
+      styles,
+    });
   const stepSummaryCardPart = stepSummaryCardParts.card;
 
   if (!stepSummaryCardPart.shouldRender) return null;
@@ -12838,11 +12912,12 @@ export function ChatMessageScrollToBottomButton({
   onPress,
   style,
 }: ChatMessageScrollToBottomButtonProps) {
-  const scrollToBottomButtonParts = createChatRuntimeScrollToBottomButtonMobilePropsParts({
-    renderState,
-    onPress,
-    style,
-  });
+  const scrollToBottomButtonParts: ChatMessageScrollToBottomButtonParts =
+    createChatRuntimeScrollToBottomButtonMobilePropsParts({
+      renderState,
+      onPress,
+      style,
+    });
   const scrollToBottomButton = scrollToBottomButtonParts.button;
 
   if (!scrollToBottomButton.shouldRender) return null;
@@ -12891,12 +12966,13 @@ export function ChatMessageLoadingState({
   style,
   spinnerStyle,
 }: ChatMessageLoadingStateProps) {
-  const loadingStateParts = createChatRuntimeLoadingStateMobilePropsParts({
-    renderState,
-    spinnerSource,
-    style,
-    spinnerStyle,
-  });
+  const loadingStateParts: ChatMessageLoadingStateParts =
+    createChatRuntimeLoadingStateMobilePropsParts({
+      renderState,
+      spinnerSource,
+      style,
+      spinnerStyle,
+    });
   const loadingStateContainer = loadingStateParts.container;
 
   if (!loadingStateContainer.shouldRender) return null;
@@ -12967,14 +13043,15 @@ export function ChatMessageDebugPanelStack({
   panelStyle,
   textStyle,
 }: ChatMessageDebugPanelStackProps) {
-  const debugPanelStackParts = createChatRuntimeDebugPanelStackMobilePropsParts({
-    requestShouldRender,
-    requestRows,
-    voiceShouldRender,
-    voiceRows,
-    panelStyle,
-    textStyle,
-  });
+  const debugPanelStackParts: ChatMessageDebugPanelStackParts =
+    createChatRuntimeDebugPanelStackMobilePropsParts({
+      requestShouldRender,
+      requestRows,
+      voiceShouldRender,
+      voiceRows,
+      panelStyle,
+      textStyle,
+    });
 
   return (
     <>
@@ -12996,14 +13073,15 @@ export function ChatMessageConversationDock({
   connectionBanner,
   composer,
 }: ChatMessageConversationDockProps) {
-  const dockShellParts = createChatRuntimeConversationDockShellMobilePropsParts({
-    responseHistoryPanel,
-    scrollToBottomButton,
-    voiceOverlay,
-    queuePanel,
-    connectionBanner,
-    composer,
-  });
+  const dockShellParts: ChatMessageConversationDockParts =
+    createChatRuntimeConversationDockShellMobilePropsParts({
+      responseHistoryPanel,
+      scrollToBottomButton,
+      voiceOverlay,
+      queuePanel,
+      connectionBanner,
+      composer,
+    });
 
   return (
     <ChatMessageConversationDockContent
@@ -13041,15 +13119,16 @@ export function ChatMessageRuntimeDock({
   composer,
   styles,
 }: ChatMessageRuntimeDockProps) {
-  const dockParts = createChatRuntimeConversationDockMobilePropsParts({
-    responseHistoryPanel,
-    scrollToBottomButton,
-    voiceOverlay,
-    queuePanel,
-    connectionBanner,
-    composer,
-    styles,
-  });
+  const dockParts: ChatMessageRuntimeDockParts =
+    createChatRuntimeConversationDockMobilePropsParts({
+      responseHistoryPanel,
+      scrollToBottomButton,
+      voiceOverlay,
+      queuePanel,
+      connectionBanner,
+      composer,
+      styles,
+    });
 
   return (
     <ChatMessageConversationDock
@@ -13148,11 +13227,12 @@ export function ChatMessageConnectionBanner({
   onRetry,
   styles,
 }: ChatMessageConnectionBannerProps) {
-  const connectionBannerParts = createChatRuntimeConnectionBannerMobilePropsParts({
-    renderState,
-    onRetry,
-    styles,
-  });
+  const connectionBannerParts: ChatMessageConnectionBannerParts =
+    createChatRuntimeConnectionBannerMobilePropsParts({
+      renderState,
+      onRetry,
+      styles,
+    });
 
   return (
     <>
