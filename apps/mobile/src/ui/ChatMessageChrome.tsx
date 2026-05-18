@@ -6598,8 +6598,56 @@ type ChatMessageConversationRuntimeThreadListContentProps = {
 };
 
 export function ChatMessageActionIconButton(props: ChatMessageActionIconButtonProps) {
-  const actionIconButtonParts: ChatMessageActionIconButtonParts =
-    createChatRuntimeMessageActionIconButtonMobilePropsParts(props);
+  const {
+    icon,
+    onPress,
+    disabled,
+    isActive,
+    accessibilityRole,
+    accessibilityLabel,
+    accessibilityHint,
+    accessibilityState,
+    ariaExpanded,
+    hitSlop,
+    style,
+    activeStyle,
+    pressedStyle,
+    disabledStyle,
+  } = props;
+  const actionIconButtonParts = useMemo<ChatMessageActionIconButtonParts>(
+    () => createChatRuntimeMessageActionIconButtonMobilePropsParts({
+      icon,
+      onPress,
+      disabled,
+      isActive,
+      accessibilityRole,
+      accessibilityLabel,
+      accessibilityHint,
+      accessibilityState,
+      ariaExpanded,
+      hitSlop,
+      style,
+      activeStyle,
+      pressedStyle,
+      disabledStyle,
+    }),
+    [
+      accessibilityHint,
+      accessibilityLabel,
+      accessibilityRole,
+      accessibilityState,
+      activeStyle,
+      ariaExpanded,
+      disabled,
+      disabledStyle,
+      hitSlop,
+      icon,
+      isActive,
+      onPress,
+      pressedStyle,
+      style,
+    ],
+  );
 
   return (
     <ChatMessageActionIconButtonPressable
@@ -10651,9 +10699,11 @@ export function ChatConversationHomePromptEditorModalActionButton({
 }
 
 export function ChatMessageSurface(props: ChatMessageSurfaceProps) {
-  const surfaceParts: ChatMessageSurfaceParts =
-    createChatRuntimeMessageSurfaceMobilePropsParts(props);
-  const { children } = props;
+  const { children, style, toneStyle } = props;
+  const surfaceParts = useMemo<ChatMessageSurfaceParts>(
+    () => createChatRuntimeMessageSurfaceMobilePropsParts({ style, toneStyle }),
+    [style, toneStyle],
+  );
 
   return (
     <ChatMessageSurfaceContainer
@@ -10676,9 +10726,14 @@ export function ChatMessageSurfaceContainer({
 }
 
 export function ChatMessageThreadItem(props: ChatMessageThreadItemProps) {
-  const threadItemParts: ChatMessageThreadItemParts =
-    createChatRuntimeMessageThreadItemMobilePropsParts(props);
-  const { children } = props;
+  const { children, leadingActivity, trailingActivity } = props;
+  const threadItemParts = useMemo<ChatMessageThreadItemParts>(
+    () => createChatRuntimeMessageThreadItemMobilePropsParts({
+      leadingActivity,
+      trailingActivity,
+    }),
+    [leadingActivity, trailingActivity],
+  );
 
   return (
     <View>
@@ -10690,9 +10745,22 @@ export function ChatMessageThreadItem(props: ChatMessageThreadItemProps) {
 }
 
 export function ChatMessageThreadSurface(props: ChatMessageThreadSurfaceProps) {
-  const threadSurfaceParts: ChatMessageThreadSurfaceParts =
-    createChatRuntimeMessageThreadSurfaceMobilePropsParts(props);
-  const { children } = props;
+  const {
+    children,
+    leadingActivity,
+    trailingActivity,
+    surfaceStyle,
+    surfaceToneStyle,
+  } = props;
+  const threadSurfaceParts = useMemo<ChatMessageThreadSurfaceParts>(
+    () => createChatRuntimeMessageThreadSurfaceMobilePropsParts({
+      leadingActivity,
+      trailingActivity,
+      surfaceStyle,
+      surfaceToneStyle,
+    }),
+    [leadingActivity, surfaceStyle, surfaceToneStyle, trailingActivity],
+  );
 
   return (
     <ChatMessageThreadItem
@@ -10710,9 +10778,22 @@ export function ChatMessageThreadSurface(props: ChatMessageThreadSurfaceProps) {
 export function ChatMessageToolActivityGroupThreadSurface(
   props: ChatMessageToolActivityGroupThreadSurfaceProps,
 ) {
-  const surfaceParts: ChatMessageToolActivityGroupThreadSurfaceParts =
-    createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts(props);
-  const { children } = props;
+  const {
+    children,
+    groupRenderState,
+    onToggleGroup,
+    surfaceToneStyle,
+    styles,
+  } = props;
+  const surfaceParts = useMemo<ChatMessageToolActivityGroupThreadSurfaceParts>(
+    () => createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts({
+      groupRenderState,
+      onToggleGroup,
+      surfaceToneStyle,
+      styles,
+    }),
+    [groupRenderState, onToggleGroup, surfaceToneStyle, styles],
+  );
 
   return (
     <ChatMessageThreadSurface
@@ -10734,8 +10815,16 @@ export function ChatMessageToolActivityGroupThreadSurface(
 }
 
 export function ChatMessageRuntimeThread(props: ChatMessageRuntimeThreadProps) {
-  const runtimeThreadParts: ChatMessageRuntimeThreadParts =
-    createChatRuntimeConversationRuntimeThreadMobilePropsParts(props);
+  const { groupRenderState, onToggleGroup, body, styles } = props;
+  const runtimeThreadParts = useMemo<ChatMessageRuntimeThreadParts>(
+    () => createChatRuntimeConversationRuntimeThreadMobilePropsParts({
+      groupRenderState,
+      onToggleGroup,
+      body,
+      styles,
+    }),
+    [body, groupRenderState, onToggleGroup, styles],
+  );
 
   if (runtimeThreadParts.shouldSkipThread) return null;
 
@@ -10769,8 +10858,14 @@ export function ChatMessageRuntimeThread(props: ChatMessageRuntimeThreadProps) {
 export function ChatMessageConversationRuntimeThreadList(
   props: ChatMessageConversationRuntimeThreadListProps,
 ) {
-  const threadListParts: ChatMessageConversationRuntimeThreadListParts =
-    createChatRuntimeConversationRuntimeThreadListMobilePropsParts(props);
+  const { threadStates, styles } = props;
+  const threadListParts = useMemo<ChatMessageConversationRuntimeThreadListParts>(
+    () => createChatRuntimeConversationRuntimeThreadListMobilePropsParts({
+      threadStates,
+      styles,
+    }),
+    [styles, threadStates],
+  );
 
   return (
     <ChatMessageConversationRuntimeThreadListContent
@@ -15271,8 +15366,32 @@ export function ChatMessageCollapsedPreviewText({
 export function ChatMessageConversationContent(
   props: ChatMessageConversationContentProps,
 ) {
-  const conversationContentParts: ChatMessageConversationContentParts =
-    createChatRuntimeConversationContentMobilePropsParts(props);
+  const {
+    contentDisplayMode,
+    rowStyle,
+    shouldRenderActionSlots,
+    entries,
+    expanded,
+    collapsed,
+  } = props;
+  const conversationContentParts = useMemo<ChatMessageConversationContentParts>(
+    () => createChatRuntimeConversationContentMobilePropsParts({
+      contentDisplayMode,
+      rowStyle,
+      shouldRenderActionSlots,
+      entries,
+      expanded,
+      collapsed,
+    }),
+    [
+      collapsed,
+      contentDisplayMode,
+      entries,
+      expanded,
+      rowStyle,
+      shouldRenderActionSlots,
+    ],
+  );
 
   if (conversationContentParts.expandedContent.shouldRender) {
     return (
@@ -15304,9 +15423,22 @@ export function ChatMessageConversationContent(
 export function ChatMessageContentRow(
   props: ChatMessageContentRowProps,
 ) {
-  const contentRowParts: ChatMessageContentRowParts =
-    createChatRuntimeMessageContentRowMobilePropsParts(props);
-  const { children } = props;
+  const {
+    children,
+    shouldRenderActionSlots,
+    entries,
+    rowStyle,
+    bodyStyle,
+  } = props;
+  const contentRowParts = useMemo<ChatMessageContentRowParts>(
+    () => createChatRuntimeMessageContentRowMobilePropsParts({
+      shouldRenderActionSlots,
+      entries,
+      rowStyle,
+      bodyStyle,
+    }),
+    [bodyStyle, entries, rowStyle, shouldRenderActionSlots],
+  );
 
   return (
     <ChatMessageContentRowContainer
@@ -15351,8 +15483,15 @@ export function ChatMessageContentBody({
 export function ChatMessageStandaloneActions(
   props: ChatMessageStandaloneActionsProps,
 ) {
-  const standaloneActionsParts: ChatMessageStandaloneActionsParts =
-    createChatRuntimeMessageStandaloneActionsMobilePropsParts(props);
+  const { shouldRender, entries, rowStyle } = props;
+  const standaloneActionsParts = useMemo<ChatMessageStandaloneActionsParts>(
+    () => createChatRuntimeMessageStandaloneActionsMobilePropsParts({
+      shouldRender,
+      entries,
+      rowStyle,
+    }),
+    [entries, rowStyle, shouldRender],
+  );
 
   return (
     <ChatMessageActionSlotList
@@ -15364,8 +15503,15 @@ export function ChatMessageStandaloneActions(
 export function ChatMessageActionSlotList(
   props: ChatMessageActionSlotListProps,
 ) {
-  const actionSlotListParts: ChatMessageActionSlotListParts =
-    createChatRuntimeMessageActionSlotListMobilePropsParts(props);
+  const { shouldRender, entries, rowStyle } = props;
+  const actionSlotListParts = useMemo<ChatMessageActionSlotListParts>(
+    () => createChatRuntimeMessageActionSlotListMobilePropsParts({
+      shouldRender,
+      entries,
+      rowStyle,
+    }),
+    [entries, rowStyle, shouldRender],
+  );
   const actionSlotList = actionSlotListParts.list;
 
   if (!actionSlotList.shouldRender) return null;
