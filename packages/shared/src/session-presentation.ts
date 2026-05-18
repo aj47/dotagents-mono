@@ -27961,6 +27961,40 @@ export function createChatComposerStyleSlotsFromStyleSource<
   })
 }
 
+export type ChatConversationHomePromptEditorModalStyleSlots<
+  TKeyboardAvoidingViewStyle,
+  TOverlayStyle,
+  TContentStyle,
+  THeaderStyle,
+  TTitleStyle,
+  TCloseButtonStyle,
+  TLabelStyle,
+  TInputStyle,
+  TInputMultilineStyle,
+  TActionsStyle,
+  TCancelButtonStyle,
+  TCancelButtonTextStyle,
+  TSaveButtonStyle,
+  TSaveButtonDisabledStyle,
+  TSaveButtonTextStyle,
+> = {
+  keyboardAvoidingView: TKeyboardAvoidingViewStyle
+  overlay: TOverlayStyle
+  content: TContentStyle
+  header: THeaderStyle
+  title: TTitleStyle
+  closeButton: TCloseButtonStyle
+  label: TLabelStyle
+  input: TInputStyle
+  inputMultiline: TInputMultilineStyle
+  actions: TActionsStyle
+  cancelButton: TCancelButtonStyle
+  cancelButtonText: TCancelButtonTextStyle
+  saveButton: TSaveButtonStyle
+  saveButtonDisabled: TSaveButtonDisabledStyle
+  saveButtonText: TSaveButtonTextStyle
+}
+
 export function createChatConversationHomePromptEditorModalStyleSlots<
   TKeyboardAvoidingViewStyle,
   TOverlayStyle,
@@ -28009,23 +28043,23 @@ export function createChatConversationHomePromptEditorModalStyleSlots<
   saveButtonStyle: TSaveButtonStyle
   saveButtonDisabledStyle: TSaveButtonDisabledStyle
   saveButtonTextStyle: TSaveButtonTextStyle
-}): {
-  keyboardAvoidingView: TKeyboardAvoidingViewStyle
-  overlay: TOverlayStyle
-  content: TContentStyle
-  header: THeaderStyle
-  title: TTitleStyle
-  closeButton: TCloseButtonStyle
-  label: TLabelStyle
-  input: TInputStyle
-  inputMultiline: TInputMultilineStyle
-  actions: TActionsStyle
-  cancelButton: TCancelButtonStyle
-  cancelButtonText: TCancelButtonTextStyle
-  saveButton: TSaveButtonStyle
-  saveButtonDisabled: TSaveButtonDisabledStyle
-  saveButtonText: TSaveButtonTextStyle
-} {
+}): ChatConversationHomePromptEditorModalStyleSlots<
+  TKeyboardAvoidingViewStyle,
+  TOverlayStyle,
+  TContentStyle,
+  THeaderStyle,
+  TTitleStyle,
+  TCloseButtonStyle,
+  TLabelStyle,
+  TInputStyle,
+  TInputMultilineStyle,
+  TActionsStyle,
+  TCancelButtonStyle,
+  TCancelButtonTextStyle,
+  TSaveButtonStyle,
+  TSaveButtonDisabledStyle,
+  TSaveButtonTextStyle
+> {
   return {
     keyboardAvoidingView: keyboardAvoidingViewStyle,
     overlay: overlayStyle,
@@ -28067,23 +28101,23 @@ type ChatConversationHomePromptEditorModalStyleSource =
 
 type ChatConversationHomePromptEditorModalStyleSlotsFromStyleSource<
   TStyles extends ChatConversationHomePromptEditorModalStyleSource,
-> = {
-  keyboardAvoidingView: TStyles["modalKeyboardAvoidingView"]
-  overlay: TStyles["modalOverlay"]
-  content: TStyles["modalContent"]
-  header: TStyles["modalHeader"]
-  title: TStyles["modalTitle"]
-  closeButton: TStyles["modalCloseButton"]
-  label: TStyles["modalLabel"]
-  input: TStyles["modalInput"]
-  inputMultiline: TStyles["modalInputMultiline"]
-  actions: TStyles["modalActions"]
-  cancelButton: TStyles["modalCancelButton"]
-  cancelButtonText: TStyles["modalCancelButtonText"]
-  saveButton: TStyles["modalSaveButton"]
-  saveButtonDisabled: TStyles["modalSaveButtonDisabled"]
-  saveButtonText: TStyles["modalSaveButtonText"]
-}
+> = ChatConversationHomePromptEditorModalStyleSlots<
+  TStyles["modalKeyboardAvoidingView"],
+  TStyles["modalOverlay"],
+  TStyles["modalContent"],
+  TStyles["modalHeader"],
+  TStyles["modalTitle"],
+  TStyles["modalCloseButton"],
+  TStyles["modalLabel"],
+  TStyles["modalInput"],
+  TStyles["modalInputMultiline"],
+  TStyles["modalActions"],
+  TStyles["modalCancelButton"],
+  TStyles["modalCancelButtonText"],
+  TStyles["modalSaveButton"],
+  TStyles["modalSaveButtonDisabled"],
+  TStyles["modalSaveButtonText"]
+>
 
 export function createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource<
   TStyles extends ChatConversationHomePromptEditorModalStyleSource,

@@ -8764,8 +8764,14 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatScreenSource, /\.\.\.chatRuntimeChrome\.messageRuntime,/);
   assert.doesNotMatch(chatScreenSource, /surface: \{[\s\S]*?promptEditorStyles: promptEditorModalStyles,/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatConversationHomePromptEditorModalStyleSlots/);
+  assert.match(sessionPresentationSource, /export type ChatConversationHomePromptEditorModalStyleSlots<\s+TKeyboardAvoidingViewStyle,/);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalStyleSlots/);
+  assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalStyleSlots<[\s\S]*?\): ChatConversationHomePromptEditorModalStyleSlots</);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource/);
+  assert.match(sessionPresentationSource, /type ChatConversationHomePromptEditorModalStyleSlotsFromStyleSource<[\s\S]*?> = ChatConversationHomePromptEditorModalStyleSlots</);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalStyleSlots as SharedChatConversationHomePromptEditorModalStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalStyles =\s+SharedChatConversationHomePromptEditorModalStyleSlots<\s+StyleProp<ViewStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalStyles = \{\s+keyboardAvoidingView: StyleProp<ViewStyle>;/);
   assert.match(sessionPresentationSource, /keyboardAvoidingView: keyboardAvoidingViewStyle,/);
   assert.match(sessionPresentationSource, /overlayStyle: styles\.modalOverlay,\s+contentStyle: styles\.modalContent,\s+headerStyle: styles\.modalHeader,/);
   assert.match(sessionPresentationSource, /saveButtonStyle: styles\.modalSaveButton,\s+saveButtonDisabledStyle: styles\.modalSaveButtonDisabled,\s+saveButtonTextStyle: styles\.modalSaveButtonText,/);

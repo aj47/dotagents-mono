@@ -231,6 +231,7 @@ import {
   type ChatRuntimeConversationViewportMobilePropsParts,
   type ChatRuntimeConversationViewportContentMobilePropsParts,
   type ChatConversationHomePromptEditorModalMobilePropsParts,
+  type ChatConversationHomePromptEditorModalStyleSlots as SharedChatConversationHomePromptEditorModalStyleSlots,
   type ChatRuntimeDebugPanelStackMobilePropsParts,
   type ChatRuntimeHandsFreeMobileRenderState,
   type ChatRuntimeKillSwitchConfirmationAlertState,
@@ -1848,23 +1849,24 @@ type ChatConversationHomeQuickStartsContentProps<
   'grid' | 'emptyState'
 >;
 
-type ChatConversationHomePromptEditorModalStyles = {
-  keyboardAvoidingView: StyleProp<ViewStyle>;
-  overlay: StyleProp<ViewStyle>;
-  content: StyleProp<ViewStyle>;
-  header: StyleProp<ViewStyle>;
-  title: StyleProp<TextStyle>;
-  closeButton: StyleProp<ViewStyle>;
-  label: StyleProp<TextStyle>;
-  input: StyleProp<TextStyle>;
-  inputMultiline: StyleProp<TextStyle>;
-  actions: StyleProp<ViewStyle>;
-  cancelButton: StyleProp<ViewStyle>;
-  cancelButtonText: StyleProp<TextStyle>;
-  saveButton: StyleProp<ViewStyle>;
-  saveButtonDisabled: StyleProp<ViewStyle>;
-  saveButtonText: StyleProp<TextStyle>;
-};
+type ChatConversationHomePromptEditorModalStyles =
+  SharedChatConversationHomePromptEditorModalStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatConversationHomePromptEditorModalProps = {
   visible: boolean;
