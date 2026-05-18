@@ -6309,8 +6309,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /type ChatRuntimeConversationExpandedContentMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationExpandedContentMobileStyleSlots<\s+THeaderStyle = unknown,/);
   assert.match(sessionPresentationSource, /TStreamingStyles extends ChatRuntimeConversationExpandedContentMobileStyleSlots/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeConversationExpandedContentMobileStyleSlots as SharedChatMessageExpandedContentStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentStyles =\s+SharedChatMessageExpandedContentStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ImageStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeConversationExpandedContentMobileStyleSlots as SharedChatMessageExpandedContentStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentStyles =\s+ChatRuntimeMobileChromeSlots\['messageRuntime'\]\['styles'\]\['threadStyles'\]\['body'\]\['content'\]\['streamingStyles'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentStyles = \{\s+header: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentProps =\s+ChatRuntimeConversationExpandedContentMobilePropsPartsInput<\s+ChatRuntimeStreamingContentMobileRenderState,[\s\S]*?ImageSourcePropType,[\s\S]*?ChatMessageExpandedContentStyles\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentProps = \{[\s\S]*?streamingRenderState: ChatRuntimeStreamingContentMobileRenderState;[\s\S]*?streamingStyles: ChatMessageExpandedContentStyles;[\s\S]*?\};/);

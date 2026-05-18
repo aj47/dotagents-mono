@@ -310,7 +310,6 @@ import {
   type ChatRuntimeConversationContentMobileDisplayMode,
   type ChatRuntimeConversationCollapsedPreviewMobileRenderState,
   type ChatRuntimeConversationExpandedContentMobilePropsParts,
-  type ChatRuntimeConversationExpandedContentMobileStyleSlots as SharedChatMessageExpandedContentStyleSlots,
   type ChatRuntimeConversationContentMobilePropsParts,
   type ChatRuntimeConversationDelegationExpansionState,
   type ChatDisplayMessageLike,
@@ -5991,16 +5990,7 @@ type ChatMessageContentBodyProps = {
 };
 
 type ChatMessageExpandedContentStyles =
-  SharedChatMessageExpandedContentStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ImageStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['content']['streamingStyles'];
 
 type ChatMessageExpandedContentProps =
   ChatRuntimeConversationExpandedContentMobilePropsPartsInput<
