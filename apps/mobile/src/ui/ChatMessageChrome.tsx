@@ -3403,15 +3403,28 @@ type ChatMessageToolExecutionResultBadgeStyles =
 
 type ChatMessageToolExecutionResultBadgeProps =
   ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput<
-    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ChatMessageToolExecutionResultBadgeRenderState,
     ChatMessageToolExecutionResultBadgeStyles
   >;
 
 type ChatMessageToolExecutionResultBadgeParts =
   ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
-    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ChatMessageToolExecutionResultBadgeRenderState,
     ChatMessageToolExecutionResultBadgeStyles
   >;
+
+type ChatMessageToolExecutionResultBadgeRenderState = {
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  isSuccess: boolean;
+  isError: boolean;
+  icon: {
+    name: IoniconName;
+    size: number;
+    color: string;
+  };
+  label: string;
+};
 
 type ChatMessageToolExecutionResultBadgeContainerProps =
   ChatMessageToolExecutionResultBadgeParts['container']['props'] & {
@@ -3522,7 +3535,7 @@ type ChatMessageToolExecutionResultHeaderStyles =
 type ChatMessageToolExecutionResultHeaderProps =
   ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
     ToolExecutionDetailMobileSectionHeaderRenderState,
-    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ChatMessageToolExecutionResultBadgeRenderState,
     ToolExecutionDetailMobileCopyButtonRenderState,
     (event: GestureResponderEvent) => void,
     ChatMessageToolExecutionResultHeaderStyles
@@ -3531,7 +3544,7 @@ type ChatMessageToolExecutionResultHeaderProps =
 type ChatMessageToolExecutionResultHeaderParts =
   ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
     ToolExecutionDetailMobileSectionHeaderRenderState,
-    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ChatMessageToolExecutionResultBadgeRenderState,
     ToolExecutionDetailMobileCopyButtonRenderState,
     (event: GestureResponderEvent) => void,
     ChatMessageToolExecutionResultHeaderStyles
@@ -3686,7 +3699,7 @@ type ChatMessageToolExecutionResultSectionStyles =
 type ChatMessageToolExecutionResultSectionProps =
   ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput<
     ToolExecutionDetailMobileSectionHeaderRenderState,
-    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ChatMessageToolExecutionResultBadgeRenderState,
     ToolExecutionDetailMobileCopyButtonRenderState,
     (event: GestureResponderEvent) => void,
     ToolExecutionDetailMobileSectionHeaderRenderState,
@@ -3698,7 +3711,7 @@ type ChatMessageToolExecutionResultSectionProps =
 type ChatMessageToolExecutionResultSectionParts =
   ChatRuntimeToolExecutionResultSectionMobilePropsParts<
     ToolExecutionDetailMobileSectionHeaderRenderState,
-    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ChatMessageToolExecutionResultBadgeRenderState,
     ToolExecutionDetailMobileCopyButtonRenderState,
     (event: GestureResponderEvent) => void,
     ToolExecutionDetailMobileSectionHeaderRenderState,
