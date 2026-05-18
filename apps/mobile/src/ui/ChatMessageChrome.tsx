@@ -261,6 +261,7 @@ import {
   type ChatRuntimeStepSummaryCardMobilePropsParts,
   type ChatRuntimeStepSummaryCardMobileStyleSlots as SharedChatMessageStepSummaryCardStyleSlots,
   type ChatRuntimeStepSummaryMobileRenderState,
+  type ChatRuntimeLoadingStateMobilePropsPartsInput,
   type ChatRuntimeToolApprovalMobilePropsParts,
   type ChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeDelegationCardMobilePropsParts,
@@ -277,6 +278,7 @@ import {
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
   type ChatRuntimeTurnDurationMessageMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
+  type ChatRuntimeDebugPanelStackMobilePropsPartsInput,
   type ChatRuntimeInlineActivityMobileRenderState,
   type ChatRuntimeLoadingStateMobileRenderState,
   getChatImageAttachmentMobileAlertState,
@@ -3545,12 +3547,13 @@ type ChatMessageScrollToBottomButtonContentProps =
 type ChatMessageScrollToBottomButtonIconProps =
   ChatMessageScrollToBottomButtonParts['button']['content']['icon']['props'];
 
-type ChatMessageLoadingStateProps = {
-  renderState: ChatRuntimeLoadingStateMobileRenderState;
-  spinnerSource: ImageSourcePropType;
-  style: StyleProp<ViewStyle>;
-  spinnerStyle: StyleProp<ImageStyle>;
-};
+type ChatMessageLoadingStateProps =
+  ChatRuntimeLoadingStateMobilePropsPartsInput<
+    ChatRuntimeLoadingStateMobileRenderState,
+    ImageSourcePropType,
+    StyleProp<ViewStyle>,
+    StyleProp<ImageStyle>
+  >;
 
 type ChatMessageLoadingStateParts =
   ChatRuntimeLoadingStateMobilePropsParts<
@@ -3588,10 +3591,15 @@ type ChatMessageDebugPanelProps = {
   };
 };
 
-type ChatMessageDebugPanelStackProps = ChatRuntimeDebugPanelsMobileRenderState & {
-  panelStyle: StyleProp<ViewStyle>;
-  textStyle: StyleProp<TextStyle>;
-};
+type ChatMessageDebugPanelStackProps =
+  ChatRuntimeDebugPanelStackMobilePropsPartsInput<
+    ChatRuntimeDebugPanelsMobileRenderState['requestShouldRender'],
+    ChatRuntimeDebugPanelsMobileRenderState['requestRows'],
+    ChatRuntimeDebugPanelsMobileRenderState['voiceShouldRender'],
+    ChatRuntimeDebugPanelsMobileRenderState['voiceRows'],
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageDebugPanelStackParts =
   ChatRuntimeDebugPanelStackMobilePropsParts<
