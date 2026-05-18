@@ -711,6 +711,9 @@ test('lets mobile respond to desktop tool approval requests from progress update
   const toolApprovalComponentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApproval[\s\S]*?export function ChatMessageDelegationCard/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolApprovalMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolApprovalMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalParts =\s+ChatRuntimeToolApprovalMobilePropsParts<[\s\S]*?ChatMessageToolApprovalProps\['onToggleArguments'\],[\s\S]*?ChatMessageToolApprovalProps\['onDeny'\],[\s\S]*?ChatMessageToolApprovalProps\['onApprove'\],[\s\S]*?ChatMessageToolApprovalStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(toolApprovalComponentSource, /const toolApprovalParts = createChatRuntimeToolApprovalMobilePropsParts\(\{\s+renderState,\s+toolName,\s+argumentsPreview,\s+argumentsContent,\s+onToggleArguments,\s+onDeny,\s+onApprove,\s+styles,\s+\}\);/);
   assert.doesNotMatch(toolApprovalComponentSource, /const argumentsToggleContent = toolApprovalParts\.argumentsToggle\.content;/);
@@ -1001,6 +1004,9 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   const retryStatusSource =
     chatMessageChromeSource.match(/export function ChatMessageRetryStatus[\s\S]*?export function ChatMessageToolApproval/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeRetryStatusMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeRetryStatusMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusParts =\s+ChatRuntimeRetryStatusMobilePropsParts<[\s\S]*?ChatRuntimeRetryStatusMobileRenderState,[\s\S]*?ChatMessageRetryStatusStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusParts = ReturnType<typeof createChatRuntimeRetryStatusMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeRetryStatusMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const retryStatusParts = createChatRuntimeRetryStatusMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const retryStatusCard = retryStatusParts\.card;/);
@@ -1239,6 +1245,9 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /export function createChatRuntimeDelegationCardMobileProps/);
   assert.match(sessionPresentationSource, /if \(!presentationState\) return null/);
   assert.match(chatMessageChromeSource, /createChatRuntimeDelegationCardMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeDelegationCardMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationCardParts =\s+ChatRuntimeDelegationCardMobilePropsParts<[\s\S]*?GestureResponderEvent[\s\S]*?GestureResponderEvent[\s\S]*?ChatMessageDelegationCardStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegationCardMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeDelegationCardMobilePropsParts/);
   assert.match(delegationCardComponentSource, /const delegationCardParts = createChatRuntimeDelegationCardMobilePropsParts\(\{\s+surface,\s+agentName,\s+presentation,\s+accessibilityLabel,\s+messageCountLabel,\s+statusStyles,\s+conversationPreview,\s+toolPreview,\s+styles,\s+\}\);/);
   assert.match(delegationCardComponentSource, /<View\s+\{\.\.\.delegationCardParts\.card\.props\}/);
@@ -2515,6 +2524,9 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /void send\(messageToRetry\);/);
   assert.match(chatMessageChromeSource, /export function ChatMessageConnectionBanner/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConnectionBannerMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeConnectionBannerMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerParts =\s+ChatRuntimeConnectionBannerMobilePropsParts<[\s\S]*?ChatMessageConnectionBannerProps\['renderState'\],[\s\S]*?ChatMessageConnectionBannerProps\['onRetry'\],[\s\S]*?ChatMessageConnectionBannerProps\['styles'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConnectionBannerParts = ReturnType<typeof createChatRuntimeConnectionBannerMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConnectionBannerMobilePropsParts/);
   const connectionBannerSource =
     chatMessageChromeSource.match(/export function ChatMessageConnectionBanner[\s\S]*?export function ChatComposerRuntimeDock/)?.[0] ?? '';

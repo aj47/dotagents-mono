@@ -230,7 +230,9 @@ import {
   type ChatRuntimeSurfaceChromeMobileRenderStateInput,
   type ChatRuntimeStepSummaryCardMobilePropsParts,
   type ChatRuntimeStepSummaryMobileRenderState,
+  type ChatRuntimeToolApprovalMobilePropsParts,
   type ChatRuntimeToolApprovalMobileRenderState,
+  type ChatRuntimeDelegationCardMobilePropsParts,
   type ChatRuntimeTurnDurationBadgeMobilePropsParts,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
@@ -279,6 +281,8 @@ import {
   type ChatRuntimeMessageActionSlotListMobilePropsParts,
   type ChatRuntimeMessageContentRowMobilePropsParts,
   type ChatRuntimeMessageSurfaceMobilePropsParts,
+  type ChatRuntimeConnectionBannerMobilePropsParts,
+  type ChatRuntimeRetryStatusMobilePropsParts,
   type ChatRuntimeRetryStatusMobileRenderState,
   type ChatRuntimeStreamingContentMobileRenderStateInput,
   type ChatRuntimeStreamingContentMobileRenderState,
@@ -1875,10 +1879,11 @@ type ChatMessageRetryStatusProps = {
 
 type ChatMessageRetryStatusPropsInput = ChatRuntimeConversationRetryStatusMobileState;
 
-type ChatMessageRetryStatusParts = ReturnType<typeof createChatRuntimeRetryStatusMobilePropsParts<
-  ChatRuntimeRetryStatusMobileRenderState,
-  ChatMessageRetryStatusStyles
->>;
+type ChatMessageRetryStatusParts =
+  ChatRuntimeRetryStatusMobilePropsParts<
+    ChatRuntimeRetryStatusMobileRenderState,
+    ChatMessageRetryStatusStyles
+  >;
 
 type ChatMessageRetryStatusCardProps =
   ChatMessageRetryStatusParts['card']['props'] & {
@@ -1959,12 +1964,13 @@ type ChatMessageToolApprovalProps = {
   styles: ChatMessageToolApprovalStyles;
 };
 
-type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolApprovalMobilePropsParts<
-  ChatMessageToolApprovalProps['onToggleArguments'],
-  ChatMessageToolApprovalProps['onDeny'],
-  ChatMessageToolApprovalProps['onApprove'],
-  ChatMessageToolApprovalStyles
->>;
+type ChatMessageToolApprovalParts =
+  ChatRuntimeToolApprovalMobilePropsParts<
+    ChatMessageToolApprovalProps['onToggleArguments'],
+    ChatMessageToolApprovalProps['onDeny'],
+    ChatMessageToolApprovalProps['onApprove'],
+    ChatMessageToolApprovalStyles
+  >;
 
 type ChatMessageToolApprovalViewProps = {
   children: ReactNode;
@@ -2134,11 +2140,12 @@ type ChatMessageDelegationCardProps = Omit<
 type ChatMessageDelegationCardPropsInput =
   ChatRuntimeConversationDelegationCardMobileState<ACPDelegationProgress | null | undefined>;
 
-type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegationCardMobilePropsParts<
-  ((event: GestureResponderEvent) => void),
-  ((event: GestureResponderEvent) => void),
-  ChatMessageDelegationCardStyles
->>;
+type ChatMessageDelegationCardParts =
+  ChatRuntimeDelegationCardMobilePropsParts<
+    ((event: GestureResponderEvent) => void),
+    ((event: GestureResponderEvent) => void),
+    ChatMessageDelegationCardStyles
+  >;
 
 type ChatMessageDelegationContentProps =
   ChatMessageDelegationCardParts['card']['content'];
@@ -3596,11 +3603,12 @@ type ChatMessageConnectionBannerProps = {
   styles: ChatMessageConnectionBannerStyles;
 };
 
-type ChatMessageConnectionBannerParts = ReturnType<typeof createChatRuntimeConnectionBannerMobilePropsParts<
-  ChatMessageConnectionBannerProps['renderState'],
-  ChatMessageConnectionBannerProps['onRetry'],
-  ChatMessageConnectionBannerProps['styles']
->>;
+type ChatMessageConnectionBannerParts =
+  ChatRuntimeConnectionBannerMobilePropsParts<
+    ChatMessageConnectionBannerProps['renderState'],
+    ChatMessageConnectionBannerProps['onRetry'],
+    ChatMessageConnectionBannerProps['styles']
+  >;
 
 type ChatMessageConnectionBannerReconnectingBody =
   ChatMessageConnectionBannerParts['reconnecting']['container']['content']['body'];
