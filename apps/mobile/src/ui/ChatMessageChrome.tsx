@@ -4219,8 +4219,8 @@ type ChatComposerSpeechPreviewProps = {
 
 type ChatComposerSpeechPreviewParts =
   ChatComposerSpeechPreviewMobilePropsParts<
-    ChatComposerSpeechPreviewProps['text'],
-    ChatComposerSpeechPreviewProps['styles']
+    string | null | undefined,
+    ChatComposerSpeechPreviewStyles
   >;
 
 type ChatComposerSpeechPreviewContainerProps =
@@ -4257,8 +4257,8 @@ type ChatComposerPendingImagesRailProps = {
 type ChatComposerPendingImagesRailParts =
   ChatComposerPendingImagesRailMobilePropsParts<
     ChatComposerPendingImageItem,
-    ChatComposerPendingImagesRailProps['renderState'],
-    ChatComposerPendingImagesRailProps['styles']
+    ChatImageAttachmentMobileRenderState,
+    ChatComposerPendingImagesRailStyles
   >;
 
 type ChatComposerPendingImagesRailScrollViewProps =
@@ -4306,9 +4306,9 @@ type ChatComposerVoiceOverlayProps = {
 
 type ChatComposerVoiceOverlayParts =
   ChatComposerVoiceOverlayMobilePropsParts<
-    ChatComposerVoiceOverlayProps['transcript'],
-    ChatComposerVoiceOverlayProps['transcriptNumberOfLines'],
-    ChatComposerVoiceOverlayProps['styles']
+    string | null | undefined,
+    number,
+    ChatComposerVoiceOverlayStyles
   >;
 
 type ChatComposerVoiceOverlayContainerProps =
@@ -4349,14 +4349,14 @@ type ChatComposerHandsFreeControlsProps = {
 
 type ChatComposerHandsFreeControlsParts =
   ChatComposerHandsFreeControlsMobilePropsParts<
-    ChatComposerHandsFreeControlsProps['status'],
-    ChatComposerHandsFreeControlsProps['controlState'],
-    ChatComposerHandsFreeControlsProps['onWake'],
-    ChatComposerHandsFreeControlsProps['onSleep'],
-    ChatComposerHandsFreeControlsProps['onResume'],
-    ChatComposerHandsFreeControlsProps['onPause'],
-    ChatComposerHandsFreeControlsProps['controlPressedOpacity'],
-    ChatComposerHandsFreeControlsProps['styles']
+    ReactNode,
+    ChatComposerRuntimeHandsFreeControlsRenderState['controlState'],
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
+    number,
+    ChatComposerHandsFreeControlsStyles
   >;
 
 type ChatComposerHandsFreeStatusRowProps =
@@ -4413,10 +4413,10 @@ type ChatComposerIconButtonProps = {
 type ChatComposerIconButtonParts =
   ChatComposerIconButtonMobilePropsParts<
     ChatComposerIconButtonRenderState,
-    ChatComposerIconButtonProps['onPress'],
-    ChatComposerIconButtonProps['activeOpacity'],
-    ChatComposerIconButtonProps['style'],
-    ChatComposerIconButtonProps['activeStyle']
+    (event: GestureResponderEvent) => void,
+    number,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
   >;
 
 type ChatComposerIconButtonTouchableProps =
@@ -4458,9 +4458,9 @@ type ChatComposerLabeledActionButtonProps = {
 type ChatComposerLabeledActionButtonParts =
   ChatComposerLabeledActionButtonMobilePropsParts<
     ChatComposerLabeledActionRenderState,
-    ChatComposerLabeledActionButtonProps['onPress'],
-    ChatComposerLabeledActionButtonProps['activeOpacity'],
-    ChatComposerLabeledActionButtonProps['styles']
+    (event: GestureResponderEvent) => void,
+    number,
+    ChatComposerLabeledActionButtonStyles
   >;
 
 type ChatComposerLabeledActionButtonTouchableProps =
@@ -4503,11 +4503,11 @@ type ChatComposerMicButtonProps = {
 type ChatComposerMicButtonParts =
   ChatComposerMicButtonMobilePropsParts<
     ChatComposerMicButtonRenderState,
-    ChatComposerMicButtonProps['onPressIn'],
-    ChatComposerMicButtonProps['onPressOut'],
-    ChatComposerMicButtonProps['onPress'],
-    ChatComposerMicButtonProps['webPressedStyle'],
-    ChatComposerMicButtonProps['styles']
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
+    StyleProp<ViewStyle>,
+    ChatComposerMicButtonStyles
   >;
 
 type ChatComposerMicButtonPressableProps =
@@ -4553,13 +4553,13 @@ type ChatComposerTextEntryProps = {
 
 type ChatComposerTextEntryParts =
   ChatComposerTextEntryMobilePropsParts<
-    ChatComposerTextEntryProps['inputRef'],
-    ChatComposerTextEntryProps['value'],
-    ChatComposerTextEntryProps['onChangeText'],
-    ChatComposerTextEntryProps['onKeyPress'],
-    ChatComposerTextEntryProps['placeholderTextColor'],
-    ChatComposerTextEntryProps['webAccessibility'],
-    ChatComposerTextEntryProps['styles']
+    Ref<TextInput>,
+    string,
+    ComponentProps<typeof TextInput>['onChangeText'],
+    ComponentProps<typeof TextInput>['onKeyPress'],
+    string,
+    ChatComposerTextEntryWebAccessibility,
+    ChatComposerTextEntryStyles
   >;
 
 type ChatComposerTextEntryInputProps =
@@ -4595,18 +4595,18 @@ type ChatComposerInputDockProps = {
 
 type ChatComposerInputDockParts =
   ChatComposerInputDockMobilePropsParts<
-    ChatComposerInputDockProps['speechPreview'],
-    ChatComposerInputDockProps['pendingImagesRail'],
-    ChatComposerInputDockProps['handsFreeControls'],
-    ChatComposerInputDockProps['imageAttachmentControl'],
-    ChatComposerInputDockProps['textToSpeechControl'],
-    ChatComposerInputDockProps['editBeforeSendControl'],
-    ChatComposerInputDockProps['textEntry'],
-    ChatComposerInputDockProps['queueAction'],
-    ChatComposerInputDockProps['submitAction'],
-    ChatComposerInputDockProps['micButton'],
-    ChatComposerInputDockProps['micWrapperRef'],
-    ChatComposerInputDockProps['styles']
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    ReactNode,
+    Ref<View>,
+    ChatComposerInputDockStyles
   >;
 
 type ChatComposerInputDockAreaProps =

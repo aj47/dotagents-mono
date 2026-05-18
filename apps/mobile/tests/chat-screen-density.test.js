@@ -3064,6 +3064,20 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     assert.match(chatMessageChromeSource, new RegExp(`type ${localAlias} =\\s+${sharedContract}<`));
     assert.doesNotMatch(chatMessageChromeSource, new RegExp(`type ${localAlias} = ReturnType<typeof ${factoryName}`));
   }
+  const composerLeafPartAliases = [
+    'ChatComposerSpeechPreviewParts',
+    'ChatComposerPendingImagesRailParts',
+    'ChatComposerVoiceOverlayParts',
+    'ChatComposerHandsFreeControlsParts',
+    'ChatComposerIconButtonParts',
+    'ChatComposerLabeledActionButtonParts',
+    'ChatComposerMicButtonParts',
+    'ChatComposerTextEntryParts',
+    'ChatComposerInputDockParts',
+  ];
+  for (const localAlias of composerLeafPartAliases) {
+    assert.doesNotMatch(chatMessageChromeSource, new RegExp(`type ${localAlias} =\\s+ChatComposer[^;]*Props\\['`));
+  }
   assert.match(sessionPresentationSource, /export function createChatComposerInputDockMobilePropsParts/);
   const inputDockSource =
     chatMessageChromeSource.match(/export function ChatComposerInputDock[\s\S]*?export function ChatComposerSpeechPreview/)?.[0] ?? '';
