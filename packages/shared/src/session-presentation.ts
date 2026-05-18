@@ -4995,11 +4995,18 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
   }
 }
 
-export interface ChatComposerSpeechPreviewMobileStylesLike {
-  box: unknown
-  label: unknown
-  text: unknown
+export interface ChatComposerSpeechPreviewMobileStyleSlots<
+  TBoxStyle = unknown,
+  TLabelStyle = unknown,
+  TTextStyle = unknown,
+> {
+  box: TBoxStyle
+  label: TLabelStyle
+  text: TTextStyle
 }
+
+export interface ChatComposerSpeechPreviewMobileStylesLike
+  extends ChatComposerSpeechPreviewMobileStyleSlots {}
 
 export interface ChatComposerSpeechPreviewMobilePropsPartsInput<
   TText = string | null | undefined,
@@ -5510,12 +5517,20 @@ export interface ChatComposerPendingImagesRailMobileRenderStateLike {
   }
 }
 
-export interface ChatComposerPendingImagesRailMobileStylesLike {
-  row: unknown
-  card: unknown
-  preview: unknown
-  removeButton: unknown
+export interface ChatComposerPendingImagesRailMobileStyleSlots<
+  TRowStyle = unknown,
+  TCardStyle = unknown,
+  TPreviewStyle = unknown,
+  TRemoveButtonStyle = unknown,
+> {
+  row: TRowStyle
+  card: TCardStyle
+  preview: TPreviewStyle
+  removeButton: TRemoveButtonStyle
 }
+
+export interface ChatComposerPendingImagesRailMobileStylesLike
+  extends ChatComposerPendingImagesRailMobileStyleSlots {}
 
 export interface ChatComposerPendingImagesRailMobilePropsPartsInput<
   TImage extends ChatComposerPendingImagesRailImageLike = ChatComposerPendingImagesRailImageLike,

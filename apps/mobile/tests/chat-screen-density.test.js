@@ -2878,6 +2878,16 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /export type ChatComposerStyleSlots<\s+TSpeechPreviewStyles,/);
   assert.match(sessionPresentationSource, /export function createChatComposerStyleSlots<[\s\S]*?\): ChatComposerStyleSlots</);
   assert.match(sessionPresentationSource, /type ChatComposerStyleSlotsFromStyleSource<[\s\S]*?> = ChatComposerStyleSlots</);
+  assert.match(sessionPresentationSource, /export interface ChatComposerSpeechPreviewMobileStyleSlots<\s+TBoxStyle = unknown,/);
+  assert.match(sessionPresentationSource, /export interface ChatComposerSpeechPreviewMobileStylesLike\s+extends ChatComposerSpeechPreviewMobileStyleSlots/);
+  assert.match(sessionPresentationSource, /export interface ChatComposerPendingImagesRailMobileStyleSlots<\s+TRowStyle = unknown,/);
+  assert.match(sessionPresentationSource, /export interface ChatComposerPendingImagesRailMobileStylesLike\s+extends ChatComposerPendingImagesRailMobileStyleSlots/);
+  assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewMobileStyleSlots as SharedChatComposerSpeechPreviewStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatComposerPendingImagesRailMobileStyleSlots as SharedChatComposerPendingImagesRailStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatComposerSpeechPreviewStyles =\s+SharedChatComposerSpeechPreviewStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerPendingImagesRailStyles =\s+SharedChatComposerPendingImagesRailStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ImageStyle>,\s+StyleProp<ViewStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerSpeechPreviewStyles = \{\s+box: StyleProp<ViewStyle>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerPendingImagesRailStyles = \{\s+row: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /type ChatComposerStyleSlots as SharedChatComposerStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatComposerStyleSlots =\s+SharedChatComposerStyleSlots<\s+ChatComposerSpeechPreviewStyles,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerStyleSlots = \{\s+speechPreview: ChatComposerSpeechPreviewStyles;/);

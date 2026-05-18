@@ -241,10 +241,12 @@ import {
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
   type ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots as SharedChatMessageHistoryBannerStyleSlots,
+  type ChatComposerPendingImagesRailMobileStyleSlots as SharedChatComposerPendingImagesRailStyleSlots,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
   type ChatComposerRuntimeDockMobilePropsParts,
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
+  type ChatComposerSpeechPreviewMobileStyleSlots as SharedChatComposerSpeechPreviewStyleSlots,
   type ChatComposerStyleSlots as SharedChatComposerStyleSlots,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -4127,11 +4129,12 @@ export type ChatMessageRuntimeChromeSurfaceProps<
   };
 };
 
-type ChatComposerSpeechPreviewStyles = {
-  box: StyleProp<ViewStyle>;
-  label: StyleProp<TextStyle>;
-  text: StyleProp<TextStyle>;
-};
+type ChatComposerSpeechPreviewStyles =
+  SharedChatComposerSpeechPreviewStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatComposerSpeechPreviewProps = {
   label: string;
@@ -4161,12 +4164,13 @@ type ChatComposerPendingImageItem = {
   previewUri: string;
 };
 
-type ChatComposerPendingImagesRailStyles = {
-  row: StyleProp<ViewStyle>;
-  card: StyleProp<ViewStyle>;
-  preview: StyleProp<ImageStyle>;
-  removeButton: StyleProp<ViewStyle>;
-};
+type ChatComposerPendingImagesRailStyles =
+  SharedChatComposerPendingImagesRailStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ImageStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatComposerPendingImagesRailProps = {
   images: readonly ChatComposerPendingImageItem[];
