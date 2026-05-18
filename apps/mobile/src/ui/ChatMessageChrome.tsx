@@ -2144,8 +2144,11 @@ type ChatMessageTurnDurationBadgeParts =
     StyleProp<TextStyle> | undefined
   >;
 
-type ChatMessageTurnDurationBadgeIconProps =
-  ChatMessageTurnDurationBadgeRenderState['icon'];
+type ChatMessageTurnDurationBadgeIconProps = {
+  name: IoniconName;
+  size: number;
+  color: string;
+};
 
 type ChatMessageTurnDurationBadgeLabelProps = {
   text: string;
@@ -2154,7 +2157,7 @@ type ChatMessageTurnDurationBadgeLabelProps = {
       StyleProp<TextStyle>,
       false | StyleProp<TextStyle> | undefined
     ];
-    numberOfLines: ChatMessageTurnDurationBadgeRenderState['badge']['numberOfLines'];
+    numberOfLines: TextProps['numberOfLines'];
   };
 };
 
@@ -2170,7 +2173,7 @@ type ChatMessageTurnDurationBadgeContainerContentProps = {
 type ChatMessageTurnDurationBadgeContainerProps = {
   children: ReactNode;
   accessible: true;
-  accessibilityRole: ChatMessageTurnDurationBadgeRenderState['accessibilityRole'];
+  accessibilityRole: AccessibilityRole;
   accessibilityLabel: string;
   style: [
     StyleProp<ViewStyle>,
