@@ -245,6 +245,8 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.match(screenSource, /useChatRuntimeAgentSelectorOverlayState,/);
   assert.match(screenSource, /const \{\s+agentSelectorVisible,\s+openAgentSelector,\s+closeAgentSelector,\s+\} = useChatRuntimeAgentSelectorOverlayState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeAgentSelectorOverlayState/);
+  assert.match(chatMessageChromeSource, /const agentSelectorOverlayState = useMemo<ChatRuntimeAgentSelectorOverlayState>\(\s+\(\) => \(\{\s+agentSelectorVisible,\s+openAgentSelector,\s+closeAgentSelector,\s+\}\),\s+\[agentSelectorVisible, closeAgentSelector, openAgentSelector\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return agentSelectorOverlayState;/);
   assert.match(chatMessageChromeSource, /const \[agentSelectorVisible, setAgentSelectorVisible\] = useState\(false\);/);
   assert.doesNotMatch(screenSource, /const \[agentSelectorVisible, setAgentSelectorVisible\] = useState\(false\);/);
   assert.match(screenSource, /turnDurationIsLive: turnDurations\.hasLive,\s+onAgentSelectorPress: openAgentSelector,/);
@@ -3645,6 +3647,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /const \[pendingImages, setPendingImages\] = useState<ChatComposerRuntimeImageAttachment\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const inputRef = useRef<ChatComposerTextEntryRef>\(null\);/);
   assert.match(chatMessageChromeSource, /const mergeVoiceTextIntoComposer = useCallback\(\(text: string\) => \{[\s\S]*?setInput\(\(current\) => mergeChatComposerRuntimeVoiceText\(current, text\)\);/);
+  assert.match(chatMessageChromeSource, /const composerDraftState = useMemo<ChatComposerRuntimeDraftState>\(\s+\(\) => \(\{\s+input,\s+setInput,\s+pendingImages,\s+setPendingImages,\s+inputRef,\s+clearComposerInput,\s+clearPendingImages,\s+clearComposerDraft,\s+focusComposerInput,\s+mergeVoiceTextIntoComposer,\s+removePendingImage,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /return composerDraftState;/);
   assert.doesNotMatch(chatMessageChromeSource, /import \{ mergeVoiceText \} from '@dotagents\/shared\/voice-text-utils';/);
   assert.doesNotMatch(chatMessageChromeSource, /export function mergeChatComposerRuntimeVoiceText/);
   assert.match(sessionPresentationSource, /export function mergeChatComposerRuntimeVoiceText/);
@@ -9377,10 +9381,14 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /const \{\s+runningPromptTaskId,\s+canRunPromptTask,\s+beginPromptTaskRun,\s+clearPromptTaskRun,\s+\} = useChatConversationHomePromptTaskRunState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptTaskRunState/);
   assert.match(chatMessageChromeSource, /const \[runningPromptTaskId, setRunningPromptTaskId\] = useState<string \| null>\(null\);/);
+  assert.match(chatMessageChromeSource, /const promptTaskRunState = useMemo<ChatConversationHomePromptTaskRunState>\(\s+\(\) => \(\{\s+runningPromptTaskId,\s+canRunPromptTask: runningPromptTaskId === null,\s+beginPromptTaskRun,\s+clearPromptTaskRun,\s+\}\),\s+\[beginPromptTaskRun, clearPromptTaskRun, runningPromptTaskId\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return promptTaskRunState;/);
   assert.match(screenSource, /useChatConversationHomePromptTaskRunChromeActionsState,/);
   assert.match(screenSource, /const \{ handleRunPromptTask \} = useChatConversationHomePromptTaskRunChromeActionsState<Loop, ExtendedSettingsApiClient>\(\{\s+taskClient: settingsClient,\s+canRunPromptTask,\s+beginPromptTaskRun,\s+clearPromptTaskRun,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptTaskRunActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptTaskRunChromeActionsState/);
+  assert.match(chatMessageChromeSource, /const promptTaskRunActionsState = useMemo<\s+ChatConversationHomePromptTaskRunActionsState<TTask>\s+>\(\s+\(\) => \(\{\s+handleRunPromptTask,\s+\}\),\s+\[handleRunPromptTask\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return promptTaskRunActionsState;/);
   assert.match(chatMessageChromeSource, /useChatConversationHomePromptTaskRunChromeActionsState[\s\S]*?showAlert: Alert\.alert,/);
   assert.doesNotMatch(screenSource, /if \(!settingsClient \|\| !canRunPromptTask\) return;/);
   assert.match(chatMessageChromeSource, /if \(!taskClient \|\| !canRunPromptTask\) return;/);
@@ -9440,6 +9448,8 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(screenSource, /useChatConversationHomeQuickStartActionsState,/);
   assert.match(screenSource, /const \{ handleQuickStartPress \} = useChatConversationHomeQuickStartActionsState<PredefinedPromptSummary, Loop>\(\{\s+setComposerInput: setInput,\s+focusComposerInput,\s+openAddPrompt: openAddPromptModal,\s+runPromptTask: handleRunPromptTask,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomeQuickStartActionsState/);
+  assert.match(chatMessageChromeSource, /const quickStartActionsState = useMemo<\s+ChatConversationHomeQuickStartActionsState<TPrompt, TTask>\s+>\(\s+\(\) => \(\{\s+handleQuickStartPress,\s+\}\),\s+\[handleQuickStartPress\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return quickStartActionsState;/);
   assert.doesNotMatch(screenSource, /const pressIntent = getChatRuntimeHomeQuickStartPressIntent\(item\);/);
   assert.match(chatMessageChromeSource, /const pressIntent = getChatRuntimeHomeQuickStartPressIntent\(item\);/);
   assert.doesNotMatch(chatMessageChromeSource, /export function getChatRuntimeHomeQuickStartPressIntent/);
@@ -9654,6 +9664,8 @@ test('loads saved prompts from the settings API for the mobile quick-start launc
   assert.match(chatMessageChromeSource, /const \[availableSkills, setAvailableSkills\] = useState<Skill\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const \[availableTasks, setAvailableTasks\] = useState<Loop\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const \[isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts\] = useState\(false\);/);
+  assert.match(chatMessageChromeSource, /const quickStartCatalogState = useMemo<ChatConversationHomeQuickStartCatalogState>\(\s+\(\) => \(\{\s+predefinedPrompts,\s+setPredefinedPrompts,\s+availableSkills,\s+setAvailableSkills,\s+availableTasks,\s+setAvailableTasks,\s+isLoadingQuickStartPrompts,\s+beginQuickStartCatalogLoad,\s+finishQuickStartCatalogLoad,\s+clearQuickStartCatalog,\s+\}\),\s+\[\s+availableSkills,\s+availableTasks,\s+beginQuickStartCatalogLoad,\s+clearQuickStartCatalog,\s+finishQuickStartCatalogLoad,\s+isLoadingQuickStartPrompts,\s+predefinedPrompts,\s+\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return quickStartCatalogState;/);
   assert.doesNotMatch(screenSource, /const \[predefinedPrompts, setPredefinedPrompts\] = useState<PredefinedPromptSummary\[\]>\(\[\]\);/);
   assert.doesNotMatch(screenSource, /const \[availableSkills, setAvailableSkills\] = useState<Skill\[\]>\(\[\]\);/);
   assert.doesNotMatch(screenSource, /const \[availableTasks, setAvailableTasks\] = useState<Loop\[\]>\(\[\]\);/);
@@ -9687,6 +9699,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(chatMessageChromeSource, /const \[promptEditorNameValue, setPromptEditorNameValue\] = useState\(''\);/);
   assert.match(chatMessageChromeSource, /const \[promptEditorContentValue, setPromptEditorContentValue\] = useState\(''\);/);
   assert.match(chatMessageChromeSource, /const \[promptEditorIsSaving, setPromptEditorIsSaving\] = useState\(false\);/);
+  assert.match(chatMessageChromeSource, /const promptEditorState = useMemo<ChatConversationHomePromptEditorState>\(\s+\(\) => \(\{\s+promptEditorVisible,\s+promptEditorEditingPrompt,\s+promptEditorIsEditing,\s+promptEditorNameValue,\s+setPromptEditorNameValue,\s+promptEditorContentValue,\s+setPromptEditorContentValue,\s+promptEditorIsSaving,\s+openAddPromptEditor,\s+openEditPromptEditor,\s+closePromptEditor,\s+dismissPromptEditor,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /return promptEditorState;/);
   assert.doesNotMatch(screenSource, /const \[addPromptModalVisible, setAddPromptModalVisible\] = useState\(false\);/);
   assert.doesNotMatch(screenSource, /const \[editingPrompt, setEditingPrompt\] = useState<PredefinedPromptSummary \| null>\(null\);/);
   assert.doesNotMatch(screenSource, /const \[newPromptName, setNewPromptName\] = useState\(''\);/);

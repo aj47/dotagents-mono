@@ -1787,9 +1787,16 @@ export function useChatConversationHomeQuickStartActionsState<
     setComposerInput,
   ]);
 
-  return {
-    handleQuickStartPress,
-  };
+  const quickStartActionsState = useMemo<
+    ChatConversationHomeQuickStartActionsState<TPrompt, TTask>
+  >(
+    () => ({
+      handleQuickStartPress,
+    }),
+    [handleQuickStartPress],
+  );
+
+  return quickStartActionsState;
 }
 
 type ChatConversationHomeQuickStartsStyles =
@@ -7531,12 +7538,17 @@ export function useChatConversationHomePromptTaskRunState(): ChatConversationHom
     setRunningPromptTaskId(null);
   }, []);
 
-  return {
-    runningPromptTaskId,
-    canRunPromptTask: runningPromptTaskId === null,
-    beginPromptTaskRun,
-    clearPromptTaskRun,
-  };
+  const promptTaskRunState = useMemo<ChatConversationHomePromptTaskRunState>(
+    () => ({
+      runningPromptTaskId,
+      canRunPromptTask: runningPromptTaskId === null,
+      beginPromptTaskRun,
+      clearPromptTaskRun,
+    }),
+    [beginPromptTaskRun, clearPromptTaskRun, runningPromptTaskId],
+  );
+
+  return promptTaskRunState;
 }
 
 export function useChatConversationHomePromptTaskRunActionsState<
@@ -7570,9 +7582,16 @@ export function useChatConversationHomePromptTaskRunActionsState<
     taskClient,
   ]);
 
-  return {
-    handleRunPromptTask,
-  };
+  const promptTaskRunActionsState = useMemo<
+    ChatConversationHomePromptTaskRunActionsState<TTask>
+  >(
+    () => ({
+      handleRunPromptTask,
+    }),
+    [handleRunPromptTask],
+  );
+
+  return promptTaskRunActionsState;
 }
 
 export function useChatConversationHomePromptTaskRunChromeActionsState<
@@ -7608,18 +7627,31 @@ export function useChatConversationHomeQuickStartCatalogState(): ChatConversatio
     setIsLoadingQuickStartPrompts(false);
   }, []);
 
-  return {
-    predefinedPrompts,
-    setPredefinedPrompts,
-    availableSkills,
-    setAvailableSkills,
-    availableTasks,
-    setAvailableTasks,
-    isLoadingQuickStartPrompts,
-    beginQuickStartCatalogLoad,
-    finishQuickStartCatalogLoad,
-    clearQuickStartCatalog,
-  };
+  const quickStartCatalogState = useMemo<ChatConversationHomeQuickStartCatalogState>(
+    () => ({
+      predefinedPrompts,
+      setPredefinedPrompts,
+      availableSkills,
+      setAvailableSkills,
+      availableTasks,
+      setAvailableTasks,
+      isLoadingQuickStartPrompts,
+      beginQuickStartCatalogLoad,
+      finishQuickStartCatalogLoad,
+      clearQuickStartCatalog,
+    }),
+    [
+      availableSkills,
+      availableTasks,
+      beginQuickStartCatalogLoad,
+      clearQuickStartCatalog,
+      finishQuickStartCatalogLoad,
+      isLoadingQuickStartPrompts,
+      predefinedPrompts,
+    ],
+  );
+
+  return quickStartCatalogState;
 }
 
 export function useChatConversationHomeQuickStartCatalogLoadState<
@@ -7733,22 +7765,41 @@ export function useChatConversationHomePromptEditorState(): ChatConversationHome
     setPromptEditorIsSaving(false);
   }, []);
 
-  return {
-    promptEditorVisible,
-    promptEditorEditingPrompt,
-    promptEditorIsEditing: Boolean(promptEditorEditingPrompt),
-    promptEditorNameValue,
-    setPromptEditorNameValue,
-    promptEditorContentValue,
-    setPromptEditorContentValue,
-    promptEditorIsSaving,
-    openAddPromptEditor,
-    openEditPromptEditor,
-    closePromptEditor,
-    dismissPromptEditor,
-    beginPromptEditorSave,
-    clearPromptEditorSave,
-  };
+  const promptEditorIsEditing = Boolean(promptEditorEditingPrompt);
+  const promptEditorState = useMemo<ChatConversationHomePromptEditorState>(
+    () => ({
+      promptEditorVisible,
+      promptEditorEditingPrompt,
+      promptEditorIsEditing,
+      promptEditorNameValue,
+      setPromptEditorNameValue,
+      promptEditorContentValue,
+      setPromptEditorContentValue,
+      promptEditorIsSaving,
+      openAddPromptEditor,
+      openEditPromptEditor,
+      closePromptEditor,
+      dismissPromptEditor,
+      beginPromptEditorSave,
+      clearPromptEditorSave,
+    }),
+    [
+      beginPromptEditorSave,
+      clearPromptEditorSave,
+      closePromptEditor,
+      dismissPromptEditor,
+      openAddPromptEditor,
+      openEditPromptEditor,
+      promptEditorContentValue,
+      promptEditorEditingPrompt,
+      promptEditorIsEditing,
+      promptEditorIsSaving,
+      promptEditorNameValue,
+      promptEditorVisible,
+    ],
+  );
+
+  return promptEditorState;
 }
 
 export function useChatRuntimeAgentSelectorOverlayState(): ChatRuntimeAgentSelectorOverlayState {
@@ -7762,11 +7813,16 @@ export function useChatRuntimeAgentSelectorOverlayState(): ChatRuntimeAgentSelec
     setAgentSelectorVisible(false);
   }, []);
 
-  return {
-    agentSelectorVisible,
-    openAgentSelector,
-    closeAgentSelector,
-  };
+  const agentSelectorOverlayState = useMemo<ChatRuntimeAgentSelectorOverlayState>(
+    () => ({
+      agentSelectorVisible,
+      openAgentSelector,
+      closeAgentSelector,
+    }),
+    [agentSelectorVisible, closeAgentSelector, openAgentSelector],
+  );
+
+  return agentSelectorOverlayState;
 }
 
 export function useChatComposerRuntimeDraftState(): ChatComposerRuntimeDraftState {
@@ -7799,19 +7855,34 @@ export function useChatComposerRuntimeDraftState(): ChatComposerRuntimeDraftStat
     setPendingImages((current) => current.filter((image) => image.id !== attachmentId));
   }, []);
 
-  return {
-    input,
-    setInput,
-    pendingImages,
-    setPendingImages,
-    inputRef,
-    clearComposerInput,
-    clearPendingImages,
-    clearComposerDraft,
-    focusComposerInput,
-    mergeVoiceTextIntoComposer,
-    removePendingImage,
-  };
+  const composerDraftState = useMemo<ChatComposerRuntimeDraftState>(
+    () => ({
+      input,
+      setInput,
+      pendingImages,
+      setPendingImages,
+      inputRef,
+      clearComposerInput,
+      clearPendingImages,
+      clearComposerDraft,
+      focusComposerInput,
+      mergeVoiceTextIntoComposer,
+      removePendingImage,
+    }),
+    [
+      clearComposerDraft,
+      clearComposerInput,
+      clearPendingImages,
+      focusComposerInput,
+      input,
+      inputRef,
+      mergeVoiceTextIntoComposer,
+      pendingImages,
+      removePendingImage,
+    ],
+  );
+
+  return composerDraftState;
 }
 
 export function useChatComposerRuntimeSubmissionActionsState({
