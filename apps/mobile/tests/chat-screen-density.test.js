@@ -4796,7 +4796,14 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(toolExecutionCompactRowIconSlotSource, /<ChatMessageToolExecutionCompactRowIcon\s+\{\.\.\.slot\.icon\.props\}/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolExecutionCompactRowMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowParts =\s+ChatRuntimeToolExecutionCompactRowMobilePropsParts<[\s\S]*?ToolExecutionCompactMobileRenderState,[\s\S]*?ChatMessageToolExecutionCompactRowStyles/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowContainerProps = \{\s+style: StyleProp<ViewStyle>;\s+accessibilityLabel: string;\s+children: ReactNode;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowIconProps =\s+ComponentProps<typeof Ionicons> & \{\s+state\?: string;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowIconSlotPart = \{\s+container: \{\s+props: Omit<ChatMessageToolExecutionCompactRowIconCellProps, 'children'>;\s+\};\s+icon: ChatMessageToolExecutionCompactRowIconPart;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowTextPart = \{[\s\S]*?numberOfLines: TextProps\['numberOfLines'\];[\s\S]*?ellipsizeMode: TextProps\['ellipsizeMode'\];[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowStatusIndicatorPart = \{[\s\S]*?props: Omit<ChatMessageToolExecutionCompactRowStatusIndicatorProps, 'children'>;[\s\S]*?spinner: ChatMessageToolExecutionCompactRowStatusIndicatorSpinnerPart;[\s\S]*?icon: ChatMessageToolExecutionCompactRowStatusIndicatorIconPart;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowSpinnerProps =\s+ComponentProps<typeof ActivityIndicator>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionCompactRowParts = ReturnType<typeof createChatRuntimeToolExecutionCompactRowMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionCompactRowParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /compactRowParts\.(name|leadingIcon|toggleIcon|statusIndicator)\./);
   assert.doesNotMatch(chatMessageChromeSource, /compactRowParts\.container\.(style|accessibilityLabel|text|numberOfLines|ellipsizeMode)/);
   assert.doesNotMatch(chatMessageChromeSource, /compactRowContent\.(leadingIcon|toggleIcon)\.style/);
