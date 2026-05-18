@@ -3732,17 +3732,35 @@ type ChatMessageToolExecutionResultSectionErrorBlockProps = {
   errorBlock: ChatMessageToolExecutionResultSectionParts['item']['content']['errorBlock'];
 };
 
-type ChatMessageToolExecutionCallDetailInput = NonNullable<
-  ChatRuntimeConversationToolExecutionDetailMobileRowState['input']
->;
+type ChatMessageToolExecutionCallDetailInput = {
+  payloadRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;
+  compactText?: string | null;
+  content: string;
+  isExpanded: boolean;
+  previewNumberOfLines: number;
+  copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;
+  onCopyPress: () => void;
+};
 
-type ChatMessageToolExecutionCallDetailResult = NonNullable<
-  ChatRuntimeConversationToolExecutionDetailMobileRowState['result']
->;
+type ChatMessageToolExecutionCallDetailResult = {
+  payloadRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;
+  resultBadge: ChatMessageToolExecutionResultBadgeRenderState;
+  characterCountLabel: string;
+  resultCompactText?: string | null;
+  resultContent: string;
+  isExpanded: boolean;
+  previewNumberOfLines: number;
+  copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;
+  onCopyPress: () => void;
+  errorRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;
+  error?: string | null;
+  errorCopyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;
+  onErrorCopyPress: () => void;
+};
 
-type ChatMessageToolExecutionCallDetailPendingResult = NonNullable<
-  ChatRuntimeConversationToolExecutionDetailMobileRowState['pendingResult']
->;
+type ChatMessageToolExecutionCallDetailPendingResult = {
+  renderState: ToolExecutionDetailMobilePendingResultRenderState;
+};
 
 type ChatMessageToolExecutionCallDetailStyles =
   SharedChatMessageToolExecutionCallDetailStyleSlots<
