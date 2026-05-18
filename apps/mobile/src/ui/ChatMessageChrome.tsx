@@ -4778,12 +4778,14 @@ type ChatComposerMicButtonStyles =
     StyleProp<TextStyle>
   >;
 
+type ChatComposerMicButtonWebPressedStyle = StyleProp<ViewStyle> | undefined;
+
 type ChatComposerMicButtonProps = {
   renderState: ChatComposerMicButtonRenderState;
   onPressIn?: (event: GestureResponderEvent) => void;
   onPressOut?: (event: GestureResponderEvent) => void;
   onPress?: (event: GestureResponderEvent) => void;
-  webPressedStyle?: StyleProp<ViewStyle>;
+  webPressedStyle?: ChatComposerMicButtonWebPressedStyle;
   styles: ChatComposerMicButtonStyles;
 };
 
@@ -5239,7 +5241,9 @@ type ChatComposerRuntimeDockChromeProps = {
   textEntry: Pick<ChatComposerTextEntryProps, 'placeholderTextColor' | 'webAccessibility'>;
   queueAction: Pick<ChatComposerLabeledActionButtonProps, 'activeOpacity'>;
   submitAction: Pick<ChatComposerLabeledActionButtonProps, 'activeOpacity'>;
-  micButton: Pick<ChatComposerMicButtonProps, 'webPressedStyle'>;
+  micButton: {
+    webPressedStyle?: ChatComposerMicButtonWebPressedStyle;
+  };
 };
 
 type ChatComposerRuntimeDockChromeInput =
@@ -6361,7 +6365,7 @@ export function createChatMessageRuntimeChromeProps<
     }),
   });
   const chatComposerRuntimeDockChrome =
-    createChatComposerRuntimeDockMobileChromeProps<ChatComposerMicButtonProps['webPressedStyle']>({
+    createChatComposerRuntimeDockMobileChromeProps<ChatComposerMicButtonWebPressedStyle>({
       colors,
       platform,
     });

@@ -2983,7 +2983,11 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.doesNotMatch(screenSource, /const mobileHandsFreeSurface = mobileHandsFreeSurfaceRenderState\.surface;/);
   assert.doesNotMatch(chatMessageChromeSource, /getHandsFreeComposerMobileSurfaceRenderState/);
   assert.doesNotMatch(screenSource, /composerChrome: \{/);
-  assert.match(chatMessageChromeSource, /const chatComposerRuntimeDockChrome =\s+createChatComposerRuntimeDockMobileChromeProps<ChatComposerMicButtonProps\['webPressedStyle'\]>\(\{\s+colors,\s+platform,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatComposerMicButtonWebPressedStyle = StyleProp<ViewStyle> \| undefined;/);
+  assert.match(chatMessageChromeSource, /webPressedStyle\?: ChatComposerMicButtonWebPressedStyle;/);
+  assert.match(chatMessageChromeSource, /micButton: \{\s+webPressedStyle\?: ChatComposerMicButtonWebPressedStyle;\s+\};/);
+  assert.match(chatMessageChromeSource, /const chatComposerRuntimeDockChrome =\s+createChatComposerRuntimeDockMobileChromeProps<ChatComposerMicButtonWebPressedStyle>\(\{\s+colors,\s+platform,\s+\}\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatComposerMicButtonProps\['webPressedStyle'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatComposerRuntimeChromeMobileStyleRenderState,/);
   assert.match(sessionPresentationSource, /export function getChatComposerRuntimeChromeMobileStyleRenderState\(\{/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /const composerChromeStyleState = chatChromeStyleState\.composer;/);
