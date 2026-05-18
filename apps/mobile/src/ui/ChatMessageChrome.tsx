@@ -293,7 +293,6 @@ import {
   type ChatRuntimeHomeQuickStartItemsMobileStateInput,
   type ChatRuntimeHomeQuickStartsMobilePropsParts,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
-  type ChatRuntimeHomeQuickStartsMobileStyleSlots as SharedChatConversationHomeQuickStartsStyleSlots,
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
@@ -1810,26 +1809,7 @@ export function useChatConversationHomeQuickStartActionsState<
 }
 
 type ChatConversationHomeQuickStartsStyles =
-  SharedChatConversationHomeQuickStartsStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['viewport']['homeQuickStarts'];
 
 type ChatConversationHomeQuickStartsProps<
   TPrompt extends PredefinedPromptSummary,
