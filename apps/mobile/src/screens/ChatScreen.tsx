@@ -75,6 +75,7 @@ import {
   useChatMessageCopyFeedbackState,
   useChatMessageRuntimeClipboardChromeActionsState,
   useChatRuntimeMobileConfigState,
+  useChatMessageRuntimeChromeStyleState,
   useChatMessageRuntimeChromeInputState,
   useChatMessageRuntimeSurfaceInputState,
   useChatMessageRuntimeViewportInputState,
@@ -114,10 +115,9 @@ import {
   type Loop,
   type PredefinedPromptSummary,
 } from '@dotagents/shared/session-presentation';
-import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
 
 export default function ChatScreen({ route, navigation }: any) {
-  const { chatRuntimeChrome } = useChatRuntimeMobileStyleSlots();
+  const { chatRuntimeChrome } = useChatMessageRuntimeChromeStyleState();
   const { keyboardVerticalOffset } = useChatMessageRuntimeKeyboardOffsetState();
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();

@@ -38,6 +38,7 @@ import {
   createChatRuntimeMessageQueuePanelStyleSheetSlots,
   createChatRuntimeResponseHistoryPanelStyleSheetSlots,
   createChatRuntimeQueuedMessageItemStyleSheetSlots,
+  useChatRuntimeMobileStyleSlots,
   type ChatRuntimeMobileChromeSlots,
 } from './ChatRuntimeMobileStyles';
 import {
@@ -512,6 +513,8 @@ type ChatMessageRuntimeKeyboardOffsetState = {
   keyboardVerticalOffset: number;
 };
 
+type ChatMessageRuntimeChromeStyleState = ReturnType<typeof useChatRuntimeMobileStyleSlots>;
+
 type ChatRuntimeMobileChromeConfigState = ChatRuntimeMobileConfigState & {
   handsFree: boolean;
 };
@@ -541,6 +544,10 @@ export function useChatRuntimeMobileConfigState(config: MobileAppConfig): ChatRu
     }),
     [config],
   );
+}
+
+export function useChatMessageRuntimeChromeStyleState(): ChatMessageRuntimeChromeStyleState {
+  return useChatRuntimeMobileStyleSlots();
 }
 
 export function useChatMessageRuntimeKeyboardOffsetState(): ChatMessageRuntimeKeyboardOffsetState {
