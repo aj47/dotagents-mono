@@ -8961,6 +8961,10 @@ test('keeps message runtime refs in chat chrome state hooks', () => {
 test('memoizes remaining mobile chat chrome hook state objects', () => {
   assert.match(chatMessageChromeSource, /const threadExpansionState = useMemo\(\s+\(\) => \(\{\s+expandedMessages,\s+expandedToolCalls,\s+expandedGroups,\s+expandedToolApprovals,\s+expandedDelegationConversationPreviews,\s+expandedDelegationToolPreviews,\s+setExpandedDelegationConversationPreviews,\s+setExpandedDelegationToolPreviews,\s+toolActivityGroups,\s+toggleMessageExpansion,\s+toggleToolCallExpansion,\s+toggleGroupExpansion,\s+toggleToolApprovalArguments,\s+resetThreadExpansionState,\s+\}\),/);
   assert.match(chatMessageChromeSource, /return threadExpansionState;/);
+  assert.match(chatMessageChromeSource, /const promptEditorSaveActionsState = useMemo<ChatConversationHomePromptEditorSaveActionsState>\(\s+\(\) => \(\{\s+handleSavePrompt,\s+\}\),\s+\[handleSavePrompt\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return promptEditorSaveActionsState;/);
+  assert.match(chatMessageChromeSource, /const promptEditorDeleteActionsState = useMemo<ChatConversationHomePromptEditorDeleteActionsState>\(\s+\(\) => \(\{\s+handleDeletePrompt,\s+\}\),\s+\[handleDeletePrompt\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return promptEditorDeleteActionsState;/);
   assert.match(chatMessageChromeSource, /const imageAttachmentPickerState = useMemo<ChatComposerRuntimeImageAttachmentPickerState>\(\s+\(\) => \(\{\s+handlePickImages,\s+\}\),\s+\[handlePickImages\],\s+\);/);
   assert.match(chatMessageChromeSource, /return imageAttachmentPickerState;/);
   assert.match(chatMessageChromeSource, /const textEntrySubmissionState = useMemo<ChatComposerRuntimeTextEntrySubmissionState>\(\s+\(\) => \(\{\s+onChangeText: handleTextEntryChangeText,\s+onKeyPress: handleTextEntryKeyPress,\s+\}\),\s+\[handleTextEntryChangeText, handleTextEntryKeyPress\],\s+\);/);

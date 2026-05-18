@@ -7467,9 +7467,14 @@ export function useChatConversationHomePromptEditorSaveActionsState<
     showAlert,
   ]);
 
-  return {
-    handleSavePrompt,
-  };
+  const promptEditorSaveActionsState = useMemo<ChatConversationHomePromptEditorSaveActionsState>(
+    () => ({
+      handleSavePrompt,
+    }),
+    [handleSavePrompt],
+  );
+
+  return promptEditorSaveActionsState;
 }
 
 export function useChatConversationHomePromptEditorSaveChromeActionsState<
@@ -7543,9 +7548,14 @@ export function useChatConversationHomePromptEditorDeleteActionsState<
     showAlert,
   ]);
 
-  return {
-    handleDeletePrompt,
-  };
+  const promptEditorDeleteActionsState = useMemo<ChatConversationHomePromptEditorDeleteActionsState>(
+    () => ({
+      handleDeletePrompt,
+    }),
+    [handleDeletePrompt],
+  );
+
+  return promptEditorDeleteActionsState;
 }
 
 export function useChatConversationHomePromptEditorDeleteChromeActionsState<
