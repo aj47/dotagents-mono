@@ -29,6 +29,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
+import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
 import {
   createChatRuntimeMessageQueuePanelStyleSheetSlots,
@@ -899,6 +900,12 @@ type ChatComposerRuntimeHandsFreeDebugActionsState = {
   showHandsFreeRecognizerErrorDebug: (message: string) => void;
   showHandsFreePermissionDeniedDebug: () => void;
 };
+
+type ChatComposerRuntimeHandsFreeControllerStateInput =
+  Parameters<typeof useHandsFreeController>[0];
+
+type ChatComposerRuntimeHandsFreeControllerState =
+  ReturnType<typeof useHandsFreeController>;
 
 type ChatComposerRuntimeVoiceDebugResetStateInput = {
   isVoiceDebugEnabled: boolean;
@@ -9043,6 +9050,12 @@ export function useChatComposerRuntimeHandsFreeDebugActionsState({
   );
 
   return handsFreeDebugActionsState;
+}
+
+export function useChatComposerRuntimeHandsFreeControllerState(
+  input: ChatComposerRuntimeHandsFreeControllerStateInput,
+): ChatComposerRuntimeHandsFreeControllerState {
+  return useHandsFreeController(input);
 }
 
 export function useChatComposerRuntimeVoiceDebugState(

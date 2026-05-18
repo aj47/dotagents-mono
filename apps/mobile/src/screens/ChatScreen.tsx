@@ -32,6 +32,7 @@ import {
   useChatComposerRuntimeImageLibraryPickerState,
   useChatComposerRuntimeSubmissionChromeState,
   useChatComposerRuntimeHandsFreeControlChromeActionsState,
+  useChatComposerRuntimeHandsFreeControllerState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
   useChatComposerRuntimeHandsFreeDebugActionsState,
   useChatComposerRuntimeVoiceDebugState,
@@ -114,7 +115,6 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
 import { useChatRuntimeMobileStyleSlots } from '../ui/ChatRuntimeMobileStyles';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
-import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 
 export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
@@ -476,7 +476,7 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceLog,
   });
 
-  const handsFreeController = useHandsFreeController({
+  const handsFreeController = useChatComposerRuntimeHandsFreeControllerState({
     enabled: handsFree,
     runtimeActive: handsFreeRuntimeActive,
     wakePhrase: handsFreeWakePhrase,

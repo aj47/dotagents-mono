@@ -3745,6 +3745,12 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(chatMessageChromeSource, /const editBeforeSendState = useMemo<ChatComposerRuntimeEditBeforeSendState>\(\s+\(\) => \(\{\s+editBeforeSendEnabled,\s+toggleEditBeforeSend,\s+\}\),\s+\[editBeforeSendEnabled, toggleEditBeforeSend\],\s+\);/);
   assert.match(chatMessageChromeSource, /return editBeforeSendState;/);
   assert.doesNotMatch(screenSource, /const \[willCancel, setWillCancel\] = useState\(false\);/);
+  assert.match(screenSource, /useChatComposerRuntimeHandsFreeControllerState,/);
+  assert.match(screenSource, /const handsFreeController = useChatComposerRuntimeHandsFreeControllerState\(\{\s+enabled: handsFree,\s+runtimeActive: handsFreeRuntimeActive,\s+wakePhrase: handsFreeWakePhrase,\s+sleepPhrase: handsFreeSleepPhrase,\s+log: voiceLog,\s+\}\);/);
+  assert.doesNotMatch(chatScreenSource, /useHandsFreeController/);
+  assert.match(chatMessageChromeSource, /import \{ useHandsFreeController \} from '\.\.\/lib\/voice\/useHandsFreeController';/);
+  assert.match(chatMessageChromeSource, /type ChatComposerRuntimeHandsFreeControllerStateInput =\s+Parameters<typeof useHandsFreeController>\[0\];/);
+  assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeHandsFreeControllerState\(\s+input: ChatComposerRuntimeHandsFreeControllerStateInput,\s+\): ChatComposerRuntimeHandsFreeControllerState \{\s+return useHandsFreeController\(input\);\s+\}/);
   assert.match(screenSource, /composerControlHasContent: composerHasContent,\s+composerControlConversationState: conversationState,\s+composerControlIsResponding: responding,\s+composerControlPendingImageCount: pendingImages\.length,\s+composerControlTtsEnabled: ttsEnabled,\s+composerControlEditBeforeSendEnabled: willCancel,\s+composerControlMicPhase: handsFreeController\.state\.phase,\s+composerControlListening: listening,\s+composerControlMessageQueueEnabled: messageQueueEnabled,\s+onImageAttachmentPress: handlePickImages,/);
   assert.doesNotMatch(screenSource, /composerControlColors: theme\.colors,/);
   assert.match(chatMessageChromeSource, /pendingImagesColors: colors,\s+composerControlColors: colors,/);
