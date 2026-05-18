@@ -49,10 +49,22 @@ import {
 } from "./agent-progress"
 export type {
   ACPDelegationProgress,
+  ACPSubAgentMessage,
+  AgentDelegationSummaryEntry,
   AgentProgressUpdate,
   AgentRetryInfo,
   AgentStepSummary,
   AgentUserResponseEvent,
+} from "./agent-progress"
+export {
+  formatAgentDelegationConversationTranscript,
+  getAgentDelegationConversationMessageDisplayState,
+  getAgentDelegationConversationPreview,
+  getAgentDelegationConversationRenderItems,
+  getAgentDelegationPresentation,
+  getAgentDelegationSummaryEntries,
+  getAgentProgressStepToolExecutionStats,
+  isAgentDelegationActiveStatus,
 } from "./agent-progress"
 import { hexToRgba } from "./colors"
 import { formatConnectionStatus, type RecoveryState } from "./connection-recovery"

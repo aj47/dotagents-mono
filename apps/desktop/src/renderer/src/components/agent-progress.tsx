@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
-import type { ACPDelegationProgress, ACPSubAgentMessage, AgentDelegationSummaryEntry, AgentProgressUpdate, AgentRetryInfo } from "@dotagents/shared/agent-progress"
 import type { Config } from "../../../shared/types"
 import {
   DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
@@ -46,9 +45,6 @@ import {
   getAgentDelegationSummaryEntries,
   getAgentProgressStepToolExecutionStats,
   isAgentDelegationActiveStatus,
-  type AgentUserResponseEvent,
-} from "@dotagents/shared/agent-progress"
-import {
   TOOL_GROUP_MIN_SIZE,
   getToolActivityGroupDesktopSurfaceState,
   getToolActivityGroupCopyState,
@@ -171,6 +167,12 @@ import {
   getToolExecutionStatusCopyState,
   getToolExecutionStatusDesktopClassName,
   getToolExecutionStructuredPayloadChildEntries,
+  type ACPDelegationProgress,
+  type ACPSubAgentMessage,
+  type AgentDelegationSummaryEntry,
+  type AgentProgressUpdate,
+  type AgentRetryInfo,
+  type AgentUserResponseEvent,
   type ToolExecutionStatsLike,
   type ToolExecutionStructuredPayloadValue,
 } from "@dotagents/shared/session-presentation"

@@ -62,6 +62,8 @@ describe("agent progress tile layout", () => {
   })
 
   it("surfaces latest delegated activity and a richer live details dialog from the tile chat area", () => {
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/agent-progress"')
+    expect(agentProgressSource).toContain('from "@dotagents/shared/session-presentation"')
     expect(agentProgressSource).toContain('desktopRuntimeCopy.delegation.summaryTitle')
     expect(agentProgressSource).toContain('desktopRuntimeCopy.delegation.detailActionLabel')
     expect(agentProgressSource).toContain('formatChatRuntimeDelegationMessageCount')
