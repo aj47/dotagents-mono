@@ -13652,8 +13652,35 @@ export function ChatMessageToolExecutionCallListContent({
 export function ChatMessageConversationFrame(
   props: ChatMessageConversationFrameProps,
 ) {
-  const frameParts: ChatMessageConversationFrameParts =
-    createChatRuntimeConversationFrameMobilePropsParts(props);
+  const {
+    children,
+    dock,
+    overlays,
+    keyboardAvoidingStyle,
+    keyboardAvoidingBehavior,
+    keyboardVerticalOffset,
+    rootStyle,
+  } = props;
+  const frameParts = useMemo<ChatMessageConversationFrameParts>(
+    () => createChatRuntimeConversationFrameMobilePropsParts({
+      children,
+      dock,
+      overlays,
+      keyboardAvoidingStyle,
+      keyboardAvoidingBehavior,
+      keyboardVerticalOffset,
+      rootStyle,
+    }),
+    [
+      children,
+      dock,
+      keyboardAvoidingBehavior,
+      keyboardAvoidingStyle,
+      keyboardVerticalOffset,
+      overlays,
+      rootStyle,
+    ],
+  );
 
   return (
     <KeyboardAvoidingView
@@ -13706,8 +13733,14 @@ export function ChatMessageConversationFrameRootContent({
 export function ChatMessageConversationOverlays(
   props: ChatMessageConversationOverlaysProps,
 ) {
-  const overlayParts: ChatMessageConversationOverlaysParts =
-    createChatRuntimeConversationOverlaysMobilePropsParts(props);
+  const { agentSelector, promptEditor } = props;
+  const overlayParts = useMemo<ChatMessageConversationOverlaysParts>(
+    () => createChatRuntimeConversationOverlaysMobilePropsParts({
+      agentSelector,
+      promptEditor,
+    }),
+    [agentSelector, promptEditor],
+  );
 
   return (
     <ChatMessageConversationOverlaysContent

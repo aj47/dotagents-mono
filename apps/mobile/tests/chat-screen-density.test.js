@@ -2540,7 +2540,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   const conversationFrameSource =
     chatMessageChromeSource.match(/export function ChatMessageConversationFrame[\s\S]*?export function ChatMessageConversationOverlays/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrame\(\s+props: ChatMessageConversationFrameProps,\s+\)/);
-  assert.match(conversationFrameSource, /const frameParts: ChatMessageConversationFrameParts =\s+createChatRuntimeConversationFrameMobilePropsParts\(props\);/);
+  assert.match(conversationFrameSource, /const \{\s+children,\s+dock,\s+overlays,\s+keyboardAvoidingStyle,\s+keyboardAvoidingBehavior,\s+keyboardVerticalOffset,\s+rootStyle,\s+\} = props;/);
+  assert.match(conversationFrameSource, /const frameParts = useMemo<ChatMessageConversationFrameParts>\(\s+\(\) => createChatRuntimeConversationFrameMobilePropsParts\(\{\s+children,\s+dock,\s+overlays,\s+keyboardAvoidingStyle,\s+keyboardAvoidingBehavior,\s+keyboardVerticalOffset,\s+rootStyle,\s+\}\),\s+\[\s+children,\s+dock,\s+keyboardAvoidingBehavior,\s+keyboardAvoidingStyle,\s+keyboardVerticalOffset,\s+overlays,\s+rootStyle,\s+\],\s+\);/);
   assert.match(conversationFrameSource, /<KeyboardAvoidingView\s+\{\.\.\.frameParts\.keyboardAvoidingView\.props\}/);
   assert.match(sessionPresentationSource, /keyboardAvoidingView: \{\s+props: \{\s+style: keyboardAvoidingStyle,/);
   assert.match(sessionPresentationSource, /content: \{\s+root: \{\s+props: \{\s+style: rootStyle,/);
@@ -2578,7 +2579,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   const conversationOverlaysSource =
     chatMessageChromeSource.match(/export function ChatMessageConversationOverlays[\s\S]*?export function ChatMessageRuntimeOverlays/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationOverlays\(\s+props: ChatMessageConversationOverlaysProps,\s+\)/);
-  assert.match(conversationOverlaysSource, /const overlayParts: ChatMessageConversationOverlaysParts =\s+createChatRuntimeConversationOverlaysMobilePropsParts\(props\);/);
+  assert.match(conversationOverlaysSource, /const \{ agentSelector, promptEditor \} = props;/);
+  assert.match(conversationOverlaysSource, /const overlayParts = useMemo<ChatMessageConversationOverlaysParts>\(\s+\(\) => createChatRuntimeConversationOverlaysMobilePropsParts\(\{\s+agentSelector,\s+promptEditor,\s+\}\),\s+\[agentSelector, promptEditor\],\s+\);/);
   assert.match(sessionPresentationSource, /content: \{\s+agentSelector: \{\s+children: agentSelector,/);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationOverlaysContentProps = \{\s+agentSelector: \{\s+children: ReactNode \| undefined;\s+\};\s+promptEditor: \{\s+children: ReactNode \| undefined;\s+\};\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationOverlaysContentProps =\s+ChatMessageConversationOverlaysParts\['content'\];/);
@@ -2916,6 +2918,8 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeToolExecutionCompactRowMobilePropsParts',
     'createChatRuntimeToolExecutionCompactListMobilePropsParts',
     'createChatRuntimeToolExecutionPanelShellMobilePropsParts',
+    'createChatRuntimeConversationFrameMobilePropsParts',
+    'createChatRuntimeConversationOverlaysMobilePropsParts',
     'createChatRuntimeConversationViewportMobilePropsParts',
     'createChatRuntimeStepSummaryCardMobilePropsParts',
     'createChatRuntimeScrollToBottomButtonMobilePropsParts',
