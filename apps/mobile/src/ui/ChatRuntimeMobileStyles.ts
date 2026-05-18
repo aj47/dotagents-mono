@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   createAgentResponseHistoryMobileStyleSheetSlots,
+  createChatVideoAttachmentMobileStyleSheetSlots,
   createChatRuntimeMobileChromeSlotsFromStyleSource,
   createChatRuntimeMobileChromeStyleSlots,
   createChatRuntimeThemeSpinnerSource,
@@ -15,11 +16,13 @@ import {
   createMarkdownThinkSectionMobileStyleSheetSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
+  getChatVideoAttachmentMobileRenderState,
   getMarkdownContentMobileSurfaceRenderState,
   getMarkdownThinkSectionMobileSurfaceRenderState,
   type AgentResponseHistoryMobileStyleSheetSlots,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
   type ChatRuntimeMobileChromeSlotsFromStyleSource,
+  type ChatVideoAttachmentMobileStyleSheetSlots,
   type MarkdownContentMobileStyleSheetSlots,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownThinkSectionMobileStyleSheetSlots,
@@ -957,6 +960,67 @@ export function useChatRuntimeMarkdownMobileStyleSlots(): ChatRuntimeMarkdownMob
     markdownContentStyles,
     markdownThinkSectionRenderState,
     markdownThinkSectionStyles,
+  };
+}
+
+export type ChatRuntimeVideoAttachmentStyleSheetSlotsInput = Pick<
+  Parameters<typeof createChatVideoAttachmentMobileStyleSheetSlots>[0],
+  'renderState'
+>;
+
+export type ChatRuntimeVideoAttachmentMobileRenderState =
+  ReturnType<typeof getChatVideoAttachmentMobileRenderState>;
+
+export type ChatRuntimeVideoAttachmentMobileStyleSlotsInput = Pick<
+  Parameters<typeof getChatVideoAttachmentMobileRenderState>[0],
+  'sourceUrl' | 'label' | 'loading'
+>;
+
+export type ChatRuntimeVideoAttachmentMobileStyleSlots = {
+  videoAttachmentRenderState: ChatRuntimeVideoAttachmentMobileRenderState;
+  videoAttachmentStyles: ChatVideoAttachmentMobileStyleSheetSlots;
+};
+
+export function createChatRuntimeVideoAttachmentStyleSheetSlots({
+  renderState,
+}: ChatRuntimeVideoAttachmentStyleSheetSlotsInput): ChatVideoAttachmentMobileStyleSheetSlots {
+  return createChatVideoAttachmentMobileStyleSheetSlots({
+    renderState,
+    spacing,
+    radius,
+  });
+}
+
+export function useChatRuntimeVideoAttachmentMobileStyleSlots({
+  sourceUrl,
+  label,
+  loading,
+}: ChatRuntimeVideoAttachmentMobileStyleSlotsInput): ChatRuntimeVideoAttachmentMobileStyleSlots {
+  const { theme, isDark } = useTheme();
+  const videoAttachmentRenderState = useMemo(
+    () => getChatVideoAttachmentMobileRenderState({
+      sourceUrl,
+      label,
+      colors: theme.colors,
+      isDark,
+      loading,
+    }),
+    [isDark, label, loading, sourceUrl, theme.colors],
+  );
+  const videoAttachmentStyleSheetSlots = useMemo(
+    () => createChatRuntimeVideoAttachmentStyleSheetSlots({
+      renderState: videoAttachmentRenderState,
+    }),
+    [videoAttachmentRenderState],
+  );
+  const videoAttachmentStyles = useMemo(
+    () => StyleSheet.create({ ...videoAttachmentStyleSheetSlots }),
+    [videoAttachmentStyleSheetSlots],
+  );
+
+  return {
+    videoAttachmentRenderState,
+    videoAttachmentStyles,
   };
 }
 

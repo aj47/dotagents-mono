@@ -4,7 +4,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -14,8 +13,6 @@ import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import {
   buildConversationVideoAssetHttpUrl,
   createChatVideoAttachmentMobilePropsParts,
-  createChatVideoAttachmentMobileStyleSheetSlots,
-  getChatVideoAttachmentMobileRenderState,
   formatVideoAttachmentRequestFailedMessage,
   isRenderableVideoUrl,
   parseConversationVideoAssetUrl,
@@ -23,8 +20,7 @@ import {
   type ChatVideoAttachmentMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
 import { SettingsApiClient } from '../lib/settingsApi';
-import { useTheme } from './ThemeProvider';
-import { radius, spacing } from './theme';
+import { useChatRuntimeVideoAttachmentMobileStyleSlots } from './ChatRuntimeMobileStyles';
 
 interface VideoAttachmentCardProps {
   sourceUrl: string;
@@ -75,31 +71,20 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   assetBaseUrl,
   authToken,
 }) => {
-  const { theme, isDark } = useTheme();
   const [loading, setLoading] = useState(false);
   const [playbackUri, setPlaybackUri] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const cachedFileRef = useRef<File | null>(null);
   const objectUrlRef = useRef<string | null>(null);
-  const videoAttachmentRenderState = useMemo(
-    () => getChatVideoAttachmentMobileRenderState({
-      sourceUrl,
-      label,
-      colors: theme.colors,
-      isDark,
-      loading,
-    }),
-    [isDark, label, loading, sourceUrl, theme.colors],
-  );
+  const {
+    videoAttachmentRenderState,
+    videoAttachmentStyles: styles,
+  } = useChatRuntimeVideoAttachmentMobileStyleSlots({
+    sourceUrl,
+    label,
+    loading,
+  });
   const videoAttachmentCopy = videoAttachmentRenderState.copy;
-  const videoAttachmentStyleSheetSlots = useMemo(
-    () => createChatVideoAttachmentMobileStyleSheetSlots({
-      renderState: videoAttachmentRenderState,
-      spacing,
-      radius,
-    }),
-    [videoAttachmentRenderState],
-  );
   const resolvedUri = resolveVideoUri(sourceUrl, assetBaseUrl);
   const conversationAssetRef = useMemo(() => parseConversationVideoAssetUrl(sourceUrl), [sourceUrl]);
   const isConversationAsset = !!conversationAssetRef;
@@ -195,10 +180,6 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     void Linking.openURL(resolvedUri);
   }, [resolvedUri]);
 
-  const styles = useMemo<VideoAttachmentCardStyles>(
-    () => StyleSheet.create({ ...videoAttachmentStyleSheetSlots }),
-    [videoAttachmentStyleSheetSlots],
-  );
   const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts({
     renderState: videoAttachmentRenderState,
     styles,
