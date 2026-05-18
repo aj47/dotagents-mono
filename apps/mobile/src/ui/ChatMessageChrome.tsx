@@ -3442,10 +3442,28 @@ type ChatMessageToolExecutionPanelParts =
     Omit<ChatMessageToolExecutionExpandedGroupProps, 'children'>
   >;
 
-type ChatMessageToolExecutionPanelContentProps =
-  ChatMessageToolExecutionPanelParts['content'] & {
-    children: ReactNode;
+type ChatMessageToolExecutionPanelCompactListPart = {
+  props: Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender'> & {
+    shouldRender: boolean;
   };
+};
+
+type ChatMessageToolExecutionPanelExpandedGroupPart =
+  | {
+      shouldRender: true;
+      props: Omit<ChatMessageToolExecutionExpandedGroupProps, 'children'>;
+    }
+  | {
+      shouldRender: false;
+      props: null;
+    };
+
+type ChatMessageToolExecutionPanelContentProps = {
+  shouldRender: boolean;
+  compactList: ChatMessageToolExecutionPanelCompactListPart;
+  expandedGroup: ChatMessageToolExecutionPanelExpandedGroupPart;
+  children: ReactNode;
+};
 
 type ChatMessageToolExecutionPanelShellParts =
   ChatRuntimeToolExecutionPanelShellMobilePropsParts<
@@ -3453,8 +3471,20 @@ type ChatMessageToolExecutionPanelShellParts =
     ReactNode
   >;
 
-type ChatMessageToolExecutionPanelShellContentProps =
-  ChatMessageToolExecutionPanelShellParts['content'];
+type ChatMessageToolExecutionPanelShellExpandedGroupPart =
+  | {
+      shouldRender: true;
+      props: ReactNode;
+    }
+  | {
+      shouldRender: false;
+      props: null;
+    };
+
+type ChatMessageToolExecutionPanelShellContentProps = {
+  compactList: ReactNode;
+  expandedGroup: ChatMessageToolExecutionPanelShellExpandedGroupPart;
+};
 
 type ChatMessageToolExecutionStackStyles =
   SharedChatMessageToolExecutionStackStyleSlots<

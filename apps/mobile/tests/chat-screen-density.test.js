@@ -4663,6 +4663,13 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPanelShellMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPanelShellMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const panelParts: ChatMessageToolExecutionPanelParts =\s+createChatRuntimeToolExecutionPanelMobilePropsParts\(\{\s+shouldRender,\s+isExpanded,\s+compact,\s+expanded,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPanelCompactListPart = \{\s+props: Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender'> & \{\s+shouldRender: boolean;\s+\};\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPanelExpandedGroupPart =[\s\S]*?shouldRender: true;[\s\S]*?props: Omit<ChatMessageToolExecutionExpandedGroupProps, 'children'>;[\s\S]*?shouldRender: false;[\s\S]*?props: null;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPanelContentProps = \{\s+shouldRender: boolean;\s+compactList: ChatMessageToolExecutionPanelCompactListPart;\s+expandedGroup: ChatMessageToolExecutionPanelExpandedGroupPart;\s+children: ReactNode;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPanelShellExpandedGroupPart =[\s\S]*?shouldRender: true;[\s\S]*?props: ReactNode;[\s\S]*?shouldRender: false;[\s\S]*?props: null;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPanelShellContentProps = \{\s+compactList: ReactNode;\s+expandedGroup: ChatMessageToolExecutionPanelShellExpandedGroupPart;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionPanelParts\['/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionPanelShellParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const panelContent = panelParts\.content;/);
   assert.match(toolExecutionPanelSource, /<ChatMessageToolExecutionPanelContent\s+\{\.\.\.panelParts\.content\}/);
   assert.match(toolExecutionPanelContentSource, /const panelShellParts: ChatMessageToolExecutionPanelShellParts =\s+createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{\s+compactList: \([\s\S]*?<ChatMessageToolExecutionCompactList[\s\S]*?\{\.\.\.compactList\.props\}[\s\S]*?expandedGroup: expandedGroup\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionExpandedGroup \{\.\.\.expandedGroup\.props\}>/);
