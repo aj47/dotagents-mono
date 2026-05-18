@@ -879,10 +879,6 @@ export type ChatRuntimeResponseHistoryPanelStyleSheetSlotsInput = Pick<
   'renderState'
 >;
 
-export type ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory = (
-  input: ChatRuntimeResponseHistoryPanelStyleSheetSlotsInput,
-) => AgentResponseHistoryMobileStyleSheetSlots;
-
 export function createChatRuntimeResponseHistoryPanelStyleSheetSlots({
   renderState,
 }: ChatRuntimeResponseHistoryPanelStyleSheetSlotsInput): AgentResponseHistoryMobileStyleSheetSlots {

@@ -20,7 +20,6 @@ import {
   type AgentResponseHistoryMobilePropsParts,
   type AgentResponseHistoryMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
-import type { ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory } from './ChatRuntimeMobileStyles';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 export interface ResponseHistoryEntry {
@@ -31,11 +30,13 @@ export interface ResponseHistoryEntry {
 
 type ResponseHistoryToggleHandler = () => void;
 type ResponseHistorySpeakHandler = (text: string, index: number) => void;
-type ResponseHistoryCreateStyleSheetSlots =
-  ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory;
 
 export type ResponseHistoryPanelColors =
   Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
+
+export type ResponseHistoryPanelStyleSheetSlotsFactory = (input: {
+  renderState: ReturnType<typeof getAgentResponseHistoryMobileRenderState>;
+}) => AgentResponseHistoryMobileStyleSheetSlots;
 
 interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
@@ -45,7 +46,7 @@ interface ResponseHistoryPanelProps {
   isCollapsed: boolean;
   shouldAnimateNewest: boolean;
   speakingIndex: number | null;
-  createStyleSheetSlots: ResponseHistoryCreateStyleSheetSlots;
+  createStyleSheetSlots: ResponseHistoryPanelStyleSheetSlotsFactory;
   onToggleCollapsed: ResponseHistoryToggleHandler;
   onSpeakResponse: ResponseHistorySpeakHandler;
 }

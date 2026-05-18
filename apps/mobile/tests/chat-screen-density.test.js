@@ -6942,12 +6942,13 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(responseHistoryPanelSource, /from '\.\/theme'/);
   assert.match(sessionPresentationSource, /export \{[\s\S]*?createAgentResponseHistoryMobilePropsParts,[\s\S]*?createAgentResponseHistoryMobileStyleSheetSlots,[\s\S]*?createAgentResponseHistoryMobileStyleSlots,[\s\S]*?getAgentResponseHistoryMobileRenderState,[\s\S]*?AgentResponseHistoryMobileAnimationState,[\s\S]*?\} from "\.\/agent-user-response-store"/);
   assert.match(chatRuntimeMobileStylesSource, /createAgentResponseHistoryMobileStyleSheetSlots,/);
-  assert.match(chatRuntimeMobileStylesSource, /export type ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory = \(/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /export type ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory = \(/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeResponseHistoryPanelStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeResponseHistoryPanelStyleSheetSlotsInput\): AgentResponseHistoryMobileStyleSheetSlots \{[\s\S]*?createAgentResponseHistoryMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?\}\);[\s\S]*?\}/);
-  assert.match(responseHistoryPanelSource, /import type \{ ChatRuntimeResponseHistoryPanelStyleSheetSlotsFactory \} from '\.\/ChatRuntimeMobileStyles';/);
+  assert.doesNotMatch(responseHistoryPanelSource, /from '\.\/ChatRuntimeMobileStyles';/);
+  assert.match(responseHistoryPanelSource, /export type ResponseHistoryPanelStyleSheetSlotsFactory = \(input: \{\s+renderState: ReturnType<typeof getAgentResponseHistoryMobileRenderState>;\s+\}\) => AgentResponseHistoryMobileStyleSheetSlots;/);
   assert.match(responseHistoryPanelSource, /createAgentResponseHistoryMobilePropsParts,/);
   assert.doesNotMatch(responseHistoryPanelSource, /createAgentResponseHistoryMobileStyleSheetSlots,/);
-  assert.match(responseHistoryPanelSource, /createStyleSheetSlots: ResponseHistoryCreateStyleSheetSlots;/);
+  assert.match(responseHistoryPanelSource, /createStyleSheetSlots: ResponseHistoryPanelStyleSheetSlotsFactory;/);
   assert.match(responseHistoryPanelSource, /const responseHistoryStyleSheetSlots = createStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+\}\);/);
   assert.match(responseHistoryPanelSource, /const responseHistoryParts: ResponseHistoryPanelParts = createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\);/);
   assert.match(responseHistoryPanelSource, /const styles: ResponseHistoryPanelStyles = StyleSheet\.create\(\{\s+\.\.\.responseHistoryStyleSheetSlots,\s+\}\);/);

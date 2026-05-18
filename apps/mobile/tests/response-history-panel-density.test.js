@@ -10,12 +10,12 @@ const source = fs.readFileSync(
 
 test('mobile response history panel uses shared copy, actions, and accessibility labels', () => {
   assert.match(source, /createAgentResponseHistoryMobilePropsParts,/);
-  assert.match(source, /createAgentResponseHistoryMobileStyleSheetSlots,/);
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /type AgentResponseHistoryMobilePropsParts,/);
   assert.match(source, /type AgentResponseHistoryMobileStyleSheetSlots,/);
   assert.match(source, /type ResponseHistoryPanelParts =\s+AgentResponseHistoryMobilePropsParts<[\s\S]*?ResponseHistoryEntry,[\s\S]*?ResponseHistoryPanelStyles,[\s\S]*?ResponseHistoryToggleHandler/);
   assert.match(source, /export type ResponseHistoryPanelColors =\s+Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
+  assert.match(source, /export type ResponseHistoryPanelStyleSheetSlotsFactory = \(input: \{\s+renderState: ReturnType<typeof getAgentResponseHistoryMobileRenderState>;\s+\}\) => AgentResponseHistoryMobileStyleSheetSlots;/);
   assert.match(source, /colors: ResponseHistoryPanelColors;/);
   assert.match(source, /isCollapsed: boolean;/);
   assert.match(source, /shouldAnimateNewest: boolean;/);
@@ -64,8 +64,10 @@ test('mobile response history panel reads compact sizing from shared surface tok
   assert.match(source, /useNativeDriver: animation\.newestUseNativeDriver/);
   assert.doesNotMatch(source, /useNativeDriver: true/);
   assert.match(source, /<Animated\.View style=\{animatedStyle\}>/);
-  assert.match(source, /import \{ spacing, radius \} from '\.\/theme';/);
-  assert.match(source, /const responseHistoryStyleSheetSlots = createAgentResponseHistoryMobileStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+spacing,\s+radius,\s+\}\);/);
+  assert.doesNotMatch(source, /from '\.\/theme'/);
+  assert.doesNotMatch(source, /createAgentResponseHistoryMobileStyleSheetSlots,/);
+  assert.match(source, /createStyleSheetSlots: ResponseHistoryPanelStyleSheetSlotsFactory;/);
+  assert.match(source, /const responseHistoryStyleSheetSlots = createStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+\}\);/);
   assert.match(source, /const styles: ResponseHistoryPanelStyles = StyleSheet\.create\(\{\s+\.\.\.responseHistoryStyleSheetSlots,\s+\}\);/);
   assert.doesNotMatch(source, /responseHistoryStyleSlots\.container/);
   assert.doesNotMatch(source, /responseHistoryStyleSlots\.header/);
