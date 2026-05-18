@@ -331,6 +331,8 @@ import {
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeMessageThreadItemMobilePropsParts,
   type ChatRuntimeMessageThreadSurfaceMobilePropsParts,
+  type ChatRuntimeConversationActionComponentsMobileProps,
+  type ChatRuntimeConversationActionComponentsMobilePropsInput,
   type ChatRuntimeMessageActionIconLike,
   type ChatRuntimeMessageActionIconButtonRenderState,
   type ChatRuntimeMessageActionIconButtonSpec,
@@ -1301,26 +1303,23 @@ type ChatMessageTurnDurationActionSpecInput =
   Omit<ChatMessageTurnDurationActionSpec, 'renderState'>
   & ChatRuntimeConversationMessageActionsMobileRenderStateInput['turnDuration'];
 
-type ChatMessageActionComponentsInput = {
-  availability: ChatRuntimeConversationMessageActionsMobileRenderState['availability'];
-  turnDuration: ChatMessageTurnDurationActionSpec;
-  speech: ChatMessageSpeechActionSpec;
-  branch: ChatMessageBranchActionSpec;
-  copy: ChatMessageCopyActionSpec;
-  expansion: ChatMessageExpansionActionSpec;
-};
+type ChatMessageActionComponentsInput =
+  ChatRuntimeConversationActionComponentsMobileProps<
+    ChatMessageTurnDurationActionSpec,
+    ChatMessageSpeechActionSpec,
+    ChatMessageBranchActionSpec,
+    ChatMessageCopyActionSpec,
+    ChatMessageExpansionActionSpec
+  >;
 
-type ChatMessageActionSetInput = Omit<
-  ChatMessageActionComponentsInput,
-  'availability' | 'turnDuration' | 'speech' | 'branch' | 'copy' | 'expansion'
-> & {
-  renderState: ChatRuntimeConversationMessageActionsMobileRenderState;
-  turnDuration: ChatMessageTurnDurationActionSpecInput;
-  speech: ChatMessageSpeechActionSpecInput;
-  branch: ChatMessageBranchActionSpecInput;
-  copy: ChatMessageCopyActionSpecInput;
-  expansion: ChatMessageExpansionActionSpecInput;
-};
+type ChatMessageActionSetInput =
+  ChatRuntimeConversationActionComponentsMobilePropsInput<
+    ChatMessageTurnDurationActionSpecInput,
+    ChatMessageSpeechActionSpecInput,
+    ChatMessageBranchActionSpecInput,
+    ChatMessageCopyActionSpecInput,
+    ChatMessageExpansionActionSpecInput
+  >;
 
 type ChatMessageRuntimeClipboardActionsStateInput = {
   copyText: (content: string) => Promise<unknown>;
