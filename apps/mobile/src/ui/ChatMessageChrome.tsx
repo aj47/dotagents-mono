@@ -279,7 +279,9 @@ import {
   type ChatRuntimeConversationToolExecutionStackMobileState,
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
   type ChatRuntimeToolActivityGroupBoundaryMobileKind,
+  type ChatRuntimeToolActivityGroupFooterMobilePropsParts,
   type ChatRuntimeToolActivityGroupHeaderMobileKind,
+  type ChatRuntimeToolActivityGroupToggleMobilePropsParts,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeInlineActivityMobilePropsParts,
   type ChatRuntimeMessageActionIconButtonMobilePropsParts,
@@ -2267,11 +2269,12 @@ type ChatMessageToolActivityGroupToggleProps = {
   styles: ChatMessageToolActivityGroupToggleStyles;
 };
 
-type ChatMessageToolActivityGroupToggleParts = ReturnType<typeof createChatRuntimeToolActivityGroupToggleMobilePropsParts<
-  ToolActivityGroupMobileRenderState,
-  ChatMessageToolActivityGroupToggleProps['onPress'],
-  ChatMessageToolActivityGroupToggleStyles
->>;
+type ChatMessageToolActivityGroupToggleParts =
+  ChatRuntimeToolActivityGroupToggleMobilePropsParts<
+    ToolActivityGroupMobileRenderState,
+    ChatMessageToolActivityGroupToggleProps['onPress'],
+    ChatMessageToolActivityGroupToggleStyles
+  >;
 
 type ChatMessageToolActivityGroupToggleHeaderRowProps =
   ChatMessageToolActivityGroupToggleParts['headerRow'];
@@ -2301,11 +2304,12 @@ type ChatMessageToolActivityGroupFooterProps = {
   styles: ChatMessageToolActivityGroupFooterStyles;
 };
 
-type ChatMessageToolActivityGroupFooterParts = ReturnType<typeof createChatRuntimeToolActivityGroupFooterMobilePropsParts<
-  ToolActivityGroupMobileRenderState,
-  ChatMessageToolActivityGroupFooterProps['onPress'],
-  ChatMessageToolActivityGroupFooterStyles
->>;
+type ChatMessageToolActivityGroupFooterParts =
+  ChatRuntimeToolActivityGroupFooterMobilePropsParts<
+    ToolActivityGroupMobileRenderState,
+    ChatMessageToolActivityGroupFooterProps['onPress'],
+    ChatMessageToolActivityGroupFooterStyles
+  >;
 
 type ChatMessageToolActivityGroupFooterContentProps =
   ChatMessageToolActivityGroupFooterParts['button']['content'];

@@ -6294,6 +6294,12 @@ test('uses tool activities wording consistently for grouped tool activity labels
     chatMessageChromeSource.match(/export function ChatMessageToolActivityGroupFooterContent[\s\S]*?export function ChatMessageToolActivityGroupFooterLabel/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolActivityGroupToggleMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /createChatRuntimeToolActivityGroupFooterMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolActivityGroupToggleMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupToggleParts =\s+ChatRuntimeToolActivityGroupToggleMobilePropsParts<[\s\S]*?ToolActivityGroupMobileRenderState,[\s\S]*?ChatMessageToolActivityGroupToggleProps\['onPress'\],[\s\S]*?ChatMessageToolActivityGroupToggleStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupToggleParts = ReturnType<typeof createChatRuntimeToolActivityGroupToggleMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolActivityGroupFooterMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupFooterParts =\s+ChatRuntimeToolActivityGroupFooterMobilePropsParts<[\s\S]*?ToolActivityGroupMobileRenderState,[\s\S]*?ChatMessageToolActivityGroupFooterProps\['onPress'\],[\s\S]*?ChatMessageToolActivityGroupFooterStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupFooterParts = ReturnType<typeof createChatRuntimeToolActivityGroupFooterMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupToggleMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupFooterMobilePropsParts/);
   assert.match(toolActivityGroupToggleComponentSource, /const toggleParts = createChatRuntimeToolActivityGroupToggleMobilePropsParts\(\{\s+renderState,\s+headerKind,\s+onPress,\s+styles,\s+\}\);/);
