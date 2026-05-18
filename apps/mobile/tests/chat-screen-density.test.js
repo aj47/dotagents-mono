@@ -9177,6 +9177,8 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(sessionPresentationSource, /formatChatRuntimeStartingRequestDebugMessage/);
   assert.doesNotMatch(chatMessageChromeSource, /formatChatRuntimeConnectionErrorMessage,/);
   assert.match(sessionPresentationSource, /formatChatRuntimeConnectionErrorMessage/);
+  assert.match(sessionPresentationSource, /recoveryState\?: ChatRuntimeRecoveryStatePresentationInput \| null/);
+  assert.doesNotMatch(sessionPresentationSource, /recoveryState: Parameters<typeof formatChatRuntimeConnectionErrorMessage>\[1\]/);
   assert.doesNotMatch(chatMessageChromeSource, /formatChatRuntimeAssistantErrorContent,/);
   assert.match(sessionPresentationSource, /formatChatRuntimeAssistantErrorContent/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeAlertMessage,/);

@@ -15160,7 +15160,7 @@ export type ChatMessageRuntimeConversationContentUpdateMessage =
 
 export interface ChatMessageRuntimeConnectionErrorTurnStateInput {
   message: string
-  recoveryState: Parameters<typeof formatChatRuntimeConnectionErrorMessage>[1]
+  recoveryState?: ChatRuntimeRecoveryStatePresentationInput | null
   partialContent?: string | null
 }
 
