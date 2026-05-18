@@ -209,7 +209,6 @@ import {
   type ChatRuntimeRemoteSpeechSettingsState,
   type ChatConversationHomePromptDeleteConfirmAlertState,
   type ChatRuntimeConversationDelegationCardMobileState,
-  type ChatRuntimeDelegationCardMobilePresentationState,
   type PromptLibraryEditorMobileRenderState,
   type PromptLibraryLauncherShortcutSource,
   type PromptLibrarySkillLike,
@@ -276,6 +275,7 @@ import {
   type ChatRuntimeToolApprovalMobilePropsParts,
   type ChatRuntimeToolApprovalMobilePropsPartsInput,
   type ChatRuntimeDelegationCardMobilePropsParts,
+  type ChatRuntimeDelegationCardMobilePropsPartsInput,
   type ChatRuntimeHeaderAgentSelectorMobilePropsParts,
   type ChatRuntimeHeaderAgentSelectorMobileStyleSlots as SharedChatRuntimeHeaderAgentSelectorStyleSlots,
   type ChatRuntimeHeaderConversationStatusMobilePropsParts,
@@ -2309,18 +2309,12 @@ type ChatMessageDelegationCardStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageDelegationCardProps = Omit<
-  ChatRuntimeDelegationCardMobilePresentationState,
-  'conversationPreview' | 'toolPreview'
-> & {
-  conversationPreview: ChatRuntimeDelegationCardMobilePresentationState['conversationPreview'] & {
-    onShowAll?: (event: GestureResponderEvent) => void;
-  };
-  toolPreview: ChatRuntimeDelegationCardMobilePresentationState['toolPreview'] & {
-    onShowAll?: (event: GestureResponderEvent) => void;
-  };
-  styles: ChatMessageDelegationCardStyles;
-};
+type ChatMessageDelegationCardProps =
+  ChatRuntimeDelegationCardMobilePropsPartsInput<
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
+    ChatMessageDelegationCardStyles
+  >;
 
 type ChatMessageDelegationCardPropsInput =
   ChatRuntimeConversationDelegationCardMobileState<ACPDelegationProgress | null | undefined>;

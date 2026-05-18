@@ -1212,7 +1212,7 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /export function formatChatRuntimeDelegationToolCallActivityLabel/);
   assert.match(sessionPresentationSource, /getChatRuntimeConversationChromeMobileStyleRenderState/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationCardMobileState,/);
-  assert.match(chatMessageChromeSource, /ChatRuntimeDelegationCardMobilePresentationState,/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatRuntimeDelegationCardMobilePresentationState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDelegationCardMobileState/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDelegationStatusMobileRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeDelegationStatusMobileRenderState,/);
@@ -1312,7 +1312,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /if \(!presentationState\) return null/);
   assert.match(chatMessageChromeSource, /createChatRuntimeDelegationCardMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeDelegationCardMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeDelegationCardMobilePropsPartsInput,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationCardProps =\s+ChatRuntimeDelegationCardMobilePropsPartsInput<\s+\(event: GestureResponderEvent\) => void,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ChatMessageDelegationCardStyles\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationCardProps = Omit<[\s\S]*?ChatRuntimeDelegationCardMobilePresentationState,[\s\S]*?'conversationPreview' \| 'toolPreview'[\s\S]*?> & \{/);
   assert.match(chatMessageChromeSource, /type ChatMessageDelegationCardParts =\s+ChatRuntimeDelegationCardMobilePropsParts<[\s\S]*?GestureResponderEvent[\s\S]*?GestureResponderEvent[\s\S]*?ChatMessageDelegationCardStyles/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeDelegationCardMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export type ChatMessageDelegationCardStyleSlots<\s+TCardStyle,\s+THeaderStyle,\s+TTitleStyle,\s+TStatusBadgeStyle,/);
   assert.match(sessionPresentationSource, /delegationCard: ChatMessageDelegationCardStyleSlots<\s+TStyles\["delegationCard"\],\s+TStyles\["delegationHeader"\],\s+TStyles\["delegationTitle"\],/);
   assert.match(chatMessageChromeSource, /type ChatMessageDelegationCardStyleSlots as SharedChatMessageDelegationCardStyleSlots,/);
