@@ -195,6 +195,9 @@ import {
   getChatRuntimeToolApprovalConnectionRequiredMobileResolvedAlertState,
   getChatRuntimeToolApprovalFailedMobileResolvedAlertState,
   getChatRuntimeToolApprovalUnavailableMobileResolvedAlertState,
+  createChatComposerRuntimeHandsFreePermissionDeniedDebugState,
+  createChatComposerRuntimeHandsFreeRecognizerErrorDebugState,
+  createChatComposerRuntimeHandsFreeTranscriptAddedDebugState,
   formatChatComposerRuntimeHandsFreeSleepingDebugMessage,
   getChatComposerRuntimeHandsFreeDebugMessage,
   mergeChatComposerRuntimeVoiceText,
@@ -833,6 +836,16 @@ type ChatComposerRuntimeHandsFreeRecognizerLifecycleStateInput = {
   stopRecognitionOnly: () => void | Promise<void>;
   setHandsFreePhaseRefValue: (phase: HandsFreePhase) => void;
   errorResetDelayMs?: number;
+};
+
+type ChatComposerRuntimeHandsFreeDebugActionsStateInput = {
+  setDebugInfo: (message: string) => void;
+};
+
+type ChatComposerRuntimeHandsFreeDebugActionsState = {
+  showHandsFreeTranscriptAddedDebug: () => void;
+  showHandsFreeRecognizerErrorDebug: (message: string) => void;
+  showHandsFreePermissionDeniedDebug: () => void;
 };
 
 type ChatComposerRuntimeVoiceDebugResetStateInput = {
@@ -8325,6 +8338,37 @@ export function useChatComposerRuntimeHandsFreeRecognizerLifecycleState({
     startRecording,
     stopRecognitionOnly,
   ]);
+}
+
+export function useChatComposerRuntimeHandsFreeDebugActionsState({
+  setDebugInfo,
+}: ChatComposerRuntimeHandsFreeDebugActionsStateInput): ChatComposerRuntimeHandsFreeDebugActionsState {
+  const showHandsFreeTranscriptAddedDebug = useCallback(() => {
+    setDebugInfo(createChatComposerRuntimeHandsFreeTranscriptAddedDebugState().debugInfo);
+  }, [setDebugInfo]);
+
+  const showHandsFreeRecognizerErrorDebug = useCallback((message: string) => {
+    setDebugInfo(createChatComposerRuntimeHandsFreeRecognizerErrorDebugState(message).debugInfo);
+  }, [setDebugInfo]);
+
+  const showHandsFreePermissionDeniedDebug = useCallback(() => {
+    setDebugInfo(createChatComposerRuntimeHandsFreePermissionDeniedDebugState().debugInfo);
+  }, [setDebugInfo]);
+
+  const handsFreeDebugActionsState = useMemo<ChatComposerRuntimeHandsFreeDebugActionsState>(
+    () => ({
+      showHandsFreeTranscriptAddedDebug,
+      showHandsFreeRecognizerErrorDebug,
+      showHandsFreePermissionDeniedDebug,
+    }),
+    [
+      showHandsFreePermissionDeniedDebug,
+      showHandsFreeRecognizerErrorDebug,
+      showHandsFreeTranscriptAddedDebug,
+    ],
+  );
+
+  return handsFreeDebugActionsState;
 }
 
 export function useChatComposerRuntimeVoiceDebugResetState({

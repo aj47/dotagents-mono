@@ -32,6 +32,7 @@ import {
   useChatComposerRuntimeSubmissionChromeState,
   useChatComposerRuntimeHandsFreeControlChromeActionsState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
+  useChatComposerRuntimeHandsFreeDebugActionsState,
   useChatComposerRuntimeVoiceDebugResetState,
   useChatRuntimeNavigationHeaderChromeOptions,
   useChatMessageRuntimeTurnDurations,
@@ -81,9 +82,6 @@ import {
   applyChatMessageRuntimePendingTurnStatusState,
   applyChatMessageRuntimeProgressTurnStatusState,
   applyChatMessageRuntimeSettledTurnStatusState,
-  createChatComposerRuntimeHandsFreePermissionDeniedDebugState,
-  createChatComposerRuntimeHandsFreeRecognizerErrorDebugState,
-  createChatComposerRuntimeHandsFreeTranscriptAddedDebugState,
   createChatMessageRuntimeConnectionErrorTurnState,
   createChatMessageRuntimeFinalResponseTurnState,
   createChatMessageRuntimeFinalResponseTextState,
@@ -469,6 +467,13 @@ export default function ChatScreen({ route, navigation }: any) {
     isVoiceDebugEnabled: handsFreeDebugEnabled,
     clearVoiceDebug,
   });
+  const {
+    showHandsFreeTranscriptAddedDebug,
+    showHandsFreeRecognizerErrorDebug,
+    showHandsFreePermissionDeniedDebug,
+  } = useChatComposerRuntimeHandsFreeDebugActionsState({
+    setDebugInfo,
+  });
   const clearRouteInitialMessage = useCallback(() => {
     navigation?.setParams?.({ initialMessage: undefined });
   }, [navigation]);
@@ -523,7 +528,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (mode === 'edit') {
         mergeVoiceTextIntoComposer(finalText);
-        setDebugInfo(createChatComposerRuntimeHandsFreeTranscriptAddedDebugState().debugInfo);
+        showHandsFreeTranscriptAddedDebug();
         setTimeout(focusComposerInput, 0);
         return;
       }
@@ -542,10 +547,10 @@ export default function ChatScreen({ route, navigation }: any) {
     },
     onRecognizerError: (message) => {
       handsFreeController.onRecognizerError(message);
-      setDebugInfo(createChatComposerRuntimeHandsFreeRecognizerErrorDebugState(message).debugInfo);
+      showHandsFreeRecognizerErrorDebug(message);
     },
     onPermissionDenied: () => {
-      setDebugInfo(createChatComposerRuntimeHandsFreePermissionDeniedDebugState().debugInfo);
+      showHandsFreePermissionDeniedDebug();
     },
     log: voiceLog,
   });
