@@ -5254,6 +5254,11 @@ type ChatMessageRuntimeViewportInputStateInput<
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
 > = ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['viewport'];
 
+type ChatMessageRuntimeDockInputStateInput<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+> = ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['dock'];
+
 export type ChatMessageRuntimeChromeSurfaceProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
@@ -5377,6 +5382,114 @@ export function useChatMessageRuntimeViewportInputState<
   );
 
   return chatMessageRuntimeViewportInputState;
+}
+
+export function useChatMessageRuntimeDockInputState<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>({
+  responseHistoryResponses,
+  responseHistoryTtsProvider,
+  responseHistoryRemoteTtsVoice,
+  responseHistoryRemoteTtsModel,
+  responseHistoryTtsRate,
+  responseHistoryTtsPitch,
+  responseHistoryTtsVoiceId,
+  responseHistoryRemoteBaseUrl,
+  responseHistoryRemoteApiKey,
+  scrollToBottomVisible,
+  onScrollToBottom,
+  voiceOverlayListening,
+  voiceOverlayHandsFree,
+  voiceOverlayWillCancel,
+  voiceOverlayTranscript,
+  queuePanelEnabled,
+  queuePanelConversationId,
+  queuedMessages,
+  onRemoveQueuedMessage,
+  onUpdateQueuedMessage,
+  onRetryQueuedMessage,
+  onProcessNextQueuedMessage,
+  canProcessNextQueuedMessage,
+  onClearQueuedMessages,
+  isMessageQueuePaused,
+  onPauseMessageQueue,
+  onResumeMessageQueue,
+  connectionState,
+  lastFailedMessage,
+  isResponding,
+  onConnectionBannerRetry,
+}: ChatMessageRuntimeDockInputStateInput<TPrompt, TTask>): ChatMessageRuntimeDockInputStateInput<TPrompt, TTask> {
+  const chatMessageRuntimeDockInputState = useMemo<ChatMessageRuntimeDockInputStateInput<TPrompt, TTask>>(
+    () => ({
+      responseHistoryResponses,
+      responseHistoryTtsProvider,
+      responseHistoryRemoteTtsVoice,
+      responseHistoryRemoteTtsModel,
+      responseHistoryTtsRate,
+      responseHistoryTtsPitch,
+      responseHistoryTtsVoiceId,
+      responseHistoryRemoteBaseUrl,
+      responseHistoryRemoteApiKey,
+      scrollToBottomVisible,
+      onScrollToBottom,
+      voiceOverlayListening,
+      voiceOverlayHandsFree,
+      voiceOverlayWillCancel,
+      voiceOverlayTranscript,
+      queuePanelEnabled,
+      queuePanelConversationId,
+      queuedMessages,
+      onRemoveQueuedMessage,
+      onUpdateQueuedMessage,
+      onRetryQueuedMessage,
+      onProcessNextQueuedMessage,
+      canProcessNextQueuedMessage,
+      onClearQueuedMessages,
+      isMessageQueuePaused,
+      onPauseMessageQueue,
+      onResumeMessageQueue,
+      connectionState,
+      lastFailedMessage,
+      isResponding,
+      onConnectionBannerRetry,
+    }),
+    [
+      canProcessNextQueuedMessage,
+      connectionState,
+      isMessageQueuePaused,
+      isResponding,
+      lastFailedMessage,
+      onClearQueuedMessages,
+      onConnectionBannerRetry,
+      onPauseMessageQueue,
+      onProcessNextQueuedMessage,
+      onRemoveQueuedMessage,
+      onResumeMessageQueue,
+      onRetryQueuedMessage,
+      onScrollToBottom,
+      onUpdateQueuedMessage,
+      queuePanelConversationId,
+      queuePanelEnabled,
+      queuedMessages,
+      responseHistoryRemoteApiKey,
+      responseHistoryRemoteBaseUrl,
+      responseHistoryRemoteTtsModel,
+      responseHistoryRemoteTtsVoice,
+      responseHistoryResponses,
+      responseHistoryTtsPitch,
+      responseHistoryTtsProvider,
+      responseHistoryTtsRate,
+      responseHistoryTtsVoiceId,
+      scrollToBottomVisible,
+      voiceOverlayHandsFree,
+      voiceOverlayListening,
+      voiceOverlayTranscript,
+      voiceOverlayWillCancel,
+    ],
+  );
+
+  return chatMessageRuntimeDockInputState;
 }
 
 export function useChatMessageRuntimeSurfaceInputState<

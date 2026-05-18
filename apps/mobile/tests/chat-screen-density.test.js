@@ -2840,7 +2840,11 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /scrollViewport: \{\s+props: \{\s+style: styles\.scrollViewport\.style,\s+contentContainerStyle: styles\.scrollViewport\.contentContainerStyle,\s+\},\s+\}/);
   assert.match(sessionPresentationSource, /loadingState: \{\s+props: \{\s+\.\.\.loadingState,\s+style: styles\.loadingState\.style,\s+spinnerStyle: styles\.loadingState\.spinnerStyle,\s+\},\s+\}/);
   assert.doesNotMatch(chatMessageChromeSource, /<ChatMessageConversationViewport\s+\{\.\.\.scrollViewportProps\}\s+style=\{styles\.scrollViewport\.style\}\s+contentContainerStyle=\{styles\.scrollViewport\.contentContainerStyle\}/);
-  assert.match(screenSource, /const chatMessageRuntimeDock = useMemo<[\s\S]*?responseHistoryResponses: respondToUserHistory,[\s\S]*?scrollToBottomVisible: !shouldAutoScroll,[\s\S]*?voiceOverlayListening: listening,[\s\S]*?queuePanelEnabled: messageQueueEnabled,[\s\S]*?connectionState,[\s\S]*?lastFailedMessage,[\s\S]*?isResponding: responding,/);
+  assert.match(screenSource, /useChatMessageRuntimeDockInputState,/);
+  assert.match(screenSource, /const chatMessageRuntimeDock = useChatMessageRuntimeDockInputState<[\s\S]*?responseHistoryResponses: respondToUserHistory,[\s\S]*?scrollToBottomVisible: !shouldAutoScroll,[\s\S]*?voiceOverlayListening: listening,[\s\S]*?queuePanelEnabled: messageQueueEnabled,[\s\S]*?connectionState,[\s\S]*?lastFailedMessage,[\s\S]*?isResponding: responding,/);
+  assert.doesNotMatch(screenSource, /const chatMessageRuntimeDock = useMemo<\s+ChatScreenRuntimeChromeInput\['dock'\]\s+>\(\(\) => \(\{/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeDockInputState<[\s\S]*?\): ChatMessageRuntimeDockInputStateInput<TPrompt, TTask>/);
+  assert.match(chatMessageChromeSource, /const chatMessageRuntimeDockInputState = useMemo<ChatMessageRuntimeDockInputStateInput<TPrompt, TTask>>\(/);
   assert.match(sessionPresentationSource, /responseHistoryPanel: \{\s+responses: responseHistoryResponses,[\s\S]*?scrollToBottomButton: \{\s+renderState: dockChromeRenderState\.scrollToBottom,/);
   assert.match(chatMessageChromeSource, /composer: chatComposerRuntimeDock,/);
   assert.doesNotMatch(screenSource, /shouldRender: respondToUserHistory\.length > 0/);
