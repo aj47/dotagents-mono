@@ -251,6 +251,7 @@ import {
   type ChatSessionStatusMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
+  type ChatRuntimeConversationCollapsedPreviewMobilePropsParts,
   type ChatRuntimeConversationContentMobileDisplayMode,
   type ChatRuntimeConversationExpandedContentMobilePropsParts,
   type ChatRuntimeConversationDelegationExpansionState,
@@ -273,6 +274,9 @@ import {
   type ChatRuntimeToolActivityGroupBoundaryMobileKind,
   type ChatRuntimeToolActivityGroupHeaderMobileKind,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
+  type ChatRuntimeInlineActivityMobilePropsParts,
+  type ChatRuntimeMessageContentRowMobilePropsParts,
+  type ChatRuntimeMessageSurfaceMobilePropsParts,
   type ChatRuntimeRetryStatusMobileRenderState,
   type ChatRuntimeStreamingContentMobileRenderStateInput,
   type ChatRuntimeStreamingContentMobileRenderState,
@@ -4238,10 +4242,11 @@ type ChatMessageSurfaceProps = {
   toneStyle?: StyleProp<ViewStyle>;
 };
 
-type ChatMessageSurfaceParts = ReturnType<typeof createChatRuntimeMessageSurfaceMobilePropsParts<
-  ChatMessageSurfaceProps['style'],
-  ChatMessageSurfaceProps['toneStyle']
->>;
+type ChatMessageSurfaceParts =
+  ChatRuntimeMessageSurfaceMobilePropsParts<
+    ChatMessageSurfaceProps['style'],
+    ChatMessageSurfaceProps['toneStyle']
+  >;
 
 type ChatMessageSurfaceContainerProps =
   ChatMessageSurfaceParts['container']['props'] & {
@@ -4275,12 +4280,13 @@ type ChatMessageInlineActivityProps = {
   spinnerStyle: StyleProp<ImageStyle>;
 };
 
-type ChatMessageInlineActivityParts = ReturnType<typeof createChatRuntimeInlineActivityMobilePropsParts<
-  ChatRuntimeInlineActivityMobileRenderState,
-  ImageSourcePropType,
-  StyleProp<ViewStyle>,
-  StyleProp<ImageStyle>
->>;
+type ChatMessageInlineActivityParts =
+  ChatRuntimeInlineActivityMobilePropsParts<
+    ChatRuntimeInlineActivityMobileRenderState,
+    ImageSourcePropType,
+    StyleProp<ViewStyle>,
+    StyleProp<ImageStyle>
+  >;
 
 type ChatMessageInlineActivityContainerProps =
   ChatMessageInlineActivityParts['container']['props'] & {
@@ -4301,11 +4307,12 @@ type ChatMessageContentRowProps = {
   bodyStyle?: StyleProp<ViewStyle>;
 };
 
-type ChatMessageContentRowParts = ReturnType<typeof createChatRuntimeMessageContentRowMobilePropsParts<
-  ChatMessageActionEntry,
-  ChatMessageContentRowProps['rowStyle'],
-  ChatMessageContentRowProps['bodyStyle']
->>;
+type ChatMessageContentRowParts =
+  ChatRuntimeMessageContentRowMobilePropsParts<
+    ChatMessageActionEntry,
+    ChatMessageContentRowProps['rowStyle'],
+    ChatMessageContentRowProps['bodyStyle']
+  >;
 
 type ChatMessageContentRowContainerProps =
   ChatMessageContentRowParts['row']['props'] & {
@@ -4385,14 +4392,15 @@ type ChatMessageCollapsedPreviewPropsInput = Pick<
   'renderState' | 'actionState' | 'onPress'
 >;
 
-type ChatMessageCollapsedPreviewParts = ReturnType<typeof createChatRuntimeConversationCollapsedPreviewMobilePropsParts<
-  ChatMessageCollapsedPreviewProps['renderState'],
-  ChatMessageCollapsedPreviewProps['actionState'],
-  ChatMessageCollapsedPreviewProps['onPress'],
-  ChatMessageCollapsedPreviewProps['style'],
-  ChatMessageCollapsedPreviewProps['pressedStyle'],
-  ChatMessageCollapsedPreviewProps['textStyle']
->>;
+type ChatMessageCollapsedPreviewParts =
+  ChatRuntimeConversationCollapsedPreviewMobilePropsParts<
+    ChatMessageCollapsedPreviewProps['renderState'],
+    ChatMessageCollapsedPreviewProps['actionState'],
+    ChatMessageCollapsedPreviewProps['onPress'],
+    ChatMessageCollapsedPreviewProps['style'],
+    ChatMessageCollapsedPreviewProps['pressedStyle'],
+    ChatMessageCollapsedPreviewProps['textStyle']
+  >;
 
 type ChatMessageCollapsedPreviewContentProps =
   ChatMessageCollapsedPreviewParts['pressable']['content'];
