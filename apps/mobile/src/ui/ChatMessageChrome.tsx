@@ -3306,19 +3306,47 @@ type ChatMessageToolExecutionCollapseControlParts =
     ChatMessageToolExecutionCollapseControlStyles
   >;
 
-type ChatMessageToolExecutionCollapseControlPressableProps =
-  ChatMessageToolExecutionCollapseControlParts['container']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageToolExecutionCollapseControlPressableState = {
+  pressed: boolean;
+};
 
-type ChatMessageToolExecutionCollapseControlContentProps =
-  ChatMessageToolExecutionCollapseControlParts['container']['content'];
+type ChatMessageToolExecutionCollapseControlPressableProps = {
+  children: ReactNode;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  accessibilityRole: ToolExecutionDetailMobileCollapseControlRenderState['accessibilityRole'];
+  accessibilityLabel: string;
+  accessibilityHint: string;
+  style: (state: ChatMessageToolExecutionCollapseControlPressableState) => Array<
+    | ChatMessageToolExecutionCollapseControlStyles['button']
+    | ChatMessageToolExecutionCollapseControlStyles['pressed']
+    | ChatMessageToolExecutionCollapseControlStyles['placement']
+    | false
+    | undefined
+  >;
+};
 
 type ChatMessageToolExecutionCollapseControlIconProps =
-  ChatMessageToolExecutionCollapseControlParts['container']['content']['icon']['props'];
+  ComponentProps<typeof Ionicons>;
 
-type ChatMessageToolExecutionCollapseControlLabelProps =
-  ChatMessageToolExecutionCollapseControlParts['container']['content']['label']['props'];
+type ChatMessageToolExecutionCollapseControlIconPart = {
+  props: ChatMessageToolExecutionCollapseControlIconProps;
+};
+
+type ChatMessageToolExecutionCollapseControlLabelProps = {
+  props: {
+    style: ChatMessageToolExecutionCollapseControlStyles['text'];
+  };
+  text: string;
+};
+
+type ChatMessageToolExecutionCollapseControlLabelPart = {
+  props: ChatMessageToolExecutionCollapseControlLabelProps;
+};
+
+type ChatMessageToolExecutionCollapseControlContentProps = {
+  icon: ChatMessageToolExecutionCollapseControlIconPart;
+  label: ChatMessageToolExecutionCollapseControlLabelPart;
+};
 
 type ChatMessageToolExecutionExpandedGroupStyles =
   SharedChatMessageToolExecutionExpandedGroupStyleSlots<
