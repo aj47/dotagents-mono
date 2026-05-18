@@ -8565,18 +8565,30 @@ export function useChatMessageRuntimeResponseHistoryState(): ChatMessageRuntimeR
     activeAutoSpeechEventIdRef.current = null;
   }, []);
 
-  return {
-    respondToUserHistory,
-    playedResponseEventIdsRef,
-    queuedResponseEventsRef,
-    activeAutoSpeechEventIdRef,
-    recentAutoSpeechByTextRef,
-    replaceResponseHistory,
-    createFallbackResponseEvent,
-    mergeResponseEvents,
-    clearQueuedResponseSpeech,
-    resetResponseSpeechPlaybackState,
-  };
+  const responseHistoryState = useMemo<ChatMessageRuntimeResponseHistoryState>(
+    () => ({
+      respondToUserHistory,
+      playedResponseEventIdsRef,
+      queuedResponseEventsRef,
+      activeAutoSpeechEventIdRef,
+      recentAutoSpeechByTextRef,
+      replaceResponseHistory,
+      createFallbackResponseEvent,
+      mergeResponseEvents,
+      clearQueuedResponseSpeech,
+      resetResponseSpeechPlaybackState,
+    }),
+    [
+      clearQueuedResponseSpeech,
+      createFallbackResponseEvent,
+      mergeResponseEvents,
+      replaceResponseHistory,
+      resetResponseSpeechPlaybackState,
+      respondToUserHistory,
+    ],
+  );
+
+  return responseHistoryState;
 }
 
 export function useChatMessageRuntimeResponseSpeechQueueActionsState({
@@ -8643,10 +8655,15 @@ export function useChatMessageRuntimeResponseSpeechQueueActionsState({
     ttsEnabledRef,
   ]);
 
-  return {
-    enqueueResponseEventsForSpeech,
-    processResponseSpeechQueue,
-  };
+  const responseSpeechQueueActionsState = useMemo<ChatMessageRuntimeResponseSpeechQueueActionsState>(
+    () => ({
+      enqueueResponseEventsForSpeech,
+      processResponseSpeechQueue,
+    }),
+    [enqueueResponseEventsForSpeech, processResponseSpeechQueue],
+  );
+
+  return responseSpeechQueueActionsState;
 }
 
 export function useChatMessageRuntimeAssistantSpeechActionsState({
@@ -8756,9 +8773,14 @@ export function useChatMessageRuntimeAssistantSpeechActionsState({
     voiceLog,
   ]);
 
-  return {
-    speakAssistantResponse,
-  };
+  const assistantSpeechActionsState = useMemo<ChatMessageRuntimeAssistantSpeechActionsState>(
+    () => ({
+      speakAssistantResponse,
+    }),
+    [speakAssistantResponse],
+  );
+
+  return assistantSpeechActionsState;
 }
 
 export function useChatMessageRuntimeAssistantSpeechChromeActionsState(
@@ -8792,15 +8814,26 @@ export function useChatMessageRuntimeSpeechPlaybackState(): ChatMessageRuntimeSp
     setSpeakingMessageIndex(messageIndex);
   }, []);
 
-  return {
-    speakingMessageIndex,
-    setSpeakingMessageIndex,
-    intendedSpeakingIndexRef,
-    setIntendedSpeakingMessage,
-    startSpeakingMessage,
-    clearSpeakingMessage,
-    clearIntendedSpeakingMessage,
-  };
+  const speechPlaybackState = useMemo<ChatMessageRuntimeSpeechPlaybackState>(
+    () => ({
+      speakingMessageIndex,
+      setSpeakingMessageIndex,
+      intendedSpeakingIndexRef,
+      setIntendedSpeakingMessage,
+      startSpeakingMessage,
+      clearSpeakingMessage,
+      clearIntendedSpeakingMessage,
+    }),
+    [
+      clearIntendedSpeakingMessage,
+      clearSpeakingMessage,
+      setIntendedSpeakingMessage,
+      speakingMessageIndex,
+      startSpeakingMessage,
+    ],
+  );
+
+  return speechPlaybackState;
 }
 
 export function useChatMessageRuntimeSpeechActionsState({
@@ -8921,9 +8954,14 @@ export function useChatMessageRuntimeSpeechActionsState({
     voiceLog,
   ]);
 
-  return {
-    speakMessage,
-  };
+  const speechActionsState = useMemo<ChatMessageRuntimeSpeechActionsState>(
+    () => ({
+      speakMessage,
+    }),
+    [speakMessage],
+  );
+
+  return speechActionsState;
 }
 
 export function useChatMessageRuntimeSpeechChromeActionsState(
