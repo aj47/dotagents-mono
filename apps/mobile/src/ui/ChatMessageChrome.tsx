@@ -5245,19 +5245,35 @@ type ChatComposerMicButtonParts =
     ChatComposerMicButtonStyles
   >;
 
-type ChatComposerMicButtonPressableProps =
-  ChatComposerMicButtonParts['pressable']['props'] & {
-    children: ReactNode;
+type ChatComposerMicButtonPressableProps = {
+  style: Array<StyleProp<ViewStyle> | false | undefined>;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  accessibilityHint: string | undefined;
+  accessibilityState: AccessibilityState | undefined;
+  'aria-busy': boolean | undefined;
+  onPressIn: ((event: GestureResponderEvent) => void) | undefined;
+  onPressOut: ((event: GestureResponderEvent) => void) | undefined;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  children: ReactNode;
+};
+
+type ChatComposerMicButtonPressableContentProps = {
+  icon: {
+    props: ChatComposerMicButtonIconProps;
   };
+  label: {
+    props: ChatComposerMicButtonLabelProps;
+  };
+};
 
-type ChatComposerMicButtonPressableContentProps =
-  ChatComposerMicButtonParts['pressable']['content'];
+type ChatComposerMicButtonIconProps = ChatMessageActionIcon;
 
-type ChatComposerMicButtonIconProps =
-  ChatComposerMicButtonParts['pressable']['content']['icon']['props'];
-
-type ChatComposerMicButtonLabelProps =
-  ChatComposerMicButtonParts['pressable']['content']['label']['props'];
+type ChatComposerMicButtonLabelProps = {
+  style: Array<StyleProp<TextStyle> | false | undefined>;
+  selectable: boolean | undefined;
+  text: string;
+};
 
 type ChatComposerTextEntryStyles =
   SharedChatComposerTextEntryStyleSlots<

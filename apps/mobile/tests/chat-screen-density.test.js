@@ -3624,6 +3624,11 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     chatMessageChromeSource.match(/export function ChatComposerMicButton[\s\S]*?export function ChatComposerTextEntry/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatComposerMicButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatComposerMicButtonMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerMicButton(?:PressableProps|PressableContentProps|IconProps|LabelProps)\s*=\s+ChatComposerMicButtonParts\['/);
+  assert.match(chatMessageChromeSource, /type ChatComposerMicButtonPressableProps = \{[\s\S]*?style: Array<StyleProp<ViewStyle> \| false \| undefined>;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?accessibilityHint: string \| undefined;[\s\S]*?accessibilityState: AccessibilityState \| undefined;[\s\S]*?'aria-busy': boolean \| undefined;[\s\S]*?onPressIn: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?onPressOut: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?onPress: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerMicButtonPressableContentProps = \{[\s\S]*?icon: \{[\s\S]*?props: ChatComposerMicButtonIconProps;[\s\S]*?\};[\s\S]*?label: \{[\s\S]*?props: ChatComposerMicButtonLabelProps;[\s\S]*?\};[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerMicButtonIconProps = ChatMessageActionIcon;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerMicButtonLabelProps = \{[\s\S]*?style: Array<StyleProp<TextStyle> \| false \| undefined>;[\s\S]*?selectable: boolean \| undefined;[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(composerMicButtonSource, /const micButtonParts: ChatComposerMicButtonParts =\s+createChatComposerMicButtonMobilePropsParts\(\{\s+renderState,\s+onPressIn,\s+onPressOut,\s+onPress,\s+webPressedStyle,\s+styles,\s+\}\);/);
   assert.match(composerMicButtonSource, /const micButtonPressable = micButtonParts\.pressable;/);
   assert.doesNotMatch(composerMicButtonSource, /const pressableContent = micButtonPressable\.content;/);
