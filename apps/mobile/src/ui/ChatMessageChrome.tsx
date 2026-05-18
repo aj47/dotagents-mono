@@ -4158,23 +4158,23 @@ type ChatMessageRuntimeSurfaceChromePropsInput<
 > = {
   platform: ChatRuntimeSurfaceChromeMobileRenderStateInput['platform'];
   colors: ChatRuntimeSurfaceChromeMobileRenderStateInput['colors'];
-  keyboardVerticalOffset: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['frame']['keyboardVerticalOffset'];
-  dock: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['dock'];
-  viewport: ChatMessageRuntimeSurfaceChromeProps<TPrompt, TTask>['viewport'];
-  threadStates: ChatMessageConversationRuntimeThreadListProps['threadStates'];
-  threadStyles: ChatMessageConversationRuntimeThreadListProps['styles'];
-  agentSelectorVisible: ChatMessageRuntimeOverlaysProps['agentSelector']['visible'];
-  onAgentSelectorClose: ChatMessageRuntimeOverlaysProps['agentSelector']['onClose'];
-  promptEditorVisible: ChatConversationHomePromptEditorModalProps['visible'];
-  promptEditorIsEditing: ChatConversationHomePromptEditorModalProps['isEditing'];
-  promptEditorNameValue: ChatConversationHomePromptEditorModalProps['nameValue'];
-  onPromptEditorNameChange: ChatConversationHomePromptEditorModalProps['onNameChange'];
-  promptEditorContentValue: ChatConversationHomePromptEditorModalProps['contentValue'];
-  onPromptEditorContentChange: ChatConversationHomePromptEditorModalProps['onContentChange'];
-  promptEditorIsSaving: ChatConversationHomePromptEditorModalProps['isSaving'];
-  onPromptEditorClose: ChatConversationHomePromptEditorModalProps['onClose'];
-  onPromptEditorSave: ChatConversationHomePromptEditorModalProps['onSave'];
-  promptEditorStyles: ChatConversationHomePromptEditorModalProps['styles'];
+  keyboardVerticalOffset: number;
+  dock: ChatMessageRuntimeDockChromeProps;
+  viewport: ChatMessageRuntimeViewportChromeProps<TPrompt, TTask>;
+  threadStates: readonly ChatMessageConversationRenderableRuntimeThreadState[];
+  threadStyles: ChatMessageRuntimeThreadStyleSlots;
+  agentSelectorVisible: boolean;
+  onAgentSelectorClose: () => void;
+  promptEditorVisible: boolean;
+  promptEditorIsEditing: boolean;
+  promptEditorNameValue: string;
+  onPromptEditorNameChange: (value: string) => void;
+  promptEditorContentValue: string;
+  onPromptEditorContentChange: (value: string) => void;
+  promptEditorIsSaving: boolean;
+  onPromptEditorClose: () => void;
+  onPromptEditorSave: () => void;
+  promptEditorStyles: ChatConversationHomePromptEditorModalStyles;
 };
 
 export type ChatMessageRuntimeChromePropsInput<
