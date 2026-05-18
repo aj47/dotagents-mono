@@ -274,7 +274,7 @@ import {
   type ChatRuntimeStepSummaryMobileRenderState,
   type ChatRuntimeLoadingStateMobilePropsPartsInput,
   type ChatRuntimeToolApprovalMobilePropsParts,
-  type ChatRuntimeToolApprovalMobileRenderState,
+  type ChatRuntimeToolApprovalMobilePropsPartsInput,
   type ChatRuntimeDelegationCardMobilePropsParts,
   type ChatRuntimeHeaderAgentSelectorMobilePropsParts,
   type ChatRuntimeHeaderAgentSelectorMobileStyleSlots as SharedChatRuntimeHeaderAgentSelectorStyleSlots,
@@ -2140,16 +2140,13 @@ type ChatMessageToolApprovalStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolApprovalProps = {
-  renderState: ChatRuntimeToolApprovalMobileRenderState;
-  toolName: string;
-  argumentsPreview: string;
-  argumentsContent: string;
-  onToggleArguments: (event: GestureResponderEvent) => void;
-  onDeny: (event: GestureResponderEvent) => void;
-  onApprove: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolApprovalStyles;
-};
+type ChatMessageToolApprovalProps =
+  ChatRuntimeToolApprovalMobilePropsPartsInput<
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolApprovalStyles
+  >;
 
 type ChatMessageToolApprovalParts =
   ChatRuntimeToolApprovalMobilePropsParts<

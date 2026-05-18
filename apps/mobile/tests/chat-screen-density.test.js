@@ -756,12 +756,15 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.doesNotMatch(screenSource, /const toolApprovalArgumentsToggleMobileIcon =/);
   assert.doesNotMatch(screenSource, /const toolApprovalArgumentsToggleMobileIconColors =/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolApproval/);
-  assert.match(chatMessageChromeSource, /ChatRuntimeToolApprovalMobileRenderState,/);
   const toolApprovalComponentSource =
     chatMessageChromeSource.match(/export function ChatMessageToolApproval[\s\S]*?export function ChatMessageDelegationCard/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeToolApprovalMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolApprovalMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeToolApprovalMobilePropsPartsInput,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalProps =\s+ChatRuntimeToolApprovalMobilePropsPartsInput<\s+\(event: GestureResponderEvent\) => void,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ChatMessageToolApprovalStyles\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalProps = \{[\s\S]*?renderState: ChatRuntimeToolApprovalMobileRenderState;[\s\S]*?styles: ChatMessageToolApprovalStyles;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalParts =\s+ChatRuntimeToolApprovalMobilePropsParts<[\s\S]*?ChatMessageToolApprovalProps\['onToggleArguments'\],[\s\S]*?ChatMessageToolApprovalProps\['onDeny'\],[\s\S]*?ChatMessageToolApprovalProps\['onApprove'\],[\s\S]*?ChatMessageToolApprovalStyles/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeToolApprovalMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export type ChatMessageToolApprovalStyleSlots<\s+TCardStyle,\s+THeaderStyle,\s+TContentStyle,\s+TContentDisabledStyle,/);
   assert.match(sessionPresentationSource, /toolApproval: ChatMessageToolApprovalStyleSlots<\s+TStyles\["toolApprovalCard"\],\s+TStyles\["toolApprovalHeader"\],\s+TStyles\["toolApprovalContent"\],/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,/);
