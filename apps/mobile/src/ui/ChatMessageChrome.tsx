@@ -3238,10 +3238,24 @@ type ChatMessageToolExecutionCompactGroupParts =
     ChatMessageToolExecutionCompactGroupStyles
   >;
 
-type ChatMessageToolExecutionCompactGroupPressableProps =
-  ChatMessageToolExecutionCompactGroupParts['container']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageToolExecutionCompactGroupPressableState = {
+  pressed: boolean;
+};
+
+type ChatMessageToolExecutionCompactGroupPressableProps = {
+  children: ReactNode;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  accessibilityRole: ToolExecutionDetailMobileExpandControlRenderState['accessibilityRole'];
+  accessibilityLabel: string;
+  accessibilityHint: string;
+  accessibilityState: ToolExecutionDetailMobileExpandControlRenderState['accessibilityState'];
+  'aria-expanded': ToolExecutionDetailMobileExpandControlRenderState['ariaExpanded'];
+  style: (state: ChatMessageToolExecutionCompactGroupPressableState) => Array<
+    | ChatMessageToolExecutionCompactGroupStyles['container']
+    | ChatMessageToolExecutionCompactGroupStyles['pressed']
+    | false
+  >;
+};
 
 type ChatMessageToolExecutionCompactListProps =
   ChatRuntimeToolExecutionCompactListMobilePropsPartsInput<
@@ -3261,8 +3275,14 @@ type ChatMessageToolExecutionCompactListParts =
     ChatMessageToolExecutionCompactRowStyles
   >;
 
-type ChatMessageToolExecutionCompactListContentProps =
-  ChatMessageToolExecutionCompactListParts['group']['content'];
+type ChatMessageToolExecutionCompactListRowPart = {
+  key: ChatMessageToolExecutionCompactListRow['key'];
+  props: ChatMessageToolExecutionCompactRowProps;
+};
+
+type ChatMessageToolExecutionCompactListContentProps = {
+  rows: ChatMessageToolExecutionCompactListRowPart[];
+};
 
 type ChatMessageToolExecutionCollapseControlStyles =
   SharedChatMessageToolExecutionCollapseControlStyleSlots<
