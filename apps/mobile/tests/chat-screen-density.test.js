@@ -2929,9 +2929,12 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeToolExecutionStackPanelMobilePropsParts',
     'createChatRuntimeToolExecutionCopyButtonMobilePropsParts',
     'createChatRuntimeToolExecutionDetailHeaderMobilePropsParts',
+    'createChatRuntimeToolExecutionCallSectionMobilePropsParts',
     'createChatRuntimeToolExecutionResultBadgeMobilePropsParts',
     'createChatRuntimeToolExecutionPendingResultMobilePropsParts',
     'createChatRuntimeToolExecutionEmptyStateMobilePropsParts',
+    'createChatRuntimeToolExecutionCallDetailMobilePropsParts',
+    'createChatRuntimeToolExecutionCallListMobilePropsParts',
     'createChatRuntimeConversationFrameMobilePropsParts',
     'createChatRuntimeConversationOverlaysMobilePropsParts',
     'createChatRuntimeConversationScrollViewportMobilePropsParts',
@@ -5465,7 +5468,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallListMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallListMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallList\(\s+props: ChatMessageToolExecutionCallListProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const callListParts: ChatMessageToolExecutionCallListParts =\s+createChatRuntimeToolExecutionCallListMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{ rows, styles \} = props;\s+const callListParts = useMemo<ChatMessageToolExecutionCallListParts>\(\s+\(\) => createChatRuntimeToolExecutionCallListMobilePropsParts\(\{\s+rows,\s+styles,\s+\}\),\s+\[rows, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallListContentProps = \{\s+rows: Array<\{\s+key: ChatMessageToolExecutionCallListRow\['key'\];\s+props: ChatMessageToolExecutionCallDetailProps;\s+\}>;\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionCallListParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const callListContent = callListParts\.content;/);
@@ -5483,7 +5486,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallDetailMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallDetailMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallDetail\(\s+props: ChatMessageToolExecutionCallDetailProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const callDetailParts: ChatMessageToolExecutionCallDetailParts =\s+createChatRuntimeToolExecutionCallDetailMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const \{\s+renderState,\s+toolName,\s+onHeaderPress,\s+stats,\s+input,\s+result,\s+pendingResult,\s+styles,\s+\} = props;\s+const callDetailParts = useMemo<ChatMessageToolExecutionCallDetailParts>\(\s+\(\) => createChatRuntimeToolExecutionCallDetailMobilePropsParts\(\{\s+renderState,\s+toolName,\s+onHeaderPress,\s+stats,\s+input,\s+result,\s+pendingResult,\s+styles,\s+\}\),\s+\[\s+input,\s+onHeaderPress,\s+pendingResult,\s+renderState,\s+result,\s+stats,\s+styles,\s+toolName,\s+\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailInputSectionPart =\s+\| \{\s+shouldRender: true;\s+props: ChatMessageToolExecutionPayloadSectionProps;\s+\}\s+\| \{\s+shouldRender: false;\s+props: null;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailContentProps = \{\s+inputSection: ChatMessageToolExecutionCallDetailInputSectionPart;\s+statsLine: ChatMessageToolExecutionStatsLinePart;\s+resultSection: ChatMessageToolExecutionCallDetailResultSectionPart;\s+pendingResult: ChatMessageToolExecutionCallDetailPendingResultPart;\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionCallDetailParts\['/);
@@ -5505,8 +5508,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallSectionMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallSectionMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSection\(\s+props: ChatMessageToolExecutionCallSectionProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const callSectionParts: ChatMessageToolExecutionCallSectionParts =\s+createChatRuntimeToolExecutionCallSectionMobilePropsParts\(props\);/);
-  assert.match(chatMessageChromeSource, /const \{ children \} = props;[\s\S]*?<ChatMessageToolExecutionCallSectionContainer/);
+  assert.match(chatMessageChromeSource, /const \{ children, renderState, toolName, onHeaderPress, styles \} = props;\s+const callSectionParts = useMemo<ChatMessageToolExecutionCallSectionParts>\(\s+\(\) => createChatRuntimeToolExecutionCallSectionMobilePropsParts\(\{\s+renderState,\s+toolName,\s+onHeaderPress,\s+styles,\s+\}\),\s+\[onHeaderPress, renderState, styles, toolName\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallSectionContainerProps = \{\s+style: ChatMessageToolExecutionCallSectionStyles\['section'\];\s+children: ReactNode;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallSectionHeaderPart = \{\s+props: ChatMessageToolExecutionDetailHeaderProps;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallSectionContentProps = \{\s+header: ChatMessageToolExecutionCallSectionHeaderPart;\s+children: ReactNode;\s+\};/);

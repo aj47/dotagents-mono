@@ -12968,9 +12968,16 @@ export function ChatMessageToolExecutionDetailHeaderExpandLabel({
 export function ChatMessageToolExecutionCallSection(
   props: ChatMessageToolExecutionCallSectionProps,
 ) {
-  const callSectionParts: ChatMessageToolExecutionCallSectionParts =
-    createChatRuntimeToolExecutionCallSectionMobilePropsParts(props);
-  const { children } = props;
+  const { children, renderState, toolName, onHeaderPress, styles } = props;
+  const callSectionParts = useMemo<ChatMessageToolExecutionCallSectionParts>(
+    () => createChatRuntimeToolExecutionCallSectionMobilePropsParts({
+      renderState,
+      toolName,
+      onHeaderPress,
+      styles,
+    }),
+    [onHeaderPress, renderState, styles, toolName],
+  );
 
   return (
     <ChatMessageToolExecutionCallSectionContainer
@@ -13614,8 +13621,38 @@ export function ChatMessageToolExecutionResultSectionItem({
 export function ChatMessageToolExecutionCallDetail(
   props: ChatMessageToolExecutionCallDetailProps,
 ) {
-  const callDetailParts: ChatMessageToolExecutionCallDetailParts =
-    createChatRuntimeToolExecutionCallDetailMobilePropsParts(props);
+  const {
+    renderState,
+    toolName,
+    onHeaderPress,
+    stats,
+    input,
+    result,
+    pendingResult,
+    styles,
+  } = props;
+  const callDetailParts = useMemo<ChatMessageToolExecutionCallDetailParts>(
+    () => createChatRuntimeToolExecutionCallDetailMobilePropsParts({
+      renderState,
+      toolName,
+      onHeaderPress,
+      stats,
+      input,
+      result,
+      pendingResult,
+      styles,
+    }),
+    [
+      input,
+      onHeaderPress,
+      pendingResult,
+      renderState,
+      result,
+      stats,
+      styles,
+      toolName,
+    ],
+  );
 
   return (
     <ChatMessageToolExecutionCallSection
@@ -13715,8 +13752,14 @@ export function ChatMessageToolExecutionCallDetailResultState({
 export function ChatMessageToolExecutionCallList(
   props: ChatMessageToolExecutionCallListProps,
 ) {
-  const callListParts: ChatMessageToolExecutionCallListParts =
-    createChatRuntimeToolExecutionCallListMobilePropsParts(props);
+  const { rows, styles } = props;
+  const callListParts = useMemo<ChatMessageToolExecutionCallListParts>(
+    () => createChatRuntimeToolExecutionCallListMobilePropsParts({
+      rows,
+      styles,
+    }),
+    [rows, styles],
+  );
 
   return (
     <ChatMessageToolExecutionCallListContent
