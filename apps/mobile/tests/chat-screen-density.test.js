@@ -9114,7 +9114,7 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/text-to-speech-settings';/);
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/providers';/);
   assert.match(sessionPresentationSource, /export \{[\s\S]*?DEFAULT_EDGE_TTS_VOICE,[\s\S]*?\} from "\.\/providers"/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?createChatRuntimeEffectiveRemoteSpeechSettingsState,[\s\S]*?createChatRuntimeRemoteSpeechSettingsState,[\s\S]*?getChatRuntimeDefaultRemoteSpeechSettingsState,[\s\S]*?type ChatRuntimeRemoteSpeechProvider,[\s\S]*?type ChatRuntimeRemoteSpeechSettingsState,[\s\S]*?\} from "\.\/text-to-speech-settings"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?createChatRuntimeEffectiveRemoteSpeechSettingsState,[\s\S]*?createChatRuntimeRemoteSpeechSettingsState,[\s\S]*?getChatRuntimeDefaultRemoteSpeechSettingsState,[\s\S]*?type ChatRuntimeRemoteSpeechProvider,[\s\S]*?type ChatRuntimeEffectiveRemoteSpeechSettingsStateInput,[\s\S]*?type ChatRuntimeRemoteSpeechSettingsState,[\s\S]*?\} from "\.\/text-to-speech-settings"/);
   assert.doesNotMatch(screenSource, /getChatRuntimeDefaultRemoteSpeechSettingsState/);
   assert.doesNotMatch(screenSource, /DEFAULT_REMOTE_SPEECH_SETTINGS/);
   assert.match(screenSource, /useChatMessageRuntimeRemoteSpeechSettingsState,/);
@@ -9123,6 +9123,7 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.match(chatMessageChromeSource, /const remoteSpeechSettings = createChatRuntimeRemoteSpeechSettingsState\(settings\);/);
   assert.match(chatMessageChromeSource, /applyRemoteSpeechSettings\(remoteSpeechSettings\)/);
   assert.match(textToSpeechSettingsSource, /export type ChatRuntimeRemoteSpeechProvider/);
+  assert.match(textToSpeechSettingsSource, /export interface ChatRuntimeEffectiveRemoteSpeechSettingsStateInput/);
   assert.match(textToSpeechSettingsSource, /export function getChatRuntimeDefaultRemoteSpeechSettingsState/);
   assert.match(textToSpeechSettingsSource, /export function createChatRuntimeRemoteSpeechSettingsState/);
   assert.match(textToSpeechSettingsSource, /export function createChatRuntimeEffectiveRemoteSpeechSettingsState/);
@@ -9156,7 +9157,12 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.match(textToSpeechSettingsSource, /const isLocalEdgeTts = config\.ttsProvider === "edge"/);
   assert.match(textToSpeechSettingsSource, /provider: isLocalEdgeTts \? "edge" : remoteSettings\.provider/);
   assert.match(textToSpeechSettingsSource, /model: isLocalEdgeTts \? undefined : remoteSettings\.model/);
-  assert.match(screenSource, /const \{\s+provider: effectiveTtsProvider,\s+voice: effectiveRemoteTtsVoice,\s+model: effectiveRemoteTtsModel,\s+rate: effectiveRemoteTtsRate,\s+\} = useMemo\(\s+\(\) => createChatRuntimeEffectiveRemoteSpeechSettingsState\(\{\s+config,\s+remoteSettings: \{\s+provider: remoteTtsProvider,\s+voice: remoteTtsVoice,\s+model: remoteTtsModel,\s+rate: remoteTtsRate,\s+\},\s+\}\),\s+\[\s+config,\s+remoteTtsModel,\s+remoteTtsProvider,\s+remoteTtsRate,\s+remoteTtsVoice,\s+\],\s+\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput = \{\s+config: ChatRuntimeEffectiveRemoteSpeechSettingsStateInput\['config'\];\s+\} & Pick<[\s\S]*?ChatMessageRuntimeRemoteSpeechSettingsHookState,[\s\S]*?'remoteTtsProvider' \| 'remoteTtsVoice' \| 'remoteTtsModel' \| 'remoteTtsRate'[\s\S]*?>;/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeEffectiveRemoteSpeechSettingsState\(\{[\s\S]*?remoteTtsProvider,[\s\S]*?remoteTtsVoice,[\s\S]*?remoteTtsModel,[\s\S]*?remoteTtsRate,[\s\S]*?\}: ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput\): ChatRuntimeRemoteSpeechSettingsState/);
+  assert.match(chatMessageChromeSource, /createChatRuntimeEffectiveRemoteSpeechSettingsState\(\{\s+config,\s+remoteSettings: \{\s+provider: remoteTtsProvider,\s+voice: remoteTtsVoice,\s+model: remoteTtsModel,\s+rate: remoteTtsRate,\s+\},\s+\}\)/);
+  assert.doesNotMatch(screenSource, /createChatRuntimeEffectiveRemoteSpeechSettingsState/);
+  assert.match(screenSource, /useChatMessageRuntimeEffectiveRemoteSpeechSettingsState,/);
+  assert.match(screenSource, /const \{\s+provider: effectiveTtsProvider,\s+voice: effectiveRemoteTtsVoice,\s+model: effectiveRemoteTtsModel,\s+rate: effectiveRemoteTtsRate,\s+\} = useChatMessageRuntimeEffectiveRemoteSpeechSettingsState\(\{\s+config,\s+remoteTtsProvider,\s+remoteTtsVoice,\s+remoteTtsModel,\s+remoteTtsRate,\s+\}\);/);
   assert.doesNotMatch(screenSource, /type RemoteDesktopTtsProvider/);
   assert.doesNotMatch(screenSource, /getTextToSpeechVoiceValue\(settings\)/);
   assert.doesNotMatch(screenSource, /getTextToSpeechModelValue\(settings\)/);

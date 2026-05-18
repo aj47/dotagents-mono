@@ -171,6 +171,7 @@ export {
   DEFAULT_TTS_ENABLED,
   getChatRuntimeDefaultRemoteSpeechSettingsState,
   type ChatRuntimeRemoteSpeechProvider,
+  type ChatRuntimeEffectiveRemoteSpeechSettingsStateInput,
   type ChatRuntimeRemoteSpeechSettingsState,
 } from "./text-to-speech-settings"
 export {

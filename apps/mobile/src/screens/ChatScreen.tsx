@@ -47,6 +47,7 @@ import {
   useChatMessageRuntimeSpeechChromeCleanupState,
   useChatMessageRuntimeSpeechPlaybackState,
   useChatMessageRuntimeRemoteSpeechSettingsState,
+  useChatMessageRuntimeEffectiveRemoteSpeechSettingsState,
   useChatMessageRuntimeThreadExpansionState,
   useChatConversationHomeQuickStartActionsState,
   useChatMessageRuntimeHistoryWindowState,
@@ -96,7 +97,6 @@ import {
   createChatRuntimeMobileConfigState,
   createChatRuntimeNoSessionAvailableDebugState,
   createChatRuntimeProcessingQueuedMessageDebugState,
-  createChatRuntimeEffectiveRemoteSpeechSettingsState,
   createChatRuntimeRequestSentDebugState,
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
@@ -193,24 +193,13 @@ export default function ChatScreen({ route, navigation }: any) {
     voice: effectiveRemoteTtsVoice,
     model: effectiveRemoteTtsModel,
     rate: effectiveRemoteTtsRate,
-  } = useMemo(
-    () => createChatRuntimeEffectiveRemoteSpeechSettingsState({
-      config,
-      remoteSettings: {
-        provider: remoteTtsProvider,
-        voice: remoteTtsVoice,
-        model: remoteTtsModel,
-        rate: remoteTtsRate,
-      },
-    }),
-    [
-      config,
-      remoteTtsModel,
-      remoteTtsProvider,
-      remoteTtsRate,
-      remoteTtsVoice,
-    ],
-  );
+  } = useChatMessageRuntimeEffectiveRemoteSpeechSettingsState({
+    config,
+    remoteTtsProvider,
+    remoteTtsVoice,
+    remoteTtsModel,
+    remoteTtsRate,
+  });
   const {
     promptEditorVisible: addPromptModalVisible,
     promptEditorEditingPrompt: editingPrompt,

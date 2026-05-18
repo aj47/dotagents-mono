@@ -197,6 +197,7 @@ import {
   formatConnectionStatus,
   CHAT_RUNTIME_AUTO_TTS_DUPLICATE_SUPPRESSION_MS,
   createChatRuntimeSpeechTextState,
+  createChatRuntimeEffectiveRemoteSpeechSettingsState,
   createChatRuntimeRemoteSpeechSettingsState,
   DEFAULT_EDGE_TTS_VOICE,
   getChatRuntimeDefaultRemoteSpeechSettingsState,
@@ -214,6 +215,7 @@ import {
   type VoiceDebugEntry,
   type VoiceDebugLog,
   type ChatRuntimeRemoteSpeechProvider,
+  type ChatRuntimeEffectiveRemoteSpeechSettingsStateInput,
   type ChatRuntimeRemoteSpeechSettingsState,
   type ChatConversationHomePromptDeleteConfirmAlertState,
   type ChatRuntimeConversationDelegationCardMobileState,
@@ -488,6 +490,13 @@ type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
   setRemoteTtsRate: Dispatch<SetStateAction<number>>;
   applyRemoteSpeechSettings: (settings: ChatRuntimeRemoteSpeechSettingsState) => void;
 };
+
+type ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput = {
+  config: ChatRuntimeEffectiveRemoteSpeechSettingsStateInput['config'];
+} & Pick<
+  ChatMessageRuntimeRemoteSpeechSettingsHookState,
+  'remoteTtsProvider' | 'remoteTtsVoice' | 'remoteTtsModel' | 'remoteTtsRate'
+>;
 
 type ChatConversationHomePromptEditorSaveClient = {
   updateSettings: (settings: { predefinedPrompts: PredefinedPromptSummary[] }) => Promise<unknown>;
@@ -7144,6 +7153,33 @@ export function useChatMessageRuntimeRemoteSpeechSettingsState(
   );
 
   return remoteSpeechSettingsState;
+}
+
+export function useChatMessageRuntimeEffectiveRemoteSpeechSettingsState({
+  config,
+  remoteTtsProvider,
+  remoteTtsVoice,
+  remoteTtsModel,
+  remoteTtsRate,
+}: ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput): ChatRuntimeRemoteSpeechSettingsState {
+  return useMemo(
+    () => createChatRuntimeEffectiveRemoteSpeechSettingsState({
+      config,
+      remoteSettings: {
+        provider: remoteTtsProvider,
+        voice: remoteTtsVoice,
+        model: remoteTtsModel,
+        rate: remoteTtsRate,
+      },
+    }),
+    [
+      config,
+      remoteTtsModel,
+      remoteTtsProvider,
+      remoteTtsRate,
+      remoteTtsVoice,
+    ],
+  );
 }
 
 type ChatMessageRuntimeThreadExpansionMessage =
