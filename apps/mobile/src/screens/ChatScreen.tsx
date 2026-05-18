@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useCallback } from 'react';
 import {
   useConfigContext,
   saveConfig,
@@ -20,6 +19,7 @@ import {
   useChatRuntimeRequestDebugState,
   useChatRuntimeRequestDebugActionsState,
   useChatRuntimeRequestTrackingState,
+  useChatRuntimeSettingsClientState,
   useChatRuntimeSessionClientState,
   useChatRuntimeConnectionStatusSubscription,
   useChatRuntimeConnectionRetryState,
@@ -129,16 +129,15 @@ export default function ChatScreen({ route, navigation }: any) {
   const currentSession = sessionStore.getCurrentSession();
   const isCurrentSessionPinned = !!currentSession?.isPinned;
   const handsFree = !!config.handsFree;
-  const settingsClient = useMemo(() => {
-    if (!config.baseUrl || !config.apiKey) {
-      return null;
-    }
-    return new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
-  }, [config.apiKey, config.baseUrl]);
-  const createLazyLoadSettingsClient = useCallback(
-    () => new ExtendedSettingsApiClient(config.baseUrl, config.apiKey),
-    [config.apiKey, config.baseUrl],
-  );
+  const {
+    settingsClient,
+    createLazyLoadSettingsClient,
+    hasServerAuth,
+  } = useChatRuntimeSettingsClientState<ExtendedSettingsApiClient>({
+    baseUrl: config.baseUrl,
+    apiKey: config.apiKey,
+    Client: ExtendedSettingsApiClient,
+  });
   const quickStartCatalog = useChatConversationHomeQuickStartCatalogState();
   const {
     predefinedPrompts,
@@ -659,7 +658,7 @@ export default function ChatScreen({ route, navigation }: any) {
     currentSessionId: sessionStore.currentSessionId,
     currentSessionIdRef,
     deletingSessionIdsSize: sessionStore.deletingSessionIds.size,
-    hasServerAuth: !!config.baseUrl && !!config.apiKey,
+    hasServerAuth,
     settingsClient,
     createLazyLoadClient: createLazyLoadSettingsClient,
     getCurrentSession: sessionStore.getCurrentSession,

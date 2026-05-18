@@ -7899,7 +7899,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
 });
 
 test('keeps the TTS control inline with assistant message text instead of on a detached row', () => {
-  assert.match(screenSource, /import \{ useEffect,[\s\S]*useCallback \} from 'react';/);
+  assert.doesNotMatch(chatScreenSource, /from 'react';/);
   assert.doesNotMatch(screenSource, /import \{ Fragment,/);
   assert.doesNotMatch(screenSource, /type ReactNode/);
   assert.match(chatScreenSource, /import \{[\s\S]*?ChatMessageRuntimeChromeSurface,[\s\S]*?\} from '\.\.\/ui\/ChatMessageChrome';/);
@@ -9106,18 +9106,26 @@ test('memoizes remaining mobile chat chrome hook state objects', () => {
 });
 
 test('keeps session lifecycle refs in chat chrome state hooks', () => {
+  assert.match(screenSource, /useChatRuntimeSettingsClientState,/);
   assert.match(screenSource, /useChatMessageRuntimeSessionRefState,/);
   assert.match(screenSource, /useChatMessageRuntimeRouteInitialMessageActionsState,/);
   assert.match(screenSource, /useChatMessageRuntimeInitialMessageState,/);
   assert.match(screenSource, /useChatMessageRuntimeSessionLoadState,/);
   assert.match(screenSource, /useChatMessageRuntimeSessionPersistState,/);
+  assert.match(screenSource, /const \{\s+settingsClient,\s+createLazyLoadSettingsClient,\s+hasServerAuth,\s+\} = useChatRuntimeSettingsClientState<ExtendedSettingsApiClient>\(\{\s+baseUrl: config\.baseUrl,\s+apiKey: config\.apiKey,\s+Client: ExtendedSettingsApiClient,\s+\}\);/);
+  assert.doesNotMatch(screenSource, /const settingsClient = useMemo\(\(\) => \{/);
+  assert.doesNotMatch(screenSource, /const createLazyLoadSettingsClient = useCallback/);
+  assert.doesNotMatch(screenSource, /new ExtendedSettingsApiClient\(config\.baseUrl, config\.apiKey\)/);
   assert.match(screenSource, /const \{\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+initialMessageRef,\s+initialMessageSentRef,\s+prevMessagesLengthRef,\s+prevSessionIdRef,\s+convoRef,\s+\} = useChatMessageRuntimeSessionRefState\(\{\s+initialMessage: route\?\.params\?\.initialMessage \?\? null,\s+\}\);/);
   assert.match(screenSource, /const \{ clearRouteInitialMessage \} = useChatMessageRuntimeRouteInitialMessageActionsState\(\{\s+navigation,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const clearRouteInitialMessage = useCallback\(\(\) => \{/);
   assert.match(screenSource, /useChatMessageRuntimeInitialMessageState\(\{\s+routeInitialMessage: route\?\.params\?\.initialMessage,\s+currentSessionId: sessionStore\.currentSessionId,\s+initialMessageRef,\s+initialMessageSentRef,\s+sendRef,\s+clearRouteInitialMessage,\s+voiceLog,\s+\}\);/);
-  assert.match(screenSource, /useChatMessageRuntimeSessionLoadState<ChatMessage, ExtendedSettingsApiClient>\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+currentSessionIdRef,\s+deletingSessionIdsSize: sessionStore\.deletingSessionIds\.size,\s+hasServerAuth: !!config\.baseUrl && !!config\.apiKey,\s+settingsClient,\s+createLazyLoadClient: createLazyLoadSettingsClient,\s+getCurrentSession: sessionStore\.getCurrentSession,\s+createNewSession: sessionStore\.createNewSession,\s+loadSessionMessages: sessionStore\.loadSessionMessages,\s+setMessages,\s+setLatestStepSummary,\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+resetThreadExpansionState,\s+clearCopiedMessageFeedback,\s+replaceResponseHistory,\s+resetResponseSpeechPlaybackState,\s+\}\);/);
+  assert.match(screenSource, /useChatMessageRuntimeSessionLoadState<ChatMessage, ExtendedSettingsApiClient>\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+currentSessionIdRef,\s+deletingSessionIdsSize: sessionStore\.deletingSessionIds\.size,\s+hasServerAuth,\s+settingsClient,\s+createLazyLoadClient: createLazyLoadSettingsClient,\s+getCurrentSession: sessionStore\.getCurrentSession,\s+createNewSession: sessionStore\.createNewSession,\s+loadSessionMessages: sessionStore\.loadSessionMessages,\s+setMessages,\s+setLatestStepSummary,\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+resetThreadExpansionState,\s+clearCopiedMessageFeedback,\s+replaceResponseHistory,\s+resetResponseSpeechPlaybackState,\s+\}\);/);
   assert.match(screenSource, /useChatMessageRuntimeSessionPersistState<ChatMessage>\(\{\s+messages,\s+currentSessionId: sessionStore\.currentSessionId,\s+deletingSessionIds: sessionStore\.deletingSessionIds,\s+prevSessionIdRef,\s+prevMessagesLengthRef,\s+skipNextPersistRef,\s+persistMessages: sessionStore\.setMessages,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSessionRefState/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeSettingsClientState<TClient>/);
+  assert.match(chatMessageChromeSource, /const settingsClient = useMemo\(\s+\(\) => \(hasServerAuth \? new Client\(baseUrl, apiKey\) : null\),\s+\[Client, apiKey, baseUrl, hasServerAuth\],\s+\);/);
+  assert.match(chatMessageChromeSource, /const settingsClientState = useMemo<ChatRuntimeSettingsClientState<TClient>>\(\s+\(\) => \(\{\s+settingsClient,\s+createLazyLoadSettingsClient,\s+hasServerAuth,\s+\}\),\s+\[createLazyLoadSettingsClient, hasServerAuth, settingsClient\],\s+\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeRouteInitialMessageActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeInitialMessageState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSessionLoadState/);

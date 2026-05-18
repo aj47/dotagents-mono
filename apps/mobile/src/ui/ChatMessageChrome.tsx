@@ -503,11 +503,55 @@ type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
   applyRemoteSpeechSettings: (settings: ChatRuntimeRemoteSpeechSettingsState) => void;
 };
 
+type ChatRuntimeSettingsClientConstructor<TClient> = new (
+  baseUrl: string,
+  apiKey: string,
+) => TClient;
+
+type ChatRuntimeSettingsClientStateInput<TClient> = {
+  baseUrl: string;
+  apiKey: string;
+  Client: ChatRuntimeSettingsClientConstructor<TClient>;
+};
+
+type ChatRuntimeSettingsClientState<TClient> = {
+  settingsClient: TClient | null;
+  createLazyLoadSettingsClient: () => TClient;
+  hasServerAuth: boolean;
+};
+
 export function useChatRuntimeMobileConfigState(config: MobileAppConfig): ChatRuntimeMobileConfigState {
   return useMemo(
     () => createChatRuntimeMobileConfigState(config),
     [config],
   );
+}
+
+export function useChatRuntimeSettingsClientState<TClient>({
+  baseUrl,
+  apiKey,
+  Client,
+}: ChatRuntimeSettingsClientStateInput<TClient>): ChatRuntimeSettingsClientState<TClient> {
+  const hasServerAuth = Boolean(baseUrl && apiKey);
+  const settingsClient = useMemo(
+    () => (hasServerAuth ? new Client(baseUrl, apiKey) : null),
+    [Client, apiKey, baseUrl, hasServerAuth],
+  );
+  const createLazyLoadSettingsClient = useCallback(
+    () => new Client(baseUrl, apiKey),
+    [Client, apiKey, baseUrl],
+  );
+
+  const settingsClientState = useMemo<ChatRuntimeSettingsClientState<TClient>>(
+    () => ({
+      settingsClient,
+      createLazyLoadSettingsClient,
+      hasServerAuth,
+    }),
+    [createLazyLoadSettingsClient, hasServerAuth, settingsClient],
+  );
+
+  return settingsClientState;
 }
 
 type ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput = {
