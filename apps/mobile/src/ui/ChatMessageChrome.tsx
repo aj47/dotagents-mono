@@ -4130,7 +4130,7 @@ type ChatMessageLoadingStateParts =
 type ChatMessageLoadingStateSpinnerProps = {
   source: ImageSourcePropType;
   style: StyleProp<ImageStyle>;
-  resizeMode: ChatRuntimeLoadingStateMobileRenderState['spinnerResizeMode'];
+  resizeMode: ComponentProps<typeof Image>['resizeMode'];
 };
 
 type ChatMessageLoadingStateContainerContentProps = {
@@ -4142,9 +4142,9 @@ type ChatMessageLoadingStateContainerContentProps = {
 type ChatMessageLoadingStateContainerProps = {
   children: ReactNode;
   accessible: true;
-  accessibilityRole: ChatRuntimeLoadingStateMobileRenderState['accessibilityRole'];
+  accessibilityRole: AccessibilityRole;
   accessibilityLabel: string;
-  accessibilityState: ChatRuntimeLoadingStateMobileRenderState['accessibilityState'];
+  accessibilityState: AccessibilityState;
   style: StyleProp<ViewStyle>;
 };
 
