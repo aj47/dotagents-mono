@@ -359,6 +359,7 @@ import {
   type ChatMessageRuntimeDockStyleSlots as SharedChatMessageRuntimeDockStyleSlots,
   type ChatMessageRuntimeSurfaceStyleSlots as SharedChatMessageRuntimeSurfaceStyleSlots,
   type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,
+  type ChatMessageRuntimeViewportStyleSlots as SharedChatMessageRuntimeViewportStyleSlots,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageRuntimeSessionDisplayMessagesOptions,
@@ -3534,10 +3535,15 @@ type ChatMessageConversationViewportStyleSlots =
     Pick<ChatMessageDebugPanelStackProps, 'panelStyle' | 'textStyle'>
   >;
 
-type ChatMessageRuntimeViewportStyleSlots = Pick<
-  ChatMessageConversationViewportStyleSlots,
-  'scrollViewport' | 'loadingState' | 'homeQuickStarts' | 'historyBanner' | 'stepSummary' | 'debugPanels'
->;
+type ChatMessageRuntimeViewportStyleSlots =
+  SharedChatMessageRuntimeViewportStyleSlots<
+    ChatMessageConversationViewportStyleSlots['scrollViewport'],
+    ChatMessageConversationViewportStyleSlots['loadingState'],
+    ChatMessageConversationViewportStyleSlots['homeQuickStarts'],
+    ChatMessageConversationViewportStyleSlots['historyBanner'],
+    ChatMessageConversationViewportStyleSlots['stepSummary'],
+    ChatMessageConversationViewportStyleSlots['debugPanels']
+  >;
 
 type ChatMessageRuntimeViewportProps<
   TPrompt extends PredefinedPromptSummary,

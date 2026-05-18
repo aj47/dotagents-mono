@@ -28734,6 +28734,22 @@ export function createChatMessageConversationViewportStyleSlotsFromStyleSource<
   })
 }
 
+export type ChatMessageRuntimeViewportStyleSlots<
+  TScrollViewportStyles,
+  TLoadingStateStyles,
+  THomeQuickStartStyles,
+  THistoryBannerStyles,
+  TStepSummaryStyles,
+  TDebugPanelStyles,
+> = {
+  scrollViewport: TScrollViewportStyles
+  loadingState: TLoadingStateStyles
+  homeQuickStarts: THomeQuickStartStyles
+  historyBanner: THistoryBannerStyles
+  stepSummary: TStepSummaryStyles
+  debugPanels: TDebugPanelStyles
+}
+
 export function createChatMessageRuntimeViewportStyleSlots<
   TConversationViewportStyles extends {
     scrollViewport: {
@@ -28754,17 +28770,17 @@ export function createChatMessageRuntimeViewportStyleSlots<
 }: {
   conversationViewportStyles: TConversationViewportStyles
   safeAreaStyles: TSafeAreaStyles
-}): {
-  scrollViewport: {
+}): ChatMessageRuntimeViewportStyleSlots<
+  {
     style: TConversationViewportStyles["scrollViewport"]["style"]
     contentContainerStyle: TSafeAreaStyles["scrollViewportContentContainerStyle"]
-  }
-  loadingState: TConversationViewportStyles["loadingState"]
-  homeQuickStarts: TConversationViewportStyles["homeQuickStarts"]
-  historyBanner: TConversationViewportStyles["historyBanner"]
-  stepSummary: TConversationViewportStyles["stepSummary"]
-  debugPanels: TConversationViewportStyles["debugPanels"]
-} {
+  },
+  TConversationViewportStyles["loadingState"],
+  TConversationViewportStyles["homeQuickStarts"],
+  TConversationViewportStyles["historyBanner"],
+  TConversationViewportStyles["stepSummary"],
+  TConversationViewportStyles["debugPanels"]
+> {
   return {
     scrollViewport: {
       style: conversationViewportStyles.scrollViewport.style,
