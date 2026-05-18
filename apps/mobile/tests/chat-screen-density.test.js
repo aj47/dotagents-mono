@@ -2668,8 +2668,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeViewportStyleSlots/);
   assert.match(sessionPresentationSource, /export type ChatMessageRuntimeViewportStyleSlots<\s+TScrollViewportStyles,\s+TLoadingStateStyles,\s+THomeQuickStartStyles,\s+THistoryBannerStyles,\s+TStepSummaryStyles,\s+TDebugPanelStyles,/);
   assert.match(sessionPresentationSource, /\}\): ChatMessageRuntimeViewportStyleSlots<\s+\{\s+style: TConversationViewportStyles\["scrollViewport"\]\["style"\]\s+contentContainerStyle: TSafeAreaStyles\["scrollViewportContentContainerStyle"\]\s+\},\s+TConversationViewportStyles\["loadingState"\],/);
-  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeViewportStyleSlots as SharedChatMessageRuntimeViewportStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeViewportStyleSlots =\s+SharedChatMessageRuntimeViewportStyleSlots<\s+ChatMessageConversationViewportStyleSlots\['scrollViewport'\],/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeViewportStyleSlots as SharedChatMessageRuntimeViewportStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeViewportStyleSlots =\s+ChatRuntimeMobileChromeSlots\['surface'\]\['runtimeSurface'\]\['props'\]\['styles'\]\['viewport'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeViewportStyleSlots = Pick<\s+ChatMessageConversationViewportStyleSlots,/);
   assert.match(sessionPresentationSource, /contentContainerStyle: safeAreaStyles\.scrollViewportContentContainerStyle,/);
   assert.match(sessionPresentationSource, /frame: frameStyles,\s+scrollViewport: scrollViewportStyles,\s+loadingState: loadingStateStyles,\s+homeQuickStarts: homeQuickStartStyles,/);

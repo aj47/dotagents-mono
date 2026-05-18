@@ -460,7 +460,6 @@ import {
   type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,
   type ChatMessageRuntimeSurfaceStyleSlots as SharedChatMessageRuntimeSurfaceStyleSlots,
   type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,
-  type ChatMessageRuntimeViewportStyleSlots as SharedChatMessageRuntimeViewportStyleSlots,
   type ChatMessageThreadBodyStyleSlots as SharedChatMessageThreadBodyStyleSlots,
   type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,
   type ChatMessageActionSlotRenderEntry,
@@ -4782,14 +4781,7 @@ type ChatMessageConversationViewportStyleSlots =
   >;
 
 type ChatMessageRuntimeViewportStyleSlots =
-  SharedChatMessageRuntimeViewportStyleSlots<
-    ChatMessageConversationViewportStyleSlots['scrollViewport'],
-    ChatMessageConversationViewportStyleSlots['loadingState'],
-    ChatMessageConversationViewportStyleSlots['homeQuickStarts'],
-    ChatMessageConversationViewportStyleSlots['historyBanner'],
-    ChatMessageConversationViewportStyleSlots['stepSummary'],
-    ChatMessageConversationViewportStyleSlots['debugPanels']
-  >;
+  ChatRuntimeMobileChromeSlots['surface']['runtimeSurface']['props']['styles']['viewport'];
 
 type ChatMessageRuntimeViewportProps<
   TPrompt extends PredefinedPromptSummary,
