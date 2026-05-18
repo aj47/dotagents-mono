@@ -3959,8 +3959,14 @@ type ChatMessageConversationOverlaysParts =
     ReactNode
   >;
 
-type ChatMessageConversationOverlaysContentProps =
-  ChatMessageConversationOverlaysParts['content'];
+type ChatMessageConversationOverlaysContentProps = {
+  agentSelector: {
+    children: ReactNode | undefined;
+  };
+  promptEditor: {
+    children: ReactNode | undefined;
+  };
+};
 
 type ChatMessageScrollViewportProps =
   ChatRuntimeConversationScrollViewportMobilePropsPartsInput<
@@ -3990,8 +3996,9 @@ type ChatMessageScrollViewportParts =
     number
   >;
 
-type ChatMessageScrollViewportContentProps =
-  ChatMessageScrollViewportParts['scrollView']['content'];
+type ChatMessageScrollViewportContentProps = {
+  children: ReactNode;
+};
 
 type ChatMessageConversationViewportContentProps =
   ChatRuntimeConversationViewportContentMobilePropsPartsInput<
@@ -4013,8 +4020,24 @@ type ChatMessageConversationViewportContentParts =
     ReactNode
   >;
 
-type ChatMessageConversationViewportContentPartProps =
-  ChatMessageConversationViewportContentParts['content'];
+type ChatMessageConversationViewportContentPartProps = {
+  loadingState: {
+    children: ReactNode | undefined;
+  };
+  homeState: {
+    children: ReactNode | undefined;
+  };
+  historyBanner: {
+    children: ReactNode | undefined;
+  };
+  stepSummary: {
+    children: ReactNode | undefined;
+  };
+  children: ReactNode;
+  debugPanels: {
+    children: ReactNode | undefined;
+  };
+};
 
 type ChatMessageConversationViewportProps =
   Omit<ChatMessageScrollViewportProps, 'children'>
@@ -4478,8 +4501,26 @@ type ChatMessageConversationDockParts =
     ReactNode
   >;
 
-type ChatMessageConversationDockContentProps =
-  ChatMessageConversationDockParts['content'];
+type ChatMessageConversationDockContentProps = {
+  responseHistoryPanel: {
+    children: ReactNode | undefined;
+  };
+  scrollToBottomButton: {
+    children: ReactNode | undefined;
+  };
+  voiceOverlay: {
+    children: ReactNode | undefined;
+  };
+  queuePanel: {
+    children: ReactNode | undefined;
+  };
+  connectionBanner: {
+    children: ReactNode | undefined;
+  };
+  composer: {
+    children: ReactNode | undefined;
+  };
+};
 
 type ChatMessageConnectionBannerStyles =
   SharedChatMessageConnectionBannerStyleSlots<
@@ -5474,10 +5515,10 @@ type ChatMessageSurfaceParts =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageSurfaceContainerProps =
-  ChatMessageSurfaceParts['container']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageSurfaceContainerProps = {
+  style: Array<StyleProp<ViewStyle> | undefined>;
+  children: ReactNode;
+};
 
 type ChatMessageThreadItemProps =
   ChatRuntimeMessageThreadItemMobilePropsPartsInput<
