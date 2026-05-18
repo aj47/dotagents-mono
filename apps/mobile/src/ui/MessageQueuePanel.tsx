@@ -16,10 +16,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  createMessageQueuePanelMobileStyleSheetSlots,
   createMessageQueuePanelMobilePropsParts,
   createQueuedMessageItemMobilePropsParts,
-  createQueuedMessageItemMobileStyleSheetSlots,
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
   getQueuedMessageItemMobileRenderState,
@@ -31,6 +29,14 @@ import {
 export type MessageQueuePanelColors =
   Parameters<typeof getMessageQueuePanelMobileRenderState>[0]['colors']
   & Parameters<typeof getQueuedMessageItemMobileRenderState>[0]['colors'];
+
+export type MessageQueuePanelStyleSheetSlotsFactory = (input: {
+  renderState: ReturnType<typeof getMessageQueuePanelMobileRenderState>;
+}) => MessageQueuePanelMobileStyleSheetSlots;
+
+export type QueuedMessageItemStyleSheetSlotsFactory = (input: {
+  renderState: ReturnType<typeof getQueuedMessageItemMobileRenderState>;
+}) => QueuedMessageItemMobileStyleSheetSlots;
 
 interface MessageQueuePanelProps {
   messages: QueuedMessage[];
@@ -47,6 +53,8 @@ interface MessageQueuePanelProps {
   onResume?: () => void;
   isListCollapsed: boolean;
   onToggleListCollapsed: () => void;
+  createStyleSheetSlots: MessageQueuePanelStyleSheetSlotsFactory;
+  createItemStyleSheetSlots: QueuedMessageItemStyleSheetSlotsFactory;
 }
 
 interface QueuedMessageItemProps {
@@ -55,6 +63,7 @@ interface QueuedMessageItemProps {
   onRemove: () => void;
   onUpdate: (text: string) => void;
   onRetry: () => void;
+  createStyleSheetSlots: QueuedMessageItemStyleSheetSlotsFactory;
 }
 
 type MessageQueuePanelActionButtonIconPart =
@@ -131,7 +140,14 @@ function MessageQueuePanelEditButton({ button }: MessageQueuePanelEditButtonProp
   );
 }
 
-function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: QueuedMessageItemProps) {
+function QueuedMessageItem({
+  message,
+  colors,
+  onRemove,
+  onUpdate,
+  onRetry,
+  createStyleSheetSlots,
+}: QueuedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
@@ -146,7 +162,7 @@ function QueuedMessageItem({ message, colors, onRemove, onUpdate, onRetry }: Que
   } = messagePresentation;
   const editDraftState = getQueuedMessageEditDraftState(editText, message.text);
   const itemStyleSheetSlots: QueuedMessageItemMobileStyleSheetSlots =
-    createQueuedMessageItemMobileStyleSheetSlots({
+    createStyleSheetSlots({
       renderState: queuedMessageRenderState,
     });
 
@@ -294,6 +310,8 @@ export function MessageQueuePanel({
   onResume,
   isListCollapsed,
   onToggleListCollapsed,
+  createStyleSheetSlots,
+  createItemStyleSheetSlots,
 }: MessageQueuePanelProps) {
   const queuePanelRenderState = getMessageQueuePanelMobileRenderState({
     messages,
@@ -303,7 +321,7 @@ export function MessageQueuePanel({
     canProcessNext,
   });
   const panelStyleSheetSlots: MessageQueuePanelMobileStyleSheetSlots =
-    createMessageQueuePanelMobileStyleSheetSlots({
+    createStyleSheetSlots({
       renderState: queuePanelRenderState,
     });
 
@@ -386,6 +404,7 @@ export function MessageQueuePanel({
               <QueuedMessageItem
                 {...item.messageProps}
                 colors={colors}
+                createStyleSheetSlots={createItemStyleSheetSlots}
               />
             </React.Fragment>
           ))}

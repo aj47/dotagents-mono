@@ -13,6 +13,8 @@ import {
   createChatRuntimeMobileChromeSlotsFromStyleSource,
   createChatRuntimeMobileChromeStyleSlots,
   createChatRuntimeThemeSpinnerSource,
+  createMessageQueuePanelMobileStyleSheetSlots,
+  createQueuedMessageItemMobileStyleSheetSlots,
   createMarkdownContentMobileStyleSheetSlots,
   createMarkdownThinkSectionMobileStyleSheetSlots,
   createHandsFreeStatusChipMobileStyleSheetSlots,
@@ -33,6 +35,8 @@ import {
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownThinkSectionMobileStyleSheetSlots,
   type MarkdownThinkSectionMobileSurfaceRenderState,
+  type MessageQueuePanelMobileStyleSheetSlots,
+  type QueuedMessageItemMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing, type Theme } from './theme';
@@ -886,6 +890,32 @@ export function createChatRuntimeResponseHistoryPanelStyleSheetSlots({
     renderState,
     spacing,
     radius,
+  });
+}
+
+export type ChatRuntimeMessageQueuePanelStyleSheetSlotsInput = Pick<
+  Parameters<typeof createMessageQueuePanelMobileStyleSheetSlots>[0],
+  'renderState'
+>;
+
+export type ChatRuntimeQueuedMessageItemStyleSheetSlotsInput = Pick<
+  Parameters<typeof createQueuedMessageItemMobileStyleSheetSlots>[0],
+  'renderState'
+>;
+
+export function createChatRuntimeMessageQueuePanelStyleSheetSlots({
+  renderState,
+}: ChatRuntimeMessageQueuePanelStyleSheetSlotsInput): MessageQueuePanelMobileStyleSheetSlots {
+  return createMessageQueuePanelMobileStyleSheetSlots({
+    renderState,
+  });
+}
+
+export function createChatRuntimeQueuedMessageItemStyleSheetSlots({
+  renderState,
+}: ChatRuntimeQueuedMessageItemStyleSheetSlotsInput): QueuedMessageItemMobileStyleSheetSlots {
+  return createQueuedMessageItemMobileStyleSheetSlots({
+    renderState,
   });
 }
 

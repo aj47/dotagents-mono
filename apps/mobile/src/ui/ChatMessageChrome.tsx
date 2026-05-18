@@ -30,7 +30,9 @@ import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import {
+  createChatRuntimeMessageQueuePanelStyleSheetSlots,
   createChatRuntimeResponseHistoryPanelStyleSheetSlots,
+  createChatRuntimeQueuedMessageItemStyleSheetSlots,
   type ChatRuntimeMobileChromeSlots,
 } from './ChatRuntimeMobileStyles';
 import {
@@ -4709,7 +4711,10 @@ type ChatMessageQueuePanelViewProps = ComponentProps<typeof MessageQueuePanel>;
 
 type ChatMessageQueuePanelDockPanelProps = Omit<
   ChatMessageQueuePanelViewProps,
-  'isListCollapsed' | 'onToggleListCollapsed'
+  | 'isListCollapsed'
+  | 'onToggleListCollapsed'
+  | 'createStyleSheetSlots'
+  | 'createItemStyleSheetSlots'
 > & {
   conversationId: string;
 };
@@ -14075,6 +14080,8 @@ export function ChatMessageQueuePanelDock({
       <MessageQueuePanel
         {...panelProps}
         {...queuePanelChromeState}
+        createStyleSheetSlots={createChatRuntimeMessageQueuePanelStyleSheetSlots}
+        createItemStyleSheetSlots={createChatRuntimeQueuedMessageItemStyleSheetSlots}
       />
     </ChatMessageQueuePanelDockContainer>
   );
