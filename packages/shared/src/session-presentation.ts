@@ -28506,6 +28506,24 @@ export function createChatMessageRuntimeDockStyleSlots<
   }
 }
 
+export type ChatMessageConversationViewportStyleSlots<
+  TFrameStyles,
+  TScrollViewportStyles,
+  TLoadingStateStyles,
+  THomeQuickStartStyles,
+  THistoryBannerStyles,
+  TStepSummaryStyles,
+  TDebugPanelStyles,
+> = {
+  frame: TFrameStyles
+  scrollViewport: TScrollViewportStyles
+  loadingState: TLoadingStateStyles
+  homeQuickStarts: THomeQuickStartStyles
+  historyBanner: THistoryBannerStyles
+  stepSummary: TStepSummaryStyles
+  debugPanels: TDebugPanelStyles
+}
+
 export function createChatMessageConversationViewportStyleSlots<
   TFrameStyles,
   TScrollViewportStyles,
@@ -28530,15 +28548,15 @@ export function createChatMessageConversationViewportStyleSlots<
   historyBannerStyles: THistoryBannerStyles
   stepSummaryStyles: TStepSummaryStyles
   debugPanelStyles: TDebugPanelStyles
-}): {
-  frame: TFrameStyles
-  scrollViewport: TScrollViewportStyles
-  loadingState: TLoadingStateStyles
-  homeQuickStarts: THomeQuickStartStyles
-  historyBanner: THistoryBannerStyles
-  stepSummary: TStepSummaryStyles
-  debugPanels: TDebugPanelStyles
-} {
+}): ChatMessageConversationViewportStyleSlots<
+  TFrameStyles,
+  TScrollViewportStyles,
+  TLoadingStateStyles,
+  THomeQuickStartStyles,
+  THistoryBannerStyles,
+  TStepSummaryStyles,
+  TDebugPanelStyles
+> {
   return {
     frame: frameStyles,
     scrollViewport: scrollViewportStyles,
@@ -28596,20 +28614,20 @@ type ChatMessageConversationViewportStyleSource =
 
 type ChatMessageConversationViewportStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationViewportStyleSource,
-> = {
-  frame: {
+> = ChatMessageConversationViewportStyleSlots<
+  {
     keyboardAvoidingStyle: TStyles["keyboardAvoidingContainer"]
     rootStyle: TStyles["chatRoot"]
-  }
-  scrollViewport: {
+  },
+  {
     style: TStyles["chatScroll"]
     contentContainerStyle: TStyles["chatScrollContent"]
-  }
-  loadingState: {
+  },
+  {
     style: TStyles["loadingState"]
     spinnerStyle: TStyles["loadingSpinner"]
-  }
-  homeQuickStarts: {
+  },
+  {
     card: TStyles["chatHomeCard"]
     emptyText: TStyles["chatHomeEmptyText"]
     grid: TStyles["chatHomeShortcutGrid"]
@@ -28628,15 +28646,15 @@ type ChatMessageConversationViewportStyleSlotsFromStyleSource<
     actionButtonPressed: TStyles["chatHomeShortcutActionButtonPressed"]
     actionText: TStyles["chatHomeShortcutActionText"]
     actionDangerText: TStyles["chatHomeShortcutActionDangerText"]
-  }
-  historyBanner: {
+  },
+  {
     container: TStyles["loadOlderContainer"]
     summary: TStyles["loadOlderText"]
     loadButton: TStyles["loadOlderButton"]
     loadButtonPressed: TStyles["loadOlderButtonPressed"]
     loadButtonText: TStyles["loadOlderButtonText"]
-  }
-  stepSummary: {
+  },
+  {
     card: TStyles["stepSummaryCard"]
     header: TStyles["stepSummaryHeader"]
     title: TStyles["stepSummaryTitle"]
@@ -28645,12 +28663,12 @@ type ChatMessageConversationViewportStyleSlotsFromStyleSource<
     action: TStyles["stepSummaryAction"]
     meta: TStyles["stepSummaryMeta"]
     preview: TStyles["stepSummaryPreview"]
-  }
-  debugPanels: {
+  },
+  {
     panelStyle: TStyles["debugInfo"]
     textStyle: TStyles["debugText"]
   }
-}
+>
 
 export function createChatMessageConversationViewportStyleSlotsFromStyleSource<
   TStyles extends ChatMessageConversationViewportStyleSource,

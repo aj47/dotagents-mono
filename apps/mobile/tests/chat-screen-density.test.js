@@ -2402,6 +2402,12 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /const conversationViewportStyles = useMemo/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageConversationViewportStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageConversationViewportStyleSlots/);
+  assert.match(sessionPresentationSource, /export type ChatMessageConversationViewportStyleSlots<\s+TFrameStyles,\s+TScrollViewportStyles,\s+TLoadingStateStyles,\s+THomeQuickStartStyles,\s+THistoryBannerStyles,\s+TStepSummaryStyles,\s+TDebugPanelStyles,/);
+  assert.match(sessionPresentationSource, /\}\): ChatMessageConversationViewportStyleSlots<\s+TFrameStyles,\s+TScrollViewportStyles,\s+TLoadingStateStyles,\s+THomeQuickStartStyles,\s+THistoryBannerStyles,\s+TStepSummaryStyles,\s+TDebugPanelStyles\s+> \{/);
+  assert.match(sessionPresentationSource, /type ChatMessageConversationViewportStyleSlotsFromStyleSource<[\s\S]*?> = ChatMessageConversationViewportStyleSlots</);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationViewportStyleSlots as SharedChatMessageConversationViewportStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationViewportStyleSlots =\s+SharedChatMessageConversationViewportStyleSlots<\s+Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingStyle' \| 'rootStyle'>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationViewportStyleSlots = \{\s+frame: Pick<ChatMessageConversationFrameProps,/);
   assert.match(sessionPresentationSource, /export function createChatMessageConversationViewportStyleSlotsFromStyleSource/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeViewportStyleSlots/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeViewportStyleSlots/);

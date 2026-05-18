@@ -354,6 +354,7 @@ import {
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageExpansionMobileRenderState,
   type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,
+  type ChatMessageConversationViewportStyleSlots as SharedChatMessageConversationViewportStyleSlots,
   type ChatMessageConversationThreadStyleSlots as SharedChatMessageConversationThreadStyleSlots,
   type ChatMessageRuntimeDockStyleSlots as SharedChatMessageRuntimeDockStyleSlots,
   type ChatMessageRuntimeSurfaceStyleSlots as SharedChatMessageRuntimeSurfaceStyleSlots,
@@ -3522,15 +3523,16 @@ type ChatMessageDebugPanelStackParts =
     ChatMessageDebugPanelStackProps['textStyle']
   >;
 
-type ChatMessageConversationViewportStyleSlots = {
-  frame: Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingStyle' | 'rootStyle'>;
-  scrollViewport: Pick<ChatMessageScrollViewportProps, 'style' | 'contentContainerStyle'>;
-  loadingState: Pick<ChatMessageLoadingStateProps, 'style' | 'spinnerStyle'>;
-  homeQuickStarts: ChatConversationHomeQuickStartsStyles;
-  historyBanner: ChatMessageHistoryBannerStyles;
-  stepSummary: ChatMessageStepSummaryCardStyles;
-  debugPanels: Pick<ChatMessageDebugPanelStackProps, 'panelStyle' | 'textStyle'>;
-};
+type ChatMessageConversationViewportStyleSlots =
+  SharedChatMessageConversationViewportStyleSlots<
+    Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingStyle' | 'rootStyle'>,
+    Pick<ChatMessageScrollViewportProps, 'style' | 'contentContainerStyle'>,
+    Pick<ChatMessageLoadingStateProps, 'style' | 'spinnerStyle'>,
+    ChatConversationHomeQuickStartsStyles,
+    ChatMessageHistoryBannerStyles,
+    ChatMessageStepSummaryCardStyles,
+    Pick<ChatMessageDebugPanelStackProps, 'panelStyle' | 'textStyle'>
+  >;
 
 type ChatMessageRuntimeViewportStyleSlots = Pick<
   ChatMessageConversationViewportStyleSlots,
