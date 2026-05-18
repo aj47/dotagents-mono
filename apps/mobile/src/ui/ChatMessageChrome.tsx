@@ -5379,29 +5379,53 @@ type ChatComposerInputDockParts =
     ChatComposerInputDockStyles
   >;
 
-type ChatComposerInputDockAreaProps =
-  ChatComposerInputDockParts['area']['props'] & {
-    children: ReactNode;
+type ChatComposerInputDockChildPart = {
+  children: ReactNode;
+};
+
+type ChatComposerInputDockAreaProps = {
+  style: ChatComposerInputDockStyles['area'];
+  children: ReactNode;
+};
+
+type ChatComposerInputDockAreaContentProps = {
+  speechPreview: ChatComposerInputDockChildPart;
+  pendingImagesRail: ChatComposerInputDockChildPart;
+  handsFreeControls: ChatComposerInputDockChildPart;
+  row: {
+    props: Omit<ChatComposerInputDockRowProps, 'children'>;
+    content: ChatComposerInputDockRowContentProps;
   };
-
-type ChatComposerInputDockAreaContentProps =
-  ChatComposerInputDockParts['area']['content'];
-
-type ChatComposerInputDockRowProps =
-  ChatComposerInputDockParts['area']['content']['row']['props'] & {
-    children: ReactNode;
+  micWrapper: {
+    props: Omit<ChatComposerInputDockMicWrapperProps, 'children'> & {
+      ref: Ref<View> | undefined;
+    };
+    content: ChatComposerInputDockMicWrapperContentProps;
   };
+};
 
-type ChatComposerInputDockRowContentProps =
-  ChatComposerInputDockParts['area']['content']['row']['content'];
+type ChatComposerInputDockRowProps = {
+  style: ChatComposerInputDockStyles['row'];
+  children: ReactNode;
+};
 
-type ChatComposerInputDockMicWrapperProps =
-  Omit<ChatComposerInputDockParts['area']['content']['micWrapper']['props'], 'ref'> & {
-    children: ReactNode;
-  };
+type ChatComposerInputDockRowContentProps = {
+  imageAttachmentControl: ChatComposerInputDockChildPart;
+  textToSpeechControl: ChatComposerInputDockChildPart;
+  editBeforeSendControl: ChatComposerInputDockChildPart;
+  textEntry: ChatComposerInputDockChildPart;
+  queueAction: ChatComposerInputDockChildPart;
+  submitAction: ChatComposerInputDockChildPart;
+};
 
-type ChatComposerInputDockMicWrapperContentProps =
-  ChatComposerInputDockParts['area']['content']['micWrapper']['content'];
+type ChatComposerInputDockMicWrapperProps = {
+  style: ChatComposerInputDockStyles['micWrapper'];
+  children: ReactNode;
+};
+
+type ChatComposerInputDockMicWrapperContentProps = {
+  micButton: ChatComposerInputDockChildPart;
+};
 
 type ChatMessageSurfaceProps =
   ChatRuntimeMessageSurfaceMobilePropsPartsInput<

@@ -3251,9 +3251,14 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   const inputDockSource =
     chatMessageChromeSource.match(/export function ChatComposerInputDock[\s\S]*?export function ChatComposerSpeechPreview/)?.[0] ?? '';
   assert.match(inputDockSource, /const inputDockParts: ChatComposerInputDockParts =\s+createChatComposerInputDockMobilePropsParts\(\{\s+speechPreview,\s+pendingImagesRail,\s+handsFreeControls,\s+imageAttachmentControl,\s+textToSpeechControl,\s+editBeforeSendControl,\s+textEntry,\s+queueAction,\s+submitAction,\s+micButton,\s+micWrapperRef,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /type ChatComposerInputDockAreaContentProps =\s+ChatComposerInputDockParts\['area'\]\['content'\];/);
-  assert.match(chatMessageChromeSource, /type ChatComposerInputDockRowContentProps =\s+ChatComposerInputDockParts\['area'\]\['content'\]\['row'\]\['content'\];/);
-  assert.match(chatMessageChromeSource, /type ChatComposerInputDockMicWrapperContentProps =\s+ChatComposerInputDockParts\['area'\]\['content'\]\['micWrapper'\]\['content'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerInputDock(?:AreaProps|AreaContentProps|RowProps|RowContentProps|MicWrapperProps|MicWrapperContentProps)\s*=\s+(?:Omit<)?ChatComposerInputDockParts\['/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockChildPart = \{[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockAreaProps = \{[\s\S]*?style: ChatComposerInputDockStyles\['area'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockAreaContentProps = \{[\s\S]*?speechPreview: ChatComposerInputDockChildPart;[\s\S]*?pendingImagesRail: ChatComposerInputDockChildPart;[\s\S]*?handsFreeControls: ChatComposerInputDockChildPart;[\s\S]*?row: \{[\s\S]*?props: Omit<ChatComposerInputDockRowProps, 'children'>;[\s\S]*?content: ChatComposerInputDockRowContentProps;[\s\S]*?\};[\s\S]*?micWrapper: \{[\s\S]*?props: Omit<ChatComposerInputDockMicWrapperProps, 'children'> & \{[\s\S]*?ref: Ref<View> \| undefined;[\s\S]*?\};[\s\S]*?content: ChatComposerInputDockMicWrapperContentProps;[\s\S]*?\};[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockRowProps = \{[\s\S]*?style: ChatComposerInputDockStyles\['row'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockRowContentProps = \{[\s\S]*?imageAttachmentControl: ChatComposerInputDockChildPart;[\s\S]*?textToSpeechControl: ChatComposerInputDockChildPart;[\s\S]*?editBeforeSendControl: ChatComposerInputDockChildPart;[\s\S]*?textEntry: ChatComposerInputDockChildPart;[\s\S]*?queueAction: ChatComposerInputDockChildPart;[\s\S]*?submitAction: ChatComposerInputDockChildPart;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockMicWrapperProps = \{[\s\S]*?style: ChatComposerInputDockStyles\['micWrapper'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerInputDockMicWrapperContentProps = \{[\s\S]*?micButton: ChatComposerInputDockChildPart;[\s\S]*?\};/);
   assert.match(inputDockSource, /<ChatComposerInputDockArea\s+\{\.\.\.inputDockParts\.area\.props\}/);
   assert.match(inputDockSource, /<ChatComposerInputDockAreaContent\s+\{\.\.\.inputDockParts\.area\.content\}\s+\/>/);
   assert.match(inputDockSource, /export function ChatComposerInputDockAreaContent/);
