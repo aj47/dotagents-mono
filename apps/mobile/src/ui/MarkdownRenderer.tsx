@@ -54,6 +54,10 @@ type MarkdownContentStyles = MarkdownContentMobileStyleSheetSlots;
 
 type MarkdownThinkSectionStyles = MarkdownThinkSectionMobileStyleSheetSlots;
 
+type MarkdownDisplayStyles = React.ComponentProps<typeof Markdown>['style'];
+
+type MarkdownDisplayRules = React.ComponentProps<typeof Markdown>['rules'];
+
 type MarkdownThinkSectionParts =
   MarkdownThinkSectionMobilePropsParts<MarkdownThinkSectionStyles, MarkdownPressHandler>;
 
@@ -72,8 +76,8 @@ type MarkdownCodeBlockCopyParts =
 interface ThinkSectionProps {
   content: string;
   renderState: MarkdownThinkSectionMobileSurfaceRenderState;
-  markdownStyles: any;
-  markdownRules: any;
+  markdownStyles: MarkdownDisplayStyles;
+  markdownRules: MarkdownDisplayRules;
   styles: MarkdownThinkSectionStyles;
   defaultCollapsed?: boolean;
   isCollapsed?: boolean;

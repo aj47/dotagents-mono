@@ -11,6 +11,10 @@ const markdownRenderPartsSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'markdown-render-parts.ts'),
   'utf8',
 );
+const chatRuntimeMobileStylesSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'ChatRuntimeMobileStyles.ts'),
+  'utf8',
+);
 
 test('markdown renderer loads conversation image assets through authenticated remote API', () => {
   assert.match(rendererSource, /parseConversationImageAssetUrl/);
@@ -31,7 +35,7 @@ test('markdown renderer loads conversation image assets through authenticated re
   assert.match(rendererSource, /throw new Error\(getMarkdownImageInvalidAssetUrlMessage\(\)\)/);
   assert.match(rendererSource, /getMarkdownImageLoadErrorFallback\(\)/);
   assert.match(rendererSource, /const imageLabel = getMarkdownImageFallbackLabel\(alt\);/);
-  assert.match(rendererSource, /const imageParts: MarkdownImageParts = createMarkdownImageMobilePropsParts\(\{[\s\S]*?imageLabel,[\s\S]*?imageSource,[\s\S]*?error,[\s\S]*?alt,[\s\S]*?style,/);
+  assert.match(rendererSource, /const imageParts = React\.useMemo<MarkdownImageParts>\(\s+\(\) => createMarkdownImageMobilePropsParts\(\{[\s\S]*?imageLabel,[\s\S]*?imageSource,[\s\S]*?error,[\s\S]*?alt,[\s\S]*?style,/);
   assert.match(rendererSource, /if \(imageParts\.fallback\.shouldRender\) \{\s+return <Text>\{imageParts\.fallback\.text\}<\/Text>;/);
   assert.match(rendererSource, /return <Image \{\.\.\.imageParts\.image\.props\} \/>;/);
   assert.match(markdownRenderPartsSource, /resizeMode: "contain"/);
@@ -57,22 +61,23 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
   assert.match(markdownRenderPartsSource, /getMarkdownThinkSectionDisplayLabel\(isCollapsed\)/);
   assert.match(markdownRenderPartsSource, /getMarkdownThinkSectionMobileChevronIconState\(isCollapsed\)/);
   assert.match(markdownRenderPartsSource, /getMarkdownThinkSectionMobileLeadingIconState\(\)/);
-  assert.match(rendererSource, /getMarkdownThinkSectionMobileSurfaceRenderState/);
+  assert.match(rendererSource, /useChatRuntimeMarkdownMobileStyleSlots/);
+  assert.match(chatRuntimeMobileStylesSource, /getMarkdownThinkSectionMobileSurfaceRenderState/);
   assert.match(rendererSource, /getMarkdownThinkSectionControlState/);
   assert.match(rendererSource, /type MarkdownThinkSectionMobileSurfaceRenderState/);
   assert.match(rendererSource, /type MarkdownThinkSectionControlOptions/);
   assert.match(rendererSource, /interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions/);
   assert.match(rendererSource, /createMarkdownThinkSectionMobilePropsParts/);
   assert.match(markdownRenderPartsSource, /export function createMarkdownThinkSectionMobilePropsParts/);
-  assert.match(rendererSource, /createMarkdownThinkSectionMobileStyleSlots/);
-  assert.match(markdownRenderPartsSource, /export function createMarkdownThinkSectionMobileStyleSlots\(\{/);
+  assert.doesNotMatch(rendererSource, /createMarkdownThinkSectionMobileStyle(Sheet)?Slots/);
+  assert.match(chatRuntimeMobileStylesSource, /createMarkdownThinkSectionMobileStyleSheetSlots/);
   assert.match(markdownRenderPartsSource, /const surface = renderState\.surface/);
   assert.match(rendererSource, /renderState: MarkdownThinkSectionMobileSurfaceRenderState;/);
   assert.match(markdownRenderPartsSource, /const colors = renderState\.colors/);
-  assert.match(rendererSource, /const thinkSectionRenderState = React\.useMemo\([\s\S]*?getMarkdownThinkSectionMobileSurfaceRenderState\(\{ isDark \}\)/);
-  assert.match(rendererSource, /const thinkSectionStyleSlots = React\.useMemo\([\s\S]*?createMarkdownThinkSectionMobileStyleSlots\(\{[\s\S]*?renderState: thinkSectionRenderState,[\s\S]*?spacing,[\s\S]*?radius,[\s\S]*?\}\)/);
-  assert.match(rendererSource, /const thinkStyles = React\.useMemo\([\s\S]*?StyleSheet\.create\(thinkSectionStyleSlots\)/);
-  assert.match(rendererSource, /const thinkSectionParts: MarkdownThinkSectionParts = createMarkdownThinkSectionMobilePropsParts\(\{[\s\S]*?renderState,[\s\S]*?styles,[\s\S]*?content,[\s\S]*?isCollapsed: collapsed,[\s\S]*?onToggle: handleToggle,/);
+  assert.match(chatRuntimeMobileStylesSource, /const markdownThinkSectionRenderState = useMemo\(\s+\(\) => getMarkdownThinkSectionMobileSurfaceRenderState\(\{ isDark \}\)/);
+  assert.match(chatRuntimeMobileStylesSource, /const markdownThinkSectionStyleSheetSlots = useMemo\(\s+\(\) => createChatRuntimeMarkdownThinkSectionStyleSheetSlots\(\{[\s\S]*?renderState: markdownThinkSectionRenderState,/);
+  assert.match(chatRuntimeMobileStylesSource, /const markdownThinkSectionStyles = useMemo\(\s+\(\) => StyleSheet\.create\(\{ \.\.\.markdownThinkSectionStyleSheetSlots \}\)/);
+  assert.match(rendererSource, /const thinkSectionParts = React\.useMemo<MarkdownThinkSectionParts>\(\s+\(\) => createMarkdownThinkSectionMobilePropsParts\(\{[\s\S]*?renderState,[\s\S]*?styles,[\s\S]*?content,[\s\S]*?isCollapsed: collapsed,[\s\S]*?onToggle: handleToggle,/);
   assert.match(rendererSource, /<Pressable\s+\{\.\.\.thinkSectionParts\.header\.props\}/);
   assert.match(rendererSource, /<Ionicons\s+\{\.\.\.thinkSectionParts\.chevronIcon\.props\}/);
   assert.match(rendererSource, /<Ionicons\s+\{\.\.\.thinkSectionParts\.leadingIcon\.props\}/);
@@ -125,11 +130,13 @@ test('markdown renderer uses shared think-section copy and surface tokens', () =
 });
 
 test('markdown renderer uses shared compact markdown content surface tokens', () => {
-  assert.match(rendererSource, /getMarkdownContentMobileSurfaceRenderState/);
-  assert.match(rendererSource, /createMarkdownContentMobileStyleSlots/);
+  assert.match(rendererSource, /useChatRuntimeMarkdownMobileStyleSlots/);
+  assert.match(chatRuntimeMobileStylesSource, /getMarkdownContentMobileSurfaceRenderState/);
+  assert.match(chatRuntimeMobileStylesSource, /createMarkdownContentMobileStyleSheetSlots/);
+  assert.doesNotMatch(rendererSource, /createMarkdownContentMobileStyle(Sheet)?Slots/);
   assert.match(markdownRenderPartsSource, /export function createMarkdownContentMobileStyleSlots\(\{/);
   assert.match(rendererSource, /type MarkdownContentMobileSurfaceRenderState/);
-  assert.match(rendererSource, /const markdownContentRenderState = React\.useMemo\([\s\S]*?getMarkdownContentMobileSurfaceRenderState\(\{[\s\S]*?colors: theme\.colors,[\s\S]*?isDark,[\s\S]*?\}\)/);
+  assert.match(chatRuntimeMobileStylesSource, /const markdownContentRenderState = useMemo\(\s+\(\) => getMarkdownContentMobileSurfaceRenderState\(\{[\s\S]*?colors: theme\.colors,[\s\S]*?isDark,[\s\S]*?\}\)/);
   assert.match(markdownRenderPartsSource, /const surface = renderState\.surface/);
   assert.match(rendererSource, /const markdownContentColors = markdownContentRenderState\.colors;/);
   assert.match(markdownRenderPartsSource, /function resolveMarkdownMobileFontFamily\(/);
@@ -146,8 +153,8 @@ test('markdown renderer uses shared compact markdown content surface tokens', ()
   assert.match(rendererSource, /createMarkdownCodeBlockCopyMobilePropsParts/);
   assert.match(markdownRenderPartsSource, /export function createMarkdownCodeBlockCopyMobilePropsParts/);
   assert.match(rendererSource, /getMarkdownCodeBlockCopyMobileRenderState/);
-  assert.match(rendererSource, /const codeBlockCopyRenderState = getMarkdownCodeBlockCopyMobileRenderState\(\{[\s\S]*?isCopied: copied,[\s\S]*?colors,/);
-  assert.match(rendererSource, /const codeBlockCopyParts: MarkdownCodeBlockCopyParts = createMarkdownCodeBlockCopyMobilePropsParts\(\{[\s\S]*?renderState: codeBlockCopyRenderState,[\s\S]*?styles,[\s\S]*?codeContent,[\s\S]*?isCopied: copied,[\s\S]*?onCopy: handleCopy,/);
+  assert.match(rendererSource, /const codeBlockCopyRenderState = React\.useMemo\(\s+\(\) => getMarkdownCodeBlockCopyMobileRenderState\(\{[\s\S]*?isCopied: copied,[\s\S]*?colors,[\s\S]*?\}\),/);
+  assert.match(rendererSource, /const codeBlockCopyParts = React\.useMemo<MarkdownCodeBlockCopyParts>\(\s+\(\) => createMarkdownCodeBlockCopyMobilePropsParts\(\{[\s\S]*?renderState: codeBlockCopyRenderState,[\s\S]*?styles,[\s\S]*?codeContent,[\s\S]*?isCopied: copied,[\s\S]*?onCopy: handleCopy,/);
   assert.match(markdownRenderPartsSource, /const codeBlockCopyButton = getMarkdownCodeBlockCopyMobileRenderState\(\{ colors \}\)/);
   assert.match(markdownRenderPartsSource, /const copiedCodeBlockCopyButton = getMarkdownCodeBlockCopyMobileRenderState\(\{[\s\S]*?isCopied: true,[\s\S]*?colors,[\s\S]*?\}\)/);
   assert.match(markdownRenderPartsSource, /accessibilityRole: renderState\.button\.accessibilityRole/);

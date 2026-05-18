@@ -18,20 +18,25 @@ const sessionPresentationSource = fs.readFileSync(
 
 test('mobile markdown renderer uses explicit shared prop-part contracts', () => {
   assert.match(source, /type MarkdownCodeBlockCopyMobilePropsParts,/);
-  assert.match(source, /type MarkdownCodeBlockCopyMobilePropsStylesLike,/);
+  assert.match(source, /type MarkdownContentMobileStyleSheetSlots,/);
   assert.match(source, /type MarkdownImageMobilePropsParts,/);
   assert.match(source, /type MarkdownThinkSectionMobilePropsParts,/);
-  assert.match(source, /type MarkdownThinkSectionMobilePropsStylesLike,/);
+  assert.match(source, /type MarkdownThinkSectionMobileStyleSheetSlots,/);
   assert.match(source, /type MarkdownPressHandler = \(\) => void \| Promise<void>;/);
+  assert.match(source, /type MarkdownDisplayStyles = React\.ComponentProps<typeof Markdown>\['style'\];/);
+  assert.match(source, /type MarkdownDisplayRules = React\.ComponentProps<typeof Markdown>\['rules'\];/);
   assert.match(source, /type MarkdownThinkSectionParts =\s+MarkdownThinkSectionMobilePropsParts<MarkdownThinkSectionStyles, MarkdownPressHandler>;/);
   assert.match(source, /type MarkdownImageParts = MarkdownImageMobilePropsParts<MarkdownImageSource, StyleProp<ImageStyle>>;/);
   assert.match(source, /type MarkdownCodeBlockCopyParts =\s+MarkdownCodeBlockCopyMobilePropsParts<MarkdownCodeBlockCopyStyles, MarkdownPressHandler>;/);
-  assert.match(source, /const thinkSectionParts: MarkdownThinkSectionParts = createMarkdownThinkSectionMobilePropsParts\(\{/);
-  assert.match(source, /const imageParts: MarkdownImageParts = createMarkdownImageMobilePropsParts\(\{/);
-  assert.match(source, /const codeBlockCopyParts: MarkdownCodeBlockCopyParts = createMarkdownCodeBlockCopyMobilePropsParts\(\{/);
+  assert.match(source, /const thinkSectionParts = React\.useMemo<MarkdownThinkSectionParts>\(\s+\(\) => createMarkdownThinkSectionMobilePropsParts\(\{/);
+  assert.match(source, /const imageParts = React\.useMemo<MarkdownImageParts>\(\s+\(\) => createMarkdownImageMobilePropsParts\(\{/);
+  assert.match(source, /const codeBlockCopyParts = React\.useMemo<MarkdownCodeBlockCopyParts>\(\s+\(\) => createMarkdownCodeBlockCopyMobilePropsParts\(\{/);
   assert.doesNotMatch(source, /const thinkSectionParts = createMarkdownThinkSectionMobilePropsParts\(\{/);
   assert.doesNotMatch(source, /const imageParts = createMarkdownImageMobilePropsParts\(\{/);
   assert.doesNotMatch(source, /const codeBlockCopyParts = createMarkdownCodeBlockCopyMobilePropsParts\(\{/);
+  assert.doesNotMatch(source, /const thinkSectionParts: MarkdownThinkSectionParts = createMarkdownThinkSectionMobilePropsParts\(\{/);
+  assert.doesNotMatch(source, /const imageParts: MarkdownImageParts = createMarkdownImageMobilePropsParts\(\{/);
+  assert.doesNotMatch(source, /const codeBlockCopyParts: MarkdownCodeBlockCopyParts = createMarkdownCodeBlockCopyMobilePropsParts\(\{/);
   assert.doesNotMatch(source, /type Markdown.*Parts = ReturnType<typeof createMarkdown/);
 });
 
@@ -42,16 +47,19 @@ test('mobile markdown renderer keeps subcomponent style inputs typed to mobile s
   assert.match(markdownRenderPartsSource, /export interface MarkdownCodeBlockCopyMobilePropsParts/);
   assert.match(markdownRenderPartsSource, /export interface MarkdownCodeBlockCopyMobilePropsStylesLike<\s+TCodeBlockCopyContainerStyle = unknown,/);
   assert.match(sessionPresentationSource, /type MarkdownThinkSectionMobilePropsParts,/);
-  assert.match(sessionPresentationSource, /type MarkdownThinkSectionMobilePropsStylesLike,/);
+  assert.match(sessionPresentationSource, /type MarkdownThinkSectionMobileStyleSheetSlots,/);
   assert.match(sessionPresentationSource, /type MarkdownImageMobilePropsParts,/);
   assert.match(sessionPresentationSource, /type MarkdownCodeBlockCopyMobilePropsParts,/);
-  assert.match(sessionPresentationSource, /type MarkdownCodeBlockCopyMobilePropsStylesLike,/);
-  assert.match(source, /type MarkdownThinkSectionStyles =\s+MarkdownThinkSectionMobilePropsStylesLike<\s+StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
-  assert.match(source, /type MarkdownCodeBlockCopyStyles =\s+MarkdownCodeBlockCopyMobilePropsStylesLike<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
+  assert.match(sessionPresentationSource, /type MarkdownContentMobileStyleSheetSlots,/);
+  assert.match(source, /type MarkdownThinkSectionStyles = MarkdownThinkSectionMobileStyleSheetSlots;/);
+  assert.match(source, /type MarkdownCodeBlockCopyStyles = MarkdownContentStyles;/);
   assert.doesNotMatch(source, /type MarkdownThinkSectionStyles = \{[\s\S]*?container: StyleProp<ViewStyle>;[\s\S]*?label: StyleProp<TextStyle>;[\s\S]*?content: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.doesNotMatch(source, /type MarkdownCodeBlockCopyStyles = \{[\s\S]*?codeBlockCopyContainer: StyleProp<ViewStyle>;[\s\S]*?codeBlockCopyText: StyleProp<TextStyle>;[\s\S]*?codeBlockCopyButtonPressed: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.match(source, /styles: MarkdownThinkSectionStyles;/);
   assert.match(source, /styles: MarkdownCodeBlockCopyStyles;/);
+  assert.match(source, /markdownStyles: MarkdownDisplayStyles;/);
+  assert.match(source, /markdownRules: MarkdownDisplayRules;/);
   assert.match(source, /const \[imageSource, setImageSource\] = React\.useState<MarkdownImageSource \| null>\(null\);/);
   assert.doesNotMatch(source, /styles: any;[\s\S]*?createMarkdown(ThinkSection|CodeBlockCopy)MobilePropsParts/);
+  assert.doesNotMatch(source, /markdown(Styles|Rules): any;/);
 });
