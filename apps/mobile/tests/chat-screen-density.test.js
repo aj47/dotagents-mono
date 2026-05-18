@@ -825,8 +825,8 @@ test('lets mobile respond to desktop tool approval requests from progress update
   assert.match(sessionPresentationSource, /export interface ChatRuntimeToolApprovalMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export type ChatMessageToolApprovalStyleSlots<\s+TCardStyle,\s+THeaderStyle,\s+TContentStyle,\s+TContentDisabledStyle,/);
   assert.match(sessionPresentationSource, /toolApproval: ChatMessageToolApprovalStyleSlots<\s+TStyles\["toolApprovalCard"\],\s+TStyles\["toolApprovalHeader"\],\s+TStyles\["toolApprovalContent"\],/);
-  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalStyles =\s+SharedChatMessageToolApprovalStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalStyles =\s+ChatRuntimeMobileChromeSlots\['messageRuntime'\]\['styles'\]\['threadStyles'\]\['body'\]\['toolApproval'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalStyles = \{\s+card: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolApprovalParts = ReturnType<typeof createChatRuntimeToolApprovalMobilePropsParts/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolApprovalViewProps = \{\s+children: ReactNode;\s+style: StyleProp<ViewStyle> \| Array<StyleProp<ViewStyle> \| false>;\s+\};/);
@@ -1134,8 +1134,8 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(sessionPresentationSource, /retryStatus: \{[\s\S]*?card: styles\.retryStatusCard,[\s\S]*?description: styles\.retryStatusDescription,/);
   assert.match(sessionPresentationSource, /export type ChatMessageRetryStatusStyleSlots<\s+TCardStyle,\s+THeaderStyle,\s+TTitleStyle,\s+TMetaRowStyle,/);
   assert.match(sessionPresentationSource, /retryStatus: ChatMessageRetryStatusStyleSlots<\s+TStyles\["retryStatusCard"\],\s+TStyles\["retryStatusHeader"\],\s+TStyles\["retryStatusTitle"\],/);
-  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusStyles =\s+SharedChatMessageRetryStatusStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusStyles =\s+ChatRuntimeMobileChromeSlots\['messageRuntime'\]\['styles'\]\['threadStyles'\]\['body'\]\['retryStatus'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusStyles = \{\s+card: StyleProp<ViewStyle>;/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRetryStatus/);
   const retryStatusSource =
@@ -1416,8 +1416,8 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(sessionPresentationSource, /export interface ChatRuntimeDelegationCardMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export type ChatMessageDelegationCardStyleSlots<\s+TCardStyle,\s+THeaderStyle,\s+TTitleStyle,\s+TStatusBadgeStyle,/);
   assert.match(sessionPresentationSource, /delegationCard: ChatMessageDelegationCardStyleSlots<\s+TStyles\["delegationCard"\],\s+TStyles\["delegationHeader"\],\s+TStyles\["delegationTitle"\],/);
-  assert.match(chatMessageChromeSource, /type ChatMessageDelegationCardStyleSlots as SharedChatMessageDelegationCardStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageDelegationCardStyles =\s+SharedChatMessageDelegationCardStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ViewStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationCardStyleSlots as SharedChatMessageDelegationCardStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationCardStyles =\s+ChatRuntimeMobileChromeSlots\['messageRuntime'\]\['styles'\]\['threadStyles'\]\['body'\]\['delegationCard'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationCardStyles = \{\s+card: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegationCardMobilePropsParts/);
   assert.match(chatMessageChromeSource, /type ChatMessageDelegationContentProps = \{\s+header: \{\s+props: ChatMessageDelegationHeaderProps;\s+\};[\s\S]*?conversationPreview: ChatMessageDelegationConversationPreviewSlot;\s+toolPreview: ChatMessageDelegationToolPreviewSlot;\s+\};/);

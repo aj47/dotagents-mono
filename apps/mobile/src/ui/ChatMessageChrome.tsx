@@ -444,9 +444,6 @@ import {
   type ChatMessageRuntimeSessionMessageLike,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageExpansionMobileRenderState,
-  type ChatMessageDelegationCardStyleSlots as SharedChatMessageDelegationCardStyleSlots,
-  type ChatMessageRetryStatusStyleSlots as SharedChatMessageRetryStatusStyleSlots,
-  type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
   type ChatMessageRuntimeSessionDisplayMessagesOptions,
@@ -2146,15 +2143,7 @@ type ChatMessageStandaloneActionsParts =
   >;
 
 type ChatMessageRetryStatusStyles =
-  SharedChatMessageRetryStatusStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['retryStatus'];
 
 type ChatMessageRetryStatusProps =
   ChatRuntimeRetryStatusMobilePropsPartsInput<
@@ -2251,29 +2240,7 @@ type ChatMessageRetryStatusCardContentProps = {
 };
 
 type ChatMessageToolApprovalStyles =
-  SharedChatMessageToolApprovalStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['toolApproval'];
 
 type ChatMessageToolApprovalProps =
   ChatRuntimeToolApprovalMobilePropsPartsInput<
@@ -2469,36 +2436,7 @@ type ChatMessageToolApprovalApproveActionContentProps = {
 type ChatMessageToolApprovalPropsInput = ChatRuntimeConversationToolApprovalMobileState;
 
 type ChatMessageDelegationCardStyles =
-  SharedChatMessageDelegationCardStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['threadStyles']['body']['delegationCard'];
 
 type ChatMessageDelegationCardProps =
   ChatRuntimeDelegationCardMobilePropsPartsInput<
