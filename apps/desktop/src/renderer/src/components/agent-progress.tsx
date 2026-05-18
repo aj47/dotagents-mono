@@ -54,28 +54,24 @@ import {
   createExpandCollapseAccessibilityLabel,
   buildContentTTSKey,
   buildResponseEventTTSKey,
-} from "@dotagents/shared/session-presentation"
-import {
   AGENT_MODEL_FALLBACKS,
   type AgentModelConfigLike,
   buildAgentModelConfigUpdates,
   getActiveModelPreset,
   resolveAgentProviderId,
   resolveConfiguredAgentModel,
-} from "@dotagents/shared/model-presets"
-import {
   getBuiltInModelPresets,
   DEFAULT_MODEL_PRESET_ID,
   type CHAT_PROVIDER_ID,
-} from "@dotagents/shared/providers"
-import {
   CODEX_TEXT_VERBOSITY_OPTIONS,
   DEFAULT_CODEX_TEXT_VERBOSITY,
   getOpenAiReasoningEffortDefault,
   OPENAI_REASONING_EFFORT_OPTIONS,
+  isChatRuntimeThinkingControlSupported,
+  isChatRuntimeVerbosityControlSupported,
   type CodexTextVerbosity,
   type OpenAiReasoningEffort,
-} from "@dotagents/shared/agent-generation-options"
+} from "@dotagents/shared/session-presentation"
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
@@ -372,12 +368,6 @@ const SessionModelPicker: React.FC<{
   )
 }
 
-const providerSupportsThinking = (providerId: CHAT_PROVIDER_ID): boolean =>
-  providerId === "openai" || providerId === "chatgpt-web"
-
-const providerSupportsVerbosity = (providerId: CHAT_PROVIDER_ID): boolean =>
-  providerId === "chatgpt-web"
-
 const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const configQuery = useConfigQuery()
   const config = configQuery.data
@@ -401,7 +391,7 @@ const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = fals
     }
   }, [config, currentValue])
 
-  if (!providerSupportsThinking(providerId)) return null
+  if (!isChatRuntimeThinkingControlSupported(providerId)) return null
 
   const currentLabel = OPENAI_REASONING_EFFORT_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
 
@@ -456,7 +446,7 @@ const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = fal
     }
   }, [config, currentValue])
 
-  if (!providerSupportsVerbosity(providerId)) return null
+  if (!isChatRuntimeVerbosityControlSupported(providerId)) return null
 
   const currentLabel = CODEX_TEXT_VERBOSITY_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
 

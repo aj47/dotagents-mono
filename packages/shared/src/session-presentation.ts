@@ -3,6 +3,7 @@ import {
   normalizeAgentConversationState,
   type AgentConversationState,
 } from "./conversation-state"
+import type { CHAT_PROVIDER_ID } from "./providers"
 export type { AgentConversationState } from "./conversation-state"
 export {
   createAgentResponseHistoryMobilePropsParts,
@@ -159,7 +160,37 @@ export {
   buildResponseEventTTSKey,
 } from "./tts-tracking"
 export { createChatRuntimeMobileConfigState } from "./mobile-app-config"
-export { DEFAULT_EDGE_TTS_VOICE } from "./providers"
+export {
+  DEFAULT_EDGE_TTS_VOICE,
+  DEFAULT_MODEL_PRESET_ID,
+  getBuiltInModelPresets,
+  type CHAT_PROVIDER_ID,
+} from "./providers"
+export {
+  AGENT_MODEL_FALLBACKS,
+  buildAgentModelConfigUpdates,
+  getActiveModelPreset,
+  resolveAgentProviderId,
+  resolveConfiguredAgentModel,
+  type AgentModelConfigLike,
+} from "./model-presets"
+export {
+  CODEX_TEXT_VERBOSITY_OPTIONS,
+  DEFAULT_CODEX_TEXT_VERBOSITY,
+  getOpenAiReasoningEffortDefault,
+  OPENAI_REASONING_EFFORT_OPTIONS,
+  type CodexTextVerbosity,
+  type OpenAiReasoningEffort,
+} from "./agent-generation-options"
+
+export function isChatRuntimeThinkingControlSupported(providerId: CHAT_PROVIDER_ID | string): boolean {
+  return providerId === "openai" || providerId === "chatgpt-web"
+}
+
+export function isChatRuntimeVerbosityControlSupported(providerId: CHAT_PROVIDER_ID | string): boolean {
+  return providerId === "chatgpt-web"
+}
+
 import {
   createHandsFreeComposerPermissionDeniedDebugState,
   createHandsFreeComposerRecognizerErrorDebugState,

@@ -6,6 +6,8 @@ import {
   getChatRuntimeDelegationStatusDesktopClassNames,
   getChatRuntimeCopyState,
   getChatRuntimeDesktopSurfaceState,
+  isChatRuntimeThinkingControlSupported,
+  isChatRuntimeVerbosityControlSupported,
 } from "@dotagents/shared/session-presentation"
 import { describe, expect, it } from "vitest"
 
@@ -759,6 +761,9 @@ describe("agent progress tile layout", () => {
   })
 
   it("keeps the session model visible and clickable as a picker", () => {
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/model-presets"')
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/providers"')
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/agent-generation-options"')
     expect(agentProgressSource).toContain('const SessionModelPicker: React.FC')
     expect(desktopRuntimeCopy.modelControls.model.changeAccessibilityLabel).toBe("Change agent model")
     expect(desktopRuntimeCopy.modelControls.model.updatedToast).toBe("Agent model updated")
@@ -770,10 +775,15 @@ describe("agent progress tile layout", () => {
     expect(desktopRuntimeCopy.modelControls.thinking.updatedToast).toBe("Thinking level updated")
     expect(desktopRuntimeCopy.modelControls.thinking.updateFailedToast).toBe("Failed to update thinking level")
     expect(formatChatRuntimeThinkingPickerTitle("High")).toBe("Thinking level (High)")
+    expect(isChatRuntimeThinkingControlSupported("openai")).toBe(true)
+    expect(isChatRuntimeThinkingControlSupported("chatgpt-web")).toBe(true)
+    expect(isChatRuntimeThinkingControlSupported("groq")).toBe(false)
     expect(desktopRuntimeCopy.modelControls.verbosity.changeAccessibilityLabel).toBe("Change verbosity")
     expect(desktopRuntimeCopy.modelControls.verbosity.updatedToast).toBe("Verbosity updated")
     expect(desktopRuntimeCopy.modelControls.verbosity.updateFailedToast).toBe("Failed to update verbosity")
     expect(formatChatRuntimeVerbosityPickerTitle("Detailed")).toBe("Verbosity (Detailed)")
+    expect(isChatRuntimeVerbosityControlSupported("chatgpt-web")).toBe(true)
+    expect(isChatRuntimeVerbosityControlSupported("openai")).toBe(false)
     expect(agentProgressSource).toContain("desktopRuntimeCopy.modelControls.model.changeAccessibilityLabel")
     expect(agentProgressSource).toContain("desktopRuntimeCopy.modelControls.model.updatedToast")
     expect(agentProgressSource).toContain("desktopRuntimeCopy.modelControls.model.updateFailedToast")
@@ -784,10 +794,12 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain("desktopRuntimeCopy.modelControls.thinking.updatedToast")
     expect(agentProgressSource).toContain("desktopRuntimeCopy.modelControls.thinking.updateFailedToast")
     expect(agentProgressSource).toContain("formatChatRuntimeThinkingPickerTitle(currentLabel)")
+    expect(agentProgressSource).toContain("isChatRuntimeThinkingControlSupported(providerId)")
     expect(agentProgressSource).toContain("desktopRuntimeCopy.modelControls.verbosity.changeAccessibilityLabel")
     expect(agentProgressSource).toContain("desktopRuntimeCopy.modelControls.verbosity.updatedToast")
     expect(agentProgressSource).toContain("desktopRuntimeCopy.modelControls.verbosity.updateFailedToast")
     expect(agentProgressSource).toContain("formatChatRuntimeVerbosityPickerTitle(currentLabel)")
+    expect(agentProgressSource).toContain("isChatRuntimeVerbosityControlSupported(providerId)")
     expect(agentProgressSource).toContain('buildAgentModelConfigUpdates(config as AgentModelConfigLike, providerId, modelId)')
     expect(agentProgressSource).toContain('Model/provider controls stay available even before live session metadata arrives')
     expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} />')
