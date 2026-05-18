@@ -3,7 +3,6 @@ import {
   Image,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   View,
   type ImageStyle,
@@ -15,21 +14,17 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   buildConversationImageAssetHttpUrl,
   createMarkdownCodeBlockCopyMobilePropsParts,
-  createMarkdownContentMobileStyleSheetSlots,
   createMarkdownImageMobilePropsParts,
   createMarkdownThinkSectionMobilePropsParts,
-  createMarkdownThinkSectionMobileStyleSheetSlots,
   formatMarkdownImageRequestFailedMessage,
   getMarkdownCodeBlockFeedbackResetDelayMs,
   getMarkdownCodeBlockCopyMobileRenderState,
-  getMarkdownContentMobileSurfaceRenderState,
   getMarkdownImageFallbackLabel,
   getMarkdownImageInvalidAssetUrlMessage,
   getMarkdownImageLoadErrorFallback,
   getMarkdownImageUnavailableLabel,
   getMarkdownRenderOptions,
   getMarkdownThinkSectionControlState,
-  getMarkdownThinkSectionMobileSurfaceRenderState,
   isAllowedMarkdownImageUrl,
   isAllowedMarkdownContentLinkUrl,
   parseConversationImageAssetUrl,
@@ -43,8 +38,7 @@ import {
   type MarkdownThinkSectionMobileStyleSheetSlots,
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from '@dotagents/shared/session-presentation';
-import { useTheme } from './ThemeProvider';
-import { spacing, radius } from './theme';
+import { useChatRuntimeMarkdownMobileStyleSlots } from './ChatRuntimeMobileStyles';
 import { VideoAttachmentCard } from './VideoAttachmentCard';
 import { SettingsApiClient } from '../lib/settingsApi';
 
@@ -311,44 +305,13 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   isThinkExpanded,
   onToggleThink,
 }) => {
-  const { theme, isDark } = useTheme();
-  const markdownContentRenderState = React.useMemo(
-    () => getMarkdownContentMobileSurfaceRenderState({
-      colors: theme.colors,
-      isDark,
-    }),
-    [isDark, theme.colors],
-  );
+  const {
+    markdownContentRenderState,
+    markdownContentStyles: markdownStyles,
+    markdownThinkSectionRenderState: thinkSectionRenderState,
+    markdownThinkSectionStyles: thinkStyles,
+  } = useChatRuntimeMarkdownMobileStyleSlots();
   const markdownContentColors = markdownContentRenderState.colors;
-  const markdownContentStyleSheetSlots = React.useMemo(
-    () => createMarkdownContentMobileStyleSheetSlots({
-      renderState: markdownContentRenderState,
-      spacing,
-      radius,
-      platform: Platform.OS,
-    }),
-    [markdownContentRenderState],
-  );
-  const markdownStyles = React.useMemo<MarkdownContentStyles>(
-    () => StyleSheet.create({ ...markdownContentStyleSheetSlots }),
-    [markdownContentStyleSheetSlots],
-  );
-  const thinkSectionRenderState = React.useMemo(
-    () => getMarkdownThinkSectionMobileSurfaceRenderState({ isDark }),
-    [isDark],
-  );
-  const thinkSectionStyleSheetSlots = React.useMemo(
-    () => createMarkdownThinkSectionMobileStyleSheetSlots({
-      renderState: thinkSectionRenderState,
-      spacing,
-      radius,
-    }),
-    [thinkSectionRenderState],
-  );
-  const thinkStyles = React.useMemo<MarkdownThinkSectionStyles>(
-    () => StyleSheet.create({ ...thinkSectionStyleSheetSlots }),
-    [thinkSectionStyleSheetSlots],
-  );
 
   const parts = splitMarkdownContent(content, getMarkdownRenderOptions());
   const markdownRules = React.useMemo(() => ({

@@ -11,11 +11,19 @@ import {
   createChatRuntimeMobileChromeSlotsFromStyleSource,
   createChatRuntimeMobileChromeStyleSlots,
   createChatRuntimeThemeSpinnerSource,
+  createMarkdownContentMobileStyleSheetSlots,
+  createMarkdownThinkSectionMobileStyleSheetSlots,
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
+  getMarkdownContentMobileSurfaceRenderState,
+  getMarkdownThinkSectionMobileSurfaceRenderState,
   type AgentResponseHistoryMobileStyleSheetSlots,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
   type ChatRuntimeMobileChromeSlotsFromStyleSource,
+  type MarkdownContentMobileStyleSheetSlots,
+  type MarkdownContentMobileSurfaceRenderState,
+  type MarkdownThinkSectionMobileStyleSheetSlots,
+  type MarkdownThinkSectionMobileSurfaceRenderState,
 } from '@dotagents/shared/session-presentation';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing, type Theme } from './theme';
@@ -870,6 +878,86 @@ export function createChatRuntimeResponseHistoryPanelStyleSheetSlots({
     spacing,
     radius,
   });
+}
+
+export type ChatRuntimeMarkdownContentStyleSheetSlotsInput = Pick<
+  Parameters<typeof createMarkdownContentMobileStyleSheetSlots>[0],
+  'renderState'
+>;
+
+export type ChatRuntimeMarkdownThinkSectionStyleSheetSlotsInput = Pick<
+  Parameters<typeof createMarkdownThinkSectionMobileStyleSheetSlots>[0],
+  'renderState'
+>;
+
+export function createChatRuntimeMarkdownContentStyleSheetSlots({
+  renderState,
+}: ChatRuntimeMarkdownContentStyleSheetSlotsInput): MarkdownContentMobileStyleSheetSlots {
+  return createMarkdownContentMobileStyleSheetSlots({
+    renderState,
+    spacing,
+    radius,
+    platform: Platform.OS,
+  });
+}
+
+export function createChatRuntimeMarkdownThinkSectionStyleSheetSlots({
+  renderState,
+}: ChatRuntimeMarkdownThinkSectionStyleSheetSlotsInput): MarkdownThinkSectionMobileStyleSheetSlots {
+  return createMarkdownThinkSectionMobileStyleSheetSlots({
+    renderState,
+    spacing,
+    radius,
+  });
+}
+
+export type ChatRuntimeMarkdownMobileStyleSlots = {
+  markdownContentRenderState: MarkdownContentMobileSurfaceRenderState;
+  markdownContentStyles: MarkdownContentMobileStyleSheetSlots;
+  markdownThinkSectionRenderState: MarkdownThinkSectionMobileSurfaceRenderState;
+  markdownThinkSectionStyles: MarkdownThinkSectionMobileStyleSheetSlots;
+};
+
+export function useChatRuntimeMarkdownMobileStyleSlots(): ChatRuntimeMarkdownMobileStyleSlots {
+  const { theme, isDark } = useTheme();
+  const markdownContentRenderState = useMemo(
+    () => getMarkdownContentMobileSurfaceRenderState({
+      colors: theme.colors,
+      isDark,
+    }),
+    [isDark, theme.colors],
+  );
+  const markdownContentStyleSheetSlots = useMemo(
+    () => createChatRuntimeMarkdownContentStyleSheetSlots({
+      renderState: markdownContentRenderState,
+    }),
+    [markdownContentRenderState],
+  );
+  const markdownContentStyles = useMemo(
+    () => StyleSheet.create({ ...markdownContentStyleSheetSlots }),
+    [markdownContentStyleSheetSlots],
+  );
+  const markdownThinkSectionRenderState = useMemo(
+    () => getMarkdownThinkSectionMobileSurfaceRenderState({ isDark }),
+    [isDark],
+  );
+  const markdownThinkSectionStyleSheetSlots = useMemo(
+    () => createChatRuntimeMarkdownThinkSectionStyleSheetSlots({
+      renderState: markdownThinkSectionRenderState,
+    }),
+    [markdownThinkSectionRenderState],
+  );
+  const markdownThinkSectionStyles = useMemo(
+    () => StyleSheet.create({ ...markdownThinkSectionStyleSheetSlots }),
+    [markdownThinkSectionStyleSheetSlots],
+  );
+
+  return {
+    markdownContentRenderState,
+    markdownContentStyles,
+    markdownThinkSectionRenderState,
+    markdownThinkSectionStyles,
+  };
 }
 
 export type ChatRuntimeMobileChromeSlots = ChatRuntimeMobileChromeSlotsFromStyleSource<
