@@ -15537,23 +15537,11 @@ export function ChatMessageTurnDurationBadgeLabel({
   );
 }
 
-export function ChatMessageExpandedContent({
-  streamingRenderState,
-  markdownContent,
-  assetBaseUrl,
-  assetAuthToken,
-  spinnerSource,
-  streamingStyles,
-}: ChatMessageExpandedContentProps) {
+export function ChatMessageExpandedContent(
+  props: ChatMessageExpandedContentProps,
+) {
   const expandedContentParts: ChatMessageExpandedContentParts =
-    createChatRuntimeConversationExpandedContentMobilePropsParts({
-      streamingRenderState,
-      markdownContent,
-      assetBaseUrl,
-      assetAuthToken,
-      spinnerSource,
-      streamingStyles,
-    });
+    createChatRuntimeConversationExpandedContentMobilePropsParts(props);
   const expandedStreamingContent = expandedContentParts.streamingContent;
 
   if (!expandedStreamingContent.shouldRender) {
@@ -15654,23 +15642,11 @@ export function ChatMessageExpandedContentText({
   );
 }
 
-export function ChatMessageCollapsedPreview({
-  renderState,
-  actionState,
-  onPress,
-  style,
-  pressedStyle,
-  textStyle,
-}: ChatMessageCollapsedPreviewProps) {
+export function ChatMessageCollapsedPreview(
+  props: ChatMessageCollapsedPreviewProps,
+) {
   const collapsedPreviewParts: ChatMessageCollapsedPreviewParts =
-    createChatRuntimeConversationCollapsedPreviewMobilePropsParts({
-      renderState,
-      actionState,
-      onPress,
-      style,
-      pressedStyle,
-      textStyle,
-    });
+    createChatRuntimeConversationCollapsedPreviewMobilePropsParts(props);
 
   return (
     <Pressable
@@ -15701,23 +15677,11 @@ export function ChatMessageCollapsedPreviewText({
   );
 }
 
-export function ChatMessageConversationContent({
-  contentDisplayMode,
-  rowStyle,
-  shouldRenderActionSlots,
-  entries,
-  expanded,
-  collapsed,
-}: ChatMessageConversationContentProps) {
+export function ChatMessageConversationContent(
+  props: ChatMessageConversationContentProps,
+) {
   const conversationContentParts: ChatMessageConversationContentParts =
-    createChatRuntimeConversationContentMobilePropsParts({
-      contentDisplayMode,
-      rowStyle,
-      shouldRenderActionSlots,
-      entries,
-      expanded,
-      collapsed,
-    });
+    createChatRuntimeConversationContentMobilePropsParts(props);
 
   if (conversationContentParts.expandedContent.shouldRender) {
     return (
@@ -15746,20 +15710,12 @@ export function ChatMessageConversationContent({
   return null;
 }
 
-export function ChatMessageContentRow({
-  children,
-  shouldRenderActionSlots,
-  entries,
-  rowStyle,
-  bodyStyle,
-}: ChatMessageContentRowProps) {
+export function ChatMessageContentRow(
+  props: ChatMessageContentRowProps,
+) {
   const contentRowParts: ChatMessageContentRowParts =
-    createChatRuntimeMessageContentRowMobilePropsParts({
-      shouldRenderActionSlots,
-      entries,
-      rowStyle,
-      bodyStyle,
-    });
+    createChatRuntimeMessageContentRowMobilePropsParts(props);
+  const { children } = props;
 
   return (
     <ChatMessageContentRowContainer
@@ -15801,17 +15757,11 @@ export function ChatMessageContentBody({
   );
 }
 
-export function ChatMessageStandaloneActions({
-  shouldRender,
-  entries,
-  rowStyle,
-}: ChatMessageStandaloneActionsProps) {
+export function ChatMessageStandaloneActions(
+  props: ChatMessageStandaloneActionsProps,
+) {
   const standaloneActionsParts: ChatMessageStandaloneActionsParts =
-    createChatRuntimeMessageStandaloneActionsMobilePropsParts({
-      shouldRender,
-      entries,
-      rowStyle,
-    });
+    createChatRuntimeMessageStandaloneActionsMobilePropsParts(props);
 
   return (
     <ChatMessageActionSlotList
@@ -15820,17 +15770,11 @@ export function ChatMessageStandaloneActions({
   );
 }
 
-export function ChatMessageActionSlotList({
-  shouldRender = true,
-  entries,
-  rowStyle,
-}: ChatMessageActionSlotListProps) {
+export function ChatMessageActionSlotList(
+  props: ChatMessageActionSlotListProps,
+) {
   const actionSlotListParts: ChatMessageActionSlotListParts =
-    createChatRuntimeMessageActionSlotListMobilePropsParts({
-      shouldRender,
-      entries,
-      rowStyle,
-    });
+    createChatRuntimeMessageActionSlotListMobilePropsParts(props);
   const actionSlotList = actionSlotListParts.list;
 
   if (!actionSlotList.shouldRender) return null;

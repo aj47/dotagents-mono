@@ -4490,7 +4490,8 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageCollapsedPreviewParts = ReturnType<typeof createChatRuntimeConversationCollapsedPreviewMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const collapsedPreviewParts: ChatMessageCollapsedPreviewParts =\s+createChatRuntimeConversationCollapsedPreviewMobilePropsParts\(\{\s+renderState,\s+actionState,\s+onPress,\s+style,\s+pressedStyle,\s+textStyle,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageCollapsedPreview\(\s+props: ChatMessageCollapsedPreviewProps,\s+\)/);
+  assert.match(chatMessageChromeSource, /const collapsedPreviewParts: ChatMessageCollapsedPreviewParts =\s+createChatRuntimeConversationCollapsedPreviewMobilePropsParts\(props\);/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeConversationCollapsedPreviewMobileRenderState,/);
   assert.match(chatMessageChromeSource, /type ChatMessageCollapsedPreviewNativeRenderState =\s+ChatRuntimeConversationCollapsedPreviewMobileRenderState & \{[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?hitSlop: ComponentProps<typeof Pressable>\['hitSlop'\];[\s\S]*?numberOfLines: TextProps\['numberOfLines'\];[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageCollapsedPreviewTextPart = \{[\s\S]*?text: string;[\s\S]*?style: StyleProp<TextStyle>;[\s\S]*?numberOfLines: TextProps\['numberOfLines'\];[\s\S]*?\};/);
@@ -6283,7 +6284,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(expandedContentTypes, /accessibilityRole: AccessibilityRole;/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationExpandedContentMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationExpandedContentMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const expandedContentParts: ChatMessageExpandedContentParts =\s+createChatRuntimeConversationExpandedContentMobilePropsParts\(\{\s+streamingRenderState,\s+markdownContent,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+streamingStyles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContent\(\s+props: ChatMessageExpandedContentProps,\s+\)/);
+  assert.match(chatMessageChromeSource, /const expandedContentParts: ChatMessageExpandedContentParts =\s+createChatRuntimeConversationExpandedContentMobilePropsParts\(props\);/);
   assert.doesNotMatch(markdownRendererSource, /from '@dotagents\/shared\/(conversation-media-assets|markdown-render-parts)'/);
   assert.doesNotMatch(videoAttachmentCardSource, /from '@dotagents\/shared\/conversation-media-assets'/);
   assert.match(markdownRendererSource, /from '@dotagents\/shared\/session-presentation'/);
@@ -7696,7 +7698,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListRowProps = \{[\s\S]*?children: ReactNode;[\s\S]*?style: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageActionSlotListMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionSlotListMobilePropsParts/);
-  assert.match(actionSlotListSource, /const actionSlotListParts: ChatMessageActionSlotListParts =\s+createChatRuntimeMessageActionSlotListMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
+  assert.match(actionSlotListSource, /export function ChatMessageActionSlotList\(\s+props: ChatMessageActionSlotListProps,\s+\)/);
+  assert.match(actionSlotListSource, /const actionSlotListParts: ChatMessageActionSlotListParts =\s+createChatRuntimeMessageActionSlotListMobilePropsParts\(props\);/);
   assert.match(actionSlotListSource, /const actionSlotList = actionSlotListParts\.list;/);
   assert.match(sessionPresentationSource, /list: \{\s+shouldRender,\s+content: \{\s+items: entries\.map\(\(\{ slot, item \}\) => \(\{\s+key: slot,\s+item,/);
   assert.match(actionSlotListSource, /actionSlotList\.content\.items\.map\(\(\{ key, item \}\) => \(/);
@@ -7734,7 +7737,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageContentRowMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageStandaloneActionsMobilePropsParts/);
-  assert.match(contentRowSource, /const contentRowParts: ChatMessageContentRowParts =\s+createChatRuntimeMessageContentRowMobilePropsParts\(\{\s+shouldRenderActionSlots,\s+entries,\s+rowStyle,\s+bodyStyle,\s+\}\);/);
+  assert.match(contentRowSource, /export function ChatMessageContentRow\(\s+props: ChatMessageContentRowProps,\s+\)/);
+  assert.match(contentRowSource, /const contentRowParts: ChatMessageContentRowParts =\s+createChatRuntimeMessageContentRowMobilePropsParts\(props\);/);
+  assert.match(contentRowSource, /const \{ children \} = props;/);
   assert.match(contentRowSource, /<ChatMessageContentRowContainer\s+\{\.\.\.contentRowParts\.row\.props\}[\s\S]*?contentRowParts\.body\.shouldRender \? \(/);
   assert.match(contentRowSource, /<ChatMessageContentBody\s+\{\.\.\.contentRowParts\.body\.props\}[\s\S]*?>[\s\S]*?\{children\}[\s\S]*?<ChatMessageActionSlotList\s+\{\.\.\.contentRowParts\.actionSlotList\.props\}/);
   assert.match(
@@ -7745,7 +7750,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
     contentRowSource,
     /export function ChatMessageContentBody\(\{[\s\S]*?children,[\s\S]*?\.\.\.props[\s\S]*?<View \{\.\.\.props\}>[\s\S]*?export function ChatMessageStandaloneActions/
   );
-  assert.match(standaloneActionsSource, /const standaloneActionsParts: ChatMessageStandaloneActionsParts =\s+createChatRuntimeMessageStandaloneActionsMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
+  assert.match(standaloneActionsSource, /export function ChatMessageStandaloneActions\(\s+props: ChatMessageStandaloneActionsProps,\s+\)/);
+  assert.match(standaloneActionsSource, /const standaloneActionsParts: ChatMessageStandaloneActionsParts =\s+createChatRuntimeMessageStandaloneActionsMobilePropsParts\(props\);/);
   assert.match(standaloneActionsSource, /<ChatMessageActionSlotList\s+\{\.\.\.standaloneActionsParts\.actionSlotList\.props\}/);
   assert.match(sessionPresentationSource, /row: \{\s+props: \{\s+style: rowStyle,/);
   assert.match(sessionPresentationSource, /body: \{\s+shouldRender: Boolean\(bodyStyle\),\s+props: \{\s+style: bodyStyle,/);
@@ -7923,7 +7929,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /shouldRenderActionSlots: renderState\.layout\.shouldRenderActionSlots,/);
   assert.match(sessionPresentationSource, /shouldRenderActionSlots: actionSet\.shouldRenderActionSlots,/);
   assert.match(chatMessageChromeSource, /<ChatMessageActionSlotList\s+\{\.\.\.contentRowParts\.actionSlotList\.props\}/);
-  assert.match(chatMessageChromeSource, /export function ChatMessageActionSlotList\(\{\s+shouldRender = true,/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageActionSlotList\(\s+props: ChatMessageActionSlotListProps,\s+\)/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionAvailabilityRenderState,/);
   assert.match(sessionPresentationSource, /getChatMessageActionAvailabilityRenderState,/);
   assert.doesNotMatch(chatMessageChromeSource, /const layout = getChatMessageActionLayoutState/);
@@ -8030,7 +8036,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationContentParts = ReturnType<typeof createChatRuntimeConversationContentMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationContentMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationContentMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const conversationContentParts: ChatMessageConversationContentParts =\s+createChatRuntimeConversationContentMobilePropsParts\(\{\s+contentDisplayMode,\s+rowStyle,\s+shouldRenderActionSlots,\s+entries,\s+expanded,\s+collapsed,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageConversationContent\(\s+props: ChatMessageConversationContentProps,\s+\)/);
+  assert.match(chatMessageChromeSource, /const conversationContentParts: ChatMessageConversationContentParts =\s+createChatRuntimeConversationContentMobilePropsParts\(props\);/);
   assert.match(sessionPresentationSource, /expandedContent: contentDisplayMode === "expanded" \? \{\s+shouldRender: true,\s+props: \{/);
   assert.match(sessionPresentationSource, /collapsedContent: contentDisplayMode === "collapsed" \? \{\s+shouldRender: true,\s+props: \{/);
   assert.match(chatMessageChromeSource, /if \(conversationContentParts\.expandedContent\.shouldRender\) \{/);
