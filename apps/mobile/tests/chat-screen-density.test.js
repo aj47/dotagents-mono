@@ -6953,8 +6953,12 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(screenSource, /createChatRuntimeMobileConfigState/);
   assert.match(screenSource, /useChatRuntimeMobileConfigState,/);
   assert.match(screenSource, /const chatRuntimeConfig = useChatRuntimeMobileConfigState\(config\);/);
-  assert.match(chatMessageChromeSource, /export function useChatRuntimeMobileConfigState\(config: MobileAppConfig\): ChatRuntimeMobileConfigState/);
-  assert.match(chatMessageChromeSource, /return useMemo\(\s+\(\) => createChatRuntimeMobileConfigState\(config\),\s+\[config\],\s+\);/);
+  assert.match(screenSource, /const \{\s+handsFree,\s+handsFreeMessageDebounceMs,\s+handsFreeWakePhrase,\s+handsFreeSleepPhrase,\s+handsFreeDebugEnabled,\s+handsFreeForegroundOnly,\s+messageQueueEnabled,\s+ttsEnabled,\s+\} = chatRuntimeConfig;/);
+  assert.doesNotMatch(screenSource, /const handsFree = !!config\.handsFree;/);
+  assert.doesNotMatch(screenSource, /ttsEnabled: ttsEnabledSetting/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMobileChromeConfigState = ChatRuntimeMobileConfigState & \{\s+handsFree: boolean;\s+\};/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeMobileConfigState\(config: MobileAppConfig\): ChatRuntimeMobileChromeConfigState/);
+  assert.match(chatMessageChromeSource, /return useMemo\(\s+\(\) => \(\{\s+\.\.\.createChatRuntimeMobileConfigState\(config\),\s+handsFree: Boolean\(config\.handsFree\),\s+\}\),\s+\[config\],\s+\);/);
   assert.match(sessionPresentationSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(chatMessageChromeSource, /getMessageQueuePanelMobileDockRenderState/);
   assert.doesNotMatch(screenSource, /getMessageQueuePanelMobileDockRenderState,/);

@@ -135,7 +135,6 @@ export default function ChatScreen({ route, navigation }: any) {
     currentSessionId: sessionStore.currentSessionId,
     getCurrentSession: sessionStore.getCurrentSession,
   });
-  const handsFree = !!config.handsFree;
   const {
     settingsClient,
     createLazyLoadSettingsClient,
@@ -221,13 +220,14 @@ export default function ChatScreen({ route, navigation }: any) {
   } = useChatConversationHomePromptEditorState();
   const chatRuntimeConfig = useChatRuntimeMobileConfigState(config);
   const {
+    handsFree,
     handsFreeMessageDebounceMs,
     handsFreeWakePhrase,
     handsFreeSleepPhrase,
     handsFreeDebugEnabled,
     handsFreeForegroundOnly,
     messageQueueEnabled,
-    ttsEnabled: ttsEnabledSetting,
+    ttsEnabled,
   } = chatRuntimeConfig;
   const {
     handsFreeRef,
@@ -237,15 +237,12 @@ export default function ChatScreen({ route, navigation }: any) {
     setHandsFreePhaseRefValue,
   } = useChatRuntimeHandsFreeMutableState({
     handsFree,
-    ttsEnabled: ttsEnabledSetting,
+    ttsEnabled,
   });
   const { handsFreeRuntimeActive } = useChatRuntimeForegroundState({
     handsFree,
     isFocused,
   });
-
-  // TTS toggle
-  const ttsEnabled = ttsEnabledSetting;
 
   const {
     responding,

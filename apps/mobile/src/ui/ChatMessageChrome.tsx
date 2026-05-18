@@ -503,6 +503,10 @@ type ChatMessageRuntimeRemoteSpeechSettingsHookState = {
   applyRemoteSpeechSettings: (settings: ChatRuntimeRemoteSpeechSettingsState) => void;
 };
 
+type ChatRuntimeMobileChromeConfigState = ChatRuntimeMobileConfigState & {
+  handsFree: boolean;
+};
+
 type ChatRuntimeSettingsClientConstructor<TClient> = new (
   baseUrl: string,
   apiKey: string,
@@ -520,9 +524,12 @@ type ChatRuntimeSettingsClientState<TClient> = {
   hasServerAuth: boolean;
 };
 
-export function useChatRuntimeMobileConfigState(config: MobileAppConfig): ChatRuntimeMobileConfigState {
+export function useChatRuntimeMobileConfigState(config: MobileAppConfig): ChatRuntimeMobileChromeConfigState {
   return useMemo(
-    () => createChatRuntimeMobileConfigState(config),
+    () => ({
+      ...createChatRuntimeMobileConfigState(config),
+      handsFree: Boolean(config.handsFree),
+    }),
     [config],
   );
 }
