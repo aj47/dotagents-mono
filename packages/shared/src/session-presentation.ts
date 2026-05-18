@@ -12135,6 +12135,34 @@ export interface ChatComposerRuntimeImagePickerLaunchOptions<TMediaTypes> {
   base64: true
 }
 
+export interface ChatComposerRuntimeImagePickerAssetSource extends ImageMimeTypeSource {
+  uri: string
+  base64?: string | null
+  fileSize?: number | null
+}
+
+export interface ChatComposerRuntimeImageAttachmentSelectionPlanInput<
+  TAsset extends ChatComposerRuntimeImagePickerAssetSource = ChatComposerRuntimeImagePickerAssetSource,
+> {
+  pendingImages?: readonly ChatImageAttachmentMessageInput[]
+  assets?: readonly TAsset[] | null
+  now?: () => number
+}
+
+export interface ChatComposerRuntimeImageSelectionAttachment extends ChatImageAttachmentMessageInput {
+  id: string
+  name: string
+  previewUri: string
+  dataUrl: string
+}
+
+export interface ChatComposerRuntimeImageAttachmentSelectionPlan {
+  shouldSelectImages: boolean
+  selectionLimit: number
+  attachments: ChatComposerRuntimeImageSelectionAttachment[]
+  alerts: ChatImageAttachmentMobileAlertInput[]
+}
+
 export interface ChatRuntimeThemeSpinnerSourceInput<TSpinnerSource> {
   isDark: boolean
   darkSource: TSpinnerSource
@@ -16724,6 +16752,155 @@ export function getChatComposerRuntimeBase64ImageBytes(rawBase64: string): numbe
 
 export function inferChatComposerRuntimeImageMimeType(source: ImageMimeTypeSource): string | null {
   return inferImageMimeTypeFromSource(source)
+}
+
+function getChatComposerRuntimeImageAttachmentDisplayName(
+  asset: ChatComposerRuntimeImagePickerAssetSource,
+  index: number,
+): string {
+  return asset.fileName || `Image ${index + 1}`
+}
+
+function createChatComposerRuntimeGeneratedImageFileName(
+  asset: ChatComposerRuntimeImagePickerAssetSource,
+  timestamp: number,
+  index: number,
+): string {
+  return asset.fileName || `image-${timestamp}-${index + 1}`
+}
+
+function createChatComposerRuntimeImageDataUrl(mimeType: string, base64: string): string {
+  return `data:${mimeType};base64,${base64}`
+}
+
+export function createChatComposerRuntimeImageAttachmentSelectionPlan<
+  TAsset extends ChatComposerRuntimeImagePickerAssetSource = ChatComposerRuntimeImagePickerAssetSource,
+>({
+  pendingImages = [],
+  assets,
+  now = Date.now,
+}: ChatComposerRuntimeImageAttachmentSelectionPlanInput<TAsset>): ChatComposerRuntimeImageAttachmentSelectionPlan {
+  const existingEmbeddedBytes = pendingImages.reduce(
+    (sum, image) => sum + getChatComposerRuntimeImageDataUrlBytes(image.dataUrl),
+    0,
+  )
+
+  if (pendingImages.length >= CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages) {
+    return {
+      shouldSelectImages: false,
+      selectionLimit: 0,
+      attachments: [],
+      alerts: [{
+        reason: "limitReached",
+        maxImages: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages,
+      }],
+    }
+  }
+
+  if (existingEmbeddedBytes >= CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes) {
+    return {
+      shouldSelectImages: false,
+      selectionLimit: 0,
+      attachments: [],
+      alerts: [{
+        reason: "budgetReached",
+        maxBytes: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes,
+      }],
+    }
+  }
+
+  const selectionLimit = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages - pendingImages.length
+  if (!assets?.length) {
+    return {
+      shouldSelectImages: true,
+      selectionLimit,
+      attachments: [],
+      alerts: [],
+    }
+  }
+
+  const selectedAssets = assets.slice(0, selectionLimit)
+  const attachments: ChatComposerRuntimeImageSelectionAttachment[] = []
+  const missingBase64Names: string[] = []
+  const oversizedImageNames: string[] = []
+  const unknownMimeNames: string[] = []
+  const budgetExceededNames: string[] = []
+  let runningEmbeddedBytes = existingEmbeddedBytes
+
+  selectedAssets.forEach((asset, index) => {
+    const displayName = getChatComposerRuntimeImageAttachmentDisplayName(asset, index)
+    if (!asset.base64) {
+      missingBase64Names.push(displayName)
+      return
+    }
+
+    const inferredBytes = getChatComposerRuntimeBase64ImageBytes(asset.base64)
+    const fileSizeBytes = typeof asset.fileSize === "number" && asset.fileSize > 0
+      ? asset.fileSize
+      : inferredBytes
+    if (fileSizeBytes > CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes) {
+      oversizedImageNames.push(displayName)
+      return
+    }
+
+    const mimeType = inferChatComposerRuntimeImageMimeType(asset)
+    if (!mimeType) {
+      unknownMimeNames.push(displayName)
+      return
+    }
+
+    const dataUrl = createChatComposerRuntimeImageDataUrl(mimeType, asset.base64)
+    const embeddedBytes = getChatComposerRuntimeImageDataUrlBytes(dataUrl) || inferredBytes
+    if (runningEmbeddedBytes + embeddedBytes > CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes) {
+      budgetExceededNames.push(displayName)
+      return
+    }
+    runningEmbeddedBytes += embeddedBytes
+
+    const timestamp = now()
+    const name = createChatComposerRuntimeGeneratedImageFileName(asset, timestamp, index)
+    attachments.push({
+      id: `${timestamp}-${index}-${asset.uri}`,
+      name,
+      previewUri: asset.uri,
+      dataUrl,
+    })
+  })
+
+  const alerts: ChatImageAttachmentMobileAlertInput[] = []
+  if (missingBase64Names.length > 0) {
+    alerts.push({
+      reason: "missingData",
+      names: missingBase64Names,
+    })
+  }
+  if (oversizedImageNames.length > 0) {
+    alerts.push({
+      reason: "selectionTooLarge",
+      names: oversizedImageNames,
+      maxBytes: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes,
+    })
+  }
+  if (unknownMimeNames.length > 0) {
+    alerts.push({
+      reason: "unsupportedFormat",
+      names: unknownMimeNames,
+    })
+  }
+  if (budgetExceededNames.length > 0) {
+    alerts.push({
+      reason: "budgetExceeded",
+      names: budgetExceededNames,
+      maxBytes: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes,
+    })
+  }
+
+  return {
+    shouldSelectImages: true,
+    selectionLimit,
+    attachments,
+    alerts,
+  }
 }
 
 export function createChatRuntimeThemeSpinnerSource<TSpinnerSource>({

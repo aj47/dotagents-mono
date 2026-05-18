@@ -201,6 +201,7 @@ import {
   createChatRuntimeViewportActivityMobileStyleSlots,
   createChatRuntimeViewportChromeMobileStyleSlots,
   createChatRuntimeViewportMobileStyleSlots,
+  createChatComposerRuntimeImageAttachmentSelectionPlan,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerImageAttachmentMobileStyleSlots,
   createChatRuntimeMessageActionMobileStyleSlots,
@@ -1874,6 +1875,89 @@ describe("session presentation semantics", () => {
     expect(getChatComposerRuntimeImageDataUrlBytes("not-data")).toBe(0)
     expect(getChatComposerRuntimeBase64ImageBytes("YWJj")).toBe(3)
     expect(inferChatComposerRuntimeImageMimeType({ fileName: "sample.webp" })).toBe("image/webp")
+    expect(createChatComposerRuntimeImageAttachmentSelectionPlan({
+      pendingImages: [],
+    })).toEqual({
+      shouldSelectImages: true,
+      selectionLimit: 4,
+      attachments: [],
+      alerts: [],
+    })
+    expect(createChatComposerRuntimeImageAttachmentSelectionPlan({
+      pendingImages: [],
+      assets: [{
+        uri: "file://diagram.png",
+        fileName: "diagram.png",
+        base64: "YWJj",
+      }, {
+        uri: "file://photo.jpg",
+        base64: "ZGVm",
+      }],
+      now: () => 42,
+    })).toEqual({
+      shouldSelectImages: true,
+      selectionLimit: 4,
+      attachments: [{
+        id: "42-0-file://diagram.png",
+        name: "diagram.png",
+        previewUri: "file://diagram.png",
+        dataUrl: "data:image/png;base64,YWJj",
+      }, {
+        id: "42-1-file://photo.jpg",
+        name: "image-42-2",
+        previewUri: "file://photo.jpg",
+        dataUrl: "data:image/jpeg;base64,ZGVm",
+      }],
+      alerts: [],
+    })
+    expect(createChatComposerRuntimeImageAttachmentSelectionPlan({
+      pendingImages: [
+        { dataUrl: "data:image/png;base64,YQ==" },
+        { dataUrl: "data:image/png;base64,Yg==" },
+        { dataUrl: "data:image/png;base64,Yw==" },
+        { dataUrl: "data:image/png;base64,ZA==" },
+      ],
+    })).toEqual({
+      shouldSelectImages: false,
+      selectionLimit: 0,
+      attachments: [],
+      alerts: [{
+        reason: "limitReached",
+        maxImages: 4,
+      }],
+    })
+    expect(createChatComposerRuntimeImageAttachmentSelectionPlan({
+      pendingImages: [],
+      assets: [{
+        uri: "file://missing.png",
+        fileName: "missing.png",
+      }, {
+        uri: "file://large.png",
+        fileName: "large.png",
+        base64: "YWJj",
+        fileSize: 5 * 1024 * 1024,
+      }, {
+        uri: "file://unknown",
+        fileName: "unknown",
+        base64: "YWJj",
+      }],
+      now: () => 7,
+    })).toEqual({
+      shouldSelectImages: true,
+      selectionLimit: 4,
+      attachments: [],
+      alerts: [{
+        reason: "missingData",
+        names: ["missing.png"],
+      }, {
+        reason: "selectionTooLarge",
+        names: ["large.png"],
+        maxBytes: 4 * 1024 * 1024,
+      }, {
+        reason: "unsupportedFormat",
+        names: ["unknown"],
+      }],
+    })
     expect(createChatRuntimeThemeSpinnerSource({
       isDark: true,
       darkSource: "dark-spinner",

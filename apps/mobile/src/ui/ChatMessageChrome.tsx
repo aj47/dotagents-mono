@@ -48,9 +48,9 @@ import {
   type ChatRuntimeMobileChromeSlots,
 } from './ChatRuntimeMobileStyles';
 import {
-  CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   applyChatMessageRuntimeAutoExpansionState,
   applyChatMessageRuntimeToolActivityGroupExpansionInheritance,
+  createChatComposerRuntimeImageAttachmentSelectionPlan,
   createChatComposerRuntimeImagePickerLaunchOptions,
   createChatComposerRuntimeDockMobileProps,
   createChatComposerRuntimeDockMobilePropsParts,
@@ -77,10 +77,7 @@ import {
   createChatMessageRuntimeModelMessages,
   createChatMessageRuntimeToolActivityGroups,
   getChatComposerQueueMobileActionState,
-  getChatComposerRuntimeBase64ImageBytes,
   getChatComposerRuntimeDraftMessageState,
-  getChatComposerRuntimeImageDataUrlBytes,
-  inferChatComposerRuntimeImageMimeType,
   computeChatMessageRuntimeTurnDurations,
   createChatMessageRuntimeRecoverableHistoryMessages,
   createChatMessageRuntimeResponseHistoryEvents,
@@ -313,9 +310,9 @@ import {
   type ChatRuntimeLoadingStateMobileRenderState,
   getChatImageAttachmentMobileAlertState,
   type ChatImageAttachmentMobileAlertInput,
-  type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileRenderState,
-  type ImageMimeTypeSource,
+  type ChatComposerRuntimeImagePickerAssetSource,
+  type ChatComposerRuntimeImageSelectionAttachment,
   type ChatRuntimeHomeQuickStartItemsMobileStateInput,
   type ChatRuntimeHomeQuickStartsMobilePropsParts,
   type ChatRuntimeHomeQuickStartsMobileRenderState,
@@ -528,10 +525,7 @@ export type ChatComposerTextEntryRef = TextInput;
 export type ChatComposerTextEntryKeyPressEvent = Parameters<NonNullable<ComponentProps<typeof TextInput>['onKeyPress']>>[0];
 type ChatComposerTextEntryChangeHandler = NonNullable<ComponentProps<typeof TextInput>['onChangeText']>;
 type ChatComposerTextEntryKeyPressHandler = NonNullable<ComponentProps<typeof TextInput>['onKeyPress']>;
-export type ChatComposerRuntimeImageAttachment = ChatImageAttachmentMessageInput & {
-  id: string;
-  previewUri: string;
-};
+export type ChatComposerRuntimeImageAttachment = ChatComposerRuntimeImageSelectionAttachment;
 export type ChatMessageScrollViewportRef = ScrollView;
 export type ChatMessageScrollEvent = Parameters<NonNullable<ComponentProps<typeof ScrollView>['onScroll']>>[0];
 
@@ -880,11 +874,7 @@ type ChatComposerRuntimeDraftState = {
   removePendingImage: (attachmentId: string) => void;
 };
 
-type ChatComposerRuntimeImagePickerAsset = ImageMimeTypeSource & {
-  uri: string;
-  base64?: string | null;
-  fileSize?: number | null;
-};
+type ChatComposerRuntimeImagePickerAsset = ChatComposerRuntimeImagePickerAssetSource;
 
 type ChatComposerRuntimeImagePickerResult = {
   canceled: boolean;
@@ -7830,113 +7820,30 @@ export function useChatComposerRuntimeImageAttachmentPickerState({
   }, [showAlert]);
 
   const handlePickImages = useCallback(async () => {
-    if (pendingImages.length >= CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages) {
-      showImageAttachmentAlert({
-        reason: 'limitReached',
-        maxImages: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages,
-      });
-      return;
-    }
-
-    const existingEmbeddedBytes = pendingImages.reduce(
-      (sum, image) => sum + getChatComposerRuntimeImageDataUrlBytes(image.dataUrl),
-      0
-    );
-    if (existingEmbeddedBytes >= CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes) {
-      showImageAttachmentAlert({
-        reason: 'budgetReached',
-        maxBytes: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes,
-      });
+    const preflightPlan = createChatComposerRuntimeImageAttachmentSelectionPlan({
+      pendingImages,
+    });
+    if (!preflightPlan.shouldSelectImages) {
+      preflightPlan.alerts.forEach(showImageAttachmentAlert);
       return;
     }
 
     try {
-      const slotsRemaining = CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxImages - pendingImages.length;
-      const result = await pickImages(slotsRemaining);
+      const result = await pickImages(preflightPlan.selectionLimit);
 
       if (result.canceled || !result.assets || result.assets.length === 0) return;
 
-      const selectedAssets = result.assets.slice(0, slotsRemaining);
-      const nextImages: ChatComposerRuntimeImageAttachment[] = [];
-      const missingBase64Names: string[] = [];
-      const oversizedImageNames: string[] = [];
-      const unknownMimeNames: string[] = [];
-      const budgetExceededNames: string[] = [];
-      let runningEmbeddedBytes = existingEmbeddedBytes;
-
-      selectedAssets.forEach((asset, index) => {
-        const displayName = asset.fileName || `Image ${index + 1}`;
-        if (!asset.base64) {
-          missingBase64Names.push(displayName);
-          return;
-        }
-
-        const inferredBytes = getChatComposerRuntimeBase64ImageBytes(asset.base64);
-        const fileSizeBytes = typeof asset.fileSize === 'number' && asset.fileSize > 0
-          ? asset.fileSize
-          : inferredBytes;
-        if (fileSizeBytes > CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes) {
-          oversizedImageNames.push(displayName);
-          return;
-        }
-
-        const mimeType = inferChatComposerRuntimeImageMimeType(asset);
-        if (!mimeType) {
-          unknownMimeNames.push(displayName);
-          return;
-        }
-
-        const dataUrl = `data:${mimeType};base64,${asset.base64}`;
-        const embeddedBytes = getChatComposerRuntimeImageDataUrlBytes(dataUrl) || inferredBytes;
-        if (runningEmbeddedBytes + embeddedBytes > CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes) {
-          budgetExceededNames.push(displayName);
-          return;
-        }
-        runningEmbeddedBytes += embeddedBytes;
-
-        const timestamp = now();
-        const fileName = asset.fileName || `image-${timestamp}-${index + 1}`;
-        nextImages.push({
-          id: `${timestamp}-${index}-${asset.uri}`,
-          name: fileName,
-          previewUri: asset.uri,
-          dataUrl,
-        });
+      const selectionPlan = createChatComposerRuntimeImageAttachmentSelectionPlan({
+        pendingImages,
+        assets: result.assets,
+        now,
       });
 
-      if (nextImages.length > 0) {
-        setPendingImages((prev) => [...prev, ...nextImages]);
+      if (selectionPlan.attachments.length > 0) {
+        setPendingImages((prev) => [...prev, ...selectionPlan.attachments]);
       }
 
-      if (missingBase64Names.length > 0) {
-        showImageAttachmentAlert({
-          reason: 'missingData',
-          names: missingBase64Names,
-        });
-      }
-
-      if (oversizedImageNames.length > 0) {
-        showImageAttachmentAlert({
-          reason: 'selectionTooLarge',
-          names: oversizedImageNames,
-          maxBytes: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxFileBytes,
-        });
-      }
-
-      if (unknownMimeNames.length > 0) {
-        showImageAttachmentAlert({
-          reason: 'unsupportedFormat',
-          names: unknownMimeNames,
-        });
-      }
-
-      if (budgetExceededNames.length > 0) {
-        showImageAttachmentAlert({
-          reason: 'budgetExceeded',
-          names: budgetExceededNames,
-          maxBytes: CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS.maxTotalEmbeddedBytes,
-        });
-      }
+      selectionPlan.alerts.forEach(showImageAttachmentAlert);
     } catch (error: unknown) {
       showImageAttachmentAlert({
         reason: 'pickerError',
