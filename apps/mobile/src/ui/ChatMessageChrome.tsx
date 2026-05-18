@@ -4478,7 +4478,7 @@ type ChatMessageConnectionBannerParts =
 type ChatMessageConnectionBannerTextPart<TStyle> = {
   props: {
     style: TStyle;
-    numberOfLines?: ChatRuntimeConnectionBannerMobileRenderState['surface']['subtitleNumberOfLines'];
+    numberOfLines?: TextProps['numberOfLines'];
   };
   text: string;
 };
@@ -4527,21 +4527,24 @@ type ChatMessageConnectionBannerBodyPart<TContent> = {
   content: TContent;
 };
 
-type ChatMessageConnectionBannerSpinnerProps =
-  ChatRuntimeConnectionBannerMobileRenderState['reconnecting']['spinner'] & {
-    style: ChatMessageConnectionBannerStyles['icon'];
-  };
+type ChatMessageConnectionBannerSpinnerProps = {
+  size: ComponentProps<typeof ActivityIndicator>['size'];
+  color: string;
+  style: ChatMessageConnectionBannerStyles['icon'];
+};
 
-type ChatMessageConnectionBannerIconProps =
-  ChatRuntimeConnectionBannerMobileRenderState['failed']['icon'] & {
-    style: ChatMessageConnectionBannerStyles['icon'];
-  };
+type ChatMessageConnectionBannerIconProps = {
+  name: IoniconName;
+  size: number;
+  color: string;
+  style: ChatMessageConnectionBannerStyles['icon'];
+};
 
 type ChatMessageConnectionBannerRetryButtonPart = {
   props: {
     style: ChatMessageConnectionBannerStyles['retryButton'];
     onPress?: (event: GestureResponderEvent) => void;
-    accessibilityRole: ChatRuntimeConnectionBannerMobileRenderState['failed']['retryButton']['accessibilityRole'];
+    accessibilityRole: AccessibilityRole;
     accessibilityLabel: string;
     activeOpacity: number;
   };
@@ -4596,20 +4599,20 @@ type ChatMessageConnectionBannerFailedContentProps = {
 };
 
 type ChatMessageConnectionBannerReconnectingPart = {
-  shouldRender: ChatRuntimeConnectionBannerMobileRenderState['reconnecting']['shouldRender'];
+  shouldRender: boolean;
   container: ChatMessageConnectionBannerContainerPart<
     ChatMessageConnectionBannerReconnectingContentProps,
     ChatMessageConnectionBannerStyles['reconnecting'],
-    ChatRuntimeConnectionBannerMobileRenderState['reconnecting']['accessibilityRole']
+    AccessibilityRole
   >;
 };
 
 type ChatMessageConnectionBannerFailedPart = {
-  shouldRender: ChatRuntimeConnectionBannerMobileRenderState['failed']['shouldRender'];
+  shouldRender: boolean;
   container: ChatMessageConnectionBannerContainerPart<
     ChatMessageConnectionBannerFailedContentProps,
     ChatMessageConnectionBannerStyles['failed'],
-    ChatRuntimeConnectionBannerMobileRenderState['failed']['accessibilityRole']
+    AccessibilityRole
   >;
 };
 
@@ -4624,9 +4627,7 @@ type ChatMessageConnectionBannerFailedProps = {
 type ChatMessageConnectionBannerContainerProps = {
   children: ReactNode;
   accessible: true;
-  accessibilityRole:
-    | ChatRuntimeConnectionBannerMobileRenderState['reconnecting']['accessibilityRole']
-    | ChatRuntimeConnectionBannerMobileRenderState['failed']['accessibilityRole'];
+  accessibilityRole: AccessibilityRole;
   accessibilityLabel: string;
   style: [
     ChatMessageConnectionBannerStyles['banner'],

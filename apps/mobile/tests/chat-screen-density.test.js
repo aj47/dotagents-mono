@@ -2842,6 +2842,18 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(connectionBannerTypes, /type ChatMessageConnectionBannerContainerPart<TContent, TStateStyle, TRole> =/);
   assert.match(connectionBannerTypes, /type ChatMessageConnectionBannerRetryButtonPart =/);
   assert.doesNotMatch(connectionBannerTypes, /ChatMessageConnectionBannerParts\['(?:reconnecting|failed)'\]/);
+  assert.doesNotMatch(connectionBannerTypes, /ChatRuntimeConnectionBannerMobileRenderState\['surface'\]\['subtitleNumberOfLines'\]/);
+  assert.doesNotMatch(connectionBannerTypes, /ChatRuntimeConnectionBannerMobileRenderState\['reconnecting'\]\['spinner'\]/);
+  assert.doesNotMatch(connectionBannerTypes, /ChatRuntimeConnectionBannerMobileRenderState\['failed'\]\['icon'\]/);
+  assert.doesNotMatch(connectionBannerTypes, /ChatRuntimeConnectionBannerMobileRenderState\['failed'\]\['retryButton'\]\['accessibilityRole'\]/);
+  assert.doesNotMatch(connectionBannerTypes, /ChatRuntimeConnectionBannerMobileRenderState\['(?:reconnecting|failed)'\]\['shouldRender'\]/);
+  assert.doesNotMatch(connectionBannerTypes, /ChatRuntimeConnectionBannerMobileRenderState\['(?:reconnecting|failed)'\]\['accessibilityRole'\]/);
+  assert.match(connectionBannerTypes, /numberOfLines\?: TextProps\['numberOfLines'\];/);
+  assert.match(connectionBannerTypes, /type ChatMessageConnectionBannerSpinnerProps = \{[\s\S]*?size: ComponentProps<typeof ActivityIndicator>\['size'\];[\s\S]*?color: string;[\s\S]*?style: ChatMessageConnectionBannerStyles\['icon'\];[\s\S]*?\};/);
+  assert.match(connectionBannerTypes, /type ChatMessageConnectionBannerIconProps = \{[\s\S]*?name: IoniconName;[\s\S]*?size: number;[\s\S]*?color: string;[\s\S]*?style: ChatMessageConnectionBannerStyles\['icon'\];[\s\S]*?\};/);
+  assert.match(connectionBannerTypes, /accessibilityRole: AccessibilityRole;/);
+  assert.match(connectionBannerTypes, /type ChatMessageConnectionBannerReconnectingPart = \{[\s\S]*?shouldRender: boolean;/);
+  assert.match(connectionBannerTypes, /type ChatMessageConnectionBannerFailedPart = \{[\s\S]*?shouldRender: boolean;/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConnectionBannerMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConnectionBannerMobilePropsParts/);
   const connectionBannerSource =
