@@ -2901,6 +2901,12 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeRetryStatusMobilePropsParts',
     'createChatRuntimeToolApprovalMobilePropsParts',
     'createChatRuntimeDelegationCardMobilePropsParts',
+    'createChatRuntimeToolActivityGroupToggleMobilePropsParts',
+    'createChatRuntimeToolActivityGroupFooterMobilePropsParts',
+    'createChatRuntimeToolActivityGroupBoundaryMobilePropsParts',
+    'createChatRuntimeToolExecutionCompactGroupMobilePropsParts',
+    'createChatRuntimeToolExecutionCompactRowMobilePropsParts',
+    'createChatRuntimeToolExecutionCompactListMobilePropsParts',
     'createChatRuntimeToolExecutionPanelShellMobilePropsParts',
     'createChatRuntimeConversationViewportMobilePropsParts',
     'createChatRuntimeStepSummaryCardMobilePropsParts',
@@ -4839,7 +4845,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
     chatMessageChromeSource.match(/export function ChatMessageToolExecutionCompactListContent[\s\S]*?export function ChatMessageToolExecutionCollapseControl/)?.[0] ?? '';
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCompactListMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactList\(\s+props: ChatMessageToolExecutionCompactListProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const compactListParts: ChatMessageToolExecutionCompactListParts =\s+createChatRuntimeToolExecutionCompactListMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const compactListParts = useMemo<ChatMessageToolExecutionCompactListParts>\(\s+\(\) => createChatRuntimeToolExecutionCompactListMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+rows,\s+onPress,\s+groupStyles,\s+rowStyles,\s+\}\),/);
   assert.doesNotMatch(chatMessageChromeSource, /const compactListContent = compactListParts\.group\.content;/);
   assert.match(chatMessageChromeSource, /if \(!compactListParts\.group\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactGroup\s+\{\.\.\.compactListParts\.group\.props\}/);
@@ -4863,8 +4869,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionCompactGroupParts\['/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCompactGroupMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactGroup\(\s+props: ChatMessageToolExecutionCompactGroupProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const compactGroupParts: ChatMessageToolExecutionCompactGroupParts =\s+createChatRuntimeToolExecutionCompactGroupMobilePropsParts\(props\);/);
-  assert.match(chatMessageChromeSource, /const \{ children \} = props;[\s\S]*?<ChatMessageToolExecutionCompactGroupPressable/);
+  assert.match(chatMessageChromeSource, /const \{ children, renderState, onPress, styles \} = props;/);
+  assert.match(chatMessageChromeSource, /const compactGroupParts = useMemo<ChatMessageToolExecutionCompactGroupParts>\(\s+\(\) => createChatRuntimeToolExecutionCompactGroupMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\),\s+\[onPress, renderState, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCompactGroupPressable\s+\{\.\.\.compactGroupParts\.container\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactGroupPressable[\s\S]*?<Pressable\s+\{\.\.\.props\}[\s\S]*?export function ChatMessageToolExecutionCompactRow\(/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactGroupPressable[\s\S]*?(onPress=\{onPress\}|accessibilityRole=\{accessibilityRole\}|accessibilityLabel=\{accessibilityLabel\}|accessibilityHint=\{accessibilityHint\}|accessibilityState=\{accessibilityState\}|aria-expanded=\{ariaExpanded\}|style=\{style\})[\s\S]*?export function ChatMessageToolExecutionCompactRow\(/);
@@ -4901,7 +4907,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCompactRowMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCompactRow\(\s+props: ChatMessageToolExecutionCompactRowProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const compactRowParts: ChatMessageToolExecutionCompactRowParts =\s+createChatRuntimeToolExecutionCompactRowMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const compactRowParts = useMemo<ChatMessageToolExecutionCompactRowParts>\(\s+\(\) => createChatRuntimeToolExecutionCompactRowMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\),\s+\[renderState, styles\],\s+\);/);
   assert.match(sessionPresentationSource, /container: \{\s+props: \{\s+style: styles\.line,\s+accessibilityLabel: renderState\.accessibilityLabel,/);
   assert.doesNotMatch(chatMessageChromeSource, /const compactRowContent = compactRowParts\.container\.content;/);
   assert.match(toolExecutionCompactRowSource, /<ChatMessageToolExecutionCompactRowContainer\s+\{\.\.\.compactRowParts\.container\.props\}/);
@@ -7442,7 +7448,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupBoundaryParts = ReturnType<typeof createChatRuntimeToolActivityGroupBoundaryMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupBoundaryMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupBoundary\(\s+props: ChatMessageToolActivityGroupBoundaryProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const boundaryParts: ChatMessageToolActivityGroupBoundaryParts =\s+createChatRuntimeToolActivityGroupBoundaryMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const boundaryParts = useMemo<ChatMessageToolActivityGroupBoundaryParts>\(\s+\(\) => createChatRuntimeToolActivityGroupBoundaryMobilePropsParts\(\{\s+renderState,\s+kind,\s+onPress,\s+styles,\s+\}\),\s+\[kind, onPress, renderState, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /if \(boundaryParts\.footer\.shouldRender\) \{[\s\S]*?<ChatMessageToolActivityGroupFooter\s+\{\.\.\.boundaryParts\.footer\.props\}/);
   assert.match(chatMessageChromeSource, /if \(!boundaryParts\.toggle\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupToggle\s+\{\.\.\.boundaryParts\.toggle\.props\}/);
@@ -7501,9 +7507,9 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupToggleMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupFooterMobilePropsParts/);
   assert.match(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupToggle\(\s+props: ChatMessageToolActivityGroupToggleProps,\s+\)/);
-  assert.match(toolActivityGroupToggleComponentSource, /const toggleParts: ChatMessageToolActivityGroupToggleParts =\s+createChatRuntimeToolActivityGroupToggleMobilePropsParts\(props\);/);
+  assert.match(toolActivityGroupToggleComponentSource, /const toggleParts = useMemo<ChatMessageToolActivityGroupToggleParts>\(\s+\(\) => createChatRuntimeToolActivityGroupToggleMobilePropsParts\(\{\s+renderState,\s+headerKind,\s+onPress,\s+styles,\s+\}\),\s+\[headerKind, onPress, renderState, styles\],\s+\);/);
   assert.match(toolActivityGroupFooterComponentSource, /export function ChatMessageToolActivityGroupFooter\(\s+props: ChatMessageToolActivityGroupFooterProps,\s+\)/);
-  assert.match(toolActivityGroupFooterComponentSource, /const footerParts: ChatMessageToolActivityGroupFooterParts =\s+createChatRuntimeToolActivityGroupFooterMobilePropsParts\(props\);/);
+  assert.match(toolActivityGroupFooterComponentSource, /const footerParts = useMemo<ChatMessageToolActivityGroupFooterParts>\(\s+\(\) => createChatRuntimeToolActivityGroupFooterMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\),\s+\[onPress, renderState, styles\],\s+\);/);
   assert.match(sessionPresentationSource, /const headerState = headerKind === "collapsed"[\s\S]*?\? renderState\.collapsedHeader[\s\S]*?: renderState\.expandedHeader/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /const \{ headerState, summary \}/);
   assert.doesNotMatch(chatMessageChromeSource, /const headerState = headerKind === 'collapsed'/);

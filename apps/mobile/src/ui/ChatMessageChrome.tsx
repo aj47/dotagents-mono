@@ -12002,8 +12002,16 @@ export function ChatMessageDelegationCard(props: ChatMessageDelegationCardProps)
 export function ChatMessageToolActivityGroupToggle(
   props: ChatMessageToolActivityGroupToggleProps,
 ) {
-  const toggleParts: ChatMessageToolActivityGroupToggleParts =
-    createChatRuntimeToolActivityGroupToggleMobilePropsParts(props);
+  const { renderState, headerKind, onPress, styles } = props;
+  const toggleParts = useMemo<ChatMessageToolActivityGroupToggleParts>(
+    () => createChatRuntimeToolActivityGroupToggleMobilePropsParts({
+      renderState,
+      headerKind,
+      onPress,
+      styles,
+    }),
+    [headerKind, onPress, renderState, styles],
+  );
 
   return (
     <Pressable
@@ -12100,8 +12108,15 @@ export function ChatMessageToolActivityGroupPreviewLine({
 export function ChatMessageToolActivityGroupFooter(
   props: ChatMessageToolActivityGroupFooterProps,
 ) {
-  const footerParts: ChatMessageToolActivityGroupFooterParts =
-    createChatRuntimeToolActivityGroupFooterMobilePropsParts(props);
+  const { renderState, onPress, styles } = props;
+  const footerParts = useMemo<ChatMessageToolActivityGroupFooterParts>(
+    () => createChatRuntimeToolActivityGroupFooterMobilePropsParts({
+      renderState,
+      onPress,
+      styles,
+    }),
+    [onPress, renderState, styles],
+  );
 
   return (
     <Pressable
@@ -12144,8 +12159,16 @@ export function ChatMessageToolActivityGroupFooterLabel({
 export function ChatMessageToolActivityGroupBoundary(
   props: ChatMessageToolActivityGroupBoundaryProps,
 ) {
-  const boundaryParts: ChatMessageToolActivityGroupBoundaryParts =
-    createChatRuntimeToolActivityGroupBoundaryMobilePropsParts(props);
+  const { renderState, kind, onPress, styles } = props;
+  const boundaryParts = useMemo<ChatMessageToolActivityGroupBoundaryParts>(
+    () => createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
+      renderState,
+      kind,
+      onPress,
+      styles,
+    }),
+    [kind, onPress, renderState, styles],
+  );
 
   if (boundaryParts.footer.shouldRender) {
     return (
@@ -12167,9 +12190,15 @@ export function ChatMessageToolActivityGroupBoundary(
 export function ChatMessageToolExecutionCompactGroup(
   props: ChatMessageToolExecutionCompactGroupProps,
 ) {
-  const compactGroupParts: ChatMessageToolExecutionCompactGroupParts =
-    createChatRuntimeToolExecutionCompactGroupMobilePropsParts(props);
-  const { children } = props;
+  const { children, renderState, onPress, styles } = props;
+  const compactGroupParts = useMemo<ChatMessageToolExecutionCompactGroupParts>(
+    () => createChatRuntimeToolExecutionCompactGroupMobilePropsParts({
+      renderState,
+      onPress,
+      styles,
+    }),
+    [onPress, renderState, styles],
+  );
 
   return (
     <ChatMessageToolExecutionCompactGroupPressable
@@ -12194,8 +12223,14 @@ export function ChatMessageToolExecutionCompactGroupPressable({
 export function ChatMessageToolExecutionCompactRow(
   props: ChatMessageToolExecutionCompactRowProps,
 ) {
-  const compactRowParts: ChatMessageToolExecutionCompactRowParts =
-    createChatRuntimeToolExecutionCompactRowMobilePropsParts(props);
+  const { renderState, styles } = props;
+  const compactRowParts = useMemo<ChatMessageToolExecutionCompactRowParts>(
+    () => createChatRuntimeToolExecutionCompactRowMobilePropsParts({
+      renderState,
+      styles,
+    }),
+    [renderState, styles],
+  );
 
   return (
     <ChatMessageToolExecutionCompactRowContainer
@@ -12343,8 +12378,25 @@ export function ChatMessageToolExecutionCompactRowSpinner(props: ChatMessageTool
 export function ChatMessageToolExecutionCompactList(
   props: ChatMessageToolExecutionCompactListProps,
 ) {
-  const compactListParts: ChatMessageToolExecutionCompactListParts =
-    createChatRuntimeToolExecutionCompactListMobilePropsParts(props);
+  const {
+    shouldRender,
+    renderState,
+    rows,
+    onPress,
+    groupStyles,
+    rowStyles,
+  } = props;
+  const compactListParts = useMemo<ChatMessageToolExecutionCompactListParts>(
+    () => createChatRuntimeToolExecutionCompactListMobilePropsParts({
+      shouldRender,
+      renderState,
+      rows,
+      onPress,
+      groupStyles,
+      rowStyles,
+    }),
+    [groupStyles, onPress, renderState, rowStyles, rows, shouldRender],
+  );
 
   if (!compactListParts.group.shouldRender) return null;
 
