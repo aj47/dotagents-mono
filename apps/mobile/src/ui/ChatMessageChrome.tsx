@@ -371,6 +371,7 @@ import {
   type ChatRuntimeConnectionBannerMobilePropsPartsInput,
   type ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput,
   type ChatRuntimeRetryStatusMobilePropsParts,
+  type ChatRuntimeRetryStatusMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCallDetailMobilePropsParts,
   type ChatRuntimeToolExecutionCallDetailMobileStyleSlots as SharedChatMessageToolExecutionCallDetailStyleSlots,
   type ChatRuntimeToolExecutionCallListMobilePropsParts,
@@ -2056,10 +2057,11 @@ type ChatMessageRetryStatusStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageRetryStatusProps = {
-  renderState: ChatRuntimeRetryStatusMobileRenderState;
-  styles: ChatMessageRetryStatusStyles;
-};
+type ChatMessageRetryStatusProps =
+  ChatRuntimeRetryStatusMobilePropsPartsInput<
+    ChatRuntimeRetryStatusMobileRenderState,
+    ChatMessageRetryStatusStyles
+  >;
 
 type ChatMessageRetryStatusPropsInput = ChatRuntimeConversationRetryStatusMobileState;
 

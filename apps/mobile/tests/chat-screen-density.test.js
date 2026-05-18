@@ -1064,8 +1064,12 @@ test('shows desktop-style retry status updates from shared runtime presentation'
     chatMessageChromeSource.match(/export function ChatMessageRetryStatus[\s\S]*?export function ChatMessageToolApproval/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeRetryStatusMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeRetryStatusMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeRetryStatusMobilePropsPartsInput,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusProps =\s+ChatRuntimeRetryStatusMobilePropsPartsInput<\s+ChatRuntimeRetryStatusMobileRenderState,[\s\S]*?ChatMessageRetryStatusStyles\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusProps = \{[\s\S]*?renderState: ChatRuntimeRetryStatusMobileRenderState;[\s\S]*?styles: ChatMessageRetryStatusStyles;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusParts =\s+ChatRuntimeRetryStatusMobilePropsParts<[\s\S]*?ChatRuntimeRetryStatusMobileRenderState,[\s\S]*?ChatMessageRetryStatusStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusParts = ReturnType<typeof createChatRuntimeRetryStatusMobilePropsParts/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeRetryStatusMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeRetryStatusMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const retryStatusParts: ChatMessageRetryStatusParts =\s+createChatRuntimeRetryStatusMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const retryStatusCard = retryStatusParts\.card;/);
