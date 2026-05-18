@@ -7157,8 +7157,14 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(sessionPresentationSource, /export interface ChatRuntimeToolActivityGroupToggleMobileStyleSlots<\s+TContainerStyle = unknown,\s+TPressedStyle = unknown,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolActivityGroupToggleMobileStyleSlots as SharedChatMessageToolActivityGroupToggleStyleSlots,/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupToggleStyles =\s+SharedChatMessageToolActivityGroupToggleStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupIconProps = ComponentProps<typeof Ionicons>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupTextPart = \{\s+props: \{\s+style: StyleProp<TextStyle>;\s+numberOfLines\?: TextProps\['numberOfLines'\];\s+ellipsizeMode\?: TextProps\['ellipsizeMode'\];\s+\};\s+text: ReactNode;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupToggleHeaderContentProps = \{[\s\S]*?leadingIcon: ChatMessageToolActivityGroupIconPart;[\s\S]*?countBadge: ChatMessageToolActivityGroupCountBadgePart;[\s\S]*?preview: \{\s+props: ChatMessageToolActivityGroupPreviewLineProps;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupToggleHeaderRowProps = \{\s+props: \{\s+style: StyleProp<ViewStyle>;\s+\};\s+content: ChatMessageToolActivityGroupToggleHeaderContentProps;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupFooterContentProps = \{\s+icon: ChatMessageToolActivityGroupIconPart;\s+label: \{\s+props: ChatMessageToolActivityGroupFooterLabelProps;\s+\};\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupToggleStyles = \{\s+container: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupToggleParts = ReturnType<typeof createChatRuntimeToolActivityGroupToggleMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolActivityGroupToggleParts\['/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolActivityGroupFooterMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolActivityGroupFooterMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupFooterProps =\s+ChatRuntimeToolActivityGroupFooterMobilePropsPartsInput<\s+ToolActivityGroupMobileRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ChatMessageToolActivityGroupFooterStyles\s+>;/);
@@ -7170,6 +7176,7 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(chatMessageChromeSource, /type ChatMessageToolActivityGroupFooterStyles =\s+SharedChatMessageToolActivityGroupFooterStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupFooterStyles = \{\s+button: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupFooterParts = ReturnType<typeof createChatRuntimeToolActivityGroupFooterMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolActivityGroupFooterParts\['/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupToggleMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupFooterMobilePropsParts/);
   assert.match(toolActivityGroupToggleComponentSource, /const toggleParts: ChatMessageToolActivityGroupToggleParts =\s+createChatRuntimeToolActivityGroupToggleMobilePropsParts\(\{\s+renderState,\s+headerKind,\s+onPress,\s+styles,\s+\}\);/);

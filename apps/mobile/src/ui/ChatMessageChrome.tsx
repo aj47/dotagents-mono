@@ -2968,21 +2968,58 @@ type ChatMessageToolActivityGroupToggleParts =
     ChatMessageToolActivityGroupToggleStyles
   >;
 
-type ChatMessageToolActivityGroupToggleHeaderRowProps =
-  ChatMessageToolActivityGroupToggleParts['headerRow'];
+type ChatMessageToolActivityGroupIconProps = ComponentProps<typeof Ionicons>;
 
-type ChatMessageToolActivityGroupToggleHeaderContentProps =
-  ChatMessageToolActivityGroupToggleParts['headerRow']['content'];
-
-type ChatMessageToolActivityGroupOptionalCountBadgeProps = {
-  countBadge: ChatMessageToolActivityGroupToggleParts['headerRow']['content']['countBadge'];
+type ChatMessageToolActivityGroupTextPart = {
+  props: {
+    style: StyleProp<TextStyle>;
+    numberOfLines?: TextProps['numberOfLines'];
+    ellipsizeMode?: TextProps['ellipsizeMode'];
+  };
+  text: ReactNode;
 };
 
-type ChatMessageToolActivityGroupCountBadgeProps =
-  ChatMessageToolActivityGroupToggleParts['headerRow']['content']['countBadge']['props'];
+type ChatMessageToolActivityGroupIconPart = {
+  props: ChatMessageToolActivityGroupIconProps;
+};
+
+type ChatMessageToolActivityGroupCountBadgePart = {
+  shouldRender: boolean;
+  props: ChatMessageToolActivityGroupCountBadgeProps;
+};
+
+type ChatMessageToolActivityGroupToggleHeaderContentProps = {
+  leadingIcon: ChatMessageToolActivityGroupIconPart;
+  countBadge: ChatMessageToolActivityGroupCountBadgePart;
+  preview: {
+    props: ChatMessageToolActivityGroupPreviewLineProps;
+  };
+  toggleIcon: ChatMessageToolActivityGroupIconPart;
+};
+
+type ChatMessageToolActivityGroupToggleHeaderRowProps = {
+  props: {
+    style: StyleProp<ViewStyle>;
+  };
+  content: ChatMessageToolActivityGroupToggleHeaderContentProps;
+};
+
+type ChatMessageToolActivityGroupOptionalCountBadgeProps = {
+  countBadge: ChatMessageToolActivityGroupCountBadgePart;
+};
+
+type ChatMessageToolActivityGroupCountBadgeProps = {
+  container: {
+    props: {
+      accessibilityLabel: string;
+      style: StyleProp<ViewStyle>;
+    };
+  };
+  label: ChatMessageToolActivityGroupTextPart;
+};
 
 type ChatMessageToolActivityGroupPreviewLineProps =
-  ChatMessageToolActivityGroupToggleParts['headerRow']['content']['preview']['props'];
+  ChatMessageToolActivityGroupTextPart;
 
 type ChatMessageToolActivityGroupFooterStyles =
   SharedChatMessageToolActivityGroupFooterStyleSlots<
@@ -3005,16 +3042,15 @@ type ChatMessageToolActivityGroupFooterParts =
     ChatMessageToolActivityGroupFooterStyles
   >;
 
-type ChatMessageToolActivityGroupFooterContentProps =
-  ChatMessageToolActivityGroupFooterParts['button']['content'];
-
-type ChatMessageToolActivityGroupIconProps =
-  | ChatMessageToolActivityGroupToggleParts['headerRow']['content']['leadingIcon']['props']
-  | ChatMessageToolActivityGroupToggleParts['headerRow']['content']['toggleIcon']['props']
-  | ChatMessageToolActivityGroupFooterParts['button']['content']['icon']['props'];
+type ChatMessageToolActivityGroupFooterContentProps = {
+  icon: ChatMessageToolActivityGroupIconPart;
+  label: {
+    props: ChatMessageToolActivityGroupFooterLabelProps;
+  };
+};
 
 type ChatMessageToolActivityGroupFooterLabelProps =
-  ChatMessageToolActivityGroupFooterParts['button']['content']['label']['props'];
+  ChatMessageToolActivityGroupTextPart;
 
 type ChatMessageToolActivityGroupBoundaryKind = ChatRuntimeToolActivityGroupBoundaryMobileKind;
 
