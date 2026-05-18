@@ -16083,19 +16083,9 @@ export function ChatComposerTextEntryVoiceStatusLiveRegion({
   );
 }
 
-export function ChatMessageInlineActivity({
-  renderState,
-  spinnerSource,
-  style,
-  spinnerStyle,
-}: ChatMessageInlineActivityProps) {
+export function ChatMessageInlineActivity(props: ChatMessageInlineActivityProps) {
   const inlineActivityParts: ChatMessageInlineActivityParts =
-    createChatRuntimeInlineActivityMobilePropsParts({
-      renderState,
-      spinnerSource,
-      style,
-      spinnerStyle,
-    });
+    createChatRuntimeInlineActivityMobilePropsParts(props);
 
   if (!inlineActivityParts.container.shouldRender) return null;
 
