@@ -6891,6 +6891,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatMessageChromeSource, /const handlePauseMessageQueue = useCallback\(\(\) => \{[\s\S]*?queue\.pauseQueue\(currentConversationId\);/);
   assert.match(chatMessageChromeSource, /const handleResumeMessageQueue = useCallback\(\(\) => \{[\s\S]*?queue\.resumeQueue\(currentConversationId\);/);
   assert.match(chatMessageChromeSource, /const handleRetryQueuedMessage = useCallback\(\(messageId: string\) => \{[\s\S]*?queue\.resetToPending\(currentConversationId, messageId\);[\s\S]*?handleProcessNextQueuedMessage\(\);/);
+  assert.match(chatMessageChromeSource, /const queuePanelState = useMemo<ChatMessageRuntimeQueuePanelState<TQueuedMessage>>\(\s+\(\) => \(\{\s+queuedMessages,\s+isMessageQueuePaused,\s+nextQueuedMessage,\s+handleProcessNextQueuedMessage,\s+handlePauseMessageQueue,\s+handleResumeMessageQueue,\s+handleRemoveQueuedMessage,\s+handleUpdateQueuedMessage,\s+handleRetryQueuedMessage,\s+handleClearQueuedMessages,\s+\}\),/);
+  assert.match(chatMessageChromeSource, /return queuePanelState;/);
   assert.match(screenSource, /scheduleChatMessageRuntimeNextQueuedMessage\(\{\s+currentConversationId,\s+queue: messageQueue,\s+canProcessQueue: messageQueueEnabled,/);
   assert.match(chatMessageChromeSource, /if \(!canProcessQueue\) return;[\s\S]*?if \(queue\.isQueuePaused\(currentConversationId\)\) return;/);
   assert.match(screenSource, /queuePanelEnabled: messageQueueEnabled,\s+queuePanelConversationId: currentConversationId,\s+queuedMessages,/);
@@ -8572,9 +8574,13 @@ test('keeps the copy action inline with desktop-style message controls', () => {
   assert.doesNotMatch(screenSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
   assert.match(screenSource, /const \{\s+copiedMessageIndex,\s+clearCopiedMessageFeedback,\s+showCopiedMessageFeedback,\s+\} = useChatMessageCopyFeedbackState\(\);/);
   assert.match(chatMessageChromeSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\);/);
+  assert.match(chatMessageChromeSource, /const copyFeedbackState = useMemo\(\s+\(\) => \(\{\s+copiedMessageIndex,\s+clearCopiedMessageFeedback,\s+showCopiedMessageFeedback,\s+\}\),\s+\[clearCopiedMessageFeedback, copiedMessageIndex, showCopiedMessageFeedback\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return copyFeedbackState;/);
   assert.match(screenSource, /const \{\s+handleCopyMessage,\s+handleCopyToolPayload,\s+\} = useChatMessageRuntimeClipboardChromeActionsState\(\{\s+showCopiedMessageFeedback,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeClipboardActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeClipboardChromeActionsState/);
+  assert.match(chatMessageChromeSource, /const clipboardActionsState = useMemo<ChatMessageRuntimeClipboardActionsState>\(\s+\(\) => \(\{\s+handleCopyMessage,\s+handleCopyToolPayload,\s+\}\),\s+\[handleCopyMessage, handleCopyToolPayload\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return clipboardActionsState;/);
   assert.match(chatMessageChromeSource, /copyText: Clipboard\.setStringAsync,/);
   assert.match(chatMessageChromeSource, /showAlert: Alert\.alert,/);
   assert.match(chatMessageChromeSource, /const handleCopyMessage = useCallback\(async \(messageIndex: number, content: string\) => \{/);

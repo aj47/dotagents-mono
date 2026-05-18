@@ -9985,18 +9985,34 @@ export function useChatMessageRuntimeQueuePanelState<
     queue.clearQueue(currentConversationId);
   }, [currentConversationId, queue]);
 
-  return {
-    queuedMessages,
-    isMessageQueuePaused,
-    nextQueuedMessage,
-    handleProcessNextQueuedMessage,
-    handlePauseMessageQueue,
-    handleResumeMessageQueue,
-    handleRemoveQueuedMessage,
-    handleUpdateQueuedMessage,
-    handleRetryQueuedMessage,
-    handleClearQueuedMessages,
-  };
+  const queuePanelState = useMemo<ChatMessageRuntimeQueuePanelState<TQueuedMessage>>(
+    () => ({
+      queuedMessages,
+      isMessageQueuePaused,
+      nextQueuedMessage,
+      handleProcessNextQueuedMessage,
+      handlePauseMessageQueue,
+      handleResumeMessageQueue,
+      handleRemoveQueuedMessage,
+      handleUpdateQueuedMessage,
+      handleRetryQueuedMessage,
+      handleClearQueuedMessages,
+    }),
+    [
+      handleClearQueuedMessages,
+      handlePauseMessageQueue,
+      handleProcessNextQueuedMessage,
+      handleRemoveQueuedMessage,
+      handleResumeMessageQueue,
+      handleRetryQueuedMessage,
+      handleUpdateQueuedMessage,
+      isMessageQueuePaused,
+      nextQueuedMessage,
+      queuedMessages,
+    ],
+  );
+
+  return queuePanelState;
 }
 
 export function useChatMessageCopyFeedbackState(
@@ -10031,11 +10047,16 @@ export function useChatMessageCopyFeedbackState(
     }, feedbackResetDelayMs);
   }, [feedbackResetDelayMs]);
 
-  return {
-    copiedMessageIndex,
-    clearCopiedMessageFeedback,
-    showCopiedMessageFeedback,
-  };
+  const copyFeedbackState = useMemo(
+    () => ({
+      copiedMessageIndex,
+      clearCopiedMessageFeedback,
+      showCopiedMessageFeedback,
+    }),
+    [clearCopiedMessageFeedback, copiedMessageIndex, showCopiedMessageFeedback],
+  );
+
+  return copyFeedbackState;
 }
 
 export function useChatMessageRuntimeClipboardActionsState({
@@ -10068,10 +10089,15 @@ export function useChatMessageRuntimeClipboardActionsState({
     }
   }, [copyText, showAlert]);
 
-  return {
-    handleCopyMessage,
-    handleCopyToolPayload,
-  };
+  const clipboardActionsState = useMemo<ChatMessageRuntimeClipboardActionsState>(
+    () => ({
+      handleCopyMessage,
+      handleCopyToolPayload,
+    }),
+    [handleCopyMessage, handleCopyToolPayload],
+  );
+
+  return clipboardActionsState;
 }
 
 export function useChatMessageRuntimeClipboardChromeActionsState(
