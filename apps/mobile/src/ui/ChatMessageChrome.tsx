@@ -12770,21 +12770,33 @@ export function ChatMessageToolExecutionPanelContent({
   expandedGroup,
   children,
 }: ChatMessageToolExecutionPanelContentProps) {
-  if (!shouldRender) return null;
-
-  const panelShellParts: ChatMessageToolExecutionPanelShellParts =
-    createChatRuntimeToolExecutionPanelShellMobilePropsParts({
-      compactList: (
-        <ChatMessageToolExecutionCompactList
-          {...compactList.props}
-        />
-      ),
-      expandedGroup: expandedGroup.shouldRender ? (
+  const compactListElement = useMemo<ReactNode>(
+    () => (
+      <ChatMessageToolExecutionCompactList
+        {...compactList.props}
+      />
+    ),
+    [compactList.props],
+  );
+  const expandedGroupElement = useMemo<ReactNode>(
+    () => (
+      expandedGroup.shouldRender ? (
         <ChatMessageToolExecutionExpandedGroup {...expandedGroup.props}>
           {children}
         </ChatMessageToolExecutionExpandedGroup>
-      ) : null,
-    });
+      ) : null
+    ),
+    [children, expandedGroup.props, expandedGroup.shouldRender],
+  );
+  const panelShellParts = useMemo<ChatMessageToolExecutionPanelShellParts>(
+    () => createChatRuntimeToolExecutionPanelShellMobilePropsParts({
+      compactList: compactListElement,
+      expandedGroup: expandedGroupElement,
+    }),
+    [compactListElement, expandedGroupElement],
+  );
+
+  if (!shouldRender) return null;
 
   return (
     <ChatMessageToolExecutionPanelShellContent

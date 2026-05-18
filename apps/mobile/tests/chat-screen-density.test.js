@@ -2980,7 +2980,10 @@ test('limits mobile props part object literals to composition boundaries', () =>
   ]);
   assert.doesNotMatch(chatMessageChromeSource, /\bcreate[A-Za-z0-9]+MobilePropsParts<[^;]*>\(\{/);
   assert.match(chatMessageChromeSource, /const headerParts: ChatRuntimeNavigationHeaderMobileOptionParts =\s+createChatRuntimeNavigationHeaderOptionsMobilePropsParts\(\{\s+\.\.\.headerOptionParts,\s+styles,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const panelShellParts: ChatMessageToolExecutionPanelShellParts =\s+createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{\s+compactList: \(\s+<ChatMessageToolExecutionCompactList\s+\{\.\.\.compactList\.props\}\s+\/>\s+\),\s+expandedGroup: expandedGroup\.shouldRender \? \(\s+<ChatMessageToolExecutionExpandedGroup \{\.\.\.expandedGroup\.props\}>[\s\S]*?\{children\}[\s\S]*?<\/ChatMessageToolExecutionExpandedGroup>\s+\) : null,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const compactListElement = useMemo<ReactNode>\(\s+\(\) => \(\s+<ChatMessageToolExecutionCompactList\s+\{\.\.\.compactList\.props\}\s+\/>\s+\),\s+\[compactList\.props\],\s+\);/);
+  assert.match(chatMessageChromeSource, /const expandedGroupElement = useMemo<ReactNode>\(\s+\(\) => \(\s+expandedGroup\.shouldRender \? \(\s+<ChatMessageToolExecutionExpandedGroup \{\.\.\.expandedGroup\.props\}>[\s\S]*?\{children\}[\s\S]*?<\/ChatMessageToolExecutionExpandedGroup>\s+\) : null\s+\),\s+\[children, expandedGroup\.props, expandedGroup\.shouldRender\],\s+\);/);
+  assert.match(chatMessageChromeSource, /const panelShellParts = useMemo<ChatMessageToolExecutionPanelShellParts>\(\s+\(\) => createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{\s+compactList: compactListElement,\s+expandedGroup: expandedGroupElement,\s+\}\),\s+\[compactListElement, expandedGroupElement\],\s+\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /const panelShellParts: ChatMessageToolExecutionPanelShellParts =\s+createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{/);
   assert.match(chatMessageChromeSource, /const viewportParts = useMemo<ChatMessageRuntimeViewportParts<TPrompt, TTask>>\(\s+\(\) => createChatRuntimeConversationViewportMobilePropsParts\(\{\s+loadingState,\s+homeQuickStarts,\s+historyBanner,\s+stepSummary,\s+debugPanels,\s+styles,\s+\}\),\s+\[debugPanels, historyBanner, homeQuickStarts, loadingState, stepSummary, styles\],\s+\);/);
 });
 
@@ -4873,7 +4876,9 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionPanelShellParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const panelContent = panelParts\.content;/);
   assert.match(toolExecutionPanelSource, /<ChatMessageToolExecutionPanelContent\s+\{\.\.\.panelParts\.content\}/);
-  assert.match(toolExecutionPanelContentSource, /const panelShellParts: ChatMessageToolExecutionPanelShellParts =\s+createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{\s+compactList: \([\s\S]*?<ChatMessageToolExecutionCompactList[\s\S]*?\{\.\.\.compactList\.props\}[\s\S]*?expandedGroup: expandedGroup\.shouldRender \? \([\s\S]*?<ChatMessageToolExecutionExpandedGroup \{\.\.\.expandedGroup\.props\}>/);
+  assert.match(toolExecutionPanelContentSource, /const compactListElement = useMemo<ReactNode>\(\s+\(\) => \(\s+<ChatMessageToolExecutionCompactList\s+\{\.\.\.compactList\.props\}\s+\/>\s+\),\s+\[compactList\.props\],\s+\);/);
+  assert.match(toolExecutionPanelContentSource, /const expandedGroupElement = useMemo<ReactNode>\(\s+\(\) => \(\s+expandedGroup\.shouldRender \? \(\s+<ChatMessageToolExecutionExpandedGroup \{\.\.\.expandedGroup\.props\}>[\s\S]*?\{children\}[\s\S]*?<\/ChatMessageToolExecutionExpandedGroup>\s+\) : null\s+\),\s+\[children, expandedGroup\.props, expandedGroup\.shouldRender\],\s+\);/);
+  assert.match(toolExecutionPanelContentSource, /const panelShellParts = useMemo<ChatMessageToolExecutionPanelShellParts>\(\s+\(\) => createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{\s+compactList: compactListElement,\s+expandedGroup: expandedGroupElement,\s+\}\),\s+\[compactListElement, expandedGroupElement\],\s+\);/);
   assert.doesNotMatch(chatMessageChromeSource, /const panelShellContent = panelShellParts\.content;/);
   assert.match(toolExecutionPanelContentSource, /<ChatMessageToolExecutionPanelShellContent\s+\{\.\.\.panelShellParts\.content\}/);
   assert.match(sessionPresentationSource, /content: \{\s+shouldRender,\s+compactList: \{\s+props: \{\s+\.\.\.compact,\s+shouldRender: shouldRender && !isExpanded,/);
