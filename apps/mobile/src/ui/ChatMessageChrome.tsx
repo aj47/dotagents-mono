@@ -12417,18 +12417,12 @@ export function ChatMessageToolActivityGroupBoundary(
   );
 }
 
-export function ChatMessageToolExecutionCompactGroup({
-  renderState,
-  onPress,
-  styles,
-  children,
-}: ChatMessageToolExecutionCompactGroupProps) {
+export function ChatMessageToolExecutionCompactGroup(
+  props: ChatMessageToolExecutionCompactGroupProps,
+) {
   const compactGroupParts: ChatMessageToolExecutionCompactGroupParts =
-    createChatRuntimeToolExecutionCompactGroupMobilePropsParts({
-      renderState,
-      onPress,
-      styles,
-    });
+    createChatRuntimeToolExecutionCompactGroupMobilePropsParts(props);
+  const { children } = props;
 
   return (
     <ChatMessageToolExecutionCompactGroupPressable
@@ -12450,15 +12444,11 @@ export function ChatMessageToolExecutionCompactGroupPressable({
   );
 }
 
-export function ChatMessageToolExecutionCompactRow({
-  renderState,
-  styles,
-}: ChatMessageToolExecutionCompactRowProps) {
+export function ChatMessageToolExecutionCompactRow(
+  props: ChatMessageToolExecutionCompactRowProps,
+) {
   const compactRowParts: ChatMessageToolExecutionCompactRowParts =
-    createChatRuntimeToolExecutionCompactRowMobilePropsParts({
-      renderState,
-      styles,
-    });
+    createChatRuntimeToolExecutionCompactRowMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionCompactRowContainer
@@ -12603,23 +12593,11 @@ export function ChatMessageToolExecutionCompactRowSpinner(props: ChatMessageTool
   );
 }
 
-export function ChatMessageToolExecutionCompactList({
-  shouldRender,
-  renderState,
-  rows,
-  onPress,
-  groupStyles,
-  rowStyles,
-}: ChatMessageToolExecutionCompactListProps) {
+export function ChatMessageToolExecutionCompactList(
+  props: ChatMessageToolExecutionCompactListProps,
+) {
   const compactListParts: ChatMessageToolExecutionCompactListParts =
-    createChatRuntimeToolExecutionCompactListMobilePropsParts({
-      shouldRender,
-      renderState,
-      rows,
-      onPress,
-      groupStyles,
-      rowStyles,
-    });
+    createChatRuntimeToolExecutionCompactListMobilePropsParts(props);
 
   if (!compactListParts.group.shouldRender) return null;
 
@@ -12649,17 +12627,11 @@ export function ChatMessageToolExecutionCompactListContent({
   );
 }
 
-export function ChatMessageToolExecutionCollapseControl({
-  renderState,
-  onPress,
-  styles,
-}: ChatMessageToolExecutionCollapseControlProps) {
+export function ChatMessageToolExecutionCollapseControl(
+  props: ChatMessageToolExecutionCollapseControlProps,
+) {
   const collapseControlParts: ChatMessageToolExecutionCollapseControlParts =
-    createChatRuntimeToolExecutionCollapseControlMobilePropsParts({
-      renderState,
-      onPress,
-      styles,
-    });
+    createChatRuntimeToolExecutionCollapseControlMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionCollapseControlPressable
