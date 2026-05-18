@@ -1023,7 +1023,7 @@ test('shows desktop-style retry status updates from shared runtime presentation'
   assert.match(chatMessageChromeSource, /type ChatMessageRetryStatusParts =\s+ChatRuntimeRetryStatusMobilePropsParts<[\s\S]*?ChatRuntimeRetryStatusMobileRenderState,[\s\S]*?ChatMessageRetryStatusStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRetryStatusParts = ReturnType<typeof createChatRuntimeRetryStatusMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeRetryStatusMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const retryStatusParts = createChatRuntimeRetryStatusMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const retryStatusParts: ChatMessageRetryStatusParts =\s+createChatRuntimeRetryStatusMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const retryStatusCard = retryStatusParts\.card;/);
   assert.match(chatMessageChromeSource, /if \(!retryStatusCard\.shouldRender\) return null;/);
   assert.match(sessionPresentationSource, /card: \{[\s\S]*?props: \{[\s\S]*?accessible: true,[\s\S]*?accessibilityRole: renderState\.accessibilityRole,[\s\S]*?accessibilityLabel: renderState\.accessibilityLabel,[\s\S]*?style: styles\.card,/);
@@ -6684,7 +6684,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListParts =\s+ChatRuntimeMessageActionSlotListMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?ChatMessageActionSlotListProps\['rowStyle'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionSlotListParts = ReturnType<typeof createChatRuntimeMessageActionSlotListMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionSlotListMobilePropsParts/);
-  assert.match(actionSlotListSource, /const actionSlotListParts = createChatRuntimeMessageActionSlotListMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
+  assert.match(actionSlotListSource, /const actionSlotListParts: ChatMessageActionSlotListParts =\s+createChatRuntimeMessageActionSlotListMobilePropsParts\(\{\s+shouldRender,\s+entries,\s+rowStyle,\s+\}\);/);
   assert.match(actionSlotListSource, /const actionSlotList = actionSlotListParts\.list;/);
   assert.match(sessionPresentationSource, /list: \{\s+shouldRender,\s+content: \{\s+items: entries\.map\(\(\{ slot, item \}\) => \(\{\s+key: slot,\s+item,/);
   assert.match(actionSlotListSource, /actionSlotList\.content\.items\.map\(\(\{ key, item \}\) => \(/);
@@ -7288,7 +7288,7 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeParts =\s+ChatRuntimeTurnDurationBadgeMobilePropsParts<[\s\S]*?ChatMessageTurnDurationBadgeProps\['renderState'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['style'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['liveStyle'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['textStyle'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['liveTextStyle'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeParts = ReturnType<typeof createChatRuntimeTurnDurationBadgeMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeTurnDurationBadgeMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const turnDurationBadgeParts = createChatRuntimeTurnDurationBadgeMobilePropsParts\(\{\s+renderState,\s+style,\s+liveStyle,\s+textStyle,\s+liveTextStyle,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const turnDurationBadgeParts: ChatMessageTurnDurationBadgeParts =\s+createChatRuntimeTurnDurationBadgeMobilePropsParts\(\{\s+renderState,\s+style,\s+liveStyle,\s+textStyle,\s+liveTextStyle,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!turnDurationBadgeParts\.container\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadge\s+renderState=\{turnDuration\.renderState\}\s+style=\{turnDuration\.style\}\s+liveStyle=\{turnDuration\.liveStyle\}\s+textStyle=\{turnDuration\.textStyle\}\s+liveTextStyle=\{turnDuration\.liveTextStyle\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageTurnDurationBadgeContainer\s+\{\.\.\.turnDurationBadgeParts\.container\.props\}/);

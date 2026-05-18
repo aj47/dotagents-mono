@@ -9502,10 +9502,11 @@ export function ChatMessageRetryStatus({
   renderState,
   styles,
 }: ChatMessageRetryStatusProps) {
-  const retryStatusParts = createChatRuntimeRetryStatusMobilePropsParts({
-    renderState,
-    styles,
-  });
+  const retryStatusParts: ChatMessageRetryStatusParts =
+    createChatRuntimeRetryStatusMobilePropsParts({
+      renderState,
+      styles,
+    });
   const retryStatusCard = retryStatusParts.card;
 
   if (!retryStatusCard.shouldRender) return null;
@@ -14197,13 +14198,14 @@ export function ChatMessageTurnDurationBadge({
   textStyle,
   liveTextStyle,
 }: ChatMessageTurnDurationBadgeProps) {
-  const turnDurationBadgeParts = createChatRuntimeTurnDurationBadgeMobilePropsParts({
-    renderState,
-    style,
-    liveStyle,
-    textStyle,
-    liveTextStyle,
-  });
+  const turnDurationBadgeParts: ChatMessageTurnDurationBadgeParts =
+    createChatRuntimeTurnDurationBadgeMobilePropsParts({
+      renderState,
+      style,
+      liveStyle,
+      textStyle,
+      liveTextStyle,
+    });
 
   if (!turnDurationBadgeParts.container.shouldRender) return null;
 
@@ -14545,11 +14547,12 @@ export function ChatMessageActionSlotList({
   entries,
   rowStyle,
 }: ChatMessageActionSlotListProps) {
-  const actionSlotListParts = createChatRuntimeMessageActionSlotListMobilePropsParts({
-    shouldRender,
-    entries,
-    rowStyle,
-  });
+  const actionSlotListParts: ChatMessageActionSlotListParts =
+    createChatRuntimeMessageActionSlotListMobilePropsParts({
+      shouldRender,
+      entries,
+      rowStyle,
+    });
   const actionSlotList = actionSlotListParts.list;
 
   if (!actionSlotList.shouldRender) return null;
