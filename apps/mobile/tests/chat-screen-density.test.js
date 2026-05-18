@@ -1625,6 +1625,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.doesNotMatch(delegationCardComponentSource, /<ChatMessageDelegationToolPreviewLabel\s+\{\.\.\.cardContent\.toolPreview\.label\.props\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewLabel[\s\S]*?<Text\s+\{\.\.\.props\}[\s\S]*?\{text\}[\s\S]*?export function ChatMessageDelegationToolPreview/);
   assert.doesNotMatch(chatMessageChromeSource, /export function ChatMessageDelegationToolPreviewLabel[\s\S]*?(style=\{style\}|numberOfLines=\{numberOfLines\})[\s\S]*?export function ChatMessageDelegationToolPreview/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationToolPreviewLabelPart = \{[\s\S]*?style: ChatMessageDelegationCardStyles\['toolPreviewLabel'\];[\s\S]*?numberOfLines: number;[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationToolPreviewBodyProps = \{[\s\S]*?label: \{[\s\S]*?props: ChatMessageDelegationToolPreviewLabelPart;[\s\S]*?rows: ChatMessageDelegationToolPreviewRowPart\[\];[\s\S]*?moreAction: ChatMessageDelegationToolMorePreviewActionSlot;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationToolPreviewBodyProps =\s+ChatMessageDelegationToolPreviewProps\['container'\]\['content'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationToolPreviewLabelProps =\s+ChatMessageDelegationToolPreviewProps\['container'\]\['content'\]\['label'\]\['props'\]/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{cardContent\.toolPreview\.label\.numberOfLines\}/);
   assert.doesNotMatch(delegationCardComponentSource, /numberOfLines=\{surface\.toolPreviewLabelNumberOfLines\}/);
   assert.doesNotMatch(screenSource, /const delegationToolPreviewLabel = formatChatRuntimeDelegationToolCallActivityLabel\(displayToolCallCount\);/);
@@ -1661,6 +1665,10 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
     chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreviewName[\s\S]*?export function ChatMessageDelegationToolPreviewStatusIcon/)?.[0] ?? '';
   const delegationToolPreviewStatusIconSource =
     chatMessageChromeSource.match(/export function ChatMessageDelegationToolPreviewStatusIcon[\s\S]*?export function ChatMessageDelegationMorePreviewAction/)?.[0] ?? '';
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationToolPreviewStatusIconPart = \{[\s\S]*?style: ChatMessageDelegationCardStyles\['toolPreviewStatusIcon'\];[\s\S]*?accessibilityElementsHidden: true;[\s\S]*?importantForAccessibility: 'no-hide-descendants';[\s\S]*?spinner: ChatMessageDelegationToolPreviewStatusIconSpinnerPart;[\s\S]*?icon: ChatMessageDelegationToolPreviewStatusIconGlyphPart;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationToolPreviewNamePart = \{[\s\S]*?style: Array<[\s\S]*?ChatMessageDelegationCardStyles\['toolPreviewNameError'\][\s\S]*?ellipsizeMode: TextProps\['ellipsizeMode'\];[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationToolPreviewRowProps =\s+ChatMessageDelegationToolPreviewProps\['container'\]\['content'\]\['rows'\]\[number\]\['props'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationToolPreviewNameProps =\s+ChatMessageDelegationToolPreviewRowProps\['name'\]/);
   assert.match(delegationToolPreviewRowSource, /<View\s+\{\.\.\.line\.props\}/);
   assert.doesNotMatch(delegationToolPreviewRowSource, /line\.(style|accessibilityLabel)/);
   assert.doesNotMatch(delegationCardComponentSource, /accessibilityLabel=\{row\.line\.accessibilityLabel\}/);

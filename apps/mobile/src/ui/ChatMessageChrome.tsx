@@ -330,6 +330,7 @@ import {
   type ChatRuntimeConversationMessageRenderContextMobileState,
   type ChatRuntimeConversationMessageRenderContextMobileStateInput,
   type ChatRuntimeDelegationConversationPreviewRoleMobileStyleSlots,
+  type ChatRuntimeToolExecutionCompactPreviewMobileRowState,
   type ChatRuntimeConversationMessageMobileRenderStateInput,
   type ChatRuntimeConversationMessageMobileRenderState,
   type ChatRuntimeConversationRetryStatusMobileState,
@@ -2593,28 +2594,106 @@ type ChatMessageDelegationConversationPreviewTimestampProps = {
   timestamp: ChatMessageDelegationConversationPreviewTimestampPart;
 };
 
-type ChatMessageDelegationToolPreviewProps =
-  ChatMessageDelegationCardParts['card']['content']['toolPreview']['props'];
-
-type ChatMessageDelegationToolPreviewBlockProps = {
-  toolPreview: ChatMessageDelegationCardParts['card']['content']['toolPreview'];
+type ChatMessageDelegationToolPreviewLabelPart = {
+  props: {
+    style: ChatMessageDelegationCardStyles['toolPreviewLabel'];
+    numberOfLines: number;
+  };
+  text: string;
 };
 
-type ChatMessageDelegationToolPreviewBodyProps =
-  ChatMessageDelegationToolPreviewProps['container']['content'];
+type ChatMessageDelegationToolPreviewStatusIconSpinnerPart = {
+  shouldRender: boolean;
+  props: Omit<
+    ChatRuntimeToolExecutionCompactPreviewMobileRowState['renderState']['statusIndicator']['spinner'],
+    'shouldRender'
+  >;
+};
 
-type ChatMessageDelegationToolPreviewRowProps =
-  ChatMessageDelegationToolPreviewProps['container']['content']['rows'][number]['props'];
+type ChatMessageDelegationToolPreviewStatusIconGlyphPart = {
+  shouldRender: boolean;
+  props: Omit<
+    ChatRuntimeToolExecutionCompactPreviewMobileRowState['renderState']['statusIndicator']['icon'],
+    'shouldRender'
+  >;
+};
+
+type ChatMessageDelegationToolPreviewStatusIconPart = {
+  props: {
+    style: ChatMessageDelegationCardStyles['toolPreviewStatusIcon'];
+    accessibilityElementsHidden: true;
+    importantForAccessibility: 'no-hide-descendants';
+  };
+  spinner: ChatMessageDelegationToolPreviewStatusIconSpinnerPart;
+  icon: ChatMessageDelegationToolPreviewStatusIconGlyphPart;
+};
+
+type ChatMessageDelegationToolPreviewNamePart = {
+  props: {
+    style: Array<
+      | ChatMessageDelegationCardStyles['toolPreviewName']
+      | ChatMessageDelegationCardStyles['toolPreviewNamePending']
+      | ChatMessageDelegationCardStyles['toolPreviewNameSuccess']
+      | ChatMessageDelegationCardStyles['toolPreviewNameError']
+      | false
+    >;
+    numberOfLines: number;
+    ellipsizeMode: TextProps['ellipsizeMode'];
+  };
+  text: string;
+};
+
+type ChatMessageDelegationToolPreviewRowProps = {
+  line: {
+    props: {
+      style: ChatMessageDelegationCardStyles['toolPreviewLine'];
+      accessibilityLabel: string;
+    };
+  };
+  statusIcon: ChatMessageDelegationToolPreviewStatusIconPart;
+  name: ChatMessageDelegationToolPreviewNamePart;
+};
+
+type ChatMessageDelegationToolPreviewRowPart = {
+  key: string;
+  props: ChatMessageDelegationToolPreviewRowProps;
+};
+
+type ChatMessageDelegationToolPreviewBodyProps = {
+  label: {
+    props: ChatMessageDelegationToolPreviewLabelPart;
+  };
+  rows: ChatMessageDelegationToolPreviewRowPart[];
+  moreAction: ChatMessageDelegationToolMorePreviewActionSlot;
+};
+
+type ChatMessageDelegationToolPreviewProps = {
+  container: {
+    props: {
+      style: ChatMessageDelegationCardStyles['toolPreview'];
+    };
+    content: ChatMessageDelegationToolPreviewBodyProps;
+  };
+};
+
+type ChatMessageDelegationToolPreviewSlot = {
+  shouldRender: boolean;
+  props: ChatMessageDelegationToolPreviewProps;
+};
+
+type ChatMessageDelegationToolPreviewBlockProps = {
+  toolPreview: ChatMessageDelegationToolPreviewSlot;
+};
 
 type ChatMessageDelegationToolPreviewStatusIconProps = {
-  statusIcon: ChatMessageDelegationToolPreviewRowProps['statusIcon'];
+  statusIcon: ChatMessageDelegationToolPreviewStatusIconPart;
 };
 
 type ChatMessageDelegationToolPreviewNameProps =
-  ChatMessageDelegationToolPreviewRowProps['name'];
+  ChatMessageDelegationToolPreviewNamePart;
 
 type ChatMessageDelegationToolPreviewLabelProps =
-  ChatMessageDelegationToolPreviewProps['container']['content']['label']['props'];
+  ChatMessageDelegationToolPreviewLabelPart;
 
 type ChatMessageDelegationMorePreviewActionBlockProps = {
   moreAction:
