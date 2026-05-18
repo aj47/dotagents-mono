@@ -13,7 +13,7 @@ import {
   useChatRuntimeRequestDebugState,
   useChatRuntimeRequestDebugActionsState,
   useChatRuntimeRequestTrackingState,
-  useChatRuntimeSettingsClientState,
+  useChatRuntimeExtendedSettingsClientState,
   useChatRuntimeSessionClientState,
   useChatRuntimeConnectionStatusSubscription,
   useChatRuntimeConnectionRetryState,
@@ -81,9 +81,9 @@ import {
   useChatMessageRuntimeDockInputState,
   useChatMessageRuntimeThreadListInputState,
   useChatMessageRuntimeComposerInputState,
+  type ChatRuntimeExtendedSettingsClient,
 } from '../ui/ChatMessageChrome';
 import type { ChatMessage } from '../lib/openaiClient';
-import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import {
   applyChatMessageRuntimeBlockedTurnStatusState,
   applyChatMessageRuntimeCompletedTurnStatusState,
@@ -133,10 +133,9 @@ export default function ChatScreen({ route, navigation }: any) {
     settingsClient,
     createLazyLoadSettingsClient,
     hasServerAuth,
-  } = useChatRuntimeSettingsClientState<ExtendedSettingsApiClient>({
+  } = useChatRuntimeExtendedSettingsClientState({
     baseUrl: config.baseUrl,
     apiKey: config.apiKey,
-    Client: ExtendedSettingsApiClient,
   });
   const quickStartCatalog = useChatConversationHomeQuickStartCatalogState();
   const {
@@ -342,7 +341,7 @@ export default function ChatScreen({ route, navigation }: any) {
     getKillSwitchClient: getSessionClient,
   });
 
-  const { handleRunPromptTask } = useChatConversationHomePromptTaskRunChromeActionsState<Loop, ExtendedSettingsApiClient>({
+  const { handleRunPromptTask } = useChatConversationHomePromptTaskRunChromeActionsState<Loop, ChatRuntimeExtendedSettingsClient>({
     taskClient: settingsClient,
     canRunPromptTask,
     beginPromptTaskRun,
@@ -619,7 +618,7 @@ export default function ChatScreen({ route, navigation }: any) {
     applyRemoteSpeechSettings,
   });
 
-  const { handleSavePrompt } = useChatConversationHomePromptEditorSaveChromeActionsState<ExtendedSettingsApiClient>({
+  const { handleSavePrompt } = useChatConversationHomePromptEditorSaveChromeActionsState<ChatRuntimeExtendedSettingsClient>({
     promptClient: settingsClient,
     predefinedPrompts,
     editingPrompt,
@@ -632,7 +631,7 @@ export default function ChatScreen({ route, navigation }: any) {
     dismissPromptEditor,
   });
 
-  const { handleDeletePrompt } = useChatConversationHomePromptEditorDeleteChromeActionsState<ExtendedSettingsApiClient>({
+  const { handleDeletePrompt } = useChatConversationHomePromptEditorDeleteChromeActionsState<ChatRuntimeExtendedSettingsClient>({
     promptClient: settingsClient,
     predefinedPrompts,
     setPredefinedPrompts,
@@ -641,7 +640,7 @@ export default function ChatScreen({ route, navigation }: any) {
     ...chatRuntimeChrome.environment,
   });
 
-  useChatMessageRuntimeSessionLoadState<ChatMessage, ExtendedSettingsApiClient>({
+  useChatMessageRuntimeSessionLoadState<ChatMessage, ChatRuntimeExtendedSettingsClient>({
     currentSessionId: sessionStore.currentSessionId,
     currentSessionIdRef,
     deletingSessionIdsSize: sessionStore.deletingSessionIds.size,

@@ -9190,13 +9190,18 @@ test('memoizes remaining mobile chat chrome hook state objects', () => {
 });
 
 test('keeps session lifecycle refs in chat chrome state hooks', () => {
-  assert.match(screenSource, /useChatRuntimeSettingsClientState,/);
+  assert.match(screenSource, /useChatRuntimeExtendedSettingsClientState,/);
   assert.match(screenSource, /useChatMessageRuntimeSessionRefState,/);
   assert.match(screenSource, /useChatMessageRuntimeRouteInitialMessageActionsState,/);
   assert.match(screenSource, /useChatMessageRuntimeInitialMessageState,/);
   assert.match(screenSource, /useChatMessageRuntimeSessionLoadState,/);
   assert.match(screenSource, /useChatMessageRuntimeSessionPersistState,/);
-  assert.match(screenSource, /const \{\s+settingsClient,\s+createLazyLoadSettingsClient,\s+hasServerAuth,\s+\} = useChatRuntimeSettingsClientState<ExtendedSettingsApiClient>\(\{\s+baseUrl: config\.baseUrl,\s+apiKey: config\.apiKey,\s+Client: ExtendedSettingsApiClient,\s+\}\);/);
+  assert.match(chatScreenSource, /type ChatRuntimeExtendedSettingsClient,/);
+  assert.doesNotMatch(chatScreenSource, /from '\.\.\/lib\/settingsApi';/);
+  assert.doesNotMatch(chatScreenSource, /ExtendedSettingsApiClient/);
+  assert.match(chatMessageChromeSource, /import \{ ExtendedSettingsApiClient \} from '\.\.\/lib\/settingsApi';/);
+  assert.match(chatMessageChromeSource, /export type ChatRuntimeExtendedSettingsClient = ExtendedSettingsApiClient;/);
+  assert.match(screenSource, /const \{\s+settingsClient,\s+createLazyLoadSettingsClient,\s+hasServerAuth,\s+\} = useChatRuntimeExtendedSettingsClientState\(\{\s+baseUrl: config\.baseUrl,\s+apiKey: config\.apiKey,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const settingsClient = useMemo\(\(\) => \{/);
   assert.doesNotMatch(screenSource, /const createLazyLoadSettingsClient = useCallback/);
   assert.doesNotMatch(screenSource, /new ExtendedSettingsApiClient\(config\.baseUrl, config\.apiKey\)/);
@@ -9204,10 +9209,11 @@ test('keeps session lifecycle refs in chat chrome state hooks', () => {
   assert.match(screenSource, /const \{ clearRouteInitialMessage \} = useChatMessageRuntimeRouteInitialMessageActionsState\(\{\s+navigation,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const clearRouteInitialMessage = useCallback\(\(\) => \{/);
   assert.match(screenSource, /useChatMessageRuntimeInitialMessageState\(\{\s+routeInitialMessage: route\?\.params\?\.initialMessage,\s+currentSessionId: sessionStore\.currentSessionId,\s+initialMessageRef,\s+initialMessageSentRef,\s+sendRef,\s+clearRouteInitialMessage,\s+voiceLog,\s+\}\);/);
-  assert.match(screenSource, /useChatMessageRuntimeSessionLoadState<ChatMessage, ExtendedSettingsApiClient>\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+currentSessionIdRef,\s+deletingSessionIdsSize: sessionStore\.deletingSessionIds\.size,\s+hasServerAuth,\s+settingsClient,\s+createLazyLoadClient: createLazyLoadSettingsClient,\s+getCurrentSession: sessionStore\.getCurrentSession,\s+createNewSession: sessionStore\.createNewSession,\s+loadSessionMessages: sessionStore\.loadSessionMessages,\s+setMessages,\s+setLatestStepSummary,\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+resetThreadExpansionState,\s+clearCopiedMessageFeedback,\s+replaceResponseHistory,\s+resetResponseSpeechPlaybackState,\s+\}\);/);
+  assert.match(screenSource, /useChatMessageRuntimeSessionLoadState<ChatMessage, ChatRuntimeExtendedSettingsClient>\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+currentSessionIdRef,\s+deletingSessionIdsSize: sessionStore\.deletingSessionIds\.size,\s+hasServerAuth,\s+settingsClient,\s+createLazyLoadClient: createLazyLoadSettingsClient,\s+getCurrentSession: sessionStore\.getCurrentSession,\s+createNewSession: sessionStore\.createNewSession,\s+loadSessionMessages: sessionStore\.loadSessionMessages,\s+setMessages,\s+setLatestStepSummary,\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+resetThreadExpansionState,\s+clearCopiedMessageFeedback,\s+replaceResponseHistory,\s+resetResponseSpeechPlaybackState,\s+\}\);/);
   assert.match(screenSource, /useChatMessageRuntimeSessionPersistState<ChatMessage>\(\{\s+messages,\s+currentSessionId: sessionStore\.currentSessionId,\s+deletingSessionIds: sessionStore\.deletingSessionIds,\s+prevSessionIdRef,\s+prevMessagesLengthRef,\s+skipNextPersistRef,\s+persistMessages: sessionStore\.setMessages,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSessionRefState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeSettingsClientState<TClient>/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeExtendedSettingsClientState\(\s+input: ChatRuntimeExtendedSettingsClientStateInput,\s+\): ChatRuntimeSettingsClientState<ChatRuntimeExtendedSettingsClient> \{\s+return useChatRuntimeSettingsClientState\(\{\s+\.\.\.input,\s+Client: ExtendedSettingsApiClient,\s+\}\);\s+\}/);
   assert.match(chatMessageChromeSource, /const settingsClient = useMemo\(\s+\(\) => \(hasServerAuth \? new Client\(baseUrl, apiKey\) : null\),\s+\[Client, apiKey, baseUrl, hasServerAuth\],\s+\);/);
   assert.match(chatMessageChromeSource, /const settingsClientState = useMemo<ChatRuntimeSettingsClientState<TClient>>\(\s+\(\) => \(\{\s+settingsClient,\s+createLazyLoadSettingsClient,\s+hasServerAuth,\s+\}\),\s+\[createLazyLoadSettingsClient, hasServerAuth, settingsClient\],\s+\);/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeRouteInitialMessageActionsState/);
@@ -9721,7 +9727,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /const promptTaskRunState = useMemo<ChatConversationHomePromptTaskRunState>\(\s+\(\) => \(\{\s+runningPromptTaskId,\s+canRunPromptTask: runningPromptTaskId === null,\s+beginPromptTaskRun,\s+clearPromptTaskRun,\s+\}\),\s+\[beginPromptTaskRun, clearPromptTaskRun, runningPromptTaskId\],\s+\);/);
   assert.match(chatMessageChromeSource, /return promptTaskRunState;/);
   assert.match(screenSource, /useChatConversationHomePromptTaskRunChromeActionsState,/);
-  assert.match(screenSource, /const \{ handleRunPromptTask \} = useChatConversationHomePromptTaskRunChromeActionsState<Loop, ExtendedSettingsApiClient>\(\{\s+taskClient: settingsClient,\s+canRunPromptTask,\s+beginPromptTaskRun,\s+clearPromptTaskRun,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleRunPromptTask \} = useChatConversationHomePromptTaskRunChromeActionsState<Loop, ChatRuntimeExtendedSettingsClient>\(\{\s+taskClient: settingsClient,\s+canRunPromptTask,\s+beginPromptTaskRun,\s+clearPromptTaskRun,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptTaskRunActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptTaskRunChromeActionsState/);
   assert.match(chatMessageChromeSource, /const promptTaskRunActionsState = useMemo<\s+ChatConversationHomePromptTaskRunActionsState<TTask>\s+>\(\s+\(\) => \(\{\s+handleRunPromptTask,\s+\}\),\s+\[handleRunPromptTask\],\s+\);/);
@@ -10100,7 +10106,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(sessionPresentationSource, /formatPromptLibraryDeletePromptWebConfirmMessage/);
   assert.match(sessionPresentationSource, /formatPromptLibraryTaskStartedMessage/);
   assert.match(screenSource, /useChatConversationHomePromptEditorSaveChromeActionsState,/);
-  assert.match(screenSource, /const \{ handleSavePrompt \} = useChatConversationHomePromptEditorSaveChromeActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+editingPrompt,\s+promptName: newPromptName,\s+promptContent: newPromptContent,\s+isSavingPrompt,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+dismissPromptEditor,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleSavePrompt \} = useChatConversationHomePromptEditorSaveChromeActionsState<ChatRuntimeExtendedSettingsClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+editingPrompt,\s+promptName: newPromptName,\s+promptContent: newPromptContent,\s+isSavingPrompt,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+dismissPromptEditor,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptEditorSaveActionsState/);
   assert.match(chatMessageChromeSource, /export function useChatConversationHomePromptEditorSaveChromeActionsState/);
   assert.match(chatMessageChromeSource, /useChatConversationHomePromptEditorSaveChromeActionsState[\s\S]*?showAlert: Alert\.alert,/);
@@ -10113,7 +10119,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(chatMessageChromeSource, /catch \(error: any\)/);
   assert.match(chatMessageChromeSource, /catch \(error: unknown\) \{[\s\S]*?getChatConversationHomePromptSaveFailedAlertState\(error\)/);
   assert.match(screenSource, /useChatConversationHomePromptEditorDeleteChromeActionsState,/);
-  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteChromeActionsState<ExtendedSettingsApiClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+\.\.\.chatRuntimeChrome\.environment,\s+\}\);/);
+  assert.match(screenSource, /const \{ handleDeletePrompt \} = useChatConversationHomePromptEditorDeleteChromeActionsState<ChatRuntimeExtendedSettingsClient>\(\{\s+promptClient: settingsClient,\s+predefinedPrompts,\s+setPredefinedPrompts,\s+beginPromptEditorSave,\s+clearPromptEditorSave,\s+\.\.\.chatRuntimeChrome\.environment,\s+\}\);/);
   assert.doesNotMatch(screenSource, /createChatConversationHomePromptDeleteNativeConfirmPresenter,/);
   assert.doesNotMatch(screenSource, /showChatConversationHomePromptDeleteNativeConfirmAlert,/);
   assert.doesNotMatch(screenSource, /globalThis as \{ confirm\?: \(message\?: string\) => boolean \}/);

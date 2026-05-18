@@ -30,6 +30,7 @@ import { useIsFocused } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
+import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
@@ -555,6 +556,13 @@ type ChatRuntimeSettingsClientState<TClient> = {
   hasServerAuth: boolean;
 };
 
+export type ChatRuntimeExtendedSettingsClient = ExtendedSettingsApiClient;
+
+type ChatRuntimeExtendedSettingsClientStateInput = Omit<
+  ChatRuntimeSettingsClientStateInput<ChatRuntimeExtendedSettingsClient>,
+  'Client'
+>;
+
 export function useChatRuntimeMobileConfigState(config: MobileAppConfig): ChatRuntimeMobileChromeConfigState {
   return useMemo(
     () => ({
@@ -648,6 +656,15 @@ export function useChatRuntimeSettingsClientState<TClient>({
   );
 
   return settingsClientState;
+}
+
+export function useChatRuntimeExtendedSettingsClientState(
+  input: ChatRuntimeExtendedSettingsClientStateInput,
+): ChatRuntimeSettingsClientState<ChatRuntimeExtendedSettingsClient> {
+  return useChatRuntimeSettingsClientState({
+    ...input,
+    Client: ExtendedSettingsApiClient,
+  });
 }
 
 type ChatMessageRuntimeEffectiveRemoteSpeechSettingsStateInput = {
