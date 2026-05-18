@@ -5491,7 +5491,7 @@ type ChatComposerSpeechPreviewStyles =
 
 type ChatComposerSpeechPreviewProps = {
   label: string;
-  text?: string | null;
+  text: string | null | undefined;
   styles: ChatComposerSpeechPreviewStyles;
 };
 
@@ -5604,7 +5604,7 @@ type ChatComposerVoiceOverlayStyles =
 type ChatComposerVoiceOverlayProps = {
   isVisible: boolean;
   label: string;
-  transcript?: string | null;
+  transcript: string | null | undefined;
   transcriptNumberOfLines: number;
   styles: ChatComposerVoiceOverlayStyles;
 };
@@ -15391,17 +15391,9 @@ export function ChatComposerInputDockMicWrapperContent({
   );
 }
 
-export function ChatComposerSpeechPreview({
-  label,
-  text,
-  styles,
-}: ChatComposerSpeechPreviewProps) {
+export function ChatComposerSpeechPreview(props: ChatComposerSpeechPreviewProps) {
   const speechPreviewParts: ChatComposerSpeechPreviewParts =
-    createChatComposerSpeechPreviewMobilePropsParts({
-      label,
-      text,
-      styles,
-    });
+    createChatComposerSpeechPreviewMobilePropsParts(props);
   const speechPreviewContainer = speechPreviewParts.container;
 
   if (!speechPreviewContainer.shouldRender) return null;
@@ -15453,19 +15445,9 @@ export function ChatComposerSpeechPreviewText({
   );
 }
 
-export function ChatComposerPendingImagesRail({
-  images,
-  renderState,
-  onRemove,
-  styles,
-}: ChatComposerPendingImagesRailProps) {
+export function ChatComposerPendingImagesRail(props: ChatComposerPendingImagesRailProps) {
   const pendingImagesRailParts: ChatComposerPendingImagesRailParts =
-    createChatComposerPendingImagesRailMobilePropsParts({
-      images,
-      renderState,
-      onRemove,
-      styles,
-    });
+    createChatComposerPendingImagesRailMobilePropsParts(props);
   const pendingImagesRailScrollView = pendingImagesRailParts.scrollView;
 
   if (!pendingImagesRailScrollView.shouldRender) return null;
@@ -15550,21 +15532,9 @@ export function ChatComposerPendingImageRemoveIcon(props: ChatComposerPendingIma
   );
 }
 
-export function ChatComposerVoiceOverlay({
-  isVisible,
-  label,
-  transcript,
-  transcriptNumberOfLines,
-  styles,
-}: ChatComposerVoiceOverlayProps) {
+export function ChatComposerVoiceOverlay(props: ChatComposerVoiceOverlayProps) {
   const voiceOverlayParts: ChatComposerVoiceOverlayParts =
-    createChatComposerVoiceOverlayMobilePropsParts({
-      isVisible,
-      label,
-      transcript,
-      transcriptNumberOfLines,
-      styles,
-    });
+    createChatComposerVoiceOverlayMobilePropsParts(props);
   const voiceOverlayContainer = voiceOverlayParts.overlay;
 
   if (!voiceOverlayContainer.shouldRender) return null;
@@ -15633,29 +15603,9 @@ export function ChatComposerVoiceOverlayTranscript({
   );
 }
 
-export function ChatComposerHandsFreeControls({
-  isVisible,
-  status,
-  controlState,
-  onWake,
-  onSleep,
-  onResume,
-  onPause,
-  controlPressedOpacity,
-  styles,
-}: ChatComposerHandsFreeControlsProps) {
+export function ChatComposerHandsFreeControls(props: ChatComposerHandsFreeControlsProps) {
   const handsFreeControlsParts: ChatComposerHandsFreeControlsParts =
-    createChatComposerHandsFreeControlsMobilePropsParts({
-      isVisible,
-      status,
-      controlState,
-      onWake,
-      onSleep,
-      onResume,
-      onPause,
-      controlPressedOpacity,
-      styles,
-    });
+    createChatComposerHandsFreeControlsMobilePropsParts(props);
   const handsFreeStatusRow = handsFreeControlsParts.statusRow;
   const handsFreeControlsRow = handsFreeControlsParts.controlsRow;
 
