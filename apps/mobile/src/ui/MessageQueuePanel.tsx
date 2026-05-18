@@ -41,7 +41,7 @@ export type QueuedMessageItemStyleSheetSlotsFactory = (input: {
   renderState: QueuedMessageItemMobileRenderState;
 }) => QueuedMessageItemMobileStyleSheetSlots;
 
-interface MessageQueuePanelProps {
+export interface MessageQueuePanelProps {
   messages: QueuedMessage[];
   colors: MessageQueuePanelColors;
   onRemove: (messageId: string) => void;

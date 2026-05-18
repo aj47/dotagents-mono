@@ -450,8 +450,17 @@ import {
 import { AgentSelectorSheet } from './AgentSelectorSheet';
 import { HandsFreeStatusChip } from './HandsFreeStatusChip';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { MessageQueuePanel, type MessageQueuePanelColors } from './MessageQueuePanel';
-import { ResponseHistoryPanel, type ResponseHistoryEntry, type ResponseHistoryPanelColors } from './ResponseHistoryPanel';
+import {
+  MessageQueuePanel,
+  type MessageQueuePanelColors,
+  type MessageQueuePanelProps,
+} from './MessageQueuePanel';
+import {
+  ResponseHistoryPanel,
+  type ResponseHistoryEntry,
+  type ResponseHistoryPanelColors,
+  type ResponseHistoryPanelProps,
+} from './ResponseHistoryPanel';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -4689,7 +4698,7 @@ type ChatMessageRuntimeViewportChromePropsInput<
     >['voiceEvents'];
   };
 
-type ChatMessageResponseHistoryPanelViewProps = ComponentProps<typeof ResponseHistoryPanel>;
+type ChatMessageResponseHistoryPanelViewProps = ResponseHistoryPanelProps;
 
 type ChatMessageResponseHistoryPanelDockProps = Pick<
   ChatMessageResponseHistoryPanelViewProps,
@@ -4715,7 +4724,7 @@ type ChatMessageRuntimeResponseHistoryPanelChromeState = Pick<
   'isCollapsed' | 'shouldAnimateNewest' | 'speakingIndex' | 'onToggleCollapsed' | 'onSpeakResponse'
 >;
 
-type ChatMessageQueuePanelViewProps = ComponentProps<typeof MessageQueuePanel>;
+type ChatMessageQueuePanelViewProps = MessageQueuePanelProps;
 
 type ChatMessageQueuePanelDockPanelProps = Omit<
   ChatMessageQueuePanelViewProps,

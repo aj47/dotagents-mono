@@ -39,7 +39,7 @@ export type ResponseHistoryPanelStyleSheetSlotsFactory = (input: {
   renderState: AgentResponseHistoryMobileRenderState<ResponseHistoryEntry>;
 }) => AgentResponseHistoryMobileStyleSheetSlots;
 
-interface ResponseHistoryPanelProps {
+export interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
   colors: ResponseHistoryPanelColors;
   remoteBaseUrl?: string;

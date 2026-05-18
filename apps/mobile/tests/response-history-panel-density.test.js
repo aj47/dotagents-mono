@@ -19,6 +19,7 @@ test('mobile response history panel uses shared copy, actions, and accessibility
   assert.match(source, /type AgentResponseHistoryMobileRenderState,/);
   assert.match(source, /type AgentResponseHistoryMobileSurfaceColorPalette,/);
   assert.match(source, /type AgentResponseHistoryMobileStyleSheetSlots,/);
+  assert.match(source, /export interface ResponseHistoryPanelProps/);
   assert.match(source, /type ResponseHistoryPanelParts =\s+AgentResponseHistoryMobilePropsParts<[\s\S]*?ResponseHistoryEntry,[\s\S]*?ResponseHistoryPanelStyles,[\s\S]*?ResponseHistoryToggleHandler/);
   assert.match(sessionPresentationSource, /type AgentResponseHistoryMobileSurfaceColorPalette,/);
   assert.match(source, /export type ResponseHistoryPanelColors = AgentResponseHistoryMobileSurfaceColorPalette;/);

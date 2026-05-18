@@ -24,6 +24,7 @@ test('mobile queue panel uses shared prop-part contracts for reusable button chr
   assert.match(source, /type QueuedMessageItemMobileRenderState,/);
   assert.match(source, /type QueuedMessageItemMobileStyleSheetSlots,/);
   assert.match(source, /export type MessageQueuePanelColors = MessageQueuePanelMobileSurfaceColorPalette;/);
+  assert.match(source, /export interface MessageQueuePanelProps/);
   assert.match(source, /export type MessageQueuePanelStyleSheetSlotsFactory = \(input: \{\s+renderState: MessageQueuePanelMobileRenderState<QueuedMessage>;\s+\}\) => MessageQueuePanelMobileStyleSheetSlots;/);
   assert.match(source, /export type QueuedMessageItemStyleSheetSlotsFactory = \(input: \{\s+renderState: QueuedMessageItemMobileRenderState;\s+\}\) => QueuedMessageItemMobileStyleSheetSlots;/);
   assert.doesNotMatch(source, /Parameters<typeof getMessageQueuePanelMobileRenderState>\[0\]\['colors'\]/);
