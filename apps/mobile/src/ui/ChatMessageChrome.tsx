@@ -330,7 +330,9 @@ import {
   type ChatRuntimeToolActivityGroupToggleMobileStyleSlots as SharedChatMessageToolActivityGroupToggleStyleSlots,
   type ChatRuntimeToolActivityGroupToggleMobilePropsParts,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
+  type ChatRuntimeMessageThreadItemMobilePropsPartsInput,
   type ChatRuntimeMessageThreadItemMobilePropsParts,
+  type ChatRuntimeMessageThreadSurfaceMobilePropsPartsInput,
   type ChatRuntimeMessageThreadSurfaceMobilePropsParts,
   type ChatRuntimeConversationActionComponentsMobileProps,
   type ChatRuntimeConversationActionComponentsMobilePropsInput,
@@ -347,6 +349,7 @@ import {
   type ChatRuntimeMessageContentRowMobilePropsParts,
   type ChatRuntimeConversationContentMobilePropsPartsInput,
   type ChatRuntimeMessageStandaloneActionsMobilePropsParts,
+  type ChatRuntimeMessageSurfaceMobilePropsPartsInput,
   type ChatRuntimeMessageSurfaceMobilePropsParts,
   type ChatRuntimeConversationExpandedContentMobilePropsPartsInput,
   type ChatRuntimeConnectionBannerMobilePropsParts,
@@ -4561,11 +4564,13 @@ type ChatComposerInputDockMicWrapperProps =
 type ChatComposerInputDockMicWrapperContentProps =
   ChatComposerInputDockParts['area']['content']['micWrapper']['content'];
 
-type ChatMessageSurfaceProps = {
-  children: ReactNode;
-  style: StyleProp<ViewStyle>;
-  toneStyle?: StyleProp<ViewStyle>;
-};
+type ChatMessageSurfaceProps =
+  ChatRuntimeMessageSurfaceMobilePropsPartsInput<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  > & {
+    children: ReactNode;
+  };
 
 type ChatMessageSurfaceParts =
   ChatRuntimeMessageSurfaceMobilePropsParts<
@@ -4578,11 +4583,13 @@ type ChatMessageSurfaceContainerProps =
     children: ReactNode;
   };
 
-type ChatMessageThreadItemProps = {
-  children: ReactNode;
-  leadingActivity?: ReactNode;
-  trailingActivity?: ReactNode;
-};
+type ChatMessageThreadItemProps =
+  ChatRuntimeMessageThreadItemMobilePropsPartsInput<
+    ReactNode,
+    ReactNode
+  > & {
+    children: ReactNode;
+  };
 
 type ChatMessageThreadItemParts =
   ChatRuntimeMessageThreadItemMobilePropsParts<
@@ -4590,10 +4597,15 @@ type ChatMessageThreadItemParts =
     ChatMessageThreadItemProps['trailingActivity']
   >;
 
-type ChatMessageThreadSurfaceProps = ChatMessageThreadItemProps & {
-  surfaceStyle: StyleProp<ViewStyle>;
-  surfaceToneStyle?: StyleProp<ViewStyle>;
-};
+type ChatMessageThreadSurfaceProps =
+  ChatRuntimeMessageThreadSurfaceMobilePropsPartsInput<
+    ChatMessageThreadItemProps['leadingActivity'],
+    ChatMessageThreadItemProps['trailingActivity'],
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  > & {
+    children: ReactNode;
+  };
 
 type ChatMessageThreadSurfaceParts =
   ChatRuntimeMessageThreadSurfaceMobilePropsParts<
