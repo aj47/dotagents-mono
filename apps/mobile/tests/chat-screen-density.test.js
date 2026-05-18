@@ -407,13 +407,20 @@ test('shows a conversation-state chip in the mobile chat header while preserving
   assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusParts =\s+ChatRuntimeHeaderConversationStatusMobilePropsParts<[\s\S]*?ChatSessionStatusMobileRenderState,[\s\S]*?ImageSourcePropType,[\s\S]*?ChatRuntimeHeaderConversationStatusStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusProps = \{[\s\S]*?renderState: ChatSessionStatusMobileRenderState;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusParts = ReturnType<typeof createChatRuntimeHeaderConversationStatusMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusContainerProps =\s+ChatRuntimeHeaderConversationStatusParts\['container'\]\['props'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusContainerContentProps =\s+ChatRuntimeHeaderConversationStatusParts\['container'\]\['content'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusRunningIndicatorProps =\s+ChatRuntimeHeaderConversationStatusParts\['container'\]\['content'\]\['runningIndicator'\]\['props'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusLabelProps =\s+ChatRuntimeHeaderConversationStatusParts\['container'\]\['content'\]\['label'\]\['props'\];/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusContainerProps = \{[\s\S]*?children: ReactNode;[\s\S]*?style: Array<StyleProp<ViewStyle>>;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusRunningIndicatorProps = \{[\s\S]*?source: ImageSourcePropType;[\s\S]*?style: StyleProp<ImageStyle>;[\s\S]*?resizeMode: ComponentProps<typeof Image>\['resizeMode'\];[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusLabelProps = \{[\s\S]*?props: \{[\s\S]*?style: Array<StyleProp<TextStyle>>;[\s\S]*?text: string;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusContainerContentProps = \{[\s\S]*?runningIndicator: \{[\s\S]*?shouldRender: boolean;[\s\S]*?props: ChatRuntimeHeaderConversationStatusRunningIndicatorProps;[\s\S]*?label: \{[\s\S]*?props: ChatRuntimeHeaderConversationStatusLabelProps;/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeHeaderConversationStatusMobilePropsParts/);
   const headerConversationStatusSource =
     chatMessageChromeSource.match(/export function ChatRuntimeHeaderConversationStatus[\s\S]*?export function ChatRuntimeHeaderTurnDuration/)?.[0] ?? '';
   assert.match(headerConversationStatusSource, /const conversationStatusParts: ChatRuntimeHeaderConversationStatusParts =\s+createChatRuntimeHeaderConversationStatusMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+styles,\s+\}\);/);
   assert.match(headerConversationStatusSource, /const conversationStatusContainer = conversationStatusParts\.container;/);
   assert.match(headerConversationStatusSource, /if \(!conversationStatusContainer\.shouldRender\) return null;/);
-  assert.match(chatMessageChromeSource, /type ChatRuntimeHeaderConversationStatusContainerContentProps =\s+ChatRuntimeHeaderConversationStatusParts\['container'\]\['content'\];/);
   assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusContainer\s+\{\.\.\.conversationStatusContainer\.props\}/);
   assert.match(headerConversationStatusSource, /<ChatRuntimeHeaderConversationStatusContainerContent\s+\{\.\.\.conversationStatusContainer\.content\}\s+\/>/);
   assert.match(headerConversationStatusSource, /export function ChatRuntimeHeaderConversationStatusContainerContent/);

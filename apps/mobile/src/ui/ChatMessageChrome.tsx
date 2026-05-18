@@ -1593,19 +1593,33 @@ type ChatRuntimeHeaderConversationStatusParts =
     ChatRuntimeHeaderConversationStatusStyles
   >;
 
-type ChatRuntimeHeaderConversationStatusContainerProps =
-  ChatRuntimeHeaderConversationStatusParts['container']['props'] & {
-    children: ReactNode;
+type ChatRuntimeHeaderConversationStatusContainerProps = {
+  children: ReactNode;
+  style: Array<StyleProp<ViewStyle>>;
+};
+
+type ChatRuntimeHeaderConversationStatusRunningIndicatorProps = {
+  source: ImageSourcePropType;
+  style: StyleProp<ImageStyle>;
+  resizeMode: ComponentProps<typeof Image>['resizeMode'];
+};
+
+type ChatRuntimeHeaderConversationStatusLabelProps = {
+  props: {
+    style: Array<StyleProp<TextStyle>>;
   };
+  text: string;
+};
 
-type ChatRuntimeHeaderConversationStatusContainerContentProps =
-  ChatRuntimeHeaderConversationStatusParts['container']['content'];
-
-type ChatRuntimeHeaderConversationStatusRunningIndicatorProps =
-  ChatRuntimeHeaderConversationStatusParts['container']['content']['runningIndicator']['props'];
-
-type ChatRuntimeHeaderConversationStatusLabelProps =
-  ChatRuntimeHeaderConversationStatusParts['container']['content']['label']['props'];
+type ChatRuntimeHeaderConversationStatusContainerContentProps = {
+  runningIndicator: {
+    shouldRender: boolean;
+    props: ChatRuntimeHeaderConversationStatusRunningIndicatorProps;
+  };
+  label: {
+    props: ChatRuntimeHeaderConversationStatusLabelProps;
+  };
+};
 
 type ChatRuntimeHeaderTurnDurationStyles =
   SharedChatRuntimeHeaderTurnDurationStyleSlots<
