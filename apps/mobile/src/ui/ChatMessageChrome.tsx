@@ -4349,8 +4349,12 @@ type ChatMessageToolExecutionCallListParts =
     ChatMessageToolExecutionCallDetailStyles
   >;
 
-type ChatMessageToolExecutionCallListContentProps =
-  ChatMessageToolExecutionCallListParts['content'];
+type ChatMessageToolExecutionCallListContentProps = {
+  rows: Array<{
+    key: ChatMessageToolExecutionCallListRow['key'];
+    props: ChatMessageToolExecutionCallDetailProps;
+  }>;
+};
 
 type ChatMessageHistoryBannerStyles =
   SharedChatMessageHistoryBannerStyleSlots<

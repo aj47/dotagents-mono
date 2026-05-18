@@ -5276,6 +5276,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionCallListMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionCallListMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const callListParts: ChatMessageToolExecutionCallListParts =\s+createChatRuntimeToolExecutionCallListMobilePropsParts\(\{\s+rows,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallListContentProps = \{\s+rows: Array<\{\s+key: ChatMessageToolExecutionCallListRow\['key'\];\s+props: ChatMessageToolExecutionCallDetailProps;\s+\}>;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionCallListParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const callListContent = callListParts\.content;/);
   assert.match(toolExecutionCallListSource, /<ChatMessageToolExecutionCallListContent\s+\{\.\.\.callListParts\.content\}/);
   assert.match(toolExecutionCallListContentSource, /rows\.map\(\(row\) => \(/);
