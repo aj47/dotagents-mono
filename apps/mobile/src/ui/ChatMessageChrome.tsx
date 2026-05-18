@@ -3952,22 +3952,45 @@ type ChatMessageToolExecutionResultHeaderParts =
     ChatMessageToolExecutionResultHeaderStyles
   >;
 
-type ChatMessageToolExecutionResultHeaderContentProps =
-  ChatMessageToolExecutionResultHeaderParts['header']['content'];
+type ChatMessageToolExecutionResultCharacterCountProps = {
+  props: {
+    style: StyleProp<TextStyle>;
+  };
+  text: string;
+};
 
-type ChatMessageToolExecutionResultHeaderMetaContentProps =
-  ChatMessageToolExecutionResultHeaderParts['header']['content']['meta']['content'];
+type ChatMessageToolExecutionResultHeaderContainerProps = {
+  style: StyleProp<ViewStyle>;
+};
 
 type ChatMessageToolExecutionResultHeaderViewProps =
-  (
-    | ChatMessageToolExecutionResultHeaderParts['header']['props']
-    | ChatMessageToolExecutionResultHeaderParts['header']['content']['meta']['props']
-  ) & {
+  ChatMessageToolExecutionResultHeaderContainerProps & {
     children: ReactNode;
   };
 
-type ChatMessageToolExecutionResultCharacterCountProps =
-  ChatMessageToolExecutionResultHeaderParts['header']['content']['meta']['content']['characterCount']['props'];
+type ChatMessageToolExecutionResultHeaderMetaContentProps = {
+  payloadMeta: {
+    props: ChatMessageToolExecutionPayloadMetaProps;
+  };
+  resultBadge: {
+    props: ChatMessageToolExecutionResultBadgeProps;
+  };
+  characterCount: {
+    props: ChatMessageToolExecutionResultCharacterCountProps;
+  };
+};
+
+type ChatMessageToolExecutionResultHeaderMetaPart = {
+  props: ChatMessageToolExecutionResultHeaderContainerProps;
+  content: ChatMessageToolExecutionResultHeaderMetaContentProps;
+};
+
+type ChatMessageToolExecutionResultHeaderContentProps = {
+  meta: ChatMessageToolExecutionResultHeaderMetaPart;
+  copyButton: {
+    props: ChatMessageToolExecutionCopyButtonProps;
+  };
+};
 
 type ChatMessageToolExecutionPayloadBlockStyles =
   SharedChatMessageToolExecutionPayloadBlockStyleSlots<

@@ -5430,6 +5430,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionResultHeaderMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const resultHeaderParts: ChatMessageToolExecutionResultHeaderParts =\s+createChatRuntimeToolExecutionResultHeaderMobilePropsParts\(\{\s+payloadRenderState,\s+resultBadge,\s+characterCountLabel,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultCharacterCountProps = \{\s+props: \{\s+style: StyleProp<TextStyle>;\s+\};\s+text: string;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultHeaderMetaContentProps = \{[\s\S]*?payloadMeta: \{\s+props: ChatMessageToolExecutionPayloadMetaProps;\s+\};[\s\S]*?resultBadge: \{\s+props: ChatMessageToolExecutionResultBadgeProps;\s+\};[\s\S]*?characterCount: \{\s+props: ChatMessageToolExecutionResultCharacterCountProps;\s+\};[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultHeaderContentProps = \{\s+meta: ChatMessageToolExecutionResultHeaderMetaPart;\s+copyButton: \{\s+props: ChatMessageToolExecutionCopyButtonProps;\s+\};\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionResultHeaderParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const resultHeaderContent = resultHeaderParts\.header\.content;/);
   assert.doesNotMatch(chatMessageChromeSource, /const resultHeaderMetaContent = resultHeaderContent\.meta\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionResultHeaderView\s+\{\.\.\.resultHeaderParts\.header\.props\}/);
