@@ -242,6 +242,9 @@ import {
   type ChatRuntimeMessageHistoryBannerMobilePropsParts,
   type ChatRuntimeMessageHistoryBannerMobilePropsStyleSlots as SharedChatMessageHistoryBannerStyleSlots,
   type ChatComposerHandsFreeControlsMobileStyleSlots as SharedChatComposerHandsFreeControlsStyleSlots,
+  type ChatComposerInputDockMobileStyleSlots as SharedChatComposerInputDockStyleSlots,
+  type ChatComposerLabeledActionButtonMobileStyleSlots as SharedChatComposerLabeledActionButtonStyleSlots,
+  type ChatComposerMicButtonMobileStyleSlots as SharedChatComposerMicButtonStyleSlots,
   type ChatComposerPendingImagesRailMobileStyleSlots as SharedChatComposerPendingImagesRailStyleSlots,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
@@ -249,6 +252,7 @@ import {
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
   type ChatComposerSpeechPreviewMobileStyleSlots as SharedChatComposerSpeechPreviewStyleSlots,
   type ChatComposerStyleSlots as SharedChatComposerStyleSlots,
+  type ChatComposerTextEntryMobileStyleSlots as SharedChatComposerTextEntryStyleSlots,
   type ChatComposerVoiceOverlayMobileStyleSlots as SharedChatComposerVoiceOverlayStyleSlots,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomButtonMobilePropsParts,
@@ -4367,11 +4371,12 @@ type ChatComposerLabeledActionRenderState = {
   icon: ChatMessageActionIcon;
 };
 
-type ChatComposerLabeledActionButtonStyles = {
-  button: StyleProp<ViewStyle>;
-  disabledButton: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-};
+type ChatComposerLabeledActionButtonStyles =
+  SharedChatComposerLabeledActionButtonStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatComposerLabeledActionButtonProps = {
   shouldRender?: boolean;
@@ -4409,12 +4414,13 @@ type ChatComposerMicButtonRenderState = ChatComposerIconButtonRenderState & {
   labelSelectable?: boolean;
 };
 
-type ChatComposerMicButtonStyles = {
-  button: StyleProp<ViewStyle>;
-  activeButton: StyleProp<ViewStyle>;
-  label: StyleProp<TextStyle>;
-  activeLabel: StyleProp<TextStyle>;
-};
+type ChatComposerMicButtonStyles =
+  SharedChatComposerMicButtonStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatComposerMicButtonProps = {
   renderState: ChatComposerMicButtonRenderState;
@@ -4449,10 +4455,11 @@ type ChatComposerMicButtonIconProps =
 type ChatComposerMicButtonLabelProps =
   ChatComposerMicButtonParts['pressable']['content']['label']['props'];
 
-type ChatComposerTextEntryStyles = {
-  input: StyleProp<TextStyle>;
-  visuallyHiddenHint: StyleProp<TextStyle>;
-};
+type ChatComposerTextEntryStyles =
+  SharedChatComposerTextEntryStyleSlots<
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatComposerTextEntryWebAccessibility = {
   isWebPlatform: boolean;
@@ -4495,11 +4502,12 @@ type ChatComposerTextEntryInputDescriptionProps =
 type ChatComposerTextEntryVoiceStatusLiveRegionProps =
   ChatComposerTextEntryParts['voiceStatusLiveRegion']['props'];
 
-type ChatComposerInputDockStyles = {
-  area: StyleProp<ViewStyle>;
-  row: StyleProp<ViewStyle>;
-  micWrapper: StyleProp<ViewStyle>;
-};
+type ChatComposerInputDockStyles =
+  SharedChatComposerInputDockStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatComposerInputDockProps = {
   speechPreview: ReactNode;

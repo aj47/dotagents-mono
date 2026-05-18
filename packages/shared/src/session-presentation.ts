@@ -5236,10 +5236,16 @@ export interface ChatComposerTextEntryMobileWebAccessibilityLike<
   voiceStatusLiveRegionPoliteness: TPoliteness
 }
 
-export interface ChatComposerTextEntryMobileStylesLike {
-  input: unknown
-  visuallyHiddenHint: unknown
+export interface ChatComposerTextEntryMobileStyleSlots<
+  TInputStyle = unknown,
+  TVisuallyHiddenHintStyle = unknown,
+> {
+  input: TInputStyle
+  visuallyHiddenHint: TVisuallyHiddenHintStyle
 }
+
+export interface ChatComposerTextEntryMobileStylesLike
+  extends ChatComposerTextEntryMobileStyleSlots {}
 
 export interface ChatComposerTextEntryMobilePropsPartsInput<
   TInputRef = unknown,
@@ -5378,11 +5384,18 @@ export interface ChatComposerLabeledActionButtonMobileRenderStateLike {
   labelShouldRender?: boolean
 }
 
-export interface ChatComposerLabeledActionButtonMobileStylesLike {
-  button: unknown
-  disabledButton?: unknown
-  text: unknown
+export interface ChatComposerLabeledActionButtonMobileStyleSlots<
+  TButtonStyle = unknown,
+  TDisabledButtonStyle = unknown,
+  TTextStyle = unknown,
+> {
+  button: TButtonStyle
+  disabledButton?: TDisabledButtonStyle
+  text: TTextStyle
 }
+
+export interface ChatComposerLabeledActionButtonMobileStylesLike
+  extends ChatComposerLabeledActionButtonMobileStyleSlots {}
 
 export interface ChatComposerLabeledActionButtonMobilePropsPartsInput<
   TRenderState extends ChatComposerLabeledActionButtonMobileRenderStateLike = ChatComposerLabeledActionButtonMobileRenderStateLike,
@@ -5446,12 +5459,20 @@ export interface ChatComposerMicButtonMobileRenderStateLike {
   labelSelectable?: unknown
 }
 
-export interface ChatComposerMicButtonMobileStylesLike {
-  button: unknown
-  activeButton?: unknown
-  label: unknown
-  activeLabel?: unknown
+export interface ChatComposerMicButtonMobileStyleSlots<
+  TButtonStyle = unknown,
+  TActiveButtonStyle = unknown,
+  TLabelStyle = unknown,
+  TActiveLabelStyle = unknown,
+> {
+  button: TButtonStyle
+  activeButton?: TActiveButtonStyle
+  label: TLabelStyle
+  activeLabel?: TActiveLabelStyle
 }
+
+export interface ChatComposerMicButtonMobileStylesLike
+  extends ChatComposerMicButtonMobileStyleSlots {}
 
 export interface ChatComposerMicButtonMobilePropsPartsInput<
   TRenderState extends ChatComposerMicButtonMobileRenderStateLike = ChatComposerMicButtonMobileRenderStateLike,
@@ -5602,11 +5623,18 @@ export interface ChatComposerPendingImagesRailMobilePropsParts<
   }
 }
 
-export interface ChatComposerInputDockMobileStylesLike {
-  area: unknown
-  row: unknown
-  micWrapper: unknown
+export interface ChatComposerInputDockMobileStyleSlots<
+  TAreaStyle = unknown,
+  TRowStyle = unknown,
+  TMicWrapperStyle = unknown,
+> {
+  area: TAreaStyle
+  row: TRowStyle
+  micWrapper: TMicWrapperStyle
 }
+
+export interface ChatComposerInputDockMobileStylesLike
+  extends ChatComposerInputDockMobileStyleSlots {}
 
 export interface ChatComposerInputDockMobilePropsPartsInput<
   TSpeechPreview = unknown,
