@@ -267,6 +267,8 @@ import {
   type ChatRuntimeMessageHistoryWindowMobileDisplayStateInput,
   type ChatRuntimeNavigationHeaderMobileRenderState,
   type ChatRuntimeNavigationHeaderMobileRenderStateInput,
+  type ChatRuntimeNavigationHeaderOptionsMobilePropsParts,
+  type ChatRuntimeNavigationHeaderOptionsParts,
   type ChatRuntimeViewportChromeMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
@@ -1465,6 +1467,32 @@ type ChatRuntimeHeaderStyleSlots = {
     handsFreeIconContainerStyle: ChatRuntimeHeaderIconButtonProps['iconContainerStyle'];
   };
 };
+
+type ChatRuntimeNavigationHeaderOptionParts =
+  ChatRuntimeNavigationHeaderOptionsParts<
+    ChatRuntimeNavigationHeaderOptionsInput['agentSelectorRenderState'],
+    ChatRuntimeNavigationHeaderOptionsInput['onAgentSelectorPress'],
+    ChatRuntimeNavigationHeaderOptionsInput['backButtonRenderState'],
+    ChatRuntimeNavigationHeaderOptionsInput['onBackButtonPress'],
+    ChatRuntimeNavigationHeaderOptionsInput['pinButtonRenderState'],
+    ChatRuntimeNavigationHeaderOptionsInput['onPinButtonPress'],
+    ChatRuntimeNavigationHeaderOptionsInput['pinButtonIsActive'],
+    ChatRuntimeNavigationHeaderOptionsInput['conversationStatusRenderState'],
+    ChatRuntimeNavigationHeaderOptionsInput['conversationStatusSpinnerSource'],
+    ChatRuntimeNavigationHeaderOptionsInput['turnDurationRenderState'],
+    ChatRuntimeNavigationHeaderOptionsInput['killSwitchButtonShouldRender'],
+    ChatRuntimeNavigationHeaderOptionsInput['killSwitchButtonRenderState'],
+    ChatRuntimeNavigationHeaderOptionsInput['onKillSwitchButtonPress'],
+    ChatRuntimeNavigationHeaderOptionsInput['handsFreeButtonRenderState'],
+    ChatRuntimeNavigationHeaderOptionsInput['onHandsFreeButtonPress']
+  >;
+
+type ChatRuntimeNavigationHeaderMobileOptionParts =
+  ChatRuntimeNavigationHeaderOptionsMobilePropsParts<
+    ChatRuntimeNavigationHeaderOptionParts & {
+      styles: ChatRuntimeNavigationHeaderOptionsInput['styles'];
+    }
+  >;
 
 type ChatRuntimeNavigationHeaderOptionsInput = {
   agentSelectorRenderState: ChatRuntimeHeaderAgentSelectorProps['renderState'];
@@ -8298,28 +8326,30 @@ export function createChatRuntimeNavigationHeaderOptions({
   onHandsFreeButtonPress,
   styles,
 }: ChatRuntimeNavigationHeaderOptionsInput): ChatRuntimeNavigationHeaderOptions {
-  const headerOptionParts = createChatRuntimeNavigationHeaderOptionsParts({
-    agentSelectorRenderState,
-    onAgentSelectorPress,
-    agentSelectorLabelNumberOfLines,
-    backButtonRenderState,
-    onBackButtonPress,
-    pinButtonRenderState,
-    onPinButtonPress,
-    pinButtonIsActive,
-    conversationStatusRenderState,
-    conversationStatusSpinnerSource,
-    turnDurationRenderState,
-    killSwitchButtonShouldRender,
-    killSwitchButtonRenderState,
-    onKillSwitchButtonPress,
-    handsFreeButtonRenderState,
-    onHandsFreeButtonPress,
-  });
-  const headerParts = createChatRuntimeNavigationHeaderOptionsMobilePropsParts({
-    ...headerOptionParts,
-    styles,
-  });
+  const headerOptionParts: ChatRuntimeNavigationHeaderOptionParts =
+    createChatRuntimeNavigationHeaderOptionsParts({
+      agentSelectorRenderState,
+      onAgentSelectorPress,
+      agentSelectorLabelNumberOfLines,
+      backButtonRenderState,
+      onBackButtonPress,
+      pinButtonRenderState,
+      onPinButtonPress,
+      pinButtonIsActive,
+      conversationStatusRenderState,
+      conversationStatusSpinnerSource,
+      turnDurationRenderState,
+      killSwitchButtonShouldRender,
+      killSwitchButtonRenderState,
+      onKillSwitchButtonPress,
+      handsFreeButtonRenderState,
+      onHandsFreeButtonPress,
+    });
+  const headerParts: ChatRuntimeNavigationHeaderMobileOptionParts =
+    createChatRuntimeNavigationHeaderOptionsMobilePropsParts({
+      ...headerOptionParts,
+      styles,
+    });
 
   return {
     headerTitle: () => (
@@ -8478,7 +8508,8 @@ export function ChatRuntimeHeaderAgentSelector({
   labelNumberOfLines,
   styles,
 }: ChatRuntimeHeaderAgentSelectorProps) {
-  const agentSelectorParts = createChatRuntimeHeaderAgentSelectorMobilePropsParts({
+  const agentSelectorParts: ChatRuntimeHeaderAgentSelectorParts =
+    createChatRuntimeHeaderAgentSelectorMobilePropsParts({
     renderState,
     onPress,
     labelNumberOfLines,
@@ -8585,7 +8616,8 @@ export function ChatRuntimeHeaderIconButton({
   iconContainerStyle,
   isActive,
 }: ChatRuntimeHeaderIconButtonProps) {
-  const iconButtonParts = createChatRuntimeHeaderIconButtonMobilePropsParts({
+  const iconButtonParts: ChatRuntimeHeaderIconButtonParts =
+    createChatRuntimeHeaderIconButtonMobilePropsParts({
     shouldRender,
     renderState,
     onPress,
@@ -8671,7 +8703,8 @@ export function ChatRuntimeHeaderConversationStatus({
   spinnerSource,
   styles,
 }: ChatRuntimeHeaderConversationStatusProps) {
-  const conversationStatusParts = createChatRuntimeHeaderConversationStatusMobilePropsParts({
+  const conversationStatusParts: ChatRuntimeHeaderConversationStatusParts =
+    createChatRuntimeHeaderConversationStatusMobilePropsParts({
     renderState,
     spinnerSource,
     styles,
@@ -8743,7 +8776,8 @@ export function ChatRuntimeHeaderTurnDuration({
   renderState,
   styles,
 }: ChatRuntimeHeaderTurnDurationProps) {
-  const turnDurationParts = createChatRuntimeHeaderTurnDurationMobilePropsParts({
+  const turnDurationParts: ChatRuntimeHeaderTurnDurationParts =
+    createChatRuntimeHeaderTurnDurationMobilePropsParts({
     renderState,
     styles,
   });
