@@ -1271,15 +1271,15 @@ type ChatMessageActionIconButtonProps =
 type ChatMessageActionIconButtonParts =
   ChatRuntimeMessageActionIconButtonMobilePropsParts<
     ChatMessageActionIcon,
-    ChatMessageActionIconButtonProps['onPress'],
-    ChatMessageActionIconButtonProps['accessibilityRole'],
-    ChatMessageActionIconButtonProps['accessibilityState'],
-    ChatMessageActionIconButtonProps['ariaExpanded'],
-    ChatMessageActionIconButtonProps['hitSlop'],
-    ChatMessageActionIconButtonProps['style'],
-    ChatMessageActionIconButtonProps['activeStyle'],
-    ChatMessageActionIconButtonProps['pressedStyle'],
-    ChatMessageActionIconButtonProps['disabledStyle']
+    (event: GestureResponderEvent) => void,
+    AccessibilityRole,
+    AccessibilityState,
+    boolean,
+    number | Insets,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageActionIconButtonPressableProps =
@@ -2024,11 +2024,11 @@ type ChatMessageTurnDurationBadgeProps =
 
 type ChatMessageTurnDurationBadgeParts =
   ChatRuntimeTurnDurationBadgeMobilePropsParts<
-    ChatMessageTurnDurationBadgeProps['renderState'],
-    ChatMessageTurnDurationBadgeProps['style'],
-    ChatMessageTurnDurationBadgeProps['liveStyle'],
-    ChatMessageTurnDurationBadgeProps['textStyle'],
-    ChatMessageTurnDurationBadgeProps['liveTextStyle']
+    ChatMessageTurnDurationBadgeRenderState,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle> | undefined,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle> | undefined
   >;
 
 type ChatMessageTurnDurationBadgeContainerProps =
@@ -2054,7 +2054,7 @@ type ChatMessageActionSlotListProps =
 type ChatMessageActionSlotListParts =
   ChatRuntimeMessageActionSlotListMobilePropsParts<
     ChatMessageActionEntry,
-    ChatMessageActionSlotListProps['rowStyle']
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageActionSlotListRowProps =
@@ -2065,13 +2065,13 @@ type ChatMessageActionSlotListRowProps =
 type ChatMessageStandaloneActionsProps =
   ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput<
     ChatMessageActionEntry,
-    ChatMessageActionSlotListProps['rowStyle']
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageStandaloneActionsParts =
   ChatRuntimeMessageStandaloneActionsMobilePropsParts<
     ChatMessageActionEntry,
-    ChatMessageStandaloneActionsProps['rowStyle']
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageRetryStatusStyles =

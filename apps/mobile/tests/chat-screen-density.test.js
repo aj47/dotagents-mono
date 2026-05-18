@@ -7126,7 +7126,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(actionIconButtonSource, /icon=\{spec\.renderState\.icon\}/);
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageActionIconButtonMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionIconButtonMobilePropsParts,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageActionIconButtonParts =\s+ChatRuntimeMessageActionIconButtonMobilePropsParts<[\s\S]*?ChatMessageActionIcon,[\s\S]*?ChatMessageActionIconButtonProps\['onPress'\],[\s\S]*?ChatMessageActionIconButtonProps\['accessibilityRole'\],[\s\S]*?ChatMessageActionIconButtonProps\['accessibilityState'\],[\s\S]*?ChatMessageActionIconButtonProps\['ariaExpanded'\],[\s\S]*?ChatMessageActionIconButtonProps\['hitSlop'\],[\s\S]*?ChatMessageActionIconButtonProps\['style'\],[\s\S]*?ChatMessageActionIconButtonProps\['activeStyle'\],[\s\S]*?ChatMessageActionIconButtonProps\['pressedStyle'\],[\s\S]*?ChatMessageActionIconButtonProps\['disabledStyle'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionIconButtonParts =\s+ChatRuntimeMessageActionIconButtonMobilePropsParts<[\s\S]*?ChatMessageActionIcon,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?AccessibilityRole,[\s\S]*?AccessibilityState,[\s\S]*?boolean,[\s\S]*?number \| Insets,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle>/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionIconButtonParts = ReturnType<typeof createChatRuntimeMessageActionIconButtonMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionIconButtonMobilePropsParts/);
   assert.match(actionIconButtonSource, /const actionIconButtonParts: ChatMessageActionIconButtonParts =\s+createChatRuntimeMessageActionIconButtonMobilePropsParts\(\{\s+icon,\s+onPress,\s+disabled,\s+isActive,\s+accessibilityRole,\s+accessibilityLabel,\s+accessibilityHint,\s+accessibilityState,\s+ariaExpanded,\s+hitSlop,\s+style,\s+activeStyle,\s+pressedStyle,\s+disabledStyle,\s+\}\);/);
@@ -7182,7 +7182,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionSlotListMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionSlotListMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListProps =\s+ChatRuntimeMessageActionSlotListMobilePropsPartsInput<\s+ChatMessageActionEntry,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
-  assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListParts =\s+ChatRuntimeMessageActionSlotListMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?ChatMessageActionSlotListProps\['rowStyle'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionSlotListParts =\s+ChatRuntimeMessageActionSlotListMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?StyleProp<ViewStyle>/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionSlotListProps = \{[\s\S]*?entries: readonly ChatMessageActionEntry\[\];[\s\S]*?rowStyle\?: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionSlotListParts = ReturnType<typeof createChatRuntimeMessageActionSlotListMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageActionSlotListMobilePropsPartsInput</);
@@ -7212,8 +7212,8 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /type ChatMessageContentRowParts =\s+ChatRuntimeMessageContentRowMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?ChatMessageContentRowProps\['rowStyle'\],[\s\S]*?ChatMessageContentRowProps\['bodyStyle'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRowProps = \{[\s\S]*?shouldRenderActionSlots: boolean;[\s\S]*?bodyStyle\?: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRowParts = ReturnType<typeof createChatRuntimeMessageContentRowMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /type ChatMessageStandaloneActionsProps =\s+ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput<\s+ChatMessageActionEntry,[\s\S]*?ChatMessageActionSlotListProps\['rowStyle'\]\s+>;/);
-  assert.match(chatMessageChromeSource, /type ChatMessageStandaloneActionsParts =\s+ChatRuntimeMessageStandaloneActionsMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?ChatMessageStandaloneActionsProps\['rowStyle'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageStandaloneActionsProps =\s+ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput<\s+ChatMessageActionEntry,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageStandaloneActionsParts =\s+ChatRuntimeMessageStandaloneActionsMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?StyleProp<ViewStyle>/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStandaloneActionsProps = ChatMessageActionSlotListProps & \{[\s\S]*?shouldRender: boolean;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStandaloneActionsParts = ReturnType<typeof createChatRuntimeMessageStandaloneActionsMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageContentRowMobilePropsPartsInput</);
@@ -7824,7 +7824,7 @@ test('shows shared per-turn duration badges on mobile user messages', () => {
   assert.match(sessionPresentationSource, /export interface ChatRuntimeTurnDurationMessageMobileRenderState/);
   assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeProps =\s+ChatRuntimeTurnDurationBadgeMobilePropsPartsInput<\s+ChatMessageTurnDurationBadgeRenderState,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle> \| undefined,[\s\S]*?StyleProp<TextStyle>,[\s\S]*?StyleProp<TextStyle> \| undefined\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeProps = \{[\s\S]*?renderState: ChatMessageTurnDurationBadgeRenderState;[\s\S]*?liveTextStyle\?: StyleProp<TextStyle>;[\s\S]*?\};/);
-  assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeParts =\s+ChatRuntimeTurnDurationBadgeMobilePropsParts<[\s\S]*?ChatMessageTurnDurationBadgeProps\['renderState'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['style'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['liveStyle'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['textStyle'\],[\s\S]*?ChatMessageTurnDurationBadgeProps\['liveTextStyle'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeParts =\s+ChatRuntimeTurnDurationBadgeMobilePropsParts<[\s\S]*?ChatMessageTurnDurationBadgeRenderState,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ViewStyle> \| undefined,[\s\S]*?StyleProp<TextStyle>,[\s\S]*?StyleProp<TextStyle> \| undefined/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageTurnDurationBadgeParts = ReturnType<typeof createChatRuntimeTurnDurationBadgeMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeTurnDurationBadgeMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeTurnDurationBadgeMobilePropsParts/);
