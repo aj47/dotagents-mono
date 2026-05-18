@@ -2897,6 +2897,7 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts',
     'createChatRuntimeConversationRuntimeThreadMobilePropsParts',
     'createChatRuntimeConversationRuntimeThreadListMobilePropsParts',
+    'createChatRuntimeConversationThreadBodyMobilePropsParts',
     'createChatRuntimeToolExecutionPanelShellMobilePropsParts',
     'createChatRuntimeConversationViewportMobilePropsParts',
     'createChatRuntimeConversationContentMobilePropsParts',
@@ -8102,7 +8103,7 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationThreadBodyMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageThreadBody\(props: ChatMessageThreadBodyProps\)/);
-  assert.match(chatMessageChromeSource, /const threadBodyParts: ChatMessageThreadBodyParts =\s+createChatRuntimeConversationThreadBodyMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const threadBodyParts = useMemo<ChatMessageThreadBodyParts>\(\s+\(\) => createChatRuntimeConversationThreadBodyMobilePropsParts\(\{\s+bodyDisplayMode,\s+styles,\s+retryStatus,\s+delegationCard,\s+toolApproval,\s+inlineActivity,\s+conversation,\s+\}\),/);
   assert.doesNotMatch(chatMessageChromeSource, /const statusPanelParts = createChatRuntimeConversationThreadBodyStatusPanelMobilePropsParts/);
   assert.doesNotMatch(chatMessageChromeSource, /styles=\{styles\.retryStatus\}/);
   assert.doesNotMatch(chatMessageChromeSource, /styles=\{styles\.delegationCard\}/);

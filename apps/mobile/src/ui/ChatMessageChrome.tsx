@@ -10890,8 +10890,35 @@ export function ChatMessageConversationRuntimeThreadListContent({
 }
 
 export function ChatMessageThreadBody(props: ChatMessageThreadBodyProps) {
-  const threadBodyParts: ChatMessageThreadBodyParts =
-    createChatRuntimeConversationThreadBodyMobilePropsParts(props);
+  const {
+    bodyDisplayMode,
+    styles,
+    retryStatus,
+    delegationCard,
+    toolApproval,
+    inlineActivity,
+    conversation,
+  } = props;
+  const threadBodyParts = useMemo<ChatMessageThreadBodyParts>(
+    () => createChatRuntimeConversationThreadBodyMobilePropsParts({
+      bodyDisplayMode,
+      styles,
+      retryStatus,
+      delegationCard,
+      toolApproval,
+      inlineActivity,
+      conversation,
+    }),
+    [
+      bodyDisplayMode,
+      conversation,
+      delegationCard,
+      inlineActivity,
+      retryStatus,
+      styles,
+      toolApproval,
+    ],
+  );
 
   if (threadBodyParts.retryStatus.shouldRender) {
     return (
