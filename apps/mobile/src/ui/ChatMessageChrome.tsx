@@ -257,6 +257,7 @@ import {
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
   type ChatComposerRuntimeDockMobilePropsParts,
+  type ChatComposerRuntimeDockMobilePropsPartsInput,
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
   type ChatComposerSpeechPreviewMobileStyleSlots as SharedChatComposerSpeechPreviewStyleSlots,
   type ChatComposerStyleSlots as SharedChatComposerStyleSlots,
@@ -4877,44 +4878,54 @@ type ChatComposerStyleSlots =
 
 type ChatComposerRuntimeDockStyleSlots = ChatComposerStyleSlots;
 
-type ChatComposerRuntimeDockProps = {
-  speechPreview: Omit<ChatComposerSpeechPreviewProps, 'styles'>;
-  pendingImagesRail: Omit<ChatComposerPendingImagesRailProps, 'styles'>;
-  handsFreeControls: ChatComposerRuntimeHandsFreeControlsProps;
-  imageAttachmentControl: Omit<ChatComposerIconButtonProps, 'style' | 'activeStyle'>;
-  textToSpeechControl: Omit<ChatComposerIconButtonProps, 'style' | 'activeStyle'>;
-  editBeforeSendControl: Omit<ChatComposerIconButtonProps, 'style' | 'activeStyle'>;
-  textEntry: Omit<ChatComposerTextEntryProps, 'styles'>;
-  queueAction: Omit<ChatComposerLabeledActionButtonProps, 'styles'>;
-  submitAction: Omit<ChatComposerLabeledActionButtonProps, 'styles'>;
-  micButton: Omit<ChatComposerMicButtonProps, 'styles'>;
-  micWrapperRef?: ChatComposerInputDockProps['micWrapperRef'];
-  styles: ChatComposerRuntimeDockStyleSlots;
-};
+type ChatComposerRuntimeDockProps =
+  ChatComposerRuntimeDockMobilePropsPartsInput<
+    Omit<ChatComposerSpeechPreviewProps, 'styles'>,
+    Omit<ChatComposerPendingImagesRailProps, 'styles'>,
+    ChatComposerRuntimeHandsFreeControlsProps,
+    Omit<ChatComposerIconButtonProps, 'style' | 'activeStyle'>,
+    Omit<ChatComposerIconButtonProps, 'style' | 'activeStyle'>,
+    Omit<ChatComposerIconButtonProps, 'style' | 'activeStyle'>,
+    Omit<ChatComposerTextEntryProps, 'styles'>,
+    Omit<ChatComposerLabeledActionButtonProps, 'styles'>,
+    Omit<ChatComposerLabeledActionButtonProps, 'styles'>,
+    Omit<ChatComposerMicButtonProps, 'styles'>,
+    Ref<View>,
+    ChatComposerSpeechPreviewStyles,
+    ChatComposerPendingImagesRailStyles,
+    ChatComposerHandsFreeControlsStyles,
+    ChatComposerStyleSlots['accessoryButton']['style'],
+    ChatComposerStyleSlots['accessoryButton']['activeStyle'],
+    ChatComposerTextEntryStyles,
+    ChatComposerLabeledActionButtonStyles,
+    ChatComposerLabeledActionButtonStyles,
+    ChatComposerMicButtonStyles,
+    ChatComposerInputDockStyles
+  >;
 
 type ChatComposerRuntimeDockParts =
   ChatComposerRuntimeDockMobilePropsParts<
-    ChatComposerRuntimeDockProps['speechPreview'],
-    ChatComposerRuntimeDockProps['pendingImagesRail'],
-    ChatComposerRuntimeDockProps['handsFreeControls'],
-    ChatComposerRuntimeDockProps['imageAttachmentControl'],
-    ChatComposerRuntimeDockProps['textToSpeechControl'],
-    ChatComposerRuntimeDockProps['editBeforeSendControl'],
-    ChatComposerRuntimeDockProps['textEntry'],
-    ChatComposerRuntimeDockProps['queueAction'],
-    ChatComposerRuntimeDockProps['submitAction'],
-    ChatComposerRuntimeDockProps['micButton'],
-    ChatComposerRuntimeDockProps['micWrapperRef'],
-    ChatComposerRuntimeDockProps['styles']['speechPreview'],
-    ChatComposerRuntimeDockProps['styles']['pendingImagesRail'],
-    ChatComposerRuntimeDockProps['styles']['handsFreeControls'],
-    ChatComposerRuntimeDockProps['styles']['accessoryButton']['style'],
-    ChatComposerRuntimeDockProps['styles']['accessoryButton']['activeStyle'],
-    ChatComposerRuntimeDockProps['styles']['textEntry'],
-    ChatComposerRuntimeDockProps['styles']['queueAction'],
-    ChatComposerRuntimeDockProps['styles']['submitAction'],
-    ChatComposerRuntimeDockProps['styles']['micButton'],
-    ChatComposerRuntimeDockProps['styles']['inputDock']
+    Omit<ChatComposerSpeechPreviewProps, 'styles'>,
+    Omit<ChatComposerPendingImagesRailProps, 'styles'>,
+    ChatComposerRuntimeHandsFreeControlsProps,
+    Omit<ChatComposerIconButtonProps, 'style' | 'activeStyle'>,
+    Omit<ChatComposerIconButtonProps, 'style' | 'activeStyle'>,
+    Omit<ChatComposerIconButtonProps, 'style' | 'activeStyle'>,
+    Omit<ChatComposerTextEntryProps, 'styles'>,
+    Omit<ChatComposerLabeledActionButtonProps, 'styles'>,
+    Omit<ChatComposerLabeledActionButtonProps, 'styles'>,
+    Omit<ChatComposerMicButtonProps, 'styles'>,
+    Ref<View>,
+    ChatComposerSpeechPreviewStyles,
+    ChatComposerPendingImagesRailStyles,
+    ChatComposerHandsFreeControlsStyles,
+    ChatComposerStyleSlots['accessoryButton']['style'],
+    ChatComposerStyleSlots['accessoryButton']['activeStyle'],
+    ChatComposerTextEntryStyles,
+    ChatComposerLabeledActionButtonStyles,
+    ChatComposerLabeledActionButtonStyles,
+    ChatComposerMicButtonStyles,
+    ChatComposerInputDockStyles
   >;
 
 type ChatComposerRuntimeDockChromeProps = {

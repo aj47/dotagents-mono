@@ -3002,6 +3002,10 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /export function createChatComposerRuntimeDockMobilePropsParts/);
   assert.match(chatMessageChromeSource, /createChatComposerRuntimeDockMobileProps,/);
   assert.match(chatMessageChromeSource, /createChatComposerRuntimeDockMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatComposerRuntimeDockMobilePropsPartsInput,/);
+  assert.match(sessionPresentationSource, /export interface ChatComposerRuntimeDockMobilePropsPartsInput</);
+  assert.match(chatMessageChromeSource, /type ChatComposerRuntimeDockProps =\s+ChatComposerRuntimeDockMobilePropsPartsInput<\s+Omit<ChatComposerSpeechPreviewProps, 'styles'>,[\s\S]*?Omit<ChatComposerPendingImagesRailProps, 'styles'>,[\s\S]*?ChatComposerRuntimeHandsFreeControlsProps,[\s\S]*?Omit<ChatComposerIconButtonProps, 'style' \| 'activeStyle'>,[\s\S]*?Omit<ChatComposerTextEntryProps, 'styles'>,[\s\S]*?Omit<ChatComposerLabeledActionButtonProps, 'styles'>,[\s\S]*?Omit<ChatComposerMicButtonProps, 'styles'>,[\s\S]*?Ref<View>,[\s\S]*?ChatComposerInputDockStyles\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerRuntimeDockProps = \{[\s\S]*?speechPreview: Omit<ChatComposerSpeechPreviewProps, 'styles'>;[\s\S]*?styles: ChatComposerRuntimeDockStyleSlots;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatComposerRuntimeDockProps/);
   assert.match(chatMessageChromeSource, /const chatComposerRuntimeDock = createChatComposerRuntimeDockMobileProps\(\{\s+chrome: chatComposerRuntimeDockChrome,\s+\.\.\.composer,\s+pendingImagesColors: colors,\s+composerControlColors: colors,\s+\}\);/);
   assert.match(sessionPresentationSource, /const composerControlPresentation = getChatComposerRuntimeFollowUpPresentationState\(\{/);
@@ -3064,6 +3068,7 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     assert.match(chatMessageChromeSource, new RegExp(`type ${localAlias} =\\s+${sharedContract}<`));
     assert.doesNotMatch(chatMessageChromeSource, new RegExp(`type ${localAlias} = ReturnType<typeof ${factoryName}`));
   }
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerRuntimeDockParts =\s+ChatComposerRuntimeDockMobilePropsParts<[\s\S]*?ChatComposerRuntimeDockProps\['/);
   const composerLeafPartAliases = [
     'ChatComposerSpeechPreviewParts',
     'ChatComposerPendingImagesRailParts',
