@@ -17,7 +17,7 @@ const messageQueueUtilsSource = fs.readFileSync(
 );
 
 test('mobile queue panel uses shared prop-part contracts for reusable button chrome', () => {
-  assert.match(source, /import React, \{ useState, useEffect, type ComponentProps \} from 'react';/);
+  assert.match(source, /import React, \{ useState, useEffect, useMemo, type ComponentProps \} from 'react';/);
   assert.match(source, /type MessageQueuePanelMobileStyleSheetSlots,/);
   assert.match(source, /type QueuedMessageItemMobileStyleSheetSlots,/);
   assert.match(source, /export type MessageQueuePanelStyleSheetSlotsFactory = \(input: \{\s+renderState: ReturnType<typeof getMessageQueuePanelMobileRenderState>;\s+\}\) => MessageQueuePanelMobileStyleSheetSlots;/);
@@ -88,10 +88,10 @@ test('mobile queued-message actions keep wrap-safe chip sizing instead of a tiny
   assert.match(source, /colors: MessageQueuePanelColors;/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceState/);
   assert.doesNotMatch(source, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
-  assert.match(source, /const queuedMessageRenderState = getQueuedMessageItemMobileRenderState\(\{[\s\S]*?message,[\s\S]*?isExpanded,[\s\S]*?colors,[\s\S]*?\}\);/);
+  assert.match(source, /const queuedMessageRenderState = useMemo\(\s+\(\) => getQueuedMessageItemMobileRenderState\(\{[\s\S]*?message,[\s\S]*?isExpanded,[\s\S]*?colors,[\s\S]*?\}\),\s+\[colors, isExpanded, message\],\s+\);/);
   assert.match(source, /createStyleSheetSlots: QueuedMessageItemStyleSheetSlotsFactory;/);
-  assert.match(source, /const itemStyleSheetSlots: QueuedMessageItemMobileStyleSheetSlots =\s+createStyleSheetSlots\(\{\s+renderState: queuedMessageRenderState,\s+\}\);/);
-  assert.match(source, /const styles = StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\);/);
+  assert.match(source, /const itemStyleSheetSlots = useMemo<QueuedMessageItemMobileStyleSheetSlots>\(\s+\(\) => createStyleSheetSlots\(\{\s+renderState: queuedMessageRenderState,\s+\}\),\s+\[createStyleSheetSlots, queuedMessageRenderState\],\s+\);/);
+  assert.match(source, /const styles = useMemo\(\s+\(\) => StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\),\s+\[itemStyleSheetSlots\],\s+\);/);
   assert.match(source, /createQueuedMessageItemMobilePropsParts/);
   assert.match(source, /chrome: itemChromeParts,/);
   assert.match(source, /<View\s+\{\.\.\.itemChromeParts\.actions\.props\}>/);
@@ -128,7 +128,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /isListCollapsed: boolean;/);
   assert.match(source, /onToggleListCollapsed: \(\) => void;/);
   assert.match(source, /getMessageQueuePanelMobileRenderState/);
-  assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?messages,[\s\S]*?colors,[\s\S]*?isPaused,[\s\S]*?isListCollapsed,[\s\S]*?canProcessNext,/);
+  assert.match(source, /const queuePanelRenderState = useMemo\(\s+\(\) => getMessageQueuePanelMobileRenderState\(\{[\s\S]*?messages,[\s\S]*?colors,[\s\S]*?isPaused,[\s\S]*?isListCollapsed,[\s\S]*?canProcessNext,/);
   assert.match(source, /createMessageQueuePanelMobilePropsParts/);
   assert.match(source, /const \{[\s\S]*?compactActions: compactActionParts,[\s\S]*?headerActions: headerActionParts,[\s\S]*?chrome: panelChromeParts,[\s\S]*?list: panelListParts,[\s\S]*?\} = createMessageQueuePanelMobilePropsParts\(\{[\s\S]*?renderState: queuePanelRenderState,[\s\S]*?styles,[\s\S]*?onPause,[\s\S]*?onResume,[\s\S]*?onProcessNext,[\s\S]*?onClear,[\s\S]*?onToggleListCollapsed,[\s\S]*?onRemove,[\s\S]*?onUpdate,[\s\S]*?onRetry,/);
   assert.doesNotMatch(source, /const panelStatusColors = panelColors\.status\[queuePanelState\.statusKey\];/);
@@ -153,7 +153,7 @@ test('mobile queue panel mirrors desktop paused queue chrome with shared copy', 
   assert.match(source, /<Text\s+\{\.\.\.panelChromeParts\.pausedNotice\.message\.props\}>/);
   assert.match(source, /\{panelChromeParts\.pausedNotice\.message\.text\}/);
   assert.doesNotMatch(source, /panelChromeParts\.pausedNotice\.(containerStyle|textStyle|text)/);
-  assert.match(source, /const styles = StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\);/);
+  assert.match(source, /const styles = useMemo\(\s+\(\) => StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\),\s+\[panelStyleSheetSlots\],\s+\);/);
   assert.doesNotMatch(source, /getMessageQueuePanelState\(messages/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileIconState\(\)/);
   assert.doesNotMatch(source, /formatMessageQueueCompactLabel\(messages\.length, isPaused\)/);
@@ -219,15 +219,15 @@ test('mobile queue panel uses shared queued-message eligibility rules', () => {
 test('mobile queue panel reads compact panel sizing from shared surface tokens', () => {
   assert.doesNotMatch(source, /const mobileMessageQueuePanelSurface = getMessageQueuePanelMobileSurfaceState\(\);/);
   assert.doesNotMatch(source, /getMessageQueuePanelMobileSurfaceColors/);
-  assert.match(source, /const queuePanelRenderState = getMessageQueuePanelMobileRenderState\(\{[\s\S]*?colors,/);
+  assert.match(source, /const queuePanelRenderState = useMemo\(\s+\(\) => getMessageQueuePanelMobileRenderState\(\{[\s\S]*?colors,/);
   assert.match(source, /<QueuedMessageItem[\s\S]*?\{\.\.\.item\.messageProps\}[\s\S]*?colors=\{colors\}[\s\S]*?createStyleSheetSlots=\{createItemStyleSheetSlots\}/);
   assert.doesNotMatch(source, /useTheme\(\)/);
   assert.doesNotMatch(source, /colors: theme\.colors/);
   assert.doesNotMatch(source, /const queuePanelColors = queuePanelRenderState\.colors;/);
   assert.doesNotMatch(source, /const panelSurface = queuePanelRenderState\.surface\.panel;/);
   assert.doesNotMatch(source, /const panelColors = queuePanelColors\.panel;/);
-  assert.match(source, /const itemStyleSheetSlots: QueuedMessageItemMobileStyleSheetSlots =\s+createStyleSheetSlots\(\{[\s\S]*?renderState: queuedMessageRenderState,/);
-  assert.match(source, /const styles = StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\);/);
+  assert.match(source, /const itemStyleSheetSlots = useMemo<QueuedMessageItemMobileStyleSheetSlots>\(\s+\(\) => createStyleSheetSlots\(\{[\s\S]*?renderState: queuedMessageRenderState,/);
+  assert.match(source, /const styles = useMemo\(\s+\(\) => StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\),\s+\[itemStyleSheetSlots\],\s+\);/);
   assert.match(source, /<View\s+\{\.\.\.itemChromeParts\.container\.props\}>/);
   assert.match(source, /<View\s+\{\.\.\.itemChromeParts\.row\.props\}>/);
   assert.match(source, /<View\s+\{\.\.\.contentParts\.container\.props\}>/);
@@ -250,8 +250,8 @@ test('mobile queue panel reads compact panel sizing from shared surface tokens',
   assert.doesNotMatch(source, /createQueuedMessageItemMobileStyleSlots/);
   assert.doesNotMatch(source, /createQueuedMessageEditMobileStyleSlots/);
   assert.match(source, /createStyleSheetSlots: MessageQueuePanelStyleSheetSlotsFactory;/);
-  assert.match(source, /const panelStyleSheetSlots: MessageQueuePanelMobileStyleSheetSlots =\s+createStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\);/);
-  assert.match(source, /const styles = StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\);/);
+  assert.match(source, /const panelStyleSheetSlots = useMemo<MessageQueuePanelMobileStyleSheetSlots>\(\s+\(\) => createStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\),\s+\[createStyleSheetSlots, queuePanelRenderState\],\s+\);/);
+  assert.match(source, /const styles = useMemo\(\s+\(\) => StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\),\s+\[panelStyleSheetSlots\],\s+\);/);
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.container\.props\}>/);
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.headerContainer\.props\}>/);
   assert.match(source, /<View\s+\{\.\.\.panelChromeParts\.headerActions\.props\}>/);

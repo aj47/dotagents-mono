@@ -6748,8 +6748,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /createMessageQueuePanelMobileStyleSheetSlots,/);
   assert.match(messageQueuePanelSource, /createStyleSheetSlots: MessageQueuePanelStyleSheetSlotsFactory;/);
   assert.match(messageQueuePanelSource, /createItemStyleSheetSlots: QueuedMessageItemStyleSheetSlotsFactory;/);
-  assert.match(messageQueuePanelSource, /const panelStyleSheetSlots: MessageQueuePanelMobileStyleSheetSlots =\s+createStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\);/);
-  assert.match(messageQueuePanelSource, /const styles = StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\);/);
+  assert.match(messageQueuePanelSource, /const panelStyleSheetSlots = useMemo<MessageQueuePanelMobileStyleSheetSlots>\(\s+\(\) => createStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\),\s+\[createStyleSheetSlots, queuePanelRenderState\],\s+\);/);
+  assert.match(messageQueuePanelSource, /const styles = useMemo\(\s+\(\) => StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\),\s+\[panelStyleSheetSlots\],\s+\);/);
   assert.match(messageQueuePanelSource, /createMessageQueuePanelMobilePropsParts,/);
   assert.match(messageQueuePanelSource, /const \{[\s\S]*?compactActions: compactActionParts,[\s\S]*?headerActions: headerActionParts,[\s\S]*?chrome: panelChromeParts,[\s\S]*?list: panelListParts,[\s\S]*?\} = createMessageQueuePanelMobilePropsParts\(\{\s+renderState: queuePanelRenderState,\s+styles,\s+onPause,\s+onResume,\s+onProcessNext,\s+onClear,\s+onToggleListCollapsed,\s+onRemove,\s+onUpdate,\s+onRetry,\s+\}\);/);
   assert.doesNotMatch(messageQueuePanelSource, /createMessageQueuePanelCompactActionMobilePropsParts,/);
@@ -6843,8 +6843,8 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSubmitState\(editText, message\.text\)/);
   assert.doesNotMatch(messageQueuePanelSource, /createQueuedMessageItemMobileStyleSheetSlots,/);
   assert.match(messageQueuePanelSource, /createStyleSheetSlots: QueuedMessageItemStyleSheetSlotsFactory;/);
-  assert.match(messageQueuePanelSource, /const itemStyleSheetSlots: QueuedMessageItemMobileStyleSheetSlots =\s+createStyleSheetSlots\(\{\s+renderState: queuedMessageRenderState,\s+\}\);/);
-  assert.match(messageQueuePanelSource, /const styles = StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\);/);
+  assert.match(messageQueuePanelSource, /const itemStyleSheetSlots = useMemo<QueuedMessageItemMobileStyleSheetSlots>\(\s+\(\) => createStyleSheetSlots\(\{\s+renderState: queuedMessageRenderState,\s+\}\),\s+\[createStyleSheetSlots, queuedMessageRenderState\],\s+\);/);
+  assert.match(messageQueuePanelSource, /const styles = useMemo\(\s+\(\) => StyleSheet\.create\(\{ \.\.\.itemStyleSheetSlots \}\),\s+\[itemStyleSheetSlots\],\s+\);/);
   assert.match(messageQueuePanelSource, /createQueuedMessageItemMobilePropsParts,/);
   assert.match(messageQueuePanelSource, /const \{[\s\S]*?edit: editParts,[\s\S]*?actions: actionParts,[\s\S]*?expandButton: expandButtonParts,[\s\S]*?content: contentParts,[\s\S]*?chrome: itemChromeParts,[\s\S]*?\} = createQueuedMessageItemMobilePropsParts\(\{\s+renderState: queuedMessageRenderState,\s+message,\s+editDraftState,\s+isExpanded,\s+styles,\s+onRetry,\s+onEdit: \(\) => setIsEditing\(true\),\s+onRemove,\s+onToggleExpanded: \(\) => setIsExpanded\(!isExpanded\),\s+onCancelEdit: handleCancelEdit,\s+onSaveEdit: handleSaveEdit,\s+\}\);/);
   assert.doesNotMatch(messageQueuePanelSource, /createQueuedMessageActionButtonMobileStyleSlots,/);
@@ -6949,9 +6949,9 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(responseHistoryPanelSource, /createAgentResponseHistoryMobilePropsParts,/);
   assert.doesNotMatch(responseHistoryPanelSource, /createAgentResponseHistoryMobileStyleSheetSlots,/);
   assert.match(responseHistoryPanelSource, /createStyleSheetSlots: ResponseHistoryPanelStyleSheetSlotsFactory;/);
-  assert.match(responseHistoryPanelSource, /const responseHistoryStyleSheetSlots = createStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+\}\);/);
-  assert.match(responseHistoryPanelSource, /const responseHistoryParts: ResponseHistoryPanelParts = createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\);/);
-  assert.match(responseHistoryPanelSource, /const styles: ResponseHistoryPanelStyles = StyleSheet\.create\(\{\s+\.\.\.responseHistoryStyleSheetSlots,\s+\}\);/);
+  assert.match(responseHistoryPanelSource, /const responseHistoryStyleSheetSlots = useMemo\(\s+\(\) => createStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+\}\),\s+\[createStyleSheetSlots, responseHistoryRenderState\],\s+\);/);
+  assert.match(responseHistoryPanelSource, /const responseHistoryParts = useMemo<ResponseHistoryPanelParts>\(\s+\(\) => createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\),\s+\[onSpeakResponse, onToggleCollapsed, responseHistoryRenderState, styles\],\s+\);/);
+  assert.match(responseHistoryPanelSource, /const styles = useMemo<ResponseHistoryPanelStyles>\(\s+\(\) => StyleSheet\.create\(\{\s+\.\.\.responseHistoryStyleSheetSlots,\s+\}\),\s+\[responseHistoryStyleSheetSlots\],\s+\);/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistoryStyleSlots\.container/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistoryStyleSlots\.header/);
   assert.doesNotMatch(responseHistoryPanelSource, /responseHistoryStyleSlots\.responseItem/);

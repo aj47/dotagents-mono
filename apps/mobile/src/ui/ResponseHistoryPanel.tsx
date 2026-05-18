@@ -116,30 +116,41 @@ export function ResponseHistoryPanel({
   onToggleCollapsed,
   onSpeakResponse,
 }: ResponseHistoryPanelProps) {
-  const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState({
-    responses,
-    colors,
-    isCollapsed,
-    animateNewest: shouldAnimateNewest,
-    speakingIndex,
-  });
-  const responseHistoryStyleSheetSlots = createStyleSheetSlots({
-    renderState: responseHistoryRenderState,
-  });
+  const responseHistoryRenderState = useMemo(
+    () => getAgentResponseHistoryMobileRenderState({
+      responses,
+      colors,
+      isCollapsed,
+      animateNewest: shouldAnimateNewest,
+      speakingIndex,
+    }),
+    [colors, isCollapsed, responses, shouldAnimateNewest, speakingIndex],
+  );
+  const responseHistoryStyleSheetSlots = useMemo(
+    () => createStyleSheetSlots({
+      renderState: responseHistoryRenderState,
+    }),
+    [createStyleSheetSlots, responseHistoryRenderState],
+  );
+  const styles = useMemo<ResponseHistoryPanelStyles>(
+    () => StyleSheet.create({
+      ...responseHistoryStyleSheetSlots,
+    }),
+    [responseHistoryStyleSheetSlots],
+  );
+  const responseHistoryParts = useMemo<ResponseHistoryPanelParts>(
+    () => createAgentResponseHistoryMobilePropsParts({
+      renderState: responseHistoryRenderState,
+      styles,
+      onToggleCollapsed,
+      onSpeakResponse,
+    }),
+    [onSpeakResponse, onToggleCollapsed, responseHistoryRenderState, styles],
+  );
 
   if (!responseHistoryRenderState.shouldRender) {
     return null;
   }
-
-  const styles: ResponseHistoryPanelStyles = StyleSheet.create({
-    ...responseHistoryStyleSheetSlots,
-  });
-  const responseHistoryParts: ResponseHistoryPanelParts = createAgentResponseHistoryMobilePropsParts({
-    renderState: responseHistoryRenderState,
-    styles,
-    onToggleCollapsed,
-    onSpeakResponse,
-  });
 
   return (
     <View {...responseHistoryParts.container.props}>

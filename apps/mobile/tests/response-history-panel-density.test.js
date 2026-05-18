@@ -22,8 +22,8 @@ test('mobile response history panel uses shared copy, actions, and accessibility
   assert.match(source, /speakingIndex: number \| null;/);
   assert.match(source, /onToggleCollapsed: ResponseHistoryToggleHandler;/);
   assert.match(source, /onSpeakResponse: ResponseHistorySpeakHandler;/);
-  assert.match(source, /const responseHistoryRenderState = getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+speakingIndex,\s+\}\);/);
-  assert.match(source, /const responseHistoryParts: ResponseHistoryPanelParts = createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\);/);
+  assert.match(source, /const responseHistoryRenderState = useMemo\(\s+\(\) => getAgentResponseHistoryMobileRenderState\(\{\s+responses,\s+colors,\s+isCollapsed,\s+animateNewest: shouldAnimateNewest,\s+speakingIndex,\s+\}\),\s+\[colors, isCollapsed, responses, shouldAnimateNewest, speakingIndex\],\s+\);/);
+  assert.match(source, /const responseHistoryParts = useMemo<ResponseHistoryPanelParts>\(\s+\(\) => createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\),\s+\[onSpeakResponse, onToggleCollapsed, responseHistoryRenderState, styles\],\s+\);/);
   assert.match(source, /if \(!responseHistoryRenderState\.shouldRender\) \{[\s\S]*?return null;/);
   assert.match(source, /<View\s+\{\.\.\.responseHistoryParts\.container\.props\}>/);
   assert.match(source, /<TouchableOpacity\s+\{\.\.\.responseHistoryParts\.header\.touchable\.props\}/);
@@ -67,8 +67,9 @@ test('mobile response history panel reads compact sizing from shared surface tok
   assert.doesNotMatch(source, /from '\.\/theme'/);
   assert.doesNotMatch(source, /createAgentResponseHistoryMobileStyleSheetSlots,/);
   assert.match(source, /createStyleSheetSlots: ResponseHistoryPanelStyleSheetSlotsFactory;/);
-  assert.match(source, /const responseHistoryStyleSheetSlots = createStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+\}\);/);
-  assert.match(source, /const styles: ResponseHistoryPanelStyles = StyleSheet\.create\(\{\s+\.\.\.responseHistoryStyleSheetSlots,\s+\}\);/);
+  assert.match(source, /const responseHistoryStyleSheetSlots = useMemo\(\s+\(\) => createStyleSheetSlots\(\{\s+renderState: responseHistoryRenderState,\s+\}\),\s+\[createStyleSheetSlots, responseHistoryRenderState\],\s+\);/);
+  assert.match(source, /const styles = useMemo<ResponseHistoryPanelStyles>\(\s+\(\) => StyleSheet\.create\(\{\s+\.\.\.responseHistoryStyleSheetSlots,\s+\}\),\s+\[responseHistoryStyleSheetSlots\],\s+\);/);
+  assert.match(source, /const responseHistoryParts = useMemo<ResponseHistoryPanelParts>\(\s+\(\) => createAgentResponseHistoryMobilePropsParts\(\{\s+renderState: responseHistoryRenderState,\s+styles,\s+onToggleCollapsed,\s+onSpeakResponse,\s+\}\),\s+\[onSpeakResponse, onToggleCollapsed, responseHistoryRenderState, styles\],\s+\);/);
   assert.doesNotMatch(source, /responseHistoryStyleSlots\.container/);
   assert.doesNotMatch(source, /responseHistoryStyleSlots\.header/);
   assert.doesNotMatch(source, /responseHistoryStyleSlots\.responseItem/);

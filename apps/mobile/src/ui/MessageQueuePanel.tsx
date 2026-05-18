@@ -4,7 +4,7 @@
  * Displays queued messages with options to view, edit, remove, and retry.
  */
 
-import React, { useState, useEffect, type ComponentProps } from 'react';
+import React, { useState, useEffect, useMemo, type ComponentProps } from 'react';
 import {
   View,
   Text,
@@ -151,20 +151,25 @@ function QueuedMessageItem({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
-  const queuedMessageRenderState = getQueuedMessageItemMobileRenderState({
-    message,
-    isExpanded,
-    colors,
-  });
+  const queuedMessageRenderState = useMemo(
+    () => getQueuedMessageItemMobileRenderState({
+      message,
+      isExpanded,
+      colors,
+    }),
+    [colors, isExpanded, message],
+  );
   const messagePresentation = queuedMessageRenderState.presentation;
   const {
     isProcessing,
   } = messagePresentation;
   const editDraftState = getQueuedMessageEditDraftState(editText, message.text);
-  const itemStyleSheetSlots: QueuedMessageItemMobileStyleSheetSlots =
-    createStyleSheetSlots({
+  const itemStyleSheetSlots = useMemo<QueuedMessageItemMobileStyleSheetSlots>(
+    () => createStyleSheetSlots({
       renderState: queuedMessageRenderState,
-    });
+    }),
+    [createStyleSheetSlots, queuedMessageRenderState],
+  );
 
   // Sync editText with message.text when it changes (only when not editing)
   useEffect(() => {
@@ -197,7 +202,10 @@ function QueuedMessageItem({
     setEditText(message.text);
   };
 
-  const styles = StyleSheet.create({ ...itemStyleSheetSlots });
+  const styles = useMemo(
+    () => StyleSheet.create({ ...itemStyleSheetSlots }),
+    [itemStyleSheetSlots],
+  );
   const {
     edit: editParts,
     actions: actionParts,
@@ -313,23 +321,27 @@ export function MessageQueuePanel({
   createStyleSheetSlots,
   createItemStyleSheetSlots,
 }: MessageQueuePanelProps) {
-  const queuePanelRenderState = getMessageQueuePanelMobileRenderState({
-    messages,
-    colors,
-    isPaused,
-    isListCollapsed,
-    canProcessNext,
-  });
-  const panelStyleSheetSlots: MessageQueuePanelMobileStyleSheetSlots =
-    createStyleSheetSlots({
+  const queuePanelRenderState = useMemo(
+    () => getMessageQueuePanelMobileRenderState({
+      messages,
+      colors,
+      isPaused,
+      isListCollapsed,
+      canProcessNext,
+    }),
+    [canProcessNext, colors, isListCollapsed, isPaused, messages],
+  );
+  const panelStyleSheetSlots = useMemo<MessageQueuePanelMobileStyleSheetSlots>(
+    () => createStyleSheetSlots({
       renderState: queuePanelRenderState,
-    });
+    }),
+    [createStyleSheetSlots, queuePanelRenderState],
+  );
 
-  if (!queuePanelRenderState.shouldRender) {
-    return null;
-  }
-
-  const styles = StyleSheet.create({ ...panelStyleSheetSlots });
+  const styles = useMemo(
+    () => StyleSheet.create({ ...panelStyleSheetSlots }),
+    [panelStyleSheetSlots],
+  );
   const {
     compactActions: compactActionParts,
     headerActions: headerActionParts,
@@ -347,6 +359,10 @@ export function MessageQueuePanel({
     onUpdate,
     onRetry,
   });
+
+  if (!queuePanelRenderState.shouldRender) {
+    return null;
+  }
 
   if (compact) {
     return (
