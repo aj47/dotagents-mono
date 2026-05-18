@@ -30,7 +30,7 @@ import type { ToolCall, ToolResult } from './types'
 // ---------------------------------------------------------------------------
 
 /** Minimal message shape accepted by the grouping logic. */
-interface GroupableMessage {
+export interface ToolActivityGroupSourceMessage {
   role: 'user' | 'assistant' | 'tool'
   content?: string
   toolCalls?: Array<{ name: string; arguments?: unknown }>
@@ -641,7 +641,7 @@ export function formatToolActivityGroupCollapseAccessibilityLabel(count: number)
  * Determine whether a message contains a respond_to_user tool call,
  * which means it carries user-visible output and must NOT be grouped.
  */
-function hasRespondToUserCall(message: GroupableMessage): boolean {
+function hasRespondToUserCall(message: ToolActivityGroupSourceMessage): boolean {
   if (message.role !== 'assistant' || !message.toolCalls?.length) return false
   return message.toolCalls.some((tc) => tc.name === RESPOND_TO_USER_TOOL)
 }
@@ -658,7 +658,7 @@ function hasRespondToUserCall(message: GroupableMessage): boolean {
  *    b. An assistant message that is "tool-only" (has tool calls but no
  *       meaningful user-facing content).
  */
-function isGroupableToolActivity(message: GroupableMessage): boolean {
+function isGroupableToolActivity(message: ToolActivityGroupSourceMessage): boolean {
   // User messages are never grouped.
   if (message.role === 'user') return false
 
@@ -680,7 +680,7 @@ function isGroupableToolActivity(message: GroupableMessage): boolean {
  * Produce a single-line summary string for a groupable message.
  * Used to build the collapsed preview of a tool-activity group.
  */
-export function getToolActivitySummaryLine(message: GroupableMessage): string {
+export function getToolActivitySummaryLine(message: ToolActivityGroupSourceMessage): string {
   if (message.toolCalls?.length) {
     return message.toolCalls
       .map((toolCall, index) =>
@@ -753,7 +753,7 @@ export function getToolActivityRunSummary(
  * an O(1) lookup per message index to decide whether to render normally
  * or as part of a collapsed group.
  */
-export function groupToolActivity(messages: GroupableMessage[]): {
+export function groupToolActivity(messages: ToolActivityGroupSourceMessage[]): {
   groupByIndex: Map<number, ToolActivityGroup>
   groups: ToolActivityGroup[]
 } {

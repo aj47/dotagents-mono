@@ -28,9 +28,10 @@ import {
   TOOL_ACTIVITY_GROUP_SURFACE_PRESENTATION,
   TOOL_GROUP_PREVIEW_COUNT,
   TOOL_GROUP_MIN_SIZE,
+  type ToolActivityGroupSourceMessage,
 } from './tool-activity-grouping'
 
-type GroupableMessage = Parameters<typeof groupToolActivity>[0][number]
+type GroupableMessage = ToolActivityGroupSourceMessage
 
 // ---------------------------------------------------------------------------
 // Helpers

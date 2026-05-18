@@ -432,6 +432,7 @@ import {
   type ChatMessageRuntimeToolActivityGroup,
   type ChatMessageRuntimeToolActivityGroups,
   type ChatMessageRuntimeToolActivityGroupExpansionState,
+  type ChatMessageRuntimeToolActivityGroupSourceMessage,
   type ChatMessageRuntimeToolApprovalExpansionState,
   type ChatMessageRuntimeToolApprovalStateMessageLike,
   type ChatMessageRuntimeToolCallExpansionState,
@@ -7146,7 +7147,7 @@ export function useChatMessageRuntimeRemoteSpeechSettingsState(
 
 type ChatMessageRuntimeThreadExpansionMessage =
   & ChatDisplayMessageLike
-  & Parameters<typeof createChatMessageRuntimeToolActivityGroups>[0][number];
+  & ChatMessageRuntimeToolActivityGroupSourceMessage;
 
 type ChatMessageRuntimeThreadExpansionStateInput<TMessage extends ChatMessageRuntimeThreadExpansionMessage> = {
   messages: TMessage[];

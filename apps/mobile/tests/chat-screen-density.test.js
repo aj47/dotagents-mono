@@ -7285,7 +7285,8 @@ test('colors compact tool call labels by result status', () => {
 
 test('uses tool activities wording consistently for grouped tool activity labels', () => {
   assert.doesNotMatch(chatMessageChromeSource, /from '@dotagents\/shared\/tool-activity-grouping';/);
-  assert.match(sessionPresentationSource, /export type \{\s+ToolActivityGroupMobileRenderState,\s+\} from "\.\/tool-activity-grouping"/);
+  assert.match(sessionPresentationSource, /export type \{\s+ToolActivityGroupMobileRenderState,[\s\S]*?ToolActivityGroupSourceMessage,[\s\S]*?\} from "\.\/tool-activity-grouping"/);
+  assert.match(sessionPresentationSource, /export type ChatMessageRuntimeToolActivityGroupSourceMessage = ToolActivityGroupSourceMessage/);
   assert.doesNotMatch(screenSource, /getToolActivityGroupExpansionInheritanceItems,/);
   assert.doesNotMatch(screenSource, /createChatMessageRuntimeToolActivityGroups,/);
   assert.doesNotMatch(screenSource, /applyChatMessageRuntimeToolActivityGroupExpansionInheritance,/);
@@ -7325,7 +7326,11 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.match(chatMessageChromeSource, /const toolActivityGroups = useMemo\(\s+\(\) => createChatMessageRuntimeToolActivityGroups\(messages\),\s+\[messages\],\s+\);/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeToolActivityGroups/);
   assert.match(sessionPresentationSource, /export function createChatMessageRuntimeToolActivityGroups/);
+  assert.match(sessionPresentationSource, /messages: ChatMessageRuntimeToolActivityGroupSourceMessage\[\]/);
   assert.match(sessionPresentationSource, /return groupToolActivity\(messages\)/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeToolActivityGroupSourceMessage,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeThreadExpansionMessage =\s+& ChatDisplayMessageLike\s+& ChatMessageRuntimeToolActivityGroupSourceMessage;/);
+  assert.doesNotMatch(chatMessageChromeSource, /Parameters<typeof createChatMessageRuntimeToolActivityGroups>\[0\]\[number\]/);
   assert.doesNotMatch(chatMessageChromeSource, /export function toggleChatMessageRuntimeToolActivityGroupExpansionState/);
   assert.match(sessionPresentationSource, /export function toggleChatMessageRuntimeToolActivityGroupExpansionState/);
   assert.match(sessionPresentationSource, /toggleChatDisplayExpansionState\(\s+groupState,\s+getToolActivityGroupStateKey\(group\),\s+\)/);

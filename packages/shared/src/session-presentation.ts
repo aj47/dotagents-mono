@@ -537,6 +537,7 @@ import {
   type ToolActivityGroupMobileRenderState,
   type ToolActivityGroupMobileRenderStateInput,
   type ToolActivityGroupMobileSurfaceRenderState,
+  type ToolActivityGroupSourceMessage,
 } from "./tool-activity-grouping"
 export {
   TOOL_GROUP_MIN_SIZE,
@@ -548,6 +549,7 @@ export {
 } from "./tool-activity-grouping"
 export type {
   ToolActivityGroupMobileRenderState,
+  ToolActivityGroupSourceMessage,
 } from "./tool-activity-grouping"
 import {
   createMessageQueuePanelMobileWrapperStyleSlots,
@@ -15222,6 +15224,7 @@ export interface ChatMessageRuntimeLogMeta {
 
 export type ChatMessageRuntimeToolActivityGroup = ToolActivityGroup
 export type ChatMessageRuntimeToolActivityGroups = ReturnType<typeof groupToolActivity>
+export type ChatMessageRuntimeToolActivityGroupSourceMessage = ToolActivityGroupSourceMessage
 export type ChatMessageRuntimeMessageExpansionState = ChatDisplayExpansionStateMap<number>
 export type ChatMessageRuntimeToolCallExpansionState = ChatDisplayExpansionStateMap<string>
 export type ChatMessageRuntimeToolApprovalExpansionState = ChatDisplayExpansionStateMap<string>
@@ -16032,7 +16035,7 @@ export function createChatMessageRuntimeModelMessages<TMessage extends MessageCo
 }
 
 export function createChatMessageRuntimeToolActivityGroups(
-  messages: Parameters<typeof groupToolActivity>[0],
+  messages: ChatMessageRuntimeToolActivityGroupSourceMessage[],
 ): ChatMessageRuntimeToolActivityGroups {
   return groupToolActivity(messages)
 }
