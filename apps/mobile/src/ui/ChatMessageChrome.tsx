@@ -13236,15 +13236,11 @@ export function ChatMessageToolExecutionEmptyStateLabel({
   );
 }
 
-export function ChatMessageToolExecutionPayloadMeta({
-  renderState,
-  styles,
-}: ChatMessageToolExecutionPayloadMetaProps) {
+export function ChatMessageToolExecutionPayloadMeta(
+  props: ChatMessageToolExecutionPayloadMetaProps,
+) {
   const payloadMetaParts: ChatMessageToolExecutionPayloadMetaParts =
-    createChatRuntimeToolExecutionPayloadMetaMobilePropsParts({
-      renderState,
-      styles,
-    });
+    createChatRuntimeToolExecutionPayloadMetaMobilePropsParts(props);
 
   const content = (
     <ChatMessageToolExecutionPayloadMetaContent
@@ -13317,23 +13313,11 @@ export function ChatMessageToolExecutionPayloadMetaText({
   );
 }
 
-export function ChatMessageToolExecutionResultHeader({
-  payloadRenderState,
-  resultBadge,
-  characterCountLabel,
-  copyButtonRenderState,
-  onCopyPress,
-  styles,
-}: ChatMessageToolExecutionResultHeaderProps) {
+export function ChatMessageToolExecutionResultHeader(
+  props: ChatMessageToolExecutionResultHeaderProps,
+) {
   const resultHeaderParts: ChatMessageToolExecutionResultHeaderParts =
-    createChatRuntimeToolExecutionResultHeaderMobilePropsParts({
-      payloadRenderState,
-      resultBadge,
-      characterCountLabel,
-      copyButtonRenderState,
-      onCopyPress,
-      styles,
-    });
+    createChatRuntimeToolExecutionResultHeaderMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionResultHeaderView
@@ -13408,21 +13392,11 @@ export function ChatMessageToolExecutionResultCharacterCount({
   );
 }
 
-export function ChatMessageToolExecutionPayloadBlock({
-  compactText,
-  content,
-  isExpanded,
-  previewNumberOfLines,
-  styles,
-}: ChatMessageToolExecutionPayloadBlockProps) {
+export function ChatMessageToolExecutionPayloadBlock(
+  props: ChatMessageToolExecutionPayloadBlockProps,
+) {
   const payloadBlockParts: ChatMessageToolExecutionPayloadBlockParts =
-    createChatRuntimeToolExecutionPayloadBlockMobilePropsParts({
-      compactText,
-      content,
-      isExpanded,
-      previewNumberOfLines,
-      styles,
-    });
+    createChatRuntimeToolExecutionPayloadBlockMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionPayloadBlockContent
@@ -13498,27 +13472,11 @@ export function ChatMessageToolExecutionPayloadCode({
   );
 }
 
-export function ChatMessageToolExecutionPayloadSection({
-  payloadRenderState,
-  compactText,
-  content,
-  isExpanded,
-  previewNumberOfLines,
-  copyButtonRenderState,
-  onCopyPress,
-  styles,
-}: ChatMessageToolExecutionPayloadSectionProps) {
+export function ChatMessageToolExecutionPayloadSection(
+  props: ChatMessageToolExecutionPayloadSectionProps,
+) {
   const payloadSectionParts: ChatMessageToolExecutionPayloadSectionParts =
-    createChatRuntimeToolExecutionPayloadSectionMobilePropsParts({
-      payloadRenderState,
-      compactText,
-      content,
-      isExpanded,
-      previewNumberOfLines,
-      copyButtonRenderState,
-      onCopyPress,
-      styles,
-    });
+    createChatRuntimeToolExecutionPayloadSectionMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionPayloadSectionView
@@ -13578,21 +13536,11 @@ export function ChatMessageToolExecutionPayloadSectionView({
   );
 }
 
-export function ChatMessageToolExecutionErrorBlock({
-  renderState,
-  error,
-  copyButtonRenderState,
-  onCopyPress,
-  styles,
-}: ChatMessageToolExecutionErrorBlockProps) {
+export function ChatMessageToolExecutionErrorBlock(
+  props: ChatMessageToolExecutionErrorBlockProps,
+) {
   const errorBlockParts: ChatMessageToolExecutionErrorBlockParts =
-    createChatRuntimeToolExecutionErrorBlockMobilePropsParts({
-      renderState,
-      error,
-      copyButtonRenderState,
-      onCopyPress,
-      styles,
-    });
+    createChatRuntimeToolExecutionErrorBlockMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionErrorBlockView
@@ -13663,39 +13611,11 @@ export function ChatMessageToolExecutionErrorBlockText({
   );
 }
 
-export function ChatMessageToolExecutionResultSection({
-  payloadRenderState,
-  resultBadge,
-  characterCountLabel,
-  resultCompactText,
-  resultContent,
-  isExpanded,
-  previewNumberOfLines,
-  copyButtonRenderState,
-  onCopyPress,
-  errorRenderState,
-  error,
-  errorCopyButtonRenderState,
-  onErrorCopyPress,
-  styles,
-}: ChatMessageToolExecutionResultSectionProps) {
+export function ChatMessageToolExecutionResultSection(
+  props: ChatMessageToolExecutionResultSectionProps,
+) {
   const resultSectionParts: ChatMessageToolExecutionResultSectionParts =
-    createChatRuntimeToolExecutionResultSectionMobilePropsParts({
-      payloadRenderState,
-      resultBadge,
-      characterCountLabel,
-      resultCompactText,
-      resultContent,
-      isExpanded,
-      previewNumberOfLines,
-      copyButtonRenderState,
-      onCopyPress,
-      errorRenderState,
-      error,
-      errorCopyButtonRenderState,
-      onErrorCopyPress,
-      styles,
-    });
+    createChatRuntimeToolExecutionResultSectionMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionResultSectionItem
@@ -13753,25 +13673,11 @@ export function ChatMessageToolExecutionResultSectionItem({
   );
 }
 
-export function ChatMessageToolExecutionCallDetail({
-  renderState,
-  toolName,
-  onHeaderPress,
-  input,
-  result,
-  pendingResult,
-  styles,
-}: ChatMessageToolExecutionCallDetailProps) {
+export function ChatMessageToolExecutionCallDetail(
+  props: ChatMessageToolExecutionCallDetailProps,
+) {
   const callDetailParts: ChatMessageToolExecutionCallDetailParts =
-    createChatRuntimeToolExecutionCallDetailMobilePropsParts({
-      renderState,
-      toolName,
-      onHeaderPress,
-      input,
-      result,
-      pendingResult,
-      styles,
-    });
+    createChatRuntimeToolExecutionCallDetailMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionCallSection
@@ -13839,15 +13745,11 @@ export function ChatMessageToolExecutionCallDetailResultState({
   return null;
 }
 
-export function ChatMessageToolExecutionCallList({
-  rows,
-  styles,
-}: ChatMessageToolExecutionCallListProps) {
+export function ChatMessageToolExecutionCallList(
+  props: ChatMessageToolExecutionCallListProps,
+) {
   const callListParts: ChatMessageToolExecutionCallListParts =
-    createChatRuntimeToolExecutionCallListMobilePropsParts({
-      rows,
-      styles,
-    });
+    createChatRuntimeToolExecutionCallListMobilePropsParts(props);
 
   return (
     <ChatMessageToolExecutionCallListContent
