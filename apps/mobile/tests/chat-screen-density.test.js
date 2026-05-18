@@ -7431,6 +7431,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRowParts =\s+ChatRuntimeMessageContentRowMobilePropsParts<[\s\S]*?ChatMessageContentRowProps\['rowStyle'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRowProps = \{[\s\S]*?shouldRenderActionSlots: boolean;[\s\S]*?bodyStyle\?: StyleProp<ViewStyle>;[\s\S]*?\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRowParts = ReturnType<typeof createChatRuntimeMessageContentRowMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentRowContainerProps =\s+ChatMessageContentRowParts\['row'\]\['props'\]/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageContentBodyProps =\s+ChatMessageContentRowParts\['body'\]\['props'\]/);
+  assert.match(chatMessageChromeSource, /type ChatMessageContentRowContainerProps = \{[\s\S]*?style: StyleProp<ViewStyle>;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageContentBodyProps = \{[\s\S]*?style: StyleProp<ViewStyle>;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageStandaloneActionsProps =\s+ChatRuntimeMessageStandaloneActionsMobilePropsPartsInput<\s+ChatMessageActionEntry,[\s\S]*?StyleProp<ViewStyle>\s+>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageStandaloneActionsParts =\s+ChatRuntimeMessageStandaloneActionsMobilePropsParts<[\s\S]*?ChatMessageActionEntry,[\s\S]*?StyleProp<ViewStyle>/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageStandaloneActionsProps = ChatMessageActionSlotListProps & \{[\s\S]*?shouldRender: boolean;[\s\S]*?\};/);

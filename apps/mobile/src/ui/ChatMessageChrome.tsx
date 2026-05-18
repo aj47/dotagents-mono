@@ -5403,15 +5403,15 @@ type ChatMessageContentRowParts =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageContentRowContainerProps =
-  ChatMessageContentRowParts['row']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageContentRowContainerProps = {
+  style: StyleProp<ViewStyle>;
+  children: ReactNode;
+};
 
-type ChatMessageContentBodyProps =
-  ChatMessageContentRowParts['body']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageContentBodyProps = {
+  style: StyleProp<ViewStyle>;
+  children: ReactNode;
+};
 
 type ChatMessageExpandedContentStyles =
   SharedChatMessageExpandedContentStyleSlots<
