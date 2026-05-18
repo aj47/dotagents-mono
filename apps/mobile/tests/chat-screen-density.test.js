@@ -10045,7 +10045,11 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(chatMessageChromeSource, /export function deleteChatConversationHomePromptFromList/);
   assert.doesNotMatch(screenSource, /updatePredefinedPromptList/);
   assert.doesNotMatch(screenSource, /deletePredefinedPromptFromList/);
-  assert.match(screenSource, /const chatMessageRuntimeSurfaceInput = useMemo<\s+ChatScreenRuntimeChromeInput\['surface'\]\s+>\(\(\) => \(\{[\s\S]*?promptEditorVisible: addPromptModalVisible,/);
+  assert.match(screenSource, /useChatMessageRuntimeSurfaceInputState,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurfaceInput = useChatMessageRuntimeSurfaceInputState<\s+PredefinedPromptSummary,\s+Loop\s+>\(\{[\s\S]*?promptEditorVisible: addPromptModalVisible,/);
+  assert.doesNotMatch(screenSource, /const chatMessageRuntimeSurfaceInput = useMemo<\s+ChatScreenRuntimeChromeInput\['surface'\]\s+>\(\(\) => \(\{[\s\S]*?promptEditorVisible: addPromptModalVisible,/);
+  assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSurfaceInputState<[\s\S]*?\): ChatMessageRuntimeSurfaceInputStateInput<TPrompt, TTask>/);
+  assert.match(chatMessageChromeSource, /const chatMessageRuntimeSurfaceInputState = useMemo<ChatMessageRuntimeSurfaceInputStateInput<TPrompt, TTask>>\(/);
   assert.doesNotMatch(screenSource, /<ChatConversationHomePromptEditorModal/);
   assert.doesNotMatch(screenSource, /<Modal/);
   assert.doesNotMatch(screenSource, /<TouchableOpacity/);
@@ -10083,7 +10087,7 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.doesNotMatch(screenSource, /promptEditorModalChrome/);
   assert.doesNotMatch(screenSource, /promptEditorChrome:/);
   assert.doesNotMatch(screenSource, /promptEditorRenderStateInput:/);
-  assert.match(screenSource, /const chatMessageRuntimeSurfaceInput = useMemo<[\s\S]*?keyboardVerticalOffset: headerHeight,/);
+  assert.match(screenSource, /const chatMessageRuntimeSurfaceInput = useChatMessageRuntimeSurfaceInputState<[\s\S]*?keyboardVerticalOffset: headerHeight,/);
   assert.match(screenSource, /surface: chatMessageRuntimeSurfaceInput,/);
   assert.doesNotMatch(screenSource, /surface: \{\s+platform: Platform\.OS,\s+colors: theme\.colors,/);
   assert.match(sessionPresentationSource, /renderState: surfaceChromeRenderState\.promptEditor\.renderState,/);

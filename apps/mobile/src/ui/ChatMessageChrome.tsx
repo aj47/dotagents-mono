@@ -5244,6 +5244,11 @@ type ChatMessageRuntimeChromeInputStateInput<
   surface: ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['surface'];
 };
 
+type ChatMessageRuntimeSurfaceInputStateInput<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+> = ChatMessageRuntimeChromePropsInput<TPrompt, TTask>['surface'];
+
 export type ChatMessageRuntimeChromeSurfaceProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string; name: string },
@@ -5286,6 +5291,57 @@ export function useChatMessageRuntimeChromeInputState<
   );
 
   return chatMessageRuntimeChromeInputState;
+}
+
+export function useChatMessageRuntimeSurfaceInputState<
+  TPrompt extends PredefinedPromptSummary,
+  TTask extends PromptLibraryTaskLike & { id: string; name: string },
+>({
+  keyboardVerticalOffset,
+  agentSelectorVisible,
+  onAgentSelectorClose,
+  promptEditorVisible,
+  promptEditorIsEditing,
+  promptEditorNameValue,
+  onPromptEditorNameChange,
+  promptEditorContentValue,
+  onPromptEditorContentChange,
+  promptEditorIsSaving,
+  onPromptEditorClose,
+  onPromptEditorSave,
+}: ChatMessageRuntimeSurfaceInputStateInput<TPrompt, TTask>): ChatMessageRuntimeSurfaceInputStateInput<TPrompt, TTask> {
+  const chatMessageRuntimeSurfaceInputState = useMemo<ChatMessageRuntimeSurfaceInputStateInput<TPrompt, TTask>>(
+    () => ({
+      keyboardVerticalOffset,
+      agentSelectorVisible,
+      onAgentSelectorClose,
+      promptEditorVisible,
+      promptEditorIsEditing,
+      promptEditorNameValue,
+      onPromptEditorNameChange,
+      promptEditorContentValue,
+      onPromptEditorContentChange,
+      promptEditorIsSaving,
+      onPromptEditorClose,
+      onPromptEditorSave,
+    }),
+    [
+      agentSelectorVisible,
+      keyboardVerticalOffset,
+      onAgentSelectorClose,
+      onPromptEditorClose,
+      onPromptEditorContentChange,
+      onPromptEditorNameChange,
+      onPromptEditorSave,
+      promptEditorContentValue,
+      promptEditorIsEditing,
+      promptEditorIsSaving,
+      promptEditorNameValue,
+      promptEditorVisible,
+    ],
+  );
+
+  return chatMessageRuntimeSurfaceInputState;
 }
 
 type ChatComposerSpeechPreviewStyles =

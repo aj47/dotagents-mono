@@ -68,6 +68,7 @@ import {
   useChatMessageRuntimeClipboardChromeActionsState,
   useChatRuntimeMobileConfigState,
   useChatMessageRuntimeChromeInputState,
+  useChatMessageRuntimeSurfaceInputState,
 } from '../ui/ChatMessageChrome';
 import type {
   ChatMessageRuntimeChromePropsInput,
@@ -1766,35 +1767,23 @@ export default function ChatScreen({ route, navigation }: any) {
       voiceEvents,
     ]);
 
-  const chatMessageRuntimeSurfaceInput = useMemo<
-    ChatScreenRuntimeChromeInput['surface']
-  >(() => ({
-      keyboardVerticalOffset: headerHeight,
-      agentSelectorVisible,
-      onAgentSelectorClose: closeAgentSelector,
-      promptEditorVisible: addPromptModalVisible,
-      promptEditorIsEditing,
-      promptEditorNameValue: newPromptName,
-      onPromptEditorNameChange: setNewPromptName,
-      promptEditorContentValue: newPromptContent,
-      onPromptEditorContentChange: setNewPromptContent,
-      promptEditorIsSaving: isSavingPrompt,
-      onPromptEditorClose: closePromptModal,
-      onPromptEditorSave: handleSavePrompt,
-    }), [
-      addPromptModalVisible,
-      agentSelectorVisible,
-      closeAgentSelector,
-      closePromptModal,
-      handleSavePrompt,
-      headerHeight,
-      isSavingPrompt,
-      newPromptContent,
-      newPromptName,
-      promptEditorIsEditing,
-      setNewPromptContent,
-      setNewPromptName,
-    ]);
+  const chatMessageRuntimeSurfaceInput = useChatMessageRuntimeSurfaceInputState<
+    PredefinedPromptSummary,
+    Loop
+  >({
+    keyboardVerticalOffset: headerHeight,
+    agentSelectorVisible,
+    onAgentSelectorClose: closeAgentSelector,
+    promptEditorVisible: addPromptModalVisible,
+    promptEditorIsEditing,
+    promptEditorNameValue: newPromptName,
+    onPromptEditorNameChange: setNewPromptName,
+    promptEditorContentValue: newPromptContent,
+    onPromptEditorContentChange: setNewPromptContent,
+    promptEditorIsSaving: isSavingPrompt,
+    onPromptEditorClose: closePromptModal,
+    onPromptEditorSave: handleSavePrompt,
+  });
 
   const chatMessageRuntimeSurface = useChatMessageRuntimeChromeInputState<
     PredefinedPromptSummary,
