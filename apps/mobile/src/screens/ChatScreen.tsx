@@ -18,6 +18,7 @@ import {
   useChatComposerRuntimeEditBeforeSendState,
   useChatRuntimeStatusState,
   useChatRuntimeRequestDebugState,
+  useChatRuntimeRequestDebugActionsState,
   useChatRuntimeRequestTrackingState,
   useChatRuntimeConnectionStatusSubscription,
   useChatRuntimeConnectionRetryState,
@@ -93,14 +94,9 @@ import {
   createChatMessageRuntimeProgressResponseState,
   createChatMessageRuntimeQueuedErrorState,
   createChatMessageRuntimeStreamingTurnState,
-  createChatRuntimeCompletedDebugState,
   createChatRuntimeErrorLogDetailsState,
-  createChatRuntimeNoSessionAvailableDebugState,
-  createChatRuntimeProcessingQueuedMessageDebugState,
-  createChatRuntimeRequestSentDebugState,
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
-  createChatRuntimeStartingRequestDebugState,
   hasChatMessageRuntimeRequestSessionChanged,
   isChatMessageRuntimeActiveRequest,
   isChatMessageRuntimeLatestSessionRequest,
@@ -268,6 +264,15 @@ export default function ChatScreen({ route, navigation }: any) {
     setRequestDebugText: setDebugInfo,
     clearRequestDebugText: clearDebugInfo,
   } = useChatRuntimeRequestDebugState();
+  const {
+    showNoSessionAvailableDebug,
+    showStartingRequestDebug,
+    showRequestSentDebug,
+    showCompletedDebug,
+    showProcessingQueuedMessageDebug,
+  } = useChatRuntimeRequestDebugActionsState({
+    setRequestDebugText: setDebugInfo,
+  });
   const {
     lastFailedMessage,
     setLastFailedMessage,
@@ -711,11 +716,11 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for send');
-      setDebugInfo(createChatRuntimeNoSessionAvailableDebugState().debugInfo);
+      showNoSessionAvailableDebug();
       return;
     }
 
-    setDebugInfo(createChatRuntimeStartingRequestDebugState(config.baseUrl).debugInfo);
+    showStartingRequestDebug(config.baseUrl);
     // Clear any previous failed message when starting a new send
     clearLastFailedMessage();
 
@@ -789,7 +794,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const serverConversationId = sessionStore.getServerConversationId();
 	      console.log('[ChatScreen] Starting chat request with', currentMessages.length + 1, 'messages, conversationId:', serverConversationId || 'new');
-      setDebugInfo(createChatRuntimeRequestSentDebugState().debugInfo);
+      showRequestSentDebug();
 
       const onProgress = (update: AgentProgressUpdate) => {
         // Guard: skip update if session has changed since request started
@@ -913,7 +918,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (sessionChanged) {
         console.log('[ChatScreen] Session changed during request, persisting to original session without UI update');
       } else {
-        setDebugInfo(createChatRuntimeCompletedDebugState().debugInfo);
+        showCompletedDebug();
       }
 
       // Guard: skip final updates if this request is no longer the latest one for this session
@@ -1174,17 +1179,16 @@ export default function ChatScreen({ route, navigation }: any) {
     const client = getSessionClient();
     if (!client) {
       console.error('[ChatScreen] No client available for processing queued message');
-      const noSessionState = createChatRuntimeNoSessionAvailableDebugState();
+      const noSessionState = showNoSessionAvailableDebug();
       messageQueue.markFailed(
         currentConversationId,
         queuedMsg.id,
         noSessionState.message,
       );
-      setDebugInfo(noSessionState.debugInfo);
       return;
     }
 
-    setDebugInfo(createChatRuntimeProcessingQueuedMessageDebugState().debugInfo);
+    showProcessingQueuedMessageDebug();
 
     // Use ref to get latest messages to avoid stale closure when called via setTimeout (PR review fix)
     const pendingTurnState = createChatMessageRuntimePendingTurnState<ChatMessage>(

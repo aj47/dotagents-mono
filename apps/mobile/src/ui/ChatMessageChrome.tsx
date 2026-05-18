@@ -161,11 +161,16 @@ import {
   createChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   createChatRuntimeToolExecutionResultSectionMobilePropsParts,
   createChatRuntimeToolExecutionStackPanelMobilePropsParts,
+  createChatRuntimeCompletedDebugState,
   getChatRuntimeMessageThreadMobileStyleRenderState,
+  createChatRuntimeNoSessionAvailableDebugState,
+  createChatRuntimeProcessingQueuedMessageDebugState,
+  createChatRuntimeRequestSentDebugState,
   createChatComposerRuntimeDockMobileChromeProps,
   createChatRuntimeSurfaceChromeMobileProps,
   createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeMobileConfigState,
+  createChatRuntimeStartingRequestDebugState,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
@@ -442,6 +447,7 @@ import {
   type ChatMessageRuntimeTurnDurations,
   type ChatMessageRuntimeTurnDurationStateInput,
   type ChatRuntimeMobileConfigState,
+  type ChatRuntimeNoSessionAvailableDebugState,
   type MobileAppConfig,
   type ToolActivityGroupMobileRenderState,
   type ToolExecutionCompactMobileRenderState,
@@ -1097,6 +1103,18 @@ type ChatRuntimeRequestDebugState = {
   requestDebugText: string;
   setRequestDebugText: Dispatch<SetStateAction<string>>;
   clearRequestDebugText: () => void;
+};
+
+type ChatRuntimeRequestDebugActionsStateInput = {
+  setRequestDebugText: (value: string) => void;
+};
+
+type ChatRuntimeRequestDebugActionsState = {
+  showNoSessionAvailableDebug: () => ChatRuntimeNoSessionAvailableDebugState;
+  showStartingRequestDebug: (baseUrl: string) => void;
+  showRequestSentDebug: () => void;
+  showCompletedDebug: () => void;
+  showProcessingQueuedMessageDebug: () => void;
 };
 
 type ChatRuntimeRequestTrackingStateInput = {
@@ -9340,6 +9358,51 @@ export function useChatRuntimeRequestDebugState(): ChatRuntimeRequestDebugState 
   );
 
   return requestDebugState;
+}
+
+export function useChatRuntimeRequestDebugActionsState({
+  setRequestDebugText,
+}: ChatRuntimeRequestDebugActionsStateInput): ChatRuntimeRequestDebugActionsState {
+  const showNoSessionAvailableDebug = useCallback(() => {
+    const noSessionState = createChatRuntimeNoSessionAvailableDebugState();
+    setRequestDebugText(noSessionState.debugInfo);
+    return noSessionState;
+  }, [setRequestDebugText]);
+
+  const showStartingRequestDebug = useCallback((baseUrl: string) => {
+    setRequestDebugText(createChatRuntimeStartingRequestDebugState(baseUrl).debugInfo);
+  }, [setRequestDebugText]);
+
+  const showRequestSentDebug = useCallback(() => {
+    setRequestDebugText(createChatRuntimeRequestSentDebugState().debugInfo);
+  }, [setRequestDebugText]);
+
+  const showCompletedDebug = useCallback(() => {
+    setRequestDebugText(createChatRuntimeCompletedDebugState().debugInfo);
+  }, [setRequestDebugText]);
+
+  const showProcessingQueuedMessageDebug = useCallback(() => {
+    setRequestDebugText(createChatRuntimeProcessingQueuedMessageDebugState().debugInfo);
+  }, [setRequestDebugText]);
+
+  const requestDebugActionsState = useMemo<ChatRuntimeRequestDebugActionsState>(
+    () => ({
+      showNoSessionAvailableDebug,
+      showStartingRequestDebug,
+      showRequestSentDebug,
+      showCompletedDebug,
+      showProcessingQueuedMessageDebug,
+    }),
+    [
+      showCompletedDebug,
+      showNoSessionAvailableDebug,
+      showProcessingQueuedMessageDebug,
+      showRequestSentDebug,
+      showStartingRequestDebug,
+    ],
+  );
+
+  return requestDebugActionsState;
 }
 
 export function useChatRuntimeRequestTrackingState({
