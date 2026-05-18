@@ -2772,8 +2772,8 @@ type ChatMessageToolExecutionPanelProps =
 
 type ChatMessageToolExecutionPanelParts =
   ChatRuntimeToolExecutionPanelMobilePropsParts<
-    ChatMessageToolExecutionPanelProps['compact'],
-    ChatMessageToolExecutionPanelProps['expanded']
+    Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender'>,
+    Omit<ChatMessageToolExecutionExpandedGroupProps, 'children'>
   >;
 
 type ChatMessageToolExecutionPanelContentProps =
@@ -2817,14 +2817,19 @@ type ChatMessageToolExecutionStackPropsInput = ChatRuntimeConversationToolExecut
 
 type ChatMessageToolExecutionStackPanelParts =
   ChatRuntimeToolExecutionStackPanelMobilePropsParts<
-    ChatMessageToolExecutionStackProps['compact'],
-    ChatMessageToolExecutionStackProps['expanded'],
-    ChatMessageToolExecutionStackProps['detailRows'],
-    ChatMessageToolExecutionStackProps['styles']['compactGroup'],
-    ChatMessageToolExecutionStackProps['styles']['compactRow'],
-    ChatMessageToolExecutionStackProps['styles']['expandedGroup'],
-    ChatMessageToolExecutionStackProps['styles']['emptyStateText'],
-    ChatMessageToolExecutionStackProps['styles']['callDetail']
+    Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender' | 'groupStyles' | 'rowStyles'>,
+    Omit<ChatMessageToolExecutionExpandedGroupProps, 'children' | 'emptyState' | 'styles'> & {
+      emptyState?: {
+        shouldRender: boolean;
+        renderState: ToolExecutionDetailMobileEmptyStateRenderState;
+      } | null;
+    },
+    readonly ChatMessageToolExecutionCallListRow[],
+    ChatMessageToolExecutionCompactGroupStyles,
+    ChatMessageToolExecutionCompactRowStyles,
+    ChatMessageToolExecutionExpandedGroupStyles,
+    StyleProp<TextStyle>,
+    ChatMessageToolExecutionCallDetailStyles
   >;
 
 type ChatMessageToolExecutionStackContentProps =

@@ -4662,6 +4662,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionExpandedGroupMobilePropsPartsInput</);
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolExecutionPanelMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPanelProps =\s+ChatRuntimeToolExecutionPanelMobilePropsPartsInput<\s+Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender'>,[\s\S]*?Omit<ChatMessageToolExecutionExpandedGroupProps, 'children'>\s+> & \{\s+children: ReactNode;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPanelParts =\s+ChatRuntimeToolExecutionPanelMobilePropsParts<\s+Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender'>,[\s\S]*?Omit<ChatMessageToolExecutionExpandedGroupProps, 'children'>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionPanelParts =\s+ChatRuntimeToolExecutionPanelMobilePropsParts<[\s\S]*?ChatMessageToolExecutionPanelProps\['compact'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionPanelProps = \{[\s\S]*?shouldRender: boolean;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionPanelMobilePropsPartsInput</);
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolExecutionCopyButtonMobilePropsPartsInput,/);
@@ -4745,6 +4747,8 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   const toolExecutionStackEmptyStateBlockSource =
     chatMessageChromeSource.match(/export function ChatMessageToolExecutionStackEmptyStateBlock[\s\S]*?export function ChatMessageToolExecutionCopyButton/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /const stackPanelParts: ChatMessageToolExecutionStackPanelParts =\s+createChatRuntimeToolExecutionStackPanelMobilePropsParts\(\{\s+compact,\s+expanded,\s+detailRows,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionStackPanelParts =\s+ChatRuntimeToolExecutionStackPanelMobilePropsParts<\s+Omit<ChatMessageToolExecutionCompactListProps, 'shouldRender' \| 'groupStyles' \| 'rowStyles'>,[\s\S]*?Omit<ChatMessageToolExecutionExpandedGroupProps, 'children' \| 'emptyState' \| 'styles'> & \{[\s\S]*?ToolExecutionDetailMobileEmptyStateRenderState;[\s\S]*?\},[\s\S]*?readonly ChatMessageToolExecutionCallListRow\[\],[\s\S]*?ChatMessageToolExecutionCompactGroupStyles,[\s\S]*?ChatMessageToolExecutionCompactRowStyles,[\s\S]*?ChatMessageToolExecutionExpandedGroupStyles,[\s\S]*?StyleProp<TextStyle>,[\s\S]*?ChatMessageToolExecutionCallDetailStyles\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionStackPanelParts =\s+ChatRuntimeToolExecutionStackPanelMobilePropsParts<[\s\S]*?ChatMessageToolExecutionStackProps\['compact'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /const stackPanelExpandedGroup = stackPanelParts\.expandedGroup;/);
   assert.doesNotMatch(chatMessageChromeSource, /const stackPanelExpandedGroupContent = stackPanelExpandedGroup\.content;/);
   assert.match(toolExecutionStackSource, /<ChatMessageToolExecutionStackContent\s+shouldRender=\{shouldRender\}\s+isExpanded=\{isExpanded\}\s+\{\.\.\.stackPanelParts\}/);
