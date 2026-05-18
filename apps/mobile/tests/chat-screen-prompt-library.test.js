@@ -305,10 +305,14 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalParts =\s+ChatConversationHomePromptEditorModalMobilePropsParts<ChatConversationHomePromptEditorModalStyles>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalParts = ReturnType<typeof createChatConversationHomePromptEditorModalMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const modalParts: ChatConversationHomePromptEditorModalParts =\s+createChatConversationHomePromptEditorModalMobilePropsParts\(\{/);
-  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalFrameProps = Pick<[\s\S]*?ChatConversationHomePromptEditorModalParts,[\s\S]*?'modal' \| 'keyboardAvoidingView' \| 'overlay' \| 'content'/);
-  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalModalPart = \{/);
-  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalKeyboardAvoidingViewPart = \{/);
-  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModal(View|IconButton|Icon|ActionButton|Actions|Header|Text|Input)Part = \{/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalModalPart = \{\s+props: ComponentProps<typeof Modal>;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalKeyboardAvoidingViewPart = \{\s+props: ComponentProps<typeof KeyboardAvoidingView>;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalTextPart = \{\s+text: string;\s+props: ComponentProps<typeof Text>;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalFrameProps = \{\s+modal: ChatConversationHomePromptEditorModalModalPart;\s+keyboardAvoidingView: ChatConversationHomePromptEditorModalKeyboardAvoidingViewPart;\s+overlay: ChatConversationHomePromptEditorModalViewPart;\s+content: ChatConversationHomePromptEditorModalViewPart;\s+children: ReactNode;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalFieldProps = \{\s+label: ChatConversationHomePromptEditorModalTextPart;\s+input: ChatConversationHomePromptEditorModalInputPart;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalActionButtonProps = \{\s+button: ChatConversationHomePromptEditorModalTouchablePart;\s+label: ChatConversationHomePromptEditorModalTextPart;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatConversationHomePromptEditorModalParts\['/);
+  assert.doesNotMatch(chatMessageChromeSource, /Pick<\s*ChatConversationHomePromptEditorModalParts,/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomePromptEditorModalBody\s+header=\{modalParts\.header\}/);
   assert.match(sessionPresentationSource, /style: styles\.header/);
   assert.match(sessionPresentationSource, /style: styles\.closeButton/);

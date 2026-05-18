@@ -2062,62 +2062,81 @@ type ChatConversationHomePromptEditorModalProps = {
 type ChatConversationHomePromptEditorModalParts =
   ChatConversationHomePromptEditorModalMobilePropsParts<ChatConversationHomePromptEditorModalStyles>;
 
-type ChatConversationHomePromptEditorModalFrameProps = Pick<
-  ChatConversationHomePromptEditorModalParts,
-  'modal' | 'keyboardAvoidingView' | 'overlay' | 'content'
-> & {
+type ChatConversationHomePromptEditorModalModalPart = {
+  props: ComponentProps<typeof Modal>;
+};
+
+type ChatConversationHomePromptEditorModalKeyboardAvoidingViewPart = {
+  props: ComponentProps<typeof KeyboardAvoidingView>;
+};
+
+type ChatConversationHomePromptEditorModalViewPart = {
+  props: ComponentProps<typeof View>;
+};
+
+type ChatConversationHomePromptEditorModalTouchablePart = {
+  props: ComponentProps<typeof TouchableOpacity>;
+};
+
+type ChatConversationHomePromptEditorModalIconPart = {
+  props: ComponentProps<typeof Ionicons>;
+};
+
+type ChatConversationHomePromptEditorModalTextPart = {
+  text: string;
+  props: ComponentProps<typeof Text>;
+};
+
+type ChatConversationHomePromptEditorModalInputPart = {
+  props: ComponentProps<typeof TextInput>;
+};
+
+type ChatConversationHomePromptEditorModalFrameProps = {
+  modal: ChatConversationHomePromptEditorModalModalPart;
+  keyboardAvoidingView: ChatConversationHomePromptEditorModalKeyboardAvoidingViewPart;
+  overlay: ChatConversationHomePromptEditorModalViewPart;
+  content: ChatConversationHomePromptEditorModalViewPart;
   children: ReactNode;
 };
 
 type ChatConversationHomePromptEditorModalIconButtonProps = {
-  button: ChatConversationHomePromptEditorModalParts['closeButton'];
-  icon: ChatConversationHomePromptEditorModalParts['closeIcon'];
+  button: ChatConversationHomePromptEditorModalTouchablePart;
+  icon: ChatConversationHomePromptEditorModalIconPart;
 };
 
-type ChatConversationHomePromptEditorModalHeaderProps = Pick<
-  ChatConversationHomePromptEditorModalParts,
-  'header' | 'title' | 'closeButton' | 'closeIcon'
->;
+type ChatConversationHomePromptEditorModalHeaderProps = {
+  header: ChatConversationHomePromptEditorModalViewPart;
+  title: ChatConversationHomePromptEditorModalTextPart;
+  closeButton: ChatConversationHomePromptEditorModalTouchablePart;
+  closeIcon: ChatConversationHomePromptEditorModalIconPart;
+};
 
 type ChatConversationHomePromptEditorModalFieldProps = {
-  label:
-    | ChatConversationHomePromptEditorModalParts['nameLabel']
-    | ChatConversationHomePromptEditorModalParts['contentLabel'];
-  input:
-    | ChatConversationHomePromptEditorModalParts['nameInput']
-    | ChatConversationHomePromptEditorModalParts['contentInput'];
+  label: ChatConversationHomePromptEditorModalTextPart;
+  input: ChatConversationHomePromptEditorModalInputPart;
 };
 
 type ChatConversationHomePromptEditorModalActionButtonProps = {
-  button:
-    | ChatConversationHomePromptEditorModalParts['cancelButton']
-    | ChatConversationHomePromptEditorModalParts['saveButton'];
-  label:
-    | ChatConversationHomePromptEditorModalParts['cancelLabel']
-    | ChatConversationHomePromptEditorModalParts['saveLabel'];
+  button: ChatConversationHomePromptEditorModalTouchablePart;
+  label: ChatConversationHomePromptEditorModalTextPart;
 };
 
-type ChatConversationHomePromptEditorModalActionsProps = Pick<
-  ChatConversationHomePromptEditorModalParts,
-  'actions' | 'cancelButton' | 'cancelLabel' | 'saveButton' | 'saveLabel'
->;
+type ChatConversationHomePromptEditorModalActionsProps = {
+  actions: ChatConversationHomePromptEditorModalViewPart;
+  cancelButton: ChatConversationHomePromptEditorModalTouchablePart;
+  cancelLabel: ChatConversationHomePromptEditorModalTextPart;
+  saveButton: ChatConversationHomePromptEditorModalTouchablePart;
+  saveLabel: ChatConversationHomePromptEditorModalTextPart;
+};
 
-type ChatConversationHomePromptEditorModalBodyProps = Pick<
-  ChatConversationHomePromptEditorModalParts,
-  | 'header'
-  | 'title'
-  | 'closeButton'
-  | 'closeIcon'
-  | 'nameLabel'
-  | 'nameInput'
-  | 'contentLabel'
-  | 'contentInput'
-  | 'actions'
-  | 'cancelButton'
-  | 'cancelLabel'
-  | 'saveButton'
-  | 'saveLabel'
->;
+type ChatConversationHomePromptEditorModalBodyProps =
+  ChatConversationHomePromptEditorModalHeaderProps &
+  ChatConversationHomePromptEditorModalActionsProps & {
+    nameLabel: ChatConversationHomePromptEditorModalTextPart;
+    nameInput: ChatConversationHomePromptEditorModalInputPart;
+    contentLabel: ChatConversationHomePromptEditorModalTextPart;
+    contentInput: ChatConversationHomePromptEditorModalInputPart;
+  };
 
 type ChatMessageRuntimeOverlaysProps = {
   agentSelector: ComponentProps<typeof AgentSelectorSheet>;
