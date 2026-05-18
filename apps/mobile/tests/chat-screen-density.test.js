@@ -9684,8 +9684,8 @@ test('lets mobile edit and delete desktop saved prompts from quick-start cards',
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalStyleSlots<[\s\S]*?\): ChatConversationHomePromptEditorModalStyleSlots</);
   assert.match(sessionPresentationSource, /export function createChatConversationHomePromptEditorModalStyleSlotsFromStyleSource/);
   assert.match(sessionPresentationSource, /type ChatConversationHomePromptEditorModalStyleSlotsFromStyleSource<[\s\S]*?> = ChatConversationHomePromptEditorModalStyleSlots</);
-  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalStyleSlots as SharedChatConversationHomePromptEditorModalStyleSlots,/);
-  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalStyles =\s+SharedChatConversationHomePromptEditorModalStyleSlots<\s+StyleProp<ViewStyle>,/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalStyleSlots as SharedChatConversationHomePromptEditorModalStyleSlots,/);
+  assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalStyles =\s+ChatRuntimeMobileChromeSlots\['messageRuntime'\]\['styles'\]\['promptEditorStyles'\];/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalStyles = \{\s+keyboardAvoidingView: StyleProp<ViewStyle>;/);
   assert.match(sessionPresentationSource, /keyboardAvoidingView: keyboardAvoidingViewStyle,/);
   assert.match(sessionPresentationSource, /overlayStyle: styles\.modalOverlay,\s+contentStyle: styles\.modalContent,\s+headerStyle: styles\.modalHeader,/);

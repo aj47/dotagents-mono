@@ -241,7 +241,6 @@ import {
   type ChatRuntimeConversationViewportContentMobilePropsParts,
   type ChatRuntimeConversationViewportContentMobilePropsPartsInput,
   type ChatConversationHomePromptEditorModalMobilePropsParts,
-  type ChatConversationHomePromptEditorModalStyleSlots as SharedChatConversationHomePromptEditorModalStyleSlots,
   type ChatRuntimeDebugPanelStackMobilePropsParts,
   type ChatRuntimeHandsFreeMobileRenderState,
   type ChatRuntimeKillSwitchConfirmationAlertState,
@@ -1970,23 +1969,7 @@ type ChatConversationHomeQuickStartsContentProps<
 >;
 
 type ChatConversationHomePromptEditorModalStyles =
-  SharedChatConversationHomePromptEditorModalStyleSlots<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['promptEditorStyles'];
 
 type ChatConversationHomePromptEditorModalProps = {
   visible: boolean;
