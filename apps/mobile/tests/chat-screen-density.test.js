@@ -9129,6 +9129,7 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.match(sessionPresentationSource, /export function formatChatRuntimeResponseSpeechEventReason/);
   assert.match(sessionPresentationSource, /export function formatChatRuntimeAssistantSpeechDebugMessage/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeAssistantSpeechDebugState/);
+  assert.match(sessionPresentationSource, /export function getChatRuntimeAssistantSpeechReasonState/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeNativeSpeechLanguage/);
   assert.match(ttsPreprocessingSource, /preprocessTextForTTS\(content\)/);
   assert.match(ttsPreprocessingSource, /normalizeAutoTtsTextKey\(processedText\)/);
@@ -9136,6 +9137,8 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageRuntimeSpeechTextState/);
   assert.match(chatMessageChromeSource, /const chatRuntimeAssistantSpeechDebugState = getChatRuntimeAssistantSpeechDebugState\(\);/);
   assert.match(chatMessageChromeSource, /const chatRuntimeNativeSpeechLanguage = getChatRuntimeNativeSpeechLanguage\(\);/);
+  assert.match(chatMessageChromeSource, /getChatRuntimeAssistantSpeechReasonState,/);
+  assert.match(chatScreenSource, /const chatRuntimeAssistantSpeechReasons = getChatRuntimeAssistantSpeechReasonState\(\);/);
   assert.match(chatMessageChromeSource, /const \[respondToUserHistory, setRespondToUserHistory\] = useState<AgentUserResponseEvent\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const recentAutoSpeechByTextRef = useRef<Map<string, number>>\(new Map\(\)\);/);
   assert.match(chatMessageChromeSource, /const syncResponseHistoryRefs = useCallback\(\(events: AgentUserResponseEvent\[\]\) => \{[\s\S]*?respondToUserHistoryRef\.current = events;[\s\S]*?nextResponseEventOrdinalRef\.current = getChatMessageRuntimeNextResponseEventOrdinal\(events\);/);
@@ -9162,6 +9165,14 @@ test('suppresses duplicate auto TTS starts for the same mobile response text', (
   assert.doesNotMatch(chatMessageChromeSource, /`response event \$\{nextEvent\.ordinal\}`/);
   assert.doesNotMatch(chatMessageChromeSource, /Assistant speech (?:started|stopped|finished|errored)/);
   assert.doesNotMatch(chatMessageChromeSource, /language: 'en-US'/);
+  assert.match(chatScreenSource, /speakAssistantResponse\(\s+responseState\.legacyResponseText,\s+chatRuntimeAssistantSpeechReasons\.midTurnProgress,/);
+  assert.match(chatScreenSource, /speakAssistantResponse\(ttsText, chatRuntimeAssistantSpeechReasons\.finalResponse\)/);
+  assert.match(chatScreenSource, /speakAssistantResponse\(\s+responseState\.legacyResponseText,\s+chatRuntimeAssistantSpeechReasons\.queuedMidTurnProgress,/);
+  assert.match(chatScreenSource, /speakAssistantResponse\(ttsText, chatRuntimeAssistantSpeechReasons\.queuedFinalResponse\)/);
+  assert.doesNotMatch(chatScreenSource, /'mid-turn progress'/);
+  assert.doesNotMatch(chatScreenSource, /'final response'/);
+  assert.doesNotMatch(chatScreenSource, /'queued mid-turn progress'/);
+  assert.doesNotMatch(chatScreenSource, /'queued final response'/);
   assert.doesNotMatch(screenSource, /preprocessTextForTTS/);
   assert.doesNotMatch(screenSource, /normalizeAutoTtsTextKey/);
   assert.doesNotMatch(screenSource, /const \[respondToUserHistory, setRespondToUserHistory\] = useState<AgentUserResponseEvent\[\]>\(\[\]\);/);

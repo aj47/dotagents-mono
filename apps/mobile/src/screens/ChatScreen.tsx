@@ -97,6 +97,7 @@ import {
   createChatMessageRuntimeQueuedErrorState,
   createChatMessageRuntimeStreamingTurnState,
   createChatRuntimeErrorLogDetailsState,
+  getChatRuntimeAssistantSpeechReasonState,
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   hasChatMessageRuntimeRequestSessionChanged,
@@ -110,6 +111,8 @@ import {
   type ChatMessage,
   type ChatRuntimeExtendedSettingsClient,
 } from '../ui/ChatMessageChrome';
+
+const chatRuntimeAssistantSpeechReasons = getChatRuntimeAssistantSpeechReasonState();
 
 export default function ChatScreen({ route, navigation }: any) {
   const { chatRuntimeChrome } = useChatMessageRuntimeChromeStyleState();
@@ -817,7 +820,10 @@ export default function ChatScreen({ route, navigation }: any) {
           ttsEnabledRef.current
         ) {
           midTurnLegacyResponseText = responseState.legacyResponseText;
-          speakAssistantResponse(responseState.legacyResponseText, 'mid-turn progress');
+          speakAssistantResponse(
+            responseState.legacyResponseText,
+            chatRuntimeAssistantSpeechReasons.midTurnProgress,
+          );
         }
         const { progressMessages } = progressTurnState;
         if (progressMessages.length > 0) {
@@ -1007,7 +1013,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();
 	        }
-	        speakAssistantResponse(ttsText, 'final response');
+	        speakAssistantResponse(ttsText, chatRuntimeAssistantSpeechReasons.finalResponse);
 	      } else if (handsFree) {
 	        handsFreeController.onRequestCompleted();
       }
@@ -1241,7 +1247,10 @@ export default function ChatScreen({ route, navigation }: any) {
           ttsEnabledRef.current
         ) {
           midTurnLegacyResponseText = responseState.legacyResponseText;
-          speakAssistantResponse(responseState.legacyResponseText, 'queued mid-turn progress');
+          speakAssistantResponse(
+            responseState.legacyResponseText,
+            chatRuntimeAssistantSpeechReasons.queuedMidTurnProgress,
+          );
         }
         const { progressMessages } = progressTurnState;
         if (progressMessages.length > 0) {
@@ -1345,7 +1354,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();
 	        }
-	        speakAssistantResponse(ttsText, 'queued final response');
+	        speakAssistantResponse(ttsText, chatRuntimeAssistantSpeechReasons.queuedFinalResponse);
 	      } else if (handsFree) {
 	        handsFreeController.onRequestCompleted();
       }

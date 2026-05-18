@@ -14232,6 +14232,12 @@ export const CHAT_RUNTIME_PRESENTATION = {
     finishedFromMessagePlayback: "Assistant speech finished from message playback.",
     erroredFromMessagePlayback: "Assistant speech errored during message playback.",
     stoppedFromSpeakerToggle: "Assistant speech stopped from speaker toggle.",
+    reasons: {
+      midTurnProgress: "mid-turn progress",
+      finalResponse: "final response",
+      queuedMidTurnProgress: "queued mid-turn progress",
+      queuedFinalResponse: "queued final response",
+    },
   },
   header: {
     defaultAgentLabel: "Default Agent",
@@ -15123,6 +15129,10 @@ export function formatChatRuntimeAssistantSpeechDebugMessage(
 
 export function getChatRuntimeAssistantSpeechDebugState(): typeof CHAT_RUNTIME_PRESENTATION.speech {
   return CHAT_RUNTIME_PRESENTATION.speech
+}
+
+export function getChatRuntimeAssistantSpeechReasonState(): typeof CHAT_RUNTIME_PRESENTATION.speech.reasons {
+  return CHAT_RUNTIME_PRESENTATION.speech.reasons
 }
 
 export function getChatRuntimeNativeSpeechLanguage(): string {

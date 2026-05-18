@@ -255,6 +255,7 @@ import {
   formatChatRuntimeVisibleUpdatesSummary,
   formatChatRuntimeWebConfirmMessage,
   getChatRuntimeAssistantSpeechDebugState,
+  getChatRuntimeAssistantSpeechReasonState,
   getChatComposerCopyState,
   getChatComposerDesktopSurfaceState,
   getChatComposerEditBeforeSendMobileIconState,
@@ -1000,6 +1001,12 @@ describe("session presentation semantics", () => {
       finishedFromMessagePlayback: "Assistant speech finished from message playback.",
       erroredFromMessagePlayback: "Assistant speech errored during message playback.",
       stoppedFromSpeakerToggle: "Assistant speech stopped from speaker toggle.",
+    })
+    expect(getChatRuntimeAssistantSpeechReasonState()).toEqual({
+      midTurnProgress: "mid-turn progress",
+      finalResponse: "final response",
+      queuedMidTurnProgress: "queued mid-turn progress",
+      queuedFinalResponse: "queued final response",
     })
     expect(createChatMessageRuntimeUserTextMessage("Run this")).toEqual({
       role: "user",

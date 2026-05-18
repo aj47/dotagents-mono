@@ -510,6 +510,7 @@ export {
   createChatMessageRuntimeQueuedErrorState,
   createChatMessageRuntimeStreamingTurnState,
   createChatRuntimeErrorLogDetailsState,
+  getChatRuntimeAssistantSpeechReasonState,
   createChatRuntimeRequestSupersededQueueFailureState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   hasChatMessageRuntimeRequestSessionChanged,
