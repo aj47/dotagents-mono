@@ -4644,8 +4644,8 @@ type ChatMessageSurfaceProps =
 
 type ChatMessageSurfaceParts =
   ChatRuntimeMessageSurfaceMobilePropsParts<
-    ChatMessageSurfaceProps['style'],
-    ChatMessageSurfaceProps['toneStyle']
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageSurfaceContainerProps =
@@ -4663,14 +4663,14 @@ type ChatMessageThreadItemProps =
 
 type ChatMessageThreadItemParts =
   ChatRuntimeMessageThreadItemMobilePropsParts<
-    ChatMessageThreadItemProps['leadingActivity'],
-    ChatMessageThreadItemProps['trailingActivity']
+    ReactNode,
+    ReactNode
   >;
 
 type ChatMessageThreadSurfaceProps =
   ChatRuntimeMessageThreadSurfaceMobilePropsPartsInput<
-    ChatMessageThreadItemProps['leadingActivity'],
-    ChatMessageThreadItemProps['trailingActivity'],
+    ReactNode,
+    ReactNode,
     StyleProp<ViewStyle>,
     StyleProp<ViewStyle>
   > & {
@@ -4679,10 +4679,10 @@ type ChatMessageThreadSurfaceProps =
 
 type ChatMessageThreadSurfaceParts =
   ChatRuntimeMessageThreadSurfaceMobilePropsParts<
-    ChatMessageThreadSurfaceProps['leadingActivity'],
-    ChatMessageThreadSurfaceProps['trailingActivity'],
-    ChatMessageThreadSurfaceProps['surfaceStyle'],
-    ChatMessageThreadSurfaceProps['surfaceToneStyle']
+    ReactNode,
+    ReactNode,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageToolActivityGroupThreadSurfaceProps = Omit<
@@ -4696,10 +4696,10 @@ type ChatMessageToolActivityGroupThreadSurfaceProps = Omit<
 
 type ChatMessageToolActivityGroupThreadSurfaceParts =
   ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts<
-    NonNullable<ChatMessageToolActivityGroupThreadSurfaceProps['groupRenderState']>,
-    ChatMessageToolActivityGroupThreadSurfaceProps['onToggleGroup'],
+    ToolActivityGroupMobileRenderState,
+    (event: GestureResponderEvent) => void,
     ChatMessageToolActivityGroupThreadSurfaceStyleSlots['surfaceStyle'],
-    ChatMessageToolActivityGroupThreadSurfaceProps['surfaceToneStyle'],
+    StyleProp<ViewStyle>,
     ChatMessageToolActivityGroupThreadSurfaceStyleSlots['boundary']
   >;
 
@@ -4742,8 +4742,8 @@ type ChatMessageContentRowProps =
 type ChatMessageContentRowParts =
   ChatRuntimeMessageContentRowMobilePropsParts<
     ChatMessageActionEntry,
-    ChatMessageContentRowProps['rowStyle'],
-    ChatMessageContentRowProps['bodyStyle']
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageContentRowContainerProps =
@@ -4780,12 +4780,12 @@ type ChatMessageExpandedContentProps =
 
 type ChatMessageExpandedContentParts =
   ChatRuntimeConversationExpandedContentMobilePropsParts<
-    ChatMessageExpandedContentProps['streamingRenderState'],
-    ChatMessageExpandedContentProps['markdownContent'],
-    ChatMessageExpandedContentProps['assetBaseUrl'],
-    ChatMessageExpandedContentProps['assetAuthToken'],
-    ChatMessageExpandedContentProps['spinnerSource'],
-    ChatMessageExpandedContentProps['streamingStyles']
+    ChatRuntimeStreamingContentMobileRenderState,
+    string,
+    string,
+    string,
+    ImageSourcePropType,
+    ChatMessageExpandedContentStyles
   >;
 
 type ChatMessageExpandedContentTextProps = {
@@ -4829,12 +4829,12 @@ type ChatMessageCollapsedPreviewPropsInput = Pick<
 
 type ChatMessageCollapsedPreviewParts =
   ChatRuntimeConversationCollapsedPreviewMobilePropsParts<
-    ChatMessageCollapsedPreviewProps['renderState'],
-    ChatMessageCollapsedPreviewProps['actionState'],
-    ChatMessageCollapsedPreviewProps['onPress'],
-    ChatMessageCollapsedPreviewProps['style'],
-    ChatMessageCollapsedPreviewProps['pressedStyle'],
-    ChatMessageCollapsedPreviewProps['textStyle']
+    ChatRuntimeConversationMessageMobileRenderState['collapsedPreview'],
+    ChatMessageCollapsedPreviewMobileActionState,
+    (event: GestureResponderEvent) => void,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
   >;
 
 type ChatMessageCollapsedPreviewContentProps =
@@ -4857,9 +4857,11 @@ type ChatMessageConversationContentProps =
 type ChatMessageConversationContentParts =
   ChatRuntimeConversationContentMobilePropsParts<
     ChatMessageActionEntry,
-    ChatMessageConversationContentProps['expanded'],
-    ChatMessageConversationContentProps['collapsed'],
-    ChatMessageConversationContentProps['rowStyle']
+    ChatMessageExpandedContentProps & {
+      bodyStyle: StyleProp<ViewStyle>;
+    },
+    ChatMessageCollapsedPreviewProps,
+    StyleProp<ViewStyle>
   >;
 
 type ChatComposerStyleSlots =
@@ -5000,12 +5002,12 @@ export type ChatMessageThreadBodyStyleSlots =
     ChatMessageToolApprovalStyles,
     Pick<ChatMessageInlineActivityProps, 'style' | 'spinnerStyle'>,
     {
-      rowStyle: ChatMessageConversationContentProps['rowStyle'];
-      expandedBodyStyle: ChatMessageConversationContentProps['expanded']['bodyStyle'];
+      rowStyle: StyleProp<ViewStyle>;
+      expandedBodyStyle: StyleProp<ViewStyle>;
       streamingStyles: ChatMessageExpandedContentStyles;
-      collapsedStyle: ChatMessageCollapsedPreviewProps['style'];
-      collapsedPressedStyle: ChatMessageCollapsedPreviewProps['pressedStyle'];
-      collapsedTextStyle: ChatMessageCollapsedPreviewProps['textStyle'];
+      collapsedStyle: StyleProp<ViewStyle>;
+      collapsedPressedStyle: StyleProp<ViewStyle>;
+      collapsedTextStyle: StyleProp<TextStyle>;
     },
     ChatMessageToolExecutionStackStyles,
     Pick<ChatMessageStandaloneActionsProps, 'rowStyle'>
@@ -5013,10 +5015,10 @@ export type ChatMessageThreadBodyStyleSlots =
 
 type ChatMessageToolActivityGroupThreadSurfaceStyleSlots =
   SharedChatMessageToolActivityGroupThreadSurfaceStyleSlots<
-    ChatMessageThreadSurfaceProps['surfaceStyle'],
+    StyleProp<ViewStyle>,
     ChatMessageToolActivityGroupBoundaryStyles,
     ChatRuntimeConversationSurfaceToneMobileStyleSlot,
-    ChatMessageThreadSurfaceProps['surfaceToneStyle']
+    StyleProp<ViewStyle>
   >;
 
 type ChatMessageThreadBodyContentProps =
@@ -5047,13 +5049,13 @@ type ChatMessageThreadBodyProps = {
 
 type ChatMessageThreadBodyParts =
   ChatRuntimeConversationThreadBodyMobilePropsParts<
-    NonNullable<ChatMessageThreadBodyProps['retryStatus']>,
-    NonNullable<ChatMessageThreadBodyProps['delegationCard']>,
-    NonNullable<ChatMessageThreadBodyProps['toolApproval']>,
-    NonNullable<ChatMessageThreadBodyProps['inlineActivity']>,
-    ChatMessageThreadBodyProps['conversation']['content'],
-    ChatMessageThreadBodyProps['conversation']['toolExecutionStack'],
-    ChatMessageThreadBodyProps['conversation']['standaloneActions'],
+    Omit<ChatMessageRetryStatusProps, 'styles'>,
+    Omit<ChatMessageDelegationCardProps, 'styles'>,
+    Omit<ChatMessageToolApprovalProps, 'styles'>,
+    Omit<ChatMessageInlineActivityProps, 'style' | 'spinnerStyle'>,
+    ChatMessageThreadBodyContentProps,
+    Omit<ChatMessageToolExecutionStackProps, 'styles'>,
+    Omit<ChatMessageStandaloneActionsProps, 'rowStyle'>,
     ChatMessageThreadBodyStyleSlots['retryStatus'],
     ChatMessageThreadBodyStyleSlots['delegationCard'],
     ChatMessageThreadBodyStyleSlots['toolApproval'],
@@ -5129,9 +5131,9 @@ type ChatMessageRuntimeThreadProps = Omit<
 
 type ChatMessageRuntimeThreadParts =
   ChatRuntimeConversationRuntimeThreadMobilePropsParts<
-    NonNullable<ChatMessageRuntimeThreadProps['groupRenderState']>,
-    NonNullable<ChatMessageRuntimeThreadProps['body']>,
-    ChatMessageRuntimeThreadProps['onToggleGroup'],
+    ToolActivityGroupMobileRenderState,
+    ChatMessageThreadBodyPropsInput,
+    (event: GestureResponderEvent) => void,
     ChatMessageRuntimeThreadStyleSlots['body'],
     ChatMessageRuntimeThreadStyleSlots['surface']
   >;
