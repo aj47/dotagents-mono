@@ -3382,23 +3382,50 @@ type ChatMessageToolExecutionExpandedGroupParts =
     ChatMessageToolExecutionExpandedGroupStyles
   >;
 
-type ChatMessageToolExecutionExpandedGroupContainerProps =
-  ChatMessageToolExecutionExpandedGroupParts['container']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageToolExecutionExpandedGroupContainerProps = {
+  style: ChatMessageToolExecutionExpandedGroupStyles['container'];
+  children: ReactNode;
+};
 
-type ChatMessageToolExecutionExpandedGroupContentProps =
-  ChatMessageToolExecutionExpandedGroupParts['container']['content'] & {
-    children: ReactNode;
-  };
+type ChatMessageToolExecutionExpandedGroupCardProps = {
+  style: Array<
+    | ChatMessageToolExecutionExpandedGroupStyles['card']
+    | ChatMessageToolExecutionExpandedGroupStyles['pending']
+    | ChatMessageToolExecutionExpandedGroupStyles['success']
+    | ChatMessageToolExecutionExpandedGroupStyles['error']
+    | false
+  >;
+  children: ReactNode;
+};
 
-type ChatMessageToolExecutionExpandedGroupCardProps =
-  ChatMessageToolExecutionExpandedGroupParts['container']['content']['card']['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageToolExecutionExpandedGroupCardPart = {
+  props: Omit<ChatMessageToolExecutionExpandedGroupCardProps, 'children'>;
+};
+
+type ChatMessageToolExecutionExpandedGroupCollapseControlPart = {
+  props: ChatMessageToolExecutionCollapseControlProps;
+};
+
+type ChatMessageToolExecutionExpandedGroupEmptyStatePart =
+  | {
+      shouldRender: true;
+      props: ReactNode;
+    }
+  | {
+      shouldRender: false;
+      props: null;
+    };
+
+type ChatMessageToolExecutionExpandedGroupContentProps = {
+  topCollapseControl: ChatMessageToolExecutionExpandedGroupCollapseControlPart;
+  bottomCollapseControl: ChatMessageToolExecutionExpandedGroupCollapseControlPart;
+  card: ChatMessageToolExecutionExpandedGroupCardPart;
+  emptyState: ChatMessageToolExecutionExpandedGroupEmptyStatePart;
+  children: ReactNode;
+};
 
 type ChatMessageToolExecutionExpandedGroupEmptyStateBlockProps = {
-  emptyState: ChatMessageToolExecutionExpandedGroupParts['container']['content']['emptyState'];
+  emptyState: ChatMessageToolExecutionExpandedGroupEmptyStatePart;
 };
 
 type ChatMessageToolExecutionPanelProps =
