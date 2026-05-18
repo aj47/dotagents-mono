@@ -47,8 +47,13 @@ export function useConnectionStatusIndicatorMobileStyleSlots({
     [connectionStatusStyleSheetSlots],
   );
 
-  return {
-    connectionStatusState,
-    styles,
-  };
+  const connectionStatusStyleSlots = useMemo<ConnectionStatusIndicatorMobileStyleSlots>(
+    () => ({
+      connectionStatusState,
+      styles,
+    }),
+    [connectionStatusState, styles],
+  );
+
+  return connectionStatusStyleSlots;
 }

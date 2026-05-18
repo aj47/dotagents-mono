@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { memo, useRef, useEffect, useMemo } from 'react';
 import { View, Text, Animated } from 'react-native';
 import {
   createConnectionStatusIndicatorMobilePropsParts,
@@ -30,7 +30,7 @@ type ConnectionStatusIndicatorParts =
  * Visual indicator for tunnel connection status.
  * Shows a colored dot and optional status text.
  */
-export function ConnectionStatusIndicator({
+export const ConnectionStatusIndicator = memo(function ConnectionStatusIndicator({
   state,
   retryCount = 0,
   compact = false,
@@ -91,6 +91,6 @@ export function ConnectionStatusIndicator({
       )}
     </View>
   );
-}
+});
 
 export default ConnectionStatusIndicator;

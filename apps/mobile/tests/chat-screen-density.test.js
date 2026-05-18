@@ -3218,6 +3218,10 @@ test('routes mobile connection status indicator presentation through the session
   assert.match(connectionIndicatorStylesSource, /type ConnectionStatusIndicatorMobileStyleSheetSlots,/);
   assert.match(connectionIndicatorStylesSource, /export type ConnectionStatusIndicatorStyles = ConnectionStatusIndicatorMobileStyleSheetSlots;/);
   assert.match(connectionIndicatorStylesSource, /StyleSheet\.create\(\{ \.\.\.connectionStatusStyleSheetSlots \}\)/);
+  assert.match(connectionIndicatorStylesSource, /const connectionStatusStyleSlots = useMemo<ConnectionStatusIndicatorMobileStyleSlots>\(\s+\(\) => \(\{\s+connectionStatusState,\s+styles,\s+\}\),\s+\[connectionStatusState, styles\],\s+\);/);
+  assert.match(connectionIndicatorStylesSource, /return connectionStatusStyleSlots;/);
+  assert.match(connectionIndicatorSource, /import React, \{ memo, useRef, useEffect, useMemo \} from 'react';/);
+  assert.match(connectionIndicatorSource, /export const ConnectionStatusIndicator = memo\(function ConnectionStatusIndicator\(\{/);
   assert.match(connectionIndicatorSource, /useConnectionStatusIndicatorMobileStyleSlots\(\{[\s\S]*?state,[\s\S]*?retryCount,[\s\S]*?compact,/);
   assert.doesNotMatch(connectionIndicatorSource, /from '@dotagents\/shared\/connection-recovery';/);
   assert.doesNotMatch(connectionIndicatorSource, /createConnectionStatusIndicatorMobileStyleSlots,/);
