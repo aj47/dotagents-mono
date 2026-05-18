@@ -2072,12 +2072,39 @@ export type ChatDisplayMessageLike = {
   responseEvent?: Pick<AgentUserResponseEvent, 'text'> | null;
   toolCalls?: Array<{ name: string; arguments?: unknown }>;
   toolResults?: Array<unknown>;
+  toolExecutions?: Array<{
+    toolCall: { name: string; arguments?: unknown };
+    result?: unknown;
+    executionStats?: ChatMessageToolExecutionStatsLike | null;
+  }>;
+  toolExecutionStats?: Array<ChatMessageToolExecutionStatsLike | null | undefined>;
 };
+
+export interface ChatMessageToolExecutionStatsLike {
+  durationMs?: number;
+  totalTokens?: number;
+  toolUseCount?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheHitTokens?: number;
+  model?: string;
+  subagentId?: string;
+}
+
+export interface ChatMessageToolExecutionEntryLike<
+  TToolCall = ToolCall,
+  TToolResult = ToolResult | null | undefined,
+> {
+  toolCall: TToolCall;
+  result?: TToolResult;
+  executionStats?: ChatMessageToolExecutionStatsLike | null;
+}
 
 export interface ChatMessageToolEntriesMessageLike {
   toolCalls?: ToolCall[];
   toolResults?: Array<ToolResult | null | undefined>;
-  toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult | null }>;
+  toolExecutionStats?: Array<ChatMessageToolExecutionStatsLike | null | undefined>;
+  toolExecutions?: Array<ChatMessageToolExecutionEntryLike<ToolCall, ToolResult | null | undefined>>;
 }
 
 export interface ChatMessageDisplayToolEntry {
@@ -2085,6 +2112,7 @@ export interface ChatMessageDisplayToolEntry {
   label?: string;
   origIdx: number;
   result?: ToolResult | null | undefined;
+  executionStats?: ChatMessageToolExecutionStatsLike | null;
 }
 
 export interface ChatMessageDisplayToolEntriesOptions {
@@ -2178,16 +2206,19 @@ export function getVisibleChatMessageToolEntries(
 ): ChatMessageDisplayToolEntry[] {
   const toolCalls = message.toolCalls ?? [];
   const toolResults = message.toolResults ?? [];
+  const toolExecutionStats = message.toolExecutionStats ?? [];
   const entries = message.toolExecutions?.length
     ? message.toolExecutions.map((execution, origIdx) => ({
         toolCall: execution.toolCall,
         origIdx,
         result: execution.result,
+        executionStats: execution.executionStats ?? toolExecutionStats[origIdx],
       }))
     : toolCalls.map((toolCall, origIdx) => ({
         toolCall,
         origIdx,
         result: toolResults[origIdx],
+        executionStats: toolExecutionStats[origIdx],
       }));
   const visibleEntries = entries.filter((entry) => !isCompletionControlTool(entry.toolCall.name));
 

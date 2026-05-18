@@ -741,6 +741,9 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
     toolResponsePendingRow: {
       ...toolExecutionDetailStyleSlots.responsePendingRow,
     },
+    toolExecutionStatsText: {
+      ...toolExecutionDetailStyleSlots.statsText,
+    },
     toolResultItem: {
       ...toolExecutionDetailStyleSlots.resultItem,
     },

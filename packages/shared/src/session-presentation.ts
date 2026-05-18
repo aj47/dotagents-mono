@@ -27,6 +27,8 @@ import {
   type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
   type ChatMessageDisplayToolEntry,
+  type ChatMessageToolExecutionEntryLike,
+  type ChatMessageToolExecutionStatsLike,
 } from "./chat-utils"
 export type {
   ChatDisplayMessageLike,
@@ -359,6 +361,8 @@ import {
 } from "./accessibility-utils"
 import {
   formatToolExecutionCount,
+  formatToolExecutionDuration,
+  formatToolExecutionTokens,
   getToolExecutionCallDisplayState,
   getToolExecutionCompactMobileRenderState,
   getToolExecutionDetailArgumentsState,
@@ -376,6 +380,7 @@ import {
   getToolExecutionMobileVisibilityRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
+  truncateToolExecutionSubagentId,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionCompactMobileRenderStateInput,
   type ToolExecutionCompactMobileStyleRenderState,
@@ -1564,6 +1569,13 @@ export interface ChatRuntimeToolExecutionDetailMobileStyleSlots {
     justifyContent: ChatRuntimeToolExecutionDetailMobileSurface["pendingRow"]["justifyContent"]
     gap: number
     paddingVertical: number
+  }
+  statsText: {
+    fontFamily: string
+    fontSize: number
+    color: string
+    marginTop: number
+    marginBottom: number
   }
   resultItem: {
     marginBottom: number
@@ -3561,16 +3573,20 @@ export interface ChatRuntimeToolExecutionCallDetailMobileStyleSlots<
   TPayloadSectionStyles = unknown,
   TResultSectionStyles = unknown,
   TPendingResultStyles = unknown,
+  TStatsTextStyle = unknown,
 > {
   callSection: TCallSectionStyles
   payloadSection: TPayloadSectionStyles
   resultSection: TResultSectionStyles
   pendingResult: TPendingResultStyles
+  statsText: TStatsTextStyle
 }
 
 export interface ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
   TRenderState = unknown,
   TOnHeaderPress = unknown,
+  TStats extends ChatRuntimeToolExecutionStatsMobileRenderState =
+    ChatRuntimeToolExecutionStatsMobileRenderState,
   TInput extends object = Record<string, never>,
   TResult extends object = Record<string, never>,
   TPendingResult extends { renderState: unknown } = { renderState: unknown },
@@ -3580,6 +3596,7 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
   renderState: TRenderState
   toolName: string
   onHeaderPress?: TOnHeaderPress
+  stats?: TStats | null
   input?: TInput | null
   result?: TResult | null
   pendingResult?: TPendingResult | null
@@ -3589,6 +3606,8 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
 export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
   TRenderState = unknown,
   TOnHeaderPress = unknown,
+  TStats extends ChatRuntimeToolExecutionStatsMobileRenderState =
+    ChatRuntimeToolExecutionStatsMobileRenderState,
   TInput extends object = Record<string, never>,
   TResult extends object = Record<string, never>,
   TPendingResult extends { renderState: unknown } = { renderState: unknown },
@@ -3606,6 +3625,10 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
       inputSection: ChatRuntimeMobilePropsPart<TInput & {
         styles: TStyles["payloadSection"]
       }>
+      statsLine: ChatRuntimeToolExecutionStatsMobilePropsParts<
+        ChatRuntimeToolExecutionStatsMobileRenderState,
+        TStyles["statsText"]
+      >["line"]
       resultSection: ChatRuntimeMobilePropsPart<TResult & {
         styles: TStyles["resultSection"]
       }>
@@ -3623,6 +3646,7 @@ export interface ChatRuntimeToolExecutionCallListMobilePropsPartsInput<
     renderState: unknown
     toolName: string
     onHeaderPress?: unknown
+    stats?: unknown
     input?: unknown
     result?: unknown
     pendingResult?: unknown
@@ -3631,6 +3655,7 @@ export interface ChatRuntimeToolExecutionCallListMobilePropsPartsInput<
     renderState: unknown
     toolName: string
     onHeaderPress?: unknown
+    stats?: unknown
     input?: unknown
     result?: unknown
     pendingResult?: unknown
@@ -3647,6 +3672,7 @@ export interface ChatRuntimeToolExecutionCallListMobilePropsParts<
     renderState: unknown
     toolName: string
     onHeaderPress?: unknown
+    stats?: unknown
     input?: unknown
     result?: unknown
     pendingResult?: unknown
@@ -3655,6 +3681,7 @@ export interface ChatRuntimeToolExecutionCallListMobilePropsParts<
     renderState: unknown
     toolName: string
     onHeaderPress?: unknown
+    stats?: unknown
     input?: unknown
     result?: unknown
     pendingResult?: unknown
@@ -3668,6 +3695,7 @@ export interface ChatRuntimeToolExecutionCallListMobilePropsParts<
         renderState: TRow["renderState"]
         toolName: TRow["toolName"]
         onHeaderPress: TRow["onHeaderPress"]
+        stats: TRow["stats"]
         input: TRow["input"]
         result: TRow["result"]
         pendingResult: TRow["pendingResult"]
@@ -8868,10 +8896,45 @@ export interface ChatRuntimeToolExecutionDetailMobileRowInput {
   toolCall: ToolCall
   label?: string
   result?: ToolResult | null
+  executionStats?: ChatMessageToolExecutionStatsLike | null
   isExpanded: boolean
   colors: Parameters<typeof getToolExecutionDetailMobileHeaderRenderState>[0]["colors"]
   previewNumberOfLines: number
   pendingResultRenderState: ToolExecutionDetailMobilePendingResultRenderState
+}
+
+export interface ChatRuntimeToolExecutionStatsMobileRenderState {
+  shouldRender: boolean
+  label: string
+  accessibilityLabel: string
+  parts: readonly string[]
+}
+
+export interface ChatRuntimeToolExecutionStatsMobilePropsPartsInput<
+  TRenderState extends ChatRuntimeToolExecutionStatsMobileRenderState =
+    ChatRuntimeToolExecutionStatsMobileRenderState,
+  TTextStyle = unknown,
+> {
+  renderState: TRenderState
+  style: TTextStyle
+}
+
+export interface ChatRuntimeToolExecutionStatsMobilePropsParts<
+  TRenderState extends ChatRuntimeToolExecutionStatsMobileRenderState =
+    ChatRuntimeToolExecutionStatsMobileRenderState,
+  TTextStyle = unknown,
+> {
+  line: {
+    shouldRender: boolean
+    props: {
+      props: {
+        accessibilityRole: "text"
+        accessibilityLabel: TRenderState["accessibilityLabel"]
+        style: TTextStyle
+      }
+      text: TRenderState["label"]
+    }
+  }
 }
 
 export interface ChatRuntimeToolExecutionDetailMobileRowInputSectionState {
@@ -8901,6 +8964,7 @@ export interface ChatRuntimeToolExecutionDetailMobileRowState {
   key: string
   renderState: ToolExecutionDetailMobileHeaderRenderState
   toolName: string
+  stats: ChatRuntimeToolExecutionStatsMobileRenderState
   input: ChatRuntimeToolExecutionDetailMobileRowInputSectionState | null
   result: ChatRuntimeToolExecutionDetailMobileRowResultSectionState | null
   pendingResult: {
@@ -15146,6 +15210,11 @@ export interface ChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToolResu
   content: string
   toolCalls?: TToolCall[]
   toolResults?: TToolResult[]
+  toolExecutionStats?: Array<ChatMessageToolExecutionStatsLike | null | undefined>
+  toolExecutions?: Array<ChatMessageToolExecutionEntryLike<
+    TToolCall,
+    TToolResult | null | undefined
+  >>
 }
 
 export interface ChatMessageRuntimeAssistantFeedbackMessageInput<TToolCall, TToolResult> {
@@ -15153,6 +15222,11 @@ export interface ChatMessageRuntimeAssistantFeedbackMessageInput<TToolCall, TToo
   hasToolActivity: boolean
   toolCalls?: TToolCall[]
   toolResults?: TToolResult[]
+  toolExecutionStats?: Array<ChatMessageToolExecutionStatsLike | null | undefined>
+  toolExecutions?: Array<ChatMessageToolExecutionEntryLike<
+    TToolCall,
+    TToolResult | null | undefined
+  >>
 }
 
 export interface ChatMessageRuntimeActivityMessage {
@@ -15604,6 +15678,8 @@ export function createChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToo
   hasToolActivity,
   toolCalls,
   toolResults,
+  toolExecutionStats,
+  toolExecutions,
 }: ChatMessageRuntimeAssistantFeedbackMessageInput<
   TToolCall,
   TToolResult
@@ -15613,6 +15689,8 @@ export function createChatMessageRuntimeAssistantFeedbackMessage<TToolCall, TToo
     content: formatChatRuntimeAssistantFeedbackContent(thinkingContent, hasToolActivity),
     ...(toolCalls && toolCalls.length > 0 ? { toolCalls } : {}),
     ...(toolResults && toolResults.length > 0 ? { toolResults } : {}),
+    ...(toolExecutionStats && toolExecutionStats.some(Boolean) ? { toolExecutionStats } : {}),
+    ...(toolExecutions && toolExecutions.some((execution) => execution.executionStats) ? { toolExecutions } : {}),
   }
 }
 
@@ -15658,6 +15736,7 @@ export function createChatMessageRuntimeProgressMessages<
   if (update.steps && update.steps.length > 0) {
     const currentToolCalls: unknown[] = []
     const currentToolResults: unknown[] = []
+    const currentToolExecutionStats: Array<ChatMessageToolExecutionStatsLike | null | undefined> = []
     let thinkingContent = ""
 
     for (const step of update.steps) {
@@ -15667,6 +15746,10 @@ export function createChatMessageRuntimeProgressMessages<
       } else if (step.type === "tool_call") {
         if (step.toolCall) {
           currentToolCalls.push(step.toolCall)
+          currentToolExecutionStats.push(step.executionStats ? {
+            ...step.executionStats,
+            subagentId: step.subagentId,
+          } : undefined)
         }
         if (step.toolResult) {
           currentToolResults.push(step.toolResult)
@@ -15690,11 +15773,20 @@ export function createChatMessageRuntimeProgressMessages<
       !!update.streamingContent?.text
 
     if (hasCurrentAssistantFeedback) {
+      const toolExecutions = currentToolExecutionStats.some(Boolean)
+        ? currentToolCalls.map((toolCall, index) => ({
+            toolCall,
+            result: currentToolResults[index],
+            executionStats: currentToolExecutionStats[index],
+          }))
+        : undefined
       messages.push(createChatMessageRuntimeAssistantFeedbackMessage({
         thinkingContent,
         hasToolActivity: hasCurrentToolActivity,
         toolCalls: currentToolCalls,
         toolResults: currentToolResults,
+        toolExecutionStats: currentToolExecutionStats,
+        toolExecutions,
       }) as unknown as TMessage)
     } else if (
       !update.isComplete &&
@@ -19595,6 +19687,16 @@ export function createChatRuntimeToolExecutionDetailMobileStyleSlots({
       gap: surface.pendingRow.gap,
       paddingVertical: surface.pendingRow.paddingVertical,
     },
+    statsText: {
+      fontFamily: resolveChatRuntimeMobileFontFamily(
+        surface.characterCount.fontFamilyByPlatform,
+        platform ?? "",
+      ),
+      fontSize: surface.payloadType.fontSize,
+      color: contentColors.expandHintText.color,
+      marginTop: surface.sectionLabel.marginBottom,
+      marginBottom: surface.sectionLabel.marginBottom,
+    },
     resultItem: {
       marginBottom: surface.result.itemMarginBottom,
     },
@@ -21376,13 +21478,14 @@ export function getChatRuntimeConversationToolExecutionStackMobileState<
       colors,
     }),
   )
-  const detailRows = renderedToolEntries.map(({ toolCall, label, origIdx, result }) => {
+  const detailRows = renderedToolEntries.map(({ toolCall, label, origIdx, result, executionStats }) => {
     const toolCallKey = `${stableMessageKey}-${origIdx}`
     const rowState = getChatRuntimeToolExecutionDetailMobileRowState({
       key: toolCallKey,
       toolCall,
       label,
       result,
+      executionStats,
       isExpanded: getChatDisplayExpansionState(expandedToolCalls, toolCallKey),
       colors,
       previewNumberOfLines,
@@ -21567,9 +21670,38 @@ export function createChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
   }
 }
 
+export function createChatRuntimeToolExecutionStatsMobilePropsParts<
+  TRenderState extends ChatRuntimeToolExecutionStatsMobileRenderState,
+  TTextStyle,
+>({
+  renderState,
+  style,
+}: ChatRuntimeToolExecutionStatsMobilePropsPartsInput<
+  TRenderState,
+  TTextStyle
+>): ChatRuntimeToolExecutionStatsMobilePropsParts<
+  TRenderState,
+  TTextStyle
+> {
+  return {
+    line: {
+      shouldRender: renderState.shouldRender,
+      props: {
+        props: {
+          accessibilityRole: "text",
+          accessibilityLabel: renderState.accessibilityLabel,
+          style,
+        },
+        text: renderState.label,
+      },
+    },
+  }
+}
+
 export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
   TRenderState,
   TOnHeaderPress,
+  TStats extends ChatRuntimeToolExecutionStatsMobileRenderState,
   TInput extends object,
   TResult extends object,
   TPendingResult extends { renderState: unknown },
@@ -21578,6 +21710,7 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
   renderState,
   toolName,
   onHeaderPress,
+  stats,
   input,
   result,
   pendingResult,
@@ -21585,6 +21718,7 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
 }: ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
   TRenderState,
   TOnHeaderPress,
+  TStats,
   TInput,
   TResult,
   TPendingResult,
@@ -21592,6 +21726,7 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
 >): ChatRuntimeToolExecutionCallDetailMobilePropsParts<
   TRenderState,
   TOnHeaderPress,
+  TStats,
   TInput,
   TResult,
   TPendingResult,
@@ -21628,6 +21763,10 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
       },
       content: {
         inputSection,
+        statsLine: createChatRuntimeToolExecutionStatsMobilePropsParts({
+          renderState: stats ?? getChatRuntimeToolExecutionStatsMobileRenderState(null),
+          style: styles.statsText,
+        }).line,
         resultSection,
         pendingResult: !resultSection.shouldRender && pendingResult ? {
           shouldRender: true,
@@ -21650,6 +21789,7 @@ export function createChatRuntimeToolExecutionCallListMobilePropsParts<
     renderState: unknown
     toolName: string
     onHeaderPress?: unknown
+    stats?: unknown
     input?: unknown
     result?: unknown
     pendingResult?: unknown
@@ -21670,12 +21810,13 @@ export function createChatRuntimeToolExecutionCallListMobilePropsParts<
       rows: rows.map((row) => ({
         key: row.key,
         props: {
-          renderState: row.renderState,
-          toolName: row.toolName,
-          onHeaderPress: row.onHeaderPress,
-          input: row.input,
-          result: row.result,
-          pendingResult: row.pendingResult,
+        renderState: row.renderState,
+        toolName: row.toolName,
+        onHeaderPress: row.onHeaderPress,
+        stats: row.stats,
+        input: row.input,
+        result: row.result,
+        pendingResult: row.pendingResult,
           styles,
         },
       })),
@@ -26383,11 +26524,41 @@ export function getChatRuntimeToolExecutionResultOnlyFallbackLabel(): string {
   return getChatRuntimeToolExecutionResultOnlyFallbackRenderState().label
 }
 
+function getFiniteToolExecutionStat(value: number | null | undefined): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+export function getChatRuntimeToolExecutionStatsMobileRenderState(
+  stats?: ChatMessageToolExecutionStatsLike | null,
+): ChatRuntimeToolExecutionStatsMobileRenderState {
+  const durationMs = getFiniteToolExecutionStat(stats?.durationMs)
+  const totalTokens = getFiniteToolExecutionStat(stats?.totalTokens)
+  const displaySubagentId = stats?.subagentId
+    ? truncateToolExecutionSubagentId(stats.subagentId)
+    : null
+  const parts: string[] = []
+
+  if (displaySubagentId) parts.push(displaySubagentId)
+  if (stats?.model) parts.push(stats.model)
+  if (durationMs !== undefined) parts.push(formatToolExecutionDuration(durationMs))
+  if (totalTokens !== undefined) parts.push(`${formatToolExecutionTokens(totalTokens)} tokens`)
+
+  const label = parts.join(" • ")
+
+  return {
+    shouldRender: parts.length > 0,
+    label,
+    accessibilityLabel: label ? `Tool execution stats: ${parts.join(", ")}` : "",
+    parts,
+  }
+}
+
 export function getChatRuntimeToolExecutionDetailMobileRowState({
   key,
   toolCall,
   label,
   result,
+  executionStats,
   isExpanded,
   colors,
   previewNumberOfLines,
@@ -26437,6 +26608,7 @@ export function getChatRuntimeToolExecutionDetailMobileRowState({
     key,
     renderState,
     toolName,
+    stats: getChatRuntimeToolExecutionStatsMobileRenderState(executionStats),
     input: argumentsDetail.hasArguments ? {
       payloadRenderState: inputHeaderState,
       compactText: argumentsPayload?.compactText,
@@ -28934,6 +29106,7 @@ type ChatMessageThreadBodyStyleKey =
   | "toolParamsScroll"
   | "toolParamsScrollExpanded"
   | "toolParamsCode"
+  | "toolExecutionStatsText"
   | "toolResultItem"
   | "toolResultHeader"
   | "toolResultHeaderMeta"
@@ -29288,6 +29461,7 @@ type ChatMessageThreadBodyStyleSlotsFromStyleSource<
         row: TStyles["toolResponsePendingRow"]
         text: TStyles["toolResponsePendingText"]
       }
+      statsText: TStyles["toolExecutionStatsText"]
     }
   }
   standaloneActions: {
@@ -29489,6 +29663,7 @@ export function createChatMessageThreadBodyStyleSlots<
           row: styles.toolResponsePendingRow,
           text: styles.toolResponsePendingText,
         },
+        statsText: styles.toolExecutionStatsText,
       },
     },
     standaloneActions: {

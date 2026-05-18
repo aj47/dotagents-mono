@@ -491,6 +491,7 @@ import {
   getChatRuntimeToolExecutionResultOnlyFallbackLabel,
   getChatRuntimeToolExecutionResultOnlyFallbackRenderState,
   getChatRuntimeToolExecutionStackMobileRenderState,
+  getChatRuntimeToolExecutionStatsMobileRenderState,
   getChatRuntimeTurnDurationBadgeState,
   getChatRuntimeTurnDurationHeaderMobileBadgeColors,
   getChatRuntimeTurnDurationHeaderMobileBadgeState,
@@ -1419,7 +1420,21 @@ describe("session presentation semantics", () => {
       displayContent?: string
       timestamp?: number
       toolCalls?: Array<{ name: string; arguments?: unknown }>
-      toolResults?: Array<{ id: string }>
+      toolResults?: Array<{ success: boolean; content: string }>
+      toolExecutionStats?: Array<{
+        durationMs?: number
+        totalTokens?: number
+        subagentId?: string
+      } | null | undefined>
+      toolExecutions?: Array<{
+        toolCall: { name: string; arguments?: unknown }
+        result?: { success: boolean; content: string }
+        executionStats?: {
+          durationMs?: number
+          totalTokens?: number
+          subagentId?: string
+        } | null
+      }>
       branchMessageIndex?: number
     }
     const retryInfo = {
@@ -1440,12 +1455,12 @@ describe("session presentation semantics", () => {
       thinkingContent: "Checking files",
       hasToolActivity: true,
       toolCalls: [{ name: "search" }],
-      toolResults: [{ id: "search-result" }],
+      toolResults: [{ success: true, content: "search result" }],
     })).toEqual({
       role: "assistant",
       content: formatChatRuntimeAssistantFeedbackContent("Checking files", true),
       toolCalls: [{ name: "search" }],
-      toolResults: [{ id: "search-result" }],
+      toolResults: [{ success: true, content: "search result" }],
     })
     const activeProgressStep = {
       id: "step-1",
@@ -1502,6 +1517,12 @@ describe("session presentation semantics", () => {
           status: "completed",
           timestamp: 2,
           toolCall: { name: "search", arguments: {} },
+          toolResult: { success: true, content: "search result" },
+          executionStats: {
+            durationMs: 3062,
+            totalTokens: 17250,
+          },
+          subagentId: "abc123456789-extra",
         },
       ],
       streamingContent: {
@@ -1519,6 +1540,20 @@ describe("session presentation semantics", () => {
         role: "assistant",
         content: "Streaming answer",
         toolCalls: [{ name: "search" }],
+        toolExecutionStats: [{
+          durationMs: 3062,
+          totalTokens: 17250,
+          subagentId: "abc123456789-extra",
+        }],
+        toolExecutions: [{
+          toolCall: { name: "search" },
+          result: { success: true, content: "search result" },
+          executionStats: {
+            durationMs: 3062,
+            totalTokens: 17250,
+            subagentId: "abc123456789-extra",
+          },
+        }],
       },
       {
         role: "assistant",
@@ -1574,7 +1609,7 @@ describe("session presentation semantics", () => {
         toolCalls: [{ name: "search" }],
         branchMessageIndex: 4,
       },
-      { role: "tool", content: "raw", timestamp: 3, toolResults: [{ id: "result-1" }] },
+      { role: "tool", content: "raw", timestamp: 3, toolResults: [{ success: true, content: "result-1" }] },
       { role: "tool", content: "synthetic", timestamp: 4 },
       { id: "a2", role: "assistant", content: "Final", displayContent: "Visible final", timestamp: 5 },
     ]
@@ -1593,7 +1628,7 @@ describe("session presentation semantics", () => {
       { id: "a1", role: "assistant", content: "Thinking" },
       { id: "a2", role: "assistant", content: "Final" },
     ])
-    expect(displayMessages[1]?.toolResults).toEqual([{ id: "result-1" }])
+    expect(displayMessages[1]?.toolResults).toEqual([{ success: true, content: "result-1" }])
     expect(createChatMessageRuntimeHistoryDisplayMessage(
       { role: "tool", content: "Tool content" },
     )).toMatchObject({
@@ -1603,13 +1638,13 @@ describe("session presentation semantics", () => {
     const mergeMessages = [{
       role: "assistant" as const,
       toolCalls: [{ name: "search" }],
-      toolResults: [] as Array<{ id: string }>,
+      toolResults: [] as Array<{ success: boolean; content: string }>,
     }]
     expect(mergeChatMessageRuntimeToolResultsIntoLastMessage(
       mergeMessages,
-      { role: "tool", toolResults: [{ id: "merged-result" }] },
+      { role: "tool", toolResults: [{ success: true, content: "merged-result" }] },
     )).toBe(true)
-    expect(mergeMessages[0]?.toolResults).toEqual([{ id: "merged-result" }])
+    expect(mergeMessages[0]?.toolResults).toEqual([{ success: true, content: "merged-result" }])
     expect(shouldSkipChatMessageRuntimeSyntheticToolSummary({ role: "tool" })).toBe(true)
     expect(createChatMessageRuntimeFinalHistoryTurnMessages<RuntimeTestMessage>(
       historyMessages,
@@ -9124,6 +9159,7 @@ describe("session presentation semantics", () => {
       "toolParamsScroll",
       "toolParamsScrollExpanded",
       "toolParamsCode",
+      "toolExecutionStatsText",
       "toolResultItem",
       "toolResultHeader",
       "toolResultHeaderMeta",
@@ -9155,6 +9191,7 @@ describe("session presentation semantics", () => {
     expect(
       threadBodyStyleSlots.toolExecutionStack.callDetail.resultSection.header.badge.textError,
     ).toBe("toolResultBadgeTextError")
+    expect(threadBodyStyleSlots.toolExecutionStack.callDetail.statsText).toBe("toolExecutionStatsText")
     expect(threadBodyStyleSlots.standaloneActions.rowStyle).toBe("messageActionsRow")
     const threadSurfaceParts = createChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts({
       groupRenderState: {
@@ -13320,10 +13357,31 @@ describe("session presentation semantics", () => {
       label: "Tool result",
     })
     expect(getChatRuntimeToolExecutionResultOnlyFallbackLabel()).toBe("Tool result")
+    expect(getChatRuntimeToolExecutionStatsMobileRenderState({
+      durationMs: 3062,
+      totalTokens: 17250,
+      subagentId: "abc123456789-extra",
+    })).toMatchObject({
+      shouldRender: true,
+      label: "agent:abc1234 • 3.1s • 17k tokens",
+      accessibilityLabel: "Tool execution stats: agent:abc1234, 3.1s, 17k tokens",
+      parts: ["agent:abc1234", "3.1s", "17k tokens"],
+    })
+    expect(getChatRuntimeToolExecutionStatsMobileRenderState(null)).toEqual({
+      shouldRender: false,
+      label: "",
+      accessibilityLabel: "",
+      parts: [],
+    })
     const toolDetailRow = getChatRuntimeToolExecutionDetailMobileRowState({
       key: "tool-detail-0",
       toolCall: { name: "read_file", arguments: { path: "/test" } },
       result: { success: false, content: "failed output", error: "Nope" },
+      executionStats: {
+        durationMs: 3062,
+        totalTokens: 17250,
+        subagentId: "abc123456789-extra",
+      },
       isExpanded: true,
       colors: compactToolPreviewColors,
       previewNumberOfLines: 2,
@@ -13331,6 +13389,7 @@ describe("session presentation semantics", () => {
     })
     expect(toolDetailRow.key).toBe("tool-detail-0")
     expect(toolDetailRow.toolName).toBe("read_file")
+    expect(toolDetailRow.stats.label).toBe("agent:abc1234 • 3.1s • 17k tokens")
     expect(toolDetailRow.renderState.resultBadge.state).toBe("error")
     expect(toolDetailRow.input?.payloadRenderState.kind).toBe("input")
     expect(toolDetailRow.input?.content).toBe('{\n  "path": "/test"\n}')
@@ -13856,6 +13915,7 @@ describe("session presentation semantics", () => {
         payloadSection: "payload-section-styles",
         resultSection: "result-section-styles",
         pendingResult: "pending-result-styles",
+        statsText: "stats-text-styles",
       },
     })
     expect(callDetailParts).toEqual({
@@ -13873,6 +13933,17 @@ describe("session presentation semantics", () => {
               payloadRenderState: "input-payload-state",
               content: "input-content",
               styles: "payload-section-styles",
+            },
+          },
+          statsLine: {
+            shouldRender: false,
+            props: {
+              props: {
+                accessibilityRole: "text",
+                accessibilityLabel: "",
+                style: "stats-text-styles",
+              },
+              text: "",
             },
           },
           resultSection: {
@@ -13903,6 +13974,7 @@ describe("session presentation semantics", () => {
         payloadSection: "payload-section-styles",
         resultSection: "result-section-styles",
         pendingResult: "pending-result-styles",
+        statsText: "stats-text-styles",
       },
     })
     expect(resultCallDetailParts.callSection.content.resultSection).toEqual({

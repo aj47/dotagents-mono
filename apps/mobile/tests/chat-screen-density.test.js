@@ -5018,7 +5018,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailInput = \{[\s\S]*?payloadRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;[\s\S]*?compactText\?: string \| null;[\s\S]*?content: string;[\s\S]*?isExpanded: boolean;[\s\S]*?previewNumberOfLines: number;[\s\S]*?copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;[\s\S]*?onCopyPress: \(\) => void;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailResult = \{[\s\S]*?payloadRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;[\s\S]*?resultBadge: ChatMessageToolExecutionResultBadgeRenderState;[\s\S]*?characterCountLabel: string;[\s\S]*?resultCompactText\?: string \| null;[\s\S]*?resultContent: string;[\s\S]*?isExpanded: boolean;[\s\S]*?previewNumberOfLines: number;[\s\S]*?copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;[\s\S]*?onCopyPress: \(\) => void;[\s\S]*?errorRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;[\s\S]*?error\?: string \| null;[\s\S]*?errorCopyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;[\s\S]*?onErrorCopyPress: \(\) => void;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailPendingResult = \{[\s\S]*?renderState: ToolExecutionDetailMobilePendingResultRenderState;[\s\S]*?\};/);
-  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailProps =\s+ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<\s+ToolExecutionDetailMobileHeaderRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ChatMessageToolExecutionCallDetailInput,[\s\S]*?ChatMessageToolExecutionCallDetailResult,[\s\S]*?ChatMessageToolExecutionCallDetailPendingResult,[\s\S]*?ChatMessageToolExecutionCallDetailStyles\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailProps =\s+ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<\s+ToolExecutionDetailMobileHeaderRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ChatRuntimeToolExecutionStatsMobileRenderState,[\s\S]*?ChatMessageToolExecutionCallDetailInput,[\s\S]*?ChatMessageToolExecutionCallDetailResult,[\s\S]*?ChatMessageToolExecutionCallDetailPendingResult,[\s\S]*?ChatMessageToolExecutionCallDetailStyles\s+>;/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput</);
   assert.match(chatMessageChromeSource, /type ChatRuntimeToolExecutionCallListMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallListProps =\s+ChatRuntimeToolExecutionCallListMobilePropsPartsInput<\s+ChatMessageToolExecutionCallListRow,[\s\S]*?ChatMessageToolExecutionCallDetailStyles\s+>;/);
@@ -5318,11 +5318,11 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(sessionPresentationSource, /export function toggleChatMessageRuntimeToolCallExpansionState/);
   assert.match(sessionPresentationSource, /`\$\{messageId\}-\$\{toolCallIndex\}`/);
   assert.doesNotMatch(chatMessageChromeSource, /detailRows: entries\.map/);
-  assert.match(sessionPresentationSource, /const detailRows = renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result \}\) => \{/);
+  assert.match(sessionPresentationSource, /const detailRows = renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result, executionStats \}\) => \{/);
   assert.match(sessionPresentationSource, /const toolCallKey = `\$\{stableMessageKey\}-\$\{origIdx\}`/);
-  assert.match(sessionPresentationSource, /key: toolCallKey,[\s\S]*?toolCall,[\s\S]*?label,[\s\S]*?result,[\s\S]*?isExpanded: getChatDisplayExpansionState\(expandedToolCalls, toolCallKey\),/);
+  assert.match(sessionPresentationSource, /key: toolCallKey,[\s\S]*?toolCall,[\s\S]*?label,[\s\S]*?result,[\s\S]*?executionStats,[\s\S]*?isExpanded: getChatDisplayExpansionState\(expandedToolCalls, toolCallKey\),/);
   assert.doesNotMatch(chatMessageChromeSource, /export function createChatMessageToolExecutionDetailRow/);
-  assert.match(sessionPresentationSource, /const rowState = getChatRuntimeToolExecutionDetailMobileRowState\(\{[\s\S]*?key: toolCallKey,[\s\S]*?toolCall,[\s\S]*?label,[\s\S]*?result,[\s\S]*?isExpanded: getChatDisplayExpansionState\(expandedToolCalls, toolCallKey\),[\s\S]*?colors,[\s\S]*?previewNumberOfLines,[\s\S]*?pendingResultRenderState,/);
+  assert.match(sessionPresentationSource, /const rowState = getChatRuntimeToolExecutionDetailMobileRowState\(\{[\s\S]*?key: toolCallKey,[\s\S]*?toolCall,[\s\S]*?label,[\s\S]*?result,[\s\S]*?executionStats,[\s\S]*?isExpanded: getChatDisplayExpansionState\(expandedToolCalls, toolCallKey\),[\s\S]*?colors,[\s\S]*?previewNumberOfLines,[\s\S]*?pendingResultRenderState,/);
   assert.match(sessionPresentationSource, /return \{[\s\S]*?\.\.\.rowState,[\s\S]*?onHeaderPress: \(\) => onToggleToolCall\(stableMessageKey, origIdx\),/);
   assert.doesNotMatch(screenSource, /detailRows: toolExecutionRows\.detailRows/);
   assert.doesNotMatch(screenSource, /<ChatMessageToolExecutionCallList\s+rows=\{toolExecutionDetailRows\}/);
@@ -5357,17 +5357,18 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallDetail\(\s+props: ChatMessageToolExecutionCallDetailProps,\s+\)/);
   assert.match(chatMessageChromeSource, /const callDetailParts: ChatMessageToolExecutionCallDetailParts =\s+createChatRuntimeToolExecutionCallDetailMobilePropsParts\(props\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailInputSectionPart =\s+\| \{\s+shouldRender: true;\s+props: ChatMessageToolExecutionPayloadSectionProps;\s+\}\s+\| \{\s+shouldRender: false;\s+props: null;\s+\};/);
-  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailContentProps = \{\s+inputSection: ChatMessageToolExecutionCallDetailInputSectionPart;\s+resultSection: ChatMessageToolExecutionCallDetailResultSectionPart;\s+pendingResult: ChatMessageToolExecutionCallDetailPendingResultPart;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailContentProps = \{\s+inputSection: ChatMessageToolExecutionCallDetailInputSectionPart;\s+statsLine: ChatMessageToolExecutionStatsLinePart;\s+resultSection: ChatMessageToolExecutionCallDetailResultSectionPart;\s+pendingResult: ChatMessageToolExecutionCallDetailPendingResultPart;\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionCallDetailParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const callDetailContent = callDetailParts\.callSection\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionCallSection\s+\{\.\.\.callDetailParts\.callSection\.props\}/);
   assert.match(toolExecutionCallDetailSource, /<ChatMessageToolExecutionCallDetailContent\s+\{\.\.\.callDetailParts\.callSection\.content\}/);
   assert.match(toolExecutionCallDetailContentSource, /<ChatMessageToolExecutionCallDetailInputSection\s+inputSection=\{inputSection\}/);
+  assert.match(toolExecutionCallDetailContentSource, /<ChatMessageToolExecutionStatsLineBlock statsLine=\{statsLine\} \/>/);
   assert.match(toolExecutionCallDetailContentSource, /<ChatMessageToolExecutionCallDetailResultState\s+resultSection=\{resultSection\}\s+pendingResult=\{pendingResult\}/);
   assert.match(sessionPresentationSource, /callSection: \{\s+props: \{\s+renderState,\s+toolName,\s+onHeaderPress,\s+styles: styles\.callSection,/);
   assert.doesNotMatch(chatMessageChromeSource, /callDetailParts\.callSection\.(renderState|toolName|onHeaderPress|styles)/);
   assert.doesNotMatch(chatMessageChromeSource, /callDetailParts\.(inputSection|resultSection|pendingResult)\./);
-  assert.match(sessionPresentationSource, /content: \{\s+inputSection,\s+resultSection,\s+pendingResult: !resultSection\.shouldRender && pendingResult \? \{/);
+  assert.match(sessionPresentationSource, /content: \{\s+inputSection,[\s\S]*?statsLine: createChatRuntimeToolExecutionStatsMobilePropsParts\(\{[\s\S]*?resultSection,[\s\S]*?pendingResult: !resultSection\.shouldRender && pendingResult \? \{/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionCallSection/);
   const toolExecutionCallSectionSource =
     chatMessageChromeSource.match(/export function ChatMessageToolExecutionCallSection\([\s\S]*?export function ChatMessageToolExecutionCallSectionContent/)?.[0] ?? '';
@@ -5840,7 +5841,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.doesNotMatch(screenSource, /formatToolExecutionDetailsAccessibilityName\(toolNameLabel\)/);
   assert.doesNotMatch(screenSource, /const toolExecutionRows = createChatMessageToolExecutionRows/);
   assert.doesNotMatch(chatMessageChromeSource, /detailRows: entries\.map\(\(\{ toolCall, label, origIdx, result \}\) => \{/);
-  assert.match(sessionPresentationSource, /const detailRows = renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result \}\) => \{/);
+  assert.match(sessionPresentationSource, /const detailRows = renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result, executionStats \}\) => \{/);
   assert.doesNotMatch(screenSource, /const allSuccess = hasToolResults && m\.toolResults!\.every\(r => r\.success\);/);
   assert.doesNotMatch(screenSource, /const hasErrors = hasToolResults && m\.toolResults!\.some\(r => !r\.success\);/);
   assert.doesNotMatch(screenSource, /tcPending \? '⏳' : tcSuccess \? '✓' : '✗'/);
@@ -5921,7 +5922,7 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   );
   assert.match(
     sessionPresentationSource,
-    /createChatMessageRuntimeAssistantFeedbackMessage\(\{\s+thinkingContent,\s+hasToolActivity: hasCurrentToolActivity,\s+toolCalls: currentToolCalls,\s+toolResults: currentToolResults,\s+\}\)/,
+    /createChatMessageRuntimeAssistantFeedbackMessage\(\{\s+thinkingContent,\s+hasToolActivity: hasCurrentToolActivity,\s+toolCalls: currentToolCalls,\s+toolResults: currentToolResults,[\s\S]*?toolExecutionStats: currentToolExecutionStats,[\s\S]*?toolExecutions,/,
   );
   assert.doesNotMatch(chatMessageChromeSource, /createChatMessageRuntimeActivityMessage\(activeStep\)/);
   assert.match(sessionPresentationSource, /createChatMessageRuntimeActivityMessage\(activeStep\)/);

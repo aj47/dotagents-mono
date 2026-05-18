@@ -440,6 +440,7 @@ import {
   type ChatRuntimeToolExecutionResultSectionMobilePropsParts,
   type ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput,
   type ChatRuntimeToolExecutionResultSectionMobileStyleSlots as SharedChatMessageToolExecutionResultSectionStyleSlots,
+  type ChatRuntimeToolExecutionStatsMobileRenderState,
   type ChatRuntimeToolExecutionStackPanelMobilePropsParts,
   type ChatRuntimeToolExecutionStackPanelMobileStyleSlots as SharedChatMessageToolExecutionStackStyleSlots,
   type ChatRuntimeToolActivityGroupThreadSurfaceMobilePropsParts,
@@ -4281,18 +4282,34 @@ type ChatMessageToolExecutionCallDetailPendingResult = {
   renderState: ToolExecutionDetailMobilePendingResultRenderState;
 };
 
+type ChatMessageToolExecutionStatsLineTextProps = {
+  props: {
+    accessibilityRole: 'text';
+    accessibilityLabel: string;
+    style: StyleProp<TextStyle>;
+  };
+  text: string;
+};
+
+type ChatMessageToolExecutionStatsLinePart = {
+  shouldRender: boolean;
+  props: ChatMessageToolExecutionStatsLineTextProps;
+};
+
 type ChatMessageToolExecutionCallDetailStyles =
   SharedChatMessageToolExecutionCallDetailStyleSlots<
     ChatMessageToolExecutionCallSectionStyles,
     ChatMessageToolExecutionPayloadSectionStyles,
     ChatMessageToolExecutionResultSectionStyles,
-    ChatMessageToolExecutionPendingResultStyles
+    ChatMessageToolExecutionPendingResultStyles,
+    StyleProp<TextStyle>
   >;
 
 type ChatMessageToolExecutionCallDetailProps =
   ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
     ToolExecutionDetailMobileHeaderRenderState,
     (event: GestureResponderEvent) => void,
+    ChatRuntimeToolExecutionStatsMobileRenderState,
     ChatMessageToolExecutionCallDetailInput,
     ChatMessageToolExecutionCallDetailResult,
     ChatMessageToolExecutionCallDetailPendingResult,
@@ -4303,6 +4320,7 @@ type ChatMessageToolExecutionCallDetailParts =
   ChatRuntimeToolExecutionCallDetailMobilePropsParts<
     ToolExecutionDetailMobileHeaderRenderState,
     (event: GestureResponderEvent) => void,
+    ChatRuntimeToolExecutionStatsMobileRenderState,
     ChatMessageToolExecutionCallDetailInput,
     ChatMessageToolExecutionCallDetailResult,
     ChatMessageToolExecutionCallDetailPendingResult,
@@ -4341,6 +4359,7 @@ type ChatMessageToolExecutionCallDetailPendingResultPart =
 
 type ChatMessageToolExecutionCallDetailContentProps = {
   inputSection: ChatMessageToolExecutionCallDetailInputSectionPart;
+  statsLine: ChatMessageToolExecutionStatsLinePart;
   resultSection: ChatMessageToolExecutionCallDetailResultSectionPart;
   pendingResult: ChatMessageToolExecutionCallDetailPendingResultPart;
 };
@@ -13650,6 +13669,7 @@ export function ChatMessageToolExecutionCallDetail(
 
 export function ChatMessageToolExecutionCallDetailContent({
   inputSection,
+  statsLine,
   resultSection,
   pendingResult,
 }: ChatMessageToolExecutionCallDetailContentProps) {
@@ -13658,11 +13678,39 @@ export function ChatMessageToolExecutionCallDetailContent({
       <ChatMessageToolExecutionCallDetailInputSection
         inputSection={inputSection}
       />
+      <ChatMessageToolExecutionStatsLineBlock statsLine={statsLine} />
       <ChatMessageToolExecutionCallDetailResultState
         resultSection={resultSection}
         pendingResult={pendingResult}
       />
     </>
+  );
+}
+
+export function ChatMessageToolExecutionStatsLineBlock({
+  statsLine,
+}: {
+  statsLine: ChatMessageToolExecutionStatsLinePart;
+}) {
+  if (!statsLine.shouldRender) {
+    return null;
+  }
+
+  return (
+    <ChatMessageToolExecutionStatsLineText
+      {...statsLine.props}
+    />
+  );
+}
+
+export function ChatMessageToolExecutionStatsLineText({
+  props,
+  text,
+}: ChatMessageToolExecutionStatsLineTextProps) {
+  return (
+    <Text {...props}>
+      {text}
+    </Text>
   );
 }
 
