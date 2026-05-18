@@ -1290,19 +1290,48 @@ type ChatMessageActionIconButtonParts =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageActionIconButtonPressableProps =
-  ChatMessageActionIconButtonParts['pressable']['props'] & {
-    children: ReactNode;
+type ChatMessageActionIconButtonPressableState = {
+  pressed: boolean;
+};
+
+type ChatMessageActionIconButtonPressableProps = {
+  children: ReactNode;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  disabled: boolean;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  accessibilityHint: string | undefined;
+  accessibilityState: AccessibilityState | { disabled: true } | undefined;
+  'aria-expanded': boolean | undefined;
+  hitSlop: (number | Insets) | undefined;
+  style: (state: ChatMessageActionIconButtonPressableState) => Array<
+    | StyleProp<ViewStyle>
+    | false
+    | undefined
+  >;
+};
+
+type ChatMessageActionIconButtonActivityIndicatorProps = {
+  size: ChatMessageActionIcon['size'];
+  color: ChatMessageActionIcon['color'];
+};
+
+type ChatMessageActionIconButtonIconProps = {
+  name: ChatMessageActionIcon['name'];
+  size: ChatMessageActionIcon['size'];
+  color: ChatMessageActionIcon['color'];
+};
+
+type ChatMessageActionIconButtonPressableContentProps = {
+  activityIndicator: {
+    shouldRender: boolean;
+    props: ChatMessageActionIconButtonActivityIndicatorProps;
   };
-
-type ChatMessageActionIconButtonPressableContentProps =
-  ChatMessageActionIconButtonParts['pressable']['content'];
-
-type ChatMessageActionIconButtonActivityIndicatorProps =
-  ChatMessageActionIconButtonParts['pressable']['content']['activityIndicator']['props'];
-
-type ChatMessageActionIconButtonIconProps =
-  ChatMessageActionIconButtonParts['pressable']['content']['icon']['props'];
+  icon: {
+    shouldRender: boolean;
+    props: ChatMessageActionIconButtonIconProps;
+  };
+};
 
 type ChatMessageActionButtonRenderState =
   ChatRuntimeMessageActionIconButtonRenderState<

@@ -7265,7 +7265,10 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(sessionPresentationSource, /content: \{\s+activityIndicator: \{\s+shouldRender: Boolean\(icon\.isPending\),\s+props: \{\s+size: icon\.size,\s+color: icon\.color,\s+\},\s+\},/);
   assert.match(sessionPresentationSource, /icon: \{\s+shouldRender: !icon\.isPending,\s+props: \{\s+name: icon\.name,\s+size: icon\.size,\s+color: icon\.color,\s+\},\s+\},/);
   assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonPressable\s+\{\.\.\.actionIconButtonParts\.pressable\.props\}/);
-  assert.match(chatMessageChromeSource, /type ChatMessageActionIconButtonPressableContentProps =\s+ChatMessageActionIconButtonParts\['pressable'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionIconButtonPressableProps = \{[\s\S]*?children: ReactNode;[\s\S]*?'aria-expanded': boolean \| undefined;[\s\S]*?style: \(state: ChatMessageActionIconButtonPressableState\) => Array</);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionIconButtonActivityIndicatorProps = \{\s+size: ChatMessageActionIcon\['size'\];\s+color: ChatMessageActionIcon\['color'\];\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionIconButtonPressableContentProps = \{[\s\S]*?activityIndicator: \{[\s\S]*?props: ChatMessageActionIconButtonActivityIndicatorProps;[\s\S]*?icon: \{[\s\S]*?props: ChatMessageActionIconButtonIconProps;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionIconButton(Pressable|PressableContent|ActivityIndicator|Icon)Props =\s+ChatMessageActionIconButtonParts\['pressable'\]/);
   assert.match(actionIconButtonSource, /<ChatMessageActionIconButtonPressableContent\s+\{\.\.\.actionIconButtonParts\.pressable\.content\}\s+\/>/);
   assert.match(actionIconButtonSource, /export function ChatMessageActionIconButtonPressableContent/);
   assert.match(actionIconButtonSource, /if \(activityIndicator\.shouldRender\) \{/);
