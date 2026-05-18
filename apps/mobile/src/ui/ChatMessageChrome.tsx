@@ -5121,11 +5121,20 @@ type ChatMessageCollapsedPreviewParts =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageCollapsedPreviewContentProps =
-  ChatMessageCollapsedPreviewParts['pressable']['content'];
+type ChatMessageCollapsedPreviewTextPart = {
+  text: string;
+  props: {
+    style: StyleProp<TextStyle>;
+    numberOfLines: number;
+  };
+};
+
+type ChatMessageCollapsedPreviewContentProps = {
+  text: ChatMessageCollapsedPreviewTextPart;
+};
 
 type ChatMessageCollapsedPreviewTextProps = {
-  part: ChatMessageCollapsedPreviewContentProps['text'];
+  part: ChatMessageCollapsedPreviewTextPart;
 };
 
 type ChatMessageConversationContentProps =

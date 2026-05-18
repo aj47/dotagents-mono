@@ -4281,7 +4281,10 @@ test('uses shared media sanitization for collapsed mobile message previews', () 
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationCollapsedPreviewMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationCollapsedPreviewMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const collapsedPreviewParts: ChatMessageCollapsedPreviewParts =\s+createChatRuntimeConversationCollapsedPreviewMobilePropsParts\(\{\s+renderState,\s+actionState,\s+onPress,\s+style,\s+pressedStyle,\s+textStyle,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /type ChatMessageCollapsedPreviewContentProps =\s+ChatMessageCollapsedPreviewParts\['pressable'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageCollapsedPreviewTextPart = \{[\s\S]*?text: string;[\s\S]*?style: StyleProp<TextStyle>;[\s\S]*?numberOfLines: number;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageCollapsedPreviewContentProps = \{[\s\S]*?text: ChatMessageCollapsedPreviewTextPart;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageCollapsedPreviewContentProps =\s+ChatMessageCollapsedPreviewParts\['pressable'\]\['content'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /part: ChatMessageCollapsedPreviewContentProps\['text'\]/);
   assert.match(chatMessageChromeSource, /<Pressable\s+\{\.\.\.collapsedPreviewParts\.pressable\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreviewContent\s+\{\.\.\.collapsedPreviewParts\.pressable\.content\}\s+\/>/);
   assert.match(chatMessageChromeSource, /export function ChatMessageCollapsedPreviewContent\(\{\s+text,\s+\}: ChatMessageCollapsedPreviewContentProps\) \{\s+return \(\s+<ChatMessageCollapsedPreviewText part=\{text\} \/>/);
@@ -7346,6 +7349,9 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /<Pressable\s+\{\.\.\.collapsedPreviewParts\.pressable\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreviewContent\s+\{\.\.\.collapsedPreviewParts\.pressable\.content\}\s+\/>/);
   assert.match(chatMessageChromeSource, /<ChatMessageCollapsedPreviewText part=\{text\} \/>/);
+  assert.match(chatMessageChromeSource, /type ChatMessageCollapsedPreviewTextPart = \{[\s\S]*?text: string;[\s\S]*?style: StyleProp<TextStyle>;[\s\S]*?numberOfLines: number;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageCollapsedPreviewContentProps = \{[\s\S]*?text: ChatMessageCollapsedPreviewTextPart;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /part: ChatMessageCollapsedPreviewContentProps\['text'\]/);
   assert.doesNotMatch(screenSource, /getChatMessageActionCopyState,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatMessageActionCopyState,/);
   assert.match(sessionPresentationSource, /getChatMessageActionCopyState,/);
