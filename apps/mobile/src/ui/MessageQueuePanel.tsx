@@ -23,6 +23,7 @@ import {
   getQueuedMessageItemMobileRenderState,
   type MessageQueuePanelMobilePropsParts,
   type MessageQueuePanelMobileRenderState,
+  type MessageQueuePanelMobileSurfaceColorPalette,
   type MessageQueuePanelMobileStyleSheetSlots,
   type QueuedMessageItemMobilePropsParts,
   type QueuedMessageItemMobileRenderState,
@@ -30,9 +31,7 @@ import {
   type QueuedMessage,
 } from '@dotagents/shared/session-presentation';
 
-export type MessageQueuePanelColors =
-  Parameters<typeof getMessageQueuePanelMobileRenderState>[0]['colors']
-  & Parameters<typeof getQueuedMessageItemMobileRenderState>[0]['colors'];
+export type MessageQueuePanelColors = MessageQueuePanelMobileSurfaceColorPalette;
 
 export type MessageQueuePanelStyleSheetSlotsFactory = (input: {
   renderState: MessageQueuePanelMobileRenderState<QueuedMessage>;

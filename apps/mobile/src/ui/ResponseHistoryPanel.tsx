@@ -19,6 +19,7 @@ import {
   type AgentResponseHistoryMobileAnimationState,
   type AgentResponseHistoryMobilePropsParts,
   type AgentResponseHistoryMobileRenderState,
+  type AgentResponseHistoryMobileSurfaceColorPalette,
   type AgentResponseHistoryMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -32,8 +33,7 @@ export interface ResponseHistoryEntry {
 type ResponseHistoryToggleHandler = () => void;
 type ResponseHistorySpeakHandler = (text: string, index: number) => void;
 
-export type ResponseHistoryPanelColors =
-  Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
+export type ResponseHistoryPanelColors = AgentResponseHistoryMobileSurfaceColorPalette;
 
 export type ResponseHistoryPanelStyleSheetSlotsFactory = (input: {
   renderState: AgentResponseHistoryMobileRenderState<ResponseHistoryEntry>;

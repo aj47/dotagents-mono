@@ -17,6 +17,7 @@ export {
   type AgentResponseHistoryMobileAnimationState,
   type AgentResponseHistoryMobilePropsParts,
   type AgentResponseHistoryMobileRenderState,
+  type AgentResponseHistoryMobileSurfaceColorPalette,
   type AgentResponseHistoryMobileStyleSheetSlots,
   type AgentResponseHistoryMobileStylesLike,
 } from "./agent-user-response-store"
@@ -587,6 +588,7 @@ export {
   type MessageQueuePanelMobilePropsParts,
   type MessageQueuePanelMobilePropsPartsStylesLike,
   type MessageQueuePanelMobileRenderState,
+  type MessageQueuePanelMobileSurfaceColorPalette,
   type MessageQueuePanelMobileStyleSheetSlots,
   type QueuedMessageActionButtonMobilePropsPartsStylesLike,
   type QueuedMessageContentMobilePropsPartsStylesLike,

@@ -19,11 +19,15 @@ const messageQueueUtilsSource = fs.readFileSync(
 test('mobile queue panel uses shared prop-part contracts for reusable button chrome', () => {
   assert.match(source, /import React, \{ useState, useEffect, useMemo, useCallback \} from 'react';/);
   assert.match(source, /type MessageQueuePanelMobileRenderState,/);
+  assert.match(source, /type MessageQueuePanelMobileSurfaceColorPalette,/);
   assert.match(source, /type MessageQueuePanelMobileStyleSheetSlots,/);
   assert.match(source, /type QueuedMessageItemMobileRenderState,/);
   assert.match(source, /type QueuedMessageItemMobileStyleSheetSlots,/);
+  assert.match(source, /export type MessageQueuePanelColors = MessageQueuePanelMobileSurfaceColorPalette;/);
   assert.match(source, /export type MessageQueuePanelStyleSheetSlotsFactory = \(input: \{\s+renderState: MessageQueuePanelMobileRenderState<QueuedMessage>;\s+\}\) => MessageQueuePanelMobileStyleSheetSlots;/);
   assert.match(source, /export type QueuedMessageItemStyleSheetSlotsFactory = \(input: \{\s+renderState: QueuedMessageItemMobileRenderState;\s+\}\) => QueuedMessageItemMobileStyleSheetSlots;/);
+  assert.doesNotMatch(source, /Parameters<typeof getMessageQueuePanelMobileRenderState>\[0\]\['colors'\]/);
+  assert.doesNotMatch(source, /Parameters<typeof getQueuedMessageItemMobileRenderState>\[0\]\['colors'\]/);
   assert.doesNotMatch(source, /ReturnType<typeof getMessageQueuePanelMobileRenderState>/);
   assert.doesNotMatch(source, /ReturnType<typeof getQueuedMessageItemMobileRenderState>/);
   assert.match(source, /createStyleSheetSlots: MessageQueuePanelStyleSheetSlotsFactory;/);
@@ -41,6 +45,7 @@ test('mobile queue panel uses shared prop-part contracts for reusable button chr
   assert.match(source, /type MessageQueuePanelEditButtonPart =\s+\| QueuedMessageItemParts\['edit'\]\['cancelButton'\]\s+\| QueuedMessageItemParts\['edit'\]\['saveButton'\];/);
   assert.match(sessionPresentationSource, /type MessageQueuePanelMobilePropsParts,/);
   assert.match(sessionPresentationSource, /type MessageQueuePanelMobilePropsPartsStylesLike,/);
+  assert.match(sessionPresentationSource, /type MessageQueuePanelMobileSurfaceColorPalette,/);
   assert.match(sessionPresentationSource, /type QueuedMessageItemMobilePropsParts,/);
   assert.match(sessionPresentationSource, /type QueuedMessageItemMobilePropsPartsStylesLike,/);
   assert.match(messageQueueUtilsSource, /export interface MessageQueuePanelMobilePropsPartsStylesLike<\s+TCompactActionStyle = unknown,/);

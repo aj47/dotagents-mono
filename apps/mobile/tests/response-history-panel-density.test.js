@@ -7,16 +7,23 @@ const source = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'ResponseHistoryPanel.tsx'),
   'utf8'
 );
+const sessionPresentationSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
+  'utf8'
+);
 
 test('mobile response history panel uses shared copy, actions, and accessibility labels', () => {
   assert.match(source, /createAgentResponseHistoryMobilePropsParts,/);
   assert.match(source, /getAgentResponseHistoryMobileRenderState,/);
   assert.match(source, /type AgentResponseHistoryMobilePropsParts,/);
   assert.match(source, /type AgentResponseHistoryMobileRenderState,/);
+  assert.match(source, /type AgentResponseHistoryMobileSurfaceColorPalette,/);
   assert.match(source, /type AgentResponseHistoryMobileStyleSheetSlots,/);
   assert.match(source, /type ResponseHistoryPanelParts =\s+AgentResponseHistoryMobilePropsParts<[\s\S]*?ResponseHistoryEntry,[\s\S]*?ResponseHistoryPanelStyles,[\s\S]*?ResponseHistoryToggleHandler/);
-  assert.match(source, /export type ResponseHistoryPanelColors =\s+Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
+  assert.match(sessionPresentationSource, /type AgentResponseHistoryMobileSurfaceColorPalette,/);
+  assert.match(source, /export type ResponseHistoryPanelColors = AgentResponseHistoryMobileSurfaceColorPalette;/);
   assert.match(source, /export type ResponseHistoryPanelStyleSheetSlotsFactory = \(input: \{\s+renderState: AgentResponseHistoryMobileRenderState<ResponseHistoryEntry>;\s+\}\) => AgentResponseHistoryMobileStyleSheetSlots;/);
+  assert.doesNotMatch(source, /Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\]/);
   assert.doesNotMatch(source, /ReturnType<typeof getAgentResponseHistoryMobileRenderState>/);
   assert.match(source, /colors: ResponseHistoryPanelColors;/);
   assert.match(source, /isCollapsed: boolean;/);
