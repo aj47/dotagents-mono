@@ -378,6 +378,7 @@ import {
   type ChatRuntimeToolExecutionCallDetailMobileStyleSlots as SharedChatMessageToolExecutionCallDetailStyleSlots,
   type ChatRuntimeToolExecutionCallListMobilePropsParts,
   type ChatRuntimeToolExecutionCallSectionMobilePropsParts,
+  type ChatRuntimeToolExecutionCallSectionMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCallSectionMobileStyleSlots as SharedChatMessageToolExecutionCallSectionStyleSlots,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsPartsInput,
@@ -391,10 +392,13 @@ import {
   type ChatRuntimeToolExecutionCompactRowMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCompactRowMobileStyleSlots as SharedChatMessageToolExecutionCompactRowStyleSlots,
   type ChatRuntimeToolExecutionCopyButtonMobilePropsParts,
+  type ChatRuntimeToolExecutionCopyButtonMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCopyButtonMobileStyleSlots as SharedChatMessageToolExecutionCopyButtonStyleSlots,
   type ChatRuntimeToolExecutionDetailHeaderMobilePropsParts,
+  type ChatRuntimeToolExecutionDetailHeaderMobilePropsPartsInput,
   type ChatRuntimeToolExecutionDetailHeaderMobileStyleSlots as SharedChatMessageToolExecutionDetailHeaderStyleSlots,
   type ChatRuntimeToolExecutionEmptyStateMobilePropsParts,
+  type ChatRuntimeToolExecutionEmptyStateMobilePropsPartsInput,
   type ChatRuntimeToolExecutionErrorBlockMobilePropsParts,
   type ChatRuntimeToolExecutionErrorBlockMobileStyleSlots as SharedChatMessageToolExecutionErrorBlockStyleSlots,
   type ChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
@@ -410,8 +414,10 @@ import {
   type ChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
   type ChatRuntimeToolExecutionPayloadSectionMobileStyleSlots as SharedChatMessageToolExecutionPayloadSectionStyleSlots,
   type ChatRuntimeToolExecutionPendingResultMobilePropsParts,
+  type ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput,
   type ChatRuntimeToolExecutionPendingResultMobileStyleSlots as SharedChatMessageToolExecutionPendingResultStyleSlots,
   type ChatRuntimeToolExecutionResultBadgeMobilePropsParts,
+  type ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput,
   type ChatRuntimeToolExecutionResultBadgeMobileStyleSlots as SharedChatMessageToolExecutionResultBadgeStyleSlots,
   type ChatRuntimeToolExecutionResultHeaderMobilePropsParts,
   type ChatRuntimeToolExecutionResultHeaderMobileStyleSlots as SharedChatMessageToolExecutionResultHeaderStyleSlots,
@@ -2821,17 +2827,18 @@ type ChatMessageToolExecutionCopyButtonStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolExecutionCopyButtonProps = {
-  renderState: ToolExecutionDetailMobileCopyButtonRenderState;
-  onPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolExecutionCopyButtonStyles;
-};
+type ChatMessageToolExecutionCopyButtonProps =
+  ChatRuntimeToolExecutionCopyButtonMobilePropsPartsInput<
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCopyButtonStyles
+  >;
 
 type ChatMessageToolExecutionCopyButtonParts =
   ChatRuntimeToolExecutionCopyButtonMobilePropsParts<
-    ChatMessageToolExecutionCopyButtonProps['renderState'],
-    ChatMessageToolExecutionCopyButtonProps['onPress'],
-    ChatMessageToolExecutionCopyButtonProps['styles']
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCopyButtonStyles
   >;
 
 type ChatMessageToolExecutionCopyButtonPressableProps =
@@ -2857,18 +2864,18 @@ type ChatMessageToolExecutionDetailHeaderStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolExecutionDetailHeaderProps = {
-  renderState: ToolExecutionDetailMobileHeaderRenderState;
-  toolName: string;
-  onPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolExecutionDetailHeaderStyles;
-};
+type ChatMessageToolExecutionDetailHeaderProps =
+  ChatRuntimeToolExecutionDetailHeaderMobilePropsPartsInput<
+    ToolExecutionDetailMobileHeaderRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionDetailHeaderStyles
+  >;
 
 type ChatMessageToolExecutionDetailHeaderParts =
   ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
-    ChatMessageToolExecutionDetailHeaderProps['renderState'],
-    ChatMessageToolExecutionDetailHeaderProps['onPress'],
-    ChatMessageToolExecutionDetailHeaderProps['styles']
+    ToolExecutionDetailMobileHeaderRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionDetailHeaderStyles
   >;
 
 type ChatMessageToolExecutionDetailHeaderPressableProps =
@@ -2902,19 +2909,20 @@ type ChatMessageToolExecutionCallSectionStyles =
     ChatMessageToolExecutionDetailHeaderStyles
   >;
 
-type ChatMessageToolExecutionCallSectionProps = {
-  renderState: ToolExecutionDetailMobileHeaderRenderState;
-  toolName: string;
-  onHeaderPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolExecutionCallSectionStyles;
-  children: ReactNode;
-};
+type ChatMessageToolExecutionCallSectionProps =
+  ChatRuntimeToolExecutionCallSectionMobilePropsPartsInput<
+    ToolExecutionDetailMobileHeaderRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCallSectionStyles
+  > & {
+    children: ReactNode;
+  };
 
 type ChatMessageToolExecutionCallSectionParts =
   ChatRuntimeToolExecutionCallSectionMobilePropsParts<
-    ChatMessageToolExecutionCallSectionProps['renderState'],
-    ChatMessageToolExecutionCallSectionProps['onHeaderPress'],
-    ChatMessageToolExecutionCallSectionProps['styles']
+    ToolExecutionDetailMobileHeaderRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCallSectionStyles
   >;
 
 type ChatMessageToolExecutionCallSectionContainerProps =
@@ -2937,15 +2945,16 @@ type ChatMessageToolExecutionResultBadgeStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolExecutionResultBadgeProps = {
-  badge: ToolExecutionDetailMobileHeaderRenderState['resultBadge'];
-  styles: ChatMessageToolExecutionResultBadgeStyles;
-};
+type ChatMessageToolExecutionResultBadgeProps =
+  ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput<
+    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ChatMessageToolExecutionResultBadgeStyles
+  >;
 
 type ChatMessageToolExecutionResultBadgeParts =
   ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
-    ChatMessageToolExecutionResultBadgeProps['badge'],
-    ChatMessageToolExecutionResultBadgeProps['styles']
+    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ChatMessageToolExecutionResultBadgeStyles
   >;
 
 type ChatMessageToolExecutionResultBadgeContainerProps =
@@ -2968,15 +2977,16 @@ type ChatMessageToolExecutionPendingResultStyles =
     StyleProp<TextStyle>
   >;
 
-type ChatMessageToolExecutionPendingResultProps = {
-  renderState: ToolExecutionDetailMobilePendingResultRenderState;
-  styles: ChatMessageToolExecutionPendingResultStyles;
-};
+type ChatMessageToolExecutionPendingResultProps =
+  ChatRuntimeToolExecutionPendingResultMobilePropsPartsInput<
+    ToolExecutionDetailMobilePendingResultRenderState,
+    ChatMessageToolExecutionPendingResultStyles
+  >;
 
 type ChatMessageToolExecutionPendingResultParts =
   ChatRuntimeToolExecutionPendingResultMobilePropsParts<
-    ChatMessageToolExecutionPendingResultProps['renderState'],
-    ChatMessageToolExecutionPendingResultProps['styles']
+    ToolExecutionDetailMobilePendingResultRenderState,
+    ChatMessageToolExecutionPendingResultStyles
   >;
 
 type ChatMessageToolExecutionPendingResultContainerProps =
@@ -2993,15 +3003,16 @@ type ChatMessageToolExecutionPendingResultSpinnerProps =
 type ChatMessageToolExecutionPendingResultLabelProps =
   ChatMessageToolExecutionPendingResultParts['container']['content']['label']['props'];
 
-type ChatMessageToolExecutionEmptyStateProps = {
-  renderState: ToolExecutionDetailMobileEmptyStateRenderState;
-  style: StyleProp<TextStyle>;
-};
+type ChatMessageToolExecutionEmptyStateProps =
+  ChatRuntimeToolExecutionEmptyStateMobilePropsPartsInput<
+    ToolExecutionDetailMobileEmptyStateRenderState,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolExecutionEmptyStateParts =
   ChatRuntimeToolExecutionEmptyStateMobilePropsParts<
-    ChatMessageToolExecutionEmptyStateProps['renderState'],
-    ChatMessageToolExecutionEmptyStateProps['style']
+    ToolExecutionDetailMobileEmptyStateRenderState,
+    StyleProp<TextStyle>
   >;
 
 type ChatMessageToolExecutionEmptyStateLabelProps =
