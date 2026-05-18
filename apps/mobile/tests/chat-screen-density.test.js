@@ -3537,6 +3537,11 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     chatMessageChromeSource.match(/export function ChatComposerLabeledActionButton[\s\S]*?export function ChatComposerMicButton/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatComposerLabeledActionButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatComposerLabeledActionButtonMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerLabeledActionButton(?:TouchableProps|TouchableContentProps|IconProps|LabelProps)\s*=\s+ChatComposerLabeledActionButtonParts\['/);
+  assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonTouchableProps = \{[\s\S]*?style: Array<StyleProp<ViewStyle> \| false \| undefined>;[\s\S]*?onPress: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?activeOpacity: number \| undefined;[\s\S]*?disabled: boolean \| undefined;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?accessibilityHint: string \| undefined;[\s\S]*?accessibilityState: AccessibilityState \| undefined;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonTouchableContentProps = \{[\s\S]*?icon: \{[\s\S]*?props: ChatComposerLabeledActionButtonIconProps;[\s\S]*?\};[\s\S]*?label: \{[\s\S]*?shouldRender: boolean;[\s\S]*?props: ChatComposerLabeledActionButtonLabelProps;[\s\S]*?\};[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonIconProps = ChatMessageActionIcon;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerLabeledActionButtonLabelProps = \{[\s\S]*?style: ChatComposerLabeledActionButtonStyles\['text'\];[\s\S]*?text: string;[\s\S]*?\};/);
   assert.match(composerLabeledActionButtonSource, /const actionButtonParts: ChatComposerLabeledActionButtonParts =\s+createChatComposerLabeledActionButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+activeOpacity,\s+styles,\s+\}\);/);
   assert.match(composerLabeledActionButtonSource, /const actionButtonTouchable = actionButtonParts\.touchable;/);
   assert.match(composerLabeledActionButtonSource, /if \(!actionButtonTouchable\.shouldRender\) return null;/);

@@ -5181,19 +5181,34 @@ type ChatComposerLabeledActionButtonParts =
     ChatComposerLabeledActionButtonStyles
   >;
 
-type ChatComposerLabeledActionButtonTouchableProps =
-  ChatComposerLabeledActionButtonParts['touchable']['props'] & {
-    children: ReactNode;
+type ChatComposerLabeledActionButtonTouchableProps = {
+  style: Array<StyleProp<ViewStyle> | false | undefined>;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  activeOpacity: number | undefined;
+  disabled: boolean | undefined;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  accessibilityHint: string | undefined;
+  accessibilityState: AccessibilityState | undefined;
+  children: ReactNode;
+};
+
+type ChatComposerLabeledActionButtonTouchableContentProps = {
+  icon: {
+    props: ChatComposerLabeledActionButtonIconProps;
   };
+  label: {
+    shouldRender: boolean;
+    props: ChatComposerLabeledActionButtonLabelProps;
+  };
+};
 
-type ChatComposerLabeledActionButtonTouchableContentProps =
-  ChatComposerLabeledActionButtonParts['touchable']['content'];
+type ChatComposerLabeledActionButtonIconProps = ChatMessageActionIcon;
 
-type ChatComposerLabeledActionButtonIconProps =
-  ChatComposerLabeledActionButtonParts['touchable']['content']['icon']['props'];
-
-type ChatComposerLabeledActionButtonLabelProps =
-  ChatComposerLabeledActionButtonParts['touchable']['content']['label']['props'];
+type ChatComposerLabeledActionButtonLabelProps = {
+  style: ChatComposerLabeledActionButtonStyles['text'];
+  text: string;
+};
 
 type ChatComposerMicButtonRenderState = ChatComposerIconButtonRenderState & {
   ariaBusy?: boolean;
