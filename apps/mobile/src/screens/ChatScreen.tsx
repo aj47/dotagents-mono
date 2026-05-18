@@ -3,7 +3,6 @@ import {
   saveConfig,
 } from '../store/config';
 import { useSessionContext } from '../store/sessions';
-import { useMessageQueueContext } from '../store/message-queue';
 import {
   ChatMessageRuntimeChromeSurface,
   useChatConversationHomePromptEditorDeleteChromeActionsState,
@@ -64,6 +63,7 @@ import {
   useChatRuntimeCurrentSessionSnapshotState,
   useChatRuntimeCurrentAgentProfileState,
   useChatRuntimeConnectionManagerState,
+  useChatRuntimeMessageQueueState,
   useChatMessageRuntimeKeyboardOffsetState,
   useChatRuntimeBackToSessionsActionsState,
   useChatRuntimeNavigateToChatActionsState,
@@ -121,7 +121,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const { keyboardVerticalOffset } = useChatMessageRuntimeKeyboardOffsetState();
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
-  const messageQueue = useMessageQueueContext();
+  const messageQueue = useChatRuntimeMessageQueueState();
   const connectionManager = useChatRuntimeConnectionManagerState();
   const { currentAgentName } = useChatRuntimeCurrentAgentProfileState();
   const {

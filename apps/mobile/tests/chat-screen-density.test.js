@@ -7018,6 +7018,13 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeMessageQueuePanelStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeMessageQueuePanelStyleSheetSlotsInput\): MessageQueuePanelMobileStyleSheetSlots \{[\s\S]*?return createMessageQueuePanelMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}\);[\s\S]*?\}/);
   assert.match(chatRuntimeMobileStylesSource, /export function createChatRuntimeQueuedMessageItemStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}: ChatRuntimeQueuedMessageItemStyleSheetSlotsInput\): QueuedMessageItemMobileStyleSheetSlots \{[\s\S]*?return createQueuedMessageItemMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?\}\);[\s\S]*?\}/);
   assert.match(screenSource, /const messageQueuePanelWrapperStyleSlots = chatMobileStyleSlots\.messageQueuePanelWrapper;/);
+  assert.match(chatScreenSource, /useChatRuntimeMessageQueueState,/);
+  assert.match(chatScreenSource, /const messageQueue = useChatRuntimeMessageQueueState\(\);/);
+  assert.doesNotMatch(chatScreenSource, /from '\.\.\/store\/message-queue';/);
+  assert.doesNotMatch(chatScreenSource, /useMessageQueueContext/);
+  assert.match(chatMessageChromeSource, /import \{ useMessageQueueContext \} from '\.\.\/store\/message-queue';/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageQueueState = ReturnType<typeof useMessageQueueContext>;/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeMessageQueueState\(\): ChatRuntimeMessageQueueState \{\s+return useMessageQueueContext\(\);\s+\}/);
   assert.match(screenSource, /useChatMessageRuntimeQueuePanelState,/);
   assert.match(screenSource, /const \{\s+queuedMessages,\s+isMessageQueuePaused,\s+nextQueuedMessage,\s+handleProcessNextQueuedMessage,\s+handlePauseMessageQueue,\s+handleResumeMessageQueue,\s+handleRemoveQueuedMessage,\s+handleUpdateQueuedMessage,\s+handleRetryQueuedMessage,\s+handleClearQueuedMessages,\s+\} = useChatMessageRuntimeQueuePanelState\(\{\s+currentConversationId,\s+queue: messageQueue,\s+responding,\s+handsFree,\s+handsFreePhase: handsFreeController\.state\.phase,\s+handsFreeRef,\s+handsFreePhaseRef,\s+processQueuedMessage,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const isMessageQueuePaused = messageQueue\.isQueuePaused\(currentConversationId\);/);
