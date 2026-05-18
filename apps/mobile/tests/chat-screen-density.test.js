@@ -6491,6 +6491,12 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionCallDetailStyles = \{\s+callSection: ChatMessageToolExecutionCallSectionStyles;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionStackStyles = \{\s+compactGroup: ChatMessageToolExecutionCompactGroupStyles;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolExecutionExpandedGroupStyles = \{\s+container: StyleProp<ViewStyle>;/);
+  assert.match(sessionPresentationSource, /export type ChatMessageThreadBodyStyleSlots<\s+TRetryStatusStyles,/);
+  assert.match(sessionPresentationSource, /type ChatMessageThreadBodyStyleSlotsFromStyleSource<\s+TStyles extends ChatMessageThreadBodyStyleSource,/);
+  assert.match(sessionPresentationSource, /\): ChatMessageThreadBodyStyleSlotsFromStyleSource<TStyles> \{/);
+  assert.match(chatMessageChromeSource, /type ChatMessageThreadBodyStyleSlots as SharedChatMessageThreadBodyStyleSlots,/);
+  assert.match(chatMessageChromeSource, /export type ChatMessageThreadBodyStyleSlots =\s+SharedChatMessageThreadBodyStyleSlots<\s+ChatMessageRetryStatusStyles,/);
+  assert.doesNotMatch(chatMessageChromeSource, /export type ChatMessageThreadBodyStyleSlots = \{\s+retryStatus: ChatMessageRetryStatusStyles;/);
   assert.match(chatMessageChromeSource, /export type ChatMessageRuntimeThreadStyleSlots =\s+SharedChatMessageRuntimeThreadStyleSlots<\s+ChatMessageToolActivityGroupThreadSurfaceStyleSlots,\s+ChatMessageThreadBodyStyleSlots\s+>;/);
   assert.match(chatMessageChromeSource, /export type ChatMessageConversationThreadStyleSlots =\s+SharedChatMessageConversationThreadStyleSlots<\s+ChatMessageToolActivityGroupThreadSurfaceStyleSlots,\s+ChatMessageThreadBodyStyleSlots,\s+ChatMessageActionStyleSlots\s+>;/);
   assert.doesNotMatch(chatMessageChromeSource, /export type ChatMessageRuntimeThreadStyleSlots = \{\s+surface: ChatMessageToolActivityGroupThreadSurfaceStyleSlots;/);

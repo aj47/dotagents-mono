@@ -29045,7 +29045,27 @@ export type ChatMessageToolApprovalStyleSlots<
   denyButtonText: TDenyButtonTextStyle
 }
 
-type ChatMessageThreadBodyStyleSlots<TStyles extends ChatMessageThreadBodyStyleSource> = {
+export type ChatMessageThreadBodyStyleSlots<
+  TRetryStatusStyles,
+  TDelegationCardStyles,
+  TToolApprovalStyles,
+  TInlineActivityStyles,
+  TContentStyles,
+  TToolExecutionStackStyles,
+  TStandaloneActionsStyles,
+> = {
+  retryStatus: TRetryStatusStyles
+  delegationCard: TDelegationCardStyles
+  toolApproval: TToolApprovalStyles
+  inlineActivity: TInlineActivityStyles
+  content: TContentStyles
+  toolExecutionStack: TToolExecutionStackStyles
+  standaloneActions: TStandaloneActionsStyles
+}
+
+type ChatMessageThreadBodyStyleSlotsFromStyleSource<
+  TStyles extends ChatMessageThreadBodyStyleSource,
+> = {
   retryStatus: ChatMessageRetryStatusStyleSlots<
     TStyles["retryStatusCard"],
     TStyles["retryStatusHeader"],
@@ -29245,7 +29265,7 @@ export function createChatMessageThreadBodyStyleSlots<
   TStyles extends ChatMessageThreadBodyStyleSource,
 >(
   styles: TStyles,
-): ChatMessageThreadBodyStyleSlots<TStyles> {
+): ChatMessageThreadBodyStyleSlotsFromStyleSource<TStyles> {
   return {
     retryStatus: {
       card: styles.retryStatusCard,
@@ -29699,7 +29719,7 @@ type ChatMessageConversationThreadStyleSlotsFromStyleSource<
     boundary: ChatMessageToolActivityGroupBoundaryStylesFromStyleSource<TStyles>
     getToneStyle: (toneStyleSlot: TToneStyleSlot) => TToneStyle
   },
-  ChatMessageThreadBodyStyleSlots<TStyles>,
+  ChatMessageThreadBodyStyleSlotsFromStyleSource<TStyles>,
   ChatMessageActionStylesFromStyleSource<TStyles>
 >
 

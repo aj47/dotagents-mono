@@ -401,6 +401,7 @@ import {
   type ChatMessageRuntimeSurfaceStyleSlots as SharedChatMessageRuntimeSurfaceStyleSlots,
   type ChatMessageRuntimeThreadStyleSlots as SharedChatMessageRuntimeThreadStyleSlots,
   type ChatMessageRuntimeViewportStyleSlots as SharedChatMessageRuntimeViewportStyleSlots,
+  type ChatMessageThreadBodyStyleSlots as SharedChatMessageThreadBodyStyleSlots,
   type ChatMessageToolApprovalStyleSlots as SharedChatMessageToolApprovalStyleSlots,
   type ChatMessageActionSlotRenderEntry,
   type ChatMessageActionSlotRenderMap,
@@ -4901,22 +4902,23 @@ type ChatComposerRuntimeDockChromePropsInput = {
   micWrapperRef?: ChatComposerInputDockProps['micWrapperRef'];
 };
 
-export type ChatMessageThreadBodyStyleSlots = {
-  retryStatus: ChatMessageRetryStatusStyles;
-  delegationCard: ChatMessageDelegationCardStyles;
-  toolApproval: ChatMessageToolApprovalStyles;
-  inlineActivity: Pick<ChatMessageInlineActivityProps, 'style' | 'spinnerStyle'>;
-  content: {
-    rowStyle: ChatMessageConversationContentProps['rowStyle'];
-    expandedBodyStyle: ChatMessageConversationContentProps['expanded']['bodyStyle'];
-    streamingStyles: ChatMessageExpandedContentStyles;
-    collapsedStyle: ChatMessageCollapsedPreviewProps['style'];
-    collapsedPressedStyle: ChatMessageCollapsedPreviewProps['pressedStyle'];
-    collapsedTextStyle: ChatMessageCollapsedPreviewProps['textStyle'];
-  };
-  toolExecutionStack: ChatMessageToolExecutionStackStyles;
-  standaloneActions: Pick<ChatMessageStandaloneActionsProps, 'rowStyle'>;
-};
+export type ChatMessageThreadBodyStyleSlots =
+  SharedChatMessageThreadBodyStyleSlots<
+    ChatMessageRetryStatusStyles,
+    ChatMessageDelegationCardStyles,
+    ChatMessageToolApprovalStyles,
+    Pick<ChatMessageInlineActivityProps, 'style' | 'spinnerStyle'>,
+    {
+      rowStyle: ChatMessageConversationContentProps['rowStyle'];
+      expandedBodyStyle: ChatMessageConversationContentProps['expanded']['bodyStyle'];
+      streamingStyles: ChatMessageExpandedContentStyles;
+      collapsedStyle: ChatMessageCollapsedPreviewProps['style'];
+      collapsedPressedStyle: ChatMessageCollapsedPreviewProps['pressedStyle'];
+      collapsedTextStyle: ChatMessageCollapsedPreviewProps['textStyle'];
+    },
+    ChatMessageToolExecutionStackStyles,
+    Pick<ChatMessageStandaloneActionsProps, 'rowStyle'>
+  >;
 
 type ChatMessageToolActivityGroupThreadSurfaceStyleSlots =
   SharedChatMessageToolActivityGroupThreadSurfaceStyleSlots<
