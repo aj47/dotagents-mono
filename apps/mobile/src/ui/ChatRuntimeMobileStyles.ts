@@ -26,20 +26,32 @@ import {
   getMarkdownContentMobileSurfaceRenderState,
   getMarkdownThinkSectionMobileSurfaceRenderState,
   type AgentSelectorMobileRenderState as SharedAgentSelectorMobileRenderState,
+  type AgentSelectorMobileRenderStateInput,
   type AgentSelectorMobileStyleSheetSlots,
+  type AgentSelectorMobileStyleSheetSlotsInput,
   type AgentResponseHistoryMobileStyleSheetSlots,
+  type AgentResponseHistoryMobileStyleSheetSlotsInput,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
   type ChatRuntimeMobileChromeSlotsFromStyleSource,
   type ChatVideoAttachmentMobileRenderState as SharedChatVideoAttachmentMobileRenderState,
+  type ChatVideoAttachmentMobileRenderStateInput,
   type ChatVideoAttachmentMobileStyleSheetSlots,
+  type ChatVideoAttachmentMobileStyleSheetSlotsInput,
   type HandsFreeStatusChipMobileRenderState as SharedHandsFreeStatusChipMobileRenderState,
+  type HandsFreeStatusChipMobileRenderStateInput,
   type HandsFreeStatusChipMobileStyleSheetSlots,
+  type HandsFreeStatusChipMobileStyleSheetSlotsInput,
   type MarkdownContentMobileStyleSheetSlots,
+  type MarkdownContentMobileStyleSheetSlotsInput,
   type MarkdownContentMobileSurfaceRenderState,
   type MarkdownThinkSectionMobileStyleSheetSlots,
+  type MarkdownThinkSectionMobileStyleSheetSlotsInput,
   type MarkdownThinkSectionMobileSurfaceRenderState,
   type MessageQueuePanelMobileStyleSheetSlots,
+  type MessageQueuePanelMobileStyleSheetSlotsInput,
+  type QueuedMessage,
   type QueuedMessageItemMobileStyleSheetSlots,
+  type QueuedMessageItemMobileStyleSheetSlotsInput,
 } from '@dotagents/shared/session-presentation';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing, type Theme } from './theme';
@@ -878,7 +890,7 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
 export type ChatRuntimeMobileStyles = ReturnType<typeof createChatRuntimeMobileStyles>;
 
 export type ChatRuntimeResponseHistoryPanelStyleSheetSlotsInput = Pick<
-  Parameters<typeof createAgentResponseHistoryMobileStyleSheetSlots>[0],
+  AgentResponseHistoryMobileStyleSheetSlotsInput,
   'renderState'
 >;
 
@@ -893,12 +905,12 @@ export function createChatRuntimeResponseHistoryPanelStyleSheetSlots({
 }
 
 export type ChatRuntimeMessageQueuePanelStyleSheetSlotsInput = Pick<
-  Parameters<typeof createMessageQueuePanelMobileStyleSheetSlots>[0],
+  MessageQueuePanelMobileStyleSheetSlotsInput<QueuedMessage>,
   'renderState'
 >;
 
 export type ChatRuntimeQueuedMessageItemStyleSheetSlotsInput = Pick<
-  Parameters<typeof createQueuedMessageItemMobileStyleSheetSlots>[0],
+  QueuedMessageItemMobileStyleSheetSlotsInput,
   'renderState'
 >;
 
@@ -919,12 +931,12 @@ export function createChatRuntimeQueuedMessageItemStyleSheetSlots({
 }
 
 export type ChatRuntimeMarkdownContentStyleSheetSlotsInput = Pick<
-  Parameters<typeof createMarkdownContentMobileStyleSheetSlots>[0],
+  MarkdownContentMobileStyleSheetSlotsInput,
   'renderState'
 >;
 
 export type ChatRuntimeMarkdownThinkSectionStyleSheetSlotsInput = Pick<
-  Parameters<typeof createMarkdownThinkSectionMobileStyleSheetSlots>[0],
+  MarkdownThinkSectionMobileStyleSheetSlotsInput,
   'renderState'
 >;
 
@@ -1008,7 +1020,7 @@ export function useChatRuntimeMarkdownMobileStyleSlots(): ChatRuntimeMarkdownMob
 }
 
 export type ChatRuntimeVideoAttachmentStyleSheetSlotsInput = Pick<
-  Parameters<typeof createChatVideoAttachmentMobileStyleSheetSlots>[0],
+  ChatVideoAttachmentMobileStyleSheetSlotsInput,
   'renderState'
 >;
 
@@ -1016,7 +1028,7 @@ export type ChatRuntimeVideoAttachmentMobileRenderState =
   SharedChatVideoAttachmentMobileRenderState;
 
 export type ChatRuntimeVideoAttachmentMobileStyleSlotsInput = Pick<
-  Parameters<typeof getChatVideoAttachmentMobileRenderState>[0],
+  ChatVideoAttachmentMobileRenderStateInput,
   'sourceUrl' | 'label' | 'loading'
 >;
 
@@ -1073,7 +1085,7 @@ export function useChatRuntimeVideoAttachmentMobileStyleSlots({
 }
 
 export type ChatRuntimeHandsFreeStatusChipStyleSheetSlotsInput = Pick<
-  Parameters<typeof createHandsFreeStatusChipMobileStyleSheetSlots>[0],
+  HandsFreeStatusChipMobileStyleSheetSlotsInput,
   'renderState'
 >;
 
@@ -1081,7 +1093,7 @@ export type ChatRuntimeHandsFreeStatusChipMobileRenderState =
   SharedHandsFreeStatusChipMobileRenderState;
 
 export type ChatRuntimeHandsFreeStatusChipMobileStyleSlotsInput = Pick<
-  Parameters<typeof getHandsFreeStatusChipMobileRenderState>[0],
+  HandsFreeStatusChipMobileRenderStateInput,
   'phase' | 'label' | 'subtitle'
 >;
 
@@ -1137,7 +1149,7 @@ export function useChatRuntimeHandsFreeStatusChipMobileStyleSlots({
 }
 
 export type ChatRuntimeAgentSelectorSheetStyleSheetSlotsInput = Pick<
-  Parameters<typeof createAgentSelectorMobileStyleSheetSlots>[0],
+  AgentSelectorMobileStyleSheetSlotsInput,
   'renderState'
 >;
 
@@ -1145,7 +1157,7 @@ export type ChatRuntimeAgentSelectorSheetMobileRenderState =
   SharedAgentSelectorMobileRenderState;
 
 export type ChatRuntimeAgentSelectorSheetMobileStyleSlotsInput = Pick<
-  Parameters<typeof getAgentSelectorMobileRenderState>[0],
+  AgentSelectorMobileRenderStateInput,
   'selectorMode'
 >;
 

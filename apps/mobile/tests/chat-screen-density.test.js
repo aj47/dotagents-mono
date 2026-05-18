@@ -83,6 +83,29 @@ test('keeps mobile chat runtime stylesheet in the ui layer', () => {
   assert.doesNotMatch(chatScreenSource, /\s+styles,\s+\} = useChatRuntimeMobileStyleSlots/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /return \{\s+chatRuntimeChrome,\s+styles,/);
   assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeMobileChromeSlotsFromStyleSource,[\s\S]*?\} from '@dotagents\/shared\/session-presentation';/);
+  [
+    'createAgentResponseHistoryMobileStyleSheetSlots',
+    'createMessageQueuePanelMobileStyleSheetSlots',
+    'createQueuedMessageItemMobileStyleSheetSlots',
+    'createMarkdownContentMobileStyleSheetSlots',
+    'createMarkdownThinkSectionMobileStyleSheetSlots',
+    'createChatVideoAttachmentMobileStyleSheetSlots',
+    'getChatVideoAttachmentMobileRenderState',
+    'createHandsFreeStatusChipMobileStyleSheetSlots',
+    'getHandsFreeStatusChipMobileRenderState',
+    'createAgentSelectorMobileStyleSheetSlots',
+    'getAgentSelectorMobileRenderState',
+  ].forEach((factoryName) => {
+    assert.doesNotMatch(chatRuntimeMobileStylesSource, new RegExp(`Parameters<typeof ${factoryName}`));
+  });
+  assert.match(chatRuntimeMobileStylesSource, /type AgentResponseHistoryMobileStyleSheetSlotsInput,/);
+  assert.match(chatRuntimeMobileStylesSource, /type MessageQueuePanelMobileStyleSheetSlotsInput,/);
+  assert.match(chatRuntimeMobileStylesSource, /type QueuedMessageItemMobileStyleSheetSlotsInput,/);
+  assert.match(chatRuntimeMobileStylesSource, /type MarkdownContentMobileStyleSheetSlotsInput,/);
+  assert.match(chatRuntimeMobileStylesSource, /type MarkdownThinkSectionMobileStyleSheetSlotsInput,/);
+  assert.match(chatRuntimeMobileStylesSource, /type ChatVideoAttachmentMobileRenderStateInput,/);
+  assert.match(chatRuntimeMobileStylesSource, /type HandsFreeStatusChipMobileRenderStateInput,/);
+  assert.match(chatRuntimeMobileStylesSource, /type AgentSelectorMobileRenderStateInput,/);
   assert.match(chatRuntimeMobileStylesSource, /export type ChatRuntimeMobileStyles = ReturnType<typeof createChatRuntimeMobileStyles>;/);
   assert.match(chatRuntimeMobileStylesSource, /export type ChatRuntimeMobileChromeSlots = ChatRuntimeMobileChromeSlotsFromStyleSource<\s+ChatRuntimeMobileStyles,\s+ChatRuntimeConversationSurfaceToneMobileStyleSlot,/);
   assert.match(chatRuntimeMobileStylesSource, /export type ChatRuntimeMobileStyleSlots = \{\s+chatRuntimeChrome: ChatRuntimeMobileChromeSlots;\s+\};/);

@@ -19,6 +19,7 @@ export {
   type AgentResponseHistoryMobileRenderState,
   type AgentResponseHistoryMobileSurfaceColorPalette,
   type AgentResponseHistoryMobileStyleSheetSlots,
+  type AgentResponseHistoryMobileStyleSheetSlotsInput,
   type AgentResponseHistoryMobileStylesLike,
 } from "./agent-user-response-store"
 import {
@@ -231,6 +232,7 @@ export {
   type HandsFreeStatusChipMobileColors,
   type HandsFreeStatusChipMobilePropsParts,
   type HandsFreeStatusChipMobileRenderState,
+  type HandsFreeStatusChipMobileRenderStateInput,
   type HandsFreeStatusChipMobileStyleSheetSlots,
   type HandsFreeStatusChipMobileStyleSheetSlotsInput,
   type HandsFreeStatusChipMobileStyleSlots,
@@ -286,6 +288,7 @@ export {
   type ChatImageAttachmentMessageInput,
   type ChatImageAttachmentMobileRenderState,
   type ChatVideoAttachmentMobileRenderState,
+  type ChatVideoAttachmentMobileRenderStateInput,
   type ChatVideoAttachmentMobilePropsParts,
   type ChatVideoAttachmentMobilePropsPartsInput,
   type ChatVideoAttachmentMobilePropsStylesLike,
@@ -333,6 +336,7 @@ export {
   getAgentSelectorMobileProfileItemRenderState,
   getAgentSelectorMobileRenderState,
   type AgentSelectorMobileRenderState,
+  type AgentSelectorMobileRenderStateInput,
   type AgentSelectorMobileStyleSheetSlots,
   type AgentSelectorMobileStyleSheetSlotsInput,
   type AgentSelectorProfileItemMobilePropsParts,
@@ -590,6 +594,7 @@ export {
   type MessageQueuePanelMobileRenderState,
   type MessageQueuePanelMobileSurfaceColorPalette,
   type MessageQueuePanelMobileStyleSheetSlots,
+  type MessageQueuePanelMobileStyleSheetSlotsInput,
   type QueuedMessageActionButtonMobilePropsPartsStylesLike,
   type QueuedMessageContentMobilePropsPartsStylesLike,
   type QueuedMessageEditMobileStylesLike,
@@ -599,6 +604,7 @@ export {
   type QueuedMessageItemMobilePropsPartsStylesLike,
   type QueuedMessageItemMobileRenderState,
   type QueuedMessageItemMobileStyleSheetSlots,
+  type QueuedMessageItemMobileStyleSheetSlotsInput,
   type QueuedMessage,
 } from "./message-queue-utils"
 import {
