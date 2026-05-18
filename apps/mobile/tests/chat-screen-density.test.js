@@ -5925,7 +5925,12 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentParts =\s+ChatRuntimeConversationExpandedContentMobilePropsParts<\s+ChatRuntimeStreamingContentMobileRenderState,[\s\S]*?string,[\s\S]*?string,[\s\S]*?string,[\s\S]*?ImageSourcePropType,[\s\S]*?ChatMessageExpandedContentStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentParts =\s+ChatRuntimeConversationExpandedContentMobilePropsParts<[\s\S]*?ChatMessageExpandedContentProps\['streamingRenderState'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContentParts = ReturnType<typeof createChatRuntimeConversationExpandedContentMobilePropsParts/);
-  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageExpandedContent(Text|Badge|Header|Body)Part = \{/);
+  const expandedContentTypes =
+    chatMessageChromeSource.match(/type ChatMessageExpandedContentProps[\s\S]*?type ChatMessageCollapsedPreviewProps/)?.[0] ?? '';
+  assert.match(expandedContentTypes, /type ChatMessageExpandedContentTextPart<TStyle> =/);
+  assert.match(expandedContentTypes, /type ChatMessageExpandedContentHeaderPart =/);
+  assert.match(expandedContentTypes, /type ChatMessageExpandedContentBodyPart =/);
+  assert.doesNotMatch(expandedContentTypes, /ChatMessageExpandedContentParts\['streamingContent'\]/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationExpandedContentMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationExpandedContentMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const expandedContentParts: ChatMessageExpandedContentParts =\s+createChatRuntimeConversationExpandedContentMobilePropsParts\(\{\s+streamingRenderState,\s+markdownContent,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+streamingStyles,\s+\}\);/);
@@ -5955,8 +5960,8 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContentHeader\s+header=\{expandedStreamingContentParts\.header\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContentBody\s+body=\{expandedStreamingContentParts\.body\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContentHeader/);
-  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentHeaderContentProps =\s+ChatMessageExpandedContentParts\['streamingContent'\]\['content'\]\['header'\]\['content'\];/);
-  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentBadgeContentProps =\s+ChatMessageExpandedContentParts\['streamingContent'\]\['content'\]\['header'\]\['content'\]\['badge'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentHeaderContentProps = \{[\s\S]*?icon: \{[\s\S]*?title: ChatMessageExpandedContentTitlePart;[\s\S]*?badge: ChatMessageExpandedContentBadgePart;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentBadgeContentProps = \{\s+label: ChatMessageExpandedContentBadgeLabelPart;\s+\};/);
   assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.header\.props\}>/);
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContentHeaderContent\s+\{\.\.\.header\.content\}\s+\/>/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContentHeaderContent/);
@@ -5967,7 +5972,7 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContentBadgeContent\s+\{\.\.\.badge\.content\}/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContentBadgeContent[\s\S]*?<ChatMessageExpandedContentText part=\{label\} \/>/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContentBody/);
-  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentBodyContentProps =\s+ChatMessageExpandedContentParts\['streamingContent'\]\['content'\]\['body'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageExpandedContentBodyContentProps = \{[\s\S]*?text: ChatMessageExpandedContentBodyTextPart;[\s\S]*?caret: \{/);
   assert.match(chatMessageChromeSource, /<View\s+\{\.\.\.body\.props\}>/);
   assert.match(chatMessageChromeSource, /<ChatMessageExpandedContentBodyContent\s+\{\.\.\.body\.content\}\s+\/>/);
   assert.match(chatMessageChromeSource, /export function ChatMessageExpandedContentBodyContent[\s\S]*?<ChatMessageExpandedContentText part=\{text\} \/>[\s\S]*?<View \{\.\.\.caret\.props\} \/>/);
