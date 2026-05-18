@@ -3,7 +3,7 @@
  * Used in ChatScreen and SessionListScreen headers to allow quick agent switching.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -60,6 +60,89 @@ type AgentSelectorProfileItemParts =
     AgentSelectorProfilePressHandler
   >;
 
+interface AgentSelectorProfileRowProps {
+  item: SelectableProfile;
+  currentProfileId?: string;
+  isSwitching: boolean;
+  renderState: ReturnType<typeof useChatRuntimeAgentSelectorSheetMobileStyleSlots>['agentSelectorRenderState'];
+  styles: AgentSelectorSheetStyles;
+  onSelectProfile: (profile: SelectableProfile) => void | Promise<void>;
+}
+
+const AgentSelectorProfileRow = React.memo(function AgentSelectorProfileRow({
+  item,
+  currentProfileId,
+  isSwitching,
+  renderState,
+  styles,
+  onSelectProfile,
+}: AgentSelectorProfileRowProps) {
+  const profileItemRenderState = useMemo(
+    () => getAgentSelectorMobileProfileItemRenderState({
+      profile: item,
+      currentProfileId,
+      isSwitching,
+    }),
+    [currentProfileId, isSwitching, item],
+  );
+  const avatarImageSource = useMemo(
+    () => (item.avatarDataUrl ? { uri: item.avatarDataUrl } : null),
+    [item.avatarDataUrl],
+  );
+  const handlePress = useCallback(() => {
+    void onSelectProfile(item);
+  }, [item, onSelectProfile]);
+  const profileItemParts = useMemo<AgentSelectorProfileItemParts>(
+    () => createAgentSelectorProfileItemMobilePropsParts({
+      profile: item,
+      renderState,
+      profileRenderState: profileItemRenderState,
+      styles,
+      avatarImageSource,
+      onPress: handlePress,
+    }),
+    [avatarImageSource, handlePress, item, profileItemRenderState, renderState, styles],
+  );
+  const profileItemContent = profileItemParts.touchable.content;
+  const avatar = profileItemContent.avatar;
+  const profileInfo = profileItemContent.profileInfo;
+  const profileDescription = profileInfo.description;
+  const checkIcon = profileItemContent.checkIcon;
+
+  return (
+    <TouchableOpacity
+      {...profileItemParts.touchable.props}
+    >
+      <View {...avatar.props}>
+        {avatar.image.shouldRender ? (
+          <Image
+            {...avatar.image.props}
+          />
+        ) : (
+          <Ionicons
+            {...avatar.fallbackIcon.props}
+          />
+        )}
+      </View>
+      <View {...profileInfo.props}>
+        <Text {...profileInfo.name.props}>
+          {profileInfo.name.text}
+        </Text>
+        {profileDescription.shouldRender ? (
+          <Text {...profileDescription.props}>
+            {profileDescription.text}
+          </Text>
+        ) : null}
+      </View>
+      {checkIcon.shouldRender ? (
+        <Ionicons
+          {...checkIcon.props}
+        />
+      ) : null}
+    </TouchableOpacity>
+  );
+});
+
 export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps) {
   const insets = useSafeAreaInsets();
   const { config } = useConfigContext();
@@ -107,7 +190,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     } finally {
       setIsLoading(false);
     }
-  }, [config.baseUrl, config.apiKey, hasApiConfig, missingConfigError]);
+  }, [agentSelectorCopy.loadFailed, config.baseUrl, config.apiKey, hasApiConfig, missingConfigError]);
 
   useEffect(() => {
     if (visible) {
@@ -115,20 +198,34 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     }
   }, [visible, fetchProfiles]);
 
-  const agentSelectorSheetParts: AgentSelectorSheetParts = createAgentSelectorSheetMobilePropsParts({
-    visible,
-    renderState: agentSelectorRenderState,
-    styles,
-    sheetBottomPadding: agentSelectorSheetBottomPadding,
-    safeAreaBottom: insets.bottom,
-    isLoading,
-    error,
-    hasProfiles: profiles.length > 0,
-    onClose,
-    onRetry: fetchProfiles,
-  });
+  const agentSelectorSheetParts = useMemo<AgentSelectorSheetParts>(
+    () => createAgentSelectorSheetMobilePropsParts({
+      visible,
+      renderState: agentSelectorRenderState,
+      styles,
+      sheetBottomPadding: agentSelectorSheetBottomPadding,
+      safeAreaBottom: insets.bottom,
+      isLoading,
+      error,
+      hasProfiles: profiles.length > 0,
+      onClose,
+      onRetry: fetchProfiles,
+    }),
+    [
+      agentSelectorRenderState,
+      agentSelectorSheetBottomPadding,
+      error,
+      fetchProfiles,
+      insets.bottom,
+      isLoading,
+      onClose,
+      profiles.length,
+      styles,
+      visible,
+    ],
+  );
 
-  const handleSelectProfile = async (profile: SelectableProfile) => {
+  const handleSelectProfile = useCallback(async (profile: SelectableProfile) => {
     if (!hasApiConfig) {
       setProfiles([]);
       setError(missingConfigError);
@@ -156,61 +253,35 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
     } finally {
       setIsSwitching(false);
     }
-  };
+  }, [
+    agentSelectorCopy.switchFailed,
+    config.apiKey,
+    config.baseUrl,
+    currentProfile?.id,
+    hasApiConfig,
+    missingConfigError,
+    onClose,
+    setCurrentProfile,
+  ]);
 
-  const renderProfile = ({ item }: { item: SelectableProfile }) => {
-    const profileItemRenderState = getAgentSelectorMobileProfileItemRenderState({
-      profile: item,
-      currentProfileId: currentProfile?.id,
-      isSwitching,
-    });
-    const profileItemParts: AgentSelectorProfileItemParts = createAgentSelectorProfileItemMobilePropsParts({
-      profile: item,
-      renderState: agentSelectorRenderState,
-      profileRenderState: profileItemRenderState,
-      styles,
-      avatarImageSource: item.avatarDataUrl ? { uri: item.avatarDataUrl } : null,
-      onPress: () => handleSelectProfile(item),
-    });
-    const profileItemContent = profileItemParts.touchable.content;
-    const avatar = profileItemContent.avatar;
-    const profileInfo = profileItemContent.profileInfo;
-    const profileDescription = profileInfo.description;
-    const checkIcon = profileItemContent.checkIcon;
+  const renderProfile = useCallback(({ item }: { item: SelectableProfile }) => (
+    <AgentSelectorProfileRow
+      item={item}
+      currentProfileId={currentProfile?.id}
+      isSwitching={isSwitching}
+      renderState={agentSelectorRenderState}
+      styles={styles}
+      onSelectProfile={handleSelectProfile}
+    />
+  ), [
+    agentSelectorRenderState,
+    currentProfile?.id,
+    handleSelectProfile,
+    isSwitching,
+    styles,
+  ]);
 
-    return (
-      <TouchableOpacity
-        {...profileItemParts.touchable.props}
-      >
-        <View {...avatar.props}>
-          {avatar.image.shouldRender ? (
-            <Image
-              {...avatar.image.props}
-            />
-          ) : (
-            <Ionicons
-              {...avatar.fallbackIcon.props}
-            />
-          )}
-        </View>
-        <View {...profileInfo.props}>
-          <Text {...profileInfo.name.props}>
-            {profileInfo.name.text}
-          </Text>
-          {profileDescription.shouldRender ? (
-            <Text {...profileDescription.props}>
-              {profileDescription.text}
-            </Text>
-          ) : null}
-        </View>
-        {checkIcon.shouldRender ? (
-          <Ionicons
-            {...checkIcon.props}
-          />
-        ) : null}
-      </TouchableOpacity>
-    );
-  };
+  const keyExtractor = useCallback((item: SelectableProfile) => item.id, []);
 
   return (
     <Modal
@@ -258,7 +329,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
           <FlatList
             data={profiles}
             renderItem={renderProfile}
-            keyExtractor={(item) => item.id}
+            keyExtractor={keyExtractor}
             {...agentSelectorSheetParts.list.props}
           />
         ) : null}

@@ -307,6 +307,13 @@ test('keeps agent selection in the navigation header for the mobile chat screen'
   assert.doesNotMatch(agentSelectorSheetSource, /from '\.\/ThemeProvider'/);
   assert.doesNotMatch(agentSelectorSheetSource, /StyleSheet\.create/);
   assert.match(agentSelectorSheetSource, /const \{\s+agentSelectorRenderState,\s+agentSelectorStyles: styles,\s+agentSelectorSheetBottomPadding,\s+\} = useChatRuntimeAgentSelectorSheetMobileStyleSlots\(\{\s+selectorMode,\s+\}\);/);
+  assert.match(agentSelectorSheetSource, /const AgentSelectorProfileRow = React\.memo\(function AgentSelectorProfileRow\(\{[\s\S]*?onSelectProfile,[\s\S]*?\}: AgentSelectorProfileRowProps\) \{/);
+  assert.match(agentSelectorSheetSource, /const profileItemRenderState = useMemo\(\s+\(\) => getAgentSelectorMobileProfileItemRenderState\(\{[\s\S]*?isSwitching,[\s\S]*?\}\),\s+\[currentProfileId, isSwitching, item\],\s+\);/);
+  assert.match(agentSelectorSheetSource, /const profileItemParts = useMemo<AgentSelectorProfileItemParts>\(\s+\(\) => createAgentSelectorProfileItemMobilePropsParts\(\{[\s\S]*?profile: item,[\s\S]*?onPress: handlePress,[\s\S]*?\}\),\s+\[avatarImageSource, handlePress, item, profileItemRenderState, renderState, styles\],\s+\);/);
+  assert.match(agentSelectorSheetSource, /const agentSelectorSheetParts = useMemo<AgentSelectorSheetParts>\(\s+\(\) => createAgentSelectorSheetMobilePropsParts\(\{[\s\S]*?sheetBottomPadding: agentSelectorSheetBottomPadding,[\s\S]*?onRetry: fetchProfiles,[\s\S]*?\}\),/);
+  assert.match(agentSelectorSheetSource, /const handleSelectProfile = useCallback\(async \(profile: SelectableProfile\) => \{/);
+  assert.match(agentSelectorSheetSource, /const renderProfile = useCallback\(\(\{ item \}: \{ item: SelectableProfile \}\) => \(\s+<AgentSelectorProfileRow[\s\S]*?onSelectProfile=\{handleSelectProfile\}[\s\S]*?\/>\s+\), \[/);
+  assert.match(agentSelectorSheetSource, /const keyExtractor = useCallback\(\(item: SelectableProfile\) => item\.id, \[\]\);/);
   assert.match(agentSelectorSheetSource, /sheetBottomPadding: agentSelectorSheetBottomPadding,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderAgentSelectorMobileStyleSlots<\s+TButtonStyle = unknown,/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeHeaderAgentSelectorMobilePropsPartsInput</);
