@@ -3506,23 +3506,26 @@ export interface ChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCallDetailMobileStyleSlots<
+  TCallSectionStyles = unknown,
+  TPayloadSectionStyles = unknown,
+  TResultSectionStyles = unknown,
+  TPendingResultStyles = unknown,
+> {
+  callSection: TCallSectionStyles
+  payloadSection: TPayloadSectionStyles
+  resultSection: TResultSectionStyles
+  pendingResult: TPendingResultStyles
+}
+
 export interface ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
   TRenderState = unknown,
   TOnHeaderPress = unknown,
   TInput extends object = Record<string, never>,
   TResult extends object = Record<string, never>,
   TPendingResult extends { renderState: unknown } = { renderState: unknown },
-  TStyles extends {
-    callSection: unknown
-    payloadSection: unknown
-    resultSection: unknown
-    pendingResult: unknown
-  } = {
-    callSection: unknown
-    payloadSection: unknown
-    resultSection: unknown
-    pendingResult: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCallDetailMobileStyleSlots =
+    ChatRuntimeToolExecutionCallDetailMobileStyleSlots,
 > {
   renderState: TRenderState
   toolName: string
@@ -3539,17 +3542,8 @@ export interface ChatRuntimeToolExecutionCallDetailMobilePropsParts<
   TInput extends object = Record<string, never>,
   TResult extends object = Record<string, never>,
   TPendingResult extends { renderState: unknown } = { renderState: unknown },
-  TStyles extends {
-    callSection: unknown
-    payloadSection: unknown
-    resultSection: unknown
-    pendingResult: unknown
-  } = {
-    callSection: unknown
-    payloadSection: unknown
-    resultSection: unknown
-    pendingResult: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCallDetailMobileStyleSlots =
+    ChatRuntimeToolExecutionCallDetailMobileStyleSlots,
 > {
   callSection: {
     props: {
@@ -3633,23 +3627,26 @@ export interface ChatRuntimeToolExecutionCallListMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionPayloadSectionMobileStyleSlots<
+  TSectionStyle = unknown,
+  THeaderRowStyle = unknown,
+  TPayloadMetaStyles = unknown,
+  TCopyButtonStyles = unknown,
+  TPayloadBlockStyles = unknown,
+> {
+  section: TSectionStyle
+  headerRow: THeaderRowStyle
+  payloadMeta: TPayloadMetaStyles
+  copyButton: TCopyButtonStyles
+  payloadBlock: TPayloadBlockStyles
+}
+
 export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsPartsInput<
   TPayloadRenderState = unknown,
   TCopyButtonRenderState = unknown,
   TOnCopyPress = unknown,
-  TStyles extends {
-    section: unknown
-    headerRow: unknown
-    payloadMeta: unknown
-    copyButton: unknown
-    payloadBlock: unknown
-  } = {
-    section: unknown
-    headerRow: unknown
-    payloadMeta: unknown
-    copyButton: unknown
-    payloadBlock: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPayloadSectionMobileStyleSlots =
+    ChatRuntimeToolExecutionPayloadSectionMobileStyleSlots,
 > {
   payloadRenderState: TPayloadRenderState
   compactText?: string | null
@@ -3665,19 +3662,8 @@ export interface ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
   TPayloadRenderState = unknown,
   TCopyButtonRenderState = unknown,
   TOnCopyPress = unknown,
-  TStyles extends {
-    section: unknown
-    headerRow: unknown
-    payloadMeta: unknown
-    copyButton: unknown
-    payloadBlock: unknown
-  } = {
-    section: unknown
-    headerRow: unknown
-    payloadMeta: unknown
-    copyButton: unknown
-    payloadBlock: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPayloadSectionMobileStyleSlots =
+    ChatRuntimeToolExecutionPayloadSectionMobileStyleSlots,
 > {
   section: {
     props: {
@@ -4086,16 +4072,19 @@ export interface ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionCallSectionMobileStyleSlots<
+  TSectionStyle = unknown,
+  THeaderStyles = unknown,
+> {
+  section: TSectionStyle
+  header: THeaderStyles
+}
+
 export interface ChatRuntimeToolExecutionCallSectionMobilePropsPartsInput<
   TRenderState = unknown,
   TOnHeaderPress = unknown,
-  TStyles extends {
-    section: unknown
-    header: unknown
-  } = {
-    section: unknown
-    header: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCallSectionMobileStyleSlots =
+    ChatRuntimeToolExecutionCallSectionMobileStyleSlots,
 > {
   renderState: TRenderState
   toolName: string
@@ -4106,13 +4095,8 @@ export interface ChatRuntimeToolExecutionCallSectionMobilePropsPartsInput<
 export interface ChatRuntimeToolExecutionCallSectionMobilePropsParts<
   TRenderState = unknown,
   TOnHeaderPress = unknown,
-  TStyles extends {
-    section: unknown
-    header: unknown
-  } = {
-    section: unknown
-    header: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCallSectionMobileStyleSlots =
+    ChatRuntimeToolExecutionCallSectionMobileStyleSlots,
 > {
   container: {
     props: {
@@ -4600,26 +4584,29 @@ export interface ChatRuntimeToolExecutionEmptyStateMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionResultHeaderMobileStyleSlots<
+  THeaderStyle = unknown,
+  TMetaStyle = unknown,
+  TPayloadMetaStyles = unknown,
+  TBadgeStyles = unknown,
+  TCharacterCountStyle = unknown,
+  TCopyButtonStyles = unknown,
+> {
+  header: THeaderStyle
+  meta: TMetaStyle
+  payloadMeta: TPayloadMetaStyles
+  badge: TBadgeStyles
+  characterCount: TCharacterCountStyle
+  copyButton: TCopyButtonStyles
+}
+
 export interface ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
   TPayloadRenderState = unknown,
   TResultBadge = unknown,
   TCopyButtonRenderState = unknown,
   TOnCopyPress = unknown,
-  TStyles extends {
-    header: unknown
-    meta: unknown
-    payloadMeta: unknown
-    badge: unknown
-    characterCount: unknown
-    copyButton: unknown
-  } = {
-    header: unknown
-    meta: unknown
-    payloadMeta: unknown
-    badge: unknown
-    characterCount: unknown
-    copyButton: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionResultHeaderMobileStyleSlots =
+    ChatRuntimeToolExecutionResultHeaderMobileStyleSlots,
 > {
   payloadRenderState: TPayloadRenderState
   resultBadge: TResultBadge
@@ -4634,21 +4621,8 @@ export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
   TResultBadge = unknown,
   TCopyButtonRenderState = unknown,
   TOnCopyPress = unknown,
-  TStyles extends {
-    header: unknown
-    meta: unknown
-    payloadMeta: unknown
-    badge: unknown
-    characterCount: unknown
-    copyButton: unknown
-  } = {
-    header: unknown
-    meta: unknown
-    payloadMeta: unknown
-    badge: unknown
-    characterCount: unknown
-    copyButton: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionResultHeaderMobileStyleSlots =
+    ChatRuntimeToolExecutionResultHeaderMobileStyleSlots,
 > {
   header: {
     props: {
@@ -4693,23 +4667,26 @@ export interface ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionErrorBlockMobileStyleSlots<
+  TSectionStyle = unknown,
+  THeaderRowStyle = unknown,
+  TLabelStyle = unknown,
+  TTextStyle = unknown,
+  TCopyButtonStyles = unknown,
+> {
+  section: TSectionStyle
+  headerRow: THeaderRowStyle
+  label: TLabelStyle
+  text: TTextStyle
+  copyButton: TCopyButtonStyles
+}
+
 export interface ChatRuntimeToolExecutionErrorBlockMobilePropsPartsInput<
   TRenderState extends { label: string } = { label: string },
   TCopyButtonRenderState = unknown,
   TOnCopyPress = unknown,
-  TStyles extends {
-    section: unknown
-    headerRow: unknown
-    label: unknown
-    text: unknown
-    copyButton: unknown
-  } = {
-    section: unknown
-    headerRow: unknown
-    label: unknown
-    text: unknown
-    copyButton: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionErrorBlockMobileStyleSlots =
+    ChatRuntimeToolExecutionErrorBlockMobileStyleSlots,
 > {
   renderState: TRenderState
   error: string
@@ -4722,19 +4699,8 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
   TRenderState extends { label: string } = { label: string },
   TCopyButtonRenderState = unknown,
   TOnCopyPress = unknown,
-  TStyles extends {
-    section: unknown
-    headerRow: unknown
-    label: unknown
-    text: unknown
-    copyButton: unknown
-  } = {
-    section: unknown
-    headerRow: unknown
-    label: unknown
-    text: unknown
-    copyButton: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionErrorBlockMobileStyleSlots =
+    ChatRuntimeToolExecutionErrorBlockMobileStyleSlots,
 > {
   section: {
     props: {
@@ -4775,6 +4741,18 @@ export interface ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
   }
 }
 
+export interface ChatRuntimeToolExecutionResultSectionMobileStyleSlots<
+  TItemStyle = unknown,
+  THeaderStyles = unknown,
+  TPayloadBlockStyles = unknown,
+  TErrorBlockStyles = unknown,
+> {
+  item: TItemStyle
+  header: THeaderStyles
+  payloadBlock: TPayloadBlockStyles
+  errorBlock: TErrorBlockStyles
+}
+
 export interface ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput<
   TPayloadRenderState = unknown,
   TResultBadge = unknown,
@@ -4783,17 +4761,8 @@ export interface ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput<
   TErrorRenderState = unknown,
   TErrorCopyButtonRenderState = unknown,
   TOnErrorCopyPress = unknown,
-  TStyles extends {
-    item: unknown
-    header: unknown
-    payloadBlock: unknown
-    errorBlock: unknown
-  } = {
-    item: unknown
-    header: unknown
-    payloadBlock: unknown
-    errorBlock: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionResultSectionMobileStyleSlots =
+    ChatRuntimeToolExecutionResultSectionMobileStyleSlots,
 > {
   payloadRenderState: TPayloadRenderState
   resultBadge: TResultBadge
@@ -4819,17 +4788,8 @@ export interface ChatRuntimeToolExecutionResultSectionMobilePropsParts<
   TErrorRenderState = unknown,
   TErrorCopyButtonRenderState = unknown,
   TOnErrorCopyPress = unknown,
-  TStyles extends {
-    item: unknown
-    header: unknown
-    payloadBlock: unknown
-    errorBlock: unknown
-  } = {
-    item: unknown
-    header: unknown
-    payloadBlock: unknown
-    errorBlock: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionResultSectionMobileStyleSlots =
+    ChatRuntimeToolExecutionResultSectionMobileStyleSlots,
 > {
   item: {
     props: {
@@ -4924,6 +4884,20 @@ type ChatRuntimeToolExecutionStackPanelEmptyStateLike = {
   renderState: unknown
 }
 
+export interface ChatRuntimeToolExecutionStackPanelMobileStyleSlots<
+  TCompactGroupStyles = unknown,
+  TCompactRowStyles = unknown,
+  TExpandedGroupStyles = unknown,
+  TEmptyStateTextStyle = unknown,
+  TCallDetailStyles = unknown,
+> {
+  compactGroup: TCompactGroupStyles
+  compactRow: TCompactRowStyles
+  expandedGroup: TExpandedGroupStyles
+  emptyStateText: TEmptyStateTextStyle
+  callDetail: TCallDetailStyles
+}
+
 export type ChatRuntimeToolExecutionStackPanelEmptyStateMobilePropsPart<
   TRenderState,
   TEmptyStateTextStyle,
@@ -4953,13 +4927,13 @@ export interface ChatRuntimeToolExecutionStackPanelMobilePropsPartsInput<
   compact: TCompact
   expanded: TExpanded
   detailRows: TDetailRows
-  styles: {
-    compactGroup: TCompactGroupStyles
-    compactRow: TCompactRowStyles
-    expandedGroup: TExpandedGroupStyles
-    emptyStateText: TEmptyStateTextStyle
-    callDetail: TCallDetailStyles
-  }
+  styles: ChatRuntimeToolExecutionStackPanelMobileStyleSlots<
+    TCompactGroupStyles,
+    TCompactRowStyles,
+    TExpandedGroupStyles,
+    TEmptyStateTextStyle,
+    TCallDetailStyles
+  >
 }
 
 export interface ChatRuntimeToolExecutionStackPanelMobilePropsParts<
@@ -21534,12 +21508,7 @@ export function createChatRuntimeToolExecutionCallDetailMobilePropsParts<
   TInput extends object,
   TResult extends object,
   TPendingResult extends { renderState: unknown },
-  TStyles extends {
-    callSection: unknown
-    payloadSection: unknown
-    resultSection: unknown
-    pendingResult: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCallDetailMobileStyleSlots,
 >({
   renderState,
   toolName,
@@ -21653,13 +21622,7 @@ export function createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
   TPayloadRenderState,
   TCopyButtonRenderState,
   TOnCopyPress,
-  TStyles extends {
-    section: unknown
-    headerRow: unknown
-    payloadMeta: unknown
-    copyButton: unknown
-    payloadBlock: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionPayloadSectionMobileStyleSlots,
 >({
   payloadRenderState,
   compactText,
@@ -21984,10 +21947,7 @@ export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
 export function createChatRuntimeToolExecutionCallSectionMobilePropsParts<
   TRenderState,
   TOnHeaderPress,
-  TStyles extends {
-    section: unknown
-    header: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionCallSectionMobileStyleSlots,
 >({
   renderState,
   toolName,
@@ -22340,14 +22300,7 @@ export function createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
   TResultBadge,
   TCopyButtonRenderState,
   TOnCopyPress,
-  TStyles extends {
-    header: unknown
-    meta: unknown
-    payloadMeta: unknown
-    badge: unknown
-    characterCount: unknown
-    copyButton: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionResultHeaderMobileStyleSlots,
 >({
   payloadRenderState,
   resultBadge,
@@ -22417,13 +22370,7 @@ export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
   TRenderState extends { label: string },
   TCopyButtonRenderState,
   TOnCopyPress,
-  TStyles extends {
-    section: unknown
-    headerRow: unknown
-    label: unknown
-    text: unknown
-    copyButton: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionErrorBlockMobileStyleSlots,
 >({
   renderState,
   error,
@@ -22490,12 +22437,7 @@ export function createChatRuntimeToolExecutionResultSectionMobilePropsParts<
   TErrorRenderState,
   TErrorCopyButtonRenderState,
   TOnErrorCopyPress,
-  TStyles extends {
-    item: unknown
-    header: unknown
-    payloadBlock: unknown
-    errorBlock: unknown
-  },
+  TStyles extends ChatRuntimeToolExecutionResultSectionMobileStyleSlots,
 >({
   payloadRenderState,
   resultBadge,
