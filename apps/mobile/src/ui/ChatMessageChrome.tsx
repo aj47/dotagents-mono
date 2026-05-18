@@ -914,6 +914,26 @@ type ChatComposerRuntimeSpeechRecognizerStateInput =
 type ChatComposerRuntimeSpeechRecognizerState =
   ReturnType<typeof useSpeechRecognizer>;
 
+type ChatComposerRuntimeSpeechRecognizerActionsStateInput = {
+  handsFreeRef: ChatRuntimeMutableRef<boolean>;
+  handsFreeController: Pick<
+    ChatComposerRuntimeHandsFreeControllerState,
+    'handleFinalTranscript' | 'onRecognizerError'
+  >;
+  mergeVoiceTextIntoComposer: (text: string) => void;
+  showHandsFreeTranscriptAddedDebug: () => void;
+  focusComposerInput: () => void;
+  sendRef: ChatRuntimeMutableRef<ChatMessageRuntimeSendCallback>;
+  showHandsFreeRecognizerErrorDebug: (message: string) => void;
+  showHandsFreePermissionDeniedDebug: () => void;
+};
+
+type ChatComposerRuntimeSpeechRecognizerActionsState = {
+  handleVoiceFinalized: ChatComposerRuntimeSpeechRecognizerStateInput['onVoiceFinalized'];
+  handleRecognizerError: NonNullable<ChatComposerRuntimeSpeechRecognizerStateInput['onRecognizerError']>;
+  handlePermissionDenied: NonNullable<ChatComposerRuntimeSpeechRecognizerStateInput['onPermissionDenied']>;
+};
+
 type ChatComposerRuntimeVoiceDebugResetStateInput = {
   isVoiceDebugEnabled: boolean;
   clearVoiceDebug: () => void;
@@ -9069,6 +9089,82 @@ export function useChatComposerRuntimeSpeechRecognizerState(
   input: ChatComposerRuntimeSpeechRecognizerStateInput,
 ): ChatComposerRuntimeSpeechRecognizerState {
   return useSpeechRecognizer(input);
+}
+
+export function useChatComposerRuntimeSpeechRecognizerChromeActionsState({
+  handsFreeRef,
+  handsFreeController,
+  mergeVoiceTextIntoComposer,
+  showHandsFreeTranscriptAddedDebug,
+  focusComposerInput,
+  sendRef,
+  showHandsFreeRecognizerErrorDebug,
+  showHandsFreePermissionDeniedDebug,
+}: ChatComposerRuntimeSpeechRecognizerActionsStateInput): ChatComposerRuntimeSpeechRecognizerActionsState {
+  const handleVoiceFinalized = useCallback<ChatComposerRuntimeSpeechRecognizerActionsState['handleVoiceFinalized']>(
+    ({ text, mode }) => {
+      const finalText = text.trim();
+      if (!finalText) return;
+
+      if (mode === 'edit') {
+        mergeVoiceTextIntoComposer(finalText);
+        showHandsFreeTranscriptAddedDebug();
+        setTimeout(focusComposerInput, 0);
+        return;
+      }
+
+      if (mode === 'handsfree') {
+        if (handsFreeRef.current) {
+          const action = handsFreeController.handleFinalTranscript(finalText);
+          if (action.type === 'send') {
+            void sendRef.current(action.text);
+          }
+          return;
+        }
+      }
+
+      void sendRef.current(finalText);
+    },
+    [
+      focusComposerInput,
+      handsFreeController,
+      handsFreeRef,
+      mergeVoiceTextIntoComposer,
+      sendRef,
+      showHandsFreeTranscriptAddedDebug,
+    ],
+  );
+
+  const handleRecognizerError = useCallback<
+    ChatComposerRuntimeSpeechRecognizerActionsState['handleRecognizerError']
+  >(
+    (message) => {
+      handsFreeController.onRecognizerError(message);
+      showHandsFreeRecognizerErrorDebug(message);
+    },
+    [handsFreeController, showHandsFreeRecognizerErrorDebug],
+  );
+
+  const handlePermissionDenied = useCallback<
+    ChatComposerRuntimeSpeechRecognizerActionsState['handlePermissionDenied']
+  >(
+    () => {
+      showHandsFreePermissionDeniedDebug();
+    },
+    [showHandsFreePermissionDeniedDebug],
+  );
+
+  const speechRecognizerActionsState =
+    useMemo<ChatComposerRuntimeSpeechRecognizerActionsState>(
+      () => ({
+        handleVoiceFinalized,
+        handleRecognizerError,
+        handlePermissionDenied,
+      }),
+      [handlePermissionDenied, handleRecognizerError, handleVoiceFinalized],
+    );
+
+  return speechRecognizerActionsState;
 }
 
 export function useChatComposerRuntimeVoiceDebugState(

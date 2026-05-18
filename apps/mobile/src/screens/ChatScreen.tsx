@@ -34,6 +34,7 @@ import {
   useChatComposerRuntimeHandsFreeControlChromeActionsState,
   useChatComposerRuntimeHandsFreeControllerState,
   useChatComposerRuntimeHandsFreeRecognizerLifecycleState,
+  useChatComposerRuntimeSpeechRecognizerChromeActionsState,
   useChatComposerRuntimeSpeechRecognizerState,
   useChatComposerRuntimeHandsFreeDebugActionsState,
   useChatComposerRuntimeVoiceDebugState,
@@ -483,6 +484,20 @@ export default function ChatScreen({ route, navigation }: any) {
     sleepPhrase: handsFreeSleepPhrase,
     log: voiceLog,
   });
+  const {
+    handleVoiceFinalized,
+    handleRecognizerError,
+    handlePermissionDenied,
+  } = useChatComposerRuntimeSpeechRecognizerChromeActionsState({
+    handsFreeRef,
+    handsFreeController,
+    mergeVoiceTextIntoComposer,
+    showHandsFreeTranscriptAddedDebug,
+    focusComposerInput,
+    sendRef,
+    showHandsFreeRecognizerErrorDebug,
+    showHandsFreePermissionDeniedDebug,
+  });
   const { toggleTextToSpeech: toggleTts } = useChatRuntimeTextToSpeechToggleChromeActionsState({
     ttsEnabled,
     config,
@@ -511,36 +526,9 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeDebounceMs: handsFreeMessageDebounceMs,
     willCancel,
     audioInputDeviceId: config.audioInputDeviceId,
-    onVoiceFinalized: ({ text, mode }) => {
-      const finalText = text.trim();
-      if (!finalText) return;
-
-      if (mode === 'edit') {
-        mergeVoiceTextIntoComposer(finalText);
-        showHandsFreeTranscriptAddedDebug();
-        setTimeout(focusComposerInput, 0);
-        return;
-      }
-
-      if (mode === 'handsfree') {
-        if (handsFreeRef.current) {
-          const action = handsFreeController.handleFinalTranscript(finalText);
-          if (action.type === 'send') {
-            void sendRef.current(action.text);
-          }
-          return;
-        }
-      }
-
-      void sendRef.current(finalText);
-    },
-    onRecognizerError: (message) => {
-      handsFreeController.onRecognizerError(message);
-      showHandsFreeRecognizerErrorDebug(message);
-    },
-    onPermissionDenied: () => {
-      showHandsFreePermissionDeniedDebug();
-    },
+    onVoiceFinalized: handleVoiceFinalized,
+    onRecognizerError: handleRecognizerError,
+    onPermissionDenied: handlePermissionDenied,
     log: voiceLog,
   });
 
