@@ -180,15 +180,26 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     void Linking.openURL(resolvedUri);
   }, [resolvedUri]);
 
-  const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts({
-    renderState: videoAttachmentRenderState,
-    styles,
-    isLoading: loading,
-    canOpenExternally,
-    loadError,
-    onLoadVideo: loadVideo,
-    onOpenVideo: openVideo,
-  });
+  const videoAttachmentParts = useMemo<VideoAttachmentCardParts>(
+    () => createChatVideoAttachmentMobilePropsParts({
+      renderState: videoAttachmentRenderState,
+      styles,
+      isLoading: loading,
+      canOpenExternally,
+      loadError,
+      onLoadVideo: loadVideo,
+      onOpenVideo: openVideo,
+    }),
+    [
+      canOpenExternally,
+      loadError,
+      loadVideo,
+      loading,
+      openVideo,
+      styles,
+      videoAttachmentRenderState,
+    ],
+  );
 
   if (!canRender) {
     const fallbackLink = videoAttachmentParts.fallbackLink;

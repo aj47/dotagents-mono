@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import {
   createHandsFreeStatusChipMobilePropsParts,
@@ -27,10 +28,13 @@ export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusC
     label,
     subtitle,
   });
-  const statusChipParts: HandsFreeStatusChipParts = createHandsFreeStatusChipMobilePropsParts({
-    renderState: handsFreeStatusChipRenderState,
-    styles: handsFreeStatusChipStyles,
-  });
+  const statusChipParts = useMemo<HandsFreeStatusChipParts>(
+    () => createHandsFreeStatusChipMobilePropsParts({
+      renderState: handsFreeStatusChipRenderState,
+      styles: handsFreeStatusChipStyles,
+    }),
+    [handsFreeStatusChipRenderState, handsFreeStatusChipStyles],
+  );
 
   return (
     <View {...statusChipParts.container.props}>

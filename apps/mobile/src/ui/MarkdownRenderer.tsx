@@ -97,13 +97,16 @@ const ThinkSection: React.FC<{
     }
     setInternalCollapsed(prev => !prev);
   }, [onToggle]);
-  const thinkSectionParts: MarkdownThinkSectionParts = createMarkdownThinkSectionMobilePropsParts({
-    renderState,
-    styles,
-    content,
-    isCollapsed: collapsed,
-    onToggle: handleToggle,
-  });
+  const thinkSectionParts = React.useMemo<MarkdownThinkSectionParts>(
+    () => createMarkdownThinkSectionMobilePropsParts({
+      renderState,
+      styles,
+      content,
+      isCollapsed: collapsed,
+      onToggle: handleToggle,
+    }),
+    [collapsed, content, handleToggle, renderState, styles],
+  );
 
   return (
     <View {...thinkSectionParts.container.props}>
@@ -214,13 +217,16 @@ const MarkdownImage: React.FC<{
     };
   }, [assetBaseUrl, assetRef, authToken, sourceUrl]);
 
-  const imageParts: MarkdownImageParts = createMarkdownImageMobilePropsParts({
-    imageLabel,
-    imageSource,
-    error,
-    alt,
-    style,
-  });
+  const imageParts = React.useMemo<MarkdownImageParts>(
+    () => createMarkdownImageMobilePropsParts({
+      imageLabel,
+      imageSource,
+      error,
+      alt,
+      style,
+    }),
+    [alt, error, imageLabel, imageSource, style],
+  );
 
   if (imageParts.fallback.shouldRender) {
     return <Text>{imageParts.fallback.text}</Text>;
@@ -245,11 +251,14 @@ const MarkdownCodeBlock: React.FC<{
 }> = ({ node, styles, colors }) => {
   const [copied, setCopied] = React.useState(false);
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const codeContent = getMarkdownCodeContent(node);
-  const codeBlockCopyRenderState = getMarkdownCodeBlockCopyMobileRenderState({
-    isCopied: copied,
-    colors,
-  });
+  const codeContent = React.useMemo(() => getMarkdownCodeContent(node), [node]);
+  const codeBlockCopyRenderState = React.useMemo(
+    () => getMarkdownCodeBlockCopyMobileRenderState({
+      isCopied: copied,
+      colors,
+    }),
+    [colors, copied],
+  );
 
   React.useEffect(() => () => {
     if (timeoutRef.current) {
@@ -273,13 +282,16 @@ const MarkdownCodeBlock: React.FC<{
       // Clipboard failures should not disturb markdown reading.
     }
   }, [codeContent]);
-  const codeBlockCopyParts: MarkdownCodeBlockCopyParts = createMarkdownCodeBlockCopyMobilePropsParts({
-    renderState: codeBlockCopyRenderState,
-    styles,
-    codeContent,
-    isCopied: copied,
-    onCopy: handleCopy,
-  });
+  const codeBlockCopyParts = React.useMemo<MarkdownCodeBlockCopyParts>(
+    () => createMarkdownCodeBlockCopyMobilePropsParts({
+      renderState: codeBlockCopyRenderState,
+      styles,
+      codeContent,
+      isCopied: copied,
+      onCopy: handleCopy,
+    }),
+    [codeBlockCopyRenderState, codeContent, copied, handleCopy, styles],
+  );
 
   return (
     <View {...codeBlockCopyParts.container.props}>
@@ -313,7 +325,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   } = useChatRuntimeMarkdownMobileStyleSlots();
   const markdownContentColors = markdownContentRenderState.colors;
 
-  const parts = splitMarkdownContent(content, getMarkdownRenderOptions());
+  const parts = React.useMemo(
+    () => splitMarkdownContent(content, getMarkdownRenderOptions()),
+    [content],
+  );
   const markdownRules = React.useMemo(() => ({
     code_block: (node: any) => (
       <MarkdownCodeBlock
