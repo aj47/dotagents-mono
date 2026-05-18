@@ -304,8 +304,10 @@ import {
   type ChatRuntimeConversationToolActivityGroupThreadRenderStateInput,
   type ChatRuntimeToolActivityGroupBoundaryMobileKind,
   type ChatRuntimeToolActivityGroupBoundaryMobilePropsParts,
+  type ChatRuntimeToolActivityGroupFooterMobileStyleSlots as SharedChatMessageToolActivityGroupFooterStyleSlots,
   type ChatRuntimeToolActivityGroupFooterMobilePropsParts,
   type ChatRuntimeToolActivityGroupHeaderMobileKind,
+  type ChatRuntimeToolActivityGroupToggleMobileStyleSlots as SharedChatMessageToolActivityGroupToggleStyleSlots,
   type ChatRuntimeToolActivityGroupToggleMobilePropsParts,
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeMessageThreadItemMobilePropsParts,
@@ -374,6 +376,7 @@ import {
   type ChatMessageRuntimeToolApprovalStateMessageLike,
   type ChatMessageRuntimeToolCallExpansionState,
   type ChatMessageRuntimeTurnDurationStateInput,
+  type ChatMessageToolActivityGroupBoundaryStyleSlots as SharedChatMessageToolActivityGroupBoundaryStyleSlots,
   type ToolActivityGroupMobileRenderState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionDetailMobileCollapseControlRenderState,
@@ -2366,14 +2369,15 @@ type ChatMessageDelegationMorePreviewActionLabelProps =
 
 type ChatMessageToolActivityGroupHeaderKind = ChatRuntimeToolActivityGroupHeaderMobileKind;
 
-type ChatMessageToolActivityGroupToggleStyles = {
-  container: StyleProp<ViewStyle>;
-  pressed: StyleProp<ViewStyle>;
-  headerRow: StyleProp<ViewStyle>;
-  countBadge: StyleProp<ViewStyle>;
-  countBadgeText: StyleProp<TextStyle>;
-  previewLine: StyleProp<TextStyle>;
-};
+type ChatMessageToolActivityGroupToggleStyles =
+  SharedChatMessageToolActivityGroupToggleStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolActivityGroupToggleProps = {
   renderState: ToolActivityGroupMobileRenderState;
@@ -2405,11 +2409,12 @@ type ChatMessageToolActivityGroupCountBadgeProps =
 type ChatMessageToolActivityGroupPreviewLineProps =
   ChatMessageToolActivityGroupToggleParts['headerRow']['content']['preview']['props'];
 
-type ChatMessageToolActivityGroupFooterStyles = {
-  button: StyleProp<ViewStyle>;
-  pressed: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-};
+type ChatMessageToolActivityGroupFooterStyles =
+  SharedChatMessageToolActivityGroupFooterStyleSlots<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ChatMessageToolActivityGroupFooterProps = {
   renderState: ToolActivityGroupMobileRenderState;
@@ -2437,10 +2442,11 @@ type ChatMessageToolActivityGroupFooterLabelProps =
 
 type ChatMessageToolActivityGroupBoundaryKind = ChatRuntimeToolActivityGroupBoundaryMobileKind;
 
-type ChatMessageToolActivityGroupBoundaryStyles = {
-  toggle: ChatMessageToolActivityGroupToggleStyles;
-  footer: ChatMessageToolActivityGroupFooterStyles;
-};
+type ChatMessageToolActivityGroupBoundaryStyles =
+  SharedChatMessageToolActivityGroupBoundaryStyleSlots<
+    ChatMessageToolActivityGroupToggleStyles,
+    ChatMessageToolActivityGroupFooterStyles
+  >;
 
 type ChatMessageToolActivityGroupBoundaryProps = {
   renderState: ToolActivityGroupMobileRenderState;

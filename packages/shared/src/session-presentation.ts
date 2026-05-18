@@ -6187,19 +6187,30 @@ export type ChatRuntimeToolActivityGroupHeaderMobileKind = "collapsed" | "expand
 export type ChatRuntimeToolActivityGroupBoundaryMobileKind =
   ChatRuntimeToolActivityGroupHeaderMobileKind | "footer"
 
-export interface ChatRuntimeToolActivityGroupToggleMobileStyleSlots {
-  container: unknown
-  pressed: unknown
-  headerRow: unknown
-  countBadge: unknown
-  countBadgeText: unknown
-  previewLine: unknown
+export interface ChatRuntimeToolActivityGroupToggleMobileStyleSlots<
+  TContainerStyle = unknown,
+  TPressedStyle = unknown,
+  THeaderRowStyle = unknown,
+  TCountBadgeStyle = unknown,
+  TCountBadgeTextStyle = unknown,
+  TPreviewLineStyle = unknown,
+> {
+  container: TContainerStyle
+  pressed: TPressedStyle
+  headerRow: THeaderRowStyle
+  countBadge: TCountBadgeStyle
+  countBadgeText: TCountBadgeTextStyle
+  previewLine: TPreviewLineStyle
 }
 
-export interface ChatRuntimeToolActivityGroupFooterMobileStyleSlots {
-  button: unknown
-  pressed: unknown
-  text: unknown
+export interface ChatRuntimeToolActivityGroupFooterMobileStyleSlots<
+  TButtonStyle = unknown,
+  TPressedStyle = unknown,
+  TTextStyle = unknown,
+> {
+  button: TButtonStyle
+  pressed: TPressedStyle
+  text: TTextStyle
 }
 
 export interface ChatRuntimeToolActivityGroupToggleMobileRenderStateParts {
@@ -29527,6 +29538,14 @@ export function createChatMessageThreadBodyStyleSlots<
   }
 }
 
+export type ChatMessageToolActivityGroupBoundaryStyleSlots<
+  TToggleStyles,
+  TFooterStyles,
+> = {
+  toggle: TToggleStyles
+  footer: TFooterStyles
+}
+
 export function createChatMessageToolActivityGroupBoundaryStyles<
   TToggleContainerStyle,
   TTogglePressedStyle,
@@ -29557,21 +29576,21 @@ export function createChatMessageToolActivityGroupBoundaryStyles<
   footerButtonStyle: TFooterButtonStyle
   footerPressedStyle: TFooterPressedStyle
   footerTextStyle: TFooterTextStyle
-}): {
-  toggle: {
-    container: TToggleContainerStyle
-    pressed: TTogglePressedStyle
-    headerRow: TToggleHeaderRowStyle
-    countBadge: TToggleCountBadgeStyle
-    countBadgeText: TToggleCountBadgeTextStyle
-    previewLine: TTogglePreviewLineStyle
-  }
-  footer: {
-    button: TFooterButtonStyle
-    pressed: TFooterPressedStyle
-    text: TFooterTextStyle
-  }
-} {
+}): ChatMessageToolActivityGroupBoundaryStyleSlots<
+  ChatRuntimeToolActivityGroupToggleMobileStyleSlots<
+    TToggleContainerStyle,
+    TTogglePressedStyle,
+    TToggleHeaderRowStyle,
+    TToggleCountBadgeStyle,
+    TToggleCountBadgeTextStyle,
+    TTogglePreviewLineStyle
+  >,
+  ChatRuntimeToolActivityGroupFooterMobileStyleSlots<
+    TFooterButtonStyle,
+    TFooterPressedStyle,
+    TFooterTextStyle
+  >
+> {
   return {
     toggle: {
       container: toggleContainerStyle,
