@@ -6750,11 +6750,16 @@ export function useChatMessageRuntimeHistoryWindowState({
     );
   }, [historyWindow.initialVisibleCount, messageCount]);
 
-  return {
-    ...historyWindow,
-    visibleMessageCount,
-    loadEarlierMessages,
-  };
+  const historyWindowState = useMemo<ChatMessageRuntimeHistoryWindowState>(
+    () => ({
+      ...historyWindow,
+      visibleMessageCount,
+      loadEarlierMessages,
+    }),
+    [historyWindow, loadEarlierMessages, visibleMessageCount],
+  );
+
+  return historyWindowState;
 }
 
 export function useChatMessageRuntimeScrollController({
@@ -6871,14 +6876,25 @@ export function useChatMessageRuntimeScrollController({
     scrollRef.current?.scrollToEnd({ animated: true });
   }, []);
 
-  return {
-    scrollRef,
-    shouldAutoScroll,
-    onScroll,
-    onScrollBeginDrag,
-    onScrollEndDrag,
-    scrollToBottom,
-  };
+  const scrollControllerState = useMemo(
+    () => ({
+      scrollRef,
+      shouldAutoScroll,
+      onScroll,
+      onScrollBeginDrag,
+      onScrollEndDrag,
+      scrollToBottom,
+    }),
+    [
+      onScroll,
+      onScrollBeginDrag,
+      onScrollEndDrag,
+      scrollToBottom,
+      shouldAutoScroll,
+    ],
+  );
+
+  return scrollControllerState;
 }
 
 export function useChatComposerRuntimeImageAttachmentPickerState({

@@ -2662,6 +2662,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(chatMessageChromeSource, /const scrollRef = useRef<ChatMessageScrollViewportRef>\(null\);/);
   assert.match(chatMessageChromeSource, /const onScroll = useCallback\(\(event: ChatMessageScrollEvent\) => \{/);
   assert.match(chatMessageChromeSource, /if \(shouldLoadEarlier\) \{\s+onLoadEarlierMessages\(\);/);
+  assert.match(chatMessageChromeSource, /const scrollControllerState = useMemo\(\s+\(\) => \(\{\s+scrollRef,\s+shouldAutoScroll,\s+onScroll,\s+onScrollBeginDrag,\s+onScrollEndDrag,\s+scrollToBottom,\s+\}\),\s+\[\s+onScroll,\s+onScrollBeginDrag,\s+onScrollEndDrag,\s+scrollToBottom,\s+shouldAutoScroll,\s+\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return scrollControllerState;/);
   assert.match(screenSource, /const \{\s+scrollRef: scrollViewRef,\s+shouldAutoScroll,\s+onScroll: handleScroll,\s+onScrollBeginDrag: handleScrollBeginDrag,\s+onScrollEndDrag: handleScrollEndDrag,\s+scrollToBottom: handleScrollToBottomPress,\s+\} = useChatMessageRuntimeScrollController\(\{/);
   assert.match(chatMessageChromeSource, /createChatRuntimeConversationScrollViewportMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeConversationScrollViewportMobilePropsParts,/);
@@ -6189,6 +6191,8 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(screenSource, /scrollEventThrottle: scrollEventThrottleMs/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeHistoryWindowState/);
   assert.match(chatMessageChromeSource, /const \[visibleMessageCount, setVisibleMessageCount\] = useState<number>\(\s+historyWindow\.initialVisibleCount,\s+\);/);
+  assert.match(chatMessageChromeSource, /const historyWindowState = useMemo<ChatMessageRuntimeHistoryWindowState>\(\s+\(\) => \(\{\s+\.\.\.historyWindow,\s+visibleMessageCount,\s+loadEarlierMessages,\s+\}\),\s+\[historyWindow, loadEarlierMessages, visibleMessageCount\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return historyWindowState;/);
   assert.match(chatMessageChromeSource, /getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount\(\{\s+currentVisibleCount,\s+messageCount,\s+loadIncrement: historyWindow\.loadIncrement,/);
   assert.match(sessionPresentationSource, /export function getChatRuntimeMessageHistoryWindowMobileExpandedVisibleCount/);
   assert.match(sessionPresentationSource, /return Math\.min\(messageCount, currentVisibleCount \+ loadIncrement\)/);
