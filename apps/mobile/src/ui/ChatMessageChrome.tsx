@@ -290,10 +290,28 @@ import {
   type ChatRuntimeMessageSurfaceMobilePropsParts,
   type ChatRuntimeConnectionBannerMobilePropsParts,
   type ChatRuntimeRetryStatusMobilePropsParts,
+  type ChatRuntimeToolExecutionCallDetailMobilePropsParts,
+  type ChatRuntimeToolExecutionCallListMobilePropsParts,
+  type ChatRuntimeToolExecutionCallSectionMobilePropsParts,
   type ChatRuntimeToolExecutionCollapseControlMobilePropsParts,
   type ChatRuntimeToolExecutionCompactGroupMobilePropsParts,
   type ChatRuntimeToolExecutionCompactListMobilePropsParts,
   type ChatRuntimeToolExecutionCompactRowMobilePropsParts,
+  type ChatRuntimeToolExecutionCopyButtonMobilePropsParts,
+  type ChatRuntimeToolExecutionDetailHeaderMobilePropsParts,
+  type ChatRuntimeToolExecutionEmptyStateMobilePropsParts,
+  type ChatRuntimeToolExecutionErrorBlockMobilePropsParts,
+  type ChatRuntimeToolExecutionExpandedGroupMobilePropsParts,
+  type ChatRuntimeToolExecutionPanelMobilePropsParts,
+  type ChatRuntimeToolExecutionPanelShellMobilePropsParts,
+  type ChatRuntimeToolExecutionPayloadBlockMobilePropsParts,
+  type ChatRuntimeToolExecutionPayloadMetaMobilePropsParts,
+  type ChatRuntimeToolExecutionPayloadSectionMobilePropsParts,
+  type ChatRuntimeToolExecutionPendingResultMobilePropsParts,
+  type ChatRuntimeToolExecutionResultBadgeMobilePropsParts,
+  type ChatRuntimeToolExecutionResultHeaderMobilePropsParts,
+  type ChatRuntimeToolExecutionResultSectionMobilePropsParts,
+  type ChatRuntimeToolExecutionStackPanelMobilePropsParts,
   type ChatRuntimeRetryStatusMobileRenderState,
   type ChatRuntimeStreamingContentMobileRenderStateInput,
   type ChatRuntimeStreamingContentMobileRenderState,
@@ -2519,13 +2537,14 @@ type ChatMessageToolExecutionExpandedGroupProps = {
   children: ReactNode;
 };
 
-type ChatMessageToolExecutionExpandedGroupParts = ReturnType<typeof createChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
-  ChatMessageToolExecutionExpandedGroupProps['topCollapseRenderState'],
-  ChatMessageToolExecutionExpandedGroupProps['bottomCollapseRenderState'],
-  ChatMessageToolExecutionExpandedGroupProps['onCollapsePress'],
-  NonNullable<ChatMessageToolExecutionExpandedGroupProps['emptyState']>,
-  ChatMessageToolExecutionExpandedGroupProps['styles']
->>;
+type ChatMessageToolExecutionExpandedGroupParts =
+  ChatRuntimeToolExecutionExpandedGroupMobilePropsParts<
+    ChatMessageToolExecutionExpandedGroupProps['topCollapseRenderState'],
+    ChatMessageToolExecutionExpandedGroupProps['bottomCollapseRenderState'],
+    ChatMessageToolExecutionExpandedGroupProps['onCollapsePress'],
+    NonNullable<ChatMessageToolExecutionExpandedGroupProps['emptyState']>,
+    ChatMessageToolExecutionExpandedGroupProps['styles']
+  >;
 
 type ChatMessageToolExecutionExpandedGroupContainerProps =
   ChatMessageToolExecutionExpandedGroupParts['container']['props'] & {
@@ -2554,20 +2573,22 @@ type ChatMessageToolExecutionPanelProps = {
   children: ReactNode;
 };
 
-type ChatMessageToolExecutionPanelParts = ReturnType<typeof createChatRuntimeToolExecutionPanelMobilePropsParts<
-  ChatMessageToolExecutionPanelProps['compact'],
-  ChatMessageToolExecutionPanelProps['expanded']
->>;
+type ChatMessageToolExecutionPanelParts =
+  ChatRuntimeToolExecutionPanelMobilePropsParts<
+    ChatMessageToolExecutionPanelProps['compact'],
+    ChatMessageToolExecutionPanelProps['expanded']
+  >;
 
 type ChatMessageToolExecutionPanelContentProps =
   ChatMessageToolExecutionPanelParts['content'] & {
     children: ReactNode;
   };
 
-type ChatMessageToolExecutionPanelShellParts = ReturnType<typeof createChatRuntimeToolExecutionPanelShellMobilePropsParts<
-  ReactNode,
-  ReactNode
->>;
+type ChatMessageToolExecutionPanelShellParts =
+  ChatRuntimeToolExecutionPanelShellMobilePropsParts<
+    ReactNode,
+    ReactNode
+  >;
 
 type ChatMessageToolExecutionPanelShellContentProps =
   ChatMessageToolExecutionPanelShellParts['content'];
@@ -2596,16 +2617,17 @@ type ChatMessageToolExecutionStackProps = {
 
 type ChatMessageToolExecutionStackPropsInput = ChatRuntimeConversationToolExecutionStackMobileState;
 
-type ChatMessageToolExecutionStackPanelParts = ReturnType<typeof createChatRuntimeToolExecutionStackPanelMobilePropsParts<
-  ChatMessageToolExecutionStackProps['compact'],
-  ChatMessageToolExecutionStackProps['expanded'],
-  ChatMessageToolExecutionStackProps['detailRows'],
-  ChatMessageToolExecutionStackProps['styles']['compactGroup'],
-  ChatMessageToolExecutionStackProps['styles']['compactRow'],
-  ChatMessageToolExecutionStackProps['styles']['expandedGroup'],
-  ChatMessageToolExecutionStackProps['styles']['emptyStateText'],
-  ChatMessageToolExecutionStackProps['styles']['callDetail']
->>;
+type ChatMessageToolExecutionStackPanelParts =
+  ChatRuntimeToolExecutionStackPanelMobilePropsParts<
+    ChatMessageToolExecutionStackProps['compact'],
+    ChatMessageToolExecutionStackProps['expanded'],
+    ChatMessageToolExecutionStackProps['detailRows'],
+    ChatMessageToolExecutionStackProps['styles']['compactGroup'],
+    ChatMessageToolExecutionStackProps['styles']['compactRow'],
+    ChatMessageToolExecutionStackProps['styles']['expandedGroup'],
+    ChatMessageToolExecutionStackProps['styles']['emptyStateText'],
+    ChatMessageToolExecutionStackProps['styles']['callDetail']
+  >;
 
 type ChatMessageToolExecutionStackContentProps =
   Pick<ChatMessageToolExecutionStackProps, 'shouldRender' | 'isExpanded'>
@@ -2627,11 +2649,12 @@ type ChatMessageToolExecutionCopyButtonProps = {
   styles: ChatMessageToolExecutionCopyButtonStyles;
 };
 
-type ChatMessageToolExecutionCopyButtonParts = ReturnType<typeof createChatRuntimeToolExecutionCopyButtonMobilePropsParts<
-  ChatMessageToolExecutionCopyButtonProps['renderState'],
-  ChatMessageToolExecutionCopyButtonProps['onPress'],
-  ChatMessageToolExecutionCopyButtonProps['styles']
->>;
+type ChatMessageToolExecutionCopyButtonParts =
+  ChatRuntimeToolExecutionCopyButtonMobilePropsParts<
+    ChatMessageToolExecutionCopyButtonProps['renderState'],
+    ChatMessageToolExecutionCopyButtonProps['onPress'],
+    ChatMessageToolExecutionCopyButtonProps['styles']
+  >;
 
 type ChatMessageToolExecutionCopyButtonPressableProps =
   ChatMessageToolExecutionCopyButtonParts['container']['props'] & {
@@ -2662,11 +2685,12 @@ type ChatMessageToolExecutionDetailHeaderProps = {
   styles: ChatMessageToolExecutionDetailHeaderStyles;
 };
 
-type ChatMessageToolExecutionDetailHeaderParts = ReturnType<typeof createChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
-  ChatMessageToolExecutionDetailHeaderProps['renderState'],
-  ChatMessageToolExecutionDetailHeaderProps['onPress'],
-  ChatMessageToolExecutionDetailHeaderProps['styles']
->>;
+type ChatMessageToolExecutionDetailHeaderParts =
+  ChatRuntimeToolExecutionDetailHeaderMobilePropsParts<
+    ChatMessageToolExecutionDetailHeaderProps['renderState'],
+    ChatMessageToolExecutionDetailHeaderProps['onPress'],
+    ChatMessageToolExecutionDetailHeaderProps['styles']
+  >;
 
 type ChatMessageToolExecutionDetailHeaderPressableProps =
   ChatMessageToolExecutionDetailHeaderParts['container']['props'] & {
@@ -2706,11 +2730,12 @@ type ChatMessageToolExecutionCallSectionProps = {
   children: ReactNode;
 };
 
-type ChatMessageToolExecutionCallSectionParts = ReturnType<typeof createChatRuntimeToolExecutionCallSectionMobilePropsParts<
-  ChatMessageToolExecutionCallSectionProps['renderState'],
-  ChatMessageToolExecutionCallSectionProps['onHeaderPress'],
-  ChatMessageToolExecutionCallSectionProps['styles']
->>;
+type ChatMessageToolExecutionCallSectionParts =
+  ChatRuntimeToolExecutionCallSectionMobilePropsParts<
+    ChatMessageToolExecutionCallSectionProps['renderState'],
+    ChatMessageToolExecutionCallSectionProps['onHeaderPress'],
+    ChatMessageToolExecutionCallSectionProps['styles']
+  >;
 
 type ChatMessageToolExecutionCallSectionContainerProps =
   ChatMessageToolExecutionCallSectionParts['container']['props'] & {
@@ -2736,10 +2761,11 @@ type ChatMessageToolExecutionResultBadgeProps = {
   styles: ChatMessageToolExecutionResultBadgeStyles;
 };
 
-type ChatMessageToolExecutionResultBadgeParts = ReturnType<typeof createChatRuntimeToolExecutionResultBadgeMobilePropsParts<
-  ChatMessageToolExecutionResultBadgeProps['badge'],
-  ChatMessageToolExecutionResultBadgeProps['styles']
->>;
+type ChatMessageToolExecutionResultBadgeParts =
+  ChatRuntimeToolExecutionResultBadgeMobilePropsParts<
+    ChatMessageToolExecutionResultBadgeProps['badge'],
+    ChatMessageToolExecutionResultBadgeProps['styles']
+  >;
 
 type ChatMessageToolExecutionResultBadgeContainerProps =
   ChatMessageToolExecutionResultBadgeParts['container']['props'] & {
@@ -2765,10 +2791,11 @@ type ChatMessageToolExecutionPendingResultProps = {
   styles: ChatMessageToolExecutionPendingResultStyles;
 };
 
-type ChatMessageToolExecutionPendingResultParts = ReturnType<typeof createChatRuntimeToolExecutionPendingResultMobilePropsParts<
-  ChatMessageToolExecutionPendingResultProps['renderState'],
-  ChatMessageToolExecutionPendingResultProps['styles']
->>;
+type ChatMessageToolExecutionPendingResultParts =
+  ChatRuntimeToolExecutionPendingResultMobilePropsParts<
+    ChatMessageToolExecutionPendingResultProps['renderState'],
+    ChatMessageToolExecutionPendingResultProps['styles']
+  >;
 
 type ChatMessageToolExecutionPendingResultContainerProps =
   ChatMessageToolExecutionPendingResultParts['container']['props'] & {
@@ -2789,10 +2816,11 @@ type ChatMessageToolExecutionEmptyStateProps = {
   style: StyleProp<TextStyle>;
 };
 
-type ChatMessageToolExecutionEmptyStateParts = ReturnType<typeof createChatRuntimeToolExecutionEmptyStateMobilePropsParts<
-  ChatMessageToolExecutionEmptyStateProps['renderState'],
-  ChatMessageToolExecutionEmptyStateProps['style']
->>;
+type ChatMessageToolExecutionEmptyStateParts =
+  ChatRuntimeToolExecutionEmptyStateMobilePropsParts<
+    ChatMessageToolExecutionEmptyStateProps['renderState'],
+    ChatMessageToolExecutionEmptyStateProps['style']
+  >;
 
 type ChatMessageToolExecutionEmptyStateLabelProps =
   ChatMessageToolExecutionEmptyStateParts['content']['label']['props'];
@@ -2808,10 +2836,11 @@ type ChatMessageToolExecutionPayloadMetaProps = {
   styles: ChatMessageToolExecutionPayloadMetaStyles;
 };
 
-type ChatMessageToolExecutionPayloadMetaParts = ReturnType<typeof createChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
-  ChatMessageToolExecutionPayloadMetaProps['renderState'],
-  ChatMessageToolExecutionPayloadMetaProps['styles']
->>;
+type ChatMessageToolExecutionPayloadMetaParts =
+  ChatRuntimeToolExecutionPayloadMetaMobilePropsParts<
+    ChatMessageToolExecutionPayloadMetaProps['renderState'],
+    ChatMessageToolExecutionPayloadMetaProps['styles']
+  >;
 
 type ChatMessageToolExecutionPayloadMetaRowProps =
   ChatMessageToolExecutionPayloadMetaParts['row']['props'] & {
@@ -2847,13 +2876,14 @@ type ChatMessageToolExecutionResultHeaderProps = {
   styles: ChatMessageToolExecutionResultHeaderStyles;
 };
 
-type ChatMessageToolExecutionResultHeaderParts = ReturnType<typeof createChatRuntimeToolExecutionResultHeaderMobilePropsParts<
-  ChatMessageToolExecutionResultHeaderProps['payloadRenderState'],
-  ChatMessageToolExecutionResultHeaderProps['resultBadge'],
-  ChatMessageToolExecutionResultHeaderProps['copyButtonRenderState'],
-  ChatMessageToolExecutionResultHeaderProps['onCopyPress'],
-  ChatMessageToolExecutionResultHeaderProps['styles']
->>;
+type ChatMessageToolExecutionResultHeaderParts =
+  ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
+    ChatMessageToolExecutionResultHeaderProps['payloadRenderState'],
+    ChatMessageToolExecutionResultHeaderProps['resultBadge'],
+    ChatMessageToolExecutionResultHeaderProps['copyButtonRenderState'],
+    ChatMessageToolExecutionResultHeaderProps['onCopyPress'],
+    ChatMessageToolExecutionResultHeaderProps['styles']
+  >;
 
 type ChatMessageToolExecutionResultHeaderContentProps =
   ChatMessageToolExecutionResultHeaderParts['header']['content'];
@@ -2887,9 +2917,10 @@ type ChatMessageToolExecutionPayloadBlockProps = {
   styles: ChatMessageToolExecutionPayloadBlockStyles;
 };
 
-type ChatMessageToolExecutionPayloadBlockParts = ReturnType<typeof createChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
-  ChatMessageToolExecutionPayloadBlockProps['styles']
->>;
+type ChatMessageToolExecutionPayloadBlockParts =
+  ChatRuntimeToolExecutionPayloadBlockMobilePropsParts<
+    ChatMessageToolExecutionPayloadBlockProps['styles']
+  >;
 
 type ChatMessageToolExecutionPayloadBlockContentProps =
   ChatMessageToolExecutionPayloadBlockParts['content'];
@@ -2931,12 +2962,13 @@ type ChatMessageToolExecutionPayloadSectionProps = {
   styles: ChatMessageToolExecutionPayloadSectionStyles;
 };
 
-type ChatMessageToolExecutionPayloadSectionParts = ReturnType<typeof createChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
-  ChatMessageToolExecutionPayloadSectionProps['payloadRenderState'],
-  ChatMessageToolExecutionPayloadSectionProps['copyButtonRenderState'],
-  ChatMessageToolExecutionPayloadSectionProps['onCopyPress'],
-  ChatMessageToolExecutionPayloadSectionProps['styles']
->>;
+type ChatMessageToolExecutionPayloadSectionParts =
+  ChatRuntimeToolExecutionPayloadSectionMobilePropsParts<
+    ChatMessageToolExecutionPayloadSectionProps['payloadRenderState'],
+    ChatMessageToolExecutionPayloadSectionProps['copyButtonRenderState'],
+    ChatMessageToolExecutionPayloadSectionProps['onCopyPress'],
+    ChatMessageToolExecutionPayloadSectionProps['styles']
+  >;
 
 type ChatMessageToolExecutionPayloadSectionContentProps =
   ChatMessageToolExecutionPayloadSectionParts['section']['content'];
@@ -2968,12 +3000,13 @@ type ChatMessageToolExecutionErrorBlockProps = {
   styles: ChatMessageToolExecutionErrorBlockStyles;
 };
 
-type ChatMessageToolExecutionErrorBlockParts = ReturnType<typeof createChatRuntimeToolExecutionErrorBlockMobilePropsParts<
-  ChatMessageToolExecutionErrorBlockProps['renderState'],
-  ChatMessageToolExecutionErrorBlockProps['copyButtonRenderState'],
-  ChatMessageToolExecutionErrorBlockProps['onCopyPress'],
-  ChatMessageToolExecutionErrorBlockProps['styles']
->>;
+type ChatMessageToolExecutionErrorBlockParts =
+  ChatRuntimeToolExecutionErrorBlockMobilePropsParts<
+    ChatMessageToolExecutionErrorBlockProps['renderState'],
+    ChatMessageToolExecutionErrorBlockProps['copyButtonRenderState'],
+    ChatMessageToolExecutionErrorBlockProps['onCopyPress'],
+    ChatMessageToolExecutionErrorBlockProps['styles']
+  >;
 
 type ChatMessageToolExecutionErrorBlockContentProps =
   ChatMessageToolExecutionErrorBlockParts['section']['content'];
@@ -3017,16 +3050,17 @@ type ChatMessageToolExecutionResultSectionProps = {
   styles: ChatMessageToolExecutionResultSectionStyles;
 };
 
-type ChatMessageToolExecutionResultSectionParts = ReturnType<typeof createChatRuntimeToolExecutionResultSectionMobilePropsParts<
-  ChatMessageToolExecutionResultSectionProps['payloadRenderState'],
-  ChatMessageToolExecutionResultSectionProps['resultBadge'],
-  ChatMessageToolExecutionResultSectionProps['copyButtonRenderState'],
-  ChatMessageToolExecutionResultSectionProps['onCopyPress'],
-  ChatMessageToolExecutionResultSectionProps['errorRenderState'],
-  ChatMessageToolExecutionResultSectionProps['errorCopyButtonRenderState'],
-  ChatMessageToolExecutionResultSectionProps['onErrorCopyPress'],
-  ChatMessageToolExecutionResultSectionProps['styles']
->>;
+type ChatMessageToolExecutionResultSectionParts =
+  ChatRuntimeToolExecutionResultSectionMobilePropsParts<
+    ChatMessageToolExecutionResultSectionProps['payloadRenderState'],
+    ChatMessageToolExecutionResultSectionProps['resultBadge'],
+    ChatMessageToolExecutionResultSectionProps['copyButtonRenderState'],
+    ChatMessageToolExecutionResultSectionProps['onCopyPress'],
+    ChatMessageToolExecutionResultSectionProps['errorRenderState'],
+    ChatMessageToolExecutionResultSectionProps['errorCopyButtonRenderState'],
+    ChatMessageToolExecutionResultSectionProps['onErrorCopyPress'],
+    ChatMessageToolExecutionResultSectionProps['styles']
+  >;
 
 type ChatMessageToolExecutionResultSectionContentProps =
   ChatMessageToolExecutionResultSectionParts['item']['content'];
@@ -3069,14 +3103,15 @@ type ChatMessageToolExecutionCallDetailProps = {
   styles: ChatMessageToolExecutionCallDetailStyles;
 };
 
-type ChatMessageToolExecutionCallDetailParts = ReturnType<typeof createChatRuntimeToolExecutionCallDetailMobilePropsParts<
-  ChatMessageToolExecutionCallDetailProps['renderState'],
-  ChatMessageToolExecutionCallDetailProps['onHeaderPress'],
-  ChatMessageToolExecutionCallDetailInput,
-  ChatMessageToolExecutionCallDetailResult,
-  ChatMessageToolExecutionCallDetailPendingResult,
-  ChatMessageToolExecutionCallDetailProps['styles']
->>;
+type ChatMessageToolExecutionCallDetailParts =
+  ChatRuntimeToolExecutionCallDetailMobilePropsParts<
+    ChatMessageToolExecutionCallDetailProps['renderState'],
+    ChatMessageToolExecutionCallDetailProps['onHeaderPress'],
+    ChatMessageToolExecutionCallDetailInput,
+    ChatMessageToolExecutionCallDetailResult,
+    ChatMessageToolExecutionCallDetailPendingResult,
+    ChatMessageToolExecutionCallDetailProps['styles']
+  >;
 
 type ChatMessageToolExecutionCallDetailContentProps =
   ChatMessageToolExecutionCallDetailParts['callSection']['content'];
@@ -3097,10 +3132,11 @@ type ChatMessageToolExecutionCallListProps = {
   styles: ChatMessageToolExecutionCallDetailStyles;
 };
 
-type ChatMessageToolExecutionCallListParts = ReturnType<typeof createChatRuntimeToolExecutionCallListMobilePropsParts<
-  ChatMessageToolExecutionCallListRow,
-  ChatMessageToolExecutionCallDetailStyles
->>;
+type ChatMessageToolExecutionCallListParts =
+  ChatRuntimeToolExecutionCallListMobilePropsParts<
+    ChatMessageToolExecutionCallListRow,
+    ChatMessageToolExecutionCallDetailStyles
+  >;
 
 type ChatMessageToolExecutionCallListContentProps =
   ChatMessageToolExecutionCallListParts['content'];

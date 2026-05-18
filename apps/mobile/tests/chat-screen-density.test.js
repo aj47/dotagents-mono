@@ -4351,6 +4351,31 @@ test('derives tool execution card status from displayed non-meta tool entries', 
     chatMessageChromeSource.match(/export function ChatMessageToolExecutionExpandedGroupContent[\s\S]*?export function ChatMessageToolExecutionExpandedGroupEmptyStateBlock/)?.[0] ?? '';
   const toolExecutionExpandedGroupEmptyStateBlockSource =
     chatMessageChromeSource.match(/export function ChatMessageToolExecutionExpandedGroupEmptyStateBlock[\s\S]*?export function ChatMessageToolExecutionExpandedGroupContainer/)?.[0] ?? '';
+  const expandedToolExecutionPropContracts = [
+    ['ChatMessageToolExecutionExpandedGroupParts', 'ChatRuntimeToolExecutionExpandedGroupMobilePropsParts', 'createChatRuntimeToolExecutionExpandedGroupMobilePropsParts'],
+    ['ChatMessageToolExecutionPanelParts', 'ChatRuntimeToolExecutionPanelMobilePropsParts', 'createChatRuntimeToolExecutionPanelMobilePropsParts'],
+    ['ChatMessageToolExecutionPanelShellParts', 'ChatRuntimeToolExecutionPanelShellMobilePropsParts', 'createChatRuntimeToolExecutionPanelShellMobilePropsParts'],
+    ['ChatMessageToolExecutionStackPanelParts', 'ChatRuntimeToolExecutionStackPanelMobilePropsParts', 'createChatRuntimeToolExecutionStackPanelMobilePropsParts'],
+    ['ChatMessageToolExecutionCopyButtonParts', 'ChatRuntimeToolExecutionCopyButtonMobilePropsParts', 'createChatRuntimeToolExecutionCopyButtonMobilePropsParts'],
+    ['ChatMessageToolExecutionDetailHeaderParts', 'ChatRuntimeToolExecutionDetailHeaderMobilePropsParts', 'createChatRuntimeToolExecutionDetailHeaderMobilePropsParts'],
+    ['ChatMessageToolExecutionCallSectionParts', 'ChatRuntimeToolExecutionCallSectionMobilePropsParts', 'createChatRuntimeToolExecutionCallSectionMobilePropsParts'],
+    ['ChatMessageToolExecutionResultBadgeParts', 'ChatRuntimeToolExecutionResultBadgeMobilePropsParts', 'createChatRuntimeToolExecutionResultBadgeMobilePropsParts'],
+    ['ChatMessageToolExecutionPendingResultParts', 'ChatRuntimeToolExecutionPendingResultMobilePropsParts', 'createChatRuntimeToolExecutionPendingResultMobilePropsParts'],
+    ['ChatMessageToolExecutionEmptyStateParts', 'ChatRuntimeToolExecutionEmptyStateMobilePropsParts', 'createChatRuntimeToolExecutionEmptyStateMobilePropsParts'],
+    ['ChatMessageToolExecutionPayloadMetaParts', 'ChatRuntimeToolExecutionPayloadMetaMobilePropsParts', 'createChatRuntimeToolExecutionPayloadMetaMobilePropsParts'],
+    ['ChatMessageToolExecutionResultHeaderParts', 'ChatRuntimeToolExecutionResultHeaderMobilePropsParts', 'createChatRuntimeToolExecutionResultHeaderMobilePropsParts'],
+    ['ChatMessageToolExecutionPayloadBlockParts', 'ChatRuntimeToolExecutionPayloadBlockMobilePropsParts', 'createChatRuntimeToolExecutionPayloadBlockMobilePropsParts'],
+    ['ChatMessageToolExecutionPayloadSectionParts', 'ChatRuntimeToolExecutionPayloadSectionMobilePropsParts', 'createChatRuntimeToolExecutionPayloadSectionMobilePropsParts'],
+    ['ChatMessageToolExecutionErrorBlockParts', 'ChatRuntimeToolExecutionErrorBlockMobilePropsParts', 'createChatRuntimeToolExecutionErrorBlockMobilePropsParts'],
+    ['ChatMessageToolExecutionResultSectionParts', 'ChatRuntimeToolExecutionResultSectionMobilePropsParts', 'createChatRuntimeToolExecutionResultSectionMobilePropsParts'],
+    ['ChatMessageToolExecutionCallDetailParts', 'ChatRuntimeToolExecutionCallDetailMobilePropsParts', 'createChatRuntimeToolExecutionCallDetailMobilePropsParts'],
+    ['ChatMessageToolExecutionCallListParts', 'ChatRuntimeToolExecutionCallListMobilePropsParts', 'createChatRuntimeToolExecutionCallListMobilePropsParts'],
+  ];
+  for (const [localAlias, sharedContract, factoryName] of expandedToolExecutionPropContracts) {
+    assert.match(chatMessageChromeSource, new RegExp(`type ${sharedContract},`));
+    assert.match(chatMessageChromeSource, new RegExp(`type ${localAlias} =\\s+${sharedContract}<`));
+    assert.doesNotMatch(chatMessageChromeSource, new RegExp(`type ${localAlias} = ReturnType<typeof ${factoryName}`));
+  }
   assert.match(chatMessageChromeSource, /const expandedGroupParts = createChatRuntimeToolExecutionExpandedGroupMobilePropsParts\(\{\s+topCollapseRenderState,\s+bottomCollapseRenderState,\s+onCollapsePress,\s+isPending,\s+allSuccess,\s+hasErrors,\s+emptyState,\s+styles,\s+\}\);/);
   assert.doesNotMatch(chatMessageChromeSource, /const expandedGroupContent = expandedGroupParts\.container\.content;/);
   assert.match(toolExecutionPanelContentSource, /<ChatMessageToolExecutionExpandedGroup \{\.\.\.expandedGroup\.props\}>[\s\S]*?\{children\}/);
