@@ -5449,7 +5449,7 @@ type ChatMessageExpandedContentTextPart<TStyle> = {
   text: string;
   props: {
     style: TStyle;
-    numberOfLines?: ChatRuntimeStreamingContentMobileRenderState['surface']['titleNumberOfLines'];
+    numberOfLines?: TextProps['numberOfLines'];
   };
 };
 
@@ -5482,14 +5482,18 @@ type ChatMessageExpandedContentBadgePart = {
 
 type ChatMessageExpandedContentHeaderContentProps = {
   icon: {
-    props: ChatRuntimeStreamingContentMobileRenderState['icon'];
+    props: {
+      name: IoniconName;
+      size: number;
+      color: string;
+    };
   };
   title: ChatMessageExpandedContentTitlePart;
   spinner: {
     props: {
       source: ImageSourcePropType;
       style: ChatMessageExpandedContentStyles['spinner'];
-      resizeMode: ChatRuntimeStreamingContentMobileRenderState['spinner']['resizeMode'];
+      resizeMode: ComponentProps<typeof Image>['resizeMode'];
     };
   };
   badge: ChatMessageExpandedContentBadgePart;
@@ -5498,7 +5502,7 @@ type ChatMessageExpandedContentHeaderContentProps = {
 type ChatMessageExpandedContentHeaderPart = {
   props: {
     accessible: true;
-    accessibilityRole: ChatRuntimeStreamingContentMobileRenderState['accessibilityRole'];
+    accessibilityRole: AccessibilityRole;
     accessibilityLabel: string;
     style: ChatMessageExpandedContentStyles['header'];
   };

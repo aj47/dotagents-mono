@@ -6014,6 +6014,14 @@ test('uses desktop-style streaming response chrome while mobile assistant conten
   assert.match(expandedContentTypes, /type ChatMessageExpandedContentHeaderPart =/);
   assert.match(expandedContentTypes, /type ChatMessageExpandedContentBodyPart =/);
   assert.doesNotMatch(expandedContentTypes, /ChatMessageExpandedContentParts\['streamingContent'\]/);
+  assert.doesNotMatch(expandedContentTypes, /ChatRuntimeStreamingContentMobileRenderState\['surface'\]\['titleNumberOfLines'\]/);
+  assert.doesNotMatch(expandedContentTypes, /ChatRuntimeStreamingContentMobileRenderState\['icon'\]/);
+  assert.doesNotMatch(expandedContentTypes, /ChatRuntimeStreamingContentMobileRenderState\['spinner'\]\['resizeMode'\]/);
+  assert.doesNotMatch(expandedContentTypes, /ChatRuntimeStreamingContentMobileRenderState\['accessibilityRole'\]/);
+  assert.match(expandedContentTypes, /numberOfLines\?: TextProps\['numberOfLines'\];/);
+  assert.match(expandedContentTypes, /icon: \{[\s\S]*?props: \{[\s\S]*?name: IoniconName;[\s\S]*?size: number;[\s\S]*?color: string;[\s\S]*?\};[\s\S]*?\};/);
+  assert.match(expandedContentTypes, /resizeMode: ComponentProps<typeof Image>\['resizeMode'\];/);
+  assert.match(expandedContentTypes, /accessibilityRole: AccessibilityRole;/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationExpandedContentMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationExpandedContentMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const expandedContentParts: ChatMessageExpandedContentParts =\s+createChatRuntimeConversationExpandedContentMobilePropsParts\(\{\s+streamingRenderState,\s+markdownContent,\s+assetBaseUrl,\s+assetAuthToken,\s+spinnerSource,\s+streamingStyles,\s+\}\);/);
