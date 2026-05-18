@@ -3713,11 +3713,11 @@ type ChatMessageRuntimeViewportParts<
   TTask extends PromptLibraryTaskLike & { id: string },
 > =
   ChatRuntimeConversationViewportMobilePropsParts<
-    ChatMessageRuntimeViewportProps<TPrompt, TTask>['loadingState'],
-    ChatMessageRuntimeViewportProps<TPrompt, TTask>['homeQuickStarts'],
-    ChatMessageRuntimeViewportProps<TPrompt, TTask>['historyBanner'],
-    ChatMessageRuntimeViewportProps<TPrompt, TTask>['stepSummary'],
-    ChatMessageRuntimeViewportProps<TPrompt, TTask>['debugPanels'],
+    Omit<ChatMessageLoadingStateProps, 'style' | 'spinnerStyle'>,
+    Omit<ChatConversationHomeQuickStartsProps<TPrompt, TTask>, 'styles'>,
+    Omit<ChatMessageHistoryBannerProps, 'styles'>,
+    Omit<ChatMessageStepSummaryCardProps, 'styles'>,
+    Omit<ChatMessageDebugPanelStackProps, 'panelStyle' | 'textStyle'>,
     ChatMessageRuntimeViewportStyleSlots['scrollViewport']['style'],
     ChatMessageRuntimeViewportStyleSlots['scrollViewport']['contentContainerStyle'],
     ChatMessageRuntimeViewportStyleSlots['loadingState']['style'],
