@@ -233,6 +233,7 @@ import {
   type ChatRuntimeConversationScrollViewportMobilePropsParts,
   type ChatRuntimeConversationScrollViewportMobilePropsPartsInput,
   type ChatRuntimeConversationSurfaceMobilePropsParts,
+  type ChatRuntimeConversationSurfaceMobilePropsPartsInput,
   type ChatRuntimeConversationViewportMobilePropsParts,
   type ChatRuntimeConversationViewportContentMobilePropsParts,
   type ChatRuntimeConversationViewportContentMobilePropsPartsInput,
@@ -4066,14 +4067,18 @@ type ChatMessageRuntimeSurfaceStyleSlots =
 type ChatMessageRuntimeSurfaceProps<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
-> = {
-  frame: Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingBehavior' | 'keyboardVerticalOffset'>;
-  dock: Omit<ChatMessageRuntimeDockProps, 'styles'>;
-  overlays: ChatMessageRuntimeOverlaysProps;
-  threadList: ChatMessageConversationRuntimeThreadListProps;
-  viewport: Omit<ChatMessageRuntimeViewportProps<TPrompt, TTask>, 'children' | 'styles'>;
-  styles: ChatMessageRuntimeSurfaceStyleSlots;
-};
+> =
+  ChatRuntimeConversationSurfaceMobilePropsPartsInput<
+    Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingBehavior' | 'keyboardVerticalOffset'>,
+    Omit<ChatMessageRuntimeDockProps, 'styles'>,
+    ChatMessageRuntimeOverlaysProps,
+    ChatMessageConversationRuntimeThreadListProps,
+    Omit<ChatMessageRuntimeViewportProps<TPrompt, TTask>, 'children' | 'styles'>,
+    ChatMessageRuntimeSurfaceStyleSlots['frame']['keyboardAvoidingStyle'],
+    ChatMessageRuntimeSurfaceStyleSlots['frame']['rootStyle'],
+    ChatMessageRuntimeSurfaceStyleSlots['dock'],
+    ChatMessageRuntimeSurfaceStyleSlots['viewport']
+  >;
 
 type ChatMessageRuntimeSurfaceParts<
   TPrompt extends PredefinedPromptSummary,

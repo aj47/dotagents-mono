@@ -2306,8 +2306,12 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(screenSource, /promptEditor=\{\(\s*<ChatConversationHomePromptEditorModal/);
   assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeSurface/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeConversationSurfaceMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeConversationSurfaceMobilePropsPartsInput,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageRuntimeSurfaceProps<[\s\S]*?> =\s+ChatRuntimeConversationSurfaceMobilePropsPartsInput<\s+Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingBehavior' \| 'keyboardVerticalOffset'>,[\s\S]*?Omit<ChatMessageRuntimeDockProps, 'styles'>,[\s\S]*?ChatMessageRuntimeOverlaysProps,[\s\S]*?ChatMessageConversationRuntimeThreadListProps,[\s\S]*?Omit<ChatMessageRuntimeViewportProps<TPrompt, TTask>, 'children' \| 'styles'>,[\s\S]*?ChatMessageRuntimeSurfaceStyleSlots\['frame'\]\['keyboardAvoidingStyle'\],[\s\S]*?ChatMessageRuntimeSurfaceStyleSlots\['viewport'\]\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeSurfaceProps<[\s\S]*?> = \{[\s\S]*?frame: Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingBehavior' \| 'keyboardVerticalOffset'>;[\s\S]*?styles: ChatMessageRuntimeSurfaceStyleSlots;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageRuntimeSurfaceParts<[\s\S]*?> =\s+ChatRuntimeConversationSurfaceMobilePropsParts</);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeSurfaceParts[\s\S]*?ReturnType<typeof createChatRuntimeConversationSurfaceMobilePropsParts/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationSurfaceMobilePropsPartsInput</);
   assert.match(chatMessageChromeSource, /const surfaceParts: ChatMessageRuntimeSurfaceParts<TPrompt, TTask> =\s+createChatRuntimeConversationSurfaceMobilePropsParts\(\{\s+frame,\s+dock,\s+overlays,\s+threadList,\s+viewport,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageConversationFrame\s+\{\.\.\.surfaceParts\.frame\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRuntimeDock\s+\{\.\.\.surfaceParts\.dock\.props\}/);
