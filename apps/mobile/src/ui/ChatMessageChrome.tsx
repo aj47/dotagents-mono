@@ -4124,11 +4124,11 @@ type ChatMessageRuntimeSurfaceParts<
   TTask extends PromptLibraryTaskLike & { id: string },
 > =
   ChatRuntimeConversationSurfaceMobilePropsParts<
-    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['frame'],
-    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['dock'],
-    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['overlays'],
-    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['threadList'],
-    ChatMessageRuntimeSurfaceProps<TPrompt, TTask>['viewport'],
+    Pick<ChatMessageConversationFrameProps, 'keyboardAvoidingBehavior' | 'keyboardVerticalOffset'>,
+    Omit<ChatMessageRuntimeDockProps, 'styles'>,
+    ChatMessageRuntimeOverlaysProps,
+    ChatMessageConversationRuntimeThreadListProps,
+    Omit<ChatMessageRuntimeViewportProps<TPrompt, TTask>, 'children' | 'styles'>,
     ChatMessageRuntimeSurfaceStyleSlots['frame']['keyboardAvoidingStyle'],
     ChatMessageRuntimeSurfaceStyleSlots['frame']['rootStyle'],
     ChatMessageRuntimeSurfaceStyleSlots['dock'],
