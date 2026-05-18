@@ -495,6 +495,8 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export type ChatComposerTextEntryRef = TextInput;
 export type ChatComposerTextEntryKeyPressEvent = Parameters<NonNullable<ComponentProps<typeof TextInput>['onKeyPress']>>[0];
+type ChatComposerTextEntryChangeHandler = NonNullable<ComponentProps<typeof TextInput>['onChangeText']>;
+type ChatComposerTextEntryKeyPressHandler = NonNullable<ComponentProps<typeof TextInput>['onKeyPress']>;
 export type ChatComposerRuntimeImageAttachment = ChatImageAttachmentMessageInput & {
   id: string;
   previewUri: string;
@@ -732,13 +734,13 @@ type ChatComposerTextEntryWebKeyPressEvent = {
 type ChatComposerRuntimeTextEntrySubmissionStateInput = {
   hasContent: boolean;
   platform: ChatComposerRuntimeDockChromeInput['platform'];
-  onChangeText: NonNullable<ChatComposerTextEntryProps['onChangeText']>;
+  onChangeText: ChatComposerTextEntryChangeHandler;
   onSubmit: () => void;
 };
 
 type ChatComposerRuntimeTextEntrySubmissionState = {
-  onChangeText: NonNullable<ChatComposerTextEntryProps['onChangeText']>;
-  onKeyPress: NonNullable<ChatComposerTextEntryProps['onKeyPress']>;
+  onChangeText: ChatComposerTextEntryChangeHandler;
+  onKeyPress: ChatComposerTextEntryKeyPressHandler;
 };
 
 type ChatComposerRuntimeSendActionOptions = {
@@ -4994,8 +4996,8 @@ type ChatComposerRuntimeDockChromePropsInput = {
   onEditBeforeSendPress: ChatComposerIconButtonProps['onPress'];
   textEntryInputRef: ChatComposerTextEntryProps['inputRef'];
   textEntryValue: ChatComposerTextEntryProps['value'];
-  onTextEntryChangeText: ChatComposerTextEntryProps['onChangeText'];
-  onTextEntryKeyPress: ChatComposerTextEntryProps['onKeyPress'];
+  onTextEntryChangeText: ComponentProps<typeof TextInput>['onChangeText'];
+  onTextEntryKeyPress: ComponentProps<typeof TextInput>['onKeyPress'];
   textEntryHandsFree: ChatComposerRuntimeDockMobilePropsInput['textEntryHandsFree'];
   textEntryListening: ChatComposerRuntimeDockMobilePropsInput['textEntryListening'];
   textEntryWillCancel: ChatComposerRuntimeDockMobilePropsInput['textEntryWillCancel'];

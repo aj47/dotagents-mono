@@ -7059,6 +7059,14 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   assert.match(chatMessageChromeSource, /export function ChatComposerTextEntry/);
   assert.match(chatMessageChromeSource, /export type ChatComposerTextEntryRef = TextInput;/);
   assert.match(chatMessageChromeSource, /export type ChatComposerTextEntryKeyPressEvent = Parameters<NonNullable<ComponentProps<typeof TextInput>\['onKeyPress'\]>>\[0\];/);
+  assert.match(chatMessageChromeSource, /type ChatComposerTextEntryChangeHandler = NonNullable<ComponentProps<typeof TextInput>\['onChangeText'\]>;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerTextEntryKeyPressHandler = NonNullable<ComponentProps<typeof TextInput>\['onKeyPress'\]>;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerRuntimeTextEntrySubmissionStateInput = \{[\s\S]*?onChangeText: ChatComposerTextEntryChangeHandler;/);
+  assert.match(chatMessageChromeSource, /type ChatComposerRuntimeTextEntrySubmissionState = \{[\s\S]*?onKeyPress: ChatComposerTextEntryKeyPressHandler;/);
+  assert.doesNotMatch(chatMessageChromeSource, /NonNullable<ChatComposerTextEntryProps\['on(ChangeText|KeyPress)'\]>/);
+  assert.match(chatMessageChromeSource, /onTextEntryChangeText: ComponentProps<typeof TextInput>\['onChangeText'\];/);
+  assert.match(chatMessageChromeSource, /onTextEntryKeyPress: ComponentProps<typeof TextInput>\['onKeyPress'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /onTextEntry(ChangeText|KeyPress): ChatComposerTextEntryProps\['on(ChangeText|KeyPress)'\]/);
   assert.match(screenSource, /useChatComposerRuntimeSubmissionChromeState,/);
   assert.doesNotMatch(screenSource, /useChatComposerRuntimeTextEntrySubmissionState,/);
   assert.match(chatMessageChromeSource, /export function useChatComposerRuntimeTextEntrySubmissionState/);
