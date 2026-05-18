@@ -3090,20 +3090,29 @@ test('routes mobile connection status indicator presentation through the session
     path.join(__dirname, '..', 'src', 'ui', 'ConnectionStatusIndicator.tsx'),
     'utf8'
   );
+  const connectionIndicatorStylesSource = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'ui', 'ConnectionStatusIndicatorMobileStyles.ts'),
+    'utf8'
+  );
 
   assert.match(connectionIndicatorSource, /from '@dotagents\/shared\/session-presentation';/);
+  assert.match(connectionIndicatorSource, /from '\.\/ConnectionStatusIndicatorMobileStyles';/);
+  assert.match(connectionIndicatorStylesSource, /from '@dotagents\/shared\/session-presentation';/);
   assert.match(sessionPresentationSource, /createConnectionStatusIndicatorMobilePropsParts/);
   assert.match(sessionPresentationSource, /createConnectionStatusIndicatorMobileStyleSheetSlots/);
   assert.match(sessionPresentationSource, /createConnectionStatusIndicatorMobileStyleSlots/);
   assert.match(sessionPresentationSource, /getConnectionStatusIndicatorMobileRenderState/);
-  assert.match(connectionIndicatorSource, /createConnectionStatusIndicatorMobileStyleSheetSlots,/);
-  assert.match(connectionIndicatorSource, /type ConnectionStatusIndicatorMobileStyleSheetSlots,/);
-  assert.match(connectionIndicatorSource, /type ConnectionStatusIndicatorStyles = ConnectionStatusIndicatorMobileStyleSheetSlots;/);
-  assert.match(connectionIndicatorSource, /StyleSheet\.create\(\{ \.\.\.connectionStatusStyleSheetSlots \}\)/);
+  assert.match(connectionIndicatorStylesSource, /createConnectionStatusIndicatorMobileStyleSheetSlots,/);
+  assert.match(connectionIndicatorStylesSource, /type ConnectionStatusIndicatorMobileStyleSheetSlots,/);
+  assert.match(connectionIndicatorStylesSource, /export type ConnectionStatusIndicatorStyles = ConnectionStatusIndicatorMobileStyleSheetSlots;/);
+  assert.match(connectionIndicatorStylesSource, /StyleSheet\.create\(\{ \.\.\.connectionStatusStyleSheetSlots \}\)/);
+  assert.match(connectionIndicatorSource, /useConnectionStatusIndicatorMobileStyleSlots\(\{[\s\S]*?state,[\s\S]*?retryCount,[\s\S]*?compact,/);
   assert.doesNotMatch(connectionIndicatorSource, /from '@dotagents\/shared\/connection-recovery';/);
   assert.doesNotMatch(connectionIndicatorSource, /createConnectionStatusIndicatorMobileStyleSlots,/);
+  assert.doesNotMatch(connectionIndicatorSource, /createConnectionStatusIndicatorMobileStyleSheetSlots,/);
   assert.doesNotMatch(connectionIndicatorSource, /ConnectionStatusIndicatorMobileStylesLike/);
   assert.doesNotMatch(connectionIndicatorSource, /StyleProp/);
+  assert.doesNotMatch(connectionIndicatorSource, /StyleSheet\.create/);
 });
 
 test('does not render a duplicate composer agent chip above the mobile chat input row', () => {
