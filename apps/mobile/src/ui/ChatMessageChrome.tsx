@@ -13778,8 +13778,44 @@ export function ChatMessageRuntimeOverlays({
 export function ChatMessageScrollViewport(
   props: ChatMessageScrollViewportProps,
 ) {
-  const scrollViewportParts: ChatMessageScrollViewportParts =
-    createChatRuntimeConversationScrollViewportMobilePropsParts(props);
+  const {
+    children,
+    scrollRef,
+    style,
+    contentContainerStyle,
+    keyboardShouldPersistTaps,
+    contentInsetAdjustmentBehavior,
+    onScroll,
+    onScrollBeginDrag,
+    onScrollEndDrag,
+    scrollEventThrottle,
+  } = props;
+  const scrollViewportParts = useMemo<ChatMessageScrollViewportParts>(
+    () => createChatRuntimeConversationScrollViewportMobilePropsParts({
+      children,
+      scrollRef,
+      style,
+      contentContainerStyle,
+      keyboardShouldPersistTaps,
+      contentInsetAdjustmentBehavior,
+      onScroll,
+      onScrollBeginDrag,
+      onScrollEndDrag,
+      scrollEventThrottle,
+    }),
+    [
+      children,
+      contentContainerStyle,
+      contentInsetAdjustmentBehavior,
+      keyboardShouldPersistTaps,
+      onScroll,
+      onScrollBeginDrag,
+      onScrollEndDrag,
+      scrollEventThrottle,
+      scrollRef,
+      style,
+    ],
+  );
 
   return (
     <ScrollView
@@ -13805,8 +13841,25 @@ export function ChatMessageScrollViewportContent({
 export function ChatMessageConversationViewportContent(
   props: ChatMessageConversationViewportContentProps,
 ) {
-  const viewportContentParts: ChatMessageConversationViewportContentParts =
-    createChatRuntimeConversationViewportContentMobilePropsParts(props);
+  const {
+    loadingState,
+    homeState,
+    historyBanner,
+    stepSummary,
+    children,
+    debugPanels,
+  } = props;
+  const viewportContentParts = useMemo<ChatMessageConversationViewportContentParts>(
+    () => createChatRuntimeConversationViewportContentMobilePropsParts({
+      loadingState,
+      homeState,
+      historyBanner,
+      stepSummary,
+      children,
+      debugPanels,
+    }),
+    [children, debugPanels, historyBanner, homeState, loadingState, stepSummary],
+  );
 
   return (
     <ChatMessageConversationViewportContentPart
@@ -13872,15 +13925,17 @@ export function ChatMessageRuntimeViewport<
   styles,
   ...scrollViewportProps
 }: ChatMessageRuntimeViewportProps<TPrompt, TTask>) {
-  const viewportParts: ChatMessageRuntimeViewportParts<TPrompt, TTask> =
-    createChatRuntimeConversationViewportMobilePropsParts({
+  const viewportParts = useMemo<ChatMessageRuntimeViewportParts<TPrompt, TTask>>(
+    () => createChatRuntimeConversationViewportMobilePropsParts({
       loadingState,
       homeQuickStarts,
       historyBanner,
       stepSummary,
       debugPanels,
       styles,
-    });
+    }),
+    [debugPanels, historyBanner, homeQuickStarts, loadingState, stepSummary, styles],
+  );
 
   return (
     <ChatMessageConversationViewport

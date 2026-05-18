@@ -2638,7 +2638,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   const scrollViewportSource =
     chatMessageChromeSource.match(/export function ChatMessageScrollViewport[\s\S]*?export function ChatMessageConversationViewportContent/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /export function ChatMessageScrollViewport\(\s+props: ChatMessageScrollViewportProps,\s+\)/);
-  assert.match(scrollViewportSource, /const scrollViewportParts: ChatMessageScrollViewportParts =\s+createChatRuntimeConversationScrollViewportMobilePropsParts\(props\);/);
+  assert.match(scrollViewportSource, /const \{\s+children,\s+scrollRef,\s+style,\s+contentContainerStyle,\s+keyboardShouldPersistTaps,\s+contentInsetAdjustmentBehavior,\s+onScroll,\s+onScrollBeginDrag,\s+onScrollEndDrag,\s+scrollEventThrottle,\s+\} = props;/);
+  assert.match(scrollViewportSource, /const scrollViewportParts = useMemo<ChatMessageScrollViewportParts>\(\s+\(\) => createChatRuntimeConversationScrollViewportMobilePropsParts\(\{\s+children,\s+scrollRef,\s+style,\s+contentContainerStyle,\s+keyboardShouldPersistTaps,\s+contentInsetAdjustmentBehavior,\s+onScroll,\s+onScrollBeginDrag,\s+onScrollEndDrag,\s+scrollEventThrottle,\s+\}\),\s+\[\s+children,\s+contentContainerStyle,\s+contentInsetAdjustmentBehavior,\s+keyboardShouldPersistTaps,\s+onScroll,\s+onScrollBeginDrag,\s+onScrollEndDrag,\s+scrollEventThrottle,\s+scrollRef,\s+style,\s+\],\s+\);/);
   assert.match(scrollViewportSource, /<ScrollView\s+\{\.\.\.scrollViewportParts\.scrollView\.props\}/);
   assert.match(sessionPresentationSource, /scrollView: \{\s+props: \{\s+ref: scrollRef,/);
   assert.match(sessionPresentationSource, /content: \{\s+children,\s+\},\s+\},\s+\}/);
@@ -2723,7 +2724,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   const conversationViewportContentPartSource =
     chatMessageChromeSource.match(/export function ChatMessageConversationViewportContentPart[\s\S]*?export function ChatMessageConversationViewport/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewportContent\(\s+props: ChatMessageConversationViewportContentProps,\s+\)/);
-  assert.match(conversationViewportContentSource, /const viewportContentParts: ChatMessageConversationViewportContentParts =\s+createChatRuntimeConversationViewportContentMobilePropsParts\(props\);/);
+  assert.match(conversationViewportContentSource, /const \{\s+loadingState,\s+homeState,\s+historyBanner,\s+stepSummary,\s+children,\s+debugPanels,\s+\} = props;/);
+  assert.match(conversationViewportContentSource, /const viewportContentParts = useMemo<ChatMessageConversationViewportContentParts>\(\s+\(\) => createChatRuntimeConversationViewportContentMobilePropsParts\(\{\s+loadingState,\s+homeState,\s+historyBanner,\s+stepSummary,\s+children,\s+debugPanels,\s+\}\),\s+\[children, debugPanels, historyBanner, homeState, loadingState, stepSummary\],\s+\);/);
   assert.match(sessionPresentationSource, /content: \{\s+loadingState: \{\s+children: loadingState,/);
   assert.doesNotMatch(chatMessageChromeSource, /const viewportContent = viewportContentParts\.content;/);
   assert.match(conversationViewportContentSource, /<ChatMessageConversationViewportContentPart\s+\{\.\.\.viewportContentParts\.content\}/);
@@ -2739,7 +2741,7 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeViewportParts<[\s\S]*?> =\s+ChatRuntimeConversationViewportMobilePropsParts<[\s\S]*?ChatMessageRuntimeViewportProps<TPrompt, TTask>\['loadingState'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeViewportParts[\s\S]*?ReturnType<typeof createChatRuntimeConversationViewportMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationViewportMobilePropsPartsInput</);
-  assert.match(chatMessageChromeSource, /const viewportParts: ChatMessageRuntimeViewportParts<TPrompt, TTask> =\s+createChatRuntimeConversationViewportMobilePropsParts\(\{\s+loadingState,\s+homeQuickStarts,\s+historyBanner,\s+stepSummary,\s+debugPanels,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const viewportParts = useMemo<ChatMessageRuntimeViewportParts<TPrompt, TTask>>\(\s+\(\) => createChatRuntimeConversationViewportMobilePropsParts\(\{\s+loadingState,\s+homeQuickStarts,\s+historyBanner,\s+stepSummary,\s+debugPanels,\s+styles,\s+\}\),\s+\[debugPanels, historyBanner, homeQuickStarts, loadingState, stepSummary, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageConversationViewport\s+\{\.\.\.scrollViewportProps\}\s+\{\.\.\.viewportParts\.scrollViewport\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageLoadingState\s+\{\.\.\.viewportParts\.loadingState\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatConversationHomeQuickStarts\s+\{\.\.\.viewportParts\.homeQuickStarts\.props\}/);
@@ -2920,6 +2922,8 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeToolExecutionPanelShellMobilePropsParts',
     'createChatRuntimeConversationFrameMobilePropsParts',
     'createChatRuntimeConversationOverlaysMobilePropsParts',
+    'createChatRuntimeConversationScrollViewportMobilePropsParts',
+    'createChatRuntimeConversationViewportContentMobilePropsParts',
     'createChatRuntimeConversationViewportMobilePropsParts',
     'createChatRuntimeStepSummaryCardMobilePropsParts',
     'createChatRuntimeScrollToBottomButtonMobilePropsParts',
@@ -2934,7 +2938,7 @@ test('limits mobile props part object literals to composition boundaries', () =>
   assert.doesNotMatch(chatMessageChromeSource, /\bcreate[A-Za-z0-9]+MobilePropsParts<[^;]*>\(\{/);
   assert.match(chatMessageChromeSource, /const headerParts: ChatRuntimeNavigationHeaderMobileOptionParts =\s+createChatRuntimeNavigationHeaderOptionsMobilePropsParts\(\{\s+\.\.\.headerOptionParts,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /const panelShellParts: ChatMessageToolExecutionPanelShellParts =\s+createChatRuntimeToolExecutionPanelShellMobilePropsParts\(\{\s+compactList: \(\s+<ChatMessageToolExecutionCompactList\s+\{\.\.\.compactList\.props\}\s+\/>\s+\),\s+expandedGroup: expandedGroup\.shouldRender \? \(\s+<ChatMessageToolExecutionExpandedGroup \{\.\.\.expandedGroup\.props\}>[\s\S]*?\{children\}[\s\S]*?<\/ChatMessageToolExecutionExpandedGroup>\s+\) : null,\s+\}\);/);
-  assert.match(chatMessageChromeSource, /const viewportParts: ChatMessageRuntimeViewportParts<TPrompt, TTask> =\s+createChatRuntimeConversationViewportMobilePropsParts\(\{\s+loadingState,\s+homeQuickStarts,\s+historyBanner,\s+stepSummary,\s+debugPanels,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /const viewportParts = useMemo<ChatMessageRuntimeViewportParts<TPrompt, TTask>>\(\s+\(\) => createChatRuntimeConversationViewportMobilePropsParts\(\{\s+loadingState,\s+homeQuickStarts,\s+historyBanner,\s+stepSummary,\s+debugPanels,\s+styles,\s+\}\),\s+\[debugPanels, historyBanner, homeQuickStarts, loadingState, stepSummary, styles\],\s+\);/);
 });
 
 test('uses shared runtime presentation for mobile connection and retry banners', () => {
