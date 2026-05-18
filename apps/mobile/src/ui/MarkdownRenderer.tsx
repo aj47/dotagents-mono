@@ -1,5 +1,16 @@
 import React from 'react';
-import { Image, Platform, Pressable, StyleSheet, Text, View, type ImageStyle, type StyleProp } from 'react-native';
+import {
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ImageStyle,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,8 +36,11 @@ import {
   isAllowedMarkdownContentLinkUrl,
   parseConversationImageAssetUrl,
   splitMarkdownContent,
+  type MarkdownCodeBlockCopyMobilePropsParts,
   type MarkdownContentMobileSurfaceRenderState,
+  type MarkdownImageMobilePropsParts,
   type MarkdownThinkSectionControlOptions,
+  type MarkdownThinkSectionMobilePropsParts,
   type MarkdownThinkSectionMobileSurfaceRenderState,
 } from '@dotagents/shared/session-presentation';
 import { useTheme } from './ThemeProvider';
@@ -40,15 +54,48 @@ interface MarkdownRendererProps extends MarkdownThinkSectionControlOptions {
   assetAuthToken?: string;
 }
 
+type MarkdownPressHandler = () => void | Promise<void>;
+
+type MarkdownThinkSectionStyles = {
+  container: StyleProp<ViewStyle>;
+  containerCollapsed: StyleProp<ViewStyle>;
+  containerExpanded: StyleProp<ViewStyle>;
+  header: StyleProp<ViewStyle>;
+  headerPressed: StyleProp<ViewStyle>;
+  label: StyleProp<TextStyle>;
+  content: StyleProp<ViewStyle>;
+};
+
+type MarkdownThinkSectionParts =
+  MarkdownThinkSectionMobilePropsParts<MarkdownThinkSectionStyles, MarkdownPressHandler>;
+
+type MarkdownImageSource = {
+  uri: string;
+  headers?: Record<string, string>;
+};
+
+type MarkdownImageParts = MarkdownImageMobilePropsParts<MarkdownImageSource, StyleProp<ImageStyle>>;
+
+type MarkdownCodeBlockCopyStyles = {
+  codeBlockCopyContainer: StyleProp<ViewStyle>;
+  codeBlockCopyText: StyleProp<TextStyle>;
+  codeBlockCopyButton: StyleProp<ViewStyle>;
+  codeBlockCopyButtonCopied: StyleProp<ViewStyle>;
+  codeBlockCopyButtonPressed: StyleProp<ViewStyle>;
+};
+
+type MarkdownCodeBlockCopyParts =
+  MarkdownCodeBlockCopyMobilePropsParts<MarkdownCodeBlockCopyStyles, MarkdownPressHandler>;
+
 const ThinkSection: React.FC<{
   content: string;
   renderState: MarkdownThinkSectionMobileSurfaceRenderState;
   markdownStyles: any;
   markdownRules: any;
-  styles: any;
+  styles: MarkdownThinkSectionStyles;
   defaultCollapsed?: boolean;
   isCollapsed?: boolean;
-  onToggle?: () => void;
+  onToggle?: MarkdownPressHandler;
 }> = ({
   content,
   renderState,
@@ -68,7 +115,7 @@ const ThinkSection: React.FC<{
     }
     setInternalCollapsed(prev => !prev);
   }, [onToggle]);
-  const thinkSectionParts = createMarkdownThinkSectionMobilePropsParts({
+  const thinkSectionParts: MarkdownThinkSectionParts = createMarkdownThinkSectionMobilePropsParts({
     renderState,
     styles,
     content,
@@ -115,7 +162,7 @@ const MarkdownImage: React.FC<{
   authToken?: string;
   style?: StyleProp<ImageStyle>;
 }> = ({ sourceUrl, alt, assetBaseUrl, authToken, style }) => {
-  const [imageSource, setImageSource] = React.useState<{ uri: string; headers?: Record<string, string> } | null>(null);
+  const [imageSource, setImageSource] = React.useState<MarkdownImageSource | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const objectUrlRef = React.useRef<string | null>(null);
   const assetRef = React.useMemo(() => parseConversationImageAssetUrl(sourceUrl), [sourceUrl]);
@@ -185,7 +232,7 @@ const MarkdownImage: React.FC<{
     };
   }, [assetBaseUrl, assetRef, authToken, sourceUrl]);
 
-  const imageParts = createMarkdownImageMobilePropsParts({
+  const imageParts: MarkdownImageParts = createMarkdownImageMobilePropsParts({
     imageLabel,
     imageSource,
     error,
@@ -211,7 +258,7 @@ function getMarkdownCodeContent(node: any): string {
 
 const MarkdownCodeBlock: React.FC<{
   node: any;
-  styles: any;
+  styles: MarkdownCodeBlockCopyStyles;
   colors: MarkdownContentMobileSurfaceRenderState['colors'];
 }> = ({ node, styles, colors }) => {
   const [copied, setCopied] = React.useState(false);
@@ -244,7 +291,7 @@ const MarkdownCodeBlock: React.FC<{
       // Clipboard failures should not disturb markdown reading.
     }
   }, [codeContent]);
-  const codeBlockCopyParts = createMarkdownCodeBlockCopyMobilePropsParts({
+  const codeBlockCopyParts: MarkdownCodeBlockCopyParts = createMarkdownCodeBlockCopyMobilePropsParts({
     renderState: codeBlockCopyRenderState,
     styles,
     codeContent,
