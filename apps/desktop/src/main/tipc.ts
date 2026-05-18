@@ -3978,9 +3978,10 @@ export const router = {
       })
 
       if (input.sessionId && conversation) {
-        const storedConversation = await conversationService.loadConversation(input.conversationId)
-        const storedMessages = storedConversation?.rawMessages ?? storedConversation?.messages ?? conversation.messages
-        recordSessionConversationFileActivity(input.sessionId, storedMessages)
+        // `loadConversationForDisplay` already returns the stored raw messages
+        // (via `buildDisplayLoadedConversation`/`getStoredRawMessages`), so we
+        // can hydrate file-activity from those without a second disk read.
+        recordSessionConversationFileActivity(input.sessionId, conversation.messages)
       }
 
       return conversation

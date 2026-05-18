@@ -139,7 +139,6 @@ function isCriticalUpdate(update: AgentProgressUpdate, state?: {
 }
 
 export async function emitAgentProgress(update: AgentProgressUpdate): Promise<void> {
-  recordSessionFileActivity(update)
   const displayUpdate = sanitizeAgentProgressUpdateForDisplay(update)
 
   // Backfill snoozed state from the session tracker when callers omit it.
@@ -206,6 +205,11 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       state.runId = incomingRunId
     }
   }
+
+  // Record file-activity roots only after the stopped-session and stale-run
+  // guards above have cleared, so updates that will be discarded cannot
+  // contribute workspace roots to a restarted or reused session.
+  recordSessionFileActivity(update)
 
   // Critical updates bypass the throttle entirely
   if (isCriticalUpdate(displayUpdate, state, { isFirstUpdateForSession })) {

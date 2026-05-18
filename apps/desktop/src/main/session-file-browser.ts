@@ -177,15 +177,18 @@ function resolveWorkspaceRoot(candidatePath: string): string | null {
   }
 
   let current = path.resolve(candidateDir)
-  let highestMarkerRoot: string | null = null
+  let markerRoot: string | null = null
   while (true) {
-    if (hasWorkspaceMarker(current)) highestMarkerRoot = current
+    if (hasWorkspaceMarker(current)) {
+      markerRoot = current
+      break
+    }
     const parent = path.dirname(current)
     if (parent === current) break
     current = parent
   }
 
-  const rootPath = realpathIfPossible(highestMarkerRoot ?? candidateDir)
+  const rootPath = realpathIfPossible(markerRoot ?? candidateDir)
   return BLOCKED_ROOT_PATHS.has(rootPath) ? null : rootPath
 }
 
@@ -287,13 +290,24 @@ function resolvePathWithinRoot(rootPath: string, requestedPath?: string): string
   const resolvedPath = path.isAbsolute(trimmed)
     ? path.resolve(trimmed)
     : path.resolve(normalizedRoot, trimmed)
-  const resolvedParent = realpathIfPossible(path.dirname(resolvedPath))
-  const normalizedResolved = fs.existsSync(resolvedPath) ? realpathIfPossible(resolvedPath) : path.resolve(resolvedPath)
+
+  // Anchor on the realpath of the nearest existing ancestor so symlinks inside
+  // the workspace cannot be used to escape it via a parent-only containment check.
+  let normalizedResolved: string
+  if (fs.existsSync(resolvedPath)) {
+    normalizedResolved = realpathIfPossible(resolvedPath)
+  } else {
+    const existingAncestor = nearestExistingAncestor(resolvedPath)
+    if (!existingAncestor) {
+      throw new Error("That path is outside the selected workspace")
+    }
+    const resolvedAncestor = realpathIfPossible(existingAncestor)
+    const tail = path.relative(existingAncestor, resolvedPath)
+    normalizedResolved = tail ? path.join(resolvedAncestor, tail) : resolvedAncestor
+  }
 
   const withinRoot = normalizedResolved === normalizedRoot
     || normalizedResolved.startsWith(`${normalizedRoot}${path.sep}`)
-    || resolvedParent === normalizedRoot
-    || resolvedParent.startsWith(`${normalizedRoot}${path.sep}`)
   if (!withinRoot) {
     throw new Error("That path is outside the selected workspace")
   }
@@ -406,9 +420,21 @@ export function readTrackedSessionFilePreview(input: {
   }
 
   const extension = path.extname(filePath).toLowerCase()
-  const fileBuffer = fs.readFileSync(filePath)
   const maxTextBytes = 200_000
+  const maxImageBytes = 5 * 1024 * 1024
+
+  const binaryFallback = (): SessionFilePreview => ({
+    path: filePath,
+    relativePath,
+    name: path.basename(filePath),
+    kind: "binary",
+    size: stats.size,
+    modifiedAt: stats.mtimeMs,
+  })
+
   if (IMAGE_MIME_BY_EXTENSION.has(extension)) {
+    if (stats.size > maxImageBytes) return binaryFallback()
+    const fileBuffer = fs.readFileSync(filePath)
     return {
       path: filePath,
       relativePath,
@@ -420,8 +446,20 @@ export function readTrackedSessionFilePreview(input: {
     }
   }
 
-  if (isTextPreviewable(filePath, fileBuffer)) {
-    const previewBuffer = fileBuffer.subarray(0, Math.min(fileBuffer.length, maxTextBytes))
+  // Read only up to maxTextBytes so large logs or generated artifacts cannot
+  // pin the Electron main process while we decide whether to preview them.
+  const bytesToRead = Math.min(stats.size, maxTextBytes)
+  const sampleBuffer = Buffer.alloc(bytesToRead)
+  if (bytesToRead > 0) {
+    const fd = fs.openSync(filePath, "r")
+    try {
+      fs.readSync(fd, sampleBuffer, 0, bytesToRead, 0)
+    } finally {
+      fs.closeSync(fd)
+    }
+  }
+
+  if (isTextPreviewable(filePath, sampleBuffer)) {
     return {
       path: filePath,
       relativePath,
@@ -429,19 +467,12 @@ export function readTrackedSessionFilePreview(input: {
       kind: MARKDOWN_EXTENSIONS.has(extension) ? "markdown" : "text",
       size: stats.size,
       modifiedAt: stats.mtimeMs,
-      content: previewBuffer.toString("utf8"),
-      ...(fileBuffer.length > maxTextBytes ? { truncated: true } : {}),
+      content: sampleBuffer.toString("utf8"),
+      ...(stats.size > maxTextBytes ? { truncated: true } : {}),
     }
   }
 
-  return {
-    path: filePath,
-    relativePath,
-    name: path.basename(filePath),
-    kind: "binary",
-    size: stats.size,
-    modifiedAt: stats.mtimeMs,
-  }
+  return binaryFallback()
 }
 
 export function createTrackedSessionFileEntry(input: {
