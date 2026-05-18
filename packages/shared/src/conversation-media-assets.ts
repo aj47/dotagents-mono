@@ -673,6 +673,29 @@ export interface ChatVideoAttachmentMobilePropsStylesLike<
   errorText: TErrorTextStyle;
 }
 
+export type ChatVideoAttachmentMobileStyleSheetSlotsInput =
+  ChatVideoAttachmentMobileStyleSlotsInput;
+
+export type ChatVideoAttachmentMobileStyleSheetSlots =
+  ChatVideoAttachmentMobilePropsStylesLike<
+    ChatVideoAttachmentMobileStyleSlots['card'],
+    ChatVideoAttachmentMobileStyleSlots['header'],
+    ChatVideoAttachmentMobileStyleSlots['loadButton'],
+    ChatVideoAttachmentMobileStyleSlots['loadButtonPressed'],
+    ChatVideoAttachmentMobileStyleSlots['loadButtonDisabled'],
+    ChatVideoAttachmentMobileStyleSlots['playIconWrapper'],
+    ChatVideoAttachmentMobileStyleSlots['textWrapper'],
+    ChatVideoAttachmentMobileStyleSlots['title'],
+    ChatVideoAttachmentMobileStyleSlots['subtitle'],
+    ChatVideoAttachmentMobileStyleSlots['video'],
+    ChatVideoAttachmentMobileStyleSlots['fallbackLink'],
+    ChatVideoAttachmentMobileStyleSlots['fallbackLinkPressed'],
+    ChatVideoAttachmentMobileStyleSlots['fallbackLinkText'],
+    ChatVideoAttachmentMobileStyleSlots['externalLink'],
+    ChatVideoAttachmentMobileStyleSlots['externalLinkPressed'],
+    ChatVideoAttachmentMobileStyleSlots['errorText']
+  >;
+
 export interface ChatVideoAttachmentMobilePropsPartsInput<
   TStyles extends ChatVideoAttachmentMobilePropsStylesLike = ChatVideoAttachmentMobilePropsStylesLike,
   TPressHandler = unknown,
@@ -927,6 +950,18 @@ export function createChatVideoAttachmentMobileStyleSlots({
       marginTop: spacing[surface.errorText.marginTop],
     },
   };
+}
+
+export function createChatVideoAttachmentMobileStyleSheetSlots({
+  renderState,
+  spacing,
+  radius,
+}: ChatVideoAttachmentMobileStyleSheetSlotsInput): ChatVideoAttachmentMobileStyleSheetSlots {
+  return createChatVideoAttachmentMobileStyleSlots({
+    renderState,
+    spacing,
+    radius,
+  });
 }
 
 export function getVideoAttachmentLoadAccessibilityLabel(displayLabel: string): string {

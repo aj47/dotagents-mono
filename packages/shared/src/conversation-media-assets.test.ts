@@ -16,6 +16,7 @@ import {
   CHAT_VIDEO_ATTACHMENT_PRESENTATION,
   CHAT_VIDEO_ATTACHMENT_SURFACE_PRESENTATION,
   createChatVideoAttachmentMobilePropsParts,
+  createChatVideoAttachmentMobileStyleSheetSlots,
   createChatVideoAttachmentMobileStyleSlots,
   createConversationImageAssetFileService,
   createConversationImageAssetRouteActions,
@@ -294,6 +295,16 @@ describe('conversation video asset utilities', () => {
         lg: 12,
       },
     });
+    expect(createChatVideoAttachmentMobileStyleSheetSlots({
+      renderState: videoAttachmentRenderState,
+      spacing: {
+        xs: 4,
+        sm: 8,
+      },
+      radius: {
+        lg: 12,
+      },
+    })).toEqual(videoAttachmentStyleSlots);
     expect(videoAttachmentStyleSlots).toEqual({
       card: {
         borderWidth: 1,

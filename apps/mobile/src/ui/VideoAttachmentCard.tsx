@@ -7,9 +7,6 @@ import {
   StyleSheet,
   Text,
   View,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { File, Paths } from 'expo-file-system';
@@ -17,13 +14,13 @@ import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import {
   buildConversationVideoAssetHttpUrl,
   createChatVideoAttachmentMobilePropsParts,
-  createChatVideoAttachmentMobileStyleSlots,
+  createChatVideoAttachmentMobileStyleSheetSlots,
   getChatVideoAttachmentMobileRenderState,
   formatVideoAttachmentRequestFailedMessage,
   isRenderableVideoUrl,
   parseConversationVideoAssetUrl,
   type ChatVideoAttachmentMobilePropsParts,
-  type ChatVideoAttachmentMobilePropsStylesLike,
+  type ChatVideoAttachmentMobileStyleSheetSlots,
 } from '@dotagents/shared/session-presentation';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { useTheme } from './ThemeProvider';
@@ -38,25 +35,7 @@ interface VideoAttachmentCardProps {
 
 type VideoAttachmentPressHandler = () => void | Promise<void>;
 
-type VideoAttachmentCardStyles =
-  ChatVideoAttachmentMobilePropsStylesLike<
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<ViewStyle>,
-    StyleProp<TextStyle>
-  >;
+type VideoAttachmentCardStyles = ChatVideoAttachmentMobileStyleSheetSlots;
 
 type VideoAttachmentCardParts =
   ChatVideoAttachmentMobilePropsParts<
@@ -113,8 +92,8 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     [isDark, label, loading, sourceUrl, theme.colors],
   );
   const videoAttachmentCopy = videoAttachmentRenderState.copy;
-  const videoAttachmentStyleSlots = useMemo(
-    () => createChatVideoAttachmentMobileStyleSlots({
+  const videoAttachmentStyleSheetSlots = useMemo(
+    () => createChatVideoAttachmentMobileStyleSheetSlots({
       renderState: videoAttachmentRenderState,
       spacing,
       radius,
@@ -216,56 +195,10 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     void Linking.openURL(resolvedUri);
   }, [resolvedUri]);
 
-  const styles = useMemo<VideoAttachmentCardStyles>(() => StyleSheet.create({
-    card: {
-      ...videoAttachmentStyleSlots.card,
-    },
-    header: {
-      ...videoAttachmentStyleSlots.header,
-    },
-    loadButton: {
-      ...videoAttachmentStyleSlots.loadButton,
-    },
-    loadButtonPressed: {
-      ...videoAttachmentStyleSlots.loadButtonPressed,
-    },
-    loadButtonDisabled: {
-      ...videoAttachmentStyleSlots.loadButtonDisabled,
-    },
-    playIconWrapper: {
-      ...videoAttachmentStyleSlots.playIconWrapper,
-    },
-    textWrapper: {
-      ...videoAttachmentStyleSlots.textWrapper,
-    },
-    title: {
-      ...videoAttachmentStyleSlots.title,
-    },
-    subtitle: {
-      ...videoAttachmentStyleSlots.subtitle,
-    },
-    video: {
-      ...videoAttachmentStyleSlots.video,
-    },
-    fallbackLink: {
-      ...videoAttachmentStyleSlots.fallbackLink,
-    },
-    fallbackLinkPressed: {
-      ...videoAttachmentStyleSlots.fallbackLinkPressed,
-    },
-    fallbackLinkText: {
-      ...videoAttachmentStyleSlots.fallbackLinkText,
-    },
-    externalLink: {
-      ...videoAttachmentStyleSlots.externalLink,
-    },
-    externalLinkPressed: {
-      ...videoAttachmentStyleSlots.externalLinkPressed,
-    },
-    errorText: {
-      ...videoAttachmentStyleSlots.errorText,
-    },
-  }), [videoAttachmentStyleSlots]);
+  const styles = useMemo<VideoAttachmentCardStyles>(
+    () => StyleSheet.create({ ...videoAttachmentStyleSheetSlots }),
+    [videoAttachmentStyleSheetSlots],
+  );
   const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts({
     renderState: videoAttachmentRenderState,
     styles,
