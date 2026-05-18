@@ -99,6 +99,9 @@ test('keeps mobile chat runtime stylesheet in the ui layer', () => {
   assert.match(sessionPresentationSource, /styles: ChatRuntimeMobileMessageRuntimeChromeStyleSlotsFromStyleSource<\s+TStyles,\s+TToneStyleSlot,\s+TToneStyle\s+>/);
   assert.match(sessionPresentationSource, /styles: ChatRuntimeMobileMessageRuntimeSurfaceStyleSlotsFromStyleSource<TStyles>/);
   assert.match(chatRuntimeMobileStylesSource, /const chatRuntimeChrome = useMemo\(\s+\(\) => createChatRuntimeMobileChromeSlotsFromStyleSource\(\{\s+colors: chatRuntimeChromeEnvironment\.colors,\s+platform: chatRuntimeChromeEnvironment\.platform,\s+spinnerSource: chatRuntimeSpinnerSource,\s+styles,\s+safeAreaLayout: mobileSafeAreaLayout,\s+getToneStyle: \(toneStyleSlot: ChatRuntimeConversationSurfaceToneMobileStyleSlot\) => styles\[toneStyleSlot\],\s+\}\),/);
+  assert.match(chatRuntimeMobileStylesSource, /const styleSlots = useMemo<ChatRuntimeMobileStyleSlots>\(\s+\(\) => \(\{\s+chatRuntimeChrome,\s+\}\),\s+\[chatRuntimeChrome\],\s+\);/);
+  assert.match(chatRuntimeMobileStylesSource, /return styleSlots;/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /return \{\s+chatRuntimeChrome,\s+\};/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /styles as ReturnType<typeof createChatRuntimeMobileStyles>/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /const chatRuntimeHeaderChrome = useMemo/);
   assert.doesNotMatch(chatRuntimeMobileStylesSource, /const chatRuntimeChromeEnvironmentProps = useMemo/);

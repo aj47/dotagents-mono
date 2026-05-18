@@ -1224,8 +1224,12 @@ export function useChatRuntimeMobileStyleSlots(): ChatRuntimeMobileStyleSlots {
       styles,
     ],
   );
+  const styleSlots = useMemo<ChatRuntimeMobileStyleSlots>(
+    () => ({
+      chatRuntimeChrome,
+    }),
+    [chatRuntimeChrome],
+  );
 
-  return {
-    chatRuntimeChrome,
-  };
+  return styleSlots;
 }
