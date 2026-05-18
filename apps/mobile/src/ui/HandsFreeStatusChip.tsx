@@ -5,6 +5,7 @@ import {
   createHandsFreeStatusChipMobileStyleSlots,
   getHandsFreeStatusChipMobileRenderState,
   type HandsFreeStatusChipMobilePropsParts,
+  type HandsFreeStatusChipMobileStylesLike,
   type HandsFreePhase,
 } from '@dotagents/shared/session-presentation';
 import { useTheme } from './ThemeProvider';
@@ -16,11 +17,12 @@ type HandsFreeStatusChipProps = {
   subtitle?: string;
 };
 
-type HandsFreeStatusChipStyles = {
-  container: StyleProp<ViewStyle>;
-  label: StyleProp<TextStyle>;
-  subtitle: StyleProp<TextStyle>;
-};
+type HandsFreeStatusChipStyles =
+  HandsFreeStatusChipMobileStylesLike<
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type HandsFreeStatusChipParts =
   HandsFreeStatusChipMobilePropsParts<HandsFreeStatusChipStyles>;

@@ -99,10 +99,14 @@ export interface HandsFreeStatusChipMobileStyleSlots {
   }
 }
 
-export interface HandsFreeStatusChipMobileStylesLike {
-  container: unknown
-  label: unknown
-  subtitle: unknown
+export interface HandsFreeStatusChipMobileStylesLike<
+  TContainerStyle = unknown,
+  TLabelStyle = unknown,
+  TSubtitleStyle = unknown,
+> {
+  container: TContainerStyle
+  label: TLabelStyle
+  subtitle: TSubtitleStyle
 }
 
 export interface HandsFreeStatusChipMobilePropsPartsInput<

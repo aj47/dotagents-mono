@@ -184,17 +184,28 @@ export interface ConnectionStatusIndicatorMobileStyleSlots {
   };
 }
 
-export interface ConnectionStatusIndicatorMobileStylesLike {
-  container: unknown;
-  containerCompact: unknown;
-  dotContainer: unknown;
-  dot: unknown;
-  dotPulsing: unknown;
-  dotPulse: unknown;
-  dotColor: unknown;
-  pulseColor: unknown;
-  text: unknown;
-  textColor: unknown;
+export interface ConnectionStatusIndicatorMobileStylesLike<
+  TContainerStyle = unknown,
+  TContainerCompactStyle = unknown,
+  TDotContainerStyle = unknown,
+  TDotStyle = unknown,
+  TDotPulsingStyle = unknown,
+  TDotPulseStyle = unknown,
+  TDotColorStyle = unknown,
+  TPulseColorStyle = unknown,
+  TTextStyle = unknown,
+  TTextColorStyle = unknown,
+> {
+  container: TContainerStyle;
+  containerCompact: TContainerCompactStyle;
+  dotContainer: TDotContainerStyle;
+  dot: TDotStyle;
+  dotPulsing: TDotPulsingStyle;
+  dotPulse: TDotPulseStyle;
+  dotColor: TDotColorStyle;
+  pulseColor: TPulseColorStyle;
+  text: TTextStyle;
+  textColor: TTextColorStyle;
 }
 
 export interface ConnectionStatusIndicatorMobilePropsPartsInput<

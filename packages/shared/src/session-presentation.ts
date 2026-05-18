@@ -60,6 +60,7 @@ export {
   type ConnectionStatusIndicatorMobilePulseAnimationState,
   type ConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatusIndicatorMobileStyleSlots,
+  type ConnectionStatusIndicatorMobileStylesLike,
 } from "./connection-recovery"
 import { normalizeMarkdownThoughtContent } from "./markdown-render-parts"
 export {
@@ -142,6 +143,7 @@ export {
   type HandsFreeStatusChipMobilePropsParts,
   type HandsFreeStatusChipMobileRenderState,
   type HandsFreeStatusChipMobileStyleSlots,
+  type HandsFreeStatusChipMobileStylesLike,
 } from "./hands-free-controller"
 import {
   extractDataImageMarkdownReferences,

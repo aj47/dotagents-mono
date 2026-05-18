@@ -7,6 +7,7 @@ import {
   getConnectionStatusIndicatorMobileRenderState,
   type ConnectionStatus,
   type ConnectionStatusIndicatorMobilePropsParts,
+  type ConnectionStatusIndicatorMobileStylesLike,
 } from '@dotagents/shared/session-presentation';
 
 export interface ConnectionStatusIndicatorProps {
@@ -15,18 +16,19 @@ export interface ConnectionStatusIndicatorProps {
   compact?: boolean;
 }
 
-type ConnectionStatusIndicatorStyles = {
-  container: StyleProp<ViewStyle>;
-  containerCompact: StyleProp<ViewStyle>;
-  dotContainer: StyleProp<ViewStyle>;
-  dot: StyleProp<ViewStyle>;
-  dotPulsing: StyleProp<ViewStyle>;
-  dotPulse: StyleProp<ViewStyle>;
-  dotColor: StyleProp<ViewStyle>;
-  pulseColor: StyleProp<ViewStyle>;
-  text: StyleProp<TextStyle>;
-  textColor: StyleProp<TextStyle>;
-};
+type ConnectionStatusIndicatorStyles =
+  ConnectionStatusIndicatorMobileStylesLike<
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle>
+  >;
 
 type ConnectionStatusPulseAnimatedStyle = {
   opacity: Animated.Value;
