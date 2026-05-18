@@ -6,6 +6,7 @@ import {
   getChatRuntimeDelegationStatusDesktopClassNames,
   getChatRuntimeCopyState,
   getChatRuntimeDesktopSurfaceState,
+  isChatRuntimeInternalCompletionNudgeContent,
   isChatRuntimeThinkingControlSupported,
   isChatRuntimeVerbosityControlSupported,
 } from "@dotagents/shared/session-presentation"
@@ -79,6 +80,13 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('<DelegationDetailsDialog')
     expect(agentProgressSource).toContain('alwaysOpen')
     expect(agentProgressSource).toContain('defaultShowAll')
+  })
+
+  it("routes internal completion nudge filtering through shared session presentation", () => {
+    expect(agentProgressSource).not.toContain('from "@dotagents/shared/mcp-api"')
+    expect(agentProgressSource).not.toContain("INTERNAL_COMPLETION_NUDGE_TEXT")
+    expect(agentProgressSource).toContain("isChatRuntimeInternalCompletionNudgeContent(entry.content)")
+    expect(isChatRuntimeInternalCompletionNudgeContent("visible user request")).toBe(false)
   })
 
   it("reuses compact delegated info rows for task/update/result/error sections", () => {

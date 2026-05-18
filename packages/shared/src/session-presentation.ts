@@ -3,7 +3,10 @@ import {
   normalizeAgentConversationState,
   type AgentConversationState,
 } from "./conversation-state"
-import { DEFAULT_MCP_MESSAGE_QUEUE_ENABLED } from "./mcp-api"
+import {
+  DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
+  INTERNAL_COMPLETION_NUDGE_TEXT,
+} from "./mcp-api"
 import type { CHAT_PROVIDER_ID } from "./providers"
 export type { AgentConversationState } from "./conversation-state"
 export {
@@ -16423,6 +16426,10 @@ export function resolveChatRuntimeMessageQueueEnabled(
   config?: ChatRuntimeMessageQueueEnabledConfigLike | null,
 ): boolean {
   return config?.messageQueueEnabled ?? config?.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED
+}
+
+export function isChatRuntimeInternalCompletionNudgeContent(content?: string | null): boolean {
+  return typeof content === "string" && content.trim() === INTERNAL_COMPLETION_NUDGE_TEXT
 }
 
 export function formatChatRuntimeModelPickerTitle(providerLabel: string, modelId: string): string {

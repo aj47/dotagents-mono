@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { INTERNAL_COMPLETION_NUDGE_TEXT } from "./mcp-api"
 
 import {
   CHAT_COMPOSER_PRESENTATION,
@@ -515,6 +516,7 @@ import {
   hasChatMessageRuntimeMessagesAfter,
   hasChatMessageRuntimeRequestSessionChanged,
   isLastChatMessageRuntimeConversationContent,
+  isChatRuntimeInternalCompletionNudgeContent,
   isChatMessageRuntimeActiveRequest,
   isChatMessageRuntimeLatestSessionRequest,
   mergeChatComposerRuntimeVoiceText,
@@ -15627,5 +15629,12 @@ describe("session presentation semantics", () => {
     expect(formatChatRuntimeAssistantErrorContent("Lost", "Partial")).toBe(
       "Partial\n\n---\nConnection lost. Partial response shown above.\n\nError: Lost",
     )
+    })
   })
-})
+
+  it("recognizes internal completion nudges as hidden chat runtime content", () => {
+    expect(isChatRuntimeInternalCompletionNudgeContent(INTERNAL_COMPLETION_NUDGE_TEXT)).toBe(true)
+    expect(isChatRuntimeInternalCompletionNudgeContent(` ${INTERNAL_COMPLETION_NUDGE_TEXT} `)).toBe(true)
+    expect(isChatRuntimeInternalCompletionNudgeContent("Continue working on the visible task.")).toBe(false)
+    expect(isChatRuntimeInternalCompletionNudgeContent(null)).toBe(false)
+  })

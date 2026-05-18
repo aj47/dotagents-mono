@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
 import type { Config } from "../../../shared/types"
-import { INTERNAL_COMPLETION_NUDGE_TEXT } from "@dotagents/shared/mcp-api"
 import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
@@ -134,6 +133,7 @@ import {
   getFollowUpInputPresentation,
   getSessionPresentation,
   getSessionStatusDesktopRenderState,
+  isChatRuntimeInternalCompletionNudgeContent,
   normalizeMarkdownThoughtContent,
   resolveChatRuntimeMessageQueueEnabled,
   shouldRenderChatRuntimeActivityStep,
@@ -3509,11 +3509,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       const historyForSession =
         startIndex > 0 ? conversationHistory.slice(startIndex) : conversationHistory
 
-      const isCompletionNudge = (content: string) => content.trim() === INTERNAL_COMPLETION_NUDGE_TEXT
-
       historyForSession
         .forEach((entry, localIndex) => {
-          if (entry.role === "user" && isCompletionNudge(entry.content)) return
+          if (entry.role === "user" && isChatRuntimeInternalCompletionNudgeContent(entry.content)) return
           nextMessages.push({
             role: entry.role,
             content: entry.displayContent ?? entry.content,
