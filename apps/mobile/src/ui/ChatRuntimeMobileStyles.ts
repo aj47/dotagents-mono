@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import {
   Platform,
   StyleSheet,
+  type ImageSourcePropType,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,12 +13,13 @@ import {
   getChatRuntimeMobileChromeStyleRenderState,
   getChatRuntimeMobileSafeAreaLayoutState,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
+  type ChatRuntimeMobileChromeSlotsFromStyleSource,
 } from '@dotagents/shared/session-presentation';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing, type Theme } from './theme';
 
-const darkSpinnerSource = require('../../assets/loading-spinner.gif');
-const lightSpinnerSource = require('../../assets/light-spinner.gif');
+const darkSpinnerSource: ImageSourcePropType = require('../../assets/loading-spinner.gif');
+const lightSpinnerSource: ImageSourcePropType = require('../../assets/light-spinner.gif');
 
 export type ChatRuntimeMobileChromeEnvironment = {
   colors: Theme['colors'];
@@ -844,7 +846,22 @@ export function createChatRuntimeMobileStyles(theme: Theme) {
   });
 }
 
-export function useChatRuntimeMobileStyleSlots() {
+export type ChatRuntimeMobileStyles = ReturnType<typeof createChatRuntimeMobileStyles>;
+
+export type ChatRuntimeMobileChromeSlots = ChatRuntimeMobileChromeSlotsFromStyleSource<
+  ChatRuntimeMobileStyles,
+  ChatRuntimeConversationSurfaceToneMobileStyleSlot,
+  ChatRuntimeMobileStyles[ChatRuntimeConversationSurfaceToneMobileStyleSlot],
+  ChatRuntimeMobileChromeEnvironment['colors'],
+  ChatRuntimeMobileChromeEnvironment['platform'],
+  ImageSourcePropType
+>;
+
+export type ChatRuntimeMobileStyleSlots = {
+  chatRuntimeChrome: ChatRuntimeMobileChromeSlots;
+};
+
+export function useChatRuntimeMobileStyleSlots(): ChatRuntimeMobileStyleSlots {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const bottomInset = insets.bottom;
