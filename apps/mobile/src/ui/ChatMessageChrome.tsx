@@ -375,8 +375,10 @@ import {
   type ChatRuntimeRetryStatusMobilePropsParts,
   type ChatRuntimeRetryStatusMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCallDetailMobilePropsParts,
+  type ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCallDetailMobileStyleSlots as SharedChatMessageToolExecutionCallDetailStyleSlots,
   type ChatRuntimeToolExecutionCallListMobilePropsParts,
+  type ChatRuntimeToolExecutionCallListMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCallSectionMobilePropsParts,
   type ChatRuntimeToolExecutionCallSectionMobilePropsPartsInput,
   type ChatRuntimeToolExecutionCallSectionMobileStyleSlots as SharedChatMessageToolExecutionCallSectionStyleSlots,
@@ -424,8 +426,10 @@ import {
   type ChatRuntimeToolExecutionResultBadgeMobilePropsPartsInput,
   type ChatRuntimeToolExecutionResultBadgeMobileStyleSlots as SharedChatMessageToolExecutionResultBadgeStyleSlots,
   type ChatRuntimeToolExecutionResultHeaderMobilePropsParts,
+  type ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput,
   type ChatRuntimeToolExecutionResultHeaderMobileStyleSlots as SharedChatMessageToolExecutionResultHeaderStyleSlots,
   type ChatRuntimeToolExecutionResultSectionMobilePropsParts,
+  type ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput,
   type ChatRuntimeToolExecutionResultSectionMobileStyleSlots as SharedChatMessageToolExecutionResultSectionStyleSlots,
   type ChatRuntimeToolExecutionStackPanelMobilePropsParts,
   type ChatRuntimeToolExecutionStackPanelMobileStyleSlots as SharedChatMessageToolExecutionStackStyleSlots,
@@ -3067,22 +3071,22 @@ type ChatMessageToolExecutionResultHeaderStyles =
     ChatMessageToolExecutionCopyButtonStyles
   >;
 
-type ChatMessageToolExecutionResultHeaderProps = {
-  payloadRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;
-  resultBadge: ToolExecutionDetailMobileHeaderRenderState['resultBadge'];
-  characterCountLabel: string;
-  copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;
-  onCopyPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolExecutionResultHeaderStyles;
-};
+type ChatMessageToolExecutionResultHeaderProps =
+  ChatRuntimeToolExecutionResultHeaderMobilePropsPartsInput<
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionResultHeaderStyles
+  >;
 
 type ChatMessageToolExecutionResultHeaderParts =
   ChatRuntimeToolExecutionResultHeaderMobilePropsParts<
-    ChatMessageToolExecutionResultHeaderProps['payloadRenderState'],
-    ChatMessageToolExecutionResultHeaderProps['resultBadge'],
-    ChatMessageToolExecutionResultHeaderProps['copyButtonRenderState'],
-    ChatMessageToolExecutionResultHeaderProps['onCopyPress'],
-    ChatMessageToolExecutionResultHeaderProps['styles']
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionResultHeaderStyles
   >;
 
 type ChatMessageToolExecutionResultHeaderContentProps =
@@ -3231,33 +3235,28 @@ type ChatMessageToolExecutionResultSectionStyles =
     ChatMessageToolExecutionErrorBlockStyles
   >;
 
-type ChatMessageToolExecutionResultSectionProps = {
-  payloadRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;
-  resultBadge: ToolExecutionDetailMobileHeaderRenderState['resultBadge'];
-  characterCountLabel: string;
-  resultCompactText?: string | null;
-  resultContent: string;
-  isExpanded: boolean;
-  previewNumberOfLines: number;
-  copyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;
-  onCopyPress?: (event: GestureResponderEvent) => void;
-  errorRenderState: ToolExecutionDetailMobileSectionHeaderRenderState;
-  error?: string | null;
-  errorCopyButtonRenderState: ToolExecutionDetailMobileCopyButtonRenderState;
-  onErrorCopyPress?: (event: GestureResponderEvent) => void;
-  styles: ChatMessageToolExecutionResultSectionStyles;
-};
+type ChatMessageToolExecutionResultSectionProps =
+  ChatRuntimeToolExecutionResultSectionMobilePropsPartsInput<
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionResultSectionStyles
+  >;
 
 type ChatMessageToolExecutionResultSectionParts =
   ChatRuntimeToolExecutionResultSectionMobilePropsParts<
-    ChatMessageToolExecutionResultSectionProps['payloadRenderState'],
-    ChatMessageToolExecutionResultSectionProps['resultBadge'],
-    ChatMessageToolExecutionResultSectionProps['copyButtonRenderState'],
-    ChatMessageToolExecutionResultSectionProps['onCopyPress'],
-    ChatMessageToolExecutionResultSectionProps['errorRenderState'],
-    ChatMessageToolExecutionResultSectionProps['errorCopyButtonRenderState'],
-    ChatMessageToolExecutionResultSectionProps['onErrorCopyPress'],
-    ChatMessageToolExecutionResultSectionProps['styles']
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileHeaderRenderState['resultBadge'],
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ToolExecutionDetailMobileSectionHeaderRenderState,
+    ToolExecutionDetailMobileCopyButtonRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionResultSectionStyles
   >;
 
 type ChatMessageToolExecutionResultSectionContentProps =
@@ -3292,24 +3291,24 @@ type ChatMessageToolExecutionCallDetailStyles =
     ChatMessageToolExecutionPendingResultStyles
   >;
 
-type ChatMessageToolExecutionCallDetailProps = {
-  renderState: ToolExecutionDetailMobileHeaderRenderState;
-  toolName: string;
-  onHeaderPress?: (event: GestureResponderEvent) => void;
-  input?: ChatMessageToolExecutionCallDetailInput | null;
-  result?: ChatMessageToolExecutionCallDetailResult | null;
-  pendingResult?: ChatMessageToolExecutionCallDetailPendingResult | null;
-  styles: ChatMessageToolExecutionCallDetailStyles;
-};
-
-type ChatMessageToolExecutionCallDetailParts =
-  ChatRuntimeToolExecutionCallDetailMobilePropsParts<
-    ChatMessageToolExecutionCallDetailProps['renderState'],
-    ChatMessageToolExecutionCallDetailProps['onHeaderPress'],
+type ChatMessageToolExecutionCallDetailProps =
+  ChatRuntimeToolExecutionCallDetailMobilePropsPartsInput<
+    ToolExecutionDetailMobileHeaderRenderState,
+    (event: GestureResponderEvent) => void,
     ChatMessageToolExecutionCallDetailInput,
     ChatMessageToolExecutionCallDetailResult,
     ChatMessageToolExecutionCallDetailPendingResult,
-    ChatMessageToolExecutionCallDetailProps['styles']
+    ChatMessageToolExecutionCallDetailStyles
+  >;
+
+type ChatMessageToolExecutionCallDetailParts =
+  ChatRuntimeToolExecutionCallDetailMobilePropsParts<
+    ToolExecutionDetailMobileHeaderRenderState,
+    (event: GestureResponderEvent) => void,
+    ChatMessageToolExecutionCallDetailInput,
+    ChatMessageToolExecutionCallDetailResult,
+    ChatMessageToolExecutionCallDetailPendingResult,
+    ChatMessageToolExecutionCallDetailStyles
   >;
 
 type ChatMessageToolExecutionCallDetailContentProps =
@@ -3326,10 +3325,11 @@ type ChatMessageToolExecutionCallDetailResultStateProps = {
 
 type ChatMessageToolExecutionCallListRow = ChatRuntimeConversationToolExecutionDetailMobileRowState;
 
-type ChatMessageToolExecutionCallListProps = {
-  rows: readonly ChatMessageToolExecutionCallListRow[];
-  styles: ChatMessageToolExecutionCallDetailStyles;
-};
+type ChatMessageToolExecutionCallListProps =
+  ChatRuntimeToolExecutionCallListMobilePropsPartsInput<
+    ChatMessageToolExecutionCallListRow,
+    ChatMessageToolExecutionCallDetailStyles
+  >;
 
 type ChatMessageToolExecutionCallListParts =
   ChatRuntimeToolExecutionCallListMobilePropsParts<
