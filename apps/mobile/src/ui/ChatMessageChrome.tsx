@@ -2583,11 +2583,29 @@ type ChatMessageDelegationCardParts =
     ChatMessageDelegationCardStyles
   >;
 
-type ChatMessageDelegationContentProps =
-  ChatMessageDelegationCardParts['card']['content'];
+type ChatMessageDelegationContentProps = {
+  header: {
+    props: ChatMessageDelegationHeaderProps;
+  };
+  subtitle: ChatMessageDelegationSubtitleSlot;
+  meta: {
+    props: ChatMessageDelegationMetaRowProps;
+  };
+  conversationPreview: ChatMessageDelegationConversationPreviewSlot;
+  toolPreview: ChatMessageDelegationToolPreviewSlot;
+};
 
-type ChatMessageDelegationHeaderProps =
-  ChatMessageDelegationCardParts['card']['content']['header']['props'];
+type ChatMessageDelegationHeaderProps = {
+  container: {
+    props: {
+      style: ChatMessageDelegationCardStyles['header'];
+    };
+  };
+  title: ChatMessageDelegationTitlePart;
+  statusBadge: ChatMessageDelegationStatusBadgePart;
+  statusText: ChatMessageDelegationStatusTextPart;
+  liveText: ChatMessageDelegationLiveTextPart;
+};
 
 type ChatMessageDelegationTitlePart = {
   props: {

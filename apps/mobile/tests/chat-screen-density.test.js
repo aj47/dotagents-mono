@@ -1400,6 +1400,11 @@ test('renders delegated agent progress as compact desktop-style mobile chrome', 
   assert.match(chatMessageChromeSource, /type ChatMessageDelegationCardStyles =\s+SharedChatMessageDelegationCardStyleSlots<\s+StyleProp<ViewStyle>,\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<ViewStyle>,/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationCardStyles = \{\s+card: StyleProp<ViewStyle>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationCardParts = ReturnType<typeof createChatRuntimeDelegationCardMobilePropsParts/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationContentProps = \{\s+header: \{\s+props: ChatMessageDelegationHeaderProps;\s+\};[\s\S]*?conversationPreview: ChatMessageDelegationConversationPreviewSlot;\s+toolPreview: ChatMessageDelegationToolPreviewSlot;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageDelegationHeaderProps = \{\s+container: \{\s+props: \{\s+style: ChatMessageDelegationCardStyles\['header'\];\s+\};\s+\};[\s\S]*?liveText: ChatMessageDelegationLiveTextPart;\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationContentProps =\s+ChatMessageDelegationCardParts\['card'\]\['content'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageDelegationHeaderProps =\s+ChatMessageDelegationCardParts\['card'\]\['content'\]\['header'\]\['props'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageDelegationCardParts\['/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeDelegationCardMobilePropsParts/);
   assert.match(delegationCardComponentSource, /const delegationCardParts: ChatMessageDelegationCardParts =\s+createChatRuntimeDelegationCardMobilePropsParts\(\{\s+surface,\s+agentName,\s+presentation,\s+accessibilityLabel,\s+messageCountLabel,\s+statusStyles,\s+conversationPreview,\s+toolPreview,\s+styles,\s+\}\);/);
   assert.match(delegationCardComponentSource, /<View\s+\{\.\.\.delegationCardParts\.card\.props\}/);
