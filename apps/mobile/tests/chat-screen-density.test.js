@@ -5226,6 +5226,9 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   );
   assert.match(chatMessageChromeSource, /export function ChatMessageHistoryBanner/);
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageHistoryBannerMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageHistoryBannerMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageHistoryBannerParts =\s+ChatRuntimeMessageHistoryBannerMobilePropsParts<[\s\S]*?ChatRuntimeMessageHistoryBannerMobileRenderState,[\s\S]*?GestureResponderEvent[\s\S]*?ChatMessageHistoryBannerStyles/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageHistoryBanner(Text|Icon|LoadButton|Container)Part = \{/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageHistoryBannerMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const historyBannerParts = createChatRuntimeMessageHistoryBannerMobilePropsParts\(\{\s+renderState,\s+onLoadEarlier,\s+styles,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!historyBannerParts\.container\.shouldRender\) return null;/);

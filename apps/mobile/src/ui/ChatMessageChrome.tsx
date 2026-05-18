@@ -219,6 +219,7 @@ import {
   type ChatRuntimeKillSwitchMobileRenderState,
   type ChatRuntimeKillSwitchResultLike,
   type ChatRuntimeMessageHistoryBannerMobileRenderState,
+  type ChatRuntimeMessageHistoryBannerMobilePropsParts,
   type ChatComposerRuntimeDockMobileRenderStateInput,
   type ChatComposerRuntimeDockMobilePropsInput,
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
@@ -3080,56 +3081,40 @@ type ChatMessageHistoryBannerProps = {
   styles: ChatMessageHistoryBannerStyles;
 };
 
-type ChatMessageHistoryBannerTextPart = {
-  text: string;
-  props: ComponentProps<typeof Text>;
-};
+type ChatMessageHistoryBannerParts =
+  ChatRuntimeMessageHistoryBannerMobilePropsParts<
+    ChatRuntimeMessageHistoryBannerMobileRenderState,
+    ((event: GestureResponderEvent) => void) | undefined,
+    ChatMessageHistoryBannerStyles
+  >;
 
 type ChatMessageHistoryBannerTextProps = {
-  part: ChatMessageHistoryBannerTextPart;
-};
-
-type ChatMessageHistoryBannerIconPart = {
-  props: ComponentProps<typeof Ionicons>;
+  part:
+    | ChatMessageHistoryBannerParts['container']['content']['summary']
+    | ChatMessageHistoryBannerParts['container']['content']['loadButton']['content']['label'];
 };
 
 type ChatMessageHistoryBannerIconProps = {
-  icon: ChatMessageHistoryBannerIconPart;
-};
-
-type ChatMessageHistoryBannerLoadButtonPart = {
-  props: ComponentProps<typeof Pressable>;
-  content: {
-    icon: ChatMessageHistoryBannerIconPart;
-    label: ChatMessageHistoryBannerTextPart;
-  };
-};
-
-type ChatMessageHistoryBannerContainerPart = {
-  props: ComponentProps<typeof View>;
-  content: {
-    summary: ChatMessageHistoryBannerTextPart;
-    loadButton: ChatMessageHistoryBannerLoadButtonPart;
-  };
+  icon: ChatMessageHistoryBannerParts['container']['content']['loadButton']['content']['icon'];
 };
 
 type ChatMessageHistoryBannerContainerProps = {
-  container: ChatMessageHistoryBannerContainerPart;
+  container: ChatMessageHistoryBannerParts['container'];
 };
 
 type ChatMessageHistoryBannerContainerContentProps =
-  ChatMessageHistoryBannerContainerPart['content'];
+  ChatMessageHistoryBannerParts['container']['content'];
 
 type ChatMessageHistoryBannerSummaryProps = {
-  summary: ChatMessageHistoryBannerTextPart;
+  summary: ChatMessageHistoryBannerParts['container']['content']['summary'];
 };
 
 type ChatMessageHistoryBannerLoadButtonProps = {
-  button: ChatMessageHistoryBannerLoadButtonPart;
+  button: ChatMessageHistoryBannerParts['container']['content']['loadButton'];
 };
 
 type ChatMessageHistoryBannerLoadButtonContentProps =
-  ChatMessageHistoryBannerLoadButtonPart['content'];
+  ChatMessageHistoryBannerParts['container']['content']['loadButton']['content'];
 
 type ChatMessageConversationFrameProps = {
   children: ReactNode;
