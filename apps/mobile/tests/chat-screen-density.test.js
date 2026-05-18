@@ -2470,7 +2470,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeSurfaceParts<[\s\S]*?> =\s+ChatRuntimeConversationSurfaceMobilePropsParts<[\s\S]*?ChatMessageRuntimeSurfaceProps<TPrompt, TTask>\['frame'\]/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageRuntimeSurfaceParts[\s\S]*?ReturnType<typeof createChatRuntimeConversationSurfaceMobilePropsParts/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConversationSurfaceMobilePropsPartsInput</);
-  assert.match(chatMessageChromeSource, /const surfaceParts: ChatMessageRuntimeSurfaceParts<TPrompt, TTask> =\s+createChatRuntimeConversationSurfaceMobilePropsParts\(\{\s+frame,\s+dock,\s+overlays,\s+threadList,\s+viewport,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeSurface<[\s\S]*?>\(\s+props: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>,\s+\)/);
+  assert.match(chatMessageChromeSource, /const surfaceParts: ChatMessageRuntimeSurfaceParts<TPrompt, TTask> =\s+createChatRuntimeConversationSurfaceMobilePropsParts\(props\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageConversationFrame\s+\{\.\.\.surfaceParts\.frame\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRuntimeDock\s+\{\.\.\.surfaceParts\.dock\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatMessageRuntimeOverlays\s+\{\.\.\.surfaceParts\.overlays\.props\}/);
@@ -2492,7 +2493,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationFrameMobilePropsParts/);
   const conversationFrameSource =
     chatMessageChromeSource.match(/export function ChatMessageConversationFrame[\s\S]*?export function ChatMessageConversationOverlays/)?.[0] ?? '';
-  assert.match(conversationFrameSource, /const frameParts: ChatMessageConversationFrameParts =\s+createChatRuntimeConversationFrameMobilePropsParts\(\{\s+children,\s+dock,\s+overlays,\s+keyboardAvoidingStyle,\s+keyboardAvoidingBehavior,\s+keyboardVerticalOffset,\s+rootStyle,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageConversationFrame\(\s+props: ChatMessageConversationFrameProps,\s+\)/);
+  assert.match(conversationFrameSource, /const frameParts: ChatMessageConversationFrameParts =\s+createChatRuntimeConversationFrameMobilePropsParts\(props\);/);
   assert.match(conversationFrameSource, /<KeyboardAvoidingView\s+\{\.\.\.frameParts\.keyboardAvoidingView\.props\}/);
   assert.match(sessionPresentationSource, /keyboardAvoidingView: \{\s+props: \{\s+style: keyboardAvoidingStyle,/);
   assert.match(sessionPresentationSource, /content: \{\s+root: \{\s+props: \{\s+style: rootStyle,/);
@@ -2529,7 +2531,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationOverlaysMobilePropsParts/);
   const conversationOverlaysSource =
     chatMessageChromeSource.match(/export function ChatMessageConversationOverlays[\s\S]*?export function ChatMessageRuntimeOverlays/)?.[0] ?? '';
-  assert.match(conversationOverlaysSource, /const overlayParts: ChatMessageConversationOverlaysParts =\s+createChatRuntimeConversationOverlaysMobilePropsParts\(\{\s+agentSelector,\s+promptEditor,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageConversationOverlays\(\s+props: ChatMessageConversationOverlaysProps,\s+\)/);
+  assert.match(conversationOverlaysSource, /const overlayParts: ChatMessageConversationOverlaysParts =\s+createChatRuntimeConversationOverlaysMobilePropsParts\(props\);/);
   assert.match(sessionPresentationSource, /content: \{\s+agentSelector: \{\s+children: agentSelector,/);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationOverlaysContentProps = \{\s+agentSelector: \{\s+children: ReactNode \| undefined;\s+\};\s+promptEditor: \{\s+children: ReactNode \| undefined;\s+\};\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationOverlaysContentProps =\s+ChatMessageConversationOverlaysParts\['content'\];/);
@@ -2586,7 +2589,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationScrollViewportMobilePropsParts/);
   const scrollViewportSource =
     chatMessageChromeSource.match(/export function ChatMessageScrollViewport[\s\S]*?export function ChatMessageConversationViewportContent/)?.[0] ?? '';
-  assert.match(scrollViewportSource, /const scrollViewportParts: ChatMessageScrollViewportParts =\s+createChatRuntimeConversationScrollViewportMobilePropsParts\(\{\s+children,\s+scrollRef,\s+style,\s+contentContainerStyle,\s+keyboardShouldPersistTaps,\s+contentInsetAdjustmentBehavior,\s+onScroll,\s+onScrollBeginDrag,\s+onScrollEndDrag,\s+scrollEventThrottle,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageScrollViewport\(\s+props: ChatMessageScrollViewportProps,\s+\)/);
+  assert.match(scrollViewportSource, /const scrollViewportParts: ChatMessageScrollViewportParts =\s+createChatRuntimeConversationScrollViewportMobilePropsParts\(props\);/);
   assert.match(scrollViewportSource, /<ScrollView\s+\{\.\.\.scrollViewportParts\.scrollView\.props\}/);
   assert.match(sessionPresentationSource, /scrollView: \{\s+props: \{\s+ref: scrollRef,/);
   assert.match(sessionPresentationSource, /content: \{\s+children,\s+\},\s+\},\s+\}/);
@@ -2670,7 +2674,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
     chatMessageChromeSource.match(/export function ChatMessageConversationViewportContent[\s\S]*?export function ChatMessageConversationViewportContentPart/)?.[0] ?? '';
   const conversationViewportContentPartSource =
     chatMessageChromeSource.match(/export function ChatMessageConversationViewportContentPart[\s\S]*?export function ChatMessageConversationViewport/)?.[0] ?? '';
-  assert.match(conversationViewportContentSource, /const viewportContentParts: ChatMessageConversationViewportContentParts =\s+createChatRuntimeConversationViewportContentMobilePropsParts\(\{\s+loadingState,\s+homeState,\s+historyBanner,\s+stepSummary,\s+children,\s+debugPanels,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageConversationViewportContent\(\s+props: ChatMessageConversationViewportContentProps,\s+\)/);
+  assert.match(conversationViewportContentSource, /const viewportContentParts: ChatMessageConversationViewportContentParts =\s+createChatRuntimeConversationViewportContentMobilePropsParts\(props\);/);
   assert.match(sessionPresentationSource, /content: \{\s+loadingState: \{\s+children: loadingState,/);
   assert.doesNotMatch(chatMessageChromeSource, /const viewportContent = viewportContentParts\.content;/);
   assert.match(conversationViewportContentSource, /<ChatMessageConversationViewportContentPart\s+\{\.\.\.viewportContentParts\.content\}/);

@@ -13773,25 +13773,11 @@ export function ChatMessageToolExecutionCallListContent({
   );
 }
 
-export function ChatMessageConversationFrame({
-  children,
-  dock,
-  overlays,
-  keyboardAvoidingStyle,
-  keyboardAvoidingBehavior,
-  keyboardVerticalOffset,
-  rootStyle,
-}: ChatMessageConversationFrameProps) {
+export function ChatMessageConversationFrame(
+  props: ChatMessageConversationFrameProps,
+) {
   const frameParts: ChatMessageConversationFrameParts =
-    createChatRuntimeConversationFrameMobilePropsParts({
-      children,
-      dock,
-      overlays,
-      keyboardAvoidingStyle,
-      keyboardAvoidingBehavior,
-      keyboardVerticalOffset,
-      rootStyle,
-    });
+    createChatRuntimeConversationFrameMobilePropsParts(props);
 
   return (
     <KeyboardAvoidingView
@@ -13841,15 +13827,11 @@ export function ChatMessageConversationFrameRootContent({
   );
 }
 
-export function ChatMessageConversationOverlays({
-  agentSelector,
-  promptEditor,
-}: ChatMessageConversationOverlaysProps) {
+export function ChatMessageConversationOverlays(
+  props: ChatMessageConversationOverlaysProps,
+) {
   const overlayParts: ChatMessageConversationOverlaysParts =
-    createChatRuntimeConversationOverlaysMobilePropsParts({
-      agentSelector,
-      promptEditor,
-    });
+    createChatRuntimeConversationOverlaysMobilePropsParts(props);
 
   return (
     <ChatMessageConversationOverlaysContent
@@ -13884,31 +13866,11 @@ export function ChatMessageRuntimeOverlays({
   );
 }
 
-export function ChatMessageScrollViewport({
-  children,
-  scrollRef,
-  style,
-  contentContainerStyle,
-  keyboardShouldPersistTaps,
-  contentInsetAdjustmentBehavior,
-  onScroll,
-  onScrollBeginDrag,
-  onScrollEndDrag,
-  scrollEventThrottle,
-}: ChatMessageScrollViewportProps) {
+export function ChatMessageScrollViewport(
+  props: ChatMessageScrollViewportProps,
+) {
   const scrollViewportParts: ChatMessageScrollViewportParts =
-    createChatRuntimeConversationScrollViewportMobilePropsParts({
-      children,
-      scrollRef,
-      style,
-      contentContainerStyle,
-      keyboardShouldPersistTaps,
-      contentInsetAdjustmentBehavior,
-      onScroll,
-      onScrollBeginDrag,
-      onScrollEndDrag,
-      scrollEventThrottle,
-    });
+    createChatRuntimeConversationScrollViewportMobilePropsParts(props);
 
   return (
     <ScrollView
@@ -13931,23 +13893,11 @@ export function ChatMessageScrollViewportContent({
   );
 }
 
-export function ChatMessageConversationViewportContent({
-  loadingState,
-  homeState,
-  historyBanner,
-  stepSummary,
-  children,
-  debugPanels,
-}: ChatMessageConversationViewportContentProps) {
+export function ChatMessageConversationViewportContent(
+  props: ChatMessageConversationViewportContentProps,
+) {
   const viewportContentParts: ChatMessageConversationViewportContentParts =
-    createChatRuntimeConversationViewportContentMobilePropsParts({
-      loadingState,
-      homeState,
-      historyBanner,
-      stepSummary,
-      children,
-      debugPanels,
-    });
+    createChatRuntimeConversationViewportContentMobilePropsParts(props);
 
   return (
     <ChatMessageConversationViewportContentPart
@@ -14061,23 +14011,11 @@ export function ChatMessageRuntimeViewport<
 export function ChatMessageRuntimeSurface<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
->({
-  frame,
-  dock,
-  overlays,
-  threadList,
-  viewport,
-  styles,
-}: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>) {
+>(
+  props: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>,
+) {
   const surfaceParts: ChatMessageRuntimeSurfaceParts<TPrompt, TTask> =
-    createChatRuntimeConversationSurfaceMobilePropsParts({
-      frame,
-      dock,
-      overlays,
-      threadList,
-      viewport,
-      styles,
-    });
+    createChatRuntimeConversationSurfaceMobilePropsParts(props);
 
   return (
     <ChatMessageConversationFrame
