@@ -7245,7 +7245,8 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupBoundaryStyles = \{\s+toggle: ChatMessageToolActivityGroupToggleStyles;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageToolActivityGroupBoundaryParts = ReturnType<typeof createChatRuntimeToolActivityGroupBoundaryMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupBoundaryMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const boundaryParts: ChatMessageToolActivityGroupBoundaryParts =\s+createChatRuntimeToolActivityGroupBoundaryMobilePropsParts\(\{\s+renderState,\s+kind,\s+onPress,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageToolActivityGroupBoundary\(\s+props: ChatMessageToolActivityGroupBoundaryProps,\s+\)/);
+  assert.match(chatMessageChromeSource, /const boundaryParts: ChatMessageToolActivityGroupBoundaryParts =\s+createChatRuntimeToolActivityGroupBoundaryMobilePropsParts\(props\);/);
   assert.match(chatMessageChromeSource, /if \(boundaryParts\.footer\.shouldRender\) \{[\s\S]*?<ChatMessageToolActivityGroupFooter\s+\{\.\.\.boundaryParts\.footer\.props\}/);
   assert.match(chatMessageChromeSource, /if \(!boundaryParts\.toggle\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolActivityGroupToggle\s+\{\.\.\.boundaryParts\.toggle\.props\}/);
@@ -7303,8 +7304,10 @@ test('uses tool activities wording consistently for grouped tool activity labels
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolActivityGroupFooterParts\['/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupToggleMobilePropsParts/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolActivityGroupFooterMobilePropsParts/);
-  assert.match(toolActivityGroupToggleComponentSource, /const toggleParts: ChatMessageToolActivityGroupToggleParts =\s+createChatRuntimeToolActivityGroupToggleMobilePropsParts\(\{\s+renderState,\s+headerKind,\s+onPress,\s+styles,\s+\}\);/);
-  assert.match(toolActivityGroupFooterComponentSource, /const footerParts: ChatMessageToolActivityGroupFooterParts =\s+createChatRuntimeToolActivityGroupFooterMobilePropsParts\(\{\s+renderState,\s+onPress,\s+styles,\s+\}\);/);
+  assert.match(toolActivityGroupToggleComponentSource, /export function ChatMessageToolActivityGroupToggle\(\s+props: ChatMessageToolActivityGroupToggleProps,\s+\)/);
+  assert.match(toolActivityGroupToggleComponentSource, /const toggleParts: ChatMessageToolActivityGroupToggleParts =\s+createChatRuntimeToolActivityGroupToggleMobilePropsParts\(props\);/);
+  assert.match(toolActivityGroupFooterComponentSource, /export function ChatMessageToolActivityGroupFooter\(\s+props: ChatMessageToolActivityGroupFooterProps,\s+\)/);
+  assert.match(toolActivityGroupFooterComponentSource, /const footerParts: ChatMessageToolActivityGroupFooterParts =\s+createChatRuntimeToolActivityGroupFooterMobilePropsParts\(props\);/);
   assert.match(sessionPresentationSource, /const headerState = headerKind === "collapsed"[\s\S]*?\? renderState\.collapsedHeader[\s\S]*?: renderState\.expandedHeader/);
   assert.doesNotMatch(toolActivityGroupToggleComponentSource, /const \{ headerState, summary \}/);
   assert.doesNotMatch(chatMessageChromeSource, /const headerState = headerKind === 'collapsed'/);

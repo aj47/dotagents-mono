@@ -12252,19 +12252,11 @@ export function ChatMessageDelegationCard(props: ChatMessageDelegationCardProps)
   );
 }
 
-export function ChatMessageToolActivityGroupToggle({
-  renderState,
-  headerKind,
-  onPress,
-  styles,
-}: ChatMessageToolActivityGroupToggleProps) {
+export function ChatMessageToolActivityGroupToggle(
+  props: ChatMessageToolActivityGroupToggleProps,
+) {
   const toggleParts: ChatMessageToolActivityGroupToggleParts =
-    createChatRuntimeToolActivityGroupToggleMobilePropsParts({
-      renderState,
-      headerKind,
-      onPress,
-      styles,
-    });
+    createChatRuntimeToolActivityGroupToggleMobilePropsParts(props);
 
   return (
     <Pressable
@@ -12358,17 +12350,11 @@ export function ChatMessageToolActivityGroupPreviewLine({
   );
 }
 
-export function ChatMessageToolActivityGroupFooter({
-  renderState,
-  onPress,
-  styles,
-}: ChatMessageToolActivityGroupFooterProps) {
+export function ChatMessageToolActivityGroupFooter(
+  props: ChatMessageToolActivityGroupFooterProps,
+) {
   const footerParts: ChatMessageToolActivityGroupFooterParts =
-    createChatRuntimeToolActivityGroupFooterMobilePropsParts({
-      renderState,
-      onPress,
-      styles,
-    });
+    createChatRuntimeToolActivityGroupFooterMobilePropsParts(props);
 
   return (
     <Pressable
@@ -12408,19 +12394,11 @@ export function ChatMessageToolActivityGroupFooterLabel({
   );
 }
 
-export function ChatMessageToolActivityGroupBoundary({
-  renderState,
-  kind,
-  onPress,
-  styles,
-}: ChatMessageToolActivityGroupBoundaryProps) {
+export function ChatMessageToolActivityGroupBoundary(
+  props: ChatMessageToolActivityGroupBoundaryProps,
+) {
   const boundaryParts: ChatMessageToolActivityGroupBoundaryParts =
-    createChatRuntimeToolActivityGroupBoundaryMobilePropsParts({
-      renderState,
-      kind,
-      onPress,
-      styles,
-    });
+    createChatRuntimeToolActivityGroupBoundaryMobilePropsParts(props);
 
   if (boundaryParts.footer.shouldRender) {
     return (
