@@ -7101,17 +7101,28 @@ export function useChatMessageRuntimeRemoteSpeechSettingsState(
     setRemoteTtsRate(settings.rate);
   }, []);
 
-  return {
-    remoteTtsProvider,
-    setRemoteTtsProvider,
-    remoteTtsVoice,
-    setRemoteTtsVoice,
-    remoteTtsModel,
-    setRemoteTtsModel,
-    remoteTtsRate,
-    setRemoteTtsRate,
-    applyRemoteSpeechSettings,
-  };
+  const remoteSpeechSettingsState = useMemo<ChatMessageRuntimeRemoteSpeechSettingsHookState>(
+    () => ({
+      remoteTtsProvider,
+      setRemoteTtsProvider,
+      remoteTtsVoice,
+      setRemoteTtsVoice,
+      remoteTtsModel,
+      setRemoteTtsModel,
+      remoteTtsRate,
+      setRemoteTtsRate,
+      applyRemoteSpeechSettings,
+    }),
+    [
+      applyRemoteSpeechSettings,
+      remoteTtsModel,
+      remoteTtsProvider,
+      remoteTtsRate,
+      remoteTtsVoice,
+    ],
+  );
+
+  return remoteSpeechSettingsState;
 }
 
 type ChatMessageRuntimeThreadExpansionMessage =
@@ -8207,12 +8218,17 @@ export function useChatMessageRuntimeMessageState<TMessage>(): ChatMessageRuntim
     messagesRef.current = messages;
   }, [messages]);
 
-  return {
-    messages,
-    setMessages,
-    messagesRef,
-    progressMessagesRef,
-  };
+  const messageState = useMemo<ChatMessageRuntimeMessageState<TMessage>>(
+    () => ({
+      messages,
+      setMessages,
+      messagesRef,
+      progressMessagesRef,
+    }),
+    [messages],
+  );
+
+  return messageState;
 }
 
 export function useChatMessageRuntimeSendRef(): ChatMessageRuntimeSendRefState {
@@ -8222,10 +8238,15 @@ export function useChatMessageRuntimeSendRef(): ChatMessageRuntimeSendRefState {
     sendRef.current = send;
   }, []);
 
-  return {
-    sendRef,
-    syncSendRef,
-  };
+  const sendRefState = useMemo<ChatMessageRuntimeSendRefState>(
+    () => ({
+      sendRef,
+      syncSendRef,
+    }),
+    [syncSendRef],
+  );
+
+  return sendRefState;
 }
 
 export function useChatMessageRuntimeSessionRefState({
@@ -8240,16 +8261,21 @@ export function useChatMessageRuntimeSessionRefState({
   const prevSessionIdRef = useRef<string | null>(null);
   const convoRef = useRef<string | undefined>(undefined);
 
-  return {
-    lastLoadedSessionIdRef,
-    pendingLazyLoadSessionIdRef,
-    skipNextPersistRef,
-    initialMessageRef,
-    initialMessageSentRef,
-    prevMessagesLengthRef,
-    prevSessionIdRef,
-    convoRef,
-  };
+  const sessionRefState = useMemo<ChatMessageRuntimeSessionRefState>(
+    () => ({
+      lastLoadedSessionIdRef,
+      pendingLazyLoadSessionIdRef,
+      skipNextPersistRef,
+      initialMessageRef,
+      initialMessageSentRef,
+      prevMessagesLengthRef,
+      prevSessionIdRef,
+      convoRef,
+    }),
+    [],
+  );
+
+  return sessionRefState;
 }
 
 export function useChatMessageRuntimeInitialMessageState({
@@ -9131,16 +9157,21 @@ export function useChatRuntimeStatusState(): ChatRuntimeStatusState {
   const [latestStepSummary, setLatestStepSummary] = useState<AgentStepSummary | null>(null);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
 
-  return {
-    responding,
-    setResponding,
-    conversationState,
-    setConversationState,
-    latestStepSummary,
-    setLatestStepSummary,
-    connectionState,
-    setConnectionState,
-  };
+  const runtimeStatusState = useMemo<ChatRuntimeStatusState>(
+    () => ({
+      responding,
+      setResponding,
+      conversationState,
+      setConversationState,
+      latestStepSummary,
+      setLatestStepSummary,
+      connectionState,
+      setConnectionState,
+    }),
+    [connectionState, conversationState, latestStepSummary, responding],
+  );
+
+  return runtimeStatusState;
 }
 
 export function useChatRuntimeRequestDebugState(): ChatRuntimeRequestDebugState {
@@ -9150,11 +9181,16 @@ export function useChatRuntimeRequestDebugState(): ChatRuntimeRequestDebugState 
     setRequestDebugText('');
   }, []);
 
-  return {
-    requestDebugText,
-    setRequestDebugText,
-    clearRequestDebugText,
-  };
+  const requestDebugState = useMemo<ChatRuntimeRequestDebugState>(
+    () => ({
+      requestDebugText,
+      setRequestDebugText,
+      clearRequestDebugText,
+    }),
+    [clearRequestDebugText, requestDebugText],
+  );
+
+  return requestDebugState;
 }
 
 export function useChatRuntimeRequestTrackingState({
@@ -9167,10 +9203,15 @@ export function useChatRuntimeRequestTrackingState({
     currentSessionIdRef.current = currentSessionId;
   }, [currentSessionId]);
 
-  return {
-    activeRequestIdRef,
-    currentSessionIdRef,
-  };
+  const requestTrackingState = useMemo<ChatRuntimeRequestTrackingState>(
+    () => ({
+      activeRequestIdRef,
+      currentSessionIdRef,
+    }),
+    [],
+  );
+
+  return requestTrackingState;
 }
 
 export function useChatRuntimeConnectionStatusSubscription({

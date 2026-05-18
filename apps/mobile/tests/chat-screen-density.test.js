@@ -6689,6 +6689,8 @@ test('surfaces desktop step summaries as compact mobile runtime chrome without p
   assert.match(chatMessageChromeSource, /type AgentStepSummary,/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeStatusState\(\)/);
   assert.match(chatMessageChromeSource, /const \[latestStepSummary, setLatestStepSummary\] = useState<AgentStepSummary \| null>\(null\);/);
+  assert.match(chatMessageChromeSource, /const runtimeStatusState = useMemo<ChatRuntimeStatusState>\(\s+\(\) => \(\{\s+responding,\s+setResponding,\s+conversationState,\s+setConversationState,\s+latestStepSummary,\s+setLatestStepSummary,\s+connectionState,\s+setConnectionState,\s+\}\),\s+\[connectionState, conversationState, latestStepSummary, responding\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return runtimeStatusState;/);
   assert.doesNotMatch(screenSource, /const \[latestStepSummary, setLatestStepSummary\] = useState<AgentStepSummary \| null>\(null\);/);
   assert.doesNotMatch(screenSource, /getChatRuntimeLatestStepSummary,/);
   assert.doesNotMatch(chatMessageChromeSource, /getChatRuntimeLatestStepSummary,/);
@@ -8928,8 +8930,12 @@ test('keeps message runtime refs in chat chrome state hooks', () => {
   assert.match(chatMessageChromeSource, /const \[messages, setMessages\] = useState<TMessage\[\]>\(\[\]\);/);
   assert.match(chatMessageChromeSource, /const messagesRef = useRef<TMessage\[\]>\(messages\);/);
   assert.match(chatMessageChromeSource, /const progressMessagesRef = useRef<TMessage\[\]>\(\[\]\);/);
+  assert.match(chatMessageChromeSource, /const messageState = useMemo<ChatMessageRuntimeMessageState<TMessage>>\(\s+\(\) => \(\{\s+messages,\s+setMessages,\s+messagesRef,\s+progressMessagesRef,\s+\}\),\s+\[messages\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return messageState;/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeSendRef\(\)/);
   assert.match(chatMessageChromeSource, /const sendRef = useRef<ChatMessageRuntimeSendCallback>\(async \(\) => \{\}\);/);
+  assert.match(chatMessageChromeSource, /const sendRefState = useMemo<ChatMessageRuntimeSendRefState>\(\s+\(\) => \(\{\s+sendRef,\s+syncSendRef,\s+\}\),\s+\[syncSendRef\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return sendRefState;/);
   assert.doesNotMatch(screenSource, /const \[messages, setMessages\] = useState<ChatMessage\[\]>\(\[\]\);/);
   assert.doesNotMatch(screenSource, /const messagesRef = useRef<ChatMessage\[\]>\(messages\);/);
   assert.doesNotMatch(screenSource, /const progressMessagesRef = useRef<ChatMessage\[\]>\(\[\]\);/);
@@ -8954,6 +8960,8 @@ test('keeps session lifecycle refs in chat chrome state hooks', () => {
   assert.match(chatMessageChromeSource, /const initialMessageRef = useRef<string \| null>\(initialMessage\);/);
   assert.match(chatMessageChromeSource, /const prevMessagesLengthRef = useRef\(0\);/);
   assert.match(chatMessageChromeSource, /const convoRef = useRef<string \| undefined>\(undefined\);/);
+  assert.match(chatMessageChromeSource, /const sessionRefState = useMemo<ChatMessageRuntimeSessionRefState>\(\s+\(\) => \(\{\s+lastLoadedSessionIdRef,\s+pendingLazyLoadSessionIdRef,\s+skipNextPersistRef,\s+initialMessageRef,\s+initialMessageSentRef,\s+prevMessagesLengthRef,\s+prevSessionIdRef,\s+convoRef,\s+\}\),\s+\[\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return sessionRefState;/);
   assert.match(chatMessageChromeSource, /Route initial message received\./);
   assert.match(chatMessageChromeSource, /void persistMessages\(messages\);/);
   assert.match(chatMessageChromeSource, /setTimeout\(\(\) => \{\s+void sendRef\.current\(msg\);/);
@@ -8997,6 +9005,8 @@ test('routes every desktop TTS provider through the paired remote TTS endpoint',
   assert.match(chatMessageChromeSource, /const \[remoteTtsModel, setRemoteTtsModel\] = useState<string \| undefined>\(initialSettings\.model\);/);
   assert.match(chatMessageChromeSource, /const \[remoteTtsRate, setRemoteTtsRate\] = useState\(initialSettings\.rate\);/);
   assert.match(chatMessageChromeSource, /const applyRemoteSpeechSettings = useCallback\(\(settings: ChatRuntimeRemoteSpeechSettingsState\) => \{[\s\S]*?setRemoteTtsProvider\(settings\.provider\);[\s\S]*?setRemoteTtsVoice\(settings\.voice\);[\s\S]*?setRemoteTtsModel\(settings\.model\);[\s\S]*?setRemoteTtsRate\(settings\.rate\);/);
+  assert.match(chatMessageChromeSource, /const remoteSpeechSettingsState = useMemo<ChatMessageRuntimeRemoteSpeechSettingsHookState>\(\s+\(\) => \(\{\s+remoteTtsProvider,\s+setRemoteTtsProvider,\s+remoteTtsVoice,\s+setRemoteTtsVoice,\s+remoteTtsModel,\s+setRemoteTtsModel,\s+remoteTtsRate,\s+setRemoteTtsRate,\s+applyRemoteSpeechSettings,\s+\}\),\s+\[\s+applyRemoteSpeechSettings,\s+remoteTtsModel,\s+remoteTtsProvider,\s+remoteTtsRate,\s+remoteTtsVoice,\s+\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return remoteSpeechSettingsState;/);
   assert.doesNotMatch(screenSource, /const \[remoteTtsProvider, setRemoteTtsProvider\]/);
   assert.doesNotMatch(screenSource, /const \[remoteTtsVoice, setRemoteTtsVoice\]/);
   assert.doesNotMatch(screenSource, /const \[remoteTtsModel, setRemoteTtsModel\]/);
@@ -9288,6 +9298,10 @@ test('uses shared runtime presentation for mobile request and queue debug copy',
   assert.match(screenSource, /const \{\s+activeRequestIdRef,\s+currentSessionIdRef,\s+\} = useChatRuntimeRequestTrackingState\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeRequestDebugState/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeRequestTrackingState/);
+  assert.match(chatMessageChromeSource, /const requestDebugState = useMemo<ChatRuntimeRequestDebugState>\(\s+\(\) => \(\{\s+requestDebugText,\s+setRequestDebugText,\s+clearRequestDebugText,\s+\}\),\s+\[clearRequestDebugText, requestDebugText\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return requestDebugState;/);
+  assert.match(chatMessageChromeSource, /const requestTrackingState = useMemo<ChatRuntimeRequestTrackingState>\(\s+\(\) => \(\{\s+activeRequestIdRef,\s+currentSessionIdRef,\s+\}\),\s+\[\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return requestTrackingState;/);
   assert.doesNotMatch(chatMessageChromeSource, /export function hasChatMessageRuntimeRequestSessionChanged/);
   assert.doesNotMatch(chatMessageChromeSource, /export function isChatMessageRuntimeLatestSessionRequest/);
   assert.doesNotMatch(chatMessageChromeSource, /export function isChatMessageRuntimeActiveRequest/);
