@@ -1972,6 +1972,8 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.match(sessionPresentationSource, /const pinButtonRenderState = getChatRuntimePinMobileRenderState\(\{ isPinned, colors \}\)/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeCurrentSessionPinActionsState/);
   assert.match(chatMessageChromeSource, /void sessionStore\.toggleSessionPinned\(currentSessionId\);/);
+  assert.match(chatMessageChromeSource, /const currentSessionPinActionsState = useMemo<ChatRuntimeCurrentSessionPinActionsState>\(\s+\(\) => \(\{\s+handleToggleCurrentSessionPinned,\s+\}\),\s+\[handleToggleCurrentSessionPinned\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return currentSessionPinActionsState;/);
   assert.doesNotMatch(screenSource, /void sessionStore\.toggleSessionPinned\(currentSessionId\);/);
   assert.match(sessionPresentationSource, /backButtonRenderState: getChatRuntimeBackMobileRenderState\(\{ colors \}\),/);
   assert.match(sessionPresentationSource, /pinButtonIsActive: pinButtonRenderState\.isPinned,/);
@@ -1979,6 +1981,8 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.match(screenSource, /const \{ handleBackToSessions \} = useChatRuntimeBackToSessionsActionsState\(\{\s+navigation,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeBackToSessionsActionsState/);
   assert.match(chatMessageChromeSource, /navigation\.navigate\('Sessions'\);/);
+  assert.match(chatMessageChromeSource, /const backToSessionsActionsState = useMemo<ChatRuntimeBackToSessionsActionsState>\(\s+\(\) => \(\{\s+handleBackToSessions,\s+\}\),\s+\[handleBackToSessions\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return backToSessionsActionsState;/);
   assert.doesNotMatch(screenSource, /navigation\.navigate\('Sessions'\)/);
   assert.match(screenSource, /onBackButtonPress: handleBackToSessions,\s+onPinButtonPress: handleToggleCurrentSessionPinned,/);
   assert.doesNotMatch(screenSource, /<ChatRuntimeHeaderIconButton/);
@@ -2122,6 +2126,8 @@ test('uses shared runtime header copy for mobile stop and hands-free controls', 
   assert.match(sessionPresentationSource, /export function formatChatRuntimeWebConfirmMessage/);
   assert.doesNotMatch(screenSource, /formatChatMessageRuntimeWebConfirmMessage,/);
   assert.match(chatMessageChromeSource, /export function useChatMessageRuntimeKillSwitchActionsState/);
+  assert.match(chatMessageChromeSource, /const killSwitchActionsState = useMemo<ChatMessageRuntimeKillSwitchActionsState>\(\s+\(\) => \(\{\s+handleKillSwitch,\s+\}\),\s+\[handleKillSwitch\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return killSwitchActionsState;/);
   assert.doesNotMatch(screenSource, /getChatMessageRuntimeKillSwitchConfirmationAlertState\(\)/);
   assert.match(chatMessageChromeSource, /getChatRuntimeKillSwitchConfirmationMobileResolvedAlertState\(\)/);
   assert.doesNotMatch(screenSource, /window\.confirm\(confirmationAlert\.webMessage\)/);
@@ -3021,6 +3027,8 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(screenSource, /const \{\s+lastFailedMessage,\s+setLastFailedMessage,\s+clearLastFailedMessage,\s+\} = useChatRuntimeConnectionRetryState\(\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryState/);
   assert.match(chatMessageChromeSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
+  assert.match(chatMessageChromeSource, /const connectionRetryState = useMemo<ChatRuntimeConnectionRetryState>\(\s+\(\) => \(\{\s+lastFailedMessage,\s+setLastFailedMessage,\s+clearLastFailedMessage,\s+\}\),\s+\[clearLastFailedMessage, lastFailedMessage\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return connectionRetryState;/);
   assert.doesNotMatch(screenSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
   assert.match(screenSource, /useChatRuntimeConnectionStatusSubscription,/);
   assert.match(screenSource, /const logConnectionStatus = useCallback\(\(statusMessage: string\) => \{\s+console\.log\('\[ChatScreen\] Connection status:', statusMessage\);\s+\}, \[\]\);/);
@@ -3035,6 +3043,8 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionRetryActionState/);
   assert.match(chatMessageChromeSource, /handleRetryLastFailedMessagePress: \(\) => void/);
   assert.match(chatMessageChromeSource, /const handleRetryLastFailedMessagePress = useCallback\(\(\) => \{\s+void handleRetryLastFailedMessage\(\);\s+\}, \[handleRetryLastFailedMessage\]\);/);
+  assert.match(chatMessageChromeSource, /const connectionRetryActionsState = useMemo<ChatRuntimeConnectionRetryActionState>\(\s+\(\) => \(\{\s+handleRetryLastFailedMessage,\s+handleRetryLastFailedMessagePress,\s+\}\),\s+\[handleRetryLastFailedMessage, handleRetryLastFailedMessagePress\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return connectionRetryActionsState;/);
   assert.match(sessionPresentationSource, /connectionBanner: getChatRuntimeConnectionBannerMobileRenderState\(\{\s+connectionState,\s+lastFailedMessage,\s+isResponding,\s+colors,\s+\}\),/);
   assert.match(screenSource, /connectionState,\s+lastFailedMessage,\s+isResponding: responding,\s+onConnectionBannerRetry: handleRetryLastFailedMessagePress,/);
   assert.doesNotMatch(screenSource, /void handleRetryLastFailedMessage\(\)/);
@@ -10004,6 +10014,8 @@ test('lets mobile branch linked desktop conversations from individual messages',
   assert.match(screenSource, /const \{ navigateToChat \} = useChatRuntimeNavigateToChatActionsState\(\{\s+navigation,\s+\}\);/);
   assert.match(chatMessageChromeSource, /export function useChatRuntimeNavigateToChatActionsState/);
   assert.match(chatMessageChromeSource, /navigation\.navigate\('Chat'\);/);
+  assert.match(chatMessageChromeSource, /const navigateToChatActionsState = useMemo<ChatRuntimeNavigateToChatActionsState>\(\s+\(\) => \(\{\s+navigateToChat,\s+\}\),\s+\[navigateToChat\],\s+\);/);
+  assert.match(chatMessageChromeSource, /return navigateToChatActionsState;/);
   assert.doesNotMatch(screenSource, /navigation\.navigate\('Chat'\)/);
   assert.match(screenSource, /useChatMessageRuntimeBranchChromeActionsState,/);
   assert.match(screenSource, /const \{ handleBranchFromMessagePress \} = useChatMessageRuntimeBranchChromeActionsState\(\{\s+branchClient: settingsClient,\s+serverConversationId: currentSession\?\.serverConversationId,\s+sessionStore,\s+beginBranchMessage,\s+clearBranchMessage,\s+navigateToChat,\s+\}\);/);

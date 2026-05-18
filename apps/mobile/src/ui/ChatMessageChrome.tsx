@@ -9296,11 +9296,16 @@ export function useChatRuntimeConnectionRetryState(): ChatRuntimeConnectionRetry
     setLastFailedMessage(null);
   }, []);
 
-  return {
-    lastFailedMessage,
-    setLastFailedMessage,
-    clearLastFailedMessage,
-  };
+  const connectionRetryState = useMemo<ChatRuntimeConnectionRetryState>(
+    () => ({
+      lastFailedMessage,
+      setLastFailedMessage,
+      clearLastFailedMessage,
+    }),
+    [clearLastFailedMessage, lastFailedMessage],
+  );
+
+  return connectionRetryState;
 }
 
 export function useChatRuntimeConnectionRetryActionState<
@@ -9375,10 +9380,15 @@ export function useChatRuntimeConnectionRetryActionState<
     void handleRetryLastFailedMessage();
   }, [handleRetryLastFailedMessage]);
 
-  return {
-    handleRetryLastFailedMessage,
-    handleRetryLastFailedMessagePress,
-  };
+  const connectionRetryActionsState = useMemo<ChatRuntimeConnectionRetryActionState>(
+    () => ({
+      handleRetryLastFailedMessage,
+      handleRetryLastFailedMessagePress,
+    }),
+    [handleRetryLastFailedMessage, handleRetryLastFailedMessagePress],
+  );
+
+  return connectionRetryActionsState;
 }
 
 export function useChatMessageRuntimeBranchProgressState({
@@ -9492,9 +9502,14 @@ export function useChatRuntimeCurrentSessionPinActionsState({
     void sessionStore.toggleSessionPinned(currentSessionId);
   }, [sessionStore]);
 
-  return {
-    handleToggleCurrentSessionPinned,
-  };
+  const currentSessionPinActionsState = useMemo<ChatRuntimeCurrentSessionPinActionsState>(
+    () => ({
+      handleToggleCurrentSessionPinned,
+    }),
+    [handleToggleCurrentSessionPinned],
+  );
+
+  return currentSessionPinActionsState;
 }
 
 export function useChatRuntimeBackToSessionsActionsState({
@@ -9504,9 +9519,14 @@ export function useChatRuntimeBackToSessionsActionsState({
     navigation.navigate('Sessions');
   }, [navigation]);
 
-  return {
-    handleBackToSessions,
-  };
+  const backToSessionsActionsState = useMemo<ChatRuntimeBackToSessionsActionsState>(
+    () => ({
+      handleBackToSessions,
+    }),
+    [handleBackToSessions],
+  );
+
+  return backToSessionsActionsState;
 }
 
 export function useChatRuntimeNavigateToChatActionsState({
@@ -9516,9 +9536,14 @@ export function useChatRuntimeNavigateToChatActionsState({
     navigation.navigate('Chat');
   }, [navigation]);
 
-  return {
-    navigateToChat,
-  };
+  const navigateToChatActionsState = useMemo<ChatRuntimeNavigateToChatActionsState>(
+    () => ({
+      navigateToChat,
+    }),
+    [navigateToChat],
+  );
+
+  return navigateToChatActionsState;
 }
 
 export function useChatMessageRuntimeKillSwitchActionsState<
@@ -9585,9 +9610,14 @@ export function useChatMessageRuntimeKillSwitchActionsState<
     showWebAlert,
   ]);
 
-  return {
-    handleKillSwitch,
-  };
+  const killSwitchActionsState = useMemo<ChatMessageRuntimeKillSwitchActionsState>(
+    () => ({
+      handleKillSwitch,
+    }),
+    [handleKillSwitch],
+  );
+
+  return killSwitchActionsState;
 }
 
 export function useChatMessageRuntimeKillSwitchChromeActionsState<
