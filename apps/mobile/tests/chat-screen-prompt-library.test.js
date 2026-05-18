@@ -304,7 +304,8 @@ test('can create a new predefined prompt from mobile and save it to desktop sett
   assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalParts =\s+ChatConversationHomePromptEditorModalMobilePropsParts<ChatConversationHomePromptEditorModalStyles>;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalParts = ReturnType<typeof createChatConversationHomePromptEditorModalMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const modalParts: ChatConversationHomePromptEditorModalParts =\s+createChatConversationHomePromptEditorModalMobilePropsParts\(\{/);
+  assert.match(chatMessageChromeSource, /export function ChatConversationHomePromptEditorModal\(\s+props: ChatConversationHomePromptEditorModalProps,\s+\)/);
+  assert.match(chatMessageChromeSource, /const modalParts: ChatConversationHomePromptEditorModalParts =\s+createChatConversationHomePromptEditorModalMobilePropsParts\(props\);/);
   assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalModalPart = \{\s+props: ComponentProps<typeof Modal>;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalKeyboardAvoidingViewPart = \{\s+props: ComponentProps<typeof KeyboardAvoidingView>;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatConversationHomePromptEditorModalTextPart = \{\s+text: string;\s+props: ComponentProps<typeof Text>;\s+\};/);
