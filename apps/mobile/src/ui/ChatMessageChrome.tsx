@@ -331,6 +331,9 @@ import {
   type ChatRuntimeMessageThreadPresentationMobileRenderState,
   type ChatRuntimeMessageThreadItemMobilePropsParts,
   type ChatRuntimeMessageThreadSurfaceMobilePropsParts,
+  type ChatRuntimeMessageActionIconLike,
+  type ChatRuntimeMessageActionIconButtonRenderState,
+  type ChatRuntimeMessageActionIconButtonSpec,
   type ChatRuntimeInlineActivityMobilePropsParts,
   type ChatRuntimeMessageActionIconButtonMobilePropsParts,
   type ChatRuntimeMessageActionSlotListMobilePropsParts,
@@ -1193,12 +1196,7 @@ type ChatRuntimeConnectionRetryActionState = {
   handleRetryLastFailedMessagePress: () => void;
 };
 
-type ChatMessageActionIcon = {
-  name: IoniconName;
-  size: number;
-  color: string;
-  isPending?: boolean;
-};
+type ChatMessageActionIcon = ChatRuntimeMessageActionIconLike<IoniconName, number, string>;
 
 type ChatMessageActionIconButtonProps = {
   icon: ChatMessageActionIcon;
@@ -1245,26 +1243,27 @@ type ChatMessageActionIconButtonActivityIndicatorProps =
 type ChatMessageActionIconButtonIconProps =
   ChatMessageActionIconButtonParts['pressable']['content']['icon']['props'];
 
-type ChatMessageActionButtonRenderState = {
-  accessibilityRole: AccessibilityRole;
-  accessibilityLabel: string;
-  accessibilityHint?: string | null;
-  accessibilityState?: AccessibilityState;
-  ariaExpanded?: boolean;
-  isDisabled?: boolean;
-  icon: ChatMessageActionIcon;
-};
+type ChatMessageActionButtonRenderState =
+  ChatRuntimeMessageActionIconButtonRenderState<
+    ChatMessageActionIcon,
+    AccessibilityRole,
+    AccessibilityState,
+    boolean
+  >;
 
-type ChatMessageActionButtonSpec = {
-  renderState: ChatMessageActionButtonRenderState;
-  onPress?: (event: GestureResponderEvent) => void;
-  hitSlop?: number | Insets;
-  style: StyleProp<ViewStyle>;
-  activeStyle?: StyleProp<ViewStyle>;
-  pressedStyle?: StyleProp<ViewStyle>;
-  disabledStyle?: StyleProp<ViewStyle>;
-  isActive?: boolean;
-};
+type ChatMessageActionButtonSpec =
+  ChatRuntimeMessageActionIconButtonSpec<
+    ChatMessageActionIcon,
+    (event: GestureResponderEvent) => void,
+    AccessibilityRole,
+    AccessibilityState,
+    boolean,
+    number | Insets,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle>
+  >;
 
 type ChatMessageSpeechActionSpec = Omit<ChatMessageActionButtonSpec, 'renderState'> & {
   renderState: ChatRuntimeConversationMessageActionsMobileRenderState['speech'];

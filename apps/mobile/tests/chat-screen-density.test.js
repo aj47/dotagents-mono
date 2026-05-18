@@ -6913,6 +6913,18 @@ test('keeps the TTS control inline with assistant message text instead of on a d
   const actionIconButtonSource =
     chatMessageChromeSource.match(/export function ChatMessageActionIconButton[\s\S]*?function createChatMessageActionRenderers/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatRuntimeMessageActionIconButtonMobileProps,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionIconLike,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionIconButtonRenderState,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeMessageActionIconButtonSpec,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionIcon = ChatRuntimeMessageActionIconLike<IoniconName, number, string>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionButtonRenderState =\s+ChatRuntimeMessageActionIconButtonRenderState<\s+ChatMessageActionIcon,[\s\S]*?AccessibilityState,[\s\S]*?boolean\s+>;/);
+  assert.match(chatMessageChromeSource, /type ChatMessageActionButtonSpec =\s+ChatRuntimeMessageActionIconButtonSpec<\s+ChatMessageActionIcon,[\s\S]*?GestureResponderEvent[\s\S]*?StyleProp<ViewStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionButtonRenderState = \{[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?icon: ChatMessageActionIcon;[\s\S]*?\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageActionButtonSpec = \{[\s\S]*?renderState: ChatMessageActionButtonRenderState;[\s\S]*?disabledStyle\?: StyleProp<ViewStyle>;[\s\S]*?\};/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageActionIconLike</);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageActionIconButtonRenderState</);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeMessageActionIconButtonSpec</);
+  assert.match(sessionPresentationSource, /spec: ChatRuntimeMessageActionIconButtonSpec</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeMessageActionIconButtonMobileProps/);
   assert.match(actionIconButtonSource, /const actionButtonProps = createChatRuntimeMessageActionIconButtonMobileProps\(\{\s+spec,\s+\}\);/);
   assert.match(actionIconButtonSource, /<ChatMessageActionIconButton\s+\{\.\.\.actionButtonProps\}/);
