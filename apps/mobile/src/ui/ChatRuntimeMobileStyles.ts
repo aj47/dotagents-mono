@@ -25,11 +25,14 @@ import {
   getHandsFreeStatusChipMobileRenderState,
   getMarkdownContentMobileSurfaceRenderState,
   getMarkdownThinkSectionMobileSurfaceRenderState,
+  type AgentSelectorMobileRenderState as SharedAgentSelectorMobileRenderState,
   type AgentSelectorMobileStyleSheetSlots,
   type AgentResponseHistoryMobileStyleSheetSlots,
   type ChatRuntimeConversationSurfaceToneMobileStyleSlot,
   type ChatRuntimeMobileChromeSlotsFromStyleSource,
+  type ChatVideoAttachmentMobileRenderState as SharedChatVideoAttachmentMobileRenderState,
   type ChatVideoAttachmentMobileStyleSheetSlots,
+  type HandsFreeStatusChipMobileRenderState as SharedHandsFreeStatusChipMobileRenderState,
   type HandsFreeStatusChipMobileStyleSheetSlots,
   type MarkdownContentMobileStyleSheetSlots,
   type MarkdownContentMobileSurfaceRenderState,
@@ -1010,7 +1013,7 @@ export type ChatRuntimeVideoAttachmentStyleSheetSlotsInput = Pick<
 >;
 
 export type ChatRuntimeVideoAttachmentMobileRenderState =
-  ReturnType<typeof getChatVideoAttachmentMobileRenderState>;
+  SharedChatVideoAttachmentMobileRenderState;
 
 export type ChatRuntimeVideoAttachmentMobileStyleSlotsInput = Pick<
   Parameters<typeof getChatVideoAttachmentMobileRenderState>[0],
@@ -1075,7 +1078,7 @@ export type ChatRuntimeHandsFreeStatusChipStyleSheetSlotsInput = Pick<
 >;
 
 export type ChatRuntimeHandsFreeStatusChipMobileRenderState =
-  ReturnType<typeof getHandsFreeStatusChipMobileRenderState>;
+  SharedHandsFreeStatusChipMobileRenderState;
 
 export type ChatRuntimeHandsFreeStatusChipMobileStyleSlotsInput = Pick<
   Parameters<typeof getHandsFreeStatusChipMobileRenderState>[0],
@@ -1139,7 +1142,7 @@ export type ChatRuntimeAgentSelectorSheetStyleSheetSlotsInput = Pick<
 >;
 
 export type ChatRuntimeAgentSelectorSheetMobileRenderState =
-  ReturnType<typeof getAgentSelectorMobileRenderState>;
+  SharedAgentSelectorMobileRenderState;
 
 export type ChatRuntimeAgentSelectorSheetMobileStyleSlotsInput = Pick<
   Parameters<typeof getAgentSelectorMobileRenderState>[0],

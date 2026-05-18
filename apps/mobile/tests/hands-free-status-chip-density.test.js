@@ -7,25 +7,25 @@ const chipSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'HandsFreeStatusChip.tsx'),
   'utf8'
 );
+const chatRuntimeMobileStylesSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'ChatRuntimeMobileStyles.ts'),
+  'utf8'
+);
+const sessionPresentationSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
+  'utf8'
+);
 
 test('uses shared hands-free status chip colors and surface tokens', () => {
-  assert.match(chipSource, /getHandsFreeStatusChipMobileRenderState/);
-  assert.match(chipSource, /createHandsFreeStatusChipMobileStyleSlots/);
+  assert.match(chipSource, /useChatRuntimeHandsFreeStatusChipMobileStyleSlots/);
   assert.match(chipSource, /createHandsFreeStatusChipMobilePropsParts/);
   assert.match(chipSource, /type HandsFreeStatusChipMobilePropsParts,/);
-  assert.match(chipSource, /type HandsFreeStatusChipMobileStylesLike,/);
-  assert.match(chipSource, /type HandsFreeStatusChipStyles =\s+HandsFreeStatusChipMobileStylesLike<\s+StyleProp<ViewStyle>,\s+StyleProp<TextStyle>,\s+StyleProp<TextStyle>\s+>;/);
+  assert.match(chipSource, /type HandsFreeStatusChipMobileStyleSheetSlots,/);
+  assert.match(chipSource, /type HandsFreeStatusChipStyles = HandsFreeStatusChipMobileStyleSheetSlots;/);
   assert.doesNotMatch(chipSource, /type HandsFreeStatusChipStyles = \{[\s\S]*?container: StyleProp<ViewStyle>;[\s\S]*?label: StyleProp<TextStyle>;[\s\S]*?subtitle: StyleProp<TextStyle>;[\s\S]*?\};/);
   assert.match(chipSource, /type HandsFreeStatusChipParts =\s+HandsFreeStatusChipMobilePropsParts<HandsFreeStatusChipStyles>;/);
-  assert.match(chipSource, /const renderState = useMemo\(/);
-  assert.match(chipSource, /getHandsFreeStatusChipMobileRenderState\(\{[\s\S]*?phase,[\s\S]*?label,[\s\S]*?subtitle,[\s\S]*?colors: theme\.colors,/);
-  assert.match(chipSource, /const styleSlots = useMemo\(/);
-  assert.match(chipSource, /createHandsFreeStatusChipMobileStyleSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,/);
-  assert.match(chipSource, /container:\s*\{[\s\S]*?\.\.\.styleSlots\.container/);
-  assert.match(chipSource, /label:\s*\{[\s\S]*?\.\.\.styleSlots\.label/);
-  assert.match(chipSource, /subtitle:\s*\{[\s\S]*?\.\.\.styleSlots\.subtitle/);
-  assert.match(chipSource, /const styles = useMemo<HandsFreeStatusChipStyles>\(\(\) => StyleSheet\.create\(\{/);
-  assert.match(chipSource, /const statusChipParts: HandsFreeStatusChipParts = createHandsFreeStatusChipMobilePropsParts\(\{[\s\S]*?renderState,[\s\S]*?styles,/);
+  assert.match(chipSource, /const \{\s+handsFreeStatusChipRenderState,[\s\S]*?handsFreeStatusChipStyles,[\s\S]*?\} = useChatRuntimeHandsFreeStatusChipMobileStyleSlots\(\{[\s\S]*?phase,[\s\S]*?label,[\s\S]*?subtitle,[\s\S]*?\}\);/);
+  assert.match(chipSource, /const statusChipParts = useMemo<HandsFreeStatusChipParts>\(\s+\(\) => createHandsFreeStatusChipMobilePropsParts\(\{[\s\S]*?renderState: handsFreeStatusChipRenderState,[\s\S]*?styles: handsFreeStatusChipStyles,/);
   assert.match(chipSource, /<View\s+\{\.\.\.statusChipParts\.container\.props\}>/);
   assert.match(chipSource, /<Text\s+\{\.\.\.statusChipParts\.label\.props\}>\{statusChipParts\.label\.text\}<\/Text>/);
   assert.match(chipSource, /\{statusChipParts\.label\.text\}/);
@@ -35,6 +35,17 @@ test('uses shared hands-free status chip colors and surface tokens', () => {
   assert.doesNotMatch(chipSource, /style=\{statusChipParts\.(container|label|subtitle)\.style\}/);
   assert.doesNotMatch(chipSource, /numberOfLines=\{statusChipParts\.subtitle\.numberOfLines\}/);
   assert.doesNotMatch(chipSource, /numberOfLines=\{2\}/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?getHandsFreeStatusChipMobileRenderState,[\s\S]*?HandsFreeStatusChipMobileRenderState,[\s\S]*?\} from "\.\/hands-free-controller"/);
+  assert.match(chatRuntimeMobileStylesSource, /type HandsFreeStatusChipMobileRenderState as SharedHandsFreeStatusChipMobileRenderState,/);
+  assert.match(chatRuntimeMobileStylesSource, /export type ChatRuntimeHandsFreeStatusChipMobileRenderState =\s+SharedHandsFreeStatusChipMobileRenderState;/);
+  assert.match(chatRuntimeMobileStylesSource, /getHandsFreeStatusChipMobileRenderState\(\{[\s\S]*?phase,[\s\S]*?label,[\s\S]*?subtitle,[\s\S]*?colors: theme\.colors,/);
+  assert.match(chatRuntimeMobileStylesSource, /createHandsFreeStatusChipMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /ReturnType<typeof getHandsFreeStatusChipMobileRenderState>/);
+  assert.doesNotMatch(chipSource, /getHandsFreeStatusChipMobileRenderState,/);
+  assert.doesNotMatch(chipSource, /createHandsFreeStatusChipMobileStyleSheetSlots,/);
+  assert.doesNotMatch(chipSource, /StyleSheet\.create/);
+  assert.doesNotMatch(chipSource, /from '\.\/theme'/);
+  assert.doesNotMatch(chipSource, /from '\.\/ThemeProvider'/);
   assert.doesNotMatch(chipSource, /alignSelf:\s*'flex-start'/);
   assert.doesNotMatch(chipSource, /getHandsFreeComposerMobileSurfaceState/);
   assert.doesNotMatch(chipSource, /getHandsFreeStatusChipMobileColors\(phase, theme\.colors\)/);

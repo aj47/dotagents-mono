@@ -11,6 +11,10 @@ const conversationMediaAssetsSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'conversation-media-assets.ts'),
   'utf8',
 );
+const sessionPresentationSource = fs.readFileSync(
+  path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'session-presentation.ts'),
+  'utf8',
+);
 const chatRuntimeMobileStylesSource = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'ui', 'ChatRuntimeMobileStyles.ts'),
   'utf8',
@@ -19,6 +23,10 @@ const chatRuntimeMobileStylesSource = fs.readFileSync(
 test('mobile video attachment card uses shared copy and accessibility labels', () => {
   assert.match(source, /useChatRuntimeVideoAttachmentMobileStyleSlots/);
   assert.match(chatRuntimeMobileStylesSource, /getChatVideoAttachmentMobileRenderState/);
+  assert.match(sessionPresentationSource, /type ChatVideoAttachmentMobileRenderState,/);
+  assert.match(chatRuntimeMobileStylesSource, /type ChatVideoAttachmentMobileRenderState as SharedChatVideoAttachmentMobileRenderState,/);
+  assert.match(chatRuntimeMobileStylesSource, /export type ChatRuntimeVideoAttachmentMobileRenderState =\s+SharedChatVideoAttachmentMobileRenderState;/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /ReturnType<typeof getChatVideoAttachmentMobileRenderState>/);
   assert.match(source, /const \{\s+videoAttachmentRenderState,[\s\S]*?videoAttachmentStyles: styles,[\s\S]*?\} = useChatRuntimeVideoAttachmentMobileStyleSlots\(\{[\s\S]*?sourceUrl,[\s\S]*?label,[\s\S]*?loading,[\s\S]*?\}\);/);
   assert.match(source, /const videoAttachmentCopy = videoAttachmentRenderState\.copy;/);
   assert.match(source, /createChatVideoAttachmentMobilePropsParts,/);

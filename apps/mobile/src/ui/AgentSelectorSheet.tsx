@@ -16,7 +16,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useChatRuntimeAgentSelectorSheetMobileStyleSlots } from './ChatRuntimeMobileStyles';
+import {
+  useChatRuntimeAgentSelectorSheetMobileStyleSlots,
+  type ChatRuntimeAgentSelectorSheetMobileRenderState,
+} from './ChatRuntimeMobileStyles';
 import { useConfigContext } from '../store/config';
 import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi';
 import { useProfile } from '../store/profile';
@@ -64,7 +67,7 @@ interface AgentSelectorProfileRowProps {
   item: SelectableProfile;
   currentProfileId?: string;
   isSwitching: boolean;
-  renderState: ReturnType<typeof useChatRuntimeAgentSelectorSheetMobileStyleSlots>['agentSelectorRenderState'];
+  renderState: ChatRuntimeAgentSelectorSheetMobileRenderState;
   styles: AgentSelectorSheetStyles;
   onSelectProfile: (profile: SelectableProfile) => void | Promise<void>;
 }

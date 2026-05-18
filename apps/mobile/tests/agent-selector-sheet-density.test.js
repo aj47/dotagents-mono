@@ -79,7 +79,13 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.doesNotMatch(sheetSource, /from '@dotagents\/shared\/agent-selector-options';/);
   assert.match(selectorOptionsTestSource, /from '@dotagents\/shared\/session-presentation';/);
   assert.doesNotMatch(selectorOptionsTestSource, /from '@dotagents\/shared\/agent-selector-options';/);
-  assert.match(sessionPresentationSource, /export \{[\s\S]*?buildSelectorProfiles,[\s\S]*?createAgentSelectorProfileItemMobilePropsParts,[\s\S]*?createAgentSelectorSheetMobilePropsParts,[\s\S]*?createAgentSelectorMobileStyleSheetSlots,[\s\S]*?createAgentSelectorMobileStyleSlots,[\s\S]*?getAgentSelectorMobileProfileItemRenderState,[\s\S]*?getAgentSelectorMobileRenderState,[\s\S]*?type AgentSelectorMobileStyleSheetSlots,[\s\S]*?type AgentSelectorMobileStyleSheetSlotsInput,[\s\S]*?type AgentSelectorProfileItemMobilePropsParts,[\s\S]*?type AgentSelectorProfileItemMobilePropsPartsInput,[\s\S]*?type AgentSelectorSheetMobilePropsParts,[\s\S]*?type AgentSelectorSheetMobilePropsPartsInput,[\s\S]*?type SelectableAgentProfile,[\s\S]*?\} from "\.\/agent-selector-options"/);
+  assert.match(sessionPresentationSource, /export \{[\s\S]*?buildSelectorProfiles,[\s\S]*?createAgentSelectorProfileItemMobilePropsParts,[\s\S]*?createAgentSelectorSheetMobilePropsParts,[\s\S]*?createAgentSelectorMobileStyleSheetSlots,[\s\S]*?createAgentSelectorMobileStyleSlots,[\s\S]*?getAgentSelectorMobileProfileItemRenderState,[\s\S]*?getAgentSelectorMobileRenderState,[\s\S]*?type AgentSelectorMobileRenderState,[\s\S]*?type AgentSelectorMobileStyleSheetSlots,[\s\S]*?type AgentSelectorMobileStyleSheetSlotsInput,[\s\S]*?type AgentSelectorProfileItemMobilePropsParts,[\s\S]*?type AgentSelectorProfileItemMobilePropsPartsInput,[\s\S]*?type AgentSelectorSheetMobilePropsParts,[\s\S]*?type AgentSelectorSheetMobilePropsPartsInput,[\s\S]*?type SelectableAgentProfile,[\s\S]*?\} from "\.\/agent-selector-options"/);
+  assert.match(chatRuntimeMobileStylesSource, /type AgentSelectorMobileRenderState as SharedAgentSelectorMobileRenderState,/);
+  assert.match(chatRuntimeMobileStylesSource, /export type ChatRuntimeAgentSelectorSheetMobileRenderState =\s+SharedAgentSelectorMobileRenderState;/);
+  assert.doesNotMatch(chatRuntimeMobileStylesSource, /ReturnType<typeof getAgentSelectorMobileRenderState>/);
+  assert.match(sheetSource, /type ChatRuntimeAgentSelectorSheetMobileRenderState,/);
+  assert.match(sheetSource, /renderState: ChatRuntimeAgentSelectorSheetMobileRenderState;/);
+  assert.doesNotMatch(sheetSource, /ReturnType<typeof useChatRuntimeAgentSelectorSheetMobileStyleSlots>/);
   assert.match(chatRuntimeMobileStylesSource, /getAgentSelectorMobileRenderState/);
   assert.doesNotMatch(sheetSource, /getAgentSelectorMobileRenderState/);
   assert.match(sheetSource, /getAgentSelectorMobileProfileItemRenderState/);
