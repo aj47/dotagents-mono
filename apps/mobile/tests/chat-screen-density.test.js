@@ -2772,6 +2772,12 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConnectionBannerProps = \{[\s\S]*?renderState: ChatRuntimeConnectionBannerMobileRenderState;[\s\S]*?styles: ChatMessageConnectionBannerStyles;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageConnectionBannerParts =\s+ChatRuntimeConnectionBannerMobilePropsParts<[\s\S]*?ChatRuntimeConnectionBannerMobileRenderState,[\s\S]*?\(event: GestureResponderEvent\) => void,[\s\S]*?ChatMessageConnectionBannerStyles/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConnectionBannerParts = ReturnType<typeof createChatRuntimeConnectionBannerMobilePropsParts/);
+  const connectionBannerTypes =
+    chatMessageChromeSource.match(/type ChatMessageConnectionBannerProps[\s\S]*?type ChatMessageRuntimeDockStyleSlots/)?.[0] ?? '';
+  assert.match(connectionBannerTypes, /type ChatMessageConnectionBannerTextPart<TStyle> =/);
+  assert.match(connectionBannerTypes, /type ChatMessageConnectionBannerContainerPart<TContent, TStateStyle, TRole> =/);
+  assert.match(connectionBannerTypes, /type ChatMessageConnectionBannerRetryButtonPart =/);
+  assert.doesNotMatch(connectionBannerTypes, /ChatMessageConnectionBannerParts\['(?:reconnecting|failed)'\]/);
   assert.match(sessionPresentationSource, /export interface ChatRuntimeConnectionBannerMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeConnectionBannerMobilePropsParts/);
   const connectionBannerSource =

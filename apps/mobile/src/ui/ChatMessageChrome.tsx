@@ -4221,77 +4221,182 @@ type ChatMessageConnectionBannerParts =
     ChatMessageConnectionBannerStyles
   >;
 
+type ChatMessageConnectionBannerTextPart<TStyle> = {
+  props: {
+    style: TStyle;
+    numberOfLines?: ChatRuntimeConnectionBannerMobileRenderState['surface']['subtitleNumberOfLines'];
+  };
+  text: string;
+};
+
+type ChatMessageConnectionBannerTitlePart = {
+  props: ChatMessageConnectionBannerTextPart<ChatMessageConnectionBannerStyles['title']>;
+};
+
+type ChatMessageConnectionBannerSubtitlePart = {
+  props: ChatMessageConnectionBannerTextPart<ChatMessageConnectionBannerStyles['subtitle']>;
+};
+
+type ChatMessageConnectionBannerOptionalSubtitlePart = {
+  shouldRender: boolean;
+  props: ChatMessageConnectionBannerTextPart<ChatMessageConnectionBannerStyles['subtitle']>;
+};
+
+type ChatMessageConnectionBannerRetryLabelPart = {
+  props: ChatMessageConnectionBannerTextPart<ChatMessageConnectionBannerStyles['retryButtonText']>;
+};
+
+type ChatMessageConnectionBannerTextContainerPart<TContent> = {
+  props: {
+    style: ChatMessageConnectionBannerStyles['textContainer'];
+  };
+  content: TContent;
+};
+
+type ChatMessageConnectionBannerContainerPart<TContent, TStateStyle, TRole> = {
+  props: {
+    accessible: true;
+    accessibilityRole: TRole;
+    accessibilityLabel: string;
+    style: [
+      ChatMessageConnectionBannerStyles['banner'],
+      TStateStyle
+    ];
+  };
+  content: TContent;
+};
+
+type ChatMessageConnectionBannerBodyPart<TContent> = {
+  props: {
+    style: ChatMessageConnectionBannerStyles['content'];
+  };
+  content: TContent;
+};
+
+type ChatMessageConnectionBannerSpinnerProps =
+  ChatRuntimeConnectionBannerMobileRenderState['reconnecting']['spinner'] & {
+    style: ChatMessageConnectionBannerStyles['icon'];
+  };
+
+type ChatMessageConnectionBannerIconProps =
+  ChatRuntimeConnectionBannerMobileRenderState['failed']['icon'] & {
+    style: ChatMessageConnectionBannerStyles['icon'];
+  };
+
+type ChatMessageConnectionBannerRetryButtonPart = {
+  props: {
+    style: ChatMessageConnectionBannerStyles['retryButton'];
+    onPress?: (event: GestureResponderEvent) => void;
+    accessibilityRole: ChatRuntimeConnectionBannerMobileRenderState['failed']['retryButton']['accessibilityRole'];
+    accessibilityLabel: string;
+    activeOpacity: number;
+  };
+  content: ChatMessageConnectionBannerRetryButtonContentProps;
+};
+
+type ChatMessageConnectionBannerReconnectingTextContentProps = {
+  title: ChatMessageConnectionBannerTitlePart;
+  subtitle: ChatMessageConnectionBannerOptionalSubtitlePart;
+};
+
+type ChatMessageConnectionBannerFailedTextContentProps = {
+  title: ChatMessageConnectionBannerTitlePart;
+  subtitle: ChatMessageConnectionBannerSubtitlePart;
+};
+
+type ChatMessageConnectionBannerRetryButtonContentProps = {
+  label: ChatMessageConnectionBannerRetryLabelPart;
+};
+
+type ChatMessageConnectionBannerReconnectingBodyContent = {
+  spinner: {
+    props: ChatMessageConnectionBannerSpinnerProps;
+  };
+  textContainer: ChatMessageConnectionBannerTextContainerPart<
+    ChatMessageConnectionBannerReconnectingTextContentProps
+  >;
+};
+
+type ChatMessageConnectionBannerFailedBodyContent = {
+  icon: {
+    props: ChatMessageConnectionBannerIconProps;
+  };
+  textContainer: ChatMessageConnectionBannerTextContainerPart<
+    ChatMessageConnectionBannerFailedTextContentProps
+  >;
+  retryButton: ChatMessageConnectionBannerRetryButtonPart;
+};
+
 type ChatMessageConnectionBannerReconnectingBody =
-  ChatMessageConnectionBannerParts['reconnecting']['container']['content']['body'];
-
-type ChatMessageConnectionBannerReconnectingContentProps =
-  ChatMessageConnectionBannerParts['reconnecting']['container']['content'];
-
-type ChatMessageConnectionBannerReconnectingBodyContent =
-  ChatMessageConnectionBannerReconnectingBody['content'];
-
-type ChatMessageConnectionBannerReconnectingTextContentProps =
-  ChatMessageConnectionBannerReconnectingBodyContent['textContainer']['content'];
+  ChatMessageConnectionBannerBodyPart<ChatMessageConnectionBannerReconnectingBodyContent>;
 
 type ChatMessageConnectionBannerFailedBody =
-  ChatMessageConnectionBannerParts['failed']['container']['content']['body'];
+  ChatMessageConnectionBannerBodyPart<ChatMessageConnectionBannerFailedBodyContent>;
 
-type ChatMessageConnectionBannerFailedContentProps =
-  ChatMessageConnectionBannerParts['failed']['container']['content'];
+type ChatMessageConnectionBannerReconnectingContentProps = {
+  body: ChatMessageConnectionBannerReconnectingBody;
+};
 
-type ChatMessageConnectionBannerFailedBodyContent =
-  ChatMessageConnectionBannerFailedBody['content'];
+type ChatMessageConnectionBannerFailedContentProps = {
+  body: ChatMessageConnectionBannerFailedBody;
+};
 
-type ChatMessageConnectionBannerFailedTextContentProps =
-  ChatMessageConnectionBannerFailedBodyContent['textContainer']['content'];
+type ChatMessageConnectionBannerReconnectingPart = {
+  shouldRender: ChatRuntimeConnectionBannerMobileRenderState['reconnecting']['shouldRender'];
+  container: ChatMessageConnectionBannerContainerPart<
+    ChatMessageConnectionBannerReconnectingContentProps,
+    ChatMessageConnectionBannerStyles['reconnecting'],
+    ChatRuntimeConnectionBannerMobileRenderState['reconnecting']['accessibilityRole']
+  >;
+};
 
-type ChatMessageConnectionBannerRetryButtonContentProps =
-  ChatMessageConnectionBannerFailedBodyContent['retryButton']['content'];
+type ChatMessageConnectionBannerFailedPart = {
+  shouldRender: ChatRuntimeConnectionBannerMobileRenderState['failed']['shouldRender'];
+  container: ChatMessageConnectionBannerContainerPart<
+    ChatMessageConnectionBannerFailedContentProps,
+    ChatMessageConnectionBannerStyles['failed'],
+    ChatRuntimeConnectionBannerMobileRenderState['failed']['accessibilityRole']
+  >;
+};
 
 type ChatMessageConnectionBannerReconnectingProps = {
-  reconnecting: ChatMessageConnectionBannerParts['reconnecting'];
+  reconnecting: ChatMessageConnectionBannerReconnectingPart;
 };
 
 type ChatMessageConnectionBannerFailedProps = {
-  failed: ChatMessageConnectionBannerParts['failed'];
+  failed: ChatMessageConnectionBannerFailedPart;
 };
 
-type ChatMessageConnectionBannerContainerProps =
-  | (ChatMessageConnectionBannerParts['reconnecting']['container']['props'] & {
-    children: ReactNode;
-  })
-  | (ChatMessageConnectionBannerParts['failed']['container']['props'] & {
-    children: ReactNode;
-  });
+type ChatMessageConnectionBannerContainerProps = {
+  children: ReactNode;
+  accessible: true;
+  accessibilityRole:
+    | ChatRuntimeConnectionBannerMobileRenderState['reconnecting']['accessibilityRole']
+    | ChatRuntimeConnectionBannerMobileRenderState['failed']['accessibilityRole'];
+  accessibilityLabel: string;
+  style: [
+    ChatMessageConnectionBannerStyles['banner'],
+    ChatMessageConnectionBannerStyles['reconnecting'] | ChatMessageConnectionBannerStyles['failed']
+  ];
+};
 
-type ChatMessageConnectionBannerContentProps =
-  ChatMessageConnectionBannerReconnectingBody['props'] & {
-    children: ReactNode;
-  };
+type ChatMessageConnectionBannerContentProps = {
+  children: ReactNode;
+  style: ChatMessageConnectionBannerStyles['content'];
+};
 
-type ChatMessageConnectionBannerSpinnerProps =
-  ChatMessageConnectionBannerReconnectingBodyContent['spinner']['props'];
-
-type ChatMessageConnectionBannerIconProps =
-  ChatMessageConnectionBannerFailedBodyContent['icon']['props'];
-
-type ChatMessageConnectionBannerTextContainerProps =
-  | (ChatMessageConnectionBannerReconnectingBodyContent['textContainer']['props'] & {
-    children: ReactNode;
-  })
-  | (ChatMessageConnectionBannerFailedBodyContent['textContainer']['props'] & {
-    children: ReactNode;
-  });
+type ChatMessageConnectionBannerTextContainerProps = {
+  children: ReactNode;
+  style: ChatMessageConnectionBannerStyles['textContainer'];
+};
 
 type ChatMessageConnectionBannerTextProps =
-  | ChatMessageConnectionBannerReconnectingBodyContent['textContainer']['content']['title']['props']
-  | ChatMessageConnectionBannerReconnectingBodyContent['textContainer']['content']['subtitle']['props']
-  | ChatMessageConnectionBannerFailedBodyContent['textContainer']['content']['title']['props']
-  | ChatMessageConnectionBannerFailedBodyContent['textContainer']['content']['subtitle']['props']
-  | ChatMessageConnectionBannerFailedBodyContent['retryButton']['content']['label']['props'];
+  | ChatMessageConnectionBannerTextPart<ChatMessageConnectionBannerStyles['title']>
+  | ChatMessageConnectionBannerTextPart<ChatMessageConnectionBannerStyles['subtitle']>
+  | ChatMessageConnectionBannerTextPart<ChatMessageConnectionBannerStyles['retryButtonText']>;
 
 type ChatMessageConnectionBannerRetryButtonProps =
-  ChatMessageConnectionBannerFailedBodyContent['retryButton']['props'] & {
+  ChatMessageConnectionBannerRetryButtonPart['props'] & {
     children: ReactNode;
   };
 
