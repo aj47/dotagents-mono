@@ -286,6 +286,7 @@ import {
   type ChatRuntimeHeaderTurnDurationMobilePropsParts,
   type ChatRuntimeHeaderTurnDurationMobileStyleSlots as SharedChatRuntimeHeaderTurnDurationStyleSlots,
   type ChatRuntimeTurnDurationBadgeMobilePropsParts,
+  type ChatRuntimeTurnDurationBadgeMobilePropsPartsInput,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
   type ChatRuntimeTurnDurationMessageMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
@@ -1983,13 +1984,14 @@ type ChatMessageRuntimeOverlaysProps = {
 type ChatMessageTurnDurationBadgeRenderState =
   ChatRuntimeTurnDurationMessageMobileRenderState;
 
-type ChatMessageTurnDurationBadgeProps = {
-  renderState: ChatMessageTurnDurationBadgeRenderState;
-  style: StyleProp<ViewStyle>;
-  liveStyle?: StyleProp<ViewStyle>;
-  textStyle: StyleProp<TextStyle>;
-  liveTextStyle?: StyleProp<TextStyle>;
-};
+type ChatMessageTurnDurationBadgeProps =
+  ChatRuntimeTurnDurationBadgeMobilePropsPartsInput<
+    ChatMessageTurnDurationBadgeRenderState,
+    StyleProp<ViewStyle>,
+    StyleProp<ViewStyle> | undefined,
+    StyleProp<TextStyle>,
+    StyleProp<TextStyle> | undefined
+  >;
 
 type ChatMessageTurnDurationBadgeParts =
   ChatRuntimeTurnDurationBadgeMobilePropsParts<
