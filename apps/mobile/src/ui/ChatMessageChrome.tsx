@@ -1536,21 +1536,41 @@ type ChatRuntimeHeaderIconButtonParts =
     StyleProp<ViewStyle>
   >;
 
-type ChatRuntimeHeaderIconButtonTouchableProps =
-  ChatRuntimeHeaderIconButtonParts['touchable']['props'] & {
-    children: ReactNode;
+type ChatRuntimeHeaderIconButtonTouchableStyle =
+  Array<StyleProp<ViewStyle> | false | undefined>;
+
+type ChatRuntimeHeaderIconButtonTouchableProps = {
+  children: ReactNode;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  activeOpacity: number;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  accessibilityHint: string | undefined;
+  accessibilityState: unknown;
+  'aria-checked': unknown;
+  style: ChatRuntimeHeaderIconButtonTouchableStyle;
+};
+
+type ChatRuntimeHeaderIconButtonIconContainerProps = {
+  children: ReactNode;
+  style: StyleProp<ViewStyle> | undefined;
+};
+
+type ChatRuntimeHeaderIconButtonIconProps = {
+  name: IoniconName;
+  size: number;
+  color: string;
+};
+
+type ChatRuntimeHeaderIconButtonTouchableContentProps = {
+  iconContainer: {
+    shouldRender: boolean;
+    props: Omit<ChatRuntimeHeaderIconButtonIconContainerProps, 'children'>;
   };
-
-type ChatRuntimeHeaderIconButtonTouchableContentProps =
-  ChatRuntimeHeaderIconButtonParts['touchable']['content'];
-
-type ChatRuntimeHeaderIconButtonIconContainerProps =
-  ChatRuntimeHeaderIconButtonParts['touchable']['content']['iconContainer']['props'] & {
-    children: ReactNode;
+  icon: {
+    props: ChatRuntimeHeaderIconButtonIconProps;
   };
-
-type ChatRuntimeHeaderIconButtonIconProps =
-  ChatRuntimeHeaderIconButtonParts['touchable']['content']['icon']['props'];
+};
 
 type ChatRuntimeHeaderConversationStatusStyles =
   SharedChatRuntimeHeaderConversationStatusStyleSlots<
