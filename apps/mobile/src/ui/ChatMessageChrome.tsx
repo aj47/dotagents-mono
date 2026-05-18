@@ -10974,8 +10974,11 @@ export function ChatMessageThreadBody(props: ChatMessageThreadBodyProps) {
 }
 
 export function ChatMessageRetryStatus(props: ChatMessageRetryStatusProps) {
-  const retryStatusParts: ChatMessageRetryStatusParts =
-    createChatRuntimeRetryStatusMobilePropsParts(props);
+  const { renderState, styles } = props;
+  const retryStatusParts = useMemo<ChatMessageRetryStatusParts>(
+    () => createChatRuntimeRetryStatusMobilePropsParts({ renderState, styles }),
+    [renderState, styles],
+  );
   const retryStatusCard = retryStatusParts.card;
 
   if (!retryStatusCard.shouldRender) return null;
@@ -13844,8 +13847,14 @@ export function ChatMessageHistoryBannerText({
 export function ChatMessageStepSummaryCard(
   props: ChatMessageStepSummaryCardProps,
 ) {
-  const stepSummaryCardParts: ChatMessageStepSummaryCardParts =
-    createChatRuntimeStepSummaryCardMobilePropsParts(props);
+  const { renderState, styles } = props;
+  const stepSummaryCardParts = useMemo<ChatMessageStepSummaryCardParts>(
+    () => createChatRuntimeStepSummaryCardMobilePropsParts({
+      renderState,
+      styles,
+    }),
+    [renderState, styles],
+  );
   const stepSummaryCardPart = stepSummaryCardParts.card;
 
   if (!stepSummaryCardPart.shouldRender) return null;
@@ -13957,8 +13966,15 @@ export function ChatMessageStepSummaryText({
 export function ChatMessageScrollToBottomButton(
   props: ChatMessageScrollToBottomButtonProps,
 ) {
-  const scrollToBottomButtonParts: ChatMessageScrollToBottomButtonParts =
-    createChatRuntimeScrollToBottomButtonMobilePropsParts(props);
+  const { renderState, onPress, style } = props;
+  const scrollToBottomButtonParts = useMemo<ChatMessageScrollToBottomButtonParts>(
+    () => createChatRuntimeScrollToBottomButtonMobilePropsParts({
+      renderState,
+      onPress,
+      style,
+    }),
+    [onPress, renderState, style],
+  );
   const scrollToBottomButton = scrollToBottomButtonParts.button;
 
   if (!scrollToBottomButton.shouldRender) return null;
@@ -14004,8 +14020,16 @@ export function ChatMessageScrollToBottomButtonIcon(
 export function ChatMessageLoadingState(
   props: ChatMessageLoadingStateProps,
 ) {
-  const loadingStateParts: ChatMessageLoadingStateParts =
-    createChatRuntimeLoadingStateMobilePropsParts(props);
+  const { renderState, spinnerSource, style, spinnerStyle } = props;
+  const loadingStateParts = useMemo<ChatMessageLoadingStateParts>(
+    () => createChatRuntimeLoadingStateMobilePropsParts({
+      renderState,
+      spinnerSource,
+      style,
+      spinnerStyle,
+    }),
+    [renderState, spinnerSource, spinnerStyle, style],
+  );
   const loadingStateContainer = loadingStateParts.container;
 
   if (!loadingStateContainer.shouldRender) return null;
@@ -15146,8 +15170,16 @@ export function ChatComposerTextEntryVoiceStatusLiveRegion({
 }
 
 export function ChatMessageInlineActivity(props: ChatMessageInlineActivityProps) {
-  const inlineActivityParts: ChatMessageInlineActivityParts =
-    createChatRuntimeInlineActivityMobilePropsParts(props);
+  const { renderState, spinnerSource, style, spinnerStyle } = props;
+  const inlineActivityParts = useMemo<ChatMessageInlineActivityParts>(
+    () => createChatRuntimeInlineActivityMobilePropsParts({
+      renderState,
+      spinnerSource,
+      style,
+      spinnerStyle,
+    }),
+    [renderState, spinnerSource, spinnerStyle, style],
+  );
 
   if (!inlineActivityParts.container.shouldRender) return null;
 
@@ -15190,8 +15222,17 @@ export function ChatMessageInlineActivitySpinner(props: ChatMessageInlineActivit
 }
 
 export function ChatMessageTurnDurationBadge(props: ChatMessageTurnDurationBadgeProps) {
-  const turnDurationBadgeParts: ChatMessageTurnDurationBadgeParts =
-    createChatRuntimeTurnDurationBadgeMobilePropsParts(props);
+  const { renderState, style, liveStyle, textStyle, liveTextStyle } = props;
+  const turnDurationBadgeParts = useMemo<ChatMessageTurnDurationBadgeParts>(
+    () => createChatRuntimeTurnDurationBadgeMobilePropsParts({
+      renderState,
+      style,
+      liveStyle,
+      textStyle,
+      liveTextStyle,
+    }),
+    [liveStyle, liveTextStyle, renderState, style, textStyle],
+  );
 
   if (!turnDurationBadgeParts.container.shouldRender) return null;
 
