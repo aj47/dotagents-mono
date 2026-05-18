@@ -523,6 +523,7 @@ import {
   preserveChatMessageRuntimeDisplayContentFromProgress,
   removeChatMessageRuntimePendingTurnMessages,
   removeChatMessageRuntimeToolApprovalMessage,
+  resolveChatRuntimeMessageQueueEnabled,
   resolveChatRuntimeMobileFontFamily,
   sortChatMessageRuntimeResponseEvents,
   toggleChatMessageRuntimeMessageExpansionState,
@@ -596,6 +597,10 @@ describe("session presentation semantics", () => {
   })
 
   it("derives composer modes from lifecycle and queue availability", () => {
+    expect(resolveChatRuntimeMessageQueueEnabled()).toBe(true)
+    expect(resolveChatRuntimeMessageQueueEnabled({ mcpMessageQueueEnabled: false })).toBe(false)
+    expect(resolveChatRuntimeMessageQueueEnabled({ messageQueueEnabled: false })).toBe(false)
+    expect(resolveChatRuntimeMessageQueueEnabled({ mcpMessageQueueEnabled: false, messageQueueEnabled: true })).toBe(true)
     expect(getFollowUpInputPresentation({ isInitializingSession: true }).mode).toBe("initializing")
     expect(getFollowUpInputPresentation({ conversationState: "running", isQueueEnabled: true })).toMatchObject({
       mode: "queue",

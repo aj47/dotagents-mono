@@ -6,18 +6,31 @@ const SOURCES = [
   ["tile follow-up input", "./tile-follow-up-input.tsx"],
   ["agent progress", "./agent-progress.tsx"],
 ] as const
+const sessionPresentationSource = readFileSync(
+  new URL("../../../../../../packages/shared/src/session-presentation.ts", import.meta.url),
+  "utf8",
+)
 
 function readSource(relativePath: string): string {
   return readFileSync(new URL(relativePath, import.meta.url), "utf8")
 }
 
 describe("MCP message queue renderer defaults", () => {
-  it.each(SOURCES)("uses the shared queue default in %s", (_label, relativePath) => {
+  it("routes the queue default through session presentation", () => {
+    expect(sessionPresentationSource).toContain("DEFAULT_MCP_MESSAGE_QUEUE_ENABLED")
+    expect(sessionPresentationSource).toContain("export function resolveChatRuntimeMessageQueueEnabled")
+    expect(sessionPresentationSource).toContain(
+      "return config?.messageQueueEnabled ?? config?.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED",
+    )
+  })
+
+  it.each(SOURCES)("uses the shared chat runtime queue resolver in %s", (_label, relativePath) => {
     const source = readSource(relativePath)
 
-    expect(source).toContain("DEFAULT_MCP_MESSAGE_QUEUE_ENABLED")
+    expect(source).not.toContain("DEFAULT_MCP_MESSAGE_QUEUE_ENABLED")
+    expect(source).toContain("resolveChatRuntimeMessageQueueEnabled")
     expect(source).toContain(
-      "configQuery.data?.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED",
+      "const isQueueEnabled = resolveChatRuntimeMessageQueueEnabled(configQuery.data)",
     )
   })
 })

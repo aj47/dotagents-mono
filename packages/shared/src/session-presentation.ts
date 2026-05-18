@@ -3,6 +3,7 @@ import {
   normalizeAgentConversationState,
   type AgentConversationState,
 } from "./conversation-state"
+import { DEFAULT_MCP_MESSAGE_QUEUE_ENABLED } from "./mcp-api"
 import type { CHAT_PROVIDER_ID } from "./providers"
 export type { AgentConversationState } from "./conversation-state"
 export {
@@ -16411,6 +16412,17 @@ export function formatChatRuntimeWebConfirmMessage(title: string, message: strin
 
 export function getChatRuntimeCopyState(): typeof CHAT_RUNTIME_PRESENTATION {
   return CHAT_RUNTIME_PRESENTATION
+}
+
+export interface ChatRuntimeMessageQueueEnabledConfigLike {
+  messageQueueEnabled?: boolean | null
+  mcpMessageQueueEnabled?: boolean | null
+}
+
+export function resolveChatRuntimeMessageQueueEnabled(
+  config?: ChatRuntimeMessageQueueEnabledConfigLike | null,
+): boolean {
+  return config?.messageQueueEnabled ?? config?.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED
 }
 
 export function formatChatRuntimeModelPickerTitle(providerLabel: string, modelId: string): string {

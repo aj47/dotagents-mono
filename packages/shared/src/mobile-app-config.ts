@@ -3,6 +3,7 @@ import {
   migrateDeprecatedEdgeTtsVoice,
 } from './providers';
 import { normalizeApiBaseUrl } from './connection-recovery';
+import { DEFAULT_MCP_MESSAGE_QUEUE_ENABLED } from './mcp-api';
 import type { AudioInputDeviceConfig } from './api-types';
 
 export type MobileAppConfig = AudioInputDeviceConfig & {
@@ -51,7 +52,7 @@ export const DEFAULT_MOBILE_APP_CONFIG: MobileAppConfig = {
   handsFreeForegroundOnly: true,
   ttsEnabled: true,
   ttsProvider: 'native',
-  messageQueueEnabled: true,
+  messageQueueEnabled: DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
   ttsVoiceId: undefined,
   ttsRate: 1.0,
   ttsPitch: 1.0,
@@ -99,7 +100,7 @@ export function createChatRuntimeMobileConfigState(
     handsFreeForegroundOnly:
       config.handsFreeForegroundOnly ?? DEFAULT_MOBILE_APP_CONFIG.handsFreeForegroundOnly ?? true,
     messageQueueEnabled:
-      config.messageQueueEnabled ?? DEFAULT_MOBILE_APP_CONFIG.messageQueueEnabled ?? true,
+      config.messageQueueEnabled ?? DEFAULT_MOBILE_APP_CONFIG.messageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED,
     ttsEnabled:
       config.ttsEnabled ?? DEFAULT_MOBILE_APP_CONFIG.ttsEnabled ?? true,
   };

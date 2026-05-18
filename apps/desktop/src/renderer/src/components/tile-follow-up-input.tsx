@@ -15,6 +15,7 @@ import {
   getChatComposerDesktopSurfaceState,
   getChatRuntimeCopyState,
   getFollowUpInputPresentation,
+  resolveChatRuntimeMessageQueueEnabled,
   formatChatImageAttachmentErrorMessage,
   getChatImageAttachmentDesktopComposerPreviewRenderState,
   type FollowUpInputPresentation,
@@ -27,7 +28,6 @@ import {
   MessageImageAttachment,
   readImageAttachments,
 } from "@renderer/lib/message-image-utils"
-import { DEFAULT_MCP_MESSAGE_QUEUE_ENABLED } from "@dotagents/shared/mcp-api"
 
 const desktopComposerSurface = getChatComposerDesktopSurfaceState().followUp
 const desktopComposerCopy = getChatComposerCopyState()
@@ -109,7 +109,7 @@ export function TileFollowUpInput({
 
   // Message queuing is enabled by default. While config is loading, treat as enabled
   // to allow users to type. The backend will handle queuing appropriately.
-  const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? DEFAULT_MCP_MESSAGE_QUEUE_ENABLED
+  const isQueueEnabled = resolveChatRuntimeMessageQueueEnabled(configQuery.data)
   const inputPresentation = presentation ?? getFollowUpInputPresentation({
     conversationState: isSessionActive ? "running" : "complete",
     isInitializingSession,
