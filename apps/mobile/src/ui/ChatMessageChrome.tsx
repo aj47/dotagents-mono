@@ -314,7 +314,6 @@ import {
   type ChatRuntimeNavigationHeaderOptionsParts,
   type ChatRuntimeViewportChromeMobileRenderStateInput,
   type ChatSessionStatusMobileRenderState,
-  type ChatSessionStatusMobileStyleState,
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationActionSetMobileProps,
@@ -2543,13 +2542,13 @@ type ChatMessageDelegationTitlePart = {
 
 type ChatMessageDelegationStatusBadgePart = {
   props: {
-    style: Array<ChatMessageDelegationCardStyles['statusBadge'] | ChatSessionStatusMobileStyleState['chip']>;
+    style: Array<StyleProp<ViewStyle>>;
   };
 };
 
 type ChatMessageDelegationStatusTextPart = {
   props: {
-    style: Array<ChatMessageDelegationCardStyles['statusText'] | ChatSessionStatusMobileStyleState['text']>;
+    style: Array<StyleProp<TextStyle>>;
     numberOfLines: number;
   };
   text: string;
