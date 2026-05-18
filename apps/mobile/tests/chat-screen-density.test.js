@@ -9270,7 +9270,10 @@ test('keeps session lifecycle refs in chat chrome state hooks', () => {
   assert.match(chatMessageChromeSource, /return sessionRefState;/);
   assert.match(chatMessageChromeSource, /const clearRouteInitialMessage = useCallback\(\(\) => \{\s+navigation\?\.setParams\?\.\(\{ initialMessage: undefined \}\);\s+\}, \[navigation\]\);/);
   assert.match(chatMessageChromeSource, /const routeInitialMessageActionsState =\s+useMemo<ChatMessageRuntimeRouteInitialMessageActionsState>\(\s+\(\) => \(\{\s+clearRouteInitialMessage,\s+\}\),\s+\[clearRouteInitialMessage\],\s+\);/);
-  assert.match(chatMessageChromeSource, /Route initial message received\./);
+  assert.match(sessionPresentationSource, /export function createChatRuntimeRouteInitialMessageReceivedDebugState/);
+  assert.match(chatMessageChromeSource, /const debugState = createChatRuntimeRouteInitialMessageReceivedDebugState\(nextInitial\);/);
+  assert.match(chatMessageChromeSource, /voiceLog\(debugState\.type, debugState\.summary, debugState\.detail\);/);
+  assert.doesNotMatch(chatMessageChromeSource, /Route initial message received\./);
   assert.match(chatMessageChromeSource, /void persistMessages\(messages\);/);
   assert.match(chatMessageChromeSource, /setTimeout\(\(\) => \{\s+void sendRef\.current\(msg\);/);
   assert.doesNotMatch(screenSource, /const lastLoadedSessionIdRef = useRef<string \| null>\(null\);/);

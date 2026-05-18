@@ -152,6 +152,7 @@ import {
   createChatRuntimeProcessingQueuedMessageDebugState,
   createChatRuntimeRequestSentDebugState,
   createChatRuntimeRequestSupersededQueueFailureState,
+  createChatRuntimeRouteInitialMessageReceivedDebugState,
   createChatRuntimeSessionChangedDuringProcessingQueueFailureState,
   createChatRuntimeStartingRequestDebugState,
   createChatRuntimeLoadingStateMobilePropsParts,
@@ -946,6 +947,7 @@ describe("session presentation semantics", () => {
     expect(CHAT_RUNTIME_PRESENTATION.debug.processingQueuedMessage).toBe("Processing queued message...")
     expect(CHAT_RUNTIME_PRESENTATION.debug.sessionChangedDuringProcessing).toBe("Session changed during processing")
     expect(CHAT_RUNTIME_PRESENTATION.debug.requestSuperseded).toBe("Request superseded")
+    expect(CHAT_RUNTIME_PRESENTATION.debug.routeInitialMessageReceived).toBe("Route initial message received.")
     expect(CHAT_RUNTIME_PRESENTATION.debug.unknownError).toBe("Unknown error")
     expect(getChatRuntimeDebugState()).toBe(CHAT_RUNTIME_PRESENTATION.debug)
     expect(getChatRuntimeDebugMessage("noSessionAvailable")).toBe(CHAT_RUNTIME_PRESENTATION.debug.noSessionAvailable)
@@ -975,6 +977,13 @@ describe("session presentation semantics", () => {
     expect(formatChatRuntimeStartingRequestDebugMessage("http://localhost:3000")).toBe(
       "Starting request to http://localhost:3000...",
     )
+    expect(createChatRuntimeRouteInitialMessageReceivedDebugState("Continue this")).toEqual({
+      type: "state-transition",
+      summary: "Route initial message received.",
+      detail: {
+        initialMessage: "Continue this",
+      },
+    })
     expect(getChatRuntimeAssistantSpeechDebugState()).toBe(CHAT_RUNTIME_PRESENTATION.speech)
     expect(getChatRuntimeNativeSpeechLanguage()).toBe("en-US")
     expect(formatChatRuntimeResponseSpeechEventReason(4)).toBe("response event 4")

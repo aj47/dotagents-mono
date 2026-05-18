@@ -180,6 +180,7 @@ import {
   createChatRuntimeViewportChromeMobileProps,
   createChatRuntimeMobileConfigState,
   createChatRuntimeStartingRequestDebugState,
+  createChatRuntimeRouteInitialMessageReceivedDebugState,
   getChatRuntimeBranchCreatedMobileResolvedAlertState,
   getChatRuntimeBranchFailedMobileResolvedAlertState,
   getChatRuntimeBranchUnavailableMobileResolvedAlertState,
@@ -9354,7 +9355,8 @@ export function useChatMessageRuntimeInitialMessageState({
     if (!nextInitial || typeof nextInitial !== 'string') return;
     initialMessageRef.current = nextInitial;
     initialMessageSentRef.current = false;
-    voiceLog('state-transition', 'Route initial message received.', { initialMessage: nextInitial });
+    const debugState = createChatRuntimeRouteInitialMessageReceivedDebugState(nextInitial);
+    voiceLog(debugState.type, debugState.summary, debugState.detail);
   }, [initialMessageRef, initialMessageSentRef, routeInitialMessage, voiceLog]);
 
   useEffect(() => {

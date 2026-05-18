@@ -14218,6 +14218,7 @@ export const CHAT_RUNTIME_PRESENTATION = {
     processingQueuedMessage: "Processing queued message...",
     sessionChangedDuringProcessing: "Session changed during processing",
     requestSuperseded: "Request superseded",
+    routeInitialMessageReceived: "Route initial message received.",
     unknownError: "Unknown error",
   },
   speech: {
@@ -14777,6 +14778,14 @@ export interface ChatRuntimeQueueFailureState {
 export type ChatRuntimeNoSessionAvailableDebugState =
   ChatRuntimeDebugInfoState & ChatRuntimeQueueFailureState
 
+export interface ChatRuntimeRouteInitialMessageReceivedDebugState {
+  type: "state-transition"
+  summary: string
+  detail: {
+    initialMessage: string
+  }
+}
+
 export type ChatRuntimeAssistantSpeechDebugEvent = "started" | "stopped"
 
 export function getChatRuntimeAlertMessage(error: unknown, fallback: string): string {
@@ -15118,6 +15127,18 @@ export function getChatRuntimeAssistantSpeechDebugState(): typeof CHAT_RUNTIME_P
 
 export function getChatRuntimeNativeSpeechLanguage(): string {
   return CHAT_RUNTIME_PRESENTATION.speech.nativeLanguage
+}
+
+export function createChatRuntimeRouteInitialMessageReceivedDebugState(
+  initialMessage: string,
+): ChatRuntimeRouteInitialMessageReceivedDebugState {
+  return {
+    type: "state-transition",
+    summary: getChatRuntimeDebugMessage("routeInitialMessageReceived"),
+    detail: {
+      initialMessage,
+    },
+  }
 }
 
 export function getChatRuntimeDebugState(): typeof CHAT_RUNTIME_PRESENTATION.debug {
