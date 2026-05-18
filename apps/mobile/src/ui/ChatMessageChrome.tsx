@@ -14376,23 +14376,11 @@ export function ChatMessageDebugPanelStack(
   );
 }
 
-export function ChatMessageConversationDock({
-  responseHistoryPanel,
-  scrollToBottomButton,
-  voiceOverlay,
-  queuePanel,
-  connectionBanner,
-  composer,
-}: ChatMessageConversationDockProps) {
+export function ChatMessageConversationDock(
+  props: ChatMessageConversationDockProps,
+) {
   const dockShellParts: ChatMessageConversationDockParts =
-    createChatRuntimeConversationDockShellMobilePropsParts({
-      responseHistoryPanel,
-      scrollToBottomButton,
-      voiceOverlay,
-      queuePanel,
-      connectionBanner,
-      composer,
-    });
+    createChatRuntimeConversationDockShellMobilePropsParts(props);
 
   return (
     <ChatMessageConversationDockContent
@@ -14421,25 +14409,11 @@ export function ChatMessageConversationDockContent({
   );
 }
 
-export function ChatMessageRuntimeDock({
-  responseHistoryPanel,
-  scrollToBottomButton,
-  voiceOverlay,
-  queuePanel,
-  connectionBanner,
-  composer,
-  styles,
-}: ChatMessageRuntimeDockProps) {
+export function ChatMessageRuntimeDock(
+  props: ChatMessageRuntimeDockProps,
+) {
   const dockParts: ChatMessageRuntimeDockParts =
-    createChatRuntimeConversationDockMobilePropsParts({
-      responseHistoryPanel,
-      scrollToBottomButton,
-      voiceOverlay,
-      queuePanel,
-      connectionBanner,
-      composer,
-      styles,
-    });
+    createChatRuntimeConversationDockMobilePropsParts(props);
 
   return (
     <ChatMessageConversationDock
@@ -14533,17 +14507,11 @@ export function ChatMessageQueuePanelDockContainer({
   );
 }
 
-export function ChatMessageConnectionBanner({
-  renderState,
-  onRetry,
-  styles,
-}: ChatMessageConnectionBannerProps) {
+export function ChatMessageConnectionBanner(
+  props: ChatMessageConnectionBannerProps,
+) {
   const connectionBannerParts: ChatMessageConnectionBannerParts =
-    createChatRuntimeConnectionBannerMobilePropsParts({
-      renderState,
-      onRetry,
-      styles,
-    });
+    createChatRuntimeConnectionBannerMobilePropsParts(props);
 
   return (
     <>
@@ -14749,35 +14717,11 @@ export function ChatMessageConnectionBannerRetryButton({
   );
 }
 
-export function ChatComposerRuntimeDock({
-  speechPreview,
-  pendingImagesRail,
-  handsFreeControls,
-  imageAttachmentControl,
-  textToSpeechControl,
-  editBeforeSendControl,
-  textEntry,
-  queueAction,
-  submitAction,
-  micButton,
-  micWrapperRef,
-  styles,
-}: ChatComposerRuntimeDockProps) {
+export function ChatComposerRuntimeDock(
+  props: ChatComposerRuntimeDockProps,
+) {
   const composerDockParts: ChatComposerRuntimeDockParts =
-    createChatComposerRuntimeDockMobilePropsParts({
-      speechPreview,
-      pendingImagesRail,
-      handsFreeControls,
-      imageAttachmentControl,
-      textToSpeechControl,
-      editBeforeSendControl,
-      textEntry,
-      queueAction,
-      submitAction,
-      micButton,
-      micWrapperRef,
-      styles,
-    });
+    createChatComposerRuntimeDockMobilePropsParts(props);
 
   return (
     <ChatComposerInputDock
@@ -14837,35 +14781,11 @@ export function ChatComposerRuntimeDock({
   );
 }
 
-export function ChatComposerInputDock({
-  speechPreview,
-  pendingImagesRail,
-  handsFreeControls,
-  imageAttachmentControl,
-  textToSpeechControl,
-  editBeforeSendControl,
-  textEntry,
-  queueAction,
-  submitAction,
-  micButton,
-  micWrapperRef,
-  styles,
-}: ChatComposerInputDockProps) {
+export function ChatComposerInputDock(
+  props: ChatComposerInputDockProps,
+) {
   const inputDockParts: ChatComposerInputDockParts =
-    createChatComposerInputDockMobilePropsParts({
-      speechPreview,
-      pendingImagesRail,
-      handsFreeControls,
-      imageAttachmentControl,
-      textToSpeechControl,
-      editBeforeSendControl,
-      textEntry,
-      queueAction,
-      submitAction,
-      micButton,
-      micWrapperRef,
-      styles,
-    });
+    createChatComposerInputDockMobilePropsParts(props);
 
   return (
     <ChatComposerInputDockArea

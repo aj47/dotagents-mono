@@ -2240,7 +2240,8 @@ test('uses shared runtime presentation for mobile scroll-to-bottom affordance', 
   assert.match(chatMessageChromeSource, /const chatMessageRuntimeDock = createChatRuntimeDockChromeMobileProps\(\{\s+\.\.\.dock,[\s\S]*?speakNative: Speech\.speak,[\s\S]*?stopRemoteSpeech: stopRemoteTts,[\s\S]*?colors,[\s\S]*?composer: chatComposerRuntimeDock,/);
   assert.match(sessionPresentationSource, /const dockChromeRenderState = getChatRuntimeDockChromeMobileRenderState\(\{/);
   assert.match(sessionPresentationSource, /scrollToBottomButton: \{\s+renderState: dockChromeRenderState\.scrollToBottom,\s+onPress: onScrollToBottom,\s+\}/);
-  assert.match(chatMessageChromeSource, /const dockParts: ChatMessageRuntimeDockParts =\s+createChatRuntimeConversationDockMobilePropsParts\(\{\s+responseHistoryPanel,\s+scrollToBottomButton,\s+voiceOverlay,\s+queuePanel,\s+connectionBanner,\s+composer,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatMessageRuntimeDock\(\s+props: ChatMessageRuntimeDockProps,\s+\)/);
+  assert.match(chatMessageChromeSource, /const dockParts: ChatMessageRuntimeDockParts =\s+createChatRuntimeConversationDockMobilePropsParts\(props\);/);
   assert.match(chatMessageChromeSource, /<ChatMessageScrollToBottomButton\s+\{\.\.\.dockParts\.scrollToBottomButton\.props\}/);
   assert.match(sessionPresentationSource, /scrollToBottomButton: \{\s+props: \{\s+\.\.\.scrollToBottomButton,\s+style: styles\.scrollToBottomButtonStyle,\s+\},\s+\}/);
   assert.match(sessionPresentationSource, /scrollToBottomButtonStyle: \[\s+conversationDockStyles\.scrollToBottomButtonStyle,\s+safeAreaStyles\.scrollToBottomButton,\s+\]/);
@@ -2737,7 +2738,8 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(sessionPresentationSource, /export function createChatRuntimeConversationDockShellMobilePropsParts/);
   const conversationDockSource =
     chatMessageChromeSource.match(/export function ChatMessageConversationDock[\s\S]*?export function ChatMessageRuntimeDock/)?.[0] ?? '';
-  assert.match(conversationDockSource, /const dockShellParts: ChatMessageConversationDockParts =\s+createChatRuntimeConversationDockShellMobilePropsParts\(\{\s+responseHistoryPanel,\s+scrollToBottomButton,\s+voiceOverlay,\s+queuePanel,\s+connectionBanner,\s+composer,\s+\}\);/);
+  assert.match(conversationDockSource, /export function ChatMessageConversationDock\(\s+props: ChatMessageConversationDockProps,\s+\)/);
+  assert.match(conversationDockSource, /const dockShellParts: ChatMessageConversationDockParts =\s+createChatRuntimeConversationDockShellMobilePropsParts\(props\);/);
   assert.match(sessionPresentationSource, /content: \{\s+responseHistoryPanel: \{\s+children: responseHistoryPanel,/);
   assert.match(chatMessageChromeSource, /type ChatMessageConversationDockContentProps = \{[\s\S]*?responseHistoryPanel: \{\s+children: ReactNode \| undefined;[\s\S]*?scrollToBottomButton: \{\s+children: ReactNode \| undefined;[\s\S]*?voiceOverlay: \{\s+children: ReactNode \| undefined;[\s\S]*?queuePanel: \{\s+children: ReactNode \| undefined;[\s\S]*?connectionBanner: \{\s+children: ReactNode \| undefined;[\s\S]*?composer: \{\s+children: ReactNode \| undefined;/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationDockContentProps =\s+ChatMessageConversationDockParts\['content'\];/);
@@ -2906,7 +2908,8 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.match(sessionPresentationSource, /export function createChatRuntimeConnectionBannerMobilePropsParts/);
   const connectionBannerSource =
     chatMessageChromeSource.match(/export function ChatMessageConnectionBanner[\s\S]*?export function ChatComposerRuntimeDock/)?.[0] ?? '';
-  assert.match(connectionBannerSource, /const connectionBannerParts: ChatMessageConnectionBannerParts =\s+createChatRuntimeConnectionBannerMobilePropsParts\(\{\s+renderState,\s+onRetry,\s+styles,\s+\}\);/);
+  assert.match(connectionBannerSource, /export function ChatMessageConnectionBanner\(\s+props: ChatMessageConnectionBannerProps,\s+\)/);
+  assert.match(connectionBannerSource, /const connectionBannerParts: ChatMessageConnectionBannerParts =\s+createChatRuntimeConnectionBannerMobilePropsParts\(props\);/);
   assert.match(connectionBannerSource, /<ChatMessageConnectionBannerReconnecting\s+reconnecting=\{connectionBannerParts\.reconnecting\}/);
   assert.match(connectionBannerSource, /<ChatMessageConnectionBannerFailed\s+failed=\{connectionBannerParts\.failed\}/);
   assert.match(connectionBannerSource, /export function ChatMessageConnectionBannerReconnecting/);
@@ -3244,7 +3247,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /controlPressedOpacity: handsFreeSurface\.controlButton\.pressedOpacity/);
   assert.match(sessionPresentationSource, /placeholderTextColor: composerTextColors\.input\.placeholderColor/);
   assert.match(chatMessageChromeSource, /export function ChatComposerRuntimeDock/);
-  assert.match(chatMessageChromeSource, /const composerDockParts: ChatComposerRuntimeDockParts =\s+createChatComposerRuntimeDockMobilePropsParts\(\{\s+speechPreview,\s+pendingImagesRail,\s+handsFreeControls,\s+imageAttachmentControl,\s+textToSpeechControl,\s+editBeforeSendControl,\s+textEntry,\s+queueAction,\s+submitAction,\s+micButton,\s+micWrapperRef,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /export function ChatComposerRuntimeDock\(\s+props: ChatComposerRuntimeDockProps,\s+\)/);
+  assert.match(chatMessageChromeSource, /const composerDockParts: ChatComposerRuntimeDockParts =\s+createChatComposerRuntimeDockMobilePropsParts\(props\);/);
   assert.match(chatMessageChromeSource, /<ChatComposerSpeechPreview\s+\{\.\.\.composerDockParts\.speechPreview\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatComposerPendingImagesRail\s+\{\.\.\.composerDockParts\.pendingImagesRail\.props\}/);
   assert.match(chatMessageChromeSource, /<ChatComposerHandsFreeControls\s+\{\.\.\.composerDockParts\.handsFreeControls\.props\}\s+status=\{<HandsFreeStatusChip \{\.\.\.composerDockParts\.handsFreeControls\.content\.status\.props\} \/>\}/);
@@ -3292,7 +3296,8 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
   assert.match(sessionPresentationSource, /export function createChatComposerInputDockMobilePropsParts/);
   const inputDockSource =
     chatMessageChromeSource.match(/export function ChatComposerInputDock[\s\S]*?export function ChatComposerSpeechPreview/)?.[0] ?? '';
-  assert.match(inputDockSource, /const inputDockParts: ChatComposerInputDockParts =\s+createChatComposerInputDockMobilePropsParts\(\{\s+speechPreview,\s+pendingImagesRail,\s+handsFreeControls,\s+imageAttachmentControl,\s+textToSpeechControl,\s+editBeforeSendControl,\s+textEntry,\s+queueAction,\s+submitAction,\s+micButton,\s+micWrapperRef,\s+styles,\s+\}\);/);
+  assert.match(inputDockSource, /export function ChatComposerInputDock\(\s+props: ChatComposerInputDockProps,\s+\)/);
+  assert.match(inputDockSource, /const inputDockParts: ChatComposerInputDockParts =\s+createChatComposerInputDockMobilePropsParts\(props\);/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerInputDock(?:AreaProps|AreaContentProps|RowProps|RowContentProps|MicWrapperProps|MicWrapperContentProps)\s*=\s+(?:Omit<)?ChatComposerInputDockParts\['/);
   assert.match(chatMessageChromeSource, /type ChatComposerInputDockChildPart = \{[\s\S]*?children: ReactNode;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatComposerInputDockAreaProps = \{[\s\S]*?style: ChatComposerInputDockStyles\['area'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
