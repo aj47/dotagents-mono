@@ -13978,8 +13978,25 @@ export function ChatMessageRuntimeSurface<
 >(
   props: ChatMessageRuntimeSurfaceProps<TPrompt, TTask>,
 ) {
-  const surfaceParts: ChatMessageRuntimeSurfaceParts<TPrompt, TTask> =
-    createChatRuntimeConversationSurfaceMobilePropsParts(props);
+  const {
+    frame,
+    dock,
+    overlays,
+    threadList,
+    viewport,
+    styles,
+  } = props;
+  const surfaceParts = useMemo<ChatMessageRuntimeSurfaceParts<TPrompt, TTask>>(
+    () => createChatRuntimeConversationSurfaceMobilePropsParts({
+      frame,
+      dock,
+      overlays,
+      threadList,
+      viewport,
+      styles,
+    }),
+    [dock, frame, overlays, styles, threadList, viewport],
+  );
 
   return (
     <ChatMessageConversationFrame
@@ -14364,8 +14381,32 @@ export function ChatMessageDebugPanelStack(
 export function ChatMessageConversationDock(
   props: ChatMessageConversationDockProps,
 ) {
-  const dockShellParts: ChatMessageConversationDockParts =
-    createChatRuntimeConversationDockShellMobilePropsParts(props);
+  const {
+    responseHistoryPanel,
+    scrollToBottomButton,
+    voiceOverlay,
+    queuePanel,
+    connectionBanner,
+    composer,
+  } = props;
+  const dockShellParts = useMemo<ChatMessageConversationDockParts>(
+    () => createChatRuntimeConversationDockShellMobilePropsParts({
+      responseHistoryPanel,
+      scrollToBottomButton,
+      voiceOverlay,
+      queuePanel,
+      connectionBanner,
+      composer,
+    }),
+    [
+      composer,
+      connectionBanner,
+      queuePanel,
+      responseHistoryPanel,
+      scrollToBottomButton,
+      voiceOverlay,
+    ],
+  );
 
   return (
     <ChatMessageConversationDockContent
@@ -14397,8 +14438,35 @@ export function ChatMessageConversationDockContent({
 export function ChatMessageRuntimeDock(
   props: ChatMessageRuntimeDockProps,
 ) {
-  const dockParts: ChatMessageRuntimeDockParts =
-    createChatRuntimeConversationDockMobilePropsParts(props);
+  const {
+    responseHistoryPanel,
+    scrollToBottomButton,
+    voiceOverlay,
+    queuePanel,
+    connectionBanner,
+    composer,
+    styles,
+  } = props;
+  const dockParts = useMemo<ChatMessageRuntimeDockParts>(
+    () => createChatRuntimeConversationDockMobilePropsParts({
+      responseHistoryPanel,
+      scrollToBottomButton,
+      voiceOverlay,
+      queuePanel,
+      connectionBanner,
+      composer,
+      styles,
+    }),
+    [
+      composer,
+      connectionBanner,
+      queuePanel,
+      responseHistoryPanel,
+      scrollToBottomButton,
+      styles,
+      voiceOverlay,
+    ],
+  );
 
   return (
     <ChatMessageConversationDock
