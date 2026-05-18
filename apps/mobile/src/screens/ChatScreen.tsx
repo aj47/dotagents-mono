@@ -81,9 +81,9 @@ import {
   useChatMessageRuntimeDockInputState,
   useChatMessageRuntimeThreadListInputState,
   useChatMessageRuntimeComposerInputState,
+  type ChatMessage,
   type ChatRuntimeExtendedSettingsClient,
 } from '../ui/ChatMessageChrome';
-import type { ChatMessage } from '../lib/openaiClient';
 import {
   applyChatMessageRuntimeBlockedTurnStatusState,
   applyChatMessageRuntimeCompletedTurnStatusState,

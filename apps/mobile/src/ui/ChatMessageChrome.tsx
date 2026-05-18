@@ -490,6 +490,8 @@ import {
   type ResponseHistoryPanelProps,
 } from './ResponseHistoryPanel';
 
+export type { ChatMessage } from '../lib/openaiClient';
+
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 export type ChatComposerTextEntryRef = TextInput;
