@@ -6,6 +6,7 @@ import { isPanelAutoShowSuppressed, agentSessionStateManager } from "./state"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
 import { sanitizeAgentProgressUpdateForDisplay } from "@dotagents/shared"
+import { recordSessionFileActivity } from "./session-file-browser"
 
 // Throttle interval for non-critical progress updates (ms).
 // Updates within this window are collapsed — only the latest is sent.
@@ -138,6 +139,7 @@ function isCriticalUpdate(update: AgentProgressUpdate, state?: {
 }
 
 export async function emitAgentProgress(update: AgentProgressUpdate): Promise<void> {
+  recordSessionFileActivity(update)
   const displayUpdate = sanitizeAgentProgressUpdateForDisplay(update)
 
   // Backfill snoozed state from the session tracker when callers omit it.

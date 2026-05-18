@@ -156,6 +156,7 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   const savedConversationQueryKey = [
     "conversation",
     conversationIdForHydration,
+    sessionId,
     shouldHydrateFromConversation ? "hydrate" : activeHistoryMessageLimit,
   ] as const
   const cachedSavedConversation = queryClient.getQueryData<LoadedConversation>(savedConversationQueryKey)
@@ -185,6 +186,7 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
       if (!conversationIdForHydration) return null
       return tipcClient.loadConversation({
         conversationId: conversationIdForHydration,
+        sessionId,
         ...(shouldHydrateFromConversation ? {} : { messageLimit: activeHistoryMessageLimit }),
       })
     },
@@ -681,11 +683,12 @@ export function Component() {
 
   // Load the saved conversation that is about to be resumed.
   const pendingResumeConversationQuery = useQuery({
-    queryKey: ["conversation", pendingResumeConversationId, pendingResumeHistoryMessageLimit],
+    queryKey: ["conversation", pendingResumeConversationId, pendingResumeSessionId, pendingResumeHistoryMessageLimit],
     queryFn: async () => {
       if (!pendingResumeConversationId) return null
       return tipcClient.loadConversation({
         conversationId: pendingResumeConversationId,
+        sessionId: pendingResumeSessionId,
         messageLimit: pendingResumeHistoryMessageLimit,
       })
     },

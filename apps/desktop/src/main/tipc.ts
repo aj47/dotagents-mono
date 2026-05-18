@@ -99,6 +99,17 @@ import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
+import {
+  clearSessionFileActivity,
+  createTrackedSessionFileEntry,
+  deleteTrackedSessionFileEntry,
+  getTrackedSessionFileRoots,
+  listTrackedSessionFiles,
+  moveTrackedSessionFileEntry,
+  readTrackedSessionFilePreview,
+  recordSessionConversationFileActivity,
+  resolveTrackedSessionPath,
+} from "./session-file-browser"
 
 function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
   if (!sessionId) return "missing"
@@ -1505,6 +1516,7 @@ export const router = {
       // Also remove from the tracker's completed sessions list so it
       // doesn't re-appear in the sidebar on the next agentSessionsUpdated.
       agentSessionTracker.removeCompletedSession(input.sessionId)
+      clearSessionFileActivity(input.sessionId)
 
       // Send to all windows (panel and main) so both can update their state
       for (const [id, win] of WINDOWS.entries()) {
@@ -1518,13 +1530,25 @@ export const router = {
     }),
 
   clearInactiveSessions: t.procedure.action(async () => {
+    const clearedSessionIds: string[] = []
+
     // Clear completed sessions from the tracker
     agentSessionTracker.clearCompletedSessions((session) => {
-      if (!session.conversationId) return true
+      if (!session.conversationId) {
+        clearedSessionIds.push(session.id)
+        return true
+      }
       const shouldClear = messageQueueService.getQueue(session.conversationId).length === 0
-      if (shouldClear) desktopTTSPlaybackCoordinator.clearSessionKeys(session.id)
+      if (shouldClear) {
+        desktopTTSPlaybackCoordinator.clearSessionKeys(session.id)
+        clearedSessionIds.push(session.id)
+      }
       return shouldClear
     })
+
+    for (const sessionId of clearedSessionIds) {
+      clearSessionFileActivity(sessionId)
+    }
 
     // Send to all windows so both main and panel can update their state
     for (const [id, win] of WINDOWS.entries()) {
@@ -3947,11 +3971,80 @@ export const router = {
   }),
 
   loadConversation: t.procedure
-    .input<{ conversationId: string; messageLimit?: number }>()
+    .input<{ conversationId: string; messageLimit?: number; sessionId?: string }>()
     .action(async ({ input }) => {
-      return conversationService.loadConversationForDisplay(input.conversationId, {
+      const conversation = await conversationService.loadConversationForDisplay(input.conversationId, {
         messageLimit: input.messageLimit,
       })
+
+      if (input.sessionId && conversation) {
+        const storedConversation = await conversationService.loadConversation(input.conversationId)
+        const storedMessages = storedConversation?.rawMessages ?? storedConversation?.messages ?? conversation.messages
+        recordSessionConversationFileActivity(input.sessionId, storedMessages)
+      }
+
+      return conversation
+    }),
+
+  getTrackedSessionFileRoots: t.procedure
+    .input<{ sessionId: string }>()
+    .action(async ({ input }) => {
+      return getTrackedSessionFileRoots(input.sessionId)
+    }),
+
+  listTrackedSessionFiles: t.procedure
+    .input<{ sessionId: string; rootPath: string; directoryPath?: string }>()
+    .action(async ({ input }) => {
+      return listTrackedSessionFiles(input)
+    }),
+
+  readTrackedSessionFilePreview: t.procedure
+    .input<{ sessionId: string; rootPath: string; filePath: string }>()
+    .action(async ({ input }) => {
+      return readTrackedSessionFilePreview(input)
+    }),
+
+  createTrackedSessionFileEntry: t.procedure
+    .input<{ sessionId: string; rootPath: string; targetPath: string; kind: "file" | "directory"; content?: string }>()
+    .action(async ({ input }) => {
+      return createTrackedSessionFileEntry(input)
+    }),
+
+  moveTrackedSessionFileEntry: t.procedure
+    .input<{ sessionId: string; rootPath: string; sourcePath: string; targetPath: string }>()
+    .action(async ({ input }) => {
+      return moveTrackedSessionFileEntry(input)
+    }),
+
+  deleteTrackedSessionFileEntry: t.procedure
+    .input<{ sessionId: string; rootPath: string; targetPath: string }>()
+    .action(async ({ input }) => {
+      deleteTrackedSessionFileEntry(input)
+      return { success: true }
+    }),
+
+  openTrackedSessionPath: t.procedure
+    .input<{ sessionId: string; rootPath: string; targetPath?: string }>()
+    .action(async ({ input }) => {
+      const targetPath = resolveTrackedSessionPath(input)
+      const error = await shell.openPath(targetPath)
+      return { success: !error, error: error || undefined, path: targetPath }
+    }),
+
+  revealTrackedSessionPath: t.procedure
+    .input<{ sessionId: string; rootPath: string; targetPath?: string }>()
+    .action(async ({ input }) => {
+      const targetPath = resolveTrackedSessionPath(input)
+      try {
+        shell.showItemInFolder(targetPath)
+        return { success: true, path: targetPath }
+      } catch (error) {
+        return {
+          success: false,
+          path: targetPath,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      }
     }),
 
   saveConversation: t.procedure
