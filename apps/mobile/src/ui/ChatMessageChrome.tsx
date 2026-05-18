@@ -249,6 +249,7 @@ import {
   type ChatRuntimeConversationMessageActionsMobileRenderState,
   type ChatRuntimeConversationMessageActionsMobileRenderStateInput,
   type ChatRuntimeConversationContentMobileDisplayMode,
+  type ChatRuntimeConversationExpandedContentMobilePropsParts,
   type ChatRuntimeConversationDelegationExpansionState,
   type ChatDisplayMessageLike,
   type ChatMessageDisplayStateMessageLike,
@@ -4330,62 +4331,39 @@ type ChatMessageExpandedContentProps = {
   streamingStyles: ChatMessageExpandedContentStyles;
 };
 
-type ChatMessageExpandedContentTextPart = {
-  text: string;
-  props: ComponentProps<typeof Text>;
-};
+type ChatMessageExpandedContentParts =
+  ChatRuntimeConversationExpandedContentMobilePropsParts<
+    ChatMessageExpandedContentProps['streamingRenderState'],
+    ChatMessageExpandedContentProps['markdownContent'],
+    ChatMessageExpandedContentProps['assetBaseUrl'],
+    ChatMessageExpandedContentProps['assetAuthToken'],
+    ChatMessageExpandedContentProps['spinnerSource'],
+    ChatMessageExpandedContentProps['streamingStyles']
+  >;
 
 type ChatMessageExpandedContentTextProps = {
-  part: ChatMessageExpandedContentTextPart;
-};
-
-type ChatMessageExpandedContentBadgePart = {
-  props: ComponentProps<typeof View>;
-  content: {
-    label: ChatMessageExpandedContentTextPart;
-  };
+  part:
+    | ChatMessageExpandedContentParts['streamingContent']['content']['header']['content']['title']
+    | ChatMessageExpandedContentParts['streamingContent']['content']['header']['content']['badge']['content']['label']
+    | ChatMessageExpandedContentParts['streamingContent']['content']['body']['content']['text'];
 };
 
 type ChatMessageExpandedContentBadgeContentProps =
-  ChatMessageExpandedContentBadgePart['content'];
-
-type ChatMessageExpandedContentHeaderPart = {
-  props: ComponentProps<typeof View>;
-  content: {
-    icon: {
-      props: ComponentProps<typeof Ionicons>;
-    };
-    title: ChatMessageExpandedContentTextPart;
-    spinner: {
-      props: ComponentProps<typeof Image>;
-    };
-    badge: ChatMessageExpandedContentBadgePart;
-  };
-};
+  ChatMessageExpandedContentParts['streamingContent']['content']['header']['content']['badge']['content'];
 
 type ChatMessageExpandedContentHeaderProps = {
-  header: ChatMessageExpandedContentHeaderPart;
+  header: ChatMessageExpandedContentParts['streamingContent']['content']['header'];
 };
 
 type ChatMessageExpandedContentHeaderContentProps =
-  ChatMessageExpandedContentHeaderPart['content'];
-
-type ChatMessageExpandedContentBodyPart = {
-  props: ComponentProps<typeof View>;
-  content: {
-    text: ChatMessageExpandedContentTextPart;
-    caret: {
-      props: ComponentProps<typeof View>;
-    };
-  };
-};
+  ChatMessageExpandedContentParts['streamingContent']['content']['header']['content'];
 
 type ChatMessageExpandedContentBodyProps = {
-  body: ChatMessageExpandedContentBodyPart;
+  body: ChatMessageExpandedContentParts['streamingContent']['content']['body'];
 };
 
 type ChatMessageExpandedContentBodyContentProps =
-  ChatMessageExpandedContentBodyPart['content'];
+  ChatMessageExpandedContentParts['streamingContent']['content']['body']['content'];
 
 type ChatMessageCollapsedPreviewProps = {
   renderState: ChatRuntimeConversationMessageMobileRenderState['collapsedPreview'];
