@@ -4967,21 +4967,21 @@ type ChatComposerRuntimeHandsFreeControlsRenderState =
 
 type ChatComposerRuntimeDockChromePropsInput = {
   chrome: ChatComposerRuntimeDockChromeProps;
-  speechPreviewText: ChatComposerSpeechPreviewProps['text'];
-  pendingImages: ChatComposerPendingImagesRailProps['images'];
+  speechPreviewText: string | null | undefined;
+  pendingImages: readonly ChatComposerPendingImageItem[];
   pendingImagesColors: ChatComposerRuntimeDockMobilePropsInput['pendingImagesColors'];
-  onRemovePendingImage: ChatComposerPendingImagesRailProps['onRemove'];
-  handsFreeStatusPhase: ChatComposerRuntimeHandsFreeControlsProps['status']['phase'];
-  handsFreeStatusLabel: ChatComposerRuntimeHandsFreeControlsProps['status']['label'];
+  onRemovePendingImage: (imageId: string) => void;
+  handsFreeStatusPhase: HandsFreePhase;
+  handsFreeStatusLabel: string;
   handsFreeStatusEnabled: ChatComposerRuntimeDockMobilePropsInput['handsFreeStatusEnabled'];
   handsFreeStatusWakePhrase: ChatComposerRuntimeDockMobilePropsInput['handsFreeStatusWakePhrase'];
   handsFreeStatusSleepPhrase: ChatComposerRuntimeDockMobilePropsInput['handsFreeStatusSleepPhrase'];
   handsFreeStatusLastError: ChatComposerRuntimeDockMobilePropsInput['handsFreeStatusLastError'];
   handsFreeStatusForegroundOnly: ChatComposerRuntimeDockMobilePropsInput['handsFreeStatusForegroundOnly'];
-  onWakeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onWake'];
-  onSleepHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onSleep'];
-  onResumeHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onResume'];
-  onPauseHandsFree: ChatComposerRuntimeHandsFreeControlsProps['onPause'];
+  onWakeHandsFree: (event: GestureResponderEvent) => void;
+  onSleepHandsFree: (event: GestureResponderEvent) => void;
+  onResumeHandsFree: (event: GestureResponderEvent) => void;
+  onPauseHandsFree: (event: GestureResponderEvent) => void;
   composerControlHasContent: ChatComposerRuntimeDockMobilePropsInput['composerControlHasContent'];
   composerControlConversationState: ChatComposerRuntimeDockMobilePropsInput['composerControlConversationState'];
   composerControlIsResponding: ChatComposerRuntimeDockMobilePropsInput['composerControlIsResponding'];
@@ -4992,11 +4992,11 @@ type ChatComposerRuntimeDockChromePropsInput = {
   composerControlListening: ChatComposerRuntimeDockMobilePropsInput['composerControlListening'];
   composerControlMessageQueueEnabled: ChatComposerRuntimeDockMobilePropsInput['composerControlMessageQueueEnabled'];
   composerControlColors: ChatComposerRuntimeDockMobilePropsInput['composerControlColors'];
-  onImageAttachmentPress: ChatComposerIconButtonProps['onPress'];
-  onTextToSpeechPress: ChatComposerIconButtonProps['onPress'];
-  onEditBeforeSendPress: ChatComposerIconButtonProps['onPress'];
-  textEntryInputRef: ChatComposerTextEntryProps['inputRef'];
-  textEntryValue: ChatComposerTextEntryProps['value'];
+  onImageAttachmentPress: ((event: GestureResponderEvent) => void) | undefined;
+  onTextToSpeechPress: ((event: GestureResponderEvent) => void) | undefined;
+  onEditBeforeSendPress: ((event: GestureResponderEvent) => void) | undefined;
+  textEntryInputRef: Ref<TextInput> | undefined;
+  textEntryValue: string;
   onTextEntryChangeText: ComponentProps<typeof TextInput>['onChangeText'];
   onTextEntryKeyPress: ComponentProps<typeof TextInput>['onKeyPress'];
   textEntryHandsFree: ChatComposerRuntimeDockMobilePropsInput['textEntryHandsFree'];
@@ -5005,12 +5005,12 @@ type ChatComposerRuntimeDockChromePropsInput = {
   textEntryLiveTranscript: ChatComposerRuntimeDockMobilePropsInput['textEntryLiveTranscript'];
   textEntryWakePhrase: ChatComposerRuntimeDockMobilePropsInput['textEntryWakePhrase'];
   textEntryPlaceholderFallback?: ChatComposerRuntimeDockMobilePropsInput['textEntryPlaceholderFallback'];
-  onQueueActionPress: ChatComposerLabeledActionButtonProps['onPress'];
-  onSubmitActionPress: ChatComposerLabeledActionButtonProps['onPress'];
-  onMicPressIn: ChatComposerMicButtonProps['onPressIn'];
-  onMicPressOut: ChatComposerMicButtonProps['onPressOut'];
-  onMicPress: ChatComposerMicButtonProps['onPress'];
-  micWrapperRef?: ChatComposerInputDockProps['micWrapperRef'];
+  onQueueActionPress: ((event: GestureResponderEvent) => void) | undefined;
+  onSubmitActionPress: ((event: GestureResponderEvent) => void) | undefined;
+  onMicPressIn: ((event: GestureResponderEvent) => void) | undefined;
+  onMicPressOut: ((event: GestureResponderEvent) => void) | undefined;
+  onMicPress: ((event: GestureResponderEvent) => void) | undefined;
+  micWrapperRef?: Ref<View>;
 };
 
 export type ChatMessageThreadBodyStyleSlots =
