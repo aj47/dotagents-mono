@@ -340,6 +340,7 @@ import {
   type ChatRuntimeMessageActionIconButtonRenderState,
   type ChatRuntimeMessageActionIconButtonSpec,
   type ChatRuntimeMessageActionIconButtonMobileProps,
+  type ChatRuntimeInlineActivityMobilePropsPartsInput,
   type ChatRuntimeInlineActivityMobilePropsParts,
   type ChatRuntimeMessageActionIconButtonMobilePropsParts,
   type ChatRuntimeMessageActionSlotListMobilePropsPartsInput,
@@ -4633,12 +4634,13 @@ type ChatMessageToolActivityGroupThreadSurfaceParts =
     ChatMessageToolActivityGroupThreadSurfaceStyleSlots['boundary']
   >;
 
-type ChatMessageInlineActivityProps = {
-  renderState: ChatRuntimeInlineActivityMobileRenderState;
-  spinnerSource: ImageSourcePropType;
-  style: StyleProp<ViewStyle>;
-  spinnerStyle: StyleProp<ImageStyle>;
-};
+type ChatMessageInlineActivityProps =
+  ChatRuntimeInlineActivityMobilePropsPartsInput<
+    ChatRuntimeInlineActivityMobileRenderState,
+    ImageSourcePropType,
+    StyleProp<ViewStyle>,
+    StyleProp<ImageStyle>
+  >;
 
 type ChatMessageInlineActivityParts =
   ChatRuntimeInlineActivityMobilePropsParts<

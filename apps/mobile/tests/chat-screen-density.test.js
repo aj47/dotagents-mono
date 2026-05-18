@@ -5445,9 +5445,13 @@ test('uses shared runtime activity copy for mobile loading and thinking states',
   assert.match(sessionPresentationSource, /inlineActivity: \{\s+style: styles\.inlineActivityIndicator,\s+spinnerStyle: styles\.inlineActivitySpinner,/);
   assert.match(chatMessageChromeSource, /export function ChatMessageInlineActivity/);
   assert.match(chatMessageChromeSource, /createChatRuntimeInlineActivityMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeInlineActivityMobilePropsPartsInput,/);
   assert.match(chatMessageChromeSource, /type ChatRuntimeInlineActivityMobilePropsParts,/);
+  assert.match(chatMessageChromeSource, /type ChatMessageInlineActivityProps =\s+ChatRuntimeInlineActivityMobilePropsPartsInput<\s+ChatRuntimeInlineActivityMobileRenderState,[\s\S]*?ImageSourcePropType,[\s\S]*?StyleProp<ImageStyle>\s+>;/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageInlineActivityProps = \{[\s\S]*?renderState: ChatRuntimeInlineActivityMobileRenderState;[\s\S]*?spinnerStyle: StyleProp<ImageStyle>;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageInlineActivityParts =\s+ChatRuntimeInlineActivityMobilePropsParts<[\s\S]*?ChatRuntimeInlineActivityMobileRenderState,[\s\S]*?ImageSourcePropType,[\s\S]*?StyleProp<ViewStyle>,[\s\S]*?StyleProp<ImageStyle>/);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageInlineActivityParts = ReturnType<typeof createChatRuntimeInlineActivityMobilePropsParts/);
+  assert.match(sessionPresentationSource, /export interface ChatRuntimeInlineActivityMobilePropsPartsInput</);
   assert.match(sessionPresentationSource, /export function createChatRuntimeInlineActivityMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const inlineActivityParts: ChatMessageInlineActivityParts =\s+createChatRuntimeInlineActivityMobilePropsParts\(\{\s+renderState,\s+spinnerSource,\s+style,\s+spinnerStyle,\s+\}\);/);
   assert.match(chatMessageChromeSource, /if \(!inlineActivityParts\.container\.shouldRender\) return null;/);
