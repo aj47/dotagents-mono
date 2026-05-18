@@ -6426,8 +6426,19 @@ type ChatMessageConversationRuntimeThreadListParts =
     ChatMessageRuntimeThreadStyleSlots
   >;
 
-type ChatMessageConversationRuntimeThreadListContentProps =
-  ChatMessageConversationRuntimeThreadListParts['content'];
+type ChatMessageConversationRuntimeThreadListThreadProps = {
+  groupRenderState: ToolActivityGroupMobileRenderState | null;
+  onToggleGroup: (() => void) | undefined;
+  body: ChatMessageThreadBodyPropsInput | null;
+  styles: ChatMessageRuntimeThreadStyleSlots;
+};
+
+type ChatMessageConversationRuntimeThreadListContentProps = {
+  threads: Array<{
+    key: string | number;
+    props: ChatMessageConversationRuntimeThreadListThreadProps;
+  }>;
+};
 
 export function ChatMessageActionIconButton({
   icon,
