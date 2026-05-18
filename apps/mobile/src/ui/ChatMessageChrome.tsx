@@ -244,6 +244,7 @@ import {
   type ChatComposerRuntimeDockMobilePropsInput,
   type ChatComposerRuntimeDockMobilePropsParts,
   type ChatComposerRuntimeHandsFreeControlsMobileRenderState,
+  type ChatComposerStyleSlots as SharedChatComposerStyleSlots,
   type ChatRuntimePinMobileRenderState,
   type ChatRuntimeScrollToBottomButtonMobilePropsParts,
   type ChatRuntimeScrollToBottomMobileRenderState,
@@ -4758,18 +4759,19 @@ type ChatMessageConversationContentParts =
     ChatMessageConversationContentProps['rowStyle']
   >;
 
-type ChatComposerStyleSlots = {
-  speechPreview: ChatComposerSpeechPreviewStyles;
-  pendingImagesRail: ChatComposerPendingImagesRailStyles;
-  voiceOverlay: ChatComposerVoiceOverlayStyles;
-  handsFreeControls: ChatComposerHandsFreeControlsStyles;
-  accessoryButton: Pick<ChatComposerIconButtonProps, 'style' | 'activeStyle'>;
-  textEntry: ChatComposerTextEntryStyles;
-  queueAction: ChatComposerLabeledActionButtonStyles;
-  submitAction: ChatComposerLabeledActionButtonStyles;
-  micButton: ChatComposerMicButtonStyles;
-  inputDock: ChatComposerInputDockStyles;
-};
+type ChatComposerStyleSlots =
+  SharedChatComposerStyleSlots<
+    ChatComposerSpeechPreviewStyles,
+    ChatComposerPendingImagesRailStyles,
+    ChatComposerVoiceOverlayStyles,
+    ChatComposerHandsFreeControlsStyles,
+    Pick<ChatComposerIconButtonProps, 'style' | 'activeStyle'>,
+    ChatComposerTextEntryStyles,
+    ChatComposerLabeledActionButtonStyles,
+    ChatComposerLabeledActionButtonStyles,
+    ChatComposerMicButtonStyles,
+    ChatComposerInputDockStyles
+  >;
 
 type ChatComposerRuntimeDockStyleSlots = ChatComposerStyleSlots;
 

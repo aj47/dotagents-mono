@@ -27723,6 +27723,30 @@ export function createChatComposerRuntimeDockStyleSlots<
   }
 }
 
+export type ChatComposerStyleSlots<
+  TSpeechPreviewStyles,
+  TPendingImagesRailStyles,
+  TVoiceOverlayStyles,
+  THandsFreeControlsStyles,
+  TAccessoryButtonStyles,
+  TTextEntryStyles,
+  TQueueActionStyles,
+  TSubmitActionStyles,
+  TMicButtonStyles,
+  TInputDockStyles,
+> = {
+  speechPreview: TSpeechPreviewStyles
+  pendingImagesRail: TPendingImagesRailStyles
+  voiceOverlay: TVoiceOverlayStyles
+  handsFreeControls: THandsFreeControlsStyles
+  accessoryButton: TAccessoryButtonStyles
+  textEntry: TTextEntryStyles
+  queueAction: TQueueActionStyles
+  submitAction: TSubmitActionStyles
+  micButton: TMicButtonStyles
+  inputDock: TInputDockStyles
+}
+
 export function createChatComposerStyleSlots<
   TSpeechPreviewStyles,
   TPendingImagesRailStyles,
@@ -27756,18 +27780,18 @@ export function createChatComposerStyleSlots<
   submitActionStyles: TSubmitActionStyles
   micButtonStyles: TMicButtonStyles
   inputDockStyles: TInputDockStyles
-}): {
-  speechPreview: TSpeechPreviewStyles
-  pendingImagesRail: TPendingImagesRailStyles
-  voiceOverlay: TVoiceOverlayStyles
-  handsFreeControls: THandsFreeControlsStyles
-  accessoryButton: TAccessoryButtonStyles
-  textEntry: TTextEntryStyles
-  queueAction: TQueueActionStyles
-  submitAction: TSubmitActionStyles
-  micButton: TMicButtonStyles
-  inputDock: TInputDockStyles
-} {
+}): ChatComposerStyleSlots<
+  TSpeechPreviewStyles,
+  TPendingImagesRailStyles,
+  TVoiceOverlayStyles,
+  THandsFreeControlsStyles,
+  TAccessoryButtonStyles,
+  TTextEntryStyles,
+  TQueueActionStyles,
+  TSubmitActionStyles,
+  TMicButtonStyles,
+  TInputDockStyles
+> {
   return {
     speechPreview: speechPreviewStyles,
     pendingImagesRail: pendingImagesRailStyles,
@@ -27819,60 +27843,60 @@ type ChatComposerStyleSource = Record<ChatComposerStyleSourceKey, unknown>
 
 type ChatComposerStyleSlotsFromStyleSource<
   TStyles extends ChatComposerStyleSource,
-> = {
-  speechPreview: {
+> = ChatComposerStyleSlots<
+  {
     box: TStyles["sttPreviewBox"]
     label: TStyles["sttPreviewLabel"]
     text: TStyles["sttPreviewText"]
-  }
-  pendingImagesRail: {
+  },
+  {
     row: TStyles["pendingImagesRow"]
     card: TStyles["pendingImageCard"]
     preview: TStyles["pendingImagePreview"]
     removeButton: TStyles["pendingImageRemoveButton"]
-  }
-  voiceOverlay: {
+  },
+  {
     overlay: TStyles["overlay"]
     card: TStyles["overlayCard"]
     label: TStyles["overlayText"]
     transcript: TStyles["overlayTranscript"]
-  }
-  handsFreeControls: {
+  },
+  {
     statusRow: TStyles["handsFreeStatusRow"]
     controlsRow: TStyles["handsFreeControlsRow"]
     controlButton: TStyles["handsFreeControlButton"]
     controlButtonText: TStyles["handsFreeControlButtonText"]
-  }
-  accessoryButton: {
+  },
+  {
     style: TStyles["ttsToggle"]
     activeStyle: TStyles["ttsToggleOn"]
-  }
-  textEntry: {
+  },
+  {
     input: TStyles["input"]
     visuallyHiddenHint: TStyles["visuallyHiddenComposerHint"]
-  }
-  queueAction: {
+  },
+  {
     button: TStyles["queueButton"]
     disabledButton: TStyles["sendButtonDisabled"]
     text: TStyles["queueButtonText"]
-  }
-  submitAction: {
+  },
+  {
     button: TStyles["sendButton"]
     disabledButton: TStyles["sendButtonDisabled"]
     text: TStyles["sendButtonText"]
-  }
-  micButton: {
+  },
+  {
     button: TStyles["mic"]
     activeButton: TStyles["micOn"]
     label: TStyles["micLabel"]
     activeLabel: TStyles["micLabelOn"]
-  }
-  inputDock: {
+  },
+  {
     area: TStyles["inputArea"]
     row: TStyles["inputRow"]
     micWrapper: TStyles["micWrapper"]
   }
-}
+>
 
 export function createChatComposerStyleSlotsFromStyleSource<
   TStyles extends ChatComposerStyleSource,
