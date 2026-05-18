@@ -6927,6 +6927,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /const panelStyleSheetSlots = useMemo<MessageQueuePanelMobileStyleSheetSlots>\(\s+\(\) => createStyleSheetSlots\(\{\s+renderState: queuePanelRenderState,\s+\}\),\s+\[createStyleSheetSlots, queuePanelRenderState\],\s+\);/);
   assert.match(messageQueuePanelSource, /const styles = useMemo\(\s+\(\) => StyleSheet\.create\(\{ \.\.\.panelStyleSheetSlots \}\),\s+\[panelStyleSheetSlots\],\s+\);/);
   assert.match(messageQueuePanelSource, /createMessageQueuePanelMobilePropsParts,/);
+  assert.match(messageQueuePanelSource, /type MessageQueuePanelMobilePropsParts,/);
   assert.match(messageQueuePanelSource, /const messageQueuePanelParts = useMemo\(\s+\(\) => createMessageQueuePanelMobilePropsParts\(\{\s+renderState: queuePanelRenderState,\s+styles,\s+onPause,\s+onResume,\s+onProcessNext,\s+onClear,\s+onToggleListCollapsed,\s+onRemove,\s+onUpdate,\s+onRetry,\s+\}\),/);
   assert.match(messageQueuePanelSource, /const \{[\s\S]*?compactActions: compactActionParts,[\s\S]*?headerActions: headerActionParts,[\s\S]*?chrome: panelChromeParts,[\s\S]*?list: panelListParts,[\s\S]*?\} = messageQueuePanelParts;/);
   assert.doesNotMatch(messageQueuePanelSource, /createMessageQueuePanelCompactActionMobilePropsParts,/);
@@ -6967,6 +6968,13 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /<Text\s+\{\.\.\.panelChromeParts\.headerTitle\.props\}>/);
   assert.match(messageQueuePanelSource, /\{panelChromeParts\.headerTitle\.text\}/);
   assert.doesNotMatch(messageQueuePanelSource, /panelChromeParts\.(compactLabel|headerTitle|pausedNotice\.message)\.style/);
+  assert.doesNotMatch(messageQueuePanelSource, /type ComponentProps/);
+  assert.doesNotMatch(messageQueuePanelSource, /type MessageQueuePanelActionButtonIconPart/);
+  assert.doesNotMatch(messageQueuePanelSource, /type MessageQueuePanelActionButtonLabelPart/);
+  assert.doesNotMatch(messageQueuePanelSource, /type MessageQueuePanelEditButtonTextPart/);
+  assert.match(messageQueuePanelSource, /type MessageQueuePanelParts =\s+MessageQueuePanelMobilePropsParts<\s+QueuedMessage,\s+MessageQueuePanelMobileStyleSheetSlots,\s+\(\) => void\s+>;/);
+  assert.match(messageQueuePanelSource, /type QueuedMessageItemParts =\s+QueuedMessageItemMobilePropsParts<QueuedMessageItemMobileStyleSheetSlots>;/);
+  assert.match(messageQueuePanelSource, /type MessageQueuePanelActionButtonPart =\s+\| MessageQueuePanelParts\['compactActions'\]\['actions'\]\[number\]\s+\| MessageQueuePanelParts\['headerActions'\]\['actions'\]\[number\]\s+\| QueuedMessageItemParts\['actions'\]\['actions'\]\[number\];/);
   assert.match(messageQueuePanelSource, /const MessageQueuePanelActionButton = React\.memo\(function MessageQueuePanelActionButton/);
   assert.match(messageQueuePanelSource, /<TouchableOpacity\s+\{\.\.\.action\.props\}/);
   assert.match(messageQueuePanelSource, /compactActionParts\.actions\.map\(\(action\) => \([\s\S]*?<MessageQueuePanelActionButton\s+key=\{action\.key\}[\s\S]*?action=\{action\}/);
@@ -7010,6 +7018,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.match(messageQueuePanelSource, /const editSubmitState = editDraftState\.submitState;/);
   assert.match(messageQueuePanelSource, /<TextInput\s+\{\.\.\.editParts\.input\.props\}[\s\S]*?value=\{editText\}[\s\S]*?onChangeText=\{setEditText\}/);
   assert.match(messageQueuePanelSource, /const MessageQueuePanelEditButton = React\.memo\(function MessageQueuePanelEditButton/);
+  assert.match(messageQueuePanelSource, /type MessageQueuePanelEditButtonPart =\s+\| QueuedMessageItemParts\['edit'\]\['cancelButton'\]\s+\| QueuedMessageItemParts\['edit'\]\['saveButton'\];/);
   assert.match(messageQueuePanelSource, /<TouchableOpacity\s+\{\.\.\.button\.props\}/);
   assert.match(messageQueuePanelSource, /<MessageQueuePanelEditButton button=\{editParts\.cancelButton\} \/>/);
   assert.match(messageQueuePanelSource, /<MessageQueuePanelEditButton button=\{editParts\.saveButton\} \/>/);
@@ -7019,6 +7028,7 @@ test('uses shared message queue surface tokens for the chat-adjacent queue wrapp
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSaveActionState\(editText\)/);
   assert.doesNotMatch(messageQueuePanelSource, /getQueuedMessageEditSubmitState\(editText, message\.text\)/);
   assert.doesNotMatch(messageQueuePanelSource, /createQueuedMessageItemMobileStyleSheetSlots,/);
+  assert.match(messageQueuePanelSource, /type QueuedMessageItemMobilePropsParts,/);
   assert.match(messageQueuePanelSource, /createStyleSheetSlots: QueuedMessageItemStyleSheetSlotsFactory;/);
   assert.match(messageQueuePanelSource, /const QueuedMessageItem = React\.memo\(function QueuedMessageItem\(\{/);
   assert.match(messageQueuePanelSource, /const itemStyleSheetSlots = useMemo<QueuedMessageItemMobileStyleSheetSlots>\(\s+\(\) => createStyleSheetSlots\(\{\s+renderState: queuedMessageRenderState,\s+\}\),\s+\[createStyleSheetSlots, queuedMessageRenderState\],\s+\);/);

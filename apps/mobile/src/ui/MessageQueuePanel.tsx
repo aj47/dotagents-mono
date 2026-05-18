@@ -4,7 +4,7 @@
  * Displays queued messages with options to view, edit, remove, and retry.
  */
 
-import React, { useState, useEffect, useMemo, useCallback, type ComponentProps } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,9 @@ import {
   getMessageQueuePanelMobileRenderState,
   getQueuedMessageEditDraftState,
   getQueuedMessageItemMobileRenderState,
+  type MessageQueuePanelMobilePropsParts,
   type MessageQueuePanelMobileStyleSheetSlots,
+  type QueuedMessageItemMobilePropsParts,
   type QueuedMessageItemMobileStyleSheetSlots,
   type QueuedMessage,
 } from '@dotagents/shared/session-presentation';
@@ -66,43 +68,28 @@ interface QueuedMessageItemProps {
   createStyleSheetSlots: QueuedMessageItemStyleSheetSlotsFactory;
 }
 
-type MessageQueuePanelActionButtonIconPart =
-  | {
-      props: ComponentProps<typeof Ionicons>;
-    }
-  | {
-      shouldRender: false;
-    };
+type MessageQueuePanelParts =
+  MessageQueuePanelMobilePropsParts<
+    QueuedMessage,
+    MessageQueuePanelMobileStyleSheetSlots,
+    () => void
+  >;
 
-type MessageQueuePanelActionButtonLabelPart =
-  | {
-      text: string;
-      props: ComponentProps<typeof Text>;
-    }
-  | {
-      shouldRender: false;
-    };
+type QueuedMessageItemParts =
+  QueuedMessageItemMobilePropsParts<QueuedMessageItemMobileStyleSheetSlots>;
 
-type MessageQueuePanelActionButtonPart = {
-  key: string;
-  props: ComponentProps<typeof TouchableOpacity>;
-  icon?: MessageQueuePanelActionButtonIconPart;
-  label?: MessageQueuePanelActionButtonLabelPart;
-};
+type MessageQueuePanelActionButtonPart =
+  | MessageQueuePanelParts['compactActions']['actions'][number]
+  | MessageQueuePanelParts['headerActions']['actions'][number]
+  | QueuedMessageItemParts['actions']['actions'][number];
 
 interface MessageQueuePanelActionButtonProps {
   action: MessageQueuePanelActionButtonPart;
 }
 
-type MessageQueuePanelEditButtonTextPart = {
-  text: string;
-  props: ComponentProps<typeof Text>;
-};
-
-type MessageQueuePanelEditButtonPart = {
-  props: ComponentProps<typeof TouchableOpacity>;
-  text: MessageQueuePanelEditButtonTextPart;
-};
+type MessageQueuePanelEditButtonPart =
+  | QueuedMessageItemParts['edit']['cancelButton']
+  | QueuedMessageItemParts['edit']['saveButton'];
 
 interface MessageQueuePanelEditButtonProps {
   button: MessageQueuePanelEditButtonPart;
