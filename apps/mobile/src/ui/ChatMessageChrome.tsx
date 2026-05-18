@@ -4136,23 +4136,40 @@ type ChatMessageToolExecutionErrorBlockParts =
     ChatMessageToolExecutionErrorBlockStyles
   >;
 
-type ChatMessageToolExecutionErrorBlockContentProps =
-  ChatMessageToolExecutionErrorBlockParts['section']['content'];
+type ChatMessageToolExecutionErrorBlockContainerProps = {
+  style: StyleProp<ViewStyle>;
+};
 
-type ChatMessageToolExecutionErrorBlockHeaderContentProps =
-  ChatMessageToolExecutionErrorBlockParts['section']['content']['headerRow']['content'];
+type ChatMessageToolExecutionErrorBlockTextProps = {
+  props: {
+    style: StyleProp<TextStyle>;
+  };
+  text: string;
+};
+
+type ChatMessageToolExecutionErrorBlockHeaderContentProps = {
+  label: {
+    props: ChatMessageToolExecutionErrorBlockTextProps;
+  };
+  copyButton: {
+    props: ChatMessageToolExecutionCopyButtonProps;
+  };
+};
+
+type ChatMessageToolExecutionErrorBlockContentProps = {
+  headerRow: {
+    props: ChatMessageToolExecutionErrorBlockContainerProps;
+    content: ChatMessageToolExecutionErrorBlockHeaderContentProps;
+  };
+  error: {
+    props: ChatMessageToolExecutionErrorBlockTextProps;
+  };
+};
 
 type ChatMessageToolExecutionErrorBlockViewProps =
-  (
-    | ChatMessageToolExecutionErrorBlockParts['section']['props']
-    | ChatMessageToolExecutionErrorBlockParts['section']['content']['headerRow']['props']
-  ) & {
+  ChatMessageToolExecutionErrorBlockContainerProps & {
     children: ReactNode;
   };
-
-type ChatMessageToolExecutionErrorBlockTextProps =
-  | ChatMessageToolExecutionErrorBlockParts['section']['content']['headerRow']['content']['label']['props']
-  | ChatMessageToolExecutionErrorBlockParts['section']['content']['error']['props'];
 
 type ChatMessageToolExecutionResultSectionStyles =
   SharedChatMessageToolExecutionResultSectionStyleSlots<

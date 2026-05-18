@@ -5589,6 +5589,10 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionErrorBlockMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionErrorBlockMobilePropsParts/);
   assert.match(chatMessageChromeSource, /const errorBlockParts: ChatMessageToolExecutionErrorBlockParts =\s+createChatRuntimeToolExecutionErrorBlockMobilePropsParts\(\{\s+renderState,\s+error,\s+copyButtonRenderState,\s+onCopyPress,\s+styles,\s+\}\);/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionErrorBlockTextProps = \{\s+props: \{\s+style: StyleProp<TextStyle>;\s+\};\s+text: string;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionErrorBlockHeaderContentProps = \{\s+label: \{\s+props: ChatMessageToolExecutionErrorBlockTextProps;\s+\};\s+copyButton: \{\s+props: ChatMessageToolExecutionCopyButtonProps;\s+\};\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionErrorBlockContentProps = \{\s+headerRow: \{\s+props: ChatMessageToolExecutionErrorBlockContainerProps;\s+content: ChatMessageToolExecutionErrorBlockHeaderContentProps;\s+\};\s+error: \{\s+props: ChatMessageToolExecutionErrorBlockTextProps;\s+\};\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionErrorBlockParts\['/);
   assert.doesNotMatch(chatMessageChromeSource, /const errorBlockContent = errorBlockParts\.section\.content;/);
   assert.doesNotMatch(chatMessageChromeSource, /const errorBlockHeaderContent = errorBlockContent\.headerRow\.content;/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionErrorBlockView\s+\{\.\.\.errorBlockParts\.section\.props\}/);
