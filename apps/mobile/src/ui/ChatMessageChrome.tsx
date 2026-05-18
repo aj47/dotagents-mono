@@ -238,6 +238,10 @@ import {
   type ChatRuntimeToolApprovalMobilePropsParts,
   type ChatRuntimeToolApprovalMobileRenderState,
   type ChatRuntimeDelegationCardMobilePropsParts,
+  type ChatRuntimeHeaderAgentSelectorMobilePropsParts,
+  type ChatRuntimeHeaderConversationStatusMobilePropsParts,
+  type ChatRuntimeHeaderIconButtonMobilePropsParts,
+  type ChatRuntimeHeaderTurnDurationMobilePropsParts,
   type ChatRuntimeTurnDurationBadgeMobilePropsParts,
   type ChatRuntimeTurnDurationHeaderMobileRenderState,
   type ChatRuntimeDebugPanelsMobileRenderState,
@@ -1296,12 +1300,13 @@ type ChatRuntimeHeaderAgentSelectorProps = {
   styles: ChatRuntimeHeaderAgentSelectorStyles;
 };
 
-type ChatRuntimeHeaderAgentSelectorParts = ReturnType<typeof createChatRuntimeHeaderAgentSelectorMobilePropsParts<
-  ChatRuntimeAgentSelectorMobileRenderState,
-  ChatRuntimeHeaderAgentSelectorProps['onPress'],
-  ChatRuntimeHeaderAgentSelectorProps['labelNumberOfLines'],
-  ChatRuntimeHeaderAgentSelectorProps['styles']
->>;
+type ChatRuntimeHeaderAgentSelectorParts =
+  ChatRuntimeHeaderAgentSelectorMobilePropsParts<
+    ChatRuntimeAgentSelectorMobileRenderState,
+    ChatRuntimeHeaderAgentSelectorProps['onPress'],
+    ChatRuntimeHeaderAgentSelectorProps['labelNumberOfLines'],
+    ChatRuntimeHeaderAgentSelectorProps['styles']
+  >;
 
 type ChatRuntimeHeaderAgentSelectorTouchableProps =
   ChatRuntimeHeaderAgentSelectorParts['touchable']['props'] & {
@@ -1346,13 +1351,14 @@ type ChatRuntimeHeaderIconButtonProps = {
   isActive?: boolean;
 };
 
-type ChatRuntimeHeaderIconButtonParts = ReturnType<typeof createChatRuntimeHeaderIconButtonMobilePropsParts<
-  ChatRuntimeHeaderIconButtonRenderState,
-  ChatRuntimeHeaderIconButtonProps['onPress'],
-  ChatRuntimeHeaderIconButtonProps['style'],
-  ChatRuntimeHeaderIconButtonProps['activeStyle'],
-  ChatRuntimeHeaderIconButtonProps['iconContainerStyle']
->>;
+type ChatRuntimeHeaderIconButtonParts =
+  ChatRuntimeHeaderIconButtonMobilePropsParts<
+    ChatRuntimeHeaderIconButtonRenderState,
+    ChatRuntimeHeaderIconButtonProps['onPress'],
+    ChatRuntimeHeaderIconButtonProps['style'],
+    ChatRuntimeHeaderIconButtonProps['activeStyle'],
+    ChatRuntimeHeaderIconButtonProps['iconContainerStyle']
+  >;
 
 type ChatRuntimeHeaderIconButtonTouchableProps =
   ChatRuntimeHeaderIconButtonParts['touchable']['props'] & {
@@ -1382,11 +1388,12 @@ type ChatRuntimeHeaderConversationStatusProps = {
   styles: ChatRuntimeHeaderConversationStatusStyles;
 };
 
-type ChatRuntimeHeaderConversationStatusParts = ReturnType<typeof createChatRuntimeHeaderConversationStatusMobilePropsParts<
-  ChatSessionStatusMobileRenderState,
-  ChatRuntimeHeaderConversationStatusProps['spinnerSource'],
-  ChatRuntimeHeaderConversationStatusProps['styles']
->>;
+type ChatRuntimeHeaderConversationStatusParts =
+  ChatRuntimeHeaderConversationStatusMobilePropsParts<
+    ChatSessionStatusMobileRenderState,
+    ChatRuntimeHeaderConversationStatusProps['spinnerSource'],
+    ChatRuntimeHeaderConversationStatusProps['styles']
+  >;
 
 type ChatRuntimeHeaderConversationStatusContainerProps =
   ChatRuntimeHeaderConversationStatusParts['container']['props'] & {
@@ -1414,10 +1421,11 @@ type ChatRuntimeHeaderTurnDurationProps = {
   styles: ChatRuntimeHeaderTurnDurationStyles;
 };
 
-type ChatRuntimeHeaderTurnDurationParts = ReturnType<typeof createChatRuntimeHeaderTurnDurationMobilePropsParts<
-  ChatRuntimeTurnDurationHeaderMobileRenderState,
-  ChatRuntimeHeaderTurnDurationProps['styles']
->>;
+type ChatRuntimeHeaderTurnDurationParts =
+  ChatRuntimeHeaderTurnDurationMobilePropsParts<
+    ChatRuntimeTurnDurationHeaderMobileRenderState,
+    ChatRuntimeHeaderTurnDurationProps['styles']
+  >;
 
 type ChatRuntimeHeaderTurnDurationContainerProps =
   ChatRuntimeHeaderTurnDurationParts['container']['props'] & {
