@@ -3425,17 +3425,27 @@ type ChatMessageConversationFrameParts =
     StyleProp<ViewStyle>
   >;
 
-type ChatMessageConversationFrameContentProps =
-  ChatMessageConversationFrameParts['keyboardAvoidingView']['content'];
+type ChatMessageConversationFrameRootProps = {
+  style: StyleProp<ViewStyle>;
+  children: ReactNode;
+};
 
-type ChatMessageConversationFrameRootProps =
-  ChatMessageConversationFrameContentProps['root']['props']
-  & {
+type ChatMessageConversationFrameRootContentProps = {
+  children: ReactNode;
+  dock: {
+    children: ReactNode | undefined;
+  };
+};
+
+type ChatMessageConversationFrameContentProps = {
+  root: {
+    props: Pick<ChatMessageConversationFrameRootProps, 'style'>;
+    content: ChatMessageConversationFrameRootContentProps;
+  };
+  overlays: {
     children: ReactNode;
   };
-
-type ChatMessageConversationFrameRootContentProps =
-  ChatMessageConversationFrameContentProps['root']['content'];
+};
 
 type ChatMessageConversationOverlaysProps =
   ChatRuntimeConversationOverlaysMobilePropsPartsInput<

@@ -2371,8 +2371,11 @@ test('uses shared runtime presentation for the mobile chat viewport and loading 
   assert.match(conversationFrameSource, /<KeyboardAvoidingView\s+\{\.\.\.frameParts\.keyboardAvoidingView\.props\}/);
   assert.match(sessionPresentationSource, /keyboardAvoidingView: \{\s+props: \{\s+style: keyboardAvoidingStyle,/);
   assert.match(sessionPresentationSource, /content: \{\s+root: \{\s+props: \{\s+style: rootStyle,/);
-  assert.match(chatMessageChromeSource, /type ChatMessageConversationFrameContentProps =\s+ChatMessageConversationFrameParts\['keyboardAvoidingView'\]\['content'\];/);
-  assert.match(chatMessageChromeSource, /type ChatMessageConversationFrameRootContentProps =\s+ChatMessageConversationFrameContentProps\['root'\]\['content'\];/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationFrameRootProps = \{\s+style: StyleProp<ViewStyle>;\s+children: ReactNode;\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationFrameRootContentProps = \{\s+children: ReactNode;\s+dock: \{\s+children: ReactNode \| undefined;\s+\};\s+\};/);
+  assert.match(chatMessageChromeSource, /type ChatMessageConversationFrameContentProps = \{\s+root: \{\s+props: Pick<ChatMessageConversationFrameRootProps, 'style'>;\s+content: ChatMessageConversationFrameRootContentProps;\s+\};\s+overlays: \{\s+children: ReactNode;\s+\};\s+\};/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationFrameContentProps =\s+ChatMessageConversationFrameParts\['keyboardAvoidingView'\]\['content'\];/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatMessageConversationFrameRootContentProps =\s+ChatMessageConversationFrameContentProps\['root'\]\['content'\];/);
   assert.match(conversationFrameSource, /<ChatMessageConversationFrameContent\s+\{\.\.\.frameParts\.keyboardAvoidingView\.content\}\s+\/>/);
   assert.match(conversationFrameSource, /export function ChatMessageConversationFrameContent/);
   assert.match(conversationFrameSource, /<ChatMessageConversationFrameRoot \{\.\.\.root\.props\}>[\s\S]*?<ChatMessageConversationFrameRootContent \{\.\.\.root\.content\} \/>/);
