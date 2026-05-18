@@ -11,19 +11,25 @@ const conversationMediaAssetsSource = fs.readFileSync(
   path.join(__dirname, '..', '..', '..', 'packages', 'shared', 'src', 'conversation-media-assets.ts'),
   'utf8',
 );
+const chatRuntimeMobileStylesSource = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'ui', 'ChatRuntimeMobileStyles.ts'),
+  'utf8',
+);
 
 test('mobile video attachment card uses shared copy and accessibility labels', () => {
-  assert.match(source, /getChatVideoAttachmentMobileRenderState/);
-  assert.match(source, /const videoAttachmentRenderState = useMemo\(\s+\(\) => getChatVideoAttachmentMobileRenderState\(\{[\s\S]*?sourceUrl,[\s\S]*?label,[\s\S]*?colors: theme\.colors,[\s\S]*?isDark,[\s\S]*?loading,/);
+  assert.match(source, /useChatRuntimeVideoAttachmentMobileStyleSlots/);
+  assert.match(chatRuntimeMobileStylesSource, /getChatVideoAttachmentMobileRenderState/);
+  assert.match(source, /const \{\s+videoAttachmentRenderState,[\s\S]*?videoAttachmentStyles: styles,[\s\S]*?\} = useChatRuntimeVideoAttachmentMobileStyleSlots\(\{[\s\S]*?sourceUrl,[\s\S]*?label,[\s\S]*?loading,[\s\S]*?\}\);/);
   assert.match(source, /const videoAttachmentCopy = videoAttachmentRenderState\.copy;/);
   assert.match(source, /createChatVideoAttachmentMobilePropsParts,/);
   assert.match(source, /type ChatVideoAttachmentMobilePropsParts,/);
-  assert.match(source, /type ChatVideoAttachmentMobilePropsStylesLike,/);
+  assert.match(source, /type ChatVideoAttachmentMobileStyleSheetSlots,/);
   assert.match(source, /type VideoAttachmentCardParts =\s+ChatVideoAttachmentMobilePropsParts<[\s\S]*?VideoAttachmentCardStyles,[\s\S]*?VideoAttachmentPressHandler/);
-  assert.match(source, /const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts\(\{/);
+  assert.match(source, /const videoAttachmentParts = useMemo<VideoAttachmentCardParts>\(\s+\(\) => createChatVideoAttachmentMobilePropsParts\(\{/);
   assert.match(conversationMediaAssetsSource, /export function createChatVideoAttachmentMobilePropsParts/);
-  assert.match(source, /const videoAttachmentStyleSlots = useMemo\(\s+\(\) => createChatVideoAttachmentMobileStyleSlots\(\{/);
-  assert.match(source, /const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts\(\{/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatRuntimeVideoAttachmentStyleSheetSlots/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatVideoAttachmentMobileStyleSheetSlots/);
+  assert.doesNotMatch(source, /const videoAttachmentParts: VideoAttachmentCardParts = createChatVideoAttachmentMobilePropsParts/);
   assert.match(conversationMediaAssetsSource, /text: `\$\{renderState\.copy\.glyphs\.link\} \$\{renderState\.displayLabel\}`/);
   assert.match(conversationMediaAssetsSource, /text: renderState\.title/);
   assert.match(conversationMediaAssetsSource, /text: renderState\.subtitle/);
@@ -31,7 +37,7 @@ test('mobile video attachment card uses shared copy and accessibility labels', (
   assert.match(source, /videoAttachmentCopy\.errors\.missingCredentials/);
   assert.match(source, /videoAttachmentCopy\.errors\.loadFallback/);
   assert.match(source, /formatVideoAttachmentRequestFailedMessage\(response\.status\)/);
-  assert.match(source, /import \{ radius, spacing \} from '\.\/theme';/);
+  assert.doesNotMatch(source, /import \{ radius, spacing \} from '\.\/theme';/);
   assert.match(conversationMediaAssetsSource, /accessibilityLabel: renderState\.loadButton\.accessibilityLabel/);
   assert.match(conversationMediaAssetsSource, /onPress: onLoadVideo/);
   assert.match(source, /<VideoView\s+\{\.\.\.videoAttachmentParts\.video\.props\}[\s\S]{0,220}player=\{player\}/);
@@ -58,27 +64,13 @@ test('mobile video attachment card uses shared copy and accessibility labels', (
 });
 
 test('mobile video attachment card reads compact sizing from shared surface tokens', () => {
-  assert.match(source, /createChatVideoAttachmentMobileStyleSlots,/);
+  assert.match(source, /useChatRuntimeVideoAttachmentMobileStyleSlots/);
+  assert.doesNotMatch(source, /createChatVideoAttachmentMobileStyleSlots,/);
   assert.match(source, /createChatVideoAttachmentMobilePropsParts,/);
-  assert.match(source, /type VideoAttachmentCardStyles =\s+ChatVideoAttachmentMobilePropsStylesLike<\s+StyleProp<ViewStyle>,[\s\S]*?StyleProp<TextStyle>\s+>;/);
+  assert.match(source, /type VideoAttachmentCardStyles = ChatVideoAttachmentMobileStyleSheetSlots;/);
   assert.doesNotMatch(source, /type VideoAttachmentCardStyles = \{[\s\S]*?card: StyleProp<ViewStyle>;[\s\S]*?errorText: StyleProp<TextStyle>;[\s\S]*?\};/);
-  assert.match(source, /createChatVideoAttachmentMobileStyleSlots\(\{\s+renderState: videoAttachmentRenderState,\s+spacing,\s+radius,\s+\}\)/);
-  assert.match(source, /card:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.card,\s+\}/);
-  assert.match(source, /header:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.header,\s+\}/);
-  assert.match(source, /loadButton:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.loadButton,\s+\}/);
-  assert.match(source, /loadButtonPressed:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.loadButtonPressed,\s+\}/);
-  assert.match(source, /loadButtonDisabled:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.loadButtonDisabled,\s+\}/);
-  assert.match(source, /playIconWrapper:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.playIconWrapper,\s+\}/);
-  assert.match(source, /textWrapper:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.textWrapper,\s+\}/);
-  assert.match(source, /title:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.title,\s+\}/);
-  assert.match(source, /subtitle:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.subtitle,\s+\}/);
-  assert.match(source, /video:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.video,\s+\}/);
-  assert.match(source, /fallbackLink:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.fallbackLink,\s+\}/);
-  assert.match(source, /fallbackLinkPressed:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.fallbackLinkPressed,\s+\}/);
-  assert.match(source, /fallbackLinkText:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.fallbackLinkText,\s+\}/);
-  assert.match(source, /externalLink:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.externalLink,\s+\}/);
-  assert.match(source, /externalLinkPressed:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.externalLinkPressed,\s+\}/);
-  assert.match(source, /errorText:\s*\{\s+\.\.\.videoAttachmentStyleSlots\.errorText,\s+\}/);
+  assert.match(chatRuntimeMobileStylesSource, /createChatVideoAttachmentMobileStyleSheetSlots\(\{[\s\S]*?renderState,[\s\S]*?spacing,[\s\S]*?radius,/);
+  assert.doesNotMatch(source, /videoAttachmentStyleSlots\./);
   assert.match(source, /<Ionicons\s+\{\.\.\.videoAttachmentParts\.playIcon\.props\}/);
   assert.match(source, /<ActivityIndicator \{\.\.\.videoAttachmentParts\.loadingIndicator\.props\} \/>/);
   assert.match(source, /<Text \{\.\.\.videoAttachmentParts\.externalLink\.label\.props\}>/);

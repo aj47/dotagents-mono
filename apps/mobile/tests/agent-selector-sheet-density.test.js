@@ -31,7 +31,8 @@ test('keeps the mobile agent selector close affordance in a compact header inste
   assert.match(sheetSource, /createAgentSelectorSheetMobilePropsParts,/);
   assert.match(sheetSource, /type AgentSelectorSheetMobilePropsParts,/);
   assert.match(sheetSource, /type AgentSelectorSheetParts =\s+AgentSelectorSheetMobilePropsParts<[\s\S]*?AgentSelectorSheetStyles,[\s\S]*?AgentSelectorSheetCloseHandler,[\s\S]*?AgentSelectorSheetRetryHandler/);
-  assert.match(sheetSource, /const agentSelectorSheetParts: AgentSelectorSheetParts = createAgentSelectorSheetMobilePropsParts\(\{[\s\S]*?visible,[\s\S]*?renderState: agentSelectorRenderState,[\s\S]*?styles,[\s\S]*?sheetBottomPadding: agentSelectorSheetBottomPadding,[\s\S]*?safeAreaBottom: insets\.bottom,[\s\S]*?isLoading,[\s\S]*?error,[\s\S]*?hasProfiles: profiles\.length > 0,[\s\S]*?onClose,[\s\S]*?onRetry: fetchProfiles,/);
+  assert.match(sheetSource, /const agentSelectorSheetParts = useMemo<AgentSelectorSheetParts>\(\s+\(\) => createAgentSelectorSheetMobilePropsParts\(\{[\s\S]*?visible,[\s\S]*?renderState: agentSelectorRenderState,[\s\S]*?styles,[\s\S]*?sheetBottomPadding: agentSelectorSheetBottomPadding,[\s\S]*?safeAreaBottom: insets\.bottom,[\s\S]*?isLoading,[\s\S]*?error,[\s\S]*?hasProfiles: profiles\.length > 0,[\s\S]*?onClose,[\s\S]*?onRetry: fetchProfiles,/);
+  assert.doesNotMatch(sheetSource, /const agentSelectorSheetParts: AgentSelectorSheetParts = createAgentSelectorSheetMobilePropsParts/);
   assert.match(sheetSource, /<Modal\s+\{\.\.\.agentSelectorSheetParts\.modal\.props\}/);
   assert.match(sheetSource, /<Pressable \{\.\.\.agentSelectorSheetParts\.backdrop\.props\}>/);
   assert.match(sheetSource, /<View \{\.\.\.agentSelectorSheetParts\.backdropSpacer\.props\} \/>/);
@@ -103,10 +104,13 @@ test('uses shared selector presentation tokens and desktop-like avatar rows', ()
   assert.doesNotMatch(sheetSource, /profileItem:\s*\{\s+\.\.\.agentSelectorStyleSlots\.profileItem,/);
   assert.doesNotMatch(sheetSource, /profileAvatar:\s*\{\s+\.\.\.agentSelectorStyleSlots\.profileAvatar,/);
   assert.doesNotMatch(sheetSource, /emptyText:\s*\{\s+\.\.\.agentSelectorStyleSlots\.emptyText,/);
-  assert.match(sheetSource, /const profileItemRenderState = getAgentSelectorMobileProfileItemRenderState\(\{[\s\S]*?profile: item,[\s\S]*?currentProfileId: currentProfile\?\.id,[\s\S]*?isSwitching,/);
+  assert.match(sheetSource, /const profileItemRenderState = useMemo\(\s+\(\) => getAgentSelectorMobileProfileItemRenderState\(\{[\s\S]*?profile: item,[\s\S]*?currentProfileId,[\s\S]*?isSwitching,[\s\S]*?\}\),\s+\[currentProfileId, isSwitching, item\],\s+\);/);
   assert.match(sheetSource, /type AgentSelectorProfileItemMobilePropsParts,/);
   assert.match(sheetSource, /type AgentSelectorProfileItemParts =\s+AgentSelectorProfileItemMobilePropsParts<[\s\S]*?AgentSelectorSheetStyles,[\s\S]*?AgentSelectorAvatarImageSource,[\s\S]*?AgentSelectorProfilePressHandler/);
-  assert.match(sheetSource, /const profileItemParts: AgentSelectorProfileItemParts = createAgentSelectorProfileItemMobilePropsParts\(\{[\s\S]*?profile: item,[\s\S]*?renderState: agentSelectorRenderState,[\s\S]*?profileRenderState: profileItemRenderState,[\s\S]*?styles,[\s\S]*?avatarImageSource: item\.avatarDataUrl \? \{ uri: item\.avatarDataUrl \} : null,[\s\S]*?onPress: \(\) => handleSelectProfile\(item\),/);
+  assert.match(sheetSource, /const avatarImageSource = useMemo\(\s+\(\) => \(item\.avatarDataUrl \? \{ uri: item\.avatarDataUrl \} : null\),\s+\[item\.avatarDataUrl\],\s+\);/);
+  assert.match(sheetSource, /const handlePress = useCallback\(\(\) => \{\s+void onSelectProfile\(item\);\s+\}, \[item, onSelectProfile\]\);/);
+  assert.match(sheetSource, /const profileItemParts = useMemo<AgentSelectorProfileItemParts>\(\s+\(\) => createAgentSelectorProfileItemMobilePropsParts\(\{[\s\S]*?profile: item,[\s\S]*?renderState,[\s\S]*?profileRenderState: profileItemRenderState,[\s\S]*?styles,[\s\S]*?avatarImageSource,[\s\S]*?onPress: handlePress,/);
+  assert.doesNotMatch(sheetSource, /const profileItemParts: AgentSelectorProfileItemParts = createAgentSelectorProfileItemMobilePropsParts/);
   assert.match(sheetSource, /<TouchableOpacity\s+\{\.\.\.profileItemParts\.touchable\.props\}/);
   assert.match(sheetSource, /<View \{\.\.\.avatar\.props\}>/);
   assert.match(sheetSource, /<Image\s+\{\.\.\.avatar\.image\.props\}/);
