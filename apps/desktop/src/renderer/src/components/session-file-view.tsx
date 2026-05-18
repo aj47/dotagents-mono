@@ -164,7 +164,10 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
       .filter((directoryPath) => isWithinRootPath(currentRoot.path, directoryPath))
       .filter((directoryPath) => directoryPath === currentRoot.path || expandedDirectories[directoryPath])
       .filter((directoryPath, index, values) => values.indexOf(directoryPath) === index)
-    await Promise.all(targets.map((directoryPath) => loadDirectory(directoryPath, { force: true })))
+    // Use allSettled so a single failing reload (e.g. a directory that was
+    // just deleted or moved) cannot reject the whole refresh and make the
+    // caller treat a successful filesystem mutation as a failure.
+    await Promise.allSettled(targets.map((directoryPath) => loadDirectory(directoryPath, { force: true })))
   }, [currentRoot, entriesByDirectory, expandedDirectories, loadDirectory])
 
   useEffect(() => {
