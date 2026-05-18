@@ -3439,6 +3439,10 @@ test('uses shared desktop-style icons for mobile composer controls', () => {
     chatMessageChromeSource.match(/export function ChatComposerIconButton[\s\S]*?export function ChatComposerLabeledActionButton/)?.[0] ?? '';
   assert.match(chatMessageChromeSource, /createChatComposerIconButtonMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatComposerIconButtonMobilePropsParts/);
+  assert.doesNotMatch(chatMessageChromeSource, /type ChatComposerIconButton(?:TouchableProps|TouchableContentProps|IconProps)\s*=\s+ChatComposerIconButtonParts\['/);
+  assert.match(chatMessageChromeSource, /type ChatComposerIconButtonTouchableProps = \{[\s\S]*?style: Array<StyleProp<ViewStyle> \| false \| undefined>;[\s\S]*?onPress: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?activeOpacity: number \| undefined;[\s\S]*?accessibilityRole: AccessibilityRole;[\s\S]*?accessibilityLabel: string;[\s\S]*?accessibilityHint: string \| undefined;[\s\S]*?accessibilityState: AccessibilityState \| undefined;[\s\S]*?'aria-checked': boolean \| undefined;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerIconButtonTouchableContentProps = \{[\s\S]*?icon: \{[\s\S]*?props: ChatComposerIconButtonIconProps;[\s\S]*?\};[\s\S]*?\};/);
+  assert.match(chatMessageChromeSource, /type ChatComposerIconButtonIconProps = ChatMessageActionIcon;/);
   assert.match(composerIconButtonSource, /const iconButtonParts: ChatComposerIconButtonParts =\s+createChatComposerIconButtonMobilePropsParts\(\{\s+shouldRender,\s+renderState,\s+onPress,\s+activeOpacity,\s+style,\s+activeStyle,\s+\}\);/);
   assert.match(composerIconButtonSource, /const iconButtonTouchable = iconButtonParts\.touchable;/);
   assert.match(composerIconButtonSource, /if \(!iconButtonTouchable\.shouldRender\) return null;/);

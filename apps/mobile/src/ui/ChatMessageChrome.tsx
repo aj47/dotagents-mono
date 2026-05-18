@@ -5128,16 +5128,25 @@ type ChatComposerIconButtonParts =
     StyleProp<ViewStyle>
   >;
 
-type ChatComposerIconButtonTouchableProps =
-  ChatComposerIconButtonParts['touchable']['props'] & {
-    children: ReactNode;
+type ChatComposerIconButtonTouchableProps = {
+  style: Array<StyleProp<ViewStyle> | false | undefined>;
+  onPress: ((event: GestureResponderEvent) => void) | undefined;
+  activeOpacity: number | undefined;
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  accessibilityHint: string | undefined;
+  accessibilityState: AccessibilityState | undefined;
+  'aria-checked': boolean | undefined;
+  children: ReactNode;
+};
+
+type ChatComposerIconButtonTouchableContentProps = {
+  icon: {
+    props: ChatComposerIconButtonIconProps;
   };
+};
 
-type ChatComposerIconButtonTouchableContentProps =
-  ChatComposerIconButtonParts['touchable']['content'];
-
-type ChatComposerIconButtonIconProps =
-  ChatComposerIconButtonParts['touchable']['content']['icon']['props'];
+type ChatComposerIconButtonIconProps = ChatMessageActionIcon;
 
 type ChatComposerLabeledActionRenderState = {
   accessibilityRole: AccessibilityRole;
