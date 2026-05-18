@@ -1297,6 +1297,43 @@ export interface ChatRuntimeMessageMobileStyleSlotsInput {
   borderWidths: Readonly<Record<ChatRuntimeMessageMobileBorderWidthToken, number>>
 }
 
+export interface ChatRuntimeMessageMobileStyleSlots {
+  message: {
+    paddingHorizontal: number
+    paddingVertical: number
+    marginBottom: number
+    width: ChatRuntimeMessageMobileSurface["width"]
+    borderWidth: number
+    borderRadius: number
+  }
+  user: ChatRuntimeMessageMobileStyleRenderState["colors"]["tones"]["user"]
+  assistant: ChatRuntimeMessageMobileStyleRenderState["colors"]["tones"]["assistant"]
+  assistantFinal: ChatRuntimeMessageMobileStyleRenderState["colors"]["tones"]["assistant_final"]
+  tool: ChatRuntimeMessageMobileStyleRenderState["colors"]["tones"]["tool"]
+  contentRow: {
+    flexDirection: ChatRuntimeMessageMobileContentLayout["row"]["flexDirection"]
+    alignItems: ChatRuntimeMessageMobileContentLayout["row"]["alignItems"]
+    gap: number
+    width: ChatRuntimeMessageMobileContentLayout["row"]["width"]
+  }
+  contentBody: {
+    flex: ChatRuntimeMessageMobileContentLayout["body"]["flex"]
+    minWidth: ChatRuntimeMessageMobileContentLayout["body"]["minWidth"]
+  }
+  collapsedPreviewToggle: {
+    flex: ChatRuntimeMessageMobileStyleRenderState["collapsedPreview"]["flex"]
+    minWidth: ChatRuntimeMessageMobileStyleRenderState["collapsedPreview"]["minWidth"]
+  }
+  collapsedPreviewTogglePressed: {
+    opacity: number
+  }
+  collapsedPreview: {
+    color: string
+    fontSize: number
+    lineHeight: number
+  }
+}
+
 export type ChatRuntimeMessageThreadPresentationMobileColorPalette =
   & ChatRuntimeDelegationCardMobileColorPalette
   & ChatRuntimeDelegationConversationPreviewRoleColorPalette
@@ -1334,6 +1371,219 @@ export interface ChatRuntimeThreadChromeMobileStyleRenderState {
   messageThread: ReturnType<typeof getChatRuntimeMessageThreadMobileStyleRenderState>
 }
 
+type ChatRuntimeToolExecutionDetailMobileSurface = ToolExecutionDetailMobileStyleRenderState["surface"]
+type ChatRuntimeToolExecutionDetailMobileColors = ToolExecutionDetailMobileStyleRenderState["colors"]
+
+interface ChatRuntimeToolExecutionDetailMobileCodeBlockStyleSlot {
+  fontFamily: string
+  fontSize: number
+  color: string
+  backgroundColor: string
+  padding: number
+  borderRadius: number
+}
+
+interface ChatRuntimeToolExecutionDetailMobileScrollStyleSlot {
+  maxHeight: number
+  borderRadius: number
+  overflow: ChatRuntimeToolExecutionDetailMobileSurface["scroll"]["overflow"]
+}
+
+export interface ChatRuntimeToolExecutionDetailMobileStyleSlots {
+  card: ChatRuntimeToolExecutionDetailMobileColors["byState"]["idle"] & {
+    marginTop: number
+    borderRadius: number
+    borderLeftWidth: number
+    overflow: ChatRuntimeToolExecutionDetailMobileSurface["card"]["overflow"]
+  }
+  pending: ChatRuntimeToolExecutionDetailMobileColors["byState"]["pending"]
+  success: ChatRuntimeToolExecutionDetailMobileColors["byState"]["success"]
+  error: ChatRuntimeToolExecutionDetailMobileColors["byState"]["error"]
+  expandedContainer: {
+    position: ChatRuntimeToolExecutionDetailMobileSurface["expandedContainer"]["position"]
+  }
+  collapseTopButton: {
+    marginBottom: number
+  }
+  collapseBottomButton: {
+    marginTop: number
+  }
+  paramsSection: {
+    paddingHorizontal: number
+    paddingVertical: number
+  }
+  callSection: {
+    marginBottom: number
+    paddingBottom: number
+    borderBottomWidth: number
+    borderBottomColor: string
+  }
+  toolName: {
+    fontFamily: string
+    fontWeight: ChatRuntimeToolExecutionDetailMobileSurface["toolName"]["fontWeight"]
+    color: string
+    fontSize: number
+    flex: ChatRuntimeToolExecutionDetailMobileSurface["toolName"]["flex"]
+  }
+  callHeader: {
+    flexDirection: ChatRuntimeToolExecutionDetailMobileSurface["header"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionDetailMobileSurface["header"]["alignItems"]
+    justifyContent: ChatRuntimeToolExecutionDetailMobileSurface["header"]["justifyContent"]
+    paddingVertical: number
+    marginBottom: number
+    minHeight: number
+  }
+  callHeaderPressed: {
+    opacity: number
+  }
+  expandHint: {
+    flexDirection: ChatRuntimeToolExecutionDetailMobileSurface["expandHint"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionDetailMobileSurface["expandHint"]["alignItems"]
+    gap: number
+  }
+  expandHintText: {
+    fontSize: number
+    color: string
+    fontWeight: ChatRuntimeToolExecutionDetailMobileSurface["expandHint"]["fontWeight"]
+  }
+  sectionLabel: {
+    fontSize: number
+    fontWeight: ChatRuntimeToolExecutionDetailMobileSurface["sectionLabel"]["fontWeight"]
+    color: string
+    marginBottom: number
+    textTransform: ChatRuntimeToolExecutionDetailMobileSurface["sectionLabel"]["textTransform"]
+    letterSpacing: number
+  }
+  detailHeaderRow: {
+    flexDirection: ChatRuntimeToolExecutionDetailMobileSurface["detailHeaderRow"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionDetailMobileSurface["detailHeaderRow"]["alignItems"]
+    justifyContent: ChatRuntimeToolExecutionDetailMobileSurface["detailHeaderRow"]["justifyContent"]
+    gap: number
+    marginBottom: number
+  }
+  payloadMetaRow: {
+    flexDirection: ChatRuntimeToolExecutionDetailMobileSurface["payloadMeta"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionDetailMobileSurface["payloadMeta"]["alignItems"]
+    minWidth: ChatRuntimeToolExecutionDetailMobileSurface["payloadMeta"]["minWidth"]
+    gap: number
+    marginBottom: number
+  }
+  payloadType: {
+    fontSize: number
+    fontWeight: ChatRuntimeToolExecutionDetailMobileSurface["payloadType"]["fontWeight"]
+    opacity: number
+    color: string
+  }
+  payloadPreview: {
+    fontFamily: string
+    fontSize: number
+    lineHeight: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    backgroundColor: string
+    color: string
+    marginBottom: number
+  }
+  copyButton: {
+    minHeight: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+    backgroundColor: string
+    flexDirection: ChatRuntimeToolExecutionDetailMobileSurface["copyButton"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionDetailMobileSurface["copyButton"]["alignItems"]
+    justifyContent: ChatRuntimeToolExecutionDetailMobileSurface["copyButton"]["justifyContent"]
+    gap: number
+    flexShrink: ChatRuntimeToolExecutionDetailMobileSurface["copyButton"]["flexShrink"]
+  }
+  copyButtonPressed: {
+    opacity: number
+  }
+  copyButtonText: {
+    fontSize: number
+    fontWeight: ChatRuntimeToolExecutionDetailMobileSurface["copyButtonText"]["fontWeight"]
+    color: string
+  }
+  paramsScroll: ChatRuntimeToolExecutionDetailMobileScrollStyleSlot
+  paramsScrollExpanded: ChatRuntimeToolExecutionDetailMobileScrollStyleSlot
+  paramsCode: ChatRuntimeToolExecutionDetailMobileCodeBlockStyleSlot
+  responsePendingText: {
+    fontSize: number
+    fontStyle: ChatRuntimeToolExecutionDetailMobileSurface["pendingText"]["fontStyle"]
+    color: string
+    textAlign: ChatRuntimeToolExecutionDetailMobileSurface["pendingText"]["textAlign"]
+    paddingVertical: number
+  }
+  responsePendingRow: {
+    flexDirection: ChatRuntimeToolExecutionDetailMobileSurface["pendingRow"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionDetailMobileSurface["pendingRow"]["alignItems"]
+    justifyContent: ChatRuntimeToolExecutionDetailMobileSurface["pendingRow"]["justifyContent"]
+    gap: number
+    paddingVertical: number
+  }
+  resultItem: {
+    marginBottom: number
+  }
+  resultHeader: {
+    flexDirection: ChatRuntimeToolExecutionDetailMobileSurface["resultHeader"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionDetailMobileSurface["resultHeader"]["alignItems"]
+    justifyContent: ChatRuntimeToolExecutionDetailMobileSurface["resultHeader"]["justifyContent"]
+    marginBottom: number
+    gap: number
+  }
+  resultHeaderMeta: {
+    flexDirection: ChatRuntimeToolExecutionDetailMobileSurface["resultHeaderMeta"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionDetailMobileSurface["resultHeaderMeta"]["alignItems"]
+    gap: number
+    flexShrink: ChatRuntimeToolExecutionDetailMobileSurface["resultHeaderMeta"]["flexShrink"]
+    minWidth: ChatRuntimeToolExecutionDetailMobileSurface["resultHeaderMeta"]["minWidth"]
+  }
+  resultCharCount: {
+    fontSize: number
+    fontFamily: string
+    color: string
+    opacity: number
+  }
+  resultBadge: {
+    flexDirection: ChatRuntimeToolExecutionDetailMobileSurface["badge"]["flexDirection"]
+    alignItems: ChatRuntimeToolExecutionDetailMobileSurface["badge"]["alignItems"]
+    gap: number
+    paddingHorizontal: number
+    paddingVertical: number
+    borderRadius: number
+  }
+  resultBadgeSuccess: {
+    backgroundColor: string
+  }
+  resultBadgeError: {
+    backgroundColor: string
+  }
+  resultBadgeText: {
+    fontSize: number
+    fontWeight: ChatRuntimeToolExecutionDetailMobileSurface["badge"]["fontWeight"]
+  }
+  resultBadgeTextSuccess: {
+    color: string
+  }
+  resultBadgeTextError: {
+    color: string
+  }
+  resultScroll: ChatRuntimeToolExecutionDetailMobileScrollStyleSlot
+  resultScrollExpanded: ChatRuntimeToolExecutionDetailMobileScrollStyleSlot
+  resultCode: ChatRuntimeToolExecutionDetailMobileCodeBlockStyleSlot
+  resultErrorSection: {
+    marginTop: number
+  }
+  resultErrorLabel: {
+    fontSize: number
+    fontWeight: ChatRuntimeToolExecutionDetailMobileSurface["error"]["labelFontWeight"]
+    color: string
+    marginBottom: number
+  }
+  resultErrorText: ChatRuntimeToolExecutionDetailMobileCodeBlockStyleSlot
+}
+
 export interface ChatRuntimeThreadMobileStyleSlotsInput {
   renderState: ChatRuntimeThreadChromeMobileStyleRenderState
   spacing:
@@ -1354,10 +1604,10 @@ export interface ChatRuntimeThreadMobileStyleSlotsInput {
 
 export interface ChatRuntimeThreadMobileStyleSlots {
   compactToolExecution: ChatRuntimeToolExecutionCompactMobileStyleSlots
-  toolExecutionDetail: ReturnType<typeof createChatRuntimeToolExecutionDetailMobileStyleSlots>
+  toolExecutionDetail: ChatRuntimeToolExecutionDetailMobileStyleSlots
   toolActivityGroup: ChatRuntimeToolActivityGroupMobileStyleSlots
   toolApproval: ChatRuntimeToolApprovalMobileStyleSlots
-  message: ReturnType<typeof createChatRuntimeMessageMobileStyleSlots>
+  message: ChatRuntimeMessageMobileStyleSlots
   action: ChatRuntimeMessageActionMobileStyleSlots
   turnDuration: ChatRuntimeTurnDurationMessageMobileStyleSlotVariants
 }
@@ -1435,8 +1685,6 @@ export interface ChatRuntimeToolExecutionCompactMobileStyleSlots {
     color: string
   }
 }
-
-type ChatRuntimeToolExecutionDetailMobileSurface = ToolExecutionDetailMobileStyleRenderState["surface"]
 
 export type ChatRuntimeToolExecutionDetailMobileSpacingToken =
   | ChatRuntimeToolExecutionDetailMobileSurface["blockSection"]["paddingHorizontal"]
@@ -19174,7 +19422,7 @@ export function createChatRuntimeToolExecutionDetailMobileStyleSlots({
   spacing,
   radius,
   platform,
-}: ChatRuntimeToolExecutionDetailMobileStyleSlotsInput) {
+}: ChatRuntimeToolExecutionDetailMobileStyleSlotsInput): ChatRuntimeToolExecutionDetailMobileStyleSlots {
   const surface = renderState.surface
   const colors = renderState.colors
   const contentColors = colors.content
@@ -19501,7 +19749,7 @@ export function createChatRuntimeMessageMobileStyleSlots({
   spacing,
   radius,
   borderWidths,
-}: ChatRuntimeMessageMobileStyleSlotsInput) {
+}: ChatRuntimeMessageMobileStyleSlotsInput): ChatRuntimeMessageMobileStyleSlots {
   const surface = renderState.surface
   const contentLayout = renderState.contentLayout
   const collapsedPreview = renderState.collapsedPreview
