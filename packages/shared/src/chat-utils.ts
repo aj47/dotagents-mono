@@ -17,7 +17,10 @@ import {
   shouldCollapseChatMessageContent,
   shouldRenderChatMessageSurface,
 } from './message-display-utils';
-import { formatToolExecutionArgumentsPreview } from './tool-execution-display';
+import {
+  formatToolExecutionArgumentsPreview,
+  type ToolExecutionStatsLike,
+} from './tool-execution-display';
 import type { ConversationHistoryMessage, ToolCall, ToolResult } from './types';
 
 export type ChatRequestMessageLike = {
@@ -2080,16 +2083,7 @@ export type ChatDisplayMessageLike = {
   toolExecutionStats?: Array<ChatMessageToolExecutionStatsLike | null | undefined>;
 };
 
-export interface ChatMessageToolExecutionStatsLike {
-  durationMs?: number;
-  totalTokens?: number;
-  toolUseCount?: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  cacheHitTokens?: number;
-  model?: string;
-  subagentId?: string;
-}
+export interface ChatMessageToolExecutionStatsLike extends ToolExecutionStatsLike {}
 
 export interface ChatMessageToolExecutionEntryLike<
   TToolCall = ToolCall,

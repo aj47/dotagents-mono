@@ -61,6 +61,7 @@ import {
   getToolExecutionStatusMobileIconName,
   getToolExecutionDetailDesktopSurfaceState,
   getToolExecutionDetailMobileSurfaceState,
+  getToolExecutionStatsDisplayState,
   formatToolExecutionDuration,
   formatToolExecutionHeading,
   formatToolExecutionTokens,
@@ -84,6 +85,58 @@ describe("tool execution display", () => {
     expect(formatToolExecutionTokens(1700)).toBe("1.7k")
     expect(formatToolExecutionTokens(17000)).toBe("17k")
     expect(formatToolExecutionTokens(1500000)).toBe("1.5M")
+  })
+
+  it("builds shared tool execution stats display state", () => {
+    expect(getToolExecutionStatsDisplayState({
+      durationMs: 3062,
+      totalTokens: 17250,
+      model: "gpt-5.4",
+      subagentId: "abc123456789-extra",
+    })).toEqual({
+      shouldRender: true,
+      label: "agent:abc1234 • gpt-5.4 • 3.1s • 17k tokens",
+      accessibilityLabel: "Tool execution stats: agent:abc1234, gpt-5.4, 3.1s, 17k tokens",
+      parts: ["agent:abc1234", "gpt-5.4", "3.1s", "17k tokens"],
+      details: [
+        {
+          key: "subagent",
+          label: "Subagent",
+          value: "abc123456789-extra",
+          compactValue: "agent:abc1234",
+        },
+        {
+          key: "model",
+          label: "Model",
+          value: "gpt-5.4",
+          compactValue: "gpt-5.4",
+        },
+        {
+          key: "duration",
+          label: "Duration",
+          value: "3.1s",
+          compactValue: "3.1s",
+          rawValue: "3,062ms",
+        },
+        {
+          key: "tokens",
+          label: "Tokens",
+          value: "17,250",
+          compactValue: "17k tokens",
+        },
+      ],
+      displaySubagentId: "agent:abc1234",
+      rawSubagentId: "abc123456789-extra",
+    })
+    expect(getToolExecutionStatsDisplayState(null)).toEqual({
+      shouldRender: false,
+      label: "",
+      accessibilityLabel: "",
+      parts: [],
+      details: [],
+      displaySubagentId: null,
+      rawSubagentId: null,
+    })
   })
 
   it("derives shared compact status from tool results", () => {

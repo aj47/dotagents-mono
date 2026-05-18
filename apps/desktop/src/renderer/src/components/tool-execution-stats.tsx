@@ -6,17 +6,12 @@ import {
 } from "./ui/tooltip"
 import { cn } from "@renderer/lib/utils"
 import {
-  formatToolExecutionDuration,
-  formatToolExecutionTokens,
-  truncateToolExecutionSubagentId,
+  getToolExecutionStatsDisplayState,
+  type ToolExecutionStatsLike,
 } from "@dotagents/shared/session-presentation"
 
 interface ToolExecutionStatsProps {
-  stats: {
-    durationMs?: number
-    totalTokens?: number
-    model?: string
-  }
+  stats: ToolExecutionStatsLike
   subagentId?: string
   compact?: boolean
   className?: string
@@ -34,46 +29,43 @@ export function ToolExecutionStats({
   compact = true,
   className,
 }: ToolExecutionStatsProps) {
-  const { durationMs, totalTokens, model } = stats
+  const statsDisplayState = getToolExecutionStatsDisplayState({
+    ...stats,
+    subagentId: subagentId ?? stats.subagentId,
+  })
+  const subagentDetail = statsDisplayState.details.find((detail) => detail.key === "subagent")
+  const modelDetail = statsDisplayState.details.find((detail) => detail.key === "model")
+  const durationDetail = statsDisplayState.details.find((detail) => detail.key === "duration")
+  const tokensDetail = statsDisplayState.details.find((detail) => detail.key === "tokens")
+  const rawSubagentId = statsDisplayState.rawSubagentId
+  const shouldShowRawSubagentId =
+    rawSubagentId != null &&
+    rawSubagentId !== statsDisplayState.displaySubagentId
 
-  // If no stats to display, return null
-  if (!durationMs && !totalTokens && !model && !subagentId) {
+  if (!statsDisplayState.shouldRender) {
     return null
   }
 
-  // Build stats parts for display
-  const parts: string[] = []
-  if (model) parts.push(model)
-  if (durationMs !== undefined) parts.push(formatToolExecutionDuration(durationMs))
-  if (totalTokens !== undefined) parts.push(`${formatToolExecutionTokens(totalTokens)} tokens`)
-
-  // Truncated subagent ID for display
-  const displaySubagentId = subagentId ? truncateToolExecutionSubagentId(subagentId) : null
-
   if (compact) {
-    // Compact mode: single line with dot separators
-    const displayParts = [...parts]
-    if (displaySubagentId) displayParts.unshift(displaySubagentId)
-
     return (
       <TooltipProvider delayDuration={0}>
         <Tooltip>
           <TooltipTrigger asChild>
             <span
+              aria-label={statsDisplayState.accessibilityLabel}
               className={cn(
                 "inline-flex items-center text-[10px] text-muted-foreground font-mono cursor-help",
                 className
               )}
             >
-              {displayParts.join(" • ")}
+              {statsDisplayState.label}
             </span>
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
             <div className="space-y-0.5">
-              {subagentId && <p>Subagent: {subagentId}</p>}
-              {model && <p>Model: {model}</p>}
-              {durationMs !== undefined && <p>Duration: {formatToolExecutionDuration(durationMs)}</p>}
-              {totalTokens !== undefined && <p>Tokens: {totalTokens.toLocaleString()}</p>}
+              {statsDisplayState.details.map((detail) => (
+                <p key={detail.key}>{detail.label}: {detail.value}</p>
+              ))}
             </div>
           </TooltipContent>
         </Tooltip>
@@ -84,34 +76,39 @@ export function ToolExecutionStats({
   // Expanded mode: detailed breakdown
   return (
     <div className={cn("text-xs space-y-1", className)}>
-      {displaySubagentId && (
+      {subagentDetail && (
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Subagent:</span>
-          <span className="font-mono text-foreground">{displaySubagentId}</span>
-          {subagentId && subagentId !== displaySubagentId && (
-            <span className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={subagentId}>
-              ({subagentId})
+          <span className="text-muted-foreground">{subagentDetail.label}:</span>
+          <span className="font-mono text-foreground">{subagentDetail.compactValue}</span>
+          {shouldShowRawSubagentId && (
+            <span
+              className="text-[10px] text-muted-foreground truncate max-w-[150px]"
+              title={rawSubagentId}
+            >
+              ({rawSubagentId})
             </span>
           )}
         </div>
       )}
-      {model && (
+      {modelDetail && (
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Model:</span>
-          <span className="font-mono text-foreground">{model}</span>
+          <span className="text-muted-foreground">{modelDetail.label}:</span>
+          <span className="font-mono text-foreground">{modelDetail.value}</span>
         </div>
       )}
-      {durationMs !== undefined && (
+      {durationDetail && (
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Duration:</span>
-          <span className="font-mono text-foreground">{formatToolExecutionDuration(durationMs)}</span>
-          <span className="text-[10px] text-muted-foreground">({durationMs.toLocaleString()}ms)</span>
+          <span className="text-muted-foreground">{durationDetail.label}:</span>
+          <span className="font-mono text-foreground">{durationDetail.value}</span>
+          {durationDetail.rawValue && (
+            <span className="text-[10px] text-muted-foreground">({durationDetail.rawValue})</span>
+          )}
         </div>
       )}
-      {totalTokens !== undefined && (
+      {tokensDetail && (
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Tokens:</span>
-          <span className="font-mono text-foreground">{totalTokens.toLocaleString()}</span>
+          <span className="text-muted-foreground">{tokensDetail.label}:</span>
+          <span className="font-mono text-foreground">{tokensDetail.value}</span>
         </div>
       )}
     </div>

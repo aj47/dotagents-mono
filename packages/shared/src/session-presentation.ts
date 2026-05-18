@@ -361,8 +361,6 @@ import {
 } from "./accessibility-utils"
 import {
   formatToolExecutionCount,
-  formatToolExecutionDuration,
-  formatToolExecutionTokens,
   getToolExecutionCallDisplayState,
   getToolExecutionCompactMobileRenderState,
   getToolExecutionDetailArgumentsState,
@@ -380,7 +378,7 @@ import {
   getToolExecutionMobileVisibilityRenderState,
   getToolExecutionResultOnlyFallbackRenderState,
   getToolExecutionSummaryDisplayState,
-  truncateToolExecutionSubagentId,
+  getToolExecutionStatsDisplayState,
   type ToolExecutionCompactMobileRenderState,
   type ToolExecutionCompactMobileRenderStateInput,
   type ToolExecutionCompactMobileStyleRenderState,
@@ -391,6 +389,7 @@ import {
   type ToolExecutionDetailMobilePendingResultRenderState,
   type ToolExecutionDetailMobileSectionHeaderRenderState,
   type ToolExecutionResultOnlyFallbackRenderState,
+  type ToolExecutionStatsDisplayState,
   type ToolExecutionSurfaceColorPalette,
 } from "./tool-execution-display"
 export {
@@ -415,8 +414,11 @@ export {
   getToolExecutionStatusCopyState,
   getToolExecutionStatusDesktopClassName,
   getToolExecutionStructuredPayloadChildEntries,
+  getToolExecutionStatsDisplayState,
   truncateToolExecutionSubagentId,
   type ToolExecutionStructuredPayloadValue,
+  type ToolExecutionStatsDisplayState,
+  type ToolExecutionStatsLike,
 } from "./tool-execution-display"
 export type {
   ToolExecutionCompactMobileRenderState,
@@ -8904,10 +8906,10 @@ export interface ChatRuntimeToolExecutionDetailMobileRowInput {
 }
 
 export interface ChatRuntimeToolExecutionStatsMobileRenderState {
-  shouldRender: boolean
-  label: string
-  accessibilityLabel: string
-  parts: readonly string[]
+  shouldRender: ToolExecutionStatsDisplayState["shouldRender"]
+  label: ToolExecutionStatsDisplayState["label"]
+  accessibilityLabel: ToolExecutionStatsDisplayState["accessibilityLabel"]
+  parts: ToolExecutionStatsDisplayState["parts"]
 }
 
 export interface ChatRuntimeToolExecutionStatsMobilePropsPartsInput<
@@ -26524,32 +26526,16 @@ export function getChatRuntimeToolExecutionResultOnlyFallbackLabel(): string {
   return getChatRuntimeToolExecutionResultOnlyFallbackRenderState().label
 }
 
-function getFiniteToolExecutionStat(value: number | null | undefined): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined
-}
-
 export function getChatRuntimeToolExecutionStatsMobileRenderState(
   stats?: ChatMessageToolExecutionStatsLike | null,
 ): ChatRuntimeToolExecutionStatsMobileRenderState {
-  const durationMs = getFiniteToolExecutionStat(stats?.durationMs)
-  const totalTokens = getFiniteToolExecutionStat(stats?.totalTokens)
-  const displaySubagentId = stats?.subagentId
-    ? truncateToolExecutionSubagentId(stats.subagentId)
-    : null
-  const parts: string[] = []
-
-  if (displaySubagentId) parts.push(displaySubagentId)
-  if (stats?.model) parts.push(stats.model)
-  if (durationMs !== undefined) parts.push(formatToolExecutionDuration(durationMs))
-  if (totalTokens !== undefined) parts.push(`${formatToolExecutionTokens(totalTokens)} tokens`)
-
-  const label = parts.join(" • ")
+  const displayState = getToolExecutionStatsDisplayState(stats)
 
   return {
-    shouldRender: parts.length > 0,
-    label,
-    accessibilityLabel: label ? `Tool execution stats: ${parts.join(", ")}` : "",
-    parts,
+    shouldRender: displayState.shouldRender,
+    label: displayState.label,
+    accessibilityLabel: displayState.accessibilityLabel,
+    parts: displayState.parts,
   }
 }
 

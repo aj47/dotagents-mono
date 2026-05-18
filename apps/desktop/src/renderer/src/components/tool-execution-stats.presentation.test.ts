@@ -11,11 +11,12 @@ const sessionPresentationSource = readFileSync(
 )
 
 describe("tool execution stats presentation", () => {
-  it("routes desktop formatting helpers through the shared session presentation facade", () => {
+  it("routes desktop stats display state through the shared session presentation facade", () => {
     expect(toolExecutionStatsSource).toContain('from "@dotagents/shared/session-presentation"')
     expect(toolExecutionStatsSource).not.toContain('from "@dotagents/shared/tool-execution-display"')
-    expect(sessionPresentationSource).toContain("formatToolExecutionDuration")
-    expect(sessionPresentationSource).toContain("formatToolExecutionTokens")
-    expect(sessionPresentationSource).toContain("truncateToolExecutionSubagentId")
+    expect(toolExecutionStatsSource).toContain("getToolExecutionStatsDisplayState")
+    expect(toolExecutionStatsSource).toContain("statsDisplayState.label")
+    expect(toolExecutionStatsSource).toContain("statsDisplayState.details.map")
+    expect(sessionPresentationSource).toContain("getToolExecutionStatsDisplayState")
   })
 })

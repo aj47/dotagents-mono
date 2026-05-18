@@ -2135,3 +2135,116 @@ export function truncateToolExecutionSubagentId(id: string): string {
   }
   return `${id.slice(0, 10)}...`
 }
+
+export interface ToolExecutionStatsLike {
+  durationMs?: number
+  totalTokens?: number
+  toolUseCount?: number
+  inputTokens?: number
+  outputTokens?: number
+  cacheHitTokens?: number
+  model?: string
+  subagentId?: string
+}
+
+export type ToolExecutionStatsDisplayDetailKey =
+  | "subagent"
+  | "model"
+  | "duration"
+  | "tokens"
+
+export interface ToolExecutionStatsDisplayDetail {
+  key: ToolExecutionStatsDisplayDetailKey
+  label: string
+  value: string
+  compactValue: string
+  rawValue?: string
+}
+
+export interface ToolExecutionStatsDisplayState {
+  shouldRender: boolean
+  label: string
+  accessibilityLabel: string
+  parts: readonly string[]
+  details: readonly ToolExecutionStatsDisplayDetail[]
+  displaySubagentId: string | null
+  rawSubagentId: string | null
+}
+
+function getFiniteToolExecutionStat(value: number | null | undefined): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+export function getToolExecutionStatsDisplayState(
+  stats?: ToolExecutionStatsLike | null,
+): ToolExecutionStatsDisplayState {
+  const durationMs = getFiniteToolExecutionStat(stats?.durationMs)
+  const totalTokens = getFiniteToolExecutionStat(stats?.totalTokens)
+  const model = stats?.model?.trim() || null
+  const rawSubagentId = stats?.subagentId?.trim() || null
+  const displaySubagentId = rawSubagentId
+    ? truncateToolExecutionSubagentId(rawSubagentId)
+    : null
+  const durationLabel = durationMs !== undefined
+    ? formatToolExecutionDuration(durationMs)
+    : null
+  const compactTokensLabel = totalTokens !== undefined
+    ? `${formatToolExecutionTokens(totalTokens)} tokens`
+    : null
+  const rawTokensLabel = totalTokens !== undefined
+    ? totalTokens.toLocaleString()
+    : null
+  const parts = [
+    displaySubagentId,
+    model,
+    durationLabel,
+    compactTokensLabel,
+  ].filter((part): part is string => Boolean(part))
+  const details: ToolExecutionStatsDisplayDetail[] = []
+
+  if (rawSubagentId && displaySubagentId) {
+    details.push({
+      key: "subagent",
+      label: "Subagent",
+      value: rawSubagentId,
+      compactValue: displaySubagentId,
+    })
+  }
+  if (model) {
+    details.push({
+      key: "model",
+      label: "Model",
+      value: model,
+      compactValue: model,
+    })
+  }
+  if (durationMs !== undefined && durationLabel) {
+    details.push({
+      key: "duration",
+      label: "Duration",
+      value: durationLabel,
+      compactValue: durationLabel,
+      rawValue: `${durationMs.toLocaleString()}ms`,
+    })
+  }
+  if (rawTokensLabel && compactTokensLabel) {
+    details.push({
+      key: "tokens",
+      label: "Tokens",
+      value: rawTokensLabel,
+      compactValue: compactTokensLabel,
+    })
+  }
+
+  return {
+    shouldRender: parts.length > 0,
+    label: parts.join(" • "),
+    accessibilityLabel: parts.length > 0
+      ? `Tool execution stats: ${parts.join(", ")}`
+      : "",
+    parts,
+    details,
+    displaySubagentId,
+    rawSubagentId,
+  }
+}
