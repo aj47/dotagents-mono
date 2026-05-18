@@ -235,6 +235,7 @@ import {
   type ChatRuntimeConversationSurfaceMobilePropsParts,
   type ChatRuntimeConversationSurfaceMobilePropsPartsInput,
   type ChatRuntimeConversationViewportMobilePropsParts,
+  type ChatRuntimeConversationViewportMobilePropsPartsInput,
   type ChatRuntimeConversationViewportContentMobilePropsParts,
   type ChatRuntimeConversationViewportContentMobilePropsPartsInput,
   type ChatConversationHomePromptEditorModalMobilePropsParts,
@@ -3660,14 +3661,22 @@ type ChatMessageRuntimeViewportProps<
   | 'historyBanner'
   | 'stepSummary'
   | 'debugPanels'
-> & {
-  loadingState: Omit<ChatMessageLoadingStateProps, 'style' | 'spinnerStyle'>;
-  homeQuickStarts: Omit<ChatConversationHomeQuickStartsProps<TPrompt, TTask>, 'styles'>;
-  historyBanner: Omit<ChatMessageHistoryBannerProps, 'styles'>;
-  stepSummary: Omit<ChatMessageStepSummaryCardProps, 'styles'>;
-  debugPanels: Omit<ChatMessageDebugPanelStackProps, 'panelStyle' | 'textStyle'>;
-  styles: ChatMessageRuntimeViewportStyleSlots;
-};
+> & ChatRuntimeConversationViewportMobilePropsPartsInput<
+  Omit<ChatMessageLoadingStateProps, 'style' | 'spinnerStyle'>,
+  Omit<ChatConversationHomeQuickStartsProps<TPrompt, TTask>, 'styles'>,
+  Omit<ChatMessageHistoryBannerProps, 'styles'>,
+  Omit<ChatMessageStepSummaryCardProps, 'styles'>,
+  Omit<ChatMessageDebugPanelStackProps, 'panelStyle' | 'textStyle'>,
+  ChatMessageRuntimeViewportStyleSlots['scrollViewport']['style'],
+  ChatMessageRuntimeViewportStyleSlots['scrollViewport']['contentContainerStyle'],
+  ChatMessageRuntimeViewportStyleSlots['loadingState']['style'],
+  ChatMessageRuntimeViewportStyleSlots['loadingState']['spinnerStyle'],
+  ChatMessageRuntimeViewportStyleSlots['homeQuickStarts'],
+  ChatMessageRuntimeViewportStyleSlots['historyBanner'],
+  ChatMessageRuntimeViewportStyleSlots['stepSummary'],
+  ChatMessageRuntimeViewportStyleSlots['debugPanels']['panelStyle'],
+  ChatMessageRuntimeViewportStyleSlots['debugPanels']['textStyle']
+>;
 
 type ChatMessageRuntimeViewportParts<
   TPrompt extends PredefinedPromptSummary,
