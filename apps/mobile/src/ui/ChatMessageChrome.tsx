@@ -34,6 +34,7 @@ import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
 import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useVoiceDebug } from '../lib/voice/voiceDebug';
+import { useConnectionManager } from '../store/connectionManager';
 import { useProfile } from '../store/profile';
 import {
   createChatRuntimeMessageQueuePanelStyleSheetSlots,
@@ -520,6 +521,8 @@ type ChatRuntimeCurrentAgentProfileState = {
   currentAgentName: string | undefined;
 };
 
+type ChatRuntimeConnectionManagerState = ReturnType<typeof useConnectionManager>;
+
 type ChatRuntimeMobileChromeConfigState = ChatRuntimeMobileConfigState & {
   handsFree: boolean;
 };
@@ -566,6 +569,10 @@ export function useChatRuntimeCurrentAgentProfileState(): ChatRuntimeCurrentAgen
   );
 
   return currentAgentProfileState;
+}
+
+export function useChatRuntimeConnectionManagerState(): ChatRuntimeConnectionManagerState {
+  return useConnectionManager();
 }
 
 export function useChatMessageRuntimeKeyboardOffsetState(): ChatMessageRuntimeKeyboardOffsetState {

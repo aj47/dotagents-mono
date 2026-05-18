@@ -3118,6 +3118,13 @@ test('uses shared runtime presentation for mobile connection and retry banners',
   assert.doesNotMatch(screenSource, /const \[lastFailedMessage, setLastFailedMessage\] = useState<string \| null>\(null\);/);
   assert.match(screenSource, /useChatRuntimeConnectionStatusSubscription,/);
   assert.match(screenSource, /useChatRuntimeSessionClientState,/);
+  assert.match(chatScreenSource, /useChatRuntimeConnectionManagerState,/);
+  assert.match(chatScreenSource, /const connectionManager = useChatRuntimeConnectionManagerState\(\);/);
+  assert.doesNotMatch(chatScreenSource, /from '\.\.\/store\/connectionManager';/);
+  assert.doesNotMatch(chatScreenSource, /useConnectionManager/);
+  assert.match(chatMessageChromeSource, /import \{ useConnectionManager \} from '\.\.\/store\/connectionManager';/);
+  assert.match(chatMessageChromeSource, /type ChatRuntimeConnectionManagerState = ReturnType<typeof useConnectionManager>;/);
+  assert.match(chatMessageChromeSource, /export function useChatRuntimeConnectionManagerState\(\): ChatRuntimeConnectionManagerState \{\s+return useConnectionManager\(\);\s+\}/);
   assert.match(screenSource, /const \{ getSessionClient \} = useChatRuntimeSessionClientState\(\{\s+currentSessionId: sessionStore\.currentSessionId,\s+connectionManager,\s+\}\);/);
   assert.doesNotMatch(screenSource, /const getSessionClient = useCallback\(\(\) => \{/);
   assert.doesNotMatch(screenSource, /connectionManager\.getOrCreateConnection\(currentSessionId\)/);
