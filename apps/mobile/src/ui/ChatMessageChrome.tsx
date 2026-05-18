@@ -29,7 +29,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
-import type { ChatRuntimeMobileStyles } from './ChatRuntimeMobileStyles';
+import type { ChatRuntimeMobileChromeSlots, ChatRuntimeMobileStyles } from './ChatRuntimeMobileStyles';
 import {
   CHAT_COMPOSER_RUNTIME_IMAGE_LIMITS,
   applyChatMessageRuntimeAutoExpansionState,
@@ -453,7 +453,6 @@ import {
   type ChatMessageRuntimeSessionMessageLike,
   type ChatMessageCollapsedPreviewMobileActionState,
   type ChatMessageExpansionMobileRenderState,
-  type ChatMessageActionStyleSlots as SharedChatMessageActionStyleSlots,
   type ChatMessageConnectionBannerStyleSlots as SharedChatMessageConnectionBannerStyleSlots,
   type ChatMessageDelegationCardStyleSlots as SharedChatMessageDelegationCardStyleSlots,
   type ChatMessageConversationViewportStyleSlots as SharedChatMessageConversationViewportStyleSlots,
@@ -1435,30 +1434,8 @@ type ChatMessageActionEntry = ChatMessageActionSlotRenderEntry<ReactNode>;
 export type ChatMessageActionSet =
   ChatRuntimeConversationActionSetMobileProps<ChatMessageActionEntry>;
 
-type ChatMessageTurnDurationActionStyles = Pick<
-    ChatMessageTurnDurationActionSpec,
-    'style' | 'liveStyle' | 'textStyle' | 'liveTextStyle'
-  >;
-
-type ChatMessageSpeechActionStyles =
-  Pick<ChatMessageActionButtonSpec, 'style' | 'activeStyle' | 'pressedStyle'>;
-
-type ChatMessageBranchActionStyles =
-  Pick<ChatMessageActionButtonSpec, 'style' | 'pressedStyle' | 'disabledStyle'>;
-
-type ChatMessageCopyActionStyles =
-  Pick<ChatMessageActionButtonSpec, 'style' | 'activeStyle' | 'pressedStyle'>;
-
-type ChatMessageExpansionActionStyles =
-  Pick<ChatMessageActionButtonSpec, 'style' | 'pressedStyle'>;
-
-export type ChatMessageActionStyleSlots = SharedChatMessageActionStyleSlots<
-  ChatMessageTurnDurationActionStyles,
-  ChatMessageSpeechActionStyles,
-  ChatMessageBranchActionStyles,
-  ChatMessageCopyActionStyles,
-  ChatMessageExpansionActionStyles
->;
+export type ChatMessageActionStyleSlots =
+  ChatRuntimeMobileChromeSlots['messageRuntime']['styles']['actionStyles'];
 
 type ChatRuntimeHeaderStyleSlots =
   SharedChatRuntimeHeaderStyleSlotsFromStyleSource<ChatRuntimeMobileStyles>;
