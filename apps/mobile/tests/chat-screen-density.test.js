@@ -2906,6 +2906,7 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeHeaderIconButtonMobilePropsParts',
     'createChatRuntimeHeaderConversationStatusMobilePropsParts',
     'createChatRuntimeHeaderTurnDurationMobilePropsParts',
+    'createChatRuntimeHomeQuickStartsMobilePropsParts',
     'createChatConversationHomePromptEditorModalMobilePropsParts',
     'createChatRuntimeMessageSurfaceMobilePropsParts',
     'createChatRuntimeMessageThreadItemMobilePropsParts',
@@ -9382,8 +9383,7 @@ test('replaces the empty mobile chat home state with quick-start launchers', () 
   assert.match(chatMessageChromeSource, /createChatRuntimeHomeQuickStartsMobilePropsParts,/);
   assert.match(chatMessageChromeSource, /type ChatConversationHomeQuickStartsParts<[\s\S]*?> = ChatRuntimeHomeQuickStartsMobilePropsParts</);
   assert.doesNotMatch(chatMessageChromeSource, /type ChatConversationHomeQuickStartsParts[\s\S]*?ReturnType<typeof createChatRuntimeHomeQuickStartsMobilePropsParts/);
-  assert.match(chatMessageChromeSource, /const quickStartsParts: ChatConversationHomeQuickStartsParts<TPrompt, TTask> =\s+createChatRuntimeHomeQuickStartsMobilePropsParts<\s+TPrompt,\s+TTask,\s+GestureResponderEvent,\s+ChatConversationHomeQuickStartsStyles\s+>\(props\);/);
-  assert.doesNotMatch(chatMessageChromeSource, /createChatRuntimeHomeQuickStartsMobilePropsParts<\s+TPrompt,\s+TTask,\s+GestureResponderEvent,\s+ChatConversationHomeQuickStartsStyles\s+>\(\{/);
+  assert.match(chatMessageChromeSource, /const quickStartsParts = useMemo<\s+ChatConversationHomeQuickStartsParts<TPrompt, TTask>\s+>\(\s+\(\) => createChatRuntimeHomeQuickStartsMobilePropsParts\(\{\s+shouldRender,\s+items,\s+isLoading,\s+runningTaskId,\s+onPress,\s+onEditPrompt,\s+onDeletePrompt,\s+shortcutRenderState,\s+styles,\s+\}\),\s+\[\s+isLoading,\s+items,\s+onDeletePrompt,\s+onEditPrompt,\s+onPress,\s+runningTaskId,\s+shortcutRenderState,\s+shouldRender,\s+styles,\s+\],\s+\);/);
   assert.match(chatMessageChromeSource, /const quickStartsContainer = quickStartsParts\.container;/);
   assert.match(chatMessageChromeSource, /if \(!quickStartsContainer\.shouldRender\) return null;/);
   assert.match(chatMessageChromeSource, /export function ChatConversationHomeQuickStartsContainer/);

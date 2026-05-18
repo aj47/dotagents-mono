@@ -10389,13 +10389,43 @@ export function ChatConversationHomeQuickStarts<
   TPrompt extends PredefinedPromptSummary,
   TTask extends PromptLibraryTaskLike & { id: string },
 >(props: ChatConversationHomeQuickStartsProps<TPrompt, TTask>) {
-  const quickStartsParts: ChatConversationHomeQuickStartsParts<TPrompt, TTask> =
-    createChatRuntimeHomeQuickStartsMobilePropsParts<
-      TPrompt,
-      TTask,
-      GestureResponderEvent,
-      ChatConversationHomeQuickStartsStyles
-    >(props);
+  const {
+    shouldRender,
+    items,
+    isLoading,
+    runningTaskId,
+    onPress,
+    onEditPrompt,
+    onDeletePrompt,
+    shortcutRenderState,
+    styles,
+  } = props;
+  const quickStartsParts = useMemo<
+    ChatConversationHomeQuickStartsParts<TPrompt, TTask>
+  >(
+    () => createChatRuntimeHomeQuickStartsMobilePropsParts({
+      shouldRender,
+      items,
+      isLoading,
+      runningTaskId,
+      onPress,
+      onEditPrompt,
+      onDeletePrompt,
+      shortcutRenderState,
+      styles,
+    }),
+    [
+      isLoading,
+      items,
+      onDeletePrompt,
+      onEditPrompt,
+      onPress,
+      runningTaskId,
+      shortcutRenderState,
+      shouldRender,
+      styles,
+    ],
+  );
   const quickStartsContainer = quickStartsParts.container;
 
   if (!quickStartsContainer.shouldRender) return null;
