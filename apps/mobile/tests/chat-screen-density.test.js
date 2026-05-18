@@ -2928,6 +2928,10 @@ test('limits mobile props part object literals to composition boundaries', () =>
     'createChatRuntimeToolExecutionPanelShellMobilePropsParts',
     'createChatRuntimeToolExecutionStackPanelMobilePropsParts',
     'createChatRuntimeToolExecutionCopyButtonMobilePropsParts',
+    'createChatRuntimeToolExecutionDetailHeaderMobilePropsParts',
+    'createChatRuntimeToolExecutionResultBadgeMobilePropsParts',
+    'createChatRuntimeToolExecutionPendingResultMobilePropsParts',
+    'createChatRuntimeToolExecutionEmptyStateMobilePropsParts',
     'createChatRuntimeConversationFrameMobilePropsParts',
     'createChatRuntimeConversationOverlaysMobilePropsParts',
     'createChatRuntimeConversationScrollViewportMobilePropsParts',
@@ -5371,7 +5375,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionPendingResultMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionPendingResultMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionPendingResult\(\s+props: ChatMessageToolExecutionPendingResultProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const pendingResultParts: ChatMessageToolExecutionPendingResultParts =\s+createChatRuntimeToolExecutionPendingResultMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const pendingResultParts = useMemo<ChatMessageToolExecutionPendingResultParts>\(\s+\(\) => createChatRuntimeToolExecutionPendingResultMobilePropsParts\(\{\s+renderState,\s+styles,\s+\}\),\s+\[renderState, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPendingResultContainerProps = \{[\s\S]*?accessible: true;[\s\S]*?accessibilityRole: ToolExecutionDetailMobilePendingResultRenderState\['accessibilityRole'\];[\s\S]*?accessibilityLabel: string;[\s\S]*?style: ChatMessageToolExecutionPendingResultStyles\['row'\];[\s\S]*?children: ReactNode;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPendingResultSpinnerProps =\s+ComponentProps<typeof ActivityIndicator>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionPendingResultLabelProps = \{\s+props: \{\s+style: ChatMessageToolExecutionPendingResultStyles\['text'\];\s+\};\s+text: string;\s+\};/);
@@ -5529,7 +5533,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionDetailHeaderMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionDetailHeaderMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionDetailHeader\(\s+props: ChatMessageToolExecutionDetailHeaderProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const detailHeaderParts: ChatMessageToolExecutionDetailHeaderParts =\s+createChatRuntimeToolExecutionDetailHeaderMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const detailHeaderParts = useMemo<ChatMessageToolExecutionDetailHeaderParts>\(\s+\(\) => createChatRuntimeToolExecutionDetailHeaderMobilePropsParts\(\{\s+renderState,\s+toolName,\s+onPress,\s+styles,\s+\}\),\s+\[onPress, renderState, styles, toolName\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionDetailHeaderPressableProps = \{[\s\S]*?onPress: \(\(event: GestureResponderEvent\) => void\) \| undefined;[\s\S]*?style: \(state: ChatMessageToolExecutionDetailHeaderPressableState\) => Array<[\s\S]*?ChatMessageToolExecutionDetailHeaderStyles\['header'\][\s\S]*?ChatMessageToolExecutionDetailHeaderStyles\['headerPressed'\][\s\S]*?false[\s\S]*?>;[\s\S]*?accessibilityRole: ToolExecutionDetailMobileHeaderRenderState\['accessibilityRole'\];[\s\S]*?accessibilityState: ToolExecutionDetailMobileHeaderRenderState\['accessibilityState'\];[\s\S]*?'aria-expanded': ToolExecutionDetailMobileHeaderRenderState\['ariaExpanded'\];[\s\S]*?accessibilityHint: string;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionDetailHeaderToolNameProps = \{\s+props: \{\s+style: ChatMessageToolExecutionDetailHeaderStyles\['toolName'\];\s+\};\s+text: string;\s+\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionDetailHeaderExpandHintProps = \{\s+style: ChatMessageToolExecutionDetailHeaderStyles\['expandHint'\];\s+children: ReactNode;\s+\};/);
@@ -5669,7 +5673,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionResultBadgeMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionResultBadgeMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionResultBadge\(\s+props: ChatMessageToolExecutionResultBadgeProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const resultBadgeParts: ChatMessageToolExecutionResultBadgeParts =\s+createChatRuntimeToolExecutionResultBadgeMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const resultBadgeParts = useMemo<ChatMessageToolExecutionResultBadgeParts>\(\s+\(\) => createChatRuntimeToolExecutionResultBadgeMobilePropsParts\(\{\s+badge,\s+styles,\s+\}\),\s+\[badge, styles\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultBadgeContainerProps = \{[\s\S]*?accessible: true;[\s\S]*?accessibilityRole: ChatMessageToolExecutionResultBadgeRenderState\['accessibilityRole'\];[\s\S]*?accessibilityLabel: string;[\s\S]*?style: Array<[\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['badge'\][\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['badgeSuccess'\][\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['badgeError'\][\s\S]*?>;[\s\S]*?children: ReactNode;[\s\S]*?\};/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultBadgeIconProps =\s+ComponentProps<typeof Ionicons>;/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionResultBadgeLabelProps = \{[\s\S]*?style: Array<[\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['text'\][\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['textSuccess'\][\s\S]*?ChatMessageToolExecutionResultBadgeStyles\['textError'\][\s\S]*?>;[\s\S]*?text: string;[\s\S]*?\};/);
@@ -5933,7 +5937,7 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(chatMessageChromeSource, /createChatRuntimeToolExecutionEmptyStateMobilePropsParts,/);
   assert.match(sessionPresentationSource, /export function createChatRuntimeToolExecutionEmptyStateMobilePropsParts/);
   assert.match(chatMessageChromeSource, /export function ChatMessageToolExecutionEmptyState\(\s+props: ChatMessageToolExecutionEmptyStateProps,\s+\)/);
-  assert.match(chatMessageChromeSource, /const emptyStateParts: ChatMessageToolExecutionEmptyStateParts =\s+createChatRuntimeToolExecutionEmptyStateMobilePropsParts\(props\);/);
+  assert.match(chatMessageChromeSource, /const emptyStateParts = useMemo<ChatMessageToolExecutionEmptyStateParts>\(\s+\(\) => createChatRuntimeToolExecutionEmptyStateMobilePropsParts\(\{\s+renderState,\s+style,\s+\}\),\s+\[renderState, style\],\s+\);/);
   assert.match(chatMessageChromeSource, /type ChatMessageToolExecutionEmptyStateLabelProps = \{\s+props: \{\s+accessibilityRole: ToolExecutionDetailMobileEmptyStateRenderState\['accessibilityRole'\];\s+accessibilityLabel: string;\s+style: StyleProp<TextStyle>;\s+\};\s+text: string;\s+\};/);
   assert.doesNotMatch(chatMessageChromeSource, /ChatMessageToolExecutionEmptyStateParts\['/);
   assert.match(chatMessageChromeSource, /<ChatMessageToolExecutionEmptyStateLabel\s+\{\.\.\.emptyStateParts\.content\.label\.props\}/);

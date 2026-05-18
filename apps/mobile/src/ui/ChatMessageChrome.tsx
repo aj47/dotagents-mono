@@ -12857,8 +12857,16 @@ export function ChatMessageToolExecutionCopyButtonLabel({
 export function ChatMessageToolExecutionDetailHeader(
   props: ChatMessageToolExecutionDetailHeaderProps,
 ) {
-  const detailHeaderParts: ChatMessageToolExecutionDetailHeaderParts =
-    createChatRuntimeToolExecutionDetailHeaderMobilePropsParts(props);
+  const { renderState, toolName, onPress, styles } = props;
+  const detailHeaderParts = useMemo<ChatMessageToolExecutionDetailHeaderParts>(
+    () => createChatRuntimeToolExecutionDetailHeaderMobilePropsParts({
+      renderState,
+      toolName,
+      onPress,
+      styles,
+    }),
+    [onPress, renderState, styles, toolName],
+  );
 
   return (
     <ChatMessageToolExecutionDetailHeaderPressable
@@ -13005,8 +13013,14 @@ export function ChatMessageToolExecutionCallSectionContainer({
 export function ChatMessageToolExecutionResultBadge(
   props: ChatMessageToolExecutionResultBadgeProps,
 ) {
-  const resultBadgeParts: ChatMessageToolExecutionResultBadgeParts =
-    createChatRuntimeToolExecutionResultBadgeMobilePropsParts(props);
+  const { badge, styles } = props;
+  const resultBadgeParts = useMemo<ChatMessageToolExecutionResultBadgeParts>(
+    () => createChatRuntimeToolExecutionResultBadgeMobilePropsParts({
+      badge,
+      styles,
+    }),
+    [badge, styles],
+  );
 
   return (
     <ChatMessageToolExecutionResultBadgeContainer
@@ -13066,8 +13080,14 @@ export function ChatMessageToolExecutionResultBadgeLabel({
 export function ChatMessageToolExecutionPendingResult(
   props: ChatMessageToolExecutionPendingResultProps,
 ) {
-  const pendingResultParts: ChatMessageToolExecutionPendingResultParts =
-    createChatRuntimeToolExecutionPendingResultMobilePropsParts(props);
+  const { renderState, styles } = props;
+  const pendingResultParts = useMemo<ChatMessageToolExecutionPendingResultParts>(
+    () => createChatRuntimeToolExecutionPendingResultMobilePropsParts({
+      renderState,
+      styles,
+    }),
+    [renderState, styles],
+  );
 
   return (
     <ChatMessageToolExecutionPendingResultContainer
@@ -13127,8 +13147,14 @@ export function ChatMessageToolExecutionPendingResultLabel({
 export function ChatMessageToolExecutionEmptyState(
   props: ChatMessageToolExecutionEmptyStateProps,
 ) {
-  const emptyStateParts: ChatMessageToolExecutionEmptyStateParts =
-    createChatRuntimeToolExecutionEmptyStateMobilePropsParts(props);
+  const { renderState, style } = props;
+  const emptyStateParts = useMemo<ChatMessageToolExecutionEmptyStateParts>(
+    () => createChatRuntimeToolExecutionEmptyStateMobilePropsParts({
+      renderState,
+      style,
+    }),
+    [renderState, style],
+  );
 
   return (
     <ChatMessageToolExecutionEmptyStateLabel
