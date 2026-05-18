@@ -30,7 +30,7 @@ import {
   type QueuedMessage,
 } from '@dotagents/shared/session-presentation';
 
-type MessageQueuePanelColors =
+export type MessageQueuePanelColors =
   Parameters<typeof getMessageQueuePanelMobileRenderState>[0]['colors']
   & Parameters<typeof getQueuedMessageItemMobileRenderState>[0]['colors'];
 

@@ -15,7 +15,8 @@ test('mobile response history panel uses shared copy, actions, and accessibility
   assert.match(source, /type AgentResponseHistoryMobilePropsParts,/);
   assert.match(source, /type AgentResponseHistoryMobileStylesLike,/);
   assert.match(source, /type ResponseHistoryPanelParts =\s+AgentResponseHistoryMobilePropsParts<[\s\S]*?ResponseHistoryEntry,[\s\S]*?ResponseHistoryPanelStyles,[\s\S]*?ResponseHistoryToggleHandler/);
-  assert.match(source, /colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
+  assert.match(source, /export type ResponseHistoryPanelColors =\s+Parameters<typeof getAgentResponseHistoryMobileRenderState>\[0\]\['colors'\];/);
+  assert.match(source, /colors: ResponseHistoryPanelColors;/);
   assert.match(source, /isCollapsed: boolean;/);
   assert.match(source, /shouldAnimateNewest: boolean;/);
   assert.match(source, /speakingIndex: number \| null;/);

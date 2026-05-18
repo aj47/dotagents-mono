@@ -493,8 +493,8 @@ import {
 import { AgentSelectorSheet } from './AgentSelectorSheet';
 import { HandsFreeStatusChip } from './HandsFreeStatusChip';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { MessageQueuePanel } from './MessageQueuePanel';
-import { ResponseHistoryPanel, type ResponseHistoryEntry } from './ResponseHistoryPanel';
+import { MessageQueuePanel, type MessageQueuePanelColors } from './MessageQueuePanel';
+import { ResponseHistoryPanel, type ResponseHistoryEntry, type ResponseHistoryPanelColors } from './ResponseHistoryPanel';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -4336,6 +4336,11 @@ type ChatMessageRuntimeDockParts =
 
 type ChatMessageRuntimeDockChromeProps = Omit<ChatMessageRuntimeDockProps, 'styles'>;
 
+type ChatMessageRuntimeDockColors =
+  & ChatRuntimeDockChromeMobileRenderStateInput['colors']
+  & ResponseHistoryPanelColors
+  & MessageQueuePanelColors;
+
 type ChatMessageRuntimeDockChromePropsInput = {
   responseHistoryResponses: ResponseHistoryEntry[];
   responseHistoryTtsProvider: ChatMessageRuntimeRemoteSpeechOptions['providerId'] | undefined;
@@ -4367,10 +4372,7 @@ type ChatMessageRuntimeDockChromePropsInput = {
   connectionState: ChatRuntimeDockChromeMobileRenderStateInput['connectionState'];
   lastFailedMessage: ChatRuntimeDockChromeMobileRenderStateInput['lastFailedMessage'];
   isResponding: ChatRuntimeDockChromeMobileRenderStateInput['isResponding'];
-  colors:
-    & ChatRuntimeDockChromeMobileRenderStateInput['colors']
-    & ChatMessageResponseHistoryPanelDockProps['colors']
-    & ChatMessageQueuePanelDockProps['panel']['colors'];
+  colors: ChatMessageRuntimeDockColors;
   onConnectionBannerRetry?: (event: GestureResponderEvent) => void;
   composer: Omit<ChatComposerRuntimeDockProps, 'styles'>;
 };

@@ -36,9 +36,12 @@ export interface ResponseHistoryEntry {
 type ResponseHistoryToggleHandler = () => void;
 type ResponseHistorySpeakHandler = (text: string, index: number) => void;
 
+export type ResponseHistoryPanelColors =
+  Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
+
 interface ResponseHistoryPanelProps {
   responses: ResponseHistoryEntry[];
-  colors: Parameters<typeof getAgentResponseHistoryMobileRenderState>[0]['colors'];
+  colors: ResponseHistoryPanelColors;
   remoteBaseUrl?: string;
   remoteApiKey?: string;
   isCollapsed: boolean;
