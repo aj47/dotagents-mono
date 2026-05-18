@@ -208,7 +208,7 @@ const QueuedMessageItem = React.memo(function QueuedMessageItem({
     () => StyleSheet.create({ ...itemStyleSheetSlots }),
     [itemStyleSheetSlots],
   );
-  const queuedMessageItemParts = useMemo(
+  const queuedMessageItemParts = useMemo<QueuedMessageItemParts>(
     () => createQueuedMessageItemMobilePropsParts({
       renderState: queuedMessageRenderState,
       message,
@@ -360,7 +360,7 @@ export function MessageQueuePanel({
     () => StyleSheet.create({ ...panelStyleSheetSlots }),
     [panelStyleSheetSlots],
   );
-  const messageQueuePanelParts = useMemo(
+  const messageQueuePanelParts = useMemo<MessageQueuePanelParts>(
     () => createMessageQueuePanelMobilePropsParts({
       renderState: queuePanelRenderState,
       styles,
