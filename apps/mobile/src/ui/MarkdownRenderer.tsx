@@ -16,6 +16,7 @@ import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 import { VideoAttachmentCard, type VideoAttachmentCardProps } from './VideoAttachmentCard';
 import { splitMarkdownContent } from './markdownParts';
+import { SettingsApiClient } from '../lib/settingsApi';
 
 export interface MarkdownRendererProps {
   content: string;
@@ -33,6 +34,12 @@ type MarkdownImageSource = {
 };
 
 const CONVERSATION_IMAGE_ASSET_REGEX = /^assets:\/\/conversation-image\/([^/]+)\/([^/?#]+)(?:[?#].*)?$/i;
+const MARKDOWN_IMAGE_COPY = {
+  fallbackLabel: 'Image',
+  unavailableLabel: 'Image unavailable.',
+  invalidAssetUrlMessage: 'Invalid image asset URL.',
+  loadErrorFallback: 'Unable to load image.',
+} as const;
 
 function parseConversationImageAssetUrl(rawUrl: string): { conversationId: string; fileName: string } | null {
   const match = rawUrl.trim().match(CONVERSATION_IMAGE_ASSET_REGEX);
@@ -82,7 +89,7 @@ function isAllowedMarkdownContentLinkUrl(rawUrl: string): boolean {
 }
 
 function getMarkdownImageFallbackLabel(alt?: string): string {
-  return alt?.trim() || 'Image';
+  return alt?.trim() || MARKDOWN_IMAGE_COPY.fallbackLabel;
 }
 
 function getHeaderRecord(headers: Headers): Record<string, string> {
@@ -230,22 +237,22 @@ const MarkdownImage = React.memo(function MarkdownImage({
 
       if (!assetBaseUrl || !authToken) {
         setImageSource(null);
-        setError(`${imageLabel} unavailable.`);
+        setError(MARKDOWN_IMAGE_COPY.unavailableLabel);
         return;
       }
 
       const resolvedUri = buildConversationImageAssetHttpUrl(assetBaseUrl, sourceUrl);
       if (!resolvedUri) {
         setImageSource(null);
-        setError('Invalid image asset URL.');
+        setError(MARKDOWN_IMAGE_COPY.invalidAssetUrlMessage);
         return;
       }
 
       try {
-        const headers = { Authorization: `Bearer ${authToken}` };
+        const client = new SettingsApiClient(assetBaseUrl, authToken);
 
         if (Platform.OS === 'web') {
-          const response = await fetch(resolvedUri, { headers });
+          const response = await client.getConversationImageAssetResponse(assetRef.conversationId, assetRef.fileName);
           if (!response.ok) {
             throw new Error(`Image request failed (${response.status})`);
           }
@@ -260,12 +267,12 @@ const MarkdownImage = React.memo(function MarkdownImage({
         }
 
         if (!cancelled) {
-          setImageSource({ uri: resolvedUri, headers: getHeaderRecord(new Headers(headers)) });
+          setImageSource({ uri: resolvedUri, headers: getHeaderRecord(await client.buildRequestHeaders()) });
         }
       } catch (caughtError) {
         if (!cancelled) {
           setImageSource(null);
-          setError(caughtError instanceof Error ? caughtError.message : 'Unable to load image.');
+          setError(caughtError instanceof Error ? caughtError.message : MARKDOWN_IMAGE_COPY.loadErrorFallback);
         }
       }
     }

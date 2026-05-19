@@ -502,15 +502,21 @@ export class SettingsApiClient {
     this.apiKey = apiKey;
   }
 
-  protected async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const headers = new Headers(options.headers);
+  async buildRequestHeaders(headersInit?: HeadersInit): Promise<Headers> {
+    const headers = new Headers(headersInit);
     headers.set('Authorization', `Bearer ${this.apiKey}`);
 
     const deviceId = await getStableDeviceId();
     if (deviceId) {
       headers.set(DEVICE_ID_HEADER, deviceId);
     }
+
+    return headers;
+  }
+
+  protected async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const headers = await this.buildRequestHeaders(options.headers);
 
     // Only send a JSON content type when a request body exists. Fastify treats
     // an empty JSON body as a 400 for methods like DELETE/POST when the header is present.
@@ -529,6 +535,20 @@ export class SettingsApiClient {
     }
 
     return response.json();
+  }
+
+  async getConversationImageAssetResponse(conversationId: string, fileName: string): Promise<Response> {
+    return fetch(
+      `${this.baseUrl}/conversations/${encodeURIComponent(conversationId)}/assets/images/${encodeURIComponent(fileName)}`,
+      { headers: await this.buildRequestHeaders() },
+    );
+  }
+
+  async getConversationVideoAssetResponse(conversationId: string, fileName: string): Promise<Response> {
+    return fetch(
+      `${this.baseUrl}/conversations/${encodeURIComponent(conversationId)}/assets/videos/${encodeURIComponent(fileName)}`,
+      { headers: await this.buildRequestHeaders() },
+    );
   }
 
   // Profile Management

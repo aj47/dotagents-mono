@@ -43,6 +43,7 @@ import {
   getConversationVideoAssetPath,
   getConversationVideoMimeTypeFromFileName,
 } from "./conversation-video-assets"
+import { getConversationImageAssetPath } from "./conversation-image-assets"
 import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, MCPConfig, MCPServerConfig, OAuthConfig, normalizeAgentProfileRole } from "../shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { inferTransportType } from "../shared/mcp-utils"
@@ -116,6 +117,20 @@ let server: FastifyInstance | null = null
 let lastError: string | undefined
 
 const REMOTE_SERVER_SECRET_MASK = "••••••••"
+const CONVERSATION_IMAGE_MIME_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".apng": "image/apng",
+  ".gif": "image/gif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".bmp": "image/bmp",
+  ".avif": "image/avif",
+}
+
+function getConversationImageMimeTypeFromFileName(fileName: string): string {
+  return CONVERSATION_IMAGE_MIME_TYPES[path.extname(fileName).toLowerCase()] || "application/octet-stream"
+}
 const OPERATOR_AUDIT_LOG_LIMIT = 200
 const OPERATOR_AUDIT_DEVICE_HEADER_KEYS = ["x-device-id", "x-dotagents-device-id"] as const
 const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
@@ -5452,6 +5467,42 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to fetch conversation", error)
       return reply.code(500).send({ error: error?.message || "Failed to fetch conversation" })
+    }
+  })
+
+  // GET /v1/conversations/:id/assets/images/:fileName - Stream conversation image asset for mobile
+  fastify.get("/v1/conversations/:id/assets/images/:fileName", async (req, reply) => {
+    try {
+      const params = req.params as { id: string; fileName: string }
+      const conversationId = params.id
+      const fileName = params.fileName
+
+      const conversationIdError = getConversationIdValidationError(conversationId)
+      if (conversationIdError) {
+        return reply.code(400).send({ error: conversationIdError })
+      }
+
+      let assetPath: string
+      try {
+        assetPath = getConversationImageAssetPath(conversationId, fileName)
+      } catch (error) {
+        return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid image asset" })
+      }
+
+      const stat = await fs.promises.stat(assetPath)
+      if (!stat.isFile() || stat.size <= 0) {
+        return reply.code(404).send({ error: "Image asset not found" })
+      }
+
+      reply.header("Content-Type", getConversationImageMimeTypeFromFileName(fileName))
+      reply.header("Content-Length", String(stat.size))
+      return reply.send(fs.createReadStream(assetPath))
+    } catch (error: any) {
+      if (error?.code === "ENOENT") {
+        return reply.code(404).send({ error: "Image asset not found" })
+      }
+      diagnosticsService.logError("remote-server", "Failed to stream conversation image asset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to stream image asset" })
     }
   })
 

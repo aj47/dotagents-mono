@@ -9,13 +9,24 @@ export interface ConnectionStatusIndicatorProps {
   compact?: boolean;
 }
 
-const STATUS_META: Record<TunnelConnectionState, { color: string; label: string; pulsing: boolean }> = {
-  connected: { color: '#22c55e', label: 'Connected', pulsing: false },
-  connecting: { color: '#f59e0b', label: 'Connecting...', pulsing: true },
-  reconnecting: { color: '#f59e0b', label: 'Reconnecting...', pulsing: true },
-  disconnected: { color: '#6b7280', label: 'Disconnected', pulsing: false },
-  failed: { color: '#ef4444', label: 'Connection failed', pulsing: false },
+const STATUS_LABELS: Record<TunnelConnectionState, string> = {
+  connected: 'Connected',
+  connecting: 'Connecting...',
+  reconnecting: 'Reconnecting...',
+  disconnected: 'Disconnected',
+  failed: 'Connection failed',
 };
+
+function formatConnectionStatusIndicatorLabel(state: TunnelConnectionState, retryCount: number): string {
+  if (state === 'reconnecting' && retryCount > 0) {
+    return `Reconnecting (${retryCount})...`;
+  }
+  return STATUS_LABELS[state] ?? 'Unknown';
+}
+
+function isConnectionStatusIndicatorPulsing(state: TunnelConnectionState): boolean {
+  return state === 'connecting' || state === 'reconnecting';
+}
 
 /**
  * Visual indicator for tunnel connection status.
@@ -28,16 +39,25 @@ export const ConnectionStatusIndicator = memo(function ConnectionStatusIndicator
 }: ConnectionStatusIndicatorProps) {
   const { theme } = useTheme();
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
-  const status = STATUS_META[state] ?? STATUS_META.disconnected;
-  const statusText = useMemo(
-    () => state === 'reconnecting' && retryCount > 0
-      ? `Reconnecting (${retryCount})...`
-      : status.label,
-    [retryCount, state, status.label],
-  );
+  const isPulsing = isConnectionStatusIndicatorPulsing(state);
+  const statusText = useMemo(() => formatConnectionStatusIndicatorLabel(state, retryCount), [retryCount, state]);
+  const statusColor = useMemo(() => {
+    switch (state) {
+      case 'connected':
+        return theme.colors.success;
+      case 'connecting':
+      case 'reconnecting':
+        return theme.colors.warning;
+      case 'failed':
+        return theme.colors.destructive;
+      case 'disconnected':
+      default:
+        return theme.colors.mutedForeground;
+    }
+  }, [state, theme.colors.destructive, theme.colors.mutedForeground, theme.colors.success, theme.colors.warning]);
 
   useEffect(() => {
-    if (status.pulsing) {
+    if (isPulsing) {
       const animation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -57,7 +77,7 @@ export const ConnectionStatusIndicator = memo(function ConnectionStatusIndicator
     } else {
       pulseAnim.setValue(0.3);
     }
-  }, [status.pulsing, pulseAnim]);
+  }, [isPulsing, pulseAnim]);
 
   return (
     <View style={[styles.container, compact && styles.containerCompact]} accessibilityLabel={statusText} accessibilityRole="text">
@@ -65,15 +85,15 @@ export const ConnectionStatusIndicator = memo(function ConnectionStatusIndicator
         <View
           style={[
             styles.dot,
-            { backgroundColor: status.color },
-            status.pulsing && styles.dotPulsing,
+            { backgroundColor: statusColor },
+            isPulsing && styles.dotPulsing,
           ]}
         />
-        {status.pulsing && (
+        {isPulsing && (
           <Animated.View
             style={[
               styles.dotPulse,
-              { backgroundColor: status.color, opacity: pulseAnim },
+              { backgroundColor: statusColor, opacity: pulseAnim },
             ]}
           />
         )}
