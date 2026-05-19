@@ -714,6 +714,8 @@ function isLoopbackIp(ip: string | undefined): boolean {
 function isProtectedOperatorAccessPath(pathname: string): boolean {
   return pathname === "/v1/settings"
     || pathname === "/v1/emergency-stop"
+    || pathname === "/v1/agent-profiles/verify-command"
+    || pathname.startsWith("/v1/mcp/")
     || pathname.startsWith("/v1/operator/")
 }
 
@@ -4178,6 +4180,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof rawOAuth.clientId !== "string") throw new Error(`Server "${serverName}": OAuth client ID must be a string`)
       if (rawOAuth.clientId.trim()) oauth.clientId = rawOAuth.clientId.trim()
     }
+    if (rawOAuth.redirectUri !== undefined) {
+      if (typeof rawOAuth.redirectUri !== "string") throw new Error(`Server "${serverName}": OAuth redirect URI must be a string`)
+      if (rawOAuth.redirectUri.trim()) oauth.redirectUri = rawOAuth.redirectUri.trim()
+    }
     if (rawOAuth.useDiscovery !== undefined && typeof rawOAuth.useDiscovery !== "boolean") {
       throw new Error(`Server "${serverName}": OAuth discovery flag must be a boolean`)
     }
@@ -6421,6 +6427,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       const skill = skillsService.createSkill(name, description, instructions, { source: "local" })
+      agentProfileService.enableSkillForCurrentProfile(skill.id)
       return reply.code(201).send({ skill: formatSkillForMobile(skill) })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to create skill", error)

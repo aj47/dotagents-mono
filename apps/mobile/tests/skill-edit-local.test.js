@@ -66,5 +66,6 @@ test('skill create and update flow through the existing mobile settings API', ()
   assert.match(remoteServerSource, /fastify\.post\("\/v1\/skills"/);
   assert.match(remoteServerSource, /fastify\.patch\("\/v1\/skills\/:id"/);
   assert.match(remoteServerSource, /skillsService\.createSkill\(name, description, instructions/);
+  assert.match(remoteServerSource, /agentProfileService\.enableSkillForCurrentProfile\(skill\.id\)/);
   assert.match(remoteServerSource, /skillsService\.updateSkill\(params\.id, updates\)/);
 });

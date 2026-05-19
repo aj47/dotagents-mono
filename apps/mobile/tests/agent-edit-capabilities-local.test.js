@@ -33,6 +33,7 @@ test('agent editor keeps external setup presets and command verification local t
   assert.match(apiTypesSource, /export interface VerifyExternalAgentCommandResponse/);
   assert.match(mobileClientSource, /verifyExternalAgentCommand\(data: VerifyExternalAgentCommandRequest\)/);
   assert.match(remoteServerSource, /"\/v1\/agent-profiles\/verify-command"/);
+  assert.match(remoteServerSource, /pathname === "\/v1\/agent-profiles\/verify-command"/);
 });
 
 test('agent editor persists model, skill, MCP, runtime tool, and property overrides', () => {

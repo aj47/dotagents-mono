@@ -48,6 +48,9 @@ test('mobile client and desktop remote server expose narrow MCP OAuth and import
   assert.match(remoteServerSource, /"\/v1\/mcp\/config\/export"/);
   assert.match(remoteServerSource, /"\/v1\/mcp\/config\/import"/);
   assert.match(remoteServerSource, /"\/v1\/mcp\/servers\/:name\/oauth"/);
+  assert.match(remoteServerSource, /pathname\.startsWith\("\/v1\/mcp\/"\)/);
+  assert.match(remoteServerSource, /rawOAuth\.redirectUri !== undefined/);
+  assert.match(remoteServerSource, /oauth\.redirectUri = rawOAuth\.redirectUri\.trim\(\)/);
   assert.match(remoteServerSource, /mcpService\.initiateOAuthFlow\(serverName\)/);
   assert.match(remoteServerSource, /mcpService\.revokeOAuthTokens\(serverName\)/);
 });
