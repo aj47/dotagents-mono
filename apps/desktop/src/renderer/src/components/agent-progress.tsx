@@ -5177,7 +5177,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             {/* File View Tab */}
             {activeTab === "files" && (
               <div className="relative flex-1 min-h-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                <SessionFileView sessionId={progress.sessionId} className="h-full" />
+                <SessionFileView sessionId={progress.sessionId} conversationId={progress.conversationId} className="h-full" />
               </div>
             )}
 
@@ -5659,7 +5659,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       {/* File View Tab */}
       {activeTab === "files" && (
         <div className="relative flex-1 min-h-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-          <SessionFileView sessionId={progress.sessionId} className="h-full" />
+          <SessionFileView sessionId={progress.sessionId} conversationId={progress.conversationId} className="h-full" />
         </div>
       )}
 

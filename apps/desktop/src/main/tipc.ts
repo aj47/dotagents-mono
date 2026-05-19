@@ -3990,6 +3990,23 @@ export const router = {
       return conversation
     }),
 
+  hydrateConversationFileActivity: t.procedure
+    .input<{ conversationId: string; sessionId: string }>()
+    .action(async ({ input }) => {
+      const conversation = await conversationService.loadConversationForDisplay(input.conversationId)
+      if (!conversation) return []
+
+      recordSessionConversationFileActivity(input.sessionId, conversation.messages)
+      return getTrackedSessionFileRoots(input.sessionId)
+    }),
+
+  clearTrackedSessionFileActivity: t.procedure
+    .input<{ sessionId: string }>()
+    .action(async ({ input }) => {
+      clearSessionFileActivity(input.sessionId)
+      return { success: true }
+    }),
+
   getTrackedSessionFileRoots: t.procedure
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {

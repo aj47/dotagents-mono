@@ -51,8 +51,9 @@ describe("session-file-browser", () => {
       }],
     })
 
+    const realRepoRoot = fs.realpathSync(repoRoot)
     expect(getTrackedSessionFileRoots("session-1")).toEqual([
-      { path: repoRoot, label: path.basename(repoRoot) },
+      { path: realRepoRoot, label: path.basename(realRepoRoot) },
     ])
   })
 
@@ -80,8 +81,45 @@ describe("session-file-browser", () => {
       isComplete: false,
     })
 
-    const entries = listTrackedSessionFiles({ sessionId: "session-2", rootPath: repoRoot, directoryPath: repoRoot })
+    const listing = listTrackedSessionFiles({ sessionId: "session-2", rootPath: repoRoot, directoryPath: repoRoot })
+    const entries = listing.entries
+    expect(listing.truncated).toBe(false)
     expect(entries.map((entry) => entry.name)).toEqual(["src", "README.md", "package.json"])
+  })
+
+  it("caps large directory listings to keep File View responsive", () => {
+    const repoRoot = createTempWorkspace()
+    tempDirs.push(repoRoot)
+    fs.writeFileSync(path.join(repoRoot, "package.json"), "{}", "utf8")
+
+    for (let index = 0; index < 505; index += 1) {
+      fs.writeFileSync(path.join(repoRoot, `file-${String(index).padStart(3, "0")}.txt`), "ok", "utf8")
+    }
+
+    recordSessionFileActivity({
+      sessionId: "session-large-listing",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [{
+        id: "tool-1",
+        type: "tool_result",
+        title: "Tool result",
+        status: "completed",
+        timestamp: Date.now(),
+        toolResult: { success: true, content: JSON.stringify({ cwd: repoRoot }) },
+      }],
+      isComplete: false,
+    })
+
+    const listing = listTrackedSessionFiles({
+      sessionId: "session-large-listing",
+      rootPath: repoRoot,
+      directoryPath: repoRoot,
+    })
+
+    expect(listing.entries).toHaveLength(listing.limit)
+    expect(listing.totalEntries).toBe(506)
+    expect(listing.truncated).toBe(true)
   })
 
   it("supports create, move, delete, and preview within tracked roots", () => {

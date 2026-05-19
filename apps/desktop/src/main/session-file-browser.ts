@@ -18,6 +18,13 @@ export type SessionFileEntry = {
   modifiedAt: number
 }
 
+export type SessionFileListing = {
+  entries: SessionFileEntry[]
+  totalEntries: number
+  limit: number
+  truncated: boolean
+}
+
 export type SessionFilePreview = {
   path: string
   relativePath: string
@@ -112,6 +119,7 @@ const IMAGE_MIME_BY_EXTENSION = new Map<string, string>([
   [".png", "image/png"],
   [".webp", "image/webp"],
 ])
+const MAX_DIRECTORY_ENTRIES = 500
 const DIRECTORY_HINT_KEYS = new Set([
   "cwd",
   "directory",
@@ -375,14 +383,21 @@ export function listTrackedSessionFiles(input: {
   sessionId: string
   rootPath: string
   directoryPath?: string
-}): SessionFileEntry[] {
+}): SessionFileListing {
   const rootPath = ensureTrackedRoot(input.sessionId, input.rootPath)
   const directoryPath = resolvePathWithinRoot(rootPath, input.directoryPath)
   const stats = ensureNonSymlink(directoryPath)
   if (!stats.isDirectory()) throw new Error("Only directories can be listed")
 
-  return fs.readdirSync(directoryPath, { withFileTypes: true })
+  const visibleEntries = fs.readdirSync(directoryPath, { withFileTypes: true })
     .filter((entry) => !entry.name.startsWith(".") && !NOISY_ENTRY_NAMES.has(entry.name) && !entry.isSymbolicLink())
+    .sort((a, b) => {
+      if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1
+      if (a.name === b.name) return 0
+      return a.name < b.name ? -1 : 1
+    })
+
+  const entries = visibleEntries.slice(0, MAX_DIRECTORY_ENTRIES)
     .map((entry) => {
       const entryPath = path.join(directoryPath, entry.name)
       const entryStats = fs.lstatSync(entryPath)
@@ -395,10 +410,13 @@ export function listTrackedSessionFiles(input: {
         modifiedAt: entryStats.mtimeMs,
       } satisfies SessionFileEntry
     })
-    .sort((a, b) => {
-      if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1
-      return a.name.localeCompare(b.name)
-    })
+
+  return {
+    entries,
+    totalEntries: visibleEntries.length,
+    limit: MAX_DIRECTORY_ENTRIES,
+    truncated: visibleEntries.length > MAX_DIRECTORY_ENTRIES,
+  }
 }
 
 export function readTrackedSessionFilePreview(input: {

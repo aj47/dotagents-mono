@@ -33,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 
 type SessionFileRoot = { path: string; label: string }
 type SessionFileEntry = { path: string; relativePath: string; name: string; kind: "file" | "directory"; size?: number; modifiedAt: number }
+type SessionFileListing = { entries: SessionFileEntry[]; totalEntries: number; limit: number; truncated: boolean }
 type SessionFilePreview = {
   path: string
   relativePath: string
@@ -89,14 +90,14 @@ function formatBytes(size?: number) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function SessionFileView({ sessionId, className }: { sessionId?: string | null; className?: string }) {
+export function SessionFileView({ sessionId, conversationId, className }: { sessionId?: string | null; conversationId?: string | null; className?: string }) {
   const [roots, setRoots] = useState<SessionFileRoot[]>([])
   const [isLoadingRoots, setIsLoadingRoots] = useState(false)
   const [rootsError, setRootsError] = useState<string | null>(null)
   const [selectedRootPath, setSelectedRootPath] = useState<string>("")
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [expandedDirectories, setExpandedDirectories] = useState<Record<string, boolean>>({})
-  const [entriesByDirectory, setEntriesByDirectory] = useState<Record<string, SessionFileEntry[]>>({})
+  const [listingsByDirectory, setListingsByDirectory] = useState<Record<string, SessionFileListing>>({})
   const [loadingDirectories, setLoadingDirectories] = useState<Record<string, boolean>>({})
   const [preview, setPreview] = useState<SessionFilePreview | null>(null)
   const [isLoadingPreview, setIsLoadingPreview] = useState(false)
@@ -126,7 +127,9 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
     setIsLoadingRoots(true)
     setRootsError(null)
     try {
-      const nextRoots = await tipcClient.getTrackedSessionFileRoots({ sessionId }) as SessionFileRoot[]
+      const nextRoots = sessionId.startsWith("pending-") && conversationId
+        ? await tipcClient.hydrateConversationFileActivity({ sessionId, conversationId }) as SessionFileRoot[]
+        : await tipcClient.getTrackedSessionFileRoots({ sessionId }) as SessionFileRoot[]
       setRoots(nextRoots)
       setSelectedRootPath((current) => nextRoots.some((root) => root.path === current) ? current : (nextRoots[0]?.path ?? ""))
     } catch (error) {
@@ -137,30 +140,42 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
     } finally {
       setIsLoadingRoots(false)
     }
+  }, [conversationId, sessionId])
+
+  useEffect(() => {
+    if (!sessionId?.startsWith("pending-")) return undefined
+    return () => {
+      void tipcClient.clearTrackedSessionFileActivity({ sessionId }).catch((error: unknown) => {
+        console.warn("Failed to clear temporary session file roots", error)
+      })
+    }
   }, [sessionId])
 
   const loadDirectory = useCallback(async (directoryPath: string, options?: { force?: boolean }) => {
     if (!sessionId || !currentRoot) return
-    if (!options?.force && entriesByDirectory[directoryPath]) return
+    if (!options?.force && listingsByDirectory[directoryPath]) return
 
     setLoadingDirectories((current) => ({ ...current, [directoryPath]: true }))
     try {
-      const entries = await tipcClient.listTrackedSessionFiles({
+      const result = await tipcClient.listTrackedSessionFiles({
         sessionId,
         rootPath: currentRoot.path,
         directoryPath,
-      }) as SessionFileEntry[]
-      setEntriesByDirectory((current) => ({ ...current, [directoryPath]: entries }))
+      }) as SessionFileEntry[] | SessionFileListing
+      const listing = Array.isArray(result)
+        ? { entries: result, totalEntries: result.length, limit: result.length, truncated: false }
+        : result
+      setListingsByDirectory((current) => ({ ...current, [directoryPath]: listing }))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to list files")
     } finally {
       setLoadingDirectories((current) => ({ ...current, [directoryPath]: false }))
     }
-  }, [currentRoot, entriesByDirectory, sessionId])
+  }, [currentRoot, listingsByDirectory, sessionId])
 
   const refreshLoadedDirectories = useCallback(async () => {
     if (!currentRoot) return
-    const targets = Object.keys(entriesByDirectory)
+    const targets = Object.keys(listingsByDirectory)
       .filter((directoryPath) => isWithinRootPath(currentRoot.path, directoryPath))
       .filter((directoryPath) => directoryPath === currentRoot.path || expandedDirectories[directoryPath])
       .filter((directoryPath, index, values) => values.indexOf(directoryPath) === index)
@@ -168,10 +183,10 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
     // just deleted or moved) cannot reject the whole refresh and make the
     // caller treat a successful filesystem mutation as a failure.
     await Promise.allSettled(targets.map((directoryPath) => loadDirectory(directoryPath, { force: true })))
-  }, [currentRoot, entriesByDirectory, expandedDirectories, loadDirectory])
+  }, [currentRoot, listingsByDirectory, expandedDirectories, loadDirectory])
 
   useEffect(() => {
-    setEntriesByDirectory({})
+    setListingsByDirectory({})
     setExpandedDirectories({})
     setPreview(null)
     setPreviewError(null)
@@ -194,7 +209,7 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
     if (!sessionId || !currentRoot || !selectedPath) {
       setPreview(null)
       setPreviewError(null)
-      return
+      return undefined
     }
 
     let cancelled = false
@@ -286,7 +301,8 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
   }, [currentRoot, dialogState, refreshLoadedDirectories, selectedPath, sessionId])
 
   const renderDirectoryEntries = useCallback((directoryPath: string): React.ReactNode => {
-    const entries = entriesByDirectory[directoryPath] ?? []
+    const listing = listingsByDirectory[directoryPath]
+    const entries = listing?.entries ?? []
     if (loadingDirectories[directoryPath]) {
       return <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…</div>
     }
@@ -300,9 +316,9 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
       const isSelected = selectedPath === entry.path
 
       return (
-        <div key={entry.path} className="space-y-1">
+        <div key={entry.path} className="min-w-0 space-y-1">
           <div className={cn(
-            "flex items-center gap-1 rounded-md px-1 py-0.5",
+            "flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5",
             isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted/50",
           )}>
             <button
@@ -316,7 +332,7 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
             </button>
             <button
               type="button"
-              className="flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-1 text-left text-sm"
+              className="flex min-w-0 flex-1 items-center gap-2 whitespace-nowrap rounded px-1 py-1 text-left text-sm"
               onClick={() => {
                 setSelectedPath(entry.path)
                 if (isDirectory && !expandedDirectories[entry.path]) {
@@ -325,22 +341,26 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
               }}
             >
               {isDirectory ? <FolderOpen className="h-4 w-4 shrink-0" /> : <FileText className="h-4 w-4 shrink-0" />}
-              <span className="truncate">{entry.name}</span>
+              <span className="truncate" title={entry.name}>{entry.name}</span>
             </button>
           </div>
           {isDirectory && isExpanded && (
-            <div className="ml-4 border-l border-border/40 pl-2">
+            <div className="ml-4 min-w-0 border-l border-border/40 pl-2">
               {renderDirectoryEntries(entry.path)}
             </div>
           )}
         </div>
       )
-    })
-  }, [entriesByDirectory, expandedDirectories, handleToggleDirectory, loadingDirectories, selectedPath])
+    }).concat(listing?.truncated ? (
+      <div key={`${directoryPath}:truncated`} className="py-1.5 pl-8 text-xs text-muted-foreground">
+        Showing first {listing.limit.toLocaleString()} of {listing.totalEntries.toLocaleString()} entries.
+      </div>
+    ) : [])
+  }, [expandedDirectories, handleToggleDirectory, listingsByDirectory, loadingDirectories, selectedPath])
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/40 px-3 py-2">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-border/40 px-3 py-2">
         <div className="min-w-[12rem] flex-1">
           <Select value={currentRoot?.path ?? ""} onValueChange={setSelectedRootPath} disabled={roots.length <= 1}>
             <SelectTrigger className="h-8 rounded-md border border-input bg-background px-2">
@@ -351,25 +371,25 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
             </SelectContent>
           </Select>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void loadRoots()} disabled={isLoadingRoots}>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5 whitespace-nowrap" onClick={() => void loadRoots()} disabled={isLoadingRoots}>
           <RefreshCw className={cn("h-3.5 w-3.5", isLoadingRoots && "animate-spin")} /> Refresh
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setDialogState({ mode: "create-file", value: buildDefaultCreatePath(selectedDirectoryBase, "file") })} disabled={!currentRoot}>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5 whitespace-nowrap" onClick={() => setDialogState({ mode: "create-file", value: buildDefaultCreatePath(selectedDirectoryBase, "file") })} disabled={!currentRoot}>
           <FilePlus2 className="h-3.5 w-3.5" /> New file
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setDialogState({ mode: "create-folder", value: buildDefaultCreatePath(selectedDirectoryBase, "directory") })} disabled={!currentRoot}>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5 whitespace-nowrap" onClick={() => setDialogState({ mode: "create-folder", value: buildDefaultCreatePath(selectedDirectoryBase, "directory") })} disabled={!currentRoot}>
           <FolderPlus className="h-3.5 w-3.5" /> New folder
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setDialogState({ mode: "move", value: selectedRelativePath === "." ? "" : selectedRelativePath })} disabled={!selectedPath || selectedRelativePath === "."}>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5 whitespace-nowrap" onClick={() => setDialogState({ mode: "move", value: selectedRelativePath === "." ? "" : selectedRelativePath })} disabled={!selectedPath || selectedRelativePath === "."}>
           <Pencil className="h-3.5 w-3.5" /> Move / rename
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void handleOpenPath("open")} disabled={!currentRoot}>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5 whitespace-nowrap" onClick={() => void handleOpenPath("open")} disabled={!currentRoot}>
           <ExternalLink className="h-3.5 w-3.5" /> Open
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void handleOpenPath("reveal")} disabled={!currentRoot}>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5 whitespace-nowrap" onClick={() => void handleOpenPath("reveal")} disabled={!currentRoot}>
           <FolderUp className="h-3.5 w-3.5" /> Reveal
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setDialogState({ mode: "delete" })} disabled={!selectedPath || selectedRelativePath === "."}>
+        <Button variant="outline" size="sm" className="shrink-0 gap-1.5 whitespace-nowrap text-destructive hover:text-destructive" onClick={() => setDialogState({ mode: "delete" })} disabled={!selectedPath || selectedRelativePath === "."}>
           <Trash2 className="h-3.5 w-3.5" /> Delete
         </Button>
       </div>
@@ -391,23 +411,24 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-0 md:flex-row">
-          <div className="min-h-0 border-b border-border/40 md:w-[18rem] md:border-b-0 md:border-r">
+          <div className="flex max-h-[14rem] min-h-0 flex-col border-b border-border/40 md:max-h-none md:w-[18rem] md:border-b-0 md:border-r">
             <div className="border-b border-border/40 px-3 py-2 text-xs text-muted-foreground">
-              {currentRoot?.label} <span className="block truncate">{currentRoot?.path}</span>
+              <span className="block truncate font-medium text-foreground" title={currentRoot?.label}>{currentRoot?.label}</span>
+              <span className="block truncate" title={currentRoot?.path}>{currentRoot?.path}</span>
             </div>
-            <div className="min-h-0 overflow-y-auto px-2 py-2">
+            <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
               <button
                 type="button"
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium",
+                  "flex w-full min-w-0 items-center gap-2 whitespace-nowrap rounded-md px-2 py-1.5 text-left text-sm font-medium",
                   selectedRelativePath === "." ? "bg-primary/10 text-primary" : "hover:bg-muted/50",
                 )}
                 onClick={() => setSelectedPath(currentRoot?.path ?? null)}
               >
                 <FolderOpen className="h-4 w-4 shrink-0" />
-                <span className="truncate">{currentRoot?.label}</span>
+                <span className="truncate" title={currentRoot?.label}>{currentRoot?.label}</span>
               </button>
-              <div className="ml-4 mt-1 border-l border-border/40 pl-2">{currentRoot ? renderDirectoryEntries(currentRoot.path) : null}</div>
+              <div className="ml-4 mt-1 min-w-0 border-l border-border/40 pl-2">{currentRoot ? renderDirectoryEntries(currentRoot.path) : null}</div>
             </div>
           </div>
 
@@ -426,11 +447,11 @@ export function SessionFileView({ sessionId, className }: { sessionId?: string |
               ) : previewError ? (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">{previewError}</div>
               ) : preview?.kind === "markdown" ? (
-                <div className="rounded-lg border bg-background p-3"><MarkdownRenderer content={preview.content ?? ""} /></div>
+                <div className="max-w-full overflow-x-hidden rounded-md border bg-background p-3 text-sm [overflow-wrap:anywhere]"><MarkdownRenderer content={preview.content ?? ""} /></div>
               ) : preview?.kind === "text" ? (
-                <pre className="rounded-lg border bg-background p-3 text-xs leading-5 text-foreground whitespace-pre-wrap break-words">{preview.content}</pre>
+                <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md border bg-background p-3 text-xs leading-5 text-foreground [overflow-wrap:anywhere]">{preview.content}</pre>
               ) : preview?.kind === "image" && preview.dataUrl ? (
-                <div className="flex min-h-full items-start justify-center"><img src={preview.dataUrl} alt={preview.name} className="max-h-full max-w-full rounded-lg border bg-background" /></div>
+                <div className="flex min-h-full items-start justify-center overflow-auto"><img src={preview.dataUrl} alt={preview.name} className="max-h-full max-w-full rounded-md border bg-background" /></div>
               ) : preview?.kind === "binary" ? (
                 <div className="rounded-lg border border-dashed bg-muted/20 px-5 py-6 text-center text-sm text-muted-foreground">Binary preview is not available in-app for this file yet. Use Open or Reveal to inspect it in the OS.</div>
               ) : preview?.kind === "directory" ? (
