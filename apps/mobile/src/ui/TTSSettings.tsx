@@ -51,6 +51,16 @@ type TTSSettingsProps = {
   onEdgeTtsVoiceChange?: (voice: string) => void;
 };
 
+const SPEECH_SELECTOR_ACTIVE_OPACITY = 0.78;
+const SPEECH_SELECTOR_TEXT_LINES = 2;
+const TTS_TEST_PHRASE = 'Hello! This is a test of the text to speech voice.';
+const EDGE_TTS_UNAVAILABLE_TITLE = 'Edge TTS unavailable';
+const EDGE_TTS_UNAVAILABLE_MESSAGE =
+  'Edge voices now play through your paired desktop. Pair a desktop with Remote Access enabled to use Edge TTS.';
+const EDGE_TTS_FAILED_TITLE = 'Edge TTS failed';
+const EDGE_TTS_FAILED_MESSAGE =
+  'Could not reach the paired desktop to synthesize speech. Make sure the desktop app is running and reachable, then try again.';
+
 export function TTSSettings({
   voiceId,
   rate,
@@ -166,12 +176,12 @@ export function TTSSettings({
     if (selectedVoice?.provider === 'edge') {
       if (!edgeTtsAvailable || !remoteBaseUrl || !remoteApiKey) {
         Alert.alert(
-          'Edge TTS unavailable',
-          'Edge voices now play through your paired desktop. Pair a desktop with Remote Access enabled to use Edge TTS.',
+          EDGE_TTS_UNAVAILABLE_TITLE,
+          EDGE_TTS_UNAVAILABLE_MESSAGE,
         );
         return;
       }
-      void speakRemoteTts('Hello! This is a test of the text to speech voice.', {
+      void speakRemoteTts(TTS_TEST_PHRASE, {
         baseUrl: remoteBaseUrl,
         apiKey: remoteApiKey,
         providerId: 'edge',
@@ -179,8 +189,8 @@ export function TTSSettings({
         rate,
         onError: () => {
           Alert.alert(
-            'Edge TTS failed',
-            'Could not reach the paired desktop to synthesize speech. Make sure the desktop app is running and reachable, then try again.',
+            EDGE_TTS_FAILED_TITLE,
+            EDGE_TTS_FAILED_MESSAGE,
           );
         },
       });
@@ -195,7 +205,7 @@ export function TTSSettings({
     if (selectedVoice?.provider === 'native') {
       options.voice = selectedVoice.identifier;
     }
-    Speech.speak('Hello! This is a test of the text to speech voice.', options);
+    Speech.speak(TTS_TEST_PHRASE, options);
   };
 
   return (
@@ -206,8 +216,11 @@ export function TTSSettings({
         <TouchableOpacity
           style={styles.voiceSelector}
           onPress={() => setShowVoicePicker(true)}
+          activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
+          accessibilityRole="button"
+          accessibilityLabel="Select text-to-speech voice"
         >
-          <Text style={styles.voiceSelectorText} numberOfLines={2}>
+          <Text style={styles.voiceSelectorText} numberOfLines={SPEECH_SELECTOR_TEXT_LINES}>
             {selectedVoice?.name || 'System Default'}
           </Text>
           <Ionicons name="chevron-down" size={16} color={theme.colors.mutedForeground} />
@@ -256,6 +269,7 @@ export function TTSSettings({
       <TouchableOpacity
         style={styles.testButton}
         onPress={testVoice}
+        activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
         accessibilityRole="button"
         accessibilityLabel="Test text-to-speech voice"
       >
@@ -276,10 +290,11 @@ export function TTSSettings({
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={() => setShowVoicePicker(false)}
+                activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
                 accessibilityRole="button"
                 accessibilityLabel="Close voice picker"
               >
-                <Ionicons name="close" size={18} color={theme.colors.foreground} />
+                <Ionicons name="close" size={18} color={theme.colors.mutedForeground} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.voiceList}>
@@ -290,6 +305,7 @@ export function TTSSettings({
                   !selectedVoice && styles.voiceItemSelected,
                 ]}
                 onPress={() => handleVoiceSelect(null)}
+                activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
                 accessibilityRole="button"
                 accessibilityState={{ selected: !selectedVoice }}
               >
@@ -297,7 +313,7 @@ export function TTSSettings({
                   <Text style={[
                     styles.voiceItemText,
                     !selectedVoice && styles.voiceItemTextSelected,
-                  ]}>
+                  ]} numberOfLines={SPEECH_SELECTOR_TEXT_LINES}>
                     System Default
                   </Text>
                 </View>
@@ -319,6 +335,7 @@ export function TTSSettings({
                         key={`edge-${voice.identifier}`}
                         style={[styles.voiceItem, isSelected && styles.voiceItemSelected]}
                         onPress={() => handleVoiceSelect(voice)}
+                        activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
                         accessibilityRole="button"
                         accessibilityState={{ selected: isSelected }}
                       >
@@ -328,10 +345,11 @@ export function TTSSettings({
                               styles.voiceItemText,
                               isSelected && styles.voiceItemTextSelected,
                             ]}
+                            numberOfLines={SPEECH_SELECTOR_TEXT_LINES}
                           >
                             {voice.name}
                           </Text>
-                          <Text style={styles.voiceItemSubtext}>
+                          <Text style={styles.voiceItemSubtext} numberOfLines={SPEECH_SELECTOR_TEXT_LINES}>
                             {voice.language} • Neural
                           </Text>
                         </View>
@@ -365,6 +383,7 @@ export function TTSSettings({
                         language: voice.language,
                       })
                     }
+                    activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
                   >
@@ -374,10 +393,11 @@ export function TTSSettings({
                           styles.voiceItemText,
                           isSelected && styles.voiceItemTextSelected,
                         ]}
+                        numberOfLines={SPEECH_SELECTOR_TEXT_LINES}
                       >
                         {voice.name}
                       </Text>
-                      <Text style={styles.voiceItemSubtext}>
+                      <Text style={styles.voiceItemSubtext} numberOfLines={SPEECH_SELECTOR_TEXT_LINES}>
                         {voice.language} {voice.quality === 'Enhanced' ? '• Enhanced' : ''}
                       </Text>
                     </View>

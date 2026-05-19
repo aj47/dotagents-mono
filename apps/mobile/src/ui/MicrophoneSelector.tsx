@@ -18,6 +18,9 @@ type MicrophoneSelectorProps = {
   onDeviceChange: (deviceId: string | undefined) => void;
 };
 
+const SPEECH_SELECTOR_ACTIVE_OPACITY = 0.78;
+const SPEECH_SELECTOR_TEXT_LINES = 2;
+
 export function MicrophoneSelector({
   selectedDeviceId,
   onDeviceChange,
@@ -55,10 +58,11 @@ export function MicrophoneSelector({
         <TouchableOpacity
           style={styles.selector}
           onPress={() => setShowPicker(true)}
+          activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
           accessibilityRole="button"
           accessibilityLabel="Select microphone"
         >
-          <Text style={styles.selectorText} numberOfLines={2}>
+          <Text style={styles.selectorText} numberOfLines={SPEECH_SELECTOR_TEXT_LINES}>
             {selectedDevice?.label || 'System Default'}
           </Text>
           <Ionicons name="chevron-down" size={16} color={theme.colors.mutedForeground} />
@@ -80,6 +84,7 @@ export function MicrophoneSelector({
               <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={() => setShowPicker(false)}
+                activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
                 accessibilityRole="button"
                 accessibilityLabel="Close microphone picker"
               >
@@ -93,6 +98,7 @@ export function MicrophoneSelector({
                   !selectedDeviceId && styles.deviceItemSelected,
                 ]}
                 onPress={() => handleSelect(null)}
+                activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
                 accessibilityRole="button"
                 accessibilityState={{ selected: !selectedDeviceId }}
               >
@@ -101,6 +107,7 @@ export function MicrophoneSelector({
                     styles.deviceItemText,
                     !selectedDeviceId && styles.deviceItemTextSelected,
                   ]}
+                  numberOfLines={SPEECH_SELECTOR_TEXT_LINES}
                 >
                   System Default
                 </Text>
@@ -120,6 +127,7 @@ export function MicrophoneSelector({
                         styles.deviceItemSelected,
                     ]}
                     onPress={() => handleSelect(device)}
+                    activeOpacity={SPEECH_SELECTOR_ACTIVE_OPACITY}
                     accessibilityRole="button"
                     accessibilityState={{ selected: selectedDeviceId === device.deviceId }}
                   >
@@ -129,6 +137,7 @@ export function MicrophoneSelector({
                         selectedDeviceId === device.deviceId &&
                           styles.deviceItemTextSelected,
                       ]}
+                      numberOfLines={SPEECH_SELECTOR_TEXT_LINES}
                     >
                       {device.label}
                     </Text>

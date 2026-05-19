@@ -340,7 +340,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
+const THEME_PREFERENCE_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'Light', value: 'light' },
   { label: 'Dark', value: 'dark' },
   { label: 'System', value: 'system' },
@@ -2744,7 +2744,7 @@ export default function SettingsScreen({ navigation }: any) {
 
         <Text style={styles.sectionTitle}>Appearance</Text>
         <View style={styles.themeSelector}>
-          {THEME_OPTIONS.map((option) => (
+          {THEME_PREFERENCE_OPTIONS.map((option) => (
             <Pressable
               key={option.value}
               style={[

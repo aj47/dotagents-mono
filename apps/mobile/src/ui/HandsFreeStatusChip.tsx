@@ -46,12 +46,9 @@ export const HandsFreeStatusChip = memo(function HandsFreeStatusChip({ phase, la
       accessibilityRole="text"
       accessibilityLabel={subtitle ? `${label}. ${subtitle}` : label}
     >
-      <View style={styles.labelRow}>
-        <View style={[styles.statusDot, { backgroundColor: colors.textColor }]} />
-        <Text style={[styles.label, { color: colors.textColor }]} numberOfLines={1}>
-          {label}
-        </Text>
-      </View>
+      <Text style={[styles.label, { color: colors.textColor }]} numberOfLines={1}>
+        {label}
+      </Text>
       {subtitle ? (
         <Text style={[styles.subtitle, { color: colors.textColor }]} numberOfLines={2}>
           {subtitle}
@@ -69,17 +66,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     alignSelf: 'flex-start',
     maxWidth: '100%',
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    opacity: 0.9,
   },
   label: {
     fontSize: 12,
