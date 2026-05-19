@@ -177,6 +177,8 @@ export interface OperatorDiscordLogsResponse {
 }
 
 export type KnowledgeNoteContext = 'auto' | 'search-only';
+export type KnowledgeNoteDateFilter = 'all' | '7d' | '30d' | '90d' | 'year';
+export type KnowledgeNoteSort = 'relevance' | 'updated-desc' | 'updated-asc' | 'created-desc' | 'created-asc' | 'title-asc' | 'title-desc';
 
 export interface KnowledgeNote {
   id: string;
@@ -192,6 +194,18 @@ export interface KnowledgeNote {
 
 export interface KnowledgeNotesResponse {
   notes: KnowledgeNote[];
+}
+
+export interface KnowledgeNotesQuery {
+  query?: string;
+  context?: KnowledgeNoteContext;
+  dateFilter?: KnowledgeNoteDateFilter;
+  sort?: KnowledgeNoteSort;
+  limit?: number;
+}
+
+export interface KnowledgeNotesDeleteMultipleResponse {
+  deletedCount: number;
 }
 
 export interface KnowledgeNoteResponse {
@@ -615,8 +629,21 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   // Knowledge Notes Management
   // ============================================
 
-  async getKnowledgeNotes(): Promise<KnowledgeNotesResponse> {
-    return this.request<KnowledgeNotesResponse>('/knowledge/notes');
+  async getKnowledgeNotes(query?: KnowledgeNotesQuery): Promise<KnowledgeNotesResponse> {
+    const params = new URLSearchParams();
+    if (query?.context) params.set('context', query.context);
+    if (query?.dateFilter) params.set('dateFilter', query.dateFilter);
+    if (query?.sort) params.set('sort', query.sort);
+    if (typeof query?.limit === 'number') params.set('limit', String(query.limit));
+    const queryString = params.toString();
+    return this.request<KnowledgeNotesResponse>(`/knowledge/notes${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async searchKnowledgeNotes(query: KnowledgeNotesQuery): Promise<KnowledgeNotesResponse> {
+    return this.request<KnowledgeNotesResponse>('/knowledge/notes/search', {
+      method: 'POST',
+      body: JSON.stringify(query),
+    });
   }
 
   async getKnowledgeNote(id: string): Promise<KnowledgeNoteResponse> {
@@ -640,6 +667,19 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   async deleteKnowledgeNote(id: string): Promise<{ success: boolean; id: string }> {
     return this.request(`/knowledge/notes/${encodeURIComponent(id)}`, {
       method: 'DELETE',
+    });
+  }
+
+  async deleteKnowledgeNotes(ids: string[]): Promise<KnowledgeNotesDeleteMultipleResponse> {
+    return this.request<KnowledgeNotesDeleteMultipleResponse>('/knowledge/notes/delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+  }
+
+  async deleteAllKnowledgeNotes(): Promise<KnowledgeNotesDeleteMultipleResponse> {
+    return this.request<KnowledgeNotesDeleteMultipleResponse>('/knowledge/notes/delete-all', {
+      method: 'POST',
     });
   }
 

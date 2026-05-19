@@ -4575,14 +4575,88 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     updatedAt: note.updatedAt,
   })
 
+  const parseKnowledgeNoteFilter = (raw: unknown) => {
+    const record = raw && typeof raw === "object" ? raw as Record<string, unknown> : {}
+    const context = record.context === "auto" || record.context === "search-only"
+      ? record.context as import("../shared/types").KnowledgeNoteContext
+      : undefined
+    const dateFilter = ["all", "7d", "30d", "90d", "year"].includes(String(record.dateFilter))
+      ? record.dateFilter as import("../shared/types").KnowledgeNoteDateFilter
+      : undefined
+    const sort = ["relevance", "updated-desc", "updated-asc", "created-desc", "created-asc", "title-asc", "title-desc"].includes(String(record.sort))
+      ? record.sort as import("../shared/types").KnowledgeNoteSort
+      : undefined
+    const limitValue = typeof record.limit === "number"
+      ? record.limit
+      : typeof record.limit === "string"
+        ? Number(record.limit)
+        : undefined
+    const limit = typeof limitValue === "number" && Number.isFinite(limitValue)
+      ? Math.max(0, Math.min(500, Math.floor(limitValue)))
+      : undefined
+
+    return { context, dateFilter, sort, limit }
+  }
+
   // GET /v1/knowledge/notes - List all knowledge notes
-  fastify.get("/v1/knowledge/notes", async (_req, reply) => {
+  fastify.get("/v1/knowledge/notes", async (req, reply) => {
     try {
-      const notes = await knowledgeNotesService.getAllNotes()
+      const notes = await knowledgeNotesService.getAllNotes(parseKnowledgeNoteFilter(req.query))
       return reply.send({ notes: notes.map(serializeKnowledgeNote) })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get knowledge notes", error)
       return reply.code(500).send({ error: "Failed to get knowledge notes" })
+    }
+  })
+
+  // POST /v1/knowledge/notes/search - Search knowledge notes with filters
+  fastify.post("/v1/knowledge/notes/search", async (req, reply) => {
+    try {
+      const body = req.body as Record<string, unknown> | undefined
+      const query = typeof body?.query === "string" ? body.query.trim() : ""
+      const filter = parseKnowledgeNoteFilter(body)
+      const notes = query
+        ? await knowledgeNotesService.searchNotes(query, filter)
+        : await knowledgeNotesService.getAllNotes(filter)
+      return reply.send({ notes: notes.map(serializeKnowledgeNote) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to search knowledge notes", error)
+      return reply.code(500).send({ error: error?.message || "Failed to search knowledge notes" })
+    }
+  })
+
+  // POST /v1/knowledge/notes/delete - Delete selected knowledge notes
+  fastify.post("/v1/knowledge/notes/delete", async (req, reply) => {
+    try {
+      const body = (req.body ?? {}) as { ids?: unknown }
+      const ids = Array.isArray(body.ids)
+        ? Array.from(new Set(body.ids.filter((id): id is string => typeof id === "string").map(id => id.trim()).filter(Boolean)))
+        : []
+      if (ids.length === 0) {
+        return reply.code(400).send({ error: "ids must contain at least one note id" })
+      }
+      const result = await knowledgeNotesService.deleteMultipleNotes(ids)
+      if (result.error) {
+        return reply.code(500).send({ error: result.error, deletedCount: result.deletedCount })
+      }
+      return reply.send({ deletedCount: result.deletedCount })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete selected knowledge notes", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete selected knowledge notes" })
+    }
+  })
+
+  // POST /v1/knowledge/notes/delete-all - Delete all knowledge notes
+  fastify.post("/v1/knowledge/notes/delete-all", async (_req, reply) => {
+    try {
+      const result = await knowledgeNotesService.deleteAllNotes()
+      if (result.error) {
+        return reply.code(500).send({ error: result.error, deletedCount: result.deletedCount })
+      }
+      return reply.send({ deletedCount: result.deletedCount })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete all knowledge notes", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete all knowledge notes" })
     }
   })
 

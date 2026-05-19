@@ -19,7 +19,21 @@ import {
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
 } from '../lib/accessibility';
-import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, AgentProfile, Loop } from '../lib/settingsApi';
+import {
+  ExtendedSettingsApiClient,
+  Profile,
+  MCPServer,
+  Settings,
+  ModelInfo,
+  SettingsUpdate,
+  Skill,
+  KnowledgeNote,
+  KnowledgeNoteContext,
+  KnowledgeNoteDateFilter,
+  KnowledgeNoteSort,
+  AgentProfile,
+  Loop,
+} from '../lib/settingsApi';
 import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
 import { MicrophoneSelector } from '../ui/MicrophoneSelector';
@@ -225,6 +239,26 @@ const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
   { label: 'System', value: 'system' },
 ];
 
+const KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS: Array<{ label: string; value: 'all' | KnowledgeNoteContext }> = [
+  { label: 'All', value: 'all' },
+  { label: 'Search only', value: 'search-only' },
+  { label: 'Auto', value: 'auto' },
+];
+
+const KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS: Array<{ label: string; value: KnowledgeNoteDateFilter }> = [
+  { label: 'Any time', value: 'all' },
+  { label: '7d', value: '7d' },
+  { label: '30d', value: '30d' },
+  { label: '90d', value: '90d' },
+  { label: 'Year', value: 'year' },
+];
+
+const KNOWLEDGE_NOTE_SORT_OPTIONS: Array<{ label: string; value: KnowledgeNoteSort }> = [
+  { label: 'Best', value: 'relevance' },
+  { label: 'Newest', value: 'updated-desc' },
+  { label: 'A-Z', value: 'title-asc' },
+];
+
 function sortAgentProfilesForSettings(profiles: AgentProfile[]): AgentProfile[] {
   return [...profiles].sort((a, b) => {
     if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
@@ -285,12 +319,35 @@ export default function SettingsScreen({ navigation }: any) {
   // Skills, Knowledge Notes, Agents, and Loops state
   const [skills, setSkills] = useState<Skill[]>([]);
   const [knowledgeNotes, setKnowledgeNotes] = useState<KnowledgeNote[]>([]);
+  const [knowledgeNoteSearchQuery, setKnowledgeNoteSearchQuery] = useState('');
+  const [knowledgeNoteSearchResults, setKnowledgeNoteSearchResults] = useState<KnowledgeNote[]>([]);
+  const [selectedKnowledgeNoteIds, setSelectedKnowledgeNoteIds] = useState<Set<string>>(new Set());
+  const [knowledgeNoteContextFilter, setKnowledgeNoteContextFilter] = useState<'all' | KnowledgeNoteContext>('all');
+  const [knowledgeNoteDateFilter, setKnowledgeNoteDateFilter] = useState<KnowledgeNoteDateFilter>('all');
+  const [knowledgeNoteSortOption, setKnowledgeNoteSortOption] = useState<KnowledgeNoteSort>('relevance');
   const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
   const [loops, setLoops] = useState<Loop[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
+  const [isSearchingKnowledgeNotes, setIsSearchingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const trimmedKnowledgeNoteSearchQuery = knowledgeNoteSearchQuery.trim();
+  const knowledgeNoteFilterRequest = useMemo(() => ({
+    context: knowledgeNoteContextFilter === 'all' ? undefined : knowledgeNoteContextFilter,
+    dateFilter: knowledgeNoteDateFilter,
+    sort: knowledgeNoteSortOption,
+    limit: 100,
+  }), [knowledgeNoteContextFilter, knowledgeNoteDateFilter, knowledgeNoteSortOption]);
+  const displayedKnowledgeNotes = trimmedKnowledgeNoteSearchQuery ? knowledgeNoteSearchResults : knowledgeNotes;
+  const displayedKnowledgeNoteIds = useMemo(
+    () => new Set(displayedKnowledgeNotes.map(note => note.id)),
+    [displayedKnowledgeNotes]
+  );
+  const visibleSelectedKnowledgeNoteIds = useMemo(
+    () => Array.from(selectedKnowledgeNoteIds).filter(id => displayedKnowledgeNoteIds.has(id)),
+    [displayedKnowledgeNoteIds, selectedKnowledgeNoteIds]
+  );
   const sortedAgentProfiles = useMemo(() => sortAgentProfilesForSettings(agentProfiles), [agentProfiles]);
   const displaySkills = useMemo(() => [...skills].sort((a, b) => {
     const enabledDiff = Number(b.enabledForProfile) - Number(a.enabledForProfile);
@@ -542,14 +599,14 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
     setIsLoadingKnowledgeNotes(true);
     try {
-      const res = await settingsClient.getKnowledgeNotes();
+      const res = await settingsClient.getKnowledgeNotes(knowledgeNoteFilterRequest);
       setKnowledgeNotes(res.notes);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch knowledge notes:', error);
     } finally {
       setIsLoadingKnowledgeNotes(false);
     }
-  }, [settingsClient]);
+  }, [settingsClient, knowledgeNoteFilterRequest]);
 
   // Fetch agent profiles from desktop
   const fetchAgentProfiles = useCallback(async () => {
@@ -595,6 +652,45 @@ export default function SettingsScreen({ navigation }: any) {
       fetchLoops();
     }
   }, [settingsClient, isDotAgentsServer, fetchSkills, fetchKnowledgeNotes, fetchAgentProfiles, fetchLoops]);
+
+  useEffect(() => {
+    setSelectedKnowledgeNoteIds(new Set());
+  }, [trimmedKnowledgeNoteSearchQuery, knowledgeNoteContextFilter, knowledgeNoteDateFilter, knowledgeNoteSortOption]);
+
+  useEffect(() => {
+    if (!settingsClient || !isDotAgentsServer) return;
+    if (!trimmedKnowledgeNoteSearchQuery) {
+      setKnowledgeNoteSearchResults([]);
+      setIsSearchingKnowledgeNotes(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsSearchingKnowledgeNotes(true);
+    const timeout = setTimeout(() => {
+      settingsClient.searchKnowledgeNotes({
+        ...knowledgeNoteFilterRequest,
+        query: trimmedKnowledgeNoteSearchQuery,
+        limit: 100,
+      })
+        .then((res) => {
+          if (!cancelled) setKnowledgeNoteSearchResults(res.notes);
+        })
+        .catch((error: any) => {
+          if (!cancelled) {
+            console.error('[Settings] Failed to search knowledge notes:', error);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsSearchingKnowledgeNotes(false);
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [settingsClient, isDotAgentsServer, trimmedKnowledgeNoteSearchQuery, knowledgeNoteFilterRequest]);
 
   // Refresh key remote data when returning from nested screens (e.g. agent editor)
   useEffect(() => {
@@ -839,25 +935,112 @@ export default function SettingsScreen({ navigation }: any) {
     );
   }, [confirmDestructiveAction, connectionManager, sessionStore, settingsClient]);
 
+  const toggleKnowledgeNoteSelection = useCallback((noteId: string) => {
+    setSelectedKnowledgeNoteIds(prev => {
+      const next = new Set(prev);
+      if (next.has(noteId)) {
+        next.delete(noteId);
+      } else {
+        next.add(noteId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleKnowledgeNoteSelectVisible = useCallback(() => {
+    setSelectedKnowledgeNoteIds(prev => {
+      const next = new Set(prev);
+      const allVisibleSelected = displayedKnowledgeNotes.length > 0
+        && displayedKnowledgeNotes.every(note => next.has(note.id));
+      displayedKnowledgeNotes.forEach(note => {
+        if (allVisibleSelected) {
+          next.delete(note.id);
+        } else {
+          next.add(note.id);
+        }
+      });
+      return next;
+    });
+  }, [displayedKnowledgeNotes]);
+
   // Handle knowledge note delete
-  const handleKnowledgeNoteDelete = async (noteId: string) => {
+  const handleKnowledgeNoteDelete = useCallback((noteId: string) => {
     if (!settingsClient) return;
     confirmDestructiveAction('Delete Note', 'Are you sure you want to delete this note?', async () => {
       try {
         await settingsClient.deleteKnowledgeNote(noteId);
         setKnowledgeNotes(prev => prev.filter(note => note.id !== noteId));
+        setKnowledgeNoteSearchResults(prev => prev.filter(note => note.id !== noteId));
+        setSelectedKnowledgeNoteIds(prev => {
+          const next = new Set(prev);
+          next.delete(noteId);
+          return next;
+        });
       } catch (error: any) {
         console.error('[Settings] Failed to delete knowledge note:', error);
         Alert.alert('Error', 'Failed to delete note');
       }
     });
-  };
+  }, [confirmDestructiveAction, settingsClient]);
+
+  const handleKnowledgeNoteDeleteMultiple = useCallback(() => {
+    if (!settingsClient || visibleSelectedKnowledgeNoteIds.length === 0) return;
+
+    confirmDestructiveAction(
+      'Delete Notes',
+      `Delete ${visibleSelectedKnowledgeNoteIds.length} selected notes? This cannot be undone.`,
+      async () => {
+        try {
+          await settingsClient.deleteKnowledgeNotes(visibleSelectedKnowledgeNoteIds);
+          const deletedIds = new Set(visibleSelectedKnowledgeNoteIds);
+          setKnowledgeNotes(prev => prev.filter(note => !deletedIds.has(note.id)));
+          setKnowledgeNoteSearchResults(prev => prev.filter(note => !deletedIds.has(note.id)));
+          setSelectedKnowledgeNoteIds(prev => {
+            const next = new Set(prev);
+            visibleSelectedKnowledgeNoteIds.forEach(id => next.delete(id));
+            return next;
+          });
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete selected knowledge notes:', error);
+          Alert.alert('Error', 'Failed to delete selected notes');
+        }
+      }
+    );
+  }, [confirmDestructiveAction, settingsClient, visibleSelectedKnowledgeNoteIds]);
+
+  const handleKnowledgeNoteDeleteAll = useCallback(() => {
+    if (!settingsClient || knowledgeNotes.length === 0) return;
+
+    confirmDestructiveAction(
+      'Delete All Notes',
+      'Delete every knowledge note from the connected desktop? This cannot be undone.',
+      async () => {
+        try {
+          await settingsClient.deleteAllKnowledgeNotes();
+          setKnowledgeNotes([]);
+          setKnowledgeNoteSearchResults([]);
+          setSelectedKnowledgeNoteIds(new Set());
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete all knowledge notes:', error);
+          Alert.alert('Error', 'Failed to delete all notes');
+        }
+      },
+      'Delete All'
+    );
+  }, [confirmDestructiveAction, knowledgeNotes.length, settingsClient]);
 
   const handleKnowledgeNotePromote = useCallback(async (note: KnowledgeNote) => {
     if (!settingsClient || note.context === 'auto') return;
     try {
       await settingsClient.updateKnowledgeNote(note.id, { context: 'auto' });
       setKnowledgeNotes(prev =>
+        prev.map(existing =>
+          existing.id === note.id
+            ? { ...existing, context: 'auto', updatedAt: Date.now() }
+            : existing
+        )
+      );
+      setKnowledgeNoteSearchResults(prev =>
         prev.map(existing =>
           existing.id === note.id
             ? { ...existing, context: 'auto', updatedAt: Date.now() }
@@ -1315,6 +1498,37 @@ export default function SettingsScreen({ navigation }: any) {
       </View>
     );
   };
+
+  function renderKnowledgeNoteFilterGroup<T extends string>(
+    options: Array<{ label: string; value: T }>,
+    value: T,
+    onChange: (nextValue: T) => void,
+    accessibilityPrefix: string,
+  ) {
+    return (
+      <View style={styles.providerSelector}>
+        {options.map((option) => (
+          <TouchableOpacity
+            key={option.value}
+            style={[
+              styles.providerOption,
+              value === option.value && styles.providerOptionActive,
+            ]}
+            onPress={() => onChange(option.value)}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel(`${accessibilityPrefix} ${option.label}`)}
+          >
+            <Text style={[
+              styles.providerOptionText,
+              value === option.value && styles.providerOptionTextActive,
+            ]}>
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  }
 
   if (!ready) return null;
 
@@ -2610,62 +2824,168 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4l. Knowledge Notes */}
             {isDotAgentsServer && (
               <CollapsibleSection id="knowledgeNotes" title="Knowledge Notes">
-                {isLoadingKnowledgeNotes ? (
+                <TextInput
+                  style={[styles.input, styles.knowledgeNoteSearchInput]}
+                  value={knowledgeNoteSearchQuery}
+                  onChangeText={setKnowledgeNoteSearchQuery}
+                  placeholder="Search notes"
+                  placeholderTextColor={theme.colors.mutedForeground}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  accessibilityLabel="Search knowledge notes"
+                />
+
+                {renderKnowledgeNoteFilterGroup(
+                  KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS,
+                  knowledgeNoteContextFilter,
+                  (value) => setKnowledgeNoteContextFilter(value),
+                  'Filter notes by'
+                )}
+                {renderKnowledgeNoteFilterGroup(
+                  KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS,
+                  knowledgeNoteDateFilter,
+                  (value) => setKnowledgeNoteDateFilter(value),
+                  'Filter notes by'
+                )}
+                {renderKnowledgeNoteFilterGroup(
+                  KNOWLEDGE_NOTE_SORT_OPTIONS,
+                  knowledgeNoteSortOption,
+                  (value) => setKnowledgeNoteSortOption(value),
+                  'Sort notes by'
+                )}
+
+                {displayedKnowledgeNotes.length > 0 && (
+                  <View style={styles.knowledgeSelectionBar}>
+                    <TouchableOpacity
+                      style={styles.noteSelectButton}
+                      onPress={handleKnowledgeNoteSelectVisible}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(
+                        visibleSelectedKnowledgeNoteIds.length === displayedKnowledgeNotes.length
+                          ? 'Clear visible note selection'
+                          : 'Select visible notes'
+                      )}
+                    >
+                      <Text style={styles.noteSelectButtonText}>
+                        {visibleSelectedKnowledgeNoteIds.length === displayedKnowledgeNotes.length ? 'Clear visible' : 'Select visible'}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text style={styles.knowledgeSelectionText}>
+                      {visibleSelectedKnowledgeNoteIds.length
+                        ? `${visibleSelectedKnowledgeNoteIds.length} selected`
+                        : `${displayedKnowledgeNotes.length} shown`}
+                    </Text>
+                  </View>
+                )}
+
+                {isSearchingKnowledgeNotes && (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                    <Text style={styles.loadingText}>Searching notes</Text>
+                  </View>
+                )}
+
+                {isLoadingKnowledgeNotes && !trimmedKnowledgeNoteSearchQuery ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : knowledgeNotes.length === 0 ? (
-                  <Text style={styles.helperText}>No notes saved</Text>
+                ) : displayedKnowledgeNotes.length === 0 ? (
+                  <Text style={styles.helperText}>
+                    {trimmedKnowledgeNoteSearchQuery ? 'No notes match the active search and filters' : 'No notes saved'}
+                  </Text>
                 ) : (
-                  knowledgeNotes.map((note) => (
-                    <View key={note.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
-                      <TouchableOpacity
-                        style={styles.agentInfoPressable}
-                        onPress={() => handleKnowledgeNoteEdit(note)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.serverInfo, { flex: 1 }]}> 
-                          <Text style={styles.serverName}>{note.title}</Text>
-                          <Text style={styles.serverMeta} numberOfLines={2}>{note.summary || note.body}</Text>
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
-                            {note.tags.map((tag, idx) => (
-                              <View key={idx} style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
-                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{tag}</Text>
+                  displayedKnowledgeNotes.map((note) => {
+                    const isSelected = selectedKnowledgeNoteIds.has(note.id);
+                    return (
+                      <View key={note.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
+                        <TouchableOpacity
+                          style={styles.agentInfoPressable}
+                          onPress={() => handleKnowledgeNoteEdit(note)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.serverInfo, { flex: 1 }]}>
+                            <Text style={styles.serverName}>{note.title}</Text>
+                            <Text style={styles.serverMeta} numberOfLines={2}>{note.summary || note.body}</Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
+                              {note.tags.map((tag, idx) => (
+                                <View key={idx} style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
+                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{tag}</Text>
+                                </View>
+                              ))}
+                              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
+                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{note.context}</Text>
                               </View>
-                            ))}
-                            <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
-                              <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{note.context}</Text>
                             </View>
                           </View>
-                        </View>
-                      </TouchableOpacity>
-                      <View style={styles.noteActions}>
-                        {note.context === 'search-only' && (
+                        </TouchableOpacity>
+                        <View style={styles.noteActions}>
                           <TouchableOpacity
-                            style={styles.notePromoteButton}
-                            onPress={() => handleKnowledgeNotePromote(note)}
-                            accessibilityLabel={`Promote note ${note.title} to auto context`}
+                            style={[styles.noteSelectButton, isSelected && styles.noteSelectButtonSelected]}
+                            onPress={() => toggleKnowledgeNoteSelection(note.id)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} note ${note.title}`}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Text style={styles.notePromoteButtonText}>Promote to auto</Text>
+                            <Text style={[
+                              styles.noteSelectButtonText,
+                              isSelected && styles.noteSelectButtonTextSelected,
+                            ]}>
+                              {isSelected ? 'Selected' : 'Select'}
+                            </Text>
                           </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          style={styles.noteDeleteButton}
-                          onPress={() => handleKnowledgeNoteDelete(note.id)}
-                          accessibilityLabel={`Delete note ${note.title}`}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Text style={styles.noteDeleteButtonText}>Delete</Text>
-                        </TouchableOpacity>
+                          {note.context === 'search-only' && (
+                            <TouchableOpacity
+                              style={styles.notePromoteButton}
+                              onPress={() => handleKnowledgeNotePromote(note)}
+                              accessibilityLabel={`Promote note ${note.title} to auto context`}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.notePromoteButtonText}>Promote to auto</Text>
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity
+                            style={styles.noteDeleteButton}
+                            onPress={() => handleKnowledgeNoteDelete(note.id)}
+                            accessibilityLabel={`Delete note ${note.title}`}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={styles.noteDeleteButtonText}>Delete</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                    </View>
-                  ))
+                    );
+                  })
                 )}
-                <TouchableOpacity
-                  style={styles.createAgentButton}
-                  onPress={() => handleKnowledgeNoteEdit()}
-                >
-                  <Text style={styles.createAgentButtonText}>+ Create Note</Text>
-                </TouchableOpacity>
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => handleKnowledgeNoteEdit()}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Create note')}
+                  >
+                    <Text style={styles.createAgentButtonText}>+ Create Note</Text>
+                  </TouchableOpacity>
+                  {visibleSelectedKnowledgeNoteIds.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                      onPress={handleKnowledgeNoteDeleteMultiple}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Delete ${visibleSelectedKnowledgeNoteIds.length} selected notes`)}
+                    >
+                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>
+                        Delete selected ({visibleSelectedKnowledgeNoteIds.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {knowledgeNotes.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                      onPress={handleKnowledgeNoteDeleteAll}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel('Delete all knowledge notes')}
+                    >
+                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>Delete all notes</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <Text style={styles.helperText}>
                   Tap a note to edit it or create a new one. Canonical note fields are title, context, summary, body, tags, and references. Use auto context sparingly for high-signal notes.
                 </Text>
@@ -3764,10 +4084,57 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     noteActions: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
       gap: spacing.sm,
       flexShrink: 0,
       alignSelf: 'flex-start',
+    },
+    knowledgeNoteSearchInput: {
+      marginBottom: spacing.sm,
+    },
+    knowledgeSelectionBar: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.muted,
+    },
+    knowledgeSelectionText: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      fontWeight: '500',
+    },
+    noteSelectButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      alignSelf: 'flex-start',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    noteSelectButtonSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary,
+    },
+    noteSelectButtonText: {
+      color: theme.colors.foreground,
+      fontSize: 12,
+      fontWeight: '500',
+      textAlign: 'center',
+    },
+    noteSelectButtonTextSelected: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
     },
     notePromoteButton: {
       ...createMinimumTouchTargetStyle({
@@ -3836,6 +4203,24 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       color: theme.colors.primary,
       fontWeight: '500',
+    },
+    sectionActionRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    sectionActionButton: {
+      flexBasis: 150,
+      flexGrow: 1,
+      marginTop: 0,
+    },
+    sectionDangerButton: {
+      borderColor: theme.colors.destructive,
+      backgroundColor: theme.colors.destructive + '10',
+    },
+    sectionDangerButtonText: {
+      color: theme.colors.destructive,
     },
     // Model picker styles
     modelLabelRow: {
