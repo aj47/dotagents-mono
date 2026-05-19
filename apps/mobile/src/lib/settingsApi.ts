@@ -14,6 +14,12 @@ export type {
   MCPServersResponse,
   ModelInfo,
   ModelsResponse,
+  ModelPreset,
+  ModelPresetCreateRequest,
+  ModelPresetMutationResponse,
+  ModelPresetSummary,
+  ModelPresetsResponse,
+  ModelPresetUpdateRequest,
   Settings,
   SettingsUpdate,
   ServerConversationMessage,
@@ -88,6 +94,10 @@ import type {
   MCPServersResponse,
   ModelInfo,
   ModelsResponse,
+  ModelPresetCreateRequest as SharedModelPresetCreateRequest,
+  ModelPresetMutationResponse as SharedModelPresetMutationResponse,
+  ModelPresetsResponse as SharedModelPresetsResponse,
+  ModelPresetUpdateRequest as SharedModelPresetUpdateRequest,
   Settings,
   SettingsUpdate,
   ServerConversation,
@@ -136,9 +146,6 @@ import type {
   OperatorConversationsResponse,
   OperatorMCPStatusResponse,
 } from '@dotagents/shared';
-
-// ModelPreset — re-exported from shared package (single source of truth)
-export type { ModelPreset } from '@dotagents/shared';
 
 const DEVICE_ID_HEADER = 'x-dotagents-device-id';
 
@@ -626,6 +633,30 @@ export class SettingsApiClient {
     return this.request('/settings', {
       method: 'PATCH',
       body: JSON.stringify(updates),
+    });
+  }
+
+  async getModelPresets(): Promise<SharedModelPresetsResponse> {
+    return this.request<SharedModelPresetsResponse>('/operator/model-presets');
+  }
+
+  async createModelPreset(preset: SharedModelPresetCreateRequest): Promise<SharedModelPresetMutationResponse> {
+    return this.request<SharedModelPresetMutationResponse>('/operator/model-presets', {
+      method: 'POST',
+      body: JSON.stringify(preset),
+    });
+  }
+
+  async updateModelPreset(presetId: string, updates: SharedModelPresetUpdateRequest): Promise<SharedModelPresetMutationResponse> {
+    return this.request<SharedModelPresetMutationResponse>(`/operator/model-presets/${encodeURIComponent(presetId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteModelPreset(presetId: string): Promise<SharedModelPresetMutationResponse> {
+    return this.request<SharedModelPresetMutationResponse>(`/operator/model-presets/${encodeURIComponent(presetId)}`, {
+      method: 'DELETE',
     });
   }
 

@@ -96,6 +96,10 @@ import type {
   OperatorLogSummary,
   OperatorMessageQueuesResponse,
   OperatorConversationsResponse,
+  ModelPreset,
+  ModelPresetSummary,
+  ModelPresetsResponse,
+  ModelPresetMutationResponse,
   OperatorRecentErrorsResponse,
   OperatorRemoteServerStatus,
   OperatorRuntimeStatus,
@@ -174,6 +178,153 @@ function sanitizeStringList(values: unknown[]): string[] {
       .map((value) => value.trim())
       .filter(Boolean),
   )]
+}
+
+function getSavedModelPresets(cfg: Pick<Config, "modelPresets">): ModelPreset[] {
+  return Array.isArray(cfg.modelPresets) ? cfg.modelPresets : []
+}
+
+function normalizeModelPresetString(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== "string") return undefined
+  return value.trim().slice(0, maxLength)
+}
+
+async function getMergedModelPresetState(cfg: Pick<Config, "modelPresets" | "openaiApiKey" | "currentModelPresetId">): Promise<{
+  defaultModelPresetId: string
+  presets: ModelPreset[]
+}> {
+  const { DEFAULT_MODEL_PRESET_ID, getBuiltInModelPresets } = await import("@dotagents/shared")
+  const builtInPresets = getBuiltInModelPresets()
+  const savedPresets = getSavedModelPresets(cfg)
+  const builtInIds = new Set(builtInPresets.map((preset) => preset.id))
+
+  const mergedBuiltInPresets = builtInPresets.map((builtIn) => {
+    const savedOverride = savedPresets.find((preset) => preset.id === builtIn.id)
+    const mergedPreset: ModelPreset = savedOverride
+      ? { ...builtIn, ...savedOverride, isBuiltIn: true }
+      : { ...builtIn, isBuiltIn: true }
+
+    if (mergedPreset.id === DEFAULT_MODEL_PRESET_ID && !mergedPreset.apiKey && cfg.openaiApiKey) {
+      return { ...mergedPreset, apiKey: cfg.openaiApiKey }
+    }
+
+    return mergedPreset
+  })
+
+  const customPresets = savedPresets
+    .filter((preset) => !builtInIds.has(preset.id))
+    .map((preset) => ({ ...preset, isBuiltIn: false }))
+
+  return {
+    defaultModelPresetId: DEFAULT_MODEL_PRESET_ID,
+    presets: [...mergedBuiltInPresets, ...customPresets],
+  }
+}
+
+function formatModelPresetSummary(preset: ModelPreset): ModelPresetSummary {
+  const { apiKey: _apiKey, ...summary } = preset
+  const hasApiKey = typeof preset.apiKey === "string" && preset.apiKey.length > 0
+
+  return {
+    ...summary,
+    isBuiltIn: preset.isBuiltIn ?? false,
+    apiKey: hasApiKey ? REMOTE_SERVER_SECRET_MASK : "",
+    hasApiKey,
+  }
+}
+
+async function buildModelPresetsResponse(cfg: Config): Promise<ModelPresetsResponse> {
+  const { defaultModelPresetId, presets } = await getMergedModelPresetState(cfg)
+  return {
+    currentModelPresetId: cfg.currentModelPresetId || defaultModelPresetId,
+    presets: presets.map(formatModelPresetSummary),
+  }
+}
+
+function buildModelPresetMutationResponse(
+  presetsResponse: ModelPresetsResponse,
+  options: { preset?: ModelPreset; deletedPresetId?: string } = {},
+): ModelPresetMutationResponse {
+  return {
+    success: true,
+    ...presetsResponse,
+    ...(options.preset ? { preset: formatModelPresetSummary(options.preset) } : {}),
+    ...(options.deletedPresetId ? { deletedPresetId: options.deletedPresetId } : {}),
+  }
+}
+
+function getModelPresetActivationUpdates(preset: ModelPreset): Partial<Config> {
+  const updates: Partial<Config> = {
+    currentModelPresetId: preset.id,
+    openaiBaseUrl: preset.baseUrl,
+    openaiApiKey: preset.apiKey || "",
+  }
+  const agentModel = preset.agentModel || preset.mcpToolsModel
+  if (agentModel) {
+    updates.agentOpenaiModel = agentModel
+    updates.mcpToolsOpenaiModel = agentModel
+  }
+  if (preset.transcriptProcessingModel) {
+    updates.transcriptPostProcessingOpenaiModel = preset.transcriptProcessingModel
+  }
+  return updates
+}
+
+function buildModelPresetUpdatePatch(body: unknown, existingPreset: ModelPreset): Partial<ModelPreset> {
+  const requestBody = body && typeof body === "object" && !Array.isArray(body)
+    ? body as Record<string, unknown>
+    : {}
+  const patch: Partial<ModelPreset> = {}
+
+  if (!existingPreset.isBuiltIn) {
+    const name = normalizeModelPresetString(requestBody.name, 120)
+    const baseUrl = normalizeModelPresetString(requestBody.baseUrl, 500)
+    if (name !== undefined) patch.name = name
+    if (baseUrl !== undefined) patch.baseUrl = baseUrl
+  }
+
+  const apiKey = normalizeModelPresetString(requestBody.apiKey, 2000)
+  if (apiKey !== undefined && apiKey !== REMOTE_SERVER_SECRET_MASK && apiKey.length > 0) {
+    patch.apiKey = apiKey
+  }
+
+  const agentModel = normalizeModelPresetString(requestBody.agentModel ?? requestBody.mcpToolsModel, 300)
+  if (agentModel !== undefined) {
+    patch.agentModel = agentModel
+    patch.mcpToolsModel = agentModel
+  }
+
+  const transcriptProcessingModel = normalizeModelPresetString(requestBody.transcriptProcessingModel, 300)
+  if (transcriptProcessingModel !== undefined) {
+    patch.transcriptProcessingModel = transcriptProcessingModel
+  }
+
+  return patch
+}
+
+async function upsertModelPresetOverride(
+  cfg: Config,
+  presetId: string,
+  patch: Partial<ModelPreset>,
+): Promise<ModelPreset[]> {
+  const savedPresets = getSavedModelPresets(cfg)
+  const savedIndex = savedPresets.findIndex((preset) => preset.id === presetId)
+  const { presets } = await getMergedModelPresetState(cfg)
+  const existingPreset = presets.find((preset) => preset.id === presetId)
+  if (!existingPreset) return savedPresets
+
+  const nextPreset: ModelPreset = {
+    ...existingPreset,
+    ...patch,
+    isBuiltIn: existingPreset.isBuiltIn ?? false,
+    updatedAt: Date.now(),
+  }
+
+  if (savedIndex >= 0) {
+    return savedPresets.map((preset) => (preset.id === presetId ? nextPreset : preset))
+  }
+
+  return [...savedPresets, nextPreset]
 }
 
 // Track webContents IDs that already have a pending did-finish-load notification queued,
@@ -4255,28 +4406,133 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  fastify.get("/v1/operator/model-presets", async (_req, reply) => {
+    try {
+      return reply.send(await buildModelPresetsResponse(configStore.get()))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to build model preset summaries", error)
+      return reply.code(500).send({ error: error?.message || "Failed to build model preset summaries" })
+    }
+  })
+
+  fastify.post("/v1/operator/model-presets", async (req, reply) => {
+    try {
+      const body = req.body as Record<string, unknown> | undefined
+      const name = normalizeModelPresetString(body?.name, 120)
+      const baseUrl = normalizeModelPresetString(body?.baseUrl, 500)
+      if (!name) {
+        return reply.code(400).send({ error: "Preset name is required" })
+      }
+      if (!baseUrl) {
+        return reply.code(400).send({ error: "Preset base URL is required" })
+      }
+
+      const now = Date.now()
+      const agentModel = normalizeModelPresetString(body?.agentModel ?? body?.mcpToolsModel, 300) || ""
+      const preset: ModelPreset = {
+        id: `custom-${crypto.randomUUID()}`,
+        name,
+        baseUrl,
+        apiKey: normalizeModelPresetString(body?.apiKey, 2000) || "",
+        isBuiltIn: false,
+        createdAt: now,
+        updatedAt: now,
+        agentModel,
+        mcpToolsModel: agentModel,
+        transcriptProcessingModel: normalizeModelPresetString(body?.transcriptProcessingModel, 300) || "",
+      }
+
+      const cfg = configStore.get()
+      const nextConfig = { ...cfg, modelPresets: [...getSavedModelPresets(cfg), preset] }
+      configStore.save(nextConfig)
+      return reply.send(buildModelPresetMutationResponse(await buildModelPresetsResponse(nextConfig), { preset }))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to create model preset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to create model preset" })
+    }
+  })
+
+  fastify.patch("/v1/operator/model-presets/:presetId", async (req, reply) => {
+    try {
+      const params = req.params as { presetId?: string }
+      const presetId = decodeURIComponent(params.presetId || "").trim()
+      if (!presetId) {
+        return reply.code(400).send({ error: "Missing preset ID" })
+      }
+
+      const cfg = configStore.get()
+      const { presets } = await getMergedModelPresetState(cfg)
+      const existingPreset = presets.find((preset) => preset.id === presetId)
+      if (!existingPreset) {
+        return reply.code(404).send({ error: "Model preset not found" })
+      }
+
+      const patch = buildModelPresetUpdatePatch(req.body, existingPreset)
+      const modelPresets = await upsertModelPresetOverride(cfg, presetId, patch)
+      const nextLookupState = await getMergedModelPresetState({ ...cfg, modelPresets })
+      const updatedPreset = nextLookupState.presets.find((preset) => preset.id === presetId)
+      if (!updatedPreset) {
+        return reply.code(404).send({ error: "Model preset not found" })
+      }
+
+      const updates: Partial<Config> = { modelPresets }
+      if ((cfg.currentModelPresetId || nextLookupState.defaultModelPresetId) === presetId) {
+        Object.assign(updates, getModelPresetActivationUpdates(updatedPreset))
+      }
+      const nextConfig = { ...cfg, ...updates }
+      configStore.save(nextConfig)
+      return reply.send(buildModelPresetMutationResponse(await buildModelPresetsResponse(nextConfig), { preset: updatedPreset }))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to update model preset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to update model preset" })
+    }
+  })
+
+  fastify.delete("/v1/operator/model-presets/:presetId", async (req, reply) => {
+    try {
+      const params = req.params as { presetId?: string }
+      const presetId = decodeURIComponent(params.presetId || "").trim()
+      if (!presetId) {
+        return reply.code(400).send({ error: "Missing preset ID" })
+      }
+
+      const cfg = configStore.get()
+      const { defaultModelPresetId, presets } = await getMergedModelPresetState(cfg)
+      const preset = presets.find((candidate) => candidate.id === presetId)
+      if (!preset) {
+        return reply.code(404).send({ error: "Model preset not found" })
+      }
+      if (preset.isBuiltIn) {
+        return reply.code(400).send({ error: "Built-in presets cannot be deleted" })
+      }
+
+      const modelPresets = getSavedModelPresets(cfg).filter((candidate) => candidate.id !== presetId)
+      const updates: Partial<Config> = { modelPresets }
+      const switchedToDefault = (cfg.currentModelPresetId || defaultModelPresetId) === presetId
+      if (switchedToDefault) {
+        const defaultPresetState = await getMergedModelPresetState({ ...cfg, modelPresets })
+        const defaultPreset = defaultPresetState.presets.find((candidate) => candidate.id === defaultModelPresetId)
+        if (defaultPreset) {
+          Object.assign(updates, getModelPresetActivationUpdates(defaultPreset))
+        } else {
+          updates.currentModelPresetId = defaultModelPresetId
+        }
+      }
+
+      const nextConfig = { ...cfg, ...updates }
+      configStore.save(nextConfig)
+      return reply.send(buildModelPresetMutationResponse(await buildModelPresetsResponse(nextConfig), { deletedPresetId: presetId }))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete model preset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete model preset" })
+    }
+  })
+
   // GET /v1/settings - Get relevant settings for mobile app
   fastify.get("/v1/settings", async (_req, reply) => {
     try {
       const cfg = configStore.get()
-      const { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } = await import("@dotagents/shared")
-      const builtInPresets = getBuiltInModelPresets()
-      const savedPresets = cfg.modelPresets || []
-
-      // Merge built-in presets with any saved overrides (e.g., edited baseUrl/name)
-      // and include custom (non-built-in) presets
-      const builtInIds = new Set(builtInPresets.map(p => p.id))
-      const mergedPresets = builtInPresets.map(builtIn => {
-        const savedOverride = savedPresets.find(p => p.id === builtIn.id)
-        if (savedOverride) {
-          // Apply saved overrides to built-in preset
-          return { ...builtIn, ...savedOverride }
-        }
-        return builtIn
-      })
-      // Filter custom presets by excluding any IDs that match built-in presets
-      // This prevents duplicates from older entries where isBuiltIn was unset
-      const customPresets = savedPresets.filter(p => !builtInIds.has(p.id))
+      const { defaultModelPresetId, presets } = await getMergedModelPresetState(cfg)
 
       return reply.send({
         // Agent model settings (agent* preferred; mcpTools* legacy aliases)
@@ -4291,13 +4547,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
         mcpToolsChatgptWebModel: cfg.mcpToolsChatgptWebModel,
         // OpenAI compatible preset settings
-        currentModelPresetId: cfg.currentModelPresetId || DEFAULT_MODEL_PRESET_ID,
-        availablePresets: [...mergedPresets, ...customPresets].map(p => ({
-          id: p.id,
-          name: p.name,
-          baseUrl: p.baseUrl,
-          isBuiltIn: p.isBuiltIn ?? false,
-        })),
+        currentModelPresetId: cfg.currentModelPresetId || defaultModelPresetId,
+        availablePresets: presets.map(formatModelPresetSummary),
         predefinedPrompts: (cfg.predefinedPrompts || []).map(prompt => ({
           id: prompt.id,
           name: prompt.name,
@@ -4508,14 +4759,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       // OpenAI compatible preset - validate against known preset IDs
       if (typeof body.currentModelPresetId === "string") {
-        const { getBuiltInModelPresets } = await import("@dotagents/shared")
-        const builtInPresets = getBuiltInModelPresets()
-        const savedPresets = cfg.modelPresets || []
-        const builtInIds = new Set(builtInPresets.map(p => p.id))
-        const allValidIds = new Set([...builtInIds, ...savedPresets.filter(p => !builtInIds.has(p.id)).map(p => p.id)])
-
-        if (allValidIds.has(body.currentModelPresetId)) {
-          updates.currentModelPresetId = body.currentModelPresetId
+        const { presets } = await getMergedModelPresetState(cfg)
+        const selectedPreset = presets.find((preset) => preset.id === body.currentModelPresetId)
+        if (selectedPreset) {
+          Object.assign(updates, getModelPresetActivationUpdates(selectedPreset))
         }
         // If preset ID is invalid, silently ignore to avoid breaking client
       }

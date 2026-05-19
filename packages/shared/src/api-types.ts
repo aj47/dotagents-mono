@@ -3,6 +3,7 @@
  * These are interface/type definitions only - no implementation classes
  */
 
+import type { ModelPreset } from './providers';
 import type { QueuedMessage } from './types';
 
 export interface Profile {
@@ -44,6 +45,42 @@ export interface ModelInfo {
 export interface ModelsResponse {
   providerId: string;
   models: ModelInfo[];
+}
+
+export interface ModelPresetSummary extends Omit<ModelPreset, 'apiKey'> {
+  apiKey?: string;
+  hasApiKey?: boolean;
+}
+
+export interface ModelPresetsResponse {
+  currentModelPresetId: string;
+  presets: ModelPresetSummary[];
+}
+
+export interface ModelPresetCreateRequest {
+  name: string;
+  baseUrl: string;
+  apiKey?: string;
+  agentModel?: string;
+  mcpToolsModel?: string;
+  transcriptProcessingModel?: string;
+}
+
+export interface ModelPresetUpdateRequest {
+  name?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  agentModel?: string;
+  mcpToolsModel?: string;
+  transcriptProcessingModel?: string;
+}
+
+export interface ModelPresetMutationResponse {
+  success: boolean;
+  currentModelPresetId: string;
+  presets: ModelPresetSummary[];
+  preset?: ModelPresetSummary;
+  deletedPresetId?: string;
 }
 
 export interface AgentSessionCandidate {
@@ -386,7 +423,7 @@ export interface Settings {
   mcpToolsGeminiModel?: string;
   mcpToolsChatgptWebModel?: string;
   currentModelPresetId?: string;
-  availablePresets?: Array<{ id: string; name: string; baseUrl: string; isBuiltIn: boolean }>;
+  availablePresets?: ModelPresetSummary[];
   predefinedPrompts?: PredefinedPromptSummary[];
   knowledgeRoots?: string[];
 

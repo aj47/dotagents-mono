@@ -29,6 +29,7 @@ import {
   MCPTransportType,
   ChatGptWebAuthStatus,
   Settings,
+  ModelPresetSummary,
   ModelInfo,
   SettingsUpdate,
   Skill,
@@ -113,6 +114,63 @@ const BUNDLE_IMPORT_CONFLICT_STRATEGIES: Array<{ value: BundleImportConflictStra
   { value: 'rename', label: 'Rename' },
   { value: 'overwrite', label: 'Overwrite' },
 ];
+
+type ModelPresetEditorMode = 'create' | 'edit';
+
+type ModelPresetDraft = {
+  id?: string;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  agentModel: string;
+  transcriptProcessingModel: string;
+  isBuiltIn: boolean;
+  hasApiKey: boolean;
+};
+
+const EMPTY_MODEL_PRESET_DRAFT: ModelPresetDraft = {
+  name: '',
+  baseUrl: '',
+  apiKey: '',
+  agentModel: '',
+  transcriptProcessingModel: '',
+  isBuiltIn: false,
+  hasApiKey: false,
+};
+
+function buildModelPresetDraftFromSummary(preset?: ModelPresetSummary | null): ModelPresetDraft {
+  if (!preset) return EMPTY_MODEL_PRESET_DRAFT;
+  return {
+    id: preset.id,
+    name: preset.name,
+    baseUrl: preset.baseUrl,
+    apiKey: '',
+    agentModel: preset.agentModel || preset.mcpToolsModel || '',
+    transcriptProcessingModel: preset.transcriptProcessingModel || '',
+    isBuiltIn: preset.isBuiltIn ?? false,
+    hasApiKey: !!preset.hasApiKey,
+  };
+}
+
+function buildModelPresetPayloadFromDraft(draft: ModelPresetDraft):
+  | { ok: true; payload: { name: string; baseUrl: string; apiKey?: string; agentModel?: string; transcriptProcessingModel?: string } }
+  | { ok: false; error: string } {
+  const name = draft.name.trim();
+  const baseUrl = draft.baseUrl.trim();
+  if (!name) return { ok: false, error: 'Endpoint name is required' };
+  if (!baseUrl) return { ok: false, error: 'Endpoint base URL is required' };
+
+  return {
+    ok: true,
+    payload: {
+      name,
+      baseUrl,
+      apiKey: draft.apiKey.trim(),
+      agentModel: draft.agentModel.trim(),
+      transcriptProcessingModel: draft.transcriptProcessingModel.trim(),
+    },
+  };
+}
 
 function describeLoopCadence(loop: Loop): string {
   if (loop.runContinuously) return 'Continuous';
@@ -629,6 +687,10 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Preset picker state
   const [showPresetPicker, setShowPresetPicker] = useState(false);
+  const [showPresetEditor, setShowPresetEditor] = useState(false);
+  const [presetEditorMode, setPresetEditorMode] = useState<ModelPresetEditorMode>('create');
+  const [presetDraft, setPresetDraft] = useState<ModelPresetDraft>(EMPTY_MODEL_PRESET_DRAFT);
+  const [isSavingPreset, setIsSavingPreset] = useState(false);
 
   // TTS voice/model picker state
   const [showTtsVoicePicker, setShowTtsVoicePicker] = useState(false);
@@ -2114,7 +2176,7 @@ export default function SettingsScreen({ navigation }: any) {
     setShowPresetPicker(false);
     try {
       await settingsClient.updateSettings({ currentModelPresetId: presetId });
-      setRemoteSettings(prev => prev ? { ...prev, currentModelPresetId: presetId } : null);
+      await fetchRemoteSettings();
       // Reset models and fetch new ones for the new preset
       setAvailableModels([]);
       setUseCustomModel(false);
@@ -2128,11 +2190,95 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const getCurrentModelPreset = (): ModelPresetSummary | undefined => {
+    if (!remoteSettings?.availablePresets || !remoteSettings.currentModelPresetId) return undefined;
+    return remoteSettings.availablePresets.find(p => p.id === remoteSettings.currentModelPresetId);
+  };
+
   // Get current preset display name
   const getCurrentPresetName = () => {
     if (!remoteSettings?.availablePresets || !remoteSettings.currentModelPresetId) return 'OpenAI';
     const preset = remoteSettings.availablePresets.find(p => p.id === remoteSettings.currentModelPresetId);
     return preset?.name || 'OpenAI';
+  };
+
+  const openPresetEditor = (mode: ModelPresetEditorMode, preset?: ModelPresetSummary) => {
+    setPresetEditorMode(mode);
+    setPresetDraft(mode === 'edit' && preset ? buildModelPresetDraftFromSummary(preset) : EMPTY_MODEL_PRESET_DRAFT);
+    setShowPresetEditor(true);
+  };
+
+  const closePresetEditor = () => {
+    if (isSavingPreset) return;
+    setShowPresetEditor(false);
+    setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+  };
+
+  const handlePresetDraftChange = (key: keyof ModelPresetDraft, value: string) => {
+    setPresetDraft(prev => ({ ...prev, [key]: value }));
+  };
+
+  const refreshSettingsAfterPresetMutation = async () => {
+    await fetchRemoteSettings();
+    if (getAgentProvider() === 'openai') {
+      setAvailableModels([]);
+      fetchModels('openai');
+    }
+  };
+
+  const handlePresetEditorSave = async () => {
+    if (!settingsClient) return;
+
+    const draftPayload = buildModelPresetPayloadFromDraft(presetDraft);
+    if (!draftPayload.ok) {
+      setRemoteError(draftPayload.error);
+      return;
+    }
+
+    setIsSavingPreset(true);
+    setRemoteError(null);
+    try {
+      if (presetEditorMode === 'create') {
+        await settingsClient.createModelPreset(draftPayload.payload);
+      } else if (presetDraft.id) {
+        await settingsClient.updateModelPreset(presetDraft.id, draftPayload.payload);
+      }
+      await refreshSettingsAfterPresetMutation();
+      setShowPresetEditor(false);
+      setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+      setSaveStatusMessage('Saved');
+    } catch (error: any) {
+      console.error('[Settings] Failed to save preset:', error);
+      setRemoteError(error.message || 'Failed to save endpoint preset');
+    } finally {
+      setIsSavingPreset(false);
+    }
+  };
+
+  const handlePresetDelete = () => {
+    if (!settingsClient || !presetDraft.id || presetDraft.isBuiltIn) return;
+
+    confirmDestructiveAction(
+      'Delete Preset',
+      `Delete "${presetDraft.name}" from desktop model presets?`,
+      async () => {
+        setIsSavingPreset(true);
+        setRemoteError(null);
+        try {
+          await settingsClient.deleteModelPreset(presetDraft.id!);
+          await refreshSettingsAfterPresetMutation();
+          setShowPresetEditor(false);
+          setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+          setSaveStatusMessage('Saved');
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete preset:', error);
+          setRemoteError(error.message || 'Failed to delete endpoint preset');
+        } finally {
+          setIsSavingPreset(false);
+        }
+      },
+      'Delete',
+    );
   };
 
   // Handle model name change with debouncing to avoid request storms per keystroke
@@ -3031,6 +3177,44 @@ export default function SettingsScreen({ navigation }: any) {
                         <Text style={styles.modelSelectorChevron}>▼</Text>
                       </View>
                     </TouchableOpacity>
+                    {(() => {
+                      const currentPreset = getCurrentModelPreset();
+                      return (
+                        <View style={styles.endpointPanel}>
+                          <View style={styles.endpointMetaRow}>
+                            <Text style={styles.endpointBaseUrl} numberOfLines={1}>
+                              {currentPreset?.baseUrl || 'No URL set'}
+                            </Text>
+                            <Text style={[styles.endpointKeyBadge, currentPreset?.hasApiKey && styles.endpointKeyBadgeActive]}>
+                              {currentPreset?.hasApiKey ? 'Key set' : 'No key'}
+                            </Text>
+                          </View>
+                          <View style={styles.profileActions}>
+                            <TouchableOpacity
+                              style={styles.profileActionButton}
+                              onPress={() => currentPreset && openPresetEditor('edit', currentPreset)}
+                              disabled={!currentPreset}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${
+                                currentPreset?.isBuiltIn ? 'Configure' : 'Edit'
+                              } preset ${currentPreset?.name || getCurrentPresetName()}`}
+                            >
+                              <Text style={styles.profileActionButtonText}>
+                                {currentPreset?.isBuiltIn ? 'Configure' : 'Edit'}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.profileActionButton}
+                              onPress={() => openPresetEditor('create')}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel('Create endpoint preset')}
+                            >
+                              <Text style={styles.profileActionButtonText}>New Preset</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })()}
                   </>
                 )}
 
@@ -5224,6 +5408,124 @@ export default function SettingsScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* Preset Editor Modal */}
+      <Modal
+        visible={showPresetEditor}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closePresetEditor}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={[styles.importModalContainer, styles.presetEditorContainer]}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>
+                {presetEditorMode === 'create'
+                  ? 'Create New Preset'
+                  : presetDraft.isBuiltIn ? 'Configure Preset' : 'Edit Preset'}
+              </Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closePresetEditor}
+                accessibilityRole="button"
+                accessibilityLabel="Close preset editor"
+                disabled={isSavingPreset}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.presetEditorBody} keyboardShouldPersistTaps="handled">
+              <Text style={styles.label}>Preset Name</Text>
+              <TextInput
+                style={[styles.input, presetDraft.isBuiltIn && styles.inputDisabled]}
+                value={presetDraft.name}
+                onChangeText={(v) => handlePresetDraftChange('name', v)}
+                placeholder="e.g., My OpenRouter"
+                placeholderTextColor={theme.colors.mutedForeground}
+                editable={!presetDraft.isBuiltIn && !isSavingPreset}
+              />
+
+              <Text style={styles.label}>Base URL</Text>
+              <TextInput
+                style={[styles.input, presetDraft.isBuiltIn && styles.inputDisabled]}
+                value={presetDraft.baseUrl}
+                onChangeText={(v) => handlePresetDraftChange('baseUrl', v)}
+                placeholder="https://openrouter.ai/api/v1"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!presetDraft.isBuiltIn && !isSavingPreset}
+              />
+
+              <Text style={styles.label}>API Key</Text>
+              <TextInput
+                style={styles.input}
+                value={presetDraft.apiKey}
+                onChangeText={(v) => handlePresetDraftChange('apiKey', v)}
+                placeholder={presetDraft.hasApiKey ? 'Leave blank to keep existing key' : 'sk-...'}
+                placeholderTextColor={theme.colors.mutedForeground}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingPreset}
+              />
+
+              <Text style={styles.label}>Agent Model</Text>
+              <TextInput
+                style={styles.input}
+                value={presetDraft.agentModel}
+                onChangeText={(v) => handlePresetDraftChange('agentModel', v)}
+                placeholder="gpt-4.1-mini"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingPreset}
+              />
+
+              <Text style={styles.label}>Transcript Model</Text>
+              <TextInput
+                style={styles.input}
+                value={presetDraft.transcriptProcessingModel}
+                onChangeText={(v) => handlePresetDraftChange('transcriptProcessingModel', v)}
+                placeholder="Optional"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingPreset}
+              />
+            </ScrollView>
+
+            <View style={styles.importModalActions}>
+              {presetEditorMode === 'edit' && !presetDraft.isBuiltIn && (
+                <TouchableOpacity
+                  style={[styles.dangerActionButton, styles.presetDeleteButton, isSavingPreset && styles.dangerActionButtonDisabled]}
+                  onPress={handlePresetDelete}
+                  disabled={isSavingPreset}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete preset ${presetDraft.name}`}
+                >
+                  <Text style={styles.dangerActionButtonText}>Delete</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.importModalCancelButton} onPress={closePresetEditor} disabled={isSavingPreset}>
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.importModalImportButton, isSavingPreset && styles.importModalImportButtonDisabled]}
+                onPress={handlePresetEditorSave}
+                disabled={isSavingPreset}
+                accessibilityRole="button"
+                accessibilityLabel={presetEditorMode === 'create' ? 'Create preset' : 'Save preset changes'}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isSavingPreset ? 'Saving...' : 'Save Changes'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* TTS Model Picker Modal */}
       <Modal
         visible={showTtsModelPicker}
@@ -5809,6 +6111,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       width: '100%',
       maxWidth: 400,
     },
+    presetEditorContainer: {
+      maxHeight: '82%',
+    },
+    presetEditorBody: {
+      maxHeight: 460,
+    },
     importModalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -5886,6 +6194,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       color: theme.colors.primaryForeground,
       fontWeight: '600',
+    },
+    presetDeleteButton: {
+      flexGrow: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 40,
     },
     serverRow: {
       flexDirection: 'row',
@@ -6156,6 +6470,38 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     modelActionText: {
       fontSize: 12,
       color: theme.colors.primary,
+    },
+    endpointPanel: {
+      marginTop: spacing.sm,
+      gap: spacing.sm,
+    },
+    endpointMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    endpointBaseUrl: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.colors.mutedForeground,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    endpointKeyBadge: {
+      flexShrink: 0,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    endpointKeyBadgeActive: {
+      borderColor: theme.colors.primary,
+      color: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '10',
     },
     modelSelector: {
       borderWidth: 1,
