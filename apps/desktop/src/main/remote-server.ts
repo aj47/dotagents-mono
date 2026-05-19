@@ -2942,6 +2942,109 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // POST /v1/operator/mcp/tools/toggle - Enable/disable an MCP tool for the current profile/runtime
+  fastify.post("/v1/operator/mcp/tools/toggle", async (req, reply) => {
+    try {
+      const body = req.body as { toolName?: string; enabled?: boolean } | null
+      const toolName = typeof body?.toolName === "string" ? body.toolName.trim() : ""
+      const enabled = body?.enabled
+
+      if (!toolName || typeof enabled !== "boolean") {
+        return reply.code(400).send({ error: "Missing toolName or enabled" })
+      }
+
+      const success = mcpService.setToolEnabled(toolName, enabled)
+      if (!success) {
+        setOperatorAuditContext(req, {
+          action: "mcp-tool-toggle",
+          success: false,
+          failureReason: "tool-not-found-or-locked",
+          details: { toolName, enabled },
+        })
+        return reply.code(404).send({ error: `Tool '${toolName}' could not be updated` })
+      }
+
+      const tool = mcpService.getDetailedToolList().find((entry) => entry.name === toolName)
+      setOperatorAuditContext(req, {
+        action: "mcp-tool-toggle",
+        success: true,
+        details: { toolName, enabled },
+      })
+
+      return reply.send({
+        success: true,
+        tool: tool ? {
+          name: tool.name,
+          description: tool.description ?? "",
+          sourceKind: tool.sourceKind,
+          sourceName: tool.sourceName,
+          sourceLabel: tool.sourceLabel ?? tool.sourceName,
+          serverName: tool.serverName,
+          enabled: tool.enabled,
+          serverEnabled: tool.serverEnabled,
+        } : undefined,
+      })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-tool-toggle",
+        success: false,
+        failureReason: "mcp-tool-toggle-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP tool toggle failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `MCP tool toggle failed: ${errorMessage}` })
+    }
+  })
+
+  // GET /v1/operator/mcp/:server/logs - Recent MCP server log preview
+  fastify.get("/v1/operator/mcp/:server/logs", async (req, reply) => {
+    try {
+      const params = req.params as { server: string }
+      const query = req.query as { count?: string }
+      const serverName = decodeURIComponent(params.server || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const parsedCount = Number.parseInt(String(query.count ?? "20"), 10)
+      const count = Number.isFinite(parsedCount) ? Math.max(1, Math.min(parsedCount, 100)) : 20
+      const logs = mcpService.getServerLogs(serverName).slice(-count).reverse()
+      return reply.send({ server: serverName, count: logs.length, logs })
+    } catch (error) {
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP logs failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `Failed to load MCP logs: ${errorMessage}` })
+    }
+  })
+
+  // POST /v1/operator/mcp/:server/logs/clear - Clear MCP server logs
+  fastify.post("/v1/operator/mcp/:server/logs/clear", async (req, reply) => {
+    try {
+      const params = req.params as { server: string }
+      const serverName = decodeURIComponent(params.server || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      mcpService.clearServerLogs(serverName)
+      setOperatorAuditContext(req, {
+        action: "mcp-clear-logs",
+        success: true,
+        details: { server: serverName },
+      })
+      return reply.send({ success: true, action: "mcp-clear-logs", server: serverName })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-clear-logs",
+        success: false,
+        failureReason: "mcp-clear-logs-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP clear logs failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `Failed to clear MCP logs: ${errorMessage}` })
+    }
+  })
+
   // POST /v1/operator/actions/mcp-restart - Restart an MCP server
   fastify.post("/v1/operator/actions/mcp-restart", async (req, reply) => {
     try {
@@ -2978,6 +3081,154 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const errorMessage = getErrorMessage(error)
       diagnosticsService.logError("remote-server", `Operator MCP restart failed: ${errorMessage}`, error)
       return reply.code(500).send({ error: `MCP restart failed: ${errorMessage}` })
+    }
+  })
+
+  // POST /v1/operator/actions/mcp-start - Runtime-enable and start an MCP server
+  fastify.post("/v1/operator/actions/mcp-start", async (req, reply) => {
+    try {
+      const body = req.body as { server?: string } | null
+      const serverName = typeof body?.server === "string" ? body.server.trim() : ""
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const enabled = mcpService.setServerRuntimeEnabled(serverName, true)
+      if (!enabled) {
+        setOperatorAuditContext(req, {
+          action: "mcp-start",
+          success: false,
+          failureReason: "server-not-found",
+          details: { server: serverName },
+        })
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      const result = await mcpService.restartServer(serverName)
+      if (!result.success) {
+        setOperatorAuditContext(req, {
+          action: "mcp-start",
+          success: false,
+          failureReason: result.error || "start-failed",
+          details: { server: serverName },
+        })
+        return reply.code(400).send({ error: result.error || "Start failed" })
+      }
+
+      setOperatorAuditContext(req, {
+        action: "mcp-start",
+        success: true,
+        details: { server: serverName },
+      })
+      return reply.send({ success: true, action: "mcp-start", server: serverName })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-start",
+        success: false,
+        failureReason: "mcp-start-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP start failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `MCP start failed: ${errorMessage}` })
+    }
+  })
+
+  // POST /v1/operator/actions/mcp-stop - Runtime-disable and stop an MCP server
+  fastify.post("/v1/operator/actions/mcp-stop", async (req, reply) => {
+    try {
+      const body = req.body as { server?: string } | null
+      const serverName = typeof body?.server === "string" ? body.server.trim() : ""
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const disabled = mcpService.setServerRuntimeEnabled(serverName, false)
+      if (!disabled) {
+        setOperatorAuditContext(req, {
+          action: "mcp-stop",
+          success: false,
+          failureReason: "server-not-found",
+          details: { server: serverName },
+        })
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      const result = await mcpService.stopServer(serverName)
+      if (!result.success) {
+        setOperatorAuditContext(req, {
+          action: "mcp-stop",
+          success: false,
+          failureReason: result.error || "stop-failed",
+          details: { server: serverName },
+        })
+        return reply.code(400).send({ error: result.error || "Stop failed" })
+      }
+
+      setOperatorAuditContext(req, {
+        action: "mcp-stop",
+        success: true,
+        details: { server: serverName },
+      })
+      return reply.send({ success: true, action: "mcp-stop", server: serverName })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-stop",
+        success: false,
+        failureReason: "mcp-stop-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP stop failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `MCP stop failed: ${errorMessage}` })
+    }
+  })
+
+  // POST /v1/operator/actions/mcp-test - Test an MCP server configuration
+  fastify.post("/v1/operator/actions/mcp-test", async (req, reply) => {
+    try {
+      const body = req.body as { server?: string } | null
+      const serverName = typeof body?.server === "string" ? body.server.trim() : ""
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const serverConfig = configStore.get().mcpConfig?.mcpServers?.[serverName]
+      if (!serverConfig) {
+        setOperatorAuditContext(req, {
+          action: "mcp-test",
+          success: false,
+          failureReason: "server-not-found",
+          details: { server: serverName },
+        })
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      const result = await mcpService.testServerConnection(serverName, serverConfig)
+      setOperatorAuditContext(req, {
+        action: "mcp-test",
+        success: result.success,
+        failureReason: result.success ? undefined : result.error || "test-failed",
+        details: { server: serverName, toolCount: result.toolCount },
+      })
+
+      if (!result.success) {
+        return reply.code(400).send({ success: false, error: result.error || "Connection test failed" })
+      }
+
+      return reply.send({
+        success: true,
+        action: "mcp-test",
+        server: serverName,
+        toolCount: result.toolCount ?? 0,
+      })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-test",
+        success: false,
+        failureReason: "mcp-test-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP test failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `MCP test failed: ${errorMessage}` })
     }
   })
 

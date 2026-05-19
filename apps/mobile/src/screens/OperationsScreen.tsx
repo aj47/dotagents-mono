@@ -26,7 +26,9 @@ import {
   OperatorConversationItem,
   OperatorDiscordIntegrationSummary,
   OperatorDiscordLogEntry,
+  OperatorMCPServerLogEntry,
   OperatorMCPServerSummary,
+  OperatorMCPToolSummary,
   OperatorRecentError,
   OperatorRuntimeStatus,
   OperatorTunnelSetupSummary,
@@ -41,6 +43,7 @@ import { radius, spacing } from '../ui/theme';
 const RECENT_ERROR_COUNT = 8;
 const RECENT_AUDIT_ENTRY_COUNT = 10;
 const DISCORD_LOG_PREVIEW_COUNT = 6;
+const MCP_LOG_PREVIEW_COUNT = 20;
 const ACTION_REFRESH_DELAY_MS = 1200;
 const AUTO_REFRESH_INTERVAL_MS = 30_000;
 
@@ -156,6 +159,10 @@ export default function OperationsScreen({ navigation }: any) {
   const [auditEntries, setAuditEntries] = useState<OperatorAuditEntry[]>([]);
   const [conversations, setConversations] = useState<OperatorConversationItem[]>([]);
   const [mcpServers, setMcpServers] = useState<OperatorMCPServerSummary[]>([]);
+  const [mcpServerLogs, setMcpServerLogs] = useState<Record<string, OperatorMCPServerLogEntry[]>>({});
+  const [expandedMcpLogs, setExpandedMcpLogs] = useState<Set<string>>(new Set());
+  const [mcpServerTools, setMcpServerTools] = useState<Record<string, OperatorMCPToolSummary[]>>({});
+  const [expandedMcpTools, setExpandedMcpTools] = useState<Set<string>>(new Set());
   const [drafts, setDrafts] = useState<RemoteAccessDrafts>(buildDrafts(null));
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -184,6 +191,10 @@ export default function OperationsScreen({ navigation }: any) {
       setAuditEntries([]);
       setConversations([]);
       setMcpServers([]);
+      setMcpServerLogs({});
+      setExpandedMcpLogs(new Set());
+      setMcpServerTools({});
+      setExpandedMcpTools(new Set());
       setDrafts(buildDrafts(null));
       setError(null);
       setIsLoading(false);
@@ -528,6 +539,104 @@ export default function OperationsScreen({ navigation }: any) {
     void applySettingsUpdate({ remoteServerPort: parsed }, 'remote server port', `Remote server port saved as ${parsed}.`);
   }, [applySettingsUpdate, drafts.remoteServerPort, settings?.remoteServerPort]);
 
+  const loadMcpServerLogs = useCallback(async (serverName: string) => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before loading MCP logs.');
+      return;
+    }
+
+    const action = `mcp-logs:${serverName}`;
+    setPendingAction(action);
+    setActionFeedback(null);
+    try {
+      const response = await settingsClient.getOperatorMCPServerLogs(serverName, MCP_LOG_PREVIEW_COUNT);
+      setMcpServerLogs((current) => ({ ...current, [serverName]: response.logs }));
+      setExpandedMcpLogs((current) => new Set(current).add(serverName));
+    } catch (actionError) {
+      Alert.alert('Action Failed', getErrorMessage(actionError));
+    } finally {
+      setPendingAction(null);
+    }
+  }, [settingsClient]);
+
+  const toggleMcpServerLogs = useCallback((serverName: string) => {
+    if (expandedMcpLogs.has(serverName)) {
+      setExpandedMcpLogs((current) => {
+        const next = new Set(current);
+        next.delete(serverName);
+        return next;
+      });
+      return;
+    }
+
+    void loadMcpServerLogs(serverName);
+  }, [expandedMcpLogs, loadMcpServerLogs]);
+
+  const loadMcpServerTools = useCallback(async (serverName: string) => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before loading MCP tools.');
+      return;
+    }
+
+    const action = `mcp-tools:${serverName}`;
+    setPendingAction(action);
+    setActionFeedback(null);
+    try {
+      const response = await settingsClient.getOperatorMCPTools(serverName);
+      setMcpServerTools((current) => ({
+        ...current,
+        [serverName]: response.tools
+          .filter((tool) => tool.sourceKind === 'mcp')
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+      setExpandedMcpTools((current) => new Set(current).add(serverName));
+    } catch (actionError) {
+      Alert.alert('Action Failed', getErrorMessage(actionError));
+    } finally {
+      setPendingAction(null);
+    }
+  }, [settingsClient]);
+
+  const toggleMcpServerTools = useCallback((serverName: string) => {
+    if (expandedMcpTools.has(serverName)) {
+      setExpandedMcpTools((current) => {
+        const next = new Set(current);
+        next.delete(serverName);
+        return next;
+      });
+      return;
+    }
+
+    void loadMcpServerTools(serverName);
+  }, [expandedMcpTools, loadMcpServerTools]);
+
+  const toggleMcpToolEnabled = useCallback(async (tool: OperatorMCPToolSummary, enabled: boolean) => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before changing MCP tools.');
+      return;
+    }
+
+    const action = `mcp-tool-toggle:${tool.name}`;
+    setPendingAction(action);
+    setActionFeedback(null);
+    try {
+      const response = await settingsClient.setOperatorMCPToolEnabled(tool.name, enabled);
+      const nextTool = response.tool ?? { ...tool, enabled };
+      setMcpServerTools((current) => {
+        const next: Record<string, OperatorMCPToolSummary[]> = {};
+        Object.entries(current).forEach(([serverName, tools]) => {
+          next[serverName] = tools.map((entry) => entry.name === nextTool.name ? nextTool : entry);
+        });
+        return next;
+      });
+      setActionFeedback(enabled ? `${tool.name} enabled.` : `${tool.name} disabled.`);
+    } catch (actionError) {
+      Alert.alert('Action Failed', getErrorMessage(actionError));
+    } finally {
+      setPendingAction(null);
+    }
+  }, [settingsClient]);
+
   const healthColor = !status
     ? theme.colors.mutedForeground
     : status.health.overall === 'healthy'
@@ -634,11 +743,186 @@ export default function OperationsScreen({ navigation }: any) {
               <Text style={styles.detailText}>
                 {mcpServers.filter((s) => s.connected).length}/{mcpServers.length} connected • {mcpServers.reduce((sum, s) => sum + s.toolCount, 0)} tools
               </Text>
-              {mcpServers.map((s) => (
-                <Text key={s.name} style={styles.detailText}>
-                  {s.connected ? '✓' : s.enabled ? '✗' : '○'} {s.name}: {s.toolCount} tools{!s.enabled ? ' (disabled)' : ''}{s.error ? ` — ${s.error}` : ''}
-                </Text>
-              ))}
+              {mcpServers.map((s) => {
+                const runtimeEnabled = s.enabled;
+                const startAction = `mcp-start:${s.name}`;
+                const stopAction = `mcp-stop:${s.name}`;
+                const restartAction = `mcp-restart:${s.name}`;
+                const testAction = `mcp-test:${s.name}`;
+                const logsAction = `mcp-logs:${s.name}`;
+                const toolsAction = `mcp-tools:${s.name}`;
+                const clearLogsAction = `mcp-clear-logs:${s.name}`;
+                const logsExpanded = expandedMcpLogs.has(s.name);
+                const toolsExpanded = expandedMcpTools.has(s.name);
+                const logs = mcpServerLogs[s.name] ?? [];
+                const tools = mcpServerTools[s.name] ?? [];
+                const startDisabled = controlsDisabled || runtimeEnabled;
+                const stopDisabled = controlsDisabled || !runtimeEnabled;
+                const restartDisabled = controlsDisabled || !runtimeEnabled;
+
+                return (
+                  <View key={s.name} style={styles.mcpServerCard}>
+                    <View style={styles.mcpServerRow}>
+                      <View style={styles.mcpServerCopy}>
+                        <Text style={styles.detailText}>
+                          {s.connected ? 'Connected' : runtimeEnabled ? 'Disconnected' : 'Stopped'} • {s.name}
+                        </Text>
+                        <Text style={styles.mutedText}>
+                          {s.toolCount} tools{!runtimeEnabled ? ' • disabled for runtime' : ''}{s.error ? ` • ${s.error}` : ''}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.mcpActionRow}>
+                      <TouchableOpacity
+                        style={[styles.mcpActionButton, styles.secondaryActionButton, restartDisabled && styles.actionButtonDisabled]}
+                        onPress={() => void runAction(restartAction, () => settingsClient.restartMCPServer(s.name))}
+                        disabled={restartDisabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Restart ${s.name} MCP server`)}
+                      >
+                        <Text style={styles.secondaryActionText}>{pendingAction === restartAction ? 'Restarting...' : 'Restart'}</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.mcpActionButton, styles.secondaryActionButton, stopDisabled && styles.actionButtonDisabled]}
+                        onPress={() => confirmAction(
+                          'Stop MCP Server',
+                          `Stop ${s.name} and hide its tools from the current runtime?`,
+                          'Stop',
+                          false,
+                          () => runAction(stopAction, () => settingsClient.stopMCPServer(s.name)),
+                        )}
+                        disabled={stopDisabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Stop ${s.name} MCP server`)}
+                      >
+                        <Text style={styles.secondaryActionText}>{pendingAction === stopAction ? 'Stopping...' : 'Stop'}</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.mcpActionButton, styles.secondaryActionButton, startDisabled && styles.actionButtonDisabled]}
+                        onPress={() => void runAction(startAction, () => settingsClient.startMCPServer(s.name))}
+                        disabled={startDisabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Start ${s.name} MCP server`)}
+                      >
+                        <Text style={styles.secondaryActionText}>{pendingAction === startAction ? 'Starting...' : 'Start'}</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.mcpActionButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
+                        onPress={() => void runAction(testAction, async () => {
+                          const response = await settingsClient.testOperatorMCPServer(s.name);
+                          return {
+                            ...response,
+                            message: `${s.name} connection test passed with ${response.toolCount ?? 0} tools.`,
+                          };
+                        }, false)}
+                        disabled={controlsDisabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Test ${s.name} MCP server`)}
+                      >
+                        <Text style={styles.secondaryActionText}>{pendingAction === testAction ? 'Testing...' : 'Test'}</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.mcpActionButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
+                        onPress={() => toggleMcpServerLogs(s.name)}
+                        disabled={controlsDisabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`${logsExpanded ? 'Hide' : 'Show'} ${s.name} MCP logs`)}
+                      >
+                        <Text style={styles.secondaryActionText}>
+                          {pendingAction === logsAction ? 'Loading...' : logsExpanded ? 'Hide logs' : 'Logs'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.mcpActionButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
+                        onPress={() => toggleMcpServerTools(s.name)}
+                        disabled={controlsDisabled}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`${toolsExpanded ? 'Hide' : 'Show'} ${s.name} MCP tools`)}
+                      >
+                        <Text style={styles.secondaryActionText}>
+                          {pendingAction === toolsAction ? 'Loading...' : toolsExpanded ? 'Hide tools' : 'Tools'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {logsExpanded ? (
+                      <View style={styles.mcpDetailPanel}>
+                        <View style={styles.mcpPanelHeader}>
+                          <Text style={styles.sectionCaption}>Server logs</Text>
+                          <TouchableOpacity
+                            style={[styles.mcpSmallButton, styles.secondaryActionButton, (controlsDisabled || logs.length === 0) && styles.actionButtonDisabled]}
+                            onPress={() => confirmAction(
+                              'Clear MCP Logs',
+                              `Clear the recent log preview for ${s.name}?`,
+                              'Clear Logs',
+                              true,
+                              () => runAction(clearLogsAction, async () => {
+                                const response = await settingsClient.clearOperatorMCPServerLogs(s.name);
+                                setMcpServerLogs((current) => ({ ...current, [s.name]: [] }));
+                                return response;
+                              }, false),
+                            )}
+                            disabled={controlsDisabled || logs.length === 0}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Clear ${s.name} MCP logs`)}
+                          >
+                            <Text style={styles.secondaryActionText}>{pendingAction === clearLogsAction ? 'Clearing...' : 'Clear'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                        {logs.length === 0 ? (
+                          <Text style={styles.mutedText}>No MCP log entries returned.</Text>
+                        ) : (
+                          logs.map((entry, index) => (
+                            <View key={`${entry.timestamp}-${index}`} style={styles.logItem}>
+                              <View style={styles.logHeader}>
+                                <Text style={styles.logLevel}>MCP</Text>
+                                <Text style={styles.logTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
+                              </View>
+                              <Text style={styles.logMessage}>{entry.message}</Text>
+                            </View>
+                          ))
+                        )}
+                      </View>
+                    ) : null}
+
+                    {toolsExpanded ? (
+                      <View style={styles.mcpDetailPanel}>
+                        <Text style={styles.sectionCaption}>Server tools</Text>
+                        {tools.length === 0 ? (
+                          <Text style={styles.mutedText}>No tools returned for this server.</Text>
+                        ) : (
+                          tools.map((tool) => {
+                            const toolAction = `mcp-tool-toggle:${tool.name}`;
+                            return (
+                              <View key={tool.name} style={styles.mcpToolRow}>
+                                <View style={styles.mcpToolCopy}>
+                                  <Text style={styles.detailText}>{tool.name}</Text>
+                                  {tool.description ? <Text style={styles.mutedText} numberOfLines={2}>{tool.description}</Text> : null}
+                                  {!tool.serverEnabled ? <Text style={styles.warningText}>Server disabled</Text> : null}
+                                </View>
+                                <Switch
+                                  value={tool.enabled}
+                                  onValueChange={(enabled) => void toggleMcpToolEnabled(tool, enabled)}
+                                  disabled={controlsDisabled || !tool.serverEnabled || pendingAction === toolAction}
+                                  accessibilityLabel={createSwitchAccessibilityLabel(`${tool.name} MCP tool`)}
+                                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                                  thumbColor={tool.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                                />
+                              </View>
+                            );
+                          })
+                        )}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
             </View>
           )}
 
@@ -1640,6 +1924,77 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     secondaryActionButton: {
       backgroundColor: theme.colors.background,
       borderColor: theme.colors.border,
+    },
+    mcpServerCard: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.background,
+      padding: spacing.sm,
+      gap: spacing.sm,
+    },
+    mcpServerRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    mcpServerCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
+    },
+    mcpActionRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+    },
+    mcpActionButton: {
+      minHeight: 40,
+      minWidth: 86,
+      flexGrow: 1,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    mcpSmallButton: {
+      minHeight: 36,
+      minWidth: 72,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    mcpDetailPanel: {
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: spacing.sm,
+      gap: spacing.sm,
+    },
+    mcpPanelHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    mcpToolRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      paddingVertical: spacing.xs,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    mcpToolCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
     },
     destructiveActionButton: {
       backgroundColor: theme.colors.destructive + '10',

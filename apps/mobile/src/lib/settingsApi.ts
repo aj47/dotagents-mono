@@ -193,6 +193,26 @@ export interface OperatorMCPToolsResponse {
   tools: OperatorMCPToolSummary[];
 }
 
+export interface OperatorMCPServerLogEntry {
+  timestamp: number;
+  message: string;
+}
+
+export interface OperatorMCPServerLogsResponse {
+  server: string;
+  count: number;
+  logs: OperatorMCPServerLogEntry[];
+}
+
+export interface OperatorMCPToolToggleResponse extends OperatorActionResponse {
+  tool?: OperatorMCPToolSummary;
+}
+
+export interface OperatorMCPServerTestResponse extends OperatorActionResponse {
+  server?: string;
+  toolCount?: number;
+}
+
 export type KnowledgeNoteContext = 'auto' | 'search-only';
 export type KnowledgeNoteDateFilter = 'all' | '7d' | '30d' | '90d' | 'year';
 export type KnowledgeNoteSort = 'relevance' | 'updated-desc' | 'updated-asc' | 'created-desc' | 'created-asc' | 'title-asc' | 'title-desc';
@@ -414,8 +434,51 @@ export class SettingsApiClient {
     return this.request<OperatorMCPToolsResponse>(`/operator/mcp/tools${query}`);
   }
 
-  async restartMCPServer(server: string): Promise<{ success: boolean; error?: string }> {
-    return this.request<{ success: boolean; error?: string }>('/operator/actions/mcp-restart', {
+  async setOperatorMCPToolEnabled(toolName: string, enabled: boolean): Promise<OperatorMCPToolToggleResponse> {
+    return this.request<OperatorMCPToolToggleResponse>('/operator/mcp/tools/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toolName, enabled }),
+    });
+  }
+
+  async getOperatorMCPServerLogs(server: string, count: number = 20): Promise<OperatorMCPServerLogsResponse> {
+    const query = `?count=${encodeURIComponent(String(count))}`;
+    return this.request<OperatorMCPServerLogsResponse>(`/operator/mcp/${encodeURIComponent(server)}/logs${query}`);
+  }
+
+  async clearOperatorMCPServerLogs(server: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(`/operator/mcp/${encodeURIComponent(server)}/logs/clear`, {
+      method: 'POST',
+    });
+  }
+
+  async startMCPServer(server: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/actions/mcp-start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server }),
+    });
+  }
+
+  async stopMCPServer(server: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/actions/mcp-stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server }),
+    });
+  }
+
+  async testOperatorMCPServer(server: string): Promise<OperatorMCPServerTestResponse> {
+    return this.request<OperatorMCPServerTestResponse>('/operator/actions/mcp-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server }),
+    });
+  }
+
+  async restartMCPServer(server: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/actions/mcp-restart', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ server }),

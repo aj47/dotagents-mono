@@ -34,6 +34,7 @@ export default function SessionListScreen({ navigation }: Props) {
   const { currentProfile } = useProfile();
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sessionListMode, setSessionListMode] = useState<'active' | 'archived'>('active');
   const [renameSession, setRenameSession] = useState<SessionListItem | null>(null);
   const [renameTitleDraft, setRenameTitleDraft] = useState('');
   const [isRenameSaving, setIsRenameSaving] = useState(false);
@@ -898,9 +899,13 @@ export default function SessionListScreen({ navigation }: Props) {
 
   const filteredSessions = useMemo(() => {
     const results = filterSessionSearchResults(sessionStore.sessions, searchQuery);
-    if (searchQuery.trim()) return results;
-    return results.filter((s) => !s.isArchived);
-  }, [sessionStore.sessions, searchQuery]);
+    return results.filter((s) => sessionListMode === 'archived' ? !!s.isArchived : !s.isArchived);
+  }, [sessionListMode, sessionStore.sessions, searchQuery]);
+
+  const archivedSessionCount = useMemo(
+    () => sessionStore.sessions.filter((session) => !!session.isArchived).length,
+    [sessionStore.sessions],
+  );
 
   const renderSession = ({ item }: { item: SessionSearchResult }) => {
     const isActive = item.id === sessionStore.currentSessionId;
@@ -949,6 +954,22 @@ export default function SessionListScreen({ navigation }: Props) {
                 {item.isPinned ? 'Pinned' : 'Pin'}
               </Text>
             </Pressable>
+            {item.isArchived ? (
+              <Pressable
+                style={[styles.sessionArchiveButton, styles.sessionArchiveButtonActive]}
+                onPress={(event: GestureResponderEvent) => {
+                  event.stopPropagation();
+                  void handleToggleSessionArchived(item.id);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel(`Unarchive ${item.title}`)}
+                accessibilityHint="Moves this chat back to the active chats list."
+              >
+                <Text style={[styles.sessionArchiveButtonText, styles.sessionArchiveButtonTextActive]}>
+                  Unarchive
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
         <Text style={styles.sessionPreview} numberOfLines={1}>
@@ -962,20 +983,34 @@ export default function SessionListScreen({ navigation }: Props) {
   const EmptyState = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyStateTextGroup}>
-        <Text style={styles.emptyTitle}>No chats yet</Text>
+        <Text style={styles.emptyTitle}>{sessionListMode === 'archived' ? 'No archived chats' : 'No chats yet'}</Text>
         <Text style={styles.emptySubtitle}>
-          Start your first chat so recent conversations show up here.
+          {sessionListMode === 'archived'
+            ? 'Archived chats will show up here after you archive them from the chat actions menu.'
+            : 'Start your first chat so recent conversations show up here.'}
         </Text>
       </View>
-      <TouchableOpacity
-        style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
-        onPress={handleCreateSession}
-        accessibilityRole="button"
-        accessibilityLabel={createButtonAccessibilityLabel('Start first chat')}
-        accessibilityHint="Creates and opens your first chat."
-      >
-        <Text style={styles.emptyStateButtonText}>Start first chat</Text>
-      </TouchableOpacity>
+      {sessionListMode === 'archived' ? (
+        <TouchableOpacity
+          style={[styles.emptySecondaryButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
+          onPress={() => setSessionListMode('active')}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Show active chats')}
+          accessibilityHint="Returns to the active chats list."
+        >
+          <Text style={styles.emptySecondaryButtonText}>Show active chats</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
+          onPress={handleCreateSession}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Start first chat')}
+          accessibilityHint="Creates and opens your first chat."
+        >
+          <Text style={styles.emptyStateButtonText}>Start first chat</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -1088,6 +1123,32 @@ export default function SessionListScreen({ navigation }: Props) {
               <Text style={styles.searchClearButtonText}>Clear</Text>
             </TouchableOpacity>
           )}
+        </View>
+        <View
+          style={styles.archiveFilterRow}
+          accessibilityRole="tablist"
+          accessibilityLabel="Chat archive filter"
+        >
+          {([
+            ['active', 'Active'],
+            ['archived', archivedSessionCount > 0 ? `Archived (${archivedSessionCount})` : 'Archived'],
+          ] as const).map(([mode, label]) => {
+            const selected = sessionListMode === mode;
+            return (
+              <TouchableOpacity
+                key={mode}
+                style={[styles.archiveFilterButton, selected && styles.archiveFilterButtonActive]}
+                onPress={() => setSessionListMode(mode)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={createButtonAccessibilityLabel(`Show ${mode} chats`)}
+              >
+                <Text style={[styles.archiveFilterButtonText, selected && styles.archiveFilterButtonTextActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
@@ -1291,6 +1352,35 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primary,
       fontWeight: '600',
     },
+    archiveFilterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginTop: spacing.xs,
+    },
+    archiveFilterButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+    },
+    archiveFilterButtonActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '14',
+    },
+    archiveFilterButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    archiveFilterButtonTextActive: {
+      color: theme.colors.primary,
+    },
     list: {
       padding: spacing.md,
     },
@@ -1412,6 +1502,29 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionPinButtonTextActive: {
       color: theme.colors.primary,
     },
+    sessionArchiveButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.xs,
+        verticalPadding: 4,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    sessionArchiveButtonActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '12',
+    },
+    sessionArchiveButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    sessionArchiveButtonTextActive: {
+      color: theme.colors.primary,
+    },
     sessionDate: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
@@ -1451,6 +1564,17 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     emptyStateButtonText: {
       color: theme.colors.primaryForeground,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    emptySecondaryButton: {
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    emptySecondaryButtonText: {
+      color: theme.colors.foreground,
       fontWeight: '600',
       textAlign: 'center',
     },
