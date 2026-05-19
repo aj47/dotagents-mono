@@ -23,6 +23,8 @@ import {
   ExtendedSettingsApiClient,
   Profile,
   MCPServer,
+  MCPServerConfig,
+  MCPTransportType,
   Settings,
   ModelInfo,
   SettingsUpdate,
@@ -279,6 +281,133 @@ function getAgentListInitial(profile: AgentProfile): string {
   return (profile.displayName || profile.name || 'A').slice(0, 1).toUpperCase();
 }
 
+type McpServerEditorMode = 'create' | 'edit';
+
+type McpServerDraft = {
+  name: string;
+  transport: MCPTransportType;
+  command: string;
+  args: string;
+  env: string;
+  url: string;
+  headers: string;
+  timeout: string;
+  disabled: boolean;
+};
+
+const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
+  name: '',
+  transport: 'stdio',
+  command: '',
+  args: '',
+  env: '',
+  url: '',
+  headers: '',
+  timeout: '',
+  disabled: false,
+};
+
+const MCP_TRANSPORT_OPTIONS: Array<{ label: string; value: MCPTransportType }> = [
+  { label: 'Command', value: 'stdio' },
+  { label: 'HTTP', value: 'streamableHttp' },
+  { label: 'WebSocket', value: 'websocket' },
+];
+
+function setMcpServerRuntimeEnabledInList(servers: MCPServer[], serverName: string, enabled: boolean): MCPServer[] {
+  return servers.map(server =>
+    server.name === serverName ? { ...server, enabled, runtimeEnabled: enabled } : server
+  );
+}
+
+function upsertMcpServerInList(servers: MCPServer[], nextServer: MCPServer): MCPServer[] {
+  const exists = servers.some(server => server.name === nextServer.name);
+  const next = exists
+    ? servers.map(server => server.name === nextServer.name ? nextServer : server)
+    : [...servers, nextServer];
+  return next.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function removeMcpServerFromList(servers: MCPServer[], serverName: string): MCPServer[] {
+  return servers.filter(server => server.name !== serverName);
+}
+
+function stringifyJsonDraft(value: unknown): string {
+  if (!value || (typeof value === 'object' && Object.keys(value as Record<string, unknown>).length === 0)) {
+    return '';
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function createMcpServerDraft(name: string, config: MCPServerConfig): McpServerDraft {
+  const transport = config.transport ?? (config.url?.startsWith('ws') ? 'websocket' : config.url ? 'streamableHttp' : 'stdio');
+  return {
+    name,
+    transport,
+    command: config.command || '',
+    args: config.args?.length ? JSON.stringify(config.args) : '',
+    env: stringifyJsonDraft(config.env),
+    url: config.url || '',
+    headers: stringifyJsonDraft(config.headers),
+    timeout: typeof config.timeout === 'number' ? String(config.timeout) : '',
+    disabled: !!config.disabled,
+  };
+}
+
+function parseJsonObjectDraft(value: string, fieldLabel: string): Record<string, string> | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = JSON.parse(trimmed);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${fieldLabel} must be a JSON object`);
+  }
+  return Object.fromEntries(
+    Object.entries(parsed as Record<string, unknown>).map(([key, entry]) => [key, String(entry)])
+  );
+}
+
+function parseArgsDraft(value: string): string[] {
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith('[')) {
+    const parsed = JSON.parse(trimmed);
+    if (!Array.isArray(parsed) || parsed.some(item => typeof item !== 'string')) {
+      throw new Error('Args must be a JSON array of strings');
+    }
+    return parsed;
+  }
+  return trimmed.split(/\s+/).filter(Boolean);
+}
+
+function buildMcpServerConfigFromDraft(draft: McpServerDraft): MCPServerConfig {
+  const timeout = draft.timeout.trim() ? Number(draft.timeout.trim()) : undefined;
+  if (timeout !== undefined && (!Number.isFinite(timeout) || timeout < 0)) {
+    throw new Error('Timeout must be a non-negative number');
+  }
+
+  const base: MCPServerConfig = {
+    transport: draft.transport,
+    disabled: draft.disabled,
+    ...(timeout !== undefined ? { timeout: Math.round(timeout) } : {}),
+  };
+
+  if (draft.transport === 'stdio') {
+    if (!draft.command.trim()) throw new Error('Command is required for command-based MCP servers');
+    return {
+      ...base,
+      command: draft.command.trim(),
+      args: parseArgsDraft(draft.args),
+      env: parseJsonObjectDraft(draft.env, 'Environment'),
+    };
+  }
+
+  if (!draft.url.trim()) throw new Error('URL is required for remote MCP servers');
+  return {
+    ...base,
+    url: draft.url.trim(),
+    headers: parseJsonObjectDraft(draft.headers, 'Headers'),
+  };
+}
+
 export default function SettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { theme, themeMode, setThemeMode } = useTheme();
@@ -364,6 +493,13 @@ export default function SettingsScreen({ navigation }: any) {
   const [isImportingProfile, setIsImportingProfile] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
+
+  // MCP server editor state
+  const [showMcpServerEditor, setShowMcpServerEditor] = useState(false);
+  const [mcpServerEditorMode, setMcpServerEditorMode] = useState<McpServerEditorMode>('create');
+  const [mcpServerDraft, setMcpServerDraft] = useState<McpServerDraft>(EMPTY_MCP_SERVER_DRAFT);
+  const [isSavingMcpServer, setIsSavingMcpServer] = useState(false);
+  const [isLoadingMcpServerConfig, setIsLoadingMcpServerConfig] = useState(false);
 
   // Model picker state
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
@@ -797,9 +933,7 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       await settingsClient.toggleMCPServer(serverName, enabled);
       // Update local state optimistically
-      setMcpServers(prev => prev.map(s =>
-        s.name === serverName ? { ...s, enabled, runtimeEnabled: enabled } : s
-      ));
+      setMcpServers(prev => setMcpServerRuntimeEnabledInList(prev, serverName, enabled));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle server:', error);
       setRemoteError(error.message || 'Failed to toggle server');
@@ -807,6 +941,105 @@ export default function SettingsScreen({ navigation }: any) {
       fetchRemoteSettings();
     }
   };
+
+  const openMcpServerCreateEditor = useCallback(() => {
+    setMcpServerEditorMode('create');
+    setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+    setShowMcpServerEditor(true);
+  }, []);
+
+  const openMcpServerEditEditor = useCallback(async (server: MCPServer) => {
+    if (!settingsClient) return;
+    setMcpServerEditorMode('edit');
+    setMcpServerDraft({ ...EMPTY_MCP_SERVER_DRAFT, name: server.name, disabled: !!server.configDisabled });
+    setShowMcpServerEditor(true);
+    setIsLoadingMcpServerConfig(true);
+    try {
+      const response = await settingsClient.getMCPServerConfig(server.name);
+      setMcpServerDraft(createMcpServerDraft(response.name, response.config));
+    } catch (error: any) {
+      console.error('[Settings] Failed to load MCP server config:', error);
+      setRemoteError(error.message || 'Failed to load MCP server config');
+    } finally {
+      setIsLoadingMcpServerConfig(false);
+    }
+  }, [settingsClient]);
+
+  const closeMcpServerEditor = useCallback(() => {
+    if (isSavingMcpServer) return;
+    setShowMcpServerEditor(false);
+    setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+    setRemoteError(null);
+  }, [isSavingMcpServer]);
+
+  const handleMcpServerDraftChange = useCallback(<K extends keyof McpServerDraft>(key: K, value: McpServerDraft[K]) => {
+    setMcpServerDraft(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleSaveMcpServer = useCallback(async () => {
+    if (!settingsClient || isSavingMcpServer) return;
+
+    const serverName = mcpServerDraft.name.trim();
+    if (!serverName) {
+      Alert.alert('Missing Server Name', 'Enter a name for this MCP server.');
+      return;
+    }
+
+    const existingNames = new Set(mcpServers.map(server => server.name));
+    if (mcpServerEditorMode === 'create' && existingNames.has(serverName)) {
+      Alert.alert('Server Exists', `An MCP server named "${serverName}" already exists.`);
+      return;
+    }
+
+    let config: MCPServerConfig;
+    try {
+      config = buildMcpServerConfigFromDraft(mcpServerDraft);
+    } catch (error: any) {
+      Alert.alert('Invalid MCP Server', error?.message || 'Check the MCP server fields and try again.');
+      return;
+    }
+
+    setIsSavingMcpServer(true);
+    try {
+      const response = await settingsClient.upsertMCPServerConfig(serverName, config);
+      setMcpServers(prev => upsertMcpServerInList(prev, response.server));
+      setSaveStatusMessage(mcpServerEditorMode === 'create' ? 'MCP server added' : 'MCP server saved');
+      setShowMcpServerEditor(false);
+      setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+    } catch (error: any) {
+      console.error('[Settings] Failed to save MCP server:', error);
+      Alert.alert('Save Failed', error.message || 'Failed to save MCP server');
+    } finally {
+      setIsSavingMcpServer(false);
+    }
+  }, [isSavingMcpServer, mcpServerDraft, mcpServerEditorMode, mcpServers, settingsClient]);
+
+  const handleDeleteMcpServer = useCallback((server: MCPServer) => {
+    if (!settingsClient) return;
+    const deleteServer = async () => {
+      try {
+        await settingsClient.deleteMCPServerConfig(server.name);
+        setMcpServers(prev => removeMcpServerFromList(prev, server.name));
+        setSaveStatusMessage('MCP server deleted');
+      } catch (error: any) {
+        console.error('[Settings] Failed to delete MCP server:', error);
+        Alert.alert('Delete Failed', error.message || 'Failed to delete MCP server');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (confirmFn?.(`Delete MCP Server\n\nDelete "${server.name}" from the desktop MCP configuration?`)) {
+        void deleteServer();
+      }
+      return;
+    }
+
+    Alert.alert('Delete MCP Server', `Delete "${server.name}" from the desktop MCP configuration?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => { void deleteServer(); } },
+    ]);
+  }, [settingsClient]);
 
   // Handle remote settings toggle
   const handleRemoteSettingToggle = async (key: keyof Settings, value: boolean) => {
@@ -2592,33 +2825,72 @@ export default function SettingsScreen({ navigation }: any) {
             )}
 
             {/* 4h. MCP Servers */}
-            {mcpServers.length > 0 && (
+            {isDotAgentsServer && (
               <CollapsibleSection id="mcpServers" title="MCP Servers">
-                {mcpServers.map((server) => (
-                  <View key={server.name} style={styles.serverRow}>
-                    <View style={styles.serverInfo}>
-                      <View style={styles.serverNameRow}>
-                        <View style={[
-                          styles.statusDot,
-                          server.connected ? styles.statusConnected : styles.statusDisconnected,
-                        ]} />
-                        <Text style={styles.serverName}>{server.name}</Text>
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={openMcpServerCreateEditor}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Add MCP server')}
+                  >
+                    <Text style={styles.createAgentButtonText}>Add MCP server</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {mcpServers.length === 0 ? (
+                  <Text style={styles.helperText}>No MCP servers configured</Text>
+                ) : (
+                  mcpServers.map((server) => (
+                    <View key={server.name} style={styles.serverRow}>
+                      <Pressable
+                        style={styles.serverInfo}
+                        onPress={() => { void openMcpServerEditEditor(server); }}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Edit ${server.name} MCP server`)}
+                      >
+                        <View style={styles.serverNameRow}>
+                          <View style={[
+                            styles.statusDot,
+                            server.connected ? styles.statusConnected : styles.statusDisconnected,
+                          ]} />
+                          <Text style={styles.serverName}>{server.name}</Text>
+                        </View>
+                        <Text style={styles.serverMeta}>
+                          {server.toolCount} tool{server.toolCount !== 1 ? 's' : ''}
+                          {server.configDisabled ? ' • disabled in config' : ''}
+                          {server.error && ` • ${server.error}`}
+                        </Text>
+                      </Pressable>
+                      <View style={styles.agentActions}>
+                        <TouchableOpacity
+                          style={styles.notePromoteButton}
+                          onPress={() => { void openMcpServerEditEditor(server); }}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Edit ${server.name} MCP server`)}
+                        >
+                          <Text style={styles.notePromoteButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.agentDeleteButton}
+                          onPress={() => handleDeleteMcpServer(server)}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Delete ${server.name} MCP server`)}
+                        >
+                          <Text style={styles.agentDeleteButtonText}>Delete</Text>
+                        </TouchableOpacity>
+                        <Switch
+                          value={server.enabled}
+                          onValueChange={(v) => handleServerToggle(server.name, v)}
+                          accessibilityLabel={createMcpServerSwitchAccessibilityLabel(server.name)}
+                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                          thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                          disabled={server.configDisabled}
+                        />
                       </View>
-                      <Text style={styles.serverMeta}>
-                        {server.toolCount} tool{server.toolCount !== 1 ? 's' : ''}
-                        {server.error && ` • ${server.error}`}
-                      </Text>
                     </View>
-                    <Switch
-                      value={server.enabled}
-                      onValueChange={(v) => handleServerToggle(server.name, v)}
-                      accessibilityLabel={createMcpServerSwitchAccessibilityLabel(server.name)}
-                      trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                      thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                      disabled={server.configDisabled}
-                    />
-                  </View>
-                ))}
+                  ))
+                )}
               </CollapsibleSection>
             )}
 
@@ -3181,6 +3453,197 @@ export default function SettingsScreen({ navigation }: any) {
 	        </Text>
 	      </View>
     </KeyboardAvoidingView>
+
+      {/* MCP Server Editor Modal */}
+      <Modal
+        visible={showMcpServerEditor}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeMcpServerEditor}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>
+                {mcpServerEditorMode === 'create' ? 'Add MCP server' : 'Edit MCP server'}
+              </Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeMcpServerEditor}
+                accessibilityRole="button"
+                accessibilityLabel="Close MCP server editor"
+                disabled={isSavingMcpServer}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            {isLoadingMcpServerConfig ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text style={styles.helperText}>Loading MCP server config...</Text>
+              </View>
+            ) : (
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 520 }}>
+                <Text style={styles.label}>Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={mcpServerDraft.name}
+                  onChangeText={(value) => handleMcpServerDraftChange('name', value)}
+                  editable={mcpServerEditorMode === 'create' && !isSavingMcpServer}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="github"
+                  placeholderTextColor={theme.colors.mutedForeground}
+                />
+
+                <Text style={styles.label}>Transport</Text>
+                <View style={styles.providerSelector}>
+                  {MCP_TRANSPORT_OPTIONS.map((transport) => (
+                    <TouchableOpacity
+                      key={transport.value}
+                      style={[
+                        styles.providerOption,
+                        mcpServerDraft.transport === transport.value && styles.providerOptionActive,
+                      ]}
+                      onPress={() => handleMcpServerDraftChange('transport', transport.value)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: mcpServerDraft.transport === transport.value }}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${transport.label} MCP transport`)}
+                      disabled={isSavingMcpServer}
+                    >
+                      <Text style={[
+                        styles.providerOptionText,
+                        mcpServerDraft.transport === transport.value && styles.providerOptionTextActive,
+                      ]}>
+                        {transport.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {mcpServerDraft.transport === 'stdio' ? (
+                  <>
+                    <Text style={styles.label}>Command</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={mcpServerDraft.command}
+                      onChangeText={(value) => handleMcpServerDraftChange('command', value)}
+                      editable={!isSavingMcpServer}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder="npx"
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+
+                    <Text style={styles.label}>Args</Text>
+                    <TextInput
+                      style={styles.importJsonInput}
+                      value={mcpServerDraft.args}
+                      onChangeText={(value) => handleMcpServerDraftChange('args', value)}
+                      editable={!isSavingMcpServer}
+                      multiline
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder={'["@modelcontextprotocol/server-github"]'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+
+                    <Text style={styles.label}>Environment JSON</Text>
+                    <TextInput
+                      style={styles.importJsonInput}
+                      value={mcpServerDraft.env}
+                      onChangeText={(value) => handleMcpServerDraftChange('env', value)}
+                      editable={!isSavingMcpServer}
+                      multiline
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder={'{"GITHUB_TOKEN":"..."}'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.label}>URL</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={mcpServerDraft.url}
+                      onChangeText={(value) => handleMcpServerDraftChange('url', value)}
+                      editable={!isSavingMcpServer}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="url"
+                      placeholder={mcpServerDraft.transport === 'websocket' ? 'wss://example.com/mcp' : 'https://example.com/mcp'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+
+                    <Text style={styles.label}>Headers JSON</Text>
+                    <TextInput
+                      style={styles.importJsonInput}
+                      value={mcpServerDraft.headers}
+                      onChangeText={(value) => handleMcpServerDraftChange('headers', value)}
+                      editable={!isSavingMcpServer}
+                      multiline
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder={'{"Authorization":"Bearer ..."}'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+                  </>
+                )}
+
+                <Text style={styles.label}>Timeout ms</Text>
+                <TextInput
+                  style={styles.input}
+                  value={mcpServerDraft.timeout}
+                  onChangeText={(value) => handleMcpServerDraftChange('timeout', value.replace(/[^0-9]/g, ''))}
+                  editable={!isSavingMcpServer}
+                  keyboardType="number-pad"
+                  placeholder="10000"
+                  placeholderTextColor={theme.colors.mutedForeground}
+                />
+
+                <View style={styles.row}>
+                  <View style={styles.serverInfo}>
+                    <Text style={styles.label}>Disabled in config</Text>
+                    <Text style={styles.helperText}>Disabled servers are saved but not started.</Text>
+                  </View>
+                  <Switch
+                    value={mcpServerDraft.disabled}
+                    onValueChange={(value) => handleMcpServerDraftChange('disabled', value)}
+                    disabled={isSavingMcpServer}
+                    accessibilityLabel={createSwitchAccessibilityLabel('MCP server disabled in config')}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={mcpServerDraft.disabled ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+              </ScrollView>
+            )}
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeMcpServerEditor}
+                disabled={isSavingMcpServer}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (isSavingMcpServer || isLoadingMcpServerConfig) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleSaveMcpServer(); }}
+                disabled={isSavingMcpServer || isLoadingMcpServerConfig}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isSavingMcpServer ? 'Saving...' : mcpServerEditorMode === 'create' ? 'Add server' : 'Save server'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Model Picker Modal */}
       <Modal

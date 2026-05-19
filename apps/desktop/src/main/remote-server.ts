@@ -43,8 +43,9 @@ import {
   getConversationVideoAssetPath,
   getConversationVideoMimeTypeFromFileName,
 } from "./conversation-video-assets"
-import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, normalizeAgentProfileRole } from "../shared/types"
+import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, MCPServerConfig, normalizeAgentProfileRole } from "../shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
+import { inferTransportType } from "../shared/mcp-utils"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
@@ -3232,6 +3233,83 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  const buildMcpServerSummary = (serverName: string) => {
+    const serverStatus = mcpService.getServerStatus()
+    const status = serverStatus[serverName]
+    const serverConfig = configStore.get().mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined
+    return {
+      name: serverName,
+      connected: !!status?.connected,
+      toolCount: status?.toolCount ?? 0,
+      enabled: (status?.runtimeEnabled ?? true) && !serverConfig?.disabled,
+      runtimeEnabled: status?.runtimeEnabled ?? true,
+      configDisabled: !!serverConfig?.disabled,
+      error: status?.error,
+    }
+  }
+
+  const sanitizeMcpServerConfig = (serverConfig: MCPServerConfig): MCPServerConfig => {
+    const { oauth: _oauth, ...safeConfig } = serverConfig as MCPServerConfig & { oauth?: unknown }
+    return safeConfig
+  }
+
+  const normalizeRemoteMcpServerConfig = (serverName: string, input: unknown): MCPServerConfig => {
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      throw new Error("MCP server config must be an object")
+    }
+
+    const config = { ...(input as MCPServerConfig) }
+    const transport = config.transport ?? inferTransportType(config)
+    if (!["stdio", "websocket", "streamableHttp"].includes(transport)) {
+      throw new Error(`Server "${serverName}": transport must be stdio, websocket, or streamableHttp`)
+    }
+
+    const normalized: MCPServerConfig = {
+      transport,
+      disabled: config.disabled === true,
+    }
+
+    if (config.timeout !== undefined) {
+      if (typeof config.timeout !== "number" || !Number.isFinite(config.timeout) || config.timeout < 0) {
+        throw new Error(`Server "${serverName}": timeout must be a non-negative number`)
+      }
+      normalized.timeout = Math.round(config.timeout)
+    }
+
+    if (transport === "stdio") {
+      if (typeof config.command !== "string" || !config.command.trim()) {
+        throw new Error(`Server "${serverName}": stdio transport requires a command`)
+      }
+      if (config.args !== undefined && (!Array.isArray(config.args) || config.args.some((arg) => typeof arg !== "string"))) {
+        throw new Error(`Server "${serverName}": args must be an array of strings`)
+      }
+      if (config.env !== undefined && (typeof config.env !== "object" || Array.isArray(config.env))) {
+        throw new Error(`Server "${serverName}": env must be an object`)
+      }
+
+      normalized.command = config.command.trim()
+      normalized.args = config.args ?? []
+      normalized.env = config.env as Record<string, string> | undefined
+      return normalized
+    }
+
+    if (typeof config.url !== "string" || !config.url.trim()) {
+      throw new Error(`Server "${serverName}": ${transport} transport requires a URL`)
+    }
+    try {
+      new URL(config.url.trim())
+    } catch {
+      throw new Error(`Server "${serverName}": URL is invalid`)
+    }
+    if (config.headers !== undefined && (typeof config.headers !== "object" || Array.isArray(config.headers))) {
+      throw new Error(`Server "${serverName}": headers must be an object`)
+    }
+
+    normalized.url = config.url.trim()
+    normalized.headers = config.headers as Record<string, string> | undefined
+    return normalized
+  }
+
   // GET /v1/mcp/servers - List MCP servers with status
   fastify.get("/v1/mcp/servers", async (_req, reply) => {
     try {
@@ -3250,6 +3328,104 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get MCP servers", error)
       return reply.code(500).send({ error: "Failed to get MCP servers" })
+    }
+  })
+
+  // GET /v1/mcp/servers/:name/config - Get one MCP server config for mobile editing
+  fastify.get("/v1/mcp/servers/:name/config", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      const serverConfig = configStore.get().mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined
+      if (!serverName || !serverConfig) {
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      return reply.send({
+        name: serverName,
+        config: sanitizeMcpServerConfig(serverConfig),
+        server: buildMcpServerSummary(serverName),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get MCP server config", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get MCP server config" })
+    }
+  })
+
+  // PUT /v1/mcp/servers/:name/config - Create or replace one MCP server config
+  fastify.put("/v1/mcp/servers/:name/config", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const body = req.body as { config?: unknown } | null
+      const serverName = decodeURIComponent(params.name || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const currentConfig = configStore.get()
+      const existingConfig = currentConfig.mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined
+      const normalizedConfig = normalizeRemoteMcpServerConfig(serverName, body?.config)
+      const nextServerConfig = existingConfig?.oauth
+        ? { ...normalizedConfig, oauth: existingConfig.oauth }
+        : normalizedConfig
+
+      const nextMcpServers = {
+        ...(currentConfig.mcpConfig?.mcpServers || {}),
+        [serverName]: nextServerConfig,
+      }
+      configStore.save({
+        ...currentConfig,
+        mcpConfig: {
+          ...(currentConfig.mcpConfig || { mcpServers: {} }),
+          mcpServers: nextMcpServers,
+        },
+      })
+
+      const lifecycleResult = nextServerConfig.disabled
+        ? await mcpService.stopServer(serverName)
+        : await mcpService.restartServer(serverName)
+
+      if (!lifecycleResult.success) {
+        diagnosticsService.logError("remote-server", `MCP server ${serverName} saved but failed to restart`, lifecycleResult.error)
+      }
+
+      return reply.send({
+        name: serverName,
+        config: sanitizeMcpServerConfig(nextServerConfig),
+        server: buildMcpServerSummary(serverName),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to save MCP server config", error)
+      return reply.code(400).send({ error: error?.message || "Failed to save MCP server config" })
+    }
+  })
+
+  // DELETE /v1/mcp/servers/:name - Delete one MCP server config
+  fastify.delete("/v1/mcp/servers/:name", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      const currentConfig = configStore.get()
+      const currentServers = currentConfig.mcpConfig?.mcpServers || {}
+      if (!serverName || !currentServers[serverName]) {
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      await mcpService.stopServer(serverName)
+      const { [serverName]: _removed, ...nextMcpServers } = currentServers
+      configStore.save({
+        ...currentConfig,
+        mcpRuntimeDisabledServers: (currentConfig.mcpRuntimeDisabledServers || []).filter((name) => name !== serverName),
+        mcpConfig: {
+          ...(currentConfig.mcpConfig || { mcpServers: {} }),
+          mcpServers: nextMcpServers,
+        },
+      })
+
+      return reply.send({ success: true, server: serverName })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete MCP server config", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete MCP server config" })
     }
   })
 

@@ -213,6 +213,25 @@ export interface OperatorMCPServerTestResponse extends OperatorActionResponse {
   toolCount?: number;
 }
 
+export type MCPTransportType = 'stdio' | 'websocket' | 'streamableHttp';
+
+export interface MCPServerConfig {
+  transport?: MCPTransportType;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
+  timeout?: number;
+  disabled?: boolean;
+}
+
+export interface MCPServerConfigResponse {
+  name: string;
+  config: MCPServerConfig;
+  server: MCPServer;
+}
+
 export type KnowledgeNoteContext = 'auto' | 'search-only';
 export type KnowledgeNoteDateFilter = 'all' | '7d' | '30d' | '90d' | 'year';
 export type KnowledgeNoteSort = 'relevance' | 'updated-desc' | 'updated-asc' | 'created-desc' | 'created-asc' | 'title-asc' | 'title-desc';
@@ -380,6 +399,23 @@ export class SettingsApiClient {
     return this.request(`/mcp/servers/${encodeURIComponent(serverName)}/toggle`, {
       method: 'POST',
       body: JSON.stringify({ enabled }),
+    });
+  }
+
+  async getMCPServerConfig(serverName: string): Promise<MCPServerConfigResponse> {
+    return this.request<MCPServerConfigResponse>(`/mcp/servers/${encodeURIComponent(serverName)}/config`);
+  }
+
+  async upsertMCPServerConfig(serverName: string, config: MCPServerConfig): Promise<MCPServerConfigResponse> {
+    return this.request<MCPServerConfigResponse>(`/mcp/servers/${encodeURIComponent(serverName)}/config`, {
+      method: 'PUT',
+      body: JSON.stringify({ config }),
+    });
+  }
+
+  async deleteMCPServerConfig(serverName: string): Promise<{ success: boolean; server: string }> {
+    return this.request<{ success: boolean; server: string }>(`/mcp/servers/${encodeURIComponent(serverName)}`, {
+      method: 'DELETE',
     });
   }
 
