@@ -28,6 +28,9 @@ interface MessageQueuePanelProps {
   onClear: () => void;
   canProcessNext?: boolean;
   compact?: boolean;
+  isPaused?: boolean;
+  onPause?: () => void;
+  onResume?: () => void;
 }
 
 interface QueuedMessageItemProps {
@@ -335,6 +338,9 @@ export function MessageQueuePanel({
   onClear,
   canProcessNext = false,
   compact = false,
+  isPaused = false,
+  onPause,
+  onResume,
 }: MessageQueuePanelProps) {
   const { theme } = useTheme();
   const [isListCollapsed, setIsListCollapsed] = useState(false);
@@ -393,7 +399,29 @@ export function MessageQueuePanel({
     },
     processButtonText: {
       fontSize: 12,
-      color: canProcessNext ? theme.colors.primary : theme.colors.mutedForeground,
+      color: canProcessNext && !isPaused ? theme.colors.primary : theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    pauseButtonText: {
+      fontSize: 12,
+      color: isPaused ? theme.colors.primary : theme.colors.foreground,
+      fontWeight: '600',
+    },
+    pausedNotice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      backgroundColor: `${theme.colors.primary}12`,
+    },
+    pausedNoticeText: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.colors.primary,
+      fontSize: 12,
       fontWeight: '600',
     },
     list: {
@@ -420,15 +448,27 @@ export function MessageQueuePanel({
   if (compact) {
     return (
       <View style={styles.compactContainer}>
-        <Ionicons name="time-outline" size={12} color={theme.colors.mutedForeground} />
+        <Ionicons
+          name={isPaused ? 'pause-circle-outline' : 'time-outline'}
+          size={12}
+          color={isPaused ? theme.colors.primary : theme.colors.mutedForeground}
+        />
         <Text style={styles.compactText}>
-          {messages.length} queued message{messages.length > 1 ? 's' : ''}
+          {messages.length} queued message{messages.length > 1 ? 's' : ''}{isPaused ? ' paused' : ''}
         </Text>
-        {canProcessNext && onProcessNext && (
+        {isPaused && onResume ? (
+          <TouchableOpacity
+            onPress={onResume}
+            accessibilityRole="button"
+            accessibilityLabel="Resume queued messages"
+          >
+            <Ionicons name="play" size={14} color={theme.colors.primary} />
+          </TouchableOpacity>
+        ) : canProcessNext && onProcessNext ? (
           <TouchableOpacity onPress={onProcessNext} accessibilityLabel="Send next queued message">
             <Ionicons name="play" size={14} color={theme.colors.primary} />
           </TouchableOpacity>
-        )}
+        ) : null}
         <TouchableOpacity
           onPress={onClear}
           disabled={hasProcessingMessage}
@@ -457,10 +497,22 @@ export function MessageQueuePanel({
             <TouchableOpacity
               style={styles.processButton}
               onPress={onProcessNext}
+              disabled={isPaused}
               accessibilityRole="button"
               accessibilityLabel="Send next queued message"
+              accessibilityState={{ disabled: isPaused }}
             >
               <Text style={styles.processButtonText}>Send Next</Text>
+            </TouchableOpacity>
+          )}
+          {!isListCollapsed && (isPaused ? onResume : onPause) && (
+            <TouchableOpacity
+              style={styles.processButton}
+              onPress={isPaused ? onResume : onPause}
+              accessibilityRole="button"
+              accessibilityLabel={isPaused ? 'Resume queued messages' : 'Pause queued messages'}
+            >
+              <Text style={styles.pauseButtonText}>{isPaused ? 'Resume' : 'Pause'}</Text>
             </TouchableOpacity>
           )}
           {!isListCollapsed && (
@@ -487,6 +539,14 @@ export function MessageQueuePanel({
           </TouchableOpacity>
         </View>
       </View>
+      {isPaused && !isListCollapsed && (
+        <View style={styles.pausedNotice}>
+          <Ionicons name="pause-circle-outline" size={14} color={theme.colors.primary} />
+          <Text style={styles.pausedNoticeText} numberOfLines={2}>
+            Queue paused. Messages stay queued until you resume.
+          </Text>
+        </View>
+      )}
       {!isListCollapsed && (
         <ScrollView style={styles.list}>
           {messages.map((msg, index) => (

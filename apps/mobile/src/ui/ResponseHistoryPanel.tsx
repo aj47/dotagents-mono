@@ -186,6 +186,8 @@ export function ResponseHistoryPanel({
   const prevCountRef = useRef(responses.length);
   const newestTimestamp = responses.length > 0 ? Math.max(...responses.map((r) => r.timestamp)) : null;
   const shouldAnimateNewest = responses.length > prevCountRef.current;
+  const latestResponse = responses[responses.length - 1] ?? null;
+  const collapsedPreviewText = latestResponse?.text.replace(/\s+/g, ' ').trim() ?? '';
 
   useEffect(() => {
     prevCountRef.current = responses.length;
@@ -238,6 +240,23 @@ export function ResponseHistoryPanel({
     list: {
       maxHeight: 300,
     },
+    collapsedPreview: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      gap: 3,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      backgroundColor: `${theme.colors.muted}24`,
+    },
+    collapsedTimestamp: {
+      fontSize: 11,
+      color: theme.colors.mutedForeground,
+    },
+    collapsedPreviewText: {
+      color: theme.colors.foreground,
+      fontSize: 12,
+      lineHeight: 16,
+    },
     responseItem: {
       paddingHorizontal: 12,
       paddingVertical: 10,
@@ -283,6 +302,14 @@ export function ResponseHistoryPanel({
           color={theme.colors.mutedForeground}
         />
       </TouchableOpacity>
+      {isCollapsed && latestResponse && collapsedPreviewText ? (
+        <View style={styles.collapsedPreview}>
+          <Text style={styles.collapsedTimestamp}>{formatTime(latestResponse.timestamp)}</Text>
+          <Text style={styles.collapsedPreviewText} numberOfLines={2}>
+            {collapsedPreviewText}
+          </Text>
+        </View>
+      ) : null}
       {!isCollapsed && (
         <ScrollView style={styles.list}>
           {/* Show newest first */}

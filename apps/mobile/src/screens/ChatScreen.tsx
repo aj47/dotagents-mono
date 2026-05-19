@@ -3149,6 +3149,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	const micButtonLabel = handsFree
 			? (handsFreeController.state.phase === 'sleeping' ? 'Wake' : handsFreePauseResumeLabel)
 		: (listening ? '...' : 'Hold');
+  const isMessageQueuePaused = handsFree && handsFreeController.state.phase === 'paused';
 
   const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
   const visibleMessages = messages.slice(firstVisibleMessageIndex);
@@ -3773,6 +3774,9 @@ export default function ChatScreen({ route, navigation }: any) {
               onProcessNext={handleProcessNextQueuedMessage}
               canProcessNext={!!nextQueuedMessage}
               onClear={() => messageQueue.clearQueue(currentConversationId)}
+              isPaused={isMessageQueuePaused}
+              onPause={pauseHandsFreeByUser}
+              onResume={resumeHandsFreeByUser}
             />
           </View>
         )}

@@ -12,7 +12,7 @@ import {
 import { useTheme } from './ThemeProvider';
 import { radius, spacing } from './theme';
 
-interface VideoAttachmentCardProps {
+export interface VideoAttachmentCardProps {
   sourceUrl: string;
   label?: string;
   assetBaseUrl?: string;
