@@ -69,17 +69,22 @@ describe("panel recording layout", () => {
     expect(resizeWaveformSection).not.toContain("Math.max(currentWidth")
   })
 
-  it("keeps completed progress panels in progress sizing instead of waveform sizing", () => {
+  it("keeps waveform hotkeys from being replaced by progress panels", () => {
     const modeSwitchSection = panelSource.slice(
       panelSource.indexOf('let targetMode: "agent" | "normal" | null = null'),
       panelSource.indexOf("// Note: We don't need to hide text input")
     )
 
-    expect(modeSwitchSection).toContain("if (anyActiveNonSnoozed)")
-    expect(modeSwitchSection).toContain("} else if (anyVisibleSessions && !recording) {")
+    expect(panelSource).toContain("const shouldShowProgressPanel = anyVisibleSessions && !recording")
+    expect(modeSwitchSection).toContain("if (recording) {")
+    expect(modeSwitchSection).toContain('targetMode = "normal"')
+    expect(modeSwitchSection).toContain("} else if (anyActiveNonSnoozed) {")
+    expect(modeSwitchSection).toContain("} else if (shouldShowProgressPanel) {")
     expect(modeSwitchSection).toContain('targetMode = "agent"')
+    expect(modeSwitchSection).not.toContain("recorderRef.current?.stopRecording()")
     expect(modeSwitchSection).toContain("recording,")
-    expect(panelSource).toContain("anyVisibleSessions && !recording ? PROGRESS_MIN_HEIGHT : waveformHeight")
+    expect(panelSource).toContain("shouldShowProgressPanel ? PROGRESS_MIN_HEIGHT : waveformHeight")
+    expect(panelSource).toContain("{shouldShowProgressPanel && (")
   })
 
   it("keeps recording waveform layout stable under browser zoom", () => {
