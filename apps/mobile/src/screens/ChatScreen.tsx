@@ -21,6 +21,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
@@ -103,6 +104,7 @@ const VISIBLE_CHAT_MESSAGES_INCREMENT = 60;
 const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
+const MESSAGE_COPY_FEEDBACK_RESET_MS = 2_000;
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
@@ -590,6 +592,14 @@ const getAgentProgressStepToolExecutionStats = (
     ...step.executionStats,
     ...(step.subagentId ? { subagentId: step.subagentId } : {}),
   };
+};
+
+const getToolPayloadCopyAccessibilityLabel = (
+  kind: 'input' | 'output' | 'error',
+  toolName: string,
+) => {
+  const label = kind === 'input' ? 'Copy input' : kind === 'output' ? 'Copy output' : 'Copy error details';
+  return `${label} for ${toolName}`;
 };
 
 const formatToolExecutionStatsLabel = (stats?: ToolExecutionStats | null): string | null => {
@@ -1200,6 +1210,55 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track which tool-activity groups are expanded (keyed by startIndex so the
   // state survives when new tool/skill messages append to the same group)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const copiedMessageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearCopiedMessageFeedback = useCallback(() => {
+    if (copiedMessageTimeoutRef.current) {
+      clearTimeout(copiedMessageTimeoutRef.current);
+      copiedMessageTimeoutRef.current = null;
+    }
+    setCopiedMessageIndex(null);
+  }, []);
+  const showCopiedMessageFeedback = useCallback((messageIndex: number) => {
+    setCopiedMessageIndex(messageIndex);
+    if (copiedMessageTimeoutRef.current) {
+      clearTimeout(copiedMessageTimeoutRef.current);
+    }
+    copiedMessageTimeoutRef.current = setTimeout(() => {
+      setCopiedMessageIndex((currentIndex) => (
+        currentIndex === messageIndex ? null : currentIndex
+      ));
+      copiedMessageTimeoutRef.current = null;
+    }, MESSAGE_COPY_FEEDBACK_RESET_MS);
+  }, []);
+  useEffect(() => () => {
+    if (copiedMessageTimeoutRef.current) {
+      clearTimeout(copiedMessageTimeoutRef.current);
+      copiedMessageTimeoutRef.current = null;
+    }
+  }, []);
+  const handleCopyMessage = useCallback(async (messageIndex: number, content: string) => {
+    const copyContent = content.trim();
+    if (!copyContent) return;
+
+    try {
+      await Clipboard.setStringAsync(copyContent);
+      showCopiedMessageFeedback(messageIndex);
+    } catch (error: any) {
+      Alert.alert('Copy Failed', error?.message || 'Could not copy this message.');
+    }
+  }, [showCopiedMessageFeedback]);
+
+  const handleCopyToolPayload = useCallback(async (content: string) => {
+    const copyContent = content.trim();
+    if (!copyContent) return;
+
+    try {
+      await Clipboard.setStringAsync(copyContent);
+    } catch (error: any) {
+      Alert.alert('Copy Failed', error?.message || 'Could not copy this tool payload.');
+    }
+  }, []);
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 	  const [willCancel, setWillCancel] = useState(false);
@@ -1897,6 +1956,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setExpandedMessages({});
       setExpandedToolCalls({});
       setExpandedGroups({});
+      clearCopiedMessageFeedback();
       // Clear respond_to_user history for the new session
 	      replaceResponseHistory([]);
       playedResponseEventIdsRef.current = new Set();
@@ -2017,7 +2077,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setMessages([]);
 	      replaceResponseHistory([]);
     }
-	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, replaceResponseHistory]);
+	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, clearCopiedMessageFeedback, replaceResponseHistory]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
@@ -3668,6 +3728,10 @@ export default function ChatScreen({ route, navigation }: any) {
               !!currentSession?.serverConversationId &&
               (m.role === 'user' || m.role === 'assistant') &&
               m.variant !== 'approval';
+            const canCopyMessage =
+              (m.role === 'user' || m.role === 'assistant') &&
+              visibleMessageContent.trim().length > 0 &&
+              (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
             const turnDuration = m.role === 'user' && typeof m.timestamp === 'number'
               ? turnDurations.byUserTimestamp.get(m.timestamp)
               : undefined;
@@ -4003,37 +4067,54 @@ export default function ChatScreen({ route, navigation }: any) {
                               const stableMessageKey = m.id ?? String(i);
                               const toolCallKey = `${stableMessageKey}-${origIdx}`;
                               const isToolCallFullyExpanded = expandedToolCalls[toolCallKey] ?? false;
+                              const toolNameLabel = label ?? toolCall.name;
+                              const toolInputPayload = toolCall.arguments ? formatToolArguments(toolCall.arguments) : '';
+                              const toolResultContent = result?.content || 'No content returned';
                               return (
                                 <View key={idx} style={styles.toolCallSection}>
                                   {/* Tool name heading - tappable to toggle full expansion */}
                                   <Pressable
-                                    onPress={() => toggleToolCallExpansion(stableMessageKey, idx)}
+                                    onPress={() => toggleToolCallExpansion(stableMessageKey, origIdx)}
                                     style={({ pressed }) => [
                                       styles.toolCallHeader,
                                       pressed && styles.toolCallHeaderPressed,
                                     ]}
                                     accessibilityRole="button"
-                                    accessibilityLabel={createExpandCollapseAccessibilityLabel(`${label ?? toolCall.name} tool details`, isToolCallFullyExpanded)}
+                                    accessibilityLabel={createExpandCollapseAccessibilityLabel(`${toolNameLabel} tool details`, isToolCallFullyExpanded)}
                                     accessibilityState={{ expanded: isToolCallFullyExpanded }}
                                     aria-expanded={isToolCallFullyExpanded}
                                     accessibilityHint={isToolCallFullyExpanded ? 'Collapse tool details' : 'Expand to show full input/output'}
                                   >
-                                    <Text style={styles.toolName}>{label ?? toolCall.name}</Text>
+                                    <Text style={styles.toolName}>{toolNameLabel}</Text>
                                     <Text style={styles.toolCallExpandHint}>
                                       {isToolCallFullyExpanded ? '▼ Collapse' : '▶ Full Details'}
                                     </Text>
                                   </Pressable>
 
                                   {/* Parameters */}
-                                  {toolCall.arguments && (
+                                  {toolInputPayload && (
                                     <View style={styles.toolParamsSection}>
-                                      <Text style={styles.toolSectionLabel}>Input:</Text>
+                                      <View style={styles.toolSectionHeaderRow}>
+                                        <Text style={styles.toolSectionLabel}>Input:</Text>
+                                        <Pressable
+                                          style={({ pressed }) => [
+                                            styles.toolDetailCopyButton,
+                                            pressed && styles.toolDetailCopyButtonPressed,
+                                          ]}
+                                          onPress={() => { void handleCopyToolPayload(toolInputPayload); }}
+                                          accessibilityRole="button"
+                                          accessibilityLabel={getToolPayloadCopyAccessibilityLabel('input', toolNameLabel)}
+                                        >
+                                          <Ionicons name="copy-outline" size={10} color={theme.colors.mutedForeground} />
+                                          <Text style={styles.toolDetailCopyButtonText}>Copy</Text>
+                                        </Pressable>
+                                      </View>
                                       <ScrollView
                                         style={isToolCallFullyExpanded ? styles.toolParamsScrollExpanded : styles.toolParamsScroll}
                                         nestedScrollEnabled
                                       >
                                         <Text style={styles.toolParamsCode}>
-                                          {formatToolArguments(toolCall.arguments)}
+                                          {toolInputPayload}
                                         </Text>
                                       </ScrollView>
                                     </View>
@@ -4063,18 +4144,44 @@ export default function ChatScreen({ route, navigation }: any) {
                                         <Text style={styles.toolResultCharCount}>
                                           {(result.content?.length || 0).toLocaleString()} chars
                                         </Text>
+                                        <Pressable
+                                          style={({ pressed }) => [
+                                            styles.toolDetailCopyButton,
+                                            pressed && styles.toolDetailCopyButtonPressed,
+                                          ]}
+                                          onPress={() => { void handleCopyToolPayload(toolResultContent); }}
+                                          accessibilityRole="button"
+                                          accessibilityLabel={getToolPayloadCopyAccessibilityLabel('output', toolNameLabel)}
+                                        >
+                                          <Ionicons name="copy-outline" size={10} color={theme.colors.mutedForeground} />
+                                          <Text style={styles.toolDetailCopyButtonText}>Copy</Text>
+                                        </Pressable>
                                       </View>
                                       <ScrollView
                                         style={isToolCallFullyExpanded ? styles.toolResultScrollExpanded : styles.toolResultScroll}
                                         nestedScrollEnabled
                                       >
                                         <Text style={styles.toolResultCode}>
-                                          {result.content || 'No content returned'}
+                                          {toolResultContent}
                                         </Text>
                                       </ScrollView>
                                       {result.error && (
                                         <View style={styles.toolResultErrorSection}>
-                                          <Text style={styles.toolResultErrorLabel}>Error:</Text>
+                                          <View style={styles.toolSectionHeaderRow}>
+                                            <Text style={styles.toolResultErrorLabel}>Error:</Text>
+                                            <Pressable
+                                              style={({ pressed }) => [
+                                                styles.toolDetailCopyButton,
+                                                pressed && styles.toolDetailCopyButtonPressed,
+                                              ]}
+                                              onPress={() => { void handleCopyToolPayload(result.error || ''); }}
+                                              accessibilityRole="button"
+                                              accessibilityLabel={getToolPayloadCopyAccessibilityLabel('error', toolNameLabel)}
+                                            >
+                                              <Ionicons name="copy-outline" size={10} color={theme.colors.mutedForeground} />
+                                              <Text style={styles.toolDetailCopyButtonText}>Copy</Text>
+                                            </Pressable>
+                                          </View>
                                           <Text style={styles.toolResultErrorText}>{result.error}</Text>
                                         </View>
                                       )}
@@ -4111,8 +4218,32 @@ export default function ChatScreen({ route, navigation }: any) {
                         )}
 	                      </>
 	                    )}
-                    {canBranchFromMessage && (
+                    {(canCopyMessage || canBranchFromMessage) && (
                       <View style={styles.messageActionsRow}>
+                        {canCopyMessage && (
+                          <Pressable
+                            style={[
+                              styles.messageActionButton,
+                              copiedMessageIndex === i && styles.messageActionButtonActive,
+                            ]}
+                            onPress={() => { void handleCopyMessage(i, visibleMessageContent); }}
+                            accessibilityRole="button"
+                            accessibilityLabel={copiedMessageIndex === i ? `Copied ${m.role} message ${i + 1}` : `Copy ${m.role} message ${i + 1}`}
+                          >
+                            <Ionicons
+                              name={copiedMessageIndex === i ? 'checkmark' : 'copy-outline'}
+                              size={12}
+                              color={copiedMessageIndex === i ? theme.colors.success : theme.colors.primary}
+                            />
+                            <Text style={[
+                              styles.messageActionButtonText,
+                              copiedMessageIndex === i && styles.messageActionButtonTextActive,
+                            ]}>
+                              {copiedMessageIndex === i ? 'Copied' : 'Copy'}
+                            </Text>
+                          </Pressable>
+                        )}
+                        {canBranchFromMessage && (
                         <Pressable
                           style={[
                             styles.messageActionButton,
@@ -4127,6 +4258,7 @@ export default function ChatScreen({ route, navigation }: any) {
                             {branchingMessageIndex === i ? 'Branching...' : 'Branch'}
                           </Text>
                         </Pressable>
+                        )}
                       </View>
                     )}
 	                  </>
@@ -5480,6 +5612,33 @@ function createStyles(theme: Theme, screenHeight: number) {
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
+    toolSectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.xs,
+      marginBottom: 2,
+    },
+    toolDetailCopyButton: {
+      minHeight: 24,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 3,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: radius.sm,
+      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.08),
+      flexShrink: 0,
+    },
+    toolDetailCopyButtonPressed: {
+      opacity: 0.7,
+    },
+    toolDetailCopyButtonText: {
+      fontSize: 8,
+      fontWeight: '600',
+      color: theme.colors.mutedForeground,
+    },
     toolExecutionStatsText: {
       marginTop: 2,
       marginBottom: 2,
@@ -5539,6 +5698,8 @@ function createStyles(theme: Theme, screenHeight: number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 4,
       marginBottom: 1,
     },
     toolResultCharCount: {
@@ -5587,7 +5748,6 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 8,
       fontWeight: '500',
       color: theme.colors.destructive,
-      marginBottom: 1,
     },
     toolResultErrorText: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -5627,12 +5787,18 @@ function createStyles(theme: Theme, screenHeight: number) {
         verticalPadding: spacing.xs,
         horizontalMargin: 0,
       }),
+      flexDirection: 'row',
+      gap: 4,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.background,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    messageActionButtonActive: {
+      borderColor: hexToRgba(theme.colors.success, 0.35),
+      backgroundColor: hexToRgba(theme.colors.success, 0.08),
     },
     messageActionButtonDisabled: {
       opacity: 0.65,
@@ -5641,6 +5807,9 @@ function createStyles(theme: Theme, screenHeight: number) {
       ...theme.typography.caption,
       color: theme.colors.primary,
       fontWeight: '600',
+    },
+    messageActionButtonTextActive: {
+      color: theme.colors.success,
     },
     // Per-message TTS button styles (#1078)
     speakButton: {

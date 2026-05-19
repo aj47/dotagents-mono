@@ -110,6 +110,23 @@ test('shows streaming tool execution stats without shared runtime chrome', () =>
   assert.doesNotMatch(screenSource, /@dotagents\/shared\/session-presentation/);
 });
 
+test('keeps chat message and tool payload copy affordances local to mobile', () => {
+  assert.match(screenSource, /import \* as Clipboard from 'expo-clipboard'/);
+  assert.match(screenSource, /const MESSAGE_COPY_FEEDBACK_RESET_MS = 2_000/);
+  assert.match(screenSource, /const \[copiedMessageIndex, setCopiedMessageIndex\] = useState<number \| null>\(null\)/);
+  assert.match(screenSource, /const handleCopyMessage = useCallback\(async \(messageIndex: number, content: string\) =>/);
+  assert.match(screenSource, /await Clipboard\.setStringAsync\(copyContent\)/);
+  assert.match(screenSource, /showCopiedMessageFeedback\(messageIndex\)/);
+  assert.match(screenSource, /const handleCopyToolPayload = useCallback\(async \(content: string\) =>/);
+  assert.match(screenSource, /getToolPayloadCopyAccessibilityLabel\('input', toolNameLabel\)/);
+  assert.match(screenSource, /getToolPayloadCopyAccessibilityLabel\('output', toolNameLabel\)/);
+  assert.match(screenSource, /getToolPayloadCopyAccessibilityLabel\('error', toolNameLabel\)/);
+  assert.match(screenSource, /styles\.messageActionButtonActive/);
+  assert.match(screenSource, /styles\.toolDetailCopyButton/);
+  assert.doesNotMatch(screenSource, /useChatMessageRuntimeClipboardChromeActionsState/);
+  assert.doesNotMatch(screenSource, /getToolExecutionDetailMobileCopyButtonRenderState/);
+});
+
 test('keeps Codex thinking blocks display-only on mobile', () => {
   assert.match(screenSource, /const getRenderableMessageContent = \(message: ChatMessage\): string =>\s+message\.displayContent \?\? message\.content \?\? '';/);
   assert.match(screenSource, /displayContent: historyMsg\.displayContent/);
@@ -119,7 +136,8 @@ test('keeps Codex thinking blocks display-only on mobile', () => {
 test('labels result-only tool entries without showing raw tool_call text', () => {
   assert.match(screenSource, /label: 'Tool result'/);
   assert.match(screenSource, /const toolPreview = label \?\? getCompactToolExecutionPreview\(toolCall, tcResult \?\? null\);/);
-  assert.match(screenSource, /\{label \?\? toolCall\.name\}/);
+  assert.match(screenSource, /const toolNameLabel = label \?\? toolCall\.name;/);
+  assert.match(screenSource, /\{toolNameLabel\}/);
 });
 
 test('colors compact tool call labels by result status', () => {
