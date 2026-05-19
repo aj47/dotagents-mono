@@ -37,7 +37,7 @@ import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, handleWhatsAppToggle }
 import { processTranscriptWithAgentMode } from "./llm"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { resolveMainAcpAgentSelection } from "./main-agent-selection"
-import { state, agentProcessManager, agentSessionStateManager } from "./state"
+import { state, agentProcessManager, agentSessionStateManager, toolApprovalManager } from "./state"
 import { conversationService } from "./conversation-service"
 import {
   getConversationVideoAssetPath,
@@ -5467,6 +5467,58 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // POST /v1/conversations/:id/branch - Branch an existing conversation at a message index
+  fastify.post("/v1/conversations/:id/branch", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const conversationId = params.id
+
+      if (!conversationId || typeof conversationId !== "string") {
+        return reply.code(400).send({ error: "Missing or invalid conversation ID" })
+      }
+
+      const conversationIdError = getConversationIdValidationError(conversationId)
+      if (conversationIdError) {
+        return reply.code(400).send({ error: conversationIdError })
+      }
+
+      if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+        return reply.code(400).send({ error: "Request body must be a JSON object" })
+      }
+
+      const body = req.body as { messageIndex?: unknown }
+      if (typeof body.messageIndex !== "number" || !Number.isInteger(body.messageIndex) || body.messageIndex < 0) {
+        return reply.code(400).send({ error: "Missing or invalid messageIndex" })
+      }
+
+      const conversation = await conversationService.branchConversation(conversationId, body.messageIndex)
+      if (!conversation) {
+        return reply.code(404).send({ error: "Conversation or message not found" })
+      }
+
+      notifyConversationHistoryChanged()
+
+      return reply.send({
+        id: conversation.id,
+        title: conversation.title,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
+        messages: conversation.messages.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          toolCalls: msg.toolCalls,
+          toolResults: msg.toolResults,
+        })),
+        metadata: conversation.metadata,
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to branch conversation", error)
+      return reply.code(500).send({ error: error?.message || "Failed to branch conversation" })
+    }
+  })
+
   // DELETE /v1/conversations/:id - Delete a linked desktop conversation
   fastify.delete("/v1/conversations/:id", async (req, reply) => {
     try {
@@ -6743,6 +6795,28 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get agent session candidates", error)
       return reply.code(500).send({ error: error?.message || "Failed to get agent session candidates" })
+    }
+  })
+
+  // POST /v1/agent-sessions/tool-approvals/:approvalId/respond - Approve or deny a pending tool call
+  fastify.post("/v1/agent-sessions/tool-approvals/:approvalId/respond", async (req, reply) => {
+    try {
+      const params = req.params as { approvalId: string }
+      const body = req.body as { approved?: unknown } | undefined
+      const approvalId = params.approvalId
+
+      if (!approvalId || typeof approvalId !== "string") {
+        return reply.code(400).send({ error: "Missing or invalid approvalId" })
+      }
+      if (typeof body?.approved !== "boolean") {
+        return reply.code(400).send({ error: "Missing or invalid approved" })
+      }
+
+      const success = toolApprovalManager.respondToApproval(approvalId, body.approved)
+      return reply.send({ success, approvalId, approved: body.approved })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to respond to tool approval", error)
+      return reply.code(500).send({ error: error?.message || "Failed to respond to tool approval" })
     }
   })
 

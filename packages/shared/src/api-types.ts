@@ -60,6 +60,12 @@ export interface AgentSessionCandidatesResponse {
   completedSessions: AgentSessionCandidate[];
 }
 
+export interface ToolApprovalResponse {
+  success: boolean;
+  approvalId: string;
+  approved: boolean;
+}
+
 export type OperatorHealthStatus = 'pass' | 'warning' | 'fail';
 export type OperatorHealthOverall = 'healthy' | 'warning' | 'critical';
 
@@ -705,6 +711,10 @@ export interface UpdateConversationRequest {
   title?: string;
   messages?: ServerConversationMessage[];
   updatedAt?: number;
+}
+
+export interface BranchConversationRequest {
+  messageIndex: number;
 }
 
 // Push notification registration/unregistration

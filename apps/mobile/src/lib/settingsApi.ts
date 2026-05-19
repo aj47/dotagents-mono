@@ -21,6 +21,8 @@ export type {
   ServerConversationFull,
   CreateConversationRequest,
   UpdateConversationRequest,
+  BranchConversationRequest,
+  ToolApprovalResponse,
   PushTokenRegistration,
   PushStatusResponse,
   Skill,
@@ -92,6 +94,8 @@ import type {
   ServerConversationFull,
   CreateConversationRequest,
   UpdateConversationRequest,
+  BranchConversationRequest,
+  ToolApprovalResponse,
   PushTokenRegistration,
   PushStatusResponse,
   Skill,
@@ -625,6 +629,13 @@ export class SettingsApiClient {
     });
   }
 
+  async respondToToolApproval(approvalId: string, approved: boolean): Promise<ToolApprovalResponse> {
+    return this.request<ToolApprovalResponse>(`/agent-sessions/tool-approvals/${encodeURIComponent(approvalId)}/respond`, {
+      method: 'POST',
+      body: JSON.stringify({ approved }),
+    });
+  }
+
   // Models Management
   async getModels(providerId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web'): Promise<ModelsResponse> {
     return this.request<ModelsResponse>(`/models/${providerId}`);
@@ -964,6 +975,13 @@ export class SettingsApiClient {
   async updateConversation(id: string, data: UpdateConversationRequest): Promise<ServerConversationFull> {
     return this.request<ServerConversationFull>(`/conversations/${encodeURIComponent(id)}`, {
       method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async branchConversation(id: string, data: BranchConversationRequest): Promise<ServerConversationFull> {
+    return this.request<ServerConversationFull>(`/conversations/${encodeURIComponent(id)}/branch`, {
+      method: 'POST',
       body: JSON.stringify(data),
     });
   }

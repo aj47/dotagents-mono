@@ -507,6 +507,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
   const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
   const [remoteEdgeTtsRate, setRemoteEdgeTtsRate] = useState(1.0);
+  const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
+  const [branchingMessageIndex, setBranchingMessageIndex] = useState<number | null>(null);
   // Effective TTS provider/voice/rate — local mobile config takes precedence over
   // any value pulled from the connected desktop's settings. Edge TTS only plays on web.
   const effectiveTtsProvider: 'native' | 'edge' =
@@ -767,6 +769,32 @@ export default function ChatScreen({ route, navigation }: any) {
     void sessionStore.toggleSessionPinned(currentSessionId);
   }, [sessionStore]);
 
+  const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
+    const serverConversationId = currentSession?.serverConversationId;
+    if (!settingsClient || !serverConversationId) {
+      Alert.alert('Branch Unavailable', 'This chat is not linked to a desktop conversation yet.');
+      return;
+    }
+
+    setBranchingMessageIndex(messageIndex);
+    try {
+      const branchedConversation = await settingsClient.branchConversation(serverConversationId, { messageIndex });
+      await sessionStore.syncWithServer(settingsClient);
+      const branchedSession = sessionStore.findSessionByServerConversationId(branchedConversation.id);
+      if (branchedSession) {
+        sessionStore.setCurrentSession(branchedSession.id);
+        navigation.navigate('Chat');
+        return;
+      }
+
+      Alert.alert('Branch Created', 'The branched chat will appear in the chat list after sync.');
+    } catch (error: any) {
+      Alert.alert('Branch Failed', error?.message || 'Failed to branch this conversation.');
+    } finally {
+      setBranchingMessageIndex(null);
+    }
+  }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
+
   const headerConversationState = conversationState ?? (responding ? 'running' : null);
   const headerConversationLabel = headerConversationState
     ? getAgentConversationStateLabel(headerConversationState)
@@ -936,6 +964,25 @@ export default function ChatScreen({ route, navigation }: any) {
 
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before responding to tool approvals.');
+      return;
+    }
+
+    setPendingToolApprovalResponseId(approvalId);
+    try {
+      const response = await settingsClient.respondToToolApproval(approvalId, approved);
+      setMessages((current) => current.filter((message) => message.toolApproval?.approvalId !== approvalId));
+      if (!response.success) {
+        Alert.alert('Approval Unavailable', 'The approval request is no longer pending.');
+      }
+    } catch (error: any) {
+      Alert.alert('Approval Failed', error?.message || 'Failed to respond to the tool approval request.');
+    } finally {
+      setPendingToolApprovalResponseId(null);
+    }
+  }, [settingsClient]);
   const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_CHAT_MESSAGES);
   // Keep a ref to messages to avoid stale closures in setTimeout callbacks (PR review fix)
   const messagesRef = useRef<ChatMessage[]>(messages);
@@ -1966,6 +2013,7 @@ export default function ChatScreen({ route, navigation }: any) {
         messages.length > 0
         && messages[messages.length - 1].role === 'assistant'
         && messages[messages.length - 1].variant !== 'delegation'
+        && messages[messages.length - 1].variant !== 'approval'
       ) {
         messages[messages.length - 1].content = update.streamingContent.text;
       } else {
@@ -1974,6 +2022,15 @@ export default function ChatScreen({ route, navigation }: any) {
           content: update.streamingContent.text,
         });
       }
+    }
+
+    if (update.pendingToolApproval) {
+      messages.push({
+        role: 'assistant',
+        content: `Tool approval required: ${update.pendingToolApproval.toolName}`,
+        variant: 'approval',
+        toolApproval: update.pendingToolApproval,
+      });
     }
 
     const messagesWithUserResponse = applyUserResponseToMessages(
@@ -3307,6 +3364,10 @@ export default function ChatScreen({ route, navigation }: any) {
               visibleMessageContent.trim().length > 0 &&
               config.ttsEnabled !== false &&
               (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
+            const canBranchFromMessage =
+              !!currentSession?.serverConversationId &&
+              (m.role === 'user' || m.role === 'assistant') &&
+              m.variant !== 'approval';
 
             const toolCalls = m.toolCalls ?? [];
             const toolResults = m.toolResults ?? [];
@@ -3411,7 +3472,47 @@ export default function ChatScreen({ route, navigation }: any) {
                   </Pressable>
                 )}
 
-                {m.role === 'assistant' && (!m.content || m.content.length === 0) && !m.toolCalls && !m.toolResults ? (
+                {m.variant === 'approval' && m.toolApproval ? (
+                  <View style={styles.toolApprovalCard}>
+                    <Text style={styles.toolApprovalTitle}>Tool Approval Required</Text>
+                    <Text style={styles.toolApprovalTool} numberOfLines={2}>
+                      {m.toolApproval.toolName}
+                    </Text>
+                    <Text style={styles.toolApprovalArguments} numberOfLines={4}>
+                      {formatToolArguments(m.toolApproval.arguments)}
+                    </Text>
+                    <View style={styles.toolApprovalActions}>
+                      <TouchableOpacity
+                        style={[
+                          styles.toolApprovalButton,
+                          styles.toolApprovalDenyButton,
+                          pendingToolApprovalResponseId === m.toolApproval.approvalId && styles.toolApprovalButtonDisabled,
+                        ]}
+                        onPress={() => respondToToolApproval(m.toolApproval!.approvalId, false)}
+                        disabled={pendingToolApprovalResponseId === m.toolApproval.approvalId}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Deny tool call ${m.toolApproval.toolName}`}
+                      >
+                        <Text style={styles.toolApprovalDenyButtonText}>Deny</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.toolApprovalButton,
+                          styles.toolApprovalApproveButton,
+                          pendingToolApprovalResponseId === m.toolApproval.approvalId && styles.toolApprovalButtonDisabled,
+                        ]}
+                        onPress={() => respondToToolApproval(m.toolApproval!.approvalId, true)}
+                        disabled={pendingToolApprovalResponseId === m.toolApproval.approvalId}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Approve tool call ${m.toolApproval.toolName}`}
+                      >
+                        <Text style={styles.toolApprovalApproveButtonText}>
+                          {pendingToolApprovalResponseId === m.toolApproval.approvalId ? 'Responding...' : 'Approve'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : m.role === 'assistant' && (!m.content || m.content.length === 0) && !m.toolCalls && !m.toolResults ? (
                   <View
                     accessible
                     accessibilityRole="progressbar"
@@ -3665,10 +3766,28 @@ export default function ChatScreen({ route, navigation }: any) {
                           </Pressable>
                           </View>
                         )}
-                      </>
+	                      </>
+	                    )}
+                    {canBranchFromMessage && (
+                      <View style={styles.messageActionsRow}>
+                        <Pressable
+                          style={[
+                            styles.messageActionButton,
+                            branchingMessageIndex !== null && styles.messageActionButtonDisabled,
+                          ]}
+                          onPress={() => { void handleBranchFromMessage(i); }}
+                          disabled={branchingMessageIndex !== null}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Branch conversation from ${m.role} message ${i + 1}`}
+                        >
+                          <Text style={styles.messageActionButtonText}>
+                            {branchingMessageIndex === i ? 'Branching...' : 'Branch'}
+                          </Text>
+                        </Pressable>
+                      </View>
                     )}
-                  </>
-                )}
+	                  </>
+	                )}
               </View>
                 {/* Expanded group collapse footer */}
                 {isLastInExpandedGroup && (
@@ -4717,6 +4836,67 @@ function createStyles(theme: Theme, screenHeight: number) {
 	      lineHeight: 16,
 	      opacity: 0.92,
 	    },
+    toolApprovalCard: {
+      gap: spacing.xs,
+      padding: spacing.sm,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: 'rgba(245, 158, 11, 0.35)',
+      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    },
+    toolApprovalTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#b45309',
+    },
+    toolApprovalTool: {
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 12,
+      color: theme.colors.foreground,
+    },
+    toolApprovalArguments: {
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 11,
+      lineHeight: 15,
+      color: theme.colors.mutedForeground,
+    },
+    toolApprovalActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+    toolApprovalButton: {
+      minHeight: 36,
+      minWidth: 84,
+      borderRadius: radius.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    toolApprovalButtonDisabled: {
+      opacity: 0.6,
+    },
+    toolApprovalApproveButton: {
+      backgroundColor: theme.colors.primary,
+    },
+    toolApprovalApproveButtonText: {
+      color: theme.colors.primaryForeground,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    toolApprovalDenyButton: {
+      borderWidth: 1,
+      borderColor: theme.colors.destructive,
+      backgroundColor: theme.colors.background,
+    },
+    toolApprovalDenyButtonText: {
+      color: theme.colors.destructive,
+      fontSize: 13,
+      fontWeight: '700',
+    },
     // Unified Tool Execution Card styles - compact left-accent design matching desktop
     toolExecutionCard: {
       marginTop: 2,
@@ -4995,6 +5175,34 @@ function createStyles(theme: Theme, screenHeight: number) {
       lineHeight: 18,
       flex: 1,
       minWidth: 0,
+    },
+    messageActionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      marginTop: 2,
+      gap: spacing.xs,
+    },
+    messageActionButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    messageActionButtonDisabled: {
+      opacity: 0.65,
+    },
+    messageActionButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '600',
     },
     // Per-message TTS button styles (#1078)
     speakButton: {

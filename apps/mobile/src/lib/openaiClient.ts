@@ -41,7 +41,8 @@ export type ChatMessage = {
   toolResults?: ToolResult[];
   /** Render-only aligned call/result pairs for pending delegation tool activity. */
   toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult }>;
-  variant?: 'delegation';
+  toolApproval?: NonNullable<AgentProgressUpdate['pendingToolApproval']>;
+  variant?: 'delegation' | 'approval';
 };
 
 export type ChatResponse = ChatApiResponse;
