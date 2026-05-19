@@ -289,6 +289,90 @@ export interface ChatGptWebAuthActionResponse {
   error?: string;
 }
 
+export interface SkillImportGitHubResponse {
+  imported: Skill[];
+  errors: string[];
+}
+
+export interface SkillExportMarkdownResponse {
+  markdown: string;
+}
+
+export interface SkillDeleteMultipleResponse {
+  deletedCount: number;
+  results: Array<{ id: string; success: boolean; error?: string }>;
+}
+
+export type BundleComponentKey = 'agentProfiles' | 'mcpServers' | 'skills' | 'repeatTasks' | 'knowledgeNotes';
+export type BundleComponentSelection = Partial<Record<BundleComponentKey, boolean>>;
+export type BundleImportConflictStrategy = 'skip' | 'overwrite' | 'rename';
+
+export interface DotAgentsBundle {
+  manifest: {
+    version: 1;
+    name: string;
+    description?: string;
+    createdAt: string;
+    exportedFrom: string;
+    components: Record<BundleComponentKey, number>;
+  };
+  agentProfiles: Array<Record<string, unknown>>;
+  mcpServers: Array<Record<string, unknown>>;
+  skills: Array<Record<string, unknown>>;
+  repeatTasks: Array<Record<string, unknown>>;
+  knowledgeNotes: Array<Record<string, unknown>>;
+}
+
+export interface BundleImportConflict {
+  id: string;
+  name: string;
+  existingName?: string;
+}
+
+export interface BundleImportPreview {
+  bundle: DotAgentsBundle;
+  conflicts: Record<BundleComponentKey, BundleImportConflict[]>;
+}
+
+export interface BundleImportItemResult {
+  id: string;
+  name: string;
+  action: 'imported' | 'skipped' | 'renamed' | 'overwritten';
+  newId?: string;
+  error?: string;
+}
+
+export interface BundleExportResponse {
+  success: true;
+  bundle: DotAgentsBundle;
+  bundleJson: string;
+}
+
+export interface BundleImportPreviewResponse {
+  success: true;
+  preview: BundleImportPreview;
+}
+
+export interface BundleImportResponse {
+  success: boolean;
+  agentProfiles: BundleImportItemResult[];
+  mcpServers: BundleImportItemResult[];
+  skills: BundleImportItemResult[];
+  repeatTasks: BundleImportItemResult[];
+  knowledgeNotes: BundleImportItemResult[];
+  errors: string[];
+}
+
+export interface LoopImportMarkdownRequest {
+  content: string;
+}
+
+export interface LoopExportMarkdownResponse {
+  success: true;
+  loopId: string;
+  markdown: string;
+}
+
 export type KnowledgeNoteContext = 'auto' | 'search-only';
 export type KnowledgeNoteDateFilter = 'all' | '7d' | '30d' | '90d' | 'year';
 export type KnowledgeNoteSort = 'relevance' | 'updated-desc' | 'updated-asc' | 'created-desc' | 'created-asc' | 'title-asc' | 'title-desc';
@@ -846,6 +930,60 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
     });
   }
 
+  async importSkillFromMarkdown(content: string): Promise<SkillResponse> {
+    return this.request<SkillResponse>('/skills/import/markdown', {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  async importSkillFromGitHub(repoIdentifier: string): Promise<SkillImportGitHubResponse> {
+    return this.request<SkillImportGitHubResponse>('/skills/import/github', {
+      method: 'POST',
+      body: JSON.stringify({ repoIdentifier }),
+    });
+  }
+
+  async exportSkillToMarkdown(skillId: string): Promise<SkillExportMarkdownResponse> {
+    return this.request<SkillExportMarkdownResponse>(`/skills/${encodeURIComponent(skillId)}/export/markdown`);
+  }
+
+  async deleteSkills(ids: string[]): Promise<SkillDeleteMultipleResponse> {
+    return this.request<SkillDeleteMultipleResponse>('/skills/delete-multiple', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+  }
+
+  // ============================================
+  // Bundle Management
+  // ============================================
+
+  async exportBundle(request: { name?: string; components?: BundleComponentSelection } = {}): Promise<BundleExportResponse> {
+    return this.request<BundleExportResponse>('/bundles/export', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async previewBundleImport(request: { bundleJson: string }): Promise<BundleImportPreviewResponse> {
+    return this.request<BundleImportPreviewResponse>('/bundles/import/preview', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async importBundle(request: {
+    bundleJson: string;
+    conflictStrategy: BundleImportConflictStrategy;
+    components?: BundleComponentSelection;
+  }): Promise<BundleImportResponse> {
+    return this.request<BundleImportResponse>('/bundles/import', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
   // ============================================
   // Knowledge Notes Management
   // ============================================
@@ -992,6 +1130,17 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
     return this.request(`/loops/${encodeURIComponent(id)}/run`, {
       method: 'POST',
     });
+  }
+
+  async importLoopFromMarkdown(content: string): Promise<{ loop: Loop }> {
+    return this.request<{ loop: Loop }>('/loops/import/markdown', {
+      method: 'POST',
+      body: JSON.stringify({ content } satisfies LoopImportMarkdownRequest),
+    });
+  }
+
+  async exportLoopToMarkdown(id: string): Promise<LoopExportMarkdownResponse> {
+    return this.request<LoopExportMarkdownResponse>(`/loops/${encodeURIComponent(id)}/export/markdown`);
   }
 }
 

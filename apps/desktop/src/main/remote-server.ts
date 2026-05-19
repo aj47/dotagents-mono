@@ -2947,6 +2947,210 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // ============================================
+  // Bundle Management Endpoints (for mobile app)
+  // ============================================
+
+  const BUNDLE_COMPONENT_KEYS = ["agentProfiles", "mcpServers", "skills", "repeatTasks", "knowledgeNotes"] as const
+  type BundleComponentKey = typeof BUNDLE_COMPONENT_KEYS[number]
+
+  const normalizeBundleComponents = (raw: unknown): Partial<Record<BundleComponentKey, boolean>> | undefined => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined
+    const record = raw as Record<string, unknown>
+    const components: Partial<Record<BundleComponentKey, boolean>> = {}
+    for (const key of BUNDLE_COMPONENT_KEYS) {
+      if (record[key] !== undefined) {
+        components[key] = record[key] === true
+      }
+    }
+    return components
+  }
+
+  const getBundleAgentsDirsForMobile = async () => {
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+    return {
+      globalAgentsFolder,
+      targetAgentsFolder: workspaceAgentsFolder || globalAgentsFolder,
+      agentsDirs: workspaceAgentsFolder ? [globalAgentsFolder, workspaceAgentsFolder] : [globalAgentsFolder],
+    }
+  }
+
+  const writeTemporaryBundleFileForMobile = (bundleJson: string) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotagents-mobile-bundle-"))
+    const filePath = path.join(dir, `bundle-${crypto.randomUUID()}.dotagents`)
+    fs.writeFileSync(filePath, bundleJson, "utf8")
+    return { dir, filePath }
+  }
+
+  const cleanupTemporaryBundleFileForMobile = (dir: string) => {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true })
+    } catch {
+      // best-effort temp cleanup
+    }
+  }
+
+  const refreshRuntimeAfterMobileBundleImport = async () => {
+    try {
+      configStore.reload()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload config after mobile bundle import", error)
+    }
+
+    try {
+      agentProfileService.reload()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload agent profiles after mobile bundle import", error)
+    }
+
+    try {
+      skillsService.scanSkillsFolder()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload skills after mobile bundle import", error)
+    }
+
+    try {
+      const { loopService } = await import("./loop-service")
+      loopService.stopAllLoops()
+      loopService.reload()
+      loopService.resumeScheduling()
+      loopService.startAllLoops()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload repeat tasks after mobile bundle import", error)
+    }
+
+    try {
+      await knowledgeNotesService.reload()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload knowledge notes after mobile bundle import", error)
+    }
+
+    try {
+      const config = configStore.get()
+      const configuredServers = config.mcpConfig?.mcpServers || {}
+      const serverStatusBeforeRefresh = mcpService.getServerStatus()
+
+      for (const serverName of Object.keys(serverStatusBeforeRefresh)) {
+        const serverConfig = configuredServers[serverName]
+        const shouldBeStopped = !serverConfig || !!(serverConfig as MCPServerConfig).disabled
+        if (!shouldBeStopped) continue
+
+        const stopResult = await mcpService.stopServer(serverName)
+        if (!stopResult.success) {
+          diagnosticsService.logError("remote-server", `Failed to stop MCP server ${serverName} after mobile bundle import`, stopResult.error)
+        }
+      }
+
+      const serverStatusAfterStops = mcpService.getServerStatus()
+      for (const [serverName, serverConfig] of Object.entries(configuredServers)) {
+        if ((serverConfig as MCPServerConfig).disabled) continue
+        const status = serverStatusAfterStops[serverName]
+        if (status?.runtimeEnabled === false || !status?.connected) continue
+
+        const restartResult = await mcpService.restartServer(serverName)
+        if (!restartResult.success) {
+          diagnosticsService.logError("remote-server", `Failed to restart MCP server ${serverName} after mobile bundle import`, restartResult.error)
+        }
+      }
+
+      await mcpService.initialize()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reinitialize MCP after mobile bundle import", error)
+    }
+  }
+
+  // POST /v1/bundles/export - Export a DotAgents bundle as JSON for mobile sharing
+  fastify.post("/v1/bundles/export", async (req, reply) => {
+    try {
+      const body = (req.body ?? {}) as { name?: unknown; description?: unknown; components?: unknown }
+      const { agentsDirs } = await getBundleAgentsDirsForMobile()
+      const { exportBundle, exportBundleFromLayers } = await import("./bundle-service")
+      const options = {
+        name: typeof body.name === "string" && body.name.trim() ? body.name.trim() : "DotAgents Bundle",
+        description: typeof body.description === "string" && body.description.trim() ? body.description.trim() : undefined,
+        components: normalizeBundleComponents(body.components),
+      }
+      const bundle = agentsDirs.length > 1
+        ? await exportBundleFromLayers(agentsDirs, options)
+        : await exportBundle(agentsDirs[0], options)
+      return reply.send({
+        success: true,
+        bundle,
+        bundleJson: JSON.stringify(bundle, null, 2),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to export bundle", error)
+      return reply.code(500).send({ error: error?.message || "Failed to export bundle" })
+    }
+  })
+
+  // POST /v1/bundles/import/preview - Preview a pasted DotAgents bundle
+  fastify.post("/v1/bundles/import/preview", async (req, reply) => {
+    let temp: { dir: string; filePath: string } | null = null
+    try {
+      const body = req.body as { bundleJson?: unknown }
+      const bundleJson = typeof body.bundleJson === "string" ? body.bundleJson.trim() : ""
+      if (!bundleJson) {
+        return reply.code(400).send({ error: "bundleJson must be a non-empty string" })
+      }
+
+      JSON.parse(bundleJson)
+      temp = writeTemporaryBundleFileForMobile(bundleJson)
+      const { targetAgentsFolder } = await getBundleAgentsDirsForMobile()
+      const { previewBundleWithConflicts } = await import("./bundle-service")
+      const preview = previewBundleWithConflicts(temp.filePath, targetAgentsFolder)
+      if (!preview.success || !preview.bundle || !preview.conflicts) {
+        return reply.code(400).send({ error: preview.error || "Failed to preview bundle" })
+      }
+
+      return reply.send({
+        success: true,
+        preview: {
+          bundle: preview.bundle,
+          conflicts: preview.conflicts,
+        },
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to preview bundle import", error)
+      return reply.code(400).send({ error: error?.message || "Failed to preview bundle import" })
+    } finally {
+      if (temp) cleanupTemporaryBundleFileForMobile(temp.dir)
+    }
+  })
+
+  // POST /v1/bundles/import - Import a pasted DotAgents bundle
+  fastify.post("/v1/bundles/import", async (req, reply) => {
+    let temp: { dir: string; filePath: string } | null = null
+    try {
+      const body = req.body as { bundleJson?: unknown; conflictStrategy?: unknown; components?: unknown }
+      const bundleJson = typeof body.bundleJson === "string" ? body.bundleJson.trim() : ""
+      if (!bundleJson) {
+        return reply.code(400).send({ error: "bundleJson must be a non-empty string" })
+      }
+      const conflictStrategy = body.conflictStrategy === "overwrite" || body.conflictStrategy === "rename"
+        ? body.conflictStrategy
+        : "skip"
+
+      JSON.parse(bundleJson)
+      temp = writeTemporaryBundleFileForMobile(bundleJson)
+      const { targetAgentsFolder } = await getBundleAgentsDirsForMobile()
+      const { importBundle } = await import("./bundle-service")
+      const result = await importBundle(temp.filePath, targetAgentsFolder, {
+        conflictStrategy,
+        components: normalizeBundleComponents(body.components),
+      })
+      await refreshRuntimeAfterMobileBundleImport()
+
+      return reply.send(result)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import bundle", error)
+      return reply.code(400).send({ error: error?.message || "Failed to import bundle" })
+    } finally {
+      if (temp) cleanupTemporaryBundleFileForMobile(temp.dir)
+    }
+  })
+
   // GET /v1/operator/mcp - Operator-level MCP summary
   fastify.get("/v1/operator/mcp", async (_req, reply) => {
     try {
@@ -5174,6 +5378,20 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   }
 
+  const cleanupStaleSkillReferencesForMobile = async () => {
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
+
+    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+    const layers = workspaceAgentsFolder
+      ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
+      : [getAgentsLayerPaths(globalAgentsFolder)]
+
+    cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
+    agentProfileService.reload()
+  }
+
   // GET /v1/skills - List all skills
   fastify.get("/v1/skills", async (_req, reply) => {
     try {
@@ -5238,6 +5456,80 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // POST /v1/skills/import/markdown - Import a skill from SKILL.md content
+  fastify.post("/v1/skills/import/markdown", async (req, reply) => {
+    try {
+      const body = req.body as { content?: unknown }
+      const content = typeof body.content === "string" ? body.content.trim() : ""
+      if (!content) {
+        return reply.code(400).send({ error: "content must be a non-empty string" })
+      }
+
+      const skill = skillsService.importSkillFromMarkdown(content)
+      agentProfileService.enableSkillForCurrentProfile(skill.id)
+      return reply.code(201).send({ skill: formatSkillForMobile(skill) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import skill from Markdown", error)
+      return reply.code(400).send({ error: error?.message || "Failed to import skill from Markdown" })
+    }
+  })
+
+  // POST /v1/skills/import/github - Import one or more skills from a GitHub repository
+  fastify.post("/v1/skills/import/github", async (req, reply) => {
+    try {
+      const body = req.body as { repoIdentifier?: unknown }
+      const repoIdentifier = typeof body.repoIdentifier === "string" ? body.repoIdentifier.trim() : ""
+      if (!repoIdentifier) {
+        return reply.code(400).send({ error: "repoIdentifier must be a non-empty string" })
+      }
+
+      const result = await skillsService.importSkillFromGitHub(repoIdentifier)
+      for (const skill of result.imported) {
+        agentProfileService.enableSkillForCurrentProfile(skill.id)
+      }
+
+      const didFail = result.imported.length === 0 && result.errors.length > 0
+      return reply.code(didFail ? 400 : 200).send({
+        imported: result.imported.map(skill => formatSkillForMobile(skill)),
+        errors: result.errors,
+        ...(didFail ? { error: result.errors[0] || "No skills imported from GitHub" } : {}),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import skill from GitHub", error)
+      return reply.code(500).send({ error: error?.message || "Failed to import skill from GitHub" })
+    }
+  })
+
+  // POST /v1/skills/delete-multiple - Delete selected skills
+  fastify.post("/v1/skills/delete-multiple", async (req, reply) => {
+    try {
+      const body = (req.body ?? {}) as { ids?: unknown }
+      const ids = Array.isArray(body.ids)
+        ? Array.from(new Set(body.ids.filter((id): id is string => typeof id === "string").map(id => id.trim()).filter(Boolean)))
+        : []
+      if (ids.length === 0) {
+        return reply.code(400).send({ error: "ids must contain at least one skill id" })
+      }
+
+      const results = ids.map(id => {
+        const success = skillsService.deleteSkill(id)
+        return success ? { id, success } : { id, success, error: "Skill not found or could not be deleted" }
+      })
+
+      if (results.some(result => result.success)) {
+        await cleanupStaleSkillReferencesForMobile()
+      }
+
+      return reply.send({
+        deletedCount: results.filter(result => result.success).length,
+        results,
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete selected skills", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete selected skills" })
+    }
+  })
+
   // PATCH /v1/skills/:id - Update a skill
   fastify.patch("/v1/skills/:id", async (req, reply) => {
     try {
@@ -5269,6 +5561,19 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to update skill", error)
       const message = error?.message || "Failed to update skill"
+      return reply.code(message.includes("not found") ? 404 : 500).send({ error: message })
+    }
+  })
+
+  // GET /v1/skills/:id/export/markdown - Export a skill as SKILL.md content
+  fastify.get("/v1/skills/:id/export/markdown", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const markdown = skillsService.exportSkillToMarkdown(params.id)
+      return reply.send({ markdown })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to export skill to Markdown", error)
+      const message = error?.message || "Failed to export skill to Markdown"
       return reply.code(message.includes("not found") ? 404 : 500).send({ error: message })
     }
   })
@@ -5990,6 +6295,51 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // POST /v1/loops/import/markdown - Import a repeat task from task.md content
+  fastify.post("/v1/loops/import/markdown", async (req, reply) => {
+    try {
+      const body = req.body as { content?: unknown }
+      const content = typeof body.content === "string" ? body.content.trim() : ""
+      if (!content) {
+        return reply.code(400).send({ error: "Repeat task Markdown content is required" })
+      }
+
+      const { parseTaskMarkdown } = await import("./agents-files/tasks")
+      const parsedLoop = parseTaskMarkdown(content, {
+        fallbackId: `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+      })
+      if (!parsedLoop) {
+        return reply.code(400).send({ error: "Invalid repeat task Markdown" })
+      }
+
+      const loopService = await loadLoopService()
+      if (loopService) {
+        const saved = loopService.saveLoop(parsedLoop)
+        if (!saved) {
+          return reply.code(500).send({ error: "Failed to persist repeat task" })
+        }
+        loopService.stopLoop(parsedLoop.id)
+        if (parsedLoop.enabled) {
+          loopService.startLoop(parsedLoop.id)
+        }
+      } else {
+        const cfg = configStore.get()
+        const loops = cfg.loops || []
+        const existingIndex = loops.findIndex(loop => loop.id === parsedLoop.id)
+        const updatedLoops = existingIndex >= 0
+          ? loops.map((loop, index) => index === existingIndex ? parsedLoop : loop)
+          : [...loops, parsedLoop]
+        configStore.save({ ...cfg, loops: updatedLoops })
+      }
+
+      const savedLoop = loopService?.getLoop(parsedLoop.id) ?? parsedLoop
+      return reply.code(201).send({ loop: await formatLoopResponse(savedLoop) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import repeat task from Markdown", error)
+      return reply.code(400).send({ error: error?.message || "Failed to import repeat task" })
+    }
+  })
+
   // GET /v1/agent-sessions/candidates - List active and recent sessions for repeat-task pickers
   fastify.get("/v1/agent-sessions/candidates", async (req, reply) => {
     try {
@@ -6005,6 +6355,28 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get agent session candidates", error)
       return reply.code(500).send({ error: error?.message || "Failed to get agent session candidates" })
+    }
+  })
+
+  // GET /v1/loops/:id/export/markdown - Export one repeat task as task.md content
+  fastify.get("/v1/loops/:id/export/markdown", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const loopService = await loadLoopService()
+      const loop = loopService?.getLoop(params.id) ?? (configStore.get().loops || []).find(task => task.id === params.id)
+      if (!loop) {
+        return reply.code(404).send({ error: "Repeat task not found" })
+      }
+
+      const { stringifyTaskMarkdown } = await import("./agents-files/tasks")
+      return reply.send({
+        success: true,
+        loopId: params.id,
+        markdown: stringifyTaskMarkdown(loop),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to export repeat task to Markdown", error)
+      return reply.code(500).send({ error: error?.message || "Failed to export repeat task" })
     }
   })
 

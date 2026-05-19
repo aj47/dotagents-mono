@@ -38,6 +38,10 @@ import {
   KnowledgeNoteSort,
   AgentProfile,
   Loop,
+  BundleComponentKey,
+  BundleComponentSelection,
+  BundleImportConflictStrategy,
+  BundleImportPreview,
 } from '../lib/settingsApi';
 import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
@@ -69,6 +73,30 @@ const TTS_PROVIDERS = [
 ] as const;
 
 const LOOP_DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+type BundleImportComponentsState = Required<BundleComponentSelection>;
+
+const DEFAULT_BUNDLE_IMPORT_COMPONENTS: BundleImportComponentsState = {
+  agentProfiles: true,
+  mcpServers: true,
+  skills: true,
+  repeatTasks: true,
+  knowledgeNotes: true,
+};
+
+const BUNDLE_IMPORT_COMPONENT_OPTIONS: Array<{ key: BundleComponentKey; label: string }> = [
+  { key: 'agentProfiles', label: 'Agents' },
+  { key: 'mcpServers', label: 'MCP servers' },
+  { key: 'skills', label: 'Skills' },
+  { key: 'repeatTasks', label: 'Tasks' },
+  { key: 'knowledgeNotes', label: 'Knowledge' },
+];
+
+const BUNDLE_IMPORT_CONFLICT_STRATEGIES: Array<{ value: BundleImportConflictStrategy; label: string }> = [
+  { value: 'skip', label: 'Skip' },
+  { value: 'rename', label: 'Rename' },
+  { value: 'overwrite', label: 'Overwrite' },
+];
 
 function describeLoopCadence(loop: Loop): string {
   if (loop.runContinuously) return 'Continuous';
@@ -486,6 +514,14 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Skills, Knowledge Notes, Agents, and Loops state
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set());
+  const [showSkillImportModal, setShowSkillImportModal] = useState(false);
+  const [showSkillGitHubImportModal, setShowSkillGitHubImportModal] = useState(false);
+  const [skillImportMarkdownText, setSkillImportMarkdownText] = useState('');
+  const [skillGitHubImportText, setSkillGitHubImportText] = useState('');
+  const [isImportingSkillMarkdown, setIsImportingSkillMarkdown] = useState(false);
+  const [isImportingSkillGitHub, setIsImportingSkillGitHub] = useState(false);
+  const [isExportingSkillMarkdownId, setIsExportingSkillMarkdownId] = useState<string | null>(null);
   const [knowledgeNotes, setKnowledgeNotes] = useState<KnowledgeNote[]>([]);
   const [knowledgeNoteSearchQuery, setKnowledgeNoteSearchQuery] = useState('');
   const [knowledgeNoteSearchResults, setKnowledgeNoteSearchResults] = useState<KnowledgeNote[]>([]);
@@ -500,6 +536,10 @@ export default function SettingsScreen({ navigation }: any) {
   const [isSearchingKnowledgeNotes, setIsSearchingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const [isImportingLoopMarkdown, setIsImportingLoopMarkdown] = useState(false);
+  const [isExportingLoopMarkdownId, setIsExportingLoopMarkdownId] = useState<string | null>(null);
+  const [showLoopImportModal, setShowLoopImportModal] = useState(false);
+  const [loopImportMarkdownText, setLoopImportMarkdownText] = useState('');
   const trimmedKnowledgeNoteSearchQuery = knowledgeNoteSearchQuery.trim();
   const knowledgeNoteFilterRequest = useMemo(() => ({
     context: knowledgeNoteContextFilter === 'all' ? undefined : knowledgeNoteContextFilter,
@@ -522,6 +562,14 @@ export default function SettingsScreen({ navigation }: any) {
     if (enabledDiff !== 0) return enabledDiff;
     return a.name.localeCompare(b.name);
   }), [skills]);
+  const displaySkillIds = useMemo(
+    () => new Set(displaySkills.map(skill => skill.id)),
+    [displaySkills]
+  );
+  const visibleSelectedSkillIds = useMemo(
+    () => Array.from(selectedSkillIds).filter(id => displaySkillIds.has(id)),
+    [displaySkillIds, selectedSkillIds]
+  );
   const availableAcpMainAgents = useMemo(
     () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -532,6 +580,14 @@ export default function SettingsScreen({ navigation }: any) {
   const [isImportingProfile, setIsImportingProfile] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
+  const [isExportingBundle, setIsExportingBundle] = useState(false);
+  const [isPreviewingBundleImport, setIsPreviewingBundleImport] = useState(false);
+  const [isImportingBundle, setIsImportingBundle] = useState(false);
+  const [showBundleImportModal, setShowBundleImportModal] = useState(false);
+  const [bundleImportJsonText, setBundleImportJsonText] = useState('');
+  const [bundleImportPreview, setBundleImportPreview] = useState<BundleImportPreview | null>(null);
+  const [bundleImportConflictStrategy, setBundleImportConflictStrategy] = useState<BundleImportConflictStrategy>('skip');
+  const [bundleImportComponents, setBundleImportComponents] = useState<BundleImportComponentsState>(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
 
   // MCP server editor state
   const [showMcpServerEditor, setShowMcpServerEditor] = useState(false);
@@ -570,6 +626,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     providerSelection: false, // Provider selection section
     profileModel: true,  // Keep profile/model expanded by default since it was already visible
+    bundles: false,
     mcpServers: true,    // Keep MCP servers expanded by default since it was already visible
     streamerMode: false,
     speechToText: false,
@@ -1022,6 +1079,152 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const shareBundleExport = useCallback(async () => {
+    if (!settingsClient || isExportingBundle) return;
+
+    setIsExportingBundle(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportBundle({ name: 'DotAgents Bundle' });
+      const itemCount =
+        result.bundle.agentProfiles.length
+        + result.bundle.mcpServers.length
+        + result.bundle.skills.length
+        + result.bundle.repeatTasks.length
+        + result.bundle.knowledgeNotes.length;
+      await Share.share({
+        message: result.bundleJson,
+        title: `${result.bundle.manifest.name}.dotagents`,
+      });
+      setSaveStatusMessage(`Exported bundle with ${itemCount} item${itemCount === 1 ? '' : 's'}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export bundle:', error);
+      Alert.alert('Export Failed', error.message || 'Failed to export bundle');
+    } finally {
+      setIsExportingBundle(false);
+    }
+  }, [isExportingBundle, settingsClient]);
+
+  const handleBundleExport = useCallback(() => {
+    if (!settingsClient || isExportingBundle) return;
+
+    const message = 'Bundles can include agents, MCP servers, skills, tasks, and knowledge notes. Review the JSON before sharing it.';
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (confirmFn?.(`Export DotAgents Bundle\n\n${message}`)) {
+        void shareBundleExport();
+      }
+      return;
+    }
+
+    Alert.alert('Export DotAgents Bundle', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Export', onPress: () => { void shareBundleExport(); } },
+    ]);
+  }, [isExportingBundle, settingsClient, shareBundleExport]);
+
+  const closeBundleImportModal = useCallback(() => {
+    if (isPreviewingBundleImport || isImportingBundle) return;
+    setShowBundleImportModal(false);
+    setBundleImportJsonText('');
+    setBundleImportPreview(null);
+    setBundleImportConflictStrategy('skip');
+    setBundleImportComponents(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+  }, [isImportingBundle, isPreviewingBundleImport]);
+
+  const handleBundleImportJsonChange = useCallback((value: string) => {
+    setBundleImportJsonText(value);
+    setBundleImportPreview(null);
+  }, []);
+
+  const handleBundleImportComponentToggle = useCallback((key: BundleComponentKey, value: boolean) => {
+    setBundleImportComponents(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleBundleImportPreview = useCallback(async () => {
+    if (!settingsClient || !bundleImportJsonText.trim()) return;
+
+    try {
+      JSON.parse(bundleImportJsonText.trim());
+    } catch {
+      Alert.alert('Preview Failed', 'Bundle JSON is invalid');
+      return;
+    }
+
+    setIsPreviewingBundleImport(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.previewBundleImport({ bundleJson: bundleImportJsonText.trim() });
+      setBundleImportPreview(result.preview);
+      const components = result.preview.bundle.manifest.components;
+      const itemCount = components.agentProfiles + components.mcpServers + components.skills + components.repeatTasks + components.knowledgeNotes;
+      setSaveStatusMessage(`Previewed bundle with ${itemCount} item${itemCount === 1 ? '' : 's'}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to preview bundle import:', error);
+      Alert.alert('Preview Failed', error.message || 'Failed to preview bundle');
+    } finally {
+      setIsPreviewingBundleImport(false);
+    }
+  }, [bundleImportJsonText, settingsClient]);
+
+  const refreshAfterBundleImport = useCallback(async () => {
+    const refreshes: Promise<void>[] = [fetchRemoteSettings()];
+    if (isDotAgentsServer) {
+      refreshes.push(fetchSkills(), fetchKnowledgeNotes(), fetchAgentProfiles(), fetchLoops());
+    }
+    await Promise.allSettled(refreshes);
+  }, [fetchAgentProfiles, fetchKnowledgeNotes, fetchLoops, fetchRemoteSettings, fetchSkills, isDotAgentsServer]);
+
+  const handleBundleImport = useCallback(async () => {
+    if (!settingsClient || !bundleImportJsonText.trim()) return;
+    if (!Object.values(bundleImportComponents).some(Boolean)) {
+      Alert.alert('Import Failed', 'Select at least one bundle component to import');
+      return;
+    }
+
+    setIsImportingBundle(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importBundle({
+        bundleJson: bundleImportJsonText.trim(),
+        conflictStrategy: bundleImportConflictStrategy,
+        components: bundleImportComponents,
+      });
+
+      if (!result.success) {
+        throw new Error(result.errors.join(', ') || 'Import failed');
+      }
+
+      const importedCount = [
+        ...result.agentProfiles,
+        ...result.mcpServers,
+        ...result.skills,
+        ...result.repeatTasks,
+        ...result.knowledgeNotes,
+      ].filter(item => item.action !== 'skipped').length;
+
+      setShowBundleImportModal(false);
+      setBundleImportJsonText('');
+      setBundleImportPreview(null);
+      setBundleImportConflictStrategy('skip');
+      setBundleImportComponents(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+      setSaveStatusMessage(`Imported ${importedCount} bundle item${importedCount === 1 ? '' : 's'}`);
+      await refreshAfterBundleImport();
+      Alert.alert('Import Complete', `Imported ${importedCount} item${importedCount === 1 ? '' : 's'} from the bundle.`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to import bundle:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import bundle');
+    } finally {
+      setIsImportingBundle(false);
+    }
+  }, [
+    bundleImportComponents,
+    bundleImportConflictStrategy,
+    bundleImportJsonText,
+    refreshAfterBundleImport,
+    settingsClient,
+  ]);
+
   // Handle MCP server toggle
   const handleServerToggle = async (serverName: string, enabled: boolean) => {
     if (!settingsClient) return;
@@ -1361,6 +1564,117 @@ export default function SettingsScreen({ navigation }: any) {
     []
   );
 
+  const toggleSkillSelection = useCallback((skillId: string) => {
+    setSelectedSkillIds(prev => {
+      const next = new Set(prev);
+      if (next.has(skillId)) {
+        next.delete(skillId);
+      } else {
+        next.add(skillId);
+      }
+      return next;
+    });
+  }, []);
+
+  const closeSkillImportModal = useCallback(() => {
+    if (isImportingSkillMarkdown) return;
+    setShowSkillImportModal(false);
+    setSkillImportMarkdownText('');
+  }, [isImportingSkillMarkdown]);
+
+  const closeSkillGitHubImportModal = useCallback(() => {
+    if (isImportingSkillGitHub) return;
+    setShowSkillGitHubImportModal(false);
+    setSkillGitHubImportText('');
+  }, [isImportingSkillGitHub]);
+
+  const handleSkillMarkdownImport = useCallback(async () => {
+    if (!settingsClient || isImportingSkillMarkdown || !skillImportMarkdownText.trim()) return;
+
+    setIsImportingSkillMarkdown(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importSkillFromMarkdown(skillImportMarkdownText.trim());
+      setShowSkillImportModal(false);
+      setSkillImportMarkdownText('');
+      setSaveStatusMessage(`Imported skill "${result.skill.name}"`);
+      await fetchSkills();
+    } catch (error: any) {
+      console.error('[Settings] Failed to import skill from Markdown:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import skill');
+    } finally {
+      setIsImportingSkillMarkdown(false);
+    }
+  }, [fetchSkills, isImportingSkillMarkdown, settingsClient, skillImportMarkdownText]);
+
+  const handleSkillGitHubImport = useCallback(async () => {
+    if (!settingsClient || isImportingSkillGitHub || !skillGitHubImportText.trim()) return;
+
+    setIsImportingSkillGitHub(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importSkillFromGitHub(skillGitHubImportText.trim());
+      setShowSkillGitHubImportModal(false);
+      setSkillGitHubImportText('');
+      setSaveStatusMessage(`Imported ${result.imported.length} skill${result.imported.length === 1 ? '' : 's'} from GitHub`);
+      if (result.errors.length > 0) {
+        Alert.alert('Import Finished With Errors', result.errors.join('\n'));
+      }
+      await fetchSkills();
+    } catch (error: any) {
+      console.error('[Settings] Failed to import skill from GitHub:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import skills from GitHub');
+    } finally {
+      setIsImportingSkillGitHub(false);
+    }
+  }, [fetchSkills, isImportingSkillGitHub, settingsClient, skillGitHubImportText]);
+
+  const handleSkillMarkdownExport = useCallback(async (skill: Skill) => {
+    if (!settingsClient || isExportingSkillMarkdownId) return;
+
+    setIsExportingSkillMarkdownId(skill.id);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportSkillToMarkdown(skill.id);
+      await Share.share({
+        message: result.markdown,
+        title: `${skill.name}.md`,
+      });
+      setSaveStatusMessage(`Exported skill "${skill.name}"`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export skill:', error);
+      Alert.alert('Export Failed', error.message || 'Failed to export skill');
+    } finally {
+      setIsExportingSkillMarkdownId(null);
+    }
+  }, [isExportingSkillMarkdownId, settingsClient]);
+
+  const handleSelectedSkillsDelete = useCallback(() => {
+    if (!settingsClient || visibleSelectedSkillIds.length === 0) return;
+
+    const count = visibleSelectedSkillIds.length;
+    confirmDestructiveAction(
+      `Delete ${count} skill${count === 1 ? '' : 's'}`,
+      'Deleted skills are moved to the local .agents backup folder when possible.',
+      async () => {
+        try {
+          const result = await settingsClient.deleteSkills(visibleSelectedSkillIds);
+          const deletedIds = new Set(result.results.filter(item => item.success).map(item => item.id));
+          setSelectedSkillIds(prev => new Set(Array.from(prev).filter(id => !deletedIds.has(id))));
+          setSaveStatusMessage(`Deleted ${result.deletedCount} skill${result.deletedCount === 1 ? '' : 's'}`);
+          await fetchSkills();
+          const failed = result.results.filter(item => !item.success);
+          if (failed.length > 0) {
+            Alert.alert('Delete Finished With Errors', failed.map(item => `${item.id}: ${item.error || 'Failed'}`).join('\n'));
+          }
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete selected skills:', error);
+          Alert.alert('Delete Failed', error.message || 'Failed to delete selected skills');
+        }
+      }
+    );
+  }, [confirmDestructiveAction, fetchSkills, settingsClient, visibleSelectedSkillIds]);
+
   const handleChatGptWebOAuthLogin = useCallback(async () => {
     if (!settingsClient || pendingChatGptWebAuthAction) return;
 
@@ -1601,6 +1915,52 @@ export default function SettingsScreen({ navigation }: any) {
       loop,
     });
   }, [navigation]);
+
+  const closeLoopImportModal = useCallback(() => {
+    if (isImportingLoopMarkdown) return;
+    setShowLoopImportModal(false);
+    setLoopImportMarkdownText('');
+  }, [isImportingLoopMarkdown]);
+
+  const handleLoopMarkdownImport = useCallback(async () => {
+    if (!settingsClient || isImportingLoopMarkdown || !loopImportMarkdownText.trim()) return;
+
+    setIsImportingLoopMarkdown(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importLoopFromMarkdown(loopImportMarkdownText.trim());
+      setShowLoopImportModal(false);
+      setLoopImportMarkdownText('');
+      setSaveStatusMessage(`Imported loop "${result.loop.name}"`);
+      await fetchLoops();
+      Alert.alert('Import Complete', `Imported "${result.loop.name}".`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to import loop Markdown:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import loop');
+    } finally {
+      setIsImportingLoopMarkdown(false);
+    }
+  }, [fetchLoops, isImportingLoopMarkdown, loopImportMarkdownText, settingsClient]);
+
+  const handleLoopMarkdownExport = useCallback(async (loop: Loop) => {
+    if (!settingsClient || isExportingLoopMarkdownId) return;
+
+    setIsExportingLoopMarkdownId(loop.id);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportLoopToMarkdown(loop.id);
+      await Share.share({
+        message: result.markdown,
+        title: `${loop.name}.md`,
+      });
+      setSaveStatusMessage(`Exported loop "${loop.name}"`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export loop Markdown:', error);
+      Alert.alert('Export Failed', error.message || 'Failed to export loop');
+    } finally {
+      setIsExportingLoopMarkdownId(null);
+    }
+  }, [isExportingLoopMarkdownId, settingsClient]);
 
   const handleLoopDelete = useCallback((loop: Loop) => {
     if (!settingsClient) return;
@@ -2700,6 +3060,39 @@ export default function SettingsScreen({ navigation }: any) {
               </CollapsibleSection>
             )}
 
+            {/* 4b. Bundles */}
+            {isDotAgentsServer && (
+              <CollapsibleSection id="bundles" title="Bundles">
+                <View style={styles.profileActions}>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, isImportingBundle && styles.profileActionButtonDisabled]}
+                    onPress={() => setShowBundleImportModal(true)}
+                    disabled={isImportingBundle}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import DotAgents bundle JSON')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingBundle ? 'Importing...' : 'Import Bundle'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, isExportingBundle && styles.profileActionButtonDisabled]}
+                    onPress={handleBundleExport}
+                    disabled={isExportingBundle}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Export DotAgents bundle JSON')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isExportingBundle ? 'Exporting...' : 'Export Bundle'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.helperText}>
+                  Bundle agents, MCP servers, skills, repeat tasks, and knowledge notes into portable .dotagents JSON.
+                </Text>
+              </CollapsibleSection>
+            )}
+
             {/* 4b. Streamer Mode */}
             {remoteSettings && (
               <CollapsibleSection id="streamerMode" title="Streamer Mode">
@@ -3424,47 +3817,114 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4k. Skills */}
             {isDotAgentsServer && (
               <CollapsibleSection id="skills" title="Skills">
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => handleSkillEdit()}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Create skill')}
+                  >
+                    <Text style={styles.createAgentButtonText}>+ Create Skill</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton]}
+                    onPress={() => setShowSkillImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import skill from Markdown')}
+                    disabled={isImportingSkillMarkdown}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingSkillMarkdown ? 'Importing...' : 'Import Markdown'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton]}
+                    onPress={() => setShowSkillGitHubImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import skills from GitHub')}
+                    disabled={isImportingSkillGitHub}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingSkillGitHub ? 'Importing...' : 'Import GitHub'}
+                    </Text>
+                  </TouchableOpacity>
+                  {visibleSelectedSkillIds.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                      onPress={handleSelectedSkillsDelete}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Delete ${visibleSelectedSkillIds.length} selected skills`)}
+                    >
+                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>
+                        Delete selected ({visibleSelectedSkillIds.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 {isLoadingSkills ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : skills.length === 0 ? (
                   <Text style={styles.helperText}>No skills configured</Text>
                 ) : (
-                  displaySkills.map((skill) => (
-                    <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
-                      <TouchableOpacity
-                        style={styles.agentInfoPressable}
-                        onPress={() => handleSkillEdit(skill)}
-                        activeOpacity={0.7}
-                        accessibilityRole="button"
-                        accessibilityLabel={createButtonAccessibilityLabel(`Edit ${skill.name} skill`)}
-                      >
-                        <View style={styles.serverInfo}>
-                          <Text style={styles.serverName}>{skill.name}</Text>
-                          <Text style={styles.serverMeta} numberOfLines={2}>
-                            {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description || 'No description'}
-                          </Text>
+                  displaySkills.map((skill) => {
+                    const isSelected = selectedSkillIds.has(skill.id);
+                    const isExporting = isExportingSkillMarkdownId === skill.id;
+                    return (
+                      <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
+                        <TouchableOpacity
+                          style={styles.agentInfoPressable}
+                          onPress={() => handleSkillEdit(skill)}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Edit ${skill.name} skill`)}
+                        >
+                          <View style={styles.serverInfo}>
+                            <Text style={styles.serverName}>{skill.name}</Text>
+                            <Text style={styles.serverMeta} numberOfLines={2}>
+                              {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description || 'No description'}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                        <View style={styles.noteActions}>
+                          <TouchableOpacity
+                            style={[styles.noteSelectButton, isSelected && styles.noteSelectButtonSelected]}
+                            onPress={() => toggleSkillSelection(skill.id)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} skill ${skill.name}`}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={[
+                              styles.noteSelectButtonText,
+                              isSelected && styles.noteSelectButtonTextSelected,
+                            ]}>
+                              {isSelected ? 'Selected' : 'Select'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.notePromoteButton, isExporting && styles.profileActionButtonDisabled]}
+                            onPress={() => { void handleSkillMarkdownExport(skill); }}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Export ${skill.name} skill as Markdown`)}
+                            disabled={isExporting}
+                          >
+                            <Text style={styles.notePromoteButtonText}>
+                              {isExporting ? 'Exporting...' : 'Export'}
+                            </Text>
+                          </TouchableOpacity>
+                          <Switch
+                            value={skill.enabledForProfile}
+                            onValueChange={() => handleSkillToggle(skill.id)}
+                            disabled={!skill.enabled}
+                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                            thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                          />
                         </View>
-                      </TouchableOpacity>
-                      <Switch
-                        value={skill.enabledForProfile}
-                        onValueChange={() => handleSkillToggle(skill.id)}
-                        disabled={!skill.enabled}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-                  ))
+                      </View>
+                    );
+                  })
                 )}
-                <TouchableOpacity
-                  style={styles.createAgentButton}
-                  onPress={() => handleSkillEdit()}
-                  accessibilityRole="button"
-                  accessibilityLabel={createButtonAccessibilityLabel('Create skill')}
-                >
-                  <Text style={styles.createAgentButtonText}>+ Create Skill</Text>
-                </TouchableOpacity>
                 <Text style={styles.helperText}>
-                  Tap a skill to edit, or toggle it for the Main Agent.
+                  Tap a skill to edit, import SKILL.md files, export Markdown, or toggle it for the Main Agent.
                 </Text>
               </CollapsibleSection>
             )}
@@ -3784,6 +4244,20 @@ export default function SettingsScreen({ navigation }: any) {
                           <Text style={styles.loopActionButtonText}>Run now</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
+                          style={[
+                            styles.loopActionButton,
+                            isExportingLoopMarkdownId === loop.id && styles.profileActionButtonDisabled,
+                          ]}
+                          onPress={() => { void handleLoopMarkdownExport(loop); }}
+                          disabled={isExportingLoopMarkdownId === loop.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Export ${loop.name} loop as Markdown`)}
+                        >
+                          <Text style={styles.loopActionButtonText}>
+                            {isExportingLoopMarkdownId === loop.id ? 'Exporting...' : 'Export'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
                           style={[styles.loopActionButton, styles.loopActionButtonDanger]}
                           onPress={() => handleLoopDelete(loop)}
                           accessibilityRole="button"
@@ -3796,14 +4270,24 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
-                <TouchableOpacity
-                  style={styles.createAgentButton}
-                  onPress={() => handleLoopEdit()}
-                >
-                  <Text style={styles.createAgentButtonText}>+ Create New Loop</Text>
-                </TouchableOpacity>
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => handleLoopEdit()}
+                  >
+                    <Text style={styles.createAgentButtonText}>+ Create New Loop</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => setShowLoopImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import loop Markdown')}
+                  >
+                    <Text style={styles.createAgentButtonText}>Import Loop</Text>
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.helperText}>
-                  Tap a loop to edit, or run/toggle/delete from the actions
+                  Tap a loop to edit, run, export, toggle, or delete from the actions
                 </Text>
               </CollapsibleSection>
             )}
@@ -3829,6 +4313,154 @@ export default function SettingsScreen({ navigation }: any) {
 	        </Text>
 	      </View>
     </KeyboardAvoidingView>
+
+      {/* Bundle Import Modal */}
+      <Modal
+        visible={showBundleImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeBundleImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Bundle</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeBundleImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close bundle import modal"
+                disabled={isPreviewingBundleImport || isImportingBundle}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.bundleImportBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.importModalDescription}>
+                Paste .dotagents JSON, preview conflicts, then choose what to import.
+              </Text>
+              <TextInput
+                style={styles.importJsonInput}
+                value={bundleImportJsonText}
+                onChangeText={handleBundleImportJsonChange}
+                placeholder='{"manifest":{"version":1,"name":"Bundle"},"agentProfiles":[]}'
+                placeholderTextColor={theme.colors.mutedForeground}
+                multiline
+                numberOfLines={8}
+                textAlignVertical="top"
+                autoCorrect={false}
+                autoCapitalize="none"
+                spellCheck={false}
+                editable={!isPreviewingBundleImport && !isImportingBundle}
+              />
+
+              <Text style={styles.label}>Handle conflicts</Text>
+              <View style={styles.providerSelector}>
+                {BUNDLE_IMPORT_CONFLICT_STRATEGIES.map((strategy) => (
+                  <Pressable
+                    key={strategy.value}
+                    style={[
+                      styles.providerOption,
+                      bundleImportConflictStrategy === strategy.value && styles.providerOptionActive,
+                    ]}
+                    onPress={() => setBundleImportConflictStrategy(strategy.value)}
+                    disabled={isImportingBundle}
+                  >
+                    <Text style={[
+                      styles.providerOptionText,
+                      bundleImportConflictStrategy === strategy.value && styles.providerOptionTextActive,
+                    ]}>
+                      {strategy.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Components</Text>
+              {BUNDLE_IMPORT_COMPONENT_OPTIONS.map((component) => {
+                const count = bundleImportPreview?.bundle.manifest.components[component.key] ?? 0;
+                const conflicts = bundleImportPreview?.conflicts[component.key].length ?? 0;
+                return (
+                  <View key={component.key} style={styles.row}>
+                    <View style={styles.serverInfo}>
+                      <Text style={styles.serverName}>{component.label}</Text>
+                      <Text style={styles.serverMeta}>
+                        {bundleImportPreview
+                          ? `${count} item${count === 1 ? '' : 's'}${conflicts > 0 ? `, ${conflicts} conflict${conflicts === 1 ? '' : 's'}` : ''}`
+                          : 'Not previewed'}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={bundleImportComponents[component.key]}
+                      onValueChange={(value) => handleBundleImportComponentToggle(component.key, value)}
+                      accessibilityLabel={createSwitchAccessibilityLabel(`Import bundle ${component.label}`)}
+                      trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                      thumbColor={bundleImportComponents[component.key] ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                );
+              })}
+
+              {bundleImportPreview && (
+                <View style={styles.bundlePreviewCard}>
+                  <Text style={styles.serverName}>{bundleImportPreview.bundle.manifest.name}</Text>
+                  {bundleImportPreview.bundle.manifest.description && (
+                    <Text style={styles.serverMeta} numberOfLines={2}>
+                      {bundleImportPreview.bundle.manifest.description}
+                    </Text>
+                  )}
+                  <Text style={styles.serverMeta}>
+                    Exported from {bundleImportPreview.bundle.manifest.exportedFrom}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeBundleImportModal}
+                disabled={isPreviewingBundleImport || isImportingBundle}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalCancelButton,
+                  (!bundleImportJsonText.trim() || isPreviewingBundleImport || isImportingBundle) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleBundleImportPreview(); }}
+                disabled={!bundleImportJsonText.trim() || isPreviewingBundleImport || isImportingBundle}
+                accessibilityRole="button"
+                accessibilityLabel="Preview DotAgents bundle JSON"
+              >
+                <Text style={styles.importModalCancelText}>
+                  {isPreviewingBundleImport ? 'Previewing...' : 'Preview'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!bundleImportPreview || isImportingBundle || isPreviewingBundleImport) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleBundleImport(); }}
+                disabled={!bundleImportPreview || isImportingBundle || isPreviewingBundleImport}
+                accessibilityRole="button"
+                accessibilityLabel="Import DotAgents bundle JSON"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingBundle ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* MCP Server Editor Modal */}
       <Modal
@@ -4148,6 +4780,202 @@ export default function SettingsScreen({ navigation }: any) {
               >
                 <Text style={styles.importModalImportText}>
                   {isImportingMcpServers ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Skill Markdown Import Modal */}
+      <Modal
+        visible={showSkillImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeSkillImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Skill Markdown</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeSkillImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close skill Markdown import modal"
+                disabled={isImportingSkillMarkdown}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.importModalDescription}>
+              Paste a SKILL.md file with frontmatter and instructions.
+            </Text>
+
+            <TextInput
+              style={styles.importJsonInput}
+              value={skillImportMarkdownText}
+              onChangeText={setSkillImportMarkdownText}
+              placeholder={'---\nname: Example Skill\ndescription: What this skill does\n---\n\nSkill instructions...'}
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              textAlignVertical="top"
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              editable={!isImportingSkillMarkdown}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeSkillImportModal}
+                disabled={isImportingSkillMarkdown}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!skillImportMarkdownText.trim() || isImportingSkillMarkdown) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleSkillMarkdownImport(); }}
+                disabled={!skillImportMarkdownText.trim() || isImportingSkillMarkdown}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingSkillMarkdown ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Skill GitHub Import Modal */}
+      <Modal
+        visible={showSkillGitHubImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeSkillGitHubImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Skills From GitHub</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeSkillGitHubImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close GitHub skill import modal"
+                disabled={isImportingSkillGitHub}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.importModalDescription}>
+              Enter a GitHub repository, branch, or folder URL that contains SKILL.md files.
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              value={skillGitHubImportText}
+              onChangeText={setSkillGitHubImportText}
+              placeholder="owner/repo or https://github.com/owner/repo/tree/main/skills/example"
+              placeholderTextColor={theme.colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              editable={!isImportingSkillGitHub}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeSkillGitHubImportModal}
+                disabled={isImportingSkillGitHub}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!skillGitHubImportText.trim() || isImportingSkillGitHub) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleSkillGitHubImport(); }}
+                disabled={!skillGitHubImportText.trim() || isImportingSkillGitHub}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingSkillGitHub ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Loop Markdown Import Modal */}
+      <Modal
+        visible={showLoopImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeLoopImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Loop</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeLoopImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close loop import modal"
+                disabled={isImportingLoopMarkdown}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.importModalDescription}>
+              Paste task.md content for a repeat task.
+            </Text>
+
+            <TextInput
+              style={styles.importJsonInput}
+              value={loopImportMarkdownText}
+              onChangeText={setLoopImportMarkdownText}
+              placeholder={'---\nkind: task\nname: morning-check\nintervalMinutes: 60\nenabled: true\n---\nSummarize overnight work.'}
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              numberOfLines={8}
+              textAlignVertical="top"
+              autoCorrect={false}
+              autoCapitalize="none"
+              spellCheck={false}
+              editable={!isImportingLoopMarkdown}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeLoopImportModal}
+                disabled={isImportingLoopMarkdown}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!loopImportMarkdownText.trim() || isImportingLoopMarkdown) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleLoopMarkdownImport(); }}
+                disabled={!loopImportMarkdownText.trim() || isImportingLoopMarkdown}
+                accessibilityRole="button"
+                accessibilityLabel="Import loop Markdown"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingLoopMarkdown ? 'Importing...' : 'Import'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -4919,8 +5747,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       minHeight: 150,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
+    bundleImportBody: {
+      maxHeight: 520,
+    },
+    bundlePreviewCard: {
+      marginTop: spacing.md,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.muted,
+    },
     importModalActions: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: spacing.sm,
       marginTop: spacing.md,
     },
