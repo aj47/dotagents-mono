@@ -520,6 +520,11 @@ export interface Settings {
   pinnedSessionIds?: string[];
   archivedSessionIds?: string[];
 
+  // Desktop conversation storage
+  conversationsEnabled?: boolean;
+  maxConversationsToKeep?: number;
+  autoSaveConversations?: boolean;
+
   // acpx-capable agent profile summaries (read-only, from GET only)
   acpxAgents?: Array<{ name: string; displayName: string }>;
 }
@@ -667,6 +672,11 @@ export interface SettingsUpdate {
   // Session History (pinned/archived conversation IDs)
   pinnedSessionIds?: string[];
   archivedSessionIds?: string[];
+
+  // Desktop conversation storage
+  conversationsEnabled?: boolean;
+  maxConversationsToKeep?: number;
+  autoSaveConversations?: boolean;
 
   // Predefined Prompts
   predefinedPrompts?: PredefinedPromptSummary[];

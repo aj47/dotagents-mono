@@ -72,6 +72,22 @@ const TTS_PROVIDERS = [
   { label: 'Supertonic', value: 'supertonic' },
 ] as const;
 
+const DEFAULT_CONVERSATIONS_ENABLED = true;
+const DEFAULT_AUTO_SAVE_CONVERSATIONS = true;
+const DEFAULT_MAX_CONVERSATIONS_TO_KEEP = 1000;
+const MIN_CONVERSATIONS_TO_KEEP = 1;
+const MAX_CONVERSATIONS_TO_KEEP = 10000;
+
+const parseMaxConversationsToKeepDraft = (value: string): number | null => {
+  const parsedValue = Number.parseInt(value.trim(), 10);
+  if (Number.isNaN(parsedValue)) return null;
+  if (parsedValue < MIN_CONVERSATIONS_TO_KEEP || parsedValue > MAX_CONVERSATIONS_TO_KEEP) return null;
+  return parsedValue;
+};
+
+const formatMaxConversationsToKeepValidationMessage = () =>
+  `Keep Recent Chats must be between ${MIN_CONVERSATIONS_TO_KEEP} and ${MAX_CONVERSATIONS_TO_KEEP} before saving.`;
+
 const LOOP_DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 type BundleImportComponentsState = Required<BundleComponentSelection>;
@@ -837,6 +853,7 @@ export default function SettingsScreen({ navigation }: any) {
           sttLanguage: settingsRes.sttLanguage || '',
           transcriptPostProcessingPrompt: settingsRes.transcriptPostProcessingPrompt || '',
           mcpMaxIterations: String(settingsRes.mcpMaxIterations ?? 10),
+          maxConversationsToKeep: String(settingsRes.maxConversationsToKeep ?? DEFAULT_MAX_CONVERSATIONS_TO_KEEP),
           whatsappAllowFrom: (settingsRes.whatsappAllowFrom || []).join(', '),
           langfusePublicKey: settingsRes.langfusePublicKey || '',
           langfuseSecretKey: settingsRes.langfuseSecretKey === '••••••••' ? '' : (settingsRes.langfuseSecretKey || ''),
@@ -2252,6 +2269,13 @@ export default function SettingsScreen({ navigation }: any) {
           }
           updates.mcpMaxIterations = parsedIterations;
         }
+        if (pendingKeys.has('maxConversationsToKeep')) {
+          const parsedMaxConversations = parseMaxConversationsToKeepDraft(inputDrafts.maxConversationsToKeep ?? '');
+          if (parsedMaxConversations === null) {
+            throw new Error(formatMaxConversationsToKeepValidationMessage());
+          }
+          updates.maxConversationsToKeep = parsedMaxConversations;
+        }
         if (pendingKeys.has('whatsappAllowFrom')) {
           updates.whatsappAllowFrom = (inputDrafts.whatsappAllowFrom ?? '')
             .split(',')
@@ -2477,6 +2501,72 @@ export default function SettingsScreen({ navigation }: any) {
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Chats</Text>
+        {remoteSettings && (
+          <>
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Desktop History</Text>
+                <Text style={[styles.helperText, { marginTop: 2 }]}>
+                  Store desktop agent conversations so they can sync to mobile.
+                </Text>
+              </View>
+              <Switch
+                value={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
+                onValueChange={(v) => handleRemoteSettingToggle('conversationsEnabled', v)}
+                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                thumbColor={(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                accessibilityLabel={createSwitchAccessibilityLabel('Desktop History')}
+              />
+            </View>
+
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Auto-Save Desktop Chats</Text>
+                <Text style={[styles.helperText, { marginTop: 2 }]}>
+                  Save desktop chats automatically when conversation storage is enabled.
+                </Text>
+              </View>
+              <Switch
+                value={remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS}
+                onValueChange={(v) => handleRemoteSettingToggle('autoSaveConversations', v)}
+                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                thumbColor={(remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS) ? theme.colors.primaryForeground : theme.colors.background}
+                disabled={!(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED)}
+                accessibilityLabel={createSwitchAccessibilityLabel('Auto-Save Desktop Chats')}
+              />
+            </View>
+
+            <Text style={styles.label}>Keep Recent Chats</Text>
+            <TextInput
+              style={[
+                styles.input,
+                !(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) && styles.inputDisabled,
+              ]}
+              value={inputDrafts.maxConversationsToKeep ?? String(remoteSettings.maxConversationsToKeep ?? DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
+              onChangeText={(v) => {
+                markRemotePending('maxConversationsToKeep');
+                setSaveStatusMessage(null);
+                const parsedValue = parseMaxConversationsToKeepDraft(v);
+                if (parsedValue === null) {
+                  if (inputTimeoutRefs.current.maxConversationsToKeep) {
+                    clearTimeout(inputTimeoutRefs.current.maxConversationsToKeep);
+                    delete inputTimeoutRefs.current.maxConversationsToKeep;
+                  }
+                  setInputDrafts(prev => ({ ...prev, maxConversationsToKeep: v }));
+                  return;
+                }
+                handleRemoteSettingUpdate('maxConversationsToKeep', parsedValue);
+              }}
+              placeholder={String(DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
+              placeholderTextColor={theme.colors.mutedForeground}
+              keyboardType="number-pad"
+              editable={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
+            />
+            <Text style={styles.helperText}>
+              Maximum desktop chats to keep before pruning older history.
+            </Text>
+          </>
+        )}
         <View style={styles.serverRow}>
           <View style={styles.serverInfo}>
             <Text style={styles.serverName}>Clear all chats</Text>
@@ -5419,6 +5509,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     input: {
       ...theme.input,
+    },
+    inputDisabled: {
+      opacity: 0.6,
     },
     row: {
       flexDirection: 'row',

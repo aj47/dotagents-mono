@@ -4362,6 +4362,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         panelCustomSize: cfg.panelCustomSize,
         panelProgressSize: cfg.panelProgressSize,
         panelTextInputSize: cfg.panelTextInputSize,
+        // Desktop conversation storage
+        conversationsEnabled: cfg.conversationsEnabled ?? true,
+        maxConversationsToKeep: cfg.maxConversationsToKeep ?? 1000,
+        autoSaveConversations: cfg.autoSaveConversations ?? true,
         // Cloudflare Tunnel
         cloudflareTunnelMode: cfg.cloudflareTunnelMode ?? "quick",
         cloudflareTunnelAutoStart: cfg.cloudflareTunnelAutoStart ?? false,
@@ -4652,6 +4656,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.hidePanelWhenMainFocused === "boolean") {
         updates.hidePanelWhenMainFocused = body.hidePanelWhenMainFocused
+      }
+      // Desktop conversation storage
+      if (typeof body.conversationsEnabled === "boolean") {
+        updates.conversationsEnabled = body.conversationsEnabled
+      }
+      if (
+        typeof body.maxConversationsToKeep === "number"
+        && Number.isFinite(body.maxConversationsToKeep)
+        && body.maxConversationsToKeep >= 1
+        && body.maxConversationsToKeep <= 10000
+      ) {
+        updates.maxConversationsToKeep = Math.floor(body.maxConversationsToKeep)
+      }
+      if (typeof body.autoSaveConversations === "boolean") {
+        updates.autoSaveConversations = body.autoSaveConversations
       }
       // Cloudflare Tunnel
       if (typeof body.cloudflareTunnelMode === "string" && ["quick", "named"].includes(body.cloudflareTunnelMode)) {
