@@ -11,7 +11,9 @@ const screenSource = fs.readFileSync(
 test('keeps agent selection in the navigation header for the mobile chat screen', () => {
   assert.match(screenSource, /headerTitle:\s*\(\) => \(/);
   assert.match(screenSource, /accessibilityLabel=\{`Current agent: \$\{currentAgentLabel\}\. Tap to change\.`\}/);
-  assert.match(screenSource, /\{currentAgentLabel\} ▼/);
+  assert.match(screenSource, /import \{ Ionicons \} from '@expo\/vector-icons';/);
+  assert.match(screenSource, /\{currentAgentLabel\}/);
+  assert.match(screenSource, /name="chevron-down"/);
 });
 
 test('shows a conversation-state chip in the mobile chat header while preserving the compact header actions row', () => {

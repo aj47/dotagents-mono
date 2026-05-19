@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
 import { useConfigContext } from '../store/config';
@@ -640,6 +641,7 @@ export default function SessionListScreen({ navigation }: Props) {
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
+            gap: 3,
             backgroundColor: theme.colors.primary + '33',
             paddingHorizontal: 8,
             paddingVertical: 2,
@@ -651,8 +653,9 @@ export default function SessionListScreen({ navigation }: Props) {
               color: theme.colors.primary,
               fontWeight: '500',
             }}>
-              {currentProfile?.name || 'Default'} ▼
+              {currentProfile?.name || 'Default'}
             </Text>
+            <Ionicons name="chevron-down" size={10} color={theme.colors.primary} />
           </View>
         </TouchableOpacity>
       ),
@@ -670,7 +673,7 @@ export default function SessionListScreen({ navigation }: Props) {
             accessibilityLabel={createButtonAccessibilityLabel('Open split view')}
             accessibilityHint="Opens two chats at once for comparison"
           >
-            <Text style={{ fontSize: 17, color: theme.colors.foreground }}>◫</Text>
+            <Ionicons name="git-compare-outline" size={18} color={theme.colors.foreground} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleCreateSession}
@@ -688,7 +691,7 @@ export default function SessionListScreen({ navigation }: Props) {
             accessibilityLabel={createButtonAccessibilityLabel('Open settings')}
             accessibilityHint="Opens app settings."
           >
-            <Text style={{ fontSize: 20, color: theme.colors.foreground }}>⚙️</Text>
+            <Ionicons name="settings-outline" size={20} color={theme.colors.foreground} />
           </TouchableOpacity>
         </View>
       ),

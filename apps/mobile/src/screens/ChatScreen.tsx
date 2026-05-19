@@ -20,6 +20,7 @@ import {
   useWindowDimensions,
   Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
@@ -171,6 +172,7 @@ type QuickStartShortcut = {
   description?: string;
   source: 'command' | 'saved-prompt' | 'skill' | 'task' | 'action';
   action?: 'add-prompt';
+  prompt?: PredefinedPromptSummary;
   task?: Loop;
 };
 
@@ -520,6 +522,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const effectiveEdgeTtsRate =
     config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteEdgeTtsRate;
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState<PredefinedPromptSummary | null>(null);
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
@@ -751,9 +754,31 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [runningPromptTaskId, settingsClient]);
 
+  const openAddPromptModal = useCallback(() => {
+    setEditingPrompt(null);
+    setNewPromptName('');
+    setNewPromptContent('');
+    setAddPromptModalVisible(true);
+  }, []);
+
+  const openEditPromptModal = useCallback((prompt: PredefinedPromptSummary) => {
+    setEditingPrompt(prompt);
+    setNewPromptName(prompt.name);
+    setNewPromptContent(prompt.content);
+    setAddPromptModalVisible(true);
+  }, []);
+
+  const closePromptModal = useCallback(() => {
+    if (isSavingPrompt) return;
+    setAddPromptModalVisible(false);
+    setEditingPrompt(null);
+    setNewPromptName('');
+    setNewPromptContent('');
+  }, [isSavingPrompt]);
+
   const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
     if (item.action === 'add-prompt') {
-      setAddPromptModalVisible(true);
+      openAddPromptModal();
       return;
     }
     if (item.source === 'task' && item.task) {
@@ -761,7 +786,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     handleInsertQuickStartPrompt(item.content);
-  }, [handleInsertQuickStartPrompt, handleRunPromptTask]);
+  }, [handleInsertQuickStartPrompt, handleRunPromptTask, openAddPromptModal]);
 
   const handleToggleCurrentSessionPinned = useCallback(() => {
     const currentSessionId = sessionStore.currentSessionId;
@@ -842,6 +867,7 @@ export default function ChatScreen({ route, navigation }: any) {
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
+            gap: 3,
             backgroundColor: theme.colors.primary + '33',
             paddingHorizontal: 8,
             paddingVertical: 2,
@@ -852,8 +878,9 @@ export default function ChatScreen({ route, navigation }: any) {
               color: theme.colors.primary,
               fontWeight: '500',
             }}>
-              {currentAgentLabel} ▼
+              {currentAgentLabel}
             </Text>
+            <Ionicons name="chevron-down" size={10} color={theme.colors.primary} />
           </View>
         </TouchableOpacity>
       ),
@@ -1572,26 +1599,48 @@ export default function ChatScreen({ route, navigation }: any) {
     };
   }, [isFocused, settingsClient]);
 
-  const handleSaveNewPrompt = async () => {
-    if (!settingsClient || !newPromptName.trim() || !newPromptContent.trim()) return;
+  const handleSavePrompt = async () => {
+    const name = newPromptName.trim();
+    const content = newPromptContent.trim();
+    if (!settingsClient || !name || !content || isSavingPrompt) return;
     setIsSavingPrompt(true);
+    const wasEditingPrompt = Boolean(editingPrompt);
     try {
       const now = Date.now();
-      const newPrompt: PredefinedPromptSummary = {
-        id: `prompt-${now}-${Math.random().toString(36).substr(2, 9)}`,
-        name: newPromptName.trim(),
-        content: newPromptContent.trim(),
-        createdAt: now,
-        updatedAt: now,
-      };
+      const updatedPrompts = editingPrompt
+        ? predefinedPrompts.map((prompt) => (
+            prompt.id === editingPrompt.id
+              ? {
+                  ...prompt,
+                  name,
+                  content,
+                  updatedAt: now,
+                }
+              : prompt
+          ))
+        : [
+            {
+              id: `prompt-${now}-${Math.random().toString(36).substr(2, 9)}`,
+              name,
+              content,
+              createdAt: now,
+              updatedAt: now,
+            },
+            ...predefinedPrompts,
+          ];
 
-      const updatedPrompts = [newPrompt, ...predefinedPrompts];
       await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
       setPredefinedPrompts(updatedPrompts);
       setAddPromptModalVisible(false);
+      setEditingPrompt(null);
       setNewPromptName('');
       setNewPromptContent('');
-      Alert.alert('Success', 'Prompt saved to your desktop prompt library.');
+      Alert.alert(
+        'Success',
+        wasEditingPrompt
+          ? 'Prompt updated in your desktop prompt library.'
+          : 'Prompt saved to your desktop prompt library.'
+      );
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
       Alert.alert('Error', error.message || 'Failed to save prompt.');
@@ -1599,6 +1648,51 @@ export default function ChatScreen({ route, navigation }: any) {
       setIsSavingPrompt(false);
     }
   };
+
+  const handleDeletePromptConfirmed = useCallback(async (prompt: PredefinedPromptSummary) => {
+    if (!settingsClient || isSavingPrompt) return;
+    setIsSavingPrompt(true);
+    try {
+      const updatedPrompts = predefinedPrompts.filter((existingPrompt) => existingPrompt.id !== prompt.id);
+      await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
+      setPredefinedPrompts(updatedPrompts);
+      if (editingPrompt?.id === prompt.id) {
+        setAddPromptModalVisible(false);
+        setEditingPrompt(null);
+        setNewPromptName('');
+        setNewPromptContent('');
+      }
+      Alert.alert('Deleted', 'Prompt removed from your desktop prompt library.');
+    } catch (error: any) {
+      console.error('[ChatScreen] Error deleting prompt:', error);
+      Alert.alert('Error', error.message || 'Failed to delete prompt.');
+    } finally {
+      setIsSavingPrompt(false);
+    }
+  }, [editingPrompt?.id, isSavingPrompt, predefinedPrompts, settingsClient]);
+
+  const handleDeletePrompt = useCallback((prompt: PredefinedPromptSummary) => {
+    if (!settingsClient || isSavingPrompt) return;
+    const message = `Delete "${prompt.name}" from your desktop prompt library?`;
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        void handleDeletePromptConfirmed(prompt);
+      }
+      return;
+    }
+
+    Alert.alert('Delete Prompt', message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void handleDeletePromptConfirmed(prompt);
+        },
+      },
+    ]);
+  }, [handleDeletePromptConfirmed, isSavingPrompt, settingsClient]);
 
   // Reset auto-scroll when session changes
   useEffect(() => {
@@ -2964,6 +3058,7 @@ export default function ChatScreen({ route, navigation }: any) {
           content: prompt.content,
           description: prompt.content,
           source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
+          prompt,
         }));
 
       const skillItems = availableSkills.map((skill) => ({
@@ -3272,6 +3367,38 @@ export default function ChatScreen({ route, navigation }: any) {
 		                      ]} numberOfLines={2}>{item.title}</Text>
 		                      {item.description ? (
 		                        <Text style={styles.chatHomeShortcutDescription} numberOfLines={2}>{item.description}</Text>
+		                      ) : null}
+		                      {item.prompt ? (
+		                        <View style={styles.chatHomeShortcutActions}>
+		                          <TouchableOpacity
+		                            style={styles.chatHomeShortcutActionButton}
+		                            onPress={(event) => {
+		                              event.stopPropagation();
+		                              if (item.prompt) openEditPromptModal(item.prompt);
+		                            }}
+		                            accessibilityRole="button"
+		                            accessibilityLabel={createButtonAccessibilityLabel(`Edit prompt ${item.title}`)}
+		                          >
+		                            <Text style={styles.chatHomeShortcutActionButtonText}>Edit</Text>
+		                          </TouchableOpacity>
+		                          <TouchableOpacity
+		                            style={[
+		                              styles.chatHomeShortcutActionButton,
+		                              styles.chatHomeShortcutActionButtonDanger,
+		                            ]}
+		                            onPress={(event) => {
+		                              event.stopPropagation();
+		                              if (item.prompt) handleDeletePrompt(item.prompt);
+		                            }}
+		                            accessibilityRole="button"
+		                            accessibilityLabel={createButtonAccessibilityLabel(`Delete prompt ${item.title}`)}
+		                          >
+		                            <Text style={[
+		                              styles.chatHomeShortcutActionButtonText,
+		                              styles.chatHomeShortcutActionButtonDangerText,
+		                            ]}>Delete</Text>
+		                          </TouchableOpacity>
+		                        </View>
 		                      ) : null}
 	                    </Pressable>
 	                  ))}
@@ -4248,7 +4375,7 @@ export default function ChatScreen({ route, navigation }: any) {
         visible={addPromptModalVisible}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setAddPromptModalVisible(false)}
+        onRequestClose={closePromptModal}
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -4256,7 +4383,7 @@ export default function ChatScreen({ route, navigation }: any) {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Add New Prompt</Text>
+              <Text style={styles.modalTitle}>{editingPrompt ? 'Edit Prompt' : 'Add New Prompt'}</Text>
 
               <Text style={styles.modalLabel}>Name</Text>
               <TextInput
@@ -4281,7 +4408,7 @@ export default function ChatScreen({ route, navigation }: any) {
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={styles.modalCancelButton}
-                  onPress={() => setAddPromptModalVisible(false)}
+                  onPress={closePromptModal}
                   disabled={isSavingPrompt}
                 >
                   <Text style={styles.modalCancelButtonText}>Cancel</Text>
@@ -4291,10 +4418,12 @@ export default function ChatScreen({ route, navigation }: any) {
                     styles.modalSaveButton,
                     (!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt) && styles.modalSaveButtonDisabled
                   ]}
-                  onPress={handleSaveNewPrompt}
+                  onPress={handleSavePrompt}
                   disabled={!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt}
                 >
-                  <Text style={styles.modalSaveButtonText}>{isSavingPrompt ? 'Saving...' : 'Add Prompt'}</Text>
+                  <Text style={styles.modalSaveButtonText}>
+                    {isSavingPrompt ? 'Saving...' : editingPrompt ? 'Save Prompt' : 'Add Prompt'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -4564,6 +4693,35 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.mutedForeground,
       marginTop: 3,
       lineHeight: 15,
+    },
+    chatHomeShortcutActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+    },
+    chatHomeShortcutActionButton: {
+      minHeight: 28,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 5,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    chatHomeShortcutActionButtonDanger: {
+      borderColor: hexToRgba(theme.colors.destructive, 0.28),
+      backgroundColor: hexToRgba(theme.colors.destructive, 0.08),
+    },
+    chatHomeShortcutActionButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    chatHomeShortcutActionButtonDangerText: {
+      color: theme.colors.destructive,
     },
     modalOverlay: {
       flex: 1,

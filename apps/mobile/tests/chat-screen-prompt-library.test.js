@@ -31,10 +31,29 @@ test('shows desktop library items directly in the new-chat prompt launchers', ()
 test('can create a new predefined prompt from mobile and save it to desktop settings', () => {
   assert.match(screenSource, /id: 'action-add-prompt'/);
   assert.match(screenSource, /title: '\+ Add Prompt'/);
-  assert.match(screenSource, /setAddPromptModalVisible\(true\)/);
-  assert.match(screenSource, /const handleSaveNewPrompt = async \(\) =>/);
+  assert.match(screenSource, /const openAddPromptModal = useCallback/);
+  assert.match(screenSource, /openAddPromptModal\(\)/);
+  assert.match(screenSource, /const handleSavePrompt = async \(\) =>/);
   assert.match(screenSource, /await settingsClient\.updateSettings\(\{ predefinedPrompts: updatedPrompts \}\)/);
   assert.match(screenSource, /Prompt saved to your desktop prompt library\./);
+});
+
+test('can edit and delete predefined prompt shortcuts from the mobile launcher', () => {
+  assert.match(screenSource, /const \[editingPrompt, setEditingPrompt\] = useState<PredefinedPromptSummary \| null>\(null\)/);
+  assert.match(screenSource, /const openEditPromptModal = useCallback\(\(prompt: PredefinedPromptSummary\) =>/);
+  assert.match(screenSource, /setNewPromptName\(prompt\.name\)/);
+  assert.match(screenSource, /setNewPromptContent\(prompt\.content\)/);
+  assert.match(screenSource, /prompt,/);
+  assert.match(screenSource, /item\.prompt \?/);
+  assert.match(screenSource, /Edit Prompt/);
+  assert.match(screenSource, /Save Prompt/);
+  assert.match(screenSource, /Prompt updated in your desktop prompt library\./);
+  assert.match(screenSource, /const handleDeletePrompt = useCallback\(\(prompt: PredefinedPromptSummary\) =>/);
+  assert.match(screenSource, /Delete Prompt/);
+  assert.match(screenSource, /Prompt removed from your desktop prompt library\./);
+  assert.match(screenSource, /predefinedPrompts\.filter\(\(existingPrompt\) => existingPrompt\.id !== prompt\.id\)/);
+  assert.match(screenSource, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Edit prompt \$\{item\.title\}`\)\}/);
+  assert.match(screenSource, /accessibilityLabel=\{createButtonAccessibilityLabel\(`Delete prompt \$\{item\.title\}`\)\}/);
 });
 
 test('removes the bottom composer prompt-library button', () => {
