@@ -19,6 +19,9 @@ type ConversationForProgressHistory = Pick<
   "messages" | "branchMessageIndexOffset"
 >
 
+export const getConversationHydrationQueryKey = (conversationId: string) =>
+  ["conversation", conversationId, "hydrate"] as const
+
 function toNonNegativeInteger(value: number | undefined): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null
   return Math.max(0, Math.floor(value))
@@ -110,6 +113,42 @@ export function buildConversationHistoryForProgress(
     timestamp: message.timestamp,
     branchMessageIndex: branchMessageIndexOffset + branchMessageIndexMap[index],
   }))
+}
+
+export function mergeTrackedActiveSessionProgress(
+  trackedProgress: AgentProgressUpdate,
+  storedProgress: AgentProgressUpdate,
+): AgentProgressUpdate {
+  const mergedProgress = {
+    ...trackedProgress,
+    ...storedProgress,
+    conversationId: storedProgress.conversationId ?? trackedProgress.conversationId,
+    conversationTitle: storedProgress.conversationTitle ?? trackedProgress.conversationTitle,
+    currentIteration: storedProgress.currentIteration ?? trackedProgress.currentIteration,
+    maxIterations: storedProgress.maxIterations ?? trackedProgress.maxIterations,
+    isSnoozed: storedProgress.isSnoozed ?? trackedProgress.isSnoozed,
+  }
+
+  if (!trackedProgress.isComplete && storedProgress.isComplete) {
+    return {
+      ...mergedProgress,
+      currentIteration: trackedProgress.currentIteration,
+      steps: trackedProgress.steps,
+      isComplete: false,
+      conversationState: "running",
+      finalContent: undefined,
+      userResponse: undefined,
+      userResponseHistory: undefined,
+      responseEvents: undefined,
+      streamingContent: undefined,
+      pendingToolApproval: undefined,
+      retryInfo: undefined,
+      latestSummary: undefined,
+      stepSummaries: undefined,
+    }
+  }
+
+  return mergedProgress
 }
 
 export function mergeLoadedConversationIntoProgress(

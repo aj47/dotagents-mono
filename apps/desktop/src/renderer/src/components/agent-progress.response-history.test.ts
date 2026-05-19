@@ -428,8 +428,117 @@ describe("agent progress response history", () => {
 
     const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
     const text = getTextContent(tree)
+    const thinkingBars = findAll(
+      tree,
+      (value) => value?.type === "span"
+        && typeof value?.props?.className === "string"
+        && value.props.className.includes("thinking-signal-bar"),
+    )
 
     expect(text).toContain("Agent is thinking...")
+    expect(text).not.toContain("Generating response...")
+    expect(thinkingBars).toHaveLength(3)
+  })
+
+  it("renders active thinking steps through the compact indicator without extra status labels", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-active-thinking-step",
+      conversationId: "conversation-active-thinking-step",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [
+        {
+          id: "thinking-1",
+          type: "thinking",
+          title: "Analyzing request",
+          description: "Analyzing request",
+          status: "in_progress",
+          timestamp: 200,
+        },
+      ],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Do the next thing", timestamp: 100 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+    const thinkingBars = findAll(
+      tree,
+      (value) => value?.type === "span"
+        && typeof value?.props?.className === "string"
+        && value.props.className.includes("thinking-signal-bar"),
+    )
+
+    expect(text).toContain("Thinking...")
+    expect(text).not.toContain("Analyzing request")
+    expect(text).not.toContain("Generating response...")
+    expect(thinkingBars).toHaveLength(3)
+  })
+
+  it("treats provider streaming thinking preambles as the same compact status", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-streaming-thinking-preamble",
+      conversationId: "conversation-streaming-thinking-preamble",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Do the next thing", timestamp: 100 },
+      ],
+      streamingContent: {
+        text: "Thinking...",
+        isStreaming: true,
+      },
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+    const thinkingBars = findAll(
+      tree,
+      (value) => value?.type === "span"
+        && typeof value?.props?.className === "string"
+        && value.props.className.includes("thinking-signal-bar"),
+    )
+
+    expect(text).toContain("Thinking...")
+    expect(text).not.toContain("Generating response...")
+    expect(thinkingBars).toHaveLength(3)
+  })
+
+  it("strips provider thinking preambles once real streamed response text arrives", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-streaming-answer-after-thinking",
+      conversationId: "conversation-streaming-answer-after-thinking",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Do the next thing", timestamp: 100 },
+      ],
+      streamingContent: {
+        text: "Thinking...\n\nActual streamed answer",
+        isStreaming: true,
+      },
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Actual streamed answer")
+    expect(text).not.toContain("Thinking...")
     expect(text).not.toContain("Generating response...")
   })
 
@@ -470,8 +579,49 @@ describe("agent progress response history", () => {
     const text = getTextContent(tree)
 
     expect(text).toContain("inspect_workspace")
-    expect(text).not.toContain("Running inspect_workspace")
+    expect(text).toContain("Running inspect_workspace")
     expect(text).not.toContain("Thinking...")
+  })
+
+  it("shows a live thinking placeholder when only previous turns have tool activity", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-previous-tool-activity-placeholder",
+      conversationId: "conversation-previous-tool-activity-placeholder",
+      currentIteration: 2,
+      maxIterations: 10,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Inspect the workspace", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 150,
+          toolCalls: [
+            { name: "inspect_workspace", arguments: { path: "apps/desktop" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 160,
+          toolResults: [
+            { success: true, content: "workspace inspected" },
+          ],
+        },
+        { role: "assistant", content: "Done.", timestamp: 180, isComplete: true },
+        { role: "user", content: "Now answer a follow-up", timestamp: 200 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Now answer a follow-up")
+    expect(text).toContain("Thinking...")
   })
 
   it("keeps the completed streamed response visible while verification is running", async () => {
@@ -506,7 +656,8 @@ describe("agent progress response history", () => {
     const text = getTextContent(tree)
 
     expect(text).toContain("Streamed answer awaiting verification")
-    expect(text).toContain("Response")
+    expect(text).not.toContain("Response")
+    expect(text).not.toContain("Generating response...")
   })
 
   it("keeps unresolved mid-turn responses in chronological order within the conversation", async () => {
@@ -785,6 +936,56 @@ describe("agent progress response history", () => {
     expect(text.indexOf("search_repo")).toBeLessThan(text.indexOf("Found the issue"))
   })
 
+  it("does not show completed historical tool calls with missing results as still running", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-missing-tool-result-complete",
+      conversationId: "conversation-missing-tool-result-complete",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: true,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "did it run", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 200,
+          toolCalls: [
+            { name: "execute_command", arguments: { command: "python3 make_slides.py" } },
+          ],
+        },
+        { role: "assistant", content: "It is no longer running.", timestamp: 300 },
+      ],
+    }
+
+    let tree = runtime.render(AgentProgress, { progress })
+    let text = getTextContent(tree)
+    const spinners = findAll(tree, (value) => value?.type === "Loader2")
+    const clocks = findAll(tree, (value) => value?.type === "Clock")
+
+    expect(text).toContain("python3 make_slides.py")
+    expect(text).toContain("It is no longer running.")
+    expect(text).not.toContain("Waiting for response")
+    expect(spinners).toHaveLength(0)
+    expect(clocks.length).toBeGreaterThan(0)
+
+    const detailsButton = findAll(
+      tree,
+      (value) => value?.type === "button" && value.props?.title === "python3 make_slides.py",
+    )[0]
+    expect(detailsButton).toBeTruthy()
+
+    detailsButton.props.onClick({ stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress })
+    text = getTextContent(tree)
+
+    expect(text).toContain("No result recorded")
+    expect(text).not.toContain("Waiting for response")
+  })
+
   it("renders a single-line summary for collapsed groups of multiple tool steps", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
@@ -850,6 +1051,55 @@ describe("agent progress response history", () => {
     expect(text.indexOf("pnpm test:all suites passed")).toBeLessThan(text.indexOf("Now here is the answer"))
     // 2 tool calls in the run (search count badge before previews).
     expect(text).toMatch(/2\s+git status --short:M file\.ts branch main/)
+  })
+
+  it("surfaces a running label when the current pending tool is inside a collapsed group", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-grouped-pending-tool",
+      conversationId: "conversation-grouped-pending-tool",
+      currentIteration: 1,
+      maxIterations: 3,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Make the slide", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 200,
+          toolCalls: [
+            { name: "set_session_title", arguments: { title: "Generate First Slide" } },
+          ],
+        },
+        {
+          role: "tool",
+          content: "",
+          timestamp: 210,
+          toolResults: [
+            { success: true, content: "ok" },
+          ],
+        },
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 220,
+          toolCalls: [
+            { name: "execute_command", arguments: { command: "python3 generate_slide.py" } },
+          ],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+    const spinners = findAll(tree, (value) => value?.type === "Loader2")
+
+    expect(text).toContain("Running execute_command")
+    expect(text).not.toContain("Thinking...")
+    expect(spinners.length).toBeGreaterThan(0)
   })
 
   it("lets expanded tool groups collapse from the bottom", async () => {
@@ -1016,6 +1266,8 @@ describe("agent progress response history", () => {
     expect(pendingRow.props.className).toContain("text-blue-600")
     expect(successRow.props.className).toContain("text-green-600")
     expect(getTextContent(tree)).not.toContain("respond_to_user")
+    expect(getTextContent(tree)).not.toContain("No result recorded")
+    expect(getTextContent(tree)).toContain("Waiting for response")
   })
 
   it("keeps reloaded completed sessions from showing completion-tool rows or duplicate final output", async () => {

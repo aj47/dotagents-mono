@@ -63,6 +63,49 @@ describe("agent-session-tracker persistence", () => {
     rmSync(dataFolder, { recursive: true, force: true })
   })
 
+  it("restores stale active sessions with completed activity as completed", async () => {
+    writeFileSync(
+      join(dataFolder, "agent-session-state.json"),
+      JSON.stringify({
+        version: 1,
+        activeSessions: [
+          {
+            id: "completed-active",
+            conversationId: "conversation-completed",
+            conversationTitle: "Completed active",
+            status: "active",
+            startTime: 1000,
+            lastActivity: "Agent completed successfully",
+          },
+        ],
+        completedSessions: [
+          {
+            id: "previously-stopped",
+            conversationId: "conversation-stopped",
+            conversationTitle: "Previously stopped",
+            status: "stopped",
+            startTime: 900,
+            endTime: 950,
+            lastActivity: "Agent completed successfully",
+          },
+        ],
+      }),
+      "utf8",
+    )
+
+    const { agentSessionTracker } = await loadTracker(dataFolder)
+
+    expect(agentSessionTracker.getActiveSessions()).toHaveLength(0)
+    expect(agentSessionTracker.findCompletedSession("completed-active")).toEqual(
+      expect.objectContaining({ id: "completed-active", status: "completed" }),
+    )
+    expect(agentSessionTracker.findCompletedSession("previously-stopped")).toEqual(
+      expect.objectContaining({ id: "previously-stopped", status: "completed" }),
+    )
+
+    rmSync(dataFolder, { recursive: true, force: true })
+  })
+
   it("normalizes malformed interrupted session timestamps during restore", async () => {
     writeFileSync(
       join(dataFolder, "agent-session-state.json"),

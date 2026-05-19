@@ -60,6 +60,7 @@ import {
 import { recordActualTokenUsage } from "./context-budget"
 import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
 import { getConversationImageAssetPath } from "./conversation-image-assets"
+import { sanitizeMessagesForLlmTransport, sanitizeTextForLlmTransport } from "./llm-text-sanitization"
 
 /**
  * Extended usage type that includes cache token details from AI SDK providers.
@@ -588,6 +589,7 @@ export async function makeLLMCallWithFetch(
 ): Promise<LLMToolCallResponse> {
   const effectiveProviderId = (providerId ||
     getCurrentProviderId()) as ProviderType
+  const transportMessages = sanitizeMessagesForLlmTransport(messages)
 
   return withRetry(
     async () => {
@@ -614,13 +616,13 @@ export async function makeLLMCallWithFetch(
                 hasTools: !!(tools && tools.length > 0),
                 toolCount: tools?.length || 0,
               },
-              input: { messages },
+              input: { messages: transportMessages },
             })
           }
 
           let result
           try {
-            result = await makeChatGptWebResponse(messages, {
+            result = await makeChatGptWebResponse(transportMessages, {
               modelContext: "mcp",
               signal: abortController.signal,
               tools,
@@ -684,7 +686,7 @@ export async function makeLLMCallWithFetch(
         }
 
         const model = createLanguageModel(effectiveProviderId)
-        const { system, messages: convertedMessages } = convertMessages(messages)
+        const { system, messages: convertedMessages } = convertMessages(transportMessages)
         const promptCaching = getPromptCachingConfig(effectiveProviderId)
         const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId)
         const mergedProviderOptions = mergeProviderOptions(
@@ -702,7 +704,7 @@ export async function makeLLMCallWithFetch(
         if (isDebugLLM()) {
           logLLM("🚀 AI SDK generateText call", {
             provider: effectiveProviderId,
-            messagesCount: messages.length,
+            messagesCount: transportMessages.length,
             hasSystem: !!system,
             hasTools: !!convertedTools,
             toolCount: tools?.length || 0,
@@ -890,6 +892,7 @@ export async function makeLLMCallWithStreamingAndTools(
   tools?: MCPTool[]
 ): Promise<LLMToolCallResponse> {
   const effectiveProviderId = (providerId || getCurrentProviderId()) as ProviderType
+  const transportMessages = sanitizeMessagesForLlmTransport(messages)
 
   return withRetry(
     async () => {
@@ -913,7 +916,7 @@ export async function makeLLMCallWithStreamingAndTools(
               hasTools: !!convertedTools,
               toolCount: tools?.length || 0,
             },
-            input: { messages },
+            input: { messages: transportMessages },
           })
         }
 
@@ -925,7 +928,7 @@ export async function makeLLMCallWithStreamingAndTools(
             abortController.abort()
           }
 
-          const result = await makeChatGptWebResponse(messages, {
+          const result = await makeChatGptWebResponse(transportMessages, {
             modelContext: "mcp",
             signal: abortController.signal,
             onTextChunk: onChunk,
@@ -972,7 +975,7 @@ export async function makeLLMCallWithStreamingAndTools(
       }
 
       const model = createLanguageModel(effectiveProviderId)
-      const { system, messages: convertedMessages } = convertMessages(messages)
+      const { system, messages: convertedMessages } = convertMessages(transportMessages)
       const promptCaching = getPromptCachingConfig(effectiveProviderId)
       const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId)
       const mergedProviderOptions = mergeProviderOptions(
@@ -983,7 +986,7 @@ export async function makeLLMCallWithStreamingAndTools(
       if (isDebugLLM()) {
         logLLM("🚀 AI SDK streamText+tools call", {
           provider: effectiveProviderId,
-          messagesCount: messages.length,
+          messagesCount: transportMessages.length,
           hasSystem: !!system,
           hasTools: !!convertedTools,
           toolCount: tools?.length || 0,
@@ -1123,6 +1126,7 @@ export async function makeTextCompletionWithFetch(
   // Use transcript provider as default since this is primarily used for transcript post-processing
   const effectiveProviderId = (providerId ||
     getTranscriptProviderId()) as ProviderType
+  const transportPrompt = sanitizeTextForLlmTransport(prompt)
 
   return withRetry(
     async () => {
@@ -1139,7 +1143,7 @@ export async function makeTextCompletionWithFetch(
           name: "Text Completion",
           model: modelName,
           modelParameters: { provider: effectiveProviderId },
-          input: prompt,
+          input: transportPrompt,
         })
       }
 
@@ -1155,7 +1159,7 @@ export async function makeTextCompletionWithFetch(
         let usage: ExtendedUsage | undefined
         const text = isChatGptWebProvider(effectiveProviderId)
           ? (await makeChatGptWebCompletion(
-              [{ role: "user", content: prompt }],
+              [{ role: "user", content: transportPrompt }],
               {
                 modelContext: "transcript",
                 signal: abortController.signal,
@@ -1173,13 +1177,13 @@ export async function makeTextCompletionWithFetch(
               if (isDebugLLM()) {
                 logLLM("🚀 AI SDK text completion call", {
                   provider: effectiveProviderId,
-                  promptLength: prompt.length,
+                  promptLength: transportPrompt.length,
                 })
               }
 
               const result = await generateText({
                 model,
-                prompt,
+                prompt: transportPrompt,
                 abortSignal: abortController.signal,
                 providerOptions: mergedProviderOptions as any,
               })
@@ -1230,6 +1234,7 @@ export async function verifyCompletionWithFetch(
 ): Promise<CompletionVerification> {
   const effectiveProviderId = (providerId ||
     getCurrentProviderId()) as ProviderType
+  const transportMessages = sanitizeMessagesForLlmTransport(messages)
 
   return withRetry(
     async () => {
@@ -1260,7 +1265,7 @@ export async function verifyCompletionWithFetch(
           promptCaching?.providerOptions,
           reasoningOptions,
         )
-        const { system, messages: convertedMessages } = convertMessages(messages)
+        const { system, messages: convertedMessages } = convertMessages(transportMessages)
         if (generationId) {
           createLLMGeneration(sessionId || null, generationId, {
             name: "Verification Call",
@@ -1277,7 +1282,7 @@ export async function verifyCompletionWithFetch(
         if (isDebugLLM()) {
           logLLM("🚀 AI SDK verification call", {
             provider: effectiveProviderId,
-            messagesCount: messages.length,
+            messagesCount: transportMessages.length,
             hasSystem: !!system,
           })
         }
@@ -1286,7 +1291,7 @@ export async function verifyCompletionWithFetch(
         let usage: ExtendedUsage | undefined
         try {
           if (isChatGptWebProvider(effectiveProviderId)) {
-            text = (await makeChatGptWebCompletion(messages, {
+            text = (await makeChatGptWebCompletion(transportMessages, {
               modelContext: "mcp",
               signal: abortController.signal,
             })).trim()

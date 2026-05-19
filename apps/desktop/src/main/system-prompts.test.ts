@@ -73,6 +73,8 @@ describe("constructSystemPrompt", () => {
     expect(DEFAULT_SYSTEM_PROMPT).toContain("Before asking the user for facts that may already be known")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("whenever the current task likely relates to prior work")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("always prefer knowledge notes over recalled conversation context when they conflict")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("personal legal/immigration")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("inspect both relevant knowledge notes and recent conversations with a shell/file tool")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("configured knowledge roots")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("global and workspace .agents/knowledge")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("<knowledge-root>/<slug>/<slug>.md")
@@ -111,13 +113,16 @@ describe("constructSystemPrompt", () => {
     expect(prompt).not.toContain("Use save_memory")
   })
 
-  it("preserves knowledge note guidance in the minimal fallback prompt", async () => {
+  it("preserves knowledge note guidance in the minimal fallback prompt when file tools are available", async () => {
     const { constructMinimalSystemPrompt } = await import("./system-prompts")
 
-    const prompt = constructMinimalSystemPrompt([], true)
+    const prompt = constructMinimalSystemPrompt([
+      { name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } },
+    ], true)
 
-    expect(prompt).toContain("check relevant knowledge notes and prior conversations first")
-    expect(prompt).toContain("user/project-specific facts are still missing")
+    expect(prompt).toContain("personal legal/immigration")
+    expect(prompt).toContain("use execute_command on both knowledge notes and recent conversations before generic advice")
+    expect(prompt).toContain("ask one focused follow-up only if facts are missing")
     expect(prompt).toContain("configured knowledge roots")
     expect(prompt).toContain("<knowledge-root>/<slug>/<slug>.md")
     expect(prompt).toContain("context: search-only")
@@ -129,6 +134,16 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("conv_*.json")
     expect(prompt).toContain("layered global/workspace .agents folders")
     expect(prompt).toContain("dotagents-config-admin")
+  })
+
+  it("does not claim filesystem search in the minimal fallback prompt without file tools", async () => {
+    const { constructMinimalSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructMinimalSystemPrompt([], true)
+
+    expect(prompt).toContain("When file tools are unavailable")
+    expect(prompt).not.toContain("use execute_command on both knowledge notes")
+    expect(prompt).not.toContain("DOTAGENTS_TOOL_MANIFEST")
   })
 
   it("separates MCP tools from DotAgents runtime tools in the full prompt", async () => {
@@ -213,6 +228,19 @@ describe("constructSystemPrompt", () => {
     expect(withoutTitleTool).not.toContain("SESSION TITLE")
     expect(withTitleTool).toContain("SESSION TITLE")
     expect(withTitleTool).toContain("set a concise useful title with set_session_title early")
+    expect(withTitleTool).toContain("do not call set_session_title again with the same title")
+  })
+
+  it("prefers direct compacted-context search when the query is known", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([
+      { name: "read_more_context", description: "Read compacted context", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(prompt).toContain('call read_more_context(mode: "search") directly')
+    expect(prompt).toContain('use mode: "overview" first only when you need orientation')
+    expect(prompt).not.toContain('Prefer read_more_context(mode: "overview") first')
   })
 
   it("does not advertise delegation tools when delegation is unavailable", async () => {

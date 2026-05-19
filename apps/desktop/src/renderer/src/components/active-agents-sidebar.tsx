@@ -102,6 +102,66 @@ interface SidebarSessionEntry {
   nestingDepth?: number
 }
 
+function markProgressCompletedFromSession(
+  progress: AgentProgressUpdate,
+  session: SidebarSessionRecord,
+): AgentProgressUpdate {
+  const isSessionSuccessfulCompletion = session.status === "completed"
+  const steps = progress.steps.map((step) => {
+    if (step.status !== "in_progress" && step.status !== "awaiting_approval") {
+      return step
+    }
+    return {
+      ...step,
+      status: "completed" as const,
+    }
+  })
+
+  return {
+    ...progress,
+    conversationId: progress.conversationId ?? session.conversationId,
+    conversationTitle: progress.conversationTitle ?? session.conversationTitle,
+    currentIteration: progress.currentIteration ?? session.currentIteration ?? 0,
+    maxIterations: progress.maxIterations ?? session.maxIterations ?? 1,
+    steps,
+    isComplete: true,
+    conversationState: isSessionSuccessfulCompletion ? "complete" : "blocked",
+    streamingContent: progress.streamingContent
+      ? {
+          ...progress.streamingContent,
+          isStreaming: false,
+        }
+      : undefined,
+    pendingToolApproval: undefined,
+    retryInfo: progress.retryInfo?.isRetrying
+      ? {
+          ...progress.retryInfo,
+          isRetrying: false,
+        }
+      : progress.retryInfo,
+  }
+}
+
+function getProgressLastActivityTimestamp(progress: AgentProgressUpdate): number {
+  const lastStepTimestamp = progress.steps.length > 0
+    ? progress.steps[progress.steps.length - 1].timestamp
+    : undefined
+  const lastHistoryTimestamp =
+    progress.conversationHistory && progress.conversationHistory.length > 0
+      ? progress.conversationHistory[progress.conversationHistory.length - 1].timestamp
+      : undefined
+  const lastResponseEventTimestamp =
+    progress.responseEvents && progress.responseEvents.length > 0
+      ? progress.responseEvents[progress.responseEvents.length - 1].timestamp
+      : undefined
+
+  return Math.max(
+    typeof lastStepTimestamp === "number" ? lastStepTimestamp : 0,
+    typeof lastHistoryTimestamp === "number" ? lastHistoryTimestamp : 0,
+    typeof lastResponseEventTimestamp === "number" ? lastResponseEventTimestamp : 0,
+  )
+}
+
 function getSessionLastMessageTimestamp(
   session: SidebarSessionRecord,
   conversationTimestamp?: number,
@@ -276,6 +336,7 @@ export function ActiveAgentsSidebar({
   const viewedConversationId = useAgentStore((s) => s.viewedConversationId)
   const setViewedConversationId = useAgentStore((s) => s.setViewedConversationId)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
+  const updateSessionProgress = useAgentStore((s) => s.updateSessionProgress)
   const agentResponseReadAtBySessionId = useAgentStore(
     (s) => s.agentResponseReadAtBySessionId,
   )
@@ -347,6 +408,27 @@ export function ActiveAgentsSidebar({
   const conversationHistory =
     (savedConversationsQuery.data as ConversationHistoryItem[] | undefined) ||
     []
+  const recentCompletedSessionById = useMemo(
+    () => new Map(recentCompletedSessions.map((session) => [session.id, session] as const)),
+    [recentCompletedSessions],
+  )
+  const trackedActiveSessionIds = useMemo(
+    () => new Set(trackedActiveSessions.map((session) => session.id)),
+    [trackedActiveSessions],
+  )
+
+  useEffect(() => {
+    for (const [sessionId, session] of recentCompletedSessionById) {
+      const progress = agentProgressById.get(sessionId)
+      if (!progress || progress.isComplete) continue
+      if (trackedActiveSessionIds.has(sessionId)) continue
+      const sessionEndTime = typeof session.endTime === "number" ? session.endTime : 0
+      if (sessionEndTime > 0 && getProgressLastActivityTimestamp(progress) > sessionEndTime) {
+        continue
+      }
+      updateSessionProgress(markProgressCompletedFromSession(progress, session))
+    }
+  }, [agentProgressById, recentCompletedSessionById, trackedActiveSessionIds, updateSessionProgress])
 
   const activeSessions = useMemo<SidebarSessionRecord[]>(() => {
     const subagentParentSessionIds = getSubagentParentSessionIdMap(
@@ -360,7 +442,8 @@ export function ActiveAgentsSidebar({
     )
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
-      const existingSession = mergedSessions.get(sessionId)
+      const existingSession =
+        mergedSessions.get(sessionId) ?? recentCompletedSessionById.get(sessionId)
       const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
       const lastHistoryTimestamp = progress.conversationHistory?.[
         progress.conversationHistory.length - 1
@@ -428,7 +511,7 @@ export function ActiveAgentsSidebar({
         b.startTime
       return bTimestamp - aTimestamp
     })
-  }, [trackedActiveSessions, agentProgressById])
+  }, [trackedActiveSessions, agentProgressById, recentCompletedSessionById])
 
   const sessionsWithActiveChildProgress = useMemo(
     () => getSessionIdsWithActiveChildProgress(agentProgressById.entries()),

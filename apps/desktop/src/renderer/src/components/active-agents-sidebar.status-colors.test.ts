@@ -29,6 +29,21 @@ describe("active agents sidebar status colors", () => {
     expect(sidebarSource).toContain('status: "active"')
   })
 
+  it("preserves recent terminal session status for retained progress rows", () => {
+    expect(sidebarSource).toContain("recentCompletedSessionById.get(sessionId)")
+    expect(sidebarSource).toContain("existingSession?.status === \"error\"")
+    expect(sidebarSource).toContain("existingSession?.status === \"stopped\"")
+    expect(sidebarSource).toContain("const isSessionSuccessfulCompletion = session.status === \"completed\"")
+    expect(sidebarSource).toContain("isComplete: true")
+    expect(sidebarSource).toContain("conversationState: isSessionSuccessfulCompletion ? \"complete\" : \"blocked\"")
+  })
+
+  it("does not let stale recent-session records complete a revived active run", () => {
+    expect(sidebarSource).toContain("const trackedActiveSessionIds = useMemo")
+    expect(sidebarSource).toContain("if (trackedActiveSessionIds.has(sessionId)) continue")
+    expect(sidebarSource).toContain("getProgressLastActivityTimestamp(progress) > sessionEndTime")
+  })
+
   it("keeps active sidebar lifecycle inputs explicit before handing off to presentation", () => {
     expect(sidebarSource).toContain("const progressLifecycleState =")
     expect(sidebarSource).toContain('session.status === "active" || hasActiveChildProgress')

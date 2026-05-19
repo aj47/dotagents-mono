@@ -196,6 +196,10 @@ interface AgentProgressProps {
   onCollapsedChange?: (collapsed: boolean) => void
   /** For tile variant: callback when a follow-up message is sent */
   onFollowUpSent?: () => void
+  /** For tile variant: callback when a follow-up submit starts */
+  onFollowUpSubmitStarted?: () => void
+  /** For tile variant: callback when a follow-up submit fails before a session starts */
+  onFollowUpSubmitFailed?: () => void
   /** For tile variant: show a transient startup state before the real session arrives */
   isFollowUpInputInitializing?: boolean
   /** For tile variant: callback to expand this tile to full view */
@@ -3141,6 +3145,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   isCollapsed: controlledIsCollapsed,
   onCollapsedChange,
   onFollowUpSent,
+  onFollowUpSubmitStarted,
+  onFollowUpSubmitFailed,
   isFollowUpInputInitializing,
   onExpand,
   isExpanded,
@@ -3221,6 +3227,22 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const [isDelegationSummaryCollapsed, setIsDelegationSummaryCollapsed] = useState(false)
 
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
+
+  const handleFollowUpSubmitStarted = useCallback(() => {
+    if (variant === "tile") {
+      setShouldAutoScroll(true)
+      setIsUserScrolling(false)
+      if (!isFocused && progress?.sessionId) {
+        setFocusedSessionId(progress.sessionId)
+      }
+    }
+
+    onFollowUpSubmitStarted?.()
+  }, [isFocused, onFollowUpSubmitStarted, progress?.sessionId, setFocusedSessionId, variant])
+
+  const handleFollowUpSubmitFailed = useCallback(() => {
+    onFollowUpSubmitFailed?.()
+  }, [onFollowUpSubmitFailed])
 
   const handleFollowUpSent = useCallback(() => {
     if (variant === "tile") {
@@ -4890,6 +4912,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             conversationTitle={progress.conversationTitle}
             className="flex-shrink-0"
             onMessageSent={handleFollowUpSent}
+            onMessageSubmitStarted={handleFollowUpSubmitStarted}
+            onMessageSubmitFailed={handleFollowUpSubmitFailed}
             onVoiceContinue={onVoiceContinue}
           />
         )}

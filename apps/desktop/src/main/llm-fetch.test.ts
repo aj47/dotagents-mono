@@ -14,6 +14,7 @@ const { makeChatGptWebResponseMock } = vi.hoisted(() => ({
 
 // Mock dependencies
 vi.mock('./config', () => ({
+  conversationsFolder: '/tmp/dotagents-llm-fetch-test-conversations',
   configStore: {
     get: () => ({
       apiRetryCount: 3,
@@ -1245,6 +1246,22 @@ describe('LLM Fetch with AI SDK', () => {
     expect(makeChatGptWebResponseMock).toHaveBeenCalledWith(
       [{ role: 'user', content: 'hello' }],
       expect.objectContaining({ modelContext: 'mcp', tools: undefined }),
+    )
+  })
+
+  it('sanitizes dangling surrogate fragments before chatgpt-web requests', async () => {
+    makeChatGptWebResponseMock.mockResolvedValue({ text: 'chatgpt answer' })
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+    await makeLLMCallWithStreamingAndTools(
+      [{ role: 'user', content: 'LinkedIn resource \uD83D\nContext ref' }],
+      vi.fn(),
+      'chatgpt-web',
+    )
+
+    expect(makeChatGptWebResponseMock).toHaveBeenCalledWith(
+      [{ role: 'user', content: 'LinkedIn resource \uFFFD\nContext ref' }],
+      expect.objectContaining({ modelContext: 'mcp' }),
     )
   })
 

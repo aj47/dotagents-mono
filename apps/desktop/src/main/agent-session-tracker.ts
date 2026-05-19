@@ -181,6 +181,23 @@ class AgentSessionTracker {
   }
 
   /**
+   * Move tracker-only active sessions out of the active set.
+   *
+   * The tracker is persisted separately from the in-memory runtime session
+   * manager. If a final progress update is missed, a session can be left here
+   * as active even though no runtime work is registered anymore.
+   */
+  reconcileActiveSessions(isRuntimeSessionActive: (session: AgentSession) => boolean): AgentSession[] {
+    const retiredSessions = this.store.reconcileActiveSessions(isRuntimeSessionActive)
+    if (retiredSessions.length === 0) {
+      return []
+    }
+
+    logApp(`[AgentSessionTracker] Reconciled ${retiredSessions.length} stale active session(s)`)
+    return retiredSessions
+  }
+
+  /**
    * Mark a session as errored and move it to recent sessions
    */
   errorSession(sessionId: string, errorMessage: string): void {

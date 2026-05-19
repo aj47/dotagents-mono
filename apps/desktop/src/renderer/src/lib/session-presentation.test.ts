@@ -63,6 +63,11 @@ describe("session presentation semantics", () => {
     expect(getSidebarStatusPresentation({ wasStopped: true }).railClassName).toBe("bg-red-500")
   })
 
+  it("keeps blocked conversation state above stale completion flags", () => {
+    expect(deriveLifecycleState({ conversationState: "blocked", isComplete: true })).toBe("blocked")
+    expect(getSidebarStatusPresentation({ conversationState: "blocked", isComplete: true }).railClassName).toBe("bg-red-500")
+  })
+
   it("uses green only for complete/success sidebar state", () => {
     expect(getSidebarStatusPresentation({ conversationState: "running", isSnoozed: false }).railClassName).toBe("bg-blue-500")
     expect(getSidebarStatusPresentation({ conversationState: "running", isSnoozed: true }).railClassName).toBe("bg-muted-foreground/60")

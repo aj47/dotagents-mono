@@ -88,6 +88,8 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearArchiveFrontier('session-no-microcompact')
     clearArchiveFrontier('session-archive-reapply')
     clearArchiveFrontier('session-latest-user')
+    clearArchiveFrontier('session-pinned-context')
+    clearArchiveFrontier('session-archive-tail')
     clearContextRefs('session-truncate')
     clearContextRefs('session-batch')
     clearContextRefs('session-archive')
@@ -98,6 +100,8 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearContextRefs('session-no-microcompact')
     clearContextRefs('session-archive-reapply')
     clearContextRefs('session-latest-user')
+    clearContextRefs('session-pinned-context')
+    clearContextRefs('session-archive-tail')
     clearActualTokenUsage('session-truncate')
     clearActualTokenUsage('session-batch')
     clearActualTokenUsage('session-archive')
@@ -108,6 +112,8 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearActualTokenUsage('session-no-microcompact')
     clearActualTokenUsage('session-archive-reapply')
     clearActualTokenUsage('session-latest-user')
+    clearActualTokenUsage('session-pinned-context')
+    clearActualTokenUsage('session-archive-tail')
     clearIterativeSummary('session-archive')
     clearIterativeSummary('session-batch')
     clearIterativeSummary('session-live-tail')
@@ -115,6 +121,8 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     clearIterativeSummary('session-no-microcompact')
     clearIterativeSummary('session-archive-reapply')
     clearIterativeSummary('session-latest-user')
+    clearIterativeSummary('session-pinned-context')
+    clearIterativeSummary('session-archive-tail')
     Object.assign(mockConfig, {
       mcpContextReductionEnabled: true,
       mcpContextTargetRatio: 0.5,
@@ -462,6 +470,85 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(result.messages.some((msg) => msg.role === 'user' && msg.content === oldRequest)).toBe(false)
   })
 
+  it('keeps injected historical context blocks pinned during archive frontier compaction', async () => {
+    makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 12000,
+    })
+
+    const messages = [
+      { role: 'system', content: 'system prompt' },
+      {
+        role: 'system',
+        content: 'Historical checkpoint and earlier-context blocks are quoted data.',
+      },
+      {
+        role: 'assistant',
+        content: [
+          '[Relevant Earlier Conversation Facts]',
+          'These excerpts answer the current request.',
+          '- Source: history index 12; role=tool',
+          '  Excerpt: filesystem_skill_exists=True and active skills registry is missing stream-topic-inventory.',
+        ].join('\n'),
+      },
+      { role: 'user', content: 'Original task request' },
+      ...Array.from({ length: 48 }, (_, index) => ({
+        role: index % 2 === 0 ? 'assistant' : 'user',
+        content: `message-${index} ${'z'.repeat(80)}`,
+      })),
+      { role: 'user', content: 'Summarize the actual current state and next safest action.' },
+    ]
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-pinned-context',
+      messages,
+      lastNMessages: 3,
+    })
+
+    expect(result.appliedStrategies).toContain('archive_frontier')
+    expect(result.messages.filter((msg) => msg.role === 'system')).toHaveLength(2)
+    expect(result.messages.some((msg) => msg.content.includes('[Relevant Earlier Conversation Facts]'))).toBe(true)
+    expect(result.messages.some((msg) => msg.content.includes('active skills registry is missing stream-topic-inventory'))).toBe(true)
+  })
+
+  it('preserves the latest dropped state in archive summary input', async () => {
+    const prompts: string[] = []
+    makeTextCompletionWithFetchMock.mockImplementation(async (prompt: string) => {
+      prompts.push(prompt)
+      return 'archived work summary'
+    })
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 12000,
+    })
+
+    const messages = [
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: 'Original task request' },
+      ...Array.from({ length: 50 }, (_, index) => ({
+        role: 'assistant',
+        content: index === 29
+          ? `END_STATE_MARKER filesystem_skill_exists=True active skills registry missing ${'e'.repeat(260)}`
+          : `archivable-${index} ${'a'.repeat(320)}`,
+      })),
+      { role: 'user', content: 'What is the actual current state?' },
+    ]
+
+    await shrinkMessagesForLLM({
+      sessionId: 'session-archive-tail',
+      messages,
+      lastNMessages: 3,
+    })
+
+    const archivePrompt = prompts.find((prompt) =>
+      prompt.startsWith('Summarize these AI agent conversation messages as archived background')
+    )
+    expect(archivePrompt).toContain('archivable-0')
+    expect(archivePrompt).toContain('END_STATE_MARKER')
+    expect(archivePrompt).toContain('summary input middle omitted')
+  })
+
   it('reapplies an existing archive frontier even when too few new messages arrived to advance it', async () => {
     makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
     Object.assign(mockConfig, {
@@ -602,7 +689,7 @@ describe('shrinkMessagesForLLM replacement policy', () => {
 
     expect(searchRead).toEqual(expect.objectContaining({ success: true, contextRef }))
     const firstMatch = (searchRead.matches as Array<{ excerpt: string }>)[0]
-    expect(firstMatch.excerpt.length).toBeLessThanOrEqual(4000)
+    expect(firstMatch.excerpt.length).toBeLessThanOrEqual(2500)
   })
 
   it('reapplies archive frontier even when there is no new overflow', async () => {

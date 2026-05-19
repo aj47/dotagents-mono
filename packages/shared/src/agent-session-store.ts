@@ -62,6 +62,7 @@ export interface AgentSessionStore {
   updateConversationTitleForConversation(conversationId: string, conversationTitle: string): number;
   completeSession(sessionId: string, finalActivity?: string): boolean;
   stopSession(sessionId: string): boolean;
+  reconcileActiveSessions(isRuntimeSessionActive: (session: AgentSession) => boolean): AgentSession[];
   errorSession(sessionId: string, errorMessage: string): boolean;
   getActiveSessions(): AgentSession[];
   getRecentSessions(limit?: number): AgentSession[];
@@ -86,6 +87,8 @@ export interface InactiveAgentSessionClearOptions {
 
 export const DEFAULT_MAX_COMPLETED_AGENT_SESSIONS = 20;
 export const DEFAULT_AGENT_SESSION_RESTART_ACTIVITY = 'Interrupted by app restart';
+export const DEFAULT_AGENT_SESSION_RECONCILE_ACTIVITY = 'Session no longer running';
+export const DEFAULT_AGENT_SESSION_FOLLOW_UP_ACTIVITY = 'Starting follow-up...';
 
 export function shouldClearInactiveAgentSession(
   session: Pick<AgentSession, 'conversationId'>,
@@ -118,6 +121,10 @@ function getFiniteTimestamp(value: unknown): number | undefined {
 
 function getCompletedSessionSortTime(session: AgentSession): number {
   return getFiniteTimestamp(session.endTime) ?? getFiniteTimestamp(session.startTime) ?? 0;
+}
+
+function isCompletionActivity(session: Pick<AgentSession, 'lastActivity'>): boolean {
+  return /completed successfully|task completed/i.test(session.lastActivity ?? '');
 }
 
 function isRestorableSession(value: unknown): value is AgentSession {
@@ -187,12 +194,14 @@ export function restoreAgentSessionStoreState(
   }
 
   const restoredCompleted = normalizeInitialSessions(persisted.completedSessions)
-    .map((session) => normalizeRestoredSession(session));
+    .map((session) => normalizeRestoredSession(session, {
+      status: isCompletionActivity(session) ? 'completed' : session.status,
+    }));
 
   const interruptedAt = (options.now ?? Date.now)();
   const restoredInterrupted = normalizeInitialSessions(persisted.activeSessions)
     .map((session) => normalizeRestoredSession(session, {
-      status: 'stopped',
+      status: isCompletionActivity(session) ? 'completed' : 'stopped',
       defaultEndTime: interruptedAt,
       defaultLastActivity: options.interruptedLastActivity ?? DEFAULT_AGENT_SESSION_RESTART_ACTIVITY,
     }));
@@ -215,7 +224,7 @@ export function restoreAgentSessionStoreState(
 
 export function createAgentSessionStore(options: AgentSessionStoreOptions = {}): AgentSessionStore {
   const maxCompletedSessions = options.maxCompletedSessions ?? DEFAULT_MAX_COMPLETED_AGENT_SESSIONS;
-  const now = options.now ?? Date.now;
+  const now = options.now ?? (() => Date.now());
   const idFactory = options.idFactory ?? defaultAgentSessionIdFactory;
   const sessions = new Map<string, AgentSession>(
     normalizeInitialSessions(options.initialState?.activeSessions)
@@ -330,6 +339,34 @@ export function createAgentSessionStore(options: AgentSessionStoreOptions = {}):
       return finishSession(sessionId, 'stopped');
     },
 
+    reconcileActiveSessions(isRuntimeSessionActive): AgentSession[] {
+      const retiredSessions: AgentSession[] = [];
+      const reconciledAt = now();
+
+      for (const session of sessions.values()) {
+        if (session.status !== 'active') continue;
+        if (isRuntimeSessionActive(session)) continue;
+
+        retiredSessions.push({
+          ...session,
+          status: isCompletionActivity(session) ? 'completed' : 'stopped',
+          endTime: getFiniteTimestamp(session.endTime) ?? reconciledAt,
+          lastActivity: session.lastActivity ?? DEFAULT_AGENT_SESSION_RECONCILE_ACTIVITY,
+        });
+      }
+
+      if (retiredSessions.length === 0) {
+        return [];
+      }
+
+      for (const session of retiredSessions) {
+        sessions.delete(session.id);
+      }
+      replaceCompletedSessions([...retiredSessions, ...completedSessions]);
+      notifyChange();
+      return retiredSessions;
+    },
+
     errorSession(sessionId, errorMessage): boolean {
       return finishSession(sessionId, 'error', { errorMessage });
     },
@@ -419,6 +456,8 @@ export function createAgentSessionStore(options: AgentSessionStoreOptions = {}):
       const [session] = completedSessions.splice(completedIndex, 1);
       session.status = 'active';
       session.isSnoozed = startSnoozed;
+      session.currentIteration = 0;
+      session.lastActivity = DEFAULT_AGENT_SESSION_FOLLOW_UP_ACTIVITY;
       delete session.endTime;
       delete session.errorMessage;
       sessions.set(sessionId, session);
