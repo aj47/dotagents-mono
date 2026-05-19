@@ -59,16 +59,17 @@ export interface SidebarStatusPresentation {
 
 export function deriveLifecycleState(input: SessionPresentationInput): SessionLifecycleState {
   const status = input.sessionStatus
+  const fallback: SessionLifecycleState = "running"
+  const conversationState = input.conversationState
+    ? normalizeAgentConversationState(input.conversationState, fallback)
+    : undefined
 
   if (input.pendingToolApproval) return "needs_input"
   if (input.hasErrors || input.wasStopped || status === "error" || status === "stopped") return "blocked"
+  if (conversationState === "blocked" || conversationState === "needs_input") return conversationState
   if (input.isComplete || status === "completed" || status === "complete") return "complete"
 
-  const fallback: SessionLifecycleState = "running"
-
-  return input.conversationState
-    ? normalizeAgentConversationState(input.conversationState, fallback)
-    : fallback
+  return conversationState ?? fallback
 }
 
 export function deriveAttentionState(input: SessionPresentationInput): SessionAttentionState {

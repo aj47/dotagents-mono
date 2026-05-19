@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config, ModelPreset } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Activity, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -63,6 +63,10 @@ interface AgentProgressProps {
   onCollapsedChange?: (collapsed: boolean) => void
   /** For tile variant: callback when a follow-up message is sent */
   onFollowUpSent?: () => void
+  /** For tile variant: callback when a follow-up submit starts */
+  onFollowUpSubmitStarted?: () => void
+  /** For tile variant: callback when a follow-up submit fails before a session starts */
+  onFollowUpSubmitFailed?: () => void
   /** For tile variant: show a transient startup state before the real session arrives */
   isFollowUpInputInitializing?: boolean
   /** For tile variant: callback to expand this tile to full view */
@@ -147,6 +151,19 @@ type DisplayItem =
       /** Total number of underlying tool calls across all collapsed items. */
       callCount: number
     } }
+
+const getRunningToolCallNames = (item: DisplayItem): string[] => {
+  if (item.kind !== "assistant_with_tools" || item.data.isComplete) return []
+  return item.data.calls
+    .filter((_, index) => !item.data.results[index])
+    .map((call) => call.name)
+}
+
+const formatRunningToolLabel = (toolNames: string[]): string => {
+  if (toolNames.length === 0) return "tool"
+  if (toolNames.length === 1) return toolNames[0]
+  return `${toolNames.length} tools`
+}
 
 type ChatProviderId = NonNullable<Config["agentProviderId"]>
 
@@ -742,6 +759,50 @@ function hasActiveTextSelection(container?: HTMLElement | null): boolean {
   )
 }
 
+const normalizeThinkingStatusText = (text?: string): string => {
+  const trimmed = text?.trim()
+  if (!trimmed) return "Thinking..."
+
+  const normalized = trimmed.replace(/\.+$/, "").toLowerCase()
+  if (
+    normalized === "agent is thinking" ||
+    normalized === "analyzing request" ||
+    normalized === "analyzing requests" ||
+    normalized === "generating response" ||
+    normalized === "waiting for session updates" ||
+    normalized === "starting follow-up"
+  ) {
+    return "Thinking..."
+  }
+
+  return trimmed
+}
+
+const stripThinkingPreamble = (text: string): string =>
+  text.replace(/^Thinking\.\.\.(?:\s*\n\s*\n)?/i, "")
+
+const CompactThinkingIndicator: React.FC<{ text?: string }> = ({ text }) => (
+  <div
+    className="inline-flex max-w-full items-center gap-2 rounded-md border border-blue-500/25 bg-blue-50/55 px-2.5 py-1.5 text-[11px] text-blue-900 shadow-sm dark:border-blue-500/30 dark:bg-blue-950/25 dark:text-blue-100"
+    role="status"
+    aria-live="polite"
+  >
+    <span className="flex h-3 w-4 shrink-0 items-end justify-center gap-0.5" aria-hidden="true">
+      {[0, 1, 2].map((index) => (
+        <span
+          key={index}
+          className={cn(
+            "thinking-signal-bar block w-1 rounded-full bg-blue-600/80 animate-bounce dark:bg-blue-300/90",
+            index === 0 ? "h-1.5" : index === 1 ? "h-2.5" : "h-2",
+          )}
+          style={{ animationDelay: `${index * 110}ms`, animationDuration: "820ms" }}
+        />
+      ))}
+    </span>
+    <span className="min-w-0 truncate font-medium">{normalizeThinkingStatusText(text)}</span>
+  </div>
+)
+
 type CompactMessageProps = {
   message: {
     role: "user" | "assistant" | "tool"
@@ -1261,6 +1322,10 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
 
   const shouldToggleFromContentClick = shouldCollapse && !isExpanded
 
+  if (message.isThinking) {
+    return <CompactThinkingIndicator text={effectiveContent} />
+  }
+
   return (
     <div className={cn(
       "relative rounded-md text-xs transition-all duration-200",
@@ -1534,6 +1599,7 @@ const CompactToolExecutionList: React.FC<{
   onToggleDetails: () => void
   rowClassName?: string
   detailsClassName?: string
+  isHistoricalComplete?: boolean
   executionStats?: {
     durationMs?: number
     totalTokens?: number
@@ -1549,6 +1615,7 @@ const CompactToolExecutionList: React.FC<{
   onToggleDetails,
   rowClassName = "px-1.5 py-0.5",
   detailsClassName = "mt-1 ml-3 space-y-1 border-l border-border/50 pl-2",
+  isHistoricalComplete = false,
   executionStats,
 }) => {
   const copy = async (text: string) => {
@@ -1568,7 +1635,9 @@ const CompactToolExecutionList: React.FC<{
     <>
       <div className="space-y-0.5 text-xs">
         {toolCallEntries.map(({ call, result }, idx) => {
-          const callIsPending = !result
+          const callIsMissingResult = !result
+          const callIsPending = callIsMissingResult && !isHistoricalComplete
+          const callIsUnrecorded = callIsMissingResult && isHistoricalComplete
           const callSuccess = result?.success
           const toolPreview = getCompactToolExecutionPreview(
             { name: call.name, arguments: call.arguments ?? {} },
@@ -1583,9 +1652,11 @@ const CompactToolExecutionList: React.FC<{
                   rowClassName,
                   callIsPending
                     ? "text-blue-600 dark:text-blue-400"
-                    : callSuccess
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400",
+                    : callIsUnrecorded
+                      ? "text-muted-foreground"
+                      : callSuccess
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400",
                 )}
                 onClick={onToggleDetails}
               >
@@ -1595,6 +1666,8 @@ const CompactToolExecutionList: React.FC<{
                 <span className="shrink-0 text-[10px] opacity-60">
                   {callIsPending ? (
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                  ) : callIsUnrecorded ? (
+                    <Clock className="h-2.5 w-2.5" />
                   ) : callSuccess ? (
                     <Check className="h-2.5 w-2.5" />
                   ) : (
@@ -1614,7 +1687,9 @@ const CompactToolExecutionList: React.FC<{
       {detailsExpanded && (
         <div className={detailsClassName}>
           {toolCallEntries.map(({ call, result }, idx) => {
-            const callIsPending = !result
+            const callIsMissingResult = !result
+            const callIsPending = callIsMissingResult && !isHistoricalComplete
+            const callIsUnrecorded = callIsMissingResult && isHistoricalComplete
             const formattedArguments = formatToolArguments(call.arguments)
             return (
               <div key={idx} className="text-[10px] space-y-1">
@@ -1659,6 +1734,12 @@ const CompactToolExecutionList: React.FC<{
                   <div className="text-[10px] opacity-60 italic py-1 flex items-center gap-1" role="status" aria-label="Waiting for response">
                     <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden="true" />
                     <span className="sr-only">Waiting for response</span>
+                  </div>
+                )}
+                {callIsUnrecorded && (
+                  <div className="text-[10px] opacity-60 italic py-1 flex items-center gap-1">
+                    <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+                    <span>No result recorded</span>
                   </div>
                 )}
               </div>
@@ -1735,18 +1816,27 @@ const AssistantWithToolsBubble: React.FC<{
 
   const toolCallEntries = data.calls.map((call, idx) => ({ call, result: data.results[idx] }))
   const resolvedResults = data.results.filter((result): result is NonNullable<typeof result> => Boolean(result))
-  const isPending = toolCallEntries.some(({ result }) => !result)
+  const hasMissingResults = toolCallEntries.some(({ result }) => !result)
+  const isPending = hasMissingResults && !data.isComplete
+  const hasUnrecordedResults = hasMissingResults && data.isComplete
   const hasFailedTool = toolCallEntries.some(({ result }) => result?.success === false)
   const allToolsSucceeded = toolCallEntries.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
+  const runningToolNames = isPending
+    ? toolCallEntries
+      .filter(({ result }) => !result)
+      .map(({ call }) => call.name)
+    : []
   const toolStatusTextClass = isPending
     ? "text-blue-600 dark:text-blue-400"
-    : hasFailedTool
-      ? "text-red-600 dark:text-red-400"
-      : allToolsSucceeded
-        ? "text-green-600 dark:text-green-400"
-        : "text-sky-700 dark:text-sky-300"
+    : hasUnrecordedResults
+      ? "text-muted-foreground"
+      : hasFailedTool
+        ? "text-red-600 dark:text-red-400"
+        : allToolsSucceeded
+          ? "text-green-600 dark:text-green-400"
+          : "text-sky-700 dark:text-sky-300"
   const collapsedToolPreviewLine = data.calls
     .map((call, idx) => {
       const result = data.results[idx]
@@ -1756,6 +1846,12 @@ const AssistantWithToolsBubble: React.FC<{
       )
     })
     .join(", ")
+  const collapsedToolStatusLine = isPending
+    ? `Running ${formatRunningToolLabel(runningToolNames)}`
+    : collapsedToolPreviewLine
+  const collapsedToolTitle = isPending && collapsedToolPreviewLine
+    ? `${collapsedToolStatusLine} - ${collapsedToolPreviewLine}`
+    : collapsedToolStatusLine
 
   // Generate result summary for collapsed state
   const collapsedResultSummary = (() => {
@@ -1821,11 +1917,13 @@ const AssistantWithToolsBubble: React.FC<{
                 type="button"
                 className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}
                 onClick={handleToggleToolDetails}
-                title={collapsedToolPreviewLine}
+                title={collapsedToolTitle}
+                role={isPending ? "status" : undefined}
               >
                 {isPending && <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin" aria-hidden="true" />}
+                {hasUnrecordedResults && <Clock className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />}
                 <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium">
-                  {collapsedToolPreviewLine}
+                  {collapsedToolStatusLine}
                 </span>
                 <ChevronRight className="h-2.5 w-2.5 shrink-0 opacity-40" aria-hidden="true" />
               </button>
@@ -1837,6 +1935,7 @@ const AssistantWithToolsBubble: React.FC<{
                 onToggleDetails={handleToggleToolDetails}
                 rowClassName="px-1 py-0.5"
                 detailsClassName="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"
+                isHistoricalComplete={data.isComplete}
                 executionStats={data.executionStats}
               />
             )}
@@ -1869,6 +1968,14 @@ const ToolActivityGroupBubble: React.FC<{
   const collapsedPreviewLine = group.previewLines.join(', ')
   const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
   const callCount = group.callCount
+  const runningToolNames = group.items.flatMap(getRunningToolCallNames)
+  const hasRunningTools = runningToolNames.length > 0
+  const collapsedStatusLine = hasRunningTools
+    ? `Running ${formatRunningToolLabel(runningToolNames)}`
+    : collapsedPreviewLine || "Tool activity"
+  const collapsedTitle = hasRunningTools && collapsedPreviewLine
+    ? `${collapsedStatusLine} - ${collapsedPreviewLine}`
+    : collapsedStatusLine
 
   return (
     <div className={cn(
@@ -1880,8 +1987,14 @@ const ToolActivityGroupBubble: React.FC<{
       <div
         className="flex min-w-0 items-center gap-1.5 px-2.5 py-1"
         onClick={() => !isExpanded && onToggleExpand()}
+        role={hasRunningTools ? "status" : undefined}
+        title={collapsedTitle}
       >
-        <Wrench className="h-3 w-3 shrink-0 text-sky-600/80 dark:text-sky-300/80" aria-hidden="true" />
+        <Wrench className={cn(
+          "h-3 w-3 shrink-0",
+          hasRunningTools ? "text-blue-600 dark:text-blue-400" : "text-sky-600/80 dark:text-sky-300/80",
+        )} aria-hidden="true" />
+        {hasRunningTools && <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin text-blue-600 dark:text-blue-400" aria-hidden="true" />}
         {callCount > 0 && (
           <span
             className="shrink-0 rounded bg-sky-100/70 px-1 py-px font-mono text-[9px] font-semibold text-sky-800/80 dark:bg-sky-900/40 dark:text-sky-100/80"
@@ -1891,8 +2004,11 @@ const ToolActivityGroupBubble: React.FC<{
             {callCount}
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px] text-sky-900/80 dark:text-sky-100/80">
-          {collapsedPreviewLine || "Tool activity"}
+        <span className={cn(
+          "min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px]",
+          hasRunningTools ? "font-medium text-blue-600 dark:text-blue-400" : "text-sky-900/80 dark:text-sky-100/80",
+        )}>
+          {collapsedStatusLine}
         </span>
         {thinkingCount > 0 && (
           <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
@@ -3419,43 +3535,36 @@ const StreamingContentBubble: React.FC<{
   if (!streamingContent.text) return null
 
   if (streamingContent.isPlaceholder) {
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-blue-300/70 bg-blue-50/50 px-2.5 py-1.5 text-xs text-blue-800 dark:border-blue-800/60 dark:bg-blue-950/30 dark:text-blue-200">
-        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-blue-600 dark:text-blue-400" aria-hidden="true" />
-        <span className="min-w-0 truncate">{streamingContent.text}</span>
-      </div>
-    )
+    return <CompactThinkingIndicator text={streamingContent.text} />
+  }
+
+  const displayText = stripThinkingPreamble(streamingContent.text)
+  if (!displayText.trim()) {
+    return <CompactThinkingIndicator />
   }
 
   const contentNode = streamingContent.isStreaming
     ? (
       <div className="markdown-selectable whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-        {streamingContent.text}
+        {displayText}
       </div>
     )
-    : <MarkdownRenderer content={streamingContent.text} />
+    : <MarkdownRenderer content={displayText} />
 
   return (
-    <div className="rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-950/30 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-blue-100/50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800">
-        <Activity className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-        <span className="text-xs font-medium text-blue-800 dark:text-blue-200">
-          {streamingContent.isStreaming ? "Generating response..." : "Response"}
-        </span>
+    <div
+      className={cn(
+        "rounded-md border px-2.5 py-2 text-xs",
+        streamingContent.isStreaming
+          ? "border-blue-300/60 bg-blue-50/40 text-blue-950 dark:border-blue-800/50 dark:bg-blue-950/20 dark:text-blue-100"
+          : "border-border/50 bg-muted/25 text-foreground",
+      )}
+    >
+      <div className="markdown-selectable leading-relaxed">
+        {contentNode}
         {streamingContent.isStreaming && (
-          <Loader2 className="h-3 w-3 text-blue-600 dark:text-blue-400 animate-spin ml-auto" />
+          <span className="inline-block h-3.5 w-1.5 animate-pulse bg-blue-600 align-text-bottom ml-0.5 dark:bg-blue-400" />
         )}
-      </div>
-
-      {/* Content */}
-      <div className="px-3 py-2">
-        <div className="text-xs text-blue-900 dark:text-blue-100">
-          {contentNode}
-          {streamingContent.isStreaming && (
-            <span className="inline-block w-1.5 h-3.5 bg-blue-600 dark:bg-blue-400 animate-pulse ml-0.5 align-text-bottom" />
-          )}
-        </div>
       </div>
     </div>
   )
@@ -3473,6 +3582,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   isCollapsed: controlledIsCollapsed,
   onCollapsedChange,
   onFollowUpSent,
+  onFollowUpSubmitStarted,
+  onFollowUpSubmitFailed,
   isFollowUpInputInitializing,
   onExpand,
   isExpanded,
@@ -3554,7 +3665,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
   const setFocusedSessionId = useAgentStore((s) => s.setFocusedSessionId)
 
-  const handleFollowUpSent = useCallback(() => {
+  const prepareForFollowUpActivity = useCallback(() => {
     if (variant === "tile") {
       setShouldAutoScroll(true)
       setIsUserScrolling(false)
@@ -3565,9 +3676,17 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
       scrollToBottom("auto")
     }
+  }, [scrollToBottom, variant, isFocused, progress?.sessionId, setFocusedSessionId])
 
+  const handleFollowUpSubmitStarted = useCallback(() => {
+    prepareForFollowUpActivity()
+    onFollowUpSubmitStarted?.()
+  }, [onFollowUpSubmitStarted, prepareForFollowUpActivity])
+
+  const handleFollowUpSent = useCallback(() => {
+    prepareForFollowUpActivity()
     onFollowUpSent?.()
-  }, [onFollowUpSent, scrollToBottom, variant, isFocused, progress?.sessionId, setFocusedSessionId])
+  }, [onFollowUpSent, prepareForFollowUpActivity])
   const setSessionSnoozed = useAgentStore((s) => s.setSessionSnoozed)
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const togglePinSession = useAgentStore((s) => s.togglePinSession)
@@ -3891,15 +4010,18 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           currentThinkingStep.llmContent.endsWith(latestAssistantHistoryMessage.content)
         )
 
+        const currentThinkingContent = currentThinkingStep.llmContent
+          ? stripThinkingPreamble(currentThinkingStep.llmContent)
+          : ""
+
         if (
           !isStreaming &&
           !historyAlreadyContainsThinking &&
-          currentThinkingStep.llmContent &&
-          currentThinkingStep.llmContent.trim().length > 0
+          currentThinkingContent.trim().length > 0
         ) {
           nextMessages.push({
             role: "assistant",
-            content: currentThinkingStep.llmContent,
+            content: currentThinkingContent,
             isComplete: false,
             timestamp: currentThinkingStep.timestamp,
             isThinking: false,
@@ -3910,7 +4032,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           if (!isVerificationStep) {
             nextMessages.push({
               role: "assistant",
-              content: currentThinkingStep.description || "Agent is thinking...",
+              content: normalizeThinkingStatusText(currentThinkingStep.description),
               isComplete: false,
               timestamp: currentThinkingStep.timestamp,
               isThinking: true,
@@ -3922,10 +4044,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       steps
         .filter((step) => step.type === "thinking")
         .forEach((step, index) => {
-          if (step.llmContent && step.llmContent.trim().length > 0) {
+          const stepThinkingContent = step.llmContent ? stripThinkingPreamble(step.llmContent) : ""
+          if (stepThinkingContent.trim().length > 0) {
             nextMessages.push({
               role: "assistant",
-              content: step.llmContent,
+              content: stepThinkingContent,
               isComplete: step.status === "completed",
               timestamp: step.timestamp ?? fallbackBaseTimestamp + index,
               isThinking: false,
@@ -3936,7 +4059,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             if (!isVerificationStep) {
               nextMessages.push({
                 role: "assistant",
-                content: step.description || "Agent is thinking...",
+                content: normalizeThinkingStatusText(step.description),
                 isComplete: false,
                 timestamp: step.timestamp ?? fallbackBaseTimestamp + index,
                 isThinking: true,
@@ -4166,6 +4289,20 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       }
     }
 
+    let latestUserMessageTimestamp: number | null = null
+    for (let i = enrichedMessages.length - 1; i >= 0; i--) {
+      const message = enrichedMessages[i]
+      if (message.role === "user") {
+        latestUserMessageTimestamp = message.timestamp
+        break
+      }
+    }
+
+    const isCurrentTurnDisplayItem = (item: DisplayItem): boolean => {
+      const timestamp = getItemTimestamp(item)
+      return timestamp === null || latestUserMessageTimestamp === null || timestamp >= latestUserMessageTimestamp
+    }
+
     const items: DisplayItem[] = []
     const roleCounters: Record<'user' | 'assistant' | 'tool', number> = { user: 0, assistant: 0, tool: 0 }
 
@@ -4186,6 +4323,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         const visibleToolNames = visibleToolCalls.map(({ call }) => call.name)
         const hasCompletionTool = visibleToolCalls.length !== message.toolCalls.length
         const suppressThought = hasCompletionTool && !!effectiveUserResponse
+        const hasPendingCurrentTurnToolResult =
+          !progress.isComplete &&
+          (latestUserMessageTimestamp === null || message.timestamp >= latestUserMessageTimestamp) &&
+          visibleToolCalls.some(({ result }) => !result)
 
         if (visibleToolCalls.length > 0) {
           const matchingStep = toolCallSteps.find(
@@ -4198,7 +4339,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             data: {
               thought: suppressThought ? "" : (message.content || ""),
               timestamp: message.timestamp,
-              isComplete: message.isComplete,
+              isComplete: hasPendingCurrentTurnToolResult ? false : message.isComplete,
               calls: visibleToolCalls.map(({ call }) => call),
               // Preserve per-call result alignment after hiding completion-control tools.
               // Some visible calls may still be pending while later visible calls already have results.
@@ -4292,19 +4433,23 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         item.kind === "message" &&
         item.data.role === "assistant" &&
         item.data.isThinking &&
-        !item.data.isComplete,
+        !item.data.isComplete &&
+        isCurrentTurnDisplayItem(item),
       )
       const alreadyHasCurrentStateFeedback = items.some((item) =>
-        item.kind === "streaming" ||
-        item.kind === "tool_approval" ||
-        item.kind === "retry_status" ||
-        item.kind === "tool_execution" ||
-        item.kind === "tool_activity_group" ||
+        isCurrentTurnDisplayItem(item) &&
         (
-          item.kind === "assistant_with_tools" &&
+          item.kind === "streaming" ||
+          item.kind === "tool_approval" ||
+          item.kind === "retry_status" ||
+          item.kind === "tool_execution" ||
+          item.kind === "tool_activity_group" ||
           (
-            item.data.calls.length > 0 ||
-            item.data.results.some((result) => !!result)
+            item.kind === "assistant_with_tools" &&
+            (
+              item.data.calls.length > 0 ||
+              item.data.results.some((result) => !!result)
+            )
           )
         ),
       )
@@ -4315,7 +4460,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       if (!alreadyHasLiveThinkingMessage && !alreadyHasCurrentStateFeedback && !isVerificationStep) {
         const text = activeStep?.type === "tool_call"
           ? activeStep.title || "Running tool..."
-          : activeStep?.description || "Thinking..."
+          : normalizeThinkingStatusText(activeStep?.description)
 
         items.push({
           kind: "streaming",
@@ -4435,7 +4580,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     if (runStart !== null) flushToolRun(sortedItems.length - 1)
 
     return grouped
-  }, [enrichedMessages, effectiveUserResponse, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
+  }, [enrichedMessages, effectiveUserResponse, progress.isComplete, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = displayItems
   const loadedConversationHistoryCount = conversationHistory?.length ?? 0
@@ -4449,6 +4594,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   )
 
   const getToolActivityGroupDefaultExpanded = useCallback((item: Extract<DisplayItem, { kind: "tool_activity_group" }>) => {
+    if (item.data.items.some((child) => getRunningToolCallNames(child).length > 0)) {
+      return true
+    }
     const firstChildId = item.data.items[0]?.id
     return !!firstChildId && expandedItems[firstChildId] === true
   }, [expandedItems])
@@ -4678,8 +4826,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isSessionExpanded: isExpanded,
   })
   const conversationState = sessionPresentation.lifecycleState
-  const conversationStateLabel = sessionPresentation.label
-  const conversationStateBadgeClass = sessionPresentation.badgeClassName
   const isSessionActiveForInput = conversationState === "running" || conversationState === "needs_input"
   const followUpInputPresentation = getFollowUpInputPresentation({
     conversationState,
@@ -4877,9 +5023,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 {tileTitle}
               </span>
             )}
-            <Badge variant="outline" className={cn("h-5 shrink-0 px-1.5 text-[10px]", conversationStateBadgeClass)}>
-              {conversationStateLabel}
-            </Badge>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region">
             {canCollapseTile && (
@@ -5242,7 +5385,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             agentName={profileName}
             conversationTitle={progress.conversationTitle}
             className="flex-shrink-0"
+            onMessageSubmitStarted={handleFollowUpSubmitStarted}
             onMessageSent={handleFollowUpSent}
+            onMessageSubmitFailed={onFollowUpSubmitFailed}
             onVoiceContinue={onVoiceContinue}
           />
         )}
@@ -5281,18 +5426,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       {/* Unified Header */}
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/30 bg-muted/10 backdrop-blur-sm overflow-hidden">
         <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-          {wasStopped && (
-            <Badge variant="destructive" className="text-xs px-1.5 py-0.5 shrink-0">
-              Terminated
-            </Badge>
-          )}
           {/* Session title — prominent */}
           <span className="text-xs font-medium text-foreground truncate min-w-0">
             {getTitle()}
           </span>
-          <Badge variant="outline" className={cn("h-5 shrink-0 px-1.5 text-[10px]", conversationStateBadgeClass)}>
-            {conversationStateLabel}
-          </Badge>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Profile/agent name — secondary */}

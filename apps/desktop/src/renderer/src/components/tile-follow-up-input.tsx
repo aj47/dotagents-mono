@@ -37,6 +37,10 @@ interface TileFollowUpInputProps {
   presentation?: FollowUpInputPresentation
   /** Called when a message is successfully sent */
   onMessageSent?: () => void
+  /** Called as soon as a message submit starts */
+  onMessageSubmitStarted?: () => void
+  /** Called if the submit fails before the backend starts the follow-up */
+  onMessageSubmitFailed?: () => void
   /** Called when stop button is clicked (optional - will call stopAgentSession directly if not provided) */
   onStopSession?: () => void | Promise<void>
   /** Opens the in-app voice continuation modal when available */
@@ -64,6 +68,8 @@ export function TileFollowUpInput({
   maxInputHeight,
   presentation,
   onMessageSent,
+  onMessageSubmitStarted,
+  onMessageSubmitFailed,
   onStopSession,
   onVoiceContinue,
 }: TileFollowUpInputProps) {
@@ -170,11 +176,13 @@ export function TileFollowUpInput({
 
     submitInFlightRef.current = true
     setIsSubmitting(true)
+    onMessageSubmitStarted?.()
 
     try {
       await sendMutation.mutateAsync(message)
     } catch (error) {
       console.error("Failed to submit tile follow-up message:", error)
+      onMessageSubmitFailed?.()
     } finally {
       submitInFlightRef.current = false
       setIsSubmitting(false)

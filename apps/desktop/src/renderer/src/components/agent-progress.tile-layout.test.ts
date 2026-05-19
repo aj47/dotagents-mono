@@ -235,7 +235,7 @@ describe("agent progress tile layout", () => {
   it("uses a lightweight plain-text path for active streaming bubbles before final markdown rendering", () => {
     expect(agentProgressSource).toContain('const contentNode = streamingContent.isStreaming')
     expect(agentProgressSource).toContain('className="markdown-selectable whitespace-pre-wrap break-words [overflow-wrap:anywhere]"')
-    expect(agentProgressSource).toContain(': <MarkdownRenderer content={streamingContent.text} />')
+    expect(agentProgressSource).toContain(': <MarkdownRenderer content={displayText} />')
   })
 
   it("wraps retry banners and queue chrome safely in narrow tile footers", () => {
@@ -308,11 +308,12 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('tipcClient.claimTTSPlaybackKeys')
   })
 
-  it("uses shared conversation-state normalization across agent progress surfaces", () => {
+  it("uses shared conversation-state normalization without duplicating header badges", () => {
     expect(agentProgressSource).toContain('getSessionPresentation')
     expect(agentProgressSource).toContain('const sessionPresentation = getSessionPresentation({')
     expect(agentProgressSource).toContain('conversationState === "needs_input"')
     expect(agentProgressSource).toContain('conversationState === "blocked"')
-    expect(agentProgressSource).toContain('const conversationStateBadgeClass = sessionPresentation.badgeClassName')
+    expect(agentProgressSource).not.toContain('conversationStateBadgeClass')
+    expect(agentProgressSource).not.toContain('conversationStateLabel')
   })
 })

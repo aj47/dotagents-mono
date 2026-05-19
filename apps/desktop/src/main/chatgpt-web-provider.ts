@@ -7,6 +7,7 @@ import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
 import { oauthStorage } from "./oauth-storage"
 import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
+import { sanitizeMessagesForLlmTransport } from "./llm-text-sanitization"
 
 const DEFAULT_CHATGPT_WEB_BASE_URL = "https://chatgpt.com"
 const DEFAULT_CHATGPT_WEB_MODEL = "gpt-5.4-mini"
@@ -779,6 +780,7 @@ export async function makeChatGptWebResponse(
   messages: ChatGptWebMessage[],
   options: ChatGptWebCompletionOptions = {},
 ): Promise<ChatGptWebResponse> {
+  const transportMessages = sanitizeMessagesForLlmTransport(messages)
   const modelContext = options.modelContext || "mcp"
   const model = getConfiguredChatGptWebModel(modelContext)
   const auth = await resolveChatGptWebAuth(options.signal)
@@ -786,10 +788,10 @@ export async function makeChatGptWebResponse(
 
   const payload: Record<string, unknown> = {
     model,
-    instructions: buildCodexInstructions(messages),
+    instructions: buildCodexInstructions(transportMessages),
     store: false,
     stream: true,
-    input: buildCodexInput(messages),
+    input: buildCodexInput(transportMessages),
     text: { verbosity: getCodexTextVerbosity() },
     include: ["reasoning.encrypted_content"],
     parallel_tool_calls: true,

@@ -15,6 +15,8 @@ const tipcSource = readFileSync(
   "utf8",
 )
 
+const compactSource = (source: string) => source.replace(/\s+/g, " ")
+
 describe("sessions in-app actions", () => {
   it("opens the in-app session action dialog from shared layout handlers instead of the hover panel", () => {
     expect(appLayoutSource).toContain("<SessionActionDialog")
@@ -35,10 +37,11 @@ describe("sessions in-app actions", () => {
   })
 
   it("prefers focused sessions over stale expanded selection and refreshes clear-inactive handlers", () => {
+    const compactSessionsSource = compactSource(sessionsSource)
     expect(
-      sessionsSource.indexOf("if (focusedSessionId && displayedSessionIds.has(focusedSessionId)) return focusedSessionId")
+      compactSessionsSource.indexOf("if (focusedSessionId && displayedSessionIds.has(focusedSessionId)) return focusedSessionId")
     ).toBeLessThan(
-      sessionsSource.indexOf("if (expandedSessionId && displayedSessionIds.has(expandedSessionId)) return expandedSessionId")
+      compactSessionsSource.indexOf("if (expandedSessionId && displayedSessionIds.has(expandedSessionId)) return expandedSessionId")
     )
     expect(sessionsSource).toContain("const handleClearInactiveSessions = useCallback(async () => {")
     expect(sessionsSource).toContain("}, [inactiveSessionCount, handleClearInactiveSessions])")
@@ -57,7 +60,10 @@ describe("sessions in-app actions", () => {
   it("clears stale pending past-session state when returning to an active session", () => {
     expect(appLayoutSource).toContain('navigate("/", { state: { clearPendingConversation: true } })')
     expect(sessionsSource).toContain("if (!navigationState?.clearPendingConversation) return")
-    expect(sessionsSource).toContain('navigate(`${location.pathname}${location.search}`, { replace: true, state: null })')
+    const compactSessionsSource = compactSource(sessionsSource)
+    expect(compactSessionsSource).toContain('navigate(`${location.pathname}${location.search}`, {')
+    expect(compactSessionsSource).toContain("replace: true")
+    expect(compactSessionsSource).toContain("state: null")
   })
 
   it("routes start and prompt controls through the sidebar instead of the sessions top bar", () => {
@@ -121,9 +127,10 @@ describe("sessions in-app actions", () => {
   it("lets tile voice continuation use the in-app dialog path while keeping the IPC fallback", () => {
     expect(tileFollowUpSource).toContain("if (onVoiceContinue) {")
     expect(tileFollowUpSource).toContain("continueConversationTitle: conversationTitle")
-    expect(tileFollowUpSource).toContain(
-      "await tipcClient.triggerMcpRecording({ conversationId, sessionId: realSessionId, fromTile: true })"
-    )
+    const compactTileFollowUpSource = compactSource(tileFollowUpSource)
+    expect(compactTileFollowUpSource).toContain("await tipcClient.triggerMcpRecording({")
+    expect(compactTileFollowUpSource).toContain("sessionId: realSessionId")
+    expect(compactTileFollowUpSource).toContain("fromTile: true")
   })
 
   it("navigates to a newly branched conversation so it becomes the focused session", () => {
@@ -160,7 +167,9 @@ describe("sessions in-app actions", () => {
   })
 
   it("decouples tile origin from background snooze state", () => {
-    expect(tileFollowUpSource).toContain("fromTile: true, startSnoozed: false")
+    const compactTileFollowUpSource = compactSource(tileFollowUpSource)
+    expect(compactTileFollowUpSource).toContain("fromTile: true")
+    expect(compactTileFollowUpSource).toContain("startSnoozed: false")
     expect(tipcSource).toContain("fromTile?: boolean // Origin hint")
     expect(tipcSource).toContain("startSnoozed?: boolean // True background mode")
     expect(tipcSource).toContain("startSnoozed || input.suppressPanelAutoShow === true || input.fromTile === true")
@@ -203,6 +212,13 @@ describe("sessions in-app actions", () => {
     expect(sessionsSource).not.toContain("isFocused={true}")
   })
 
+  it("lets tracker-active fallback state revive stale completed store progress", () => {
+    const compactSessionsSource = compactSource(sessionsSource)
+    expect(compactSessionsSource).toContain(
+      "storeProgress && fallbackProgress ? mergeTrackedActiveSessionProgress(fallbackProgress, storeProgress) : storeProgress ?? fallbackProgress",
+    )
+  })
+
   it("wires lazy earlier-history loading for active session tiles", () => {
     expect(sessionsSource).toContain("const [activeHistoryMessageLimit, setActiveHistoryMessageLimit]")
     expect(sessionsSource).toContain("const progressForExpandedHistoryDecision = useMemo")
@@ -215,5 +231,26 @@ describe("sessions in-app actions", () => {
     expect(sessionsSource).toContain("activeHistoryMessageLimit > baseConversationHistoryCount")
     expect(sessionsSource).toContain("onLoadEarlierConversationHistory={handleLoadEarlierConversationHistory}")
     expect(sessionsSource).toContain("isLoadingEarlierConversationHistory={")
+  })
+
+  it("hands pending saved-conversation history to the real session before removing the pending tile", () => {
+    expect(sessionsSource).toContain("getConversationHydrationQueryKey")
+    expect(sessionsSource).toContain("const hydrationConversationQuery")
+    expect(sessionsSource).toContain('queryKey: hydrationQueryKey ?? ["conversation", "__missing__", "hydrate"]')
+    expect(sessionsSource).toContain("const cachedHydrationConversation")
+    expect(sessionsSource).toContain("!!cachedHydrationConversation")
+    expect(sessionsSource).not.toContain("hasLiveSessionForPendingResume")
+    expect(sessionsSource).toContain("queryClient.setQueryData(")
+    expect(sessionsSource).toContain("if (!pendingResumeConversationQuery.data) return")
+    expect(
+      sessionsSource.indexOf("queryClient.setQueryData(")
+    ).toBeLessThan(
+      sessionsSource.indexOf("setPendingResumeConversationId(null)", sessionsSource.indexOf("if (realEntry) {")),
+    )
+    expect(sessionsSource).toContain("onFollowUpSubmitStarted={handlePendingContinuationStarted}")
+    expect(sessionsSource).toContain("onFollowUpSubmitFailed={handlePendingContinuationFailed}")
+    expect(agentProgressSource).toContain("onMessageSubmitStarted={handleFollowUpSubmitStarted}")
+    expect(tileFollowUpSource).toContain("onMessageSubmitStarted?.()")
+    expect(tileFollowUpSource).toContain("onMessageSubmitFailed?.()")
   })
 })

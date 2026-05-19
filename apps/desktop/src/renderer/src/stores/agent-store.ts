@@ -640,8 +640,24 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
       const newMap = new Map(state.agentProgressById)
       const existingHistory = existingProgress.conversationHistory || []
+      const isStartingFollowUp = existingProgress.isComplete
       newMap.set(sessionId, {
         ...existingProgress,
+        ...(isStartingFollowUp ? {
+          currentIteration: 0,
+          steps: [],
+          isComplete: false,
+          conversationState: 'running' as const,
+          finalContent: undefined,
+          userResponse: undefined,
+          userResponseHistory: undefined,
+          responseEvents: undefined,
+          streamingContent: undefined,
+          pendingToolApproval: undefined,
+          retryInfo: undefined,
+          latestSummary: undefined,
+          stepSummaries: undefined,
+        } : {}),
         conversationHistory: [
           ...existingHistory,
           { role: "user" as const, content: message, timestamp: Date.now() },

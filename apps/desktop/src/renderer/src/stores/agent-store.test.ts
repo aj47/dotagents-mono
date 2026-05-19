@@ -179,6 +179,44 @@ describe('agent-store delegation merge', () => {
     expect(stored?.userResponse).toBeUndefined()
   })
 
+  it('reactivates completed progress when optimistically appending a follow-up message', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      isComplete: true,
+      conversationState: 'complete',
+      finalContent: 'Original answer',
+      userResponse: 'Original answer',
+      responseEvents: [
+        { id: 'response-1', sessionId: 'session-1', ordinal: 1, text: 'Original answer', timestamp: 2 },
+      ],
+      streamingContent: { text: 'Original answer', isStreaming: false },
+      steps: [
+        { id: 'complete-1', type: 'completion', title: 'Complete', status: 'completed', timestamp: 2 },
+      ],
+      conversationHistory: [
+        { role: 'user', content: 'Original question', timestamp: 1 },
+        { role: 'assistant', content: 'Original answer', timestamp: 2 },
+      ],
+    })
+
+    useAgentStore.getState().appendUserMessageToSession('session-1', 'Follow-up prompt')
+
+    const stored = useAgentStore.getState().agentProgressById.get('session-1')
+    expect(stored?.isComplete).toBe(false)
+    expect(stored?.conversationState).toBe('running')
+    expect(stored?.currentIteration).toBe(0)
+    expect(stored?.steps).toEqual([])
+    expect(stored?.finalContent).toBeUndefined()
+    expect(stored?.userResponse).toBeUndefined()
+    expect(stored?.responseEvents).toBeUndefined()
+    expect(stored?.streamingContent).toBeUndefined()
+    expect(stored?.conversationHistory?.map((message) => message.content)).toEqual([
+      'Original question',
+      'Original answer',
+      'Follow-up prompt',
+    ])
+  })
+
   it('does not regress a terminal delegation back to running when stale progress arrives late', () => {
     useAgentStore.getState().updateSessionProgress({
       ...createBaseUpdate(),

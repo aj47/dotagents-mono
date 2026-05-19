@@ -211,6 +211,28 @@ describe("chatgpt-web response streaming", () => {
       reasoningSummary: "Plan next",
     })
   })
+
+  it("sanitizes dangling surrogate fragments before building the Codex payload", async () => {
+    await setupChatGptWebProviderTest({ chatgptWebAccessToken: "test-access-token" })
+    const encoder = new TextEncoder()
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "response.completed", response: { output: [] } })}\n\n`))
+        controller.close()
+      },
+    })
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(body, { status: 200 }) as any)
+
+    const { makeChatGptWebResponse } = await import("./chatgpt-web-provider")
+    await makeChatGptWebResponse([
+      { role: "system", content: "System \uD83D" },
+      { role: "user", content: "LinkedIn resource \uD83D\nContext ref" },
+    ])
+
+    const payload = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)
+    expect(payload.instructions).toContain("System \uFFFD")
+    expect(payload.input[0].content).toBe("LinkedIn resource \uFFFD\nContext ref")
+  })
 })
 
 describe("chatgpt-web Codex CLI auth fallback", () => {

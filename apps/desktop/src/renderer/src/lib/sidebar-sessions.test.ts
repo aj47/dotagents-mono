@@ -554,6 +554,34 @@ describe("getSidebarActivityPresentation", () => {
     })
   })
 
+  it("does not show stale active steps for completed progress", () => {
+    const activity = getSidebarActivityPresentation({
+      isComplete: true,
+      steps: [
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Generating slides",
+          description: "Running tool with arguments",
+          status: "in_progress",
+          timestamp: 2,
+          toolCall: { name: "functions.exec_command", arguments: { cmd: "python3 build.py" } },
+        },
+      ],
+      streamingContent: {
+        text: "Thinking...",
+        isStreaming: true,
+      },
+    })
+
+    expect(activity).toMatchObject({
+      kind: "complete",
+      label: "Complete",
+      detail: null,
+      isForegroundActivity: false,
+    })
+  })
+
   it("marks thinking and delegation as foreground activity", () => {
     expect(
       getSidebarActivityPresentation({

@@ -108,6 +108,10 @@ class AgentSessionTracker {
     return typeof value === "number" && Number.isFinite(value) ? value : undefined
   }
 
+  private isCompletionActivity(session: AgentSession): boolean {
+    return /completed successfully|task completed/i.test(session.lastActivity ?? "")
+  }
+
   private normalizeRestoredSession(
     session: AgentSession,
     options?: {
@@ -176,18 +180,30 @@ class AgentSessionTracker {
       return
     }
 
-    const restoredCompleted = Array.isArray(persisted.completedSessions)
+    const persistedCompleted = Array.isArray(persisted.completedSessions)
       ? persisted.completedSessions
         .filter((session): session is AgentSession => typeof session?.id === "string")
-        .map((session) => this.normalizeRestoredSession(session))
       : []
+    const restoredCompleted = persistedCompleted
+      .map((session) => this.normalizeRestoredSession(session, {
+        status: this.isCompletionActivity(session) ? "completed" : session.status,
+      }))
+    const didNormalizeCompletedSessions = restoredCompleted.some((session, index) => {
+      const persistedSession = persistedCompleted[index]
+      return (
+        session.status !== persistedSession?.status ||
+        session.startTime !== persistedSession?.startTime ||
+        session.endTime !== persistedSession?.endTime ||
+        session.lastActivity !== persistedSession?.lastActivity
+      )
+    })
 
     const interruptedAt = Date.now()
     const restoredInterrupted = Array.isArray(persisted.activeSessions)
       ? persisted.activeSessions
         .filter((session): session is AgentSession => typeof session?.id === "string")
         .map((session) => this.normalizeRestoredSession(session, {
-          status: "stopped",
+          status: this.isCompletionActivity(session) ? "completed" : "stopped",
           defaultEndTime: interruptedAt,
           defaultLastActivity: "Interrupted by app restart",
         }))
@@ -199,7 +215,7 @@ class AgentSessionTracker {
       ...restoredCompleted,
     ])
 
-    if (restoredInterrupted.length > 0 || didEvictCompletedSessions) {
+    if (restoredInterrupted.length > 0 || didEvictCompletedSessions || didNormalizeCompletedSessions) {
       this.persistState()
     }
   }
@@ -330,6 +346,44 @@ class AgentSessionTracker {
 
     // Emit update to UI
     emitSessionUpdate()
+  }
+
+  /**
+   * Move tracker-only active sessions out of the active set.
+   *
+   * The tracker is persisted separately from the in-memory runtime session
+   * manager. If a final progress update is missed, a session can be left here
+   * as active even though no runtime work is registered anymore.
+   */
+  reconcileActiveSessions(isRuntimeSessionActive: (session: AgentSession) => boolean): AgentSession[] {
+    const retiredSessions: AgentSession[] = []
+    const now = Date.now()
+
+    for (const session of this.sessions.values()) {
+      if (session.status !== "active") continue
+      if (isRuntimeSessionActive(session)) continue
+
+      retiredSessions.push({
+        ...session,
+        status: this.isCompletionActivity(session) ? "completed" : "stopped",
+        endTime: this.getFiniteTimestamp(session.endTime) ?? now,
+        lastActivity: session.lastActivity ?? "Session no longer running",
+      })
+    }
+
+    if (retiredSessions.length === 0) {
+      return []
+    }
+
+    for (const session of retiredSessions) {
+      this.sessions.delete(session.id)
+    }
+    this.replaceCompletedSessions([...retiredSessions, ...this.completedSessions])
+    logApp(`[AgentSessionTracker] Reconciled ${retiredSessions.length} stale active session(s)`)
+    this.persistState()
+    emitSessionUpdate()
+
+    return retiredSessions
   }
 
   /**
@@ -506,6 +560,8 @@ class AgentSessionTracker {
     const [session] = this.completedSessions.splice(completedIndex, 1)
     session.status = "active"
     session.isSnoozed = startSnoozed
+    session.currentIteration = 0
+    session.lastActivity = "Starting follow-up..."
     delete session.endTime
     delete session.errorMessage
     this.sessions.set(sessionId, session)
