@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
 import {
+  AgentSessionCandidate,
+  AgentSessionCandidatesResponse,
   AgentProfile,
   ExtendedSettingsApiClient,
   Loop,
@@ -33,9 +35,18 @@ type LoopFormData = {
   intervalMinutes: string;
   enabled: boolean;
   profileId: string;
+  runOnStartup: boolean;
+  speakOnTrigger: boolean;
+  continueInSession: boolean;
+  lastSessionId: string;
+  maxIterations: string;
   scheduleMode: ScheduleMode;
   scheduleTimes: string[];
   scheduleDaysOfWeek: number[];
+};
+
+type SessionCandidateOption = AgentSessionCandidate & {
+  group: 'Active' | 'Recent' | 'Selected';
 };
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -48,6 +59,11 @@ const defaultFormData: LoopFormData = {
   intervalMinutes: String(DEFAULT_INTERVAL_MINUTES),
   enabled: true,
   profileId: '',
+  runOnStartup: false,
+  speakOnTrigger: false,
+  continueInSession: false,
+  lastSessionId: '',
+  maxIterations: '',
   scheduleMode: 'interval',
   scheduleTimes: ['09:00'],
   scheduleDaysOfWeek: [1, 2, 3, 4, 5],
@@ -62,6 +78,62 @@ function sanitizeScheduleTimes(times: string[]): string[] {
   return out.sort();
 }
 
+function parseMaxIterationsDraft(input: string): number | null | 'invalid' {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const value = Number(trimmed);
+  if (!/^\d+$/.test(trimmed) || !Number.isInteger(value) || value < 1) {
+    return 'invalid';
+  }
+  return value;
+}
+
+function formatSessionCandidateTitle(candidate: AgentSessionCandidate): string {
+  return candidate.conversationTitle?.trim() || candidate.conversationId || candidate.id;
+}
+
+function formatSessionCandidateTime(candidate: AgentSessionCandidate): string {
+  const timestamp = candidate.endTime ?? candidate.startTime;
+  if (!timestamp) return candidate.id;
+  return new Date(timestamp).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function buildSessionCandidateOptions(
+  candidates: AgentSessionCandidatesResponse | null,
+  selectedSessionId: string,
+): SessionCandidateOption[] {
+  const selectedId = selectedSessionId.trim();
+  const seen = new Set<string>();
+  const options: SessionCandidateOption[] = [];
+
+  const addCandidates = (items: AgentSessionCandidate[] | undefined, group: SessionCandidateOption['group']) => {
+    for (const candidate of items ?? []) {
+      if (seen.has(candidate.id)) continue;
+      seen.add(candidate.id);
+      options.push({ ...candidate, group });
+    }
+  };
+
+  addCandidates(candidates?.activeSessions, 'Active');
+  addCandidates(candidates?.completedSessions, 'Recent');
+
+  if (selectedId && !seen.has(selectedId)) {
+    options.unshift({
+      id: selectedId,
+      status: 'unknown',
+      startTime: 0,
+      group: 'Selected',
+    });
+  }
+
+  return options;
+}
+
 function loopToFormData(loop: Loop): LoopFormData {
   const scheduleMode: ScheduleMode = loop.runContinuously ? 'continuous' : (loop.schedule?.type ?? 'interval');
   const scheduleTimes = loop.schedule?.times.length ? [...loop.schedule.times] : ['09:00'];
@@ -74,6 +146,11 @@ function loopToFormData(loop: Loop): LoopFormData {
     intervalMinutes: String(loop.intervalMinutes),
     enabled: loop.enabled,
     profileId: loop.profileId || '',
+    runOnStartup: !!loop.runOnStartup,
+    speakOnTrigger: !!loop.speakOnTrigger,
+    continueInSession: !!loop.continueInSession,
+    lastSessionId: loop.lastSessionId || '',
+    maxIterations: loop.maxIterations ? String(loop.maxIterations) : '',
     scheduleMode,
     scheduleTimes,
     scheduleDaysOfWeek,
@@ -97,12 +174,19 @@ export default function LoopEditScreen({ navigation, route }: any) {
     loopFromRoute?.intervalMinutes ?? null
   );
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
+  const [sessionCandidates, setSessionCandidates] = useState<AgentSessionCandidatesResponse | null>(null);
   const [isLoading, setIsLoading] = useState(isEditing && !loopFromRoute);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  const [isLoadingSessionCandidates, setIsLoadingSessionCandidates] = useState(false);
+  const [sessionCandidateError, setSessionCandidateError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const sessionCandidateOptions = useMemo(
+    () => buildSessionCandidateOptions(sessionCandidates, formData.lastSessionId),
+    [formData.lastSessionId, sessionCandidates],
+  );
 
   const settingsClient = useMemo(() => {
     if (config.baseUrl && config.apiKey) {
@@ -139,6 +223,29 @@ export default function LoopEditScreen({ navigation, route }: any) {
       })
       .finally(() => {
         if (!cancelled) setIsLoadingProfiles(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [settingsClient]);
+
+  useEffect(() => {
+    if (!settingsClient) return;
+    let cancelled = false;
+    setIsLoadingSessionCandidates(true);
+    setSessionCandidateError(null);
+    settingsClient.getAgentSessionCandidates(20)
+      .then((res) => {
+        if (!cancelled) {
+          setSessionCandidates(res);
+        }
+      })
+      .catch((err: Error) => {
+        if (!cancelled) {
+          setSessionCandidateError(err.message || 'Failed to load recent sessions');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSessionCandidates(false);
       });
 
     return () => { cancelled = true; };
@@ -197,6 +304,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
       setError('Interval must be a positive whole number of minutes');
       return;
     }
+    const maxIterations = parseMaxIterationsDraft(formData.maxIterations);
+    if (maxIterations === 'invalid') {
+      setError('Max iterations must be blank or a positive whole number');
+      return;
+    }
     const savedIntervalMinutes = hasValidInterval
       ? intervalMinutes
       : isEditing && existingLoopIntervalMinutes !== null
@@ -231,6 +343,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
           intervalMinutes: savedIntervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
+          runOnStartup: formData.runOnStartup,
+          speakOnTrigger: formData.speakOnTrigger,
+          continueInSession: formData.continueInSession,
+          lastSessionId: formData.continueInSession ? (formData.lastSessionId.trim() || null) : null,
+          maxIterations,
           runContinuously: formData.scheduleMode === 'continuous',
           schedule,
         };
@@ -242,6 +359,11 @@ export default function LoopEditScreen({ navigation, route }: any) {
           intervalMinutes: savedIntervalMinutes,
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
+          runOnStartup: formData.runOnStartup,
+          speakOnTrigger: formData.speakOnTrigger,
+          continueInSession: formData.continueInSession,
+          ...(formData.continueInSession && formData.lastSessionId.trim() ? { lastSessionId: formData.lastSessionId.trim() } : {}),
+          ...(maxIterations ? { maxIterations } : {}),
           runContinuously: formData.scheduleMode === 'continuous',
           schedule,
         };
@@ -420,6 +542,102 @@ export default function LoopEditScreen({ navigation, route }: any) {
           thumbColor={formData.enabled ? theme.colors.primaryForeground : theme.colors.background}
         />
       </View>
+      <View style={styles.switchRow}>
+        <View style={styles.switchInfo}>
+          <Text style={styles.switchLabel}>Run on startup</Text>
+          <Text style={styles.switchHelperText}>Start this repeat task as soon as the desktop app opens.</Text>
+        </View>
+        <Switch
+          value={formData.runOnStartup}
+          onValueChange={value => updateField('runOnStartup', value)}
+          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+          thumbColor={formData.runOnStartup ? theme.colors.primaryForeground : theme.colors.background}
+        />
+      </View>
+      <View style={styles.switchRow}>
+        <View style={styles.switchInfo}>
+          <Text style={styles.switchLabel}>Speak on trigger</Text>
+          <Text style={styles.switchHelperText}>Bring the session forward after the run so desktop TTS can read it aloud.</Text>
+        </View>
+        <Switch
+          value={formData.speakOnTrigger}
+          onValueChange={value => updateField('speakOnTrigger', value)}
+          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+          thumbColor={formData.speakOnTrigger ? theme.colors.primaryForeground : theme.colors.background}
+        />
+      </View>
+      <View style={styles.switchRow}>
+        <View style={styles.switchInfo}>
+          <Text style={styles.switchLabel}>Continue in session</Text>
+          <Text style={styles.switchHelperText}>Reuse a previous agent session instead of creating a fresh one for each run.</Text>
+        </View>
+        <Switch
+          value={formData.continueInSession}
+          onValueChange={value => updateField('continueInSession', value)}
+          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+          thumbColor={formData.continueInSession ? theme.colors.primaryForeground : theme.colors.background}
+        />
+      </View>
+      {formData.continueInSession && (
+        <>
+          <Text style={styles.label}>Continue from session</Text>
+          <View style={styles.profileOptions}>
+            <TouchableOpacity
+              style={[styles.profileOption, !formData.lastSessionId && styles.profileOptionActive]}
+              onPress={() => updateField('lastSessionId', '')}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Automatically continue from the most recent task session')}
+              accessibilityHint={!formData.lastSessionId ? 'Currently selected for this loop.' : 'Uses the most recent task session when this loop runs.'}
+              accessibilityState={{ selected: !formData.lastSessionId }}
+            >
+              <View style={styles.profileOptionInfo}>
+                <Text style={[styles.profileOptionText, !formData.lastSessionId && styles.profileOptionTextActive]}>Auto</Text>
+                <Text style={[styles.profileOptionHelperText, !formData.lastSessionId && styles.profileOptionHelperTextActive]}>Use the most recent task session after the first run.</Text>
+              </View>
+              {!formData.lastSessionId && <Text style={styles.profileOptionCheckmark}>✓</Text>}
+            </TouchableOpacity>
+            {sessionCandidateOptions.map(candidate => {
+              const active = formData.lastSessionId === candidate.id;
+              return (
+                <TouchableOpacity
+                  key={`${candidate.group}:${candidate.id}`}
+                  style={[styles.profileOption, active && styles.profileOptionActive]}
+                  onPress={() => updateField('lastSessionId', candidate.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel(`Continue from ${formatSessionCandidateTitle(candidate)}`)}
+                  accessibilityHint={active ? 'Currently selected for this loop.' : 'Pins this session for the next loop run.'}
+                  accessibilityState={{ selected: active }}
+                >
+                  <View style={styles.profileOptionInfo}>
+                    <Text style={[styles.profileOptionText, active && styles.profileOptionTextActive]} numberOfLines={1}>
+                      {formatSessionCandidateTitle(candidate)}
+                    </Text>
+                    <Text style={[styles.profileOptionHelperText, active && styles.profileOptionHelperTextActive]} numberOfLines={1}>
+                      {candidate.group} - {candidate.status} - {formatSessionCandidateTime(candidate)}
+                    </Text>
+                  </View>
+                  {active && <Text style={styles.profileOptionCheckmark}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {isLoadingSessionCandidates && <Text style={styles.helperText}>Loading recent sessions...</Text>}
+          {sessionCandidateError && <Text style={styles.helperText}>{sessionCandidateError}</Text>}
+          {!isLoadingSessionCandidates && !sessionCandidateError && sessionCandidateOptions.length === 0 && (
+            <Text style={styles.helperText}>No recent sessions available yet.</Text>
+          )}
+        </>
+      )}
+
+      <Text style={styles.label}>Max iterations</Text>
+      <TextInput
+        style={styles.input}
+        value={formData.maxIterations}
+        onChangeText={v => updateField('maxIterations', v)}
+        placeholder="Use desktop default"
+        placeholderTextColor={theme.colors.mutedForeground}
+        keyboardType="numeric"
+      />
 
       <Text style={styles.label}>Agent Profile (optional)</Text>
       <Text style={styles.sectionHelperText}>Choose a dedicated agent for this loop, or leave it on the default agent.</Text>
@@ -490,7 +708,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: radius.md, padding: spacing.md, fontSize: 14, color: theme.colors.foreground, backgroundColor: theme.colors.background },
     textArea: { minHeight: 110 },
     switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    switchInfo: { flex: 1, marginRight: spacing.md },
     switchLabel: { fontSize: 14, fontWeight: '500', color: theme.colors.foreground },
+    switchHelperText: { fontSize: 12, color: theme.colors.mutedForeground, marginTop: 2 },
     profileOptions: { width: '100%' as const, gap: spacing.xs },
     profileOption: {
       ...createMinimumTouchTargetStyle({

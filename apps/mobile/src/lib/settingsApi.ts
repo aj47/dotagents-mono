@@ -29,6 +29,8 @@ export type {
   AgentProfileUpdateRequest,
   VerifyExternalAgentCommandRequest,
   VerifyExternalAgentCommandResponse,
+  AgentSessionCandidate,
+  AgentSessionCandidatesResponse,
   Loop,
   LoopsResponse,
   LoopSchedule,
@@ -93,6 +95,8 @@ import type {
   AgentProfileUpdateRequest,
   VerifyExternalAgentCommandRequest,
   VerifyExternalAgentCommandResponse,
+  AgentSessionCandidate,
+  AgentSessionCandidatesResponse,
   Loop,
   LoopSchedule,
   LoopsResponse,
@@ -213,7 +217,12 @@ export interface LoopCreateRequest {
   intervalMinutes: number;
   enabled: boolean;
   profileId?: string;
+  runOnStartup?: boolean;
+  speakOnTrigger?: boolean;
+  continueInSession?: boolean;
+  lastSessionId?: string;
   runContinuously?: boolean;
+  maxIterations?: number;
   schedule?: LoopSchedule | null;
 }
 
@@ -222,8 +231,13 @@ export interface LoopUpdateRequest {
   prompt?: string;
   intervalMinutes?: number;
   enabled?: boolean;
-  profileId?: string;
+  profileId?: string | null;
+  runOnStartup?: boolean;
+  speakOnTrigger?: boolean;
+  continueInSession?: boolean;
+  lastSessionId?: string | null;
   runContinuously?: boolean;
+  maxIterations?: number | null;
   schedule?: LoopSchedule | null;
 }
 
@@ -656,6 +670,11 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
 
   async getLoops(): Promise<LoopsResponse> {
     return this.request<LoopsResponse>('/loops');
+  }
+
+  async getAgentSessionCandidates(limit?: number): Promise<AgentSessionCandidatesResponse> {
+    const query = typeof limit === 'number' ? `?limit=${encodeURIComponent(String(limit))}` : '';
+    return this.request<AgentSessionCandidatesResponse>(`/agent-sessions/candidates${query}`);
   }
 
   async createLoop(data: LoopCreateRequest): Promise<{ loop: Loop }> {

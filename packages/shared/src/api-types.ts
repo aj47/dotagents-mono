@@ -44,6 +44,20 @@ export interface ModelsResponse {
   models: ModelInfo[];
 }
 
+export interface AgentSessionCandidate {
+  id: string;
+  conversationId?: string;
+  conversationTitle?: string;
+  status: string;
+  startTime: number;
+  endTime?: number;
+}
+
+export interface AgentSessionCandidatesResponse {
+  activeSessions: AgentSessionCandidate[];
+  completedSessions: AgentSessionCandidate[];
+}
+
 export type OperatorHealthStatus = 'pass' | 'warning' | 'fail';
 export type OperatorHealthOverall = 'healthy' | 'warning' | 'critical';
 
@@ -765,6 +779,7 @@ export interface Loop {
   continueInSession?: boolean;
   lastSessionId?: string;
   runContinuously?: boolean;
+  maxIterations?: number;
   lastRunAt?: number;
   isRunning: boolean;
   nextRunAt?: number;

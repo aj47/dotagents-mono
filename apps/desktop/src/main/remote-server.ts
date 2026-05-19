@@ -1783,6 +1783,39 @@ function buildOperatorSessionsSummary(): OperatorSessionsSummary {
   }
 }
 
+function parseAgentSessionCandidateLimit(query: unknown): number | { error: string } {
+  const record = query && typeof query === "object" ? query as Record<string, unknown> : {}
+  const rawLimit = record.limit
+  if (rawLimit === undefined || rawLimit === null || rawLimit === "") {
+    return 20
+  }
+
+  const parsedLimit = typeof rawLimit === "number"
+    ? rawLimit
+    : typeof rawLimit === "string"
+      ? Number(rawLimit)
+      : Number.NaN
+
+  if (!Number.isFinite(parsedLimit)) {
+    return { error: "Session candidate limit must be a number" }
+  }
+
+  return Math.max(1, Math.min(100, Math.floor(parsedLimit)))
+}
+
+function formatAgentSessionCandidate(
+  session: ReturnType<typeof agentSessionTracker.getActiveSessions>[number],
+) {
+  return {
+    id: session.id,
+    conversationId: session.conversationId,
+    conversationTitle: session.conversationTitle,
+    status: session.status,
+    startTime: session.startTime,
+    endTime: session.endTime,
+  }
+}
+
 async function buildOperatorRuntimeStatus(): Promise<OperatorRuntimeStatus> {
   const now = Date.now()
   const recentErrors = diagnosticsService.getRecentErrors(100)
@@ -4965,6 +4998,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     return { ok: true, schedule: { type: "weekly", times, daysOfWeek } }
   }
 
+  function parseLoopMaxIterationsInput(raw: unknown):
+    | { ok: true; value?: number | null }
+    | { ok: false; error: string } {
+    if (raw === undefined) return { ok: true, value: undefined }
+    if (raw === null) return { ok: true, value: null }
+    if (
+      typeof raw !== "number"
+      || !Number.isFinite(raw)
+      || !Number.isInteger(raw)
+      || raw < 1
+    ) {
+      return { ok: false, error: "maxIterations must be a finite integer >= 1 when provided" }
+    }
+    return { ok: true, value: raw }
+  }
+
   const formatLoopResponse = async (loop: LoopConfig) => {
     const status = (await loadLoopService())?.getLoopStatus(loop.id)
 
@@ -4981,6 +5030,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       continueInSession: loop.continueInSession,
       lastSessionId: loop.lastSessionId,
       runContinuously: loop.runContinuously,
+      maxIterations: loop.maxIterations,
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
       nextRunAt: status?.nextRunAt,
@@ -5013,6 +5063,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             continueInSession: l.continueInSession,
             lastSessionId: l.lastSessionId,
             runContinuously: l.runContinuously,
+            maxIterations: l.maxIterations,
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
             nextRunAt: status?.nextRunAt,
@@ -5023,6 +5074,24 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get repeat tasks", error)
       return reply.code(500).send({ error: "Failed to get repeat tasks" })
+    }
+  })
+
+  // GET /v1/agent-sessions/candidates - List active and recent sessions for repeat-task pickers
+  fastify.get("/v1/agent-sessions/candidates", async (req, reply) => {
+    try {
+      const limit = parseAgentSessionCandidateLimit(req.query)
+      if (typeof limit !== "number") {
+        return reply.code(400).send({ error: limit.error })
+      }
+
+      return reply.send({
+        activeSessions: agentSessionTracker.getActiveSessions().map(formatAgentSessionCandidate),
+        completedSessions: agentSessionTracker.getRecentSessions(limit).map(formatAgentSessionCandidate),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get agent session candidates", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get agent session candidates" })
     }
   })
 
@@ -5245,7 +5314,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        runOnStartup?: unknown
+        speakOnTrigger?: unknown
+        continueInSession?: unknown
+        lastSessionId?: unknown
         runContinuously?: unknown
+        maxIterations?: unknown
         schedule?: unknown
       }
 
@@ -5276,6 +5350,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
+        return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
+      }
+      if (body.speakOnTrigger !== undefined && typeof body.speakOnTrigger !== "boolean") {
+        return reply.code(400).send({ error: "speakOnTrigger must be a boolean when provided" })
+      }
+      if (body.continueInSession !== undefined && typeof body.continueInSession !== "boolean") {
+        return reply.code(400).send({ error: "continueInSession must be a boolean when provided" })
+      }
+      if (body.lastSessionId !== undefined && body.lastSessionId !== null && typeof body.lastSessionId !== "string") {
+        return reply.code(400).send({ error: "lastSessionId must be a string or null when provided" })
+      }
+      const maxIterationsResult = parseLoopMaxIterationsInput(body.maxIterations)
+      if (!maxIterationsResult.ok) {
+        return reply.code(400).send({ error: maxIterationsResult.error })
+      }
       const scheduleResult = parseScheduleInput(body.schedule)
       if (!scheduleResult.ok) {
         return reply.code(400).send({ error: scheduleResult.error })
@@ -5283,6 +5373,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
       const runContinuously = body.runContinuously === true
+      const runOnStartup = body.runOnStartup === true
+      const speakOnTrigger = body.speakOnTrigger === true
+      const continueInSession = body.continueInSession === true
+      const lastSessionId = typeof body.lastSessionId === "string" ? body.lastSessionId.trim() : undefined
 
       const id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 
@@ -5293,7 +5387,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes,
         enabled,
         profileId: profileId || undefined,
+        runOnStartup,
+        speakOnTrigger,
+        continueInSession,
+        lastSessionId: continueInSession ? (lastSessionId || undefined) : undefined,
         runContinuously,
+        ...(typeof maxIterationsResult.value === "number" ? { maxIterations: maxIterationsResult.value } : {}),
         ...(!runContinuously && scheduleResult.schedule && scheduleResult.schedule !== null
           ? { schedule: scheduleResult.schedule }
           : {}),
@@ -5332,7 +5431,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        runOnStartup?: unknown
+        speakOnTrigger?: unknown
+        continueInSession?: unknown
+        lastSessionId?: unknown
         runContinuously?: unknown
+        maxIterations?: unknown
         schedule?: unknown
       }
 
@@ -5381,6 +5485,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
+        return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
+      }
+      if (body.speakOnTrigger !== undefined && typeof body.speakOnTrigger !== "boolean") {
+        return reply.code(400).send({ error: "speakOnTrigger must be a boolean when provided" })
+      }
+      if (body.continueInSession !== undefined && typeof body.continueInSession !== "boolean") {
+        return reply.code(400).send({ error: "continueInSession must be a boolean when provided" })
+      }
+      if (body.lastSessionId !== undefined && body.lastSessionId !== null && typeof body.lastSessionId !== "string") {
+        return reply.code(400).send({ error: "lastSessionId must be a string or null when provided" })
+      }
+      const maxIterationsResult = parseLoopMaxIterationsInput(body.maxIterations)
+      if (!maxIterationsResult.ok) {
+        return reply.code(400).send({ error: maxIterationsResult.error })
+      }
       const scheduleResult = parseScheduleInput(body.schedule)
       if (!scheduleResult.ok) {
         return reply.code(400).send({ error: scheduleResult.error })
@@ -5395,6 +5515,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const runContinuously = typeof body.runContinuously === "boolean" ? body.runContinuously : undefined
+      const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : undefined
+      const speakOnTrigger = typeof body.speakOnTrigger === "boolean" ? body.speakOnTrigger : undefined
+      const continueInSession = typeof body.continueInSession === "boolean" ? body.continueInSession : undefined
+      const lastSessionId = typeof body.lastSessionId === "string" ? body.lastSessionId.trim() : undefined
       const updated: LoopConfig = {
         ...existing,
         ...(name !== undefined && { name }),
@@ -5402,7 +5526,18 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(intervalMinutes !== undefined && { intervalMinutes }),
         ...(enabled !== undefined && { enabled }),
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
+        ...(runOnStartup !== undefined && { runOnStartup }),
+        ...(speakOnTrigger !== undefined && { speakOnTrigger }),
+        ...(continueInSession !== undefined && { continueInSession }),
+        ...(body.lastSessionId !== undefined && { lastSessionId: lastSessionId || undefined }),
         ...(runContinuously !== undefined && { runContinuously }),
+        ...(maxIterationsResult.value !== undefined && maxIterationsResult.value !== null && { maxIterations: maxIterationsResult.value }),
+      }
+      if (maxIterationsResult.value === null) {
+        delete updated.maxIterations
+      }
+      if (continueInSession === false || updated.continueInSession === false) {
+        delete updated.lastSessionId
       }
       if (updated.runContinuously) {
         delete updated.schedule
