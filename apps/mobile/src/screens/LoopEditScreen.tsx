@@ -4,15 +4,13 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Switch,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
+import { AppShellEditorLayout } from '../ui/AppShellEditorLayout';
+import { getAppShellEditorTitle } from '../ui/appShell';
 import { spacing, radius } from '../ui/theme';
 import {
   AgentSessionCandidate,
@@ -158,7 +156,6 @@ function loopToFormData(loop: Loop): LoopFormData {
 }
 
 export default function LoopEditScreen({ navigation, route }: any) {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
 
@@ -389,16 +386,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
-        keyboardShouldPersistTaps="handled"
-      >
+    <AppShellEditorLayout title={getAppShellEditorTitle('loop', isEditing)} keyboardShouldPersistTaps="handled">
       {error && <Text style={styles.errorText}>{error}</Text>}
       {!settingsClient && <Text style={styles.helperText}>Configure Base URL and API key in Settings to save changes.</Text>}
 
@@ -691,8 +679,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
       <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
         {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Loop' : 'Create Loop'}</Text>}
       </TouchableOpacity>
-    </ScrollView>
-    </KeyboardAvoidingView>
+    </AppShellEditorLayout>
   );
 }
 

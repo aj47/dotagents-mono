@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, TextInput, Switch, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../ui/ThemeProvider';
+import { AppShellEditorLayout } from '../ui/AppShellEditorLayout';
+import { getAppShellEditorTitle } from '../ui/appShell';
 import { spacing, radius } from '../ui/theme';
 import {
   ExtendedSettingsApiClient,
@@ -478,7 +479,6 @@ function parseAgentConnectionArgs(argsText: string): string[] {
 }
 
 export default function AgentEditScreen({ navigation, route }: any) {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
   const agentId = route.params?.agentId as string | undefined;
@@ -905,16 +905,10 @@ export default function AgentEditScreen({ navigation, route }: any) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    <AppShellEditorLayout
+      title={getAppShellEditorTitle('agent', isEditing)}
+      keyboardShouldPersistTaps="handled"
     >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
-        keyboardShouldPersistTaps="handled"
-      >
         {error && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
@@ -1493,8 +1487,7 @@ export default function AgentEditScreen({ navigation, route }: any) {
           <Text style={styles.saveButtonText}>{isEditing ? 'Save Changes' : 'Create Agent'}</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
-    </KeyboardAvoidingView>
+    </AppShellEditorLayout>
   );
 }
 

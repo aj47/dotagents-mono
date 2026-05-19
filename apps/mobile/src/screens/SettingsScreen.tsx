@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, KeyboardAvoidingView, Image } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, Image, useWindowDimensions } from 'react-native';
 import {
   AppConfig,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
@@ -11,6 +10,17 @@ import { useSessionContext } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTheme, ThemeMode } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
+import { AppShellSettingsLayout } from '../ui/AppShellSettingsLayout';
+import {
+  getAppShellDesktopSettingsNavItemIdForMobileSection,
+  getAppShellMobileSettingsInitialExpandedState,
+  getAppShellMobileSettingsSectionIdsForDesktopNavItem,
+  getDesktopSettingsNavItems,
+  isAppShellMobileSettingsSectionId,
+  resolveAppShellLayout,
+  type AppShellMobileSettingsSectionId,
+  type AppShellSettingsNavItemId,
+} from '../ui/appShell';
 import { useProfile } from '../store/profile';
 import { usePushNotifications } from '../lib/pushNotifications';
 import {
@@ -774,8 +784,8 @@ function parseMcpConfigImport(value: string): MCPConfig {
   return { mcpServers: mcpServers as Record<string, MCPServerConfig> };
 }
 
-export default function SettingsScreen({ navigation }: any) {
-  const insets = useSafeAreaInsets();
+export default function SettingsScreen({ navigation, route }: any) {
+  const { width } = useWindowDimensions();
   const { theme, themeMode, setThemeMode } = useTheme();
   const { config, setConfig, ready } = useConfigContext();
   const [draft, setDraft] = useState<AppConfig>(config);
@@ -925,27 +935,31 @@ export default function SettingsScreen({ navigation }: any) {
   const [customModelDraft, setCustomModelDraft] = useState('');
   const modelUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const routeInitialSettingsSection = isAppShellMobileSettingsSectionId(route?.params?.initialSection)
+    ? route.params.initialSection
+    : null;
+  const isDesktopSettingsLayout = resolveAppShellLayout(width) === 'desktop';
+  const [activeDesktopSettingsNavItemId, setActiveDesktopSettingsNavItemId] = useState<AppShellSettingsNavItemId>(
+    routeInitialSettingsSection
+      ? getAppShellDesktopSettingsNavItemIdForMobileSection(routeInitialSettingsSection)
+      : 'general',
+  );
+  const activeDesktopSettingsSectionIds = useMemo(
+    () => new Set(getAppShellMobileSettingsSectionIdsForDesktopNavItem(activeDesktopSettingsNavItemId)),
+    [activeDesktopSettingsNavItemId],
+  );
+
+  useEffect(() => {
+    if (!routeInitialSettingsSection) return;
+    setActiveDesktopSettingsNavItemId(
+      getAppShellDesktopSettingsNavItemIdForMobileSection(routeInitialSettingsSection),
+    );
+  }, [routeInitialSettingsSection]);
+
   // Collapsible section state - all new sections start collapsed
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    providerSelection: false, // Provider selection section
-    providerSetup: false,
-    profileModel: true,  // Keep profile/model expanded by default since it was already visible
-    bundles: false,
-    mcpServers: true,    // Keep MCP servers expanded by default since it was already visible
-    streamerMode: false,
-    speechToText: false,
-    textToSpeech: true,
-    agentSettings: false,
-    summarization: false,
-    toolExecution: false,
-    discord: false,
-    whatsapp: false,
-    langfuse: false,
-    skills: false,
-    knowledgeNotes: false,
-    agents: false,
-    agentLoops: false,
-  });
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(
+    getAppShellMobileSettingsInitialExpandedState,
+  );
 
   // Debounced input state for string/number fields
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
@@ -1892,6 +1906,15 @@ export default function SettingsScreen({ navigation }: any) {
   const toggleSection = useCallback((section: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  }, []);
+
+  const activateDesktopSettingsNavItem = useCallback((itemId: AppShellSettingsNavItemId) => {
+    setActiveDesktopSettingsNavItemId(itemId);
+    const sections = getAppShellMobileSettingsSectionIdsForDesktopNavItem(itemId);
+    setExpandedSections((prev) => ({
+      ...prev,
+      ...Object.fromEntries(sections.map((section) => [section, true])),
+    }));
   }, []);
 
   // Handle skill toggle for current profile
@@ -2872,11 +2895,29 @@ export default function SettingsScreen({ navigation }: any) {
     title,
     children
   }: {
-    id: string;
+    id: AppShellMobileSettingsSectionId;
     title: string;
     children: React.ReactNode;
   }) => {
+    if (isDesktopSettingsLayout && !activeDesktopSettingsSectionIds.has(id)) {
+      return null;
+    }
+
     const isExpanded = expandedSections[id] ?? false;
+
+    if (isDesktopSettingsLayout) {
+      return (
+        <View style={[styles.collapsibleSection, styles.desktopSettingsActivePanel]}>
+          <View style={[styles.collapsibleHeader, styles.desktopSettingsActiveHeader]}>
+            <Text style={styles.collapsibleTitle}>{title}</Text>
+          </View>
+          <View style={styles.collapsibleContent}>
+            {children}
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.collapsibleSection}>
         <TouchableOpacity
@@ -2930,26 +2971,50 @@ export default function SettingsScreen({ navigation }: any) {
 
   if (!ready) return null;
 
+  const desktopSettingsNavItems = getDesktopSettingsNavItems({
+    whatsappEnabled: remoteSettings?.whatsappEnabled ?? false,
+    discordEnabled: remoteSettings?.discordEnabled ?? DEFAULT_DISCORD_ENABLED,
+  });
+  const isGeneralSettingsSectionActive = !isDesktopSettingsLayout || activeDesktopSettingsNavItemId === 'general';
+  const settingsRefreshControl = (
+    <RefreshControl
+      refreshing={isRefreshing}
+      onRefresh={onRefresh}
+      tintColor={theme.colors.primary}
+      colors={[theme.colors.primary]}
+    />
+  );
+  const settingsFooter = (
+    <>
+      <TouchableOpacity
+        style={[styles.primaryButton, styles.saveBarButton, isSavingAllSettings && styles.primaryButtonDisabled]}
+        onPress={() => { void flushAllSettingsSaves(); }}
+        disabled={isSavingAllSettings}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={saveButtonLabel}
+        accessibilityHint={saveButtonHint}
+      >
+        <Text style={styles.primaryButtonText}>{saveButtonLabel}</Text>
+      </TouchableOpacity>
+      <Text style={styles.saveBarHint}>
+        {saveStatusMessage || saveButtonHint}
+      </Text>
+    </>
+  );
+
   return (
     <>
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    <AppShellSettingsLayout
+      isDesktopLayout={isDesktopSettingsLayout}
+      navItems={desktopSettingsNavItems}
+      activeNavItemId={activeDesktopSettingsNavItemId}
+      onActivateNavItem={activateDesktopSettingsNavItem}
+      refreshControl={settingsRefreshControl}
+      footer={settingsFooter}
     >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing['3xl'] + 120 }]}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-          />
-        }
-      >
+      {isGeneralSettingsSectionActive && (
+        <>
         {/* Connection Card - Tap to navigate to ConnectionSettings */}
         <TouchableOpacity
           style={styles.connectionCard}
@@ -3297,6 +3362,8 @@ export default function SettingsScreen({ navigation }: any) {
         <Text style={styles.helperText}>
           Receive notifications when new messages arrive from your AI assistant
         </Text>
+        </>
+      )}
 
         {/* Remote Settings Section - only show when connected to a DotAgents desktop server */}
         {settingsClient && (isLoadingRemote || isDotAgentsServer) && (
@@ -5340,25 +5407,7 @@ export default function SettingsScreen({ navigation }: any) {
           </>
         )}
 
-      </ScrollView>
-
-	      <View style={[styles.saveBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
-	        <TouchableOpacity
-	          style={[styles.primaryButton, styles.saveBarButton, isSavingAllSettings && styles.primaryButtonDisabled]}
-	          onPress={() => { void flushAllSettingsSaves(); }}
-	          disabled={isSavingAllSettings}
-	          activeOpacity={0.85}
-	          accessibilityRole="button"
-	          accessibilityLabel={saveButtonLabel}
-	          accessibilityHint={saveButtonHint}
-	        >
-	          <Text style={styles.primaryButtonText}>{saveButtonLabel}</Text>
-	        </TouchableOpacity>
-	        <Text style={styles.saveBarHint}>
-	          {saveStatusMessage || saveButtonHint}
-	        </Text>
-	      </View>
-    </KeyboardAvoidingView>
+    </AppShellSettingsLayout>
 
       {/* Bundle Import Modal */}
       <Modal
@@ -7418,12 +7467,21 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.card,
       overflow: 'hidden',
     },
+    desktopSettingsActivePanel: {
+      marginTop: 0,
+      alignSelf: 'stretch',
+    },
     collapsibleHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: spacing.md,
       backgroundColor: theme.colors.muted,
+    },
+    desktopSettingsActiveHeader: {
+      backgroundColor: theme.colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
     },
     collapsibleTitle: {
       fontSize: 14,

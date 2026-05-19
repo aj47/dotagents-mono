@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ExtendedSettingsApiClient, Skill, SkillCreateRequest, SkillUpdateRequest } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel } from '../lib/accessibility';
 import { useConfigContext } from '../store/config';
+import { AppShellEditorLayout } from '../ui/AppShellEditorLayout';
+import { getAppShellEditorTitle } from '../ui/appShell';
 import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
 
@@ -38,7 +37,6 @@ function skillToFormData(skill: Skill): SkillFormData {
 }
 
 export default function SkillEditScreen({ navigation, route }: any) {
-  const insets = useSafeAreaInsets();
   const { config } = useConfigContext();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -149,16 +147,7 @@ export default function SkillEditScreen({ navigation, route }: any) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
-        keyboardShouldPersistTaps="handled"
-      >
+    <AppShellEditorLayout title={getAppShellEditorTitle('skill', isEditing)} keyboardShouldPersistTaps="handled">
         {error && <Text style={styles.errorText}>{error}</Text>}
         {!settingsClient && (
           <Text style={styles.helperText}>Configure Base URL and API key in Settings to save skill changes.</Text>
@@ -224,8 +213,7 @@ export default function SkillEditScreen({ navigation, route }: any) {
             <Text style={styles.saveButtonText}>{isEditing ? 'Save Skill' : 'Create Skill'}</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </AppShellEditorLayout>
   );
 }
 

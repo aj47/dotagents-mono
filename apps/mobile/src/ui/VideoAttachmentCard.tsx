@@ -42,6 +42,8 @@ function formatVideoAttachmentRequestFailedMessage(status: number): string {
   return `Video request failed (${status})`;
 }
 
+const VIDEO_ATTACHMENT_HEIGHT = 180;
+
 function getHeaderRecord(headers: Headers): Record<string, string> {
   const record: Record<string, string> = {};
   headers.forEach((value, key) => {
@@ -56,7 +58,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   assetBaseUrl,
   authToken,
 }) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [playbackUri, setPlaybackUri] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -157,14 +159,14 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     card: {
       borderWidth: 1,
       borderColor: theme.colors.border,
-      borderRadius: radius.lg,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.card,
       overflow: 'hidden',
       marginBottom: spacing.sm,
     },
     header: {
       padding: spacing.sm,
-      gap: spacing.xs,
+      gap: 6,
     },
     titleRow: {
       flexDirection: 'row',
@@ -183,15 +185,16 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       fontSize: 11,
     },
     button: {
-      marginTop: spacing.xs,
+      marginTop: 2,
       alignSelf: 'flex-start',
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.xs,
-      borderRadius: radius.md,
+      minHeight: 34,
+      borderRadius: radius.sm,
       backgroundColor: theme.colors.primary,
       paddingHorizontal: spacing.sm,
-      paddingVertical: 6,
+      paddingVertical: 5,
     },
     buttonDisabled: {
       opacity: 0.72,
@@ -203,7 +206,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     },
     video: {
       width: '100%',
-      height: 220,
+      height: VIDEO_ATTACHMENT_HEIGHT,
       backgroundColor: '#000',
     },
     fallbackLink: {
@@ -223,9 +226,9 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     errorText: {
       color: theme.colors.destructive,
       fontSize: 11,
-      marginTop: spacing.xs,
+      marginTop: 2,
     },
-  }), [isDark, theme]);
+  }), [theme]);
 
   if (!canRender) {
     return (
@@ -258,7 +261,6 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
             <Ionicons name="videocam-outline" size={16} color={theme.colors.mutedForeground} />
             <Text style={styles.title} numberOfLines={1}>{displayLabel}</Text>
           </View>
-          <Text style={styles.subtitle} numberOfLines={1}>Loads only when you tap play</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Play video ${displayLabel}`}
@@ -272,7 +274,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
             ) : (
               <Ionicons name="play" size={14} color={theme.colors.primaryForeground} />
             )}
-            <Text style={styles.buttonText}>{loading ? 'Loading...' : 'Play video'}</Text>
+            <Text style={styles.buttonText}>{loading ? 'Loading...' : 'Play'}</Text>
           </Pressable>
           {loadError ? (
             <Text style={styles.errorText}>{loadError}</Text>
