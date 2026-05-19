@@ -3605,19 +3605,19 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     try {
       configStore.reload()
     } catch (error) {
-      diagnosticsService.logError("remote-server", "Failed to reload config after mobile bundle import", error)
+      diagnosticsService.logError("remote-server", "Failed to reload config after mobile bundle import operation", error)
     }
 
     try {
       agentProfileService.reload()
     } catch (error) {
-      diagnosticsService.logError("remote-server", "Failed to reload agent profiles after mobile bundle import", error)
+      diagnosticsService.logError("remote-server", "Failed to reload agent profiles after mobile bundle import operation", error)
     }
 
     try {
       skillsService.scanSkillsFolder()
     } catch (error) {
-      diagnosticsService.logError("remote-server", "Failed to reload skills after mobile bundle import", error)
+      diagnosticsService.logError("remote-server", "Failed to reload skills after mobile bundle import operation", error)
     }
 
     try {
@@ -3627,13 +3627,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       loopService.resumeScheduling()
       loopService.startAllLoops()
     } catch (error) {
-      diagnosticsService.logError("remote-server", "Failed to reload repeat tasks after mobile bundle import", error)
+      diagnosticsService.logError("remote-server", "Failed to reload repeat tasks after mobile bundle import operation", error)
     }
 
     try {
       await knowledgeNotesService.reload()
     } catch (error) {
-      diagnosticsService.logError("remote-server", "Failed to reload knowledge notes after mobile bundle import", error)
+      diagnosticsService.logError("remote-server", "Failed to reload knowledge notes after mobile bundle import operation", error)
     }
 
     try {
@@ -3666,7 +3666,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       await mcpService.initialize()
     } catch (error) {
-      diagnosticsService.logError("remote-server", "Failed to reinitialize MCP after mobile bundle import", error)
+      diagnosticsService.logError("remote-server", "Failed to reinitialize MCP after mobile bundle import operation", error)
     }
   }
 
@@ -3722,8 +3722,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         },
       })
     } catch (error: any) {
-      diagnosticsService.logError("remote-server", "Failed to preview bundle import", error)
-      return reply.code(400).send({ error: error?.message || "Failed to preview bundle import" })
+      diagnosticsService.logError("remote-server", "Failed to preview bundle import request", error)
+      return reply.code(400).send({ error: error?.message || "Failed to preview bundle import request" })
     } finally {
       if (temp) cleanupTemporaryBundleFileForMobile(temp.dir)
     }
