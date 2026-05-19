@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
 import { useConfigContext } from '../store/config';
-import { useSessionContext, SessionStore } from '../store/sessions';
+import { useSessionContext, SessionStore, normalizeSessionTitleText } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
@@ -34,6 +34,9 @@ export default function SessionListScreen({ navigation }: Props) {
   const { currentProfile } = useProfile();
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [renameSession, setRenameSession] = useState<SessionListItem | null>(null);
+  const [renameTitleDraft, setRenameTitleDraft] = useState('');
+  const [isRenameSaving, setIsRenameSaving] = useState(false);
 
   // ── Rapid Fire voice state ─────────────────────────────────────────────────
   const [rfListening, setRfListening] = useState(false);
@@ -771,6 +774,52 @@ export default function SessionListScreen({ navigation }: Props) {
     }
   }, [connectionManager, sessionStore, settingsClient]);
 
+  const handleOpenRenameSession = useCallback((session: SessionListItem) => {
+    setRenameSession(session);
+    setRenameTitleDraft(session.title);
+  }, []);
+
+  const handleCloseRenameSession = useCallback(() => {
+    if (isRenameSaving) return;
+    setRenameSession(null);
+    setRenameTitleDraft('');
+  }, [isRenameSaving]);
+
+  const handleSaveRenameSession = useCallback(async () => {
+    if (!renameSession || isRenameSaving) return;
+
+    const nextTitle = normalizeSessionTitleText(renameTitleDraft);
+    const previousTitle = normalizeSessionTitleText(renameSession.title);
+    if (nextTitle === previousTitle) {
+      handleCloseRenameSession();
+      return;
+    }
+
+    setIsRenameSaving(true);
+    try {
+      let updatedTitle = nextTitle;
+      const serverConversationId = sessionStore.sessions.find(item => item.id === renameSession.id)?.serverConversationId;
+      if (settingsClient && serverConversationId) {
+        const updatedConversation = await settingsClient.updateConversation(serverConversationId, { title: nextTitle });
+        updatedTitle = updatedConversation.title || nextTitle;
+      }
+      await sessionStore.renameSessionTitle(renameSession.id, updatedTitle);
+      setRenameSession(null);
+      setRenameTitleDraft('');
+    } catch (error: any) {
+      Alert.alert('Rename Failed', error?.message || 'Failed to rename this chat');
+    } finally {
+      setIsRenameSaving(false);
+    }
+  }, [
+    handleCloseRenameSession,
+    isRenameSaving,
+    renameSession,
+    renameTitleDraft,
+    sessionStore,
+    settingsClient,
+  ]);
+
   const handleToggleSessionPinned = useCallback(async (sessionId: string) => {
     await sessionStore.toggleSessionPinned(sessionId, settingsClient);
   }, [sessionStore, settingsClient]);
@@ -787,15 +836,17 @@ export default function SessionListScreen({ navigation }: Props) {
 
     if (Platform.OS === 'web') {
       // On web, fall back to a simple confirm for delete
-      const action = window.prompt(`Choose action for "${session.title}":\n1. ${pinLabel}\n2. ${archiveLabel}\n3. Delete\n\nEnter 1, 2, or 3:`);
-      if (action === '1') void handleToggleSessionPinned(session.id);
-      else if (action === '2') void handleToggleSessionArchived(session.id);
-      else if (action === '3') handleDeleteSession(session);
+      const action = window.prompt(`Choose action for "${session.title}":\n1. Rename\n2. ${pinLabel}\n3. ${archiveLabel}\n4. Delete\n\nEnter 1, 2, 3, or 4:`);
+      if (action === '1') handleOpenRenameSession(session);
+      else if (action === '2') void handleToggleSessionPinned(session.id);
+      else if (action === '3') void handleToggleSessionArchived(session.id);
+      else if (action === '4') handleDeleteSession(session);
     } else {
       Alert.alert(
         session.title,
         undefined,
         [
+          { text: 'Rename', onPress: () => handleOpenRenameSession(session) },
           { text: pinLabel, onPress: () => void handleToggleSessionPinned(session.id) },
           { text: archiveLabel, onPress: () => void handleToggleSessionArchived(session.id) },
           { text: 'Delete', style: 'destructive', onPress: () => handleDeleteSession(session) },
@@ -803,7 +854,7 @@ export default function SessionListScreen({ navigation }: Props) {
         ]
       );
     }
-  }, [handleToggleSessionPinned, handleToggleSessionArchived, handleDeleteSession]);
+  }, [handleToggleSessionPinned, handleToggleSessionArchived, handleDeleteSession, handleOpenRenameSession]);
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -1100,6 +1151,53 @@ export default function SessionListScreen({ navigation }: Props) {
           </Text>
         </Pressable>
       </View>
+      <Modal
+        visible={!!renameSession}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseRenameSession}
+      >
+        <View style={styles.renameModalOverlay}>
+          <View style={styles.renameModalContent}>
+            <Text style={styles.renameModalTitle}>Rename chat</Text>
+            <TextInput
+              style={styles.renameInput}
+              value={renameTitleDraft}
+              onChangeText={setRenameTitleDraft}
+              placeholder="Chat title"
+              placeholderTextColor={theme.colors.mutedForeground}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => { void handleSaveRenameSession(); }}
+              accessibilityLabel={createTextInputAccessibilityLabel('Chat title')}
+            />
+            <View style={styles.renameActions}>
+              <TouchableOpacity
+                style={[styles.renameActionButton, styles.renameCancelButton]}
+                onPress={handleCloseRenameSession}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Cancel rename')}
+                disabled={isRenameSaving}
+              >
+                <Text style={styles.renameCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.renameActionButton,
+                  styles.renameSaveButton,
+                  isRenameSaving && styles.renameSaveButtonDisabled,
+                ]}
+                onPress={() => { void handleSaveRenameSession(); }}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Save chat title')}
+                disabled={isRenameSaving}
+              >
+                <Text style={styles.renameSaveText}>{isRenameSaving ? 'Saving' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <AgentSelectorSheet
         visible={agentSelectorVisible}
         onClose={() => setAgentSelectorVisible(false)}
@@ -1355,6 +1453,66 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
       textAlign: 'center',
+    },
+    renameModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing.lg,
+    },
+    renameModalContent: {
+      width: '100%' as const,
+      maxWidth: 420,
+      backgroundColor: theme.colors.background,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.lg,
+      gap: spacing.md,
+    },
+    renameModalTitle: {
+      ...theme.typography.h2,
+    },
+    renameInput: {
+      ...theme.input,
+    },
+    renameActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flexWrap: 'wrap',
+    },
+    renameActionButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.md,
+      alignItems: 'center',
+      minWidth: 96,
+    },
+    renameCancelButton: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    renameCancelText: {
+      color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    renameSaveButton: {
+      backgroundColor: theme.colors.primary,
+    },
+    renameSaveButtonDisabled: {
+      opacity: 0.6,
+    },
+    renameSaveText: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
     },
     rfContainer: {
       borderTopWidth: theme.hairline,

@@ -20,6 +20,7 @@ export interface SessionStore {
   setCurrentSession: (id: string | null) => void;
   deleteSession: (id: string) => Promise<void>;
   clearAllSessions: () => Promise<void>;
+  renameSessionTitle: (id: string, title: string) => Promise<void>;
   toggleSessionPinned: (id: string, client?: SettingsApiClient) => Promise<void>;
   toggleSessionArchived: (id: string, client?: SettingsApiClient) => Promise<void>;
 
@@ -74,6 +75,11 @@ async function saveCurrentSessionId(id: string | null): Promise<void> {
   } else {
     await AsyncStorage.removeItem(CURRENT_SESSION_KEY);
   }
+}
+
+export function normalizeSessionTitleText(title: string, maxChars = 80): string {
+  const normalized = title.replace(/\s+/g, ' ').trim();
+  return (normalized || 'New Chat').slice(0, maxChars);
 }
 
 export function useSessions(): SessionStore {
@@ -255,6 +261,27 @@ export function useSessions(): SessionStore {
     } finally {
       setDeletingSessionIds(new Set());
     }
+  }, [queueSave]);
+
+  const renameSessionTitle = useCallback(async (id: string, title: string) => {
+    const normalizedTitle = normalizeSessionTitleText(title);
+    const currentSessions = sessionsRef.current;
+    const existingSession = currentSessions.find(session => session.id === id);
+    if (!existingSession || existingSession.title === normalizedTitle) return;
+
+    const now = Date.now();
+    const sessionsToSave = currentSessions.map(session =>
+      session.id === id
+        ? { ...session, title: normalizedTitle, updatedAt: now }
+        : session
+    );
+
+    sessionsRef.current = sessionsToSave;
+    setSessions(() => sessionsToSave);
+
+    queueSave(async () => {
+      await saveSessions(sessionsToSave);
+    });
   }, [queueSave]);
 
   const markPendingServerConversation = useCallback((sessionId: string, pending: boolean) => {
@@ -779,6 +806,7 @@ export function useSessions(): SessionStore {
     setCurrentSession,
     deleteSession,
     clearAllSessions,
+    renameSessionTitle,
     toggleSessionPinned,
     toggleSessionArchived,
     addMessage,
