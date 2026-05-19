@@ -166,6 +166,15 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "langfusePublicKey",
   "langfuseSecretKey",
   "langfuseBaseUrl",
+  "openaiApiKey",
+  "openaiBaseUrl",
+  "groqApiKey",
+  "groqBaseUrl",
+  "geminiApiKey",
+  "geminiBaseUrl",
+  "chatgptWebAccessToken",
+  "chatgptWebSessionToken",
+  "chatgptWebBaseUrl",
 ])
 const operatorAuditLog: OperatorAuditEntry[] = []
 const operatorAuditLogPath = path.join(app.getPath("userData"), "operator-audit-log.jsonl")
@@ -4675,6 +4684,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpToolsGroqModel: cfg.mcpToolsGroqModel,
         mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
         mcpToolsChatgptWebModel: cfg.mcpToolsChatgptWebModel,
+        openaiReasoningEffort: cfg.openaiReasoningEffort,
+        codexTextVerbosity: cfg.codexTextVerbosity,
+        openaiApiKey: cfg.openaiApiKey ? REMOTE_SERVER_SECRET_MASK : "",
+        openaiBaseUrl: cfg.openaiBaseUrl ?? "",
+        groqApiKey: cfg.groqApiKey ? REMOTE_SERVER_SECRET_MASK : "",
+        groqBaseUrl: cfg.groqBaseUrl ?? "",
+        geminiApiKey: cfg.geminiApiKey ? REMOTE_SERVER_SECRET_MASK : "",
+        geminiBaseUrl: cfg.geminiBaseUrl ?? "",
+        chatgptWebAccessToken: cfg.chatgptWebAccessToken ? REMOTE_SERVER_SECRET_MASK : "",
+        chatgptWebSessionToken: cfg.chatgptWebSessionToken ? REMOTE_SERVER_SECRET_MASK : "",
+        chatgptWebBaseUrl: cfg.chatgptWebBaseUrl ?? "",
         // OpenAI compatible preset settings
         currentModelPresetId: cfg.currentModelPresetId || defaultModelPresetId,
         availablePresets: presets.map(formatModelPresetSummary),
@@ -4780,8 +4800,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         langfuseBaseUrl: cfg.langfuseBaseUrl ?? "",
         // STT/TTS/Post-Processing Provider settings
         sttProviderId: cfg.sttProviderId || "openai",
+        openaiSttLanguage: cfg.openaiSttLanguage || "",
         openaiSttModel: cfg.openaiSttModel || "whisper-1",
+        groqSttLanguage: cfg.groqSttLanguage || "",
         groqSttModel: cfg.groqSttModel || "whisper-large-v3-turbo",
+        groqSttPrompt: cfg.groqSttPrompt || "",
+        parakeetNumThreads: cfg.parakeetNumThreads ?? 2,
         ttsProviderId: cfg.ttsProviderId || "openai",
         transcriptPostProcessingProviderId: cfg.transcriptPostProcessingProviderId || "openai",
         transcriptPostProcessingOpenaiModel: cfg.transcriptPostProcessingOpenaiModel || "",
@@ -4801,6 +4825,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         edgeTtsModel: cfg.edgeTtsModel || "edge-tts",
         edgeTtsVoice: cfg.edgeTtsVoice || "en-US-AriaNeural",
         edgeTtsRate: cfg.edgeTtsRate ?? 1.0,
+        kittenVoiceId: cfg.kittenVoiceId ?? 0,
+        supertonicVoice: cfg.supertonicVoice || "M1",
+        supertonicLanguage: cfg.supertonicLanguage || "en",
+        supertonicSteps: cfg.supertonicSteps ?? 5,
         // acpx Agent list for agent selection
         acpxAgents: agentProfileService.getAll()
           .filter(p => p.connection.type === 'acpx' && p.enabled !== false)
@@ -4874,17 +4902,41 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.agentChatgptWebModel = agentChatgptWebModel
         updates.mcpToolsChatgptWebModel = agentChatgptWebModel
       }
+      if (typeof body.openaiApiKey === "string" && body.openaiApiKey !== REMOTE_SERVER_SECRET_MASK) {
+        updates.openaiApiKey = body.openaiApiKey.trim()
+      }
+      if (typeof body.openaiBaseUrl === "string") {
+        updates.openaiBaseUrl = body.openaiBaseUrl.trim()
+      }
+      if (typeof body.groqApiKey === "string" && body.groqApiKey !== REMOTE_SERVER_SECRET_MASK) {
+        updates.groqApiKey = body.groqApiKey.trim()
+      }
+      if (typeof body.groqBaseUrl === "string") {
+        updates.groqBaseUrl = body.groqBaseUrl.trim()
+      }
+      if (typeof body.geminiApiKey === "string" && body.geminiApiKey !== REMOTE_SERVER_SECRET_MASK) {
+        updates.geminiApiKey = body.geminiApiKey.trim()
+      }
+      if (typeof body.geminiBaseUrl === "string") {
+        updates.geminiBaseUrl = body.geminiBaseUrl.trim()
+      }
       if (typeof body.chatgptWebAccessToken === "string") {
-        updates.chatgptWebAccessToken = body.chatgptWebAccessToken
+        updates.chatgptWebAccessToken = body.chatgptWebAccessToken === REMOTE_SERVER_SECRET_MASK ? cfg.chatgptWebAccessToken : body.chatgptWebAccessToken.trim()
       }
       if (typeof body.chatgptWebSessionToken === "string") {
-        updates.chatgptWebSessionToken = body.chatgptWebSessionToken
+        updates.chatgptWebSessionToken = body.chatgptWebSessionToken === REMOTE_SERVER_SECRET_MASK ? cfg.chatgptWebSessionToken : body.chatgptWebSessionToken.trim()
       }
       if (typeof body.chatgptWebAccountId === "string") {
         updates.chatgptWebAccountId = body.chatgptWebAccountId
       }
       if (typeof body.chatgptWebBaseUrl === "string") {
-        updates.chatgptWebBaseUrl = body.chatgptWebBaseUrl
+        updates.chatgptWebBaseUrl = body.chatgptWebBaseUrl.trim()
+      }
+      if (typeof body.openaiReasoningEffort === "string" && ["none", "minimal", "low", "medium", "high", "xhigh"].includes(body.openaiReasoningEffort)) {
+        updates.openaiReasoningEffort = body.openaiReasoningEffort as "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
+      }
+      if (typeof body.codexTextVerbosity === "string" && ["low", "medium", "high"].includes(body.codexTextVerbosity)) {
+        updates.codexTextVerbosity = body.codexTextVerbosity as "low" | "medium" | "high"
       }
       // OpenAI compatible preset - validate against known preset IDs
       if (typeof body.currentModelPresetId === "string") {
@@ -5141,11 +5193,23 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof body.sttProviderId === "string" && validSttProviders.includes(body.sttProviderId)) {
         updates.sttProviderId = body.sttProviderId as "openai" | "groq" | "parakeet"
       }
+      if (typeof body.openaiSttLanguage === "string") {
+        updates.openaiSttLanguage = body.openaiSttLanguage || undefined
+      }
       if (typeof body.openaiSttModel === "string") {
         updates.openaiSttModel = body.openaiSttModel
       }
+      if (typeof body.groqSttLanguage === "string") {
+        updates.groqSttLanguage = body.groqSttLanguage || undefined
+      }
       if (typeof body.groqSttModel === "string") {
         updates.groqSttModel = body.groqSttModel
+      }
+      if (typeof body.groqSttPrompt === "string") {
+        updates.groqSttPrompt = body.groqSttPrompt || undefined
+      }
+      if (typeof body.parakeetNumThreads === "number" && [1, 2, 4, 8].includes(body.parakeetNumThreads)) {
+        updates.parakeetNumThreads = body.parakeetNumThreads as 1 | 2 | 4 | 8
       }
       // TTS Provider
       const validTtsProviders = ["openai", "groq", "gemini", "edge", "kitten", "supertonic"]
@@ -5208,6 +5272,18 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.edgeTtsRate === "number" && body.edgeTtsRate >= 0.5 && body.edgeTtsRate <= 2.0) {
         updates.edgeTtsRate = body.edgeTtsRate
+      }
+      if (typeof body.kittenVoiceId === "number" && Number.isInteger(body.kittenVoiceId) && body.kittenVoiceId >= 0 && body.kittenVoiceId <= 7) {
+        updates.kittenVoiceId = body.kittenVoiceId as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+      }
+      if (typeof body.supertonicVoice === "string") {
+        updates.supertonicVoice = body.supertonicVoice as "M1" | "M2" | "M3" | "M4" | "M5" | "F1" | "F2" | "F3" | "F4" | "F5"
+      }
+      if (typeof body.supertonicLanguage === "string" && ["en", "ko", "es", "pt", "fr"].includes(body.supertonicLanguage)) {
+        updates.supertonicLanguage = body.supertonicLanguage as "en" | "ko" | "es" | "pt" | "fr"
+      }
+      if (typeof body.supertonicSteps === "number" && Number.isInteger(body.supertonicSteps) && body.supertonicSteps >= 2 && body.supertonicSteps <= 10) {
+        updates.supertonicSteps = body.supertonicSteps
       }
 
       // Session History (pinned/archived conversation IDs)

@@ -6,6 +6,9 @@
 import type { ModelPreset } from './providers';
 import type { QueuedMessage } from './types';
 
+export type OpenAiReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+export type CodexTextVerbosity = 'low' | 'medium' | 'high';
+
 export interface Profile {
   id: string;
   name: string;
@@ -422,10 +425,23 @@ export interface Settings {
   mcpToolsGroqModel?: string;
   mcpToolsGeminiModel?: string;
   mcpToolsChatgptWebModel?: string;
+  openaiReasoningEffort?: OpenAiReasoningEffort;
+  codexTextVerbosity?: CodexTextVerbosity;
   currentModelPresetId?: string;
   availablePresets?: ModelPresetSummary[];
   predefinedPrompts?: PredefinedPromptSummary[];
   knowledgeRoots?: string[];
+
+  // Provider credentials and base URLs are returned masked when configured.
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  groqApiKey?: string;
+  groqBaseUrl?: string;
+  geminiApiKey?: string;
+  geminiBaseUrl?: string;
+  chatgptWebAccessToken?: string;
+  chatgptWebSessionToken?: string;
+  chatgptWebBaseUrl?: string;
 
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;
@@ -447,7 +463,13 @@ export interface Settings {
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
   sttLanguage?: string;
+  openaiSttLanguage?: string;
+  openaiSttModel?: string;
+  groqSttLanguage?: string;
+  groqSttModel?: string;
+  groqSttPrompt?: string;
   transcriptionPreviewEnabled?: boolean;
+  parakeetNumThreads?: number;
 
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;
@@ -479,6 +501,10 @@ export interface Settings {
   edgeTtsModel?: string;
   edgeTtsVoice?: string;
   edgeTtsRate?: number;
+  kittenVoiceId?: number;
+  supertonicVoice?: string;
+  supertonicLanguage?: string;
+  supertonicSteps?: number;
 
   // Remote Server Configuration
   remoteServerEnabled?: boolean;
@@ -578,7 +604,20 @@ export interface SettingsUpdate {
   mcpToolsGroqModel?: string;
   mcpToolsGeminiModel?: string;
   mcpToolsChatgptWebModel?: string;
+  openaiReasoningEffort?: OpenAiReasoningEffort;
+  codexTextVerbosity?: CodexTextVerbosity;
   currentModelPresetId?: string;
+
+  // Provider credentials and base URLs.
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  groqApiKey?: string;
+  groqBaseUrl?: string;
+  geminiApiKey?: string;
+  geminiBaseUrl?: string;
+  chatgptWebAccessToken?: string;
+  chatgptWebSessionToken?: string;
+  chatgptWebBaseUrl?: string;
 
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;
@@ -600,7 +639,13 @@ export interface SettingsUpdate {
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
   sttLanguage?: string;
+  openaiSttLanguage?: string;
+  openaiSttModel?: string;
+  groqSttLanguage?: string;
+  groqSttModel?: string;
+  groqSttPrompt?: string;
   transcriptionPreviewEnabled?: boolean;
+  parakeetNumThreads?: number;
 
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;
@@ -632,6 +677,10 @@ export interface SettingsUpdate {
   edgeTtsModel?: string;
   edgeTtsVoice?: string;
   edgeTtsRate?: number;
+  kittenVoiceId?: number;
+  supertonicVoice?: string;
+  supertonicLanguage?: string;
+  supertonicSteps?: number;
 
   // Remote Server Configuration
   remoteServerEnabled?: boolean;
