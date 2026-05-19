@@ -3,6 +3,8 @@
  * These are interface/type definitions only - no implementation classes
  */
 
+import type { QueuedMessage } from './types';
+
 export interface Profile {
   id: string;
   name: string;
@@ -107,6 +109,32 @@ export interface OperatorLogsResponse {
   logs: OperatorRecentError[];
 }
 
+export interface OperatorDiagnosticReportError extends OperatorRecentError {
+  stack?: string;
+}
+
+export interface OperatorDiagnosticReport {
+  timestamp: number;
+  system: {
+    platform: string;
+    nodeVersion: string;
+    electronVersion: string;
+  };
+  config: {
+    mcpServersCount: number;
+  };
+  mcp: {
+    availableTools: number;
+    toolDiscoveryError?: string;
+    serverStatus: Record<string, { connected: boolean; toolCount: number }>;
+  };
+  errors: OperatorDiagnosticReportError[];
+}
+
+export interface OperatorDiagnosticReportSaveResponse extends OperatorActionResponse {
+  filePath?: string;
+}
+
 export interface OperatorMCPServerSummary {
   name: string;
   connected: boolean;
@@ -134,6 +162,19 @@ export interface OperatorConversationItem {
 export interface OperatorConversationsResponse {
   count: number;
   conversations: OperatorConversationItem[];
+}
+
+export interface OperatorMessageQueueSummary {
+  conversationId: string;
+  isPaused: boolean;
+  messageCount: number;
+  messages: QueuedMessage[];
+}
+
+export interface OperatorMessageQueuesResponse {
+  count: number;
+  totalMessages: number;
+  queues: OperatorMessageQueueSummary[];
 }
 
 export interface OperatorLogSummary {
@@ -237,6 +278,18 @@ export interface OperatorSessionsSummary {
     startTime: number;
     currentIteration?: number;
     maxIterations?: number;
+    isSnoozed?: boolean;
+    profileId?: string;
+    profileName?: string;
+  }>;
+  recentSessionDetails?: Array<{
+    id: string;
+    title?: string;
+    status: string;
+    startTime: number;
+    endTime?: number;
+    profileId?: string;
+    profileName?: string;
   }>;
 }
 
@@ -262,6 +315,21 @@ export interface OperatorActionResponse {
   scheduled?: boolean;
   error?: string;
   details?: Record<string, unknown>;
+}
+
+export interface OperatorRunAgentRequest {
+  prompt: string;
+  conversationId?: string;
+  profileId?: string;
+}
+
+export interface OperatorRunAgentResponse {
+  success: boolean;
+  action: 'run-agent';
+  conversationId: string;
+  content: string;
+  messageCount: number;
+  error?: string;
 }
 
 export interface OperatorAuditSource {
@@ -330,6 +398,8 @@ export interface Settings {
   mcpToolResponseProcessingEnabled?: boolean;
   mcpParallelToolExecution?: boolean;
   mcpMessageQueueEnabled?: boolean;
+  mcpAutoPasteEnabled?: boolean;
+  mcpAutoPasteDelay?: number;
 
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
@@ -377,6 +447,20 @@ export interface Settings {
   remoteServerOperatorAllowDeviceIds?: string[];
   remoteServerAutoShowPanel?: boolean;
   remoteServerTerminalQrEnabled?: boolean;
+
+  // Desktop shell / panel settings exposed to mobile operator controls
+  hideDockIcon?: boolean;
+  launchAtLogin?: boolean;
+  themePreference?: 'system' | 'light' | 'dark';
+  textInputEnabled?: boolean;
+  panelPosition?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'custom';
+  panelDragEnabled?: boolean;
+  floatingPanelAutoShow?: boolean;
+  hidePanelWhenMainFocused?: boolean;
+  panelCustomPosition?: { x: number; y: number };
+  panelCustomSize?: { width: number; height: number };
+  panelProgressSize?: { width: number; height: number };
+  panelTextInputSize?: { width: number; height: number };
 
   // Cloudflare Tunnel Configuration
   cloudflareTunnelMode?: 'quick' | 'named';
@@ -462,6 +546,8 @@ export interface SettingsUpdate {
   mcpToolResponseProcessingEnabled?: boolean;
   mcpParallelToolExecution?: boolean;
   mcpMessageQueueEnabled?: boolean;
+  mcpAutoPasteEnabled?: boolean;
+  mcpAutoPasteDelay?: number;
 
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
@@ -509,6 +595,20 @@ export interface SettingsUpdate {
   remoteServerOperatorAllowDeviceIds?: string[];
   remoteServerAutoShowPanel?: boolean;
   remoteServerTerminalQrEnabled?: boolean;
+
+  // Desktop shell / panel settings exposed to mobile operator controls
+  hideDockIcon?: boolean;
+  launchAtLogin?: boolean;
+  themePreference?: 'system' | 'light' | 'dark';
+  textInputEnabled?: boolean;
+  panelPosition?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'custom';
+  panelDragEnabled?: boolean;
+  floatingPanelAutoShow?: boolean;
+  hidePanelWhenMainFocused?: boolean;
+  panelCustomPosition?: { x: number; y: number };
+  panelCustomSize?: { width: number; height: number };
+  panelProgressSize?: { width: number; height: number };
+  panelTextInputSize?: { width: number; height: number };
 
   // Cloudflare Tunnel Configuration
   cloudflareTunnelMode?: 'quick' | 'named';

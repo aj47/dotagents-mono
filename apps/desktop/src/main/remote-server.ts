@@ -70,15 +70,31 @@ import {
   openDownloadedReleaseAsset,
   revealDownloadedReleaseAsset,
 } from "./updater"
-import { WINDOWS } from "./window"
+import {
+  WINDOWS,
+  getWindowRendererHandlers,
+  hideFloatingPanelWindow,
+  resetFloatingPanelPositionAndSize,
+  setPanelMode,
+  showMainWindow,
+  showPanelWindow,
+} from "./window"
+import {
+  setTrackedAgentSessionSnoozed,
+  snoozeAgentSessionsAndHidePanelWindow,
+} from "./floating-panel-session-state"
+import { messageQueueService } from "./message-queue-service"
 import type {
   OperatorActionResponse,
   OperatorApiKeyRotationResponse,
   OperatorAuditEntry,
   OperatorAuditResponse,
+  OperatorDiagnosticReport,
+  OperatorDiagnosticReportSaveResponse,
   OperatorHealthSnapshot,
   OperatorIntegrationsSummary,
   OperatorLogSummary,
+  OperatorMessageQueuesResponse,
   OperatorConversationsResponse,
   OperatorRecentErrorsResponse,
   OperatorRemoteServerStatus,
@@ -108,6 +124,14 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "remoteServerOperatorAllowDeviceIds",
   "remoteServerAutoShowPanel",
   "remoteServerTerminalQrEnabled",
+  "hideDockIcon",
+  "launchAtLogin",
+  "themePreference",
+  "textInputEnabled",
+  "panelPosition",
+  "panelDragEnabled",
+  "floatingPanelAutoShow",
+  "hidePanelWhenMainFocused",
   "cloudflareTunnelMode",
   "cloudflareTunnelAutoStart",
   "cloudflareTunnelId",
@@ -1773,15 +1797,68 @@ function buildOperatorSessionsSummary(): OperatorSessionsSummary {
   return {
     activeSessions: activeSessions.length,
     recentSessions: recentSessions.length,
-    activeSessionDetails: activeSessions.map((s) => ({
-      id: s.id,
-      title: s.conversationTitle,
-      status: s.status,
-      startTime: s.startTime,
-      currentIteration: s.currentIteration,
-      maxIterations: s.maxIterations,
-    })),
+    activeSessionDetails: activeSessions.map(formatOperatorSessionSummary),
+    recentSessionDetails: recentSessions.map(formatOperatorSessionSummary),
   }
+}
+
+function formatOperatorSessionSummary(session: ReturnType<typeof agentSessionTracker.getActiveSessions>[number]) {
+  return {
+    id: session.id,
+    title: session.conversationTitle,
+    status: session.status,
+    startTime: session.startTime,
+    endTime: session.endTime,
+    currentIteration: session.currentIteration,
+    maxIterations: session.maxIterations,
+    isSnoozed: session.isSnoozed,
+    profileId: session.profileSnapshot?.profileId,
+    profileName: session.profileSnapshot?.profileName,
+  }
+}
+
+function buildOperatorMessageQueuesResponse(): OperatorMessageQueuesResponse {
+  const queues = messageQueueService.getAllQueues().map((queue) => ({
+    conversationId: queue.conversationId,
+    isPaused: messageQueueService.isQueuePaused(queue.conversationId),
+    messageCount: queue.messages.length,
+    messages: queue.messages,
+  }))
+
+  return {
+    count: queues.length,
+    totalMessages: queues.reduce((sum, queue) => sum + queue.messageCount, 0),
+    queues,
+  }
+}
+
+function notifyInactiveSessionsCleared(): void {
+  for (const windowId of ["main", "panel"] as const) {
+    try {
+      getWindowRendererHandlers(windowId)?.clearInactiveSessions?.send()
+    } catch (error) {
+      diagnosticsService.logError(
+        "remote-server",
+        `Failed to notify ${windowId} window after clearing inactive sessions`,
+        error,
+      )
+    }
+  }
+}
+
+function clearInactiveOperatorSessions(): number {
+  const clearable = agentSessionTracker
+    .getRecentSessions(100)
+    .filter((session) => {
+      if (session.status === "active") return false
+      const conversationId = session.conversationId
+      return !conversationId || messageQueueService.getQueue(conversationId).length === 0
+    })
+
+  const ids = new Set(clearable.map((session) => session.id))
+  agentSessionTracker.clearCompletedSessions((session) => ids.has(session.id))
+  notifyInactiveSessionsCleared()
+  return clearable.length
 }
 
 function parseAgentSessionCandidateLimit(query: unknown): number | { error: string } {
@@ -2023,6 +2100,42 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  fastify.get("/v1/operator/diagnostics/report", async (_req, reply) => {
+    try {
+      const report = await diagnosticsService.generateDiagnosticReport()
+      return reply.send(report satisfies OperatorDiagnosticReport)
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator diagnostic report", error)
+      return reply.code(500).send({ error: "Failed to build operator diagnostic report" })
+    }
+  })
+
+  fastify.post("/v1/operator/diagnostics/report/save", async (req, reply) => {
+    try {
+      const body = req.body as { filePath?: unknown } | null
+      const filePath = typeof body?.filePath === "string" && body.filePath.trim()
+        ? body.filePath.trim()
+        : undefined
+      const savedPath = await diagnosticsService.saveDiagnosticReport(filePath)
+      const response: OperatorDiagnosticReportSaveResponse = {
+        success: true,
+        action: "diagnostic-report-save",
+        message: `Diagnostic report saved to ${savedPath}`,
+        filePath: savedPath,
+      }
+      setOperatorAuditContext(req, { action: response.action, success: true, details: { filePath: savedPath } })
+      return reply.send(response)
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "diagnostic-report-save",
+        success: false,
+        failureReason: "diagnostic-report-save-error",
+      })
+      diagnosticsService.logError("remote-server", "Failed to save operator diagnostic report", error)
+      return reply.code(500).send({ error: "Failed to save operator diagnostic report" })
+    }
+  })
+
   fastify.get("/v1/operator/errors", async (req, reply) => {
     try {
       const query = req.query as { count?: string | number }
@@ -2031,6 +2144,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       diagnosticsService.logError("remote-server", "Failed to build operator recent errors", error)
       return reply.code(500).send({ error: "Failed to build operator recent errors" })
     }
+  })
+
+  fastify.post("/v1/operator/errors/clear", async (req, reply) => {
+    diagnosticsService.clearErrorLog()
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "operator-errors-clear",
+      message: "Operator error log cleared",
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true })
+    return reply.send(response)
   })
 
   fastify.get("/v1/operator/logs", async (req, reply) => {
@@ -2076,6 +2200,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error) {
       diagnosticsService.logError("remote-server", "Failed to build operator conversations response", error)
       return reply.code(500).send({ error: "Failed to build operator conversations response" })
+    }
+  })
+
+  fastify.get("/v1/operator/message-queues", async (_req, reply) => {
+    try {
+      return reply.send(buildOperatorMessageQueuesResponse())
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator message queues response", error)
+      return reply.code(500).send({ error: "Failed to build operator message queues response" })
     }
   })
 
@@ -2577,6 +2710,175 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       details: response.details,
     })
     scheduleAppRestartFromOperator()
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/actions/stop-tts", async (req, reply) => {
+    let notifiedWindows = 0
+    for (const windowId of ["main", "panel"] as const) {
+      try {
+        getWindowRendererHandlers(windowId)?.stopAllTts?.send()
+        notifiedWindows += 1
+      } catch (error) {
+        diagnosticsService.logError("remote-server", `Failed to stop TTS in ${windowId} window`, error)
+      }
+    }
+
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "stop-tts",
+      message: "Desktop speech playback stop requested",
+      details: { notifiedWindows },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/windows/main/show", async (req, reply) => {
+    const body = req.body as { route?: unknown } | null
+    const route = typeof body?.route === "string" && ["/", "/settings", "/settings/models", "/sessions", "/plugins"].includes(body.route)
+      ? body.route
+      : undefined
+    showMainWindow(route)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "desktop-main-window-show",
+      message: "Main window show requested",
+      details: route ? { route } : undefined,
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/windows/panel/show", async (req, reply) => {
+    showPanelWindow({})
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "desktop-panel-window-show",
+      message: "Panel window show requested",
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/windows/panel/hide", async (req, reply) => {
+    hideFloatingPanelWindow()
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "desktop-panel-window-hide",
+      message: "Panel window hide requested",
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/windows/panel/reset", async (req, reply) => {
+    resetFloatingPanelPositionAndSize(true)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "desktop-panel-window-reset",
+      message: "Panel position and size reset",
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/:sessionId/show", async (req, reply) => {
+    const { sessionId } = req.params as { sessionId?: string }
+    if (!sessionId) return reply.code(400).send({ error: "Missing session ID" })
+
+    setTrackedAgentSessionSnoozed(sessionId, false)
+    try {
+      getWindowRendererHandlers("panel")?.focusAgentSession?.send(sessionId)
+    } catch (error) {
+      diagnosticsService.logError("remote-server", `Failed to focus agent session ${sessionId} in panel`, error)
+    }
+    setPanelMode("agent")
+    showPanelWindow({})
+
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-session-show",
+      message: "Agent session shown in the desktop panel",
+      details: { sessionId },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/:sessionId/snooze", async (req, reply) => {
+    const { sessionId } = req.params as { sessionId?: string }
+    if (!sessionId) return reply.code(400).send({ error: "Missing session ID" })
+    setTrackedAgentSessionSnoozed(sessionId, true)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-session-snooze",
+      message: "Agent session snoozed",
+      details: { sessionId },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/:sessionId/unsnooze", async (req, reply) => {
+    const { sessionId } = req.params as { sessionId?: string }
+    if (!sessionId) return reply.code(400).send({ error: "Missing session ID" })
+    setTrackedAgentSessionSnoozed(sessionId, false)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-session-unsnooze",
+      message: "Agent session unsnoozed",
+      details: { sessionId },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/:sessionId/clear", async (req, reply) => {
+    const { sessionId } = req.params as { sessionId?: string }
+    if (!sessionId) return reply.code(400).send({ error: "Missing session ID" })
+    const removed = agentSessionTracker.removeCompletedSession(sessionId)
+    try {
+      getWindowRendererHandlers("main")?.clearAgentSessionProgress?.send(sessionId)
+      getWindowRendererHandlers("panel")?.clearAgentSessionProgress?.send(sessionId)
+    } catch (error) {
+      diagnosticsService.logError("remote-server", `Failed to notify renderer after clearing agent session ${sessionId}`, error)
+    }
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-session-clear",
+      message: removed ? "Agent session dismissed" : "Agent session was not in recent sessions",
+      details: { sessionId, removed },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/clear-inactive", async (req, reply) => {
+    const clearedCount = clearInactiveOperatorSessions()
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-sessions-clear-inactive",
+      message: `${clearedCount} inactive agent session${clearedCount === 1 ? "" : "s"} cleared`,
+      details: { clearedCount },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/snooze-and-hide-panel", async (req, reply) => {
+    const body = req.body as { sessionIds?: unknown } | null
+    const sessionIds = Array.isArray(body?.sessionIds)
+      ? body.sessionIds.filter((value): value is string => typeof value === "string" && value.length > 0)
+      : undefined
+    const snoozedSessionIds = snoozeAgentSessionsAndHidePanelWindow(sessionIds)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-sessions-snooze-hide-panel",
+      message: `${snoozedSessionIds.length} active agent session${snoozedSessionIds.length === 1 ? "" : "s"} snoozed`,
+      details: { sessionIds: snoozedSessionIds },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
     return reply.send(response)
   })
 
@@ -4027,6 +4329,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         // Agent settings (extended)
         mainAgentMode: cfg.mainAgentMode ?? "api",
         mcpMessageQueueEnabled: cfg.mcpMessageQueueEnabled ?? true,
+        mcpAutoPasteEnabled: cfg.mcpAutoPasteEnabled ?? false,
+        mcpAutoPasteDelay: cfg.mcpAutoPasteDelay ?? 1000,
         mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? true,
         mcpFinalSummaryEnabled: cfg.mcpFinalSummaryEnabled ?? false,
         dualModelEnabled: cfg.dualModelEnabled ?? false,
@@ -4045,6 +4349,19 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         remoteServerOperatorAllowDeviceIds: cfg.remoteServerOperatorAllowDeviceIds ?? [],
         remoteServerAutoShowPanel: cfg.remoteServerAutoShowPanel ?? false,
         remoteServerTerminalQrEnabled: cfg.remoteServerTerminalQrEnabled ?? false,
+        // Desktop shell / panel
+        hideDockIcon: cfg.hideDockIcon ?? false,
+        launchAtLogin: cfg.launchAtLogin ?? false,
+        themePreference: cfg.themePreference ?? "system",
+        textInputEnabled: cfg.textInputEnabled ?? true,
+        panelPosition: cfg.panelPosition ?? "top-right",
+        panelDragEnabled: cfg.panelDragEnabled ?? true,
+        floatingPanelAutoShow: cfg.floatingPanelAutoShow ?? true,
+        hidePanelWhenMainFocused: cfg.hidePanelWhenMainFocused ?? true,
+        panelCustomPosition: cfg.panelCustomPosition,
+        panelCustomSize: cfg.panelCustomSize,
+        panelProgressSize: cfg.panelProgressSize,
+        panelTextInputSize: cfg.panelTextInputSize,
         // Cloudflare Tunnel
         cloudflareTunnelMode: cfg.cloudflareTunnelMode ?? "quick",
         cloudflareTunnelAutoStart: cfg.cloudflareTunnelAutoStart ?? false,
@@ -4239,6 +4556,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof body.mcpMessageQueueEnabled === "boolean") {
         updates.mcpMessageQueueEnabled = body.mcpMessageQueueEnabled
       }
+      if (typeof body.mcpAutoPasteEnabled === "boolean") {
+        updates.mcpAutoPasteEnabled = body.mcpAutoPasteEnabled
+      }
+      if (
+        typeof body.mcpAutoPasteDelay === "number"
+        && Number.isFinite(body.mcpAutoPasteDelay)
+        && body.mcpAutoPasteDelay >= 0
+        && body.mcpAutoPasteDelay <= 60000
+      ) {
+        updates.mcpAutoPasteDelay = Math.floor(body.mcpAutoPasteDelay)
+      }
       if (typeof body.mcpVerifyCompletionEnabled === "boolean") {
         updates.mcpVerifyCompletionEnabled = body.mcpVerifyCompletionEnabled
       }
@@ -4299,6 +4627,31 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.remoteServerTerminalQrEnabled === "boolean") {
         updates.remoteServerTerminalQrEnabled = body.remoteServerTerminalQrEnabled
+      }
+      // Desktop shell / panel
+      if (typeof body.hideDockIcon === "boolean") {
+        updates.hideDockIcon = body.hideDockIcon
+      }
+      if (typeof body.launchAtLogin === "boolean") {
+        updates.launchAtLogin = body.launchAtLogin
+      }
+      if (typeof body.themePreference === "string" && ["system", "light", "dark"].includes(body.themePreference)) {
+        updates.themePreference = body.themePreference as "system" | "light" | "dark"
+      }
+      if (typeof body.textInputEnabled === "boolean") {
+        updates.textInputEnabled = body.textInputEnabled
+      }
+      if (typeof body.panelPosition === "string" && ["top-right", "top-left", "bottom-right", "bottom-left", "custom"].includes(body.panelPosition)) {
+        updates.panelPosition = body.panelPosition as "top-right" | "top-left" | "bottom-right" | "bottom-left" | "custom"
+      }
+      if (typeof body.panelDragEnabled === "boolean") {
+        updates.panelDragEnabled = body.panelDragEnabled
+      }
+      if (typeof body.floatingPanelAutoShow === "boolean") {
+        updates.floatingPanelAutoShow = body.floatingPanelAutoShow
+      }
+      if (typeof body.hidePanelWhenMainFocused === "boolean") {
+        updates.hidePanelWhenMainFocused = body.hidePanelWhenMainFocused
       }
       // Cloudflare Tunnel
       if (typeof body.cloudflareTunnelMode === "string" && ["quick", "named"].includes(body.cloudflareTunnelMode)) {
@@ -4493,6 +4846,41 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const sensitiveUpdatedKeys = Object.keys(updates).filter((key) => SENSITIVE_OPERATOR_SETTINGS_KEYS.has(key))
       configStore.save(nextConfig)
       diagnosticsService.logInfo("remote-server", `Updated settings: ${Object.keys(updates).join(", ")}`)
+
+      if (updates.launchAtLogin !== undefined) {
+        try {
+          app.setLoginItemSettings({
+            openAtLogin: !!updates.launchAtLogin,
+            openAsHidden: true,
+          })
+        } catch (error) {
+          diagnosticsService.logError("remote-server", "Failed to update launch-at-login from mobile settings", error)
+        }
+      }
+
+      if (updates.hideDockIcon !== undefined && process.platform === "darwin") {
+        try {
+          if (updates.hideDockIcon && !WINDOWS.get("main")?.isVisible()) {
+            app.setActivationPolicy("accessory")
+            app.dock.hide()
+          } else {
+            app.dock.show()
+            app.setActivationPolicy("regular")
+          }
+        } catch (error) {
+          diagnosticsService.logError("remote-server", "Failed to update dock visibility from mobile settings", error)
+        }
+      }
+
+      if (updates.themePreference !== undefined) {
+        for (const windowId of ["main", "panel"] as const) {
+          try {
+            getWindowRendererHandlers(windowId)?.themeChanged?.send(updates.themePreference)
+          } catch (error) {
+            diagnosticsService.logError("remote-server", `Failed to notify ${windowId} window of theme update`, error)
+          }
+        }
+      }
 
       const discordLifecycleAction = getDiscordLifecycleAction(cfg, nextConfig)
       if (discordLifecycleAction === "start") {

@@ -43,7 +43,11 @@ export type {
   OperatorHealthSnapshot,
   OperatorRecentError,
   OperatorRecentErrorsResponse,
+  OperatorDiagnosticReport,
+  OperatorDiagnosticReportSaveResponse,
   OperatorLogSummary,
+  OperatorLogsResponse,
+  OperatorMessageQueuesResponse,
   OperatorDiscordIntegrationSummary,
   OperatorWhatsAppIntegrationSummary,
   OperatorPushNotificationsSummary,
@@ -54,10 +58,11 @@ export type {
   OperatorSessionsSummary,
   OperatorConversationItem,
   OperatorConversationsResponse,
-  OperatorLogsResponse,
   OperatorMCPStatusResponse,
   OperatorMCPServerSummary,
   OperatorActionResponse,
+  OperatorRunAgentRequest,
+  OperatorRunAgentResponse,
   OperatorAuditEntry,
   OperatorAuditResponse,
   OperatorApiKeyRotationResponse,
@@ -110,16 +115,21 @@ import type {
   OperatorTunnelStatus,
   OperatorHealthSnapshot,
   OperatorRecentErrorsResponse,
+  OperatorDiagnosticReport,
+  OperatorDiagnosticReportSaveResponse,
+  OperatorLogsResponse,
+  OperatorMessageQueuesResponse,
   OperatorDiscordIntegrationSummary,
   OperatorWhatsAppIntegrationSummary,
   OperatorIntegrationsSummary,
   OperatorUpdaterStatus,
   OperatorRuntimeStatus,
   OperatorActionResponse,
+  OperatorRunAgentRequest,
+  OperatorRunAgentResponse,
   OperatorAuditResponse,
   OperatorApiKeyRotationResponse,
   OperatorConversationsResponse,
-  OperatorLogsResponse,
   OperatorMCPStatusResponse,
 } from '@dotagents/shared';
 
@@ -634,10 +644,27 @@ export class SettingsApiClient {
     return this.request<OperatorRecentErrorsResponse>(`/operator/errors${query}`);
   }
 
+  async clearOperatorErrors(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/errors/clear', {
+      method: 'POST',
+    });
+  }
+
   async getOperatorLogs(count: number = 20, level?: 'error' | 'warning' | 'info'): Promise<OperatorLogsResponse> {
     const params = new URLSearchParams({ count: String(count) });
     if (level) params.set('level', level);
     return this.request<OperatorLogsResponse>(`/operator/logs?${params.toString()}`);
+  }
+
+  async getOperatorDiagnosticReport(): Promise<OperatorDiagnosticReport> {
+    return this.request<OperatorDiagnosticReport>('/operator/diagnostics/report');
+  }
+
+  async saveOperatorDiagnosticReport(filePath?: string): Promise<OperatorDiagnosticReportSaveResponse> {
+    return this.request<OperatorDiagnosticReportSaveResponse>('/operator/diagnostics/report/save', {
+      method: 'POST',
+      body: JSON.stringify({ filePath }),
+    });
   }
 
   async getOperatorAudit(count: number = 20): Promise<OperatorAuditResponse> {
@@ -708,6 +735,10 @@ export class SettingsApiClient {
   async getOperatorConversations(count: number = 10): Promise<OperatorConversationsResponse> {
     const query = `?count=${encodeURIComponent(String(count))}`;
     return this.request<OperatorConversationsResponse>(`/operator/conversations${query}`);
+  }
+
+  async getOperatorMessageQueues(): Promise<OperatorMessageQueuesResponse> {
+    return this.request<OperatorMessageQueuesResponse>('/operator/message-queues');
   }
 
   async getOperatorRemoteServer(): Promise<OperatorRemoteServerStatus> {
@@ -830,6 +861,81 @@ export class SettingsApiClient {
   async restartApp(): Promise<OperatorActionResponse> {
     return this.request<OperatorActionResponse>('/operator/actions/restart-app', {
       method: 'POST',
+    });
+  }
+
+  async runOperatorAgent(request: OperatorRunAgentRequest): Promise<OperatorRunAgentResponse> {
+    return this.request<OperatorRunAgentResponse>('/operator/actions/run-agent', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async stopOperatorTtsPlayback(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/actions/stop-tts', {
+      method: 'POST',
+    });
+  }
+
+  async showOperatorMainWindow(route?: '/' | '/settings' | '/settings/models' | '/sessions' | '/plugins'): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/windows/main/show', {
+      method: 'POST',
+      body: JSON.stringify({ route }),
+    });
+  }
+
+  async showOperatorPanelWindow(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/windows/panel/show', {
+      method: 'POST',
+    });
+  }
+
+  async hideOperatorPanelWindow(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/windows/panel/hide', {
+      method: 'POST',
+    });
+  }
+
+  async resetOperatorPanelWindow(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/windows/panel/reset', {
+      method: 'POST',
+    });
+  }
+
+  async showOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(`/operator/sessions/${encodeURIComponent(sessionId)}/show`, {
+      method: 'POST',
+    });
+  }
+
+  async snoozeOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(`/operator/sessions/${encodeURIComponent(sessionId)}/snooze`, {
+      method: 'POST',
+    });
+  }
+
+  async unsnoozeOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(`/operator/sessions/${encodeURIComponent(sessionId)}/unsnooze`, {
+      method: 'POST',
+    });
+  }
+
+  async clearOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(`/operator/sessions/${encodeURIComponent(sessionId)}/clear`, {
+      method: 'POST',
+    });
+  }
+
+  async clearInactiveOperatorAgentSessions(): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/sessions/clear-inactive', {
+      method: 'POST',
+    });
+  }
+
+  async snoozeOperatorAgentSessionsAndHidePanel(sessionIds?: string[]): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>('/operator/sessions/snooze-and-hide-panel', {
+      method: 'POST',
+      body: JSON.stringify({ sessionIds }),
     });
   }
 
