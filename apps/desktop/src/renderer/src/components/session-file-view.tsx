@@ -34,6 +34,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 type SessionFileRoot = { path: string; label: string }
 type SessionFileEntry = { path: string; relativePath: string; name: string; kind: "file" | "directory"; size?: number; modifiedAt: number }
 type SessionFileListing = { entries: SessionFileEntry[]; totalEntries: number; limit: number; truncated: boolean }
+type SessionFileActivityKind = "read" | "edited"
+type SessionFileActivity = { path: string; rootPath: string; relativePath: string; kind: SessionFileActivityKind; source: string; lastSeenAt: number }
 type SessionFilePreview = {
   path: string
   relativePath: string
@@ -98,6 +100,7 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
   const [expandedDirectories, setExpandedDirectories] = useState<Record<string, boolean>>({})
   const [listingsByDirectory, setListingsByDirectory] = useState<Record<string, SessionFileListing>>({})
+  const [fileActivity, setFileActivity] = useState<SessionFileActivity[]>([])
   const [loadingDirectories, setLoadingDirectories] = useState<Record<string, boolean>>({})
   const [preview, setPreview] = useState<SessionFilePreview | null>(null)
   const [isLoadingPreview, setIsLoadingPreview] = useState(false)
@@ -121,6 +124,7 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
       setSelectedPath(null)
       setPreview(null)
       setRootsError(null)
+      setFileActivity([])
       return
     }
 
@@ -130,13 +134,16 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
       const nextRoots = sessionId.startsWith("pending-") && conversationId
         ? await tipcClient.hydrateConversationFileActivity({ sessionId, conversationId }) as SessionFileRoot[]
         : await tipcClient.getTrackedSessionFileRoots({ sessionId }) as SessionFileRoot[]
+      const nextActivity = await tipcClient.getTrackedSessionFileActivity({ sessionId }) as SessionFileActivity[]
       setRoots(nextRoots)
+      setFileActivity(nextActivity)
       setSelectedRootPath((current) => nextRoots.some((root) => root.path === current) ? current : (nextRoots[0]?.path ?? ""))
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load session files"
       setRootsError(message)
       setRoots([])
       setSelectedRootPath("")
+      setFileActivity([])
     } finally {
       setIsLoadingRoots(false)
     }
@@ -148,6 +155,15 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
       void tipcClient.clearTrackedSessionFileActivity({ sessionId }).catch((error: unknown) => {
         console.warn("Failed to clear temporary session file roots", error)
       })
+    }
+  }, [sessionId])
+
+  const refreshFileActivity = useCallback(async () => {
+    if (!sessionId) return
+    try {
+      setFileActivity(await tipcClient.getTrackedSessionFileActivity({ sessionId }) as SessionFileActivity[])
+    } catch {
+      // File activity is supplemental; keep the browser usable if it cannot load.
     }
   }, [sessionId])
 
@@ -220,7 +236,10 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
       rootPath: currentRoot.path,
       filePath: selectedPath,
     }).then((nextPreview: SessionFilePreview) => {
-      if (!cancelled) setPreview(nextPreview)
+      if (!cancelled) {
+        setPreview(nextPreview)
+        void refreshFileActivity()
+      }
     }).catch((error: unknown) => {
       if (!cancelled) {
         setPreview(null)
@@ -233,7 +252,7 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
     return () => {
       cancelled = true
     }
-  }, [currentRoot, selectedPath, sessionId])
+  }, [currentRoot, refreshFileActivity, selectedPath, sessionId])
 
   const handleToggleDirectory = useCallback((directoryPath: string) => {
     setExpandedDirectories((current) => {
@@ -270,6 +289,7 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
           kind: dialogState.mode === "create-file" ? "file" : "directory",
         })
         await refreshLoadedDirectories()
+        await refreshFileActivity()
         setSelectedPath(created?.path ?? currentRoot.path)
         toast.success(dialogState.mode === "create-file" ? "File created" : "Folder created")
       } else if (dialogState.mode === "move" && selectedPath) {
@@ -280,6 +300,7 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
           targetPath: dialogState.value,
         })
         await refreshLoadedDirectories()
+        await refreshFileActivity()
         setSelectedPath(moved?.path ?? currentRoot.path)
         toast.success("Path updated")
       } else if (dialogState.mode === "delete" && selectedPath) {
@@ -289,6 +310,7 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
           targetPath: selectedPath,
         })
         await refreshLoadedDirectories()
+        await refreshFileActivity()
         setSelectedPath(currentRoot.path)
         toast.success("Path deleted")
       }
@@ -298,7 +320,7 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
     } finally {
       setIsSubmittingDialog(false)
     }
-  }, [currentRoot, dialogState, refreshLoadedDirectories, selectedPath, sessionId])
+  }, [currentRoot, dialogState, refreshFileActivity, refreshLoadedDirectories, selectedPath, sessionId])
 
   const renderDirectoryEntries = useCallback((directoryPath: string): React.ReactNode => {
     const listing = listingsByDirectory[directoryPath]
@@ -358,6 +380,38 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
     ) : [])
   }, [expandedDirectories, handleToggleDirectory, listingsByDirectory, loadingDirectories, selectedPath])
 
+  const renderActivityGroup = useCallback((kind: SessionFileActivityKind, label: string) => {
+    const entries = fileActivity.filter((entry) => entry.kind === kind)
+    if (entries.length === 0) return null
+
+    return (
+      <div className="min-w-[12rem] flex-1">
+        <div className="mb-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span>{label}</span>
+          <span className="rounded-full border border-border/60 px-1.5 py-0 text-[10px]">{entries.length}</span>
+        </div>
+        <div className="max-h-24 space-y-1 overflow-y-auto pr-1">
+          {entries.map((entry) => (
+            <button
+              key={`${entry.kind}:${entry.path}`}
+              type="button"
+              className="flex w-full min-w-0 items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-muted/60"
+              title={`${entry.relativePath} (${entry.source})`}
+              onClick={() => {
+                setSelectedRootPath(entry.rootPath)
+                setSelectedPath(entry.path)
+              }}
+            >
+              <FileText className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{entry.relativePath}</span>
+              <span className="shrink-0 truncate text-[10px] text-muted-foreground">{entry.source}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }, [fileActivity])
+
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
       <div className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-border/40 px-3 py-2">
@@ -393,6 +447,21 @@ export function SessionFileView({ sessionId, conversationId, className }: { sess
           <Trash2 className="h-3.5 w-3.5" /> Delete
         </Button>
       </div>
+
+      {fileActivity.length > 0 && (
+        <div className="border-b border-border/40 px-3 py-2">
+          <div className="mb-2 flex min-w-0 items-center justify-between gap-2 text-xs">
+            <span className="font-medium text-foreground">Touched files</span>
+            <span className="shrink-0 text-muted-foreground">
+              {fileActivity.filter((entry) => entry.kind === "read").length} read · {fileActivity.filter((entry) => entry.kind === "edited").length} edited
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-col gap-3 md:flex-row">
+            {renderActivityGroup("edited", "Edited")}
+            {renderActivityGroup("read", "Read")}
+          </div>
+        </div>
+      )}
 
       {!sessionId ? (
         <div className="m-3 rounded-lg border border-dashed bg-muted/20 px-5 py-6 text-center text-sm text-muted-foreground">

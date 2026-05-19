@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import {
   createTrackedSessionFileEntry,
   deleteTrackedSessionFileEntry,
+  getTrackedSessionFileActivity,
   getTrackedSessionFileRoots,
   listTrackedSessionFiles,
   moveTrackedSessionFileEntry,
@@ -120,6 +121,72 @@ describe("session-file-browser", () => {
     expect(listing.entries).toHaveLength(listing.limit)
     expect(listing.totalEntries).toBe(506)
     expect(listing.truncated).toBe(true)
+  })
+
+  it("tracks exact files that structured tools read and edit", () => {
+    const repoRoot = createTempWorkspace()
+    tempDirs.push(repoRoot)
+    fs.writeFileSync(path.join(repoRoot, "package.json"), "{}", "utf8")
+    const readPath = path.join(repoRoot, "README.md")
+    const editPath = path.join(repoRoot, "src", "index.ts")
+    fs.writeFileSync(readPath, "# Hello", "utf8")
+    fs.mkdirSync(path.dirname(editPath), { recursive: true })
+    fs.writeFileSync(editPath, "export {}\n", "utf8")
+
+    recordSessionFileActivity({
+      sessionId: "session-activity",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: false,
+      conversationHistory: [{
+        role: "assistant",
+        content: "",
+        timestamp: Date.now(),
+        toolCalls: [
+          { name: "read_file", arguments: { path: readPath } },
+          { name: "write_file", arguments: { path: editPath, content: "export const value = 1\n" } },
+        ],
+      }],
+    })
+
+    expect(getTrackedSessionFileActivity("session-activity").map((entry) => ({
+      kind: entry.kind,
+      relativePath: entry.relativePath,
+    }))).toEqual([
+      { kind: "edited", relativePath: "src/index.ts" },
+      { kind: "read", relativePath: "README.md" },
+    ])
+  })
+
+  it("falls back to markerless home subdirectories when the home marker is blocked", () => {
+    const homeMarker = path.join(os.homedir(), ".agents")
+    if (!fs.existsSync(homeMarker)) return
+
+    const outputDir = fs.mkdtempSync(path.join(os.homedir(), ".dotagents-session-file-browser-test-"))
+    tempDirs.push(outputDir)
+    const outputPath = path.join(outputDir, "render.mp4")
+    fs.writeFileSync(outputPath, "video", "utf8")
+
+    recordSessionFileActivity({
+      sessionId: "session-home-output",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: false,
+      conversationHistory: [{
+        role: "assistant",
+        content: "",
+        timestamp: Date.now(),
+        toolCalls: [
+          { name: "write_file", arguments: { path: outputPath, content: "video" } },
+        ],
+      }],
+    })
+
+    expect(getTrackedSessionFileRoots("session-home-output")).toEqual([
+      { path: fs.realpathSync(outputDir), label: path.basename(outputDir) },
+    ])
   })
 
   it("supports create, move, delete, and preview within tracked roots", () => {

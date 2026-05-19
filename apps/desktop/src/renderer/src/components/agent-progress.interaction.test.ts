@@ -15,4 +15,10 @@ describe("agent progress interactions", () => {
     expect(agentProgressSource).toContain("onClick={shouldToggleFromContentClick ? handleToggleExpand : undefined}")
     expect(agentProgressSource).toContain("e.stopPropagation()")
   })
+
+  it("resets an unavailable summary tab back to chat", () => {
+    expect(agentProgressSource).toContain('if (activeTab === "summary" && !hasSummaryTab)')
+    expect(agentProgressSource).toContain('setActiveTab("chat")')
+    expect(agentProgressSource).toContain("[activeTab, hasSummaryTab]")
+  })
 })

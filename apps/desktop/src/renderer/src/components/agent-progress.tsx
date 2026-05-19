@@ -3795,6 +3795,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const hasSummaryTab = (progress.stepSummaries?.length ?? 0) > 0
   const isQueueEnabled = configQuery.data?.mcpMessageQueueEnabled ?? true
 
+  useEffect(() => {
+    if (activeTab === "summary" && !hasSummaryTab) {
+      setActiveTab("chat")
+    }
+  }, [activeTab, hasSummaryTab])
+
   // Detect if agent was stopped by kill switch
   const wasStopped = finalContent?.includes("emergency kill switch") ||
                     steps?.some(step => step.title === "Agent stopped" ||

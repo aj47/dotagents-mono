@@ -50,4 +50,11 @@ describe("session file view layout", () => {
     )
     expect(sessionFileViewSource).toContain("clearTrackedSessionFileActivity")
   })
+
+  it("shows exact read and edited file activity in a compact list", () => {
+    expect(sessionFileViewSource).toContain("getTrackedSessionFileActivity")
+    expect(sessionFileViewSource).toContain("Touched files")
+    expect(sessionFileViewSource).toContain('renderActivityGroup("edited", "Edited")')
+    expect(sessionFileViewSource).toContain('renderActivityGroup("read", "Read")')
+  })
 })
