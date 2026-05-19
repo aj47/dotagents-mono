@@ -23,7 +23,9 @@ import {
   ExtendedSettingsApiClient,
   Profile,
   MCPServer,
+  MCPConfig,
   MCPServerConfig,
+  McpOAuthStatusResponse,
   MCPTransportType,
   Settings,
   ModelInfo,
@@ -293,6 +295,11 @@ type McpServerDraft = {
   headers: string;
   timeout: string;
   disabled: boolean;
+  oauthEnabled: boolean;
+  oauthScope: string;
+  oauthClientId: string;
+  oauthUseDiscovery: boolean;
+  oauthUseDynamicRegistration: boolean;
 };
 
 const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
@@ -305,6 +312,11 @@ const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
   headers: '',
   timeout: '',
   disabled: false,
+  oauthEnabled: false,
+  oauthScope: '',
+  oauthClientId: '',
+  oauthUseDiscovery: true,
+  oauthUseDynamicRegistration: true,
 };
 
 const MCP_TRANSPORT_OPTIONS: Array<{ label: string; value: MCPTransportType }> = [
@@ -350,6 +362,11 @@ function createMcpServerDraft(name: string, config: MCPServerConfig): McpServerD
     headers: stringifyJsonDraft(config.headers),
     timeout: typeof config.timeout === 'number' ? String(config.timeout) : '',
     disabled: !!config.disabled,
+    oauthEnabled: !!config.oauth,
+    oauthScope: config.oauth?.scope || '',
+    oauthClientId: config.oauth?.clientId || '',
+    oauthUseDiscovery: config.oauth?.useDiscovery ?? true,
+    oauthUseDynamicRegistration: config.oauth?.useDynamicRegistration ?? true,
   };
 }
 
@@ -405,7 +422,28 @@ function buildMcpServerConfigFromDraft(draft: McpServerDraft): MCPServerConfig {
     ...base,
     url: draft.url.trim(),
     headers: parseJsonObjectDraft(draft.headers, 'Headers'),
+    ...(draft.transport === 'streamableHttp'
+      ? {
+          oauth: draft.oauthEnabled
+            ? {
+                ...(draft.oauthScope.trim() ? { scope: draft.oauthScope.trim() } : {}),
+                ...(draft.oauthClientId.trim() ? { clientId: draft.oauthClientId.trim() } : {}),
+                useDiscovery: draft.oauthUseDiscovery,
+                useDynamicRegistration: draft.oauthUseDynamicRegistration,
+              }
+            : null,
+        }
+      : {}),
   };
+}
+
+function parseMcpConfigImport(value: string): MCPConfig {
+  const parsed = JSON.parse(value.trim());
+  const mcpServers = (parsed as { mcpServers?: unknown })?.mcpServers;
+  if (!mcpServers || typeof mcpServers !== 'object' || Array.isArray(mcpServers)) {
+    throw new Error('MCP import JSON must include a mcpServers object.');
+  }
+  return { mcpServers: mcpServers as Record<string, MCPServerConfig> };
 }
 
 export default function SettingsScreen({ navigation }: any) {
@@ -500,6 +538,12 @@ export default function SettingsScreen({ navigation }: any) {
   const [mcpServerDraft, setMcpServerDraft] = useState<McpServerDraft>(EMPTY_MCP_SERVER_DRAFT);
   const [isSavingMcpServer, setIsSavingMcpServer] = useState(false);
   const [isLoadingMcpServerConfig, setIsLoadingMcpServerConfig] = useState(false);
+  const [mcpOAuthStatus, setMcpOAuthStatus] = useState<Record<string, McpOAuthStatusResponse>>({});
+  const [pendingMcpOAuthAction, setPendingMcpOAuthAction] = useState<string | null>(null);
+  const [showMcpImportModal, setShowMcpImportModal] = useState(false);
+  const [mcpImportJsonText, setMcpImportJsonText] = useState('');
+  const [isImportingMcpServers, setIsImportingMcpServers] = useState(false);
+  const [isExportingMcpServers, setIsExportingMcpServers] = useState(false);
 
   // Model picker state
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
@@ -639,6 +683,31 @@ export default function SettingsScreen({ navigation }: any) {
     return null;
   }, [config.baseUrl, config.apiKey]);
 
+  const refreshMcpOAuthStatuses = useCallback(async (servers: MCPServer[]) => {
+    if (!settingsClient || servers.length === 0) {
+      setMcpOAuthStatus({});
+      return;
+    }
+
+    const entries = await Promise.all(
+      servers.map(async (server) => {
+        try {
+          return [server.name, await settingsClient.getMcpOAuthStatus(server.name)] as const;
+        } catch (error: any) {
+          return [
+            server.name,
+            {
+              configured: false,
+              authenticated: false,
+              error: error?.message || 'Failed to load OAuth status',
+            },
+          ] as const;
+        }
+      }),
+    );
+    setMcpOAuthStatus(Object.fromEntries(entries));
+  }, [settingsClient]);
+
   // Clear pending model update timeout when settingsClient changes
   // to prevent sending updates to the previous server
   useEffect(() => {
@@ -653,6 +722,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) {
       setProfiles([]);
       setMcpServers([]);
+      setMcpOAuthStatus({});
       setRemoteSettings(null);
       setIsDotAgentsServer(false);
       return;
@@ -678,6 +748,7 @@ export default function SettingsScreen({ navigation }: any) {
       }
       if (serversRes) {
         setMcpServers(serversRes.servers);
+        void refreshMcpOAuthStatuses(serversRes.servers);
         successCount++;
       }
       if (settingsRes) {
@@ -714,7 +785,7 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setIsLoadingRemote(false);
     }
-  }, [settingsClient]);
+  }, [refreshMcpOAuthStatuses, settingsClient]);
 
   // Fetch skills from desktop
   const fetchSkills = useCallback(async () => {
@@ -868,6 +939,7 @@ export default function SettingsScreen({ navigation }: any) {
       // Refresh MCP servers and skills as they may have changed with the profile
       const serversRes = await settingsClient.getMCPServers();
       setMcpServers(serversRes.servers);
+      void refreshMcpOAuthStatuses(serversRes.servers);
       // Skills enabledForProfile is profile-specific, so refetch after switch
       if (isDotAgentsServer) {
         fetchSkills();
@@ -942,6 +1014,43 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const handleMcpOAuthStart = useCallback(async (serverName: string) => {
+    if (!settingsClient || pendingMcpOAuthAction) return;
+
+    setPendingMcpOAuthAction(`${serverName}:start`);
+    setRemoteError(null);
+    try {
+      await settingsClient.initiateMcpOAuthFlow(serverName);
+      setSaveStatusMessage(`Started OAuth for ${serverName}`);
+      await refreshMcpOAuthStatuses(mcpServers);
+    } catch (error: any) {
+      console.error('[Settings] Failed to start MCP OAuth:', error);
+      setRemoteError(error.message || 'Failed to start MCP OAuth');
+    } finally {
+      setPendingMcpOAuthAction(null);
+    }
+  }, [mcpServers, pendingMcpOAuthAction, refreshMcpOAuthStatuses, settingsClient]);
+
+  const handleMcpOAuthRevoke = useCallback(async (serverName: string) => {
+    if (!settingsClient || pendingMcpOAuthAction) return;
+
+    setPendingMcpOAuthAction(`${serverName}:revoke`);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.revokeMcpOAuthTokens(serverName);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to revoke MCP OAuth');
+      }
+      setSaveStatusMessage(`Revoked OAuth for ${serverName}`);
+      await refreshMcpOAuthStatuses(mcpServers);
+    } catch (error: any) {
+      console.error('[Settings] Failed to revoke MCP OAuth:', error);
+      setRemoteError(error.message || 'Failed to revoke MCP OAuth');
+    } finally {
+      setPendingMcpOAuthAction(null);
+    }
+  }, [mcpServers, pendingMcpOAuthAction, refreshMcpOAuthStatuses, settingsClient]);
+
   const openMcpServerCreateEditor = useCallback(() => {
     setMcpServerEditorMode('create');
     setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
@@ -1003,6 +1112,7 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       const response = await settingsClient.upsertMCPServerConfig(serverName, config);
       setMcpServers(prev => upsertMcpServerInList(prev, response.server));
+      void refreshMcpOAuthStatuses(upsertMcpServerInList(mcpServers, response.server));
       setSaveStatusMessage(mcpServerEditorMode === 'create' ? 'MCP server added' : 'MCP server saved');
       setShowMcpServerEditor(false);
       setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
@@ -1012,7 +1122,7 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setIsSavingMcpServer(false);
     }
-  }, [isSavingMcpServer, mcpServerDraft, mcpServerEditorMode, mcpServers, settingsClient]);
+  }, [isSavingMcpServer, mcpServerDraft, mcpServerEditorMode, mcpServers, refreshMcpOAuthStatuses, settingsClient]);
 
   const handleDeleteMcpServer = useCallback((server: MCPServer) => {
     if (!settingsClient) return;
@@ -1020,6 +1130,10 @@ export default function SettingsScreen({ navigation }: any) {
       try {
         await settingsClient.deleteMCPServerConfig(server.name);
         setMcpServers(prev => removeMcpServerFromList(prev, server.name));
+        setMcpOAuthStatus(prev => {
+          const { [server.name]: _removed, ...next } = prev;
+          return next;
+        });
         setSaveStatusMessage('MCP server deleted');
       } catch (error: any) {
         console.error('[Settings] Failed to delete MCP server:', error);
@@ -1040,6 +1154,83 @@ export default function SettingsScreen({ navigation }: any) {
       { text: 'Delete', style: 'destructive', onPress: () => { void deleteServer(); } },
     ]);
   }, [settingsClient]);
+
+  const closeMcpImportModal = useCallback(() => {
+    if (isImportingMcpServers) return;
+    setShowMcpImportModal(false);
+    setMcpImportJsonText('');
+  }, [isImportingMcpServers]);
+
+  const handleMcpServerImport = useCallback(async () => {
+    if (!settingsClient || !mcpImportJsonText.trim() || isImportingMcpServers) return;
+
+    let importConfig: MCPConfig;
+    try {
+      importConfig = parseMcpConfigImport(mcpImportJsonText);
+    } catch (error: any) {
+      Alert.alert('Import Failed', error.message || 'Invalid MCP import JSON');
+      return;
+    }
+
+    setIsImportingMcpServers(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importMCPServerConfigs(importConfig);
+      setShowMcpImportModal(false);
+      setMcpImportJsonText('');
+      const serversRes = await settingsClient.getMCPServers();
+      setMcpServers(serversRes.servers);
+      void refreshMcpOAuthStatuses(serversRes.servers);
+      setSaveStatusMessage(`Imported ${result.importedCount} MCP server${result.importedCount === 1 ? '' : 's'}`);
+      if (result.skippedReservedServerNames.length > 0) {
+        Alert.alert('Import Complete', `Imported ${result.importedCount} MCP server${result.importedCount === 1 ? '' : 's'}. Skipped reserved servers: ${result.skippedReservedServerNames.join(', ')}`);
+      }
+    } catch (error: any) {
+      console.error('[Settings] Failed to import MCP servers:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import MCP servers');
+    } finally {
+      setIsImportingMcpServers(false);
+    }
+  }, [isImportingMcpServers, mcpImportJsonText, refreshMcpOAuthStatuses, settingsClient]);
+
+  const shareMcpServerExport = useCallback(async () => {
+    if (!settingsClient || isExportingMcpServers) return;
+
+    setIsExportingMcpServers(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportMCPServerConfigs();
+      const serverCount = Object.keys(result.config.mcpServers || {}).length;
+      await Share.share({
+        message: JSON.stringify(result.config, null, 2),
+        title: 'mcp-servers.json',
+      });
+      setSaveStatusMessage(`Exported ${serverCount} MCP server${serverCount === 1 ? '' : 's'}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export MCP servers:', error);
+      Alert.alert('Export Failed', error.message || 'Failed to export MCP servers');
+    } finally {
+      setIsExportingMcpServers(false);
+    }
+  }, [isExportingMcpServers, settingsClient]);
+
+  const handleMcpServerExport = useCallback(() => {
+    if (!settingsClient || isExportingMcpServers) return;
+
+    const message = 'MCP configs can include headers or environment values. Review the exported JSON before sharing it.';
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (confirmFn?.(`Export MCP Servers\n\n${message}`)) {
+        void shareMcpServerExport();
+      }
+      return;
+    }
+
+    Alert.alert('Export MCP Servers', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Export', onPress: () => { void shareMcpServerExport(); } },
+    ]);
+  }, [isExportingMcpServers, settingsClient, shareMcpServerExport]);
 
   // Handle remote settings toggle
   const handleRemoteSettingToggle = async (key: keyof Settings, value: boolean) => {
@@ -2836,12 +3027,37 @@ export default function SettingsScreen({ navigation }: any) {
                   >
                     <Text style={styles.createAgentButtonText}>Add MCP server</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton]}
+                    onPress={() => setShowMcpImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import MCP servers')}
+                    disabled={isImportingMcpServers}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingMcpServers ? 'Importing...' : 'Import'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton, isExportingMcpServers && styles.profileActionButtonDisabled]}
+                    onPress={handleMcpServerExport}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Export MCP servers')}
+                    disabled={isExportingMcpServers}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isExportingMcpServers ? 'Exporting...' : 'Export'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
                 {mcpServers.length === 0 ? (
                   <Text style={styles.helperText}>No MCP servers configured</Text>
                 ) : (
-                  mcpServers.map((server) => (
+                  mcpServers.map((server) => {
+                    const oauthStatus = mcpOAuthStatus[server.name];
+                    const showOAuthControls = !!oauthStatus?.configured;
+                    return (
                     <View key={server.name} style={styles.serverRow}>
                       <Pressable
                         style={styles.serverInfo}
@@ -2859,6 +3075,7 @@ export default function SettingsScreen({ navigation }: any) {
                         <Text style={styles.serverMeta}>
                           {server.toolCount} tool{server.toolCount !== 1 ? 's' : ''}
                           {server.configDisabled ? ' • disabled in config' : ''}
+                          {showOAuthControls ? ` • OAuth ${oauthStatus.authenticated ? 'connected' : 'needs auth'}` : ''}
                           {server.error && ` • ${server.error}`}
                         </Text>
                       </Pressable>
@@ -2879,6 +3096,34 @@ export default function SettingsScreen({ navigation }: any) {
                         >
                           <Text style={styles.agentDeleteButtonText}>Delete</Text>
                         </TouchableOpacity>
+                        {showOAuthControls && (
+                          <>
+                            <TouchableOpacity
+                              style={styles.notePromoteButton}
+                              onPress={() => { void handleMcpOAuthStart(server.name); }}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Start OAuth for ${server.name}`)}
+                              disabled={pendingMcpOAuthAction !== null}
+                            >
+                              <Text style={styles.notePromoteButtonText}>
+                                {pendingMcpOAuthAction === `${server.name}:start` ? 'Starting...' : 'OAuth'}
+                              </Text>
+                            </TouchableOpacity>
+                            {oauthStatus.authenticated && (
+                              <TouchableOpacity
+                                style={styles.agentDeleteButton}
+                                onPress={() => { void handleMcpOAuthRevoke(server.name); }}
+                                accessibilityRole="button"
+                                accessibilityLabel={createButtonAccessibilityLabel(`Revoke OAuth for ${server.name}`)}
+                                disabled={pendingMcpOAuthAction !== null}
+                              >
+                                <Text style={styles.agentDeleteButtonText}>
+                                  {pendingMcpOAuthAction === `${server.name}:revoke` ? 'Revoking...' : 'Revoke'}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                          </>
+                        )}
                         <Switch
                           value={server.enabled}
                           onValueChange={(v) => handleServerToggle(server.name, v)}
@@ -2889,7 +3134,8 @@ export default function SettingsScreen({ navigation }: any) {
                         />
                       </View>
                     </View>
-                  ))
+                    );
+                  })
                 )}
               </CollapsibleSection>
             )}
@@ -3589,6 +3835,77 @@ export default function SettingsScreen({ navigation }: any) {
                       placeholder={'{"Authorization":"Bearer ..."}'}
                       placeholderTextColor={theme.colors.mutedForeground}
                     />
+
+                    {mcpServerDraft.transport === 'streamableHttp' && (
+                      <>
+                        <View style={styles.row}>
+                          <View style={styles.serverInfo}>
+                            <Text style={styles.label}>OAuth</Text>
+                            <Text style={styles.helperText}>Use this for protected HTTP MCP servers.</Text>
+                          </View>
+                          <Switch
+                            value={mcpServerDraft.oauthEnabled}
+                            onValueChange={(value) => handleMcpServerDraftChange('oauthEnabled', value)}
+                            disabled={isSavingMcpServer}
+                            accessibilityLabel={createSwitchAccessibilityLabel('MCP server OAuth')}
+                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                            thumbColor={mcpServerDraft.oauthEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                          />
+                        </View>
+
+                        {mcpServerDraft.oauthEnabled && (
+                          <>
+                            <Text style={styles.label}>OAuth Scope</Text>
+                            <TextInput
+                              style={styles.input}
+                              value={mcpServerDraft.oauthScope}
+                              onChangeText={(value) => handleMcpServerDraftChange('oauthScope', value)}
+                              editable={!isSavingMcpServer}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              placeholder="read write"
+                              placeholderTextColor={theme.colors.mutedForeground}
+                            />
+
+                            <Text style={styles.label}>OAuth Client ID</Text>
+                            <TextInput
+                              style={styles.input}
+                              value={mcpServerDraft.oauthClientId}
+                              onChangeText={(value) => handleMcpServerDraftChange('oauthClientId', value)}
+                              editable={!isSavingMcpServer}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              placeholder="Optional static client ID"
+                              placeholderTextColor={theme.colors.mutedForeground}
+                            />
+
+                            <View style={styles.row}>
+                              <Text style={styles.label}>Use discovery</Text>
+                              <Switch
+                                value={mcpServerDraft.oauthUseDiscovery}
+                                onValueChange={(value) => handleMcpServerDraftChange('oauthUseDiscovery', value)}
+                                disabled={isSavingMcpServer}
+                                accessibilityLabel={createSwitchAccessibilityLabel('MCP OAuth discovery')}
+                                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                                thumbColor={mcpServerDraft.oauthUseDiscovery ? theme.colors.primaryForeground : theme.colors.background}
+                              />
+                            </View>
+
+                            <View style={styles.row}>
+                              <Text style={styles.label}>Dynamic registration</Text>
+                              <Switch
+                                value={mcpServerDraft.oauthUseDynamicRegistration}
+                                onValueChange={(value) => handleMcpServerDraftChange('oauthUseDynamicRegistration', value)}
+                                disabled={isSavingMcpServer}
+                                accessibilityLabel={createSwitchAccessibilityLabel('MCP OAuth dynamic registration')}
+                                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                                thumbColor={mcpServerDraft.oauthUseDynamicRegistration ? theme.colors.primaryForeground : theme.colors.background}
+                              />
+                            </View>
+                          </>
+                        )}
+                      </>
+                    )}
                   </>
                 )}
 
@@ -3638,6 +3955,69 @@ export default function SettingsScreen({ navigation }: any) {
               >
                 <Text style={styles.importModalImportText}>
                   {isSavingMcpServer ? 'Saving...' : mcpServerEditorMode === 'create' ? 'Add server' : 'Save server'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MCP Server Import Modal */}
+      <Modal
+        visible={showMcpImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeMcpImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import MCP Servers</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeMcpImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close MCP server import modal"
+                disabled={isImportingMcpServers}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.importModalDescription}>
+              Paste JSON with a top-level mcpServers object. Existing server names are replaced.
+            </Text>
+
+            <TextInput
+              style={styles.importJsonInput}
+              value={mcpImportJsonText}
+              onChangeText={setMcpImportJsonText}
+              placeholder={'{"mcpServers":{"example":{"transport":"streamableHttp","url":"https://example.com/mcp"}}}'}
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isImportingMcpServers}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeMcpImportModal}
+                disabled={isImportingMcpServers}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!mcpImportJsonText.trim() || isImportingMcpServers) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleMcpServerImport(); }}
+                disabled={!mcpImportJsonText.trim() || isImportingMcpServers}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingMcpServers ? 'Importing...' : 'Import'}
                 </Text>
               </TouchableOpacity>
             </View>

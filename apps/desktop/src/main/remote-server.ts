@@ -43,7 +43,7 @@ import {
   getConversationVideoAssetPath,
   getConversationVideoMimeTypeFromFileName,
 } from "./conversation-video-assets"
-import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, MCPServerConfig, normalizeAgentProfileRole } from "../shared/types"
+import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, MCPConfig, MCPServerConfig, OAuthConfig, normalizeAgentProfileRole } from "../shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { inferTransportType } from "../shared/mcp-utils"
 import { agentSessionTracker } from "./agent-session-tracker"
@@ -90,7 +90,7 @@ import type {
   OperatorWhatsAppIntegrationSummary,
 } from "@dotagents/shared"
 import type { RendererHandlers } from "./renderer-handlers"
-import { INJECTED_RUNTIME_TOOL_TRANSPORT_NAME } from "../shared/runtime-tool-names"
+import { INJECTED_RUNTIME_TOOL_TRANSPORT_NAME, RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "../shared/runtime-tool-names"
 
 let server: FastifyInstance | null = null
 let lastError: string | undefined
@@ -3248,23 +3248,87 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   }
 
-  const sanitizeMcpServerConfig = (serverConfig: MCPServerConfig): MCPServerConfig => {
-    const { oauth: _oauth, ...safeConfig } = serverConfig as MCPServerConfig & { oauth?: unknown }
-    return safeConfig
+  type RemoteMcpServerConfig = Omit<MCPServerConfig, "oauth"> & { oauth?: OAuthConfig | null }
+
+  const isReservedRemoteMcpServerName = (serverName: string) => {
+    const normalizedName = serverName.trim().toLowerCase()
+    return RESERVED_RUNTIME_TOOL_SERVER_NAMES.some((reservedName) => reservedName.toLowerCase() === normalizedName)
   }
 
-  const normalizeRemoteMcpServerConfig = (serverName: string, input: unknown): MCPServerConfig => {
+  const sanitizeStringRecord = (
+    value: unknown,
+    fieldLabel: string,
+    serverName: string,
+  ): Record<string, string> | undefined => {
+    if (value === undefined) return undefined
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(`Server "${serverName}": ${fieldLabel} must be an object`)
+    }
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entryValue]) => [key, String(entryValue)]),
+    )
+  }
+
+  const sanitizeMcpOAuthConfig = (oauth: OAuthConfig | undefined): OAuthConfig | undefined => {
+    if (!oauth) return undefined
+    const safeConfig: OAuthConfig = {}
+    if (typeof oauth.scope === "string" && oauth.scope.trim()) safeConfig.scope = oauth.scope.trim()
+    if (typeof oauth.clientId === "string" && oauth.clientId.trim()) safeConfig.clientId = oauth.clientId.trim()
+    if (typeof oauth.redirectUri === "string" && oauth.redirectUri.trim()) safeConfig.redirectUri = oauth.redirectUri.trim()
+    if (typeof oauth.useDiscovery === "boolean") safeConfig.useDiscovery = oauth.useDiscovery
+    if (typeof oauth.useDynamicRegistration === "boolean") safeConfig.useDynamicRegistration = oauth.useDynamicRegistration
+    return Object.keys(safeConfig).length > 0 ? safeConfig : undefined
+  }
+
+  const sanitizeMcpServerConfig = (serverConfig: MCPServerConfig): MCPServerConfig => {
+    const { oauth, ...safeConfig } = serverConfig
+    const safeOAuth = sanitizeMcpOAuthConfig(oauth)
+    return safeOAuth ? { ...safeConfig, oauth: safeOAuth } : safeConfig
+  }
+
+  const normalizeRemoteMcpOAuthConfig = (serverName: string, input: unknown): OAuthConfig | null | undefined => {
+    if (input === undefined) return undefined
+    if (input === null) return null
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      throw new Error(`Server "${serverName}": OAuth config must be an object`)
+    }
+
+    const rawOAuth = input as Record<string, unknown>
+    const oauth: OAuthConfig = {
+      useDiscovery: rawOAuth.useDiscovery !== false,
+      useDynamicRegistration: rawOAuth.useDynamicRegistration !== false,
+    }
+    if (rawOAuth.scope !== undefined) {
+      if (typeof rawOAuth.scope !== "string") throw new Error(`Server "${serverName}": OAuth scope must be a string`)
+      if (rawOAuth.scope.trim()) oauth.scope = rawOAuth.scope.trim()
+    }
+    if (rawOAuth.clientId !== undefined) {
+      if (typeof rawOAuth.clientId !== "string") throw new Error(`Server "${serverName}": OAuth client ID must be a string`)
+      if (rawOAuth.clientId.trim()) oauth.clientId = rawOAuth.clientId.trim()
+    }
+    if (rawOAuth.useDiscovery !== undefined && typeof rawOAuth.useDiscovery !== "boolean") {
+      throw new Error(`Server "${serverName}": OAuth discovery flag must be a boolean`)
+    }
+    if (rawOAuth.useDynamicRegistration !== undefined && typeof rawOAuth.useDynamicRegistration !== "boolean") {
+      throw new Error(`Server "${serverName}": OAuth dynamic registration flag must be a boolean`)
+    }
+    return oauth
+  }
+
+  const normalizeRemoteMcpServerConfig = (serverName: string, input: unknown): RemoteMcpServerConfig => {
     if (!input || typeof input !== "object" || Array.isArray(input)) {
       throw new Error("MCP server config must be an object")
     }
 
-    const config = { ...(input as MCPServerConfig) }
-    const transport = config.transport ?? inferTransportType(config)
+    const config = { ...(input as RemoteMcpServerConfig) }
+    const transport = config.transport ?? (config.url?.trim()
+      ? config.url.trim().toLowerCase().startsWith("ws") ? "websocket" : "streamableHttp"
+      : "stdio")
     if (!["stdio", "websocket", "streamableHttp"].includes(transport)) {
       throw new Error(`Server "${serverName}": transport must be stdio, websocket, or streamableHttp`)
     }
 
-    const normalized: MCPServerConfig = {
+    const normalized: RemoteMcpServerConfig = {
       transport,
       disabled: config.disabled === true,
     }
@@ -3289,7 +3353,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       normalized.command = config.command.trim()
       normalized.args = config.args ?? []
-      normalized.env = config.env as Record<string, string> | undefined
+      normalized.env = sanitizeStringRecord(config.env, "env", serverName)
       return normalized
     }
 
@@ -3306,8 +3370,52 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
 
     normalized.url = config.url.trim()
-    normalized.headers = config.headers as Record<string, string> | undefined
+    normalized.headers = sanitizeStringRecord(config.headers, "headers", serverName)
+    const oauth = normalizeRemoteMcpOAuthConfig(serverName, Object.prototype.hasOwnProperty.call(config, "oauth") ? config.oauth : undefined)
+    if (transport === "streamableHttp" && oauth !== undefined) {
+      normalized.oauth = oauth
+    }
     return normalized
+  }
+
+  const finalizeRemoteMcpServerConfig = (
+    normalizedConfig: RemoteMcpServerConfig,
+    existingConfig?: MCPServerConfig,
+    preserveExistingOAuth: boolean = false,
+  ): MCPServerConfig => {
+    const hasOAuthField = Object.prototype.hasOwnProperty.call(normalizedConfig, "oauth")
+    if (normalizedConfig.oauth === null) {
+      const { oauth: _oauth, ...withoutOAuth } = normalizedConfig
+      return withoutOAuth
+    }
+    if (normalizedConfig.oauth) {
+      return existingConfig?.oauth
+        ? {
+            ...normalizedConfig,
+            oauth: {
+              ...existingConfig.oauth,
+              ...normalizedConfig.oauth,
+              ...(existingConfig.oauth.tokens ? { tokens: existingConfig.oauth.tokens } : {}),
+              ...(existingConfig.oauth.pendingAuth ? { pendingAuth: existingConfig.oauth.pendingAuth } : {}),
+            },
+          }
+        : normalizedConfig as MCPServerConfig
+    }
+    if (preserveExistingOAuth && existingConfig?.oauth && !hasOAuthField) {
+      return { ...normalizedConfig, oauth: existingConfig.oauth }
+    }
+    return normalizedConfig as MCPServerConfig
+  }
+
+  const buildExportableMcpConfig = (): MCPConfig => {
+    const servers = configStore.get().mcpConfig?.mcpServers || {}
+    return {
+      mcpServers: Object.fromEntries(
+        Object.entries(servers)
+          .filter(([serverName]) => !isReservedRemoteMcpServerName(serverName))
+          .map(([serverName, serverConfig]) => [serverName, sanitizeMcpServerConfig(serverConfig as MCPServerConfig)]),
+      ),
+    }
   }
 
   // GET /v1/mcp/servers - List MCP servers with status
@@ -3328,6 +3436,77 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get MCP servers", error)
       return reply.code(500).send({ error: "Failed to get MCP servers" })
+    }
+  })
+
+  // GET /v1/mcp/config/export - Export user-configurable MCP server configs
+  fastify.get("/v1/mcp/config/export", async (_req, reply) => {
+    try {
+      return reply.send({ success: true, config: buildExportableMcpConfig() })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to export MCP server configs", error)
+      return reply.code(500).send({ error: error?.message || "Failed to export MCP server configs" })
+    }
+  })
+
+  // POST /v1/mcp/config/import - Import user-configurable MCP server configs
+  fastify.post("/v1/mcp/config/import", async (req, reply) => {
+    try {
+      const body = req.body as { config?: { mcpServers?: unknown } } | null
+      const importedServers = body?.config?.mcpServers
+      if (!importedServers || typeof importedServers !== "object" || Array.isArray(importedServers)) {
+        return reply.code(400).send({ error: "Import body must include config.mcpServers" })
+      }
+
+      const currentConfig = configStore.get()
+      const currentServers = currentConfig.mcpConfig?.mcpServers || {}
+      const nextMcpServers: Record<string, MCPServerConfig> = { ...currentServers }
+      const skippedReservedServerNames: string[] = []
+      const importedServerNames: string[] = []
+
+      for (const [rawServerName, rawServerConfig] of Object.entries(importedServers as Record<string, unknown>)) {
+        const serverName = rawServerName.trim()
+        if (!serverName) continue
+        if (isReservedRemoteMcpServerName(serverName)) {
+          skippedReservedServerNames.push(serverName)
+          continue
+        }
+
+        const normalizedConfig = normalizeRemoteMcpServerConfig(serverName, rawServerConfig)
+        nextMcpServers[serverName] = finalizeRemoteMcpServerConfig(
+          normalizedConfig,
+          currentServers[serverName] as MCPServerConfig | undefined,
+          false,
+        )
+        importedServerNames.push(serverName)
+      }
+
+      configStore.save({
+        ...currentConfig,
+        mcpConfig: {
+          ...(currentConfig.mcpConfig || { mcpServers: {} }),
+          mcpServers: nextMcpServers,
+        },
+      })
+
+      await Promise.all(importedServerNames.map(async (serverName) => {
+        const serverConfig = nextMcpServers[serverName]
+        const result = serverConfig.disabled
+          ? await mcpService.stopServer(serverName)
+          : await mcpService.restartServer(serverName)
+        if (!result.success) {
+          diagnosticsService.logError("remote-server", `MCP server ${serverName} imported but failed to restart`, result.error)
+        }
+      }))
+
+      return reply.send({
+        success: true,
+        importedCount: importedServerNames.length,
+        skippedReservedServerNames,
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import MCP server configs", error)
+      return reply.code(400).send({ error: error?.message || "Failed to import MCP server configs" })
     }
   })
 
@@ -3365,9 +3544,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const currentConfig = configStore.get()
       const existingConfig = currentConfig.mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined
       const normalizedConfig = normalizeRemoteMcpServerConfig(serverName, body?.config)
-      const nextServerConfig = existingConfig?.oauth
-        ? { ...normalizedConfig, oauth: existingConfig.oauth }
-        : normalizedConfig
+      const nextServerConfig = finalizeRemoteMcpServerConfig(normalizedConfig, existingConfig, true)
 
       const nextMcpServers = {
         ...(currentConfig.mcpConfig?.mcpServers || {}),
@@ -3426,6 +3603,60 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to delete MCP server config", error)
       return reply.code(500).send({ error: error?.message || "Failed to delete MCP server config" })
+    }
+  })
+
+  // GET /v1/mcp/servers/:name/oauth - Check OAuth status for one MCP server
+  fastify.get("/v1/mcp/servers/:name/oauth", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const status = await mcpService.getOAuthStatus(serverName)
+      return reply.send(status)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get MCP OAuth status", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get MCP OAuth status" })
+    }
+  })
+
+  // POST /v1/mcp/servers/:name/oauth/start - Start OAuth flow for one MCP server
+  fastify.post("/v1/mcp/servers/:name/oauth/start", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const result = await mcpService.initiateOAuthFlow(serverName)
+      return reply.send(result)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to start MCP OAuth", error)
+      return reply.code(400).send({ error: error?.message || "Failed to start MCP OAuth" })
+    }
+  })
+
+  // POST /v1/mcp/servers/:name/oauth/revoke - Revoke OAuth tokens for one MCP server
+  fastify.post("/v1/mcp/servers/:name/oauth/revoke", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const result = await mcpService.revokeOAuthTokens(serverName)
+      if (!result.success) {
+        return reply.code(400).send(result)
+      }
+      return reply.send(result)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to revoke MCP OAuth", error)
+      return reply.code(500).send({ error: error?.message || "Failed to revoke MCP OAuth" })
     }
   })
 

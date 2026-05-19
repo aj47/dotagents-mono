@@ -24,9 +24,10 @@ test('keeps mobile settings overlay close affordances text-first and explicitly 
   const closeTextMatches = [
     ...settingsSource.matchAll(/<Text style=\{styles\.modalCloseText\}>Close<\/Text>/g),
   ];
-  assert.equal(closeTextMatches.length, 6);
+  assert.equal(closeTextMatches.length, 7);
 
   assert.match(settingsSource, /accessibilityLabel="Close MCP server editor"/);
+  assert.match(settingsSource, /accessibilityLabel="Close MCP server import modal"/);
   assert.match(settingsSource, /accessibilityLabel="Close model picker"/);
   assert.match(settingsSource, /accessibilityLabel="Close endpoint picker"/);
   assert.match(settingsSource, /accessibilityLabel="Close TTS model picker"/);

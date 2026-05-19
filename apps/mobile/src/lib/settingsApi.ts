@@ -215,6 +215,13 @@ export interface OperatorMCPServerTestResponse extends OperatorActionResponse {
 
 export type MCPTransportType = 'stdio' | 'websocket' | 'streamableHttp';
 
+export interface OAuthConfig {
+  scope?: string;
+  clientId?: string;
+  useDiscovery?: boolean;
+  useDynamicRegistration?: boolean;
+}
+
 export interface MCPServerConfig {
   transport?: MCPTransportType;
   command?: string;
@@ -222,14 +229,47 @@ export interface MCPServerConfig {
   env?: Record<string, string>;
   url?: string;
   headers?: Record<string, string>;
+  oauth?: OAuthConfig | null;
   timeout?: number;
   disabled?: boolean;
+}
+
+export interface MCPConfig {
+  mcpServers: Record<string, MCPServerConfig>;
 }
 
 export interface MCPServerConfigResponse {
   name: string;
   config: MCPServerConfig;
   server: MCPServer;
+}
+
+export interface MCPServerConfigImportResponse {
+  success: true;
+  importedCount: number;
+  skippedReservedServerNames: string[];
+}
+
+export interface MCPServerConfigExportResponse {
+  success: true;
+  config: MCPConfig;
+}
+
+export interface McpOAuthStatusResponse {
+  configured: boolean;
+  authenticated: boolean;
+  tokenExpiry?: number;
+  error?: string;
+}
+
+export interface McpOAuthStartResponse {
+  authorizationUrl: string;
+  state: string;
+}
+
+export interface McpOAuthRevokeResponse {
+  success: boolean;
+  error?: string;
 }
 
 export type KnowledgeNoteContext = 'auto' | 'search-only';
@@ -416,6 +456,33 @@ export class SettingsApiClient {
   async deleteMCPServerConfig(serverName: string): Promise<{ success: boolean; server: string }> {
     return this.request<{ success: boolean; server: string }>(`/mcp/servers/${encodeURIComponent(serverName)}`, {
       method: 'DELETE',
+    });
+  }
+
+  async importMCPServerConfigs(config: MCPConfig): Promise<MCPServerConfigImportResponse> {
+    return this.request<MCPServerConfigImportResponse>('/mcp/config/import', {
+      method: 'POST',
+      body: JSON.stringify({ config }),
+    });
+  }
+
+  async exportMCPServerConfigs(): Promise<MCPServerConfigExportResponse> {
+    return this.request<MCPServerConfigExportResponse>('/mcp/config/export');
+  }
+
+  async getMcpOAuthStatus(serverName: string): Promise<McpOAuthStatusResponse> {
+    return this.request<McpOAuthStatusResponse>(`/mcp/servers/${encodeURIComponent(serverName)}/oauth`);
+  }
+
+  async initiateMcpOAuthFlow(serverName: string): Promise<McpOAuthStartResponse> {
+    return this.request<McpOAuthStartResponse>(`/mcp/servers/${encodeURIComponent(serverName)}/oauth/start`, {
+      method: 'POST',
+    });
+  }
+
+  async revokeMcpOAuthTokens(serverName: string): Promise<McpOAuthRevokeResponse> {
+    return this.request<McpOAuthRevokeResponse>(`/mcp/servers/${encodeURIComponent(serverName)}/oauth/revoke`, {
+      method: 'POST',
     });
   }
 
