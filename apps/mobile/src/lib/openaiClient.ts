@@ -41,7 +41,22 @@ export type ChatMessage = {
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
   /** Render-only aligned call/result pairs for pending delegation tool activity. */
-  toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult }>;
+  toolExecutions?: Array<{
+    toolCall: ToolCall;
+    result?: ToolResult;
+    executionStats?: (AgentProgressStep['executionStats'] & {
+      model?: string;
+      subagentId?: string;
+    }) | null;
+  }>;
+  toolExecutionStats?: Array<
+    | (AgentProgressStep['executionStats'] & {
+        model?: string;
+        subagentId?: string;
+      })
+    | null
+    | undefined
+  >;
   toolApproval?: NonNullable<AgentProgressUpdate['pendingToolApproval']>;
   variant?: 'delegation' | 'approval';
 };
@@ -72,6 +87,7 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
   return messages.map((message) => {
     const requestMessage = { ...message };
     delete requestMessage.toolExecutions;
+    delete requestMessage.toolExecutionStats;
     delete requestMessage.displayContent;
 
     if (message.toolExecutions?.length) {

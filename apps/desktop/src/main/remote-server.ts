@@ -181,6 +181,8 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "langfusePublicKey",
   "langfuseSecretKey",
   "langfuseBaseUrl",
+  "localTraceLoggingEnabled",
+  "localTraceLogPath",
   "openaiApiKey",
   "openaiBaseUrl",
   "groqApiKey",
@@ -4813,6 +4815,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         langfusePublicKey: cfg.langfusePublicKey ?? "",
         langfuseSecretKey: cfg.langfuseSecretKey ? "••••••••" : "",
         langfuseBaseUrl: cfg.langfuseBaseUrl ?? "",
+        localTraceLoggingEnabled: cfg.localTraceLoggingEnabled ?? false,
+        localTraceLogPath: cfg.localTraceLogPath ?? "",
         // STT/TTS/Post-Processing Provider settings
         sttProviderId: cfg.sttProviderId || "openai",
         openaiSttLanguage: cfg.openaiSttLanguage || "",
@@ -5202,6 +5206,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.langfuseBaseUrl === "string") {
         updates.langfuseBaseUrl = body.langfuseBaseUrl
+      }
+      if (typeof body.localTraceLoggingEnabled === "boolean") {
+        updates.localTraceLoggingEnabled = body.localTraceLoggingEnabled
+      }
+      if (typeof body.localTraceLogPath === "string") {
+        updates.localTraceLogPath = body.localTraceLogPath.trim() || undefined
       }
       // STT Provider
       const validSttProviders = ["openai", "groq", "parakeet"]
@@ -6752,6 +6762,40 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get agent profiles", error)
       return reply.code(500).send({ error: "Failed to get agent profiles" })
+    }
+  })
+
+  // POST /v1/agent-profiles/reload - Rescan modular agent profile files from disk
+  fastify.post("/v1/agent-profiles/reload", async (_req, reply) => {
+    try {
+      agentProfileService.reload()
+      const profiles = agentProfileService.getAll()
+
+      return reply.send({
+        success: true,
+        profiles: profiles.map(p => ({
+          id: p.id,
+          name: p.name,
+          displayName: p.displayName,
+          description: p.description,
+          avatarDataUrl: p.avatarDataUrl,
+          enabled: p.enabled,
+          isBuiltIn: p.isBuiltIn,
+          isUserProfile: p.isUserProfile,
+          isAgentTarget: p.isAgentTarget,
+          isDefault: p.isDefault,
+          role: normalizeAgentProfileRole(p.role),
+          connectionType: p.connection.type,
+          autoSpawn: p.autoSpawn,
+          guidelines: p.guidelines,
+          systemPrompt: p.systemPrompt,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        })),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to reload agent profiles", error)
+      return reply.code(500).send({ error: error?.message || "Failed to reload agent profiles" })
     }
   })
 

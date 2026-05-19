@@ -42,6 +42,8 @@ test('restores Codex, speech, auto-paste, and Discord mobile settings without sh
   assert.match(settingsSource, /SUPERTONIC_TTS_LANGUAGES/);
   assert.match(settingsSource, /mcpAutoPasteEnabled/);
   assert.match(settingsSource, /mcpAutoPasteDelay/);
+  assert.match(settingsSource, /localTraceLoggingEnabled/);
+  assert.match(settingsSource, /localTraceLogPath/);
   assert.match(settingsSource, /DISCORD_LIST_SETTING_SECTIONS/);
   assert.match(settingsSource, /<CollapsibleSection id="discord" title="Discord">/);
   assert.doesNotMatch(settingsSource, /APP_SHELL_PROVIDER_SETUP_PRESENTATION/);
@@ -59,6 +61,8 @@ test('mobile settings API types and desktop remote server expose the restored se
   assert.match(remoteServerSource, /openaiApiKey: cfg\.openaiApiKey \? REMOTE_SERVER_SECRET_MASK : ""/);
   assert.match(remoteServerSource, /updates\.openaiReasoningEffort/);
   assert.match(remoteServerSource, /updates\.mcpAutoPasteDelay/);
+  assert.match(remoteServerSource, /localTraceLoggingEnabled: cfg\.localTraceLoggingEnabled \?\? false/);
+  assert.match(remoteServerSource, /updates\.localTraceLogPath/);
   assert.match(remoteServerSource, /updates\.discordBotToken/);
   assert.match(remoteServerSource, /updates\.supertonicSteps/);
 });

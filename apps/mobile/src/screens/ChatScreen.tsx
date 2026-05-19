@@ -478,6 +478,135 @@ const applyUserResponseToMessages = (
   return updatedMessages;
 };
 
+type TurnDurationEntry = {
+  durationMs: number;
+  isLive: boolean;
+};
+
+type TurnDurationSummary = {
+  byUserTimestamp: Map<number, TurnDurationEntry>;
+  totalMs: number;
+  hasLive: boolean;
+};
+
+type ToolExecutionStats = {
+  durationMs?: number;
+  totalTokens?: number;
+  toolUseCount?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheHitTokens?: number;
+  model?: string;
+  subagentId?: string;
+};
+
+const TURN_DURATION_TICK_MS = 1000;
+
+const isThinkingOnlyMessage = (message: ChatMessage): boolean =>
+  message.role === 'assistant' &&
+  (!message.content || message.content.length === 0) &&
+  !message.toolCalls?.length &&
+  !message.toolResults?.length;
+
+const computeTurnDurations = (
+  messages: ChatMessage[],
+  isComplete: boolean,
+  nowMs: number
+): TurnDurationSummary => {
+  const byUserTimestamp = new Map<number, TurnDurationEntry>();
+  let totalMs = 0;
+  let hasLive = false;
+
+  for (let i = 0; i < messages.length; i += 1) {
+    const message = messages[i];
+    if (message.role !== 'user' || typeof message.timestamp !== 'number') continue;
+
+    let endTimestamp: number | null = null;
+    let hasNextUserMessage = false;
+    for (let j = i + 1; j < messages.length; j += 1) {
+      const nextMessage = messages[j];
+      if (nextMessage.role === 'user') {
+        hasNextUserMessage = true;
+        break;
+      }
+      if (typeof nextMessage.timestamp === 'number' && !isThinkingOnlyMessage(nextMessage)) {
+        endTimestamp = nextMessage.timestamp;
+      }
+    }
+
+    const isLive = !hasNextUserMessage && !isComplete;
+    const effectiveEndTimestamp = isLive ? nowMs : (endTimestamp ?? message.timestamp);
+    const durationMs = Math.max(0, effectiveEndTimestamp - message.timestamp);
+    const entry = { durationMs, isLive };
+
+    byUserTimestamp.set(message.timestamp, entry);
+    totalMs += durationMs;
+    if (isLive) hasLive = true;
+  }
+
+  return { byUserTimestamp, totalMs, hasLive };
+};
+
+const formatTurnDuration = (durationMs: number): string => {
+  if (!Number.isFinite(durationMs) || durationMs <= 0) return '0s';
+  const seconds = Math.max(1, Math.round(durationMs / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes < 60) return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+};
+
+const getFiniteToolExecutionStat = (value: number | null | undefined): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+const formatToolExecutionDuration = (durationMs: number): string => {
+  if (durationMs < 1000) return `${Math.round(durationMs)}ms`;
+  if (durationMs < 60000) return `${(durationMs / 1000).toFixed(1)}s`;
+  const minutes = Math.floor(durationMs / 60000);
+  const seconds = Math.round((durationMs % 60000) / 1000);
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+};
+
+const formatToolExecutionTokens = (tokens: number): string => {
+  if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
+  if (tokens >= 1000) return `${(tokens / 1000).toFixed(tokens >= 10000 ? 0 : 1)}k`;
+  return `${tokens}`;
+};
+
+const truncateToolExecutionSubagentId = (id: string): string => {
+  if (id.length > 12 && id.includes('-')) return `agent:${id.split('-')[0].slice(0, 7)}`;
+  if (id.length <= 12) return id;
+  return `${id.slice(0, 10)}...`;
+};
+
+const getAgentProgressStepToolExecutionStats = (
+  step?: { executionStats?: ToolExecutionStats | null; subagentId?: string | null } | null
+): ToolExecutionStats | undefined => {
+  if (!step?.executionStats) return undefined;
+  return {
+    ...step.executionStats,
+    ...(step.subagentId ? { subagentId: step.subagentId } : {}),
+  };
+};
+
+const formatToolExecutionStatsLabel = (stats?: ToolExecutionStats | null): string | null => {
+  const durationMs = getFiniteToolExecutionStat(stats?.durationMs);
+  const totalTokens = getFiniteToolExecutionStat(stats?.totalTokens);
+  const model = stats?.model?.trim();
+  const subagentId = stats?.subagentId?.trim();
+  const parts = [
+    subagentId ? truncateToolExecutionSubagentId(subagentId) : null,
+    model || null,
+    durationMs !== undefined ? formatToolExecutionDuration(durationMs) : null,
+    totalTokens !== undefined ? `${formatToolExecutionTokens(totalTokens)} tokens` : null,
+  ].filter((part): part is string => Boolean(part));
+
+  return parts.length > 0 ? parts.join(' • ') : null;
+};
+
 export default function ChatScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -592,6 +721,22 @@ export default function ChatScreen({ route, navigation }: any) {
   const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [turnDurationNow, setTurnDurationNow] = useState(() => Date.now());
+  const hasLiveAgentTurn = responding || conversationState === 'running';
+  useEffect(() => {
+    if (!hasLiveAgentTurn) return;
+    setTurnDurationNow(Date.now());
+    const interval = setInterval(() => setTurnDurationNow(Date.now()), TURN_DURATION_TICK_MS);
+    return () => clearInterval(interval);
+  }, [hasLiveAgentTurn]);
+  const turnDurations = useMemo(
+    () => computeTurnDurations(messages, !hasLiveAgentTurn, turnDurationNow),
+    [hasLiveAgentTurn, messages, turnDurationNow]
+  );
+  const headerTotalTurnDuration = turnDurations.totalMs > 0
+    ? formatTurnDuration(turnDurations.totalMs)
+    : null;
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -882,6 +1027,24 @@ export default function ChatScreen({ route, navigation }: any) {
             </Text>
             <Ionicons name="chevron-down" size={10} color={theme.colors.primary} />
           </View>
+          {headerTotalTurnDuration && (
+            <View style={[
+              styles.headerDurationChip,
+              turnDurations.hasLive && styles.headerDurationChipLive,
+            ]}>
+              <Ionicons
+                name="time-outline"
+                size={10}
+                color={turnDurations.hasLive ? theme.colors.primary : theme.colors.mutedForeground}
+              />
+              <Text style={[
+                styles.headerDurationChipText,
+                turnDurations.hasLive && { color: theme.colors.primary },
+              ]}>
+                {headerTotalTurnDuration}{turnDurations.hasLive ? ' live' : ''}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       ),
       headerLeft: () => (
@@ -987,10 +1150,9 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, handleToggleCurrentSessionPinned, isCurrentSessionPinned, responding, headerConversationLabel, headerConversationState, headerConversationChipStyle, theme, isDark, sessionStore, currentProfile, styles]);
+  }, [navigation, handsFree, handleKillSwitch, handleNewChat, handleToggleCurrentSessionPinned, isCurrentSessionPinned, responding, headerConversationLabel, headerConversationState, headerConversationChipStyle, headerTotalTurnDuration, turnDurations.hasLive, theme, isDark, sessionStore, currentProfile, styles]);
 
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
     if (!settingsClient) {
       Alert.alert('Connection Required', 'Configure your desktop server connection before responding to tool approvals.');
@@ -1993,6 +2155,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (update.steps && update.steps.length > 0) {
       let currentToolCalls: any[] = [];
       let currentToolResults: any[] = [];
+      const currentToolExecutionStats: Array<ToolExecutionStats | undefined> = [];
       let thinkingContent = '';
 
       for (const step of update.steps) {
@@ -2002,6 +2165,7 @@ export default function ChatScreen({ route, navigation }: any) {
         } else if (step.type === 'tool_call') {
           if (step.toolCall) {
             currentToolCalls.push(step.toolCall);
+            currentToolExecutionStats.push(getAgentProgressStepToolExecutionStats(step));
           }
           if (step.toolResult) {
             currentToolResults.push(step.toolResult);
@@ -2024,11 +2188,20 @@ export default function ChatScreen({ route, navigation }: any) {
         !!update.streamingContent?.text;
 
       if (hasCurrentAssistantFeedback) {
+        const toolExecutions = currentToolExecutionStats.some(Boolean)
+          ? currentToolCalls.map((toolCall, index) => ({
+              toolCall,
+              result: currentToolResults[index],
+              executionStats: currentToolExecutionStats[index],
+            }))
+          : undefined;
         messages.push({
           role: 'assistant',
           content: thinkingContent || (hasCurrentToolActivity ? 'Executing tools...' : ''),
           toolCalls: currentToolCalls.length > 0 ? currentToolCalls : undefined,
           toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
+          toolExecutionStats: currentToolExecutionStats.some(Boolean) ? currentToolExecutionStats : undefined,
+          toolExecutions,
         });
       } else if (
         !update.isComplete &&
@@ -3495,6 +3668,12 @@ export default function ChatScreen({ route, navigation }: any) {
               !!currentSession?.serverConversationId &&
               (m.role === 'user' || m.role === 'assistant') &&
               m.variant !== 'approval';
+            const turnDuration = m.role === 'user' && typeof m.timestamp === 'number'
+              ? turnDurations.byUserTimestamp.get(m.timestamp)
+              : undefined;
+            const turnDurationLabel = turnDuration
+              ? `Agent time ${formatTurnDuration(turnDuration.durationMs)}${turnDuration.isLive ? ' live' : ''}`
+              : null;
 
             const toolCalls = m.toolCalls ?? [];
             const toolResults = m.toolResults ?? [];
@@ -3506,12 +3685,14 @@ export default function ChatScreen({ route, navigation }: any) {
                   label: undefined as string | undefined,
                   origIdx,
                   result: execution.result,
+                  executionStats: execution.executionStats,
                 }))
               : toolCalls.map((toolCall, origIdx) => ({
                   toolCall,
                   label: undefined as string | undefined,
                   origIdx,
                   result: toolResults[origIdx],
+                  executionStats: m.toolExecutionStats?.[origIdx],
                 })))
               .filter((entry) => !HIDDEN_META_TOOLS.has(entry.toolCall.name));
             const fallbackToolEntries =
@@ -3524,6 +3705,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     label: 'Tool result',
                     origIdx: idx,
                     result,
+                    executionStats: m.toolExecutionStats?.[idx],
                   }))
                 : [];
             const renderedToolEntries = fallbackToolEntries.length > 0
@@ -3712,6 +3894,29 @@ export default function ChatScreen({ route, navigation }: any) {
                       </View>
                     ) : null}
 
+                    {turnDurationLabel && (
+                      <View
+                        style={[
+                          styles.turnDurationBadge,
+                          turnDuration?.isLive && styles.turnDurationBadgeLive,
+                        ]}
+                        accessibilityRole="text"
+                        accessibilityLabel={turnDurationLabel}
+                      >
+                        <Ionicons
+                          name="time-outline"
+                          size={12}
+                          color={turnDuration?.isLive ? theme.colors.primary : theme.colors.mutedForeground}
+                        />
+                        <Text style={[
+                          styles.turnDurationBadgeText,
+                          turnDuration?.isLive && { color: theme.colors.primary },
+                        ]}>
+                          {turnDurationLabel}
+                        </Text>
+                      </View>
+                    )}
+
                     {/* Unified Tool Execution Display - only show when there are displayable tool calls */}
                     {displayToolCallCount > 0 && (
                       <>
@@ -3790,8 +3995,9 @@ export default function ChatScreen({ route, navigation }: any) {
                             allSuccess && styles.toolExecutionSuccess,
                             hasErrors && styles.toolExecutionError,
                           ]}>
-                            {renderedToolEntries.map(({ toolCall, label, origIdx, result }, idx) => {
+                            {renderedToolEntries.map(({ toolCall, label, origIdx, result, executionStats }, idx) => {
                               const isResultPending = !result;
+                              const executionStatsLabel = formatToolExecutionStatsLabel(executionStats);
                               // Use message id or fallback to array index to ensure stable, unique keys
                               // that won't collide when m.id is undefined (which is common)
                               const stableMessageKey = m.id ?? String(i);
@@ -3831,6 +4037,16 @@ export default function ChatScreen({ route, navigation }: any) {
                                         </Text>
                                       </ScrollView>
                                     </View>
+                                  )}
+
+                                  {executionStatsLabel && (
+                                    <Text
+                                      style={styles.toolExecutionStatsText}
+                                      accessibilityRole="text"
+                                      accessibilityLabel={`Tool execution stats: ${executionStatsLabel}`}
+                                    >
+                                      {executionStatsLabel}
+                                    </Text>
                                   )}
 
                                   {/* Result for this specific tool call */}
@@ -4252,7 +4468,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	              accessibilityLabel="Attach images"
 	              accessibilityHint="Select one or more images to include with your next message."
 	            >
-	              <Text style={styles.ttsToggleText}>🖼️</Text>
+	              <Ionicons
+                  name="image-outline"
+                  size={18}
+                  color={pendingImages.length > 0 ? theme.colors.primary : theme.colors.mutedForeground}
+                />
 	            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.ttsToggle, ttsEnabled && styles.ttsToggleOn]}
@@ -4264,7 +4484,11 @@ export default function ChatScreen({ route, navigation }: any) {
               accessibilityHint="Toggles spoken playback for assistant responses."
               aria-checked={ttsEnabled}
             >
-              <Text style={styles.ttsToggleText}>{ttsEnabled ? '🔊' : '🔇'}</Text>
+              <Ionicons
+                name={ttsEnabled ? 'volume-high-outline' : 'volume-mute-outline'}
+                size={18}
+                color={ttsEnabled ? theme.colors.primary : theme.colors.mutedForeground}
+              />
             </TouchableOpacity>
 	            {!handsFree && (
 	              <TouchableOpacity
@@ -4277,7 +4501,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	                accessibilityLabel="Edit before send"
 	                accessibilityHint="When enabled, releasing the mic inserts the transcript into the input so you can edit before sending."
 	              >
-	                <Text style={styles.ttsToggleText}>✏️</Text>
+	                <Ionicons
+                    name="create-outline"
+                    size={18}
+                    color={willCancel ? theme.colors.primary : theme.colors.mutedForeground}
+                  />
 	              </TouchableOpacity>
 	            )}
             <TextInput
@@ -4319,7 +4547,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 accessibilityHint="Adds your typed text and attached images to the queued-messages list without sending immediately."
                 accessibilityState={{ disabled: !composerHasContent }}
               >
-                <Text style={styles.queueButtonText}>Queue</Text>
+                <Ionicons name="time-outline" size={18} color={theme.colors.primary} />
               </TouchableOpacity>
             )}
 	            <TouchableOpacity
@@ -4332,7 +4560,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
               accessibilityState={{ disabled: !composerHasContent }}
 	            >
-              <Text style={styles.sendButtonText}>Send</Text>
+              <Ionicons name="send-outline" size={18} color={theme.colors.primaryForeground} />
             </TouchableOpacity>
           </View>
           {/* Large mic button - ~20% of screen height */}
@@ -4356,9 +4584,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
 	              onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
             >
-              <Text style={styles.micText} selectable={false}>
-                {listening ? '🎙️' : '🎤'}
-              </Text>
+              <Ionicons
+                name={listening ? 'mic' : 'mic-outline'}
+                size={20}
+                color={listening ? theme.colors.primaryForeground : theme.colors.mutedForeground}
+              />
               <Text style={[styles.micLabel, listening && styles.micLabelOn]} selectable={false}>
 	                {micButtonLabel}
               </Text>
@@ -4457,6 +4687,25 @@ function createStyles(theme: Theme, screenHeight: number) {
       ...theme.typography.caption,
       fontWeight: '700',
     },
+    headerDurationChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      marginTop: 2,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 999,
+      backgroundColor: theme.colors.muted,
+    },
+    headerDurationChipLive: {
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+    },
+    headerDurationChipText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontSize: 10,
+      fontWeight: '700',
+    },
     headerActionButton,
     headerEdgeActionButton,
     headerPinButton: {
@@ -4505,6 +4754,26 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderLeftWidth: 2,
       borderLeftColor: hexToRgba(theme.colors.mutedForeground, 0.3),
       paddingLeft: spacing.xs,
+    },
+    turnDurationBadge: {
+      alignSelf: 'flex-end',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 3,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: theme.colors.muted,
+    },
+    turnDurationBadgeLive: {
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+    },
+    turnDurationBadgeText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      fontWeight: '700',
     },
     messageHeader: {
       flexDirection: 'row',
@@ -4849,24 +5118,28 @@ function createStyles(theme: Theme, screenHeight: number) {
     sendButton: {
       backgroundColor: theme.colors.primary,
       minHeight: 44,
-      minWidth: 64,
-      paddingHorizontal: spacing.md,
+      minWidth: 44,
+      paddingHorizontal: spacing.sm,
       paddingVertical: spacing.sm,
       borderRadius: radius.md,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 4,
     },
     queueButton: {
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.background,
       minHeight: 44,
-      minWidth: 64,
-      paddingHorizontal: spacing.md,
+      minWidth: 44,
+      paddingHorizontal: spacing.sm,
       paddingVertical: spacing.sm,
       borderRadius: radius.md,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 4,
     },
     sendButtonDisabled: {
       opacity: 0.5,
@@ -5206,6 +5479,13 @@ function createStyles(theme: Theme, screenHeight: number) {
       marginBottom: 2,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
+    },
+    toolExecutionStatsText: {
+      marginTop: 2,
+      marginBottom: 2,
+      fontSize: 9,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      color: theme.colors.mutedForeground,
     },
     toolParamsScroll: {
       maxHeight: 80,

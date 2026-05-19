@@ -89,6 +89,11 @@ export type {
   ApiAgentProfilesResponse as AgentProfilesResponse,
 } from '@dotagents/shared';
 
+export interface AgentProfilesReloadResponse {
+  success: boolean;
+  profiles: ApiAgentProfile[];
+}
+
 // Import types needed for the class implementation
 import type {
   Profile,
@@ -1279,6 +1284,12 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
 
   async getAgentProfiles(): Promise<ApiAgentProfilesResponse> {
     return this.request<ApiAgentProfilesResponse>('/agent-profiles');
+  }
+
+  async reloadAgentProfiles(): Promise<AgentProfilesReloadResponse> {
+    return this.request<AgentProfilesReloadResponse>('/agent-profiles/reload', {
+      method: 'POST',
+    });
   }
 
   async getAgentProfile(id: string): Promise<{ profile: ApiAgentProfileFull }> {

@@ -43,6 +43,7 @@ import { useTheme } from '../ui/ThemeProvider';
 import { radius, spacing } from '../ui/theme';
 
 const RECENT_ERROR_COUNT = 8;
+const RECENT_LOG_COUNT = 20;
 const RECENT_AUDIT_ENTRY_COUNT = 10;
 const DISCORD_LOG_PREVIEW_COUNT = 6;
 const MCP_LOG_PREVIEW_COUNT = 20;
@@ -187,6 +188,7 @@ export default function OperationsScreen({ navigation }: any) {
   const [discordLogs, setDiscordLogs] = useState<OperatorDiscordLogEntry[]>([]);
   const [whatsAppSummary, setWhatsAppSummary] = useState<OperatorWhatsAppIntegrationSummary | null>(null);
   const [recentErrors, setRecentErrors] = useState<OperatorRecentError[]>([]);
+  const [operatorLogs, setOperatorLogs] = useState<OperatorRecentError[]>([]);
   const [diagnosticReport, setDiagnosticReport] = useState<OperatorDiagnosticReport | null>(null);
   const [auditEntries, setAuditEntries] = useState<OperatorAuditEntry[]>([]);
   const [conversations, setConversations] = useState<OperatorConversationItem[]>([]);
@@ -226,6 +228,7 @@ export default function OperationsScreen({ navigation }: any) {
       setDiscordLogs([]);
       setWhatsAppSummary(null);
       setRecentErrors([]);
+      setOperatorLogs([]);
       setDiagnosticReport(null);
       setAuditEntries([]);
       setConversations([]);
@@ -252,6 +255,7 @@ export default function OperationsScreen({ navigation }: any) {
     const [
       statusResult,
       errorsResult,
+      logsResult,
       settingsResult,
       tunnelSetupResult,
       discordResult,
@@ -264,6 +268,7 @@ export default function OperationsScreen({ navigation }: any) {
     ] = await Promise.allSettled([
       settingsClient.getOperatorStatus(),
       settingsClient.getOperatorErrors(RECENT_ERROR_COUNT),
+      settingsClient.getOperatorLogs(RECENT_LOG_COUNT),
       settingsClient.getSettings(),
       settingsClient.getOperatorTunnelSetup(),
       settingsClient.getOperatorDiscord(),
@@ -289,6 +294,13 @@ export default function OperationsScreen({ navigation }: any) {
     } else {
       setRecentErrors([]);
       issues.push(getErrorMessage(errorsResult.reason));
+    }
+
+    if (logsResult.status === 'fulfilled') {
+      setOperatorLogs(logsResult.value.logs);
+    } else {
+      setOperatorLogs([]);
+      issues.push(getErrorMessage(logsResult.reason));
     }
 
     if (settingsResult.status === 'fulfilled') {
@@ -2306,6 +2318,52 @@ export default function OperationsScreen({ navigation }: any) {
           )}
 
           <View style={styles.panel}>
+            <Text style={styles.panelTitle}>Recent operator logs</Text>
+            <View style={styles.actionGrid}>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.secondaryActionButton,
+                  (pendingAction !== null || operatorLogs.length === 0) && styles.actionButtonDisabled,
+                ]}
+                onPress={() => confirmAction(
+                  'Clear Operator Logs',
+                  'Clear the desktop operator log preview?',
+                  'Clear Logs',
+                  true,
+                  () => runAction('operator-clear-logs', async () => {
+                    const response = await settingsClient.clearOperatorErrors();
+                    setOperatorLogs([]);
+                    setRecentErrors([]);
+                    setDiagnosticReport(null);
+                    return response;
+                  }, false),
+                )}
+                disabled={pendingAction !== null || operatorLogs.length === 0}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Clear operator logs')}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {pendingAction === 'operator-clear-logs' ? 'Clearing...' : 'Clear logs'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {operatorLogs.length === 0 ? (
+              <Text style={styles.mutedText}>No recent operator logs returned by the desktop server.</Text>
+            ) : (
+              operatorLogs.map((entry) => (
+                <View key={`${entry.timestamp}-${entry.component}-${entry.level}-${entry.message}`} style={styles.logItem}>
+                  <View style={styles.logHeader}>
+                    <Text style={styles.logLevel}>{entry.level} • {entry.component}</Text>
+                    <Text style={styles.logTimestamp}>{formatTimestamp(entry.timestamp)}</Text>
+                  </View>
+                  <Text style={styles.logMessage}>{entry.message}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          <View style={styles.panel}>
             <Text style={styles.panelTitle}>Recent errors</Text>
             <View style={styles.actionGrid}>
               <TouchableOpacity
@@ -2342,6 +2400,7 @@ export default function OperationsScreen({ navigation }: any) {
                   () => runAction('operator-errors-clear', async () => {
                     const response = await settingsClient.clearOperatorErrors();
                     setRecentErrors([]);
+                    setOperatorLogs([]);
                     setDiagnosticReport(null);
                     return response;
                   }, false),

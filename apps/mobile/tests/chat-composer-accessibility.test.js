@@ -20,9 +20,9 @@ test('exposes the handsfree queue control as an accessible button', () => {
 });
 
 test('keeps the chat composer send control at a mobile-friendly minimum touch target', () => {
-  assert.match(screenSource, /sendButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*64,/);
+  assert.match(screenSource, /sendButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*44,/);
   assert.match(screenSource, /sendButton:\s*\{[\s\S]*?alignItems:\s*'center',[\s\S]*?justifyContent:\s*'center',/);
-  assert.match(screenSource, /queueButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*64,/);
+  assert.match(screenSource, /queueButton:\s*\{[\s\S]*?minHeight:\s*44,[\s\S]*?minWidth:\s*44,/);
 });
 
 test('keeps the chat composer accessory controls at a mobile-friendly touch target size', () => {
@@ -31,4 +31,14 @@ test('keeps the chat composer accessory controls at a mobile-friendly touch targ
 
 test('exposes the edit-before-send toggle state to Expo Web accessibility APIs', () => {
   assert.match(screenSource, /accessibilityRole="switch"[\s\S]*?aria-checked=\{willCancel\}[\s\S]*?accessibilityState=\{\{ checked: willCancel \}\}/);
+});
+
+test('uses icon-first mobile composer controls with accessible labels', () => {
+  assert.match(screenSource, /<Ionicons[\s\S]*?name="image-outline"/);
+  assert.match(screenSource, /name=\{ttsEnabled \? 'volume-high-outline' : 'volume-mute-outline'\}/);
+  assert.match(screenSource, /<Ionicons[\s\S]*?name="create-outline"/);
+  assert.match(screenSource, /<Ionicons name="time-outline" size=\{18\} color=\{theme\.colors\.primary\} \/>/);
+  assert.match(screenSource, /<Ionicons name="send-outline" size=\{18\} color=\{theme\.colors\.primaryForeground\} \/>/);
+  assert.doesNotMatch(screenSource, /<Text style=\{styles\.queueButtonText\}>Queue<\/Text>/);
+  assert.doesNotMatch(screenSource, /<Text style=\{styles\.sendButtonText\}>Send<\/Text>/);
 });

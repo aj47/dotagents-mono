@@ -34,6 +34,18 @@ test('keeps pinning available from the individual chat view header', () => {
   assert.match(screenSource, /\{isCurrentSessionPinned \? 'Pinned' : 'Pin'\}/);
 });
 
+test('shows total and per-turn agent time without shared runtime chrome', () => {
+  assert.match(screenSource, /const computeTurnDurations = \(/);
+  assert.match(screenSource, /const formatTurnDuration = \(durationMs: number\): string =>/);
+  assert.match(screenSource, /const TURN_DURATION_TICK_MS = 1000/);
+  assert.match(screenSource, /const headerTotalTurnDuration = turnDurations\.totalMs > 0/);
+  assert.match(screenSource, /styles\.headerDurationChip/);
+  assert.match(screenSource, /turnDurations\.byUserTimestamp\.get\(m\.timestamp\)/);
+  assert.match(screenSource, /`Agent time \$\{formatTurnDuration\(turnDuration\.durationMs\)\}\$\{turnDuration\.isLive \? ' live' : ''\}`/);
+  assert.match(screenSource, /styles\.turnDurationBadge/);
+  assert.doesNotMatch(screenSource, /@dotagents\/shared\/turn-duration/);
+});
+
 test('does not render a duplicate composer agent chip above the mobile chat input row', () => {
   assert.doesNotMatch(screenSource, /styles\.agentSelectorRow/);
   assert.doesNotMatch(screenSource, /🤖 Agent/);
@@ -79,9 +91,23 @@ test('derives tool execution card status from displayed non-meta tool entries', 
   assert.match(screenSource, /const hasErrors = renderedToolEntries\.some\(entry => entry\.result\?\.success === false\);/);
   assert.match(screenSource, /const isPending =\s+renderedToolEntries\.some\(entry => !entry\.result\);/);
   assert.match(screenSource, /\{renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result: tcResult \}, tcIdx\) => \{/);
-  assert.match(screenSource, /\{renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result \}, idx\) => \{/);
+  assert.match(screenSource, /\{renderedToolEntries\.map\(\(\{ toolCall, label, origIdx, result, executionStats \}, idx\) => \{/);
   assert.doesNotMatch(screenSource, /const allSuccess = hasToolResults && m\.toolResults!\.every\(r => r\.success\);/);
   assert.doesNotMatch(screenSource, /const hasErrors = hasToolResults && m\.toolResults!\.some\(r => !r\.success\);/);
+});
+
+test('shows streaming tool execution stats without shared runtime chrome', () => {
+  assert.match(screenSource, /type ToolExecutionStats = \{/);
+  assert.match(screenSource, /const getAgentProgressStepToolExecutionStats = \(/);
+  assert.match(screenSource, /currentToolExecutionStats\.push\(getAgentProgressStepToolExecutionStats\(step\)\)/);
+  assert.match(screenSource, /toolExecutionStats: currentToolExecutionStats\.some\(Boolean\) \? currentToolExecutionStats : undefined/);
+  assert.match(screenSource, /executionStats: currentToolExecutionStats\[index\]/);
+  assert.match(screenSource, /const formatToolExecutionStatsLabel = \(stats\?: ToolExecutionStats \| null\): string \| null =>/);
+  assert.match(screenSource, /const executionStatsLabel = formatToolExecutionStatsLabel\(executionStats\);/);
+  assert.match(screenSource, /accessibilityLabel=\{`Tool execution stats: \$\{executionStatsLabel\}`\}/);
+  assert.match(screenSource, /styles\.toolExecutionStatsText/);
+  assert.doesNotMatch(screenSource, /@dotagents\/shared\/tool-execution-display/);
+  assert.doesNotMatch(screenSource, /@dotagents\/shared\/session-presentation/);
 });
 
 test('keeps Codex thinking blocks display-only on mobile', () => {

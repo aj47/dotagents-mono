@@ -113,13 +113,29 @@ const DEFAULT_MCP_AUTO_PASTE_ENABLED = false;
 const DEFAULT_MCP_AUTO_PASTE_DELAY = 1000;
 const MIN_MCP_AUTO_PASTE_DELAY = 0;
 const MAX_MCP_AUTO_PASTE_DELAY = 60000;
+const DEFAULT_MAIN_AGENT_MODE = 'api';
 const DEFAULT_STREAMER_MODE_ENABLED = false;
+const DEFAULT_WHATSAPP_ENABLED = false;
+const DEFAULT_WHATSAPP_AUTO_REPLY = false;
+const DEFAULT_WHATSAPP_LOG_MESSAGES = false;
 const DEFAULT_DISCORD_ENABLED = false;
 const DEFAULT_DISCORD_DM_ENABLED = true;
 const DEFAULT_DISCORD_REQUIRE_MENTION = true;
 const DEFAULT_DISCORD_LOG_MESSAGES = false;
+const DEFAULT_LOCAL_TRACE_LOGGING_ENABLED = false;
 const DEFAULT_CODEX_REASONING_EFFORT: OpenAiReasoningEffort = 'low';
 const DEFAULT_CODEX_TEXT_VERBOSITY: CodexTextVerbosity = 'medium';
+
+const MAIN_AGENT_MODE_OPTIONS = [
+  { value: 'api', compactLabel: 'API' },
+  { value: 'acpx', compactLabel: 'acpx' },
+] as const;
+
+const LOCAL_TRACE_LOGGING_LABEL = 'Local trace logging';
+const LOCAL_TRACE_LOGGING_HELPER = 'Write agent session traces to JSONL files on the desktop machine.';
+const LOCAL_TRACE_LOG_PATH_LABEL = 'Trace Folder';
+const LOCAL_TRACE_LOG_PATH_PLACEHOLDER = 'Use default traces folder';
+const LOCAL_TRACE_LOG_PATH_HELPER = 'Optional desktop filesystem path for trace files.';
 
 const OPENAI_REASONING_EFFORT_OPTIONS: readonly { value: OpenAiReasoningEffort; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -844,6 +860,7 @@ export default function SettingsScreen({ navigation, route }: any) {
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
   const [isSearchingKnowledgeNotes, setIsSearchingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
+  const [isReloadingAgentProfiles, setIsReloadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
   const [isImportingLoopMarkdown, setIsImportingLoopMarkdown] = useState(false);
   const [isExportingLoopMarkdownId, setIsExportingLoopMarkdownId] = useState<string | null>(null);
@@ -1186,6 +1203,7 @@ export default function SettingsScreen({ navigation, route }: any) {
           langfusePublicKey: settingsRes.langfusePublicKey || '',
           langfuseSecretKey: settingsRes.langfuseSecretKey === SECRET_MASK ? '' : (settingsRes.langfuseSecretKey || ''),
           langfuseBaseUrl: settingsRes.langfuseBaseUrl || '',
+          localTraceLogPath: settingsRes.localTraceLogPath || '',
         });
         successCount++;
       }
@@ -1254,6 +1272,21 @@ export default function SettingsScreen({ navigation, route }: any) {
       setIsLoadingAgentProfiles(false);
     }
   }, [settingsClient]);
+
+  const handleAgentProfilesReload = useCallback(async () => {
+    if (!settingsClient || isReloadingAgentProfiles) return;
+    setIsReloadingAgentProfiles(true);
+    try {
+      const res = await settingsClient.reloadAgentProfiles();
+      setAgentProfiles(res.profiles);
+      setSaveStatusMessage('Agent profile files rescanned.');
+    } catch (error: any) {
+      console.error('[Settings] Failed to reload agent profiles:', error);
+      setRemoteError(error.message || 'Failed to reload agent profile files');
+    } finally {
+      setIsReloadingAgentProfiles(false);
+    }
+  }, [isReloadingAgentProfiles, settingsClient]);
 
   // Fetch loops from desktop
   const fetchLoops = useCallback(async () => {
@@ -2757,6 +2790,9 @@ export default function SettingsScreen({ navigation, route }: any) {
         }
         if (pendingKeys.has('langfuseBaseUrl')) {
           updates.langfuseBaseUrl = inputDrafts.langfuseBaseUrl ?? '';
+        }
+        if (pendingKeys.has('localTraceLogPath')) {
+          updates.localTraceLogPath = inputDrafts.localTraceLogPath ?? '';
         }
         if (pendingKeys.has('mcpMaxIterations')) {
           const parsedIterations = parseInt(inputDrafts.mcpMaxIterations ?? '', 10);
@@ -4321,20 +4357,20 @@ export default function SettingsScreen({ navigation, route }: any) {
               <CollapsibleSection id="agentSettings" title="Agent Settings">
                 <Text style={styles.label}>Main Agent Mode</Text>
                 <View style={styles.providerSelector}>
-                  {(['api', 'acpx'] as const).map((mode) => (
+                  {MAIN_AGENT_MODE_OPTIONS.map((option) => (
                     <Pressable
-                      key={mode}
+                      key={option.value}
                       style={[
                         styles.providerOption,
-                        remoteSettings.mainAgentMode === mode && styles.providerOptionActive,
+                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionActive,
                       ]}
-                      onPress={() => handleRemoteSettingUpdate('mainAgentMode', mode)}
+                      onPress={() => handleRemoteSettingUpdate('mainAgentMode', option.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        remoteSettings.mainAgentMode === mode && styles.providerOptionTextActive,
+                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionTextActive,
                       ]}>
-                        {mode.toUpperCase()}
+                        {option.compactLabel}
                       </Text>
                     </Pressable>
                   ))}
@@ -4344,7 +4380,7 @@ export default function SettingsScreen({ navigation, route }: any) {
                 </Text>
 
                 {/* acpx-specific settings - only show when acpx mode selected */}
-                {remoteSettings.mainAgentMode === 'acpx' && (
+                {(remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === 'acpx' && (
                   <>
                     <Text style={styles.label}>acpx Agent</Text>
                     {availableAcpMainAgents.length > 0 ? (
@@ -4782,14 +4818,14 @@ export default function SettingsScreen({ navigation, route }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>WhatsApp Integration</Text>
                   <Switch
-                    value={remoteSettings.whatsappEnabled ?? false}
+                    value={remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('whatsappEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.whatsappEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
-                {remoteSettings.whatsappEnabled && (
+                {(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) && (
                   <>
                     <Text style={styles.label}>Allowed Numbers</Text>
                     <TextInput
@@ -4832,20 +4868,20 @@ export default function SettingsScreen({ navigation, route }: any) {
                     <View style={styles.row}>
                       <Text style={styles.label}>Auto-Reply</Text>
                       <Switch
-                        value={remoteSettings.whatsappAutoReply ?? false}
+                        value={remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY}
                         onValueChange={(v) => handleRemoteSettingToggle('whatsappAutoReply', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.whatsappAutoReply ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
 
                     <View style={styles.row}>
                       <Text style={styles.label}>Log Messages</Text>
                       <Switch
-                        value={remoteSettings.whatsappLogMessages ?? false}
+                        value={remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES}
                         onValueChange={(v) => handleRemoteSettingToggle('whatsappLogMessages', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.whatsappLogMessages ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
                     <Text style={styles.helperText}>
@@ -4859,6 +4895,32 @@ export default function SettingsScreen({ navigation, route }: any) {
             {/* 4j. Langfuse */}
             {remoteSettings && (
               <CollapsibleSection id="langfuse" title="Langfuse">
+                <View style={styles.row}>
+                  <Text style={styles.label}>{LOCAL_TRACE_LOGGING_LABEL}</Text>
+                  <Switch
+                    value={remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED}
+                    onValueChange={(v) => handleRemoteSettingToggle('localTraceLoggingEnabled', v)}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+                <Text style={styles.helperText}>{LOCAL_TRACE_LOGGING_HELPER}</Text>
+
+                {(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) && (
+                  <>
+                    <Text style={styles.label}>{LOCAL_TRACE_LOG_PATH_LABEL}</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inputDrafts.localTraceLogPath ?? ''}
+                      onChangeText={(v) => handleRemoteSettingUpdate('localTraceLogPath', v)}
+                      placeholder={LOCAL_TRACE_LOG_PATH_PLACEHOLDER}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      autoCapitalize='none'
+                    />
+                    <Text style={styles.helperText}>{LOCAL_TRACE_LOG_PATH_HELPER}</Text>
+                  </>
+                )}
+
                 <View style={styles.row}>
                   <Text style={styles.label}>Enable tracing</Text>
                   <Switch
@@ -5216,6 +5278,19 @@ export default function SettingsScreen({ navigation, route }: any) {
             {/* 4m. Agents */}
             {isDotAgentsServer && (
               <CollapsibleSection id="agents" title="Agents">
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton, isReloadingAgentProfiles && styles.profileActionButtonDisabled]}
+                    onPress={handleAgentProfilesReload}
+                    disabled={isReloadingAgentProfiles}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Rescan desktop agent profile files')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isReloadingAgentProfiles ? 'Rescanning...' : 'Rescan files'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : sortedAgentProfiles.length === 0 ? (
