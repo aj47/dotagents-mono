@@ -25,17 +25,6 @@ export type SessionFileListing = {
   truncated: boolean
 }
 
-export type SessionFileActivityKind = "read" | "edited"
-
-export type SessionFileActivity = {
-  path: string
-  rootPath: string
-  relativePath: string
-  kind: SessionFileActivityKind
-  source: string
-  lastSeenAt: number
-}
-
 export type SessionFilePreview = {
   path: string
   relativePath: string
@@ -152,47 +141,7 @@ const FILE_HINT_KEYS = new Set([
   "sourcepath",
   "targetpath",
 ])
-const READ_TOOL_NAME_HINTS = [
-  "cat",
-  "fetch",
-  "find",
-  "get",
-  "grep",
-  "head",
-  "list",
-  "ls",
-  "nl",
-  "open",
-  "read",
-  "rg",
-  "search",
-  "sed",
-  "stat",
-  "tail",
-  "view",
-  "wc",
-]
-const EDIT_TOOL_NAME_HINTS = [
-  "apply_patch",
-  "append",
-  "create",
-  "delete",
-  "edit",
-  "mkdir",
-  "move",
-  "patch",
-  "rename",
-  "rm",
-  "save",
-  "touch",
-  "update",
-  "write",
-]
-const READ_COMMANDS = new Set(["cat", "file", "find", "grep", "head", "ls", "nl", "rg", "sed", "stat", "tail", "wc"])
-const EDIT_COMMANDS = new Set(["apply_patch", "cp", "mkdir", "mv", "rm", "rmdir", "tee", "touch"])
-
 const trackedSessionFileRoots = new Map<string, Set<string>>()
-const trackedSessionFileActivity = new Map<string, Map<string, SessionFileActivity>>()
 
 function realpathIfPossible(value: string): string {
   try {
@@ -289,108 +238,6 @@ function extractCandidatePathsFromValue(value: unknown, keyHint?: string): strin
   return []
 }
 
-function normalizeTouchedCandidatePath(rawValue: string, keyHint?: string): string | null {
-  if (!isAbsolutePathLike(rawValue)) return null
-  const expanded = rawValue.trim().startsWith("~")
-    ? path.join(os.homedir(), rawValue.trim().slice(1))
-    : rawValue.trim()
-  const normalized = path.normalize(expanded)
-  const normalizedKey = (keyHint ?? "").toLowerCase().replace(/[^a-z]/g, "")
-
-  try {
-    const stats = fs.lstatSync(normalized)
-    if (stats.isSymbolicLink()) return null
-    return normalized
-  } catch {
-    // Missing edited output paths are still useful when their parent exists.
-  }
-
-  if (DIRECTORY_HINT_KEYS.has(normalizedKey)) return normalized
-  if (FILE_HINT_KEYS.has(normalizedKey) || path.extname(normalized)) return normalized
-  return null
-}
-
-function extractTouchedCandidatePathsFromValue(value: unknown, keyHint?: string): string[] {
-  if (!value) return []
-  if (typeof value === "string") {
-    const candidate = normalizeTouchedCandidatePath(value, keyHint)
-    return candidate ? [candidate] : []
-  }
-  if (Array.isArray(value)) {
-    return value.flatMap((entry) => extractTouchedCandidatePathsFromValue(entry, keyHint))
-  }
-  if (typeof value === "object") {
-    return Object.entries(value).flatMap(([key, nestedValue]) => extractTouchedCandidatePathsFromValue(nestedValue, key))
-  }
-  return []
-}
-
-function extractCommandPathCandidates(command: string): string[] {
-  const pathTokens = [
-    ...(command.match(/(?:~|\.{0,2}\/|\/)[^\s"'`|;&)]+/g) ?? []),
-    ...command.split(/\s+/).filter((token) => {
-      if (!token || token.startsWith("-")) return false
-      const cleaned = token.replace(/^["']|["',:;)]+$/g, "")
-      return cleaned.includes(path.sep) || Boolean(path.extname(cleaned))
-    }),
-  ]
-  return pathTokens
-    .map((token) => token.replace(/^["']|["',:;)]+$/g, ""))
-    .map((token) => token.startsWith("~") ? path.join(os.homedir(), token.slice(1)) : token)
-    .map((token) => path.isAbsolute(token) ? token : path.resolve(process.cwd(), token))
-}
-
-function getToolActivityKind(toolName?: string, args?: unknown): SessionFileActivityKind | null {
-  const normalizedName = (toolName ?? "").toLowerCase()
-  const command = typeof (args as { command?: unknown } | undefined)?.command === "string"
-    ? String((args as { command: string }).command)
-    : ""
-  const commandName = command.trim().split(/\s+/)[0]?.split("/").pop()?.toLowerCase() ?? ""
-
-  if (normalizedName === "execute_command" || normalizedName.endsWith(":execute_command")) {
-    if (EDIT_COMMANDS.has(commandName) || />\s*(?:~|\.{0,2}\/|\/)/.test(command)) return "edited"
-    if (READ_COMMANDS.has(commandName)) return "read"
-    return null
-  }
-
-  if (EDIT_TOOL_NAME_HINTS.some((hint) => normalizedName.includes(hint))) return "edited"
-  if (READ_TOOL_NAME_HINTS.some((hint) => normalizedName.includes(hint))) return "read"
-  return null
-}
-
-function resolveActivityPath(candidatePath: string): string | null {
-  const expanded = candidatePath.startsWith("~")
-    ? path.join(os.homedir(), candidatePath.slice(1))
-    : candidatePath
-  const resolvedPath = path.resolve(expanded)
-  if (fs.existsSync(resolvedPath)) return realpathIfPossible(resolvedPath)
-
-  const existingAncestor = nearestExistingAncestor(resolvedPath)
-  if (!existingAncestor) return null
-  const resolvedAncestor = realpathIfPossible(existingAncestor)
-  const tail = path.relative(existingAncestor, resolvedPath)
-  return tail ? path.join(resolvedAncestor, tail) : resolvedAncestor
-}
-
-function collectToolFileActivity(toolName: string | undefined, args: unknown): Array<{ kind: SessionFileActivityKind; path: string; source: string }> {
-  const kind = getToolActivityKind(toolName, args)
-  if (!kind) return []
-
-  const normalizedName = (toolName ?? "tool").toLowerCase()
-  const command = typeof (args as { command?: unknown } | undefined)?.command === "string"
-    ? String((args as { command: string }).command)
-    : ""
-  const candidatePaths = command
-    ? extractCommandPathCandidates(command)
-    : extractTouchedCandidatePathsFromValue(args)
-
-  return candidatePaths.map((candidatePath) => ({
-    kind,
-    path: candidatePath,
-    source: normalizedName,
-  }))
-}
-
 function parseJsonObject(rawValue?: string): unknown {
   const trimmed = rawValue?.trim()
   if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) return null
@@ -425,19 +272,6 @@ function collectProgressCandidatePaths(update: Pick<AgentProgressUpdate, "steps"
   return results
 }
 
-function collectProgressFileActivity(update: Pick<AgentProgressUpdate, "steps" | "conversationHistory">): Array<{ kind: SessionFileActivityKind; path: string; source: string }> {
-  const results: Array<{ kind: SessionFileActivityKind; path: string; source: string }> = []
-  for (const step of update.steps ?? []) {
-    results.push(...collectToolFileActivity(step.toolCall?.name, step.toolCall?.arguments))
-  }
-  for (const message of update.conversationHistory ?? []) {
-    for (const toolCall of message.toolCalls ?? []) {
-      results.push(...collectToolFileActivity(toolCall.name, toolCall.arguments))
-    }
-  }
-  return results
-}
-
 function mergeTrackedPaths(sessionId: string, candidatePaths: Iterable<string>): void {
   const resolvedRoots = Array.from(candidatePaths)
     .map(resolveWorkspaceRoot)
@@ -449,33 +283,6 @@ function mergeTrackedPaths(sessionId: string, candidatePaths: Iterable<string>):
     existing.add(rootPath)
   }
   trackedSessionFileRoots.set(sessionId, existing)
-}
-
-function mergeTrackedFileActivity(sessionId: string, activity: Iterable<{ kind: SessionFileActivityKind; path: string; source: string }>): void {
-  const existing = trackedSessionFileActivity.get(sessionId) ?? new Map<string, SessionFileActivity>()
-  const rootSet = trackedSessionFileRoots.get(sessionId) ?? new Set<string>()
-
-  for (const entry of activity) {
-    const targetPath = resolveActivityPath(entry.path)
-    if (!targetPath) continue
-    const rootPath = resolveWorkspaceRoot(targetPath)
-    if (!rootPath) continue
-    if (!(targetPath === rootPath || targetPath.startsWith(`${rootPath}${path.sep}`))) continue
-
-    rootSet.add(rootPath)
-    const key = `${entry.kind}:${targetPath}`
-    existing.set(key, {
-      path: targetPath,
-      rootPath,
-      relativePath: path.relative(rootPath, targetPath) || ".",
-      kind: entry.kind,
-      source: entry.source,
-      lastSeenAt: Date.now(),
-    })
-  }
-
-  if (rootSet.size > 0) trackedSessionFileRoots.set(sessionId, rootSet)
-  if (existing.size > 0) trackedSessionFileActivity.set(sessionId, existing)
 }
 
 function ensureTrackedRoot(sessionId: string, requestedRootPath: string): string {
@@ -538,17 +345,14 @@ function isTextPreviewable(filePath: string, sample?: Buffer): boolean {
 export function recordSessionFileActivity(update: AgentProgressUpdate): void {
   if (!update.sessionId) return
   mergeTrackedPaths(update.sessionId, collectProgressCandidatePaths(update))
-  mergeTrackedFileActivity(update.sessionId, collectProgressFileActivity(update))
 }
 
 export function recordSessionConversationFileActivity(sessionId: string, messages: ConversationMessage[]): void {
   mergeTrackedPaths(sessionId, collectProgressCandidatePaths({ steps: [], conversationHistory: messages }))
-  mergeTrackedFileActivity(sessionId, collectProgressFileActivity({ steps: [], conversationHistory: messages }))
 }
 
 export function clearSessionFileActivity(sessionId: string): void {
   trackedSessionFileRoots.delete(sessionId)
-  trackedSessionFileActivity.delete(sessionId)
 }
 
 export function getTrackedSessionFileRoots(sessionId: string): SessionFileRoot[] {
@@ -566,14 +370,6 @@ export function getTrackedSessionFileRoots(sessionId: string): SessionFileRoot[]
     path: rootPath,
     label: path.basename(rootPath) || rootPath,
   }))
-}
-
-export function getTrackedSessionFileActivity(sessionId: string): SessionFileActivity[] {
-  return Array.from(trackedSessionFileActivity.get(sessionId)?.values() ?? [])
-    .sort((a, b) => {
-      if (a.kind !== b.kind) return a.kind === "edited" ? -1 : 1
-      return b.lastSeenAt - a.lastSeenAt || a.relativePath.localeCompare(b.relativePath)
-    })
 }
 
 export function resolveTrackedSessionPath(input: {
@@ -644,7 +440,6 @@ export function readTrackedSessionFilePreview(input: {
       modifiedAt: stats.mtimeMs,
     }
   }
-  mergeTrackedFileActivity(input.sessionId, [{ kind: "read", path: filePath, source: "file_view" }])
 
   const extension = path.extname(filePath).toLowerCase()
   const maxTextBytes = 200_000
@@ -720,7 +515,6 @@ export function createTrackedSessionFileEntry(input: {
   } else {
     fs.writeFileSync(targetPath, input.content ?? "", "utf8")
   }
-  mergeTrackedFileActivity(input.sessionId, [{ kind: "edited", path: targetPath, source: "file_view" }])
 
   return {
     path: targetPath,
@@ -748,7 +542,6 @@ export function moveTrackedSessionFileEntry(input: {
   ensureNonSymlink(sourcePath)
   fs.mkdirSync(path.dirname(targetPath), { recursive: true })
   fs.renameSync(sourcePath, targetPath)
-  mergeTrackedFileActivity(input.sessionId, [{ kind: "edited", path: targetPath, source: "file_view" }])
 
   return {
     path: targetPath,
@@ -768,10 +561,8 @@ export function deleteTrackedSessionFileEntry(input: {
 
   ensureNonSymlink(targetPath)
   fs.rmSync(targetPath, { recursive: true, force: false })
-  mergeTrackedFileActivity(input.sessionId, [{ kind: "edited", path: targetPath, source: "file_view" }])
 }
 
 export function resetTrackedSessionFileActivityForTests(): void {
   trackedSessionFileRoots.clear()
-  trackedSessionFileActivity.clear()
 }

@@ -103,7 +103,6 @@ import {
   clearSessionFileActivity,
   createTrackedSessionFileEntry,
   deleteTrackedSessionFileEntry,
-  getTrackedSessionFileActivity,
   getTrackedSessionFileRoots,
   listTrackedSessionFiles,
   moveTrackedSessionFileEntry,
@@ -4012,12 +4011,6 @@ export const router = {
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
       return getTrackedSessionFileRoots(input.sessionId)
-    }),
-
-  getTrackedSessionFileActivity: t.procedure
-    .input<{ sessionId: string }>()
-    .action(async ({ input }) => {
-      return getTrackedSessionFileActivity(input.sessionId)
     }),
 
   listTrackedSessionFiles: t.procedure
