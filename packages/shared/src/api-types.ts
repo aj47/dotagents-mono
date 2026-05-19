@@ -782,6 +782,7 @@ export interface ServerConversation {
   title: string;
   createdAt: number;
   updatedAt: number;
+  lastMessageAt?: number | null;
   messageCount: number;
   lastMessage?: string;
   preview?: string;

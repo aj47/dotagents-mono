@@ -5469,7 +5469,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         id: conversation.id,
         title: conversation.title,
         createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
+        updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
           id: msg.id,
           role: msg.role,
@@ -5861,7 +5861,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         id: conversation.id,
         title: conversation.title,
         createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
+        updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
           id: msg.id,
           role: msg.role,
@@ -5989,7 +5989,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         id: conversation.id,
         title: conversation.title,
         createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
+        updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
           id: msg.id,
           role: msg.role,
@@ -6040,7 +6040,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         id: conversation.id,
         title: conversation.title,
         createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
+        updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
           id: msg.id,
           role: msg.role,

@@ -552,16 +552,16 @@ export function ActiveAgentsSidebar({
     return Array.from(mergedSessions.values()).sort((a, b) => {
       const aProgress = agentProgressById.get(a.id)
       const bProgress = agentProgressById.get(b.id)
-      const aTimestamp =
-        aProgress?.conversationHistory?.[aProgress.conversationHistory.length - 1]
-          ?.timestamp ??
-        a.endTime ??
-        a.startTime
-      const bTimestamp =
-        bProgress?.conversationHistory?.[bProgress.conversationHistory.length - 1]
-          ?.timestamp ??
-        b.endTime ??
-        b.startTime
+      const aTimestamp = Math.max(
+        aProgress ? getProgressLastActivityTimestamp(aProgress) : 0,
+        a.endTime ?? 0,
+        a.startTime,
+      )
+      const bTimestamp = Math.max(
+        bProgress ? getProgressLastActivityTimestamp(bProgress) : 0,
+        b.endTime ?? 0,
+        b.startTime,
+      )
       return bTimestamp - aTimestamp
     })
   }, [trackedActiveSessions, agentProgressById, recentCompletedSessionById])
@@ -884,20 +884,15 @@ export function ActiveAgentsSidebar({
   ])
   const hasMoreTaskSessions =
     taskSidebarSessions.length > paginatedTaskSidebarSessions.length
-  const activeTaskSidebarSessions = useMemo(
+  const runtimeTaskSidebarSessions = useMemo(
     () => taskSidebarSessions.filter((entry) => {
-      const progress = agentProgressById.get(entry.session.id)
-      return (
-        !entry.isSavedConversation &&
-        entry.session.status === "active" &&
-        progress?.isComplete !== true
-      )
+      return !entry.isSavedConversation
     }),
-    [agentProgressById, taskSidebarSessions],
+    [taskSidebarSessions],
   )
   const visibleTaskSidebarSessions = useMemo(
-    () => tasksSectionExpanded ? paginatedTaskSidebarSessions : activeTaskSidebarSessions,
-    [activeTaskSidebarSessions, paginatedTaskSidebarSessions, tasksSectionExpanded],
+    () => tasksSectionExpanded ? paginatedTaskSidebarSessions : runtimeTaskSidebarSessions,
+    [paginatedTaskSidebarSessions, runtimeTaskSidebarSessions, tasksSectionExpanded],
   )
   const hasTaskSessions = taskSidebarSessions.length > 0
   const tasksListVisible = visibleTaskSidebarSessions.length > 0

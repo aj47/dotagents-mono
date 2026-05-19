@@ -67,4 +67,14 @@ describe("saved conversations dialog layout", () => {
     expect(pastSessionsDialogSource).not.toContain('inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-accent/40 px-1.5 py-0.5 text-[10px] font-medium text-foreground')
     expect(pastSessionsDialogSource).not.toContain("CheckCircle2")
   })
+
+  it("keeps search matches ordered newest-to-oldest after filtering", () => {
+    const compactSource = pastSessionsDialogSource.replace(/\s+/g, " ")
+    expect(compactSource).toContain(
+      "if (a.kindPriority !== b.kindPriority) return a.kindPriority - b.kindPriority if (b.conversation.updatedAt !== a.conversation.updatedAt)",
+    )
+    expect(compactSource).toContain(
+      "return b.conversation.updatedAt - a.conversation.updatedAt } if (b.rank !== a.rank) return b.rank - a.rank",
+    )
+  })
 })

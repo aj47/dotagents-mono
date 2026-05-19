@@ -55,6 +55,42 @@ describe("conversation lazy loading", () => {
     expect(item.lastMessage).toMatch(/…$/)
   })
 
+  it("orders saved conversation history by latest update or message timestamp", async () => {
+    const service = await setupConversationServiceTest()
+
+    await service.saveConversation({
+      id: "conv_newer_update",
+      title: "Newer update",
+      createdAt: 100,
+      updatedAt: 500,
+      messages: [
+        { id: "m1", role: "user", content: "Earlier message", timestamp: 120 },
+      ],
+    }, true)
+
+    await service.saveConversation({
+      id: "conv_newer_message",
+      title: "Newer message",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [
+        { id: "m1", role: "user", content: "Latest message", timestamp: 700 },
+      ],
+    }, true)
+
+    const history = await service.getConversationHistory()
+
+    expect(history.map((item) => item.id)).toEqual([
+      "conv_newer_message",
+      "conv_newer_update",
+    ])
+    expect(history[0]).toMatchObject({
+      id: "conv_newer_message",
+      updatedAt: 700,
+      lastMessageAt: 700,
+    })
+  })
+
   it("returns a tail message window without raw history payloads", async () => {
     const service = await setupConversationServiceTest()
     await service.saveConversation({

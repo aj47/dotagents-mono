@@ -508,7 +508,11 @@ export function Component() {
     const lastHistoryTimestamp = history && history.length > 0
       ? (history[history.length - 1].timestamp ?? 0)
       : 0
-    return Math.max(lastStepTimestamp, lastHistoryTimestamp)
+    const responseEvents = progress.responseEvents
+    const lastResponseEventTimestamp = responseEvents && responseEvents.length > 0
+      ? (responseEvents[responseEvents.length - 1].timestamp ?? 0)
+      : 0
+    return Math.max(lastStepTimestamp, lastHistoryTimestamp, lastResponseEventTimestamp)
   }, [])
 
   // State for resuming a saved conversation before a live session exists.

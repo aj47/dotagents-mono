@@ -153,15 +153,32 @@ function getConversationSnippet(
   return "No messages yet"
 }
 
+function getLatestTimestamp(
+  entries?: Array<{ timestamp?: number }> | null,
+): number {
+  if (!entries?.length) return 0
+
+  let latestTimestamp = 0
+  for (const entry of entries) {
+    if (typeof entry.timestamp !== "number" || !Number.isFinite(entry.timestamp)) {
+      continue
+    }
+    latestTimestamp = Math.max(latestTimestamp, entry.timestamp)
+  }
+  return latestTimestamp
+}
+
 function getSessionUpdatedAt(
   session: AgentSessionRecord,
   progress?: AgentProgressUpdate | null,
 ): number {
-  const lastConversationTimestamp = progress?.conversationHistory?.[
-    (progress.conversationHistory?.length ?? 1) - 1
-  ]?.timestamp
-  const lastStepTimestamp = progress?.steps?.[(progress.steps?.length ?? 1) - 1]?.timestamp
-  return lastConversationTimestamp ?? lastStepTimestamp ?? session.endTime ?? session.startTime
+  return Math.max(
+    getLatestTimestamp(progress?.conversationHistory),
+    getLatestTimestamp(progress?.steps),
+    getLatestTimestamp(progress?.responseEvents),
+    session.endTime ?? 0,
+    session.startTime,
+  )
 }
 
 function scoreSearchField(fieldValue: string, query: string): number {
@@ -506,10 +523,13 @@ export function SavedConversationsDialog({
         fieldPriority: number
       } => entry !== null)
       .sort((a, b) => {
-        if (b.rank !== a.rank) return b.rank - a.rank
         if (a.kindPriority !== b.kindPriority) return a.kindPriority - b.kindPriority
+        if (b.conversation.updatedAt !== a.conversation.updatedAt) {
+          return b.conversation.updatedAt - a.conversation.updatedAt
+        }
+        if (b.rank !== a.rank) return b.rank - a.rank
         if (a.fieldPriority !== b.fieldPriority) return a.fieldPriority - b.fieldPriority
-        return b.conversation.updatedAt - a.conversation.updatedAt
+        return a.conversation.title.localeCompare(b.conversation.title)
       })
       .map((entry) => entry.conversation)
 
