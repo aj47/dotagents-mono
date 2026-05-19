@@ -83,7 +83,17 @@ describe("saved conversations dialog layout", () => {
     expect(pastSessionsDialogSource).toContain("function getConversationSearchText(")
     expect(pastSessionsDialogSource).toContain('message.role === "user" || message.role === "assistant"')
     expect(pastSessionsDialogSource).toContain("for (const event of progress?.responseEvents ?? [])")
-    expect(pastSessionsDialogSource).toContain("searchText: normalizeConversationText(conversation.searchText)")
+    expect(pastSessionsDialogSource).toContain("searchIndex: buildConversationSearchIndex({")
     expect(pastSessionsDialogSource).toContain("rawScore >= DEFAULT_FUZZY_THRESHOLD")
+  })
+
+  it("debounces expensive conversation search and uses pre-normalized indexes", () => {
+    expect(pastSessionsDialogSource).toContain("const SEARCH_DEBOUNCE_MS = 120")
+    expect(pastSessionsDialogSource).toContain("function useDebouncedValue<T>(")
+    expect(pastSessionsDialogSource).toContain("const debouncedSearchQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS)")
+    expect(pastSessionsDialogSource).toContain("const normalizedSearchQuery = useMemo(")
+    expect(pastSessionsDialogSource).toContain("conversation.searchIndex")
+    expect(pastSessionsDialogSource).toContain("allowFuzzy: field !== \"searchText\"")
+    expect(pastSessionsDialogSource).toContain("field === \"searchText\" && normalizedQuery.length < MIN_SEARCH_TEXT_QUERY_CHARS")
   })
 })
