@@ -786,6 +786,7 @@ export interface ServerConversation {
   messageCount: number;
   lastMessage?: string;
   preview?: string;
+  searchText?: string;
 }
 
 export interface ServerConversationFull {

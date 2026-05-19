@@ -17,7 +17,12 @@ import {
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
-import { filterVisibleChatMessages, sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import {
+  extractRespondToUserResponseEvents,
+  filterVisibleChatMessages,
+  normalizeMessagePreviewText,
+  sanitizeMessageContentForDisplay,
+} from "@dotagents/shared"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
 import {
   buildConversationImageAssetUrl,
@@ -48,6 +53,7 @@ const MAX_SESSION_TITLE_CHARS = 80
 const MAX_AGENT_SESSION_TITLE_WORDS = 10
 const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
 const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
+const MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS = 8000
 const COMPACTION_EXTRACTED_FACT_LIMIT = 8
 const createInlineDataImageMarkdownRegex = () =>
   /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
@@ -425,7 +431,7 @@ export class ConversationService {
     this.indexCache = loadedIndex
 
     if (indexNeedsRebuild) {
-      return this.rebuildConversationIndexFromDisk("conversation history index missing activity metadata")
+      return this.rebuildConversationIndexFromDisk("conversation history index missing search or activity metadata")
     }
 
     if (indexWasNormalized) {
@@ -503,7 +509,40 @@ export class ConversationService {
         MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
       ),
       preview: this.generatePreview(visibleMessages),
+      searchText: this.buildConversationSearchText(storedMessages),
     }
+  }
+
+  private normalizeConversationSearchText(value: string | undefined): string {
+    return normalizeMessagePreviewText(sanitizeMessageContentForDisplay(value || "")) ?? ""
+  }
+
+  private buildConversationSearchText(messages: ConversationMessage[]): string {
+    const searchParts: string[] = []
+    const seen = new Set<string>()
+    const appendSearchPart = (value: string | undefined) => {
+      const normalized = this.normalizeConversationSearchText(value)
+      if (!normalized || seen.has(normalized)) return
+      seen.add(normalized)
+      searchParts.push(normalized)
+    }
+
+    for (const message of messages) {
+      if (message.role === "user") {
+        appendSearchPart(message.displayContent ?? message.content)
+      } else if (message.role === "assistant") {
+        appendSearchPart(message.displayContent ?? message.content)
+      }
+    }
+
+    for (const event of extractRespondToUserResponseEvents(messages)) {
+      appendSearchPart(event.text)
+    }
+
+    const searchText = searchParts.join(" ")
+    return searchText.length > MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS
+      ? searchText.slice(0, MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS).trim()
+      : searchText
   }
 
   private toConversationHistorySnippet(value: string, maxChars: number): string {
@@ -532,17 +571,25 @@ export class ConversationService {
         item.preview || "",
         MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
       )
+      const normalizedSearchText = this.normalizeConversationSearchText(item.searchText || "")
+        .slice(0, MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS)
+        .trim()
 
-      if (!("lastMessageAt" in item)) {
+      if (!("lastMessageAt" in item) || !("searchText" in item)) {
         needsRebuild = true
       }
 
-      if (normalizedLastMessage !== item.lastMessage || normalizedPreview !== item.preview) {
+      if (
+        normalizedLastMessage !== item.lastMessage ||
+        normalizedPreview !== item.preview ||
+        normalizedSearchText !== (item.searchText || "")
+      ) {
         changed = true
         return {
           ...item,
           lastMessage: normalizedLastMessage,
           preview: normalizedPreview,
+          searchText: normalizedSearchText,
         }
       }
 

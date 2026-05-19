@@ -37,21 +37,24 @@ const DEFAULT_FUZZY_THRESHOLD = 0.33
 const TITLE_MATCH_WEIGHT = 0.6
 const PREVIEW_MATCH_WEIGHT = 0.25
 const LAST_MESSAGE_MATCH_WEIGHT = 0.15
+const SEARCH_TEXT_MATCH_WEIGHT = 0.1
 const KEYBOARD_SHORTCUT_HINT = navigator.platform.toLowerCase().includes("mac") ? "⌘K" : "Ctrl+K"
 const PIN_SHORTCUT_HINT = navigator.platform.toLowerCase().includes("mac") ? "⌘P" : "Ctrl+P"
 const VOICE_SHORTCUT_HINT = "V"
 
 
-type SearchableConversationField = "title" | "preview" | "lastMessage"
+type SearchableConversationField = "title" | "preview" | "lastMessage" | "searchText"
 
 type SearchableConversation = {
   title: string
   preview: string
   lastMessage: string
+  searchText: string
 }
 
 type ConversationSearchResult = {
   field: SearchableConversationField
+  rawScore: number
   score: number
 }
 
@@ -84,6 +87,7 @@ type ConversationListEntry = {
   updatedAt: number
   preview: string
   lastMessage: string
+  searchText: string
   statusLabel: string
   statusRailClassName: string
   isPinned: boolean
@@ -116,6 +120,8 @@ function getFieldWeight(field: SearchableConversationField): number {
       return PREVIEW_MATCH_WEIGHT
     case "lastMessage":
       return LAST_MESSAGE_MATCH_WEIGHT
+    case "searchText":
+      return SEARCH_TEXT_MATCH_WEIGHT
     default:
       return 0
   }
@@ -151,6 +157,41 @@ function getConversationSnippet(
   }
 
   return "No messages yet"
+}
+
+function getConversationSearchText(
+  progress?: AgentProgressUpdate | null,
+  ...fallbacks: Array<string | undefined>
+): string {
+  const searchParts: string[] = []
+  const seen = new Set<string>()
+  const appendSearchPart = (value: string | undefined) => {
+    const normalized = normalizeConversationText(value)
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    searchParts.push(normalized)
+  }
+
+  for (const message of progress?.conversationHistory ?? []) {
+    if (message.role === "user" || message.role === "assistant") {
+      appendSearchPart(message.displayContent ?? message.content)
+    }
+  }
+
+  for (const event of progress?.responseEvents ?? []) {
+    appendSearchPart(event.text)
+  }
+  for (const response of progress?.userResponseHistory ?? []) {
+    appendSearchPart(response)
+  }
+  appendSearchPart(progress?.userResponse)
+  appendSearchPart(progress?.finalContent)
+
+  for (const fallback of fallbacks) {
+    appendSearchPart(fallback)
+  }
+
+  return searchParts.join(" ")
 }
 
 function getLatestTimestamp(
@@ -223,27 +264,30 @@ function getConversationSearchResult(
 ): ConversationSearchResult | null {
   const normalizedQuery = normalizeSearchText(query)
   if (!normalizedQuery) {
-    return { field: "title", score: 1 }
+    return { field: "title", rawScore: 1, score: 1 }
   }
 
-  const orderedFields: SearchableConversationField[] = ["title", "preview", "lastMessage"]
-  let bestResult: ConversationSearchResult | null = null
+  const orderedFields: SearchableConversationField[] = ["title", "preview", "lastMessage", "searchText"]
+  let bestPassingResult: ConversationSearchResult | null = null
 
   for (const field of orderedFields) {
     const rawScore = scoreSearchField(conversation[field], normalizedQuery)
     if (rawScore <= 0) continue
 
     const weightedScore = rawScore * getFieldWeight(field)
-    if (!bestResult || weightedScore > bestResult.score) {
-      bestResult = { field, score: weightedScore }
+    if (
+      rawScore >= DEFAULT_FUZZY_THRESHOLD &&
+      (!bestPassingResult || weightedScore > bestPassingResult.score)
+    ) {
+      bestPassingResult = { field, rawScore, score: weightedScore }
     }
   }
 
-  if (!bestResult || bestResult.score < DEFAULT_FUZZY_THRESHOLD) {
+  if (!bestPassingResult) {
     return null
   }
 
-  return bestResult
+  return bestPassingResult
 }
 
 export function SavedConversationsDialog({
@@ -440,6 +484,11 @@ export function SavedConversationsDialog({
           updatedAt: getSessionUpdatedAt(session, progress),
           preview: lastMessage,
           lastMessage,
+          searchText: getConversationSearchText(
+            progress,
+            session.lastActivity,
+            session.errorMessage,
+          ),
           statusLabel:
             session.status === "error"
               ? "Error"
@@ -478,6 +527,7 @@ export function SavedConversationsDialog({
         lastMessage:
           normalizeConversationText(conversation.lastMessage) ||
           normalizeConversationText(conversation.preview),
+        searchText: normalizeConversationText(conversation.searchText),
         statusLabel: archivedSessionIds.has(conversation.id) ? "Archived" : "Saved",
         statusRailClassName: archivedSessionIds.has(conversation.id)
           ? "bg-muted-foreground/60"
@@ -502,6 +552,7 @@ export function SavedConversationsDialog({
             title: conversation.title,
             preview: conversation.preview,
             lastMessage: conversation.lastMessage,
+            searchText: conversation.searchText,
           },
           normalizedQuery,
         )
@@ -513,7 +564,7 @@ export function SavedConversationsDialog({
           rank: result.score,
           kindPriority: conversation.kind === "active" ? 0 : 1,
           fieldPriority:
-            result.field === "title" ? 0 : result.field === "preview" ? 1 : 2,
+            result.field === "title" ? 0 : result.field === "preview" ? 1 : result.field === "lastMessage" ? 2 : 3,
         }
       })
       .filter((entry): entry is {

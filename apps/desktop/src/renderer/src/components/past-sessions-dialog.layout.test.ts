@@ -77,4 +77,13 @@ describe("saved conversations dialog layout", () => {
       "return b.conversation.updatedAt - a.conversation.updatedAt } if (b.rank !== a.rank) return b.rank - a.rank",
     )
   })
+
+  it("searches user prompts and agent final responses beyond row snippets", () => {
+    expect(pastSessionsDialogSource).toContain('type SearchableConversationField = "title" | "preview" | "lastMessage" | "searchText"')
+    expect(pastSessionsDialogSource).toContain("function getConversationSearchText(")
+    expect(pastSessionsDialogSource).toContain('message.role === "user" || message.role === "assistant"')
+    expect(pastSessionsDialogSource).toContain("for (const event of progress?.responseEvents ?? [])")
+    expect(pastSessionsDialogSource).toContain("searchText: normalizeConversationText(conversation.searchText)")
+    expect(pastSessionsDialogSource).toContain("rawScore >= DEFAULT_FUZZY_THRESHOLD")
+  })
 })

@@ -306,6 +306,7 @@ export interface ConversationHistoryItem {
   messageCount: number
   lastMessage: string
   preview: string
+  searchText?: string
 }
 
 export type ProfileMcpServerConfig = {
