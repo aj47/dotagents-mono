@@ -2911,6 +2911,37 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // GET /v1/operator/mcp/tools - Operator-level MCP tool list
+  fastify.get("/v1/operator/mcp/tools", async (req, reply) => {
+    try {
+      const query = req.query as { server?: string }
+      const server = typeof query.server === "string" && query.server.trim() ? query.server.trim() : undefined
+      const allTools = mcpService.getDetailedToolList()
+      const tools = (server
+        ? allTools.filter((tool) => tool.sourceName === server || tool.serverName === server)
+        : allTools
+      ).map((tool) => ({
+        name: tool.name,
+        description: tool.description ?? "",
+        sourceKind: tool.sourceKind,
+        sourceName: tool.sourceName,
+        sourceLabel: tool.sourceLabel ?? tool.sourceName,
+        serverName: tool.serverName,
+        enabled: tool.enabled,
+        serverEnabled: tool.serverEnabled,
+      }))
+
+      return reply.send({
+        count: tools.length,
+        ...(server ? { server } : {}),
+        tools,
+      })
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator MCP tools", error)
+      return reply.code(500).send({ error: "Failed to build operator MCP tools" })
+    }
+  })
+
   // POST /v1/operator/actions/mcp-restart - Restart an MCP server
   fastify.post("/v1/operator/actions/mcp-restart", async (req, reply) => {
     try {

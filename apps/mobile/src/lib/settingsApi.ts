@@ -176,6 +176,23 @@ export interface OperatorDiscordLogsResponse {
   logs: OperatorDiscordLogEntry[];
 }
 
+export interface OperatorMCPToolSummary {
+  name: string;
+  description: string;
+  sourceKind: 'mcp' | 'runtime';
+  sourceName: string;
+  sourceLabel: string;
+  serverName?: string;
+  enabled: boolean;
+  serverEnabled: boolean;
+}
+
+export interface OperatorMCPToolsResponse {
+  count: number;
+  server?: string;
+  tools: OperatorMCPToolSummary[];
+}
+
 export type KnowledgeNoteContext = 'auto' | 'search-only';
 export type KnowledgeNoteDateFilter = 'all' | '7d' | '30d' | '90d' | 'year';
 export type KnowledgeNoteSort = 'relevance' | 'updated-desc' | 'updated-asc' | 'created-desc' | 'created-asc' | 'title-asc' | 'title-desc';
@@ -390,6 +407,11 @@ export class SettingsApiClient {
 
   async getOperatorMCP(): Promise<OperatorMCPStatusResponse> {
     return this.request<OperatorMCPStatusResponse>('/operator/mcp');
+  }
+
+  async getOperatorMCPTools(server?: string): Promise<OperatorMCPToolsResponse> {
+    const query = server ? `?server=${encodeURIComponent(server)}` : '';
+    return this.request<OperatorMCPToolsResponse>(`/operator/mcp/tools${query}`);
   }
 
   async restartMCPServer(server: string): Promise<{ success: boolean; error?: string }> {

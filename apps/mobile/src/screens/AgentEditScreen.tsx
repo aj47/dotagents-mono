@@ -11,6 +11,7 @@ import {
   AgentProfileUpdateRequest,
   MCPServer,
   Skill,
+  OperatorMCPToolSummary,
   VerifyExternalAgentCommandResponse,
 } from '../lib/settingsApi';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle } from '../lib/accessibility';
@@ -327,6 +328,14 @@ function isMcpServerEnabledForAgent(config: ProfileToolConfig, serverName: strin
   return !(config.disabledServers ?? []).includes(serverName);
 }
 
+function isMcpToolEnabledForAgent(config: ProfileToolConfig, toolName: string): boolean {
+  return !(config.disabledTools ?? []).includes(toolName);
+}
+
+function countEnabledMcpTools(config: ProfileToolConfig, toolNames: string[]): number {
+  return toolNames.filter(toolName => isMcpToolEnabledForAgent(config, toolName)).length;
+}
+
 function setAllMcpServersEnabled(enabled: boolean): ProfileToolConfig {
   return {
     allServersDisabledByDefault: !enabled,
@@ -370,6 +379,20 @@ function toggleMcpServerConfig(config: ProfileToolConfig, serverName: string, al
     allServersDisabledByDefault: false,
     disabledServers: allServerNames.filter(name => disabled.has(name)),
     enabledServers: [],
+  };
+}
+
+function toggleMcpToolConfig(config: ProfileToolConfig, toolName: string): ProfileToolConfig {
+  const disabledTools = new Set(config.disabledTools ?? []);
+  if (disabledTools.has(toolName)) {
+    disabledTools.delete(toolName);
+  } else {
+    disabledTools.add(toolName);
+  }
+
+  return {
+    ...config,
+    disabledTools: Array.from(disabledTools),
   };
 }
 
@@ -468,7 +491,9 @@ export default function AgentEditScreen({ navigation, route }: any) {
   const [originalProfile, setOriginalProfile] = useState<AgentProfileFull | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
+  const [mcpToolsByServer, setMcpToolsByServer] = useState<Record<string, OperatorMCPToolSummary[]>>({});
   const [isLoadingCapabilities, setIsLoadingCapabilities] = useState(false);
+  const [isMcpToolsLoading, setIsMcpToolsLoading] = useState(false);
   const [isVerifyingCommand, setIsVerifyingCommand] = useState(false);
   const [commandVerification, setCommandVerification] = useState<VerifyExternalAgentCommandResponse | null>(null);
   const [newPropertyKey, setNewPropertyKey] = useState('');
@@ -555,6 +580,37 @@ export default function AgentEditScreen({ navigation, route }: any) {
       cancelled = true;
     };
   }, [settingsClient]);
+
+  useEffect(() => {
+    if (!settingsClient || displayMcpServers.length === 0) {
+      setMcpToolsByServer({});
+      setIsMcpToolsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsMcpToolsLoading(true);
+    Promise.all(displayMcpServers.map(async (server) => {
+      try {
+        const res = await settingsClient.getOperatorMCPTools(server.name);
+        const tools = res.tools
+          .filter((tool) => tool.sourceKind === 'mcp')
+          .sort((a, b) => a.name.localeCompare(b.name));
+        return [server.name, tools] as const;
+      } catch (err) {
+        console.warn(`[AgentEdit] Failed to fetch MCP tools for ${server.name}:`, err);
+        return [server.name, []] as const;
+      }
+    })).then((entries) => {
+      if (!cancelled) setMcpToolsByServer(Object.fromEntries(entries));
+    }).finally(() => {
+      if (!cancelled) setIsMcpToolsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [displayMcpServers, settingsClient]);
 
   // Set navigation title
   useEffect(() => {
@@ -773,6 +829,14 @@ export default function AgentEditScreen({ navigation, route }: any) {
       toolConfig: toggleMcpServerConfig(prev.toolConfig, serverName, displayMcpServerNames),
     }));
   }, [displayMcpServerNames, isBuiltInAgent]);
+
+  const toggleMcpTool = useCallback((toolName: string) => {
+    if (isBuiltInAgent) return;
+    setFormData(prev => ({
+      ...prev,
+      toolConfig: toggleMcpToolConfig(prev.toolConfig, toolName),
+    }));
+  }, [isBuiltInAgent]);
 
   const setAllRuntimeTools = useCallback((enabled: boolean) => {
     if (isBuiltInAgent) return;
@@ -1240,22 +1304,51 @@ export default function AgentEditScreen({ navigation, route }: any) {
           <Text style={styles.sectionHelperText}>No MCP servers configured.</Text>
         ) : displayMcpServers.map(server => {
           const enabled = isMcpServerEnabledForAgent(formData.toolConfig, server.name);
+          const tools = mcpToolsByServer[server.name] ?? [];
+          const enabledToolCount = countEnabledMcpTools(formData.toolConfig, tools.map(tool => tool.name));
           return (
-            <View key={server.name} style={styles.skillRow}>
-              <View style={styles.skillInfo}>
-                <Text style={styles.skillName}>{server.name}</Text>
-                <Text style={styles.skillDescription} numberOfLines={2}>
-                  {server.connected ? 'Connected' : 'Offline'} - {server.toolCount} tool{server.toolCount === 1 ? '' : 's'}
-                </Text>
+            <View key={server.name}>
+              <View style={styles.skillRow}>
+                <View style={styles.skillInfo}>
+                  <Text style={styles.skillName}>{server.name}</Text>
+                  <Text style={styles.skillDescription} numberOfLines={2}>
+                    {server.connected ? 'Connected' : 'Offline'} - {enabledToolCount}/{tools.length || server.toolCount} tool{server.toolCount === 1 ? '' : 's'} enabled
+                  </Text>
+                </View>
+                <Switch
+                  value={enabled}
+                  onValueChange={() => toggleMcpServer(server.name)}
+                  disabled={isBuiltInAgent}
+                  accessibilityLabel={createButtonAccessibilityLabel(`${enabled ? 'Disable' : 'Enable'} ${server.name} MCP server for this agent`)}
+                  trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                  thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
+                />
               </View>
-              <Switch
-                value={enabled}
-                onValueChange={() => toggleMcpServer(server.name)}
-                disabled={isBuiltInAgent}
-                accessibilityLabel={createButtonAccessibilityLabel(`${enabled ? 'Disable' : 'Enable'} ${server.name} MCP server for this agent`)}
-                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                thumbColor={enabled ? theme.colors.primaryForeground : theme.colors.background}
-              />
+              {isMcpToolsLoading && tools.length === 0 ? (
+                <Text style={styles.sectionHelperText}>Loading tools...</Text>
+              ) : enabled && tools.length > 0 ? (
+                <View style={styles.mcpToolList}>
+                  {tools.map(tool => {
+                    const toolEnabled = isMcpToolEnabledForAgent(formData.toolConfig, tool.name);
+                    return (
+                      <View key={tool.name} style={styles.mcpToolRow}>
+                        <View style={styles.skillInfo}>
+                          <Text style={styles.mcpToolName}>{tool.name}</Text>
+                          {tool.description ? <Text style={styles.mcpToolDescription} numberOfLines={2}>{tool.description}</Text> : null}
+                        </View>
+                        <Switch
+                          value={toolEnabled}
+                          onValueChange={() => toggleMcpTool(tool.name)}
+                          disabled={isBuiltInAgent || !enabled}
+                          accessibilityLabel={createButtonAccessibilityLabel(`${toolEnabled ? 'Disable' : 'Enable'} ${tool.name} MCP tool for this agent`)}
+                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                          thumbColor={toolEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                        />
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
             </View>
           );
         })}
@@ -1620,6 +1713,32 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.mutedForeground,
       fontSize: 12,
       lineHeight: 16,
+      marginTop: 2,
+    },
+    mcpToolList: {
+      marginLeft: spacing.md,
+      paddingLeft: spacing.sm,
+      borderLeftWidth: 1,
+      borderLeftColor: theme.colors.border,
+      gap: spacing.xs,
+    },
+    mcpToolRow: {
+      minHeight: 44,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      paddingVertical: spacing.xs,
+    },
+    mcpToolName: {
+      color: theme.colors.foreground,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    mcpToolDescription: {
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      lineHeight: 15,
       marginTop: 2,
     },
     propertyRow: {
