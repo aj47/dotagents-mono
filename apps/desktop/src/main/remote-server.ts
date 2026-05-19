@@ -2105,6 +2105,66 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  fastify.get("/v1/operator/providers/chatgpt-web/auth", async (_req, reply) => {
+    try {
+      const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")
+      return reply.send(await getChatGptWebAuthStatus())
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to get ChatGPT Web auth status", error)
+      return reply.code(500).send({ error: getErrorMessage(error) || "Failed to get ChatGPT Web auth status" })
+    }
+  })
+
+  fastify.post("/v1/operator/providers/chatgpt-web/auth/login", async (_req, reply) => {
+    try {
+      const { loginChatGptWebOAuth } = await import("./chatgpt-web-provider")
+      const status = await loginChatGptWebOAuth()
+      return reply.send({
+        success: true,
+        status,
+        message: "OpenAI Codex connected",
+      })
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to connect ChatGPT Web OAuth", error)
+      try {
+        const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")
+        return reply.code(500).send({
+          success: false,
+          status: await getChatGptWebAuthStatus(),
+          message: "Failed to connect OpenAI Codex",
+          error: getErrorMessage(error),
+        })
+      } catch {
+        return reply.code(500).send({ error: getErrorMessage(error) || "Failed to connect OpenAI Codex" })
+      }
+    }
+  })
+
+  fastify.post("/v1/operator/providers/chatgpt-web/auth/logout", async (_req, reply) => {
+    try {
+      const { getChatGptWebAuthStatus, logoutChatGptWebOAuth } = await import("./chatgpt-web-provider")
+      await logoutChatGptWebOAuth()
+      return reply.send({
+        success: true,
+        status: await getChatGptWebAuthStatus(),
+        message: "OpenAI Codex disconnected",
+      })
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to disconnect ChatGPT Web OAuth", error)
+      try {
+        const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")
+        return reply.code(500).send({
+          success: false,
+          status: await getChatGptWebAuthStatus(),
+          message: "Failed to disconnect OpenAI Codex",
+          error: getErrorMessage(error),
+        })
+      } catch {
+        return reply.code(500).send({ error: getErrorMessage(error) || "Failed to disconnect OpenAI Codex" })
+      }
+    }
+  })
+
   fastify.get("/v1/operator/updater", async (_req, reply) => {
     return reply.send(buildOperatorUpdaterStatus())
   })

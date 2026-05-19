@@ -272,6 +272,23 @@ export interface McpOAuthRevokeResponse {
   error?: string;
 }
 
+export interface ChatGptWebAuthStatus {
+  authenticated: boolean;
+  accountId?: string;
+  email?: string;
+  planType?: string;
+  connectedAt?: number;
+  expiresAt?: number;
+  callbackUrl: string;
+}
+
+export interface ChatGptWebAuthActionResponse {
+  success: boolean;
+  status: ChatGptWebAuthStatus;
+  message: string;
+  error?: string;
+}
+
 export type KnowledgeNoteContext = 'auto' | 'search-only';
 export type KnowledgeNoteDateFilter = 'all' | '7d' | '30d' | '90d' | 'year';
 export type KnowledgeNoteSort = 'relevance' | 'updated-desc' | 'updated-asc' | 'created-desc' | 'created-asc' | 'title-asc' | 'title-desc';
@@ -482,6 +499,22 @@ export class SettingsApiClient {
 
   async revokeMcpOAuthTokens(serverName: string): Promise<McpOAuthRevokeResponse> {
     return this.request<McpOAuthRevokeResponse>(`/mcp/servers/${encodeURIComponent(serverName)}/oauth/revoke`, {
+      method: 'POST',
+    });
+  }
+
+  async getChatGptWebAuthStatus(): Promise<ChatGptWebAuthStatus> {
+    return this.request<ChatGptWebAuthStatus>('/operator/providers/chatgpt-web/auth');
+  }
+
+  async loginChatGptWebOAuth(): Promise<ChatGptWebAuthActionResponse> {
+    return this.request<ChatGptWebAuthActionResponse>('/operator/providers/chatgpt-web/auth/login', {
+      method: 'POST',
+    });
+  }
+
+  async logoutChatGptWebOAuth(): Promise<ChatGptWebAuthActionResponse> {
+    return this.request<ChatGptWebAuthActionResponse>('/operator/providers/chatgpt-web/auth/logout', {
       method: 'POST',
     });
   }
