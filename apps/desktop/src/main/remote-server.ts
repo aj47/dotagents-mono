@@ -1983,6 +1983,25 @@ function buildOperatorMessageQueuesResponse(): OperatorMessageQueuesResponse {
   }
 }
 
+function buildOperatorMessageQueueActionResponse(
+  action: string,
+  success: boolean,
+  message: string,
+  details?: Record<string, unknown>,
+): OperatorActionResponse {
+  return {
+    success,
+    action,
+    message,
+    ...(success ? {} : { error: message }),
+    ...(details ? { details } : {}),
+  }
+}
+
+function normalizeOperatorQueuePathParam(value: string | undefined): string {
+  return decodeURIComponent(value || "").trim()
+}
+
 function notifyInactiveSessionsCleared(): void {
   for (const windowId of ["main", "panel"] as const) {
     try {
@@ -2361,6 +2380,116 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       diagnosticsService.logError("remote-server", "Failed to build operator message queues response", error)
       return reply.code(500).send({ error: "Failed to build operator message queues response" })
     }
+  })
+
+  fastify.post("/v1/operator/message-queues/:conversationId/pause", async (req, reply) => {
+    const params = req.params as { conversationId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    if (!conversationId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-pause", false, "Missing conversation ID"))
+    }
+    messageQueueService.pauseQueue(conversationId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-pause",
+      true,
+      "Message queue paused",
+      { conversationId },
+    )
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/message-queues/:conversationId/resume", async (req, reply) => {
+    const params = req.params as { conversationId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    if (!conversationId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-resume", false, "Missing conversation ID"))
+    }
+    messageQueueService.resumeQueue(conversationId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-resume",
+      true,
+      "Message queue resumed",
+      { conversationId, processingStarted: false },
+    )
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/message-queues/:conversationId/clear", async (req, reply) => {
+    const params = req.params as { conversationId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    if (!conversationId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-clear", false, "Missing conversation ID"))
+    }
+    const success = messageQueueService.clearQueue(conversationId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-clear",
+      success,
+      success ? "Message queue cleared" : "Cannot clear a queue while a message is processing",
+      { conversationId },
+    )
+    setOperatorAuditContext(req, { action: response.action, success, details: response.details, failureReason: success ? undefined : response.error })
+    return reply.code(success ? 200 : 409).send(response)
+  })
+
+  fastify.delete("/v1/operator/message-queues/:conversationId/messages/:messageId", async (req, reply) => {
+    const params = req.params as { conversationId?: string; messageId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    const messageId = normalizeOperatorQueuePathParam(params.messageId)
+    if (!conversationId || !messageId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-message-remove", false, "Missing conversation ID or message ID"))
+    }
+    const success = messageQueueService.removeFromQueue(conversationId, messageId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-message-remove",
+      success,
+      success ? "Queued message removed" : "Cannot remove this queued message",
+      { conversationId, messageId },
+    )
+    setOperatorAuditContext(req, { action: response.action, success, details: response.details, failureReason: success ? undefined : response.error })
+    return reply.code(success ? 200 : 409).send(response)
+  })
+
+  fastify.post("/v1/operator/message-queues/:conversationId/messages/:messageId/retry", async (req, reply) => {
+    const params = req.params as { conversationId?: string; messageId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    const messageId = normalizeOperatorQueuePathParam(params.messageId)
+    if (!conversationId || !messageId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-message-retry", false, "Missing conversation ID or message ID"))
+    }
+    const success = messageQueueService.resetToPending(conversationId, messageId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-message-retry",
+      success,
+      success ? "Queued message marked for retry" : "Cannot retry this queued message",
+      { conversationId, messageId, processingStarted: false },
+    )
+    setOperatorAuditContext(req, { action: response.action, success, details: response.details, failureReason: success ? undefined : response.error })
+    return reply.code(success ? 200 : 409).send(response)
+  })
+
+  fastify.patch("/v1/operator/message-queues/:conversationId/messages/:messageId", async (req, reply) => {
+    const params = req.params as { conversationId?: string; messageId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    const messageId = normalizeOperatorQueuePathParam(params.messageId)
+    if (!conversationId || !messageId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-message-update", false, "Missing conversation ID or message ID"))
+    }
+    const body = req.body as { text?: unknown } | undefined
+    const text = typeof body?.text === "string" ? body.text.trim() : ""
+    if (!text) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-message-update", false, "Queued message text is required"))
+    }
+    const success = messageQueueService.updateMessageText(conversationId, messageId, text)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-message-update",
+      success,
+      success ? "Queued message updated" : "Cannot update this queued message",
+      { conversationId, messageId, processingStarted: false },
+    )
+    setOperatorAuditContext(req, { action: response.action, success, details: response.details, failureReason: success ? undefined : response.error })
+    return reply.code(success ? 200 : 409).send(response)
   })
 
   fastify.get("/v1/operator/remote-server", async (_req, reply) => {

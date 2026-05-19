@@ -56,6 +56,7 @@ export type {
   OperatorLogSummary,
   OperatorLogsResponse,
   OperatorMessageQueuesResponse,
+  OperatorMessageQueueSummary,
   OperatorDiscordIntegrationSummary,
   OperatorWhatsAppIntegrationSummary,
   OperatorPushNotificationsSummary,
@@ -133,6 +134,7 @@ import type {
   OperatorDiagnosticReportSaveResponse,
   OperatorLogsResponse,
   OperatorMessageQueuesResponse,
+  OperatorMessageQueueSummary,
   OperatorDiscordIntegrationSummary,
   OperatorWhatsAppIntegrationSummary,
   OperatorIntegrationsSummary,
@@ -781,6 +783,48 @@ export class SettingsApiClient {
 
   async getOperatorMessageQueues(): Promise<OperatorMessageQueuesResponse> {
     return this.request<OperatorMessageQueuesResponse>('/operator/message-queues');
+  }
+
+  async pauseOperatorMessageQueue(conversationId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(`/operator/message-queues/${encodeURIComponent(conversationId)}/pause`, {
+      method: 'POST',
+    });
+  }
+
+  async resumeOperatorMessageQueue(conversationId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(`/operator/message-queues/${encodeURIComponent(conversationId)}/resume`, {
+      method: 'POST',
+    });
+  }
+
+  async clearOperatorMessageQueue(conversationId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(`/operator/message-queues/${encodeURIComponent(conversationId)}/clear`, {
+      method: 'POST',
+    });
+  }
+
+  async removeOperatorQueuedMessage(conversationId: string, messageId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(
+      `/operator/message-queues/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
+      { method: 'DELETE' },
+    );
+  }
+
+  async retryOperatorQueuedMessage(conversationId: string, messageId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(
+      `/operator/message-queues/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/retry`,
+      { method: 'POST' },
+    );
+  }
+
+  async updateOperatorQueuedMessageText(conversationId: string, messageId: string, text: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(
+      `/operator/message-queues/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ text }),
+      },
+    );
   }
 
   async getOperatorRemoteServer(): Promise<OperatorRemoteServerStatus> {

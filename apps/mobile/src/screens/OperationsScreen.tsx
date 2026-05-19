@@ -27,6 +27,7 @@ import {
   OperatorDiagnosticReport,
   OperatorDiscordIntegrationSummary,
   OperatorDiscordLogEntry,
+  OperatorMessageQueueSummary,
   OperatorMCPServerLogEntry,
   OperatorMCPServerSummary,
   OperatorMCPToolSummary,
@@ -146,6 +147,33 @@ function parseCommaSeparatedList(value: string): string[] {
   )];
 }
 
+function getOperatorMessageQueueTotalMessageCount(queues: OperatorMessageQueueSummary[]): number {
+  return queues.reduce((sum, queue) => sum + queue.messageCount, 0);
+}
+
+function hasProcessingQueuedMessage(queue: OperatorMessageQueueSummary): boolean {
+  return queue.messages.some((message) => message.status === 'processing');
+}
+
+function canMutateQueuedMessage(message: OperatorMessageQueueSummary['messages'][number]): boolean {
+  return message.status !== 'processing';
+}
+
+function canEditQueuedMessage(message: OperatorMessageQueueSummary['messages'][number]): boolean {
+  return message.status !== 'processing' && !message.addedToHistory;
+}
+
+function formatQueuedMessageStatus(message: OperatorMessageQueueSummary['messages'][number]): string {
+  if (message.status === 'failed') return message.errorMessage ? `Failed: ${message.errorMessage}` : 'Failed';
+  if (message.status === 'processing') return 'Processing';
+  if (message.status === 'cancelled') return 'Cancelled';
+  return 'Pending';
+}
+
+function previewQueuedMessage(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
 export default function OperationsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -162,6 +190,7 @@ export default function OperationsScreen({ navigation }: any) {
   const [diagnosticReport, setDiagnosticReport] = useState<OperatorDiagnosticReport | null>(null);
   const [auditEntries, setAuditEntries] = useState<OperatorAuditEntry[]>([]);
   const [conversations, setConversations] = useState<OperatorConversationItem[]>([]);
+  const [messageQueues, setMessageQueues] = useState<OperatorMessageQueueSummary[]>([]);
   const [mcpServers, setMcpServers] = useState<OperatorMCPServerSummary[]>([]);
   const [mcpServerLogs, setMcpServerLogs] = useState<Record<string, OperatorMCPServerLogEntry[]>>({});
   const [expandedMcpLogs, setExpandedMcpLogs] = useState<Set<string>>(new Set());
@@ -175,6 +204,11 @@ export default function OperationsScreen({ navigation }: any) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [pendingSetting, setPendingSetting] = useState<string | null>(null);
   const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
+  const [editingQueuedMessage, setEditingQueuedMessage] = useState<{
+    conversationId: string;
+    messageId: string;
+    text: string;
+  } | null>(null);
 
   const settingsClient = useMemo(() => {
     if (!config.baseUrl || !config.apiKey) {
@@ -195,6 +229,7 @@ export default function OperationsScreen({ navigation }: any) {
       setDiagnosticReport(null);
       setAuditEntries([]);
       setConversations([]);
+      setMessageQueues([]);
       setMcpServers([]);
       setMcpServerLogs({});
       setExpandedMcpLogs(new Set());
@@ -202,6 +237,7 @@ export default function OperationsScreen({ navigation }: any) {
       setExpandedMcpTools(new Set());
       setDrafts(buildDrafts(null));
       setError(null);
+      setEditingQueuedMessage(null);
       setIsLoading(false);
       setIsRefreshing(false);
       return;
@@ -223,6 +259,7 @@ export default function OperationsScreen({ navigation }: any) {
       whatsAppResult,
       auditResult,
       conversationsResult,
+      messageQueuesResult,
       mcpResult,
     ] = await Promise.allSettled([
       settingsClient.getOperatorStatus(),
@@ -234,6 +271,7 @@ export default function OperationsScreen({ navigation }: any) {
       settingsClient.getOperatorWhatsApp(),
       settingsClient.getOperatorAudit(RECENT_AUDIT_ENTRY_COUNT),
       settingsClient.getOperatorConversations(10),
+      settingsClient.getOperatorMessageQueues(),
       settingsClient.getOperatorMCP(),
     ]);
 
@@ -299,6 +337,12 @@ export default function OperationsScreen({ navigation }: any) {
       setConversations(conversationsResult.value.conversations);
     } else {
       setConversations([]);
+    }
+
+    if (messageQueuesResult.status === 'fulfilled') {
+      setMessageQueues(messageQueuesResult.value.queues);
+    } else {
+      setMessageQueues([]);
     }
 
     if (mcpResult.status === 'fulfilled') {
@@ -1051,6 +1095,187 @@ export default function OperationsScreen({ navigation }: any) {
                 );
               })}
             </View>
+          )}
+
+          {messageQueues.length > 0 && (
+            <>
+              <View style={styles.panel}>
+                  <Text style={styles.panelTitle}>Queued messages</Text>
+                  <Text style={styles.mutedText}>
+                    {getOperatorMessageQueueTotalMessageCount(messageQueues)} message{getOperatorMessageQueueTotalMessageCount(messageQueues) === 1 ? '' : 's'} across {messageQueues.length} conversation{messageQueues.length === 1 ? '' : 's'}
+                  </Text>
+                  {messageQueues.map((queue) => {
+                    const hasProcessingMessage = hasProcessingQueuedMessage(queue);
+                    const queueControlsDisabled = controlsDisabled || hasProcessingMessage;
+                    const pauseAction = `message-queue-pause:${queue.conversationId}`;
+                    const resumeAction = `message-queue-resume:${queue.conversationId}`;
+                    const clearAction = `message-queue-clear:${queue.conversationId}`;
+                    return (
+                      <View key={queue.conversationId} style={styles.mcpServerCard}>
+                        <View style={styles.mcpServerRow}>
+                          <View style={styles.mcpServerCopy}>
+                            <Text style={styles.detailText}>
+                              {queue.conversationId} • {queue.messageCount} message{queue.messageCount === 1 ? '' : 's'}
+                            </Text>
+                            <Text style={queue.isPaused ? styles.warningText : styles.mutedText}>
+                              {queue.isPaused ? 'Paused' : hasProcessingMessage ? 'Processing' : 'Ready'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {queue.messages.map((message) => {
+                          const isEditing = editingQueuedMessage?.conversationId === queue.conversationId
+                            && editingQueuedMessage?.messageId === message.id;
+                          const editingDraft = isEditing ? editingQueuedMessage : null;
+                          const editedText = editingDraft?.text ?? message.text;
+                          const canMutateMessage = canMutateQueuedMessage(message);
+                          const canEditMessage = canEditQueuedMessage(message);
+                          const retryAction = `message-queue-retry:${queue.conversationId}:${message.id}`;
+                          const removeAction = `message-queue-remove:${queue.conversationId}:${message.id}`;
+                          const updateAction = `message-queue-update:${queue.conversationId}:${message.id}`;
+
+                          return (
+                            <View key={message.id} style={styles.queueMessageCard}>
+                              {isEditing ? (
+                                <>
+                                  <TextInput
+                                    style={styles.input}
+                                    value={editedText}
+                                    onChangeText={(text) => setEditingQueuedMessage({
+                                      conversationId: queue.conversationId,
+                                      messageId: message.id,
+                                      text,
+                                    })}
+                                    editable={pendingAction === null}
+                                    multiline
+                                    accessibilityLabel={createTextInputAccessibilityLabel('queued message text')}
+                                  />
+                                  <View style={styles.mcpActionRow}>
+                                    <TouchableOpacity
+                                      style={[styles.mcpActionButton, styles.secondaryActionButton, pendingAction !== null && styles.actionButtonDisabled]}
+                                      onPress={() => setEditingQueuedMessage(null)}
+                                      disabled={pendingAction !== null}
+                                      accessibilityRole="button"
+                                      accessibilityLabel={createButtonAccessibilityLabel('Cancel queued message edit')}
+                                    >
+                                      <Text style={styles.secondaryActionText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      style={[
+                                        styles.mcpActionButton,
+                                        styles.secondaryActionButton,
+                                        (pendingAction !== null || !editedText.trim()) && styles.actionButtonDisabled,
+                                      ]}
+                                      onPress={() => void runAction(updateAction, () =>
+                                        settingsClient.updateOperatorQueuedMessageText(queue.conversationId, message.id, editedText),
+                                      )}
+                                      disabled={pendingAction !== null || !editedText.trim()}
+                                      accessibilityRole="button"
+                                      accessibilityLabel={createButtonAccessibilityLabel('Save queued message edit')}
+                                    >
+                                      <Text style={styles.secondaryActionText}>{pendingAction === updateAction ? 'Saving...' : 'Save'}</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                </>
+                              ) : (
+                                <>
+                                  <Text style={styles.detailText} numberOfLines={3}>
+                                    {previewQueuedMessage(message.text)}
+                                  </Text>
+                                  <Text style={message.status === 'failed' ? styles.warningText : styles.mutedText}>
+                                    {formatQueuedMessageStatus(message)}
+                                  </Text>
+                                  <View style={styles.mcpActionRow}>
+                                    {message.status === 'failed' ? (
+                                      <TouchableOpacity
+                                        style={[styles.mcpActionButton, styles.secondaryActionButton, (controlsDisabled || !canMutateMessage) && styles.actionButtonDisabled]}
+                                        onPress={() => void runAction(retryAction, () =>
+                                          settingsClient.retryOperatorQueuedMessage(queue.conversationId, message.id),
+                                        )}
+                                        disabled={controlsDisabled || !canMutateMessage}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={createButtonAccessibilityLabel('Retry queued message')}
+                                      >
+                                        <Text style={styles.secondaryActionText}>{pendingAction === retryAction ? 'Retrying...' : 'Retry'}</Text>
+                                      </TouchableOpacity>
+                                    ) : (
+                                      <TouchableOpacity
+                                        style={[styles.mcpActionButton, styles.secondaryActionButton, (controlsDisabled || !canEditMessage) && styles.actionButtonDisabled]}
+                                        onPress={() => setEditingQueuedMessage({ conversationId: queue.conversationId, messageId: message.id, text: message.text })}
+                                        disabled={controlsDisabled || !canEditMessage}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={createButtonAccessibilityLabel('Edit queued message')}
+                                      >
+                                        <Text style={styles.secondaryActionText}>Edit</Text>
+                                      </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity
+                                      style={[styles.mcpActionButton, styles.destructiveActionButton, (controlsDisabled || !canMutateMessage) && styles.actionButtonDisabled]}
+                                      onPress={() => confirmAction(
+                                        'Remove Queued Message',
+                                        'Remove this queued message from the desktop queue?',
+                                        'Remove',
+                                        true,
+                                        () => runAction(removeAction, () =>
+                                          settingsClient.removeOperatorQueuedMessage(queue.conversationId, message.id),
+                                        ),
+                                      )}
+                                      disabled={controlsDisabled || !canMutateMessage}
+                                      accessibilityRole="button"
+                                      accessibilityLabel={createButtonAccessibilityLabel('Remove queued message')}
+                                    >
+                                      <Text style={styles.destructiveActionText}>{pendingAction === removeAction ? 'Removing...' : 'Remove'}</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                </>
+                              )}
+                            </View>
+                          );
+                        })}
+
+                        <View style={styles.mcpActionRow}>
+                          {queue.isPaused ? (
+                            <TouchableOpacity
+                              style={[styles.mcpActionButton, styles.secondaryActionButton, controlsDisabled && styles.actionButtonDisabled]}
+                              onPress={() => void runAction(resumeAction, () => settingsClient.resumeOperatorMessageQueue(queue.conversationId))}
+                              disabled={controlsDisabled}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel('Resume queued messages')}
+                            >
+                              <Text style={styles.secondaryActionText}>{pendingAction === resumeAction ? 'Resuming...' : 'Resume'}</Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity
+                              style={[styles.mcpActionButton, styles.secondaryActionButton, queueControlsDisabled && styles.actionButtonDisabled]}
+                              onPress={() => void runAction(pauseAction, () => settingsClient.pauseOperatorMessageQueue(queue.conversationId))}
+                              disabled={queueControlsDisabled}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel('Pause queued messages')}
+                            >
+                              <Text style={styles.secondaryActionText}>{pendingAction === pauseAction ? 'Pausing...' : 'Pause'}</Text>
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity
+                            style={[styles.mcpActionButton, styles.destructiveActionButton, queueControlsDisabled && styles.actionButtonDisabled]}
+                            onPress={() => confirmAction(
+                              'Clear Queue',
+                              `Clear ${queue.messageCount} queued message${queue.messageCount === 1 ? '' : 's'} for ${queue.conversationId}?`,
+                              'Clear Queue',
+                              true,
+                              () => runAction(clearAction, () => settingsClient.clearOperatorMessageQueue(queue.conversationId)),
+                            )}
+                            disabled={queueControlsDisabled}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel('Clear queued messages')}
+                          >
+                            <Text style={styles.destructiveActionText}>{pendingAction === clearAction ? 'Clearing...' : 'Clear'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })}
+              </View>
+            </>
           )}
 
           {conversations.length > 0 && (
@@ -2402,6 +2627,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flex: 1,
       minWidth: 0,
       gap: 2,
+    },
+    queueMessageCard: {
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: spacing.sm,
+      gap: spacing.sm,
     },
     destructiveActionButton: {
       backgroundColor: theme.colors.destructive + '10',
