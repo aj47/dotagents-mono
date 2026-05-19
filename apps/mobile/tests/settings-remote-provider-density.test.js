@@ -53,6 +53,44 @@ test('keeps profile/model actions text-first and explicitly labeled', () => {
   assert.match(profileModelSection, />Prompt</);
 });
 
+test('uses local defaults for main-agent and WhatsApp desktop settings', () => {
+  const agentSettingsSection = extractBetween(
+    '<CollapsibleSection id="agentSettings" title="Agent Settings">',
+    '<CollapsibleSection id="toolExecution" title="Tool Execution">'
+  );
+  const whatsappSection = extractBetween(
+    '<CollapsibleSection id="whatsapp" title="WhatsApp">',
+    '<CollapsibleSection id="langfuse" title="Langfuse">'
+  );
+
+  assert.match(settingsSource, /const DEFAULT_MAIN_AGENT_MODE = 'api'/);
+  assert.match(settingsSource, /const MAIN_AGENT_MODE_OPTIONS/);
+  assert.match(agentSettingsSection, /\(remoteSettings\.mainAgentMode \?\? DEFAULT_MAIN_AGENT_MODE\) === option\.value/);
+  assert.match(agentSettingsSection, /\(remoteSettings\.mainAgentMode \?\? DEFAULT_MAIN_AGENT_MODE\) === 'acpx'/);
+  assert.match(settingsSource, /const DEFAULT_WHATSAPP_ENABLED = false/);
+  assert.match(settingsSource, /const DEFAULT_WHATSAPP_AUTO_REPLY = false/);
+  assert.match(settingsSource, /const DEFAULT_WHATSAPP_LOG_MESSAGES = false/);
+  assert.match(whatsappSection, /remoteSettings\.whatsappEnabled \?\? DEFAULT_WHATSAPP_ENABLED/);
+  assert.match(whatsappSection, /remoteSettings\.whatsappAutoReply \?\? DEFAULT_WHATSAPP_AUTO_REPLY/);
+  assert.match(whatsappSection, /remoteSettings\.whatsappLogMessages \?\? DEFAULT_WHATSAPP_LOG_MESSAGES/);
+});
+
+test('lets mobile configure desktop local trace logging', () => {
+  const langfuseSection = extractBetween(
+    '<CollapsibleSection id="langfuse" title="Langfuse">',
+    '<CollapsibleSection id="skills" title="Skills">'
+  );
+
+  assert.match(settingsSource, /const DEFAULT_LOCAL_TRACE_LOGGING_ENABLED = false/);
+  assert.match(settingsSource, /LOCAL_TRACE_LOGGING_LABEL/);
+  assert.match(settingsSource, /LOCAL_TRACE_LOG_PATH_PLACEHOLDER/);
+  assert.match(settingsSource, /localTraceLogPath: settingsRes\.localTraceLogPath \|\| ''/);
+  assert.match(settingsSource, /updates\.localTraceLogPath = inputDrafts\.localTraceLogPath \?\? ''/);
+  assert.match(langfuseSection, /remoteSettings\.localTraceLoggingEnabled \?\? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED/);
+  assert.match(langfuseSection, /handleRemoteSettingToggle\('localTraceLoggingEnabled', v\)/);
+  assert.match(langfuseSection, /handleRemoteSettingUpdate\('localTraceLogPath', v\)/);
+});
+
 test('keeps the mobile remote-settings error banner text-first and wrap-safe', () => {
   assert.doesNotMatch(settingsSource, /⚠️ \{remoteError\}/);
   assert.match(settingsSource, /<Text style=\{styles\.warningText\}>\{remoteError\}<\/Text>/);

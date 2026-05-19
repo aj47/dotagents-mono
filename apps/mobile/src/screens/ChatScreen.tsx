@@ -20,6 +20,8 @@ import {
   useWindowDimensions,
   Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
@@ -102,6 +104,7 @@ const VISIBLE_CHAT_MESSAGES_INCREMENT = 60;
 const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
+const MESSAGE_COPY_FEEDBACK_RESET_MS = 2_000;
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
@@ -171,6 +174,7 @@ type QuickStartShortcut = {
   description?: string;
   source: 'command' | 'saved-prompt' | 'skill' | 'task' | 'action';
   action?: 'add-prompt';
+  prompt?: PredefinedPromptSummary;
   task?: Loop;
 };
 
@@ -476,6 +480,143 @@ const applyUserResponseToMessages = (
   return updatedMessages;
 };
 
+type TurnDurationEntry = {
+  durationMs: number;
+  isLive: boolean;
+};
+
+type TurnDurationSummary = {
+  byUserTimestamp: Map<number, TurnDurationEntry>;
+  totalMs: number;
+  hasLive: boolean;
+};
+
+type ToolExecutionStats = {
+  durationMs?: number;
+  totalTokens?: number;
+  toolUseCount?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheHitTokens?: number;
+  model?: string;
+  subagentId?: string;
+};
+
+const TURN_DURATION_TICK_MS = 1000;
+
+const isThinkingOnlyMessage = (message: ChatMessage): boolean =>
+  message.role === 'assistant' &&
+  (!message.content || message.content.length === 0) &&
+  !message.toolCalls?.length &&
+  !message.toolResults?.length;
+
+const computeTurnDurations = (
+  messages: ChatMessage[],
+  isComplete: boolean,
+  nowMs: number
+): TurnDurationSummary => {
+  const byUserTimestamp = new Map<number, TurnDurationEntry>();
+  let totalMs = 0;
+  let hasLive = false;
+
+  for (let i = 0; i < messages.length; i += 1) {
+    const message = messages[i];
+    if (message.role !== 'user' || typeof message.timestamp !== 'number') continue;
+
+    let endTimestamp: number | null = null;
+    let hasNextUserMessage = false;
+    for (let j = i + 1; j < messages.length; j += 1) {
+      const nextMessage = messages[j];
+      if (nextMessage.role === 'user') {
+        hasNextUserMessage = true;
+        break;
+      }
+      if (typeof nextMessage.timestamp === 'number' && !isThinkingOnlyMessage(nextMessage)) {
+        endTimestamp = nextMessage.timestamp;
+      }
+    }
+
+    const isLive = !hasNextUserMessage && !isComplete;
+    const effectiveEndTimestamp = isLive ? nowMs : (endTimestamp ?? message.timestamp);
+    const durationMs = Math.max(0, effectiveEndTimestamp - message.timestamp);
+    const entry = { durationMs, isLive };
+
+    byUserTimestamp.set(message.timestamp, entry);
+    totalMs += durationMs;
+    if (isLive) hasLive = true;
+  }
+
+  return { byUserTimestamp, totalMs, hasLive };
+};
+
+const formatTurnDuration = (durationMs: number): string => {
+  if (!Number.isFinite(durationMs) || durationMs <= 0) return '0s';
+  const seconds = Math.max(1, Math.round(durationMs / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes < 60) return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+};
+
+const getFiniteToolExecutionStat = (value: number | null | undefined): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+const formatToolExecutionDuration = (durationMs: number): string => {
+  if (durationMs < 1000) return `${Math.round(durationMs)}ms`;
+  if (durationMs < 60000) return `${(durationMs / 1000).toFixed(1)}s`;
+  const minutes = Math.floor(durationMs / 60000);
+  const seconds = Math.round((durationMs % 60000) / 1000);
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+};
+
+const formatToolExecutionTokens = (tokens: number): string => {
+  if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
+  if (tokens >= 1000) return `${(tokens / 1000).toFixed(tokens >= 10000 ? 0 : 1)}k`;
+  return `${tokens}`;
+};
+
+const truncateToolExecutionSubagentId = (id: string): string => {
+  if (id.length > 12 && id.includes('-')) return `agent:${id.split('-')[0].slice(0, 7)}`;
+  if (id.length <= 12) return id;
+  return `${id.slice(0, 10)}...`;
+};
+
+const getAgentProgressStepToolExecutionStats = (
+  step?: { executionStats?: ToolExecutionStats | null; subagentId?: string | null } | null
+): ToolExecutionStats | undefined => {
+  if (!step?.executionStats) return undefined;
+  return {
+    ...step.executionStats,
+    ...(step.subagentId ? { subagentId: step.subagentId } : {}),
+  };
+};
+
+const getToolPayloadCopyAccessibilityLabel = (
+  kind: 'input' | 'output' | 'error',
+  toolName: string,
+) => {
+  const label = kind === 'input' ? 'Copy input' : kind === 'output' ? 'Copy output' : 'Copy error details';
+  return `${label} for ${toolName}`;
+};
+
+const formatToolExecutionStatsLabel = (stats?: ToolExecutionStats | null): string | null => {
+  const durationMs = getFiniteToolExecutionStat(stats?.durationMs);
+  const totalTokens = getFiniteToolExecutionStat(stats?.totalTokens);
+  const model = stats?.model?.trim();
+  const subagentId = stats?.subagentId?.trim();
+  const parts = [
+    subagentId ? truncateToolExecutionSubagentId(subagentId) : null,
+    model || null,
+    durationMs !== undefined ? formatToolExecutionDuration(durationMs) : null,
+    totalTokens !== undefined ? `${formatToolExecutionTokens(totalTokens)} tokens` : null,
+  ].filter((part): part is string => Boolean(part));
+
+  return parts.length > 0 ? parts.join(' • ') : null;
+};
+
 export default function ChatScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -507,6 +648,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
   const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
   const [remoteEdgeTtsRate, setRemoteEdgeTtsRate] = useState(1.0);
+  const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
+  const [branchingMessageIndex, setBranchingMessageIndex] = useState<number | null>(null);
   // Effective TTS provider/voice/rate — local mobile config takes precedence over
   // any value pulled from the connected desktop's settings. Edge TTS only plays on web.
   const effectiveTtsProvider: 'native' | 'edge' =
@@ -518,6 +661,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const effectiveEdgeTtsRate =
     config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteEdgeTtsRate;
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
+  const [editingPrompt, setEditingPrompt] = useState<PredefinedPromptSummary | null>(null);
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
@@ -587,6 +731,22 @@ export default function ChatScreen({ route, navigation }: any) {
   const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [turnDurationNow, setTurnDurationNow] = useState(() => Date.now());
+  const hasLiveAgentTurn = responding || conversationState === 'running';
+  useEffect(() => {
+    if (!hasLiveAgentTurn) return;
+    setTurnDurationNow(Date.now());
+    const interval = setInterval(() => setTurnDurationNow(Date.now()), TURN_DURATION_TICK_MS);
+    return () => clearInterval(interval);
+  }, [hasLiveAgentTurn]);
+  const turnDurations = useMemo(
+    () => computeTurnDurations(messages, !hasLiveAgentTurn, turnDurationNow),
+    [hasLiveAgentTurn, messages, turnDurationNow]
+  );
+  const headerTotalTurnDuration = turnDurations.totalMs > 0
+    ? formatTurnDuration(turnDurations.totalMs)
+    : null;
 
   // Track the current active request to prevent cross-request state clobbering
   // Each request gets a unique ID; only the currently active request can reset UI states
@@ -749,9 +909,31 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [runningPromptTaskId, settingsClient]);
 
+  const openAddPromptModal = useCallback(() => {
+    setEditingPrompt(null);
+    setNewPromptName('');
+    setNewPromptContent('');
+    setAddPromptModalVisible(true);
+  }, []);
+
+  const openEditPromptModal = useCallback((prompt: PredefinedPromptSummary) => {
+    setEditingPrompt(prompt);
+    setNewPromptName(prompt.name);
+    setNewPromptContent(prompt.content);
+    setAddPromptModalVisible(true);
+  }, []);
+
+  const closePromptModal = useCallback(() => {
+    if (isSavingPrompt) return;
+    setAddPromptModalVisible(false);
+    setEditingPrompt(null);
+    setNewPromptName('');
+    setNewPromptContent('');
+  }, [isSavingPrompt]);
+
   const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
     if (item.action === 'add-prompt') {
-      setAddPromptModalVisible(true);
+      openAddPromptModal();
       return;
     }
     if (item.source === 'task' && item.task) {
@@ -759,13 +941,39 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     handleInsertQuickStartPrompt(item.content);
-  }, [handleInsertQuickStartPrompt, handleRunPromptTask]);
+  }, [handleInsertQuickStartPrompt, handleRunPromptTask, openAddPromptModal]);
 
   const handleToggleCurrentSessionPinned = useCallback(() => {
     const currentSessionId = sessionStore.currentSessionId;
     if (!currentSessionId) return;
     void sessionStore.toggleSessionPinned(currentSessionId);
   }, [sessionStore]);
+
+  const handleBranchFromMessage = useCallback(async (messageIndex: number) => {
+    const serverConversationId = currentSession?.serverConversationId;
+    if (!settingsClient || !serverConversationId) {
+      Alert.alert('Branch Unavailable', 'This chat is not linked to a desktop conversation yet.');
+      return;
+    }
+
+    setBranchingMessageIndex(messageIndex);
+    try {
+      const branchedConversation = await settingsClient.branchConversation(serverConversationId, { messageIndex });
+      await sessionStore.syncWithServer(settingsClient);
+      const branchedSession = sessionStore.findSessionByServerConversationId(branchedConversation.id);
+      if (branchedSession) {
+        sessionStore.setCurrentSession(branchedSession.id);
+        navigation.navigate('Chat');
+        return;
+      }
+
+      Alert.alert('Branch Created', 'The branched chat will appear in the chat list after sync.');
+    } catch (error: any) {
+      Alert.alert('Branch Failed', error?.message || 'Failed to branch this conversation.');
+    } finally {
+      setBranchingMessageIndex(null);
+    }
+  }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
 
   const headerConversationState = conversationState ?? (responding ? 'running' : null);
   const headerConversationLabel = headerConversationState
@@ -814,6 +1022,7 @@ export default function ChatScreen({ route, navigation }: any) {
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
+            gap: 3,
             backgroundColor: theme.colors.primary + '33',
             paddingHorizontal: 8,
             paddingVertical: 2,
@@ -824,9 +1033,28 @@ export default function ChatScreen({ route, navigation }: any) {
               color: theme.colors.primary,
               fontWeight: '500',
             }}>
-              {currentAgentLabel} ▼
+              {currentAgentLabel}
             </Text>
+            <Ionicons name="chevron-down" size={10} color={theme.colors.primary} />
           </View>
+          {headerTotalTurnDuration && (
+            <View style={[
+              styles.headerDurationChip,
+              turnDurations.hasLive && styles.headerDurationChipLive,
+            ]}>
+              <Ionicons
+                name="time-outline"
+                size={10}
+                color={turnDurations.hasLive ? theme.colors.primary : theme.colors.mutedForeground}
+              />
+              <Text style={[
+                styles.headerDurationChipText,
+                turnDurations.hasLive && { color: theme.colors.primary },
+              ]}>
+                {headerTotalTurnDuration}{turnDurations.hasLive ? ' live' : ''}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       ),
       headerLeft: () => (
@@ -932,10 +1160,28 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, handleToggleCurrentSessionPinned, isCurrentSessionPinned, responding, headerConversationLabel, headerConversationState, headerConversationChipStyle, theme, isDark, sessionStore, currentProfile, styles]);
+  }, [navigation, handsFree, handleKillSwitch, handleNewChat, handleToggleCurrentSessionPinned, isCurrentSessionPinned, responding, headerConversationLabel, headerConversationState, headerConversationChipStyle, headerTotalTurnDuration, turnDurations.hasLive, theme, isDark, sessionStore, currentProfile, styles]);
 
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
+    if (!settingsClient) {
+      Alert.alert('Connection Required', 'Configure your desktop server connection before responding to tool approvals.');
+      return;
+    }
+
+    setPendingToolApprovalResponseId(approvalId);
+    try {
+      const response = await settingsClient.respondToToolApproval(approvalId, approved);
+      setMessages((current) => current.filter((message) => message.toolApproval?.approvalId !== approvalId));
+      if (!response.success) {
+        Alert.alert('Approval Unavailable', 'The approval request is no longer pending.');
+      }
+    } catch (error: any) {
+      Alert.alert('Approval Failed', error?.message || 'Failed to respond to the tool approval request.');
+    } finally {
+      setPendingToolApprovalResponseId(null);
+    }
+  }, [settingsClient]);
   const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_CHAT_MESSAGES);
   // Keep a ref to messages to avoid stale closures in setTimeout callbacks (PR review fix)
   const messagesRef = useRef<ChatMessage[]>(messages);
@@ -964,6 +1210,55 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track which tool-activity groups are expanded (keyed by startIndex so the
   // state survives when new tool/skill messages append to the same group)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+  const copiedMessageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearCopiedMessageFeedback = useCallback(() => {
+    if (copiedMessageTimeoutRef.current) {
+      clearTimeout(copiedMessageTimeoutRef.current);
+      copiedMessageTimeoutRef.current = null;
+    }
+    setCopiedMessageIndex(null);
+  }, []);
+  const showCopiedMessageFeedback = useCallback((messageIndex: number) => {
+    setCopiedMessageIndex(messageIndex);
+    if (copiedMessageTimeoutRef.current) {
+      clearTimeout(copiedMessageTimeoutRef.current);
+    }
+    copiedMessageTimeoutRef.current = setTimeout(() => {
+      setCopiedMessageIndex((currentIndex) => (
+        currentIndex === messageIndex ? null : currentIndex
+      ));
+      copiedMessageTimeoutRef.current = null;
+    }, MESSAGE_COPY_FEEDBACK_RESET_MS);
+  }, []);
+  useEffect(() => () => {
+    if (copiedMessageTimeoutRef.current) {
+      clearTimeout(copiedMessageTimeoutRef.current);
+      copiedMessageTimeoutRef.current = null;
+    }
+  }, []);
+  const handleCopyMessage = useCallback(async (messageIndex: number, content: string) => {
+    const copyContent = content.trim();
+    if (!copyContent) return;
+
+    try {
+      await Clipboard.setStringAsync(copyContent);
+      showCopiedMessageFeedback(messageIndex);
+    } catch (error: any) {
+      Alert.alert('Copy Failed', error?.message || 'Could not copy this message.');
+    }
+  }, [showCopiedMessageFeedback]);
+
+  const handleCopyToolPayload = useCallback(async (content: string) => {
+    const copyContent = content.trim();
+    if (!copyContent) return;
+
+    try {
+      await Clipboard.setStringAsync(copyContent);
+    } catch (error: any) {
+      Alert.alert('Copy Failed', error?.message || 'Could not copy this tool payload.');
+    }
+  }, []);
   // Track the last failed message for retry functionality
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 	  const [willCancel, setWillCancel] = useState(false);
@@ -1525,26 +1820,48 @@ export default function ChatScreen({ route, navigation }: any) {
     };
   }, [isFocused, settingsClient]);
 
-  const handleSaveNewPrompt = async () => {
-    if (!settingsClient || !newPromptName.trim() || !newPromptContent.trim()) return;
+  const handleSavePrompt = async () => {
+    const name = newPromptName.trim();
+    const content = newPromptContent.trim();
+    if (!settingsClient || !name || !content || isSavingPrompt) return;
     setIsSavingPrompt(true);
+    const wasEditingPrompt = Boolean(editingPrompt);
     try {
       const now = Date.now();
-      const newPrompt: PredefinedPromptSummary = {
-        id: `prompt-${now}-${Math.random().toString(36).substr(2, 9)}`,
-        name: newPromptName.trim(),
-        content: newPromptContent.trim(),
-        createdAt: now,
-        updatedAt: now,
-      };
+      const updatedPrompts = editingPrompt
+        ? predefinedPrompts.map((prompt) => (
+            prompt.id === editingPrompt.id
+              ? {
+                  ...prompt,
+                  name,
+                  content,
+                  updatedAt: now,
+                }
+              : prompt
+          ))
+        : [
+            {
+              id: `prompt-${now}-${Math.random().toString(36).substr(2, 9)}`,
+              name,
+              content,
+              createdAt: now,
+              updatedAt: now,
+            },
+            ...predefinedPrompts,
+          ];
 
-      const updatedPrompts = [newPrompt, ...predefinedPrompts];
       await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
       setPredefinedPrompts(updatedPrompts);
       setAddPromptModalVisible(false);
+      setEditingPrompt(null);
       setNewPromptName('');
       setNewPromptContent('');
-      Alert.alert('Success', 'Prompt saved to your desktop prompt library.');
+      Alert.alert(
+        'Success',
+        wasEditingPrompt
+          ? 'Prompt updated in your desktop prompt library.'
+          : 'Prompt saved to your desktop prompt library.'
+      );
     } catch (error: any) {
       console.error('[ChatScreen] Error saving prompt:', error);
       Alert.alert('Error', error.message || 'Failed to save prompt.');
@@ -1552,6 +1869,51 @@ export default function ChatScreen({ route, navigation }: any) {
       setIsSavingPrompt(false);
     }
   };
+
+  const handleDeletePromptConfirmed = useCallback(async (prompt: PredefinedPromptSummary) => {
+    if (!settingsClient || isSavingPrompt) return;
+    setIsSavingPrompt(true);
+    try {
+      const updatedPrompts = predefinedPrompts.filter((existingPrompt) => existingPrompt.id !== prompt.id);
+      await settingsClient.updateSettings({ predefinedPrompts: updatedPrompts });
+      setPredefinedPrompts(updatedPrompts);
+      if (editingPrompt?.id === prompt.id) {
+        setAddPromptModalVisible(false);
+        setEditingPrompt(null);
+        setNewPromptName('');
+        setNewPromptContent('');
+      }
+      Alert.alert('Deleted', 'Prompt removed from your desktop prompt library.');
+    } catch (error: any) {
+      console.error('[ChatScreen] Error deleting prompt:', error);
+      Alert.alert('Error', error.message || 'Failed to delete prompt.');
+    } finally {
+      setIsSavingPrompt(false);
+    }
+  }, [editingPrompt?.id, isSavingPrompt, predefinedPrompts, settingsClient]);
+
+  const handleDeletePrompt = useCallback((prompt: PredefinedPromptSummary) => {
+    if (!settingsClient || isSavingPrompt) return;
+    const message = `Delete "${prompt.name}" from your desktop prompt library?`;
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) {
+        void handleDeletePromptConfirmed(prompt);
+      }
+      return;
+    }
+
+    Alert.alert('Delete Prompt', message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void handleDeletePromptConfirmed(prompt);
+        },
+      },
+    ]);
+  }, [handleDeletePromptConfirmed, isSavingPrompt, settingsClient]);
 
   // Reset auto-scroll when session changes
   useEffect(() => {
@@ -1594,6 +1956,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setExpandedMessages({});
       setExpandedToolCalls({});
       setExpandedGroups({});
+      clearCopiedMessageFeedback();
       // Clear respond_to_user history for the new session
 	      replaceResponseHistory([]);
       playedResponseEventIdsRef.current = new Set();
@@ -1714,7 +2077,7 @@ export default function ChatScreen({ route, navigation }: any) {
       setMessages([]);
 	      replaceResponseHistory([]);
     }
-	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, replaceResponseHistory]);
+	  }, [sessionStore.currentSessionId, sessionStore, sessionStore.deletingSessionIds.size, config.baseUrl, config.apiKey, settingsClient, clearCopiedMessageFeedback, replaceResponseHistory]);
 
   // Auto-send initialMessage from route params (e.g. from rapid fire mode in SessionListScreen)
   const initialMessageRef = useRef<string | null>(route?.params?.initialMessage ?? null);
@@ -1852,6 +2215,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (update.steps && update.steps.length > 0) {
       let currentToolCalls: any[] = [];
       let currentToolResults: any[] = [];
+      const currentToolExecutionStats: Array<ToolExecutionStats | undefined> = [];
       let thinkingContent = '';
 
       for (const step of update.steps) {
@@ -1861,6 +2225,7 @@ export default function ChatScreen({ route, navigation }: any) {
         } else if (step.type === 'tool_call') {
           if (step.toolCall) {
             currentToolCalls.push(step.toolCall);
+            currentToolExecutionStats.push(getAgentProgressStepToolExecutionStats(step));
           }
           if (step.toolResult) {
             currentToolResults.push(step.toolResult);
@@ -1883,11 +2248,20 @@ export default function ChatScreen({ route, navigation }: any) {
         !!update.streamingContent?.text;
 
       if (hasCurrentAssistantFeedback) {
+        const toolExecutions = currentToolExecutionStats.some(Boolean)
+          ? currentToolCalls.map((toolCall, index) => ({
+              toolCall,
+              result: currentToolResults[index],
+              executionStats: currentToolExecutionStats[index],
+            }))
+          : undefined;
         messages.push({
           role: 'assistant',
           content: thinkingContent || (hasCurrentToolActivity ? 'Executing tools...' : ''),
           toolCalls: currentToolCalls.length > 0 ? currentToolCalls : undefined,
           toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
+          toolExecutionStats: currentToolExecutionStats.some(Boolean) ? currentToolExecutionStats : undefined,
+          toolExecutions,
         });
       } else if (
         !update.isComplete &&
@@ -1966,6 +2340,7 @@ export default function ChatScreen({ route, navigation }: any) {
         messages.length > 0
         && messages[messages.length - 1].role === 'assistant'
         && messages[messages.length - 1].variant !== 'delegation'
+        && messages[messages.length - 1].variant !== 'approval'
       ) {
         messages[messages.length - 1].content = update.streamingContent.text;
       } else {
@@ -1974,6 +2349,15 @@ export default function ChatScreen({ route, navigation }: any) {
           content: update.streamingContent.text,
         });
       }
+    }
+
+    if (update.pendingToolApproval) {
+      messages.push({
+        role: 'assistant',
+        content: `Tool approval required: ${update.pendingToolApproval.toolName}`,
+        variant: 'approval',
+        toolApproval: update.pendingToolApproval,
+      });
     }
 
     const messagesWithUserResponse = applyUserResponseToMessages(
@@ -2907,6 +3291,7 @@ export default function ChatScreen({ route, navigation }: any) {
           content: prompt.content,
           description: prompt.content,
           source: isSlashCommandPrompt(prompt) ? 'command' as const : 'saved-prompt' as const,
+          prompt,
         }));
 
       const skillItems = availableSkills.map((skill) => ({
@@ -3149,6 +3534,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	const micButtonLabel = handsFree
 			? (handsFreeController.state.phase === 'sleeping' ? 'Wake' : handsFreePauseResumeLabel)
 		: (listening ? '...' : 'Hold');
+  const isMessageQueuePaused = handsFree && handsFreeController.state.phase === 'paused';
 
   const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
   const visibleMessages = messages.slice(firstVisibleMessageIndex);
@@ -3214,6 +3600,38 @@ export default function ChatScreen({ route, navigation }: any) {
 		                      ]} numberOfLines={2}>{item.title}</Text>
 		                      {item.description ? (
 		                        <Text style={styles.chatHomeShortcutDescription} numberOfLines={2}>{item.description}</Text>
+		                      ) : null}
+		                      {item.prompt ? (
+		                        <View style={styles.chatHomeShortcutActions}>
+		                          <TouchableOpacity
+		                            style={styles.chatHomeShortcutActionButton}
+		                            onPress={(event) => {
+		                              event.stopPropagation();
+		                              if (item.prompt) openEditPromptModal(item.prompt);
+		                            }}
+		                            accessibilityRole="button"
+		                            accessibilityLabel={createButtonAccessibilityLabel(`Edit prompt ${item.title}`)}
+		                          >
+		                            <Text style={styles.chatHomeShortcutActionButtonText}>Edit</Text>
+		                          </TouchableOpacity>
+		                          <TouchableOpacity
+		                            style={[
+		                              styles.chatHomeShortcutActionButton,
+		                              styles.chatHomeShortcutActionButtonDanger,
+		                            ]}
+		                            onPress={(event) => {
+		                              event.stopPropagation();
+		                              if (item.prompt) handleDeletePrompt(item.prompt);
+		                            }}
+		                            accessibilityRole="button"
+		                            accessibilityLabel={createButtonAccessibilityLabel(`Delete prompt ${item.title}`)}
+		                          >
+		                            <Text style={[
+		                              styles.chatHomeShortcutActionButtonText,
+		                              styles.chatHomeShortcutActionButtonDangerText,
+		                            ]}>Delete</Text>
+		                          </TouchableOpacity>
+		                        </View>
 		                      ) : null}
 	                    </Pressable>
 	                  ))}
@@ -3306,6 +3724,20 @@ export default function ChatScreen({ route, navigation }: any) {
               visibleMessageContent.trim().length > 0 &&
               config.ttsEnabled !== false &&
               (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
+            const canBranchFromMessage =
+              !!currentSession?.serverConversationId &&
+              (m.role === 'user' || m.role === 'assistant') &&
+              m.variant !== 'approval';
+            const canCopyMessage =
+              (m.role === 'user' || m.role === 'assistant') &&
+              visibleMessageContent.trim().length > 0 &&
+              (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
+            const turnDuration = m.role === 'user' && typeof m.timestamp === 'number'
+              ? turnDurations.byUserTimestamp.get(m.timestamp)
+              : undefined;
+            const turnDurationLabel = turnDuration
+              ? `Agent time ${formatTurnDuration(turnDuration.durationMs)}${turnDuration.isLive ? ' live' : ''}`
+              : null;
 
             const toolCalls = m.toolCalls ?? [];
             const toolResults = m.toolResults ?? [];
@@ -3317,12 +3749,14 @@ export default function ChatScreen({ route, navigation }: any) {
                   label: undefined as string | undefined,
                   origIdx,
                   result: execution.result,
+                  executionStats: execution.executionStats,
                 }))
               : toolCalls.map((toolCall, origIdx) => ({
                   toolCall,
                   label: undefined as string | undefined,
                   origIdx,
                   result: toolResults[origIdx],
+                  executionStats: m.toolExecutionStats?.[origIdx],
                 })))
               .filter((entry) => !HIDDEN_META_TOOLS.has(entry.toolCall.name));
             const fallbackToolEntries =
@@ -3335,6 +3769,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     label: 'Tool result',
                     origIdx: idx,
                     result,
+                    executionStats: m.toolExecutionStats?.[idx],
                   }))
                 : [];
             const renderedToolEntries = fallbackToolEntries.length > 0
@@ -3410,7 +3845,47 @@ export default function ChatScreen({ route, navigation }: any) {
                   </Pressable>
                 )}
 
-                {m.role === 'assistant' && (!m.content || m.content.length === 0) && !m.toolCalls && !m.toolResults ? (
+                {m.variant === 'approval' && m.toolApproval ? (
+                  <View style={styles.toolApprovalCard}>
+                    <Text style={styles.toolApprovalTitle}>Tool Approval Required</Text>
+                    <Text style={styles.toolApprovalTool} numberOfLines={2}>
+                      {m.toolApproval.toolName}
+                    </Text>
+                    <Text style={styles.toolApprovalArguments} numberOfLines={4}>
+                      {formatToolArguments(m.toolApproval.arguments)}
+                    </Text>
+                    <View style={styles.toolApprovalActions}>
+                      <TouchableOpacity
+                        style={[
+                          styles.toolApprovalButton,
+                          styles.toolApprovalDenyButton,
+                          pendingToolApprovalResponseId === m.toolApproval.approvalId && styles.toolApprovalButtonDisabled,
+                        ]}
+                        onPress={() => respondToToolApproval(m.toolApproval!.approvalId, false)}
+                        disabled={pendingToolApprovalResponseId === m.toolApproval.approvalId}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Deny tool call ${m.toolApproval.toolName}`}
+                      >
+                        <Text style={styles.toolApprovalDenyButtonText}>Deny</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.toolApprovalButton,
+                          styles.toolApprovalApproveButton,
+                          pendingToolApprovalResponseId === m.toolApproval.approvalId && styles.toolApprovalButtonDisabled,
+                        ]}
+                        onPress={() => respondToToolApproval(m.toolApproval!.approvalId, true)}
+                        disabled={pendingToolApprovalResponseId === m.toolApproval.approvalId}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Approve tool call ${m.toolApproval.toolName}`}
+                      >
+                        <Text style={styles.toolApprovalApproveButtonText}>
+                          {pendingToolApprovalResponseId === m.toolApproval.approvalId ? 'Responding...' : 'Approve'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : m.role === 'assistant' && (!m.content || m.content.length === 0) && !m.toolCalls && !m.toolResults ? (
                   <View
                     accessible
                     accessibilityRole="progressbar"
@@ -3482,6 +3957,29 @@ export default function ChatScreen({ route, navigation }: any) {
                         )}
                       </View>
                     ) : null}
+
+                    {turnDurationLabel && (
+                      <View
+                        style={[
+                          styles.turnDurationBadge,
+                          turnDuration?.isLive && styles.turnDurationBadgeLive,
+                        ]}
+                        accessibilityRole="text"
+                        accessibilityLabel={turnDurationLabel}
+                      >
+                        <Ionicons
+                          name="time-outline"
+                          size={12}
+                          color={turnDuration?.isLive ? theme.colors.primary : theme.colors.mutedForeground}
+                        />
+                        <Text style={[
+                          styles.turnDurationBadgeText,
+                          turnDuration?.isLive && { color: theme.colors.primary },
+                        ]}>
+                          {turnDurationLabel}
+                        </Text>
+                      </View>
+                    )}
 
                     {/* Unified Tool Execution Display - only show when there are displayable tool calls */}
                     {displayToolCallCount > 0 && (
@@ -3561,47 +4059,75 @@ export default function ChatScreen({ route, navigation }: any) {
                             allSuccess && styles.toolExecutionSuccess,
                             hasErrors && styles.toolExecutionError,
                           ]}>
-                            {renderedToolEntries.map(({ toolCall, label, origIdx, result }, idx) => {
+                            {renderedToolEntries.map(({ toolCall, label, origIdx, result, executionStats }, idx) => {
                               const isResultPending = !result;
+                              const executionStatsLabel = formatToolExecutionStatsLabel(executionStats);
                               // Use message id or fallback to array index to ensure stable, unique keys
                               // that won't collide when m.id is undefined (which is common)
                               const stableMessageKey = m.id ?? String(i);
                               const toolCallKey = `${stableMessageKey}-${origIdx}`;
                               const isToolCallFullyExpanded = expandedToolCalls[toolCallKey] ?? false;
+                              const toolNameLabel = label ?? toolCall.name;
+                              const toolInputPayload = toolCall.arguments ? formatToolArguments(toolCall.arguments) : '';
+                              const toolResultContent = result?.content || 'No content returned';
                               return (
                                 <View key={idx} style={styles.toolCallSection}>
                                   {/* Tool name heading - tappable to toggle full expansion */}
                                   <Pressable
-                                    onPress={() => toggleToolCallExpansion(stableMessageKey, idx)}
+                                    onPress={() => toggleToolCallExpansion(stableMessageKey, origIdx)}
                                     style={({ pressed }) => [
                                       styles.toolCallHeader,
                                       pressed && styles.toolCallHeaderPressed,
                                     ]}
                                     accessibilityRole="button"
-                                    accessibilityLabel={createExpandCollapseAccessibilityLabel(`${label ?? toolCall.name} tool details`, isToolCallFullyExpanded)}
+                                    accessibilityLabel={createExpandCollapseAccessibilityLabel(`${toolNameLabel} tool details`, isToolCallFullyExpanded)}
                                     accessibilityState={{ expanded: isToolCallFullyExpanded }}
                                     aria-expanded={isToolCallFullyExpanded}
                                     accessibilityHint={isToolCallFullyExpanded ? 'Collapse tool details' : 'Expand to show full input/output'}
                                   >
-                                    <Text style={styles.toolName}>{label ?? toolCall.name}</Text>
+                                    <Text style={styles.toolName}>{toolNameLabel}</Text>
                                     <Text style={styles.toolCallExpandHint}>
                                       {isToolCallFullyExpanded ? '▼ Collapse' : '▶ Full Details'}
                                     </Text>
                                   </Pressable>
 
                                   {/* Parameters */}
-                                  {toolCall.arguments && (
+                                  {toolInputPayload && (
                                     <View style={styles.toolParamsSection}>
-                                      <Text style={styles.toolSectionLabel}>Input:</Text>
+                                      <View style={styles.toolSectionHeaderRow}>
+                                        <Text style={styles.toolSectionLabel}>Input:</Text>
+                                        <Pressable
+                                          style={({ pressed }) => [
+                                            styles.toolDetailCopyButton,
+                                            pressed && styles.toolDetailCopyButtonPressed,
+                                          ]}
+                                          onPress={() => { void handleCopyToolPayload(toolInputPayload); }}
+                                          accessibilityRole="button"
+                                          accessibilityLabel={getToolPayloadCopyAccessibilityLabel('input', toolNameLabel)}
+                                        >
+                                          <Ionicons name="copy-outline" size={10} color={theme.colors.mutedForeground} />
+                                          <Text style={styles.toolDetailCopyButtonText}>Copy</Text>
+                                        </Pressable>
+                                      </View>
                                       <ScrollView
                                         style={isToolCallFullyExpanded ? styles.toolParamsScrollExpanded : styles.toolParamsScroll}
                                         nestedScrollEnabled
                                       >
                                         <Text style={styles.toolParamsCode}>
-                                          {formatToolArguments(toolCall.arguments)}
+                                          {toolInputPayload}
                                         </Text>
                                       </ScrollView>
                                     </View>
+                                  )}
+
+                                  {executionStatsLabel && (
+                                    <Text
+                                      style={styles.toolExecutionStatsText}
+                                      accessibilityRole="text"
+                                      accessibilityLabel={`Tool execution stats: ${executionStatsLabel}`}
+                                    >
+                                      {executionStatsLabel}
+                                    </Text>
                                   )}
 
                                   {/* Result for this specific tool call */}
@@ -3618,18 +4144,44 @@ export default function ChatScreen({ route, navigation }: any) {
                                         <Text style={styles.toolResultCharCount}>
                                           {(result.content?.length || 0).toLocaleString()} chars
                                         </Text>
+                                        <Pressable
+                                          style={({ pressed }) => [
+                                            styles.toolDetailCopyButton,
+                                            pressed && styles.toolDetailCopyButtonPressed,
+                                          ]}
+                                          onPress={() => { void handleCopyToolPayload(toolResultContent); }}
+                                          accessibilityRole="button"
+                                          accessibilityLabel={getToolPayloadCopyAccessibilityLabel('output', toolNameLabel)}
+                                        >
+                                          <Ionicons name="copy-outline" size={10} color={theme.colors.mutedForeground} />
+                                          <Text style={styles.toolDetailCopyButtonText}>Copy</Text>
+                                        </Pressable>
                                       </View>
                                       <ScrollView
                                         style={isToolCallFullyExpanded ? styles.toolResultScrollExpanded : styles.toolResultScroll}
                                         nestedScrollEnabled
                                       >
                                         <Text style={styles.toolResultCode}>
-                                          {result.content || 'No content returned'}
+                                          {toolResultContent}
                                         </Text>
                                       </ScrollView>
                                       {result.error && (
                                         <View style={styles.toolResultErrorSection}>
-                                          <Text style={styles.toolResultErrorLabel}>Error:</Text>
+                                          <View style={styles.toolSectionHeaderRow}>
+                                            <Text style={styles.toolResultErrorLabel}>Error:</Text>
+                                            <Pressable
+                                              style={({ pressed }) => [
+                                                styles.toolDetailCopyButton,
+                                                pressed && styles.toolDetailCopyButtonPressed,
+                                              ]}
+                                              onPress={() => { void handleCopyToolPayload(result.error || ''); }}
+                                              accessibilityRole="button"
+                                              accessibilityLabel={getToolPayloadCopyAccessibilityLabel('error', toolNameLabel)}
+                                            >
+                                              <Ionicons name="copy-outline" size={10} color={theme.colors.mutedForeground} />
+                                              <Text style={styles.toolDetailCopyButtonText}>Copy</Text>
+                                            </Pressable>
+                                          </View>
                                           <Text style={styles.toolResultErrorText}>{result.error}</Text>
                                         </View>
                                       )}
@@ -3664,10 +4216,53 @@ export default function ChatScreen({ route, navigation }: any) {
                           </Pressable>
                           </View>
                         )}
-                      </>
+	                      </>
+	                    )}
+                    {(canCopyMessage || canBranchFromMessage) && (
+                      <View style={styles.messageActionsRow}>
+                        {canCopyMessage && (
+                          <Pressable
+                            style={[
+                              styles.messageActionButton,
+                              copiedMessageIndex === i && styles.messageActionButtonActive,
+                            ]}
+                            onPress={() => { void handleCopyMessage(i, visibleMessageContent); }}
+                            accessibilityRole="button"
+                            accessibilityLabel={copiedMessageIndex === i ? `Copied ${m.role} message ${i + 1}` : `Copy ${m.role} message ${i + 1}`}
+                          >
+                            <Ionicons
+                              name={copiedMessageIndex === i ? 'checkmark' : 'copy-outline'}
+                              size={12}
+                              color={copiedMessageIndex === i ? theme.colors.success : theme.colors.primary}
+                            />
+                            <Text style={[
+                              styles.messageActionButtonText,
+                              copiedMessageIndex === i && styles.messageActionButtonTextActive,
+                            ]}>
+                              {copiedMessageIndex === i ? 'Copied' : 'Copy'}
+                            </Text>
+                          </Pressable>
+                        )}
+                        {canBranchFromMessage && (
+                        <Pressable
+                          style={[
+                            styles.messageActionButton,
+                            branchingMessageIndex !== null && styles.messageActionButtonDisabled,
+                          ]}
+                          onPress={() => { void handleBranchFromMessage(i); }}
+                          disabled={branchingMessageIndex !== null}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Branch conversation from ${m.role} message ${i + 1}`}
+                        >
+                          <Text style={styles.messageActionButtonText}>
+                            {branchingMessageIndex === i ? 'Branching...' : 'Branch'}
+                          </Text>
+                        </Pressable>
+                        )}
+                      </View>
                     )}
-                  </>
-                )}
+	                  </>
+	                )}
               </View>
                 {/* Expanded group collapse footer */}
                 {isLastInExpandedGroup && (
@@ -3773,6 +4368,9 @@ export default function ChatScreen({ route, navigation }: any) {
               onProcessNext={handleProcessNextQueuedMessage}
               canProcessNext={!!nextQueuedMessage}
               onClear={() => messageQueue.clearQueue(currentConversationId)}
+              isPaused={isMessageQueuePaused}
+              onPause={pauseHandsFreeByUser}
+              onResume={resumeHandsFreeByUser}
             />
           </View>
         )}
@@ -4002,7 +4600,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	              accessibilityLabel="Attach images"
 	              accessibilityHint="Select one or more images to include with your next message."
 	            >
-	              <Text style={styles.ttsToggleText}>🖼️</Text>
+	              <Ionicons
+                  name="image-outline"
+                  size={18}
+                  color={pendingImages.length > 0 ? theme.colors.primary : theme.colors.mutedForeground}
+                />
 	            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.ttsToggle, ttsEnabled && styles.ttsToggleOn]}
@@ -4014,7 +4616,11 @@ export default function ChatScreen({ route, navigation }: any) {
               accessibilityHint="Toggles spoken playback for assistant responses."
               aria-checked={ttsEnabled}
             >
-              <Text style={styles.ttsToggleText}>{ttsEnabled ? '🔊' : '🔇'}</Text>
+              <Ionicons
+                name={ttsEnabled ? 'volume-high-outline' : 'volume-mute-outline'}
+                size={18}
+                color={ttsEnabled ? theme.colors.primary : theme.colors.mutedForeground}
+              />
             </TouchableOpacity>
 	            {!handsFree && (
 	              <TouchableOpacity
@@ -4027,7 +4633,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	                accessibilityLabel="Edit before send"
 	                accessibilityHint="When enabled, releasing the mic inserts the transcript into the input so you can edit before sending."
 	              >
-	                <Text style={styles.ttsToggleText}>✏️</Text>
+	                <Ionicons
+                    name="create-outline"
+                    size={18}
+                    color={willCancel ? theme.colors.primary : theme.colors.mutedForeground}
+                  />
 	              </TouchableOpacity>
 	            )}
             <TextInput
@@ -4069,7 +4679,7 @@ export default function ChatScreen({ route, navigation }: any) {
                 accessibilityHint="Adds your typed text and attached images to the queued-messages list without sending immediately."
                 accessibilityState={{ disabled: !composerHasContent }}
               >
-                <Text style={styles.queueButtonText}>Queue</Text>
+                <Ionicons name="time-outline" size={18} color={theme.colors.primary} />
               </TouchableOpacity>
             )}
 	            <TouchableOpacity
@@ -4082,7 +4692,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
               accessibilityState={{ disabled: !composerHasContent }}
 	            >
-              <Text style={styles.sendButtonText}>Send</Text>
+              <Ionicons name="send-outline" size={18} color={theme.colors.primaryForeground} />
             </TouchableOpacity>
           </View>
           {/* Large mic button - ~20% of screen height */}
@@ -4106,9 +4716,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
 	              onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
             >
-              <Text style={styles.micText} selectable={false}>
-                {listening ? '🎙️' : '🎤'}
-              </Text>
+              <Ionicons
+                name={listening ? 'mic' : 'mic-outline'}
+                size={20}
+                color={listening ? theme.colors.primaryForeground : theme.colors.mutedForeground}
+              />
               <Text style={[styles.micLabel, listening && styles.micLabelOn]} selectable={false}>
 	                {micButtonLabel}
               </Text>
@@ -4125,7 +4737,7 @@ export default function ChatScreen({ route, navigation }: any) {
         visible={addPromptModalVisible}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setAddPromptModalVisible(false)}
+        onRequestClose={closePromptModal}
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -4133,7 +4745,7 @@ export default function ChatScreen({ route, navigation }: any) {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Add New Prompt</Text>
+              <Text style={styles.modalTitle}>{editingPrompt ? 'Edit Prompt' : 'Add New Prompt'}</Text>
 
               <Text style={styles.modalLabel}>Name</Text>
               <TextInput
@@ -4158,7 +4770,7 @@ export default function ChatScreen({ route, navigation }: any) {
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={styles.modalCancelButton}
-                  onPress={() => setAddPromptModalVisible(false)}
+                  onPress={closePromptModal}
                   disabled={isSavingPrompt}
                 >
                   <Text style={styles.modalCancelButtonText}>Cancel</Text>
@@ -4168,10 +4780,12 @@ export default function ChatScreen({ route, navigation }: any) {
                     styles.modalSaveButton,
                     (!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt) && styles.modalSaveButtonDisabled
                   ]}
-                  onPress={handleSaveNewPrompt}
+                  onPress={handleSavePrompt}
                   disabled={!newPromptName.trim() || !newPromptContent.trim() || isSavingPrompt}
                 >
-                  <Text style={styles.modalSaveButtonText}>{isSavingPrompt ? 'Saving...' : 'Add Prompt'}</Text>
+                  <Text style={styles.modalSaveButtonText}>
+                    {isSavingPrompt ? 'Saving...' : editingPrompt ? 'Save Prompt' : 'Add Prompt'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -4203,6 +4817,25 @@ function createStyles(theme: Theme, screenHeight: number) {
     },
     headerConversationChipText: {
       ...theme.typography.caption,
+      fontWeight: '700',
+    },
+    headerDurationChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      marginTop: 2,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 999,
+      backgroundColor: theme.colors.muted,
+    },
+    headerDurationChipLive: {
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+    },
+    headerDurationChipText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontSize: 10,
       fontWeight: '700',
     },
     headerActionButton,
@@ -4253,6 +4886,26 @@ function createStyles(theme: Theme, screenHeight: number) {
       borderLeftWidth: 2,
       borderLeftColor: hexToRgba(theme.colors.mutedForeground, 0.3),
       paddingLeft: spacing.xs,
+    },
+    turnDurationBadge: {
+      alignSelf: 'flex-end',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 3,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: theme.colors.muted,
+    },
+    turnDurationBadgeLive: {
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+    },
+    turnDurationBadgeText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      fontWeight: '700',
     },
     messageHeader: {
       flexDirection: 'row',
@@ -4442,6 +5095,35 @@ function createStyles(theme: Theme, screenHeight: number) {
       marginTop: 3,
       lineHeight: 15,
     },
+    chatHomeShortcutActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+    },
+    chatHomeShortcutActionButton: {
+      minHeight: 28,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 5,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    chatHomeShortcutActionButtonDanger: {
+      borderColor: hexToRgba(theme.colors.destructive, 0.28),
+      backgroundColor: hexToRgba(theme.colors.destructive, 0.08),
+    },
+    chatHomeShortcutActionButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    chatHomeShortcutActionButtonDangerText: {
+      color: theme.colors.destructive,
+    },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -4568,24 +5250,28 @@ function createStyles(theme: Theme, screenHeight: number) {
     sendButton: {
       backgroundColor: theme.colors.primary,
       minHeight: 44,
-      minWidth: 64,
-      paddingHorizontal: spacing.md,
+      minWidth: 44,
+      paddingHorizontal: spacing.sm,
       paddingVertical: spacing.sm,
       borderRadius: radius.md,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 4,
     },
     queueButton: {
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.background,
       minHeight: 44,
-      minWidth: 64,
-      paddingHorizontal: spacing.md,
+      minWidth: 44,
+      paddingHorizontal: spacing.sm,
       paddingVertical: spacing.sm,
       borderRadius: radius.md,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 4,
     },
     sendButtonDisabled: {
       opacity: 0.5,
@@ -4713,6 +5399,67 @@ function createStyles(theme: Theme, screenHeight: number) {
 	      lineHeight: 16,
 	      opacity: 0.92,
 	    },
+    toolApprovalCard: {
+      gap: spacing.xs,
+      padding: spacing.sm,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: 'rgba(245, 158, 11, 0.35)',
+      backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    },
+    toolApprovalTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: '#b45309',
+    },
+    toolApprovalTool: {
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 12,
+      color: theme.colors.foreground,
+    },
+    toolApprovalArguments: {
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 11,
+      lineHeight: 15,
+      color: theme.colors.mutedForeground,
+    },
+    toolApprovalActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+    toolApprovalButton: {
+      minHeight: 36,
+      minWidth: 84,
+      borderRadius: radius.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    toolApprovalButtonDisabled: {
+      opacity: 0.6,
+    },
+    toolApprovalApproveButton: {
+      backgroundColor: theme.colors.primary,
+    },
+    toolApprovalApproveButtonText: {
+      color: theme.colors.primaryForeground,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    toolApprovalDenyButton: {
+      borderWidth: 1,
+      borderColor: theme.colors.destructive,
+      backgroundColor: theme.colors.background,
+    },
+    toolApprovalDenyButtonText: {
+      color: theme.colors.destructive,
+      fontSize: 13,
+      fontWeight: '700',
+    },
     // Unified Tool Execution Card styles - compact left-accent design matching desktop
     toolExecutionCard: {
       marginTop: 2,
@@ -4865,6 +5612,40 @@ function createStyles(theme: Theme, screenHeight: number) {
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
+    toolSectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.xs,
+      marginBottom: 2,
+    },
+    toolDetailCopyButton: {
+      minHeight: 24,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 3,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: radius.sm,
+      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.08),
+      flexShrink: 0,
+    },
+    toolDetailCopyButtonPressed: {
+      opacity: 0.7,
+    },
+    toolDetailCopyButtonText: {
+      fontSize: 8,
+      fontWeight: '600',
+      color: theme.colors.mutedForeground,
+    },
+    toolExecutionStatsText: {
+      marginTop: 2,
+      marginBottom: 2,
+      fontSize: 9,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      color: theme.colors.mutedForeground,
+    },
     toolParamsScroll: {
       maxHeight: 80,
       borderRadius: radius.sm,
@@ -4917,6 +5698,8 @@ function createStyles(theme: Theme, screenHeight: number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 4,
       marginBottom: 1,
     },
     toolResultCharCount: {
@@ -4965,7 +5748,6 @@ function createStyles(theme: Theme, screenHeight: number) {
       fontSize: 8,
       fontWeight: '500',
       color: theme.colors.destructive,
-      marginBottom: 1,
     },
     toolResultErrorText: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -4991,6 +5773,43 @@ function createStyles(theme: Theme, screenHeight: number) {
       lineHeight: 18,
       flex: 1,
       minWidth: 0,
+    },
+    messageActionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      marginTop: 2,
+      gap: spacing.xs,
+    },
+    messageActionButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      flexDirection: 'row',
+      gap: 4,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    messageActionButtonActive: {
+      borderColor: hexToRgba(theme.colors.success, 0.35),
+      backgroundColor: hexToRgba(theme.colors.success, 0.08),
+    },
+    messageActionButtonDisabled: {
+      opacity: 0.65,
+    },
+    messageActionButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    messageActionButtonTextActive: {
+      color: theme.colors.success,
     },
     // Per-message TTS button styles (#1078)
     speakButton: {

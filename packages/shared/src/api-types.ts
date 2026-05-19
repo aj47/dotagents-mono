@@ -3,6 +3,12 @@
  * These are interface/type definitions only - no implementation classes
  */
 
+import type { ModelPreset } from './providers';
+import type { QueuedMessage } from './types';
+
+export type OpenAiReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+export type CodexTextVerbosity = 'low' | 'medium' | 'high';
+
 export interface Profile {
   id: string;
   name: string;
@@ -42,6 +48,62 @@ export interface ModelInfo {
 export interface ModelsResponse {
   providerId: string;
   models: ModelInfo[];
+}
+
+export interface ModelPresetSummary extends Omit<ModelPreset, 'apiKey'> {
+  apiKey?: string;
+  hasApiKey?: boolean;
+}
+
+export interface ModelPresetsResponse {
+  currentModelPresetId: string;
+  presets: ModelPresetSummary[];
+}
+
+export interface ModelPresetCreateRequest {
+  name: string;
+  baseUrl: string;
+  apiKey?: string;
+  agentModel?: string;
+  mcpToolsModel?: string;
+  transcriptProcessingModel?: string;
+}
+
+export interface ModelPresetUpdateRequest {
+  name?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  agentModel?: string;
+  mcpToolsModel?: string;
+  transcriptProcessingModel?: string;
+}
+
+export interface ModelPresetMutationResponse {
+  success: boolean;
+  currentModelPresetId: string;
+  presets: ModelPresetSummary[];
+  preset?: ModelPresetSummary;
+  deletedPresetId?: string;
+}
+
+export interface AgentSessionCandidate {
+  id: string;
+  conversationId?: string;
+  conversationTitle?: string;
+  status: string;
+  startTime: number;
+  endTime?: number;
+}
+
+export interface AgentSessionCandidatesResponse {
+  activeSessions: AgentSessionCandidate[];
+  completedSessions: AgentSessionCandidate[];
+}
+
+export interface ToolApprovalResponse {
+  success: boolean;
+  approvalId: string;
+  approved: boolean;
 }
 
 export type OperatorHealthStatus = 'pass' | 'warning' | 'fail';
@@ -93,6 +155,32 @@ export interface OperatorLogsResponse {
   logs: OperatorRecentError[];
 }
 
+export interface OperatorDiagnosticReportError extends OperatorRecentError {
+  stack?: string;
+}
+
+export interface OperatorDiagnosticReport {
+  timestamp: number;
+  system: {
+    platform: string;
+    nodeVersion: string;
+    electronVersion: string;
+  };
+  config: {
+    mcpServersCount: number;
+  };
+  mcp: {
+    availableTools: number;
+    toolDiscoveryError?: string;
+    serverStatus: Record<string, { connected: boolean; toolCount: number }>;
+  };
+  errors: OperatorDiagnosticReportError[];
+}
+
+export interface OperatorDiagnosticReportSaveResponse extends OperatorActionResponse {
+  filePath?: string;
+}
+
 export interface OperatorMCPServerSummary {
   name: string;
   connected: boolean;
@@ -120,6 +208,19 @@ export interface OperatorConversationItem {
 export interface OperatorConversationsResponse {
   count: number;
   conversations: OperatorConversationItem[];
+}
+
+export interface OperatorMessageQueueSummary {
+  conversationId: string;
+  isPaused: boolean;
+  messageCount: number;
+  messages: QueuedMessage[];
+}
+
+export interface OperatorMessageQueuesResponse {
+  count: number;
+  totalMessages: number;
+  queues: OperatorMessageQueueSummary[];
 }
 
 export interface OperatorLogSummary {
@@ -223,6 +324,18 @@ export interface OperatorSessionsSummary {
     startTime: number;
     currentIteration?: number;
     maxIterations?: number;
+    isSnoozed?: boolean;
+    profileId?: string;
+    profileName?: string;
+  }>;
+  recentSessionDetails?: Array<{
+    id: string;
+    title?: string;
+    status: string;
+    startTime: number;
+    endTime?: number;
+    profileId?: string;
+    profileName?: string;
   }>;
 }
 
@@ -248,6 +361,21 @@ export interface OperatorActionResponse {
   scheduled?: boolean;
   error?: string;
   details?: Record<string, unknown>;
+}
+
+export interface OperatorRunAgentRequest {
+  prompt: string;
+  conversationId?: string;
+  profileId?: string;
+}
+
+export interface OperatorRunAgentResponse {
+  success: boolean;
+  action: 'run-agent';
+  conversationId: string;
+  content: string;
+  messageCount: number;
+  error?: string;
 }
 
 export interface OperatorAuditSource {
@@ -297,10 +425,23 @@ export interface Settings {
   mcpToolsGroqModel?: string;
   mcpToolsGeminiModel?: string;
   mcpToolsChatgptWebModel?: string;
+  openaiReasoningEffort?: OpenAiReasoningEffort;
+  codexTextVerbosity?: CodexTextVerbosity;
   currentModelPresetId?: string;
-  availablePresets?: Array<{ id: string; name: string; baseUrl: string; isBuiltIn: boolean }>;
+  availablePresets?: ModelPresetSummary[];
   predefinedPrompts?: PredefinedPromptSummary[];
   knowledgeRoots?: string[];
+
+  // Provider credentials and base URLs are returned masked when configured.
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  groqApiKey?: string;
+  groqBaseUrl?: string;
+  geminiApiKey?: string;
+  geminiBaseUrl?: string;
+  chatgptWebAccessToken?: string;
+  chatgptWebSessionToken?: string;
+  chatgptWebBaseUrl?: string;
 
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;
@@ -316,11 +457,19 @@ export interface Settings {
   mcpToolResponseProcessingEnabled?: boolean;
   mcpParallelToolExecution?: boolean;
   mcpMessageQueueEnabled?: boolean;
+  mcpAutoPasteEnabled?: boolean;
+  mcpAutoPasteDelay?: number;
 
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
   sttLanguage?: string;
+  openaiSttLanguage?: string;
+  openaiSttModel?: string;
+  groqSttLanguage?: string;
+  groqSttModel?: string;
+  groqSttPrompt?: string;
   transcriptionPreviewEnabled?: boolean;
+  parakeetNumThreads?: number;
 
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;
@@ -352,6 +501,10 @@ export interface Settings {
   edgeTtsModel?: string;
   edgeTtsVoice?: string;
   edgeTtsRate?: number;
+  kittenVoiceId?: number;
+  supertonicVoice?: string;
+  supertonicLanguage?: string;
+  supertonicSteps?: number;
 
   // Remote Server Configuration
   remoteServerEnabled?: boolean;
@@ -363,6 +516,20 @@ export interface Settings {
   remoteServerOperatorAllowDeviceIds?: string[];
   remoteServerAutoShowPanel?: boolean;
   remoteServerTerminalQrEnabled?: boolean;
+
+  // Desktop shell / panel settings exposed to mobile operator controls
+  hideDockIcon?: boolean;
+  launchAtLogin?: boolean;
+  themePreference?: 'system' | 'light' | 'dark';
+  textInputEnabled?: boolean;
+  panelPosition?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'custom';
+  panelDragEnabled?: boolean;
+  floatingPanelAutoShow?: boolean;
+  hidePanelWhenMainFocused?: boolean;
+  panelCustomPosition?: { x: number; y: number };
+  panelCustomSize?: { width: number; height: number };
+  panelProgressSize?: { width: number; height: number };
+  panelTextInputSize?: { width: number; height: number };
 
   // Cloudflare Tunnel Configuration
   cloudflareTunnelMode?: 'quick' | 'named';
@@ -415,6 +582,11 @@ export interface Settings {
   // Session History (pinned/archived conversation IDs)
   pinnedSessionIds?: string[];
   archivedSessionIds?: string[];
+
+  // Desktop conversation storage
+  conversationsEnabled?: boolean;
+  maxConversationsToKeep?: number;
+  autoSaveConversations?: boolean;
 
   // acpx-capable agent profile summaries (read-only, from GET only)
   acpxAgents?: Array<{ name: string; displayName: string }>;
@@ -432,7 +604,20 @@ export interface SettingsUpdate {
   mcpToolsGroqModel?: string;
   mcpToolsGeminiModel?: string;
   mcpToolsChatgptWebModel?: string;
+  openaiReasoningEffort?: OpenAiReasoningEffort;
+  codexTextVerbosity?: CodexTextVerbosity;
   currentModelPresetId?: string;
+
+  // Provider credentials and base URLs.
+  openaiApiKey?: string;
+  openaiBaseUrl?: string;
+  groqApiKey?: string;
+  groqBaseUrl?: string;
+  geminiApiKey?: string;
+  geminiBaseUrl?: string;
+  chatgptWebAccessToken?: string;
+  chatgptWebSessionToken?: string;
+  chatgptWebBaseUrl?: string;
 
   // Agent Execution Settings
   mcpRequireApprovalBeforeToolCall?: boolean;
@@ -448,11 +633,19 @@ export interface SettingsUpdate {
   mcpToolResponseProcessingEnabled?: boolean;
   mcpParallelToolExecution?: boolean;
   mcpMessageQueueEnabled?: boolean;
+  mcpAutoPasteEnabled?: boolean;
+  mcpAutoPasteDelay?: number;
 
   // Speech-to-Text Configuration
   sttProviderId?: 'openai' | 'groq' | 'parakeet';
   sttLanguage?: string;
+  openaiSttLanguage?: string;
+  openaiSttModel?: string;
+  groqSttLanguage?: string;
+  groqSttModel?: string;
+  groqSttPrompt?: string;
   transcriptionPreviewEnabled?: boolean;
+  parakeetNumThreads?: number;
 
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;
@@ -484,6 +677,10 @@ export interface SettingsUpdate {
   edgeTtsModel?: string;
   edgeTtsVoice?: string;
   edgeTtsRate?: number;
+  kittenVoiceId?: number;
+  supertonicVoice?: string;
+  supertonicLanguage?: string;
+  supertonicSteps?: number;
 
   // Remote Server Configuration
   remoteServerEnabled?: boolean;
@@ -495,6 +692,20 @@ export interface SettingsUpdate {
   remoteServerOperatorAllowDeviceIds?: string[];
   remoteServerAutoShowPanel?: boolean;
   remoteServerTerminalQrEnabled?: boolean;
+
+  // Desktop shell / panel settings exposed to mobile operator controls
+  hideDockIcon?: boolean;
+  launchAtLogin?: boolean;
+  themePreference?: 'system' | 'light' | 'dark';
+  textInputEnabled?: boolean;
+  panelPosition?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'custom';
+  panelDragEnabled?: boolean;
+  floatingPanelAutoShow?: boolean;
+  hidePanelWhenMainFocused?: boolean;
+  panelCustomPosition?: { x: number; y: number };
+  panelCustomSize?: { width: number; height: number };
+  panelProgressSize?: { width: number; height: number };
+  panelTextInputSize?: { width: number; height: number };
 
   // Cloudflare Tunnel Configuration
   cloudflareTunnelMode?: 'quick' | 'named';
@@ -547,6 +758,11 @@ export interface SettingsUpdate {
   // Session History (pinned/archived conversation IDs)
   pinnedSessionIds?: string[];
   archivedSessionIds?: string[];
+
+  // Desktop conversation storage
+  conversationsEnabled?: boolean;
+  maxConversationsToKeep?: number;
+  autoSaveConversations?: boolean;
 
   // Predefined Prompts
   predefinedPrompts?: PredefinedPromptSummary[];
@@ -593,6 +809,10 @@ export interface UpdateConversationRequest {
   updatedAt?: number;
 }
 
+export interface BranchConversationRequest {
+  messageIndex: number;
+}
+
 // Push notification registration/unregistration
 export interface PushTokenRegistration {
   token: string;
@@ -625,6 +845,22 @@ export interface SkillsResponse {
   currentProfileId?: string;
 }
 
+export interface SkillResponse {
+  skill: Skill;
+}
+
+export interface SkillCreateRequest {
+  name: string;
+  description?: string;
+  instructions?: string;
+}
+
+export interface SkillUpdateRequest {
+  name?: string;
+  description?: string;
+  instructions?: string;
+}
+
 // Knowledge Note Types
 export type KnowledgeNoteContext = 'auto' | 'search-only';
 export type KnowledgeNoteEntryType = 'note' | 'entry' | 'overview';
@@ -654,6 +890,7 @@ export interface ApiAgentProfile {
   name: string;
   displayName: string;
   description?: string;
+  avatarDataUrl?: string | null;
   guidelines?: string;
   systemPrompt?: string;
   enabled: boolean;
@@ -671,7 +908,7 @@ export interface ApiAgentProfile {
 // Full agent profile detail (from GET /v1/agent-profiles/:id)
 export interface ApiAgentProfileFull extends ApiAgentProfile {
   properties?: Record<string, string>;
-  avatarDataUrl?: string;
+  avatarDataUrl?: string | null;
   isStateful?: boolean;
   conversationId?: string;
   connection?: {
@@ -694,8 +931,12 @@ export interface ApiAgentProfilesResponse {
 export interface AgentProfileCreateRequest {
   displayName: string;
   description?: string;
+  avatarDataUrl?: string | null;
   systemPrompt?: string;
   guidelines?: string;
+  modelConfig?: Record<string, unknown>;
+  toolConfig?: Record<string, unknown>;
+  skillsConfig?: Record<string, unknown>;
   connectionType?: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
   connectionCommand?: string;
   connectionArgs?: string;
@@ -710,8 +951,12 @@ export interface AgentProfileCreateRequest {
 export interface AgentProfileUpdateRequest {
   displayName?: string;
   description?: string;
+  avatarDataUrl?: string | null;
   systemPrompt?: string;
   guidelines?: string;
+  modelConfig?: Record<string, unknown>;
+  toolConfig?: Record<string, unknown>;
+  skillsConfig?: Record<string, unknown>;
   connectionType?: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
   connectionCommand?: string;
   connectionArgs?: string;
@@ -721,6 +966,21 @@ export interface AgentProfileUpdateRequest {
   enabled?: boolean;
   autoSpawn?: boolean;
   properties?: Record<string, string>;
+}
+
+export interface VerifyExternalAgentCommandRequest {
+  command: string;
+  args?: string[];
+  cwd?: string;
+  probeArgs?: string[];
+}
+
+export interface VerifyExternalAgentCommandResponse {
+  ok: boolean;
+  resolvedCommand?: string;
+  details?: string;
+  error?: string;
+  warnings?: string[];
 }
 
 // Agent Loops Types
@@ -741,6 +1001,7 @@ export interface Loop {
   continueInSession?: boolean;
   lastSessionId?: string;
   runContinuously?: boolean;
+  maxIterations?: number;
   lastRunAt?: number;
   isRunning: boolean;
   nextRunAt?: number;

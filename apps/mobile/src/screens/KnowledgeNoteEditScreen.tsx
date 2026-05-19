@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useTheme } from '../ui/ThemeProvider';
+import { AppShellEditorLayout } from '../ui/AppShellEditorLayout';
+import { getAppShellEditorTitle } from '../ui/appShell';
 import { spacing, radius } from '../ui/theme';
 import {
   ExtendedSettingsApiClient,
@@ -53,7 +54,6 @@ const toFormData = (note: KnowledgeNote): KnowledgeNoteFormData => ({
 });
 
 export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { config } = useConfigContext();
 
@@ -185,16 +185,10 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    <AppShellEditorLayout
+      title={getAppShellEditorTitle('knowledgeNote', isEditing)}
+      keyboardShouldPersistTaps="handled"
     >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}
-        keyboardShouldPersistTaps="handled"
-      >
         {error && <Text style={styles.errorText}>{error}</Text>}
         {!settingsClient && (
           <Text style={styles.helperText}>Configure Base URL and API key in Settings to save note changes.</Text>
@@ -297,8 +291,7 @@ export default function KnowledgeNoteEditScreen({ navigation, route }: any) {
         <TouchableOpacity style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaveDisabled}>
           {isSaving ? <ActivityIndicator color={theme.colors.primaryForeground} size="small" /> : <Text style={styles.saveButtonText}>{isEditing ? 'Save Note' : 'Create Note'}</Text>}
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </AppShellEditorLayout>
   );
 }
 

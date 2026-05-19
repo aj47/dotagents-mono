@@ -45,5 +45,5 @@ test('sorts mobile skills like desktop without mutating fetched state', () => {
   assert.match(settingsSource, /const displaySkills = useMemo\(\(\) => \[\.\.\.skills\]\.sort\(\(a, b\) => \{/);
   assert.match(settingsSource, /Number\(b\.enabledForProfile\) - Number\(a\.enabledForProfile\)/);
   assert.match(settingsSource, /return a\.name\.localeCompare\(b\.name\);/);
-  assert.match(settingsSource, /displaySkills\.map\(\(skill\) => \(/);
+  assert.match(settingsSource, /displaySkills\.map\(\(skill\) => \{/);
 });

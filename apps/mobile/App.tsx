@@ -10,6 +10,7 @@ import OperationsScreen from './src/screens/OperationsScreen';
 import AgentEditScreen from './src/screens/AgentEditScreen';
 import KnowledgeNoteEditScreen from './src/screens/KnowledgeNoteEditScreen';
 import LoopEditScreen from './src/screens/LoopEditScreen';
+import SkillEditScreen from './src/screens/SkillEditScreen';
 import { AppConfig, ConfigContext, useConfig, saveConfig } from './src/store/config';
 import { SessionContext, useSessions } from './src/store/sessions';
 import { MessageQueueContext, useMessageQueue } from './src/store/message-queue';
@@ -19,13 +20,34 @@ import { ProfileContext, useProfileProvider } from './src/store/profile';
 import { usePushNotifications, NotificationData, clearNotifications, clearServerBadge } from './src/lib/pushNotifications';
 import { SettingsApiClient } from './src/lib/settingsApi';
 import { pickPreferredWebGoogleVoice } from './src/lib/ttsVoices';
-import { View, Image, Text, StyleSheet, AppState, AppStateStatus, Platform, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Image,
+  Text,
+  StyleSheet,
+  AppState,
+  AppStateStatus,
+  Platform,
+  TouchableOpacity,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/ui/ThemeProvider';
+import type { Theme } from './src/ui/theme';
 import { ConnectionStatusIndicator } from './src/ui/ConnectionStatusIndicator';
+import {
+  APP_SHELL_DIMENSIONS,
+  APP_SHELL_PRIMARY_NAV_ITEMS,
+  APP_SHELL_PRODUCT_LABEL,
+  getMobilePrimaryNavItemId,
+  resolveAppShellLayout,
+  shouldHideMobileStackHeaderForDesktopShell,
+  type AppShellPrimaryNavItem,
+  type AppShellPrimaryNavItemId,
+} from './src/ui/appShell';
 import * as Linking from 'expo-linking';
 import * as Speech from 'expo-speech';
-import { useEffect, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
 
 
 const dotagentsIcon = require('./assets/dotagents-icon.png');
@@ -58,11 +80,22 @@ function parseDeepLink(url: string | null) {
 
 function Navigation() {
   const { theme, isDark } = useTheme();
+  const { width } = useWindowDimensions();
   const cfg = useConfig();
   const sessionStore = useSessions();
   const messageQueueStore = useMessageQueue();
   const navigationRef = useNavigationContainerRef();
   const isNavigationReady = useRef(false);
+  const [currentRouteName, setCurrentRouteName] = useState('Sessions');
+  const [selectedPrimaryNavItemId, setSelectedPrimaryNavItemId] =
+    useState<AppShellPrimaryNavItemId | null>(null);
+  const navigationStyles = useMemo(() => createNavigationStyles(theme), [theme]);
+  const appShellLayout = resolveAppShellLayout(width);
+  const isDesktopShell = appShellLayout === 'desktop';
+  const activePrimaryNavItemId =
+    currentRouteName === 'Settings' && selectedPrimaryNavItemId
+      ? selectedPrimaryNavItemId
+      : getMobilePrimaryNavItemId(currentRouteName);
 
   // Initialize tunnel connection manager for persistence and auto-reconnection
   const tunnelConnection = useTunnelConnectionProvider();
@@ -225,6 +258,105 @@ function Navigation() {
     }
   }, [sessionStore, navigationRef]);
 
+  const refreshCurrentRouteName = useCallback(() => {
+    const routeName = navigationRef.getCurrentRoute()?.name;
+    const nextRouteName = routeName || 'Sessions';
+    setCurrentRouteName(nextRouteName);
+    if (nextRouteName !== 'Settings') {
+      setSelectedPrimaryNavItemId(null);
+    }
+  }, [navigationRef]);
+
+  const navigatePrimaryShellItem = useCallback((item: AppShellPrimaryNavItem) => {
+    if (!isNavigationReady.current) return;
+    setSelectedPrimaryNavItemId(item.id);
+    (navigationRef as any).navigate(item.mobileRouteName, item.mobileRouteParams);
+    setCurrentRouteName(item.mobileRouteName);
+  }, [navigationRef]);
+
+  const desktopShellRail = isDesktopShell ? (
+    <View style={navigationStyles.desktopShellRail}>
+      <View style={navigationStyles.desktopShellBrand}>
+        <Image source={dotagentsIcon} style={navigationStyles.desktopShellLogo} resizeMode="contain" />
+        <View style={navigationStyles.desktopShellBrandText}>
+          <Text style={navigationStyles.desktopShellTitle}>{APP_SHELL_PRODUCT_LABEL}</Text>
+        </View>
+      </View>
+
+      <View style={navigationStyles.desktopShellNav}>
+        {APP_SHELL_PRIMARY_NAV_ITEMS.map((item) => {
+          const isActive = activePrimaryNavItemId === item.id;
+          return (
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => navigatePrimaryShellItem(item)}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+              accessibilityState={{ selected: isActive }}
+              style={[
+                navigationStyles.desktopShellNavItem,
+                isActive && navigationStyles.desktopShellNavItemActive,
+              ]}
+            >
+              <Text
+                style={[
+                  navigationStyles.desktopShellNavText,
+                  isActive && navigationStyles.desktopShellNavTextActive,
+                ]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={navigationStyles.desktopShellFooter}>
+        <ConnectionStatusIndicator
+          state={tunnelConnection.connectionInfo.state}
+          retryCount={tunnelConnection.connectionInfo.retryCount}
+          compact
+        />
+      </View>
+    </View>
+  ) : null;
+
+  const compactShellPrimaryNav = !isDesktopShell ? (
+    <View
+      style={navigationStyles.compactShellPrimaryNav}
+      accessibilityRole="tablist"
+      accessibilityLabel="Primary navigation"
+    >
+      {APP_SHELL_PRIMARY_NAV_ITEMS.map((item) => {
+        const isActive = activePrimaryNavItemId === item.id;
+        return (
+          <TouchableOpacity
+            key={item.id}
+            onPress={() => navigatePrimaryShellItem(item)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={item.label}
+            style={[
+              navigationStyles.compactShellPrimaryNavItem,
+              isActive && navigationStyles.compactShellPrimaryNavItemActive,
+            ]}
+          >
+            <Text
+              style={[
+                navigationStyles.compactShellPrimaryNavText,
+                isActive && navigationStyles.compactShellPrimaryNavTextActive,
+              ]}
+              numberOfLines={1}
+            >
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  ) : null;
+
   // Set up notification tap handler
   useEffect(() => {
     pushNotifications.setOnNotificationTap(handleNotificationTap);
@@ -355,86 +487,104 @@ function Navigation() {
                 <NavigationContainer
                   ref={navigationRef}
                   theme={navTheme}
-                  onReady={() => { isNavigationReady.current = true; }}
+                  onReady={() => {
+                    isNavigationReady.current = true;
+                    refreshCurrentRouteName();
+                  }}
+                  onStateChange={refreshCurrentRouteName}
                 >
-                  <Stack.Navigator
-                    initialRouteName="Sessions"
-                    screenOptions={({ route }) => ({
-                      headerTitleStyle: { ...theme.typography.h2 },
-                      headerStyle: { backgroundColor: theme.colors.card },
-                      headerTintColor: theme.colors.foreground,
-                      contentStyle: { backgroundColor: theme.colors.background },
-                      headerRight: () => (
-                        <ConnectionStatusIndicator
-                          state={tunnelConnection.connectionInfo.state}
-                          retryCount={tunnelConnection.connectionInfo.retryCount}
-                          compact
-                          />
-                      ),
-                    })}
-                  >
-                    <Stack.Screen
-                      name="Settings"
-                      component={SettingsScreen}
-                      options={({ navigation }) => ({
-                        title: 'DotAgents',
-                        presentation: 'modal',
-                        headerLeft: () => (
-                          <TouchableOpacity
-                            onPress={() => {
-                              if (navigation.canGoBack()) {
-                                navigation.goBack();
-                                return;
-                              }
+                  <View style={isDesktopShell ? navigationStyles.desktopShell : navigationStyles.mobileShell}>
+                    {desktopShellRail}
+                    <View style={isDesktopShell ? navigationStyles.desktopShellContent : navigationStyles.mobileShellContent}>
+                      <Stack.Navigator
+                        initialRouteName="Sessions"
+                        screenOptions={({ route }) => ({
+                          headerShown: !isDesktopShell || !shouldHideMobileStackHeaderForDesktopShell(route.name),
+                          headerTitleStyle: { ...theme.typography.h2 },
+                          headerStyle: { backgroundColor: theme.colors.card },
+                          headerTintColor: theme.colors.foreground,
+                          contentStyle: { backgroundColor: theme.colors.background },
+                          headerRight: () => (
+                            <ConnectionStatusIndicator
+                              state={tunnelConnection.connectionInfo.state}
+                              retryCount={tunnelConnection.connectionInfo.retryCount}
+                              compact
+                            />
+                          ),
+                        })}
+                      >
+                        <Stack.Screen
+                          name="Settings"
+                          component={SettingsScreen}
+                          options={({ navigation }) => ({
+                            title: 'DotAgents',
+                            presentation: 'modal',
+                            headerLeft: () => (
+                              <TouchableOpacity
+                                onPress={() => {
+                                  if (navigation.canGoBack()) {
+                                    navigation.goBack();
+                                    return;
+                                  }
 
-                              navigation.navigate('Sessions');
-                            }}
-                            accessibilityRole="button"
-                            accessibilityLabel="Close settings"
-                            style={{ paddingHorizontal: 12, paddingVertical: 8 }}
-                          >
-                            <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>Close</Text>
-                          </TouchableOpacity>
-                        ),
-                      })}
-                    />
-                    <Stack.Screen
-                      name="ConnectionSettings"
-                      component={ConnectionSettingsScreen}
-                      options={{ title: 'Connection' }}
-                    />
-                    <Stack.Screen
-                      name="Operations"
-                      component={OperationsScreen}
-                      options={{ title: 'Operations' }}
-                    />
-                    <Stack.Screen
-                      name="Sessions"
-                      component={SessionListScreen}
-                      options={{ title: 'Chats' }}
-                    />
-                    <Stack.Screen
-                      name="SplitChat"
-                      component={SplitChatScreen}
-                      options={{ title: 'Split View' }}
-                    />
-                    <Stack.Screen name="Chat" component={ChatScreen} />
-                    <Stack.Screen
-                      name="AgentEdit"
-                      component={AgentEditScreen}
-                      options={{ title: 'Agent' }}
-                    />
-                    <Stack.Screen
-                      name="KnowledgeNoteEdit"
-                      component={KnowledgeNoteEditScreen}
-                      options={{ title: 'Note' }}
-                    />
-                    <Stack.Screen
-                      name="LoopEdit"
-                      component={LoopEditScreen}
-                      options={{ title: 'Loop' }}
-                    />
-                  </Stack.Navigator>
+                                  navigation.navigate('Sessions');
+                                }}
+                                accessibilityRole="button"
+                                accessibilityLabel="Close settings"
+                                style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                              >
+                                <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>
+                                  Close
+                                </Text>
+                              </TouchableOpacity>
+                            ),
+                          })}
+                        />
+                        <Stack.Screen
+                          name="ConnectionSettings"
+                          component={ConnectionSettingsScreen}
+                          options={{ title: 'Connection' }}
+                        />
+                        <Stack.Screen
+                          name="Operations"
+                          component={OperationsScreen}
+                          options={{ title: 'Operations' }}
+                        />
+                        <Stack.Screen
+                          name="Sessions"
+                          component={SessionListScreen}
+                          options={{ title: 'Chats' }}
+                        />
+                        <Stack.Screen
+                          name="SplitChat"
+                          component={SplitChatScreen}
+                          options={{ title: 'Split View' }}
+                        />
+                        <Stack.Screen name="Chat" component={ChatScreen} />
+                        <Stack.Screen
+                          name="AgentEdit"
+                          component={AgentEditScreen}
+                          options={{ title: 'Agent' }}
+                        />
+                        <Stack.Screen
+                          name="KnowledgeNoteEdit"
+                          component={KnowledgeNoteEditScreen}
+                          options={{ title: 'Note' }}
+                        />
+                        <Stack.Screen
+                          name="LoopEdit"
+                          component={LoopEditScreen}
+                          options={{ title: 'Loop' }}
+                        />
+                        <Stack.Screen
+                          name="SkillEdit"
+                          component={SkillEditScreen}
+                          options={{ title: 'Skill' }}
+                        />
+                      </Stack.Navigator>
+                    </View>
+                    {compactShellPrimaryNav}
+                  </View>
                 </NavigationContainer>
               </TunnelConnectionContext.Provider>
             </ConnectionManagerContext.Provider>
@@ -452,6 +602,116 @@ function Root() {
 function StatusBarWrapper() {
   const { isDark } = useTheme();
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
+function createNavigationStyles(theme: Theme) {
+  return StyleSheet.create({
+    mobileShell: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    mobileShellContent: {
+      flex: 1,
+      minWidth: 0,
+    },
+    compactShellPrimaryNav: {
+      minHeight: APP_SHELL_DIMENSIONS.compactPrimaryNavHeight,
+      flexDirection: 'row',
+      gap: 4,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    compactShellPrimaryNavItem: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 6,
+      paddingHorizontal: 4,
+      paddingVertical: 6,
+    },
+    compactShellPrimaryNavItemActive: {
+      backgroundColor: theme.colors.accent,
+    },
+    compactShellPrimaryNavText: {
+      maxWidth: '100%',
+      color: theme.colors.mutedForeground,
+      fontSize: 10,
+      fontWeight: '600',
+    },
+    compactShellPrimaryNavTextActive: {
+      color: theme.colors.accentForeground,
+    },
+    desktopShell: {
+      flex: 1,
+      flexDirection: 'row',
+      backgroundColor: theme.colors.background,
+    },
+    desktopShellRail: {
+      width: APP_SHELL_DIMENSIONS.desktopRailWidth,
+      flexShrink: 0,
+      borderRightWidth: 1,
+      borderRightColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: APP_SHELL_DIMENSIONS.desktopRailHorizontalPadding,
+      paddingTop: 14,
+      paddingBottom: APP_SHELL_DIMENSIONS.desktopRailVerticalPadding,
+    },
+    desktopShellBrand: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 6,
+      paddingBottom: 14,
+    },
+    desktopShellLogo: {
+      width: 26,
+      height: 26,
+      borderRadius: 7,
+    },
+    desktopShellBrandText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    desktopShellTitle: {
+      color: theme.colors.foreground,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    desktopShellNav: {
+      gap: 4,
+    },
+    desktopShellNavItem: {
+      minHeight: APP_SHELL_DIMENSIONS.desktopNavItemMinHeight,
+      justifyContent: 'center',
+      borderRadius: 6,
+      paddingHorizontal: 10,
+    },
+    desktopShellNavItemActive: {
+      backgroundColor: theme.colors.accent,
+    },
+    desktopShellNavText: {
+      color: theme.colors.mutedForeground,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    desktopShellNavTextActive: {
+      color: theme.colors.accentForeground,
+    },
+    desktopShellFooter: {
+      marginTop: 'auto',
+      paddingHorizontal: 6,
+      paddingTop: 12,
+    },
+    desktopShellContent: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: theme.colors.background,
+    },
+  });
 }
 
 const styles = StyleSheet.create({

@@ -5,6 +5,8 @@ import { lightTheme, darkTheme, Theme } from './theme';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+export const DEFAULT_THEME_PREFERENCE: ThemeMode = 'system';
+
 const THEME_STORAGE_KEY = 'dotagents-theme-preference';
 
 interface ThemeContextType {
@@ -32,7 +34,7 @@ interface ThemeProviderProps {
   initialMode?: ThemeMode;
 }
 
-export function ThemeProvider({ children, initialMode = 'system' }: ThemeProviderProps) {
+export function ThemeProvider({ children, initialMode = DEFAULT_THEME_PREFERENCE }: ThemeProviderProps) {
   const systemColorScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>(initialMode);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -110,4 +112,3 @@ export function useThemeDetection() {
   const { isDark } = useTheme();
   return { isDark };
 }
-

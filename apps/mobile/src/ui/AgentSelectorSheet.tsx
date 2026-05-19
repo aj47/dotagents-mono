@@ -13,7 +13,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   Pressable,
+  Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius, Theme } from './theme';
@@ -22,7 +24,7 @@ import { ExtendedSettingsApiClient, SettingsApiClient } from '../lib/settingsApi
 import { useProfile } from '../store/profile';
 import { SelectableProfile, buildSelectorProfiles } from './agentSelectorOptions';
 
-interface AgentSelectorSheetProps {
+export interface AgentSelectorSheetProps {
   visible: boolean;
   onClose: () => void;
 }
@@ -108,6 +110,8 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
 
   const renderProfile = ({ item }: { item: SelectableProfile }) => {
     const isSelected = currentProfile?.id === item.id;
+    const description = item.description || item.guidelines;
+
     return (
       <TouchableOpacity
         style={[styles.profileItem, isSelected && styles.profileItemSelected]}
@@ -117,17 +121,30 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
         accessibilityLabel={`Select ${item.name} agent`}
         accessibilityState={{ selected: isSelected }}
       >
+        <View style={[styles.avatar, isSelected && styles.avatarSelected]}>
+          {item.avatarDataUrl ? (
+            <Image source={{ uri: item.avatarDataUrl }} style={styles.avatarImage} />
+          ) : (
+            <Ionicons
+              name={item.selectorMode === 'acpx' ? 'terminal-outline' : 'person-outline'}
+              size={18}
+              color={isSelected ? theme.colors.primary : theme.colors.mutedForeground}
+            />
+          )}
+        </View>
         <View style={styles.profileInfo}>
           <Text style={[styles.profileName, isSelected && styles.profileNameSelected]}>
             {item.name}
           </Text>
-          {(item.description || item.guidelines) && (
+          {description && (
             <Text style={styles.profileDescription} numberOfLines={1}>
-              {item.description || item.guidelines}
+              {description}
             </Text>
           )}
         </View>
-        {isSelected && <Text style={styles.checkmark}>✓</Text>}
+        {isSelected && (
+          <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+        )}
       </TouchableOpacity>
     );
   };
@@ -154,7 +171,7 @@ export function AgentSelectorSheet({ visible, onClose }: AgentSelectorSheetProps
             accessibilityRole="button"
             accessibilityLabel="Close agent selector"
           >
-            <Text style={styles.headerCloseButtonText}>Close</Text>
+            <Ionicons name="close" size={20} color={theme.colors.mutedForeground} />
           </TouchableOpacity>
         </View>
 
@@ -225,14 +242,13 @@ function createStyles(theme: Theme) {
       color: theme.colors.foreground,
     },
     headerCloseButton: {
-      paddingHorizontal: spacing.xs,
-      paddingVertical: spacing.xs,
+      width: 32,
+      height: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radius.full,
+      backgroundColor: theme.colors.muted,
       marginRight: -spacing.xs,
-    },
-    headerCloseButtonText: {
-      color: theme.colors.primary,
-      fontSize: 14,
-      fontWeight: '500',
     },
     list: {
       maxHeight: 300,
@@ -240,7 +256,7 @@ function createStyles(theme: Theme) {
     profileItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      gap: spacing.sm,
       paddingVertical: spacing.md,
       paddingHorizontal: spacing.sm,
       borderRadius: radius.lg,
@@ -249,9 +265,28 @@ function createStyles(theme: Theme) {
     profileItemSelected: {
       backgroundColor: theme.colors.primary + '20',
     },
+    avatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.muted,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      overflow: 'hidden',
+    },
+    avatarSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '14',
+    },
+    avatarImage: {
+      width: '100%',
+      height: '100%',
+    },
     profileInfo: {
       flex: 1,
-      marginRight: spacing.sm,
+      minWidth: 0,
     },
     profileName: {
       fontSize: 16,
@@ -266,11 +301,6 @@ function createStyles(theme: Theme) {
       fontSize: 12,
       color: theme.colors.mutedForeground,
       marginTop: 2,
-    },
-    checkmark: {
-      fontSize: 18,
-      color: theme.colors.primary,
-      fontWeight: '600',
     },
     loadingContainer: {
       alignItems: 'center',

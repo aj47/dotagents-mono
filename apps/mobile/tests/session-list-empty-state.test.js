@@ -9,7 +9,7 @@ const screenSource = fs.readFileSync(
 );
 
 test('gives the empty session state an in-place primary action', () => {
-  assert.match(screenSource, /<Text style=\{styles\.emptyTitle\}>No chats yet<\/Text>/);
+  assert.match(screenSource, /sessionListMode === 'archived' \? 'No archived chats' : 'No chats yet'/);
   assert.match(screenSource, /Start your first chat so recent conversations show up here\./);
   assert.match(screenSource, /onPress=\{handleCreateSession\}[\s\S]*?createButtonAccessibilityLabel\('Start first chat'\)/);
   assert.match(screenSource, /accessibilityHint="Creates and opens your first chat\."/);

@@ -20,6 +20,7 @@ import {
   DEFAULT_RECOVERY_CONFIG,
   type ConnectionRecoveryConfig,
 } from './connectionRecovery';
+import { SettingsApiClient } from './settingsApi';
 
 export type OpenAIConfig = {
   baseUrl: string;    // OpenAI-compatible API base URL e.g., https://api.openai.com/v1
@@ -40,11 +41,43 @@ export type ChatMessage = {
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
   /** Render-only aligned call/result pairs for pending delegation tool activity. */
-  toolExecutions?: Array<{ toolCall: ToolCall; result?: ToolResult }>;
-  variant?: 'delegation';
+  toolExecutions?: Array<{
+    toolCall: ToolCall;
+    result?: ToolResult;
+    executionStats?: (AgentProgressStep['executionStats'] & {
+      model?: string;
+      subagentId?: string;
+    }) | null;
+  }>;
+  toolExecutionStats?: Array<
+    | (AgentProgressStep['executionStats'] & {
+        model?: string;
+        subagentId?: string;
+      })
+    | null
+    | undefined
+  >;
+  toolApproval?: NonNullable<AgentProgressUpdate['pendingToolApproval']>;
+  variant?: 'delegation' | 'approval';
 };
 
 export type ChatResponse = ChatApiResponse;
+
+export type RecoveryConversation = {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: Array<{
+    id: string;
+    role: 'user' | 'assistant' | 'tool';
+    content: string;
+    timestamp: number;
+    toolCalls?: ToolCall[];
+    toolResults?: ToolResult[];
+  }>;
+  metadata?: any;
+};
 
 export type { ToolCall, ToolResult, ConversationHistoryMessage } from '@dotagents/shared';
 export type { AgentProgressUpdate, AgentProgressStep, OnProgressCallback } from '@dotagents/shared';
@@ -54,6 +87,7 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
   return messages.map((message) => {
     const requestMessage = { ...message };
     delete requestMessage.toolExecutions;
+    delete requestMessage.toolExecutionStats;
     delete requestMessage.displayContent;
 
     if (message.toolExecutions?.length) {
@@ -105,6 +139,7 @@ export const sanitizeMessagesForRequest = (messages: ChatMessage[]): ChatMessage
 export class OpenAIClient {
   private cfg: OpenAIConfig;
   private baseUrl: string;
+  private remoteApiClient: SettingsApiClient;
   private recoveryManager: ConnectionRecoveryManager | null = null;
   private onConnectionStatusChange?: OnConnectionStatusChange;
   private activeEventSource: EventSource | null = null;
@@ -114,6 +149,7 @@ export class OpenAIClient {
   constructor(cfg: OpenAIConfig) {
     this.cfg = { ...cfg, baseUrl: cfg.baseUrl?.trim?.() ?? '' };
     this.baseUrl = this.normalizeBaseUrl(this.cfg.baseUrl);
+    this.remoteApiClient = new SettingsApiClient(this.baseUrl, this.cfg.apiKey);
   }
 
   private normalizeBaseUrl(raw: string): string {
@@ -129,11 +165,6 @@ export class OpenAIClient {
       Authorization: `Bearer ${this.cfg.apiKey}`,
       'Content-Type': 'application/json',
     } as const;
-  }
-
-  private getUrl(endpoint: string): string {
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    return `${this.baseUrl}${normalizedEndpoint}`;
   }
 
   setConnectionStatusCallback(callback: OnConnectionStatusChange): void {
@@ -186,10 +217,9 @@ export class OpenAIClient {
   }
 
   async health(): Promise<boolean> {
-    const url = this.getUrl('/models');
     try {
-      const res = await fetch(url, { headers: this.authHeaders() });
-      return res.ok;
+      await this.remoteApiClient.getOpenAICompatibleModels();
+      return true;
     } catch (error) {
       console.error('[OpenAIClient] Health check error:', error);
       return false;
@@ -202,7 +232,7 @@ export class OpenAIClient {
     onProgress?: OnProgressCallback,
     conversationId?: string
   ): Promise<ChatResponse> {
-    const url = this.getUrl('/chat/completions');
+    const url = this.remoteApiClient.getChatCompletionsUrl();
     const body: Record<string, any> = {
       model: this.cfg.model,
       messages: sanitizeMessagesForRequest(messages),
@@ -911,41 +941,11 @@ export class OpenAIClient {
    * This is used when the mobile app loses connection and needs to sync
    * with the server's conversation state.
    */
-  async getConversation(conversationId: string): Promise<{
-    id: string;
-    title: string;
-    createdAt: number;
-    updatedAt: number;
-    messages: Array<{
-      id: string;
-      role: 'user' | 'assistant' | 'tool';
-      content: string;
-      timestamp: number;
-      toolCalls?: any[];
-      toolResults?: any[];
-    }>;
-    metadata?: any;
-  } | null> {
-    const url = this.getUrl(`/conversations/${conversationId}`);
-    console.log('[OpenAIClient] Fetching conversation for recovery:', url);
+  async getConversation(conversationId: string): Promise<RecoveryConversation | null> {
+    console.log('[OpenAIClient] Fetching conversation for recovery:', conversationId);
 
     try {
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: this.authHeaders(),
-      });
-
-      if (res.status === 404) {
-        console.log('[OpenAIClient] Conversation not found on server:', conversationId);
-        return null;
-      }
-
-      if (!res.ok) {
-        console.error('[OpenAIClient] Failed to fetch conversation:', res.status, res.statusText);
-        return null;
-      }
-
-      const data = await res.json();
+      const data = await this.remoteApiClient.getConversation(conversationId) as unknown as RecoveryConversation;
       console.log('[OpenAIClient] Fetched conversation:', data.id, 'with', data.messages?.length, 'messages');
       return data;
     } catch (error: any) {
@@ -955,28 +955,10 @@ export class OpenAIClient {
   }
 
   async killSwitch(): Promise<{ success: boolean; message?: string; error?: string; processesKilled?: number }> {
-    const url = this.getUrl('/emergency-stop');
-    console.log('[OpenAIClient] Triggering emergency stop:', url);
+    console.log('[OpenAIClient] Triggering emergency stop');
 
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: this.authHeaders(),
-        body: JSON.stringify({}),
-      });
-
-      console.log('[OpenAIClient] Kill switch response:', res.status, res.statusText);
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        console.error('[OpenAIClient] Kill switch error:', data);
-        return {
-          success: false,
-          error: data?.error || `Kill switch failed: ${res.status}`,
-        };
-      }
-
+      const data = await this.remoteApiClient.emergencyStop();
       console.log('[OpenAIClient] Kill switch success:', data);
       return {
         success: true,

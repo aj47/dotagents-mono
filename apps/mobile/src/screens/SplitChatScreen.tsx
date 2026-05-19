@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { ChatMessage } from '../lib/openaiClient';
@@ -163,6 +164,7 @@ export default function SplitChatScreen({ navigation }: Props) {
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel(`Choose ${pane} split chat`)}
             >
+              <Ionicons name="list-outline" size={14} color={theme.colors.foreground} />
               <Text style={styles.toolbarButtonText}>Choose</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -172,6 +174,7 @@ export default function SplitChatScreen({ navigation }: Props) {
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel(`Open ${pane} split chat full screen`)}
             >
+              <Ionicons name="expand-outline" size={14} color={theme.colors.foreground} />
               <Text style={styles.toolbarButtonText}>Open</Text>
             </TouchableOpacity>
           </View>
@@ -189,9 +192,11 @@ export default function SplitChatScreen({ navigation }: Props) {
               </Text>
               <View style={styles.emptyStateActions}>
                 <TouchableOpacity style={styles.primaryButton} onPress={() => setPickerPane(pane)}>
+                  <Ionicons name="chatbubbles-outline" size={15} color={theme.colors.background} />
                   <Text style={styles.primaryButtonText}>Choose chat</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.secondaryButton} onPress={() => createSessionForPane(pane)}>
+                  <Ionicons name="add-circle-outline" size={15} color={theme.colors.foreground} />
                   <Text style={styles.secondaryButtonText}>New chat</Text>
                 </TouchableOpacity>
               </View>
@@ -200,7 +205,7 @@ export default function SplitChatScreen({ navigation }: Props) {
         </View>
       </View>
     );
-  }, [createSessionForPane, effectiveOrientation, openFullScreenChat, sessionList, styles]);
+  }, [createSessionForPane, effectiveOrientation, openFullScreenChat, sessionList, styles, theme.colors.background, theme.colors.foreground]);
 
   return (
     <ConfigContext.Provider value={splitConfigValue}>
@@ -209,17 +214,31 @@ export default function SplitChatScreen({ navigation }: Props) {
           <Text style={styles.controlBarTitle}>Split view</Text>
           <Text style={styles.controlBarCopy}>Run and compare two sessions at once. Hands-free mode is paused while split view is open.</Text>
           <View style={styles.segmentedRow}>
-            {(['auto', 'horizontal', 'vertical'] as SplitOrientationPreference[]).map((option) => (
-              <Pressable
-                key={option}
-                onPress={() => setLayoutPreference(option)}
-                style={[styles.segmentButton, layoutPreference === option && styles.segmentButtonActive]}
-              >
-                <Text style={[styles.segmentButtonText, layoutPreference === option && styles.segmentButtonTextActive]}>
-                  {option === 'auto' ? 'Auto' : option === 'horizontal' ? 'Horizontal' : 'Vertical'}
-                </Text>
-              </Pressable>
-            ))}
+            {(['auto', 'horizontal', 'vertical'] as SplitOrientationPreference[]).map((option) => {
+              const isSelected = layoutPreference === option;
+              return (
+                <Pressable
+                  key={option}
+                  onPress={() => setLayoutPreference(option)}
+                  style={({ pressed }) => [
+                    styles.segmentButton,
+                    isSelected && styles.segmentButtonActive,
+                    pressed && styles.segmentButtonPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  accessibilityLabel={createButtonAccessibilityLabel(
+                    option === 'auto'
+                      ? 'Auto split orientation'
+                      : `${option} split orientation`
+                  )}
+                >
+                  <Text style={[styles.segmentButtonText, isSelected && styles.segmentButtonTextActive]}>
+                    {option === 'auto' ? 'Auto' : option === 'horizontal' ? 'Horizontal' : 'Vertical'}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -259,6 +278,7 @@ export default function SplitChatScreen({ navigation }: Props) {
                       setPickerPane(null);
                     }}
                   >
+                    <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
                     <Text style={styles.newChatOptionText}>Create a new chat for this pane</Text>
                   </TouchableOpacity>
                 )}
@@ -280,6 +300,7 @@ function createStyles(theme: Theme) {
     segmentedRow: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
     segmentButton: { borderRadius: radius.lg, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: theme.colors.background },
     segmentButtonActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primary + '18' },
+    segmentButtonPressed: { opacity: 0.78 },
     segmentButtonText: { ...theme.typography.caption, color: theme.colors.foreground, fontWeight: '600' },
     segmentButtonTextActive: { color: theme.colors.primary },
     splitContainer: { flex: 1, gap: spacing.sm },
@@ -293,7 +314,7 @@ function createStyles(theme: Theme) {
     paneLabel: { ...theme.typography.caption, color: theme.colors.primary, textTransform: 'uppercase', letterSpacing: 0.6 },
     paneTitle: { ...theme.typography.body, color: theme.colors.foreground, fontWeight: '600' },
     paneToolbarActions: { flexDirection: 'row', gap: spacing.xs },
-    toolbarButton: { borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.border },
+    toolbarButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.border },
     toolbarButtonDisabled: { opacity: 0.45 },
     toolbarButtonText: { ...theme.typography.caption, color: theme.colors.foreground, fontWeight: '600' },
     paneBody: { flex: 1, minHeight: 0 },
@@ -301,9 +322,9 @@ function createStyles(theme: Theme) {
     emptyStateTitle: { ...theme.typography.h2, color: theme.colors.foreground, textAlign: 'center' },
     emptyStateCopy: { ...theme.typography.body, color: theme.colors.mutedForeground, textAlign: 'center', maxWidth: 360 },
     emptyStateActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.sm },
-    primaryButton: { borderRadius: radius.lg, backgroundColor: theme.colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+    primaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: radius.lg, backgroundColor: theme.colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
     primaryButtonText: { ...theme.typography.body, color: theme.colors.background, fontWeight: '700' },
-    secondaryButton: { borderRadius: radius.lg, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: theme.colors.card },
+    secondaryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: radius.lg, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: theme.colors.card },
     secondaryButtonText: { ...theme.typography.body, color: theme.colors.foreground, fontWeight: '600' },
     modalOverlay: { flex: 1, backgroundColor: '#00000066', justifyContent: 'center', padding: spacing.lg },
     modalCard: { maxHeight: '75%', borderRadius: radius.xl, backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.border, padding: spacing.md, gap: spacing.sm },
@@ -312,7 +333,7 @@ function createStyles(theme: Theme) {
     sessionOptionActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primary + '12' },
     sessionOptionTitle: { ...theme.typography.body, color: theme.colors.foreground, fontWeight: '600', marginBottom: 4 },
     sessionOptionPreview: { ...theme.typography.caption, color: theme.colors.mutedForeground },
-    newChatOption: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm },
+    newChatOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm },
     newChatOptionText: { ...theme.typography.body, color: theme.colors.primary, fontWeight: '700' },
   });
 }
