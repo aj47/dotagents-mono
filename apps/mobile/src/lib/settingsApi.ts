@@ -551,6 +551,14 @@ export class SettingsApiClient {
     );
   }
 
+  getChatCompletionsUrl(): string {
+    return `${this.baseUrl}/chat/completions`;
+  }
+
+  async getOpenAICompatibleModels(): Promise<ModelsResponse> {
+    return this.request<ModelsResponse>('/models');
+  }
+
   // Profile Management
   async getProfiles(): Promise<ProfilesResponse> {
     return this.request<ProfilesResponse>('/profiles');
