@@ -4093,6 +4093,44 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // DELETE /v1/conversations/:id - Delete a linked desktop conversation
+  fastify.delete("/v1/conversations/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const conversationId = params.id
+
+      if (!conversationId || typeof conversationId !== "string") {
+        return reply.code(400).send({ error: "Missing or invalid conversation ID" })
+      }
+
+      const conversationIdError = getConversationIdValidationError(conversationId)
+      if (conversationIdError) {
+        return reply.code(400).send({ error: conversationIdError })
+      }
+
+      await conversationService.deleteConversation(conversationId)
+      notifyConversationHistoryChanged()
+
+      return reply.send({ success: true, id: conversationId })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete conversation", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete conversation" })
+    }
+  })
+
+  // DELETE /v1/conversations - Delete all desktop conversations
+  fastify.delete("/v1/conversations", async (_req, reply) => {
+    try {
+      await conversationService.deleteAllConversations()
+      notifyConversationHistoryChanged()
+
+      return reply.send({ success: true })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete all conversations", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete all conversations" })
+    }
+  })
+
   // Kill switch endpoint - emergency stop all agent sessions
   fastify.post("/v1/emergency-stop", async (_req, reply) => {
     console.log("[KILLSWITCH] /v1/emergency-stop endpoint called")
@@ -4483,6 +4521,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           name: p.name,
           displayName: p.displayName,
           description: p.description,
+          avatarDataUrl: p.avatarDataUrl,
           enabled: p.enabled,
           isBuiltIn: p.isBuiltIn,
           isUserProfile: p.isUserProfile,
@@ -4525,6 +4564,47 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to toggle agent profile", error)
       return reply.code(500).send({ error: error?.message || "Failed to toggle agent profile" })
+    }
+  })
+
+  // POST /v1/agent-profiles/verify-command - Verify an external agent command
+  fastify.post("/v1/agent-profiles/verify-command", async (req, reply) => {
+    try {
+      const body = req.body as {
+        command?: unknown
+        args?: unknown
+        cwd?: unknown
+        probeArgs?: unknown
+      }
+
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return reply.code(400).send({ error: "Request body must be a JSON object" })
+      }
+      if (typeof body.command !== "string" || body.command.trim() === "") {
+        return reply.code(400).send({ error: "command is required and must be a non-empty string" })
+      }
+      if (body.args !== undefined && (!Array.isArray(body.args) || !body.args.every(arg => typeof arg === "string"))) {
+        return reply.code(400).send({ error: "args must be an array of strings" })
+      }
+      if (body.probeArgs !== undefined && (!Array.isArray(body.probeArgs) || !body.probeArgs.every(arg => typeof arg === "string"))) {
+        return reply.code(400).send({ error: "probeArgs must be an array of strings" })
+      }
+      if (body.cwd !== undefined && typeof body.cwd !== "string") {
+        return reply.code(400).send({ error: "cwd must be a string" })
+      }
+
+      const { verifyExternalAgentCommand } = await import("./command-verification-service")
+      const result = await verifyExternalAgentCommand({
+        command: body.command,
+        args: body.args,
+        cwd: body.cwd,
+        probeArgs: body.probeArgs,
+      })
+
+      return reply.send(result)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to verify external agent command", error)
+      return reply.code(500).send({ error: error?.message || "Failed to verify external agent command" })
     }
   })
 
@@ -4577,6 +4657,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const body = req.body as {
         displayName?: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
         connectionType?: string
@@ -4595,6 +4676,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       // Validate displayName
       if (!body.displayName || typeof body.displayName !== "string" || body.displayName.trim() === "") {
         return reply.code(400).send({ error: "displayName is required and must be a non-empty string" })
+      }
+      if (body.avatarDataUrl !== undefined && body.avatarDataUrl !== null && typeof body.avatarDataUrl !== "string") {
+        return reply.code(400).send({ error: "avatarDataUrl must be a string or null" })
       }
 
       // Validate connectionType
@@ -4616,6 +4700,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         name: body.displayName.trim(),
         displayName: body.displayName.trim(),
         description: body.description,
+        avatarDataUrl: body.avatarDataUrl ?? undefined,
         systemPrompt: body.systemPrompt,
         guidelines: body.guidelines,
         connection,
@@ -4669,6 +4754,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const body = req.body as {
         displayName?: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
         connectionType?: string
@@ -4708,6 +4794,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           updates.name = body.displayName.trim()
         }
         if (body.description !== undefined) updates.description = body.description
+        if (body.avatarDataUrl !== undefined) {
+          if (body.avatarDataUrl !== null && typeof body.avatarDataUrl !== "string") {
+            return reply.code(400).send({ error: "avatarDataUrl must be a string or null" })
+          }
+          updates.avatarDataUrl = body.avatarDataUrl
+        }
         if (body.systemPrompt !== undefined) updates.systemPrompt = body.systemPrompt
         if (body.guidelines !== undefined) updates.guidelines = body.guidelines
         if (body.enabled !== undefined) updates.enabled = body.enabled

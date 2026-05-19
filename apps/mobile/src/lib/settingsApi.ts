@@ -27,6 +27,8 @@ export type {
   SkillsResponse,
   AgentProfileCreateRequest,
   AgentProfileUpdateRequest,
+  VerifyExternalAgentCommandRequest,
+  VerifyExternalAgentCommandResponse,
   Loop,
   LoopsResponse,
   LoopSchedule,
@@ -89,6 +91,8 @@ import type {
   ApiAgentProfilesResponse,
   AgentProfileCreateRequest,
   AgentProfileUpdateRequest,
+  VerifyExternalAgentCommandRequest,
+  VerifyExternalAgentCommandResponse,
   Loop,
   LoopSchedule,
   LoopsResponse,
@@ -518,6 +522,18 @@ export class SettingsApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  async deleteConversation(id: string): Promise<{ success: boolean; id: string }> {
+    return this.request<{ success: boolean; id: string }>(`/conversations/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async deleteAllConversations(): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>('/conversations', {
+      method: 'DELETE',
+    });
+  }
 }
 
 // Extended client with push notification methods
@@ -611,6 +627,13 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   async updateAgentProfile(id: string, data: AgentProfileUpdateRequest): Promise<{ success: boolean; profile: ApiAgentProfileFull }> {
     return this.request<{ success: boolean; profile: ApiAgentProfileFull }>(`/agent-profiles/${encodeURIComponent(id)}`, {
       method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async verifyExternalAgentCommand(data: VerifyExternalAgentCommandRequest): Promise<VerifyExternalAgentCommandResponse> {
+    return this.request<VerifyExternalAgentCommandResponse>('/agent-profiles/verify-command', {
+      method: 'POST',
       body: JSON.stringify(data),
     });
   }

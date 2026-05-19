@@ -654,6 +654,7 @@ export interface ApiAgentProfile {
   name: string;
   displayName: string;
   description?: string;
+  avatarDataUrl?: string | null;
   guidelines?: string;
   systemPrompt?: string;
   enabled: boolean;
@@ -671,7 +672,7 @@ export interface ApiAgentProfile {
 // Full agent profile detail (from GET /v1/agent-profiles/:id)
 export interface ApiAgentProfileFull extends ApiAgentProfile {
   properties?: Record<string, string>;
-  avatarDataUrl?: string;
+  avatarDataUrl?: string | null;
   isStateful?: boolean;
   conversationId?: string;
   connection?: {
@@ -694,8 +695,12 @@ export interface ApiAgentProfilesResponse {
 export interface AgentProfileCreateRequest {
   displayName: string;
   description?: string;
+  avatarDataUrl?: string | null;
   systemPrompt?: string;
   guidelines?: string;
+  modelConfig?: Record<string, unknown>;
+  toolConfig?: Record<string, unknown>;
+  skillsConfig?: Record<string, unknown>;
   connectionType?: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
   connectionCommand?: string;
   connectionArgs?: string;
@@ -710,8 +715,12 @@ export interface AgentProfileCreateRequest {
 export interface AgentProfileUpdateRequest {
   displayName?: string;
   description?: string;
+  avatarDataUrl?: string | null;
   systemPrompt?: string;
   guidelines?: string;
+  modelConfig?: Record<string, unknown>;
+  toolConfig?: Record<string, unknown>;
+  skillsConfig?: Record<string, unknown>;
   connectionType?: 'internal' | 'acpx' | 'acp' | 'stdio' | 'remote';
   connectionCommand?: string;
   connectionArgs?: string;
@@ -721,6 +730,21 @@ export interface AgentProfileUpdateRequest {
   enabled?: boolean;
   autoSpawn?: boolean;
   properties?: Record<string, string>;
+}
+
+export interface VerifyExternalAgentCommandRequest {
+  command: string;
+  args?: string[];
+  cwd?: string;
+  probeArgs?: string[];
+}
+
+export interface VerifyExternalAgentCommandResponse {
+  ok: boolean;
+  resolvedCommand?: string;
+  details?: string;
+  error?: string;
+  warnings?: string[];
 }
 
 // Agent Loops Types

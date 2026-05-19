@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, KeyboardAvoidingView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AppConfig,
@@ -220,10 +220,30 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
-  { label: '☀️ Light', value: 'light' },
-  { label: '🌙 Dark', value: 'dark' },
-  { label: '⚙️ System', value: 'system' },
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+  { label: 'System', value: 'system' },
 ];
+
+function sortAgentProfilesForSettings(profiles: AgentProfile[]): AgentProfile[] {
+  return [...profiles].sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    if (a.isBuiltIn !== b.isBuiltIn) return a.isBuiltIn ? -1 : 1;
+    return (a.displayName || a.name).localeCompare(b.displayName || b.name);
+  });
+}
+
+function setAgentProfileEnabledInList(profiles: AgentProfile[], profileId: string, enabled: boolean): AgentProfile[] {
+  return profiles.map(profile => profile.id === profileId ? { ...profile, enabled } : profile);
+}
+
+function removeAgentProfileFromList(profiles: AgentProfile[], profileId: string): AgentProfile[] {
+  return profiles.filter(profile => profile.id !== profileId);
+}
+
+function getAgentListInitial(profile: AgentProfile): string {
+  return (profile.displayName || profile.name || 'A').slice(0, 1).toUpperCase();
+}
 
 export default function SettingsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -271,6 +291,7 @@ export default function SettingsScreen({ navigation }: any) {
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const sortedAgentProfiles = useMemo(() => sortAgentProfilesForSettings(agentProfiles), [agentProfiles]);
   const displaySkills = useMemo(() => [...skills].sort((a, b) => {
     const enabledDiff = Number(b.enabledForProfile) - Number(a.enabledForProfile);
     if (enabledDiff !== 0) return enabledDiff;
@@ -790,16 +811,26 @@ export default function SettingsScreen({ navigation }: any) {
   );
 
   const handleClearAllChats = useCallback(() => {
+    const hasDesktopConversations = sessionStore.sessions.some(session => !!session.serverConversationId);
     confirmDestructiveAction(
       'Clear All Chats',
-      'Are you sure you want to delete all chats from this mobile app? This cannot be undone.',
+      hasDesktopConversations && settingsClient
+        ? 'Delete all chats from this mobile app and the connected desktop server? This cannot be undone.'
+        : 'Are you sure you want to delete all chats from this mobile app? This cannot be undone.',
       async () => {
-        connectionManager.manager.cleanupAll();
-        await sessionStore.clearAllSessions();
+        try {
+          if (hasDesktopConversations && settingsClient) {
+            await settingsClient.deleteAllConversations();
+          }
+          connectionManager.manager.cleanupAll();
+          await sessionStore.clearAllSessions();
+        } catch (error: any) {
+          Alert.alert('Clear Failed', error?.message || 'Failed to clear chats');
+        }
       },
       'Delete All'
     );
-  }, [confirmDestructiveAction, connectionManager, sessionStore]);
+  }, [confirmDestructiveAction, connectionManager, sessionStore, settingsClient]);
 
   // Handle knowledge note delete
   const handleKnowledgeNoteDelete = async (noteId: string) => {
@@ -845,9 +876,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
     try {
       const res = await settingsClient.toggleAgentProfile(profileId);
-      setAgentProfiles(prev =>
-        prev.map(p => (p.id === profileId ? { ...p, enabled: res.enabled } : p))
-      );
+      setAgentProfiles(prev => setAgentProfileEnabledInList(prev, profileId, res.enabled));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle agent profile:', error);
       Alert.alert('Error', 'Failed to toggle agent profile');
@@ -865,7 +894,7 @@ export default function SettingsScreen({ navigation }: any) {
     confirmDestructiveAction('Delete Agent', `Are you sure you want to delete "${profile.displayName}"?`, async () => {
       try {
         await settingsClient.deleteAgentProfile(profile.id);
-        setAgentProfiles(prev => prev.filter(p => p.id !== profile.id));
+        setAgentProfiles(prev => removeAgentProfileFromList(prev, profile.id));
       } catch (error: any) {
         console.error('[Settings] Failed to delete agent profile:', error);
         Alert.alert('Error', error.message || 'Failed to delete agent profile');
@@ -2625,10 +2654,10 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="agents" title="Agents">
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : agentProfiles.length === 0 ? (
+                ) : sortedAgentProfiles.length === 0 ? (
                   <Text style={styles.helperText}>No agents configured</Text>
                 ) : (
-                  agentProfiles.map((profile) => (
+                  sortedAgentProfiles.map((profile) => (
                     <View
                       key={profile.id}
                       style={styles.serverRow}
@@ -2638,31 +2667,49 @@ export default function SettingsScreen({ navigation }: any) {
                         onPress={() => handleAgentProfileEdit(profile.id)}
                         activeOpacity={0.7}
                       >
-                        <View style={styles.serverInfo}>
-                          <View style={styles.serverNameRow}>
-                            <Text style={styles.serverName}>{profile.displayName}</Text>
-                            {profile.isBuiltIn && (
-                              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
-                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
-                              </View>
-                            )}
-                            {profile.systemPrompt?.trim() && (
-                              <View style={styles.customPromptBadge}>
-                                <Text style={styles.customPromptBadgeText}>Custom prompt</Text>
-                              </View>
+                        <View style={styles.agentListContent}>
+                          <View style={styles.agentListAvatar}>
+                            {profile.avatarDataUrl ? (
+                              <Image
+                                source={{ uri: profile.avatarDataUrl }}
+                                style={styles.agentListAvatarImage}
+                                accessibilityIgnoresInvertColors
+                              />
+                            ) : (
+                              <Text style={styles.agentListAvatarInitial}>{getAgentListInitial(profile)}</Text>
                             )}
                           </View>
-                          <Text style={styles.serverMeta}>
-                            {profile.connectionType} • {profile.role || 'agent'}
-                          </Text>
-                          {profile.systemPrompt?.trim() && !profile.isBuiltIn && (
-                            <Text style={styles.serverMeta} numberOfLines={2}>
-                              Default system prompt updates are blocked until this custom prompt is reset.
+                          <View style={styles.serverInfo}>
+                            <View style={styles.serverNameRow}>
+                              <Text style={styles.serverName}>{profile.displayName}</Text>
+                              {profile.isDefault && (
+                                <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
+                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Default</Text>
+                                </View>
+                              )}
+                              {profile.isBuiltIn && (
+                                <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
+                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
+                                </View>
+                              )}
+                              {profile.systemPrompt?.trim() && (
+                                <View style={styles.customPromptBadge}>
+                                  <Text style={styles.customPromptBadgeText}>Custom prompt</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.serverMeta}>
+                              {profile.connectionType} • {profile.role || 'agent'}
                             </Text>
-                          )}
-                          {profile.description && (
-                            <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
-                          )}
+                            {profile.systemPrompt?.trim() && !profile.isBuiltIn && (
+                              <Text style={styles.serverMeta} numberOfLines={2}>
+                                Default system prompt updates are blocked until this custom prompt is reset.
+                              </Text>
+                            )}
+                            {profile.description && (
+                              <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
+                            )}
+                          </View>
                         </View>
                       </TouchableOpacity>
                       <View style={styles.agentActions}>
@@ -3634,6 +3681,34 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     agentInfoPressable: {
       flex: 1,
       minWidth: 0,
+    },
+    agentListContent: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      flex: 1,
+      minWidth: 0,
+    },
+    agentListAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.muted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      flexShrink: 0,
+    },
+    agentListAvatarImage: {
+      width: '100%',
+      height: '100%',
+    },
+    agentListAvatarInitial: {
+      color: theme.colors.foreground,
+      fontSize: 14,
+      fontWeight: '700',
     },
     agentActions: {
       flexDirection: 'row',

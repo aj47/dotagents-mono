@@ -10,12 +10,11 @@ export interface SelectableProfile extends Profile {
 
 export function toSelectableAgentProfile(profile: AgentProfile): SelectableProfile {
   const summary = profile.description || profile.guidelines || '';
-  const avatarDataUrl = (profile as AgentProfile & { avatarDataUrl?: string | null }).avatarDataUrl ?? null;
 
   return {
     id: profile.id,
     name: profile.displayName || profile.name,
-    avatarDataUrl,
+    avatarDataUrl: profile.avatarDataUrl ?? null,
     guidelines: summary,
     description: summary,
     selectorMode: 'profile',

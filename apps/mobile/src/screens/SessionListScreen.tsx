@@ -732,15 +732,32 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation.navigate('Chat');
   };
 
+  // Create a settings client for syncing pin/archive/delete state to server
+  const settingsClient = useMemo(() => {
+    if (config.baseUrl && config.apiKey) {
+      return new SettingsApiClient(config.baseUrl, config.apiKey);
+    }
+    return undefined;
+  }, [config.baseUrl, config.apiKey]);
+
   const handleDeleteSession = useCallback((session: SessionListItem) => {
-    const doDelete = () => {
-      connectionManager.removeConnection(session.id);
-      sessionStore.deleteSession(session.id);
+    const doDelete = async () => {
+      const serverConversationId = sessionStore.sessions.find(item => item.id === session.id)?.serverConversationId;
+
+      try {
+        if (settingsClient && serverConversationId) {
+          await settingsClient.deleteConversation(serverConversationId);
+        }
+        connectionManager.removeConnection(session.id);
+        await sessionStore.deleteSession(session.id);
+      } catch (error: any) {
+        Alert.alert('Delete Failed', error?.message || 'Failed to delete this chat');
+      }
     };
 
     if (Platform.OS === 'web') {
       if (window.confirm(`Delete "${session.title}"?`)) {
-        doDelete();
+        void doDelete();
       }
     } else {
       Alert.alert(
@@ -748,19 +765,11 @@ export default function SessionListScreen({ navigation }: Props) {
         `Are you sure you want to delete "${session.title}"?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: doDelete },
+          { text: 'Delete', style: 'destructive', onPress: () => { void doDelete(); } },
         ]
       );
     }
-  }, [connectionManager, sessionStore]);
-
-  // Create a settings client for syncing pin/archive state to server
-  const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
-      return new SettingsApiClient(config.baseUrl, config.apiKey);
-    }
-    return undefined;
-  }, [config.baseUrl, config.apiKey]);
+  }, [connectionManager, sessionStore, settingsClient]);
 
   const handleToggleSessionPinned = useCallback(async (sessionId: string) => {
     await sessionStore.toggleSessionPinned(sessionId, settingsClient);
