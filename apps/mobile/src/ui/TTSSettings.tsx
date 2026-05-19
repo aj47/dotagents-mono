@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, ScrollView, Modal, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Speech from 'expo-speech';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeProvider';
 import { Theme, spacing, radius } from './theme';
 import { isEnglishVoice, sortVoicesForTtsPicker } from '../lib/ttsVoices';
@@ -209,7 +210,7 @@ export function TTSSettings({
           <Text style={styles.voiceSelectorText} numberOfLines={2}>
             {selectedVoice?.name || 'System Default'}
           </Text>
-          <Text style={styles.chevron}>▼</Text>
+          <Ionicons name="chevron-down" size={16} color={theme.colors.mutedForeground} />
         </TouchableOpacity>
       </View>
 
@@ -278,7 +279,7 @@ export function TTSSettings({
                 accessibilityRole="button"
                 accessibilityLabel="Close voice picker"
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Ionicons name="close" size={18} color={theme.colors.foreground} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.voiceList}>
@@ -289,13 +290,20 @@ export function TTSSettings({
                   !selectedVoice && styles.voiceItemSelected,
                 ]}
                 onPress={() => handleVoiceSelect(null)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: !selectedVoice }}
               >
-                <Text style={[
-                  styles.voiceItemText,
-                  !selectedVoice && styles.voiceItemTextSelected,
-                ]}>
-                  System Default
-                </Text>
+                <View style={styles.voiceItemBody}>
+                  <Text style={[
+                    styles.voiceItemText,
+                    !selectedVoice && styles.voiceItemTextSelected,
+                  ]}>
+                    System Default
+                  </Text>
+                </View>
+                {!selectedVoice ? (
+                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+                ) : null}
               </TouchableOpacity>
 
               {/* Edge TTS voices — route through the paired desktop's /v1/tts/speak */}
@@ -311,8 +319,10 @@ export function TTSSettings({
                         key={`edge-${voice.identifier}`}
                         style={[styles.voiceItem, isSelected && styles.voiceItemSelected]}
                         onPress={() => handleVoiceSelect(voice)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
                       >
-                        <View>
+                        <View style={styles.voiceItemBody}>
                           <Text
                             style={[
                               styles.voiceItemText,
@@ -325,7 +335,9 @@ export function TTSSettings({
                             {voice.language} • Neural
                           </Text>
                         </View>
-                        {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                        {isSelected ? (
+                          <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+                        ) : null}
                       </TouchableOpacity>
                     );
                   })}
@@ -353,8 +365,10 @@ export function TTSSettings({
                         language: voice.language,
                       })
                     }
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
                   >
-                    <View>
+                    <View style={styles.voiceItemBody}>
                       <Text
                         style={[
                           styles.voiceItemText,
@@ -367,7 +381,9 @@ export function TTSSettings({
                         {voice.language} {voice.quality === 'Enhanced' ? '• Enhanced' : ''}
                       </Text>
                     </View>
-                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                    {isSelected ? (
+                      <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+                    ) : null}
                   </TouchableOpacity>
                 );
               })}
@@ -415,11 +431,6 @@ const createStyles = (theme: Theme) =>
       marginRight: spacing.sm,
       flex: 1,
       flexShrink: 1,
-    },
-    chevron: {
-      fontSize: 10,
-      color: theme.colors.mutedForeground,
-      flexShrink: 0,
     },
     sliderRow: {
       paddingVertical: spacing.sm,
@@ -480,14 +491,12 @@ const createStyles = (theme: Theme) =>
       paddingRight: spacing.xs,
     },
     modalCloseButton: {
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-    },
-    modalCloseText: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: theme.colors.primary,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.muted,
     },
     voiceList: {
       padding: spacing.md,
@@ -506,12 +515,17 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      gap: spacing.sm,
       paddingVertical: spacing.md,
       paddingHorizontal: spacing.sm,
       borderRadius: radius.md,
     },
     voiceItemSelected: {
       backgroundColor: theme.colors.primary + '20',
+    },
+    voiceItemBody: {
+      flex: 1,
+      minWidth: 0,
     },
     voiceItemText: {
       fontSize: 16,
@@ -526,9 +540,4 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.mutedForeground,
       marginTop: 2,
     },
-    checkmark: {
-      fontSize: 18,
-      color: theme.colors.primary,
-    },
   });
-

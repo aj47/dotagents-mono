@@ -8,6 +8,7 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeProvider';
 import { Theme, spacing, radius } from './theme';
 import { useAudioDevices, AudioInputDevice } from '../lib/voice/useAudioDevices';
@@ -60,7 +61,7 @@ export function MicrophoneSelector({
           <Text style={styles.selectorText} numberOfLines={2}>
             {selectedDevice?.label || 'System Default'}
           </Text>
-          <Text style={styles.chevron}>▼</Text>
+          <Ionicons name="chevron-down" size={16} color={theme.colors.mutedForeground} />
         </TouchableOpacity>
       </View>
 
@@ -82,7 +83,7 @@ export function MicrophoneSelector({
                 accessibilityRole="button"
                 accessibilityLabel="Close microphone picker"
               >
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Ionicons name="close" size={20} color={theme.colors.mutedForeground} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.deviceList}>
@@ -92,6 +93,8 @@ export function MicrophoneSelector({
                   !selectedDeviceId && styles.deviceItemSelected,
                 ]}
                 onPress={() => handleSelect(null)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: !selectedDeviceId }}
               >
                 <Text
                   style={[
@@ -101,7 +104,9 @@ export function MicrophoneSelector({
                 >
                   System Default
                 </Text>
-                {!selectedDeviceId && <Text style={styles.checkmark}>✓</Text>}
+                {!selectedDeviceId && (
+                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+                )}
               </TouchableOpacity>
 
               {inputDevices
@@ -115,6 +120,8 @@ export function MicrophoneSelector({
                         styles.deviceItemSelected,
                     ]}
                     onPress={() => handleSelect(device)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: selectedDeviceId === device.deviceId }}
                   >
                     <Text
                       style={[
@@ -126,7 +133,7 @@ export function MicrophoneSelector({
                       {device.label}
                     </Text>
                     {selectedDeviceId === device.deviceId && (
-                      <Text style={styles.checkmark}>✓</Text>
+                      <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -190,11 +197,6 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       flexShrink: 1,
     },
-    chevron: {
-      fontSize: 10,
-      color: theme.colors.mutedForeground,
-      flexShrink: 0,
-    },
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -225,14 +227,12 @@ const createStyles = (theme: Theme) =>
       paddingRight: spacing.xs,
     },
     modalCloseButton: {
+      width: 32,
+      height: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
       borderRadius: radius.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-    },
-    modalCloseText: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: theme.colors.primary,
+      backgroundColor: theme.colors.muted,
     },
     deviceList: {
       padding: spacing.md,
@@ -252,13 +252,10 @@ const createStyles = (theme: Theme) =>
       fontSize: 16,
       color: theme.colors.foreground,
       flex: 1,
+      paddingRight: spacing.sm,
     },
     deviceItemTextSelected: {
       color: theme.colors.primary,
       fontWeight: '600',
-    },
-    checkmark: {
-      fontSize: 18,
-      color: theme.colors.primary,
     },
   });

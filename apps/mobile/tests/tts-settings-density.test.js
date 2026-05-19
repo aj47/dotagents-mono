@@ -18,13 +18,15 @@ function extractBetween(startMarker, endMarker) {
   return ttsSettingsSource.slice(start, end);
 }
 
-test('keeps mobile TTS settings actions text-first and explicitly labeled', () => {
+test('keeps mobile TTS settings actions compact and explicitly labeled', () => {
   assert.doesNotMatch(ttsSettingsSource, /🔊 Test Voice/);
   assert.match(ttsSettingsSource, /<Text style=\{styles\.testButtonText\}>Test voice<\/Text>/);
 
   assert.doesNotMatch(ttsSettingsSource, />✕<\/Text>/);
   assert.match(ttsSettingsSource, /accessibilityLabel="Close voice picker"/);
-  assert.match(ttsSettingsSource, /<Text style=\{styles\.modalCloseText\}>Close<\/Text>/);
+  assert.match(ttsSettingsSource, /<Ionicons name="close" size=\{18\}/);
+  assert.match(ttsSettingsSource, /modalCloseButton:\s*\{[\s\S]*?width:\s*32,[\s\S]*?height:\s*32,[\s\S]*?backgroundColor:\s*theme\.colors\.muted,/);
+  assert.doesNotMatch(ttsSettingsSource, /modalCloseText/);
 });
 
 test('keeps the mobile TTS voice picker header flex-safe on narrow widths', () => {

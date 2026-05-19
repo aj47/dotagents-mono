@@ -1,13 +1,14 @@
+import { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { HandsFreePhase } from '@dotagents/shared';
 import { useTheme } from './ThemeProvider';
 import { spacing, radius } from './theme';
 
-type HandsFreeStatusChipProps = {
+export interface HandsFreeStatusChipProps {
   phase: HandsFreePhase;
   label: string;
   subtitle?: string;
-};
+}
 
 function getPhaseColors(phase: HandsFreePhase, colors: ReturnType<typeof useTheme>['theme']['colors']) {
   switch (phase) {
@@ -29,7 +30,7 @@ function getPhaseColors(phase: HandsFreePhase, colors: ReturnType<typeof useThem
   }
 }
 
-export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusChipProps) {
+export const HandsFreeStatusChip = memo(function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusChipProps) {
   const { theme } = useTheme();
   const colors = getPhaseColors(phase, theme.colors);
 
@@ -42,8 +43,15 @@ export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusC
           borderColor: colors.borderColor,
         },
       ]}
+      accessibilityRole="text"
+      accessibilityLabel={subtitle ? `${label}. ${subtitle}` : label}
     >
-      <Text style={[styles.label, { color: colors.textColor }]}>{label}</Text>
+      <View style={styles.labelRow}>
+        <View style={[styles.statusDot, { backgroundColor: colors.textColor }]} />
+        <Text style={[styles.label, { color: colors.textColor }]} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
       {subtitle ? (
         <Text style={[styles.subtitle, { color: colors.textColor }]} numberOfLines={2}>
           {subtitle}
@@ -51,7 +59,7 @@ export function HandsFreeStatusChip({ phase, label, subtitle }: HandsFreeStatusC
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -62,9 +70,21 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     maxWidth: '100%',
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    opacity: 0.9,
+  },
   label: {
     fontSize: 12,
     fontWeight: '700',
+    flexShrink: 1,
   },
   subtitle: {
     fontSize: 11,

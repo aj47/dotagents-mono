@@ -3,16 +3,19 @@ import { getAcpxMainAgentOptions, toMainAgentProfile } from '../lib/mainAgentOpt
 
 export interface SelectableProfile extends Profile {
   description?: string;
+  avatarDataUrl?: string | null;
   selectorMode: 'profile' | 'acpx';
   selectionValue: string;
 }
 
 export function toSelectableAgentProfile(profile: AgentProfile): SelectableProfile {
   const summary = profile.description || profile.guidelines || '';
+  const avatarDataUrl = (profile as AgentProfile & { avatarDataUrl?: string | null }).avatarDataUrl ?? null;
 
   return {
     id: profile.id,
     name: profile.displayName || profile.name,
+    avatarDataUrl,
     guidelines: summary,
     description: summary,
     selectorMode: 'profile',

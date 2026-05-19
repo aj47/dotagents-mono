@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
+import { Ionicons } from '@expo/vector-icons';
 import {
   buildConversationVideoAssetHttpUrl,
   getVideoAssetLabel,
@@ -138,12 +139,19 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     },
     header: {
       padding: spacing.sm,
-      gap: 2,
+      gap: spacing.xs,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
     },
     title: {
       color: theme.colors.foreground,
       fontWeight: '600',
       fontSize: 13,
+      flex: 1,
+      minWidth: 0,
     },
     subtitle: {
       color: theme.colors.mutedForeground,
@@ -152,10 +160,16 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     button: {
       marginTop: spacing.xs,
       alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
       borderRadius: radius.md,
       backgroundColor: theme.colors.primary,
       paddingHorizontal: spacing.sm,
       paddingVertical: 6,
+    },
+    buttonDisabled: {
+      opacity: 0.72,
     },
     buttonText: {
       color: theme.colors.primaryForeground,
@@ -168,6 +182,9 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       backgroundColor: '#000',
     },
     fallbackLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
       paddingVertical: spacing.xs,
       marginBottom: spacing.sm,
     },
@@ -175,6 +192,8 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       color: theme.colors.primary,
       fontSize: 13,
       textDecorationLine: 'underline',
+      flex: 1,
+      minWidth: 0,
     },
     errorText: {
       color: theme.colors.destructive,
@@ -191,7 +210,8 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         onPress={() => Linking.openURL(resolvedUri)}
         style={styles.fallbackLink}
       >
-        <Text style={styles.fallbackLinkText}>🔗 {displayLabel}</Text>
+        <Ionicons name="link-outline" size={15} color={theme.colors.primary} />
+        <Text style={styles.fallbackLinkText} numberOfLines={2}>{displayLabel}</Text>
       </Pressable>
     );
   }
@@ -209,24 +229,38 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         />
       ) : (
         <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>🎬 {displayLabel}</Text>
+          <View style={styles.titleRow}>
+            <Ionicons name="videocam-outline" size={16} color={theme.colors.mutedForeground} />
+            <Text style={styles.title} numberOfLines={1}>{displayLabel}</Text>
+          </View>
           <Text style={styles.subtitle} numberOfLines={1}>Loads only when you tap play</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Play video ${displayLabel}`}
             accessibilityState={{ busy: loading }}
             onPress={loadVideo}
-            style={styles.button}
+            style={[styles.button, loading && styles.buttonDisabled]}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>{loading ? 'Loading…' : 'Play video'}</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color={theme.colors.primaryForeground} />
+            ) : (
+              <Ionicons name="play" size={14} color={theme.colors.primaryForeground} />
+            )}
+            <Text style={styles.buttonText}>{loading ? 'Loading...' : 'Play video'}</Text>
           </Pressable>
           {loadError ? (
             <Text style={styles.errorText}>{loadError}</Text>
           ) : null}
           {canOpenExternally ? (
-            <Pressable onPress={() => Linking.openURL(resolvedUri)}>
-              <Text style={[styles.subtitle, { marginTop: spacing.xs }]}>Open externally</Text>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`Open video externally: ${displayLabel}`}
+              onPress={() => Linking.openURL(resolvedUri)}
+              style={styles.titleRow}
+            >
+              <Ionicons name="open-outline" size={14} color={theme.colors.mutedForeground} />
+              <Text style={styles.subtitle}>Open externally</Text>
             </Pressable>
           ) : null}
         </View>
