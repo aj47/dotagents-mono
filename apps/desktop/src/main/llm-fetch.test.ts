@@ -1248,6 +1248,22 @@ describe('LLM Fetch with AI SDK', () => {
     )
   })
 
+  it('sanitizes dangling surrogate fragments before chatgpt-web requests', async () => {
+    makeChatGptWebResponseMock.mockResolvedValue({ text: 'chatgpt answer' })
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+    await makeLLMCallWithStreamingAndTools(
+      [{ role: 'user', content: 'LinkedIn resource \uD83D\nContext ref' }],
+      vi.fn(),
+      'chatgpt-web',
+    )
+
+    expect(makeChatGptWebResponseMock).toHaveBeenCalledWith(
+      [{ role: 'user', content: 'LinkedIn resource \uFFFD\nContext ref' }],
+      expect.objectContaining({ modelContext: 'mcp' }),
+    )
+  })
+
   it('retries chatgpt-web llm calls when the codex stream errors transiently', async () => {
     // Regression test for https://github.com/aj47/dotagents-mono/issues/391
     // Transient "ChatGPT Codex stream error" should be classified as retryable
