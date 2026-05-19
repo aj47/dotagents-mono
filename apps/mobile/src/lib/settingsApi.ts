@@ -24,7 +24,10 @@ export type {
   PushTokenRegistration,
   PushStatusResponse,
   Skill,
+  SkillCreateRequest,
+  SkillResponse,
   SkillsResponse,
+  SkillUpdateRequest,
   AgentProfileCreateRequest,
   AgentProfileUpdateRequest,
   VerifyExternalAgentCommandRequest,
@@ -87,7 +90,10 @@ import type {
   PushTokenRegistration,
   PushStatusResponse,
   Skill,
+  SkillCreateRequest,
+  SkillResponse,
   SkillsResponse,
+  SkillUpdateRequest,
   ApiAgentProfile,
   ApiAgentProfileFull,
   ApiAgentProfilesResponse,
@@ -579,6 +585,24 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
 
   async getSkills(): Promise<SkillsResponse> {
     return this.request<SkillsResponse>('/skills');
+  }
+
+  async getSkill(id: string): Promise<SkillResponse> {
+    return this.request<SkillResponse>(`/skills/${encodeURIComponent(id)}`);
+  }
+
+  async createSkill(data: SkillCreateRequest): Promise<SkillResponse> {
+    return this.request<SkillResponse>('/skills', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSkill(id: string, data: SkillUpdateRequest): Promise<{ success: boolean; skill: Skill }> {
+    return this.request<{ success: boolean; skill: Skill }>(`/skills/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
   }
 
   async toggleSkillForProfile(skillId: string): Promise<{ success: boolean; skillId: string; enabledForProfile: boolean }> {

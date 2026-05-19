@@ -783,6 +783,13 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const handleSkillEdit = useCallback((skill?: Skill) => {
+    navigation.navigate('SkillEdit', {
+      skillId: skill?.id,
+      skill,
+    });
+  }, [navigation]);
+
   const confirmDestructiveAction = useCallback(
     (title: string, message: string, onConfirm: () => Promise<void> | void, confirmLabel: string = 'Delete') => {
       if (Platform.OS === 'web') {
@@ -2562,12 +2569,20 @@ export default function SettingsScreen({ navigation }: any) {
                 ) : (
                   displaySkills.map((skill) => (
                     <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
-                      <View style={styles.serverInfo}>
-                        <Text style={styles.serverName}>{skill.name}</Text>
-                        <Text style={styles.serverMeta}>
-                          {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description}
-                        </Text>
-                      </View>
+                      <TouchableOpacity
+                        style={styles.agentInfoPressable}
+                        onPress={() => handleSkillEdit(skill)}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Edit ${skill.name} skill`)}
+                      >
+                        <View style={styles.serverInfo}>
+                          <Text style={styles.serverName}>{skill.name}</Text>
+                          <Text style={styles.serverMeta} numberOfLines={2}>
+                            {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description || 'No description'}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
                       <Switch
                         value={skill.enabledForProfile}
                         onValueChange={() => handleSkillToggle(skill.id)}
@@ -2578,8 +2593,16 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
+                <TouchableOpacity
+                  style={styles.createAgentButton}
+                  onPress={() => handleSkillEdit()}
+                  accessibilityRole="button"
+                  accessibilityLabel={createButtonAccessibilityLabel('Create skill')}
+                >
+                  <Text style={styles.createAgentButtonText}>+ Create Skill</Text>
+                </TouchableOpacity>
                 <Text style={styles.helperText}>
-                  Toggle skills for the Main Agent
+                  Tap a skill to edit, or toggle it for the Main Agent.
                 </Text>
               </CollapsibleSection>
             )}

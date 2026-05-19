@@ -4405,6 +4405,26 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // Skills Management Endpoints (for mobile app)
   // ============================================
 
+  const formatSkillForMobile = (skill: ReturnType<typeof skillsService.getSkills>[number]) => {
+    const currentProfile = agentProfileService.getCurrentProfile()
+    const allEnabledByDefault = !currentProfile?.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault
+    const enabledSkillIds = allEnabledByDefault
+      ? skillsService.getSkills().map(s => s.id)
+      : (currentProfile?.skillsConfig?.enabledSkillIds || [])
+
+    return {
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      instructions: skill.instructions,
+      enabled: true,
+      enabledForProfile: enabledSkillIds.includes(skill.id),
+      source: skill.source,
+      createdAt: skill.createdAt,
+      updatedAt: skill.updatedAt,
+    }
+  }
+
   // GET /v1/skills - List all skills
   fastify.get("/v1/skills", async (_req, reply) => {
     try {
@@ -4431,6 +4451,76 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get skills", error)
       return reply.code(500).send({ error: "Failed to get skills" })
+    }
+  })
+
+  // GET /v1/skills/:id - Get a single skill for editing
+  fastify.get("/v1/skills/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const skill = skillsService.getSkill(params.id)
+      if (!skill) {
+        return reply.code(404).send({ error: "Skill not found" })
+      }
+      return reply.send({ skill: formatSkillForMobile(skill) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get skill", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get skill" })
+    }
+  })
+
+  // POST /v1/skills - Create a skill
+  fastify.post("/v1/skills", async (req, reply) => {
+    try {
+      const body = req.body as { name?: unknown; description?: unknown; instructions?: unknown }
+      const name = typeof body.name === "string" ? body.name.trim() : ""
+      const description = typeof body.description === "string" ? body.description.trim() : ""
+      const instructions = typeof body.instructions === "string" ? body.instructions.trim() : ""
+
+      if (!name || !instructions) {
+        return reply.code(400).send({ error: "name and instructions are required" })
+      }
+
+      const skill = skillsService.createSkill(name, description, instructions, { source: "local" })
+      return reply.code(201).send({ skill: formatSkillForMobile(skill) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to create skill", error)
+      return reply.code(500).send({ error: error?.message || "Failed to create skill" })
+    }
+  })
+
+  // PATCH /v1/skills/:id - Update a skill
+  fastify.patch("/v1/skills/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const body = req.body as { name?: unknown; description?: unknown; instructions?: unknown }
+      const updates: Partial<Pick<ReturnType<typeof skillsService.getSkills>[number], "name" | "description" | "instructions">> = {}
+
+      if (body.name !== undefined) {
+        if (typeof body.name !== "string" || body.name.trim() === "") {
+          return reply.code(400).send({ error: "name must be a non-empty string when provided" })
+        }
+        updates.name = body.name.trim()
+      }
+      if (body.description !== undefined) {
+        if (typeof body.description !== "string") {
+          return reply.code(400).send({ error: "description must be a string when provided" })
+        }
+        updates.description = body.description.trim()
+      }
+      if (body.instructions !== undefined) {
+        if (typeof body.instructions !== "string" || body.instructions.trim() === "") {
+          return reply.code(400).send({ error: "instructions must be a non-empty string when provided" })
+        }
+        updates.instructions = body.instructions.trim()
+      }
+
+      const skill = skillsService.updateSkill(params.id, updates)
+      return reply.send({ success: true, skill: formatSkillForMobile(skill) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to update skill", error)
+      const message = error?.message || "Failed to update skill"
+      return reply.code(message.includes("not found") ? 404 : 500).send({ error: message })
     }
   })
 

@@ -639,6 +639,22 @@ export interface SkillsResponse {
   currentProfileId?: string;
 }
 
+export interface SkillResponse {
+  skill: Skill;
+}
+
+export interface SkillCreateRequest {
+  name: string;
+  description?: string;
+  instructions?: string;
+}
+
+export interface SkillUpdateRequest {
+  name?: string;
+  description?: string;
+  instructions?: string;
+}
+
 // Knowledge Note Types
 export type KnowledgeNoteContext = 'auto' | 'search-only';
 export type KnowledgeNoteEntryType = 'note' | 'entry' | 'overview';
