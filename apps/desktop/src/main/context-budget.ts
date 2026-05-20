@@ -638,6 +638,63 @@ function upsertArchiveHistoryRef(sessionId: string, archivedMessages: LLMMessage
   return ref
 }
 
+function collectContextSearchNeedles(query: string): string[] {
+  const trimmed = query.trim()
+  const seen = new Set<string>()
+  const needles: string[] = []
+  const stopwords = new Set([
+    "answer",
+    "exact",
+    "find",
+    "for",
+    "from",
+    "please",
+    "recover",
+    "requested",
+    "search",
+    "the",
+    "value",
+  ])
+
+  const addNeedle = (candidate: string, options: { allowShort?: boolean } = {}) => {
+    const normalized = candidate.trim().replace(/\s+/g, " ")
+    const key = normalized.toLowerCase()
+    if (!key || (!options.allowShort && key.length < 3) || seen.has(key) || stopwords.has(key)) return
+    seen.add(key)
+    needles.push(normalized)
+  }
+
+  addNeedle(trimmed, { allowShort: true })
+
+  const quotedMatches = trimmed.matchAll(/["'`](.{3,120}?)["'`]/g)
+  for (const match of quotedMatches) {
+    if (match[1]) addNeedle(match[1])
+  }
+
+  const rawTokens = trimmed.match(/[A-Za-z0-9][A-Za-z0-9_.:-]*[A-Za-z0-9]/g) ?? []
+  const meaningfulPlainTokens: string[] = []
+  for (const token of rawTokens) {
+    const lower = token.toLowerCase()
+    if (stopwords.has(lower)) continue
+
+    const hasIdentifierSignal = /[_:.-]|\d/.test(token) || /[A-Z]{2,}/.test(token)
+    if (hasIdentifierSignal || token.length >= 8) {
+      addNeedle(token)
+    }
+    if (/^[a-z0-9]+$/i.test(token) && token.length >= 3) {
+      meaningfulPlainTokens.push(lower)
+    }
+  }
+
+  const joinedIdentifier = meaningfulPlainTokens
+    .filter((token) => !stopwords.has(token))
+    .slice(0, 6)
+    .join("_")
+  if (joinedIdentifier.includes("_")) addNeedle(joinedIdentifier)
+
+  return needles
+}
+
 export function readMoreContext(
   sessionId: string | undefined,
   contextRef: string,
@@ -727,36 +784,44 @@ export function readMoreContext(
     }
 
     const haystack = entry.content.toLowerCase()
-    const needle = query.toLowerCase()
-    const matches: Array<{ start: number; end: number; excerpt: string }> = []
-    let cursor = 0
-    while (cursor < haystack.length && matches.length < 5) {
-      const foundAt = haystack.indexOf(needle, cursor)
-      if (foundAt === -1) break
-      const desiredBefore = Math.floor(maxChars / 4)
-      const desiredAfter = Math.floor(maxChars / 2)
-      let start = foundAt
-      let end = Math.min(totalChars, foundAt + maxChars)
+    const matches: Array<{ start: number; end: number; excerpt: string; matchedQuery?: string }> = []
+    const searchNeedles = collectContextSearchNeedles(query)
+    for (const searchNeedle of searchNeedles) {
+      const needle = searchNeedle.toLowerCase()
+      let cursor = 0
+      while (cursor < haystack.length && matches.length < 5) {
+        const foundAt = haystack.indexOf(needle, cursor)
+        if (foundAt === -1) break
+        const desiredBefore = Math.floor(maxChars / 4)
+        const desiredAfter = Math.floor(maxChars / 2)
+        let start = foundAt
+        let end = Math.min(totalChars, foundAt + maxChars)
 
-      if (needle.length < maxChars) {
-        const totalDesiredContext = desiredBefore + desiredAfter
-        const availableContextChars = maxChars - needle.length
-        const contextBefore = Math.min(
-          desiredBefore,
-          Math.floor((availableContextChars * desiredBefore) / Math.max(1, totalDesiredContext)),
-        )
-        const contextAfter = availableContextChars - contextBefore
+        if (needle.length < maxChars) {
+          const totalDesiredContext = desiredBefore + desiredAfter
+          const availableContextChars = maxChars - needle.length
+          const contextBefore = Math.min(
+            desiredBefore,
+            Math.floor((availableContextChars * desiredBefore) / Math.max(1, totalDesiredContext)),
+          )
+          const contextAfter = availableContextChars - contextBefore
 
-        start = Math.max(0, foundAt - contextBefore)
-        end = Math.min(totalChars, foundAt + needle.length + contextAfter)
+          start = Math.max(0, foundAt - contextBefore)
+          end = Math.min(totalChars, foundAt + needle.length + contextAfter)
+        }
+
+        const overlapsExisting = matches.some((match) => start < match.end && end > match.start)
+        if (!overlapsExisting) {
+          matches.push({
+            start,
+            end,
+            excerpt: entry.content.slice(start, end),
+            ...(searchNeedle === query ? {} : { matchedQuery: searchNeedle }),
+          })
+        }
+        cursor = foundAt + Math.max(1, needle.length)
       }
-
-      matches.push({
-        start,
-        end,
-        excerpt: entry.content.slice(start, end),
-      })
-      cursor = foundAt + needle.length
+      if (matches.length > 0) break
     }
 
     return {

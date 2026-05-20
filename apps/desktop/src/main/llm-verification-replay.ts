@@ -66,29 +66,21 @@ const AGENT_CONVERSATION_STATES = new Set<AgentConversationState>([
   "blocked",
 ])
 
-export const VERIFICATION_SYSTEM_PROMPT = `You are a strict conversation-state verifier for an agent run.
+export const VERIFICATION_SYSTEM_PROMPT = `You are a strict verifier for the CURRENT agent run.
 
-Classify the CURRENT state of the conversation using exactly one value:
-- running: the agent still owes more work before the current run can stop.
-- complete: the user already has the requested deliverable.
-- needs_input: the assistant has reached a valid stopping point because it is explicitly waiting on user clarification, approval, credentials, or another user reply.
-- blocked: the assistant has reached a valid stopping point because it clearly explained an external blocker, failure, or environment constraint that prevents further progress right now.
+Choose exactly one conversationState:
+- running: the agent still owes primary work.
+- complete: the user-facing response already delivers the requested answer/artifact/summary.
+- needs_input: stopping is valid because required clarification, approval, credentials, or another user reply is needed.
+- blocked: stopping is valid because an external failure/environment constraint was clearly explained.
 
 Rules:
-- Judge based on what the user-facing assistant response actually delivers, not on tool success alone.
-- If tools found information but the assistant did not present or synthesize it for the user, return running.
-- If the assistant mainly says what it plans to do next, return running.
-- If the assistant asks the user for something needed next, return needs_input.
-- Use needs_input only when the requested work is at a legitimate stopping point and the missing user input is truly required before any remaining primary work can continue.
-- If the assistant asks an optional preference, optional approval, or “if you want, I can do the final steps now” follow-up after failing to deliver the main requested artifact, return running.
-- If the assistant reports that a requested artifact was not created yet (for example no PR was opened yet, no agent/profile was created yet, no file was produced yet) and then asks whether to continue, return running unless the user had explicitly asked the assistant to stop and ask first.
-- If the assistant only gathered context, prepared, or summarized next steps but did not create the main requested artifact, return running even if it asks a style/preference question.
-- If the assistant clearly says it cannot proceed because of a blocker outside its control, return blocked.
-- If the user already has the final answer, requested artifact, or requested summary, return complete.
-- If the current request is a short or referential follow-up, use the provided prior user context only to resolve references like "it", "this", or "the map"; do not replace the current request with an older background task.
-- Empty, vague, or purely procedural replies should return running.
+- Judge user-facing output, not tool success by itself.
+- Tool findings must be presented or synthesized for the user; plans, intent-only updates, empty/vague/procedural replies, or unfinished artifacts stay running.
+- Optional preferences/approval after unfinished primary work stay running unless the user explicitly required stopping to ask first.
+- For short/referential follow-ups, use prior user context only to resolve references; do not revive older tasks.
 
-Return ONLY JSON with this schema:
+Return ONLY JSON:
 {
   "conversationState": "running" | "complete" | "needs_input" | "blocked",
   "isComplete": boolean,
@@ -96,8 +88,7 @@ Return ONLY JSON with this schema:
   "missingItems": string[],
   "reason": string
 }
-
-Set isComplete=false only when conversationState=running. Set isComplete=true for complete, needs_input, or blocked.`
+Set isComplete=false only for running; true otherwise.`
 
 const VERIFICATION_JSON_REQUEST_BASE = "Return JSON only. Remember: if the assistant is waiting on the user, use conversationState=needs_input; if it cannot continue because of a blocker, use conversationState=blocked; otherwise use running or complete. Do not treat optional preference/approval questions after unfinished work as needs_input; those should stay running."
 
@@ -194,10 +185,13 @@ export function buildVerificationMessagesFromAgentState(
     })
   }
 
-  if (latestUserFacingResponse?.trim()) {
+  const sanitizedLatestUserFacingResponse = latestUserFacingResponse?.trim()
+    ? sanitizeMessageContentForDisplay(latestUserFacingResponse).trim()
+    : ""
+  if (sanitizedLatestUserFacingResponse) {
     messages.push({
       role: "user",
-      content: `Latest explicit user-facing response from the agent:\n${sanitizeMessageContentForDisplay(latestUserFacingResponse)}`,
+      content: `Latest explicit user-facing response from the agent:\n${sanitizedLatestUserFacingResponse}`,
     })
   }
 
@@ -224,8 +218,12 @@ export function buildVerificationMessagesFromAgentState(
     lastAddedAssistantContent = content
   }
 
-  const sanitizedFinalAssistantText = sanitizeMessageContentForDisplay(fixture.finalAssistantText || "")
-  if (sanitizedFinalAssistantText.trim() && sanitizedFinalAssistantText.trim() !== lastAddedAssistantContent?.trim()) {
+  const sanitizedFinalAssistantText = sanitizeMessageContentForDisplay(fixture.finalAssistantText || "").trim()
+  if (
+    sanitizedFinalAssistantText &&
+    sanitizedFinalAssistantText !== lastAddedAssistantContent?.trim() &&
+    sanitizedFinalAssistantText !== sanitizedLatestUserFacingResponse
+  ) {
     messages.push({ role: "assistant", content: sanitizedFinalAssistantText })
   }
 
