@@ -136,8 +136,14 @@ export const markdownUrlTransform = (url: string, key?: string) => {
 }
 
 const containsChatImageChild = (children: React.ReactNode): boolean => {
+  // react-markdown passes link children as React elements whose .type is the
+  // `img` override (markdownImageComponent), not the eventual ChatImage. Match
+  // both so the unwrap fires whether react-markdown built the tree or a caller
+  // constructed ChatImage directly.
   return React.Children.toArray(children).some(
-    (c) => React.isValidElement(c) && c.type === ChatImage,
+    (c) =>
+      React.isValidElement(c) &&
+      (c.type === ChatImage || c.type === markdownImageComponent),
   )
 }
 
