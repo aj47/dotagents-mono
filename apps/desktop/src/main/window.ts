@@ -450,7 +450,7 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
         win.hide()
         if (shouldHideDock) {
           app.setActivationPolicy("accessory")
-          app.dock.hide()
+          app.dock?.hide()
         } else {
           ensureAppSwitcherPresence("main.close")
         }
@@ -459,7 +459,7 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
       // App is quitting — allow the close to proceed
       if (shouldHideDock) {
         app.setActivationPolicy("accessory")
-        app.dock.hide()
+        app.dock?.hide()
       }
     })
 
@@ -468,8 +468,8 @@ export function createMainWindow({ url }: { url?: string } = {}): BrowserWindow 
       // This fixes the icon going missing in the Cmd+Tab app switcher.
       // Even when hideDockIcon is enabled, we temporarily show the dock icon
       // while the window is visible so the user can Cmd+Tab to it.
-      if (!app.dock.isVisible()) {
-        app.dock.show()
+      if (!app.dock?.isVisible?.()) {
+        app.dock?.show()
         app.setActivationPolicy("regular")
       }
     })

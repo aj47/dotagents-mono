@@ -3206,10 +3206,10 @@ export const router = {
             if (nextHideDock) {
               // User wants to hide dock icon - hide it now
               app.setActivationPolicy("accessory")
-              app.dock.hide()
+              app.dock?.hide()
             } else {
               // User wants to show dock icon - show it now
-              app.dock.show()
+              app.dock?.show()
               app.setActivationPolicy("regular")
             }
           }

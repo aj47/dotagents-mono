@@ -9,7 +9,7 @@ import { sanitizeAgentProgressUpdateForDisplay } from "@dotagents/shared"
 
 // Throttle interval for non-critical progress updates (ms).
 // Updates within this window are collapsed — only the latest is sent.
-const THROTTLE_INTERVAL_MS = 150
+const THROTTLE_INTERVAL_MS = 250
 
 // Per-session throttle state
 const sessionThrottleState = new Map<string, {

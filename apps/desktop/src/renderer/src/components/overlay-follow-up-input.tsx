@@ -301,7 +301,7 @@ export function OverlayFollowUpInput({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        "flex flex-col gap-1.5 border-t bg-muted/30 px-3 py-2 backdrop-blur-sm",
+        "flex flex-col gap-1.5 border-t bg-muted/30 px-3 py-2",
         className
       )}
       onClick={(e) => e.stopPropagation()}

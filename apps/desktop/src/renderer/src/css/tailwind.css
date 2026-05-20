@@ -328,7 +328,6 @@
     box-shadow:
       0 10px 38px -10px rgba(22, 23, 24, 0.35),
       0 10px 20px -15px rgba(22, 23, 24, 0.2);
-    backdrop-filter: blur(8px);
     transition: all 0.2s ease-in-out;
   }
 
@@ -345,7 +344,6 @@
     box-shadow:
       0 10px 38px -10px rgba(22, 23, 24, 0.35),
       0 10px 20px -15px rgba(22, 23, 24, 0.2);
-    backdrop-filter: blur(12px);
   }
 
   .dark .floating-panel-glass {

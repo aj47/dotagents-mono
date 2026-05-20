@@ -5364,9 +5364,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         try {
           if (updates.hideDockIcon && !WINDOWS.get("main")?.isVisible()) {
             app.setActivationPolicy("accessory")
-            app.dock.hide()
+            app.dock?.hide()
           } else {
-            app.dock.show()
+            app.dock?.show()
             app.setActivationPolicy("regular")
           }
         } catch (error) {
@@ -6858,11 +6858,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       const { verifyExternalAgentCommand } = await import("./command-verification-service")
+      const args = body.args === undefined ? undefined : body.args as string[]
+      const cwd = typeof body.cwd === "string" ? body.cwd : undefined
+      const probeArgs = body.probeArgs === undefined ? undefined : body.probeArgs as string[]
       const result = await verifyExternalAgentCommand({
         command: body.command,
-        args: body.args,
-        cwd: body.cwd,
-        probeArgs: body.probeArgs,
+        args,
+        cwd,
+        probeArgs,
       })
 
       return reply.send(result)
@@ -7178,11 +7181,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
   const LOOP_TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
 
-  type ParseScheduleResult = {
-    ok: boolean
-    schedule?: LoopConfig["schedule"] | null
-    error?: string
-  }
+  type ParseScheduleResult =
+    | { ok: true; schedule?: LoopConfig["schedule"] | null }
+    | { ok: false; error: string }
 
   /**
    * Parse/validate a `schedule` field from a request body. Returns:
@@ -7683,11 +7684,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: "lastSessionId must be a string or null when provided" })
       }
       const maxIterationsResult = parseLoopMaxIterationsInput(body.maxIterations)
-      if (!maxIterationsResult.ok) {
+      if (maxIterationsResult.ok === false) {
         return reply.code(400).send({ error: maxIterationsResult.error })
       }
       const scheduleResult = parseScheduleInput(body.schedule)
-      if (!scheduleResult.ok) {
+      if (scheduleResult.ok === false) {
         return reply.code(400).send({ error: scheduleResult.error })
       }
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
@@ -7818,11 +7819,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: "lastSessionId must be a string or null when provided" })
       }
       const maxIterationsResult = parseLoopMaxIterationsInput(body.maxIterations)
-      if (!maxIterationsResult.ok) {
+      if (maxIterationsResult.ok === false) {
         return reply.code(400).send({ error: maxIterationsResult.error })
       }
       const scheduleResult = parseScheduleInput(body.schedule)
-      if (!scheduleResult.ok) {
+      if (scheduleResult.ok === false) {
         return reply.code(400).send({ error: scheduleResult.error })
       }
 

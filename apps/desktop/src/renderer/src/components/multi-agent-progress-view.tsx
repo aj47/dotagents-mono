@@ -123,7 +123,7 @@ export function MultiAgentProgressView({
     )}>
       {/* Tab bar - only show if multiple sessions */}
       {activeSessions.length > 1 && (
-        <div className="flex shrink-0 items-center gap-1 border-b border-border bg-background/95 px-2 py-1.5 backdrop-blur-sm">
+        <div className="flex shrink-0 items-center gap-1 border-b border-border bg-background/95 px-2 py-1.5">
           <div className="flex flex-1 gap-1 overflow-x-auto">
             {activeSessions.map(([sessionId]) => {
               // Read fresh progress from live map for up-to-date titles

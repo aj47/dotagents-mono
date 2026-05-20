@@ -929,13 +929,43 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   const hasExtras =
     (message.toolCalls?.length ?? 0) > 0 ||
     displayResults.length > 0
-  const effectiveTextContentLength = stripMarkdownMediaPayloads(effectiveContent).length
-  const collapseLengthLimit = hasMarkdownMediaPayload(effectiveContent) ? 500 : 100
+  const { effectiveTextContentLength, hasMediaPayload } = useMemo(() => ({
+    effectiveTextContentLength: stripMarkdownMediaPayloads(effectiveContent).length,
+    hasMediaPayload: hasMarkdownMediaPayload(effectiveContent),
+  }), [effectiveContent])
+  const collapseLengthLimit = hasMediaPayload ? 500 : 100
   const shouldCollapse = effectiveTextContentLength > collapseLengthLimit || hasExtras
 
+  const isThoughtEligibleForTTS = !!message.responseEvent
+
+  // Check if TTS button should be shown for this message. The overall session
+  // can remain incomplete briefly after the final assistant prose is visible
+  // (e.g. verification/title cleanup). Treat the latest non-thinking assistant
+  // text as TTS-eligible immediately so hiding/snoozing the panel after seeing
+  // the answer does not race ahead of autoplay. Provider thinking/thought blocks
+  // stay silent by default; they should only become speakable via an explicit
+  // user-facing response event or a future opt-in setting.
+  const canUseTTSForAssistantMessage =
+    isComplete ||
+    !!message.responseEvent ||
+    message.isComplete ||
+    (isLast && !message.isThinking && (!message.isAssistantThought || isThoughtEligibleForTTS))
+  const canPrepareTTSForAssistantMessage =
+    message.role === "assistant" &&
+    !!configQuery.data?.ttsEnabled &&
+    !message.isThinking &&
+    (!message.isAssistantThought || isThoughtEligibleForTTS) &&
+    canUseTTSForAssistantMessage
+
   // Track the computed ttsSource (ttsText || effectiveContent) since that's what determines the
-  // ttsKey and should also gate async state updates.
-  const ttsSource = sanitizeMessageContentForSpeech(ttsText || effectiveContent)
+  // ttsKey and should also gate async state updates. Avoid scanning large
+  // historical message bodies when TTS controls are disabled or ineligible.
+  const ttsSource = useMemo(
+    () => canPrepareTTSForAssistantMessage
+      ? sanitizeMessageContentForSpeech(ttsText || effectiveContent)
+      : "",
+    [canPrepareTTSForAssistantMessage, effectiveContent, ttsText],
+  )
   const latestTtsSourceRef = useRef(ttsSource)
   latestTtsSourceRef.current = ttsSource
   const ttsGenerationIdRef = useRef(0)
@@ -1058,27 +1088,9 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   }, [isComplete])
   const hasObservedLiveProgress = observedLiveProgressRef.current || parentObservedLiveProgress || !isComplete
 
-  const isThoughtEligibleForTTS = !!message.responseEvent
-
-  // Check if TTS button should be shown for this message. The overall session
-  // can remain incomplete briefly after the final assistant prose is visible
-  // (e.g. verification/title cleanup). Treat the latest non-thinking assistant
-  // text as TTS-eligible immediately so hiding/snoozing the panel after seeing
-  // the answer does not race ahead of autoplay. Provider thinking/thought blocks
-  // stay silent by default; they should only become speakable via an explicit
-  // user-facing response event or a future opt-in setting.
-  const canUseTTSForAssistantMessage =
-    isComplete ||
-    !!message.responseEvent ||
-    message.isComplete ||
-    (isLast && !message.isThinking && (!message.isAssistantThought || isThoughtEligibleForTTS))
   const shouldShowTTSButton =
-    message.role === "assistant" &&
-    configQuery.data?.ttsEnabled &&
-    !!ttsSource &&
-    !message.isThinking &&
-    (!message.isAssistantThought || isThoughtEligibleForTTS) &&
-    canUseTTSForAssistantMessage
+    canPrepareTTSForAssistantMessage &&
+    !!ttsSource
   // Auto-play only the latest assistant message. Older response-linked messages
   // remain manually replayable but should not all auto-play after reload/remount.
   const shouldAutoPlayTTS = shouldShowTTSButton && isLast
@@ -3058,7 +3070,7 @@ const SubAgentConversationPanel: React.FC<{
                 setIsPinnedToBottom(true)
                 scrollToBottom("smooth")
               }}
-              className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-white dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900"
+              className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-gray-700 shadow-sm transition-colors hover:bg-white dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900"
             >
               <ChevronDown className="h-2.5 w-2.5" />
               Latest
@@ -4845,7 +4857,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       return <Moon className="h-3.5 w-3.5 text-muted-foreground" />
     }
     if (conversationState === "running") {
-      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_img]:h-3.5 [&_img]:w-3.5" />
+      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_.dotagents-loading-spinner]:h-3.5 [&_.dotagents-loading-spinner]:w-3.5" />
     }
     return <Check className="h-3.5 w-3.5 text-green-500" />
   }
@@ -4933,8 +4945,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           isResizing && "select-none"
         )
       : variant === "overlay"
-      ? "bg-background/80 backdrop-blur-sm border border-border/50 h-full"
-      : "bg-muted/20 backdrop-blur-sm border border-border/40 h-full",
+      ? "bg-background/80 border border-border/50 h-full"
+      : "bg-muted/20 border border-border/40 h-full",
     isDark ? "dark" : ""
   )
 
@@ -5270,7 +5282,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     setIsUserScrolling(false)
                     scrollToBottom("smooth")
                   }}
-                  className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background"
+                  className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-background"
                   title="Scroll to bottom"
                   aria-label="Scroll to bottom"
                 >
@@ -5424,7 +5436,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
     >
       {/* Unified Header */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/30 bg-muted/10 backdrop-blur-sm overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/30 bg-muted/10 overflow-hidden">
         <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
           {/* Session title — prominent */}
           <span className="text-xs font-medium text-foreground truncate min-w-0">

@@ -1,7 +1,4 @@
 import { cn } from "@renderer/lib/utils"
-import loadingSpinnerGif from "@renderer/assets/loading-spinner.gif"
-import lightSpinnerGif from "@renderer/assets/light-spinner.gif"
-import { useTheme } from "@renderer/contexts/theme-context"
 
 interface LoadingSpinnerProps {
   className?: string
@@ -11,12 +8,10 @@ interface LoadingSpinnerProps {
 }
 
 const sizeClasses = {
-  sm: "w-6 h-6",
-  md: "w-8 h-8",
-  lg: "w-12 h-12",
+  sm: "h-5 w-5 border-2",
+  md: "h-6 w-6 border-2",
+  lg: "h-9 w-9 border-[3px]",
 }
-
-
 
 export function LoadingSpinner({
   className,
@@ -24,16 +19,16 @@ export function LoadingSpinner({
   showText = false,
   text = "Loading...",
 }: LoadingSpinnerProps) {
-  const { isDark } = useTheme()
-  const spinnerSrc = isDark ? loadingSpinnerGif : lightSpinnerGif
-
   return (
     <div className={cn("flex items-center justify-center", className)}>
       <div className="flex items-center gap-2">
-        <img
-          src={spinnerSrc}
-          alt="Loading..."
-          className={cn(sizeClasses[size], "object-contain")}
+        <span
+          role="status"
+          aria-label={text}
+          className={cn(
+            "dotagents-loading-spinner block shrink-0 rounded-full border-current/20 border-t-current motion-safe:animate-spin",
+            sizeClasses[size],
+          )}
         />
         {showText && (
           <span className="text-sm text-muted-foreground">{text}</span>

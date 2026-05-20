@@ -3,7 +3,6 @@ import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
-import { LoadingSpinner } from "@renderer/components/ui/loading-spinner"
 import { Button } from "@renderer/components/ui/button"
 import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
 import { SandboxSlotIndicator } from "@renderer/components/sandbox-slot-switcher"
@@ -726,7 +725,7 @@ export const Component = () => {
                       title={title}
                       aria-label={`Open session ${title}`}
                     >
-                      <span className="max-w-[calc(100%-0.375rem)] line-clamp-2 text-center text-[8px] font-medium leading-[0.6rem] tracking-tight [overflow-wrap:anywhere]">
+                      <span className="max-w-[calc(100%-0.375rem)] line-clamp-2 text-center text-[7px] font-medium leading-[0.55rem] tracking-tight [overflow-wrap:anywhere]">
                         {collapsedTitle}
                       </span>
                       <span
@@ -842,25 +841,15 @@ export const Component = () => {
               </div>
 
               {/* Logo/version pushed down by menu content, scrolls naturally */}
-              <div className="flex shrink-0 flex-col items-center space-y-2 pb-4 pt-2">
-                <LoadingSpinner size="lg" />
-                <div>DotAgents</div>
-                <div className="text-xs">{process.env.APP_VERSION}</div>
+              <div className="flex shrink-0 flex-col items-center space-y-0.5 pb-4 pt-2 text-muted-foreground">
+                <div className="text-[11px] font-medium">DotAgents</div>
+                <div className="text-[9px]">{process.env.APP_VERSION}</div>
               </div>
             </div>
           )}
 
           {/* Spacer to push footer down when collapsed */}
           {isCollapsed && <div className="flex-1" />}
-
-          {/* Loading spinner at the bottom of the sidebar - collapsed only */}
-          {isCollapsed && (
-            <div className="shrink-0">
-              <div className="flex flex-col items-center pb-4 pt-2 space-y-1">
-                <LoadingSpinner size="sm" />
-              </div>
-            </div>
-          )}
 
           {/* Resize handle - only visible when not collapsed */}
           {!isCollapsed && (
