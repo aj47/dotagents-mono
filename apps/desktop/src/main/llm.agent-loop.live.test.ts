@@ -456,6 +456,15 @@ async function executeLiveSafeTool(
 const liveAgentLoopEnabled = process.env.LIVE_AGENT_LOOP_E2E === "1"
 const describeLiveAgentLoop = liveAgentLoopEnabled ? describe : describe.skip
 
+const liveAgentLoopContinuationCaseIds = new Set([
+  "case-a-approval-boundary",
+  "case-e-full-long-context-continuation",
+  "case-f-harness-agent-not-model-correction",
+])
+const liveAgentLoopContinuationCases = autoresearchContinuationCases.filter((traceCase) =>
+  liveAgentLoopContinuationCaseIds.has(traceCase.caseId),
+)
+
 describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", () => {
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -476,14 +485,22 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
   afterEach(async () => {
     const { clearSessionUserResponse } = await import("./session-user-response-store")
     clearSessionUserResponse("live-agent-loop-hard-compaction")
-    for (const traceCase of autoresearchContinuationCases) {
+    for (const traceCase of liveAgentLoopContinuationCases) {
       clearSessionUserResponse(traceCase.sessionId)
     }
     fs.rmSync(liveHarness.tempRoot, { recursive: true, force: true })
   })
 
-  it.each(autoresearchContinuationCases)(
-    "runs AutoResearch $caseId: $name through the live agent-loop harness",
+  it("keeps the live continuation subset focused on the five-case agent-loop e2e suite", () => {
+    expect(liveAgentLoopContinuationCases.map((traceCase) => traceCase.caseId)).toEqual([
+      "case-a-approval-boundary",
+      "case-e-full-long-context-continuation",
+      "case-f-harness-agent-not-model-correction",
+    ])
+  })
+
+  it.each(liveAgentLoopContinuationCases)(
+    "runs focused AutoResearch $caseId: $name through the live agent-loop harness",
     async (traceCase) => {
       expect(hasLocalCodexChatGptAuth()).toBe(true)
       expect(traceCase.previousHistory).toHaveLength(traceCase.expectedHistoryLength)
@@ -563,6 +580,7 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
 
       expect(result.content.trim().length).toBeGreaterThan(0)
       expect(finalAnswerAvoidedStaleMarker).toBe(true)
+      expect(missingResponseEvidenceGroups).toEqual([])
       if (llmJudgeRequired) {
         expect(llmJudgePassed, llmJudge?.reason || "LLM judge did not pass").toBe(true)
       }
@@ -675,7 +693,7 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
     const hiddenToken = "HX-7492-PRISM-RIVER"
     const runId = 1
     const maxIterations = 6
-    const safeToolNames = new Set(["read_more_context", "respond_to_user", "mark_work_complete"])
+    const safeToolNames = new Set(["read_more_context"])
     const availableTools = runtimeToolDefinitions.filter((tool) => safeToolNames.has(tool.name))
 
     liveHarness.sessions.set(sessionId, { id: sessionId, conversationTitle: "Live loop E2E" })
@@ -684,8 +702,8 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
     const result = await processTranscriptWithAgentMode(
       [
         "Recover the exact HIDDEN_AUDIT_TOKEN value from the earlier historical_audit tool result.",
-        'If the old payload is compacted and has a Context ref, call read_more_context with mode "search" and query "HIDDEN_AUDIT_TOKEN".',
-        "After read_more_context returns a result containing HIDDEN_AUDIT_TOKEN, do not search again.",
+        'Make exactly one read_more_context call using mode "search" and query "HIDDEN_AUDIT_TOKEN". Use the Context ref shown for the compacted historical_audit payload.',
+        "After read_more_context returns a result containing HIDDEN_AUDIT_TOKEN, do not search again and do not call any other tool.",
         `Then answer exactly in this form: Recovered token: ${hiddenToken}`,
         "Do not continue after providing that exact answer.",
       ].join("\n"),
@@ -731,6 +749,7 @@ describeLiveAgentLoop("live agent loop e2e with real ChatGPT Codex provider", ()
     })
 
     expect(liveHarness.executedToolCalls.some((call) => call.name === "read_more_context")).toBe(true)
+    expect(liveHarness.executedToolCalls.every((call) => call.name === "read_more_context")).toBe(true)
     expect(contextEvidenceRecovered).toBe(true)
     if (result.content.includes("Recovered token:")) {
       expect(result.content).toContain(`Recovered token: ${hiddenToken}`)
