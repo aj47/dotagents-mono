@@ -64,6 +64,9 @@ import {
 const isQRMode = process.argv.includes("--qr")
 // Check for --headless flag (headless mode without GUI)
 const isHeadlessMode = process.argv.includes("--headless")
+// Test-only UI smoke mode keeps real windows but skips background integrations that can
+// start network tunnels, watchers, or long-running subprocesses during responsiveness checks.
+const isUiSmokeMode = process.env.DOTAGENTS_UI_SMOKE === "1"
 
 // Enable CDP remote debugging port if REMOTE_DEBUGGING_PORT env variable is set
 // This must be called before app.whenReady()
@@ -527,168 +530,172 @@ if (!gotSingleInstanceLock) {
     createPanelWindow()
     logApp("Panel window created")
 
-    listenToKeyboardEvents()
-    logApp("Keyboard event listener started")
+    if (isUiSmokeMode) {
+      logApp("UI smoke mode enabled; skipping background services")
+    } else {
+      listenToKeyboardEvents()
+      logApp("Keyboard event listener started")
 
-    initTray()
-    logApp("System tray initialized")
+      initTray()
+      logApp("System tray initialized")
 
-    mcpService
-      .initialize()
-      .then(() => {
-        logApp("MCP service initialized successfully")
-      })
-      .catch((error) => {
-        diagnosticsService.logError(
-          "mcp-service",
-          "Failed to initialize MCP service on startup",
-          error,
+      mcpService
+        .initialize()
+        .then(() => {
+          logApp("MCP service initialized successfully")
+        })
+        .catch((error) => {
+          diagnosticsService.logError(
+            "mcp-service",
+            "Failed to initialize MCP service on startup",
+            error,
+          )
+          logApp("Failed to initialize MCP service on startup:", error)
+        })
+
+      // Start all enabled repeat tasks
+      try {
+        loopService.startAllLoops()
+        logApp("Repeat tasks started")
+        startTasksFolderWatcher()
+      } catch (error) {
+        logApp("Failed to start repeat tasks:", error)
+      }
+
+      // Initialize models.dev service (fetches model metadata in background)
+      initModelsDevService()
+      logApp("Models.dev service initialization started")
+
+      // Initialize acpx runtime service
+      acpService
+        .initialize()
+        .then(() => {
+          logApp("acpx runtime service initialized successfully")
+        })
+        .catch((error) => {
+          logApp("Failed to initialize ACP service:", error)
+        })
+
+      // Initialize bundled skills (copy from app resources to .agents/skills/ if needed)
+      try {
+        const skillsResult = initializeBundledSkills()
+        logApp(
+          `Bundled skills: ${skillsResult.copied.length} copied, ${skillsResult.skipped.length} skipped`,
         )
-        logApp("Failed to initialize MCP service on startup:", error)
-      })
 
-    // Start all enabled repeat tasks
-    try {
-      loopService.startAllLoops()
-      logApp("Repeat tasks started")
-      startTasksFolderWatcher()
-    } catch (error) {
-      logApp("Failed to start repeat tasks:", error)
-    }
+        // Start watching .agents/skills/ for changes (auto-refresh without app restart)
+        startSkillsFolderWatcher()
+      } catch (error) {
+        logApp("Failed to initialize bundled skills:", error)
+      }
 
-    // Initialize models.dev service (fetches model metadata in background)
-    initModelsDevService()
-    logApp("Models.dev service initialization started")
+      // Start watching the rest of `.agents/` so external edits to
+      // layouts/ui.json and agents/<id>/agent.md are picked up before the next
+      // save overwrites them.
+      try {
+        startAgentsFolderWatcher()
+      } catch (error) {
+        logApp("Failed to start .agents folder watcher:", error)
+      }
 
-    // Initialize acpx runtime service
-    acpService
-      .initialize()
-      .then(() => {
-        logApp("acpx runtime service initialized successfully")
-      })
-      .catch((error) => {
-        logApp("Failed to initialize ACP service:", error)
-      })
+      try {
+        const cfg = configStore.get()
+        if (cfg.remoteServerEnabled) {
+          startRemoteServer()
+            .then(async (result) => {
+              if (!result.running) {
+                logApp(
+                  `Remote server failed to start: ${result.error || "Unknown error"}`,
+                )
+                return
+              }
 
-    // Initialize bundled skills (copy from app resources to .agents/skills/ if needed)
-    try {
-      const skillsResult = initializeBundledSkills()
-      logApp(
-        `Bundled skills: ${skillsResult.copied.length} copied, ${skillsResult.skipped.length} skipped`,
-      )
+              logApp("Remote server started")
 
-      // Start watching .agents/skills/ for changes (auto-refresh without app restart)
-      startSkillsFolderWatcher()
-    } catch (error) {
-      logApp("Failed to initialize bundled skills:", error)
-    }
-
-    // Start watching the rest of `.agents/` so external edits to
-    // layouts/ui.json and agents/<id>/agent.md are picked up before the next
-    // save overwrites them.
-    try {
-      startAgentsFolderWatcher()
-    } catch (error) {
-      logApp("Failed to start .agents folder watcher:", error)
-    }
-
-    try {
-      const cfg = configStore.get()
-      if (cfg.remoteServerEnabled) {
-        startRemoteServer()
-          .then(async (result) => {
-            if (!result.running) {
-              logApp(
-                `Remote server failed to start: ${result.error || "Unknown error"}`,
-              )
-              return
-            }
-
-            logApp("Remote server started")
-
-            // Auto-start Cloudflare tunnel if enabled
-            // Wrapped in try/catch to isolate tunnel errors from remote server startup reporting
-            if (cfg.cloudflareTunnelAutoStart) {
-              try {
-                const cloudflaredInstalled = await checkCloudflaredInstalled()
-                if (!cloudflaredInstalled) {
-                  logApp(
-                    "Cloudflare tunnel auto-start skipped: cloudflared not installed",
-                  )
-                  return
-                }
-
-                const tunnelMode = cfg.cloudflareTunnelMode || "quick"
-
-                if (tunnelMode === "named") {
-                  // For named tunnels, we need tunnel ID and hostname
-                  if (
-                    !cfg.cloudflareTunnelId ||
-                    !cfg.cloudflareTunnelHostname
-                  ) {
+              // Auto-start Cloudflare tunnel if enabled
+              // Wrapped in try/catch to isolate tunnel errors from remote server startup reporting
+              if (cfg.cloudflareTunnelAutoStart) {
+                try {
+                  const cloudflaredInstalled = await checkCloudflaredInstalled()
+                  if (!cloudflaredInstalled) {
                     logApp(
-                      "Cloudflare tunnel auto-start skipped: named tunnel requires tunnel ID and hostname",
+                      "Cloudflare tunnel auto-start skipped: cloudflared not installed",
                     )
                     return
                   }
-                  startNamedCloudflareTunnel({
-                    tunnelId: cfg.cloudflareTunnelId,
-                    hostname: cfg.cloudflareTunnelHostname,
-                    credentialsPath:
-                      cfg.cloudflareTunnelCredentialsPath || undefined,
-                  })
-                    .then((result) => {
-                      if (result.success) {
-                        logApp(`Cloudflare named tunnel started: ${result.url}`)
-                      } else {
-                        logApp(
-                          `Cloudflare named tunnel failed to start: ${result.error}`,
-                        )
-                      }
-                    })
-                    .catch((err) =>
+
+                  const tunnelMode = cfg.cloudflareTunnelMode || "quick"
+
+                  if (tunnelMode === "named") {
+                    // For named tunnels, we need tunnel ID and hostname
+                    if (
+                      !cfg.cloudflareTunnelId ||
+                      !cfg.cloudflareTunnelHostname
+                    ) {
                       logApp(
-                        `Cloudflare named tunnel error: ${err instanceof Error ? err.message : String(err)}`,
-                      ),
-                    )
-                } else {
-                  // Quick tunnel
-                  startCloudflareTunnel()
-                    .then((result) => {
-                      if (result.success) {
-                        logApp(`Cloudflare quick tunnel started: ${result.url}`)
-                      } else {
-                        logApp(
-                          `Cloudflare quick tunnel failed to start: ${result.error}`,
-                        )
-                      }
+                        "Cloudflare tunnel auto-start skipped: named tunnel requires tunnel ID and hostname",
+                      )
+                      return
+                    }
+                    startNamedCloudflareTunnel({
+                      tunnelId: cfg.cloudflareTunnelId,
+                      hostname: cfg.cloudflareTunnelHostname,
+                      credentialsPath:
+                        cfg.cloudflareTunnelCredentialsPath || undefined,
                     })
-                    .catch((err) =>
-                      logApp(
-                        `Cloudflare quick tunnel error: ${err instanceof Error ? err.message : String(err)}`,
-                      ),
-                    )
+                      .then((result) => {
+                        if (result.success) {
+                          logApp(`Cloudflare named tunnel started: ${result.url}`)
+                        } else {
+                          logApp(
+                            `Cloudflare named tunnel failed to start: ${result.error}`,
+                          )
+                        }
+                      })
+                      .catch((err) =>
+                        logApp(
+                          `Cloudflare named tunnel error: ${err instanceof Error ? err.message : String(err)}`,
+                        ),
+                      )
+                  } else {
+                    // Quick tunnel
+                    startCloudflareTunnel()
+                      .then((result) => {
+                        if (result.success) {
+                          logApp(`Cloudflare quick tunnel started: ${result.url}`)
+                        } else {
+                          logApp(
+                            `Cloudflare quick tunnel failed to start: ${result.error}`,
+                          )
+                        }
+                      })
+                      .catch((err) =>
+                        logApp(
+                          `Cloudflare quick tunnel error: ${err instanceof Error ? err.message : String(err)}`,
+                        ),
+                      )
+                  }
+                } catch (err) {
+                  logApp(
+                    `Cloudflare tunnel auto-start error: ${err instanceof Error ? err.message : String(err)}`,
+                  )
                 }
-              } catch (err) {
-                logApp(
-                  `Cloudflare tunnel auto-start error: ${err instanceof Error ? err.message : String(err)}`,
-                )
               }
-            }
-          })
-          .catch((err) =>
-            logApp(
-              `Remote server failed to start: ${err instanceof Error ? err.message : String(err)}`,
-            ),
-          )
-      }
-    } catch (_e) {}
+            })
+            .catch((err) =>
+              logApp(
+                `Remote server failed to start: ${err instanceof Error ? err.message : String(err)}`,
+              ),
+            )
+        }
+      } catch (_e) {}
 
-    try {
-      void startDiscordIfConfigured("desktop")
-    } catch (_e) {}
+      try {
+        void startDiscordIfConfigured("desktop")
+      } catch (_e) {}
 
-    import("./updater").then((res) => res.init()).catch(console.error)
+      import("./updater").then((res) => res.init()).catch(console.error)
+    }
 
     app.on("browser-window-created", (_, window) => {
       optimizer.watchWindowShortcuts(window)

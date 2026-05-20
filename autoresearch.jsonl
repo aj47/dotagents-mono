@@ -1,0 +1,1 @@
+{"type":"config","name":"Source-code optimization for faster agent-loop e2e with UI responsiveness","metricName":"e2e_seconds","metricUnit":"s","bestDirection":"lower"}
