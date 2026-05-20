@@ -2,7 +2,8 @@ import React, { useState, useId, useCallback, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
-import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck, PlayCircle } from "lucide-react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck, PlayCircle, X } from "lucide-react"
 import { getVideoAssetLabel, isRenderableVideoUrl } from "@dotagents/shared"
 import { cn } from "@renderer/lib/utils"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
@@ -161,6 +162,62 @@ const markdownLinkComponent = ({
   return <>{children}</>
 }
 
+const ChatImage = ({ src, alt }: { src: string; alt?: string }) => {
+  const [open, setOpen] = useState(false)
+  const label = alt || "Image"
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={`Open ${label} at full size`}
+        className="mb-3 block w-full cursor-zoom-in overflow-hidden rounded-md border border-border bg-muted/20 p-0 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <img
+          src={src}
+          alt={label}
+          loading="lazy"
+          decoding="async"
+          onError={() => {
+            logUI("[MarkdownRenderer] image failed to render", {
+              alt: label,
+              srcPreview: src.slice(0, 64),
+            })
+          }}
+          className="block max-h-[28rem] w-full object-contain"
+        />
+      </button>
+      <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setOpen(false)
+            }}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <DialogPrimitive.Title className="sr-only">{label}</DialogPrimitive.Title>
+            <img
+              src={src}
+              alt={label}
+              className="block max-h-full max-w-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <DialogPrimitive.Close
+              className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white opacity-90 transition-opacity hover:bg-black/80 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label="Close image preview"
+            >
+              <X className="h-5 w-5" />
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    </>
+  )
+}
+
 const markdownImageComponent = ({
   src,
   alt,
@@ -170,21 +227,7 @@ const markdownImageComponent = ({
 }) => {
   if (!src || !isAllowedMarkdownImageUrl(src)) return null
 
-  return (
-    <img
-      src={src}
-      alt={alt || "Image"}
-      loading="lazy"
-      decoding="async"
-      onError={() => {
-        logUI("[MarkdownRenderer] image failed to render", {
-          alt: alt || "Image",
-          srcPreview: src.slice(0, 64),
-        })
-      }}
-      className="mb-3 max-h-[28rem] w-full rounded-md border border-border bg-muted/20 object-contain"
-    />
-  )
+  return <ChatImage src={src} alt={alt} />
 }
 
 /** Extract the text content from a React element tree (for copy-to-clipboard). */
