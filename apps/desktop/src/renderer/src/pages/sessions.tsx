@@ -675,7 +675,7 @@ export function Component() {
       }
       // Clear the route param from URL without causing a remount
       // Using window.history.replaceState instead of navigate() to avoid clearing local state
-      window.history.replaceState(null, "", "/")
+      window.history.replaceState(null, "", "/sessions")
     }
   }, [activeSessionEntries, routeHistoryItemId, setExpandedSessionId, setFocusedSessionId])
 

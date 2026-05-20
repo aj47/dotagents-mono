@@ -427,8 +427,10 @@ export function ActiveAgentsSidebar({
   const queryClient = useQueryClient()
 
   const isSessionsRoute =
-    location.pathname === "/" ||
-    (!location.pathname.startsWith("/settings") &&
+    location.pathname.startsWith("/sessions") ||
+    location.pathname.startsWith("/history") ||
+    (location.pathname !== "/" &&
+      !location.pathname.startsWith("/settings") &&
       !location.pathname.startsWith("/onboarding") &&
       !location.pathname.startsWith("/setup") &&
       !location.pathname.startsWith("/panel") &&
@@ -1029,7 +1031,7 @@ export function ActiveAgentsSidebar({
     // Clear the saved-conversation view so no stale row stays highlighted.
     setViewedConversationId(null)
     // Navigate to the sessions page and focus this live session.
-    navigate("/", { state: { clearPendingConversation: true } })
+    navigate("/sessions", { state: { clearPendingConversation: true } })
     setFocusedSessionId(sessionId)
     setExpandedSessionId(sessionId)
     focusSidebarSessionComposer()
@@ -1044,7 +1046,7 @@ export function ActiveAgentsSidebar({
     setFocusedSessionId(null)
     setExpandedSessionId(null)
     setViewedConversationId(conversationId)
-    navigate(`/${conversationId}`)
+    navigate(`/sessions/${conversationId}`)
     focusSidebarSessionComposer()
   }, [focusSidebarSessionComposer, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
 

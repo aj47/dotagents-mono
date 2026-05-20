@@ -30,6 +30,7 @@ import {
   Plug2,
   Plus,
   Mic,
+  Home as HomeIcon,
 } from "lucide-react"
 
 type NavLinkItem = {
@@ -164,7 +165,7 @@ export const Component = () => {
     [collapsedActiveSessions],
   )
   const clearInactiveSessions = useCallback(() => {
-    navigate("/")
+    navigate("/sessions")
     window.dispatchEvent(new Event("sessions:clear-inactive"))
   }, [navigate])
 
@@ -300,12 +301,12 @@ export const Component = () => {
   )
 
   const handleCollapsedSessionsOverviewClick = useCallback(() => {
-    setSavedConversationsDialogOpen(true)
-  }, [])
+    navigate("/sessions")
+  }, [navigate])
 
   const handleCollapsedSessionClick = useCallback(
     (sessionId: string) => {
-      navigate("/", { state: { clearPendingConversation: true } })
+      navigate("/sessions", { state: { clearPendingConversation: true } })
       setFocusedSessionId(sessionId)
       setScrollToSessionId(sessionId)
     },
@@ -369,6 +370,19 @@ export const Component = () => {
     },
   ]
 
+  const primaryNavLinks: NavLinkItem[] = [
+    {
+      text: "Home",
+      href: "/",
+      icon: HomeIcon,
+    },
+    {
+      text: "Sessions",
+      href: "/sessions",
+      icon: "i-mingcute-chat-3-line",
+    },
+  ]
+
   // Route aliases that should highlight the same nav item
   // Maps route paths to their primary nav link href
   const routeAliases: Record<string, string> = {
@@ -378,6 +392,7 @@ export const Component = () => {
     "/settings/remote-server": "/settings",
     "/settings/loops": "/settings/repeat-tasks",
     "/settings/agents": "/settings/agents",
+    "/history": "/sessions",
   }
 
   const isAgentsActive =
@@ -389,6 +404,9 @@ export const Component = () => {
     const currentPath = location.pathname
     // Exact match
     if (currentPath === linkHref) return true
+    if (linkHref === "/sessions") {
+      return currentPath.startsWith("/sessions/") || currentPath.startsWith("/history/")
+    }
     // Check if current path is an alias that maps to this link
     const aliasTarget = routeAliases[currentPath]
     return aliasTarget === linkHref
@@ -439,9 +457,12 @@ export const Component = () => {
 
   const sidebarWidth = isCollapsed ? SIDEBAR_DIMENSIONS.width.collapsed : width
 
+  const isHomeActive = location.pathname === "/"
   const isSessionsActive =
-    location.pathname === "/" ||
-    (!location.pathname.startsWith("/settings") &&
+    location.pathname.startsWith("/sessions") ||
+    location.pathname.startsWith("/history") ||
+    (location.pathname !== "/" &&
+      !location.pathname.startsWith("/settings") &&
       !location.pathname.startsWith("/onboarding") &&
       !location.pathname.startsWith("/setup") &&
       !location.pathname.startsWith("/panel") &&
@@ -597,6 +618,26 @@ export const Component = () => {
                   )}
                 </button>
 
+                <NavLink
+                  to="/"
+                  end
+                  onClick={(e) => {
+                    e.preventDefault()
+                    navigate("/")
+                  }}
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    isHomeActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                  title="Home"
+                  aria-label="Home"
+                  aria-current={isHomeActive ? "page" : undefined}
+                >
+                  <HomeIcon className="h-4 w-4" />
+                </NavLink>
+
                 <button
                   type="button"
                   onClick={() => setSavedConversationsDialogOpen(true)}
@@ -640,8 +681,7 @@ export const Component = () => {
                 </button>
 
                 <NavLink
-                  to="/"
-                  end
+                  to="/sessions"
                   onClick={(e) => {
                     e.preventDefault()
                     handleCollapsedSessionsOverviewClick()
@@ -795,6 +835,10 @@ export const Component = () => {
           ) : (
             /* Expanded: sessions and settings scroll together so settings moves up when the session list shrinks. */
             <div className="mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
+              <div className="grid gap-0.5 px-2">
+                {primaryNavLinks.map(renderNavLink)}
+              </div>
+
               {/* Sandbox slot indicator */}
               <div className="mt-1 shrink-0 px-2">
                 <SandboxSlotIndicator />

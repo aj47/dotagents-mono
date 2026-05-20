@@ -67,6 +67,9 @@ export type RendererHandlers = {
   // Conversation history changed (e.g. from remote server / mobile sync)
   conversationHistoryChanged: () => void
 
+  // Home experience list changed after generation/save/promote/delete
+  homeExperiencesUpdated: () => void
+
   // Skills folder change notification
   skillsFolderChanged: () => void
 

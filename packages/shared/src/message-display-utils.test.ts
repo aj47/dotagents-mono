@@ -130,4 +130,78 @@ describe('sanitizeAgentProgressUpdateForDisplay', () => {
     expect(result.conversationHistory![0].content).toBe('Stored answer')
     expect(result.conversationHistory![0].displayContent).toBe('<think>reasoning</think>\n\n[Image: pic]')
   })
+
+  it('bounds large progress text fields for renderer display', () => {
+    const largeText = 'x'.repeat(40_000)
+    const update: AgentProgressUpdate = {
+      ...baseUpdate,
+      conversationHistory: [{ role: 'user', content: largeText }],
+      finalContent: largeText,
+      userResponse: largeText,
+      streamingContent: { text: largeText, isStreaming: true },
+      responseEvents: [{
+        id: 'response-1',
+        sessionId: 'test',
+        ordinal: 1,
+        text: largeText,
+        timestamp: 1,
+      }],
+      userResponseHistory: [largeText],
+      steps: [{
+        id: 'step-1',
+        type: 'completion',
+        title: 'Generated output',
+        description: largeText,
+        llmContent: largeText,
+        status: 'completed',
+        timestamp: 1,
+      }],
+    }
+
+    const result = sanitizeAgentProgressUpdateForDisplay(update)
+
+    expect(result).not.toBe(update)
+    expect(result.conversationHistory![0].content.length).toBeLessThan(10_000)
+    expect(result.finalContent!.length).toBeLessThan(18_000)
+    expect(result.userResponse!.length).toBeLessThan(18_000)
+    expect(result.streamingContent!.text.length).toBeLessThan(14_000)
+    expect(result.responseEvents![0].text.length).toBeLessThan(18_000)
+    expect(result.userResponseHistory![0].length).toBeLessThan(18_000)
+    expect(result.steps[0].description!.length).toBeLessThan(5_000)
+    expect(result.steps[0].llmContent!.length).toBeLessThan(5_000)
+    expect(result.finalContent).toContain('[Truncated')
+  })
+
+  it('windows delegated sub-agent conversation display payloads', () => {
+    const update: AgentProgressUpdate = {
+      ...baseUpdate,
+      steps: [{
+        id: 'delegation-1',
+        type: 'completion',
+        title: 'Delegation',
+        status: 'completed',
+        timestamp: 1,
+        delegation: {
+          runId: 'run-1',
+          agentName: 'worker',
+          task: 'x'.repeat(10_000),
+          status: 'completed',
+          startTime: 1,
+          conversation: Array.from({ length: 12 }, (_, index) => ({
+            role: 'assistant' as const,
+            content: `message-${index}-${'x'.repeat(10_000)}`,
+            timestamp: index,
+          })),
+        },
+      }],
+    }
+
+    const result = sanitizeAgentProgressUpdateForDisplay(update)
+    const conversation = result.steps[0].delegation?.conversation ?? []
+
+    expect(conversation).toHaveLength(8)
+    expect(conversation[0].content).toContain('message-4')
+    expect(conversation[0].content.length).toBeLessThan(10_000)
+    expect(result.steps[0].delegation?.task.length).toBeLessThan(5_000)
+  })
 })

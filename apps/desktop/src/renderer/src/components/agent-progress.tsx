@@ -910,7 +910,7 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
       })
       if (branched) {
         queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
-        navigate(`/${branched.id}`)
+        navigate(`/sessions/${branched.id}`)
         toast.success("Conversation branched")
       } else {
         toast.error("Failed to branch conversation")

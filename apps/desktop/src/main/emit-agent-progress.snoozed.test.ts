@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   showPanelWindow: vi.fn(),
   resizePanelForAgentMode: vi.fn(),
   isSessionSnoozed: vi.fn(),
+  isRendererSuppressedSession: vi.fn(() => false),
   getSession: vi.fn(),
   shouldStopSession: vi.fn(() => false),
   getSessionRunId: vi.fn(() => undefined),
@@ -28,7 +29,11 @@ vi.mock("./state", () => ({
 }))
 
 vi.mock("./agent-session-tracker", () => ({
-  agentSessionTracker: { isSessionSnoozed: mocks.isSessionSnoozed, getSession: mocks.getSession },
+  agentSessionTracker: {
+    isRendererSuppressedSession: mocks.isRendererSuppressedSession,
+    isSessionSnoozed: mocks.isSessionSnoozed,
+    getSession: mocks.getSession,
+  },
 }))
 
 vi.mock("./config", () => ({
@@ -46,6 +51,8 @@ describe("emitAgentProgress snoozed propagation", () => {
     mocks.sendSpy.mockClear()
     mocks.showPanelWindow.mockClear()
     mocks.resizePanelForAgentMode.mockClear()
+    mocks.isRendererSuppressedSession.mockReset()
+    mocks.isRendererSuppressedSession.mockReturnValue(false)
     mocks.isSessionSnoozed.mockReset()
     mocks.getSession.mockReset()
     mocks.shouldStopSession.mockClear()
@@ -90,6 +97,50 @@ describe("emitAgentProgress snoozed propagation", () => {
     expect(mocks.sendSpy).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-tile-visible", isSnoozed: false }))
     expect(mocks.resizePanelForAgentMode).not.toHaveBeenCalled()
     expect(mocks.showPanelWindow).not.toHaveBeenCalled()
+  })
+
+  it("drops non-terminal streaming chunks when session progress streaming is suppressed", async () => {
+    mocks.isSessionSnoozed.mockReturnValue(true)
+    mocks.getSession.mockReturnValue({ isSnoozed: true, suppressProgressStreaming: true })
+
+    await emitAgentProgress({
+      sessionId: "session-home-generation",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [],
+      isComplete: false,
+      streamingContent: {
+        text: "large generated TSX payload",
+        isStreaming: true,
+      },
+    })
+
+    expect(mocks.sendSpy).not.toHaveBeenCalled()
+  })
+
+  it("drops all progress updates for renderer-suppressed sessions", async () => {
+    mocks.isRendererSuppressedSession.mockReturnValue(true)
+
+    await emitAgentProgress({
+      sessionId: "session-hidden-home-generation",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [{ id: "step-1", type: "completion", title: "Working", status: "in_progress", timestamp: 1 }],
+      isComplete: false,
+    })
+
+    await emitAgentProgress({
+      sessionId: "session-hidden-home-generation",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [],
+      isComplete: true,
+      finalContent: "large generated home payload",
+    })
+
+    expect(mocks.sendSpy).not.toHaveBeenCalled()
+    expect(mocks.showPanelWindow).not.toHaveBeenCalled()
+    expect(mocks.resizePanelForAgentMode).not.toHaveBeenCalled()
   })
 
   it("sends terminal delegation updates immediately instead of leaving them behind the throttle", async () => {
@@ -167,7 +218,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     // Second update is no longer "critical", so it should be throttled.
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
 
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(300)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })
@@ -200,7 +251,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     // Follow-up update should be throttled because only the first update is critical.
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
 
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(300)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })
@@ -244,7 +295,7 @@ describe("emitAgentProgress snoozed propagation", () => {
 
     // Follow-up run-scoped updates should be throttled.
     expect(mocks.sendSpy.mock.calls.length).toBe(firstRunScopedSendCount)
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(300)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstRunScopedSendCount)
     vi.useRealTimers()
   })
@@ -292,7 +343,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     })
 
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(300)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })

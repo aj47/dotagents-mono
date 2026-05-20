@@ -26,6 +26,8 @@ export interface AgentSession {
   errorMessage?: string
   isSnoozed?: boolean // When true, session runs in background without stealing focus
   suppressPanelAutoShow?: boolean // When true, foreground/audible session still should not auto-open the floating panel
+  suppressProgressStreaming?: boolean // When true, omit high-frequency streaming chunks from renderer progress
+  suppressRendererUpdates?: boolean // When true, keep the session out of renderer session/progress surfaces
   isRepeatTask?: boolean // True for sessions created by repeat-task/loop execution
   /**
    * Profile snapshot captured at session creation time.
@@ -84,6 +86,7 @@ class AgentSessionTracker {
   private static instance: AgentSessionTracker | null = null
   private sessions: Map<string, AgentSession> = new Map()
   private completedSessions: AgentSession[] = []
+  private rendererSuppressedSessionIds: Set<string> = new Set()
 
 
   static getInstance(): AgentSessionTracker {
@@ -234,7 +237,10 @@ class AgentSessionTracker {
     conversationTitle?: string,
     startSnoozed: boolean = true,
     profileSnapshot?: SessionProfileSnapshot,
-    sessionMetadata: Pick<AgentSession, "isRepeatTask"> = {},
+    sessionMetadata: Pick<
+      AgentSession,
+      "isRepeatTask" | "suppressPanelAutoShow" | "suppressProgressStreaming" | "suppressRendererUpdates"
+    > = {},
   ): string {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -247,16 +253,24 @@ class AgentSessionTracker {
       currentIteration: 0,
       maxIterations: 10,
       isSnoozed: startSnoozed, // Start snoozed by default - no floating panel auto-show
+      suppressPanelAutoShow: sessionMetadata.suppressPanelAutoShow,
+      suppressProgressStreaming: sessionMetadata.suppressProgressStreaming,
+      suppressRendererUpdates: sessionMetadata.suppressRendererUpdates,
       isRepeatTask: sessionMetadata.isRepeatTask,
       profileSnapshot, // Capture profile settings at session creation for isolation
     }
 
     this.sessions.set(sessionId, session)
+    if (session.suppressRendererUpdates) {
+      this.rendererSuppressedSessionIds.add(sessionId)
+    }
     logApp(`[AgentSessionTracker] Started session: ${sessionId}, snoozed: ${startSnoozed}, profile: ${profileSnapshot?.profileName || 'none'}, total sessions: ${this.sessions.size}`)
-    this.persistState()
+    if (!session.suppressRendererUpdates) {
+      this.persistState()
 
-    // Emit update to UI
-    emitSessionUpdate()
+      // Emit update to UI
+      emitSessionUpdate()
+    }
 
     return sessionId
   }
@@ -271,9 +285,11 @@ class AgentSessionTracker {
     const session = this.sessions.get(sessionId)
     if (session) {
       Object.assign(session, updates)
-      this.persistState()
-      // Emit update to UI so sidebar and other components reflect changes (e.g., title updates)
-      emitSessionUpdate()
+      if (!session.suppressRendererUpdates) {
+        this.persistState()
+        // Emit update to UI so sidebar and other components reflect changes (e.g., title updates)
+        emitSessionUpdate()
+      }
     }
   }
 
@@ -314,6 +330,12 @@ class AgentSessionTracker {
       logApp(`[AgentSessionTracker] Complete requested for non-existent session: ${sessionId}`)
       return
     }
+    if (session.suppressRendererUpdates) {
+      this.sessions.delete(sessionId)
+      clearSessionUserResponse(sessionId)
+      logApp(`[AgentSessionTracker] Completing hidden session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
+      return
+    }
     session.status = "completed"
     session.endTime = Date.now()
     if (finalActivity) {
@@ -335,6 +357,12 @@ class AgentSessionTracker {
     const session = this.sessions.get(sessionId)
     if (!session) {
       logApp(`[AgentSessionTracker] Stop requested for non-existent session: ${sessionId}`)
+      return
+    }
+    if (session.suppressRendererUpdates) {
+      this.sessions.delete(sessionId)
+      clearSessionUserResponse(sessionId)
+      logApp(`[AgentSessionTracker] Stopping hidden session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
       return
     }
     session.status = "stopped"
@@ -395,6 +423,12 @@ class AgentSessionTracker {
       logApp(`[AgentSessionTracker] Error reported for non-existent session: ${sessionId}`)
       return
     }
+    if (session.suppressRendererUpdates) {
+      this.sessions.delete(sessionId)
+      clearSessionUserResponse(sessionId)
+      logApp(`[AgentSessionTracker] Error in hidden session: ${sessionId}, remaining sessions: ${this.sessions.size}`)
+      return
+    }
     session.status = "error"
     session.errorMessage = errorMessage
     session.endTime = Date.now()
@@ -412,6 +446,7 @@ class AgentSessionTracker {
    */
   getActiveSessions(): AgentSession[] {
     const sessions = Array.from(this.sessions.values())
+      .filter((session) => !session.suppressRendererUpdates)
       .sort((a, b) => b.startTime - a.startTime)
     return sessions
   }
@@ -476,6 +511,11 @@ class AgentSessionTracker {
   isSessionSnoozed(sessionId: string): boolean {
     const session = this.sessions.get(sessionId)
     return session?.isSnoozed ?? false
+  }
+
+  isRendererSuppressedSession(sessionId: string): boolean {
+    return this.rendererSuppressedSessionIds.has(sessionId)
+      || this.sessions.get(sessionId)?.suppressRendererUpdates === true
   }
 
   /**
@@ -603,6 +643,7 @@ class AgentSessionTracker {
 
     this.sessions.clear()
     this.completedSessions = []
+    this.rendererSuppressedSessionIds.clear()
     this.persistState()
   }
 

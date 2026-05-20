@@ -137,15 +137,67 @@ function isCriticalUpdate(update: AgentProgressUpdate, state?: {
   return false
 }
 
+function compactSuppressedProgressUpdate(update: AgentProgressUpdate): AgentProgressUpdate {
+  return {
+    sessionId: update.sessionId,
+    parentSessionId: update.parentSessionId,
+    conversationId: update.conversationId,
+    currentIteration: update.currentIteration,
+    maxIterations: update.maxIterations,
+    steps: (update.steps ?? []).slice(-3).map((step) => ({
+      id: step.id,
+      type: step.type,
+      title: step.title,
+      description: step.description,
+      status: step.status,
+      timestamp: step.timestamp,
+      approvalRequest: step.approvalRequest,
+      delegation: step.delegation,
+      subagentId: step.subagentId,
+    })),
+    isComplete: update.isComplete,
+    conversationState: update.conversationState,
+    runId: update.runId,
+    conversationTitle: update.conversationTitle,
+    isSnoozed: true,
+    pendingToolApproval: update.pendingToolApproval,
+    retryInfo: update.retryInfo,
+  }
+}
+
 export async function emitAgentProgress(update: AgentProgressUpdate): Promise<void> {
-  const displayUpdate = sanitizeAgentProgressUpdateForDisplay(update)
+  const trackedSession = update.sessionId
+    ? agentSessionTracker.getSession(update.sessionId)
+    : undefined
+
+  if (
+    update.sessionId &&
+    agentSessionTracker.isRendererSuppressedSession(update.sessionId)
+  ) {
+    return
+  }
+
+  const shouldSuppressHeavyProgress = trackedSession?.suppressProgressStreaming === true
+
+  if (
+    shouldSuppressHeavyProgress &&
+    !update.isComplete &&
+    update.streamingContent
+  ) {
+    return
+  }
+
+  const displayUpdate = sanitizeAgentProgressUpdateForDisplay(
+    shouldSuppressHeavyProgress ? compactSuppressedProgressUpdate(update) : update,
+  )
 
   // Backfill snoozed state from the session tracker when callers omit it.
   // True background sessions intentionally start snoozed; if early progress
   // updates lose that flag, the renderer can briefly switch hidden surfaces into
   // foreground/agent mode and trigger unintended focus/TTS side effects.
   if (displayUpdate.sessionId && typeof displayUpdate.isSnoozed === "undefined") {
-    displayUpdate.isSnoozed = agentSessionTracker.isSessionSnoozed(displayUpdate.sessionId)
+    displayUpdate.isSnoozed = trackedSession?.isSnoozed
+      ?? agentSessionTracker.isSessionSnoozed(displayUpdate.sessionId)
   }
 
   // Skip updates for stopped sessions, except final completion updates

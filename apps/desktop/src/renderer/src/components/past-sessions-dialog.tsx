@@ -686,7 +686,7 @@ export function SavedConversationsDialog({
   const handleOpenConversation = useCallback((entry: ConversationListEntry) => {
     if (entry.kind === "active" && entry.sessionId) {
       setViewedConversationId(null)
-      navigate("/", { state: { clearPendingConversation: true } })
+      navigate("/sessions", { state: { clearPendingConversation: true } })
       setFocusedSessionId(entry.sessionId)
       setExpandedSessionId(entry.sessionId)
       setScrollToSessionId(entry.sessionId)
@@ -698,7 +698,7 @@ export function SavedConversationsDialog({
       setFocusedSessionId(null)
       setExpandedSessionId(null)
       setViewedConversationId(entry.conversationId)
-      navigate(`/${entry.conversationId}`)
+      navigate(`/sessions/${entry.conversationId}`)
       onOpenChange(false)
     }
   }, [navigate, onOpenChange, setExpandedSessionId, setFocusedSessionId, setScrollToSessionId, setViewedConversationId])

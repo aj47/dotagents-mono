@@ -15,6 +15,14 @@ export const router: ReturnType<typeof createBrowserRouter> =
       children: [
         {
           path: "",
+          lazy: () => import("./pages/home"),
+        },
+        {
+          path: "sessions",
+          lazy: () => import("./pages/sessions"),
+        },
+        {
+          path: "sessions/:id",
           lazy: () => import("./pages/sessions"),
         },
         {

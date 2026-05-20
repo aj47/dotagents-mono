@@ -99,6 +99,8 @@ import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
+import { homeExperienceService } from "./home-experience-service"
+import type { HomeGenerationContext, HomeGenerationMode } from "../shared/home-experience"
 
 function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
   if (!sessionId) return "missing"
@@ -736,6 +738,151 @@ function serializeAgentLaunchState(launchState: AgentLaunchState) {
     startSnoozed: launchState.startSnoozed,
     suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow,
     focusPanelSession: launchState.shouldFocusPanelSession,
+  }
+}
+
+function emitHomeExperiencesUpdated(): void {
+  for (const windowId of ["main", "panel"] as const) {
+    const win = WINDOWS.get(windowId)
+    if (!win) continue
+    try {
+      getRendererHandlers<RendererHandlers>(win.webContents).homeExperiencesUpdated?.send()
+    } catch (error) {
+      logLLM("[home-generation] Failed to emit homeExperiencesUpdated", error)
+    }
+  }
+}
+
+function buildHomeGenerationConversationTitle(prompt: string, mode: HomeGenerationMode = "new"): string {
+  const normalizedPrompt = prompt.replace(/\s+/g, " ").trim()
+  const suffix = normalizedPrompt.length > 56
+    ? `${normalizedPrompt.slice(0, 56).trim()}...`
+    : normalizedPrompt
+  const prefix = mode === "edit" ? "Home edit" : "Home generation"
+  return suffix ? `${prefix}: ${suffix}` : prefix
+}
+
+type StartHomeGenerationSessionResult = {
+  conversationId: string
+  sessionId: string
+  status: "started" | "already-running"
+}
+
+let activeHomeGeneration: StartHomeGenerationSessionResult | null = null
+let activeHomeGenerationStart: Promise<StartHomeGenerationSessionResult> | null = null
+
+async function createHomeGenerationSession(input: {
+  prompt: string
+  mode?: HomeGenerationMode
+  context?: HomeGenerationContext
+}): Promise<StartHomeGenerationSessionResult> {
+  const generationPrompt = homeExperienceService.buildGenerationPrompt(input)
+  const conversationId = conversationService.generateConversationIdPublic()
+  const conversationTitle = buildHomeGenerationConversationTitle(input.prompt, input.mode)
+  const conversation = await conversationService.createConversationWithId(
+    conversationId,
+    generationPrompt,
+    "user",
+  )
+
+  await conversationService.renameConversationTitle(conversation.id, conversationTitle)
+
+  const currentProfile = agentProfileService.getCurrentProfile()
+  const profileSnapshot = currentProfile
+    ? createSessionSnapshotFromProfile(currentProfile)
+    : undefined
+  const sessionId = agentSessionTracker.startSession(
+    conversation.id,
+    conversationTitle,
+    false,
+    profileSnapshot,
+  )
+
+  agentSessionTracker.updateSession(sessionId, {
+    conversationTitle,
+    isSnoozed: false,
+  })
+
+  processWithAgentMode(
+    generationPrompt,
+    conversation.id,
+    sessionId,
+    {
+      startSnoozed: false,
+      shouldSuppressPanelAutoShow: false,
+      shouldFocusPanelSession: true,
+    },
+  )
+    .then(async (rawResponse) => {
+      const generated = homeExperienceService.parseGeneratedHomeResponse(rawResponse)
+      const saved = homeExperienceService.saveHomeDraft({
+        ...generated,
+        favorite: false,
+        generatedFrom: input.prompt,
+        generationSessionId: sessionId,
+        generationConversationId: conversation.id,
+      })
+
+      await conversationService.renameConversationTitle(conversation.id, conversationTitle)
+      agentSessionTracker.updateConversationTitleForConversation(conversation.id, conversationTitle)
+      emitHomeExperiencesUpdated()
+      logLLM("[home-generation] Saved generated home draft", {
+        sessionId,
+        conversationId: conversation.id,
+        homeId: saved.summary.id,
+        title: saved.summary.title,
+      })
+    })
+    .catch((error) => {
+      logLLM("[home-generation] Agent home generation failed", {
+        sessionId,
+        conversationId: conversation.id,
+        error,
+      })
+    })
+    .finally(() => {
+      if (activeHomeGeneration?.sessionId === sessionId) {
+        activeHomeGeneration = null
+      }
+      processQueuedMessages(conversation.id).catch((error) => {
+        logLLM("[home-generation] Error processing queued messages:", error)
+      })
+    })
+
+  return {
+    conversationId: conversation.id,
+    sessionId,
+    status: "started",
+  }
+}
+
+async function startHomeGenerationSession(input: {
+  prompt: string
+  mode?: HomeGenerationMode
+  context?: HomeGenerationContext
+}): Promise<StartHomeGenerationSessionResult> {
+  if (activeHomeGeneration) {
+    return {
+      ...activeHomeGeneration,
+      status: "already-running",
+    }
+  }
+
+  if (activeHomeGenerationStart) {
+    const started = await activeHomeGenerationStart
+    return {
+      ...started,
+      status: "already-running",
+    }
+  }
+
+  activeHomeGenerationStart = createHomeGenerationSession(input)
+  try {
+    const started = await activeHomeGenerationStart
+    activeHomeGeneration = started
+    return started
+  } finally {
+    activeHomeGenerationStart = null
   }
 }
 
@@ -3952,6 +4099,65 @@ export const router = {
     await refreshModelsDevCache()
     return { success: true }
   }),
+
+  // Regenerable home experiences
+  listHomeExperiences: t.procedure.action(async () => {
+    return homeExperienceService.listHomeExperiences()
+  }),
+
+  getHomeExperience: t.procedure
+    .input<{ id?: string | null } | undefined>()
+    .action(async ({ input }) => {
+      return homeExperienceService.getHomeExperience(input?.id)
+    }),
+
+  generateHomeExperience: t.procedure
+    .input<{
+      prompt: string
+      mode?: HomeGenerationMode
+      context?: HomeGenerationContext
+    }>()
+    .action(async ({ input }) => {
+      return startHomeGenerationSession(input)
+    }),
+
+  saveHomeDraft: t.procedure
+    .input<{
+      title: string
+      description?: string
+      tags?: string[]
+      tsx: string
+      css?: string
+      favorite?: boolean
+      generatedFrom?: string
+      generationSessionId?: string
+      generationConversationId?: string
+    }>()
+    .action(async ({ input }) => {
+      const saved = homeExperienceService.saveHomeDraft(input)
+      emitHomeExperiencesUpdated()
+      return saved
+    }),
+
+  promoteHomeExperience: t.procedure
+    .input<{
+      id: string
+      makeDefault?: boolean
+      favorite?: boolean
+    }>()
+    .action(async ({ input }) => {
+      const promoted = homeExperienceService.promoteHomeExperience(input)
+      emitHomeExperiencesUpdated()
+      return promoted
+    }),
+
+  deleteHomeExperience: t.procedure
+    .input<{ id: string }>()
+    .action(async ({ input }) => {
+      const deleted = homeExperienceService.deleteHomeExperience(input.id)
+      emitHomeExperiencesUpdated()
+      return deleted
+    }),
 
   // Conversation Management
   getConversationHistory: t.procedure.action(async () => {

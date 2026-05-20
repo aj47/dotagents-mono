@@ -2490,15 +2490,19 @@ export async function processTranscriptWithAgentMode(
         hasResponse: !!llmResponse,
         responseType: typeof llmResponse,
         responseKeys: llmResponse ? Object.keys(llmResponse) : [],
-        content: llmResponse?.content,
+        contentLength: llmResponse?.content?.length ?? 0,
         contentType: typeof llmResponse?.content,
         hasToolCalls: !!llmResponse?.toolCalls,
         toolCallsCount: llmResponse?.toolCalls?.length || 0,
-        fullResponse: JSON.stringify(llmResponse, null, 2)
       })
       diagnosticsService.logError("llm", "Null/empty LLM response in agent mode", {
         iteration,
-        response: llmResponse,
+        responseSummary: {
+          hasResponse: !!llmResponse,
+          responseKeys: llmResponse ? Object.keys(llmResponse) : [],
+          contentLength: llmResponse?.content?.length ?? 0,
+          toolCallsCount: llmResponse?.toolCalls?.length || 0,
+        },
         message: "LLM response has neither content nor toolCalls",
         retryCount: emptyResponseRetryCount,
         limit: MAX_EMPTY_RESPONSE_RETRIES
@@ -3916,16 +3920,31 @@ async function makeLLMCall(
 ): Promise<LLMToolCallResponse> {
   const chatProviderId = config.mcpToolsProviderId
 
+  const summarizeMessagesForLog = () => ({
+    count: messages.length,
+    totalChars: messages.reduce((sum, msg) => sum + msg.content.length, 0),
+    roles: messages.map((msg) => msg.role),
+    contentChars: messages.map((msg) => msg.content.length),
+  })
+
+  const summarizeResponseForLog = (response: LLMToolCallResponse) => ({
+    hasContent: typeof response.content === "string" && response.content.trim().length > 0,
+    contentLength: response.content?.length ?? 0,
+    toolCallCount: response.toolCalls?.length ?? 0,
+    toolCalls: response.toolCalls?.map((toolCall) => ({
+      name: toolCall.name,
+      argumentKeys: toolCall.arguments && typeof toolCall.arguments === "object"
+        ? Object.keys(toolCall.arguments as Record<string, unknown>)
+        : [],
+    })) ?? [],
+  })
+
   try {
     if (isDebugLLM()) {
       logLLM("=== LLM CALL START ===")
-      logLLM("Messages →", {
-        count: messages.length,
-        totalChars: messages.reduce((sum, msg) => sum + msg.content.length, 0),
-        messages: messages,
-      })
+      logLLM("Messages summary ->", summarizeMessagesForLog())
       if (tools) {
-        logLLM("Tools →", {
+        logLLM("Tools summary ->", {
           count: tools.length,
           names: tools.map(t => t.name),
         })
@@ -3950,7 +3969,7 @@ async function makeLLMCall(
     }
 
     if (isDebugLLM()) {
-      logLLM("Response ←", result)
+      logLLM("Response summary <-", summarizeResponseForLog(result))
       logLLM("=== LLM CALL END ===")
     }
     return result

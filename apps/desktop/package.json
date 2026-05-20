@@ -58,6 +58,7 @@
   "dependencies": {
     "@ai-sdk/google": "^3.0.1",
     "@ai-sdk/openai": "^3.0.1",
+    "@babel/standalone": "^7.29.4",
     "@dotagents/core": "workspace:*",
     "@dotagents/shared": "workspace:^",
     "@egoist/electron-panel-window": "^8.0.3",

@@ -49,7 +49,7 @@ describe("sessions in-app actions", () => {
 
   it("keeps sidebar active-session clicks selecting the session while past-session opens clear active focus", () => {
     expect(sidebarSource).toContain("setExpandedSessionId(sessionId)")
-    expect(sidebarSource).toContain('navigate("/", { state: { clearPendingConversation: true } })')
+    expect(sidebarSource).toContain('navigate("/sessions", { state: { clearPendingConversation: true } })')
     expect(sidebarSource).toContain("const focusSidebarSessionComposer = useCallback(() => {")
     expect(sidebarSource).toContain("focusSidebarSessionComposer()")
     expect(sidebarSource).toContain("window.setTimeout(tryFocusComposer, 75)")
@@ -58,7 +58,7 @@ describe("sessions in-app actions", () => {
   })
 
   it("clears stale pending past-session state when returning to an active session", () => {
-    expect(appLayoutSource).toContain('navigate("/", { state: { clearPendingConversation: true } })')
+    expect(appLayoutSource).toContain('navigate("/sessions", { state: { clearPendingConversation: true } })')
     expect(sessionsSource).toContain("if (!navigationState?.clearPendingConversation) return")
     const compactSessionsSource = compactSource(sessionsSource)
     expect(compactSessionsSource).toContain('navigate(`${location.pathname}${location.search}`, {')
@@ -135,7 +135,7 @@ describe("sessions in-app actions", () => {
 
   it("navigates to a newly branched conversation so it becomes the focused session", () => {
     expect(agentProgressSource).toContain('const navigate = useNavigate()')
-    expect(agentProgressSource).toContain('navigate(`/${branched.id}`)')
+    expect(agentProgressSource).toContain('navigate(`/sessions/${branched.id}`)')
     expect(agentProgressSource).not.toContain('Conversation branched — find it in Saved Conversations')
   })
 
