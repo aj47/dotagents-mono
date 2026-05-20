@@ -1540,7 +1540,7 @@ export function ActiveAgentsSidebar({
   return (
     <div className={cn("flex min-h-0 flex-col px-2", className)}>
       {hasLaunchControls && (
-        <div className="sticky top-0 z-40 -mx-2 bg-background/95 px-2 pb-2 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="sticky top-0 z-40 -mx-2 bg-background/95 px-2 pb-2 pt-2">
           <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
             <div className="flex w-full flex-wrap items-center gap-2">
               {onSelectAgent && (

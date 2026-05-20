@@ -2,7 +2,20 @@ import { app } from "electron"
 import fs from "fs"
 import path from "path"
 import type { Config } from "@shared/types"
-import { container, ServiceTokens, getConfigStore } from "@dotagents/core"
+import {
+  ConfigStore,
+  container,
+  ServiceTokens,
+  getConfigStore,
+  getDataFolder,
+  getRecordingsFolder,
+  getConversationsFolder,
+  getConfigPath,
+  globalAgentsFolder,
+  resolveWorkspaceAgentsFolder,
+  trySaveConfig,
+  persistConfigToDisk,
+} from "@dotagents/core"
 import { ElectronPathResolver } from "./adapters/electron-path-resolver"
 
 export const DEFAULT_APP_ID = "app.dotagents"
@@ -76,16 +89,28 @@ export const configStore = coreConfigStore as {
   reload(): Config
 }
 
-// Re-export other config functions from core
+// Keep core re-exports behind local bindings so the main-process bundle retains
+// them when this module is loaded through a dynamic import namespace.
+const CoreConfigStore = ConfigStore
+const coreGetConfigStore = getConfigStore
+const coreGetDataFolder = getDataFolder
+const coreGetRecordingsFolder = getRecordingsFolder
+const coreGetConversationsFolder = getConversationsFolder
+const coreGetConfigPath = getConfigPath
+const coreGlobalAgentsFolder = globalAgentsFolder
+const coreResolveWorkspaceAgentsFolder = resolveWorkspaceAgentsFolder
+const coreTrySaveConfig = trySaveConfig
+const corePersistConfigToDisk = persistConfigToDisk
+
 export {
-  ConfigStore,
-  getConfigStore,
-  getDataFolder,
-  getRecordingsFolder,
-  getConversationsFolder,
-  getConfigPath,
-  globalAgentsFolder,
-  resolveWorkspaceAgentsFolder,
-  trySaveConfig,
-  persistConfigToDisk,
-} from "@dotagents/core"
+  CoreConfigStore as ConfigStore,
+  coreGetConfigStore as getConfigStore,
+  coreGetDataFolder as getDataFolder,
+  coreGetRecordingsFolder as getRecordingsFolder,
+  coreGetConversationsFolder as getConversationsFolder,
+  coreGetConfigPath as getConfigPath,
+  coreGlobalAgentsFolder as globalAgentsFolder,
+  coreResolveWorkspaceAgentsFolder as resolveWorkspaceAgentsFolder,
+  coreTrySaveConfig as trySaveConfig,
+  corePersistConfigToDisk as persistConfigToDisk,
+}

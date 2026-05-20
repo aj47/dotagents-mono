@@ -102,6 +102,13 @@ async function loadUseSpeechRecognizer(runtime: ReturnType<typeof createHookRunt
   });
   vi.doMock('react-native', () => ({ Alert: { alert: vi.fn() }, Platform: { OS: 'web' }, View: function MockView() { return null; } }));
   vi.doMock('expo-modules-core', () => ({ EventEmitter: class MockEventEmitter {} }));
+  vi.doMock('@react-native-async-storage/async-storage', () => ({
+    default: {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    },
+  }));
   return import('./useSpeechRecognizer');
 }
 
@@ -112,6 +119,7 @@ afterEach(() => {
   vi.unmock('react');
   vi.unmock('react-native');
   vi.unmock('expo-modules-core');
+  vi.unmock('@react-native-async-storage/async-storage');
   FakeSpeechRecognition.instances = [];
   delete (globalThis as any).window;
 });

@@ -121,7 +121,7 @@ describe("agent progress tile layout", () => {
 
   it("renders collapsed tool previews inline as the single-line summary", () => {
     expect(agentProgressSource).toContain('const collapsedPreviewLine = group.previewLines.join')
-    expect(agentProgressSource).toContain('{collapsedPreviewLine || "Tool activity"}')
+    expect(agentProgressSource).toContain(': collapsedPreviewLine || "Tool activity"')
     expect(agentProgressSource).toContain('const collapsedToolPreviewLine = data.calls')
     expect(agentProgressSource).toContain('const toolStatusTextClass = isPending')
     expect(agentProgressSource).toContain('className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}')
@@ -228,7 +228,7 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('aria-label="Scroll to bottom"')
     expect(agentProgressSource).toContain('scrollToBottom("smooth")')
     expect(agentProgressSource).toContain(
-      'className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background"'
+      'className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-background"'
     )
   })
 

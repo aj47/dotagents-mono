@@ -9,6 +9,16 @@
  */
 
 const sessionsWithTTSPlayed = new Set<string>()
+const CONTENT_KEY_INLINE_LIMIT = 512
+
+function hashContentKey(content: string): string {
+  let hash = 2166136261
+  for (let index = 0; index < content.length; index += 1) {
+    hash ^= content.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(36)
+}
 
 /**
  * Check if TTS has already been played for a specific session + content combination.
@@ -31,7 +41,10 @@ export function buildResponseEventTTSKey(sessionId: string | undefined, eventId:
 
 export function buildContentTTSKey(sessionId: string | undefined, content: string, phase: "mid-turn" | "final" = "final"): string | null {
   if (!sessionId) return null
-  return `${sessionId}:${phase}:content:${content}`
+  const contentKey = content.length > CONTENT_KEY_INLINE_LIMIT
+    ? `hash:${content.length}:${hashContentKey(content)}`
+    : content
+  return `${sessionId}:${phase}:content:${contentKey}`
 }
 
 /**
@@ -69,4 +82,3 @@ export function markSessionForcedAutoPlay(sessionId: string): void {
 export function consumeSessionForcedAutoPlay(sessionId: string): boolean {
   return sessionsWithForcedAutoPlay.delete(sessionId)
 }
-
