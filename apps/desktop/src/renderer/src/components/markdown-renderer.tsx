@@ -135,6 +135,15 @@ export const markdownUrlTransform = (url: string, key?: string) => {
   return isAllowed ? url : ""
 }
 
+const isChatImageOnlyChildren = (children: React.ReactNode): boolean => {
+  const arr = React.Children.toArray(children).filter(
+    (c) => !(typeof c === "string" && c.trim() === ""),
+  )
+  if (arr.length !== 1) return false
+  const only = arr[0]
+  return React.isValidElement(only) && only.type === ChatImage
+}
+
 const markdownLinkComponent = ({
   children,
   href,
@@ -147,6 +156,11 @@ const markdownLinkComponent = ({
   }
 
   if (isAllowedMarkdownLinkUrl(href)) {
+    // For linked-image markdown ([![](img)](href)) skip the wrapping <a> so
+    // the focusable lightbox button isn't nested inside an anchor.
+    if (isChatImageOnlyChildren(children)) {
+      return <>{children}</>
+    }
     return (
       <a
         href={href}
