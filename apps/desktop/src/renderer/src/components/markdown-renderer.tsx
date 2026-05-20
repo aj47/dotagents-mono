@@ -201,7 +201,6 @@ const ChatImage = ({ src, alt }: { src: string; alt?: string }) => {
             onClick={(e) => {
               if (e.target === e.currentTarget) setOpen(false)
             }}
-            onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <DialogPrimitive.Title className="sr-only">{label}</DialogPrimitive.Title>
             <img
