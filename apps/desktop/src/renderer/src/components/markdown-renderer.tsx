@@ -170,7 +170,12 @@ const ChatImage = ({ src, alt }: { src: string; alt?: string }) => {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={(e) => {
+          // Don't navigate the wrapping <a> when the image is inside a markdown link.
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen(true)
+        }}
         aria-label={`Open ${label} at full size`}
         className="mb-3 block w-full cursor-zoom-in overflow-hidden rounded-md border border-border bg-muted/20 p-0 text-left transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
