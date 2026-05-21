@@ -14,7 +14,7 @@ import { constructSystemPrompt } from "./system-prompts"
 import { state, agentSessionStateManager } from "./state"
 import { isDebugLLM, logLLM, isDebugTools, logTools } from "./debug"
 import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage, clearIterativeSummary, clearContextRefs, clearArchiveFrontier, clearSummarizationFailureFlags } from "./context-budget"
-import { getSessionCost } from "./session-cost"
+import { clearSessionCost, getSessionCost } from "./session-cost"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
@@ -3631,6 +3631,7 @@ export async function processTranscriptWithAgentMode(
     clearContextRefs(currentSessionId)
     clearArchiveFrontier(currentSessionId)
     clearSummarizationFailureFlags(currentSessionId)
+    clearSessionCost(currentSessionId)
 
     // Clean up runtime session state at the end of agent processing.
     // Keep session userResponse/history so revived sessions can reinstate

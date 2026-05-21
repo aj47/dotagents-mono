@@ -38,7 +38,6 @@ import {
   isTracingEnabled,
 } from "./langfuse-service"
 import {
-  clearSessionCost,
   getSessionCost,
   providerHintForAcpAgent,
   recordSessionTokenUsage,
