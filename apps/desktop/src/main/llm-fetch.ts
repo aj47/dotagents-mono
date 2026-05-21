@@ -916,6 +916,7 @@ export async function makeLLMCallWithFetch(
             inputTokens: result.usage?.inputTokens,
             outputTokens: result.usage?.outputTokens,
             cacheReadTokens: result.usage?.inputTokenDetails?.cacheReadTokens,
+            reasoningTokens: result.usage?.outputTokenDetails?.reasoningTokens,
           })
 
           if (!text && !result.toolCalls?.length && !result.reasoningSummary) {
@@ -1232,6 +1233,7 @@ export async function makeLLMCallWithStreamingAndTools(
             inputTokens: result.usage?.inputTokens,
             outputTokens: result.usage?.outputTokens,
             cacheReadTokens: result.usage?.inputTokenDetails?.cacheReadTokens,
+            reasoningTokens: result.usage?.outputTokenDetails?.reasoningTokens,
           })
 
           if (generationId) {
