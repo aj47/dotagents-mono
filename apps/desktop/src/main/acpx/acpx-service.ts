@@ -628,15 +628,130 @@ class ACPXService extends EventEmitter {
       })
     }
 
+    const toolResponseStats = this.extractToolResponseStats(update, params)
+
     this.emit('sessionUpdate', {
       agentName,
       sessionId,
       content: contentBlocks.length > 0 ? contentBlocks : undefined,
       toolCall,
+      toolResponseStats,
       isComplete,
       stopReason,
       totalBlocks: output.contentBlocks.length,
     })
+  }
+
+  private extractToolResponseStats(
+    update: Record<string, unknown>,
+    params: Record<string, unknown>,
+  ): {
+    status?: string
+    agentId?: string
+    totalDurationMs?: number
+    totalTokens?: number
+    totalToolUseCount?: number
+    usage?: {
+      input_tokens?: number
+      output_tokens?: number
+      cache_read_input_tokens?: number
+      cache_creation_input_tokens?: number
+    }
+  } | undefined {
+    const usage = this.extractUsage(update, params)
+    const num = (v: unknown): number | undefined =>
+      typeof v === 'number' && Number.isFinite(v) ? v : undefined
+    const str = (v: unknown): string | undefined =>
+      typeof v === 'string' ? v : undefined
+
+    const sources: Array<Record<string, unknown> | undefined> = [
+      (update.toolResponseStats as Record<string, unknown> | undefined),
+      (params.toolResponseStats as Record<string, unknown> | undefined),
+    ]
+    let meta: Record<string, unknown> | undefined
+    for (const src of sources) {
+      if (src && typeof src === 'object') {
+        meta = src
+        break
+      }
+    }
+
+    const stats: {
+      status?: string
+      agentId?: string
+      totalDurationMs?: number
+      totalTokens?: number
+      totalToolUseCount?: number
+      usage?: NonNullable<ReturnType<ACPXService['extractUsage']>>
+    } = {
+      status: str(meta?.status),
+      agentId: str(meta?.agentId),
+      totalDurationMs: num(meta?.totalDurationMs ?? meta?.durationMs),
+      totalTokens: num(meta?.totalTokens ?? meta?.tokens),
+      totalToolUseCount: num(meta?.totalToolUseCount ?? meta?.toolUseCount),
+      usage,
+    }
+
+    const anyPopulated =
+      stats.status !== undefined ||
+      stats.agentId !== undefined ||
+      stats.totalDurationMs !== undefined ||
+      stats.totalTokens !== undefined ||
+      stats.totalToolUseCount !== undefined ||
+      stats.usage !== undefined
+    return anyPopulated ? stats : undefined
+  }
+
+  private extractUsage(
+    update: Record<string, unknown>,
+    params: Record<string, unknown>,
+  ): {
+    input_tokens?: number
+    output_tokens?: number
+    cache_read_input_tokens?: number
+    cache_creation_input_tokens?: number
+  } | undefined {
+    const num = (v: unknown): number | undefined =>
+      typeof v === 'number' && Number.isFinite(v) ? v : undefined
+    const asRecord = (v: unknown): Record<string, unknown> | undefined =>
+      v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined
+
+    const message = asRecord(update.message) ?? asRecord(params.message)
+    const response = asRecord(update.response) ?? asRecord(params.response)
+    const candidates: Array<Record<string, unknown> | undefined> = [
+      asRecord(update.usage),
+      asRecord(params.usage),
+      asRecord(update.tokenUsage),
+      asRecord(params.tokenUsage),
+      asRecord(message?.usage),
+      asRecord(response?.usage),
+    ]
+
+    for (const src of candidates) {
+      if (!src) continue
+      const norm = {
+        input_tokens: num(src.input_tokens ?? src.inputTokens ?? src.prompt_tokens),
+        output_tokens: num(src.output_tokens ?? src.outputTokens ?? src.completion_tokens),
+        cache_read_input_tokens: num(
+          src.cache_read_input_tokens ?? src.cacheReadInputTokens ?? src.cache_read_tokens,
+        ),
+        cache_creation_input_tokens: num(
+          src.cache_creation_input_tokens
+            ?? src.cacheCreationInputTokens
+            ?? src.cache_creation_tokens
+            ?? src.cache_write_tokens,
+        ),
+      }
+      if (
+        norm.input_tokens !== undefined
+        || norm.output_tokens !== undefined
+        || norm.cache_read_input_tokens !== undefined
+        || norm.cache_creation_input_tokens !== undefined
+      ) {
+        return norm
+      }
+    }
+    return undefined
   }
 
   private extractToolCall(update: Record<string, unknown>): ToolCallUpdate | undefined {
