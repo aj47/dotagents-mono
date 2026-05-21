@@ -14,6 +14,7 @@ import { constructSystemPrompt } from "./system-prompts"
 import { state, agentSessionStateManager } from "./state"
 import { isDebugLLM, logLLM, isDebugTools, logTools } from "./debug"
 import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage, clearIterativeSummary, clearContextRefs, clearArchiveFrontier, clearSummarizationFailureFlags } from "./context-budget"
+import { getSessionCost } from "./session-cost"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
@@ -883,6 +884,11 @@ export async function processTranscriptWithAgentMode(
       // Dual-model summarization data (from service - single source of truth)
       stepSummaries: summarizationService.getSummaries(currentSessionId),
       latestSummary: summarizationService.getLatestSummary(currentSessionId),
+      // Running session cost (USD + cumulative tokens). Omitted when no usage recorded.
+      ...(() => {
+        const sessionCost = getSessionCost(currentSessionId)
+        return sessionCost ? { sessionCost } : {}
+      })(),
     }
 
     if (shouldEmitUserResponse) {

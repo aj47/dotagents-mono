@@ -310,6 +310,33 @@ export interface AgentProgressUpdate {
   /** Dual-model summarization data */
   stepSummaries?: AgentStepSummary[]
   latestSummary?: AgentStepSummary
+  /**
+   * Running USD cost and cumulative token counts for the session.
+   * Computed from per-call token usage and the active model's pricing
+   * (USD per million tokens) from models.dev. Absent when pricing data
+   * is unavailable for the active model.
+   */
+  sessionCost?: SessionCost
+}
+
+/**
+ * Running cost and token totals for an agent session.
+ * Token counts accumulate across all LLM calls in the session and the
+ * USD figure is computed from the matching model's per-million pricing.
+ */
+export interface SessionCost {
+  /** Total USD cost across all LLM calls in this session. */
+  usd: number
+  /** Cumulative input tokens charged. */
+  inputTokens: number
+  /** Cumulative output tokens charged. */
+  outputTokens: number
+  /** Cumulative cache-read input tokens charged. */
+  cacheReadTokens: number
+  /** Cumulative cache-write input tokens charged. */
+  cacheWriteTokens: number
+  /** Cumulative reasoning tokens charged (subset of output tokens for some providers). */
+  reasoningTokens: number
 }
 
 /**

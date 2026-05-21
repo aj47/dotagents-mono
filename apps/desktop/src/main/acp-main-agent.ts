@@ -37,6 +37,12 @@ import {
   flushLangfuse,
   isTracingEnabled,
 } from "./langfuse-service"
+import {
+  clearSessionCost,
+  getSessionCost,
+  providerHintForAcpAgent,
+  recordSessionTokenUsage,
+} from "./session-cost"
 
 type ConversationHistoryMessage = NonNullable<AgentProgressUpdate["conversationHistory"]>[number]
 
@@ -623,6 +629,7 @@ export async function processTranscriptWithACPAgent(
     // responses from prior turns (same pattern as llm.ts emit guard)
     const shouldEmitUserResponse =
       userResponse !== undefined && userResponse !== lastEmittedUserResponse
+    const sessionCost = getSessionCost(sessionId)
     const update: AgentProgressUpdate = {
       sessionId,
       runId,
@@ -640,6 +647,7 @@ export async function processTranscriptWithACPAgent(
       ...(shouldEmitUserResponse && userResponseHistory?.length ? { userResponseHistory } : {}),
       // Include ACP session info in progress updates (Task 3.1)
       acpSessionInfo: getAcpSessionInfo(),
+      ...(sessionCost ? { sessionCost } : {}),
     }
     if (shouldEmitUserResponse) {
       lastEmittedUserResponse = userResponse
@@ -724,6 +732,24 @@ export async function processTranscriptWithACPAgent(
       }
     }) => {
       if (event.sessionId !== acpSessionId) return
+
+      // Record running session cost from the ACP tool-response usage once per
+      // event, before content-block iteration may attach the same stats to
+      // multiple tool_use steps for display purposes.
+      if (event.toolResponseStats?.usage) {
+        const acpModel = getAcpSessionInfo()?.currentModel
+        recordSessionTokenUsage(
+          sessionId,
+          providerHintForAcpAgent(agentName),
+          acpModel,
+          {
+            inputTokens: event.toolResponseStats.usage.input_tokens,
+            outputTokens: event.toolResponseStats.usage.output_tokens,
+            cacheReadTokens: event.toolResponseStats.usage.cache_read_input_tokens,
+            cacheWriteTokens: event.toolResponseStats.usage.cache_creation_input_tokens,
+          },
+        )
+      }
 
       // Map content blocks to progress steps and accumulate text
       const steps: AgentProgressStep[] = []

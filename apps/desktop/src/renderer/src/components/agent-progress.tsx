@@ -45,7 +45,7 @@ import {
   getFollowUpInputPresentation,
   getSessionPresentation,
 } from "@renderer/lib/session-presentation"
-import { computeTurnDurations, formatTurnDuration, useNowTick } from "@renderer/lib/turn-duration"
+import { computeTurnDurations, formatTurnDuration, formatUsdCost, useNowTick } from "@renderer/lib/turn-duration"
 
 interface AgentProgressProps {
   progress: AgentProgressUpdate | null
@@ -5211,6 +5211,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     {formatTurnDuration(turnDurations.totalMs)}
                   </span>
                 )}
+                {progress.sessionCost && formatUsdCost(progress.sessionCost.usd) && (
+                  <span
+                    className="shrink-0 inline-flex items-center whitespace-nowrap tabular-nums"
+                    title={`Session cost · ${progress.sessionCost.inputTokens.toLocaleString()} in / ${progress.sessionCost.outputTokens.toLocaleString()} out tokens`}
+                  >
+                    {formatUsdCost(progress.sessionCost.usd)}
+                  </span>
+                )}
                 {!isComplete && (
                   <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
                 )}
@@ -5341,6 +5349,14 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             >
               <Clock className="h-3 w-3" aria-hidden="true" />
               {formatTurnDuration(turnDurations.totalMs)}
+            </span>
+          )}
+          {progress.sessionCost && formatUsdCost(progress.sessionCost.usd) && (
+            <span
+              className="text-xs shrink-0 inline-flex items-center tabular-nums text-muted-foreground"
+              title={`Session cost · ${progress.sessionCost.inputTokens.toLocaleString()} in / ${progress.sessionCost.outputTokens.toLocaleString()} out tokens`}
+            >
+              {formatUsdCost(progress.sessionCost.usd)}
             </span>
           )}
           {!isComplete && (

@@ -40,6 +40,7 @@ import {
   isTracingEnabled,
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
+import { recordSessionTokenUsage } from "./session-cost"
 import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
 import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
 
@@ -1055,6 +1056,13 @@ export async function makeLLMCallWithFetch(
           if (sessionId && result.usage?.inputTokens) {
             recordActualTokenUsage(sessionId, result.usage.inputTokens, result.usage.outputTokens ?? 0)
           }
+          // Accumulate running session cost from this LLM call
+          recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+            inputTokens: result.usage?.inputTokens,
+            outputTokens: result.usage?.outputTokens,
+            cacheReadTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheReadTokens,
+            cacheWriteTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheWriteTokens,
+          })
 
           return {
             content: text || undefined,
@@ -1356,6 +1364,13 @@ export async function makeLLMCallWithStreamingAndTools(
         if (sessionId && finishUsage?.inputTokens) {
           recordActualTokenUsage(sessionId, finishUsage.inputTokens, finishUsage.outputTokens ?? 0)
         }
+        // Accumulate running session cost from this LLM call
+        recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+          inputTokens: finishUsage?.inputTokens,
+          outputTokens: finishUsage?.outputTokens,
+          cacheReadTokens: (finishUsage as ExtendedUsage | undefined)?.inputTokenDetails?.cacheReadTokens,
+          cacheWriteTokens: (finishUsage as ExtendedUsage | undefined)?.inputTokenDetails?.cacheWriteTokens,
+        })
 
         if (!accumulated && collectedToolCalls.length === 0) {
           throw new Error("LLM returned empty response")
