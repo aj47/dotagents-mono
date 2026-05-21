@@ -909,6 +909,15 @@ export async function makeLLMCallWithFetch(
 
           const text = result.text.trim()
 
+          // Accumulate running session cost from this LLM call before any
+          // early returns (tool calls, tool markers, plain text all share it).
+          // chatgpt-web does not report cache-write tokens.
+          recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+            inputTokens: result.usage?.inputTokens,
+            outputTokens: result.usage?.outputTokens,
+            cacheReadTokens: result.usage?.inputTokenDetails?.cacheReadTokens,
+          })
+
           if (!text && !result.toolCalls?.length && !result.reasoningSummary) {
             if (generationId) {
               endLLMGeneration(generationId, {
@@ -1025,6 +1034,15 @@ export async function makeLLMCallWithFetch(
         // Log prompt cache metrics from usage data
         logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
 
+        // Accumulate running session cost from this LLM call before any
+        // branch-specific return paths (tool calls, JSON, tool markers, text).
+        recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+          inputTokens: result.usage?.inputTokens,
+          outputTokens: result.usage?.outputTokens,
+          cacheReadTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheReadTokens,
+          cacheWriteTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheWriteTokens,
+        })
+
         const text = result.text?.trim() || ""
 
         // Check for native AI SDK tool calls first
@@ -1056,13 +1074,6 @@ export async function makeLLMCallWithFetch(
           if (sessionId && result.usage?.inputTokens) {
             recordActualTokenUsage(sessionId, result.usage.inputTokens, result.usage.outputTokens ?? 0)
           }
-          // Accumulate running session cost from this LLM call
-          recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
-            inputTokens: result.usage?.inputTokens,
-            outputTokens: result.usage?.outputTokens,
-            cacheReadTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheReadTokens,
-            cacheWriteTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheWriteTokens,
-          })
 
           return {
             content: text || undefined,
@@ -1213,6 +1224,15 @@ export async function makeLLMCallWithStreamingAndTools(
             tools,
           })
           const text = result.text
+
+          // Accumulate running session cost from this LLM call before the
+          // tool-call / text early-return branches below. chatgpt-web does
+          // not report cache-write tokens.
+          recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+            inputTokens: result.usage?.inputTokens,
+            outputTokens: result.usage?.outputTokens,
+            cacheReadTokens: result.usage?.inputTokenDetails?.cacheReadTokens,
+          })
 
           if (generationId) {
             endLLMGeneration(generationId, {

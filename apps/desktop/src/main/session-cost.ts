@@ -39,12 +39,18 @@ function computeDeltaUsd(usage: SessionTokenUsage, pricing: ModelPricing | undef
     if (!tokens || !costPerMillion) return 0
     return (tokens * costPerMillion) / 1_000_000
   }
-  // Cache reads/writes are billed separately and are NOT included in the
-  // provider's reported input token count (which is the non-cached input).
+  // AI SDK reports cache read/write tokens as a SUBSET of `inputTokens`
+  // (OpenAI / Anthropic / Gemini all populate `inputTokenDetails` this way),
+  // so charge only the non-cached remainder at the full input rate and bill
+  // cached portions separately. Callers using raw-protocol semantics (where
+  // input/cache are non-overlapping) must sum them into `inputTokens` first.
   // Reasoning tokens, where reported, are a subset of output tokens; we only
   // add a delta when reasoningCost differs from outputCost to avoid double-billing.
   let usd = 0
-  usd += perMillion(usage.inputTokens, pricing.inputCost)
+  const cacheRead = usage.cacheReadTokens ?? 0
+  const cacheWrite = usage.cacheWriteTokens ?? 0
+  const nonCachedInput = Math.max(0, (usage.inputTokens ?? 0) - cacheRead - cacheWrite)
+  usd += perMillion(nonCachedInput, pricing.inputCost)
   usd += perMillion(usage.outputTokens, pricing.outputCost)
   usd += perMillion(usage.cacheReadTokens, pricing.cacheReadCost)
   usd += perMillion(usage.cacheWriteTokens, pricing.cacheWriteCost)

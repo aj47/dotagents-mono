@@ -743,7 +743,13 @@ export async function processTranscriptWithACPAgent(
           providerHintForAcpAgent(agentName),
           acpModel,
           {
-            inputTokens: event.toolResponseStats.usage.input_tokens,
+            // Raw Anthropic-style usage reports input/cache as non-overlapping
+            // counts; session-cost expects `inputTokens` to include the cached
+            // portions (AI-SDK semantics) before subtracting them back out.
+            inputTokens:
+              (event.toolResponseStats.usage.input_tokens ?? 0)
+              + (event.toolResponseStats.usage.cache_read_input_tokens ?? 0)
+              + (event.toolResponseStats.usage.cache_creation_input_tokens ?? 0),
             outputTokens: event.toolResponseStats.usage.output_tokens,
             cacheReadTokens: event.toolResponseStats.usage.cache_read_input_tokens,
             cacheWriteTokens: event.toolResponseStats.usage.cache_creation_input_tokens,
