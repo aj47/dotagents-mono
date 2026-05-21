@@ -14,7 +14,7 @@ import { constructSystemPrompt } from "./system-prompts"
 import { state, agentSessionStateManager } from "./state"
 import { isDebugLLM, logLLM, isDebugTools, logTools } from "./debug"
 import { shrinkMessagesForLLM, estimateTokensFromMessages, clearActualTokenUsage, clearIterativeSummary, clearContextRefs, clearArchiveFrontier, clearSummarizationFailureFlags } from "./context-budget"
-import { clearSessionCost, getSessionCost } from "./session-cost"
+import { getSessionCost } from "./session-cost"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
@@ -3631,7 +3631,10 @@ export async function processTranscriptWithAgentMode(
     clearContextRefs(currentSessionId)
     clearArchiveFrontier(currentSessionId)
     clearSummarizationFailureFlags(currentSessionId)
-    clearSessionCost(currentSessionId)
+    // Intentionally do NOT clear sessionCost here: the per-session running cost
+    // is designed to accumulate across all turns within a session for the
+    // app's lifetime (see PR description). The surrounding cleanups above are
+    // per-turn context-budget state, not session-end state.
 
     // Clean up runtime session state at the end of agent processing.
     // Keep session userResponse/history so revived sessions can reinstate
