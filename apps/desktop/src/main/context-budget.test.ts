@@ -829,6 +829,19 @@ describe('registerContextRef export for MCP tool summarization', () => {
     expect(search).toEqual(expect.objectContaining({ success: true, matchCount: 1 }))
   })
 
+  it('honors exact short search queries instead of dropping them as fallback needles', () => {
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: 'compare O1 and EB1 options for the consultation',
+    })
+
+    const search = readMoreContext('session-mcp-ref', ref!, { mode: 'search', query: 'O1' })
+
+    expect(search).toEqual(expect.objectContaining({ success: true, matchCount: 1 }))
+    expect(JSON.stringify(search)).toContain('O1')
+  })
+
   it('returns undefined when sessionId is missing', () => {
     const ref = registerContextRef(undefined, {
       kind: 'truncated_tool',

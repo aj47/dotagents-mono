@@ -8,10 +8,12 @@ const passthroughArgs = rawPassthroughArgs[0] === "--"
 const env = { ...process.env }
 
 env.LIVE_AGENT_LOOP_E2E ??= "1"
-env.LIVE_AGENT_LOOP_LLM_JUDGE ??= "1"
 
 if (strict) {
+  env.LIVE_AGENT_LOOP_LLM_JUDGE ??= "1"
   env.LIVE_AGENT_LOOP_LLM_JUDGE_REQUIRED ??= "1"
+} else {
+  env.LIVE_AGENT_LOOP_LLM_JUDGE ??= "0"
 }
 
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm"

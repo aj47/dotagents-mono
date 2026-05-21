@@ -129,6 +129,10 @@ function getContextReadCacheKey(toolCall: MCPToolCall): string | undefined {
   return normalizedArgs ? `${READ_MORE_CONTEXT_TOOL}:${normalizedArgs}` : undefined
 }
 
+function normalizeContextSearchQuery(query: string): string {
+  return query.trim().replace(/\s+/g, " ").toLowerCase()
+}
+
 function getContextSearchCacheKey(toolCall: MCPToolCall): string | undefined {
   if (
     toolCall.name !== READ_MORE_CONTEXT_TOOL ||
@@ -141,8 +145,8 @@ function getContextSearchCacheKey(toolCall: MCPToolCall): string | undefined {
 
   const args = toolCall.arguments as Record<string, unknown>
   const contextRef = typeof args.contextRef === "string" ? args.contextRef.trim() : ""
-  const mode = typeof args.mode === "string" ? args.mode.trim() : ""
-  const query = typeof args.query === "string" ? args.query.trim() : ""
+  const mode = typeof args.mode === "string" ? args.mode.trim().toLowerCase() : ""
+  const query = typeof args.query === "string" ? normalizeContextSearchQuery(args.query) : ""
   if (!contextRef || mode !== "search" || !query) return undefined
 
   return `${READ_MORE_CONTEXT_TOOL}:search:${JSON.stringify({ contextRef, query })}`
@@ -2159,6 +2163,7 @@ export async function processTranscriptWithAgentMode(
   const MAX_TOOL_FAILURES = 3 // Max consecutive failures of a tool before excluding it
   let lastExcludedToolCount = 0 // Track previous excluded count to avoid unnecessary system prompt rebuilds
   let cachedSystemPrompt: string | undefined // Cached rebuilt prompt when tools are excluded
+  let suppressReadMoreContextAfterExactAnswer = false
 
   while (iteration < maxIterations) {
     iteration++
@@ -2168,7 +2173,7 @@ export async function processTranscriptWithAgentMode(
     // so the same filtered list is used consistently throughout (LLM call + heuristics)
     const activeTools = baseAvailableTools.filter((tool) => {
       const failures = toolFailureCount.get(tool.name) || 0
-      return failures < MAX_TOOL_FAILURES
+      return failures < MAX_TOOL_FAILURES && !(suppressReadMoreContextAfterExactAnswer && tool.name === READ_MORE_CONTEXT_TOOL)
     })
 
     // Log when tools have been excluded
@@ -2679,7 +2684,8 @@ export async function processTranscriptWithAgentMode(
       // - accepted directly for no-tool/simple flows, or
       // - treated as in-progress status for tool-driven flows until explicit completion.
       if (hasSubstantiveResponse) {
-        const canBypassVerification = !config.mcpVerifyCompletionEnabled || !hasToolsAvailable
+        const onlyCommunicationToolsAvailable = activeTools.length > 0 && activeTools.every((tool) => tool.name === RESPOND_TO_USER_TOOL)
+        const canBypassVerification = !config.mcpVerifyCompletionEnabled || !hasToolsAvailable || (onlyCommunicationToolsAvailable && !hasToolResultsInCurrentTurn)
 
         if (canBypassVerification) {
           // Even without verification, reject garbled tool-call-as-text output
@@ -3320,6 +3326,9 @@ export async function processTranscriptWithAgentMode(
       const exactAnswer = toolResults
         .map((result) => extractExactRequestedAnswerFromContextResult(result))
         .find((answer): answer is string => !!answer)
+      if (exactAnswer) {
+        suppressReadMoreContextAfterExactAnswer = true
+      }
       addEphemeralMessage(
         "user",
         exactAnswer
