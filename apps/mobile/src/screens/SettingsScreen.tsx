@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, KeyboardAvoidingView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Pressable, ActivityIndicator, RefreshControl, Share, Alert, LayoutAnimation, UIManager, Image, useWindowDimensions } from 'react-native';
 import {
   AppConfig,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
@@ -11,6 +10,17 @@ import { useSessionContext } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTheme, ThemeMode } from '../ui/ThemeProvider';
 import { spacing, radius } from '../ui/theme';
+import { AppShellSettingsLayout } from '../ui/AppShellSettingsLayout';
+import {
+  getAppShellDesktopSettingsNavItemIdForMobileSection,
+  getAppShellMobileSettingsInitialExpandedState,
+  getAppShellMobileSettingsSectionIdsForDesktopNavItem,
+  getDesktopSettingsNavItems,
+  isAppShellMobileSettingsSectionId,
+  resolveAppShellLayout,
+  type AppShellMobileSettingsSectionId,
+  type AppShellSettingsNavItemId,
+} from '../ui/appShell';
 import { useProfile } from '../store/profile';
 import { usePushNotifications } from '../lib/pushNotifications';
 import {
@@ -19,7 +29,33 @@ import {
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
 } from '../lib/accessibility';
-import { ExtendedSettingsApiClient, Profile, MCPServer, Settings, ModelInfo, SettingsUpdate, Skill, KnowledgeNote, AgentProfile, Loop } from '../lib/settingsApi';
+import {
+  ExtendedSettingsApiClient,
+  Profile,
+  MCPServer,
+  MCPConfig,
+  MCPServerConfig,
+  McpOAuthStatusResponse,
+  MCPTransportType,
+  ChatGptWebAuthStatus,
+  Settings,
+  ModelPresetSummary,
+  ModelInfo,
+  SettingsUpdate,
+  OpenAiReasoningEffort,
+  CodexTextVerbosity,
+  Skill,
+  KnowledgeNote,
+  KnowledgeNoteContext,
+  KnowledgeNoteDateFilter,
+  KnowledgeNoteSort,
+  AgentProfile,
+  Loop,
+  BundleComponentKey,
+  BundleComponentSelection,
+  BundleImportConflictStrategy,
+  BundleImportPreview,
+} from '../lib/settingsApi';
 import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
 import { MicrophoneSelector } from '../ui/MicrophoneSelector';
@@ -37,6 +73,7 @@ const CHAT_PROVIDERS = [
   { label: 'OpenAI', value: 'openai' },
   { label: 'Groq', value: 'groq' },
   { label: 'Gemini', value: 'gemini' },
+  { label: 'OpenAI Codex', value: 'chatgpt-web' },
 ] as const;
 
 // TTS Provider Options
@@ -45,11 +82,306 @@ const TTS_PROVIDERS = [
   { label: 'Groq', value: 'groq' },
   { label: 'Gemini', value: 'gemini' },
   { label: 'Edge TTS (Free)', value: 'edge' },
-  { label: 'Kitten', value: 'kitten' },
-  { label: 'Supertonic', value: 'supertonic' },
+  { label: 'Kitten (Local)', value: 'kitten' },
+  { label: 'Supertonic (Local)', value: 'supertonic' },
 ] as const;
 
+const SECRET_MASK = '••••••••';
+const DEFAULT_STT_PROVIDER_ID = 'openai';
+const DEFAULT_TTS_PROVIDER_ID = 'openai';
+const DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID = 'openai';
+const DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED = true;
+const DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED = true;
+const DEFAULT_PARAKEET_NUM_THREADS = 2;
+const PARAKEET_NUM_THREAD_OPTIONS = [1, 2, 4, 8] as const;
+const KNOWN_STT_MODEL_IDS = {
+  openai: ['gpt-4o-transcribe', 'gpt-4o-mini-transcribe', 'whisper-1'],
+  groq: ['whisper-large-v3', 'whisper-large-v3-turbo', 'distil-whisper-large-v3-en'],
+} as const;
+const DEFAULT_TTS_ENABLED = true;
+const DEFAULT_TTS_AUTO_PLAY = true;
+const DEFAULT_TTS_PREPROCESSING_ENABLED = true;
+const DEFAULT_TTS_REMOVE_CODE_BLOCKS = true;
+const DEFAULT_TTS_REMOVE_URLS = true;
+const DEFAULT_TTS_CONVERT_MARKDOWN = true;
+const DEFAULT_TTS_USE_LLM_PREPROCESSING = false;
+const DEFAULT_SUPERTONIC_TTS_LANGUAGE = 'en';
+const DEFAULT_SUPERTONIC_TTS_STEPS = 5;
+const MIN_SUPERTONIC_TTS_STEPS = 2;
+const MAX_SUPERTONIC_TTS_STEPS = 10;
+const DEFAULT_MCP_AUTO_PASTE_ENABLED = false;
+const DEFAULT_MCP_AUTO_PASTE_DELAY = 1000;
+const MIN_MCP_AUTO_PASTE_DELAY = 0;
+const MAX_MCP_AUTO_PASTE_DELAY = 60000;
+const DEFAULT_MAIN_AGENT_MODE = 'api';
+const DEFAULT_STREAMER_MODE_ENABLED = false;
+const DEFAULT_WHATSAPP_ENABLED = false;
+const DEFAULT_WHATSAPP_AUTO_REPLY = false;
+const DEFAULT_WHATSAPP_LOG_MESSAGES = false;
+const DEFAULT_DISCORD_ENABLED = false;
+const DEFAULT_DISCORD_DM_ENABLED = true;
+const DEFAULT_DISCORD_REQUIRE_MENTION = true;
+const DEFAULT_DISCORD_LOG_MESSAGES = false;
+const DEFAULT_LOCAL_TRACE_LOGGING_ENABLED = false;
+const DEFAULT_CODEX_REASONING_EFFORT: OpenAiReasoningEffort = 'low';
+const DEFAULT_CODEX_TEXT_VERBOSITY: CodexTextVerbosity = 'medium';
+
+const MAIN_AGENT_MODE_OPTIONS = [
+  { value: 'api', compactLabel: 'API' },
+  { value: 'acpx', compactLabel: 'acpx' },
+] as const;
+
+const LOCAL_TRACE_LOGGING_LABEL = 'Local trace logging';
+const LOCAL_TRACE_LOGGING_HELPER = 'Write agent session traces to JSONL files on the desktop machine.';
+const LOCAL_TRACE_LOG_PATH_LABEL = 'Trace Folder';
+const LOCAL_TRACE_LOG_PATH_PLACEHOLDER = 'Use default traces folder';
+const LOCAL_TRACE_LOG_PATH_HELPER = 'Optional desktop filesystem path for trace files.';
+
+const OPENAI_REASONING_EFFORT_OPTIONS: readonly { value: OpenAiReasoningEffort; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'minimal', label: 'Minimal' },
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'xhigh', label: 'Extra high' },
+];
+
+const CODEX_TEXT_VERBOSITY_OPTIONS: readonly { value: CodexTextVerbosity; label: string }[] = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+];
+
+const SUPERTONIC_TTS_LANGUAGES = [
+  { label: 'English', value: 'en' },
+  { label: 'Korean', value: 'ko' },
+  { label: 'Spanish', value: 'es' },
+  { label: 'Portuguese', value: 'pt' },
+  { label: 'French', value: 'fr' },
+] as const;
+
+const DEFAULT_CONVERSATIONS_ENABLED = true;
+const DEFAULT_AUTO_SAVE_CONVERSATIONS = true;
+const DEFAULT_MAX_CONVERSATIONS_TO_KEEP = 1000;
+const MIN_CONVERSATIONS_TO_KEEP = 1;
+const MAX_CONVERSATIONS_TO_KEEP = 10000;
+
+const parseMaxConversationsToKeepDraft = (value: string): number | null => {
+  const parsedValue = Number.parseInt(value.trim(), 10);
+  if (Number.isNaN(parsedValue)) return null;
+  if (parsedValue < MIN_CONVERSATIONS_TO_KEEP || parsedValue > MAX_CONVERSATIONS_TO_KEEP) return null;
+  return parsedValue;
+};
+
+const formatMaxConversationsToKeepValidationMessage = () =>
+  `Keep Recent Chats must be between ${MIN_CONVERSATIONS_TO_KEEP} and ${MAX_CONVERSATIONS_TO_KEEP} before saving.`;
+
+const parseMcpAutoPasteDelayDraft = (value: string): number | null => {
+  const parsedValue = Number.parseInt(value.trim(), 10);
+  if (!Number.isFinite(parsedValue)) return null;
+  if (parsedValue < MIN_MCP_AUTO_PASTE_DELAY || parsedValue > MAX_MCP_AUTO_PASTE_DELAY) return null;
+  return parsedValue;
+};
+
+const formatMcpAutoPasteDelayValidationMessage = () =>
+  `Auto-paste delay must be between ${MIN_MCP_AUTO_PASTE_DELAY} and ${MAX_MCP_AUTO_PASTE_DELAY}ms before saving.`;
+
+type ProviderSecretSettingKey =
+  | 'openaiApiKey'
+  | 'groqApiKey'
+  | 'geminiApiKey'
+  | 'chatgptWebAccessToken'
+  | 'chatgptWebSessionToken';
+type ProviderBaseUrlSettingKey = 'openaiBaseUrl' | 'groqBaseUrl' | 'geminiBaseUrl' | 'chatgptWebBaseUrl';
+
+const PROVIDER_CREDENTIAL_SECTIONS: Array<{
+  id: string;
+  label: string;
+  secrets: Array<{ key: ProviderSecretSettingKey; label: string; placeholder: string }>;
+  baseUrl: ProviderBaseUrlSettingKey;
+  baseUrlPlaceholder: string;
+}> = [
+  {
+    id: 'openai',
+    label: 'OpenAI Compatible',
+    secrets: [{ key: 'openaiApiKey', label: 'API Key', placeholder: 'sk-...' }],
+    baseUrl: 'openaiBaseUrl',
+    baseUrlPlaceholder: 'https://api.openai.com/v1',
+  },
+  {
+    id: 'groq',
+    label: 'Groq',
+    secrets: [{ key: 'groqApiKey', label: 'API Key', placeholder: 'gsk_...' }],
+    baseUrl: 'groqBaseUrl',
+    baseUrlPlaceholder: 'https://api.groq.com/openai/v1',
+  },
+  {
+    id: 'gemini',
+    label: 'Gemini',
+    secrets: [{ key: 'geminiApiKey', label: 'API Key', placeholder: 'AIza...' }],
+    baseUrl: 'geminiBaseUrl',
+    baseUrlPlaceholder: 'https://generativelanguage.googleapis.com',
+  },
+  {
+    id: 'chatgpt-web',
+    label: 'OpenAI Codex',
+    secrets: [
+      { key: 'chatgptWebAccessToken', label: 'Access Token', placeholder: 'access token' },
+      { key: 'chatgptWebSessionToken', label: 'Session Token', placeholder: 'session token' },
+    ],
+    baseUrl: 'chatgptWebBaseUrl',
+    baseUrlPlaceholder: 'https://chatgpt.com',
+  },
+];
+
+type DiscordListSettingKey =
+  | 'discordAllowUserIds'
+  | 'discordAllowGuildIds'
+  | 'discordAllowChannelIds'
+  | 'discordAllowRoleIds'
+  | 'discordDmAllowUserIds';
+
+const DISCORD_LIST_SETTING_KEYS: DiscordListSettingKey[] = [
+  'discordAllowUserIds',
+  'discordAllowGuildIds',
+  'discordAllowChannelIds',
+  'discordAllowRoleIds',
+  'discordDmAllowUserIds',
+];
+
+const DISCORD_LIST_SETTING_SECTIONS: Array<{
+  key: DiscordListSettingKey;
+  label: string;
+  placeholder: string;
+  helper: string;
+}> = [
+  {
+    key: 'discordAllowUserIds',
+    label: 'Allowed User IDs',
+    placeholder: 'One Discord user ID per line',
+    helper: 'Leave blank to allow any user in allowed channels or DMs.',
+  },
+  {
+    key: 'discordAllowGuildIds',
+    label: 'Allowed Server IDs',
+    placeholder: 'One Discord server ID per line',
+    helper: 'Restrict server mention handling to specific Discord servers.',
+  },
+  {
+    key: 'discordAllowChannelIds',
+    label: 'Allowed Channel IDs',
+    placeholder: 'One Discord channel or thread ID per line',
+    helper: 'Restrict server mention handling to specific channels or threads.',
+  },
+  {
+    key: 'discordAllowRoleIds',
+    label: 'Allowed Role IDs',
+    placeholder: 'One Discord role ID per line',
+    helper: 'Require at least one of these roles for server mention handling.',
+  },
+  {
+    key: 'discordDmAllowUserIds',
+    label: 'Allowed DM User IDs',
+    placeholder: 'One Discord user ID per line',
+    helper: 'Restrict direct-message access to specific Discord users.',
+  },
+];
+
+function formatConfigListInput(values?: string[], options: { separator?: 'comma' | 'newline' } = {}): string {
+  const separator = options.separator === 'newline' ? '\n' : ', ';
+  return (values || []).join(separator);
+}
+
+function parseConfigListInput(value: string, options: { unique?: boolean } = {}): string[] {
+  const entries = value
+    .split(/[\n,]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return options.unique ? [...new Set(entries)] : entries;
+}
+
 const LOOP_DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+type BundleImportComponentsState = Required<BundleComponentSelection>;
+
+const DEFAULT_BUNDLE_IMPORT_COMPONENTS: BundleImportComponentsState = {
+  agentProfiles: true,
+  mcpServers: true,
+  skills: true,
+  repeatTasks: true,
+  knowledgeNotes: true,
+};
+
+const BUNDLE_IMPORT_COMPONENT_OPTIONS: Array<{ key: BundleComponentKey; label: string }> = [
+  { key: 'agentProfiles', label: 'Agents' },
+  { key: 'mcpServers', label: 'MCP servers' },
+  { key: 'skills', label: 'Skills' },
+  { key: 'repeatTasks', label: 'Tasks' },
+  { key: 'knowledgeNotes', label: 'Knowledge' },
+];
+
+const BUNDLE_IMPORT_CONFLICT_STRATEGIES: Array<{ value: BundleImportConflictStrategy; label: string }> = [
+  { value: 'skip', label: 'Skip' },
+  { value: 'rename', label: 'Rename' },
+  { value: 'overwrite', label: 'Overwrite' },
+];
+
+type ModelPresetEditorMode = 'create' | 'edit';
+
+type ModelPresetDraft = {
+  id?: string;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  agentModel: string;
+  transcriptProcessingModel: string;
+  isBuiltIn: boolean;
+  hasApiKey: boolean;
+};
+
+const EMPTY_MODEL_PRESET_DRAFT: ModelPresetDraft = {
+  name: '',
+  baseUrl: '',
+  apiKey: '',
+  agentModel: '',
+  transcriptProcessingModel: '',
+  isBuiltIn: false,
+  hasApiKey: false,
+};
+
+function buildModelPresetDraftFromSummary(preset?: ModelPresetSummary | null): ModelPresetDraft {
+  if (!preset) return EMPTY_MODEL_PRESET_DRAFT;
+  return {
+    id: preset.id,
+    name: preset.name,
+    baseUrl: preset.baseUrl,
+    apiKey: '',
+    agentModel: preset.agentModel || preset.mcpToolsModel || '',
+    transcriptProcessingModel: preset.transcriptProcessingModel || '',
+    isBuiltIn: preset.isBuiltIn ?? false,
+    hasApiKey: !!preset.hasApiKey,
+  };
+}
+
+function buildModelPresetPayloadFromDraft(draft: ModelPresetDraft):
+  | { ok: true; payload: { name: string; baseUrl: string; apiKey?: string; agentModel?: string; transcriptProcessingModel?: string } }
+  | { ok: false; error: string } {
+  const name = draft.name.trim();
+  const baseUrl = draft.baseUrl.trim();
+  if (!name) return { ok: false, error: 'Endpoint name is required' };
+  if (!baseUrl) return { ok: false, error: 'Endpoint base URL is required' };
+
+  return {
+    ok: true,
+    payload: {
+      name,
+      baseUrl,
+      apiKey: draft.apiKey.trim(),
+      agentModel: draft.agentModel.trim(),
+      transcriptProcessingModel: draft.transcriptProcessingModel.trim(),
+    },
+  };
+}
 
 function describeLoopCadence(loop: Loop): string {
   if (loop.runContinuously) return 'Continuous';
@@ -151,8 +483,34 @@ const EDGE_TTS_MODELS = [
   { label: 'Edge Neural (Free)', value: 'edge-tts' },
 ] as const;
 
+const KITTEN_TTS_VOICES = [
+  { label: 'Voice 2 - Male (Default)', value: 0 },
+  { label: 'Voice 2 - Female', value: 1 },
+  { label: 'Voice 3 - Male', value: 2 },
+  { label: 'Voice 3 - Female', value: 3 },
+  { label: 'Voice 4 - Male', value: 4 },
+  { label: 'Voice 4 - Female', value: 5 },
+  { label: 'Voice 5 - Male', value: 6 },
+  { label: 'Voice 5 - Female', value: 7 },
+] as const;
+
+const SUPERTONIC_TTS_VOICES = [
+  { label: 'Male 1 (M1)', value: 'M1' },
+  { label: 'Male 2 (M2)', value: 'M2' },
+  { label: 'Male 3 (M3)', value: 'M3' },
+  { label: 'Male 4 (M4)', value: 'M4' },
+  { label: 'Male 5 (M5)', value: 'M5' },
+  { label: 'Female 1 (F1)', value: 'F1' },
+  { label: 'Female 2 (F2)', value: 'F2' },
+  { label: 'Female 3 (F3)', value: 'F3' },
+  { label: 'Female 4 (F4)', value: 'F4' },
+  { label: 'Female 5 (F5)', value: 'F5' },
+] as const;
+
+type TtsVoiceOption = { label: string; value: string | number };
+
 // Helper to get TTS voices for a provider
-const getTtsVoicesForProvider = (providerId: string, ttsModel?: string): readonly { label: string; value: string }[] => {
+const getTtsVoicesForProvider = (providerId: string, ttsModel?: string): readonly TtsVoiceOption[] => {
   switch (providerId) {
     case 'openai':
       return OPENAI_TTS_VOICES;
@@ -163,6 +521,10 @@ const getTtsVoicesForProvider = (providerId: string, ttsModel?: string): readonl
       return GEMINI_TTS_VOICES;
     case 'edge':
       return EDGE_TTS_VOICES;
+    case 'kitten':
+      return KITTEN_TTS_VOICES;
+    case 'supertonic':
+      return SUPERTONIC_TTS_VOICES;
     default:
       return [];
   }
@@ -209,9 +571,19 @@ const getTtsVoiceSettingKey = (providerId?: string): keyof SettingsUpdate => {
       return 'geminiTtsVoice';
     case 'edge':
       return 'edgeTtsVoice';
+    case 'kitten':
+      return 'kittenVoiceId';
+    case 'supertonic':
+      return 'supertonicVoice';
     default:
       return 'openaiTtsVoice';
   }
+};
+
+const getDefaultSttModel = (providerId?: string): string | undefined => {
+  if (providerId === 'openai') return 'whisper-1';
+  if (providerId === 'groq') return 'whisper-large-v3-turbo';
+  return undefined;
 };
 
 // Enable LayoutAnimation on Android
@@ -219,14 +591,217 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const THEME_OPTIONS: { label: string; value: ThemeMode }[] = [
-  { label: '☀️ Light', value: 'light' },
-  { label: '🌙 Dark', value: 'dark' },
-  { label: '⚙️ System', value: 'system' },
+const THEME_PREFERENCE_OPTIONS: { label: string; value: ThemeMode }[] = [
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+  { label: 'System', value: 'system' },
 ];
 
-export default function SettingsScreen({ navigation }: any) {
-  const insets = useSafeAreaInsets();
+const KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS: Array<{ label: string; value: 'all' | KnowledgeNoteContext }> = [
+  { label: 'All', value: 'all' },
+  { label: 'Search only', value: 'search-only' },
+  { label: 'Auto', value: 'auto' },
+];
+
+const KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS: Array<{ label: string; value: KnowledgeNoteDateFilter }> = [
+  { label: 'Any time', value: 'all' },
+  { label: '7d', value: '7d' },
+  { label: '30d', value: '30d' },
+  { label: '90d', value: '90d' },
+  { label: 'Year', value: 'year' },
+];
+
+const KNOWLEDGE_NOTE_SORT_OPTIONS: Array<{ label: string; value: KnowledgeNoteSort }> = [
+  { label: 'Best', value: 'relevance' },
+  { label: 'Newest', value: 'updated-desc' },
+  { label: 'A-Z', value: 'title-asc' },
+];
+
+function sortAgentProfilesForSettings(profiles: AgentProfile[]): AgentProfile[] {
+  return [...profiles].sort((a, b) => {
+    if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+    if (a.isBuiltIn !== b.isBuiltIn) return a.isBuiltIn ? -1 : 1;
+    return (a.displayName || a.name).localeCompare(b.displayName || b.name);
+  });
+}
+
+function setAgentProfileEnabledInList(profiles: AgentProfile[], profileId: string, enabled: boolean): AgentProfile[] {
+  return profiles.map(profile => profile.id === profileId ? { ...profile, enabled } : profile);
+}
+
+function removeAgentProfileFromList(profiles: AgentProfile[], profileId: string): AgentProfile[] {
+  return profiles.filter(profile => profile.id !== profileId);
+}
+
+function getAgentListInitial(profile: AgentProfile): string {
+  return (profile.displayName || profile.name || 'A').slice(0, 1).toUpperCase();
+}
+
+type McpServerEditorMode = 'create' | 'edit';
+
+type McpServerDraft = {
+  name: string;
+  transport: MCPTransportType;
+  command: string;
+  args: string;
+  env: string;
+  url: string;
+  headers: string;
+  timeout: string;
+  disabled: boolean;
+  oauthEnabled: boolean;
+  oauthScope: string;
+  oauthClientId: string;
+  oauthUseDiscovery: boolean;
+  oauthUseDynamicRegistration: boolean;
+};
+
+const EMPTY_MCP_SERVER_DRAFT: McpServerDraft = {
+  name: '',
+  transport: 'stdio',
+  command: '',
+  args: '',
+  env: '',
+  url: '',
+  headers: '',
+  timeout: '',
+  disabled: false,
+  oauthEnabled: false,
+  oauthScope: '',
+  oauthClientId: '',
+  oauthUseDiscovery: true,
+  oauthUseDynamicRegistration: true,
+};
+
+const MCP_TRANSPORT_OPTIONS: Array<{ label: string; value: MCPTransportType }> = [
+  { label: 'Command', value: 'stdio' },
+  { label: 'HTTP', value: 'streamableHttp' },
+  { label: 'WebSocket', value: 'websocket' },
+];
+
+function setMcpServerRuntimeEnabledInList(servers: MCPServer[], serverName: string, enabled: boolean): MCPServer[] {
+  return servers.map(server =>
+    server.name === serverName ? { ...server, enabled, runtimeEnabled: enabled } : server
+  );
+}
+
+function upsertMcpServerInList(servers: MCPServer[], nextServer: MCPServer): MCPServer[] {
+  const exists = servers.some(server => server.name === nextServer.name);
+  const next = exists
+    ? servers.map(server => server.name === nextServer.name ? nextServer : server)
+    : [...servers, nextServer];
+  return next.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function removeMcpServerFromList(servers: MCPServer[], serverName: string): MCPServer[] {
+  return servers.filter(server => server.name !== serverName);
+}
+
+function stringifyJsonDraft(value: unknown): string {
+  if (!value || (typeof value === 'object' && Object.keys(value as Record<string, unknown>).length === 0)) {
+    return '';
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function createMcpServerDraft(name: string, config: MCPServerConfig): McpServerDraft {
+  const transport = config.transport ?? (config.url?.startsWith('ws') ? 'websocket' : config.url ? 'streamableHttp' : 'stdio');
+  return {
+    name,
+    transport,
+    command: config.command || '',
+    args: config.args?.length ? JSON.stringify(config.args) : '',
+    env: stringifyJsonDraft(config.env),
+    url: config.url || '',
+    headers: stringifyJsonDraft(config.headers),
+    timeout: typeof config.timeout === 'number' ? String(config.timeout) : '',
+    disabled: !!config.disabled,
+    oauthEnabled: !!config.oauth,
+    oauthScope: config.oauth?.scope || '',
+    oauthClientId: config.oauth?.clientId || '',
+    oauthUseDiscovery: config.oauth?.useDiscovery ?? true,
+    oauthUseDynamicRegistration: config.oauth?.useDynamicRegistration ?? true,
+  };
+}
+
+function parseJsonObjectDraft(value: string, fieldLabel: string): Record<string, string> | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = JSON.parse(trimmed);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${fieldLabel} must be a JSON object`);
+  }
+  return Object.fromEntries(
+    Object.entries(parsed as Record<string, unknown>).map(([key, entry]) => [key, String(entry)])
+  );
+}
+
+function parseArgsDraft(value: string): string[] {
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith('[')) {
+    const parsed = JSON.parse(trimmed);
+    if (!Array.isArray(parsed) || parsed.some(item => typeof item !== 'string')) {
+      throw new Error('Args must be a JSON array of strings');
+    }
+    return parsed;
+  }
+  return trimmed.split(/\s+/).filter(Boolean);
+}
+
+function buildMcpServerConfigFromDraft(draft: McpServerDraft): MCPServerConfig {
+  const timeout = draft.timeout.trim() ? Number(draft.timeout.trim()) : undefined;
+  if (timeout !== undefined && (!Number.isFinite(timeout) || timeout < 0)) {
+    throw new Error('Timeout must be a non-negative number');
+  }
+
+  const base: MCPServerConfig = {
+    transport: draft.transport,
+    disabled: draft.disabled,
+    ...(timeout !== undefined ? { timeout: Math.round(timeout) } : {}),
+  };
+
+  if (draft.transport === 'stdio') {
+    if (!draft.command.trim()) throw new Error('Command is required for command-based MCP servers');
+    return {
+      ...base,
+      command: draft.command.trim(),
+      args: parseArgsDraft(draft.args),
+      env: parseJsonObjectDraft(draft.env, 'Environment'),
+    };
+  }
+
+  if (!draft.url.trim()) throw new Error('URL is required for remote MCP servers');
+  return {
+    ...base,
+    url: draft.url.trim(),
+    headers: parseJsonObjectDraft(draft.headers, 'Headers'),
+    ...(draft.transport === 'streamableHttp'
+      ? {
+          oauth: draft.oauthEnabled
+            ? {
+                ...(draft.oauthScope.trim() ? { scope: draft.oauthScope.trim() } : {}),
+                ...(draft.oauthClientId.trim() ? { clientId: draft.oauthClientId.trim() } : {}),
+                useDiscovery: draft.oauthUseDiscovery,
+                useDynamicRegistration: draft.oauthUseDynamicRegistration,
+              }
+            : null,
+        }
+      : {}),
+  };
+}
+
+function parseMcpConfigImport(value: string): MCPConfig {
+  const parsed = JSON.parse(value.trim());
+  const mcpServers = (parsed as { mcpServers?: unknown })?.mcpServers;
+  if (!mcpServers || typeof mcpServers !== 'object' || Array.isArray(mcpServers)) {
+    throw new Error('MCP import JSON must include a mcpServers object.');
+  }
+  return { mcpServers: mcpServers as Record<string, MCPServerConfig> };
+}
+
+export default function SettingsScreen({ navigation, route }: any) {
+  const { width } = useWindowDimensions();
   const { theme, themeMode, setThemeMode } = useTheme();
   const { config, setConfig, ready } = useConfigContext();
   const [draft, setDraft] = useState<AppConfig>(config);
@@ -264,18 +839,63 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Skills, Knowledge Notes, Agents, and Loops state
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<Set<string>>(new Set());
+  const [showSkillImportModal, setShowSkillImportModal] = useState(false);
+  const [showSkillGitHubImportModal, setShowSkillGitHubImportModal] = useState(false);
+  const [skillImportMarkdownText, setSkillImportMarkdownText] = useState('');
+  const [skillGitHubImportText, setSkillGitHubImportText] = useState('');
+  const [isImportingSkillMarkdown, setIsImportingSkillMarkdown] = useState(false);
+  const [isImportingSkillGitHub, setIsImportingSkillGitHub] = useState(false);
+  const [isExportingSkillMarkdownId, setIsExportingSkillMarkdownId] = useState<string | null>(null);
   const [knowledgeNotes, setKnowledgeNotes] = useState<KnowledgeNote[]>([]);
+  const [knowledgeNoteSearchQuery, setKnowledgeNoteSearchQuery] = useState('');
+  const [knowledgeNoteSearchResults, setKnowledgeNoteSearchResults] = useState<KnowledgeNote[]>([]);
+  const [selectedKnowledgeNoteIds, setSelectedKnowledgeNoteIds] = useState<Set<string>>(new Set());
+  const [knowledgeNoteContextFilter, setKnowledgeNoteContextFilter] = useState<'all' | KnowledgeNoteContext>('all');
+  const [knowledgeNoteDateFilter, setKnowledgeNoteDateFilter] = useState<KnowledgeNoteDateFilter>('all');
+  const [knowledgeNoteSortOption, setKnowledgeNoteSortOption] = useState<KnowledgeNoteSort>('relevance');
   const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
   const [loops, setLoops] = useState<Loop[]>([]);
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [isLoadingKnowledgeNotes, setIsLoadingKnowledgeNotes] = useState(false);
+  const [isSearchingKnowledgeNotes, setIsSearchingKnowledgeNotes] = useState(false);
   const [isLoadingAgentProfiles, setIsLoadingAgentProfiles] = useState(false);
+  const [isReloadingAgentProfiles, setIsReloadingAgentProfiles] = useState(false);
   const [isLoadingLoops, setIsLoadingLoops] = useState(false);
+  const [isImportingLoopMarkdown, setIsImportingLoopMarkdown] = useState(false);
+  const [isExportingLoopMarkdownId, setIsExportingLoopMarkdownId] = useState<string | null>(null);
+  const [showLoopImportModal, setShowLoopImportModal] = useState(false);
+  const [loopImportMarkdownText, setLoopImportMarkdownText] = useState('');
+  const trimmedKnowledgeNoteSearchQuery = knowledgeNoteSearchQuery.trim();
+  const knowledgeNoteFilterRequest = useMemo(() => ({
+    context: knowledgeNoteContextFilter === 'all' ? undefined : knowledgeNoteContextFilter,
+    dateFilter: knowledgeNoteDateFilter,
+    sort: knowledgeNoteSortOption,
+    limit: 100,
+  }), [knowledgeNoteContextFilter, knowledgeNoteDateFilter, knowledgeNoteSortOption]);
+  const displayedKnowledgeNotes = trimmedKnowledgeNoteSearchQuery ? knowledgeNoteSearchResults : knowledgeNotes;
+  const displayedKnowledgeNoteIds = useMemo(
+    () => new Set(displayedKnowledgeNotes.map(note => note.id)),
+    [displayedKnowledgeNotes]
+  );
+  const visibleSelectedKnowledgeNoteIds = useMemo(
+    () => Array.from(selectedKnowledgeNoteIds).filter(id => displayedKnowledgeNoteIds.has(id)),
+    [displayedKnowledgeNoteIds, selectedKnowledgeNoteIds]
+  );
+  const sortedAgentProfiles = useMemo(() => sortAgentProfilesForSettings(agentProfiles), [agentProfiles]);
   const displaySkills = useMemo(() => [...skills].sort((a, b) => {
     const enabledDiff = Number(b.enabledForProfile) - Number(a.enabledForProfile);
     if (enabledDiff !== 0) return enabledDiff;
     return a.name.localeCompare(b.name);
   }), [skills]);
+  const displaySkillIds = useMemo(
+    () => new Set(displaySkills.map(skill => skill.id)),
+    [displaySkills]
+  );
+  const visibleSelectedSkillIds = useMemo(
+    () => Array.from(selectedSkillIds).filter(id => displaySkillIds.has(id)),
+    [displaySkillIds, selectedSkillIds]
+  );
   const availableAcpMainAgents = useMemo(
     () => getAcpxMainAgentOptions(remoteSettings, agentProfiles),
     [remoteSettings, agentProfiles]
@@ -286,6 +906,29 @@ export default function SettingsScreen({ navigation }: any) {
   const [isImportingProfile, setIsImportingProfile] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
+  const [isExportingBundle, setIsExportingBundle] = useState(false);
+  const [isPreviewingBundleImport, setIsPreviewingBundleImport] = useState(false);
+  const [isImportingBundle, setIsImportingBundle] = useState(false);
+  const [showBundleImportModal, setShowBundleImportModal] = useState(false);
+  const [bundleImportJsonText, setBundleImportJsonText] = useState('');
+  const [bundleImportPreview, setBundleImportPreview] = useState<BundleImportPreview | null>(null);
+  const [bundleImportConflictStrategy, setBundleImportConflictStrategy] = useState<BundleImportConflictStrategy>('skip');
+  const [bundleImportComponents, setBundleImportComponents] = useState<BundleImportComponentsState>(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+
+  // MCP server editor state
+  const [showMcpServerEditor, setShowMcpServerEditor] = useState(false);
+  const [mcpServerEditorMode, setMcpServerEditorMode] = useState<McpServerEditorMode>('create');
+  const [mcpServerDraft, setMcpServerDraft] = useState<McpServerDraft>(EMPTY_MCP_SERVER_DRAFT);
+  const [isSavingMcpServer, setIsSavingMcpServer] = useState(false);
+  const [isLoadingMcpServerConfig, setIsLoadingMcpServerConfig] = useState(false);
+  const [mcpOAuthStatus, setMcpOAuthStatus] = useState<Record<string, McpOAuthStatusResponse>>({});
+  const [pendingMcpOAuthAction, setPendingMcpOAuthAction] = useState<string | null>(null);
+  const [showMcpImportModal, setShowMcpImportModal] = useState(false);
+  const [mcpImportJsonText, setMcpImportJsonText] = useState('');
+  const [isImportingMcpServers, setIsImportingMcpServers] = useState(false);
+  const [isExportingMcpServers, setIsExportingMcpServers] = useState(false);
+  const [chatGptWebAuthStatus, setChatGptWebAuthStatus] = useState<ChatGptWebAuthStatus | null>(null);
+  const [pendingChatGptWebAuthAction, setPendingChatGptWebAuthAction] = useState<'login' | 'logout' | null>(null);
 
   // Model picker state
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
@@ -296,6 +939,10 @@ export default function SettingsScreen({ navigation }: any) {
 
   // Preset picker state
   const [showPresetPicker, setShowPresetPicker] = useState(false);
+  const [showPresetEditor, setShowPresetEditor] = useState(false);
+  const [presetEditorMode, setPresetEditorMode] = useState<ModelPresetEditorMode>('create');
+  const [presetDraft, setPresetDraft] = useState<ModelPresetDraft>(EMPTY_MODEL_PRESET_DRAFT);
+  const [isSavingPreset, setIsSavingPreset] = useState(false);
 
   // TTS voice/model picker state
   const [showTtsVoicePicker, setShowTtsVoicePicker] = useState(false);
@@ -305,24 +952,31 @@ export default function SettingsScreen({ navigation }: any) {
   const [customModelDraft, setCustomModelDraft] = useState('');
   const modelUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const routeInitialSettingsSection = isAppShellMobileSettingsSectionId(route?.params?.initialSection)
+    ? route.params.initialSection
+    : null;
+  const isDesktopSettingsLayout = resolveAppShellLayout(width) === 'desktop';
+  const [activeDesktopSettingsNavItemId, setActiveDesktopSettingsNavItemId] = useState<AppShellSettingsNavItemId>(
+    routeInitialSettingsSection
+      ? getAppShellDesktopSettingsNavItemIdForMobileSection(routeInitialSettingsSection)
+      : 'general',
+  );
+  const activeDesktopSettingsSectionIds = useMemo(
+    () => new Set(getAppShellMobileSettingsSectionIdsForDesktopNavItem(activeDesktopSettingsNavItemId)),
+    [activeDesktopSettingsNavItemId],
+  );
+
+  useEffect(() => {
+    if (!routeInitialSettingsSection) return;
+    setActiveDesktopSettingsNavItemId(
+      getAppShellDesktopSettingsNavItemIdForMobileSection(routeInitialSettingsSection),
+    );
+  }, [routeInitialSettingsSection]);
+
   // Collapsible section state - all new sections start collapsed
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    providerSelection: false, // Provider selection section
-    profileModel: true,  // Keep profile/model expanded by default since it was already visible
-    mcpServers: true,    // Keep MCP servers expanded by default since it was already visible
-    streamerMode: false,
-    speechToText: false,
-    textToSpeech: true,
-    agentSettings: false,
-    summarization: false,
-    toolExecution: false,
-    whatsapp: false,
-    langfuse: false,
-    skills: false,
-    knowledgeNotes: false,
-    agents: false,
-    agentLoops: false,
-  });
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(
+    getAppShellMobileSettingsInitialExpandedState,
+  );
 
   // Debounced input state for string/number fields
   const [inputDrafts, setInputDrafts] = useState<Record<string, string>>({});
@@ -425,6 +1079,48 @@ export default function SettingsScreen({ navigation }: any) {
     return null;
   }, [config.baseUrl, config.apiKey]);
 
+  const refreshMcpOAuthStatuses = useCallback(async (servers: MCPServer[]) => {
+    if (!settingsClient || servers.length === 0) {
+      setMcpOAuthStatus({});
+      return;
+    }
+
+    const entries = await Promise.all(
+      servers.map(async (server) => {
+        try {
+          return [server.name, await settingsClient.getMcpOAuthStatus(server.name)] as const;
+        } catch (error: any) {
+          return [
+            server.name,
+            {
+              configured: false,
+              authenticated: false,
+              error: error?.message || 'Failed to load OAuth status',
+            },
+          ] as const;
+        }
+      }),
+    );
+    setMcpOAuthStatus(Object.fromEntries(entries));
+  }, [settingsClient]);
+
+  const refreshChatGptWebAuthStatus = useCallback(async () => {
+    if (!settingsClient) {
+      setChatGptWebAuthStatus(null);
+      return null;
+    }
+
+    try {
+      const status = await settingsClient.getChatGptWebAuthStatus();
+      setChatGptWebAuthStatus(status);
+      return status;
+    } catch (error) {
+      console.warn('[Settings] Failed to load ChatGPT Web auth status:', error);
+      setChatGptWebAuthStatus(null);
+      return null;
+    }
+  }, [settingsClient]);
+
   // Clear pending model update timeout when settingsClient changes
   // to prevent sending updates to the previous server
   useEffect(() => {
@@ -439,6 +1135,8 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) {
       setProfiles([]);
       setMcpServers([]);
+      setMcpOAuthStatus({});
+      setChatGptWebAuthStatus(null);
       setRemoteSettings(null);
       setIsDotAgentsServer(false);
       return;
@@ -464,6 +1162,7 @@ export default function SettingsScreen({ navigation }: any) {
       }
       if (serversRes) {
         setMcpServers(serversRes.servers);
+        void refreshMcpOAuthStatuses(serversRes.servers);
         successCount++;
       }
       if (settingsRes) {
@@ -472,12 +1171,39 @@ export default function SettingsScreen({ navigation }: any) {
         // not on optimistic local updates, to avoid overwriting user's typing)
         setInputDrafts({
           sttLanguage: settingsRes.sttLanguage || '',
+          openaiSttLanguage: settingsRes.openaiSttLanguage || '',
+          openaiSttModel: settingsRes.openaiSttModel || '',
+          groqSttLanguage: settingsRes.groqSttLanguage || '',
+          groqSttModel: settingsRes.groqSttModel || '',
+          groqSttPrompt: settingsRes.groqSttPrompt || '',
           transcriptPostProcessingPrompt: settingsRes.transcriptPostProcessingPrompt || '',
+          transcriptPostProcessingOpenaiModel: settingsRes.transcriptPostProcessingOpenaiModel || '',
+          transcriptPostProcessingGroqModel: settingsRes.transcriptPostProcessingGroqModel || '',
+          transcriptPostProcessingGeminiModel: settingsRes.transcriptPostProcessingGeminiModel || '',
+          transcriptPostProcessingChatgptWebModel: settingsRes.transcriptPostProcessingChatgptWebModel || '',
           mcpMaxIterations: String(settingsRes.mcpMaxIterations ?? 10),
-          whatsappAllowFrom: (settingsRes.whatsappAllowFrom || []).join(', '),
+          mcpAutoPasteDelay: String(settingsRes.mcpAutoPasteDelay ?? DEFAULT_MCP_AUTO_PASTE_DELAY),
+          maxConversationsToKeep: String(settingsRes.maxConversationsToKeep ?? DEFAULT_MAX_CONVERSATIONS_TO_KEEP),
+          whatsappAllowFrom: formatConfigListInput(settingsRes.whatsappAllowFrom),
+          discordBotToken: settingsRes.discordBotToken === SECRET_MASK ? '' : (settingsRes.discordBotToken || ''),
+          discordAllowUserIds: formatConfigListInput(settingsRes.discordAllowUserIds, { separator: 'newline' }),
+          discordAllowGuildIds: formatConfigListInput(settingsRes.discordAllowGuildIds, { separator: 'newline' }),
+          discordAllowChannelIds: formatConfigListInput(settingsRes.discordAllowChannelIds, { separator: 'newline' }),
+          discordAllowRoleIds: formatConfigListInput(settingsRes.discordAllowRoleIds, { separator: 'newline' }),
+          discordDmAllowUserIds: formatConfigListInput(settingsRes.discordDmAllowUserIds, { separator: 'newline' }),
+          openaiApiKey: settingsRes.openaiApiKey === SECRET_MASK ? '' : (settingsRes.openaiApiKey || ''),
+          openaiBaseUrl: settingsRes.openaiBaseUrl || '',
+          groqApiKey: settingsRes.groqApiKey === SECRET_MASK ? '' : (settingsRes.groqApiKey || ''),
+          groqBaseUrl: settingsRes.groqBaseUrl || '',
+          geminiApiKey: settingsRes.geminiApiKey === SECRET_MASK ? '' : (settingsRes.geminiApiKey || ''),
+          geminiBaseUrl: settingsRes.geminiBaseUrl || '',
+          chatgptWebAccessToken: settingsRes.chatgptWebAccessToken === SECRET_MASK ? '' : (settingsRes.chatgptWebAccessToken || ''),
+          chatgptWebSessionToken: settingsRes.chatgptWebSessionToken === SECRET_MASK ? '' : (settingsRes.chatgptWebSessionToken || ''),
+          chatgptWebBaseUrl: settingsRes.chatgptWebBaseUrl || '',
           langfusePublicKey: settingsRes.langfusePublicKey || '',
-          langfuseSecretKey: settingsRes.langfuseSecretKey === '••••••••' ? '' : (settingsRes.langfuseSecretKey || ''),
+          langfuseSecretKey: settingsRes.langfuseSecretKey === SECRET_MASK ? '' : (settingsRes.langfuseSecretKey || ''),
           langfuseBaseUrl: settingsRes.langfuseBaseUrl || '',
+          localTraceLogPath: settingsRes.localTraceLogPath || '',
         });
         successCount++;
       }
@@ -485,6 +1211,9 @@ export default function SettingsScreen({ navigation }: any) {
       // Consider it a DotAgents server if at least one endpoint succeeded
       // This gates the Desktop Settings section for non-DotAgents endpoints (e.g., OpenAI)
       setIsDotAgentsServer(successCount > 0);
+      if (successCount > 0) {
+        void refreshChatGptWebAuthStatus();
+      }
 
       // Show error if any endpoint failed but at least one succeeded
       if (errors.length > 0 && successCount > 0) {
@@ -500,7 +1229,7 @@ export default function SettingsScreen({ navigation }: any) {
     } finally {
       setIsLoadingRemote(false);
     }
-  }, [settingsClient]);
+  }, [refreshChatGptWebAuthStatus, refreshMcpOAuthStatuses, settingsClient]);
 
   // Fetch skills from desktop
   const fetchSkills = useCallback(async () => {
@@ -521,14 +1250,14 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
     setIsLoadingKnowledgeNotes(true);
     try {
-      const res = await settingsClient.getKnowledgeNotes();
+      const res = await settingsClient.getKnowledgeNotes(knowledgeNoteFilterRequest);
       setKnowledgeNotes(res.notes);
     } catch (error: any) {
       console.error('[Settings] Failed to fetch knowledge notes:', error);
     } finally {
       setIsLoadingKnowledgeNotes(false);
     }
-  }, [settingsClient]);
+  }, [settingsClient, knowledgeNoteFilterRequest]);
 
   // Fetch agent profiles from desktop
   const fetchAgentProfiles = useCallback(async () => {
@@ -543,6 +1272,21 @@ export default function SettingsScreen({ navigation }: any) {
       setIsLoadingAgentProfiles(false);
     }
   }, [settingsClient]);
+
+  const handleAgentProfilesReload = useCallback(async () => {
+    if (!settingsClient || isReloadingAgentProfiles) return;
+    setIsReloadingAgentProfiles(true);
+    try {
+      const res = await settingsClient.reloadAgentProfiles();
+      setAgentProfiles(res.profiles);
+      setSaveStatusMessage('Agent profile files rescanned.');
+    } catch (error: any) {
+      console.error('[Settings] Failed to reload agent profiles:', error);
+      setRemoteError(error.message || 'Failed to reload agent profile files');
+    } finally {
+      setIsReloadingAgentProfiles(false);
+    }
+  }, [isReloadingAgentProfiles, settingsClient]);
 
   // Fetch loops from desktop
   const fetchLoops = useCallback(async () => {
@@ -574,6 +1318,45 @@ export default function SettingsScreen({ navigation }: any) {
       fetchLoops();
     }
   }, [settingsClient, isDotAgentsServer, fetchSkills, fetchKnowledgeNotes, fetchAgentProfiles, fetchLoops]);
+
+  useEffect(() => {
+    setSelectedKnowledgeNoteIds(new Set());
+  }, [trimmedKnowledgeNoteSearchQuery, knowledgeNoteContextFilter, knowledgeNoteDateFilter, knowledgeNoteSortOption]);
+
+  useEffect(() => {
+    if (!settingsClient || !isDotAgentsServer) return;
+    if (!trimmedKnowledgeNoteSearchQuery) {
+      setKnowledgeNoteSearchResults([]);
+      setIsSearchingKnowledgeNotes(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsSearchingKnowledgeNotes(true);
+    const timeout = setTimeout(() => {
+      settingsClient.searchKnowledgeNotes({
+        ...knowledgeNoteFilterRequest,
+        query: trimmedKnowledgeNoteSearchQuery,
+        limit: 100,
+      })
+        .then((res) => {
+          if (!cancelled) setKnowledgeNoteSearchResults(res.notes);
+        })
+        .catch((error: any) => {
+          if (!cancelled) {
+            console.error('[Settings] Failed to search knowledge notes:', error);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setIsSearchingKnowledgeNotes(false);
+        });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [settingsClient, isDotAgentsServer, trimmedKnowledgeNoteSearchQuery, knowledgeNoteFilterRequest]);
 
   // Refresh key remote data when returning from nested screens (e.g. agent editor)
   useEffect(() => {
@@ -615,6 +1398,7 @@ export default function SettingsScreen({ navigation }: any) {
       // Refresh MCP servers and skills as they may have changed with the profile
       const serversRes = await settingsClient.getMCPServers();
       setMcpServers(serversRes.servers);
+      void refreshMcpOAuthStatuses(serversRes.servers);
       // Skills enabledForProfile is profile-specific, so refetch after switch
       if (isDotAgentsServer) {
         fetchSkills();
@@ -673,6 +1457,152 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const shareBundleExport = useCallback(async () => {
+    if (!settingsClient || isExportingBundle) return;
+
+    setIsExportingBundle(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportBundle({ name: 'DotAgents Bundle' });
+      const itemCount =
+        result.bundle.agentProfiles.length
+        + result.bundle.mcpServers.length
+        + result.bundle.skills.length
+        + result.bundle.repeatTasks.length
+        + result.bundle.knowledgeNotes.length;
+      await Share.share({
+        message: result.bundleJson,
+        title: `${result.bundle.manifest.name}.dotagents`,
+      });
+      setSaveStatusMessage(`Exported bundle with ${itemCount} item${itemCount === 1 ? '' : 's'}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export bundle:', error);
+      Alert.alert('Export Failed', error.message || 'Failed to export bundle');
+    } finally {
+      setIsExportingBundle(false);
+    }
+  }, [isExportingBundle, settingsClient]);
+
+  const handleBundleExport = useCallback(() => {
+    if (!settingsClient || isExportingBundle) return;
+
+    const message = 'Bundles can include agents, MCP servers, skills, tasks, and knowledge notes. Review the JSON before sharing it.';
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (confirmFn?.(`Export DotAgents Bundle\n\n${message}`)) {
+        void shareBundleExport();
+      }
+      return;
+    }
+
+    Alert.alert('Export DotAgents Bundle', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Export', onPress: () => { void shareBundleExport(); } },
+    ]);
+  }, [isExportingBundle, settingsClient, shareBundleExport]);
+
+  const closeBundleImportModal = useCallback(() => {
+    if (isPreviewingBundleImport || isImportingBundle) return;
+    setShowBundleImportModal(false);
+    setBundleImportJsonText('');
+    setBundleImportPreview(null);
+    setBundleImportConflictStrategy('skip');
+    setBundleImportComponents(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+  }, [isImportingBundle, isPreviewingBundleImport]);
+
+  const handleBundleImportJsonChange = useCallback((value: string) => {
+    setBundleImportJsonText(value);
+    setBundleImportPreview(null);
+  }, []);
+
+  const handleBundleImportComponentToggle = useCallback((key: BundleComponentKey, value: boolean) => {
+    setBundleImportComponents(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleBundleImportPreview = useCallback(async () => {
+    if (!settingsClient || !bundleImportJsonText.trim()) return;
+
+    try {
+      JSON.parse(bundleImportJsonText.trim());
+    } catch {
+      Alert.alert('Preview Failed', 'Bundle JSON is invalid');
+      return;
+    }
+
+    setIsPreviewingBundleImport(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.previewBundleImport({ bundleJson: bundleImportJsonText.trim() });
+      setBundleImportPreview(result.preview);
+      const components = result.preview.bundle.manifest.components;
+      const itemCount = components.agentProfiles + components.mcpServers + components.skills + components.repeatTasks + components.knowledgeNotes;
+      setSaveStatusMessage(`Previewed bundle with ${itemCount} item${itemCount === 1 ? '' : 's'}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to preview bundle import:', error);
+      Alert.alert('Preview Failed', error.message || 'Failed to preview bundle');
+    } finally {
+      setIsPreviewingBundleImport(false);
+    }
+  }, [bundleImportJsonText, settingsClient]);
+
+  const refreshAfterBundleImport = useCallback(async () => {
+    const refreshes: Promise<void>[] = [fetchRemoteSettings()];
+    if (isDotAgentsServer) {
+      refreshes.push(fetchSkills(), fetchKnowledgeNotes(), fetchAgentProfiles(), fetchLoops());
+    }
+    await Promise.allSettled(refreshes);
+  }, [fetchAgentProfiles, fetchKnowledgeNotes, fetchLoops, fetchRemoteSettings, fetchSkills, isDotAgentsServer]);
+
+  const handleBundleImport = useCallback(async () => {
+    if (!settingsClient || !bundleImportJsonText.trim()) return;
+    if (!Object.values(bundleImportComponents).some(Boolean)) {
+      Alert.alert('Import Failed', 'Select at least one bundle component to import');
+      return;
+    }
+
+    setIsImportingBundle(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importBundle({
+        bundleJson: bundleImportJsonText.trim(),
+        conflictStrategy: bundleImportConflictStrategy,
+        components: bundleImportComponents,
+      });
+
+      if (!result.success) {
+        throw new Error(result.errors.join(', ') || 'Import failed');
+      }
+
+      const importedCount = [
+        ...result.agentProfiles,
+        ...result.mcpServers,
+        ...result.skills,
+        ...result.repeatTasks,
+        ...result.knowledgeNotes,
+      ].filter(item => item.action !== 'skipped').length;
+
+      setShowBundleImportModal(false);
+      setBundleImportJsonText('');
+      setBundleImportPreview(null);
+      setBundleImportConflictStrategy('skip');
+      setBundleImportComponents(DEFAULT_BUNDLE_IMPORT_COMPONENTS);
+      setSaveStatusMessage(`Imported ${importedCount} bundle item${importedCount === 1 ? '' : 's'}`);
+      await refreshAfterBundleImport();
+      Alert.alert('Import Complete', `Imported ${importedCount} item${importedCount === 1 ? '' : 's'} from the bundle.`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to import bundle:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import bundle');
+    } finally {
+      setIsImportingBundle(false);
+    }
+  }, [
+    bundleImportComponents,
+    bundleImportConflictStrategy,
+    bundleImportJsonText,
+    refreshAfterBundleImport,
+    settingsClient,
+  ]);
+
   // Handle MCP server toggle
   const handleServerToggle = async (serverName: string, enabled: boolean) => {
     if (!settingsClient) return;
@@ -680,9 +1610,7 @@ export default function SettingsScreen({ navigation }: any) {
     try {
       await settingsClient.toggleMCPServer(serverName, enabled);
       // Update local state optimistically
-      setMcpServers(prev => prev.map(s =>
-        s.name === serverName ? { ...s, enabled, runtimeEnabled: enabled } : s
-      ));
+      setMcpServers(prev => setMcpServerRuntimeEnabledInList(prev, serverName, enabled));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle server:', error);
       setRemoteError(error.message || 'Failed to toggle server');
@@ -690,6 +1618,224 @@ export default function SettingsScreen({ navigation }: any) {
       fetchRemoteSettings();
     }
   };
+
+  const handleMcpOAuthStart = useCallback(async (serverName: string) => {
+    if (!settingsClient || pendingMcpOAuthAction) return;
+
+    setPendingMcpOAuthAction(`${serverName}:start`);
+    setRemoteError(null);
+    try {
+      await settingsClient.initiateMcpOAuthFlow(serverName);
+      setSaveStatusMessage(`Started OAuth for ${serverName}`);
+      await refreshMcpOAuthStatuses(mcpServers);
+    } catch (error: any) {
+      console.error('[Settings] Failed to start MCP OAuth:', error);
+      setRemoteError(error.message || 'Failed to start MCP OAuth');
+    } finally {
+      setPendingMcpOAuthAction(null);
+    }
+  }, [mcpServers, pendingMcpOAuthAction, refreshMcpOAuthStatuses, settingsClient]);
+
+  const handleMcpOAuthRevoke = useCallback(async (serverName: string) => {
+    if (!settingsClient || pendingMcpOAuthAction) return;
+
+    setPendingMcpOAuthAction(`${serverName}:revoke`);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.revokeMcpOAuthTokens(serverName);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to revoke MCP OAuth');
+      }
+      setSaveStatusMessage(`Revoked OAuth for ${serverName}`);
+      await refreshMcpOAuthStatuses(mcpServers);
+    } catch (error: any) {
+      console.error('[Settings] Failed to revoke MCP OAuth:', error);
+      setRemoteError(error.message || 'Failed to revoke MCP OAuth');
+    } finally {
+      setPendingMcpOAuthAction(null);
+    }
+  }, [mcpServers, pendingMcpOAuthAction, refreshMcpOAuthStatuses, settingsClient]);
+
+  const openMcpServerCreateEditor = useCallback(() => {
+    setMcpServerEditorMode('create');
+    setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+    setShowMcpServerEditor(true);
+  }, []);
+
+  const openMcpServerEditEditor = useCallback(async (server: MCPServer) => {
+    if (!settingsClient) return;
+    setMcpServerEditorMode('edit');
+    setMcpServerDraft({ ...EMPTY_MCP_SERVER_DRAFT, name: server.name, disabled: !!server.configDisabled });
+    setShowMcpServerEditor(true);
+    setIsLoadingMcpServerConfig(true);
+    try {
+      const response = await settingsClient.getMCPServerConfig(server.name);
+      setMcpServerDraft(createMcpServerDraft(response.name, response.config));
+    } catch (error: any) {
+      console.error('[Settings] Failed to load MCP server config:', error);
+      setRemoteError(error.message || 'Failed to load MCP server config');
+    } finally {
+      setIsLoadingMcpServerConfig(false);
+    }
+  }, [settingsClient]);
+
+  const closeMcpServerEditor = useCallback(() => {
+    if (isSavingMcpServer) return;
+    setShowMcpServerEditor(false);
+    setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+    setRemoteError(null);
+  }, [isSavingMcpServer]);
+
+  const handleMcpServerDraftChange = useCallback(<K extends keyof McpServerDraft>(key: K, value: McpServerDraft[K]) => {
+    setMcpServerDraft(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleSaveMcpServer = useCallback(async () => {
+    if (!settingsClient || isSavingMcpServer) return;
+
+    const serverName = mcpServerDraft.name.trim();
+    if (!serverName) {
+      Alert.alert('Missing Server Name', 'Enter a name for this MCP server.');
+      return;
+    }
+
+    const existingNames = new Set(mcpServers.map(server => server.name));
+    if (mcpServerEditorMode === 'create' && existingNames.has(serverName)) {
+      Alert.alert('Server Exists', `An MCP server named "${serverName}" already exists.`);
+      return;
+    }
+
+    let config: MCPServerConfig;
+    try {
+      config = buildMcpServerConfigFromDraft(mcpServerDraft);
+    } catch (error: any) {
+      Alert.alert('Invalid MCP Server', error?.message || 'Check the MCP server fields and try again.');
+      return;
+    }
+
+    setIsSavingMcpServer(true);
+    try {
+      const response = await settingsClient.upsertMCPServerConfig(serverName, config);
+      setMcpServers(prev => upsertMcpServerInList(prev, response.server));
+      void refreshMcpOAuthStatuses(upsertMcpServerInList(mcpServers, response.server));
+      setSaveStatusMessage(mcpServerEditorMode === 'create' ? 'MCP server added' : 'MCP server saved');
+      setShowMcpServerEditor(false);
+      setMcpServerDraft(EMPTY_MCP_SERVER_DRAFT);
+    } catch (error: any) {
+      console.error('[Settings] Failed to save MCP server:', error);
+      Alert.alert('Save Failed', error.message || 'Failed to save MCP server');
+    } finally {
+      setIsSavingMcpServer(false);
+    }
+  }, [isSavingMcpServer, mcpServerDraft, mcpServerEditorMode, mcpServers, refreshMcpOAuthStatuses, settingsClient]);
+
+  const handleDeleteMcpServer = useCallback((server: MCPServer) => {
+    if (!settingsClient) return;
+    const deleteServer = async () => {
+      try {
+        await settingsClient.deleteMCPServerConfig(server.name);
+        setMcpServers(prev => removeMcpServerFromList(prev, server.name));
+        setMcpOAuthStatus(prev => {
+          const { [server.name]: _removed, ...next } = prev;
+          return next;
+        });
+        setSaveStatusMessage('MCP server deleted');
+      } catch (error: any) {
+        console.error('[Settings] Failed to delete MCP server:', error);
+        Alert.alert('Delete Failed', error.message || 'Failed to delete MCP server');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (confirmFn?.(`Delete MCP Server\n\nDelete "${server.name}" from the desktop MCP configuration?`)) {
+        void deleteServer();
+      }
+      return;
+    }
+
+    Alert.alert('Delete MCP Server', `Delete "${server.name}" from the desktop MCP configuration?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => { void deleteServer(); } },
+    ]);
+  }, [settingsClient]);
+
+  const closeMcpImportModal = useCallback(() => {
+    if (isImportingMcpServers) return;
+    setShowMcpImportModal(false);
+    setMcpImportJsonText('');
+  }, [isImportingMcpServers]);
+
+  const handleMcpServerImport = useCallback(async () => {
+    if (!settingsClient || !mcpImportJsonText.trim() || isImportingMcpServers) return;
+
+    let importConfig: MCPConfig;
+    try {
+      importConfig = parseMcpConfigImport(mcpImportJsonText);
+    } catch (error: any) {
+      Alert.alert('Import Failed', error.message || 'Invalid MCP import JSON');
+      return;
+    }
+
+    setIsImportingMcpServers(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importMCPServerConfigs(importConfig);
+      setShowMcpImportModal(false);
+      setMcpImportJsonText('');
+      const serversRes = await settingsClient.getMCPServers();
+      setMcpServers(serversRes.servers);
+      void refreshMcpOAuthStatuses(serversRes.servers);
+      setSaveStatusMessage(`Imported ${result.importedCount} MCP server${result.importedCount === 1 ? '' : 's'}`);
+      if (result.skippedReservedServerNames.length > 0) {
+        Alert.alert('Import Complete', `Imported ${result.importedCount} MCP server${result.importedCount === 1 ? '' : 's'}. Skipped reserved servers: ${result.skippedReservedServerNames.join(', ')}`);
+      }
+    } catch (error: any) {
+      console.error('[Settings] Failed to import MCP servers:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import MCP servers');
+    } finally {
+      setIsImportingMcpServers(false);
+    }
+  }, [isImportingMcpServers, mcpImportJsonText, refreshMcpOAuthStatuses, settingsClient]);
+
+  const shareMcpServerExport = useCallback(async () => {
+    if (!settingsClient || isExportingMcpServers) return;
+
+    setIsExportingMcpServers(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportMCPServerConfigs();
+      const serverCount = Object.keys(result.config.mcpServers || {}).length;
+      await Share.share({
+        message: JSON.stringify(result.config, null, 2),
+        title: 'mcp-servers.json',
+      });
+      setSaveStatusMessage(`Exported ${serverCount} MCP server${serverCount === 1 ? '' : 's'}`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export MCP servers:', error);
+      Alert.alert('Export Failed', error.message || 'Failed to export MCP servers');
+    } finally {
+      setIsExportingMcpServers(false);
+    }
+  }, [isExportingMcpServers, settingsClient]);
+
+  const handleMcpServerExport = useCallback(() => {
+    if (!settingsClient || isExportingMcpServers) return;
+
+    const message = 'MCP configs can include headers or environment values. Review the exported JSON before sharing it.';
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as { confirm?: (text?: string) => boolean }).confirm;
+      if (confirmFn?.(`Export MCP Servers\n\n${message}`)) {
+        void shareMcpServerExport();
+      }
+      return;
+    }
+
+    Alert.alert('Export MCP Servers', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Export', onPress: () => { void shareMcpServerExport(); } },
+    ]);
+  }, [isExportingMcpServers, settingsClient, shareMcpServerExport]);
 
   // Handle remote settings toggle
   const handleRemoteSettingToggle = async (key: keyof Settings, value: boolean) => {
@@ -734,6 +1880,54 @@ export default function SettingsScreen({ navigation }: any) {
     }, 1000);
   }, [clearRemotePending, fetchRemoteSettings, markRemotePending, settingsClient]);
 
+  const handleRemoteSecretDraftChange = useCallback((key: ProviderSecretSettingKey | 'discordBotToken' | 'langfuseSecretKey', value: string) => {
+    setInputDrafts(prev => ({ ...prev, [key]: value }));
+    markRemotePending(key);
+    setSaveStatusMessage(null);
+  }, [markRemotePending]);
+
+  const commitRemoteSecretDraft = useCallback(async (key: ProviderSecretSettingKey | 'discordBotToken' | 'langfuseSecretKey') => {
+    if (!settingsClient || !pendingRemoteSaveKeys.includes(key)) return;
+    const value = inputDrafts[key] ?? '';
+
+    try {
+      await settingsClient.updateSettings({ [key]: value });
+      setRemoteSettings(prev => prev ? { ...prev, [key]: value ? SECRET_MASK : '' } : null);
+      setInputDrafts(prev => ({ ...prev, [key]: '' }));
+      clearRemotePending(key);
+    } catch (error: any) {
+      console.error(`[Settings] Failed to update ${key}:`, error);
+      setRemoteError(error.message || `Failed to update ${key}`);
+      fetchRemoteSettings();
+    }
+  }, [clearRemotePending, fetchRemoteSettings, inputDrafts, pendingRemoteSaveKeys, settingsClient]);
+
+  const handleRemoteListSettingUpdate = useCallback((key: DiscordListSettingKey, value: string) => {
+    const parsedValues = parseConfigListInput(value, { unique: true });
+    setInputDrafts(prev => ({ ...prev, [key]: value }));
+    setRemoteSettings(prev => prev ? { ...prev, [key]: parsedValues } : null);
+    markRemotePending(key);
+    setSaveStatusMessage(null);
+
+    if (inputTimeoutRefs.current[key]) {
+      clearTimeout(inputTimeoutRefs.current[key]);
+    }
+
+    inputTimeoutRefs.current[key] = setTimeout(async () => {
+      if (!settingsClient) return;
+
+      try {
+        await settingsClient.updateSettings({ [key]: parsedValues });
+        clearRemotePending(key);
+        delete inputTimeoutRefs.current[key];
+      } catch (error: any) {
+        console.error(`[Settings] Failed to update ${key}:`, error);
+        setRemoteError(error.message || `Failed to update ${key}`);
+        fetchRemoteSettings();
+      }
+    }, 1000);
+  }, [clearRemotePending, fetchRemoteSettings, markRemotePending, settingsClient]);
+
   // Cleanup input timeouts on unmount
   useEffect(() => {
     return () => {
@@ -745,6 +1939,15 @@ export default function SettingsScreen({ navigation }: any) {
   const toggleSection = useCallback((section: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  }, []);
+
+  const activateDesktopSettingsNavItem = useCallback((itemId: AppShellSettingsNavItemId) => {
+    setActiveDesktopSettingsNavItemId(itemId);
+    const sections = getAppShellMobileSettingsSectionIdsForDesktopNavItem(itemId);
+    setExpandedSections((prev) => ({
+      ...prev,
+      ...Object.fromEntries(sections.map((section) => [section, true])),
+    }));
   }, []);
 
   // Handle skill toggle for current profile
@@ -761,6 +1964,13 @@ export default function SettingsScreen({ navigation }: any) {
       Alert.alert('Error', 'Failed to toggle skill');
     }
   };
+
+  const handleSkillEdit = useCallback((skill?: Skill) => {
+    navigation.navigate('SkillEdit', {
+      skillId: skill?.id,
+      skill,
+    });
+  }, [navigation]);
 
   const confirmDestructiveAction = useCallback(
     (title: string, message: string, onConfirm: () => Promise<void> | void, confirmLabel: string = 'Delete') => {
@@ -789,37 +1999,294 @@ export default function SettingsScreen({ navigation }: any) {
     []
   );
 
+  const toggleSkillSelection = useCallback((skillId: string) => {
+    setSelectedSkillIds(prev => {
+      const next = new Set(prev);
+      if (next.has(skillId)) {
+        next.delete(skillId);
+      } else {
+        next.add(skillId);
+      }
+      return next;
+    });
+  }, []);
+
+  const closeSkillImportModal = useCallback(() => {
+    if (isImportingSkillMarkdown) return;
+    setShowSkillImportModal(false);
+    setSkillImportMarkdownText('');
+  }, [isImportingSkillMarkdown]);
+
+  const closeSkillGitHubImportModal = useCallback(() => {
+    if (isImportingSkillGitHub) return;
+    setShowSkillGitHubImportModal(false);
+    setSkillGitHubImportText('');
+  }, [isImportingSkillGitHub]);
+
+  const handleSkillMarkdownImport = useCallback(async () => {
+    if (!settingsClient || isImportingSkillMarkdown || !skillImportMarkdownText.trim()) return;
+
+    setIsImportingSkillMarkdown(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importSkillFromMarkdown(skillImportMarkdownText.trim());
+      setShowSkillImportModal(false);
+      setSkillImportMarkdownText('');
+      setSaveStatusMessage(`Imported skill "${result.skill.name}"`);
+      await fetchSkills();
+    } catch (error: any) {
+      console.error('[Settings] Failed to import skill from Markdown:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import skill');
+    } finally {
+      setIsImportingSkillMarkdown(false);
+    }
+  }, [fetchSkills, isImportingSkillMarkdown, settingsClient, skillImportMarkdownText]);
+
+  const handleSkillGitHubImport = useCallback(async () => {
+    if (!settingsClient || isImportingSkillGitHub || !skillGitHubImportText.trim()) return;
+
+    setIsImportingSkillGitHub(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importSkillFromGitHub(skillGitHubImportText.trim());
+      setShowSkillGitHubImportModal(false);
+      setSkillGitHubImportText('');
+      setSaveStatusMessage(`Imported ${result.imported.length} skill${result.imported.length === 1 ? '' : 's'} from GitHub`);
+      if (result.errors.length > 0) {
+        Alert.alert('Import Finished With Errors', result.errors.join('\n'));
+      }
+      await fetchSkills();
+    } catch (error: any) {
+      console.error('[Settings] Failed to import skill from GitHub:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import skills from GitHub');
+    } finally {
+      setIsImportingSkillGitHub(false);
+    }
+  }, [fetchSkills, isImportingSkillGitHub, settingsClient, skillGitHubImportText]);
+
+  const handleSkillMarkdownExport = useCallback(async (skill: Skill) => {
+    if (!settingsClient || isExportingSkillMarkdownId) return;
+
+    setIsExportingSkillMarkdownId(skill.id);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportSkillToMarkdown(skill.id);
+      await Share.share({
+        message: result.markdown,
+        title: `${skill.name}.md`,
+      });
+      setSaveStatusMessage(`Exported skill "${skill.name}"`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export skill:', error);
+      Alert.alert('Export Failed', error.message || 'Failed to export skill');
+    } finally {
+      setIsExportingSkillMarkdownId(null);
+    }
+  }, [isExportingSkillMarkdownId, settingsClient]);
+
+  const handleSelectedSkillsDelete = useCallback(() => {
+    if (!settingsClient || visibleSelectedSkillIds.length === 0) return;
+
+    const count = visibleSelectedSkillIds.length;
+    confirmDestructiveAction(
+      `Delete ${count} skill${count === 1 ? '' : 's'}`,
+      'Deleted skills are moved to the local .agents backup folder when possible.',
+      async () => {
+        try {
+          const result = await settingsClient.deleteSkills(visibleSelectedSkillIds);
+          const deletedIds = new Set(result.results.filter(item => item.success).map(item => item.id));
+          setSelectedSkillIds(prev => new Set(Array.from(prev).filter(id => !deletedIds.has(id))));
+          setSaveStatusMessage(`Deleted ${result.deletedCount} skill${result.deletedCount === 1 ? '' : 's'}`);
+          await fetchSkills();
+          const failed = result.results.filter(item => !item.success);
+          if (failed.length > 0) {
+            Alert.alert('Delete Finished With Errors', failed.map(item => `${item.id}: ${item.error || 'Failed'}`).join('\n'));
+          }
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete selected skills:', error);
+          Alert.alert('Delete Failed', error.message || 'Failed to delete selected skills');
+        }
+      }
+    );
+  }, [confirmDestructiveAction, fetchSkills, settingsClient, visibleSelectedSkillIds]);
+
+  const handleChatGptWebOAuthLogin = useCallback(async () => {
+    if (!settingsClient || pendingChatGptWebAuthAction) return;
+
+    setPendingChatGptWebAuthAction('login');
+    setRemoteError(null);
+    setSaveStatusMessage(null);
+    try {
+      const result = await settingsClient.loginChatGptWebOAuth();
+      if (!result.success) {
+        throw new Error(result.error || result.message || 'Failed to connect OpenAI Codex');
+      }
+      setChatGptWebAuthStatus(result.status);
+      setSaveStatusMessage(result.message);
+    } catch (error: any) {
+      console.error('[Settings] Failed to connect ChatGPT Web OAuth:', error);
+      setRemoteError(error.message || 'Failed to connect OpenAI Codex');
+    } finally {
+      setPendingChatGptWebAuthAction(null);
+    }
+  }, [pendingChatGptWebAuthAction, settingsClient]);
+
+  const handleChatGptWebOAuthLogout = useCallback(() => {
+    if (!settingsClient || pendingChatGptWebAuthAction) return;
+
+    confirmDestructiveAction(
+      'Disconnect OpenAI Codex',
+      'Remove the saved OpenAI Codex OAuth tokens from this desktop app?',
+      async () => {
+        setPendingChatGptWebAuthAction('logout');
+        setRemoteError(null);
+        setSaveStatusMessage(null);
+        try {
+          const result = await settingsClient.logoutChatGptWebOAuth();
+          if (!result.success) {
+            throw new Error(result.error || result.message || 'Failed to disconnect OpenAI Codex');
+          }
+          setChatGptWebAuthStatus(result.status);
+          setSaveStatusMessage(result.message);
+        } catch (error: any) {
+          console.error('[Settings] Failed to disconnect ChatGPT Web OAuth:', error);
+          setRemoteError(error.message || 'Failed to disconnect OpenAI Codex');
+        } finally {
+          setPendingChatGptWebAuthAction(null);
+        }
+      },
+      'Disconnect',
+    );
+  }, [confirmDestructiveAction, pendingChatGptWebAuthAction, settingsClient]);
+
   const handleClearAllChats = useCallback(() => {
+    const hasDesktopConversations = sessionStore.sessions.some(session => !!session.serverConversationId);
     confirmDestructiveAction(
       'Clear All Chats',
-      'Are you sure you want to delete all chats from this mobile app? This cannot be undone.',
+      hasDesktopConversations && settingsClient
+        ? 'Delete all chats from this mobile app and the connected desktop server? This cannot be undone.'
+        : 'Are you sure you want to delete all chats from this mobile app? This cannot be undone.',
       async () => {
-        connectionManager.manager.cleanupAll();
-        await sessionStore.clearAllSessions();
+        try {
+          if (hasDesktopConversations && settingsClient) {
+            await settingsClient.deleteAllConversations();
+          }
+          connectionManager.manager.cleanupAll();
+          await sessionStore.clearAllSessions();
+        } catch (error: any) {
+          Alert.alert('Clear Failed', error?.message || 'Failed to clear chats');
+        }
       },
       'Delete All'
     );
-  }, [confirmDestructiveAction, connectionManager, sessionStore]);
+  }, [confirmDestructiveAction, connectionManager, sessionStore, settingsClient]);
+
+  const toggleKnowledgeNoteSelection = useCallback((noteId: string) => {
+    setSelectedKnowledgeNoteIds(prev => {
+      const next = new Set(prev);
+      if (next.has(noteId)) {
+        next.delete(noteId);
+      } else {
+        next.add(noteId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleKnowledgeNoteSelectVisible = useCallback(() => {
+    setSelectedKnowledgeNoteIds(prev => {
+      const next = new Set(prev);
+      const allVisibleSelected = displayedKnowledgeNotes.length > 0
+        && displayedKnowledgeNotes.every(note => next.has(note.id));
+      displayedKnowledgeNotes.forEach(note => {
+        if (allVisibleSelected) {
+          next.delete(note.id);
+        } else {
+          next.add(note.id);
+        }
+      });
+      return next;
+    });
+  }, [displayedKnowledgeNotes]);
 
   // Handle knowledge note delete
-  const handleKnowledgeNoteDelete = async (noteId: string) => {
+  const handleKnowledgeNoteDelete = useCallback((noteId: string) => {
     if (!settingsClient) return;
     confirmDestructiveAction('Delete Note', 'Are you sure you want to delete this note?', async () => {
       try {
         await settingsClient.deleteKnowledgeNote(noteId);
         setKnowledgeNotes(prev => prev.filter(note => note.id !== noteId));
+        setKnowledgeNoteSearchResults(prev => prev.filter(note => note.id !== noteId));
+        setSelectedKnowledgeNoteIds(prev => {
+          const next = new Set(prev);
+          next.delete(noteId);
+          return next;
+        });
       } catch (error: any) {
         console.error('[Settings] Failed to delete knowledge note:', error);
         Alert.alert('Error', 'Failed to delete note');
       }
     });
-  };
+  }, [confirmDestructiveAction, settingsClient]);
+
+  const handleKnowledgeNoteDeleteMultiple = useCallback(() => {
+    if (!settingsClient || visibleSelectedKnowledgeNoteIds.length === 0) return;
+
+    confirmDestructiveAction(
+      'Delete Notes',
+      `Delete ${visibleSelectedKnowledgeNoteIds.length} selected notes? This cannot be undone.`,
+      async () => {
+        try {
+          await settingsClient.deleteKnowledgeNotes(visibleSelectedKnowledgeNoteIds);
+          const deletedIds = new Set(visibleSelectedKnowledgeNoteIds);
+          setKnowledgeNotes(prev => prev.filter(note => !deletedIds.has(note.id)));
+          setKnowledgeNoteSearchResults(prev => prev.filter(note => !deletedIds.has(note.id)));
+          setSelectedKnowledgeNoteIds(prev => {
+            const next = new Set(prev);
+            visibleSelectedKnowledgeNoteIds.forEach(id => next.delete(id));
+            return next;
+          });
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete selected knowledge notes:', error);
+          Alert.alert('Error', 'Failed to delete selected notes');
+        }
+      }
+    );
+  }, [confirmDestructiveAction, settingsClient, visibleSelectedKnowledgeNoteIds]);
+
+  const handleKnowledgeNoteDeleteAll = useCallback(() => {
+    if (!settingsClient || knowledgeNotes.length === 0) return;
+
+    confirmDestructiveAction(
+      'Delete All Notes',
+      'Delete every knowledge note from the connected desktop? This cannot be undone.',
+      async () => {
+        try {
+          await settingsClient.deleteAllKnowledgeNotes();
+          setKnowledgeNotes([]);
+          setKnowledgeNoteSearchResults([]);
+          setSelectedKnowledgeNoteIds(new Set());
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete all knowledge notes:', error);
+          Alert.alert('Error', 'Failed to delete all notes');
+        }
+      },
+      'Delete All'
+    );
+  }, [confirmDestructiveAction, knowledgeNotes.length, settingsClient]);
 
   const handleKnowledgeNotePromote = useCallback(async (note: KnowledgeNote) => {
     if (!settingsClient || note.context === 'auto') return;
     try {
       await settingsClient.updateKnowledgeNote(note.id, { context: 'auto' });
       setKnowledgeNotes(prev =>
+        prev.map(existing =>
+          existing.id === note.id
+            ? { ...existing, context: 'auto', updatedAt: Date.now() }
+            : existing
+        )
+      );
+      setKnowledgeNoteSearchResults(prev =>
         prev.map(existing =>
           existing.id === note.id
             ? { ...existing, context: 'auto', updatedAt: Date.now() }
@@ -845,9 +2312,7 @@ export default function SettingsScreen({ navigation }: any) {
     if (!settingsClient) return;
     try {
       const res = await settingsClient.toggleAgentProfile(profileId);
-      setAgentProfiles(prev =>
-        prev.map(p => (p.id === profileId ? { ...p, enabled: res.enabled } : p))
-      );
+      setAgentProfiles(prev => setAgentProfileEnabledInList(prev, profileId, res.enabled));
     } catch (error: any) {
       console.error('[Settings] Failed to toggle agent profile:', error);
       Alert.alert('Error', 'Failed to toggle agent profile');
@@ -865,7 +2330,7 @@ export default function SettingsScreen({ navigation }: any) {
     confirmDestructiveAction('Delete Agent', `Are you sure you want to delete "${profile.displayName}"?`, async () => {
       try {
         await settingsClient.deleteAgentProfile(profile.id);
-        setAgentProfiles(prev => prev.filter(p => p.id !== profile.id));
+        setAgentProfiles(prev => removeAgentProfileFromList(prev, profile.id));
       } catch (error: any) {
         console.error('[Settings] Failed to delete agent profile:', error);
         Alert.alert('Error', error.message || 'Failed to delete agent profile');
@@ -885,6 +2350,52 @@ export default function SettingsScreen({ navigation }: any) {
       loop,
     });
   }, [navigation]);
+
+  const closeLoopImportModal = useCallback(() => {
+    if (isImportingLoopMarkdown) return;
+    setShowLoopImportModal(false);
+    setLoopImportMarkdownText('');
+  }, [isImportingLoopMarkdown]);
+
+  const handleLoopMarkdownImport = useCallback(async () => {
+    if (!settingsClient || isImportingLoopMarkdown || !loopImportMarkdownText.trim()) return;
+
+    setIsImportingLoopMarkdown(true);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.importLoopFromMarkdown(loopImportMarkdownText.trim());
+      setShowLoopImportModal(false);
+      setLoopImportMarkdownText('');
+      setSaveStatusMessage(`Imported loop "${result.loop.name}"`);
+      await fetchLoops();
+      Alert.alert('Import Complete', `Imported "${result.loop.name}".`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to import loop Markdown:', error);
+      Alert.alert('Import Failed', error.message || 'Failed to import loop');
+    } finally {
+      setIsImportingLoopMarkdown(false);
+    }
+  }, [fetchLoops, isImportingLoopMarkdown, loopImportMarkdownText, settingsClient]);
+
+  const handleLoopMarkdownExport = useCallback(async (loop: Loop) => {
+    if (!settingsClient || isExportingLoopMarkdownId) return;
+
+    setIsExportingLoopMarkdownId(loop.id);
+    setRemoteError(null);
+    try {
+      const result = await settingsClient.exportLoopToMarkdown(loop.id);
+      await Share.share({
+        message: result.markdown,
+        title: `${loop.name}.md`,
+      });
+      setSaveStatusMessage(`Exported loop "${loop.name}"`);
+    } catch (error: any) {
+      console.error('[Settings] Failed to export loop Markdown:', error);
+      Alert.alert('Export Failed', error.message || 'Failed to export loop');
+    } finally {
+      setIsExportingLoopMarkdownId(null);
+    }
+  }, [isExportingLoopMarkdownId, settingsClient]);
 
   const handleLoopDelete = useCallback((loop: Loop) => {
     if (!settingsClient) return;
@@ -1021,7 +2532,7 @@ export default function SettingsScreen({ navigation }: any) {
     setShowPresetPicker(false);
     try {
       await settingsClient.updateSettings({ currentModelPresetId: presetId });
-      setRemoteSettings(prev => prev ? { ...prev, currentModelPresetId: presetId } : null);
+      await fetchRemoteSettings();
       // Reset models and fetch new ones for the new preset
       setAvailableModels([]);
       setUseCustomModel(false);
@@ -1035,11 +2546,95 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
+  const getCurrentModelPreset = (): ModelPresetSummary | undefined => {
+    if (!remoteSettings?.availablePresets || !remoteSettings.currentModelPresetId) return undefined;
+    return remoteSettings.availablePresets.find(p => p.id === remoteSettings.currentModelPresetId);
+  };
+
   // Get current preset display name
   const getCurrentPresetName = () => {
     if (!remoteSettings?.availablePresets || !remoteSettings.currentModelPresetId) return 'OpenAI';
     const preset = remoteSettings.availablePresets.find(p => p.id === remoteSettings.currentModelPresetId);
     return preset?.name || 'OpenAI';
+  };
+
+  const openPresetEditor = (mode: ModelPresetEditorMode, preset?: ModelPresetSummary) => {
+    setPresetEditorMode(mode);
+    setPresetDraft(mode === 'edit' && preset ? buildModelPresetDraftFromSummary(preset) : EMPTY_MODEL_PRESET_DRAFT);
+    setShowPresetEditor(true);
+  };
+
+  const closePresetEditor = () => {
+    if (isSavingPreset) return;
+    setShowPresetEditor(false);
+    setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+  };
+
+  const handlePresetDraftChange = (key: keyof ModelPresetDraft, value: string) => {
+    setPresetDraft(prev => ({ ...prev, [key]: value }));
+  };
+
+  const refreshSettingsAfterPresetMutation = async () => {
+    await fetchRemoteSettings();
+    if (getAgentProvider() === 'openai') {
+      setAvailableModels([]);
+      fetchModels('openai');
+    }
+  };
+
+  const handlePresetEditorSave = async () => {
+    if (!settingsClient) return;
+
+    const draftPayload = buildModelPresetPayloadFromDraft(presetDraft);
+    if (!draftPayload.ok) {
+      setRemoteError(draftPayload.error);
+      return;
+    }
+
+    setIsSavingPreset(true);
+    setRemoteError(null);
+    try {
+      if (presetEditorMode === 'create') {
+        await settingsClient.createModelPreset(draftPayload.payload);
+      } else if (presetDraft.id) {
+        await settingsClient.updateModelPreset(presetDraft.id, draftPayload.payload);
+      }
+      await refreshSettingsAfterPresetMutation();
+      setShowPresetEditor(false);
+      setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+      setSaveStatusMessage('Saved');
+    } catch (error: any) {
+      console.error('[Settings] Failed to save preset:', error);
+      setRemoteError(error.message || 'Failed to save endpoint preset');
+    } finally {
+      setIsSavingPreset(false);
+    }
+  };
+
+  const handlePresetDelete = () => {
+    if (!settingsClient || !presetDraft.id || presetDraft.isBuiltIn) return;
+
+    confirmDestructiveAction(
+      'Delete Preset',
+      `Delete "${presetDraft.name}" from desktop model presets?`,
+      async () => {
+        setIsSavingPreset(true);
+        setRemoteError(null);
+        try {
+          await settingsClient.deleteModelPreset(presetDraft.id!);
+          await refreshSettingsAfterPresetMutation();
+          setShowPresetEditor(false);
+          setPresetDraft(EMPTY_MODEL_PRESET_DRAFT);
+          setSaveStatusMessage('Saved');
+        } catch (error: any) {
+          console.error('[Settings] Failed to delete preset:', error);
+          setRemoteError(error.message || 'Failed to delete endpoint preset');
+        } finally {
+          setIsSavingPreset(false);
+        }
+      },
+      'Delete',
+    );
   };
 
   // Handle model name change with debouncing to avoid request storms per keystroke
@@ -1160,14 +2755,44 @@ export default function SettingsScreen({ navigation }: any) {
         if (pendingKeys.has('sttLanguage')) {
           updates.sttLanguage = inputDrafts.sttLanguage ?? '';
         }
+        if (pendingKeys.has('openaiSttLanguage')) {
+          updates.openaiSttLanguage = inputDrafts.openaiSttLanguage ?? '';
+        }
+        if (pendingKeys.has('groqSttLanguage')) {
+          updates.groqSttLanguage = inputDrafts.groqSttLanguage ?? '';
+        }
+        if (pendingKeys.has('openaiSttModel')) {
+          updates.openaiSttModel = inputDrafts.openaiSttModel ?? '';
+        }
+        if (pendingKeys.has('groqSttModel')) {
+          updates.groqSttModel = inputDrafts.groqSttModel ?? '';
+        }
+        if (pendingKeys.has('groqSttPrompt')) {
+          updates.groqSttPrompt = inputDrafts.groqSttPrompt ?? '';
+        }
         if (pendingKeys.has('transcriptPostProcessingPrompt')) {
           updates.transcriptPostProcessingPrompt = inputDrafts.transcriptPostProcessingPrompt ?? '';
+        }
+        if (pendingKeys.has('transcriptPostProcessingOpenaiModel')) {
+          updates.transcriptPostProcessingOpenaiModel = inputDrafts.transcriptPostProcessingOpenaiModel ?? '';
+        }
+        if (pendingKeys.has('transcriptPostProcessingGroqModel')) {
+          updates.transcriptPostProcessingGroqModel = inputDrafts.transcriptPostProcessingGroqModel ?? '';
+        }
+        if (pendingKeys.has('transcriptPostProcessingGeminiModel')) {
+          updates.transcriptPostProcessingGeminiModel = inputDrafts.transcriptPostProcessingGeminiModel ?? '';
+        }
+        if (pendingKeys.has('transcriptPostProcessingChatgptWebModel')) {
+          updates.transcriptPostProcessingChatgptWebModel = inputDrafts.transcriptPostProcessingChatgptWebModel ?? '';
         }
         if (pendingKeys.has('langfusePublicKey')) {
           updates.langfusePublicKey = inputDrafts.langfusePublicKey ?? '';
         }
         if (pendingKeys.has('langfuseBaseUrl')) {
           updates.langfuseBaseUrl = inputDrafts.langfuseBaseUrl ?? '';
+        }
+        if (pendingKeys.has('localTraceLogPath')) {
+          updates.localTraceLogPath = inputDrafts.localTraceLogPath ?? '';
         }
         if (pendingKeys.has('mcpMaxIterations')) {
           const parsedIterations = parseInt(inputDrafts.mcpMaxIterations ?? '', 10);
@@ -1176,11 +2801,37 @@ export default function SettingsScreen({ navigation }: any) {
           }
           updates.mcpMaxIterations = parsedIterations;
         }
+        if (pendingKeys.has('mcpAutoPasteDelay')) {
+          const parsedDelay = parseMcpAutoPasteDelayDraft(inputDrafts.mcpAutoPasteDelay ?? '');
+          if (parsedDelay === null) {
+            throw new Error(formatMcpAutoPasteDelayValidationMessage());
+          }
+          updates.mcpAutoPasteDelay = parsedDelay;
+        }
+        if (pendingKeys.has('maxConversationsToKeep')) {
+          const parsedMaxConversations = parseMaxConversationsToKeepDraft(inputDrafts.maxConversationsToKeep ?? '');
+          if (parsedMaxConversations === null) {
+            throw new Error(formatMaxConversationsToKeepValidationMessage());
+          }
+          updates.maxConversationsToKeep = parsedMaxConversations;
+        }
         if (pendingKeys.has('whatsappAllowFrom')) {
-          updates.whatsappAllowFrom = (inputDrafts.whatsappAllowFrom ?? '')
-            .split(',')
-            .map((value) => value.trim())
-            .filter(Boolean);
+          updates.whatsappAllowFrom = parseConfigListInput(inputDrafts.whatsappAllowFrom ?? '');
+        }
+        for (const key of DISCORD_LIST_SETTING_KEYS) {
+          if (pendingKeys.has(key)) {
+            updates[key] = parseConfigListInput(inputDrafts[key] ?? '', { unique: true });
+          }
+        }
+        for (const section of PROVIDER_CREDENTIAL_SECTIONS) {
+          if (pendingKeys.has(section.baseUrl)) {
+            updates[section.baseUrl] = inputDrafts[section.baseUrl] ?? '';
+          }
+          for (const secret of section.secrets) {
+            if (pendingKeys.has(secret.key)) {
+              updates[secret.key] = inputDrafts[secret.key] ?? '';
+            }
+          }
         }
 
         const modelKey = getAgentModelKey(getAgentProvider());
@@ -1200,17 +2851,42 @@ export default function SettingsScreen({ navigation }: any) {
         if (pendingKeys.has('langfuseSecretKey') && langfuseSecretDraft) {
           updates.langfuseSecretKey = langfuseSecretDraft;
         }
+        if (pendingKeys.has('discordBotToken')) {
+          updates.discordBotToken = inputDrafts.discordBotToken ?? '';
+        }
 
         if (Object.keys(updates).length > 0) {
           await settingsClient.updateSettings(updates);
           setRemoteSettings((prev) => prev ? {
             ...prev,
             ...updates,
-            ...(updates.langfuseSecretKey ? { langfuseSecretKey: '••••••••' } : {}),
+            ...(updates.langfuseSecretKey ? { langfuseSecretKey: SECRET_MASK } : {}),
+            ...(updates.discordBotToken !== undefined ? { discordBotToken: updates.discordBotToken ? SECRET_MASK : '' } : {}),
+            ...(updates.openaiApiKey !== undefined ? { openaiApiKey: updates.openaiApiKey ? SECRET_MASK : '' } : {}),
+            ...(updates.groqApiKey !== undefined ? { groqApiKey: updates.groqApiKey ? SECRET_MASK : '' } : {}),
+            ...(updates.geminiApiKey !== undefined ? { geminiApiKey: updates.geminiApiKey ? SECRET_MASK : '' } : {}),
+            ...(updates.chatgptWebAccessToken !== undefined ? { chatgptWebAccessToken: updates.chatgptWebAccessToken ? SECRET_MASK : '' } : {}),
+            ...(updates.chatgptWebSessionToken !== undefined ? { chatgptWebSessionToken: updates.chatgptWebSessionToken ? SECRET_MASK : '' } : {}),
           } : null);
 
-          if (updates.langfuseSecretKey) {
-            setInputDrafts((prev) => ({ ...prev, langfuseSecretKey: '' }));
+          const shouldClearSecretDrafts = updates.langfuseSecretKey
+            || updates.discordBotToken !== undefined
+            || updates.openaiApiKey !== undefined
+            || updates.groqApiKey !== undefined
+            || updates.geminiApiKey !== undefined
+            || updates.chatgptWebAccessToken !== undefined
+            || updates.chatgptWebSessionToken !== undefined;
+          if (shouldClearSecretDrafts) {
+            setInputDrafts((prev) => ({
+              ...prev,
+              ...(updates.langfuseSecretKey ? { langfuseSecretKey: '' } : {}),
+              ...(updates.discordBotToken !== undefined ? { discordBotToken: '' } : {}),
+              ...(updates.openaiApiKey !== undefined ? { openaiApiKey: '' } : {}),
+              ...(updates.groqApiKey !== undefined ? { groqApiKey: '' } : {}),
+              ...(updates.geminiApiKey !== undefined ? { geminiApiKey: '' } : {}),
+              ...(updates.chatgptWebAccessToken !== undefined ? { chatgptWebAccessToken: '' } : {}),
+              ...(updates.chatgptWebSessionToken !== undefined ? { chatgptWebSessionToken: '' } : {}),
+            }));
           }
         }
 
@@ -1255,11 +2931,29 @@ export default function SettingsScreen({ navigation }: any) {
     title,
     children
   }: {
-    id: string;
+    id: AppShellMobileSettingsSectionId;
     title: string;
     children: React.ReactNode;
   }) => {
+    if (isDesktopSettingsLayout && !activeDesktopSettingsSectionIds.has(id)) {
+      return null;
+    }
+
     const isExpanded = expandedSections[id] ?? false;
+
+    if (isDesktopSettingsLayout) {
+      return (
+        <View style={[styles.collapsibleSection, styles.desktopSettingsActivePanel]}>
+          <View style={[styles.collapsibleHeader, styles.desktopSettingsActiveHeader]}>
+            <Text style={styles.collapsibleTitle}>{title}</Text>
+          </View>
+          <View style={styles.collapsibleContent}>
+            {children}
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.collapsibleSection}>
         <TouchableOpacity
@@ -1280,28 +2974,83 @@ export default function SettingsScreen({ navigation }: any) {
     );
   };
 
+  function renderKnowledgeNoteFilterGroup<T extends string>(
+    options: Array<{ label: string; value: T }>,
+    value: T,
+    onChange: (nextValue: T) => void,
+    accessibilityPrefix: string,
+  ) {
+    return (
+      <View style={styles.providerSelector}>
+        {options.map((option) => (
+          <TouchableOpacity
+            key={option.value}
+            style={[
+              styles.providerOption,
+              value === option.value && styles.providerOptionActive,
+            ]}
+            onPress={() => onChange(option.value)}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel(`${accessibilityPrefix} ${option.label}`)}
+          >
+            <Text style={[
+              styles.providerOptionText,
+              value === option.value && styles.providerOptionTextActive,
+            ]}>
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  }
+
   if (!ready) return null;
+
+  const desktopSettingsNavItems = getDesktopSettingsNavItems({
+    whatsappEnabled: remoteSettings?.whatsappEnabled ?? false,
+    discordEnabled: remoteSettings?.discordEnabled ?? DEFAULT_DISCORD_ENABLED,
+  });
+  const isGeneralSettingsSectionActive = !isDesktopSettingsLayout || activeDesktopSettingsNavItemId === 'general';
+  const settingsRefreshControl = (
+    <RefreshControl
+      refreshing={isRefreshing}
+      onRefresh={onRefresh}
+      tintColor={theme.colors.primary}
+      colors={[theme.colors.primary]}
+    />
+  );
+  const settingsFooter = (
+    <>
+      <TouchableOpacity
+        style={[styles.primaryButton, styles.saveBarButton, isSavingAllSettings && styles.primaryButtonDisabled]}
+        onPress={() => { void flushAllSettingsSaves(); }}
+        disabled={isSavingAllSettings}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={saveButtonLabel}
+        accessibilityHint={saveButtonHint}
+      >
+        <Text style={styles.primaryButtonText}>{saveButtonLabel}</Text>
+      </TouchableOpacity>
+      <Text style={styles.saveBarHint}>
+        {saveStatusMessage || saveButtonHint}
+      </Text>
+    </>
+  );
 
   return (
     <>
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    <AppShellSettingsLayout
+      isDesktopLayout={isDesktopSettingsLayout}
+      navItems={desktopSettingsNavItems}
+      activeNavItemId={activeDesktopSettingsNavItemId}
+      onActivateNavItem={activateDesktopSettingsNavItem}
+      refreshControl={settingsRefreshControl}
+      footer={settingsFooter}
     >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + spacing['3xl'] + 120 }]}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-          />
-        }
-      >
+      {isGeneralSettingsSectionActive && (
+        <>
         {/* Connection Card - Tap to navigate to ConnectionSettings */}
         <TouchableOpacity
           style={styles.connectionCard}
@@ -1370,6 +3119,72 @@ export default function SettingsScreen({ navigation }: any) {
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Chats</Text>
+        {remoteSettings && (
+          <>
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Desktop History</Text>
+                <Text style={[styles.helperText, { marginTop: 2 }]}>
+                  Store desktop agent conversations so they can sync to mobile.
+                </Text>
+              </View>
+              <Switch
+                value={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
+                onValueChange={(v) => handleRemoteSettingToggle('conversationsEnabled', v)}
+                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                thumbColor={(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                accessibilityLabel={createSwitchAccessibilityLabel('Desktop History')}
+              />
+            </View>
+
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Auto-Save Desktop Chats</Text>
+                <Text style={[styles.helperText, { marginTop: 2 }]}>
+                  Save desktop chats automatically when conversation storage is enabled.
+                </Text>
+              </View>
+              <Switch
+                value={remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS}
+                onValueChange={(v) => handleRemoteSettingToggle('autoSaveConversations', v)}
+                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                thumbColor={(remoteSettings.autoSaveConversations ?? DEFAULT_AUTO_SAVE_CONVERSATIONS) ? theme.colors.primaryForeground : theme.colors.background}
+                disabled={!(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED)}
+                accessibilityLabel={createSwitchAccessibilityLabel('Auto-Save Desktop Chats')}
+              />
+            </View>
+
+            <Text style={styles.label}>Keep Recent Chats</Text>
+            <TextInput
+              style={[
+                styles.input,
+                !(remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED) && styles.inputDisabled,
+              ]}
+              value={inputDrafts.maxConversationsToKeep ?? String(remoteSettings.maxConversationsToKeep ?? DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
+              onChangeText={(v) => {
+                markRemotePending('maxConversationsToKeep');
+                setSaveStatusMessage(null);
+                const parsedValue = parseMaxConversationsToKeepDraft(v);
+                if (parsedValue === null) {
+                  if (inputTimeoutRefs.current.maxConversationsToKeep) {
+                    clearTimeout(inputTimeoutRefs.current.maxConversationsToKeep);
+                    delete inputTimeoutRefs.current.maxConversationsToKeep;
+                  }
+                  setInputDrafts(prev => ({ ...prev, maxConversationsToKeep: v }));
+                  return;
+                }
+                handleRemoteSettingUpdate('maxConversationsToKeep', parsedValue);
+              }}
+              placeholder={String(DEFAULT_MAX_CONVERSATIONS_TO_KEEP)}
+              placeholderTextColor={theme.colors.mutedForeground}
+              keyboardType="number-pad"
+              editable={remoteSettings.conversationsEnabled ?? DEFAULT_CONVERSATIONS_ENABLED}
+            />
+            <Text style={styles.helperText}>
+              Maximum desktop chats to keep before pruning older history.
+            </Text>
+          </>
+        )}
         <View style={styles.serverRow}>
           <View style={styles.serverInfo}>
             <Text style={styles.serverName}>Clear all chats</Text>
@@ -1401,7 +3216,7 @@ export default function SettingsScreen({ navigation }: any) {
 
         <Text style={styles.sectionTitle}>Appearance</Text>
         <View style={styles.themeSelector}>
-          {THEME_OPTIONS.map((option) => (
+          {THEME_PREFERENCE_OPTIONS.map((option) => (
             <Pressable
               key={option.value}
               style={[
@@ -1583,6 +3398,8 @@ export default function SettingsScreen({ navigation }: any) {
         <Text style={styles.helperText}>
           Receive notifications when new messages arrive from your AI assistant
         </Text>
+        </>
+      )}
 
         {/* Remote Settings Section - only show when connected to a DotAgents desktop server */}
         {settingsClient && (isLoadingRemote || isDotAgentsServer) && (
@@ -1628,13 +3445,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        (remoteSettings.sttProviderId || 'openai') === provider.value && styles.providerOptionActive,
+                        (remoteSettings.sttProviderId || DEFAULT_STT_PROVIDER_ID) === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('sttProviderId', provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        (remoteSettings.sttProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.sttProviderId || DEFAULT_STT_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -1672,19 +3489,64 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        (remoteSettings.ttsProviderId || 'openai') === provider.value && styles.providerOptionActive,
+                        (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        (remoteSettings.ttsProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
+              </CollapsibleSection>
+            )}
+
+            {/* Provider Setup */}
+            {remoteSettings && (
+              <CollapsibleSection id="providerSetup" title="Provider Setup">
+                {PROVIDER_CREDENTIAL_SECTIONS.map((provider) => (
+                  <View key={provider.id} style={styles.providerCredentialGroup}>
+                    <Text style={styles.subsectionTitle}>{provider.label}</Text>
+
+                    {provider.secrets.map((secret) => {
+                      const hasConfiguredSecret = remoteSettings[secret.key] === SECRET_MASK;
+                      return (
+                        <View key={secret.key}>
+                          <Text style={styles.label}>{secret.label}</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={inputDrafts[secret.key] ?? ''}
+                            onChangeText={(v) => handleRemoteSecretDraftChange(secret.key, v)}
+                            onBlur={() => {
+                              void commitRemoteSecretDraft(secret.key);
+                            }}
+                            placeholder={hasConfiguredSecret ? 'Configured' : secret.placeholder}
+                            placeholderTextColor={theme.colors.mutedForeground}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            secureTextEntry
+                          />
+                        </View>
+                      );
+                    })}
+
+                    <Text style={styles.label}>Base URL</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inputDrafts[provider.baseUrl] ?? ''}
+                      onChangeText={(v) => handleRemoteSettingUpdate(provider.baseUrl, v)}
+                      placeholder={provider.baseUrlPlaceholder}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="url"
+                    />
+                  </View>
+                ))}
               </CollapsibleSection>
             )}
 
@@ -1763,6 +3625,106 @@ export default function SettingsScreen({ navigation }: any) {
                   ))}
                 </View>
 
+                {getAgentProvider() === 'chatgpt-web' && (
+                  <View style={styles.chatGptWebAuthBlock}>
+                    <Text style={styles.label}>OpenAI Codex OAuth</Text>
+                    <View style={styles.serverNameRow}>
+                      <View style={[
+                        styles.statusDot,
+                        chatGptWebAuthStatus?.authenticated ? styles.statusConnected : styles.statusDisconnected,
+                      ]} />
+                      <Text style={styles.serverName}>
+                        {chatGptWebAuthStatus?.authenticated ? 'Connected' : 'Not connected'}
+                      </Text>
+                    </View>
+                    {chatGptWebAuthStatus?.authenticated && (
+                      <Text style={styles.helperText}>
+                        {[chatGptWebAuthStatus.email, chatGptWebAuthStatus.planType].filter(Boolean).join(' • ') || 'OpenAI Codex'}
+                      </Text>
+                    )}
+                    {chatGptWebAuthStatus?.callbackUrl && (
+                      <Text style={styles.helperText} numberOfLines={2}>
+                        Callback URL: {chatGptWebAuthStatus.callbackUrl}
+                      </Text>
+                    )}
+                    <View style={styles.profileActions}>
+                      <TouchableOpacity
+                        style={[styles.profileActionButton, pendingChatGptWebAuthAction && styles.profileActionButtonDisabled]}
+                        onPress={handleChatGptWebOAuthLogin}
+                        disabled={!!pendingChatGptWebAuthAction}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel('Connect OpenAI Codex OAuth')}
+                      >
+                        <Text style={styles.profileActionButtonText}>
+                          {pendingChatGptWebAuthAction === 'login'
+                            ? 'Connecting...'
+                            : chatGptWebAuthStatus?.authenticated ? 'Reconnect' : 'Connect'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.dangerActionButton,
+                          (!chatGptWebAuthStatus?.authenticated || pendingChatGptWebAuthAction) && styles.dangerActionButtonDisabled,
+                        ]}
+                        onPress={handleChatGptWebOAuthLogout}
+                        disabled={!chatGptWebAuthStatus?.authenticated || !!pendingChatGptWebAuthAction}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel('Disconnect OpenAI Codex OAuth')}
+                      >
+                        <Text style={[
+                          styles.dangerActionButtonText,
+                          !chatGptWebAuthStatus?.authenticated && styles.dangerActionButtonTextDisabled,
+                        ]}>
+                          {pendingChatGptWebAuthAction === 'logout' ? 'Disconnecting...' : 'Disconnect'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.providerCredentialGroup}>
+                      <Text style={styles.subsectionTitle}>Codex Options</Text>
+                      <Text style={styles.label}>Reasoning Effort</Text>
+                      <View style={styles.providerSelector}>
+                        {OPENAI_REASONING_EFFORT_OPTIONS.map((option) => (
+                          <Pressable
+                            key={option.value}
+                            style={[
+                              styles.providerOption,
+                              (remoteSettings.openaiReasoningEffort || DEFAULT_CODEX_REASONING_EFFORT) === option.value && styles.providerOptionActive,
+                            ]}
+                            onPress={() => handleRemoteSettingUpdate('openaiReasoningEffort', option.value)}
+                          >
+                            <Text style={[
+                              styles.providerOptionText,
+                              (remoteSettings.openaiReasoningEffort || DEFAULT_CODEX_REASONING_EFFORT) === option.value && styles.providerOptionTextActive,
+                            ]}>
+                              {option.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                      <Text style={[styles.label, { marginTop: spacing.sm }]}>Text Verbosity</Text>
+                      <View style={styles.providerSelector}>
+                        {CODEX_TEXT_VERBOSITY_OPTIONS.map((option) => (
+                          <Pressable
+                            key={option.value}
+                            style={[
+                              styles.providerOption,
+                              (remoteSettings.codexTextVerbosity || DEFAULT_CODEX_TEXT_VERBOSITY) === option.value && styles.providerOptionActive,
+                            ]}
+                            onPress={() => handleRemoteSettingUpdate('codexTextVerbosity', option.value)}
+                          >
+                            <Text style={[
+                              styles.providerOptionText,
+                              (remoteSettings.codexTextVerbosity || DEFAULT_CODEX_TEXT_VERBOSITY) === option.value && styles.providerOptionTextActive,
+                            ]}>
+                              {option.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                )}
+
                 {getAgentProvider() === 'openai' && remoteSettings.availablePresets && remoteSettings.availablePresets.length > 0 && (
                   <>
                     <Text style={styles.label}>OpenAI Compatible Endpoint</Text>
@@ -1777,6 +3739,44 @@ export default function SettingsScreen({ navigation }: any) {
                         <Text style={styles.modelSelectorChevron}>▼</Text>
                       </View>
                     </TouchableOpacity>
+                    {(() => {
+                      const currentPreset = getCurrentModelPreset();
+                      return (
+                        <View style={styles.endpointPanel}>
+                          <View style={styles.endpointMetaRow}>
+                            <Text style={styles.endpointBaseUrl} numberOfLines={1}>
+                              {currentPreset?.baseUrl || 'No URL set'}
+                            </Text>
+                            <Text style={[styles.endpointKeyBadge, currentPreset?.hasApiKey && styles.endpointKeyBadgeActive]}>
+                              {currentPreset?.hasApiKey ? 'Key set' : 'No key'}
+                            </Text>
+                          </View>
+                          <View style={styles.profileActions}>
+                            <TouchableOpacity
+                              style={styles.profileActionButton}
+                              onPress={() => currentPreset && openPresetEditor('edit', currentPreset)}
+                              disabled={!currentPreset}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${
+                                currentPreset?.isBuiltIn ? 'Configure' : 'Edit'
+                              } preset ${currentPreset?.name || getCurrentPresetName()}`}
+                            >
+                              <Text style={styles.profileActionButtonText}>
+                                {currentPreset?.isBuiltIn ? 'Configure' : 'Edit'}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.profileActionButton}
+                              onPress={() => openPresetEditor('create')}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel('Create endpoint preset')}
+                            >
+                              <Text style={styles.profileActionButtonText}>New Preset</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })()}
                   </>
                 )}
 
@@ -1851,10 +3851,10 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>Enabled</Text>
                   <Switch
-                    value={remoteSettings.transcriptPostProcessingEnabled ?? false}
+                    value={remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('transcriptPostProcessingEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.transcriptPostProcessingEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
@@ -1865,13 +3865,13 @@ export default function SettingsScreen({ navigation }: any) {
                       key={provider.value}
                       style={[
                         styles.providerOption,
-                        (remoteSettings.transcriptPostProcessingProviderId || 'openai') === provider.value && styles.providerOptionActive,
+                        (remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID) === provider.value && styles.providerOptionActive,
                       ]}
                       onPress={() => handleRemoteSettingUpdate('transcriptPostProcessingProviderId', provider.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        (remoteSettings.transcriptPostProcessingProviderId || 'openai') === provider.value && styles.providerOptionTextActive,
+                        (remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
                       ]}>
                         {provider.label}
                       </Text>
@@ -1879,8 +3879,32 @@ export default function SettingsScreen({ navigation }: any) {
                   ))}
                 </View>
 
-                {remoteSettings.transcriptPostProcessingEnabled && (
+                {(remoteSettings.transcriptPostProcessingEnabled ?? DEFAULT_TRANSCRIPT_POST_PROCESSING_ENABLED) && (
                   <>
+                    {(() => {
+                      const providerId = remoteSettings.transcriptPostProcessingProviderId || DEFAULT_TRANSCRIPT_POST_PROCESSING_PROVIDER_ID;
+                      const modelKey = providerId === 'openai'
+                        ? 'transcriptPostProcessingOpenaiModel'
+                        : providerId === 'groq'
+                          ? 'transcriptPostProcessingGroqModel'
+                          : providerId === 'gemini'
+                            ? 'transcriptPostProcessingGeminiModel'
+                            : 'transcriptPostProcessingChatgptWebModel';
+                      return (
+                        <>
+                          <Text style={styles.label}>Model</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={inputDrafts[modelKey] ?? ''}
+                            onChangeText={(v) => handleRemoteSettingUpdate(modelKey, v)}
+                            placeholder={getModelPlaceholder()}
+                            placeholderTextColor={theme.colors.mutedForeground}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                          />
+                        </>
+                      );
+                    })()}
                     <Text style={styles.label}>Prompt</Text>
                     <TextInput
                       style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
@@ -1896,16 +3920,49 @@ export default function SettingsScreen({ navigation }: any) {
               </CollapsibleSection>
             )}
 
+            {/* 4b. Bundles */}
+            {isDotAgentsServer && (
+              <CollapsibleSection id="bundles" title="Bundles">
+                <View style={styles.profileActions}>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, isImportingBundle && styles.profileActionButtonDisabled]}
+                    onPress={() => setShowBundleImportModal(true)}
+                    disabled={isImportingBundle}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import DotAgents bundle JSON')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingBundle ? 'Importing...' : 'Import Bundle'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, isExportingBundle && styles.profileActionButtonDisabled]}
+                    onPress={handleBundleExport}
+                    disabled={isExportingBundle}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Export DotAgents bundle JSON')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isExportingBundle ? 'Exporting...' : 'Export Bundle'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.helperText}>
+                  Bundle agents, MCP servers, skills, repeat tasks, and knowledge notes into portable .dotagents JSON.
+                </Text>
+              </CollapsibleSection>
+            )}
+
             {/* 4b. Streamer Mode */}
             {remoteSettings && (
               <CollapsibleSection id="streamerMode" title="Streamer Mode">
                 <View style={styles.row}>
                   <Text style={styles.label}>Streamer Mode</Text>
                   <Switch
-                    value={remoteSettings.streamerModeEnabled ?? false}
+                    value={remoteSettings.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('streamerModeEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.streamerModeEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.streamerModeEnabled ?? DEFAULT_STREAMER_MODE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>
@@ -1930,13 +3987,102 @@ export default function SettingsScreen({ navigation }: any) {
                   Language code for speech-to-text (e.g., en, es, fr)
                 </Text>
 
+                {(remoteSettings.sttProviderId === 'openai' || remoteSettings.sttProviderId === 'groq') && (() => {
+                  const providerId = remoteSettings.sttProviderId;
+                  const languageKey = providerId === 'openai' ? 'openaiSttLanguage' : 'groqSttLanguage';
+                  const languageLabel = providerId === 'openai' ? 'OpenAI Language Override' : 'Groq Language Override';
+                  const modelKey = providerId === 'openai' ? 'openaiSttModel' : 'groqSttModel';
+                  const currentModel = remoteSettings[modelKey] || getDefaultSttModel(providerId) || '';
+
+                  return (
+                    <>
+                      <Text style={styles.label}>{languageLabel}</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inputDrafts[languageKey] ?? ''}
+                        onChangeText={(v) => handleRemoteSettingUpdate(languageKey, v)}
+                        placeholder="Use global language"
+                        placeholderTextColor={theme.colors.mutedForeground}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      <Text style={styles.helperText}>Leave blank to use STT Language.</Text>
+
+                      <Text style={styles.label}>STT Model</Text>
+                      <View style={styles.providerSelector}>
+                        {KNOWN_STT_MODEL_IDS[providerId].map((modelId) => (
+                          <Pressable
+                            key={modelId}
+                            style={[
+                              styles.providerOption,
+                              currentModel === modelId && styles.providerOptionActive,
+                            ]}
+                            onPress={() => handleRemoteSettingUpdate(modelKey, modelId)}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Use ${modelId} for ${providerId} speech-to-text`)}
+                          >
+                            <Text style={[
+                              styles.providerOptionText,
+                              currentModel === modelId && styles.providerOptionTextActive,
+                            ]}>
+                              {modelId}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </>
+                  );
+                })()}
+
+                {remoteSettings.sttProviderId === 'groq' && (
+                  <>
+                    <Text style={styles.label}>Groq Prompt</Text>
+                    <TextInput
+                      style={[styles.input, { minHeight: 88, textAlignVertical: 'top' }]}
+                      value={inputDrafts.groqSttPrompt ?? ''}
+                      onChangeText={(v) => handleRemoteSettingUpdate('groqSttPrompt', v)}
+                      placeholder="Optional spelling or style hints for Groq transcription"
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      multiline
+                      numberOfLines={4}
+                    />
+                    <Text style={styles.helperText}>Optional hints for spelling unfamiliar words or names.</Text>
+                  </>
+                )}
+
+                {remoteSettings.sttProviderId === 'parakeet' && (
+                  <>
+                    <Text style={styles.label}>Parakeet CPU Threads</Text>
+                    <View style={styles.providerSelector}>
+                      {PARAKEET_NUM_THREAD_OPTIONS.map((threadCount) => (
+                        <Pressable
+                          key={threadCount}
+                          style={[
+                            styles.providerOption,
+                            (remoteSettings.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS) === threadCount && styles.providerOptionActive,
+                          ]}
+                          onPress={() => handleRemoteSettingUpdate('parakeetNumThreads', threadCount)}
+                        >
+                          <Text style={[
+                            styles.providerOptionText,
+                            (remoteSettings.parakeetNumThreads ?? DEFAULT_PARAKEET_NUM_THREADS) === threadCount && styles.providerOptionTextActive,
+                          ]}>
+                            {threadCount}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <Text style={styles.helperText}>Controls local Parakeet transcription CPU usage on the paired desktop.</Text>
+                  </>
+                )}
+
                 <View style={styles.row}>
                   <Text style={styles.label}>Transcription Preview</Text>
                   <Switch
-                    value={remoteSettings.transcriptionPreviewEnabled ?? true}
+                    value={remoteSettings.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('transcriptionPreviewEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.transcriptionPreviewEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.transcriptionPreviewEnabled ?? DEFAULT_TRANSCRIPTION_PREVIEW_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>
@@ -1952,17 +4098,17 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>TTS Enabled</Text>
                   <Switch
-                    value={remoteSettings.ttsEnabled ?? false}
+                    value={remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('ttsEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.ttsEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
                 <Text style={styles.helperText}>
                   Enable text-to-speech for responses on desktop
                 </Text>
 
-                {remoteSettings.ttsEnabled && (
+                {(remoteSettings.ttsEnabled ?? DEFAULT_TTS_ENABLED) && (
                   <>
                     {/* TTS Provider Selector */}
                     <Text style={[styles.label, { marginTop: spacing.md }]}>TTS Provider</Text>
@@ -1973,13 +4119,13 @@ export default function SettingsScreen({ navigation }: any) {
                             key={provider.value}
                             style={[
                               styles.providerOption,
-                              remoteSettings.ttsProviderId === provider.value && styles.providerOptionActive,
+                              (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionActive,
                             ]}
                             onPress={() => handleRemoteSettingUpdate('ttsProviderId', provider.value)}
                           >
                             <Text style={[
                               styles.providerOptionText,
-                              remoteSettings.ttsProviderId === provider.value && styles.providerOptionTextActive,
+                              (remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID) === provider.value && styles.providerOptionTextActive,
                             ]}>
                               {provider.label}
                             </Text>
@@ -1989,171 +4135,214 @@ export default function SettingsScreen({ navigation }: any) {
                     </ScrollView>
 
                     {/* Per-provider Voice/Model Settings */}
-                    {(remoteSettings.ttsProviderId === 'openai' || remoteSettings.ttsProviderId === 'groq' || remoteSettings.ttsProviderId === 'gemini' || remoteSettings.ttsProviderId === 'edge') && (
-                      <>
-                        {/* TTS Model Selector */}
-                        <Text style={[styles.label, { marginTop: spacing.sm }]}>Model</Text>
-                        <TouchableOpacity
-                          style={styles.modelSelector}
-                          onPress={() => setShowTtsModelPicker(true)}
-                        >
-                          <View style={styles.modelSelectorContent}>
-                            <Text style={styles.modelSelectorText}>
-                              {(() => {
-                                const models = getTtsModelsForProvider(remoteSettings.ttsProviderId || 'openai');
-                                const modelValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
-                                  : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
-                                  : remoteSettings.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsModel
-                                  : remoteSettings.edgeTtsModel;
-                                const model = models.find(m => m.value === modelValue);
-                                return model?.label || modelValue || 'Select model';
-                              })()}
-                            </Text>
-                            <Text style={styles.modelSelectorChevron}>▼</Text>
-                          </View>
-                        </TouchableOpacity>
+                    {(() => {
+                      const remoteTtsProviderId = remoteSettings.ttsProviderId || DEFAULT_TTS_PROVIDER_ID;
+                      const ttsModel = remoteTtsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
+                      const models = getTtsModelsForProvider(remoteTtsProviderId);
+                      const voices = getTtsVoicesForProvider(remoteTtsProviderId, ttsModel);
+                      const modelValue = remoteTtsProviderId === 'openai' ? remoteSettings.openaiTtsModel
+                        : remoteTtsProviderId === 'groq' ? remoteSettings.groqTtsModel
+                        : remoteTtsProviderId === 'gemini' ? remoteSettings.geminiTtsModel
+                        : remoteSettings.edgeTtsModel;
+                      const voiceValue = remoteTtsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
+                        : remoteTtsProviderId === 'groq' ? remoteSettings.groqTtsVoice
+                        : remoteTtsProviderId === 'gemini' ? remoteSettings.geminiTtsVoice
+                        : remoteTtsProviderId === 'edge' ? remoteSettings.edgeTtsVoice
+                        : remoteTtsProviderId === 'kitten' ? remoteSettings.kittenVoiceId
+                        : remoteSettings.supertonicVoice;
+                      const model = models.find(m => m.value === modelValue);
+                      const voice = voices.find(v => String(v.value) === String(voiceValue));
 
-                        {/* TTS Voice Selector */}
-                        <Text style={[styles.label, { marginTop: spacing.sm }]}>Voice</Text>
-                        <TouchableOpacity
-                          style={styles.modelSelector}
-                          onPress={() => setShowTtsVoicePicker(true)}
-                        >
-                          <View style={styles.modelSelectorContent}>
-                            <Text style={styles.modelSelectorText}>
-                              {(() => {
-                                const ttsModel = remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
-                                const voices = getTtsVoicesForProvider(remoteSettings.ttsProviderId || 'openai', ttsModel);
-                                const voiceValue = remoteSettings.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
-                                  : remoteSettings.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
-                                  : remoteSettings.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsVoice
-                                  : remoteSettings.edgeTtsVoice;
-                                const voice = voices.find(v => v.value === voiceValue);
-                                return voice?.label || voiceValue || 'Select voice';
-                              })()}
-                            </Text>
-                            <Text style={styles.modelSelectorChevron}>▼</Text>
-                          </View>
-                        </TouchableOpacity>
+                      return (
+                        <>
+                          {models.length > 0 && (
+                            <>
+                              <Text style={[styles.label, { marginTop: spacing.sm }]}>Model</Text>
+                              <TouchableOpacity
+                                style={styles.modelSelector}
+                                onPress={() => setShowTtsModelPicker(true)}
+                              >
+                                <View style={styles.modelSelectorContent}>
+                                  <Text style={styles.modelSelectorText}>
+                                    {model?.label || modelValue || 'Select model'}
+                                  </Text>
+                                  <Text style={styles.modelSelectorChevron}>▼</Text>
+                                </View>
+                              </TouchableOpacity>
+                            </>
+                          )}
 
-                        {/* OpenAI Speed Slider */}
-                        {remoteSettings.ttsProviderId === 'openai' && (
-                          <View style={{ marginTop: spacing.sm }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Text style={styles.label}>Speed</Text>
-                              <Text style={[styles.helperText, { marginTop: 0 }]}>
-                                {(remoteSettings.openaiTtsSpeed ?? 1.0).toFixed(1)}x
-                              </Text>
+                          {voices.length > 0 && (
+                            <>
+                              <Text style={[styles.label, { marginTop: spacing.sm }]}>Voice</Text>
+                              <TouchableOpacity
+                                style={styles.modelSelector}
+                                onPress={() => setShowTtsVoicePicker(true)}
+                              >
+                                <View style={styles.modelSelectorContent}>
+                                  <Text style={styles.modelSelectorText}>
+                                    {voice?.label || String(voiceValue ?? '') || 'Select voice'}
+                                  </Text>
+                                  <Text style={styles.modelSelectorChevron}>▼</Text>
+                                </View>
+                              </TouchableOpacity>
+                            </>
+                          )}
+
+                          {remoteTtsProviderId === 'openai' && (
+                            <View style={{ marginTop: spacing.sm }}>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text style={styles.label}>Speed</Text>
+                                <Text style={[styles.helperText, { marginTop: 0 }]}>
+                                  {(remoteSettings.openaiTtsSpeed ?? 1.0).toFixed(1)}x
+                                </Text>
+                              </View>
+                              <Slider
+                                style={{ width: '100%', height: 40 }}
+                                minimumValue={0.25}
+                                maximumValue={4.0}
+                                step={0.25}
+                                value={remoteSettings.openaiTtsSpeed ?? 1.0}
+                                onSlidingComplete={(v) => handleRemoteSettingUpdate('openaiTtsSpeed', v)}
+                                minimumTrackTintColor={theme.colors.primary}
+                                maximumTrackTintColor={theme.colors.muted}
+                                thumbTintColor={theme.colors.primary}
+                              />
                             </View>
-                            <Slider
-                              style={{ width: '100%', height: 40 }}
-                              minimumValue={0.25}
-                              maximumValue={4.0}
-                              step={0.25}
-                              value={remoteSettings.openaiTtsSpeed ?? 1.0}
-                              onSlidingComplete={(v) => handleRemoteSettingUpdate('openaiTtsSpeed', v)}
-                              minimumTrackTintColor={theme.colors.primary}
-                              maximumTrackTintColor={theme.colors.muted}
-                              thumbTintColor={theme.colors.primary}
-                            />
-                          </View>
-                        )}
+                          )}
 
-                        {remoteSettings.ttsProviderId === 'edge' && (
-                          <View style={{ marginTop: spacing.sm }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Text style={styles.label}>Speed</Text>
-                              <Text style={[styles.helperText, { marginTop: 0 }]}>
-                                {(remoteSettings.edgeTtsRate ?? 1.0).toFixed(1)}x
-                              </Text>
+                          {remoteTtsProviderId === 'edge' && (
+                            <View style={{ marginTop: spacing.sm }}>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text style={styles.label}>Speed</Text>
+                                <Text style={[styles.helperText, { marginTop: 0 }]}>
+                                  {(remoteSettings.edgeTtsRate ?? 1.0).toFixed(1)}x
+                                </Text>
+                              </View>
+                              <Slider
+                                style={{ width: '100%', height: 40 }}
+                                minimumValue={0.5}
+                                maximumValue={2.0}
+                                step={0.1}
+                                value={remoteSettings.edgeTtsRate ?? 1.0}
+                                onSlidingComplete={(v) => handleRemoteSettingUpdate('edgeTtsRate', v)}
+                                minimumTrackTintColor={theme.colors.primary}
+                                maximumTrackTintColor={theme.colors.muted}
+                                thumbTintColor={theme.colors.primary}
+                              />
                             </View>
-                            <Slider
-                              style={{ width: '100%', height: 40 }}
-                              minimumValue={0.5}
-                              maximumValue={2.0}
-                              step={0.1}
-                              value={remoteSettings.edgeTtsRate ?? 1.0}
-                              onSlidingComplete={(v) => handleRemoteSettingUpdate('edgeTtsRate', v)}
-                              minimumTrackTintColor={theme.colors.primary}
-                              maximumTrackTintColor={theme.colors.muted}
-                              thumbTintColor={theme.colors.primary}
-                            />
-                          </View>
-                        )}
-                      </>
-                    )}
+                          )}
 
-                    {/* Kitten/Supertonic notice */}
-                    {(remoteSettings.ttsProviderId === 'kitten' || remoteSettings.ttsProviderId === 'supertonic') && (
-                      <Text style={[styles.helperText, { marginTop: spacing.sm }]}>
-                        {remoteSettings.ttsProviderId === 'kitten'
-                          ? 'Kitten uses local TTS. Configure voice in desktop settings.'
-                          : 'Supertonic uses local TTS. Configure voice in desktop settings.'}
-                      </Text>
-                    )}
+                          {remoteTtsProviderId === 'supertonic' && (
+                            <>
+                              <Text style={[styles.label, { marginTop: spacing.sm }]}>Language</Text>
+                              <View style={styles.providerSelector}>
+                                {SUPERTONIC_TTS_LANGUAGES.map((language) => (
+                                  <Pressable
+                                    key={language.value}
+                                    style={[
+                                      styles.providerOption,
+                                      (remoteSettings.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE) === language.value && styles.providerOptionActive,
+                                    ]}
+                                    onPress={() => handleRemoteSettingUpdate('supertonicLanguage', language.value)}
+                                  >
+                                    <Text style={[
+                                      styles.providerOptionText,
+                                      (remoteSettings.supertonicLanguage ?? DEFAULT_SUPERTONIC_TTS_LANGUAGE) === language.value && styles.providerOptionTextActive,
+                                    ]}>
+                                      {language.label}
+                                    </Text>
+                                  </Pressable>
+                                ))}
+                              </View>
+
+                              <View style={{ marginTop: spacing.sm }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Text style={styles.label}>Quality Steps</Text>
+                                  <Text style={[styles.helperText, { marginTop: 0 }]}>
+                                    {Math.round(remoteSettings.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS)}
+                                  </Text>
+                                </View>
+                                <Slider
+                                  style={{ width: '100%', height: 40 }}
+                                  minimumValue={MIN_SUPERTONIC_TTS_STEPS}
+                                  maximumValue={MAX_SUPERTONIC_TTS_STEPS}
+                                  step={1}
+                                  value={remoteSettings.supertonicSteps ?? DEFAULT_SUPERTONIC_TTS_STEPS}
+                                  onSlidingComplete={(v) => handleRemoteSettingUpdate('supertonicSteps', Math.round(v))}
+                                  minimumTrackTintColor={theme.colors.primary}
+                                  maximumTrackTintColor={theme.colors.muted}
+                                  thumbTintColor={theme.colors.primary}
+                                />
+                              </View>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     <View style={[styles.row, { marginTop: spacing.md }]}>
                       <Text style={styles.label}>Auto-Play</Text>
                       <Switch
-                        value={remoteSettings.ttsAutoPlay ?? true}
+                        value={remoteSettings.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY}
                         onValueChange={(v) => handleRemoteSettingToggle('ttsAutoPlay', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.ttsAutoPlay ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.ttsAutoPlay ?? DEFAULT_TTS_AUTO_PLAY) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
 
                     <View style={styles.row}>
                       <Text style={styles.label}>TTS Preprocessing</Text>
                       <Switch
-                        value={remoteSettings.ttsPreprocessingEnabled ?? true}
+                        value={remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED}
                         onValueChange={(v) => handleRemoteSettingToggle('ttsPreprocessingEnabled', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.ttsPreprocessingEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
                     <Text style={styles.helperText}>
                       Clean up text before speaking
                     </Text>
 
-                    {remoteSettings.ttsPreprocessingEnabled && (
+                    {(remoteSettings.ttsPreprocessingEnabled ?? DEFAULT_TTS_PREPROCESSING_ENABLED) && (
                       <>
                         <View style={[styles.row, { paddingLeft: spacing.md }]}>
                           <Text style={styles.label}>Remove Code Blocks</Text>
                           <Switch
-                            value={remoteSettings.ttsRemoveCodeBlocks ?? true}
+                            value={remoteSettings.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS}
                             onValueChange={(v) => handleRemoteSettingToggle('ttsRemoveCodeBlocks', v)}
                             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={remoteSettings.ttsRemoveCodeBlocks ? theme.colors.primaryForeground : theme.colors.background}
+                            thumbColor={(remoteSettings.ttsRemoveCodeBlocks ?? DEFAULT_TTS_REMOVE_CODE_BLOCKS) ? theme.colors.primaryForeground : theme.colors.background}
                           />
                         </View>
 
                         <View style={[styles.row, { paddingLeft: spacing.md }]}>
                           <Text style={styles.label}>Remove URLs</Text>
                           <Switch
-                            value={remoteSettings.ttsRemoveUrls ?? true}
+                            value={remoteSettings.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS}
                             onValueChange={(v) => handleRemoteSettingToggle('ttsRemoveUrls', v)}
                             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={remoteSettings.ttsRemoveUrls ? theme.colors.primaryForeground : theme.colors.background}
+                            thumbColor={(remoteSettings.ttsRemoveUrls ?? DEFAULT_TTS_REMOVE_URLS) ? theme.colors.primaryForeground : theme.colors.background}
                           />
                         </View>
 
                         <View style={[styles.row, { paddingLeft: spacing.md }]}>
                           <Text style={styles.label}>Convert Markdown</Text>
                           <Switch
-                            value={remoteSettings.ttsConvertMarkdown ?? true}
+                            value={remoteSettings.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN}
                             onValueChange={(v) => handleRemoteSettingToggle('ttsConvertMarkdown', v)}
                             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={remoteSettings.ttsConvertMarkdown ? theme.colors.primaryForeground : theme.colors.background}
+                            thumbColor={(remoteSettings.ttsConvertMarkdown ?? DEFAULT_TTS_CONVERT_MARKDOWN) ? theme.colors.primaryForeground : theme.colors.background}
                           />
                         </View>
 
                         <View style={[styles.row, { paddingLeft: spacing.md }]}>
                           <Text style={styles.label}>Use LLM Preprocessing</Text>
                           <Switch
-                            value={remoteSettings.ttsUseLLMPreprocessing ?? false}
+                            value={remoteSettings.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING}
                             onValueChange={(v) => handleRemoteSettingToggle('ttsUseLLMPreprocessing', v)}
                             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                            thumbColor={remoteSettings.ttsUseLLMPreprocessing ? theme.colors.primaryForeground : theme.colors.background}
+                            thumbColor={(remoteSettings.ttsUseLLMPreprocessing ?? DEFAULT_TTS_USE_LLM_PREPROCESSING) ? theme.colors.primaryForeground : theme.colors.background}
                           />
                         </View>
                       </>
@@ -2168,20 +4357,20 @@ export default function SettingsScreen({ navigation }: any) {
               <CollapsibleSection id="agentSettings" title="Agent Settings">
                 <Text style={styles.label}>Main Agent Mode</Text>
                 <View style={styles.providerSelector}>
-                  {(['api', 'acpx'] as const).map((mode) => (
+                  {MAIN_AGENT_MODE_OPTIONS.map((option) => (
                     <Pressable
-                      key={mode}
+                      key={option.value}
                       style={[
                         styles.providerOption,
-                        remoteSettings.mainAgentMode === mode && styles.providerOptionActive,
+                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionActive,
                       ]}
-                      onPress={() => handleRemoteSettingUpdate('mainAgentMode', mode)}
+                      onPress={() => handleRemoteSettingUpdate('mainAgentMode', option.value)}
                     >
                       <Text style={[
                         styles.providerOptionText,
-                        remoteSettings.mainAgentMode === mode && styles.providerOptionTextActive,
+                        (remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === option.value && styles.providerOptionTextActive,
                       ]}>
-                        {mode.toUpperCase()}
+                        {option.compactLabel}
                       </Text>
                     </Pressable>
                   ))}
@@ -2191,7 +4380,7 @@ export default function SettingsScreen({ navigation }: any) {
                 </Text>
 
                 {/* acpx-specific settings - only show when acpx mode selected */}
-                {remoteSettings.mainAgentMode === 'acpx' && (
+                {(remoteSettings.mainAgentMode ?? DEFAULT_MAIN_AGENT_MODE) === 'acpx' && (
                   <>
                     <Text style={styles.label}>acpx Agent</Text>
                     {availableAcpMainAgents.length > 0 ? (
@@ -2232,6 +4421,38 @@ export default function SettingsScreen({ navigation }: any) {
                     thumbColor={remoteSettings.mcpMessageQueueEnabled ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
+
+                <View style={styles.row}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.label}>Auto Paste Results</Text>
+                    <Text style={[styles.helperText, { marginTop: 2 }]}>Paste final agent results back into the active desktop input.</Text>
+                  </View>
+                  <Switch
+                    value={remoteSettings.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED}
+                    onValueChange={(v) => handleRemoteSettingToggle('mcpAutoPasteEnabled', v)}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={(remoteSettings.mcpAutoPasteEnabled ?? DEFAULT_MCP_AUTO_PASTE_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+                <Text style={styles.label}>Auto Paste Delay</Text>
+                <TextInput
+                  style={styles.input}
+                  value={inputDrafts.mcpAutoPasteDelay ?? String(DEFAULT_MCP_AUTO_PASTE_DELAY)}
+                  onChangeText={(v) => {
+                    markRemotePending('mcpAutoPasteDelay');
+                    setSaveStatusMessage(null);
+                    const parsedDelay = parseMcpAutoPasteDelayDraft(v);
+                    if (parsedDelay === null) {
+                      setInputDrafts(prev => ({ ...prev, mcpAutoPasteDelay: v }));
+                      return;
+                    }
+                    handleRemoteSettingUpdate('mcpAutoPasteDelay', parsedDelay);
+                  }}
+                  placeholder={String(DEFAULT_MCP_AUTO_PASTE_DELAY)}
+                  placeholderTextColor={theme.colors.mutedForeground}
+                  keyboardType="number-pad"
+                />
+                <Text style={styles.helperText}>Wait this many milliseconds before auto-pasting desktop results.</Text>
 
                 <View style={styles.row}>
                   <Text style={styles.label}>Require Tool Approval</Text>
@@ -2342,33 +4563,252 @@ export default function SettingsScreen({ navigation }: any) {
             )}
 
             {/* 4h. MCP Servers */}
-            {mcpServers.length > 0 && (
+            {isDotAgentsServer && (
               <CollapsibleSection id="mcpServers" title="MCP Servers">
-                {mcpServers.map((server) => (
-                  <View key={server.name} style={styles.serverRow}>
-                    <View style={styles.serverInfo}>
-                      <View style={styles.serverNameRow}>
-                        <View style={[
-                          styles.statusDot,
-                          server.connected ? styles.statusConnected : styles.statusDisconnected,
-                        ]} />
-                        <Text style={styles.serverName}>{server.name}</Text>
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={openMcpServerCreateEditor}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Add MCP server')}
+                  >
+                    <Text style={styles.createAgentButtonText}>Add MCP server</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton]}
+                    onPress={() => setShowMcpImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import MCP servers')}
+                    disabled={isImportingMcpServers}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingMcpServers ? 'Importing...' : 'Import'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton, isExportingMcpServers && styles.profileActionButtonDisabled]}
+                    onPress={handleMcpServerExport}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Export MCP servers')}
+                    disabled={isExportingMcpServers}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isExportingMcpServers ? 'Exporting...' : 'Export'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {mcpServers.length === 0 ? (
+                  <Text style={styles.helperText}>No MCP servers configured</Text>
+                ) : (
+                  mcpServers.map((server) => {
+                    const oauthStatus = mcpOAuthStatus[server.name];
+                    const showOAuthControls = !!oauthStatus?.configured;
+                    return (
+                    <View key={server.name} style={styles.serverRow}>
+                      <Pressable
+                        style={styles.serverInfo}
+                        onPress={() => { void openMcpServerEditEditor(server); }}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Edit ${server.name} MCP server`)}
+                      >
+                        <View style={styles.serverNameRow}>
+                          <View style={[
+                            styles.statusDot,
+                            server.connected ? styles.statusConnected : styles.statusDisconnected,
+                          ]} />
+                          <Text style={styles.serverName}>{server.name}</Text>
+                        </View>
+                        <Text style={styles.serverMeta}>
+                          {server.toolCount} tool{server.toolCount !== 1 ? 's' : ''}
+                          {server.configDisabled ? ' • disabled in config' : ''}
+                          {showOAuthControls ? ` • OAuth ${oauthStatus.authenticated ? 'connected' : 'needs auth'}` : ''}
+                          {server.error && ` • ${server.error}`}
+                        </Text>
+                      </Pressable>
+                      <View style={styles.agentActions}>
+                        <TouchableOpacity
+                          style={styles.notePromoteButton}
+                          onPress={() => { void openMcpServerEditEditor(server); }}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Edit ${server.name} MCP server`)}
+                        >
+                          <Text style={styles.notePromoteButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.agentDeleteButton}
+                          onPress={() => handleDeleteMcpServer(server)}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Delete ${server.name} MCP server`)}
+                        >
+                          <Text style={styles.agentDeleteButtonText}>Delete</Text>
+                        </TouchableOpacity>
+                        {showOAuthControls && (
+                          <>
+                            <TouchableOpacity
+                              style={styles.notePromoteButton}
+                              onPress={() => { void handleMcpOAuthStart(server.name); }}
+                              accessibilityRole="button"
+                              accessibilityLabel={createButtonAccessibilityLabel(`Start OAuth for ${server.name}`)}
+                              disabled={pendingMcpOAuthAction !== null}
+                            >
+                              <Text style={styles.notePromoteButtonText}>
+                                {pendingMcpOAuthAction === `${server.name}:start` ? 'Starting...' : 'OAuth'}
+                              </Text>
+                            </TouchableOpacity>
+                            {oauthStatus.authenticated && (
+                              <TouchableOpacity
+                                style={styles.agentDeleteButton}
+                                onPress={() => { void handleMcpOAuthRevoke(server.name); }}
+                                accessibilityRole="button"
+                                accessibilityLabel={createButtonAccessibilityLabel(`Revoke OAuth for ${server.name}`)}
+                                disabled={pendingMcpOAuthAction !== null}
+                              >
+                                <Text style={styles.agentDeleteButtonText}>
+                                  {pendingMcpOAuthAction === `${server.name}:revoke` ? 'Revoking...' : 'Revoke'}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                          </>
+                        )}
+                        <Switch
+                          value={server.enabled}
+                          onValueChange={(v) => handleServerToggle(server.name, v)}
+                          accessibilityLabel={createMcpServerSwitchAccessibilityLabel(server.name)}
+                          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                          thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                          disabled={server.configDisabled}
+                        />
                       </View>
-                      <Text style={styles.serverMeta}>
-                        {server.toolCount} tool{server.toolCount !== 1 ? 's' : ''}
-                        {server.error && ` • ${server.error}`}
-                      </Text>
                     </View>
-                    <Switch
-                      value={server.enabled}
-                      onValueChange={(v) => handleServerToggle(server.name, v)}
-                      accessibilityLabel={createMcpServerSwitchAccessibilityLabel(server.name)}
-                      trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                      thumbColor={server.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                      disabled={server.configDisabled}
+                    );
+                  })
+                )}
+              </CollapsibleSection>
+            )}
+
+            {/* 4i. Discord */}
+            {remoteSettings && (
+              <CollapsibleSection id="discord" title="Discord">
+                <View style={styles.row}>
+                  <Text style={styles.label}>Discord Integration</Text>
+                  <Switch
+                    value={remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED}
+                    onValueChange={(v) => handleRemoteSettingToggle('discordEnabled', v)}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={(remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+
+                {(remoteSettings.discordEnabled ?? DEFAULT_DISCORD_ENABLED) && (
+                  <>
+                    <Text style={styles.label}>Bot Token</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inputDrafts.discordBotToken ?? ''}
+                      onChangeText={(v) => handleRemoteSecretDraftChange('discordBotToken', v)}
+                      onBlur={() => {
+                        void commitRemoteSecretDraft('discordBotToken');
+                      }}
+                      placeholder={remoteSettings.discordBotToken === SECRET_MASK ? 'Configured' : 'Paste your Discord bot token'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      secureTextEntry
                     />
-                  </View>
-                ))}
+
+                    {profiles.length > 0 && (
+                      <>
+                        <Text style={styles.label}>Default Agent</Text>
+                        <View style={styles.providerSelector}>
+                          <Pressable
+                            style={[
+                              styles.providerOption,
+                              !remoteSettings.discordDefaultProfileId && styles.providerOptionActive,
+                            ]}
+                            onPress={() => handleRemoteSettingUpdate('discordDefaultProfileId', '')}
+                          >
+                            <Text style={[
+                              styles.providerOptionText,
+                              !remoteSettings.discordDefaultProfileId && styles.providerOptionTextActive,
+                            ]}>
+                              None
+                            </Text>
+                          </Pressable>
+                          {profiles.map((profile) => (
+                            <Pressable
+                              key={profile.id}
+                              style={[
+                                styles.providerOption,
+                                remoteSettings.discordDefaultProfileId === profile.id && styles.providerOptionActive,
+                              ]}
+                              onPress={() => handleRemoteSettingUpdate('discordDefaultProfileId', profile.id)}
+                            >
+                              <Text style={[
+                                styles.providerOptionText,
+                                remoteSettings.discordDefaultProfileId === profile.id && styles.providerOptionTextActive,
+                              ]}>
+                                {profile.name}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </>
+                    )}
+
+                    <View style={styles.row}>
+                      <Text style={styles.label}>DMs Enabled</Text>
+                      <Switch
+                        value={remoteSettings.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED}
+                        onValueChange={(v) => handleRemoteSettingToggle('discordDmEnabled', v)}
+                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                        thumbColor={(remoteSettings.discordDmEnabled ?? DEFAULT_DISCORD_DM_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                      />
+                    </View>
+
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Require Mention</Text>
+                      <Switch
+                        value={remoteSettings.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION}
+                        onValueChange={(v) => handleRemoteSettingToggle('discordRequireMention', v)}
+                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                        thumbColor={(remoteSettings.discordRequireMention ?? DEFAULT_DISCORD_REQUIRE_MENTION) ? theme.colors.primaryForeground : theme.colors.background}
+                      />
+                    </View>
+                    <Text style={styles.helperText}>
+                      When enabled, server messages must mention the bot before the agent responds.
+                    </Text>
+
+                    {DISCORD_LIST_SETTING_SECTIONS.map((section) => (
+                      <View key={section.key} style={styles.providerCredentialGroup}>
+                        <Text style={styles.label}>{section.label}</Text>
+                        <TextInput
+                          style={[styles.input, { minHeight: 76, textAlignVertical: 'top' }]}
+                          value={inputDrafts[section.key] ?? ''}
+                          onChangeText={(v) => handleRemoteListSettingUpdate(section.key, v)}
+                          placeholder={section.placeholder}
+                          placeholderTextColor={theme.colors.mutedForeground}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          multiline
+                          numberOfLines={3}
+                        />
+                        <Text style={styles.helperText}>{section.helper}</Text>
+                      </View>
+                    ))}
+
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Log Messages</Text>
+                      <Switch
+                        value={remoteSettings.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES}
+                        onValueChange={(v) => handleRemoteSettingToggle('discordLogMessages', v)}
+                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                        thumbColor={(remoteSettings.discordLogMessages ?? DEFAULT_DISCORD_LOG_MESSAGES) ? theme.colors.primaryForeground : theme.colors.background}
+                      />
+                    </View>
+                    <Text style={styles.helperText}>Log Discord message content on the desktop.</Text>
+                  </>
+                )}
               </CollapsibleSection>
             )}
 
@@ -2378,14 +4818,14 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.row}>
                   <Text style={styles.label}>WhatsApp Integration</Text>
                   <Switch
-                    value={remoteSettings.whatsappEnabled ?? false}
+                    value={remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED}
                     onValueChange={(v) => handleRemoteSettingToggle('whatsappEnabled', v)}
                     trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                    thumbColor={remoteSettings.whatsappEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                    thumbColor={(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
                   />
                 </View>
 
-                {remoteSettings.whatsappEnabled && (
+                {(remoteSettings.whatsappEnabled ?? DEFAULT_WHATSAPP_ENABLED) && (
                   <>
                     <Text style={styles.label}>Allowed Numbers</Text>
                     <TextInput
@@ -2428,20 +4868,20 @@ export default function SettingsScreen({ navigation }: any) {
                     <View style={styles.row}>
                       <Text style={styles.label}>Auto-Reply</Text>
                       <Switch
-                        value={remoteSettings.whatsappAutoReply ?? false}
+                        value={remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY}
                         onValueChange={(v) => handleRemoteSettingToggle('whatsappAutoReply', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.whatsappAutoReply ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.whatsappAutoReply ?? DEFAULT_WHATSAPP_AUTO_REPLY) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
 
                     <View style={styles.row}>
                       <Text style={styles.label}>Log Messages</Text>
                       <Switch
-                        value={remoteSettings.whatsappLogMessages ?? false}
+                        value={remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES}
                         onValueChange={(v) => handleRemoteSettingToggle('whatsappLogMessages', v)}
                         trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={remoteSettings.whatsappLogMessages ? theme.colors.primaryForeground : theme.colors.background}
+                        thumbColor={(remoteSettings.whatsappLogMessages ?? DEFAULT_WHATSAPP_LOG_MESSAGES) ? theme.colors.primaryForeground : theme.colors.background}
                       />
                     </View>
                     <Text style={styles.helperText}>
@@ -2455,6 +4895,32 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4j. Langfuse */}
             {remoteSettings && (
               <CollapsibleSection id="langfuse" title="Langfuse">
+                <View style={styles.row}>
+                  <Text style={styles.label}>{LOCAL_TRACE_LOGGING_LABEL}</Text>
+                  <Switch
+                    value={remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED}
+                    onValueChange={(v) => handleRemoteSettingToggle('localTraceLoggingEnabled', v)}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+                <Text style={styles.helperText}>{LOCAL_TRACE_LOGGING_HELPER}</Text>
+
+                {(remoteSettings.localTraceLoggingEnabled ?? DEFAULT_LOCAL_TRACE_LOGGING_ENABLED) && (
+                  <>
+                    <Text style={styles.label}>{LOCAL_TRACE_LOG_PATH_LABEL}</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={inputDrafts.localTraceLogPath ?? ''}
+                      onChangeText={(v) => handleRemoteSettingUpdate('localTraceLogPath', v)}
+                      placeholder={LOCAL_TRACE_LOG_PATH_PLACEHOLDER}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                      autoCapitalize='none'
+                    />
+                    <Text style={styles.helperText}>{LOCAL_TRACE_LOG_PATH_HELPER}</Text>
+                  </>
+                )}
+
                 <View style={styles.row}>
                   <Text style={styles.label}>Enable tracing</Text>
                   <Switch
@@ -2526,31 +4992,114 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4k. Skills */}
             {isDotAgentsServer && (
               <CollapsibleSection id="skills" title="Skills">
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => handleSkillEdit()}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Create skill')}
+                  >
+                    <Text style={styles.createAgentButtonText}>+ Create Skill</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton]}
+                    onPress={() => setShowSkillImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import skill from Markdown')}
+                    disabled={isImportingSkillMarkdown}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingSkillMarkdown ? 'Importing...' : 'Import Markdown'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton]}
+                    onPress={() => setShowSkillGitHubImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import skills from GitHub')}
+                    disabled={isImportingSkillGitHub}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isImportingSkillGitHub ? 'Importing...' : 'Import GitHub'}
+                    </Text>
+                  </TouchableOpacity>
+                  {visibleSelectedSkillIds.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                      onPress={handleSelectedSkillsDelete}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Delete ${visibleSelectedSkillIds.length} selected skills`)}
+                    >
+                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>
+                        Delete selected ({visibleSelectedSkillIds.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 {isLoadingSkills ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
                 ) : skills.length === 0 ? (
                   <Text style={styles.helperText}>No skills configured</Text>
                 ) : (
-                  displaySkills.map((skill) => (
-                    <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
-                      <View style={styles.serverInfo}>
-                        <Text style={styles.serverName}>{skill.name}</Text>
-                        <Text style={styles.serverMeta}>
-                          {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description}
-                        </Text>
+                  displaySkills.map((skill) => {
+                    const isSelected = selectedSkillIds.has(skill.id);
+                    const isExporting = isExportingSkillMarkdownId === skill.id;
+                    return (
+                      <View key={skill.id} style={[styles.serverRow, !skill.enabled && { opacity: 0.5 }]}>
+                        <TouchableOpacity
+                          style={styles.agentInfoPressable}
+                          onPress={() => handleSkillEdit(skill)}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Edit ${skill.name} skill`)}
+                        >
+                          <View style={styles.serverInfo}>
+                            <Text style={styles.serverName}>{skill.name}</Text>
+                            <Text style={styles.serverMeta} numberOfLines={2}>
+                              {!skill.enabled ? '(Globally disabled) ' : ''}{skill.description || 'No description'}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                        <View style={styles.noteActions}>
+                          <TouchableOpacity
+                            style={[styles.noteSelectButton, isSelected && styles.noteSelectButtonSelected]}
+                            onPress={() => toggleSkillSelection(skill.id)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} skill ${skill.name}`}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={[
+                              styles.noteSelectButtonText,
+                              isSelected && styles.noteSelectButtonTextSelected,
+                            ]}>
+                              {isSelected ? 'Selected' : 'Select'}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.notePromoteButton, isExporting && styles.profileActionButtonDisabled]}
+                            onPress={() => { void handleSkillMarkdownExport(skill); }}
+                            accessibilityRole="button"
+                            accessibilityLabel={createButtonAccessibilityLabel(`Export ${skill.name} skill as Markdown`)}
+                            disabled={isExporting}
+                          >
+                            <Text style={styles.notePromoteButtonText}>
+                              {isExporting ? 'Exporting...' : 'Export'}
+                            </Text>
+                          </TouchableOpacity>
+                          <Switch
+                            value={skill.enabledForProfile}
+                            onValueChange={() => handleSkillToggle(skill.id)}
+                            disabled={!skill.enabled}
+                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                            thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
+                          />
+                        </View>
                       </View>
-                      <Switch
-                        value={skill.enabledForProfile}
-                        onValueChange={() => handleSkillToggle(skill.id)}
-                        disabled={!skill.enabled}
-                        trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-                        thumbColor={skill.enabledForProfile && skill.enabled ? theme.colors.primaryForeground : theme.colors.background}
-                      />
-                    </View>
-                  ))
+                    );
+                  })
                 )}
                 <Text style={styles.helperText}>
-                  Toggle skills for the Main Agent
+                  Tap a skill to edit, import SKILL.md files, export Markdown, or toggle it for the Main Agent.
                 </Text>
               </CollapsibleSection>
             )}
@@ -2558,62 +5107,168 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4l. Knowledge Notes */}
             {isDotAgentsServer && (
               <CollapsibleSection id="knowledgeNotes" title="Knowledge Notes">
-                {isLoadingKnowledgeNotes ? (
+                <TextInput
+                  style={[styles.input, styles.knowledgeNoteSearchInput]}
+                  value={knowledgeNoteSearchQuery}
+                  onChangeText={setKnowledgeNoteSearchQuery}
+                  placeholder="Search notes"
+                  placeholderTextColor={theme.colors.mutedForeground}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  accessibilityLabel="Search knowledge notes"
+                />
+
+                {renderKnowledgeNoteFilterGroup(
+                  KNOWLEDGE_NOTE_CONTEXT_FILTER_OPTIONS,
+                  knowledgeNoteContextFilter,
+                  (value) => setKnowledgeNoteContextFilter(value),
+                  'Filter notes by'
+                )}
+                {renderKnowledgeNoteFilterGroup(
+                  KNOWLEDGE_NOTE_DATE_FILTER_OPTIONS,
+                  knowledgeNoteDateFilter,
+                  (value) => setKnowledgeNoteDateFilter(value),
+                  'Filter notes by'
+                )}
+                {renderKnowledgeNoteFilterGroup(
+                  KNOWLEDGE_NOTE_SORT_OPTIONS,
+                  knowledgeNoteSortOption,
+                  (value) => setKnowledgeNoteSortOption(value),
+                  'Sort notes by'
+                )}
+
+                {displayedKnowledgeNotes.length > 0 && (
+                  <View style={styles.knowledgeSelectionBar}>
+                    <TouchableOpacity
+                      style={styles.noteSelectButton}
+                      onPress={handleKnowledgeNoteSelectVisible}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(
+                        visibleSelectedKnowledgeNoteIds.length === displayedKnowledgeNotes.length
+                          ? 'Clear visible note selection'
+                          : 'Select visible notes'
+                      )}
+                    >
+                      <Text style={styles.noteSelectButtonText}>
+                        {visibleSelectedKnowledgeNoteIds.length === displayedKnowledgeNotes.length ? 'Clear visible' : 'Select visible'}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text style={styles.knowledgeSelectionText}>
+                      {visibleSelectedKnowledgeNoteIds.length
+                        ? `${visibleSelectedKnowledgeNoteIds.length} selected`
+                        : `${displayedKnowledgeNotes.length} shown`}
+                    </Text>
+                  </View>
+                )}
+
+                {isSearchingKnowledgeNotes && (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                    <Text style={styles.loadingText}>Searching notes</Text>
+                  </View>
+                )}
+
+                {isLoadingKnowledgeNotes && !trimmedKnowledgeNoteSearchQuery ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : knowledgeNotes.length === 0 ? (
-                  <Text style={styles.helperText}>No notes saved</Text>
+                ) : displayedKnowledgeNotes.length === 0 ? (
+                  <Text style={styles.helperText}>
+                    {trimmedKnowledgeNoteSearchQuery ? 'No notes match the active search and filters' : 'No notes saved'}
+                  </Text>
                 ) : (
-                  knowledgeNotes.map((note) => (
-                    <View key={note.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
-                      <TouchableOpacity
-                        style={styles.agentInfoPressable}
-                        onPress={() => handleKnowledgeNoteEdit(note)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.serverInfo, { flex: 1 }]}> 
-                          <Text style={styles.serverName}>{note.title}</Text>
-                          <Text style={styles.serverMeta} numberOfLines={2}>{note.summary || note.body}</Text>
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
-                            {note.tags.map((tag, idx) => (
-                              <View key={idx} style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
-                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{tag}</Text>
+                  displayedKnowledgeNotes.map((note) => {
+                    const isSelected = selectedKnowledgeNoteIds.has(note.id);
+                    return (
+                      <View key={note.id} style={[styles.serverRow, { alignItems: 'flex-start' }]}>
+                        <TouchableOpacity
+                          style={styles.agentInfoPressable}
+                          onPress={() => handleKnowledgeNoteEdit(note)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.serverInfo, { flex: 1 }]}>
+                            <Text style={styles.serverName}>{note.title}</Text>
+                            <Text style={styles.serverMeta} numberOfLines={2}>{note.summary || note.body}</Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
+                              {note.tags.map((tag, idx) => (
+                                <View key={idx} style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
+                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{tag}</Text>
+                                </View>
+                              ))}
+                              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
+                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{note.context}</Text>
                               </View>
-                            ))}
-                            <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginRight: 4, marginTop: 2 }]}>
-                              <Text style={[styles.providerOptionText, { fontSize: 10 }]}>{note.context}</Text>
                             </View>
                           </View>
-                        </View>
-                      </TouchableOpacity>
-                      <View style={styles.noteActions}>
-                        {note.context === 'search-only' && (
+                        </TouchableOpacity>
+                        <View style={styles.noteActions}>
                           <TouchableOpacity
-                            style={styles.notePromoteButton}
-                            onPress={() => handleKnowledgeNotePromote(note)}
-                            accessibilityLabel={`Promote note ${note.title} to auto context`}
+                            style={[styles.noteSelectButton, isSelected && styles.noteSelectButtonSelected]}
+                            onPress={() => toggleKnowledgeNoteSelection(note.id)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} note ${note.title}`}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           >
-                            <Text style={styles.notePromoteButtonText}>Promote to auto</Text>
+                            <Text style={[
+                              styles.noteSelectButtonText,
+                              isSelected && styles.noteSelectButtonTextSelected,
+                            ]}>
+                              {isSelected ? 'Selected' : 'Select'}
+                            </Text>
                           </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          style={styles.noteDeleteButton}
-                          onPress={() => handleKnowledgeNoteDelete(note.id)}
-                          accessibilityLabel={`Delete note ${note.title}`}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Text style={styles.noteDeleteButtonText}>Delete</Text>
-                        </TouchableOpacity>
+                          {note.context === 'search-only' && (
+                            <TouchableOpacity
+                              style={styles.notePromoteButton}
+                              onPress={() => handleKnowledgeNotePromote(note)}
+                              accessibilityLabel={`Promote note ${note.title} to auto context`}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.notePromoteButtonText}>Promote to auto</Text>
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity
+                            style={styles.noteDeleteButton}
+                            onPress={() => handleKnowledgeNoteDelete(note.id)}
+                            accessibilityLabel={`Delete note ${note.title}`}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={styles.noteDeleteButtonText}>Delete</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                    </View>
-                  ))
+                    );
+                  })
                 )}
-                <TouchableOpacity
-                  style={styles.createAgentButton}
-                  onPress={() => handleKnowledgeNoteEdit()}
-                >
-                  <Text style={styles.createAgentButtonText}>+ Create Note</Text>
-                </TouchableOpacity>
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => handleKnowledgeNoteEdit()}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Create note')}
+                  >
+                    <Text style={styles.createAgentButtonText}>+ Create Note</Text>
+                  </TouchableOpacity>
+                  {visibleSelectedKnowledgeNoteIds.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                      onPress={handleKnowledgeNoteDeleteMultiple}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel(`Delete ${visibleSelectedKnowledgeNoteIds.length} selected notes`)}
+                    >
+                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>
+                        Delete selected ({visibleSelectedKnowledgeNoteIds.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {knowledgeNotes.length > 0 && (
+                    <TouchableOpacity
+                      style={[styles.createAgentButton, styles.sectionActionButton, styles.sectionDangerButton]}
+                      onPress={handleKnowledgeNoteDeleteAll}
+                      accessibilityRole="button"
+                      accessibilityLabel={createButtonAccessibilityLabel('Delete all knowledge notes')}
+                    >
+                      <Text style={[styles.createAgentButtonText, styles.sectionDangerButtonText]}>Delete all notes</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <Text style={styles.helperText}>
                   Tap a note to edit it or create a new one. Canonical note fields are title, context, summary, body, tags, and references. Use auto context sparingly for high-signal notes.
                 </Text>
@@ -2623,12 +5278,25 @@ export default function SettingsScreen({ navigation }: any) {
             {/* 4m. Agents */}
             {isDotAgentsServer && (
               <CollapsibleSection id="agents" title="Agents">
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.profileActionButton, styles.sectionActionButton, isReloadingAgentProfiles && styles.profileActionButtonDisabled]}
+                    onPress={handleAgentProfilesReload}
+                    disabled={isReloadingAgentProfiles}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Rescan desktop agent profile files')}
+                  >
+                    <Text style={styles.profileActionButtonText}>
+                      {isReloadingAgentProfiles ? 'Rescanning...' : 'Rescan files'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
                 {isLoadingAgentProfiles ? (
                   <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : agentProfiles.length === 0 ? (
+                ) : sortedAgentProfiles.length === 0 ? (
                   <Text style={styles.helperText}>No agents configured</Text>
                 ) : (
-                  agentProfiles.map((profile) => (
+                  sortedAgentProfiles.map((profile) => (
                     <View
                       key={profile.id}
                       style={styles.serverRow}
@@ -2638,31 +5306,49 @@ export default function SettingsScreen({ navigation }: any) {
                         onPress={() => handleAgentProfileEdit(profile.id)}
                         activeOpacity={0.7}
                       >
-                        <View style={styles.serverInfo}>
-                          <View style={styles.serverNameRow}>
-                            <Text style={styles.serverName}>{profile.displayName}</Text>
-                            {profile.isBuiltIn && (
-                              <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
-                                <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
-                              </View>
-                            )}
-                            {profile.systemPrompt?.trim() && (
-                              <View style={styles.customPromptBadge}>
-                                <Text style={styles.customPromptBadgeText}>Custom prompt</Text>
-                              </View>
+                        <View style={styles.agentListContent}>
+                          <View style={styles.agentListAvatar}>
+                            {profile.avatarDataUrl ? (
+                              <Image
+                                source={{ uri: profile.avatarDataUrl }}
+                                style={styles.agentListAvatarImage}
+                                accessibilityIgnoresInvertColors
+                              />
+                            ) : (
+                              <Text style={styles.agentListAvatarInitial}>{getAgentListInitial(profile)}</Text>
                             )}
                           </View>
-                          <Text style={styles.serverMeta}>
-                            {profile.connectionType} • {profile.role || 'agent'}
-                          </Text>
-                          {profile.systemPrompt?.trim() && !profile.isBuiltIn && (
-                            <Text style={styles.serverMeta} numberOfLines={2}>
-                              Default system prompt updates are blocked until this custom prompt is reset.
+                          <View style={styles.serverInfo}>
+                            <View style={styles.serverNameRow}>
+                              <Text style={styles.serverName}>{profile.displayName}</Text>
+                              {profile.isDefault && (
+                                <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
+                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Default</Text>
+                                </View>
+                              )}
+                              {profile.isBuiltIn && (
+                                <View style={[styles.providerOption, { paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }]}>
+                                  <Text style={[styles.providerOptionText, { fontSize: 10 }]}>Built-in</Text>
+                                </View>
+                              )}
+                              {profile.systemPrompt?.trim() && (
+                                <View style={styles.customPromptBadge}>
+                                  <Text style={styles.customPromptBadgeText}>Custom prompt</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.serverMeta}>
+                              {profile.connectionType} • {profile.role || 'agent'}
                             </Text>
-                          )}
-                          {profile.description && (
-                            <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
-                          )}
+                            {profile.systemPrompt?.trim() && !profile.isBuiltIn && (
+                              <Text style={styles.serverMeta} numberOfLines={2}>
+                                Default system prompt updates are blocked until this custom prompt is reset.
+                              </Text>
+                            )}
+                            {profile.description && (
+                              <Text style={styles.serverMeta} numberOfLines={2}>{profile.description}</Text>
+                            )}
+                          </View>
                         </View>
                       </TouchableOpacity>
                       <View style={styles.agentActions}>
@@ -2746,6 +5432,20 @@ export default function SettingsScreen({ navigation }: any) {
                           <Text style={styles.loopActionButtonText}>Run now</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
+                          style={[
+                            styles.loopActionButton,
+                            isExportingLoopMarkdownId === loop.id && styles.profileActionButtonDisabled,
+                          ]}
+                          onPress={() => { void handleLoopMarkdownExport(loop); }}
+                          disabled={isExportingLoopMarkdownId === loop.id}
+                          accessibilityRole="button"
+                          accessibilityLabel={createButtonAccessibilityLabel(`Export ${loop.name} loop as Markdown`)}
+                        >
+                          <Text style={styles.loopActionButtonText}>
+                            {isExportingLoopMarkdownId === loop.id ? 'Exporting...' : 'Export'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
                           style={[styles.loopActionButton, styles.loopActionButtonDanger]}
                           onPress={() => handleLoopDelete(loop)}
                           accessibilityRole="button"
@@ -2758,39 +5458,700 @@ export default function SettingsScreen({ navigation }: any) {
                     </View>
                   ))
                 )}
-                <TouchableOpacity
-                  style={styles.createAgentButton}
-                  onPress={() => handleLoopEdit()}
-                >
-                  <Text style={styles.createAgentButtonText}>+ Create New Loop</Text>
-                </TouchableOpacity>
+                <View style={styles.sectionActionRow}>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => handleLoopEdit()}
+                  >
+                    <Text style={styles.createAgentButtonText}>+ Create New Loop</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.createAgentButton, styles.sectionActionButton]}
+                    onPress={() => setShowLoopImportModal(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel={createButtonAccessibilityLabel('Import loop Markdown')}
+                  >
+                    <Text style={styles.createAgentButtonText}>Import Loop</Text>
+                  </TouchableOpacity>
+                </View>
                 <Text style={styles.helperText}>
-                  Tap a loop to edit, or run/toggle/delete from the actions
+                  Tap a loop to edit, run, export, toggle, or delete from the actions
                 </Text>
               </CollapsibleSection>
             )}
           </>
         )}
 
-      </ScrollView>
+    </AppShellSettingsLayout>
 
-	      <View style={[styles.saveBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
-	        <TouchableOpacity
-	          style={[styles.primaryButton, styles.saveBarButton, isSavingAllSettings && styles.primaryButtonDisabled]}
-	          onPress={() => { void flushAllSettingsSaves(); }}
-	          disabled={isSavingAllSettings}
-	          activeOpacity={0.85}
-	          accessibilityRole="button"
-	          accessibilityLabel={saveButtonLabel}
-	          accessibilityHint={saveButtonHint}
-	        >
-	          <Text style={styles.primaryButtonText}>{saveButtonLabel}</Text>
-	        </TouchableOpacity>
-	        <Text style={styles.saveBarHint}>
-	          {saveStatusMessage || saveButtonHint}
-	        </Text>
-	      </View>
-    </KeyboardAvoidingView>
+      {/* Bundle Import Modal */}
+      <Modal
+        visible={showBundleImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeBundleImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Bundle</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeBundleImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close bundle import modal"
+                disabled={isPreviewingBundleImport || isImportingBundle}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.bundleImportBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.importModalDescription}>
+                Paste .dotagents JSON, preview conflicts, then choose what to import.
+              </Text>
+              <TextInput
+                style={styles.importJsonInput}
+                value={bundleImportJsonText}
+                onChangeText={handleBundleImportJsonChange}
+                placeholder='{"manifest":{"version":1,"name":"Bundle"},"agentProfiles":[]}'
+                placeholderTextColor={theme.colors.mutedForeground}
+                multiline
+                numberOfLines={8}
+                textAlignVertical="top"
+                autoCorrect={false}
+                autoCapitalize="none"
+                spellCheck={false}
+                editable={!isPreviewingBundleImport && !isImportingBundle}
+              />
+
+              <Text style={styles.label}>Handle conflicts</Text>
+              <View style={styles.providerSelector}>
+                {BUNDLE_IMPORT_CONFLICT_STRATEGIES.map((strategy) => (
+                  <Pressable
+                    key={strategy.value}
+                    style={[
+                      styles.providerOption,
+                      bundleImportConflictStrategy === strategy.value && styles.providerOptionActive,
+                    ]}
+                    onPress={() => setBundleImportConflictStrategy(strategy.value)}
+                    disabled={isImportingBundle}
+                  >
+                    <Text style={[
+                      styles.providerOptionText,
+                      bundleImportConflictStrategy === strategy.value && styles.providerOptionTextActive,
+                    ]}>
+                      {strategy.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Components</Text>
+              {BUNDLE_IMPORT_COMPONENT_OPTIONS.map((component) => {
+                const count = bundleImportPreview?.bundle.manifest.components[component.key] ?? 0;
+                const conflicts = bundleImportPreview?.conflicts[component.key].length ?? 0;
+                return (
+                  <View key={component.key} style={styles.row}>
+                    <View style={styles.serverInfo}>
+                      <Text style={styles.serverName}>{component.label}</Text>
+                      <Text style={styles.serverMeta}>
+                        {bundleImportPreview
+                          ? `${count} item${count === 1 ? '' : 's'}${conflicts > 0 ? `, ${conflicts} conflict${conflicts === 1 ? '' : 's'}` : ''}`
+                          : 'Not previewed'}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={bundleImportComponents[component.key]}
+                      onValueChange={(value) => handleBundleImportComponentToggle(component.key, value)}
+                      accessibilityLabel={createSwitchAccessibilityLabel(`Import bundle ${component.label}`)}
+                      trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                      thumbColor={bundleImportComponents[component.key] ? theme.colors.primaryForeground : theme.colors.background}
+                    />
+                  </View>
+                );
+              })}
+
+              {bundleImportPreview && (
+                <View style={styles.bundlePreviewCard}>
+                  <Text style={styles.serverName}>{bundleImportPreview.bundle.manifest.name}</Text>
+                  {bundleImportPreview.bundle.manifest.description && (
+                    <Text style={styles.serverMeta} numberOfLines={2}>
+                      {bundleImportPreview.bundle.manifest.description}
+                    </Text>
+                  )}
+                  <Text style={styles.serverMeta}>
+                    Exported from {bundleImportPreview.bundle.manifest.exportedFrom}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeBundleImportModal}
+                disabled={isPreviewingBundleImport || isImportingBundle}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalCancelButton,
+                  (!bundleImportJsonText.trim() || isPreviewingBundleImport || isImportingBundle) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleBundleImportPreview(); }}
+                disabled={!bundleImportJsonText.trim() || isPreviewingBundleImport || isImportingBundle}
+                accessibilityRole="button"
+                accessibilityLabel="Preview DotAgents bundle JSON"
+              >
+                <Text style={styles.importModalCancelText}>
+                  {isPreviewingBundleImport ? 'Previewing...' : 'Preview'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!bundleImportPreview || isImportingBundle || isPreviewingBundleImport) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleBundleImport(); }}
+                disabled={!bundleImportPreview || isImportingBundle || isPreviewingBundleImport}
+                accessibilityRole="button"
+                accessibilityLabel="Import DotAgents bundle JSON"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingBundle ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MCP Server Editor Modal */}
+      <Modal
+        visible={showMcpServerEditor}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeMcpServerEditor}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>
+                {mcpServerEditorMode === 'create' ? 'Add MCP server' : 'Edit MCP server'}
+              </Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeMcpServerEditor}
+                accessibilityRole="button"
+                accessibilityLabel="Close MCP server editor"
+                disabled={isSavingMcpServer}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            {isLoadingMcpServerConfig ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text style={styles.helperText}>Loading MCP server config...</Text>
+              </View>
+            ) : (
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 520 }}>
+                <Text style={styles.label}>Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={mcpServerDraft.name}
+                  onChangeText={(value) => handleMcpServerDraftChange('name', value)}
+                  editable={mcpServerEditorMode === 'create' && !isSavingMcpServer}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="github"
+                  placeholderTextColor={theme.colors.mutedForeground}
+                />
+
+                <Text style={styles.label}>Transport</Text>
+                <View style={styles.providerSelector}>
+                  {MCP_TRANSPORT_OPTIONS.map((transport) => (
+                    <TouchableOpacity
+                      key={transport.value}
+                      style={[
+                        styles.providerOption,
+                        mcpServerDraft.transport === transport.value && styles.providerOptionActive,
+                      ]}
+                      onPress={() => handleMcpServerDraftChange('transport', transport.value)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: mcpServerDraft.transport === transport.value }}
+                      accessibilityLabel={createButtonAccessibilityLabel(`Use ${transport.label} MCP transport`)}
+                      disabled={isSavingMcpServer}
+                    >
+                      <Text style={[
+                        styles.providerOptionText,
+                        mcpServerDraft.transport === transport.value && styles.providerOptionTextActive,
+                      ]}>
+                        {transport.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {mcpServerDraft.transport === 'stdio' ? (
+                  <>
+                    <Text style={styles.label}>Command</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={mcpServerDraft.command}
+                      onChangeText={(value) => handleMcpServerDraftChange('command', value)}
+                      editable={!isSavingMcpServer}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder="npx"
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+
+                    <Text style={styles.label}>Args</Text>
+                    <TextInput
+                      style={styles.importJsonInput}
+                      value={mcpServerDraft.args}
+                      onChangeText={(value) => handleMcpServerDraftChange('args', value)}
+                      editable={!isSavingMcpServer}
+                      multiline
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder={'["@modelcontextprotocol/server-github"]'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+
+                    <Text style={styles.label}>Environment JSON</Text>
+                    <TextInput
+                      style={styles.importJsonInput}
+                      value={mcpServerDraft.env}
+                      onChangeText={(value) => handleMcpServerDraftChange('env', value)}
+                      editable={!isSavingMcpServer}
+                      multiline
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder={'{"GITHUB_TOKEN":"..."}'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.label}>URL</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={mcpServerDraft.url}
+                      onChangeText={(value) => handleMcpServerDraftChange('url', value)}
+                      editable={!isSavingMcpServer}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="url"
+                      placeholder={mcpServerDraft.transport === 'websocket' ? 'wss://example.com/mcp' : 'https://example.com/mcp'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+
+                    <Text style={styles.label}>Headers JSON</Text>
+                    <TextInput
+                      style={styles.importJsonInput}
+                      value={mcpServerDraft.headers}
+                      onChangeText={(value) => handleMcpServerDraftChange('headers', value)}
+                      editable={!isSavingMcpServer}
+                      multiline
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder={'{"Authorization":"Bearer ..."}'}
+                      placeholderTextColor={theme.colors.mutedForeground}
+                    />
+
+                    {mcpServerDraft.transport === 'streamableHttp' && (
+                      <>
+                        <View style={styles.row}>
+                          <View style={styles.serverInfo}>
+                            <Text style={styles.label}>OAuth</Text>
+                            <Text style={styles.helperText}>Use this for protected HTTP MCP servers.</Text>
+                          </View>
+                          <Switch
+                            value={mcpServerDraft.oauthEnabled}
+                            onValueChange={(value) => handleMcpServerDraftChange('oauthEnabled', value)}
+                            disabled={isSavingMcpServer}
+                            accessibilityLabel={createSwitchAccessibilityLabel('MCP server OAuth')}
+                            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                            thumbColor={mcpServerDraft.oauthEnabled ? theme.colors.primaryForeground : theme.colors.background}
+                          />
+                        </View>
+
+                        {mcpServerDraft.oauthEnabled && (
+                          <>
+                            <Text style={styles.label}>OAuth Scope</Text>
+                            <TextInput
+                              style={styles.input}
+                              value={mcpServerDraft.oauthScope}
+                              onChangeText={(value) => handleMcpServerDraftChange('oauthScope', value)}
+                              editable={!isSavingMcpServer}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              placeholder="read write"
+                              placeholderTextColor={theme.colors.mutedForeground}
+                            />
+
+                            <Text style={styles.label}>OAuth Client ID</Text>
+                            <TextInput
+                              style={styles.input}
+                              value={mcpServerDraft.oauthClientId}
+                              onChangeText={(value) => handleMcpServerDraftChange('oauthClientId', value)}
+                              editable={!isSavingMcpServer}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              placeholder="Optional static client ID"
+                              placeholderTextColor={theme.colors.mutedForeground}
+                            />
+
+                            <View style={styles.row}>
+                              <Text style={styles.label}>Use discovery</Text>
+                              <Switch
+                                value={mcpServerDraft.oauthUseDiscovery}
+                                onValueChange={(value) => handleMcpServerDraftChange('oauthUseDiscovery', value)}
+                                disabled={isSavingMcpServer}
+                                accessibilityLabel={createSwitchAccessibilityLabel('MCP OAuth discovery')}
+                                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                                thumbColor={mcpServerDraft.oauthUseDiscovery ? theme.colors.primaryForeground : theme.colors.background}
+                              />
+                            </View>
+
+                            <View style={styles.row}>
+                              <Text style={styles.label}>Dynamic registration</Text>
+                              <Switch
+                                value={mcpServerDraft.oauthUseDynamicRegistration}
+                                onValueChange={(value) => handleMcpServerDraftChange('oauthUseDynamicRegistration', value)}
+                                disabled={isSavingMcpServer}
+                                accessibilityLabel={createSwitchAccessibilityLabel('MCP OAuth dynamic registration')}
+                                trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                                thumbColor={mcpServerDraft.oauthUseDynamicRegistration ? theme.colors.primaryForeground : theme.colors.background}
+                              />
+                            </View>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+
+                <Text style={styles.label}>Timeout ms</Text>
+                <TextInput
+                  style={styles.input}
+                  value={mcpServerDraft.timeout}
+                  onChangeText={(value) => handleMcpServerDraftChange('timeout', value.replace(/[^0-9]/g, ''))}
+                  editable={!isSavingMcpServer}
+                  keyboardType="number-pad"
+                  placeholder="10000"
+                  placeholderTextColor={theme.colors.mutedForeground}
+                />
+
+                <View style={styles.row}>
+                  <View style={styles.serverInfo}>
+                    <Text style={styles.label}>Disabled in config</Text>
+                    <Text style={styles.helperText}>Disabled servers are saved but not started.</Text>
+                  </View>
+                  <Switch
+                    value={mcpServerDraft.disabled}
+                    onValueChange={(value) => handleMcpServerDraftChange('disabled', value)}
+                    disabled={isSavingMcpServer}
+                    accessibilityLabel={createSwitchAccessibilityLabel('MCP server disabled in config')}
+                    trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+                    thumbColor={mcpServerDraft.disabled ? theme.colors.primaryForeground : theme.colors.background}
+                  />
+                </View>
+              </ScrollView>
+            )}
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeMcpServerEditor}
+                disabled={isSavingMcpServer}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (isSavingMcpServer || isLoadingMcpServerConfig) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleSaveMcpServer(); }}
+                disabled={isSavingMcpServer || isLoadingMcpServerConfig}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isSavingMcpServer ? 'Saving...' : mcpServerEditorMode === 'create' ? 'Add server' : 'Save server'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MCP Server Import Modal */}
+      <Modal
+        visible={showMcpImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeMcpImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import MCP Servers</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeMcpImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close MCP server import modal"
+                disabled={isImportingMcpServers}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.importModalDescription}>
+              Paste JSON with a top-level mcpServers object. Existing server names are replaced.
+            </Text>
+
+            <TextInput
+              style={styles.importJsonInput}
+              value={mcpImportJsonText}
+              onChangeText={setMcpImportJsonText}
+              placeholder={'{"mcpServers":{"example":{"transport":"streamableHttp","url":"https://example.com/mcp"}}}'}
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isImportingMcpServers}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeMcpImportModal}
+                disabled={isImportingMcpServers}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!mcpImportJsonText.trim() || isImportingMcpServers) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleMcpServerImport(); }}
+                disabled={!mcpImportJsonText.trim() || isImportingMcpServers}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingMcpServers ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Skill Markdown Import Modal */}
+      <Modal
+        visible={showSkillImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeSkillImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Skill Markdown</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeSkillImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close skill Markdown import modal"
+                disabled={isImportingSkillMarkdown}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.importModalDescription}>
+              Paste a SKILL.md file with frontmatter and instructions.
+            </Text>
+
+            <TextInput
+              style={styles.importJsonInput}
+              value={skillImportMarkdownText}
+              onChangeText={setSkillImportMarkdownText}
+              placeholder={'---\nname: Example Skill\ndescription: What this skill does\n---\n\nSkill instructions...'}
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              textAlignVertical="top"
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              editable={!isImportingSkillMarkdown}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeSkillImportModal}
+                disabled={isImportingSkillMarkdown}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!skillImportMarkdownText.trim() || isImportingSkillMarkdown) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleSkillMarkdownImport(); }}
+                disabled={!skillImportMarkdownText.trim() || isImportingSkillMarkdown}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingSkillMarkdown ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Skill GitHub Import Modal */}
+      <Modal
+        visible={showSkillGitHubImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeSkillGitHubImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Skills From GitHub</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeSkillGitHubImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close GitHub skill import modal"
+                disabled={isImportingSkillGitHub}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.importModalDescription}>
+              Enter a GitHub repository, branch, or folder URL that contains SKILL.md files.
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              value={skillGitHubImportText}
+              onChangeText={setSkillGitHubImportText}
+              placeholder="owner/repo or https://github.com/owner/repo/tree/main/skills/example"
+              placeholderTextColor={theme.colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              editable={!isImportingSkillGitHub}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeSkillGitHubImportModal}
+                disabled={isImportingSkillGitHub}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!skillGitHubImportText.trim() || isImportingSkillGitHub) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleSkillGitHubImport(); }}
+                disabled={!skillGitHubImportText.trim() || isImportingSkillGitHub}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingSkillGitHub ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Loop Markdown Import Modal */}
+      <Modal
+        visible={showLoopImportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeLoopImportModal}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={styles.importModalContainer}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>Import Loop</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closeLoopImportModal}
+                accessibilityRole="button"
+                accessibilityLabel="Close loop import modal"
+                disabled={isImportingLoopMarkdown}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.importModalDescription}>
+              Paste task.md content for a repeat task.
+            </Text>
+
+            <TextInput
+              style={styles.importJsonInput}
+              value={loopImportMarkdownText}
+              onChangeText={setLoopImportMarkdownText}
+              placeholder={'---\nkind: task\nname: morning-check\nintervalMinutes: 60\nenabled: true\n---\nSummarize overnight work.'}
+              placeholderTextColor={theme.colors.mutedForeground}
+              multiline
+              numberOfLines={8}
+              textAlignVertical="top"
+              autoCorrect={false}
+              autoCapitalize="none"
+              spellCheck={false}
+              editable={!isImportingLoopMarkdown}
+            />
+
+            <View style={styles.importModalActions}>
+              <TouchableOpacity
+                style={styles.importModalCancelButton}
+                onPress={closeLoopImportModal}
+                disabled={isImportingLoopMarkdown}
+              >
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.importModalImportButton,
+                  (!loopImportMarkdownText.trim() || isImportingLoopMarkdown) && styles.importModalImportButtonDisabled,
+                ]}
+                onPress={() => { void handleLoopMarkdownImport(); }}
+                disabled={!loopImportMarkdownText.trim() || isImportingLoopMarkdown}
+                accessibilityRole="button"
+                accessibilityLabel="Import loop Markdown"
+              >
+                <Text style={styles.importModalImportText}>
+                  {isImportingLoopMarkdown ? 'Importing...' : 'Import'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Model Picker Modal */}
       <Modal
@@ -2943,6 +6304,124 @@ export default function SettingsScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* Preset Editor Modal */}
+      <Modal
+        visible={showPresetEditor}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closePresetEditor}
+      >
+        <View style={styles.importModalOverlay}>
+          <View style={[styles.importModalContainer, styles.presetEditorContainer]}>
+            <View style={styles.importModalHeader}>
+              <Text style={styles.importModalTitle}>
+                {presetEditorMode === 'create'
+                  ? 'Create New Preset'
+                  : presetDraft.isBuiltIn ? 'Configure Preset' : 'Edit Preset'}
+              </Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={closePresetEditor}
+                accessibilityRole="button"
+                accessibilityLabel="Close preset editor"
+                disabled={isSavingPreset}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.presetEditorBody} keyboardShouldPersistTaps="handled">
+              <Text style={styles.label}>Preset Name</Text>
+              <TextInput
+                style={[styles.input, presetDraft.isBuiltIn && styles.inputDisabled]}
+                value={presetDraft.name}
+                onChangeText={(v) => handlePresetDraftChange('name', v)}
+                placeholder="e.g., My OpenRouter"
+                placeholderTextColor={theme.colors.mutedForeground}
+                editable={!presetDraft.isBuiltIn && !isSavingPreset}
+              />
+
+              <Text style={styles.label}>Base URL</Text>
+              <TextInput
+                style={[styles.input, presetDraft.isBuiltIn && styles.inputDisabled]}
+                value={presetDraft.baseUrl}
+                onChangeText={(v) => handlePresetDraftChange('baseUrl', v)}
+                placeholder="https://openrouter.ai/api/v1"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!presetDraft.isBuiltIn && !isSavingPreset}
+              />
+
+              <Text style={styles.label}>API Key</Text>
+              <TextInput
+                style={styles.input}
+                value={presetDraft.apiKey}
+                onChangeText={(v) => handlePresetDraftChange('apiKey', v)}
+                placeholder={presetDraft.hasApiKey ? 'Leave blank to keep existing key' : 'sk-...'}
+                placeholderTextColor={theme.colors.mutedForeground}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingPreset}
+              />
+
+              <Text style={styles.label}>Agent Model</Text>
+              <TextInput
+                style={styles.input}
+                value={presetDraft.agentModel}
+                onChangeText={(v) => handlePresetDraftChange('agentModel', v)}
+                placeholder="gpt-4.1-mini"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingPreset}
+              />
+
+              <Text style={styles.label}>Transcript Model</Text>
+              <TextInput
+                style={styles.input}
+                value={presetDraft.transcriptProcessingModel}
+                onChangeText={(v) => handlePresetDraftChange('transcriptProcessingModel', v)}
+                placeholder="Optional"
+                placeholderTextColor={theme.colors.mutedForeground}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSavingPreset}
+              />
+            </ScrollView>
+
+            <View style={styles.importModalActions}>
+              {presetEditorMode === 'edit' && !presetDraft.isBuiltIn && (
+                <TouchableOpacity
+                  style={[styles.dangerActionButton, styles.presetDeleteButton, isSavingPreset && styles.dangerActionButtonDisabled]}
+                  onPress={handlePresetDelete}
+                  disabled={isSavingPreset}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete preset ${presetDraft.name}`}
+                >
+                  <Text style={styles.dangerActionButtonText}>Delete</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.importModalCancelButton} onPress={closePresetEditor} disabled={isSavingPreset}>
+                <Text style={styles.importModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.importModalImportButton, isSavingPreset && styles.importModalImportButtonDisabled]}
+                onPress={handlePresetEditorSave}
+                disabled={isSavingPreset}
+                accessibilityRole="button"
+                accessibilityLabel={presetEditorMode === 'create' ? 'Create preset' : 'Save preset changes'}
+              >
+                <Text style={styles.importModalImportText}>
+                  {isSavingPreset ? 'Saving...' : 'Save Changes'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* TTS Model Picker Modal */}
       <Modal
         visible={showTtsModelPicker}
@@ -2965,7 +6444,7 @@ export default function SettingsScreen({ navigation }: any) {
             </View>
 
             <ScrollView style={styles.modelList}>
-              {getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').map((model) => {
+              {getTtsModelsForProvider(remoteSettings?.ttsProviderId || DEFAULT_TTS_PROVIDER_ID).map((model) => {
                 const currentValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsModel
                   : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel
                   : remoteSettings?.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsModel
@@ -3003,7 +6482,7 @@ export default function SettingsScreen({ navigation }: any) {
 
             <View style={styles.modelPickerFooter}>
               <Text style={styles.modelPickerFooterText}>
-                {getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').length} model{getTtsModelsForProvider(remoteSettings?.ttsProviderId || 'openai').length !== 1 ? 's' : ''} available
+                {getTtsModelsForProvider(remoteSettings?.ttsProviderId || DEFAULT_TTS_PROVIDER_ID).length} model{getTtsModelsForProvider(remoteSettings?.ttsProviderId || DEFAULT_TTS_PROVIDER_ID).length !== 1 ? 's' : ''} available
               </Text>
             </View>
           </View>
@@ -3034,16 +6513,18 @@ export default function SettingsScreen({ navigation }: any) {
             <ScrollView style={styles.modelList}>
               {(() => {
                 const ttsModel = remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsModel : undefined;
-                const voices = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || 'openai', ttsModel);
+                const voices = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || DEFAULT_TTS_PROVIDER_ID, ttsModel);
                 return voices.map((voice) => {
                   const currentValue = remoteSettings?.ttsProviderId === 'openai' ? remoteSettings.openaiTtsVoice
                     : remoteSettings?.ttsProviderId === 'groq' ? remoteSettings.groqTtsVoice
                     : remoteSettings?.ttsProviderId === 'gemini' ? remoteSettings.geminiTtsVoice
-                    : remoteSettings?.edgeTtsVoice;
-                  const isSelected = currentValue === voice.value;
+                    : remoteSettings?.ttsProviderId === 'edge' ? remoteSettings.edgeTtsVoice
+                    : remoteSettings?.ttsProviderId === 'kitten' ? remoteSettings.kittenVoiceId
+                    : remoteSettings?.supertonicVoice;
+                  const isSelected = String(currentValue) === String(voice.value);
                   return (
                     <TouchableOpacity
-                      key={voice.value}
+                      key={String(voice.value)}
                       style={[
                         styles.modelItem,
                         isSelected && styles.modelItemActive,
@@ -3075,7 +6556,7 @@ export default function SettingsScreen({ navigation }: any) {
               <Text style={styles.modelPickerFooterText}>
                 {(() => {
                   const ttsModel = remoteSettings?.ttsProviderId === 'groq' ? remoteSettings?.groqTtsModel : undefined;
-                  const count = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || 'openai', ttsModel).length;
+                  const count = getTtsVoicesForProvider(remoteSettings?.ttsProviderId || DEFAULT_TTS_PROVIDER_ID, ttsModel).length;
                   return `${count} voice${count !== 1 ? 's' : ''} available`;
                 })()}
               </Text>
@@ -3229,6 +6710,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     input: {
       ...theme.input,
     },
+    inputDisabled: {
+      opacity: 0.6,
+    },
     row: {
       flexDirection: 'row',
       alignItems: 'flex-start',
@@ -3350,6 +6834,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     dangerActionButtonTextDisabled: {
       color: theme.colors.mutedForeground,
     },
+    chatGptWebAuthBlock: {
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
     saveBar: {
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
@@ -3379,6 +6870,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       fontWeight: '600',
       color: theme.colors.foreground,
+    },
+    providerCredentialGroup: {
+      marginTop: spacing.md,
+      gap: spacing.sm,
     },
     loadingRow: {
       flexDirection: 'row',
@@ -3518,6 +7013,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       width: '100%',
       maxWidth: 400,
     },
+    presetEditorContainer: {
+      maxHeight: '82%',
+    },
+    presetEditorBody: {
+      maxHeight: 460,
+    },
     importModalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -3549,8 +7050,20 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       minHeight: 150,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
+    bundleImportBody: {
+      maxHeight: 520,
+    },
+    bundlePreviewCard: {
+      marginTop: spacing.md,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.muted,
+    },
     importModalActions: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: spacing.sm,
       marginTop: spacing.md,
     },
@@ -3583,6 +7096,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 14,
       color: theme.colors.primaryForeground,
       fontWeight: '600',
+    },
+    presetDeleteButton: {
+      flexGrow: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 40,
     },
     serverRow: {
       flexDirection: 'row',
@@ -3635,6 +7154,34 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flex: 1,
       minWidth: 0,
     },
+    agentListContent: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      flex: 1,
+      minWidth: 0,
+    },
+    agentListAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.muted,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      flexShrink: 0,
+    },
+    agentListAvatarImage: {
+      width: '100%',
+      height: '100%',
+    },
+    agentListAvatarInitial: {
+      color: theme.colors.foreground,
+      fontSize: 14,
+      fontWeight: '700',
+    },
     agentActions: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -3666,10 +7213,57 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     noteActions: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
       gap: spacing.sm,
       flexShrink: 0,
       alignSelf: 'flex-start',
+    },
+    knowledgeNoteSearchInput: {
+      marginBottom: spacing.sm,
+    },
+    knowledgeSelectionBar: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.muted,
+    },
+    knowledgeSelectionText: {
+      fontSize: 12,
+      color: theme.colors.mutedForeground,
+      fontWeight: '500',
+    },
+    noteSelectButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      alignSelf: 'flex-start',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    noteSelectButtonSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary,
+    },
+    noteSelectButtonText: {
+      color: theme.colors.foreground,
+      fontSize: 12,
+      fontWeight: '500',
+      textAlign: 'center',
+    },
+    noteSelectButtonTextSelected: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
     },
     notePromoteButton: {
       ...createMinimumTouchTargetStyle({
@@ -3739,6 +7333,24 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.primary,
       fontWeight: '500',
     },
+    sectionActionRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    sectionActionButton: {
+      flexBasis: 150,
+      flexGrow: 1,
+      marginTop: 0,
+    },
+    sectionDangerButton: {
+      borderColor: theme.colors.destructive,
+      backgroundColor: theme.colors.destructive + '10',
+    },
+    sectionDangerButtonText: {
+      color: theme.colors.destructive,
+    },
     // Model picker styles
     modelLabelRow: {
       flexDirection: 'row',
@@ -3760,6 +7372,38 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     modelActionText: {
       fontSize: 12,
       color: theme.colors.primary,
+    },
+    endpointPanel: {
+      marginTop: spacing.sm,
+      gap: spacing.sm,
+    },
+    endpointMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    endpointBaseUrl: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.colors.mutedForeground,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    endpointKeyBadge: {
+      flexShrink: 0,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    endpointKeyBadgeActive: {
+      borderColor: theme.colors.primary,
+      color: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '10',
     },
     modelSelector: {
       borderWidth: 1,
@@ -3898,12 +7542,21 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.card,
       overflow: 'hidden',
     },
+    desktopSettingsActivePanel: {
+      marginTop: 0,
+      alignSelf: 'stretch',
+    },
     collapsibleHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: spacing.md,
       backgroundColor: theme.colors.muted,
+    },
+    desktopSettingsActiveHeader: {
+      backgroundColor: theme.colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
     },
     collapsibleTitle: {
       fontSize: 14,

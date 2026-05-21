@@ -36,6 +36,16 @@ export interface SyncConversationOptions {
 
 const VALID_ROLES = ['user', 'assistant', 'tool'] as const;
 
+function getServerConversationActivityTimestamp(item: ServerConversation): number {
+  const updatedAt = Number.isFinite(item.updatedAt) ? item.updatedAt : 0;
+  const lastMessageAt =
+    typeof item.lastMessageAt === 'number' && Number.isFinite(item.lastMessageAt)
+      ? item.lastMessageAt
+      : 0;
+
+  return Math.max(updatedAt, lastMessageAt);
+}
+
 /**
  * Convert a mobile ChatMessage to server message format
  */
@@ -93,7 +103,7 @@ function serverConversationToStubSession(item: ServerConversation): Session {
     id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: item.title,
     createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
+    updatedAt: getServerConversationActivityTimestamp(item),
     messages: [],
     serverConversationId: item.id,
     serverMetadata: {
@@ -156,7 +166,11 @@ export async function syncConversations(
       const key = `${sc.createdAt}|${sc.title}`;
       const existing = serverByContentKey.get(key);
       // Keep the most recently updated match
-      if (!existing || sc.updatedAt > existing.updatedAt) {
+      if (
+        !existing ||
+        getServerConversationActivityTimestamp(sc) >
+          getServerConversationActivityTimestamp(existing)
+      ) {
         serverByContentKey.set(key, sc);
       }
     }
@@ -171,7 +185,9 @@ export async function syncConversations(
 
         if (serverItem) {
           // Both exist - compare timestamps to see who's newer
-          if (serverItem.updatedAt > session.updatedAt) {
+          const serverActivityAt = getServerConversationActivityTimestamp(serverItem);
+
+          if (serverActivityAt > session.updatedAt) {
             // Server is newer - pull full conversation
             try {
               const fullConv = await client.getConversation(session.serverConversationId);
@@ -185,7 +201,7 @@ export async function syncConversations(
             } catch (err: any) {
               result.errors.push(`Failed to pull ${session.serverConversationId}: ${err.message}`);
             }
-          } else if (session.updatedAt > serverItem.updatedAt && session.messages.length > 0) {
+          } else if (session.updatedAt > serverActivityAt && session.messages.length > 0) {
             // Local is newer - push to server
             try {
               const updated = await client.updateConversation(session.serverConversationId, {

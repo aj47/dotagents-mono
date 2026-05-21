@@ -159,6 +159,8 @@ describe("remote-server route registration", () => {
     expect(source).toContain("function ensureOperatorAuditLogLoaded")
     expect(source).toContain("remoteServerOperatorAllowDeviceIds")
     expect(source).toContain("function isProtectedOperatorAccessPath")
+    expect(source).toContain('pathname === "/v1/agent-profiles/verify-command"')
+    expect(source).toContain('pathname.startsWith("/v1/mcp/")')
     expect(source).toContain("Trusted device ID required for operator access")
     expect(source).toContain("fs.appendFileSync(operatorAuditLogPath")
     expect(source).toContain('"x-device-id"')

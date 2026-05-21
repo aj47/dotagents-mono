@@ -108,6 +108,12 @@ function describeAgentSessionId(sessionId?: string | null): "missing" | "pending
   return "unknown"
 }
 
+function reconcileAgentSessionsWithRuntime(): void {
+  agentSessionTracker.reconcileActiveSessions((session) =>
+    agentSessionStateManager.isSessionRegistered(session.id),
+  )
+}
+
 async function withRepeatTaskSessionFlag<T extends {
   conversationId?: string
   conversationTitle?: string
@@ -1553,6 +1559,7 @@ export const router = {
   }),
 
   getAgentSessions: t.procedure.action(async () => {
+      reconcileAgentSessionsWithRuntime()
       const activeSessions = await Promise.all(
         agentSessionTracker.getActiveSessions().map(withRepeatTaskSessionFlag),
       )
@@ -1578,6 +1585,7 @@ export const router = {
       const limit = typeof rawLimit === "number" && Number.isFinite(rawLimit)
         ? Math.max(1, Math.min(100, Math.floor(rawLimit)))
         : 20
+      reconcileAgentSessionsWithRuntime()
       const active = agentSessionTracker.getActiveSessions().map(s => ({
         id: s.id,
         conversationId: s.conversationId,
@@ -2326,6 +2334,7 @@ export const router = {
       const config = configStore.get()
       const queueEnabled = config.mcpMessageQueueEnabled !== false
       const launchState = resolveAgentLaunchState(input)
+      reconcileAgentSessionsWithRuntime()
 
       logApp("[createMcpTextInput] Request received", {
         conversationId: input.conversationId ?? null,
@@ -2404,7 +2413,10 @@ export const router = {
             : agentSessionTracker.findSessionByConversationId(conversationId)
           if (activeSessionId) {
             const session = agentSessionTracker.getSession(activeSessionId)
-            if (session && session.status === "active") {
+            const isRuntimeSessionActive =
+              session?.status === "active" &&
+              agentSessionStateManager.isSessionRegistered(activeSessionId)
+            if (isRuntimeSessionActive) {
               const queuedText = await conversationService.materializeInlineDataImagesInContent(conversationId, input.text)
               // Queue the message instead of starting a new session
               const queuedMessage = messageQueueService.enqueue(
@@ -2432,6 +2444,7 @@ export const router = {
               activeSessionKind: describeAgentSessionId(activeSessionId),
               trackerSessionFound: Boolean(session),
               activeSessionStatus: session?.status ?? null,
+              runtimeSessionRegistered: agentSessionStateManager.isSessionRegistered(activeSessionId),
               fromTile: input.fromTile ?? false,
             })
           }
@@ -2556,6 +2569,7 @@ export const router = {
 
       const config = configStore.get()
       let transcript: string
+      reconcileAgentSessionsWithRuntime()
 
       // Check if message queuing is enabled and there's an active session for this conversation
       // If so, we'll transcribe the audio and queue the transcript instead of processing immediately
@@ -3192,10 +3206,10 @@ export const router = {
             if (nextHideDock) {
               // User wants to hide dock icon - hide it now
               app.setActivationPolicy("accessory")
-              app.dock.hide()
+              app.dock?.hide()
             } else {
               // User wants to show dock icon - show it now
-              app.dock.show()
+              app.dock?.show()
               app.setActivationPolicy("regular")
             }
           }

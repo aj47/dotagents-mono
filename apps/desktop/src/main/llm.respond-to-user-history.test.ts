@@ -47,6 +47,7 @@ vi.mock("./llm-fetch", () => ({
   verifyCompletionWithFetch: mocks.verifyCompletionWithFetch,
   makeTextCompletionWithFetch: vi.fn(),
 }))
+vi.mock("./mcp-service", () => ({}))
 vi.mock("./system-prompts", () => ({ constructSystemPrompt: vi.fn(() => "system prompt") }))
 vi.mock("./state", () => ({ state: mocks.state, agentSessionStateManager: mocks }))
 vi.mock("./debug", () => ({ isDebugLLM: () => false, isDebugTools: () => false, logLLM: vi.fn(), logTools: vi.fn(), logApp: vi.fn() }))
@@ -72,6 +73,11 @@ const availableTools = [
   { name: "execute_command", description: "Execute a shell command", inputSchema: { type: "object", properties: {} } },
   { name: "respond_to_user", description: "Respond to the user", inputSchema: { type: "object", properties: {} } },
   { name: "mark_work_complete", description: "Mark work complete", inputSchema: { type: "object", properties: {} } },
+]
+
+const titleTools = [
+  ...availableTools,
+  { name: "set_session_title", description: "Set session title", inputSchema: { type: "object", properties: {} } },
 ]
 
 const traceContinuationTools = [
@@ -171,6 +177,13 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-abort-after-stop",
       "session-prior-display-content",
       "session-recovered-context-final-answer",
+      "session-deduped-context-read",
+      "session-deduped-title",
+      "session-actionable-verifier-feedback",
+      "session-procedural-context-response",
+      "session-empty-context-search-response",
+      "session-procedural-context-tail-response",
+      "session-rejected-plain-text-recovery",
       ...autoresearchContinuationCases.map((testCase) => testCase.sessionId),
     )
   })
@@ -549,7 +562,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
 
       const firstCallTools = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[5] ?? []) as Array<{ name: string }>
       expect(firstCallTools.map((tool) => tool.name)).toContain("respond_to_user")
-      expect(firstCallTools.map((tool) => tool.name)).not.toContain("mark_work_complete")
+      if (!traceCase.allowCompletionToolInPrompt) {
+        expect(firstCallTools.map((tool) => tool.name)).not.toContain("mark_work_complete")
+      }
 
       const promptText = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[0]?.[0] ?? [])
         .map((message: any) => message.content)
@@ -690,6 +705,145 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     })
   })
 
+  it("deduplicates repeated read_more_context calls within one tool batch", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const sessionId = "session-deduped-context-read"
+    const hiddenToken = "HX-7492-PRISM-RIVER"
+    const toolCallLog: any[] = []
+    const readMoreContext = vi.fn(async () => ({
+      content: [{
+        type: "text" as const,
+        text: `historical_audit excerpt: HIDDEN_AUDIT_TOKEN=${hiddenToken}`,
+      }],
+      isError: false,
+    }))
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "read_more_context",
+          arguments: {
+            contextRef: "ctx_hidden_audit",
+            mode: "search",
+            query: "HIDDEN_AUDIT_TOKEN",
+          },
+        },
+        {
+          name: "read_more_context",
+          arguments: {
+            query: "HIDDEN_AUDIT_TOKEN",
+            mode: "search",
+            contextRef: "ctx_hidden_audit",
+            maxChars: 4000,
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: `Recovered token: ${hiddenToken}` } },
+        { name: "mark_work_complete", arguments: { summary: "Recovered hidden audit token" } },
+      ] })
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.98,
+      missingItems: [],
+    })
+
+    const startedAt = performance.now()
+    const llmCallStart = mocks.makeLLMCallWithStreamingAndTools.mock.calls.length
+    const verifierCallStart = mocks.verifyCompletionWithFetch.mock.calls.length
+    const result = await processTranscriptWithAgentMode(
+      "Recover the exact HIDDEN_AUDIT_TOKEN from compacted context.",
+      contextRecoveryTools as any,
+      makeExecuteToolCall(sessionId, 1, {
+        read_more_context: readMoreContext,
+      }, toolCallLog),
+      4,
+      [
+        { role: "tool", content: "[historical_audit] older payload compacted. Context ref: ctx_hidden_audit" },
+      ] as any,
+      "conv-deduped-context-read",
+      sessionId,
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(`Recovered token: ${hiddenToken}`)
+    expect(readMoreContext).toHaveBeenCalledTimes(1)
+    expect(toolCallLog.filter((call) => call.name === "read_more_context")).toHaveLength(1)
+    expect(result.conversationHistory.some((message) =>
+      message.role === "tool" && message.content.includes("Duplicate read_more_context request skipped")
+    )).toBe(true)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+
+    const promptBatches = mocks.makeLLMCallWithStreamingAndTools.mock.calls
+      .slice(llmCallStart)
+      .map((call) => call[0])
+    recordAgentLoopMetric({
+      suite: "agent-loop-context-recovery",
+      caseId: "dedupe-read-more-context",
+      status: "pass",
+      durationMs: Math.round(performance.now() - startedAt),
+      llmCalls: mocks.makeLLMCallWithStreamingAndTools.mock.calls.length - llmCallStart,
+      verifierCalls: mocks.verifyCompletionWithFetch.mock.calls.length - verifierCallStart,
+      toolCallsTotal: toolCallLog.length,
+      toolCallsByName: summarizeToolCalls(toolCallLog),
+      readMoreContextToolExecutions: toolCallLog.filter((call) => call.name === "read_more_context").length,
+      duplicateReadMoreContextCallsSkipped: 1,
+      finalContentChars: result.content.length,
+      conversationHistoryLength: result.conversationHistory.length,
+      totalIterations: result.totalIterations,
+      finalAnswerContainsRecoveredToken: result.content.includes(hiddenToken),
+      ...summarizePromptBatches(promptBatches),
+    })
+  })
+
+  it("deduplicates repeated set_session_title calls within one run", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const toolCallLog: any[] = []
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "set_session_title", arguments: { title: "Trace Review" } },
+        { name: "set_session_title", arguments: { title: "Trace Review" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Checked the trace." } },
+        { name: "mark_work_complete", arguments: { summary: "Trace checked" } },
+      ] })
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.98,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "check latest trace",
+      titleTools as any,
+      makeExecuteToolCall("session-deduped-title", 1, {}, toolCallLog),
+      4,
+      [],
+      "conv-deduped-title",
+      "session-deduped-title",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Checked the trace.")
+    expect(toolCallLog.filter((call) => call.name === "set_session_title")).toHaveLength(1)
+    expect(result.conversationHistory.some((message) =>
+      message.role === "tool" && message.content.includes("Duplicate session title update skipped")
+    )).toBe(true)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+  })
+
   it("keeps a verified explicit final response to one assistant message", async () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     const { processTranscriptWithAgentMode } = await import("./llm")
@@ -733,6 +887,76 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(completedUpdate?.responseEvents).toBeUndefined()
   })
 
+  it("does not display rejected plain text before verifier-driven tool recovery", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const toolCallLog: any[] = []
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "Done.", toolCalls: [] })
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [
+          {
+            name: "execute_command",
+            arguments: {
+              command: "open /Users/ajjoobandi/Desktop/harness-workshop-notes",
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: "Opened `/Users/ajjoobandi/Desktop/harness-workshop-notes` in Finder.",
+        toolCalls: [],
+      })
+    mocks.verifyCompletionWithFetch
+      .mockResolvedValueOnce({
+        isComplete: false,
+        conversationState: "running",
+        reason: "The user asked for an external action, but it was not verifiably delivered.",
+        missingItems: ["Actually open the requested folder in Finder."],
+      })
+      .mockResolvedValueOnce({
+        isComplete: true,
+        conversationState: "complete",
+        confidence: 0.98,
+        missingItems: [],
+      })
+
+    const result = await processTranscriptWithAgentMode(
+      "open folder in finder",
+      availableTools as any,
+      makeExecuteToolCall("session-rejected-plain-text-recovery", 1, {
+        execute_command: {
+          content: [{ type: "text" as const, text: JSON.stringify({ success: true }) }],
+          isError: false,
+        },
+      }, toolCallLog),
+      5,
+      [],
+      "conv-rejected-plain-text-recovery",
+      "session-rejected-plain-text-recovery",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Opened `/Users/ajjoobandi/Desktop/harness-workshop-notes` in Finder.")
+    expect(toolCallLog.map((call) => call.name)).toContain("execute_command")
+    expect(result.conversationHistory.some((message) =>
+      message.role === "assistant" && message.content === "Done."
+    )).toBe(false)
+    expect(mocks.addMessageToConversation).not.toHaveBeenCalledWith(
+      "conv-rejected-plain-text-recovery",
+      "Done.",
+      "assistant",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    )
+  })
+
   it("asks for the missing final answer instead of auto-generating a summary after bare mark_work_complete", async () => {
     currentConfig.mcpVerifyCompletionEnabled = true
     currentConfig.mcpFinalSummaryEnabled = false
@@ -770,6 +994,64 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .join("\n")
     expect(secondPrompt).toContain("without first providing the final user-facing answer")
     expect(secondPrompt).toContain("Do not add a second recap or summary")
+  })
+
+  it("does not let a completion summary answer the latest harness framing correction", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpFinalSummaryEnabled = false
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const traceCase = autoresearchContinuationCases.find((candidate) =>
+      candidate.caseId === "case-f-harness-agent-not-model-correction"
+    )
+    expect(traceCase).toBeTruthy()
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "mark_work_complete",
+          arguments: {
+            summary: "Validated harness engineering framing against online research and provided revised concise bullets with prompt/context comparison.",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: traceCase!.response } },
+        { name: "mark_work_complete", arguments: { summary: "Answered latest harness correction" } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.96,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      traceCase!.transcript,
+      traceContinuationTools as any,
+      makeExecuteToolCall(traceCase!.sessionId, 1),
+      4,
+      traceCase!.previousHistory as any,
+      `conv-${traceCase!.sessionId}`,
+      traceCase!.sessionId,
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(traceCase!.response)
+    expect(result.content).toContain("agentic loop")
+    expect(result.content).toContain("not just the model")
+    expect(result.content).not.toContain("Validated harness engineering framing")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+
+    const secondPrompt = (mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0] ?? [])
+      .map((message: any) => message.content)
+      .join("\n")
+    expect(secondPrompt).toMatch(/without first providing the final user-facing answer|Previous request had empty response/)
+    expect(secondPrompt).toContain("i think harness engineering is the system around the \"agent\" not the model")
+    expect(secondPrompt).toContain("Validated harness engineering framing")
   })
 
   it("does not promote internal completion metadata when verification is disabled", async () => {
@@ -1005,7 +1287,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(followupPrompt).not.toContain(INTERNAL_COMPLETION_NUDGE_TEXT)
   })
 
-  it("nudges the model toward filesystem skill paths after legacy execute_command skillId failure", async () => {
+  it("carries tool-provided filesystem guidance after legacy execute_command skillId failure", async () => {
     const { processTranscriptWithAgentMode } = await import("./llm")
 
     mocks.makeLLMCallWithStreamingAndTools
@@ -1047,8 +1329,9 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .map((message: any) => message.content)
       .join("\n")
     expect(secondPrompt).toContain("execute_command.skillId is no longer supported")
-    expect(secondPrompt).toContain("read the listed SKILL.md path with execute_command")
-    expect(secondPrompt).toContain("ordinary shell commands with explicit paths or cd")
+    expect(secondPrompt).toContain("Skills are filesystem instructions")
+    expect(secondPrompt).toContain("Use the SKILL.md path shown in Available Skills")
+    expect(secondPrompt).not.toContain("ordinary shell commands with explicit paths or cd")
   })
 
   it("does not inject unrecoverable permissions notes for failed tools", async () => {
@@ -1176,6 +1459,52 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       .join("\n")
     expect(secondPrompt).toContain("[respond_to_user]")
     expect(secondPrompt.split("First interim answer").length - 1).toBe(0)
+  })
+
+  it("does not retry verifier output that already includes actionable missing work", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 1
+    const { processTranscriptWithAgentMode } = await import("./llm")
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Interim answer" } },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: "Final answer" } },
+        { name: "mark_work_complete", arguments: { summary: "Done" } },
+      ] })
+
+    mocks.verifyCompletionWithFetch
+      .mockResolvedValueOnce({
+        isComplete: false,
+        conversationState: "running",
+        reason: "The final answer is not complete yet.",
+        missingItems: ["Needs final answer"],
+      })
+      .mockResolvedValueOnce({
+        isComplete: true,
+        conversationState: "complete",
+        confidence: 0.96,
+        missingItems: [],
+      })
+
+    const result = await processTranscriptWithAgentMode(
+      "Answer the user",
+      availableTools as any,
+      makeExecuteToolCall("session-actionable-verifier-feedback", 1),
+      4,
+      [],
+      "conv-actionable-verifier-feedback",
+      "session-actionable-verifier-feedback",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe("Final answer")
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(2)
   })
 
   it("verifies the first communication-only respond_to_user turn instead of making a second agent call", async () => {
@@ -1356,6 +1685,219 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.totalIterations).toBeGreaterThan(1)
     expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(5)
     expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(5)
+  })
+
+  it("does not verify procedural respond_to_user updates after recovered context search", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const hiddenToken = "HX-7492-PRISM-RIVER"
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "read_more_context",
+          arguments: {
+            contextRef: "ctx_hidden_audit",
+            mode: "search",
+            query: "HIDDEN_AUDIT_TOKEN",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "respond_to_user",
+          arguments: {
+            text: "Continuing the audit now; I'm searching the compacted history for the hidden token.",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: `Recovered token: ${hiddenToken}` } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.96,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Recover the exact HIDDEN_AUDIT_TOKEN from compacted context.",
+      contextRecoveryTools as any,
+      makeExecuteToolCall("session-procedural-context-response", 1, {
+        read_more_context: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              contextRef: "ctx_hidden_audit",
+              mode: "search",
+              query: "HIDDEN_AUDIT_TOKEN",
+              matchCount: 1,
+              matches: [{ excerpt: `HIDDEN_AUDIT_TOKEN=${hiddenToken}` }],
+            }, null, 2),
+          }],
+          isError: false,
+        },
+      }),
+      4,
+      [
+        { role: "tool", content: "[historical_audit] older payload compacted. Context ref: ctx_hidden_audit" },
+      ],
+      "conv-procedural-context-response",
+      "session-procedural-context-response",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(`Recovered token: ${hiddenToken}`)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+    const thirdPromptText = mocks.makeLLMCallWithStreamingAndTools.mock.calls[2]?.[0]
+      ?.map((message: { content: string }) => message.content)
+      .join("\n") ?? ""
+    expect(thirdPromptText).toContain("compacted context search already returned matching excerpts")
+  })
+
+  it("does not treat empty context search results as recovered evidence", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const progressUpdate = "Continuing the audit now; I'm searching the compacted history for the hidden token."
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "read_more_context",
+          arguments: {
+            contextRef: "ctx_hidden_audit",
+            mode: "search",
+            query: "HIDDEN_AUDIT_TOKEN",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "respond_to_user",
+          arguments: { text: progressUpdate },
+        },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.96,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Recover the exact HIDDEN_AUDIT_TOKEN from compacted context.",
+      contextRecoveryTools as any,
+      makeExecuteToolCall("session-empty-context-search-response", 1, {
+        read_more_context: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              contextRef: "ctx_hidden_audit",
+              mode: "search",
+              query: "HIDDEN_AUDIT_TOKEN",
+              matchCount: 0,
+              matches: [],
+            }, null, 2),
+          }],
+          isError: false,
+        },
+      }),
+      4,
+      [
+        { role: "tool", content: "[historical_audit] older payload compacted. Context ref: ctx_hidden_audit" },
+      ],
+      "conv-empty-context-search-response",
+      "session-empty-context-search-response",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(progressUpdate)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(2)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
+    const secondPromptText = mocks.makeLLMCallWithStreamingAndTools.mock.calls[1]?.[0]
+      ?.map((message: { content: string }) => message.content)
+      .join("\n") ?? ""
+    expect(secondPromptText).not.toContain("returned matching context")
+  })
+
+  it("does not verify procedural respond_to_user updates after recovered non-search context reads", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = true
+    currentConfig.mcpVerifyRetryCount = 0
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const hiddenToken = "HX-7492-PRISM-RIVER"
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "read_more_context",
+          arguments: {
+            contextRef: "ctx_hidden_audit",
+            mode: "tail",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        {
+          name: "respond_to_user",
+          arguments: {
+            text: "Continuing the audit now.",
+          },
+        },
+      ] })
+      .mockResolvedValueOnce({ content: "", toolCalls: [
+        { name: "respond_to_user", arguments: { text: `Recovered token: ${hiddenToken}` } },
+      ] })
+
+    mocks.verifyCompletionWithFetch.mockResolvedValue({
+      isComplete: true,
+      conversationState: "complete",
+      confidence: 0.96,
+      missingItems: [],
+    })
+
+    const result = await processTranscriptWithAgentMode(
+      "Recover the exact HIDDEN_AUDIT_TOKEN from compacted context.",
+      contextRecoveryTools as any,
+      makeExecuteToolCall("session-procedural-context-tail-response", 1, {
+        read_more_context: {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: true,
+              contextRef: "ctx_hidden_audit",
+              mode: "tail",
+              excerpt: `historical_audit excerpt: HIDDEN_AUDIT_TOKEN=${hiddenToken}`,
+            }, null, 2),
+          }],
+          isError: false,
+        },
+      }),
+      4,
+      [
+        { role: "tool", content: "[historical_audit] older payload compacted. Context ref: ctx_hidden_audit" },
+      ],
+      "conv-procedural-context-tail-response",
+      "session-procedural-context-tail-response",
+      undefined,
+      undefined,
+      1,
+    )
+
+    expect(result.content).toBe(`Recovered token: ${hiddenToken}`)
+    expect(mocks.makeLLMCallWithStreamingAndTools).toHaveBeenCalledTimes(3)
+    expect(mocks.verifyCompletionWithFetch).toHaveBeenCalledTimes(1)
   })
 
   it("keeps iterating when verification reason reports missing work even if missingItems only mention completion signal", async () => {

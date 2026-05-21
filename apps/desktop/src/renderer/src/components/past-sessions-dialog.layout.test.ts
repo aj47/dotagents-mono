@@ -67,4 +67,33 @@ describe("saved conversations dialog layout", () => {
     expect(pastSessionsDialogSource).not.toContain('inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-accent/40 px-1.5 py-0.5 text-[10px] font-medium text-foreground')
     expect(pastSessionsDialogSource).not.toContain("CheckCircle2")
   })
+
+  it("keeps search matches ordered newest-to-oldest after filtering", () => {
+    const compactSource = pastSessionsDialogSource.replace(/\s+/g, " ")
+    expect(compactSource).toContain(
+      "if (a.kindPriority !== b.kindPriority) return a.kindPriority - b.kindPriority if (b.conversation.updatedAt !== a.conversation.updatedAt)",
+    )
+    expect(compactSource).toContain(
+      "return b.conversation.updatedAt - a.conversation.updatedAt } if (b.rank !== a.rank) return b.rank - a.rank",
+    )
+  })
+
+  it("searches user prompts and agent final responses beyond row snippets", () => {
+    expect(pastSessionsDialogSource).toContain('type SearchableConversationField = "title" | "preview" | "lastMessage" | "searchText"')
+    expect(pastSessionsDialogSource).toContain("function getConversationSearchText(")
+    expect(pastSessionsDialogSource).toContain('message.role === "user" || message.role === "assistant"')
+    expect(pastSessionsDialogSource).toContain("for (const event of progress?.responseEvents ?? [])")
+    expect(pastSessionsDialogSource).toContain("searchIndex: buildConversationSearchIndex({")
+    expect(pastSessionsDialogSource).toContain("rawScore >= DEFAULT_FUZZY_THRESHOLD")
+  })
+
+  it("debounces expensive conversation search and uses pre-normalized indexes", () => {
+    expect(pastSessionsDialogSource).toContain("const SEARCH_DEBOUNCE_MS = 120")
+    expect(pastSessionsDialogSource).toContain("function useDebouncedValue<T>(")
+    expect(pastSessionsDialogSource).toContain("const debouncedSearchQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS)")
+    expect(pastSessionsDialogSource).toContain("const normalizedSearchQuery = useMemo(")
+    expect(pastSessionsDialogSource).toContain("conversation.searchIndex")
+    expect(pastSessionsDialogSource).toContain("allowFuzzy: field !== \"searchText\"")
+    expect(pastSessionsDialogSource).toContain("field === \"searchText\" && normalizedQuery.length < MIN_SEARCH_TEXT_QUERY_CHARS")
+  })
 })

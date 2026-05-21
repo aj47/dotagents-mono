@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import type { AgentProgressUpdate, LoadedConversation } from "@shared/types"
 import {
+  getConversationHydrationQueryKey,
   hasConversationHistoryForDisplay,
   mergeLoadedConversationIntoProgress,
+  mergeTrackedActiveSessionProgress,
 } from "./session-progress-hydration"
 
 const baseProgress = (): AgentProgressUpdate => ({
@@ -30,6 +32,14 @@ const loadedConversation = (): LoadedConversation => ({
 })
 
 describe("session progress hydration", () => {
+  it("uses a stable cache key for saved-conversation hydration handoff", () => {
+    expect(getConversationHydrationQueryKey("conv-1")).toEqual([
+      "conversation",
+      "conv-1",
+      "hydrate",
+    ])
+  })
+
   it("hydrates placeholder progress from a loaded conversation", () => {
     const hydrated = mergeLoadedConversationIntoProgress(
       baseProgress(),
@@ -47,6 +57,41 @@ describe("session progress hydration", () => {
     expect(hydrated.conversationHistoryStartIndex).toBe(5)
     expect(hydrated.conversationHistoryTotalCount).toBe(7)
     expect(hydrated.isComplete).toBe(false)
+  })
+
+  it("keeps a revived tracked session active when stored progress is from the completed prior run", () => {
+    const trackedProgress = baseProgress()
+    const storedProgress: AgentProgressUpdate = {
+      ...baseProgress(),
+      currentIteration: 3,
+      steps: [
+        {
+          id: "old-completion-step",
+          type: "thinking",
+          title: "Completed",
+          status: "completed",
+          timestamp: 200,
+        },
+      ],
+      isComplete: true,
+      conversationState: "complete",
+      finalContent: "old final response",
+      streamingContent: { text: "old stream", isStreaming: false },
+      conversationHistory: [
+        { role: "user", content: "Previous request", timestamp: 100 },
+        { role: "assistant", content: "old final response", timestamp: 150 },
+      ],
+    }
+
+    const merged = mergeTrackedActiveSessionProgress(trackedProgress, storedProgress)
+
+    expect(merged.isComplete).toBe(false)
+    expect(merged.conversationState).toBe("running")
+    expect(merged.currentIteration).toBe(0)
+    expect(merged.steps).toEqual([])
+    expect(merged.finalContent).toBeUndefined()
+    expect(merged.streamingContent).toBeUndefined()
+    expect(merged.conversationHistory).toEqual(storedProgress.conversationHistory)
   })
 
   it("preserves persisted display-only content while hydrating progress", () => {

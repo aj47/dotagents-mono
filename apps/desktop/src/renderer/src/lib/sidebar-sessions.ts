@@ -838,16 +838,6 @@ export function getSidebarActivityPresentation(
     return makeSidebarActivityPresentation("running", "Running", null, false)
   }
 
-  const pendingApprovalTool = formatSidebarToolName(progress.pendingToolApproval?.toolName)
-  if (pendingApprovalTool) {
-    return makeSidebarActivityPresentation(
-      "needs_input",
-      "Needs input",
-      pendingApprovalTool,
-      true,
-    )
-  }
-
   const erroredStep = getLatestSidebarStep(progress, (step) =>
     step.status === "error" || !!step.toolResult?.error,
   )
@@ -863,6 +853,29 @@ export function getSidebarActivityPresentation(
   const fallbackError = normalizeSidebarErrorText(options?.fallbackErrorText)
   if (fallbackError) {
     return makeSidebarActivityPresentation("blocked", "Error", fallbackError, true)
+  }
+
+  const isComplete = progress.isComplete === true
+
+  const pendingApprovalTool = !isComplete
+    ? formatSidebarToolName(progress.pendingToolApproval?.toolName)
+    : null
+  if (pendingApprovalTool) {
+    return makeSidebarActivityPresentation(
+      "needs_input",
+      "Needs input",
+      pendingApprovalTool,
+      true,
+    )
+  }
+
+  if (isComplete) {
+    const responseText = getLatestUserFacingResponse(progress)
+    if (responseText) {
+      return makeSidebarActivityPresentation("response", "Response", responseText, false)
+    }
+
+    return makeSidebarActivityPresentation("complete", "Complete", null, false)
   }
 
   if (progress.retryInfo?.isRetrying) {
@@ -939,10 +952,6 @@ export function getSidebarActivityPresentation(
   const responseText = getLatestUserFacingResponse(progress)
   if (responseText) {
     return makeSidebarActivityPresentation("response", "Response", responseText, false)
-  }
-
-  if (progress.isComplete) {
-    return makeSidebarActivityPresentation("complete", "Complete", null, false)
   }
 
   const latestStep = getLatestSidebarStep(progress)

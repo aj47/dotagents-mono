@@ -656,7 +656,7 @@ export function readMoreContext(
 
   const mode = options.mode ?? "overview"
   const defaultMaxChars = 1500
-  const modeMaxChars = mode === "search" ? 4000 : 12000
+  const modeMaxChars = mode === "search" ? 2500 : 12000
   const maxChars = Math.max(100, Math.min(options.maxChars ?? defaultMaxChars, modeMaxChars))
   const totalChars = entry.totalChars
 
@@ -949,6 +949,11 @@ const ARCHIVE_FRONTIER_TRIGGER_MESSAGE_COUNT = 40
 const ARCHIVE_FRONTIER_TRIGGER_TOKEN_RATIO = 0.9
 const ARCHIVE_FRONTIER_MIN_ARCHIVE_BATCH = 8
 const RECENT_USER_REQUEST_ANCHOR_COUNT = 2
+const ARCHIVE_SUMMARY_INPUT_MAX_CHARS = 4000
+const PINNED_CONTEXT_PREFIXES = [
+  "[Relevant Earlier Conversation Facts]",
+  "[Persisted Conversation Checkpoint]",
+] as const
 
 function parseMappedToolResultContent(content: string): { toolName: string; resultContent: string } | null {
   const trimmed = content.trimStart()
@@ -1086,6 +1091,34 @@ function isGeneratedContextSummaryMessage(content: string): boolean {
   return isGeneratedContextSummaryContent(content)
 }
 
+function isPinnedContextMessage(message: LLMMessage): boolean {
+  if (message.role === "system") return true
+
+  const content = message.content?.trimStart() || ""
+  return isGeneratedContextSummaryMessage(content)
+    || PINNED_CONTEXT_PREFIXES.some((prefix) => content.startsWith(prefix))
+}
+
+function collectPinnedContextIndices(messages: LLMMessage[]): number[] {
+  const indices: number[] = []
+  messages.forEach((message, index) => {
+    if (isPinnedContextMessage(message)) {
+      indices.push(index)
+    }
+  })
+  return indices
+}
+
+function truncateMiddleForSummaryInput(content: string, maxChars: number): string {
+  if (content.length <= maxChars) return content
+
+  const marker = "\n\n[summary input middle omitted; preserve both earlier setup and latest end state]\n\n"
+  const available = Math.max(0, maxChars - marker.length)
+  const headChars = Math.ceil(available / 2)
+  const tailChars = Math.floor(available / 2)
+  return `${content.slice(0, headChars).trimEnd()}${marker}${content.slice(content.length - tailChars).trimStart()}`
+}
+
 function buildBatchSummaryFallback(items: SummaryCandidate[]): string {
   return items
     .map((item) => `${item.role}: ${item.contentForSummary.split("\n")[0].trim().slice(0, 120)}`)
@@ -1143,7 +1176,7 @@ function buildArchiveEligibleIndices(messages: LLMMessage[], protectedIndices: S
 }
 
 interface ArchiveFrontierState {
-  systemIdx: number
+  pinnedIndices: number[]
   anchorIndices: number[]
   eligibleIndices: number[]
   archivedCount: number
@@ -1161,14 +1194,14 @@ function getArchiveFrontierState(
 ): ArchiveFrontierState | null {
   if (!sessionId) return null
 
-  const systemIdx = messages.findIndex((m) => m.role === "system")
+  const pinnedIndices = collectPinnedContextIndices(messages)
   const anchorIndices = collectRecentRealUserRequestIndices(
     messages,
     RECENT_USER_REQUEST_ANCHOR_COUNT,
     messages.length,
     maxAnchorContentChars,
   )
-  const protectedIndices = new Set([systemIdx, ...anchorIndices].filter((idx) => idx >= 0))
+  const protectedIndices = new Set([...pinnedIndices, ...anchorIndices].filter((idx) => idx >= 0))
   const eligibleIndices = buildArchiveEligibleIndices(messages, protectedIndices)
   const archivedCount = Math.min(archiveFrontierCountBySession.get(sessionId) ?? 0, eligibleIndices.length)
   const liveCount = Math.max(0, eligibleIndices.length - archivedCount)
@@ -1176,7 +1209,7 @@ function getArchiveFrontierState(
   const overflowCount = Math.max(0, liveCount - keepLiveCount)
 
   return {
-    systemIdx,
+    pinnedIndices,
     anchorIndices,
     eligibleIndices,
     archivedCount,
@@ -1232,6 +1265,10 @@ async function updateIterativeSummaryForDroppedMessages(
       return `${m.role}: ${content.substring(0, 300)}`
     })
     .join("\n")
+  const droppedTextForSummary = truncateMiddleForSummaryInput(
+    droppedText,
+    ARCHIVE_SUMMARY_INPUT_MAX_CHARS,
+  )
 
   try {
     if (agentSessionStateManager.shouldStopSession(sessionId)) {
@@ -1249,7 +1286,7 @@ PREVIOUS SUMMARY:
 ${previousSummary}
 
 NEW MESSAGES BEING ARCHIVED OUT OF RAW CONTEXT:
-${droppedText.substring(0, 4000)}
+${droppedTextForSummary}
 
 Update the summary to incorporate the new information. Preserve all important details from the previous summary. Focus on:
 - What tasks were attempted and their outcomes
@@ -1265,7 +1302,7 @@ Keep the summary under 1000 characters. Be factual and specific.`
 This summary is NOT the current task. It is only background for older messages.
 Do not title the summary "Session: ..." or make an old user request sound like the active objective.
 
-${droppedText.substring(0, 4000)}
+${droppedTextForSummary}
 
 Focus on:
 - What tasks were attempted and their outcomes
@@ -1580,7 +1617,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   const sessionId = opts.sessionId
   const archiveFrontierState = getArchiveFrontierState(messages, sessionId, lastN, summarizeThreshold)
   if (sessionId && shouldApplyArchiveFrontier(archiveFrontierState, messages.length, tokens, targetTokens)) {
-    const systemIdx = archiveFrontierState!.systemIdx
+    const pinnedIndices = archiveFrontierState!.pinnedIndices
     const anchorIndices = archiveFrontierState!.anchorIndices
     const eligibleIndices = archiveFrontierState!.eligibleIndices
     const previousArchivedCount = archiveFrontierState!.archivedCount
@@ -1604,7 +1641,13 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
     if (nextArchivedCount > 0 || iterativeSummaryCache.has(sessionId)) {
       const ordered: LLMMessage[] = []
-      if (systemIdx >= 0) ordered.push(messages[systemIdx])
+      const pushed = new Set<number>()
+      for (const index of pinnedIndices) {
+        if (index >= 0) {
+          ordered.push(messages[index])
+          pushed.add(index)
+        }
+      }
 
       const summaryMessage = buildSessionProgressSummaryMessage(sessionId)
       if (summaryMessage) ordered.push(summaryMessage)
@@ -1615,11 +1658,17 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       }
 
       for (const index of anchorIndices) {
-        if (index >= 0 && index !== systemIdx) ordered.push(messages[index])
+        if (index >= 0 && !pushed.has(index)) {
+          ordered.push(messages[index])
+          pushed.add(index)
+        }
       }
 
       for (const index of eligibleIndices.slice(nextArchivedCount)) {
-        ordered.push(messages[index])
+        if (!pushed.has(index)) {
+          ordered.push(messages[index])
+          pushed.add(index)
+        }
       }
 
       messages = ordered
@@ -1641,6 +1690,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     messages.length,
     summarizeThreshold,
   ))
+  const pinnedContextIndices = new Set(collectPinnedContextIndices(messages))
   const recentTierOneProtectedIndices = new Set<number>()
   const truncationProtectedIndices = collectTruncationProtectedIndices(messages)
   for (let k = messages.length - lastN; k < messages.length; k++) {
@@ -1661,6 +1711,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     .filter((x) => x.len > summarizeThreshold && x.role !== "system")
     .filter((x) => x.role !== "tool")
     .filter((x) => !isGeneratedContextSummaryMessage(x.contentForSummary))
+    .filter((x) => !pinnedContextIndices.has(x.i))
     .filter((x) => !truncationProtectedIndices.has(x.i))
     .filter((x) => !protectedAnchorIndices.has(x.i))
     .filter((x) => !recentTierOneProtectedIndices.has(x.i))
@@ -1716,7 +1767,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   // If still over budget, reduce lastN to be more aggressive
   const effectiveLastN = tokens > targetTokens * 1.5 ? Math.max(1, Math.floor(lastN / 2)) : lastN
 
-  const systemIdx = messages.findIndex((m) => m.role === "system")
+  const pinnedIndices = collectPinnedContextIndices(messages)
   const anchorIndices = collectRecentRealUserRequestIndices(
     messages,
     RECENT_USER_REQUEST_ANCHOR_COUNT,
@@ -1726,7 +1777,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   const anchorSet = new Set(anchorIndices)
 
   const keptSet = new Set<number>()
-  if (systemIdx >= 0) keptSet.add(systemIdx)
+  for (const index of pinnedIndices) keptSet.add(index)
   for (const index of anchorIndices) keptSet.add(index)
   // Add indices for last N
   const baseLen = messages.length
@@ -1765,7 +1816,13 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
   // Preserve order: system -> summaries -> recent real user request anchors -> chronological tail
   const ordered: LLMMessage[] = []
-  if (systemIdx >= 0) ordered.push(messages[systemIdx])
+  const pushed = new Set<number>()
+  for (const index of pinnedIndices) {
+    if (index >= 0) {
+      ordered.push(messages[index])
+      pushed.add(index)
+    }
+  }
 
   if (opts.sessionId) {
     const summaryMessage = buildSessionProgressSummaryMessage(opts.sessionId)
@@ -1786,11 +1843,17 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   if (toolSummaryMessage) ordered.push(toolSummaryMessage)
 
   for (const index of anchorIndices) {
-    if (index >= 0 && index !== systemIdx) ordered.push(messages[index])
+    if (index >= 0 && !pushed.has(index)) {
+      ordered.push(messages[index])
+      pushed.add(index)
+    }
   }
 
   for (let k = baseLen - effectiveLastN; k < baseLen; k++) {
-    if (k >= 0 && k !== systemIdx && !anchorSet.has(k)) ordered.push(messages[k])
+    if (k >= 0 && !pushed.has(k) && !anchorSet.has(k)) {
+      ordered.push(messages[k])
+      pushed.add(k)
+    }
   }
 
   messages = ordered

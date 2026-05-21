@@ -45,6 +45,8 @@ describe("AgentSessionTracker", () => {
     expect(agentSessionTracker.getSession(sessionId)?.status).toBe("active")
     expect(agentSessionTracker.getSession(sessionId)?.errorMessage).toBeUndefined()
     expect(agentSessionTracker.getSession(sessionId)?.endTime).toBeUndefined()
+    expect(agentSessionTracker.getSession(sessionId)?.currentIteration).toBe(0)
+    expect(agentSessionTracker.getSession(sessionId)?.lastActivity).toBe("Starting follow-up...")
 
     agentSessionTracker.completeSession(sessionId, "done")
 
@@ -97,5 +99,51 @@ describe("AgentSessionTracker", () => {
 
     agentSessionTracker.clearAllSessions()
     agentSessionTracker.clearCompletedSessions()
+  })
+
+  it("reconciles tracker-only active sessions into recent history", async () => {
+    const { agentSessionTracker } = await import("./agent-session-tracker")
+    const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(987654)
+
+    try {
+      agentSessionTracker.clearAllSessions()
+      agentSessionTracker.clearCompletedSessions()
+
+      const completedSessionId = agentSessionTracker.startSession("conv-complete", "Completed stale")
+      const stoppedSessionId = agentSessionTracker.startSession("conv-stopped", "Stopped stale")
+      const liveSessionId = agentSessionTracker.startSession("conv-live", "Still live")
+      agentSessionTracker.updateSession(completedSessionId, {
+        lastActivity: "Agent completed successfully",
+      })
+
+      const retiredSessions = agentSessionTracker.reconcileActiveSessions((session) =>
+        session.id === liveSessionId,
+      )
+
+      expect(retiredSessions.map((session) => session.id).sort()).toEqual([
+        completedSessionId,
+        stoppedSessionId,
+      ].sort())
+      expect(agentSessionTracker.getActiveSessions().map((session) => session.id)).toEqual([liveSessionId])
+      expect(agentSessionTracker.findCompletedSession(completedSessionId)).toEqual(
+        expect.objectContaining({
+          id: completedSessionId,
+          status: "completed",
+          endTime: 987654,
+        }),
+      )
+      expect(agentSessionTracker.findCompletedSession(stoppedSessionId)).toEqual(
+        expect.objectContaining({
+          id: stoppedSessionId,
+          status: "stopped",
+          endTime: 987654,
+          lastActivity: "Session no longer running",
+        }),
+      )
+    } finally {
+      dateNowSpy.mockRestore()
+      agentSessionTracker.clearAllSessions()
+      agentSessionTracker.clearCompletedSessions()
+    }
   })
 })

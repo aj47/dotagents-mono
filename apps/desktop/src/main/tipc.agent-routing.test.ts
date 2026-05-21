@@ -19,4 +19,12 @@ describe("tipc selected-agent routing", () => {
   it("lets ACP transcript persistence own the final assistant write", () => {
     expect(tipcSource).not.toContain("if (conversationId && result.response) {")
   })
+
+  it("queues follow-ups only for sessions with a registered active runtime run", () => {
+    expect(tipcSource).toContain("const isRuntimeSessionActive =")
+    expect(tipcSource).toContain('session?.status === "active" &&')
+    expect(tipcSource).toContain("agentSessionStateManager.isSessionRegistered(activeSessionId)")
+    expect(tipcSource).toContain("if (isRuntimeSessionActive) {")
+    expect(tipcSource).toContain("runtimeSessionRegistered: agentSessionStateManager.isSessionRegistered(activeSessionId)")
+  })
 })

@@ -37,14 +37,16 @@ import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, handleWhatsAppToggle }
 import { processTranscriptWithAgentMode } from "./llm"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { resolveMainAcpAgentSelection } from "./main-agent-selection"
-import { state, agentProcessManager, agentSessionStateManager } from "./state"
+import { state, agentProcessManager, agentSessionStateManager, toolApprovalManager } from "./state"
 import { conversationService } from "./conversation-service"
 import {
   getConversationVideoAssetPath,
   getConversationVideoMimeTypeFromFileName,
 } from "./conversation-video-assets"
-import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, normalizeAgentProfileRole } from "../shared/types"
+import { getConversationImageAssetPath } from "./conversation-image-assets"
+import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, MCPConfig, MCPServerConfig, OAuthConfig, normalizeAgentProfileRole } from "../shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
+import { inferTransportType } from "../shared/mcp-utils"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
@@ -69,16 +71,36 @@ import {
   openDownloadedReleaseAsset,
   revealDownloadedReleaseAsset,
 } from "./updater"
-import { WINDOWS } from "./window"
+import {
+  WINDOWS,
+  getWindowRendererHandlers,
+  hideFloatingPanelWindow,
+  resetFloatingPanelPositionAndSize,
+  setPanelMode,
+  showMainWindow,
+  showPanelWindow,
+} from "./window"
+import {
+  setTrackedAgentSessionSnoozed,
+  snoozeAgentSessionsAndHidePanelWindow,
+} from "./floating-panel-session-state"
+import { messageQueueService } from "./message-queue-service"
 import type {
   OperatorActionResponse,
   OperatorApiKeyRotationResponse,
   OperatorAuditEntry,
   OperatorAuditResponse,
+  OperatorDiagnosticReport,
+  OperatorDiagnosticReportSaveResponse,
   OperatorHealthSnapshot,
   OperatorIntegrationsSummary,
   OperatorLogSummary,
+  OperatorMessageQueuesResponse,
   OperatorConversationsResponse,
+  ModelPreset,
+  ModelPresetSummary,
+  ModelPresetsResponse,
+  ModelPresetMutationResponse,
   OperatorRecentErrorsResponse,
   OperatorRemoteServerStatus,
   OperatorRuntimeStatus,
@@ -89,12 +111,26 @@ import type {
   OperatorWhatsAppIntegrationSummary,
 } from "@dotagents/shared"
 import type { RendererHandlers } from "./renderer-handlers"
-import { INJECTED_RUNTIME_TOOL_TRANSPORT_NAME } from "../shared/runtime-tool-names"
+import { INJECTED_RUNTIME_TOOL_TRANSPORT_NAME, RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "../shared/runtime-tool-names"
 
 let server: FastifyInstance | null = null
 let lastError: string | undefined
 
 const REMOTE_SERVER_SECRET_MASK = "••••••••"
+const CONVERSATION_IMAGE_MIME_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".apng": "image/apng",
+  ".gif": "image/gif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".bmp": "image/bmp",
+  ".avif": "image/avif",
+}
+
+function getConversationImageMimeTypeFromFileName(fileName: string): string {
+  return CONVERSATION_IMAGE_MIME_TYPES[path.extname(fileName).toLowerCase()] || "application/octet-stream"
+}
 const OPERATOR_AUDIT_LOG_LIMIT = 200
 const OPERATOR_AUDIT_DEVICE_HEADER_KEYS = ["x-device-id", "x-dotagents-device-id"] as const
 const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
@@ -107,6 +143,14 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "remoteServerOperatorAllowDeviceIds",
   "remoteServerAutoShowPanel",
   "remoteServerTerminalQrEnabled",
+  "hideDockIcon",
+  "launchAtLogin",
+  "themePreference",
+  "textInputEnabled",
+  "panelPosition",
+  "panelDragEnabled",
+  "floatingPanelAutoShow",
+  "hidePanelWhenMainFocused",
   "cloudflareTunnelMode",
   "cloudflareTunnelAutoStart",
   "cloudflareTunnelId",
@@ -137,6 +181,17 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "langfusePublicKey",
   "langfuseSecretKey",
   "langfuseBaseUrl",
+  "localTraceLoggingEnabled",
+  "localTraceLogPath",
+  "openaiApiKey",
+  "openaiBaseUrl",
+  "groqApiKey",
+  "groqBaseUrl",
+  "geminiApiKey",
+  "geminiBaseUrl",
+  "chatgptWebAccessToken",
+  "chatgptWebSessionToken",
+  "chatgptWebBaseUrl",
 ])
 const operatorAuditLog: OperatorAuditEntry[] = []
 const operatorAuditLogPath = path.join(app.getPath("userData"), "operator-audit-log.jsonl")
@@ -149,6 +204,153 @@ function sanitizeStringList(values: unknown[]): string[] {
       .map((value) => value.trim())
       .filter(Boolean),
   )]
+}
+
+function getSavedModelPresets(cfg: Pick<Config, "modelPresets">): ModelPreset[] {
+  return Array.isArray(cfg.modelPresets) ? cfg.modelPresets : []
+}
+
+function normalizeModelPresetString(value: unknown, maxLength: number): string | undefined {
+  if (typeof value !== "string") return undefined
+  return value.trim().slice(0, maxLength)
+}
+
+async function getMergedModelPresetState(cfg: Pick<Config, "modelPresets" | "openaiApiKey" | "currentModelPresetId">): Promise<{
+  defaultModelPresetId: string
+  presets: ModelPreset[]
+}> {
+  const { DEFAULT_MODEL_PRESET_ID, getBuiltInModelPresets } = await import("@dotagents/shared")
+  const builtInPresets = getBuiltInModelPresets()
+  const savedPresets = getSavedModelPresets(cfg)
+  const builtInIds = new Set(builtInPresets.map((preset) => preset.id))
+
+  const mergedBuiltInPresets = builtInPresets.map((builtIn) => {
+    const savedOverride = savedPresets.find((preset) => preset.id === builtIn.id)
+    const mergedPreset: ModelPreset = savedOverride
+      ? { ...builtIn, ...savedOverride, isBuiltIn: true }
+      : { ...builtIn, isBuiltIn: true }
+
+    if (mergedPreset.id === DEFAULT_MODEL_PRESET_ID && !mergedPreset.apiKey && cfg.openaiApiKey) {
+      return { ...mergedPreset, apiKey: cfg.openaiApiKey }
+    }
+
+    return mergedPreset
+  })
+
+  const customPresets = savedPresets
+    .filter((preset) => !builtInIds.has(preset.id))
+    .map((preset) => ({ ...preset, isBuiltIn: false }))
+
+  return {
+    defaultModelPresetId: DEFAULT_MODEL_PRESET_ID,
+    presets: [...mergedBuiltInPresets, ...customPresets],
+  }
+}
+
+function formatModelPresetSummary(preset: ModelPreset): ModelPresetSummary {
+  const { apiKey: _apiKey, ...summary } = preset
+  const hasApiKey = typeof preset.apiKey === "string" && preset.apiKey.length > 0
+
+  return {
+    ...summary,
+    isBuiltIn: preset.isBuiltIn ?? false,
+    apiKey: hasApiKey ? REMOTE_SERVER_SECRET_MASK : "",
+    hasApiKey,
+  }
+}
+
+async function buildModelPresetsResponse(cfg: Config): Promise<ModelPresetsResponse> {
+  const { defaultModelPresetId, presets } = await getMergedModelPresetState(cfg)
+  return {
+    currentModelPresetId: cfg.currentModelPresetId || defaultModelPresetId,
+    presets: presets.map(formatModelPresetSummary),
+  }
+}
+
+function buildModelPresetMutationResponse(
+  presetsResponse: ModelPresetsResponse,
+  options: { preset?: ModelPreset; deletedPresetId?: string } = {},
+): ModelPresetMutationResponse {
+  return {
+    success: true,
+    ...presetsResponse,
+    ...(options.preset ? { preset: formatModelPresetSummary(options.preset) } : {}),
+    ...(options.deletedPresetId ? { deletedPresetId: options.deletedPresetId } : {}),
+  }
+}
+
+function getModelPresetActivationUpdates(preset: ModelPreset): Partial<Config> {
+  const updates: Partial<Config> = {
+    currentModelPresetId: preset.id,
+    openaiBaseUrl: preset.baseUrl,
+    openaiApiKey: preset.apiKey || "",
+  }
+  const agentModel = preset.agentModel || preset.mcpToolsModel
+  if (agentModel) {
+    updates.agentOpenaiModel = agentModel
+    updates.mcpToolsOpenaiModel = agentModel
+  }
+  if (preset.transcriptProcessingModel) {
+    updates.transcriptPostProcessingOpenaiModel = preset.transcriptProcessingModel
+  }
+  return updates
+}
+
+function buildModelPresetUpdatePatch(body: unknown, existingPreset: ModelPreset): Partial<ModelPreset> {
+  const requestBody = body && typeof body === "object" && !Array.isArray(body)
+    ? body as Record<string, unknown>
+    : {}
+  const patch: Partial<ModelPreset> = {}
+
+  if (!existingPreset.isBuiltIn) {
+    const name = normalizeModelPresetString(requestBody.name, 120)
+    const baseUrl = normalizeModelPresetString(requestBody.baseUrl, 500)
+    if (name !== undefined) patch.name = name
+    if (baseUrl !== undefined) patch.baseUrl = baseUrl
+  }
+
+  const apiKey = normalizeModelPresetString(requestBody.apiKey, 2000)
+  if (apiKey !== undefined && apiKey !== REMOTE_SERVER_SECRET_MASK && apiKey.length > 0) {
+    patch.apiKey = apiKey
+  }
+
+  const agentModel = normalizeModelPresetString(requestBody.agentModel ?? requestBody.mcpToolsModel, 300)
+  if (agentModel !== undefined) {
+    patch.agentModel = agentModel
+    patch.mcpToolsModel = agentModel
+  }
+
+  const transcriptProcessingModel = normalizeModelPresetString(requestBody.transcriptProcessingModel, 300)
+  if (transcriptProcessingModel !== undefined) {
+    patch.transcriptProcessingModel = transcriptProcessingModel
+  }
+
+  return patch
+}
+
+async function upsertModelPresetOverride(
+  cfg: Config,
+  presetId: string,
+  patch: Partial<ModelPreset>,
+): Promise<ModelPreset[]> {
+  const savedPresets = getSavedModelPresets(cfg)
+  const savedIndex = savedPresets.findIndex((preset) => preset.id === presetId)
+  const { presets } = await getMergedModelPresetState(cfg)
+  const existingPreset = presets.find((preset) => preset.id === presetId)
+  if (!existingPreset) return savedPresets
+
+  const nextPreset: ModelPreset = {
+    ...existingPreset,
+    ...patch,
+    isBuiltIn: existingPreset.isBuiltIn ?? false,
+    updatedAt: Date.now(),
+  }
+
+  if (savedIndex >= 0) {
+    return savedPresets.map((preset) => (preset.id === presetId ? nextPreset : preset))
+  }
+
+  return [...savedPresets, nextPreset]
 }
 
 // Track webContents IDs that already have a pending did-finish-load notification queued,
@@ -512,6 +714,8 @@ function isLoopbackIp(ip: string | undefined): boolean {
 function isProtectedOperatorAccessPath(pathname: string): boolean {
   return pathname === "/v1/settings"
     || pathname === "/v1/emergency-stop"
+    || pathname === "/v1/agent-profiles/verify-command"
+    || pathname.startsWith("/v1/mcp/")
     || pathname.startsWith("/v1/operator/")
 }
 
@@ -1772,14 +1976,119 @@ function buildOperatorSessionsSummary(): OperatorSessionsSummary {
   return {
     activeSessions: activeSessions.length,
     recentSessions: recentSessions.length,
-    activeSessionDetails: activeSessions.map((s) => ({
-      id: s.id,
-      title: s.conversationTitle,
-      status: s.status,
-      startTime: s.startTime,
-      currentIteration: s.currentIteration,
-      maxIterations: s.maxIterations,
-    })),
+    activeSessionDetails: activeSessions.map(formatOperatorSessionSummary),
+    recentSessionDetails: recentSessions.map(formatOperatorSessionSummary),
+  }
+}
+
+function formatOperatorSessionSummary(session: ReturnType<typeof agentSessionTracker.getActiveSessions>[number]) {
+  return {
+    id: session.id,
+    title: session.conversationTitle,
+    status: session.status,
+    startTime: session.startTime,
+    endTime: session.endTime,
+    currentIteration: session.currentIteration,
+    maxIterations: session.maxIterations,
+    isSnoozed: session.isSnoozed,
+    profileId: session.profileSnapshot?.profileId,
+    profileName: session.profileSnapshot?.profileName,
+  }
+}
+
+function buildOperatorMessageQueuesResponse(): OperatorMessageQueuesResponse {
+  const queues = messageQueueService.getAllQueues().map((queue) => ({
+    conversationId: queue.conversationId,
+    isPaused: messageQueueService.isQueuePaused(queue.conversationId),
+    messageCount: queue.messages.length,
+    messages: queue.messages,
+  }))
+
+  return {
+    count: queues.length,
+    totalMessages: queues.reduce((sum, queue) => sum + queue.messageCount, 0),
+    queues,
+  }
+}
+
+function buildOperatorMessageQueueActionResponse(
+  action: string,
+  success: boolean,
+  message: string,
+  details?: Record<string, unknown>,
+): OperatorActionResponse {
+  return {
+    success,
+    action,
+    message,
+    ...(success ? {} : { error: message }),
+    ...(details ? { details } : {}),
+  }
+}
+
+function normalizeOperatorQueuePathParam(value: string | undefined): string {
+  return decodeURIComponent(value || "").trim()
+}
+
+function notifyInactiveSessionsCleared(): void {
+  for (const windowId of ["main", "panel"] as const) {
+    try {
+      getWindowRendererHandlers(windowId)?.clearInactiveSessions?.send()
+    } catch (error) {
+      diagnosticsService.logError(
+        "remote-server",
+        `Failed to notify ${windowId} window after clearing inactive sessions`,
+        error,
+      )
+    }
+  }
+}
+
+function clearInactiveOperatorSessions(): number {
+  const clearable = agentSessionTracker
+    .getRecentSessions(100)
+    .filter((session) => {
+      if (session.status === "active") return false
+      const conversationId = session.conversationId
+      return !conversationId || messageQueueService.getQueue(conversationId).length === 0
+    })
+
+  const ids = new Set(clearable.map((session) => session.id))
+  agentSessionTracker.clearCompletedSessions((session) => ids.has(session.id))
+  notifyInactiveSessionsCleared()
+  return clearable.length
+}
+
+function parseAgentSessionCandidateLimit(query: unknown): number | { error: string } {
+  const record = query && typeof query === "object" ? query as Record<string, unknown> : {}
+  const rawLimit = record.limit
+  if (rawLimit === undefined || rawLimit === null || rawLimit === "") {
+    return 20
+  }
+
+  const parsedLimit = typeof rawLimit === "number"
+    ? rawLimit
+    : typeof rawLimit === "string"
+      ? Number(rawLimit)
+      : Number.NaN
+
+  if (!Number.isFinite(parsedLimit)) {
+    return { error: "Session candidate limit must be a number" }
+  }
+
+  return Math.max(1, Math.min(100, Math.floor(parsedLimit)))
+}
+
+function formatAgentSessionCandidate(
+  session: ReturnType<typeof agentSessionTracker.getActiveSessions>[number],
+) {
+  return {
+    id: session.id,
+    conversationId: session.conversationId,
+    conversationTitle: session.conversationTitle,
+    status: session.status,
+    startTime: session.startTime,
+    endTime: session.endTime,
   }
 }
 
@@ -1989,6 +2298,42 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  fastify.get("/v1/operator/diagnostics/report", async (_req, reply) => {
+    try {
+      const report = await diagnosticsService.generateDiagnosticReport()
+      return reply.send(report satisfies OperatorDiagnosticReport)
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator diagnostic report", error)
+      return reply.code(500).send({ error: "Failed to build operator diagnostic report" })
+    }
+  })
+
+  fastify.post("/v1/operator/diagnostics/report/save", async (req, reply) => {
+    try {
+      const body = req.body as { filePath?: unknown } | null
+      const filePath = typeof body?.filePath === "string" && body.filePath.trim()
+        ? body.filePath.trim()
+        : undefined
+      const savedPath = await diagnosticsService.saveDiagnosticReport(filePath)
+      const response: OperatorDiagnosticReportSaveResponse = {
+        success: true,
+        action: "diagnostic-report-save",
+        message: `Diagnostic report saved to ${savedPath}`,
+        filePath: savedPath,
+      }
+      setOperatorAuditContext(req, { action: response.action, success: true, details: { filePath: savedPath } })
+      return reply.send(response)
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "diagnostic-report-save",
+        success: false,
+        failureReason: "diagnostic-report-save-error",
+      })
+      diagnosticsService.logError("remote-server", "Failed to save operator diagnostic report", error)
+      return reply.code(500).send({ error: "Failed to save operator diagnostic report" })
+    }
+  })
+
   fastify.get("/v1/operator/errors", async (req, reply) => {
     try {
       const query = req.query as { count?: string | number }
@@ -1997,6 +2342,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       diagnosticsService.logError("remote-server", "Failed to build operator recent errors", error)
       return reply.code(500).send({ error: "Failed to build operator recent errors" })
     }
+  })
+
+  fastify.post("/v1/operator/errors/clear", async (req, reply) => {
+    diagnosticsService.clearErrorLog()
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "operator-errors-clear",
+      message: "Operator error log cleared",
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true })
+    return reply.send(response)
   })
 
   fastify.get("/v1/operator/logs", async (req, reply) => {
@@ -2045,6 +2401,125 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  fastify.get("/v1/operator/message-queues", async (_req, reply) => {
+    try {
+      return reply.send(buildOperatorMessageQueuesResponse())
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator message queues response", error)
+      return reply.code(500).send({ error: "Failed to build operator message queues response" })
+    }
+  })
+
+  fastify.post("/v1/operator/message-queues/:conversationId/pause", async (req, reply) => {
+    const params = req.params as { conversationId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    if (!conversationId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-pause", false, "Missing conversation ID"))
+    }
+    messageQueueService.pauseQueue(conversationId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-pause",
+      true,
+      "Message queue paused",
+      { conversationId },
+    )
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/message-queues/:conversationId/resume", async (req, reply) => {
+    const params = req.params as { conversationId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    if (!conversationId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-resume", false, "Missing conversation ID"))
+    }
+    messageQueueService.resumeQueue(conversationId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-resume",
+      true,
+      "Message queue resumed",
+      { conversationId, processingStarted: false },
+    )
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/message-queues/:conversationId/clear", async (req, reply) => {
+    const params = req.params as { conversationId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    if (!conversationId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-clear", false, "Missing conversation ID"))
+    }
+    const success = messageQueueService.clearQueue(conversationId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-clear",
+      success,
+      success ? "Message queue cleared" : "Cannot clear a queue while a message is processing",
+      { conversationId },
+    )
+    setOperatorAuditContext(req, { action: response.action, success, details: response.details, failureReason: success ? undefined : response.error })
+    return reply.code(success ? 200 : 409).send(response)
+  })
+
+  fastify.delete("/v1/operator/message-queues/:conversationId/messages/:messageId", async (req, reply) => {
+    const params = req.params as { conversationId?: string; messageId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    const messageId = normalizeOperatorQueuePathParam(params.messageId)
+    if (!conversationId || !messageId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-message-remove", false, "Missing conversation ID or message ID"))
+    }
+    const success = messageQueueService.removeFromQueue(conversationId, messageId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-message-remove",
+      success,
+      success ? "Queued message removed" : "Cannot remove this queued message",
+      { conversationId, messageId },
+    )
+    setOperatorAuditContext(req, { action: response.action, success, details: response.details, failureReason: success ? undefined : response.error })
+    return reply.code(success ? 200 : 409).send(response)
+  })
+
+  fastify.post("/v1/operator/message-queues/:conversationId/messages/:messageId/retry", async (req, reply) => {
+    const params = req.params as { conversationId?: string; messageId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    const messageId = normalizeOperatorQueuePathParam(params.messageId)
+    if (!conversationId || !messageId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-message-retry", false, "Missing conversation ID or message ID"))
+    }
+    const success = messageQueueService.resetToPending(conversationId, messageId)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-message-retry",
+      success,
+      success ? "Queued message marked for retry" : "Cannot retry this queued message",
+      { conversationId, messageId, processingStarted: false },
+    )
+    setOperatorAuditContext(req, { action: response.action, success, details: response.details, failureReason: success ? undefined : response.error })
+    return reply.code(success ? 200 : 409).send(response)
+  })
+
+  fastify.patch("/v1/operator/message-queues/:conversationId/messages/:messageId", async (req, reply) => {
+    const params = req.params as { conversationId?: string; messageId?: string }
+    const conversationId = normalizeOperatorQueuePathParam(params.conversationId)
+    const messageId = normalizeOperatorQueuePathParam(params.messageId)
+    if (!conversationId || !messageId) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-message-update", false, "Missing conversation ID or message ID"))
+    }
+    const body = req.body as { text?: unknown } | undefined
+    const text = typeof body?.text === "string" ? body.text.trim() : ""
+    if (!text) {
+      return reply.code(400).send(buildOperatorMessageQueueActionResponse("message-queue-message-update", false, "Queued message text is required"))
+    }
+    const success = messageQueueService.updateMessageText(conversationId, messageId, text)
+    const response = buildOperatorMessageQueueActionResponse(
+      "message-queue-message-update",
+      success,
+      success ? "Queued message updated" : "Cannot update this queued message",
+      { conversationId, messageId, processingStarted: false },
+    )
+    setOperatorAuditContext(req, { action: response.action, success, details: response.details, failureReason: success ? undefined : response.error })
+    return reply.code(success ? 200 : 409).send(response)
+  })
+
   fastify.get("/v1/operator/remote-server", async (_req, reply) => {
     return reply.send(buildOperatorRemoteServerStatus())
   })
@@ -2068,6 +2543,66 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error) {
       diagnosticsService.logError("remote-server", "Failed to build operator integrations summary", error)
       return reply.code(500).send({ error: "Failed to build operator integrations summary" })
+    }
+  })
+
+  fastify.get("/v1/operator/providers/chatgpt-web/auth", async (_req, reply) => {
+    try {
+      const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")
+      return reply.send(await getChatGptWebAuthStatus())
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to get ChatGPT Web auth status", error)
+      return reply.code(500).send({ error: getErrorMessage(error) || "Failed to get ChatGPT Web auth status" })
+    }
+  })
+
+  fastify.post("/v1/operator/providers/chatgpt-web/auth/login", async (_req, reply) => {
+    try {
+      const { loginChatGptWebOAuth } = await import("./chatgpt-web-provider")
+      const status = await loginChatGptWebOAuth()
+      return reply.send({
+        success: true,
+        status,
+        message: "OpenAI Codex connected",
+      })
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to connect ChatGPT Web OAuth", error)
+      try {
+        const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")
+        return reply.code(500).send({
+          success: false,
+          status: await getChatGptWebAuthStatus(),
+          message: "Failed to connect OpenAI Codex",
+          error: getErrorMessage(error),
+        })
+      } catch {
+        return reply.code(500).send({ error: getErrorMessage(error) || "Failed to connect OpenAI Codex" })
+      }
+    }
+  })
+
+  fastify.post("/v1/operator/providers/chatgpt-web/auth/logout", async (_req, reply) => {
+    try {
+      const { getChatGptWebAuthStatus, logoutChatGptWebOAuth } = await import("./chatgpt-web-provider")
+      await logoutChatGptWebOAuth()
+      return reply.send({
+        success: true,
+        status: await getChatGptWebAuthStatus(),
+        message: "OpenAI Codex disconnected",
+      })
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to disconnect ChatGPT Web OAuth", error)
+      try {
+        const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")
+        return reply.code(500).send({
+          success: false,
+          status: await getChatGptWebAuthStatus(),
+          message: "Failed to disconnect OpenAI Codex",
+          error: getErrorMessage(error),
+        })
+      } catch {
+        return reply.code(500).send({ error: getErrorMessage(error) || "Failed to disconnect OpenAI Codex" })
+      }
     }
   })
 
@@ -2486,6 +3021,175 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     return reply.send(response)
   })
 
+  fastify.post("/v1/operator/actions/stop-tts", async (req, reply) => {
+    let notifiedWindows = 0
+    for (const windowId of ["main", "panel"] as const) {
+      try {
+        getWindowRendererHandlers(windowId)?.stopAllTts?.send()
+        notifiedWindows += 1
+      } catch (error) {
+        diagnosticsService.logError("remote-server", `Failed to stop TTS in ${windowId} window`, error)
+      }
+    }
+
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "stop-tts",
+      message: "Desktop speech playback stop requested",
+      details: { notifiedWindows },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/windows/main/show", async (req, reply) => {
+    const body = req.body as { route?: unknown } | null
+    const route = typeof body?.route === "string" && ["/", "/settings", "/settings/models", "/sessions", "/plugins"].includes(body.route)
+      ? body.route
+      : undefined
+    showMainWindow(route)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "desktop-main-window-show",
+      message: "Main window show requested",
+      details: route ? { route } : undefined,
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/windows/panel/show", async (req, reply) => {
+    showPanelWindow({})
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "desktop-panel-window-show",
+      message: "Panel window show requested",
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/windows/panel/hide", async (req, reply) => {
+    hideFloatingPanelWindow()
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "desktop-panel-window-hide",
+      message: "Panel window hide requested",
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/windows/panel/reset", async (req, reply) => {
+    resetFloatingPanelPositionAndSize(true)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "desktop-panel-window-reset",
+      message: "Panel position and size reset",
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/:sessionId/show", async (req, reply) => {
+    const { sessionId } = req.params as { sessionId?: string }
+    if (!sessionId) return reply.code(400).send({ error: "Missing session ID" })
+
+    setTrackedAgentSessionSnoozed(sessionId, false)
+    try {
+      getWindowRendererHandlers("panel")?.focusAgentSession?.send(sessionId)
+    } catch (error) {
+      diagnosticsService.logError("remote-server", `Failed to focus agent session ${sessionId} in panel`, error)
+    }
+    setPanelMode("agent")
+    showPanelWindow({})
+
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-session-show",
+      message: "Agent session shown in the desktop panel",
+      details: { sessionId },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/:sessionId/snooze", async (req, reply) => {
+    const { sessionId } = req.params as { sessionId?: string }
+    if (!sessionId) return reply.code(400).send({ error: "Missing session ID" })
+    setTrackedAgentSessionSnoozed(sessionId, true)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-session-snooze",
+      message: "Agent session snoozed",
+      details: { sessionId },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/:sessionId/unsnooze", async (req, reply) => {
+    const { sessionId } = req.params as { sessionId?: string }
+    if (!sessionId) return reply.code(400).send({ error: "Missing session ID" })
+    setTrackedAgentSessionSnoozed(sessionId, false)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-session-unsnooze",
+      message: "Agent session unsnoozed",
+      details: { sessionId },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/:sessionId/clear", async (req, reply) => {
+    const { sessionId } = req.params as { sessionId?: string }
+    if (!sessionId) return reply.code(400).send({ error: "Missing session ID" })
+    const removed = agentSessionTracker.removeCompletedSession(sessionId)
+    try {
+      getWindowRendererHandlers("main")?.clearAgentSessionProgress?.send(sessionId)
+      getWindowRendererHandlers("panel")?.clearAgentSessionProgress?.send(sessionId)
+    } catch (error) {
+      diagnosticsService.logError("remote-server", `Failed to notify renderer after clearing agent session ${sessionId}`, error)
+    }
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-session-clear",
+      message: removed ? "Agent session dismissed" : "Agent session was not in recent sessions",
+      details: { sessionId, removed },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/clear-inactive", async (req, reply) => {
+    const clearedCount = clearInactiveOperatorSessions()
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-sessions-clear-inactive",
+      message: `${clearedCount} inactive agent session${clearedCount === 1 ? "" : "s"} cleared`,
+      details: { clearedCount },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/snooze-and-hide-panel", async (req, reply) => {
+    const body = req.body as { sessionIds?: unknown } | null
+    const sessionIds = Array.isArray(body?.sessionIds)
+      ? body.sessionIds.filter((value): value is string => typeof value === "string" && value.length > 0)
+      : undefined
+    const snoozedSessionIds = snoozeAgentSessionsAndHidePanelWindow(sessionIds)
+    const response: OperatorActionResponse = {
+      success: true,
+      action: "agent-sessions-snooze-hide-panel",
+      message: `${snoozedSessionIds.length} active agent session${snoozedSessionIds.length === 1 ? "" : "s"} snoozed`,
+      details: { sessionIds: snoozedSessionIds },
+    }
+    setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
+    return reply.send(response)
+  })
+
   fastify.post("/v1/operator/actions/run-agent", async (req, reply) => {
     try {
       const body = req.body as { prompt?: string; conversationId?: string; profileId?: string } | null
@@ -2853,6 +3557,210 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // ============================================
+  // Bundle Management Endpoints (for mobile app)
+  // ============================================
+
+  const BUNDLE_COMPONENT_KEYS = ["agentProfiles", "mcpServers", "skills", "repeatTasks", "knowledgeNotes"] as const
+  type BundleComponentKey = typeof BUNDLE_COMPONENT_KEYS[number]
+
+  const normalizeBundleComponents = (raw: unknown): Partial<Record<BundleComponentKey, boolean>> | undefined => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined
+    const record = raw as Record<string, unknown>
+    const components: Partial<Record<BundleComponentKey, boolean>> = {}
+    for (const key of BUNDLE_COMPONENT_KEYS) {
+      if (record[key] !== undefined) {
+        components[key] = record[key] === true
+      }
+    }
+    return components
+  }
+
+  const getBundleAgentsDirsForMobile = async () => {
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+    return {
+      globalAgentsFolder,
+      targetAgentsFolder: workspaceAgentsFolder || globalAgentsFolder,
+      agentsDirs: workspaceAgentsFolder ? [globalAgentsFolder, workspaceAgentsFolder] : [globalAgentsFolder],
+    }
+  }
+
+  const writeTemporaryBundleFileForMobile = (bundleJson: string) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dotagents-mobile-bundle-"))
+    const filePath = path.join(dir, `bundle-${crypto.randomUUID()}.dotagents`)
+    fs.writeFileSync(filePath, bundleJson, "utf8")
+    return { dir, filePath }
+  }
+
+  const cleanupTemporaryBundleFileForMobile = (dir: string) => {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true })
+    } catch {
+      // best-effort temp cleanup
+    }
+  }
+
+  const refreshRuntimeAfterMobileBundleImport = async () => {
+    try {
+      configStore.reload()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload config after mobile bundle import operation", error)
+    }
+
+    try {
+      agentProfileService.reload()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload agent profiles after mobile bundle import operation", error)
+    }
+
+    try {
+      skillsService.scanSkillsFolder()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload skills after mobile bundle import operation", error)
+    }
+
+    try {
+      const { loopService } = await import("./loop-service")
+      loopService.stopAllLoops()
+      loopService.reload()
+      loopService.resumeScheduling()
+      loopService.startAllLoops()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload repeat tasks after mobile bundle import operation", error)
+    }
+
+    try {
+      await knowledgeNotesService.reload()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reload knowledge notes after mobile bundle import operation", error)
+    }
+
+    try {
+      const config = configStore.get()
+      const configuredServers = config.mcpConfig?.mcpServers || {}
+      const serverStatusBeforeRefresh = mcpService.getServerStatus()
+
+      for (const serverName of Object.keys(serverStatusBeforeRefresh)) {
+        const serverConfig = configuredServers[serverName]
+        const shouldBeStopped = !serverConfig || !!(serverConfig as MCPServerConfig).disabled
+        if (!shouldBeStopped) continue
+
+        const stopResult = await mcpService.stopServer(serverName)
+        if (!stopResult.success) {
+          diagnosticsService.logError("remote-server", `Failed to stop MCP server ${serverName} after mobile bundle import`, stopResult.error)
+        }
+      }
+
+      const serverStatusAfterStops = mcpService.getServerStatus()
+      for (const [serverName, serverConfig] of Object.entries(configuredServers)) {
+        if ((serverConfig as MCPServerConfig).disabled) continue
+        const status = serverStatusAfterStops[serverName]
+        if (status?.runtimeEnabled === false || !status?.connected) continue
+
+        const restartResult = await mcpService.restartServer(serverName)
+        if (!restartResult.success) {
+          diagnosticsService.logError("remote-server", `Failed to restart MCP server ${serverName} after mobile bundle import`, restartResult.error)
+        }
+      }
+
+      await mcpService.initialize()
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to reinitialize MCP after mobile bundle import operation", error)
+    }
+  }
+
+  // POST /v1/bundles/export - Export a DotAgents bundle as JSON for mobile sharing
+  fastify.post("/v1/bundles/export", async (req, reply) => {
+    try {
+      const body = (req.body ?? {}) as { name?: unknown; description?: unknown; components?: unknown }
+      const { agentsDirs } = await getBundleAgentsDirsForMobile()
+      const { exportBundle, exportBundleFromLayers } = await import("./bundle-service")
+      const options = {
+        name: typeof body.name === "string" && body.name.trim() ? body.name.trim() : "DotAgents Bundle",
+        description: typeof body.description === "string" && body.description.trim() ? body.description.trim() : undefined,
+        components: normalizeBundleComponents(body.components),
+      }
+      const bundle = agentsDirs.length > 1
+        ? await exportBundleFromLayers(agentsDirs, options)
+        : await exportBundle(agentsDirs[0], options)
+      return reply.send({
+        success: true,
+        bundle,
+        bundleJson: JSON.stringify(bundle, null, 2),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to export bundle", error)
+      return reply.code(500).send({ error: error?.message || "Failed to export bundle" })
+    }
+  })
+
+  // POST /v1/bundles/import/preview - Preview a pasted DotAgents bundle
+  fastify.post("/v1/bundles/import/preview", async (req, reply) => {
+    let temp: { dir: string; filePath: string } | null = null
+    try {
+      const body = req.body as { bundleJson?: unknown }
+      const bundleJson = typeof body.bundleJson === "string" ? body.bundleJson.trim() : ""
+      if (!bundleJson) {
+        return reply.code(400).send({ error: "bundleJson must be a non-empty string" })
+      }
+
+      JSON.parse(bundleJson)
+      temp = writeTemporaryBundleFileForMobile(bundleJson)
+      const { targetAgentsFolder } = await getBundleAgentsDirsForMobile()
+      const { previewBundleWithConflicts } = await import("./bundle-service")
+      const preview = previewBundleWithConflicts(temp.filePath, targetAgentsFolder)
+      if (!preview.success || !preview.bundle || !preview.conflicts) {
+        return reply.code(400).send({ error: preview.error || "Failed to preview bundle" })
+      }
+
+      return reply.send({
+        success: true,
+        preview: {
+          bundle: preview.bundle,
+          conflicts: preview.conflicts,
+        },
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to preview bundle import request", error)
+      return reply.code(400).send({ error: error?.message || "Failed to preview bundle import request" })
+    } finally {
+      if (temp) cleanupTemporaryBundleFileForMobile(temp.dir)
+    }
+  })
+
+  // POST /v1/bundles/import - Import a pasted DotAgents bundle
+  fastify.post("/v1/bundles/import", async (req, reply) => {
+    let temp: { dir: string; filePath: string } | null = null
+    try {
+      const body = req.body as { bundleJson?: unknown; conflictStrategy?: unknown; components?: unknown }
+      const bundleJson = typeof body.bundleJson === "string" ? body.bundleJson.trim() : ""
+      if (!bundleJson) {
+        return reply.code(400).send({ error: "bundleJson must be a non-empty string" })
+      }
+      const conflictStrategy = body.conflictStrategy === "overwrite" || body.conflictStrategy === "rename"
+        ? body.conflictStrategy
+        : "skip"
+
+      JSON.parse(bundleJson)
+      temp = writeTemporaryBundleFileForMobile(bundleJson)
+      const { targetAgentsFolder } = await getBundleAgentsDirsForMobile()
+      const { importBundle } = await import("./bundle-service")
+      const result = await importBundle(temp.filePath, targetAgentsFolder, {
+        conflictStrategy,
+        components: normalizeBundleComponents(body.components),
+      })
+      await refreshRuntimeAfterMobileBundleImport()
+
+      return reply.send(result)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import bundle", error)
+      return reply.code(400).send({ error: error?.message || "Failed to import bundle" })
+    } finally {
+      if (temp) cleanupTemporaryBundleFileForMobile(temp.dir)
+    }
+  })
+
   // GET /v1/operator/mcp - Operator-level MCP summary
   fastify.get("/v1/operator/mcp", async (_req, reply) => {
     try {
@@ -2875,6 +3783,140 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error) {
       diagnosticsService.logError("remote-server", "Failed to build operator MCP status", error)
       return reply.code(500).send({ error: "Failed to build operator MCP status" })
+    }
+  })
+
+  // GET /v1/operator/mcp/tools - Operator-level MCP tool list
+  fastify.get("/v1/operator/mcp/tools", async (req, reply) => {
+    try {
+      const query = req.query as { server?: string }
+      const server = typeof query.server === "string" && query.server.trim() ? query.server.trim() : undefined
+      const allTools = mcpService.getDetailedToolList()
+      const tools = (server
+        ? allTools.filter((tool) => tool.sourceName === server || tool.serverName === server)
+        : allTools
+      ).map((tool) => ({
+        name: tool.name,
+        description: tool.description ?? "",
+        sourceKind: tool.sourceKind,
+        sourceName: tool.sourceName,
+        sourceLabel: tool.sourceLabel ?? tool.sourceName,
+        serverName: tool.serverName,
+        enabled: tool.enabled,
+        serverEnabled: tool.serverEnabled,
+      }))
+
+      return reply.send({
+        count: tools.length,
+        ...(server ? { server } : {}),
+        tools,
+      })
+    } catch (error) {
+      diagnosticsService.logError("remote-server", "Failed to build operator MCP tools", error)
+      return reply.code(500).send({ error: "Failed to build operator MCP tools" })
+    }
+  })
+
+  // POST /v1/operator/mcp/tools/toggle - Enable/disable an MCP tool for the current profile/runtime
+  fastify.post("/v1/operator/mcp/tools/toggle", async (req, reply) => {
+    try {
+      const body = req.body as { toolName?: string; enabled?: boolean } | null
+      const toolName = typeof body?.toolName === "string" ? body.toolName.trim() : ""
+      const enabled = body?.enabled
+
+      if (!toolName || typeof enabled !== "boolean") {
+        return reply.code(400).send({ error: "Missing toolName or enabled" })
+      }
+
+      const success = mcpService.setToolEnabled(toolName, enabled)
+      if (!success) {
+        setOperatorAuditContext(req, {
+          action: "mcp-tool-toggle",
+          success: false,
+          failureReason: "tool-not-found-or-locked",
+          details: { toolName, enabled },
+        })
+        return reply.code(404).send({ error: `Tool '${toolName}' could not be updated` })
+      }
+
+      const tool = mcpService.getDetailedToolList().find((entry) => entry.name === toolName)
+      setOperatorAuditContext(req, {
+        action: "mcp-tool-toggle",
+        success: true,
+        details: { toolName, enabled },
+      })
+
+      return reply.send({
+        success: true,
+        tool: tool ? {
+          name: tool.name,
+          description: tool.description ?? "",
+          sourceKind: tool.sourceKind,
+          sourceName: tool.sourceName,
+          sourceLabel: tool.sourceLabel ?? tool.sourceName,
+          serverName: tool.serverName,
+          enabled: tool.enabled,
+          serverEnabled: tool.serverEnabled,
+        } : undefined,
+      })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-tool-toggle",
+        success: false,
+        failureReason: "mcp-tool-toggle-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP tool toggle failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `MCP tool toggle failed: ${errorMessage}` })
+    }
+  })
+
+  // GET /v1/operator/mcp/:server/logs - Recent MCP server log preview
+  fastify.get("/v1/operator/mcp/:server/logs", async (req, reply) => {
+    try {
+      const params = req.params as { server: string }
+      const query = req.query as { count?: string }
+      const serverName = decodeURIComponent(params.server || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const parsedCount = Number.parseInt(String(query.count ?? "20"), 10)
+      const count = Number.isFinite(parsedCount) ? Math.max(1, Math.min(parsedCount, 100)) : 20
+      const logs = mcpService.getServerLogs(serverName).slice(-count).reverse()
+      return reply.send({ server: serverName, count: logs.length, logs })
+    } catch (error) {
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP logs failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `Failed to load MCP logs: ${errorMessage}` })
+    }
+  })
+
+  // POST /v1/operator/mcp/:server/logs/clear - Clear MCP server logs
+  fastify.post("/v1/operator/mcp/:server/logs/clear", async (req, reply) => {
+    try {
+      const params = req.params as { server: string }
+      const serverName = decodeURIComponent(params.server || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      mcpService.clearServerLogs(serverName)
+      setOperatorAuditContext(req, {
+        action: "mcp-clear-logs",
+        success: true,
+        details: { server: serverName },
+      })
+      return reply.send({ success: true, action: "mcp-clear-logs", server: serverName })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-clear-logs",
+        success: false,
+        failureReason: "mcp-clear-logs-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP clear logs failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `Failed to clear MCP logs: ${errorMessage}` })
     }
   })
 
@@ -2917,6 +3959,343 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  // POST /v1/operator/actions/mcp-start - Runtime-enable and start an MCP server
+  fastify.post("/v1/operator/actions/mcp-start", async (req, reply) => {
+    try {
+      const body = req.body as { server?: string } | null
+      const serverName = typeof body?.server === "string" ? body.server.trim() : ""
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const enabled = mcpService.setServerRuntimeEnabled(serverName, true)
+      if (!enabled) {
+        setOperatorAuditContext(req, {
+          action: "mcp-start",
+          success: false,
+          failureReason: "server-not-found",
+          details: { server: serverName },
+        })
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      const result = await mcpService.restartServer(serverName)
+      if (!result.success) {
+        setOperatorAuditContext(req, {
+          action: "mcp-start",
+          success: false,
+          failureReason: result.error || "start-failed",
+          details: { server: serverName },
+        })
+        return reply.code(400).send({ error: result.error || "Start failed" })
+      }
+
+      setOperatorAuditContext(req, {
+        action: "mcp-start",
+        success: true,
+        details: { server: serverName },
+      })
+      return reply.send({ success: true, action: "mcp-start", server: serverName })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-start",
+        success: false,
+        failureReason: "mcp-start-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP start failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `MCP start failed: ${errorMessage}` })
+    }
+  })
+
+  // POST /v1/operator/actions/mcp-stop - Runtime-disable and stop an MCP server
+  fastify.post("/v1/operator/actions/mcp-stop", async (req, reply) => {
+    try {
+      const body = req.body as { server?: string } | null
+      const serverName = typeof body?.server === "string" ? body.server.trim() : ""
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const disabled = mcpService.setServerRuntimeEnabled(serverName, false)
+      if (!disabled) {
+        setOperatorAuditContext(req, {
+          action: "mcp-stop",
+          success: false,
+          failureReason: "server-not-found",
+          details: { server: serverName },
+        })
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      const result = await mcpService.stopServer(serverName)
+      if (!result.success) {
+        setOperatorAuditContext(req, {
+          action: "mcp-stop",
+          success: false,
+          failureReason: result.error || "stop-failed",
+          details: { server: serverName },
+        })
+        return reply.code(400).send({ error: result.error || "Stop failed" })
+      }
+
+      setOperatorAuditContext(req, {
+        action: "mcp-stop",
+        success: true,
+        details: { server: serverName },
+      })
+      return reply.send({ success: true, action: "mcp-stop", server: serverName })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-stop",
+        success: false,
+        failureReason: "mcp-stop-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP stop failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `MCP stop failed: ${errorMessage}` })
+    }
+  })
+
+  // POST /v1/operator/actions/mcp-test - Test an MCP server configuration
+  fastify.post("/v1/operator/actions/mcp-test", async (req, reply) => {
+    try {
+      const body = req.body as { server?: string } | null
+      const serverName = typeof body?.server === "string" ? body.server.trim() : ""
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const serverConfig = configStore.get().mcpConfig?.mcpServers?.[serverName]
+      if (!serverConfig) {
+        setOperatorAuditContext(req, {
+          action: "mcp-test",
+          success: false,
+          failureReason: "server-not-found",
+          details: { server: serverName },
+        })
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      const result = await mcpService.testServerConnection(serverName, serverConfig)
+      setOperatorAuditContext(req, {
+        action: "mcp-test",
+        success: result.success,
+        failureReason: result.success ? undefined : result.error || "test-failed",
+        details: { server: serverName, toolCount: result.toolCount },
+      })
+
+      if (!result.success) {
+        return reply.code(400).send({ success: false, error: result.error || "Connection test failed" })
+      }
+
+      return reply.send({
+        success: true,
+        action: "mcp-test",
+        server: serverName,
+        toolCount: result.toolCount ?? 0,
+      })
+    } catch (error) {
+      setOperatorAuditContext(req, {
+        action: "mcp-test",
+        success: false,
+        failureReason: "mcp-test-error",
+      })
+      const errorMessage = getErrorMessage(error)
+      diagnosticsService.logError("remote-server", `Operator MCP test failed: ${errorMessage}`, error)
+      return reply.code(500).send({ error: `MCP test failed: ${errorMessage}` })
+    }
+  })
+
+  const buildMcpServerSummary = (serverName: string) => {
+    const serverStatus = mcpService.getServerStatus()
+    const status = serverStatus[serverName]
+    const serverConfig = configStore.get().mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined
+    return {
+      name: serverName,
+      connected: !!status?.connected,
+      toolCount: status?.toolCount ?? 0,
+      enabled: (status?.runtimeEnabled ?? true) && !serverConfig?.disabled,
+      runtimeEnabled: status?.runtimeEnabled ?? true,
+      configDisabled: !!serverConfig?.disabled,
+      error: status?.error,
+    }
+  }
+
+  type RemoteMcpServerConfig = Omit<MCPServerConfig, "oauth"> & { oauth?: OAuthConfig | null }
+
+  const isReservedRemoteMcpServerName = (serverName: string) => {
+    const normalizedName = serverName.trim().toLowerCase()
+    return RESERVED_RUNTIME_TOOL_SERVER_NAMES.some((reservedName) => reservedName.toLowerCase() === normalizedName)
+  }
+
+  const sanitizeStringRecord = (
+    value: unknown,
+    fieldLabel: string,
+    serverName: string,
+  ): Record<string, string> | undefined => {
+    if (value === undefined) return undefined
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(`Server "${serverName}": ${fieldLabel} must be an object`)
+    }
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entryValue]) => [key, String(entryValue)]),
+    )
+  }
+
+  const sanitizeMcpOAuthConfig = (oauth: OAuthConfig | undefined): OAuthConfig | undefined => {
+    if (!oauth) return undefined
+    const safeConfig: OAuthConfig = {}
+    if (typeof oauth.scope === "string" && oauth.scope.trim()) safeConfig.scope = oauth.scope.trim()
+    if (typeof oauth.clientId === "string" && oauth.clientId.trim()) safeConfig.clientId = oauth.clientId.trim()
+    if (typeof oauth.redirectUri === "string" && oauth.redirectUri.trim()) safeConfig.redirectUri = oauth.redirectUri.trim()
+    if (typeof oauth.useDiscovery === "boolean") safeConfig.useDiscovery = oauth.useDiscovery
+    if (typeof oauth.useDynamicRegistration === "boolean") safeConfig.useDynamicRegistration = oauth.useDynamicRegistration
+    return Object.keys(safeConfig).length > 0 ? safeConfig : undefined
+  }
+
+  const sanitizeMcpServerConfig = (serverConfig: MCPServerConfig): MCPServerConfig => {
+    const { oauth, ...safeConfig } = serverConfig
+    const safeOAuth = sanitizeMcpOAuthConfig(oauth)
+    return safeOAuth ? { ...safeConfig, oauth: safeOAuth } : safeConfig
+  }
+
+  const normalizeRemoteMcpOAuthConfig = (serverName: string, input: unknown): OAuthConfig | null | undefined => {
+    if (input === undefined) return undefined
+    if (input === null) return null
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      throw new Error(`Server "${serverName}": OAuth config must be an object`)
+    }
+
+    const rawOAuth = input as Record<string, unknown>
+    const oauth: OAuthConfig = {
+      useDiscovery: rawOAuth.useDiscovery !== false,
+      useDynamicRegistration: rawOAuth.useDynamicRegistration !== false,
+    }
+    if (rawOAuth.scope !== undefined) {
+      if (typeof rawOAuth.scope !== "string") throw new Error(`Server "${serverName}": OAuth scope must be a string`)
+      if (rawOAuth.scope.trim()) oauth.scope = rawOAuth.scope.trim()
+    }
+    if (rawOAuth.clientId !== undefined) {
+      if (typeof rawOAuth.clientId !== "string") throw new Error(`Server "${serverName}": OAuth client ID must be a string`)
+      if (rawOAuth.clientId.trim()) oauth.clientId = rawOAuth.clientId.trim()
+    }
+    if (rawOAuth.redirectUri !== undefined) {
+      if (typeof rawOAuth.redirectUri !== "string") throw new Error(`Server "${serverName}": OAuth redirect URI must be a string`)
+      if (rawOAuth.redirectUri.trim()) oauth.redirectUri = rawOAuth.redirectUri.trim()
+    }
+    if (rawOAuth.useDiscovery !== undefined && typeof rawOAuth.useDiscovery !== "boolean") {
+      throw new Error(`Server "${serverName}": OAuth discovery flag must be a boolean`)
+    }
+    if (rawOAuth.useDynamicRegistration !== undefined && typeof rawOAuth.useDynamicRegistration !== "boolean") {
+      throw new Error(`Server "${serverName}": OAuth dynamic registration flag must be a boolean`)
+    }
+    return oauth
+  }
+
+  const normalizeRemoteMcpServerConfig = (serverName: string, input: unknown): RemoteMcpServerConfig => {
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      throw new Error("MCP server config must be an object")
+    }
+
+    const config = { ...(input as RemoteMcpServerConfig) }
+    const transport = config.transport ?? (config.url?.trim()
+      ? config.url.trim().toLowerCase().startsWith("ws") ? "websocket" : "streamableHttp"
+      : "stdio")
+    if (!["stdio", "websocket", "streamableHttp"].includes(transport)) {
+      throw new Error(`Server "${serverName}": transport must be stdio, websocket, or streamableHttp`)
+    }
+
+    const normalized: RemoteMcpServerConfig = {
+      transport,
+      disabled: config.disabled === true,
+    }
+
+    if (config.timeout !== undefined) {
+      if (typeof config.timeout !== "number" || !Number.isFinite(config.timeout) || config.timeout < 0) {
+        throw new Error(`Server "${serverName}": timeout must be a non-negative number`)
+      }
+      normalized.timeout = Math.round(config.timeout)
+    }
+
+    if (transport === "stdio") {
+      if (typeof config.command !== "string" || !config.command.trim()) {
+        throw new Error(`Server "${serverName}": stdio transport requires a command`)
+      }
+      if (config.args !== undefined && (!Array.isArray(config.args) || config.args.some((arg) => typeof arg !== "string"))) {
+        throw new Error(`Server "${serverName}": args must be an array of strings`)
+      }
+      if (config.env !== undefined && (typeof config.env !== "object" || Array.isArray(config.env))) {
+        throw new Error(`Server "${serverName}": env must be an object`)
+      }
+
+      normalized.command = config.command.trim()
+      normalized.args = config.args ?? []
+      normalized.env = sanitizeStringRecord(config.env, "env", serverName)
+      return normalized
+    }
+
+    if (typeof config.url !== "string" || !config.url.trim()) {
+      throw new Error(`Server "${serverName}": ${transport} transport requires a URL`)
+    }
+    try {
+      new URL(config.url.trim())
+    } catch {
+      throw new Error(`Server "${serverName}": URL is invalid`)
+    }
+    if (config.headers !== undefined && (typeof config.headers !== "object" || Array.isArray(config.headers))) {
+      throw new Error(`Server "${serverName}": headers must be an object`)
+    }
+
+    normalized.url = config.url.trim()
+    normalized.headers = sanitizeStringRecord(config.headers, "headers", serverName)
+    const oauth = normalizeRemoteMcpOAuthConfig(serverName, Object.prototype.hasOwnProperty.call(config, "oauth") ? config.oauth : undefined)
+    if (transport === "streamableHttp" && oauth !== undefined) {
+      normalized.oauth = oauth
+    }
+    return normalized
+  }
+
+  const finalizeRemoteMcpServerConfig = (
+    normalizedConfig: RemoteMcpServerConfig,
+    existingConfig?: MCPServerConfig,
+    preserveExistingOAuth: boolean = false,
+  ): MCPServerConfig => {
+    const hasOAuthField = Object.prototype.hasOwnProperty.call(normalizedConfig, "oauth")
+    if (normalizedConfig.oauth === null) {
+      const { oauth: _oauth, ...withoutOAuth } = normalizedConfig
+      return withoutOAuth
+    }
+    if (normalizedConfig.oauth) {
+      return existingConfig?.oauth
+        ? {
+            ...normalizedConfig,
+            oauth: {
+              ...existingConfig.oauth,
+              ...normalizedConfig.oauth,
+              ...(existingConfig.oauth.tokens ? { tokens: existingConfig.oauth.tokens } : {}),
+              ...(existingConfig.oauth.pendingAuth ? { pendingAuth: existingConfig.oauth.pendingAuth } : {}),
+            },
+          }
+        : normalizedConfig as MCPServerConfig
+    }
+    if (preserveExistingOAuth && existingConfig?.oauth && !hasOAuthField) {
+      return { ...normalizedConfig, oauth: existingConfig.oauth }
+    }
+    return normalizedConfig as MCPServerConfig
+  }
+
+  const buildExportableMcpConfig = (): MCPConfig => {
+    const servers = configStore.get().mcpConfig?.mcpServers || {}
+    return {
+      mcpServers: Object.fromEntries(
+        Object.entries(servers)
+          .filter(([serverName]) => !isReservedRemoteMcpServerName(serverName))
+          .map(([serverName, serverConfig]) => [serverName, sanitizeMcpServerConfig(serverConfig as MCPServerConfig)]),
+      ),
+    }
+  }
+
   // GET /v1/mcp/servers - List MCP servers with status
   fastify.get("/v1/mcp/servers", async (_req, reply) => {
     try {
@@ -2935,6 +4314,227 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get MCP servers", error)
       return reply.code(500).send({ error: "Failed to get MCP servers" })
+    }
+  })
+
+  // GET /v1/mcp/config/export - Export user-configurable MCP server configs
+  fastify.get("/v1/mcp/config/export", async (_req, reply) => {
+    try {
+      return reply.send({ success: true, config: buildExportableMcpConfig() })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to export MCP server configs", error)
+      return reply.code(500).send({ error: error?.message || "Failed to export MCP server configs" })
+    }
+  })
+
+  // POST /v1/mcp/config/import - Import user-configurable MCP server configs
+  fastify.post("/v1/mcp/config/import", async (req, reply) => {
+    try {
+      const body = req.body as { config?: { mcpServers?: unknown } } | null
+      const importedServers = body?.config?.mcpServers
+      if (!importedServers || typeof importedServers !== "object" || Array.isArray(importedServers)) {
+        return reply.code(400).send({ error: "Import body must include config.mcpServers" })
+      }
+
+      const currentConfig = configStore.get()
+      const currentServers = currentConfig.mcpConfig?.mcpServers || {}
+      const nextMcpServers: Record<string, MCPServerConfig> = { ...currentServers }
+      const skippedReservedServerNames: string[] = []
+      const importedServerNames: string[] = []
+
+      for (const [rawServerName, rawServerConfig] of Object.entries(importedServers as Record<string, unknown>)) {
+        const serverName = rawServerName.trim()
+        if (!serverName) continue
+        if (isReservedRemoteMcpServerName(serverName)) {
+          skippedReservedServerNames.push(serverName)
+          continue
+        }
+
+        const normalizedConfig = normalizeRemoteMcpServerConfig(serverName, rawServerConfig)
+        nextMcpServers[serverName] = finalizeRemoteMcpServerConfig(
+          normalizedConfig,
+          currentServers[serverName] as MCPServerConfig | undefined,
+          false,
+        )
+        importedServerNames.push(serverName)
+      }
+
+      configStore.save({
+        ...currentConfig,
+        mcpConfig: {
+          ...(currentConfig.mcpConfig || { mcpServers: {} }),
+          mcpServers: nextMcpServers,
+        },
+      })
+
+      await Promise.all(importedServerNames.map(async (serverName) => {
+        const serverConfig = nextMcpServers[serverName]
+        const result = serverConfig.disabled
+          ? await mcpService.stopServer(serverName)
+          : await mcpService.restartServer(serverName)
+        if (!result.success) {
+          diagnosticsService.logError("remote-server", `MCP server ${serverName} imported but failed to restart`, result.error)
+        }
+      }))
+
+      return reply.send({
+        success: true,
+        importedCount: importedServerNames.length,
+        skippedReservedServerNames,
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import MCP server configs", error)
+      return reply.code(400).send({ error: error?.message || "Failed to import MCP server configs" })
+    }
+  })
+
+  // GET /v1/mcp/servers/:name/config - Get one MCP server config for mobile editing
+  fastify.get("/v1/mcp/servers/:name/config", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      const serverConfig = configStore.get().mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined
+      if (!serverName || !serverConfig) {
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      return reply.send({
+        name: serverName,
+        config: sanitizeMcpServerConfig(serverConfig),
+        server: buildMcpServerSummary(serverName),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get MCP server config", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get MCP server config" })
+    }
+  })
+
+  // PUT /v1/mcp/servers/:name/config - Create or replace one MCP server config
+  fastify.put("/v1/mcp/servers/:name/config", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const body = req.body as { config?: unknown } | null
+      const serverName = decodeURIComponent(params.name || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const currentConfig = configStore.get()
+      const existingConfig = currentConfig.mcpConfig?.mcpServers?.[serverName] as MCPServerConfig | undefined
+      const normalizedConfig = normalizeRemoteMcpServerConfig(serverName, body?.config)
+      const nextServerConfig = finalizeRemoteMcpServerConfig(normalizedConfig, existingConfig, true)
+
+      const nextMcpServers = {
+        ...(currentConfig.mcpConfig?.mcpServers || {}),
+        [serverName]: nextServerConfig,
+      }
+      configStore.save({
+        ...currentConfig,
+        mcpConfig: {
+          ...(currentConfig.mcpConfig || { mcpServers: {} }),
+          mcpServers: nextMcpServers,
+        },
+      })
+
+      const lifecycleResult = nextServerConfig.disabled
+        ? await mcpService.stopServer(serverName)
+        : await mcpService.restartServer(serverName)
+
+      if (!lifecycleResult.success) {
+        diagnosticsService.logError("remote-server", `MCP server ${serverName} saved but failed to restart`, lifecycleResult.error)
+      }
+
+      return reply.send({
+        name: serverName,
+        config: sanitizeMcpServerConfig(nextServerConfig),
+        server: buildMcpServerSummary(serverName),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to save MCP server config", error)
+      return reply.code(400).send({ error: error?.message || "Failed to save MCP server config" })
+    }
+  })
+
+  // DELETE /v1/mcp/servers/:name - Delete one MCP server config
+  fastify.delete("/v1/mcp/servers/:name", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      const currentConfig = configStore.get()
+      const currentServers = currentConfig.mcpConfig?.mcpServers || {}
+      if (!serverName || !currentServers[serverName]) {
+        return reply.code(404).send({ error: `Server '${serverName}' not found` })
+      }
+
+      await mcpService.stopServer(serverName)
+      const { [serverName]: _removed, ...nextMcpServers } = currentServers
+      configStore.save({
+        ...currentConfig,
+        mcpRuntimeDisabledServers: (currentConfig.mcpRuntimeDisabledServers || []).filter((name) => name !== serverName),
+        mcpConfig: {
+          ...(currentConfig.mcpConfig || { mcpServers: {} }),
+          mcpServers: nextMcpServers,
+        },
+      })
+
+      return reply.send({ success: true, server: serverName })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete MCP server config", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete MCP server config" })
+    }
+  })
+
+  // GET /v1/mcp/servers/:name/oauth - Check OAuth status for one MCP server
+  fastify.get("/v1/mcp/servers/:name/oauth", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const status = await mcpService.getOAuthStatus(serverName)
+      return reply.send(status)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get MCP OAuth status", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get MCP OAuth status" })
+    }
+  })
+
+  // POST /v1/mcp/servers/:name/oauth/start - Start OAuth flow for one MCP server
+  fastify.post("/v1/mcp/servers/:name/oauth/start", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const result = await mcpService.initiateOAuthFlow(serverName)
+      return reply.send(result)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to start MCP OAuth", error)
+      return reply.code(400).send({ error: error?.message || "Failed to start MCP OAuth" })
+    }
+  })
+
+  // POST /v1/mcp/servers/:name/oauth/revoke - Revoke OAuth tokens for one MCP server
+  fastify.post("/v1/mcp/servers/:name/oauth/revoke", async (req, reply) => {
+    try {
+      const params = req.params as { name: string }
+      const serverName = decodeURIComponent(params.name || "").trim()
+      if (!serverName) {
+        return reply.code(400).send({ error: "Missing server name" })
+      }
+
+      const result = await mcpService.revokeOAuthTokens(serverName)
+      if (!result.success) {
+        return reply.code(400).send(result)
+      }
+      return reply.send(result)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to revoke MCP OAuth", error)
+      return reply.code(500).send({ error: error?.message || "Failed to revoke MCP OAuth" })
     }
   })
 
@@ -2967,28 +4567,133 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
+  fastify.get("/v1/operator/model-presets", async (_req, reply) => {
+    try {
+      return reply.send(await buildModelPresetsResponse(configStore.get()))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to build model preset summaries", error)
+      return reply.code(500).send({ error: error?.message || "Failed to build model preset summaries" })
+    }
+  })
+
+  fastify.post("/v1/operator/model-presets", async (req, reply) => {
+    try {
+      const body = req.body as Record<string, unknown> | undefined
+      const name = normalizeModelPresetString(body?.name, 120)
+      const baseUrl = normalizeModelPresetString(body?.baseUrl, 500)
+      if (!name) {
+        return reply.code(400).send({ error: "Preset name is required" })
+      }
+      if (!baseUrl) {
+        return reply.code(400).send({ error: "Preset base URL is required" })
+      }
+
+      const now = Date.now()
+      const agentModel = normalizeModelPresetString(body?.agentModel ?? body?.mcpToolsModel, 300) || ""
+      const preset: ModelPreset = {
+        id: `custom-${crypto.randomUUID()}`,
+        name,
+        baseUrl,
+        apiKey: normalizeModelPresetString(body?.apiKey, 2000) || "",
+        isBuiltIn: false,
+        createdAt: now,
+        updatedAt: now,
+        agentModel,
+        mcpToolsModel: agentModel,
+        transcriptProcessingModel: normalizeModelPresetString(body?.transcriptProcessingModel, 300) || "",
+      }
+
+      const cfg = configStore.get()
+      const nextConfig = { ...cfg, modelPresets: [...getSavedModelPresets(cfg), preset] }
+      configStore.save(nextConfig)
+      return reply.send(buildModelPresetMutationResponse(await buildModelPresetsResponse(nextConfig), { preset }))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to create model preset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to create model preset" })
+    }
+  })
+
+  fastify.patch("/v1/operator/model-presets/:presetId", async (req, reply) => {
+    try {
+      const params = req.params as { presetId?: string }
+      const presetId = decodeURIComponent(params.presetId || "").trim()
+      if (!presetId) {
+        return reply.code(400).send({ error: "Missing preset ID" })
+      }
+
+      const cfg = configStore.get()
+      const { presets } = await getMergedModelPresetState(cfg)
+      const existingPreset = presets.find((preset) => preset.id === presetId)
+      if (!existingPreset) {
+        return reply.code(404).send({ error: "Model preset not found" })
+      }
+
+      const patch = buildModelPresetUpdatePatch(req.body, existingPreset)
+      const modelPresets = await upsertModelPresetOverride(cfg, presetId, patch)
+      const nextLookupState = await getMergedModelPresetState({ ...cfg, modelPresets })
+      const updatedPreset = nextLookupState.presets.find((preset) => preset.id === presetId)
+      if (!updatedPreset) {
+        return reply.code(404).send({ error: "Model preset not found" })
+      }
+
+      const updates: Partial<Config> = { modelPresets }
+      if ((cfg.currentModelPresetId || nextLookupState.defaultModelPresetId) === presetId) {
+        Object.assign(updates, getModelPresetActivationUpdates(updatedPreset))
+      }
+      const nextConfig = { ...cfg, ...updates }
+      configStore.save(nextConfig)
+      return reply.send(buildModelPresetMutationResponse(await buildModelPresetsResponse(nextConfig), { preset: updatedPreset }))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to update model preset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to update model preset" })
+    }
+  })
+
+  fastify.delete("/v1/operator/model-presets/:presetId", async (req, reply) => {
+    try {
+      const params = req.params as { presetId?: string }
+      const presetId = decodeURIComponent(params.presetId || "").trim()
+      if (!presetId) {
+        return reply.code(400).send({ error: "Missing preset ID" })
+      }
+
+      const cfg = configStore.get()
+      const { defaultModelPresetId, presets } = await getMergedModelPresetState(cfg)
+      const preset = presets.find((candidate) => candidate.id === presetId)
+      if (!preset) {
+        return reply.code(404).send({ error: "Model preset not found" })
+      }
+      if (preset.isBuiltIn) {
+        return reply.code(400).send({ error: "Built-in presets cannot be deleted" })
+      }
+
+      const modelPresets = getSavedModelPresets(cfg).filter((candidate) => candidate.id !== presetId)
+      const updates: Partial<Config> = { modelPresets }
+      const switchedToDefault = (cfg.currentModelPresetId || defaultModelPresetId) === presetId
+      if (switchedToDefault) {
+        const defaultPresetState = await getMergedModelPresetState({ ...cfg, modelPresets })
+        const defaultPreset = defaultPresetState.presets.find((candidate) => candidate.id === defaultModelPresetId)
+        if (defaultPreset) {
+          Object.assign(updates, getModelPresetActivationUpdates(defaultPreset))
+        } else {
+          updates.currentModelPresetId = defaultModelPresetId
+        }
+      }
+
+      const nextConfig = { ...cfg, ...updates }
+      configStore.save(nextConfig)
+      return reply.send(buildModelPresetMutationResponse(await buildModelPresetsResponse(nextConfig), { deletedPresetId: presetId }))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete model preset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete model preset" })
+    }
+  })
+
   // GET /v1/settings - Get relevant settings for mobile app
   fastify.get("/v1/settings", async (_req, reply) => {
     try {
       const cfg = configStore.get()
-      const { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID } = await import("@dotagents/shared")
-      const builtInPresets = getBuiltInModelPresets()
-      const savedPresets = cfg.modelPresets || []
-
-      // Merge built-in presets with any saved overrides (e.g., edited baseUrl/name)
-      // and include custom (non-built-in) presets
-      const builtInIds = new Set(builtInPresets.map(p => p.id))
-      const mergedPresets = builtInPresets.map(builtIn => {
-        const savedOverride = savedPresets.find(p => p.id === builtIn.id)
-        if (savedOverride) {
-          // Apply saved overrides to built-in preset
-          return { ...builtIn, ...savedOverride }
-        }
-        return builtIn
-      })
-      // Filter custom presets by excluding any IDs that match built-in presets
-      // This prevents duplicates from older entries where isBuiltIn was unset
-      const customPresets = savedPresets.filter(p => !builtInIds.has(p.id))
+      const { defaultModelPresetId, presets } = await getMergedModelPresetState(cfg)
 
       return reply.send({
         // Agent model settings (agent* preferred; mcpTools* legacy aliases)
@@ -3002,14 +4707,20 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpToolsGroqModel: cfg.mcpToolsGroqModel,
         mcpToolsGeminiModel: cfg.mcpToolsGeminiModel,
         mcpToolsChatgptWebModel: cfg.mcpToolsChatgptWebModel,
+        openaiReasoningEffort: cfg.openaiReasoningEffort,
+        codexTextVerbosity: cfg.codexTextVerbosity,
+        openaiApiKey: cfg.openaiApiKey ? REMOTE_SERVER_SECRET_MASK : "",
+        openaiBaseUrl: cfg.openaiBaseUrl ?? "",
+        groqApiKey: cfg.groqApiKey ? REMOTE_SERVER_SECRET_MASK : "",
+        groqBaseUrl: cfg.groqBaseUrl ?? "",
+        geminiApiKey: cfg.geminiApiKey ? REMOTE_SERVER_SECRET_MASK : "",
+        geminiBaseUrl: cfg.geminiBaseUrl ?? "",
+        chatgptWebAccessToken: cfg.chatgptWebAccessToken ? REMOTE_SERVER_SECRET_MASK : "",
+        chatgptWebSessionToken: cfg.chatgptWebSessionToken ? REMOTE_SERVER_SECRET_MASK : "",
+        chatgptWebBaseUrl: cfg.chatgptWebBaseUrl ?? "",
         // OpenAI compatible preset settings
-        currentModelPresetId: cfg.currentModelPresetId || DEFAULT_MODEL_PRESET_ID,
-        availablePresets: [...mergedPresets, ...customPresets].map(p => ({
-          id: p.id,
-          name: p.name,
-          baseUrl: p.baseUrl,
-          isBuiltIn: p.isBuiltIn ?? false,
-        })),
+        currentModelPresetId: cfg.currentModelPresetId || defaultModelPresetId,
+        availablePresets: presets.map(formatModelPresetSummary),
         predefinedPrompts: (cfg.predefinedPrompts || []).map(prompt => ({
           id: prompt.id,
           name: prompt.name,
@@ -3041,6 +4752,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         // Agent settings (extended)
         mainAgentMode: cfg.mainAgentMode ?? "api",
         mcpMessageQueueEnabled: cfg.mcpMessageQueueEnabled ?? true,
+        mcpAutoPasteEnabled: cfg.mcpAutoPasteEnabled ?? false,
+        mcpAutoPasteDelay: cfg.mcpAutoPasteDelay ?? 1000,
         mcpVerifyCompletionEnabled: cfg.mcpVerifyCompletionEnabled ?? true,
         mcpFinalSummaryEnabled: cfg.mcpFinalSummaryEnabled ?? false,
         dualModelEnabled: cfg.dualModelEnabled ?? false,
@@ -3059,6 +4772,23 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         remoteServerOperatorAllowDeviceIds: cfg.remoteServerOperatorAllowDeviceIds ?? [],
         remoteServerAutoShowPanel: cfg.remoteServerAutoShowPanel ?? false,
         remoteServerTerminalQrEnabled: cfg.remoteServerTerminalQrEnabled ?? false,
+        // Desktop shell / panel
+        hideDockIcon: cfg.hideDockIcon ?? false,
+        launchAtLogin: cfg.launchAtLogin ?? false,
+        themePreference: cfg.themePreference ?? "system",
+        textInputEnabled: cfg.textInputEnabled ?? true,
+        panelPosition: cfg.panelPosition ?? "top-right",
+        panelDragEnabled: cfg.panelDragEnabled ?? true,
+        floatingPanelAutoShow: cfg.floatingPanelAutoShow ?? true,
+        hidePanelWhenMainFocused: cfg.hidePanelWhenMainFocused ?? true,
+        panelCustomPosition: cfg.panelCustomPosition,
+        panelCustomSize: cfg.panelCustomSize,
+        panelProgressSize: cfg.panelProgressSize,
+        panelTextInputSize: cfg.panelTextInputSize,
+        // Desktop conversation storage
+        conversationsEnabled: cfg.conversationsEnabled ?? true,
+        maxConversationsToKeep: cfg.maxConversationsToKeep ?? 1000,
+        autoSaveConversations: cfg.autoSaveConversations ?? true,
         // Cloudflare Tunnel
         cloudflareTunnelMode: cfg.cloudflareTunnelMode ?? "quick",
         cloudflareTunnelAutoStart: cfg.cloudflareTunnelAutoStart ?? false,
@@ -3091,10 +4821,16 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         langfusePublicKey: cfg.langfusePublicKey ?? "",
         langfuseSecretKey: cfg.langfuseSecretKey ? "••••••••" : "",
         langfuseBaseUrl: cfg.langfuseBaseUrl ?? "",
+        localTraceLoggingEnabled: cfg.localTraceLoggingEnabled ?? false,
+        localTraceLogPath: cfg.localTraceLogPath ?? "",
         // STT/TTS/Post-Processing Provider settings
         sttProviderId: cfg.sttProviderId || "openai",
+        openaiSttLanguage: cfg.openaiSttLanguage || "",
         openaiSttModel: cfg.openaiSttModel || "whisper-1",
+        groqSttLanguage: cfg.groqSttLanguage || "",
         groqSttModel: cfg.groqSttModel || "whisper-large-v3-turbo",
+        groqSttPrompt: cfg.groqSttPrompt || "",
+        parakeetNumThreads: cfg.parakeetNumThreads ?? 2,
         ttsProviderId: cfg.ttsProviderId || "openai",
         transcriptPostProcessingProviderId: cfg.transcriptPostProcessingProviderId || "openai",
         transcriptPostProcessingOpenaiModel: cfg.transcriptPostProcessingOpenaiModel || "",
@@ -3114,6 +4850,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         edgeTtsModel: cfg.edgeTtsModel || "edge-tts",
         edgeTtsVoice: cfg.edgeTtsVoice || "en-US-AriaNeural",
         edgeTtsRate: cfg.edgeTtsRate ?? 1.0,
+        kittenVoiceId: cfg.kittenVoiceId ?? 0,
+        supertonicVoice: cfg.supertonicVoice || "M1",
+        supertonicLanguage: cfg.supertonicLanguage || "en",
+        supertonicSteps: cfg.supertonicSteps ?? 5,
         // acpx Agent list for agent selection
         acpxAgents: agentProfileService.getAll()
           .filter(p => p.connection.type === 'acpx' && p.enabled !== false)
@@ -3187,28 +4927,48 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         updates.agentChatgptWebModel = agentChatgptWebModel
         updates.mcpToolsChatgptWebModel = agentChatgptWebModel
       }
+      if (typeof body.openaiApiKey === "string" && body.openaiApiKey !== REMOTE_SERVER_SECRET_MASK) {
+        updates.openaiApiKey = body.openaiApiKey.trim()
+      }
+      if (typeof body.openaiBaseUrl === "string") {
+        updates.openaiBaseUrl = body.openaiBaseUrl.trim()
+      }
+      if (typeof body.groqApiKey === "string" && body.groqApiKey !== REMOTE_SERVER_SECRET_MASK) {
+        updates.groqApiKey = body.groqApiKey.trim()
+      }
+      if (typeof body.groqBaseUrl === "string") {
+        updates.groqBaseUrl = body.groqBaseUrl.trim()
+      }
+      if (typeof body.geminiApiKey === "string" && body.geminiApiKey !== REMOTE_SERVER_SECRET_MASK) {
+        updates.geminiApiKey = body.geminiApiKey.trim()
+      }
+      if (typeof body.geminiBaseUrl === "string") {
+        updates.geminiBaseUrl = body.geminiBaseUrl.trim()
+      }
       if (typeof body.chatgptWebAccessToken === "string") {
-        updates.chatgptWebAccessToken = body.chatgptWebAccessToken
+        updates.chatgptWebAccessToken = body.chatgptWebAccessToken === REMOTE_SERVER_SECRET_MASK ? cfg.chatgptWebAccessToken : body.chatgptWebAccessToken.trim()
       }
       if (typeof body.chatgptWebSessionToken === "string") {
-        updates.chatgptWebSessionToken = body.chatgptWebSessionToken
+        updates.chatgptWebSessionToken = body.chatgptWebSessionToken === REMOTE_SERVER_SECRET_MASK ? cfg.chatgptWebSessionToken : body.chatgptWebSessionToken.trim()
       }
       if (typeof body.chatgptWebAccountId === "string") {
         updates.chatgptWebAccountId = body.chatgptWebAccountId
       }
       if (typeof body.chatgptWebBaseUrl === "string") {
-        updates.chatgptWebBaseUrl = body.chatgptWebBaseUrl
+        updates.chatgptWebBaseUrl = body.chatgptWebBaseUrl.trim()
+      }
+      if (typeof body.openaiReasoningEffort === "string" && ["none", "minimal", "low", "medium", "high", "xhigh"].includes(body.openaiReasoningEffort)) {
+        updates.openaiReasoningEffort = body.openaiReasoningEffort as "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
+      }
+      if (typeof body.codexTextVerbosity === "string" && ["low", "medium", "high"].includes(body.codexTextVerbosity)) {
+        updates.codexTextVerbosity = body.codexTextVerbosity as "low" | "medium" | "high"
       }
       // OpenAI compatible preset - validate against known preset IDs
       if (typeof body.currentModelPresetId === "string") {
-        const { getBuiltInModelPresets } = await import("@dotagents/shared")
-        const builtInPresets = getBuiltInModelPresets()
-        const savedPresets = cfg.modelPresets || []
-        const builtInIds = new Set(builtInPresets.map(p => p.id))
-        const allValidIds = new Set([...builtInIds, ...savedPresets.filter(p => !builtInIds.has(p.id)).map(p => p.id)])
-
-        if (allValidIds.has(body.currentModelPresetId)) {
-          updates.currentModelPresetId = body.currentModelPresetId
+        const { presets } = await getMergedModelPresetState(cfg)
+        const selectedPreset = presets.find((preset) => preset.id === body.currentModelPresetId)
+        if (selectedPreset) {
+          Object.assign(updates, getModelPresetActivationUpdates(selectedPreset))
         }
         // If preset ID is invalid, silently ignore to avoid breaking client
       }
@@ -3252,6 +5012,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.mcpMessageQueueEnabled === "boolean") {
         updates.mcpMessageQueueEnabled = body.mcpMessageQueueEnabled
+      }
+      if (typeof body.mcpAutoPasteEnabled === "boolean") {
+        updates.mcpAutoPasteEnabled = body.mcpAutoPasteEnabled
+      }
+      if (
+        typeof body.mcpAutoPasteDelay === "number"
+        && Number.isFinite(body.mcpAutoPasteDelay)
+        && body.mcpAutoPasteDelay >= 0
+        && body.mcpAutoPasteDelay <= 60000
+      ) {
+        updates.mcpAutoPasteDelay = Math.floor(body.mcpAutoPasteDelay)
       }
       if (typeof body.mcpVerifyCompletionEnabled === "boolean") {
         updates.mcpVerifyCompletionEnabled = body.mcpVerifyCompletionEnabled
@@ -3313,6 +5084,46 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.remoteServerTerminalQrEnabled === "boolean") {
         updates.remoteServerTerminalQrEnabled = body.remoteServerTerminalQrEnabled
+      }
+      // Desktop shell / panel
+      if (typeof body.hideDockIcon === "boolean") {
+        updates.hideDockIcon = body.hideDockIcon
+      }
+      if (typeof body.launchAtLogin === "boolean") {
+        updates.launchAtLogin = body.launchAtLogin
+      }
+      if (typeof body.themePreference === "string" && ["system", "light", "dark"].includes(body.themePreference)) {
+        updates.themePreference = body.themePreference as "system" | "light" | "dark"
+      }
+      if (typeof body.textInputEnabled === "boolean") {
+        updates.textInputEnabled = body.textInputEnabled
+      }
+      if (typeof body.panelPosition === "string" && ["top-right", "top-left", "bottom-right", "bottom-left", "custom"].includes(body.panelPosition)) {
+        updates.panelPosition = body.panelPosition as "top-right" | "top-left" | "bottom-right" | "bottom-left" | "custom"
+      }
+      if (typeof body.panelDragEnabled === "boolean") {
+        updates.panelDragEnabled = body.panelDragEnabled
+      }
+      if (typeof body.floatingPanelAutoShow === "boolean") {
+        updates.floatingPanelAutoShow = body.floatingPanelAutoShow
+      }
+      if (typeof body.hidePanelWhenMainFocused === "boolean") {
+        updates.hidePanelWhenMainFocused = body.hidePanelWhenMainFocused
+      }
+      // Desktop conversation storage
+      if (typeof body.conversationsEnabled === "boolean") {
+        updates.conversationsEnabled = body.conversationsEnabled
+      }
+      if (
+        typeof body.maxConversationsToKeep === "number"
+        && Number.isFinite(body.maxConversationsToKeep)
+        && body.maxConversationsToKeep >= 1
+        && body.maxConversationsToKeep <= 10000
+      ) {
+        updates.maxConversationsToKeep = Math.floor(body.maxConversationsToKeep)
+      }
+      if (typeof body.autoSaveConversations === "boolean") {
+        updates.autoSaveConversations = body.autoSaveConversations
       }
       // Cloudflare Tunnel
       if (typeof body.cloudflareTunnelMode === "string" && ["quick", "named"].includes(body.cloudflareTunnelMode)) {
@@ -3402,16 +5213,34 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof body.langfuseBaseUrl === "string") {
         updates.langfuseBaseUrl = body.langfuseBaseUrl
       }
+      if (typeof body.localTraceLoggingEnabled === "boolean") {
+        updates.localTraceLoggingEnabled = body.localTraceLoggingEnabled
+      }
+      if (typeof body.localTraceLogPath === "string") {
+        updates.localTraceLogPath = body.localTraceLogPath.trim() || undefined
+      }
       // STT Provider
       const validSttProviders = ["openai", "groq", "parakeet"]
       if (typeof body.sttProviderId === "string" && validSttProviders.includes(body.sttProviderId)) {
         updates.sttProviderId = body.sttProviderId as "openai" | "groq" | "parakeet"
       }
+      if (typeof body.openaiSttLanguage === "string") {
+        updates.openaiSttLanguage = body.openaiSttLanguage || undefined
+      }
       if (typeof body.openaiSttModel === "string") {
         updates.openaiSttModel = body.openaiSttModel
       }
+      if (typeof body.groqSttLanguage === "string") {
+        updates.groqSttLanguage = body.groqSttLanguage || undefined
+      }
       if (typeof body.groqSttModel === "string") {
         updates.groqSttModel = body.groqSttModel
+      }
+      if (typeof body.groqSttPrompt === "string") {
+        updates.groqSttPrompt = body.groqSttPrompt || undefined
+      }
+      if (typeof body.parakeetNumThreads === "number" && [1, 2, 4, 8].includes(body.parakeetNumThreads)) {
+        updates.parakeetNumThreads = body.parakeetNumThreads as 1 | 2 | 4 | 8
       }
       // TTS Provider
       const validTtsProviders = ["openai", "groq", "gemini", "edge", "kitten", "supertonic"]
@@ -3475,6 +5304,18 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof body.edgeTtsRate === "number" && body.edgeTtsRate >= 0.5 && body.edgeTtsRate <= 2.0) {
         updates.edgeTtsRate = body.edgeTtsRate
       }
+      if (typeof body.kittenVoiceId === "number" && Number.isInteger(body.kittenVoiceId) && body.kittenVoiceId >= 0 && body.kittenVoiceId <= 7) {
+        updates.kittenVoiceId = body.kittenVoiceId as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+      }
+      if (typeof body.supertonicVoice === "string") {
+        updates.supertonicVoice = body.supertonicVoice as "M1" | "M2" | "M3" | "M4" | "M5" | "F1" | "F2" | "F3" | "F4" | "F5"
+      }
+      if (typeof body.supertonicLanguage === "string" && ["en", "ko", "es", "pt", "fr"].includes(body.supertonicLanguage)) {
+        updates.supertonicLanguage = body.supertonicLanguage as "en" | "ko" | "es" | "pt" | "fr"
+      }
+      if (typeof body.supertonicSteps === "number" && Number.isInteger(body.supertonicSteps) && body.supertonicSteps >= 2 && body.supertonicSteps <= 10) {
+        updates.supertonicSteps = body.supertonicSteps
+      }
 
       // Session History (pinned/archived conversation IDs)
       if (Array.isArray(body.pinnedSessionIds) && body.pinnedSessionIds.every((id: unknown) => typeof id === "string")) {
@@ -3507,6 +5348,41 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const sensitiveUpdatedKeys = Object.keys(updates).filter((key) => SENSITIVE_OPERATOR_SETTINGS_KEYS.has(key))
       configStore.save(nextConfig)
       diagnosticsService.logInfo("remote-server", `Updated settings: ${Object.keys(updates).join(", ")}`)
+
+      if (updates.launchAtLogin !== undefined) {
+        try {
+          app.setLoginItemSettings({
+            openAtLogin: !!updates.launchAtLogin,
+            openAsHidden: true,
+          })
+        } catch (error) {
+          diagnosticsService.logError("remote-server", "Failed to update launch-at-login from mobile settings", error)
+        }
+      }
+
+      if (updates.hideDockIcon !== undefined && process.platform === "darwin") {
+        try {
+          if (updates.hideDockIcon && !WINDOWS.get("main")?.isVisible()) {
+            app.setActivationPolicy("accessory")
+            app.dock?.hide()
+          } else {
+            app.dock?.show()
+            app.setActivationPolicy("regular")
+          }
+        } catch (error) {
+          diagnosticsService.logError("remote-server", "Failed to update dock visibility from mobile settings", error)
+        }
+      }
+
+      if (updates.themePreference !== undefined) {
+        for (const windowId of ["main", "panel"] as const) {
+          try {
+            getWindowRendererHandlers(windowId)?.themeChanged?.send(updates.themePreference)
+          } catch (error) {
+            diagnosticsService.logError("remote-server", `Failed to notify ${windowId} window of theme update`, error)
+          }
+        }
+      }
 
       const discordLifecycleAction = getDiscordLifecycleAction(cfg, nextConfig)
       if (discordLifecycleAction === "start") {
@@ -3593,7 +5469,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         id: conversation.id,
         title: conversation.title,
         createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
+        updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
           id: msg.id,
           role: msg.role,
@@ -3607,6 +5483,42 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to fetch conversation", error)
       return reply.code(500).send({ error: error?.message || "Failed to fetch conversation" })
+    }
+  })
+
+  // GET /v1/conversations/:id/assets/images/:fileName - Stream conversation image asset for mobile
+  fastify.get("/v1/conversations/:id/assets/images/:fileName", async (req, reply) => {
+    try {
+      const params = req.params as { id: string; fileName: string }
+      const conversationId = params.id
+      const fileName = params.fileName
+
+      const conversationIdError = getConversationIdValidationError(conversationId)
+      if (conversationIdError) {
+        return reply.code(400).send({ error: conversationIdError })
+      }
+
+      let assetPath: string
+      try {
+        assetPath = getConversationImageAssetPath(conversationId, fileName)
+      } catch (error) {
+        return reply.code(400).send({ error: error instanceof Error ? error.message : "Invalid image asset" })
+      }
+
+      const stat = await fs.promises.stat(assetPath)
+      if (!stat.isFile() || stat.size <= 0) {
+        return reply.code(404).send({ error: "Image asset not found" })
+      }
+
+      reply.header("Content-Type", getConversationImageMimeTypeFromFileName(fileName))
+      reply.header("Content-Length", String(stat.size))
+      return reply.send(fs.createReadStream(assetPath))
+    } catch (error: any) {
+      if (error?.code === "ENOENT") {
+        return reply.code(404).send({ error: "Image asset not found" })
+      }
+      diagnosticsService.logError("remote-server", "Failed to stream conversation image asset", error)
+      return reply.code(500).send({ error: error?.message || "Failed to stream image asset" })
     }
   })
 
@@ -3949,7 +5861,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         id: conversation.id,
         title: conversation.title,
         createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
+        updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
           id: msg.id,
           role: msg.role,
@@ -4077,7 +5989,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         id: conversation.id,
         title: conversation.title,
         createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
+        updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
           id: msg.id,
           role: msg.role,
@@ -4090,6 +6002,96 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to update conversation", error)
       return reply.code(500).send({ error: error?.message || "Failed to update conversation" })
+    }
+  })
+
+  // POST /v1/conversations/:id/branch - Branch an existing conversation at a message index
+  fastify.post("/v1/conversations/:id/branch", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const conversationId = params.id
+
+      if (!conversationId || typeof conversationId !== "string") {
+        return reply.code(400).send({ error: "Missing or invalid conversation ID" })
+      }
+
+      const conversationIdError = getConversationIdValidationError(conversationId)
+      if (conversationIdError) {
+        return reply.code(400).send({ error: conversationIdError })
+      }
+
+      if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+        return reply.code(400).send({ error: "Request body must be a JSON object" })
+      }
+
+      const body = req.body as { messageIndex?: unknown }
+      if (typeof body.messageIndex !== "number" || !Number.isInteger(body.messageIndex) || body.messageIndex < 0) {
+        return reply.code(400).send({ error: "Missing or invalid messageIndex" })
+      }
+
+      const conversation = await conversationService.branchConversation(conversationId, body.messageIndex)
+      if (!conversation) {
+        return reply.code(404).send({ error: "Conversation or message not found" })
+      }
+
+      notifyConversationHistoryChanged()
+
+      return reply.send({
+        id: conversation.id,
+        title: conversation.title,
+        createdAt: conversation.createdAt,
+        updatedAt: conversationService.getConversationActivityTimestamp(conversation),
+        messages: conversation.messages.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          toolCalls: msg.toolCalls,
+          toolResults: msg.toolResults,
+        })),
+        metadata: conversation.metadata,
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to branch conversation", error)
+      return reply.code(500).send({ error: error?.message || "Failed to branch conversation" })
+    }
+  })
+
+  // DELETE /v1/conversations/:id - Delete a linked desktop conversation
+  fastify.delete("/v1/conversations/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const conversationId = params.id
+
+      if (!conversationId || typeof conversationId !== "string") {
+        return reply.code(400).send({ error: "Missing or invalid conversation ID" })
+      }
+
+      const conversationIdError = getConversationIdValidationError(conversationId)
+      if (conversationIdError) {
+        return reply.code(400).send({ error: conversationIdError })
+      }
+
+      await conversationService.deleteConversation(conversationId)
+      notifyConversationHistoryChanged()
+
+      return reply.send({ success: true, id: conversationId })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete conversation", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete conversation" })
+    }
+  })
+
+  // DELETE /v1/conversations - Delete all desktop conversations
+  fastify.delete("/v1/conversations", async (_req, reply) => {
+    try {
+      await conversationService.deleteAllConversations()
+      notifyConversationHistoryChanged()
+
+      return reply.send({ success: true })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete all conversations", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete all conversations" })
     }
   })
 
@@ -4334,6 +6336,40 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // Skills Management Endpoints (for mobile app)
   // ============================================
 
+  const formatSkillForMobile = (skill: ReturnType<typeof skillsService.getSkills>[number]) => {
+    const currentProfile = agentProfileService.getCurrentProfile()
+    const allEnabledByDefault = !currentProfile?.skillsConfig || !currentProfile.skillsConfig.allSkillsDisabledByDefault
+    const enabledSkillIds = allEnabledByDefault
+      ? skillsService.getSkills().map(s => s.id)
+      : (currentProfile?.skillsConfig?.enabledSkillIds || [])
+
+    return {
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      instructions: skill.instructions,
+      enabled: true,
+      enabledForProfile: enabledSkillIds.includes(skill.id),
+      source: skill.source,
+      createdAt: skill.createdAt,
+      updatedAt: skill.updatedAt,
+    }
+  }
+
+  const cleanupStaleSkillReferencesForMobile = async () => {
+    const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
+    const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
+    const { cleanupInvalidSkillReferencesInLayers } = await import("./agent-profile-skill-cleanup")
+
+    const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
+    const layers = workspaceAgentsFolder
+      ? [getAgentsLayerPaths(globalAgentsFolder), getAgentsLayerPaths(workspaceAgentsFolder)]
+      : [getAgentsLayerPaths(globalAgentsFolder)]
+
+    cleanupInvalidSkillReferencesInLayers(layers, skillsService.getSkills().map(skill => skill.id))
+    agentProfileService.reload()
+  }
+
   // GET /v1/skills - List all skills
   fastify.get("/v1/skills", async (_req, reply) => {
     try {
@@ -4360,6 +6396,164 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get skills", error)
       return reply.code(500).send({ error: "Failed to get skills" })
+    }
+  })
+
+  // GET /v1/skills/:id - Get a single skill for editing
+  fastify.get("/v1/skills/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const skill = skillsService.getSkill(params.id)
+      if (!skill) {
+        return reply.code(404).send({ error: "Skill not found" })
+      }
+      return reply.send({ skill: formatSkillForMobile(skill) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get skill", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get skill" })
+    }
+  })
+
+  // POST /v1/skills - Create a skill
+  fastify.post("/v1/skills", async (req, reply) => {
+    try {
+      const body = req.body as { name?: unknown; description?: unknown; instructions?: unknown }
+      const name = typeof body.name === "string" ? body.name.trim() : ""
+      const description = typeof body.description === "string" ? body.description.trim() : ""
+      const instructions = typeof body.instructions === "string" ? body.instructions.trim() : ""
+
+      if (!name || !instructions) {
+        return reply.code(400).send({ error: "name and instructions are required" })
+      }
+
+      const skill = skillsService.createSkill(name, description, instructions, { source: "local" })
+      agentProfileService.enableSkillForCurrentProfile(skill.id)
+      return reply.code(201).send({ skill: formatSkillForMobile(skill) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to create skill", error)
+      return reply.code(500).send({ error: error?.message || "Failed to create skill" })
+    }
+  })
+
+  // POST /v1/skills/import/markdown - Import a skill from SKILL.md content
+  fastify.post("/v1/skills/import/markdown", async (req, reply) => {
+    try {
+      const body = req.body as { content?: unknown }
+      const content = typeof body.content === "string" ? body.content.trim() : ""
+      if (!content) {
+        return reply.code(400).send({ error: "content must be a non-empty string" })
+      }
+
+      const skill = skillsService.importSkillFromMarkdown(content)
+      agentProfileService.enableSkillForCurrentProfile(skill.id)
+      return reply.code(201).send({ skill: formatSkillForMobile(skill) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import skill from Markdown", error)
+      return reply.code(400).send({ error: error?.message || "Failed to import skill from Markdown" })
+    }
+  })
+
+  // POST /v1/skills/import/github - Import one or more skills from a GitHub repository
+  fastify.post("/v1/skills/import/github", async (req, reply) => {
+    try {
+      const body = req.body as { repoIdentifier?: unknown }
+      const repoIdentifier = typeof body.repoIdentifier === "string" ? body.repoIdentifier.trim() : ""
+      if (!repoIdentifier) {
+        return reply.code(400).send({ error: "repoIdentifier must be a non-empty string" })
+      }
+
+      const result = await skillsService.importSkillFromGitHub(repoIdentifier)
+      for (const skill of result.imported) {
+        agentProfileService.enableSkillForCurrentProfile(skill.id)
+      }
+
+      const didFail = result.imported.length === 0 && result.errors.length > 0
+      return reply.code(didFail ? 400 : 200).send({
+        imported: result.imported.map(skill => formatSkillForMobile(skill)),
+        errors: result.errors,
+        ...(didFail ? { error: result.errors[0] || "No skills imported from GitHub" } : {}),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import skill from GitHub", error)
+      return reply.code(500).send({ error: error?.message || "Failed to import skill from GitHub" })
+    }
+  })
+
+  // POST /v1/skills/delete-multiple - Delete selected skills
+  fastify.post("/v1/skills/delete-multiple", async (req, reply) => {
+    try {
+      const body = (req.body ?? {}) as { ids?: unknown }
+      const ids = Array.isArray(body.ids)
+        ? Array.from(new Set(body.ids.filter((id): id is string => typeof id === "string").map(id => id.trim()).filter(Boolean)))
+        : []
+      if (ids.length === 0) {
+        return reply.code(400).send({ error: "ids must contain at least one skill id" })
+      }
+
+      const results = ids.map(id => {
+        const success = skillsService.deleteSkill(id)
+        return success ? { id, success } : { id, success, error: "Skill not found or could not be deleted" }
+      })
+
+      if (results.some(result => result.success)) {
+        await cleanupStaleSkillReferencesForMobile()
+      }
+
+      return reply.send({
+        deletedCount: results.filter(result => result.success).length,
+        results,
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete selected skills", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete selected skills" })
+    }
+  })
+
+  // PATCH /v1/skills/:id - Update a skill
+  fastify.patch("/v1/skills/:id", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const body = req.body as { name?: unknown; description?: unknown; instructions?: unknown }
+      const updates: Partial<Pick<ReturnType<typeof skillsService.getSkills>[number], "name" | "description" | "instructions">> = {}
+
+      if (body.name !== undefined) {
+        if (typeof body.name !== "string" || body.name.trim() === "") {
+          return reply.code(400).send({ error: "name must be a non-empty string when provided" })
+        }
+        updates.name = body.name.trim()
+      }
+      if (body.description !== undefined) {
+        if (typeof body.description !== "string") {
+          return reply.code(400).send({ error: "description must be a string when provided" })
+        }
+        updates.description = body.description.trim()
+      }
+      if (body.instructions !== undefined) {
+        if (typeof body.instructions !== "string" || body.instructions.trim() === "") {
+          return reply.code(400).send({ error: "instructions must be a non-empty string when provided" })
+        }
+        updates.instructions = body.instructions.trim()
+      }
+
+      const skill = skillsService.updateSkill(params.id, updates)
+      return reply.send({ success: true, skill: formatSkillForMobile(skill) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to update skill", error)
+      const message = error?.message || "Failed to update skill"
+      return reply.code(message.includes("not found") ? 404 : 500).send({ error: message })
+    }
+  })
+
+  // GET /v1/skills/:id/export/markdown - Export a skill as SKILL.md content
+  fastify.get("/v1/skills/:id/export/markdown", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const markdown = skillsService.exportSkillToMarkdown(params.id)
+      return reply.send({ markdown })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to export skill to Markdown", error)
+      const message = error?.message || "Failed to export skill to Markdown"
+      return reply.code(message.includes("not found") ? 404 : 500).send({ error: message })
     }
   })
 
@@ -4414,14 +6608,88 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     updatedAt: note.updatedAt,
   })
 
+  const parseKnowledgeNoteFilter = (raw: unknown) => {
+    const record = raw && typeof raw === "object" ? raw as Record<string, unknown> : {}
+    const context = record.context === "auto" || record.context === "search-only"
+      ? record.context as import("../shared/types").KnowledgeNoteContext
+      : undefined
+    const dateFilter = ["all", "7d", "30d", "90d", "year"].includes(String(record.dateFilter))
+      ? record.dateFilter as import("../shared/types").KnowledgeNoteDateFilter
+      : undefined
+    const sort = ["relevance", "updated-desc", "updated-asc", "created-desc", "created-asc", "title-asc", "title-desc"].includes(String(record.sort))
+      ? record.sort as import("../shared/types").KnowledgeNoteSort
+      : undefined
+    const limitValue = typeof record.limit === "number"
+      ? record.limit
+      : typeof record.limit === "string"
+        ? Number(record.limit)
+        : undefined
+    const limit = typeof limitValue === "number" && Number.isFinite(limitValue)
+      ? Math.max(0, Math.min(500, Math.floor(limitValue)))
+      : undefined
+
+    return { context, dateFilter, sort, limit }
+  }
+
   // GET /v1/knowledge/notes - List all knowledge notes
-  fastify.get("/v1/knowledge/notes", async (_req, reply) => {
+  fastify.get("/v1/knowledge/notes", async (req, reply) => {
     try {
-      const notes = await knowledgeNotesService.getAllNotes()
+      const notes = await knowledgeNotesService.getAllNotes(parseKnowledgeNoteFilter(req.query))
       return reply.send({ notes: notes.map(serializeKnowledgeNote) })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get knowledge notes", error)
       return reply.code(500).send({ error: "Failed to get knowledge notes" })
+    }
+  })
+
+  // POST /v1/knowledge/notes/search - Search knowledge notes with filters
+  fastify.post("/v1/knowledge/notes/search", async (req, reply) => {
+    try {
+      const body = req.body as Record<string, unknown> | undefined
+      const query = typeof body?.query === "string" ? body.query.trim() : ""
+      const filter = parseKnowledgeNoteFilter(body)
+      const notes = query
+        ? await knowledgeNotesService.searchNotes(query, filter)
+        : await knowledgeNotesService.getAllNotes(filter)
+      return reply.send({ notes: notes.map(serializeKnowledgeNote) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to search knowledge notes", error)
+      return reply.code(500).send({ error: error?.message || "Failed to search knowledge notes" })
+    }
+  })
+
+  // POST /v1/knowledge/notes/delete - Delete selected knowledge notes
+  fastify.post("/v1/knowledge/notes/delete", async (req, reply) => {
+    try {
+      const body = (req.body ?? {}) as { ids?: unknown }
+      const ids = Array.isArray(body.ids)
+        ? Array.from(new Set(body.ids.filter((id): id is string => typeof id === "string").map(id => id.trim()).filter(Boolean)))
+        : []
+      if (ids.length === 0) {
+        return reply.code(400).send({ error: "ids must contain at least one note id" })
+      }
+      const result = await knowledgeNotesService.deleteMultipleNotes(ids)
+      if (result.error) {
+        return reply.code(500).send({ error: result.error, deletedCount: result.deletedCount })
+      }
+      return reply.send({ deletedCount: result.deletedCount })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete selected knowledge notes", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete selected knowledge notes" })
+    }
+  })
+
+  // POST /v1/knowledge/notes/delete-all - Delete all knowledge notes
+  fastify.post("/v1/knowledge/notes/delete-all", async (_req, reply) => {
+    try {
+      const result = await knowledgeNotesService.deleteAllNotes()
+      if (result.error) {
+        return reply.code(500).send({ error: result.error, deletedCount: result.deletedCount })
+      }
+      return reply.send({ deletedCount: result.deletedCount })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete all knowledge notes", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete all knowledge notes" })
     }
   })
 
@@ -4483,6 +6751,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           name: p.name,
           displayName: p.displayName,
           description: p.description,
+          avatarDataUrl: p.avatarDataUrl,
           enabled: p.enabled,
           isBuiltIn: p.isBuiltIn,
           isUserProfile: p.isUserProfile,
@@ -4500,6 +6769,40 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get agent profiles", error)
       return reply.code(500).send({ error: "Failed to get agent profiles" })
+    }
+  })
+
+  // POST /v1/agent-profiles/reload - Rescan modular agent profile files from disk
+  fastify.post("/v1/agent-profiles/reload", async (_req, reply) => {
+    try {
+      agentProfileService.reload()
+      const profiles = agentProfileService.getAll()
+
+      return reply.send({
+        success: true,
+        profiles: profiles.map(p => ({
+          id: p.id,
+          name: p.name,
+          displayName: p.displayName,
+          description: p.description,
+          avatarDataUrl: p.avatarDataUrl,
+          enabled: p.enabled,
+          isBuiltIn: p.isBuiltIn,
+          isUserProfile: p.isUserProfile,
+          isAgentTarget: p.isAgentTarget,
+          isDefault: p.isDefault,
+          role: normalizeAgentProfileRole(p.role),
+          connectionType: p.connection.type,
+          autoSpawn: p.autoSpawn,
+          guidelines: p.guidelines,
+          systemPrompt: p.systemPrompt,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        })),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to reload agent profiles", error)
+      return reply.code(500).send({ error: error?.message || "Failed to reload agent profiles" })
     }
   })
 
@@ -4525,6 +6828,50 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to toggle agent profile", error)
       return reply.code(500).send({ error: error?.message || "Failed to toggle agent profile" })
+    }
+  })
+
+  // POST /v1/agent-profiles/verify-command - Verify an external agent command
+  fastify.post("/v1/agent-profiles/verify-command", async (req, reply) => {
+    try {
+      const body = req.body as {
+        command?: unknown
+        args?: unknown
+        cwd?: unknown
+        probeArgs?: unknown
+      }
+
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        return reply.code(400).send({ error: "Request body must be a JSON object" })
+      }
+      if (typeof body.command !== "string" || body.command.trim() === "") {
+        return reply.code(400).send({ error: "command is required and must be a non-empty string" })
+      }
+      if (body.args !== undefined && (!Array.isArray(body.args) || !body.args.every(arg => typeof arg === "string"))) {
+        return reply.code(400).send({ error: "args must be an array of strings" })
+      }
+      if (body.probeArgs !== undefined && (!Array.isArray(body.probeArgs) || !body.probeArgs.every(arg => typeof arg === "string"))) {
+        return reply.code(400).send({ error: "probeArgs must be an array of strings" })
+      }
+      if (body.cwd !== undefined && typeof body.cwd !== "string") {
+        return reply.code(400).send({ error: "cwd must be a string" })
+      }
+
+      const { verifyExternalAgentCommand } = await import("./command-verification-service")
+      const args = body.args === undefined ? undefined : body.args as string[]
+      const cwd = typeof body.cwd === "string" ? body.cwd : undefined
+      const probeArgs = body.probeArgs === undefined ? undefined : body.probeArgs as string[]
+      const result = await verifyExternalAgentCommand({
+        command: body.command,
+        args,
+        cwd,
+        probeArgs,
+      })
+
+      return reply.send(result)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to verify external agent command", error)
+      return reply.code(500).send({ error: error?.message || "Failed to verify external agent command" })
     }
   })
 
@@ -4577,6 +6924,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const body = req.body as {
         displayName?: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
         connectionType?: string
@@ -4595,6 +6943,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       // Validate displayName
       if (!body.displayName || typeof body.displayName !== "string" || body.displayName.trim() === "") {
         return reply.code(400).send({ error: "displayName is required and must be a non-empty string" })
+      }
+      if (body.avatarDataUrl !== undefined && body.avatarDataUrl !== null && typeof body.avatarDataUrl !== "string") {
+        return reply.code(400).send({ error: "avatarDataUrl must be a string or null" })
       }
 
       // Validate connectionType
@@ -4616,6 +6967,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         name: body.displayName.trim(),
         displayName: body.displayName.trim(),
         description: body.description,
+        avatarDataUrl: body.avatarDataUrl ?? undefined,
         systemPrompt: body.systemPrompt,
         guidelines: body.guidelines,
         connection,
@@ -4669,6 +7021,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const body = req.body as {
         displayName?: string
         description?: string
+        avatarDataUrl?: string | null
         systemPrompt?: string
         guidelines?: string
         connectionType?: string
@@ -4708,6 +7061,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           updates.name = body.displayName.trim()
         }
         if (body.description !== undefined) updates.description = body.description
+        if (body.avatarDataUrl !== undefined) {
+          if (body.avatarDataUrl !== null && typeof body.avatarDataUrl !== "string") {
+            return reply.code(400).send({ error: "avatarDataUrl must be a string or null" })
+          }
+          updates.avatarDataUrl = body.avatarDataUrl
+        }
         if (body.systemPrompt !== undefined) updates.systemPrompt = body.systemPrompt
         if (body.guidelines !== undefined) updates.guidelines = body.guidelines
         if (body.enabled !== undefined) updates.enabled = body.enabled
@@ -4822,11 +7181,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
   const LOOP_TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
 
-  type ParseScheduleResult = {
-    ok: boolean
-    schedule?: LoopConfig["schedule"] | null
-    error?: string
-  }
+  type ParseScheduleResult =
+    | { ok: true; schedule?: LoopConfig["schedule"] | null }
+    | { ok: false; error: string }
 
   /**
    * Parse/validate a `schedule` field from a request body. Returns:
@@ -4873,6 +7230,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     return { ok: true, schedule: { type: "weekly", times, daysOfWeek } }
   }
 
+  function parseLoopMaxIterationsInput(raw: unknown):
+    | { ok: true; value?: number | null }
+    | { ok: false; error: string } {
+    if (raw === undefined) return { ok: true, value: undefined }
+    if (raw === null) return { ok: true, value: null }
+    if (
+      typeof raw !== "number"
+      || !Number.isFinite(raw)
+      || !Number.isInteger(raw)
+      || raw < 1
+    ) {
+      return { ok: false, error: "maxIterations must be a finite integer >= 1 when provided" }
+    }
+    return { ok: true, value: raw }
+  }
+
   const formatLoopResponse = async (loop: LoopConfig) => {
     const status = (await loadLoopService())?.getLoopStatus(loop.id)
 
@@ -4889,6 +7262,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       continueInSession: loop.continueInSession,
       lastSessionId: loop.lastSessionId,
       runContinuously: loop.runContinuously,
+      maxIterations: loop.maxIterations,
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
       nextRunAt: status?.nextRunAt,
@@ -4921,6 +7295,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             continueInSession: l.continueInSession,
             lastSessionId: l.lastSessionId,
             runContinuously: l.runContinuously,
+            maxIterations: l.maxIterations,
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
             nextRunAt: status?.nextRunAt,
@@ -4931,6 +7306,113 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get repeat tasks", error)
       return reply.code(500).send({ error: "Failed to get repeat tasks" })
+    }
+  })
+
+  // POST /v1/loops/import/markdown - Import a repeat task from task.md content
+  fastify.post("/v1/loops/import/markdown", async (req, reply) => {
+    try {
+      const body = req.body as { content?: unknown }
+      const content = typeof body.content === "string" ? body.content.trim() : ""
+      if (!content) {
+        return reply.code(400).send({ error: "Repeat task Markdown content is required" })
+      }
+
+      const { parseTaskMarkdown } = await import("./agents-files/tasks")
+      const parsedLoop = parseTaskMarkdown(content, {
+        fallbackId: `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+      })
+      if (!parsedLoop) {
+        return reply.code(400).send({ error: "Invalid repeat task Markdown" })
+      }
+
+      const loopService = await loadLoopService()
+      if (loopService) {
+        const saved = loopService.saveLoop(parsedLoop)
+        if (!saved) {
+          return reply.code(500).send({ error: "Failed to persist repeat task" })
+        }
+        loopService.stopLoop(parsedLoop.id)
+        if (parsedLoop.enabled) {
+          loopService.startLoop(parsedLoop.id)
+        }
+      } else {
+        const cfg = configStore.get()
+        const loops = cfg.loops || []
+        const existingIndex = loops.findIndex(loop => loop.id === parsedLoop.id)
+        const updatedLoops = existingIndex >= 0
+          ? loops.map((loop, index) => index === existingIndex ? parsedLoop : loop)
+          : [...loops, parsedLoop]
+        configStore.save({ ...cfg, loops: updatedLoops })
+      }
+
+      const savedLoop = loopService?.getLoop(parsedLoop.id) ?? parsedLoop
+      return reply.code(201).send({ loop: await formatLoopResponse(savedLoop) })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to import repeat task from Markdown", error)
+      return reply.code(400).send({ error: error?.message || "Failed to import repeat task" })
+    }
+  })
+
+  // GET /v1/agent-sessions/candidates - List active and recent sessions for repeat-task pickers
+  fastify.get("/v1/agent-sessions/candidates", async (req, reply) => {
+    try {
+      const limit = parseAgentSessionCandidateLimit(req.query)
+      if (typeof limit !== "number") {
+        return reply.code(400).send({ error: limit.error })
+      }
+
+      return reply.send({
+        activeSessions: agentSessionTracker.getActiveSessions().map(formatAgentSessionCandidate),
+        completedSessions: agentSessionTracker.getRecentSessions(limit).map(formatAgentSessionCandidate),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get agent session candidates", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get agent session candidates" })
+    }
+  })
+
+  // POST /v1/agent-sessions/tool-approvals/:approvalId/respond - Approve or deny a pending tool call
+  fastify.post("/v1/agent-sessions/tool-approvals/:approvalId/respond", async (req, reply) => {
+    try {
+      const params = req.params as { approvalId: string }
+      const body = req.body as { approved?: unknown } | undefined
+      const approvalId = params.approvalId
+
+      if (!approvalId || typeof approvalId !== "string") {
+        return reply.code(400).send({ error: "Missing or invalid approvalId" })
+      }
+      if (typeof body?.approved !== "boolean") {
+        return reply.code(400).send({ error: "Missing or invalid approved" })
+      }
+
+      const success = toolApprovalManager.respondToApproval(approvalId, body.approved)
+      return reply.send({ success, approvalId, approved: body.approved })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to respond to tool approval", error)
+      return reply.code(500).send({ error: error?.message || "Failed to respond to tool approval" })
+    }
+  })
+
+  // GET /v1/loops/:id/export/markdown - Export one repeat task as task.md content
+  fastify.get("/v1/loops/:id/export/markdown", async (req, reply) => {
+    try {
+      const params = req.params as { id: string }
+      const loopService = await loadLoopService()
+      const loop = loopService?.getLoop(params.id) ?? (configStore.get().loops || []).find(task => task.id === params.id)
+      if (!loop) {
+        return reply.code(404).send({ error: "Repeat task not found" })
+      }
+
+      const { stringifyTaskMarkdown } = await import("./agents-files/tasks")
+      return reply.send({
+        success: true,
+        loopId: params.id,
+        markdown: stringifyTaskMarkdown(loop),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to export repeat task to Markdown", error)
+      return reply.code(500).send({ error: error?.message || "Failed to export repeat task" })
     }
   })
 
@@ -5153,7 +7635,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        runOnStartup?: unknown
+        speakOnTrigger?: unknown
+        continueInSession?: unknown
+        lastSessionId?: unknown
         runContinuously?: unknown
+        maxIterations?: unknown
         schedule?: unknown
       }
 
@@ -5184,13 +7671,33 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
+        return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
+      }
+      if (body.speakOnTrigger !== undefined && typeof body.speakOnTrigger !== "boolean") {
+        return reply.code(400).send({ error: "speakOnTrigger must be a boolean when provided" })
+      }
+      if (body.continueInSession !== undefined && typeof body.continueInSession !== "boolean") {
+        return reply.code(400).send({ error: "continueInSession must be a boolean when provided" })
+      }
+      if (body.lastSessionId !== undefined && body.lastSessionId !== null && typeof body.lastSessionId !== "string") {
+        return reply.code(400).send({ error: "lastSessionId must be a string or null when provided" })
+      }
+      const maxIterationsResult = parseLoopMaxIterationsInput(body.maxIterations)
+      if (maxIterationsResult.ok === false) {
+        return reply.code(400).send({ error: maxIterationsResult.error })
+      }
       const scheduleResult = parseScheduleInput(body.schedule)
-      if (!scheduleResult.ok) {
+      if (scheduleResult.ok === false) {
         return reply.code(400).send({ error: scheduleResult.error })
       }
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
       const runContinuously = body.runContinuously === true
+      const runOnStartup = body.runOnStartup === true
+      const speakOnTrigger = body.speakOnTrigger === true
+      const continueInSession = body.continueInSession === true
+      const lastSessionId = typeof body.lastSessionId === "string" ? body.lastSessionId.trim() : undefined
 
       const id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 
@@ -5201,7 +7708,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes,
         enabled,
         profileId: profileId || undefined,
+        runOnStartup,
+        speakOnTrigger,
+        continueInSession,
+        lastSessionId: continueInSession ? (lastSessionId || undefined) : undefined,
         runContinuously,
+        ...(typeof maxIterationsResult.value === "number" ? { maxIterations: maxIterationsResult.value } : {}),
         ...(!runContinuously && scheduleResult.schedule && scheduleResult.schedule !== null
           ? { schedule: scheduleResult.schedule }
           : {}),
@@ -5240,7 +7752,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         intervalMinutes?: unknown
         enabled?: unknown
         profileId?: unknown
+        runOnStartup?: unknown
+        speakOnTrigger?: unknown
+        continueInSession?: unknown
+        lastSessionId?: unknown
         runContinuously?: unknown
+        maxIterations?: unknown
         schedule?: unknown
       }
 
@@ -5289,8 +7806,24 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
+        return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
+      }
+      if (body.speakOnTrigger !== undefined && typeof body.speakOnTrigger !== "boolean") {
+        return reply.code(400).send({ error: "speakOnTrigger must be a boolean when provided" })
+      }
+      if (body.continueInSession !== undefined && typeof body.continueInSession !== "boolean") {
+        return reply.code(400).send({ error: "continueInSession must be a boolean when provided" })
+      }
+      if (body.lastSessionId !== undefined && body.lastSessionId !== null && typeof body.lastSessionId !== "string") {
+        return reply.code(400).send({ error: "lastSessionId must be a string or null when provided" })
+      }
+      const maxIterationsResult = parseLoopMaxIterationsInput(body.maxIterations)
+      if (maxIterationsResult.ok === false) {
+        return reply.code(400).send({ error: maxIterationsResult.error })
+      }
       const scheduleResult = parseScheduleInput(body.schedule)
-      if (!scheduleResult.ok) {
+      if (scheduleResult.ok === false) {
         return reply.code(400).send({ error: scheduleResult.error })
       }
 
@@ -5303,6 +7836,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const runContinuously = typeof body.runContinuously === "boolean" ? body.runContinuously : undefined
+      const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : undefined
+      const speakOnTrigger = typeof body.speakOnTrigger === "boolean" ? body.speakOnTrigger : undefined
+      const continueInSession = typeof body.continueInSession === "boolean" ? body.continueInSession : undefined
+      const lastSessionId = typeof body.lastSessionId === "string" ? body.lastSessionId.trim() : undefined
       const updated: LoopConfig = {
         ...existing,
         ...(name !== undefined && { name }),
@@ -5310,7 +7847,18 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(intervalMinutes !== undefined && { intervalMinutes }),
         ...(enabled !== undefined && { enabled }),
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
+        ...(runOnStartup !== undefined && { runOnStartup }),
+        ...(speakOnTrigger !== undefined && { speakOnTrigger }),
+        ...(continueInSession !== undefined && { continueInSession }),
+        ...(body.lastSessionId !== undefined && { lastSessionId: lastSessionId || undefined }),
         ...(runContinuously !== undefined && { runContinuously }),
+        ...(maxIterationsResult.value !== undefined && maxIterationsResult.value !== null && { maxIterations: maxIterationsResult.value }),
+      }
+      if (maxIterationsResult.value === null) {
+        delete updated.maxIterations
+      }
+      if (continueInSession === false || updated.continueInSession === false) {
+        delete updated.lastSessionId
       }
       if (updated.runContinuously) {
         delete updated.schedule

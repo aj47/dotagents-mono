@@ -17,7 +17,12 @@ import {
 import { summarizeContent } from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
-import { filterVisibleChatMessages, sanitizeMessageContentForDisplay } from "@dotagents/shared"
+import {
+  extractRespondToUserResponseEvents,
+  filterVisibleChatMessages,
+  normalizeMessagePreviewText,
+  sanitizeMessageContentForDisplay,
+} from "@dotagents/shared"
 import { makeTextCompletionWithFetch } from "./llm-fetch"
 import {
   buildConversationImageAssetUrl,
@@ -48,6 +53,7 @@ const MAX_SESSION_TITLE_CHARS = 80
 const MAX_AGENT_SESSION_TITLE_WORDS = 10
 const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
 const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
+const MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS = 8000
 const COMPACTION_EXTRACTED_FACT_LIMIT = 8
 const createInlineDataImageMarkdownRegex = () =>
   /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
@@ -406,6 +412,7 @@ export class ConversationService {
 
     let loadedIndex: ConversationHistoryItem[] = []
     let indexWasNormalized = false
+    let indexNeedsRebuild = false
     try {
       const indexPath = this.getConversationIndexPath()
       const data = await fsPromises.readFile(indexPath, "utf8")
@@ -414,6 +421,7 @@ export class ConversationService {
         const normalized = this.normalizeConversationHistoryIndex(parsed as ConversationHistoryItem[])
         loadedIndex = normalized.index
         indexWasNormalized = normalized.changed
+        indexNeedsRebuild = normalized.needsRebuild
       }
     } catch {
       // File doesn't exist or is corrupted — start fresh
@@ -421,6 +429,11 @@ export class ConversationService {
     }
 
     this.indexCache = loadedIndex
+
+    if (indexNeedsRebuild) {
+      return this.rebuildConversationIndexFromDisk("conversation history index missing search or activity metadata")
+    }
+
     if (indexWasNormalized) {
       await this.writeIndexToDisk()
     }
@@ -442,23 +455,94 @@ export class ConversationService {
     }
   }
 
+  private getLatestConversationMessageTimestamp(messages: ConversationMessage[]): number | null {
+    let latestTimestamp: number | null = null
+
+    for (const message of messages) {
+      if (typeof message.timestamp !== "number" || !Number.isFinite(message.timestamp)) {
+        continue
+      }
+      latestTimestamp = latestTimestamp === null
+        ? message.timestamp
+        : Math.max(latestTimestamp, message.timestamp)
+    }
+
+    return latestTimestamp
+  }
+
+  getConversationActivityTimestamp(conversation: Conversation): number {
+    const storedMessages = this.getStoredRawMessages(conversation)
+    const lastMessageAt = this.getLatestConversationMessageTimestamp(storedMessages)
+    const updatedAt = typeof conversation.updatedAt === "number" && Number.isFinite(conversation.updatedAt)
+      ? conversation.updatedAt
+      : 0
+
+    return Math.max(updatedAt, lastMessageAt ?? 0)
+  }
+
+  private getHistoryItemActivityTimestamp(item: ConversationHistoryItem): number {
+    const updatedAt = typeof item.updatedAt === "number" && Number.isFinite(item.updatedAt)
+      ? item.updatedAt
+      : 0
+    const lastMessageAt = typeof item.lastMessageAt === "number" && Number.isFinite(item.lastMessageAt)
+      ? item.lastMessageAt
+      : 0
+
+    return Math.max(updatedAt, lastMessageAt)
+  }
+
   private buildConversationHistoryItem(conversation: Conversation): ConversationHistoryItem {
     const storedMessages = this.getStoredRawMessages(conversation)
     const visibleMessages = filterVisibleChatMessages(storedMessages)
     const lastMessage = visibleMessages[visibleMessages.length - 1] || storedMessages[storedMessages.length - 1]
+    const lastMessageAt = this.getLatestConversationMessageTimestamp(storedMessages)
 
     return {
       id: conversation.id,
       title: conversation.title,
       createdAt: conversation.createdAt,
-      updatedAt: conversation.updatedAt,
+      updatedAt: this.getConversationActivityTimestamp(conversation),
+      lastMessageAt,
       messageCount: this.getRepresentedMessageCount(conversation),
       lastMessage: this.toConversationHistorySnippet(
         lastMessage?.content || "",
         MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS,
       ),
       preview: this.generatePreview(visibleMessages),
+      searchText: this.buildConversationSearchText(storedMessages),
     }
+  }
+
+  private normalizeConversationSearchText(value: string | undefined): string {
+    return normalizeMessagePreviewText(sanitizeMessageContentForDisplay(value || "")) ?? ""
+  }
+
+  private buildConversationSearchText(messages: ConversationMessage[]): string {
+    const searchParts: string[] = []
+    const seen = new Set<string>()
+    const appendSearchPart = (value: string | undefined) => {
+      const normalized = this.normalizeConversationSearchText(value)
+      if (!normalized || seen.has(normalized)) return
+      seen.add(normalized)
+      searchParts.push(normalized)
+    }
+
+    for (const message of messages) {
+      if (message.role === "user") {
+        appendSearchPart(message.displayContent ?? message.content)
+      } else if (message.role === "assistant") {
+        appendSearchPart(message.displayContent ?? message.content)
+      }
+    }
+
+    for (const event of extractRespondToUserResponseEvents(messages)) {
+      appendSearchPart(event.text)
+    }
+
+    const searchText = searchParts.join(" ")
+    return searchText.length > MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS
+      ? searchText.slice(0, MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS).trim()
+      : searchText
   }
 
   private toConversationHistorySnippet(value: string, maxChars: number): string {
@@ -474,8 +558,10 @@ export class ConversationService {
   private normalizeConversationHistoryIndex(index: ConversationHistoryItem[]): {
     index: ConversationHistoryItem[]
     changed: boolean
+    needsRebuild: boolean
   } {
     let changed = false
+    let needsRebuild = false
     const normalizedIndex = index.map((item) => {
       const normalizedLastMessage = this.toConversationHistorySnippet(
         item.lastMessage || "",
@@ -485,20 +571,32 @@ export class ConversationService {
         item.preview || "",
         MAX_CONVERSATION_HISTORY_PREVIEW_CHARS,
       )
+      const normalizedSearchText = this.normalizeConversationSearchText(item.searchText || "")
+        .slice(0, MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS)
+        .trim()
 
-      if (normalizedLastMessage !== item.lastMessage || normalizedPreview !== item.preview) {
+      if (!("lastMessageAt" in item) || !("searchText" in item)) {
+        needsRebuild = true
+      }
+
+      if (
+        normalizedLastMessage !== item.lastMessage ||
+        normalizedPreview !== item.preview ||
+        normalizedSearchText !== (item.searchText || "")
+      ) {
         changed = true
         return {
           ...item,
           lastMessage: normalizedLastMessage,
           preview: normalizedPreview,
+          searchText: normalizedSearchText,
         }
       }
 
       return item
     })
 
-    return { index: normalizedIndex, changed }
+    return { index: normalizedIndex, changed, needsRebuild }
   }
 
   private async parseConversationData(
@@ -577,7 +675,9 @@ export class ConversationService {
         rebuiltIndex.push(this.buildConversationHistoryItem(conversation))
       }
 
-      rebuiltIndex.sort((a, b) => b.updatedAt - a.updatedAt)
+      rebuiltIndex.sort((a, b) =>
+        this.getHistoryItemActivityTimestamp(b) - this.getHistoryItemActivityTimestamp(a)
+      )
       this.indexCache = rebuiltIndex
       await this.writeIndexToDisk()
       logApp(`[ConversationService] Rebuilt conversation index from disk (${reason})`, {
@@ -1222,8 +1322,10 @@ export class ConversationService {
     try {
       const index = await this.ensureIndexLoaded()
 
-      // Sort by updatedAt descending (most recent first)
-      const sorted = [...index].sort((a, b) => b.updatedAt - a.updatedAt)
+      // Sort by latest visible activity descending (most recent first).
+      const sorted = [...index].sort((a, b) =>
+        this.getHistoryItemActivityTimestamp(b) - this.getHistoryItemActivityTimestamp(a)
+      )
       return sorted
     } catch (error) {
       logApp("[ConversationService] Error loading conversation history:", error)

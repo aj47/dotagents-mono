@@ -86,6 +86,15 @@ test('displays recent conversations from operator API', () => {
   assert.match(operationsSource, /conversations\.map/);
 });
 
+test('displays recent operator logs from operator API', () => {
+  assert.match(operationsSource, /const \[operatorLogs, setOperatorLogs\]/);
+  assert.match(operationsSource, /settingsClient\.getOperatorLogs\(RECENT_LOG_COUNT\)/);
+  assert.match(operationsSource, /setOperatorLogs\(logsResult\.value\.logs\)/);
+  assert.match(operationsSource, /Recent operator logs/);
+  assert.match(operationsSource, /operatorLogs\.map/);
+  assert.match(operationsSource, /Clear operator logs/);
+});
+
 test('displays MCP servers from operator API', () => {
   assert.match(operationsSource, /getOperatorMCP/);
   assert.match(operationsSource, /setMcpServers/);

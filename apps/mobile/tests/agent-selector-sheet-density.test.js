@@ -11,7 +11,9 @@ const sheetSource = fs.readFileSync(
 test('keeps the mobile agent selector close affordance in a compact header instead of a footer band', () => {
   assert.match(sheetSource, /<View style=\{styles\.header\}>/);
   assert.match(sheetSource, /accessibilityLabel="Close agent selector"/);
-  assert.match(sheetSource, /<Text style=\{styles\.headerCloseButtonText\}>Close<\/Text>/);
+  assert.match(sheetSource, /<Ionicons name="close" size=\{20\}/);
+  assert.match(sheetSource, /headerCloseButton:\s*\{[\s\S]*?width:\s*32,[\s\S]*?height:\s*32,[\s\S]*?backgroundColor:\s*theme\.colors\.muted,/);
+  assert.doesNotMatch(sheetSource, /headerCloseButtonText/);
   assert.doesNotMatch(sheetSource, /<Text style=\{styles\.closeButtonText\}>Cancel<\/Text>/);
   assert.doesNotMatch(sheetSource, /closeButton:\s*\{/);
 });

@@ -1,23 +1,24 @@
 import type { ConversationHistoryItem } from "@shared/types"
 
+function getConversationHistoryActivityTimestamp(session: ConversationHistoryItem): number {
+  const updatedAt = Number.isFinite(session.updatedAt) ? session.updatedAt : 0
+  const lastMessageAt =
+    typeof session.lastMessageAt === "number" && Number.isFinite(session.lastMessageAt)
+      ? session.lastMessageAt
+      : 0
+
+  return Math.max(updatedAt, lastMessageAt)
+}
+
 export function orderConversationHistoryByPinnedFirst(
   sessions: ConversationHistoryItem[],
   pinnedSessionIds: ReadonlySet<string>,
 ): ConversationHistoryItem[] {
-  if (sessions.length <= 1 || pinnedSessionIds.size === 0) {
-    return sessions
-  }
+  return [...sessions].sort((a, b) => {
+    const pinOrder =
+      Number(pinnedSessionIds.has(b.id)) - Number(pinnedSessionIds.has(a.id))
+    if (pinOrder !== 0) return pinOrder
 
-  const pinnedSessions: ConversationHistoryItem[] = []
-  const unpinnedSessions: ConversationHistoryItem[] = []
-
-  for (const session of sessions) {
-    if (pinnedSessionIds.has(session.id)) {
-      pinnedSessions.push(session)
-    } else {
-      unpinnedSessions.push(session)
-    }
-  }
-
-  return [...pinnedSessions, ...unpinnedSessions]
+    return getConversationHistoryActivityTimestamp(b) - getConversationHistoryActivityTimestamp(a)
+  })
 }

@@ -86,13 +86,10 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).not.toContain("text-sm font-medium transition-all duration-200")
   })
 
-  it("keeps active task rows visible when historical task rows are collapsed", () => {
-    expect(sidebarSource).toContain("const activeTaskSidebarSessions = useMemo(")
-    expect(sidebarSource).toContain("const progress = agentProgressById.get(entry.session.id)")
-    expect(sidebarSource).toContain("!entry.isSavedConversation &&")
-    expect(sidebarSource).toContain('entry.session.status === "active" &&')
-    expect(sidebarSource).toContain("progress?.isComplete !== true")
-    expect(sidebarSource).toContain("tasksSectionExpanded ? paginatedTaskSidebarSessions : activeTaskSidebarSessions")
+  it("keeps runtime task rows visible when historical task rows are collapsed", () => {
+    expect(sidebarSource).toContain("const runtimeTaskSidebarSessions = useMemo(")
+    expect(sidebarSource).toContain("return !entry.isSavedConversation")
+    expect(sidebarSource).toContain("tasksSectionExpanded ? paginatedTaskSidebarSessions : runtimeTaskSidebarSessions")
     expect(sidebarSource).toContain("const tasksListVisible = visibleTaskSidebarSessions.length > 0")
   })
 

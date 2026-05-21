@@ -93,6 +93,66 @@ interface SidebarSessionEntry {
   nestingDepth?: number
 }
 
+function markProgressCompletedFromSession(
+  progress: AgentProgressUpdate,
+  session: SidebarSessionRecord,
+): AgentProgressUpdate {
+  const isSessionSuccessfulCompletion = session.status === "completed"
+  const steps = progress.steps.map((step) => {
+    if (step.status !== "in_progress" && step.status !== "awaiting_approval") {
+      return step
+    }
+    return {
+      ...step,
+      status: "completed" as const,
+    }
+  })
+
+  return {
+    ...progress,
+    conversationId: progress.conversationId ?? session.conversationId,
+    conversationTitle: progress.conversationTitle ?? session.conversationTitle,
+    currentIteration: progress.currentIteration ?? session.currentIteration ?? 0,
+    maxIterations: progress.maxIterations ?? session.maxIterations ?? 1,
+    steps,
+    isComplete: true,
+    conversationState: isSessionSuccessfulCompletion ? "complete" : "blocked",
+    streamingContent: progress.streamingContent
+      ? {
+          ...progress.streamingContent,
+          isStreaming: false,
+        }
+      : undefined,
+    pendingToolApproval: undefined,
+    retryInfo: progress.retryInfo?.isRetrying
+      ? {
+          ...progress.retryInfo,
+          isRetrying: false,
+        }
+      : progress.retryInfo,
+  }
+}
+
+function getProgressLastActivityTimestamp(progress: AgentProgressUpdate): number {
+  const lastStepTimestamp = progress.steps.length > 0
+    ? progress.steps[progress.steps.length - 1].timestamp
+    : undefined
+  const lastHistoryTimestamp =
+    progress.conversationHistory && progress.conversationHistory.length > 0
+      ? progress.conversationHistory[progress.conversationHistory.length - 1].timestamp
+      : undefined
+  const lastResponseEventTimestamp =
+    progress.responseEvents && progress.responseEvents.length > 0
+      ? progress.responseEvents[progress.responseEvents.length - 1].timestamp
+      : undefined
+
+  return Math.max(
+    typeof lastStepTimestamp === "number" ? lastStepTimestamp : 0,
+    typeof lastHistoryTimestamp === "number" ? lastHistoryTimestamp : 0,
+    typeof lastResponseEventTimestamp === "number" ? lastResponseEventTimestamp : 0,
+  )
+}
+
 const TASK_NAME_CONNECTOR_WORDS = new Set(["a", "an", "and", "for", "of", "the", "to"])
 
 function toTitleCaseTaskName(value: string, options: { dropConnectorWords?: boolean } = {}): string {
@@ -327,6 +387,7 @@ export function ActiveAgentsSidebar({
   const viewedConversationId = useAgentStore((s) => s.viewedConversationId)
   const setViewedConversationId = useAgentStore((s) => s.setViewedConversationId)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
+  const updateSessionProgress = useAgentStore((s) => s.updateSessionProgress)
   const agentResponseReadAtBySessionId = useAgentStore(
     (s) => s.agentResponseReadAtBySessionId,
   )
@@ -400,6 +461,27 @@ export function ActiveAgentsSidebar({
   const conversationHistory =
     (savedConversationsQuery.data as ConversationHistoryItem[] | undefined) ||
     []
+  const recentCompletedSessionById = useMemo(
+    () => new Map(recentCompletedSessions.map((session) => [session.id, session] as const)),
+    [recentCompletedSessions],
+  )
+  const trackedActiveSessionIds = useMemo(
+    () => new Set(trackedActiveSessions.map((session) => session.id)),
+    [trackedActiveSessions],
+  )
+
+  useEffect(() => {
+    for (const [sessionId, session] of recentCompletedSessionById) {
+      const progress = agentProgressById.get(sessionId)
+      if (!progress || progress.isComplete) continue
+      if (trackedActiveSessionIds.has(sessionId)) continue
+      const sessionEndTime = typeof session.endTime === "number" ? session.endTime : 0
+      if (sessionEndTime > 0 && getProgressLastActivityTimestamp(progress) > sessionEndTime) {
+        continue
+      }
+      updateSessionProgress(markProgressCompletedFromSession(progress, session))
+    }
+  }, [agentProgressById, recentCompletedSessionById, trackedActiveSessionIds, updateSessionProgress])
 
   const activeSessions = useMemo<SidebarSessionRecord[]>(() => {
     const subagentParentSessionIds = getSubagentParentSessionIdMap(
@@ -413,7 +495,8 @@ export function ActiveAgentsSidebar({
     )
 
     for (const [sessionId, progress] of agentProgressById.entries()) {
-      const existingSession = mergedSessions.get(sessionId)
+      const existingSession =
+        mergedSessions.get(sessionId) ?? recentCompletedSessionById.get(sessionId)
       const firstHistoryTimestamp = progress.conversationHistory?.[0]?.timestamp
       const lastHistoryTimestamp = progress.conversationHistory?.[
         progress.conversationHistory.length - 1
@@ -469,19 +552,19 @@ export function ActiveAgentsSidebar({
     return Array.from(mergedSessions.values()).sort((a, b) => {
       const aProgress = agentProgressById.get(a.id)
       const bProgress = agentProgressById.get(b.id)
-      const aTimestamp =
-        aProgress?.conversationHistory?.[aProgress.conversationHistory.length - 1]
-          ?.timestamp ??
-        a.endTime ??
-        a.startTime
-      const bTimestamp =
-        bProgress?.conversationHistory?.[bProgress.conversationHistory.length - 1]
-          ?.timestamp ??
-        b.endTime ??
-        b.startTime
+      const aTimestamp = Math.max(
+        aProgress ? getProgressLastActivityTimestamp(aProgress) : 0,
+        a.endTime ?? 0,
+        a.startTime,
+      )
+      const bTimestamp = Math.max(
+        bProgress ? getProgressLastActivityTimestamp(bProgress) : 0,
+        b.endTime ?? 0,
+        b.startTime,
+      )
       return bTimestamp - aTimestamp
     })
-  }, [trackedActiveSessions, agentProgressById])
+  }, [trackedActiveSessions, agentProgressById, recentCompletedSessionById])
 
   const sessionsWithActiveChildProgress = useMemo(
     () => getSessionIdsWithActiveChildProgress(agentProgressById.entries()),
@@ -801,20 +884,15 @@ export function ActiveAgentsSidebar({
   ])
   const hasMoreTaskSessions =
     taskSidebarSessions.length > paginatedTaskSidebarSessions.length
-  const activeTaskSidebarSessions = useMemo(
+  const runtimeTaskSidebarSessions = useMemo(
     () => taskSidebarSessions.filter((entry) => {
-      const progress = agentProgressById.get(entry.session.id)
-      return (
-        !entry.isSavedConversation &&
-        entry.session.status === "active" &&
-        progress?.isComplete !== true
-      )
+      return !entry.isSavedConversation
     }),
-    [agentProgressById, taskSidebarSessions],
+    [taskSidebarSessions],
   )
   const visibleTaskSidebarSessions = useMemo(
-    () => tasksSectionExpanded ? paginatedTaskSidebarSessions : activeTaskSidebarSessions,
-    [activeTaskSidebarSessions, paginatedTaskSidebarSessions, tasksSectionExpanded],
+    () => tasksSectionExpanded ? paginatedTaskSidebarSessions : runtimeTaskSidebarSessions,
+    [paginatedTaskSidebarSessions, runtimeTaskSidebarSessions, tasksSectionExpanded],
   )
   const hasTaskSessions = taskSidebarSessions.length > 0
   const tasksListVisible = visibleTaskSidebarSessions.length > 0
@@ -1462,7 +1540,7 @@ export function ActiveAgentsSidebar({
   return (
     <div className={cn("flex min-h-0 flex-col px-2", className)}>
       {hasLaunchControls && (
-        <div className="sticky top-0 z-40 -mx-2 bg-background/95 px-2 pb-2 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="sticky top-0 z-40 -mx-2 bg-background/95 px-2 pb-2 pt-2">
           <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
             <div className="flex w-full flex-wrap items-center gap-2">
               {onSelectAgent && (

@@ -479,12 +479,12 @@ if (!gotSingleInstanceLock) {
         const cfg = configStore.get()
         if (cfg.hideDockIcon) {
           app.setActivationPolicy("accessory")
-          app.dock.hide()
+          app.dock?.hide()
           logApp("Dock icon hidden on startup per user preference")
         } else {
           // Ensure dock is visible when hideDockIcon is false
           // This handles the case where dock state persisted from a previous session
-          app.dock.show()
+          app.dock?.show()
           app.setActivationPolicy("regular")
           logApp("Dock icon shown on startup per user preference")
         }

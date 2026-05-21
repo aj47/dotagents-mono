@@ -17,7 +17,8 @@ test('renders the extracted handsfree status chip in the mobile chat composer', 
 
 test('lets handsfree users queue a drafted message without sending immediately', () => {
   assert.match(screenSource, /const queueComposerInput = useCallback\(\(\) => \{[\s\S]*?messageQueue\.enqueue\(currentConversationId, composedMessage(?:, currentConversationId)?\);[\s\S]*?setInput\(''\);[\s\S]*?setPendingImages\(\[\]\);/);
-  assert.match(screenSource, /handsFree && messageQueueEnabled && \([\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Queue message'\)\}[\s\S]*?<Text style=\{styles\.queueButtonText\}>Queue<\/Text>/);
+  assert.match(screenSource, /handsFree && messageQueueEnabled && \([\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Queue message'\)\}[\s\S]*?<Ionicons name="time-outline" size=\{18\} color=\{theme\.colors\.primary\} \/>/);
+  assert.doesNotMatch(screenSource, /<Text style=\{styles\.queueButtonText\}>Queue<\/Text>/);
 });
 
 test('derives send-next availability from strict FIFO queue semantics', () => {

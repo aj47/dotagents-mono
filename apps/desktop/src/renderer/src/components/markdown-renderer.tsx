@@ -47,6 +47,7 @@ const COMPACT_THINK_PROSE_CLASS_NAME =
 const SELECTABLE_MARKDOWN_CLASS_NAME = "markdown-selectable"
 const LIGHTBOX_CONTROL_BUTTON_CLASS_NAME =
   "inline-flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:pointer-events-none disabled:opacity-35"
+const COLLAPSED_MARKDOWN_PREVIEW_CHARS = 1200
 
 const ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX =
   /^data:image\/(?:png|apng|gif|jpe?g|webp|bmp|avif)(?:;|,)/
@@ -812,6 +813,26 @@ const parseThinkSections = (content: string) => {
   return parts
 }
 
+const buildCollapsedMarkdownPreview = (content: string) => {
+  const normalized = content
+    .replace(/<think>[\s\S]*?<\/think>/gi, " Thinking ")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, (_match, altText: string) => {
+      const alt = altText?.trim()
+      return alt ? ` Image: ${alt} ` : " Image "
+    })
+    .replace(/(^|[^!])\[([^\]]+)\]\([^)]+\)/g, "$1$2")
+    .replace(/```[\s\S]*?```/g, (block) =>
+      block.replace(/^```[^\n]*\n?/, "").replace(/\n?```$/, ""),
+    )
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/[*_~>#]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  if (normalized.length <= COLLAPSED_MARKDOWN_PREVIEW_CHARS) return normalized
+  return `${normalized.slice(0, COLLAPSED_MARKDOWN_PREVIEW_CHARS - 3).trimEnd()}...`
+}
+
 const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
   content,
   className,
@@ -820,6 +841,19 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
   isThinkExpanded,
   onToggleThink,
 }) => {
+  if (collapsed) {
+    const preview = buildCollapsedMarkdownPreview(content)
+    return (
+      <div
+        className={cn(COMPACT_PROSE_CLASS_NAME, className, SELECTABLE_MARKDOWN_CLASS_NAME)}
+      >
+        <p className="my-1 whitespace-pre-wrap leading-normal text-foreground">
+          {preview}
+        </p>
+      </div>
+    )
+  }
+
   const parts = parseThinkSections(content)
 
   return (

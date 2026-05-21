@@ -299,6 +299,7 @@ export function Component() {
   // Any non-snoozed session (including completed) should show the overlay
   // Also show overlay if there's a focused session (user explicitly selected it, even if snoozed)
   const anyVisibleSessions = visibleSessionCount > 0 || (focusedSessionId && agentProgressById?.has(focusedSessionId))
+  const shouldShowProgressPanel = anyVisibleSessions && !recording
 
   const configQuery = useConfigQuery()
   const isDragEnabled = (configQuery.data as any)?.panelDragEnabled ?? true
@@ -1119,17 +1120,11 @@ export function Component() {
     }
 
     let targetMode: "agent" | "normal" | null = null
-    if (anyActiveNonSnoozed) {
+    if (recording) {
+      targetMode = "normal"
+    } else if (anyActiveNonSnoozed) {
       targetMode = "agent"
-      // When switching to agent/progress mode, stop any ongoing recording.
-      if (recordingRef.current) {
-        isConfirmedRef.current = false
-        setRecording(false)
-        recordingRef.current = false
-        setVisualizerData(() => getInitialVisualizerData(visualizerBarCountRef.current))
-        recorderRef.current?.stopRecording()
-      }
-    } else if (anyVisibleSessions && !recording) {
+    } else if (shouldShowProgressPanel) {
       targetMode = "agent"
     } else if (isTextSubmissionPending) {
       targetMode = null // keep current size briefly to avoid flicker
@@ -1147,7 +1142,7 @@ export function Component() {
     return () => {
       if (tid) clearTimeout(tid)
     }
-  }, [anyActiveNonSnoozed, anyVisibleSessions, recording, textInputMutation.isPending, mcpTextInputMutation.isPending, showTextInput])
+  }, [anyActiveNonSnoozed, recording, shouldShowProgressPanel, textInputMutation.isPending, mcpTextInputMutation.isPending, showTextInput])
 
   // Note: We don't need to hide text input when agentProgress changes because:
   // 1. handleTextSubmit already hides it immediately on submit (line 375)
@@ -1322,8 +1317,8 @@ export function Component() {
 
   const waveformHeight = hasPreviewVisible ? WAVEFORM_WITH_PREVIEW_HEIGHT : WAVEFORM_MIN_HEIGHT
   const minWidth = showTextInput ? TEXT_INPUT_MIN_WIDTH_PX : MIN_WAVEFORM_WIDTH
-  const minHeight = showTextInput ? TEXT_INPUT_MIN_HEIGHT : (anyVisibleSessions && !recording ? PROGRESS_MIN_HEIGHT : waveformHeight)
-  const panelResizeMode = showTextInput ? "textInput" : anyVisibleSessions && !recording ? "agent" : "normal"
+  const minHeight = showTextInput ? TEXT_INPUT_MIN_HEIGHT : (shouldShowProgressPanel ? PROGRESS_MIN_HEIGHT : waveformHeight)
+  const panelResizeMode = showTextInput ? "textInput" : shouldShowProgressPanel ? "agent" : "normal"
 
   return (
     <PanelResizeWrapper
@@ -1378,7 +1373,7 @@ export function Component() {
                   when session count changes (1→2 or 2→1). It handles single sessions
                   gracefully by hiding the tab bar. */}
               {/* Hide overlay when recording to show waveform instead */}
-              {anyVisibleSessions && !recording && (
+              {shouldShowProgressPanel && (
                 <MultiAgentProgressView
                   variant="overlay"
                   className="absolute inset-0 z-20"

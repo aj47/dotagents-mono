@@ -33,25 +33,31 @@ import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-u
 
 const INITIAL_SAVED_CONVERSATIONS = 20
 const SEARCH_RESULT_LIMIT = 50
+const SEARCH_DEBOUNCE_MS = 120
 const DEFAULT_FUZZY_THRESHOLD = 0.33
+const MIN_SEARCH_TEXT_QUERY_CHARS = 2
+const MAX_FUZZY_FIELD_LENGTH = 1000
 const TITLE_MATCH_WEIGHT = 0.6
 const PREVIEW_MATCH_WEIGHT = 0.25
 const LAST_MESSAGE_MATCH_WEIGHT = 0.15
+const SEARCH_TEXT_MATCH_WEIGHT = 0.1
 const KEYBOARD_SHORTCUT_HINT = navigator.platform.toLowerCase().includes("mac") ? "⌘K" : "Ctrl+K"
 const PIN_SHORTCUT_HINT = navigator.platform.toLowerCase().includes("mac") ? "⌘P" : "Ctrl+P"
 const VOICE_SHORTCUT_HINT = "V"
 
 
-type SearchableConversationField = "title" | "preview" | "lastMessage"
+type SearchableConversationField = "title" | "preview" | "lastMessage" | "searchText"
 
 type SearchableConversation = {
   title: string
   preview: string
   lastMessage: string
+  searchText: string
 }
 
 type ConversationSearchResult = {
   field: SearchableConversationField
+  rawScore: number
   score: number
 }
 
@@ -84,6 +90,7 @@ type ConversationListEntry = {
   updatedAt: number
   preview: string
   lastMessage: string
+  searchIndex: SearchableConversation
   statusLabel: string
   statusRailClassName: string
   isPinned: boolean
@@ -116,6 +123,8 @@ function getFieldWeight(field: SearchableConversationField): number {
       return PREVIEW_MATCH_WEIGHT
     case "lastMessage":
       return LAST_MESSAGE_MATCH_WEIGHT
+    case "searchText":
+      return SEARCH_TEXT_MATCH_WEIGHT
     default:
       return 0
   }
@@ -127,6 +136,26 @@ function normalizeSearchText(value: string | undefined): string {
 
 function normalizeConversationText(value: string | undefined): string {
   return normalizeMessagePreviewText(value) ?? ""
+}
+
+function buildConversationSearchIndex(conversation: SearchableConversation): SearchableConversation {
+  return {
+    title: normalizeSearchText(conversation.title),
+    preview: normalizeSearchText(conversation.preview),
+    lastMessage: normalizeSearchText(conversation.lastMessage),
+    searchText: normalizeSearchText(conversation.searchText),
+  }
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDebouncedValue(value), delayMs)
+    return () => window.clearTimeout(timeoutId)
+  }, [delayMs, value])
+
+  return debouncedValue
 }
 
 function getConversationSnippet(
@@ -153,21 +182,74 @@ function getConversationSnippet(
   return "No messages yet"
 }
 
+function getConversationSearchText(
+  progress?: AgentProgressUpdate | null,
+  ...fallbacks: Array<string | undefined>
+): string {
+  const searchParts: string[] = []
+  const seen = new Set<string>()
+  const appendSearchPart = (value: string | undefined) => {
+    const normalized = normalizeConversationText(value)
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    searchParts.push(normalized)
+  }
+
+  for (const message of progress?.conversationHistory ?? []) {
+    if (message.role === "user" || message.role === "assistant") {
+      appendSearchPart(message.displayContent ?? message.content)
+    }
+  }
+
+  for (const event of progress?.responseEvents ?? []) {
+    appendSearchPart(event.text)
+  }
+  for (const response of progress?.userResponseHistory ?? []) {
+    appendSearchPart(response)
+  }
+  appendSearchPart(progress?.userResponse)
+  appendSearchPart(progress?.finalContent)
+
+  for (const fallback of fallbacks) {
+    appendSearchPart(fallback)
+  }
+
+  return searchParts.join(" ")
+}
+
+function getLatestTimestamp(
+  entries?: Array<{ timestamp?: number }> | null,
+): number {
+  if (!entries?.length) return 0
+
+  let latestTimestamp = 0
+  for (const entry of entries) {
+    if (typeof entry.timestamp !== "number" || !Number.isFinite(entry.timestamp)) {
+      continue
+    }
+    latestTimestamp = Math.max(latestTimestamp, entry.timestamp)
+  }
+  return latestTimestamp
+}
+
 function getSessionUpdatedAt(
   session: AgentSessionRecord,
   progress?: AgentProgressUpdate | null,
 ): number {
-  const lastConversationTimestamp = progress?.conversationHistory?.[
-    (progress.conversationHistory?.length ?? 1) - 1
-  ]?.timestamp
-  const lastStepTimestamp = progress?.steps?.[(progress.steps?.length ?? 1) - 1]?.timestamp
-  return lastConversationTimestamp ?? lastStepTimestamp ?? session.endTime ?? session.startTime
+  return Math.max(
+    getLatestTimestamp(progress?.conversationHistory),
+    getLatestTimestamp(progress?.steps),
+    getLatestTimestamp(progress?.responseEvents),
+    session.endTime ?? 0,
+    session.startTime,
+  )
 }
 
-function scoreSearchField(fieldValue: string, query: string): number {
-  const normalizedField = normalizeSearchText(fieldValue)
-  const normalizedQuery = normalizeSearchText(query)
-
+function scoreSearchField(
+  normalizedField: string,
+  normalizedQuery: string,
+  options: { allowFuzzy?: boolean } = {},
+): number {
   if (!normalizedField || !normalizedQuery) {
     return 0
   }
@@ -177,6 +259,10 @@ function scoreSearchField(fieldValue: string, query: string): number {
     const positionBonus = position === 0 ? 0.15 : Math.max(0, 0.08 - position * 0.002)
     const lengthPenalty = Math.min(0.15, normalizedField.length / 500)
     return Math.min(1, 0.85 + positionBonus - lengthPenalty)
+  }
+
+  if (options.allowFuzzy === false || normalizedField.length > MAX_FUZZY_FIELD_LENGTH) {
+    return 0
   }
 
   let score = 0
@@ -201,32 +287,40 @@ function scoreSearchField(fieldValue: string, query: string): number {
 }
 
 function getConversationSearchResult(
-  conversation: SearchableConversation,
-  query: string,
+  searchIndex: SearchableConversation,
+  normalizedQuery: string,
 ): ConversationSearchResult | null {
-  const normalizedQuery = normalizeSearchText(query)
   if (!normalizedQuery) {
-    return { field: "title", score: 1 }
+    return { field: "title", rawScore: 1, score: 1 }
   }
 
-  const orderedFields: SearchableConversationField[] = ["title", "preview", "lastMessage"]
-  let bestResult: ConversationSearchResult | null = null
+  const orderedFields: SearchableConversationField[] = ["title", "preview", "lastMessage", "searchText"]
+  let bestPassingResult: ConversationSearchResult | null = null
 
   for (const field of orderedFields) {
-    const rawScore = scoreSearchField(conversation[field], normalizedQuery)
+    if (field === "searchText" && normalizedQuery.length < MIN_SEARCH_TEXT_QUERY_CHARS) {
+      continue
+    }
+
+    const rawScore = scoreSearchField(searchIndex[field], normalizedQuery, {
+      allowFuzzy: field !== "searchText",
+    })
     if (rawScore <= 0) continue
 
     const weightedScore = rawScore * getFieldWeight(field)
-    if (!bestResult || weightedScore > bestResult.score) {
-      bestResult = { field, score: weightedScore }
+    if (
+      rawScore >= DEFAULT_FUZZY_THRESHOLD &&
+      (!bestPassingResult || weightedScore > bestPassingResult.score)
+    ) {
+      bestPassingResult = { field, rawScore, score: weightedScore }
     }
   }
 
-  if (!bestResult || bestResult.score < DEFAULT_FUZZY_THRESHOLD) {
+  if (!bestPassingResult) {
     return null
   }
 
-  return bestResult
+  return bestPassingResult
 }
 
 export function SavedConversationsDialog({
@@ -272,6 +366,11 @@ export function SavedConversationsDialog({
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
   const [highlightedConversationId, setHighlightedConversationId] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS)
+  const normalizedSearchQuery = useMemo(
+    () => normalizeSearchText(searchQuery.trim() ? debouncedSearchQuery : ""),
+    [debouncedSearchQuery, searchQuery],
+  )
 
   useEffect(() => {
     if (!open) {
@@ -279,12 +378,14 @@ export function SavedConversationsDialog({
       setVisibleConversationCount(INITIAL_SAVED_CONVERSATIONS)
       setShowDeleteAllConfirm(false)
       setHighlightedConversationId(null)
-      return
     }
+  }, [open])
 
+  useEffect(() => {
+    if (!open) return
     // When searching, reset the lazy-load count so results feel predictable.
     setVisibleConversationCount(INITIAL_SAVED_CONVERSATIONS)
-  }, [open, searchQuery])
+  }, [open, normalizedSearchQuery])
 
   useEffect(() => {
     if (!open) return undefined
@@ -413,6 +514,11 @@ export function SavedConversationsDialog({
           session.lastActivity,
           session.errorMessage,
         )
+        const searchText = getConversationSearchText(
+          progress,
+          session.lastActivity,
+          session.errorMessage,
+        )
 
         return {
           key: `active:${session.id}`,
@@ -423,6 +529,12 @@ export function SavedConversationsDialog({
           updatedAt: getSessionUpdatedAt(session, progress),
           preview: lastMessage,
           lastMessage,
+          searchIndex: buildConversationSearchIndex({
+            title,
+            preview: lastMessage,
+            lastMessage,
+            searchText,
+          }),
           statusLabel:
             session.status === "error"
               ? "Error"
@@ -451,42 +563,49 @@ export function SavedConversationsDialog({
 
     return orderConversationHistoryByPinnedFirst(all, pinnedSessionIds)
       .filter((conversation) => !activeConversationIds.has(conversation.id))
-      .map((conversation) => ({
-        key: `saved:${conversation.id}`,
-        kind: "saved" as const,
-        title: conversation.title,
-        conversationId: conversation.id,
-        updatedAt: conversation.updatedAt,
-        preview: getConversationSnippet(undefined, conversation.lastMessage, conversation.preview),
-        lastMessage:
+      .map((conversation) => {
+        const preview = getConversationSnippet(undefined, conversation.lastMessage, conversation.preview)
+        const lastMessage =
           normalizeConversationText(conversation.lastMessage) ||
-          normalizeConversationText(conversation.preview),
-        statusLabel: archivedSessionIds.has(conversation.id) ? "Archived" : "Saved",
-        statusRailClassName: archivedSessionIds.has(conversation.id)
-          ? "bg-muted-foreground/60"
-          : "bg-green-500",
-        isPinned: pinnedSessionIds.has(conversation.id),
-        isArchived: archivedSessionIds.has(conversation.id),
-      }))
+          normalizeConversationText(conversation.preview)
+        const searchText = normalizeConversationText(conversation.searchText)
+
+        return {
+          key: `saved:${conversation.id}`,
+          kind: "saved" as const,
+          title: conversation.title,
+          conversationId: conversation.id,
+          updatedAt: conversation.updatedAt,
+          preview,
+          lastMessage,
+          searchIndex: buildConversationSearchIndex({
+            title: conversation.title,
+            preview,
+            lastMessage,
+            searchText,
+          }),
+          statusLabel: archivedSessionIds.has(conversation.id) ? "Archived" : "Saved",
+          statusRailClassName: archivedSessionIds.has(conversation.id)
+            ? "bg-muted-foreground/60"
+            : "bg-green-500",
+          isPinned: pinnedSessionIds.has(conversation.id),
+          isArchived: archivedSessionIds.has(conversation.id),
+        }
+      })
   }, [activeConversationEntries, archivedSessionIds, pinnedSessionIds, savedConversationsQuery.data])
 
   const filteredConversationEntries = useMemo(() => {
     const all = [...activeConversationEntries, ...savedConversationEntries]
-    const normalizedQuery = searchQuery.trim()
 
-    if (!normalizedQuery) {
+    if (!normalizedSearchQuery) {
       return all.slice(0, SEARCH_RESULT_LIMIT)
     }
 
     const rankedConversations = all
       .map((conversation) => {
         const result = getConversationSearchResult(
-          {
-            title: conversation.title,
-            preview: conversation.preview,
-            lastMessage: conversation.lastMessage,
-          },
-          normalizedQuery,
+          conversation.searchIndex,
+          normalizedSearchQuery,
         )
 
         if (!result) return null
@@ -496,7 +615,7 @@ export function SavedConversationsDialog({
           rank: result.score,
           kindPriority: conversation.kind === "active" ? 0 : 1,
           fieldPriority:
-            result.field === "title" ? 0 : result.field === "preview" ? 1 : 2,
+            result.field === "title" ? 0 : result.field === "preview" ? 1 : result.field === "lastMessage" ? 2 : 3,
         }
       })
       .filter((entry): entry is {
@@ -506,15 +625,18 @@ export function SavedConversationsDialog({
         fieldPriority: number
       } => entry !== null)
       .sort((a, b) => {
-        if (b.rank !== a.rank) return b.rank - a.rank
         if (a.kindPriority !== b.kindPriority) return a.kindPriority - b.kindPriority
+        if (b.conversation.updatedAt !== a.conversation.updatedAt) {
+          return b.conversation.updatedAt - a.conversation.updatedAt
+        }
+        if (b.rank !== a.rank) return b.rank - a.rank
         if (a.fieldPriority !== b.fieldPriority) return a.fieldPriority - b.fieldPriority
-        return b.conversation.updatedAt - a.conversation.updatedAt
+        return a.conversation.title.localeCompare(b.conversation.title)
       })
       .map((entry) => entry.conversation)
 
     return rankedConversations.slice(0, SEARCH_RESULT_LIMIT)
-  }, [activeConversationEntries, savedConversationEntries, searchQuery])
+  }, [activeConversationEntries, normalizedSearchQuery, savedConversationEntries])
 
   const visibleConversationEntries = useMemo(
     () => filteredConversationEntries.slice(0, visibleConversationCount),

@@ -17,3 +17,10 @@ LLM call count, verifier call count, tool call count, prompt-size summary, and a
 case-specific recovery checks. Live AutoResearch rows also include
 `semanticEvidencePassed` and `missingResponseEvidenceGroups` so provider behavior
 can be tracked without making the opt-in live suite fail on wording variance.
+
+The package script `pnpm --filter @dotagents/desktop run test:agent-loop-live`
+runs the live agent-loop E2E suite with `LIVE_AGENT_LOOP_E2E=1` and LLM-as-judge
+enabled by default. Set `LIVE_AGENT_LOOP_LLM_JUDGE=0` to disable that extra judge
+call. Use `pnpm --filter @dotagents/desktop run test:agent-loop-live:strict` or
+set `LIVE_AGENT_LOOP_LLM_JUDGE_REQUIRED=1` to make a failed judge verdict fail
+the live test rather than only recording `llmJudge*` metric fields.

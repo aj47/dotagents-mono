@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
 import { useConfigContext } from '../store/config';
-import { useSessionContext, SessionStore } from '../store/sessions';
+import { useSessionContext, SessionStore, normalizeSessionTitleText } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
@@ -34,6 +35,10 @@ export default function SessionListScreen({ navigation }: Props) {
   const { currentProfile } = useProfile();
   const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sessionListMode, setSessionListMode] = useState<'active' | 'archived'>('active');
+  const [renameSession, setRenameSession] = useState<SessionListItem | null>(null);
+  const [renameTitleDraft, setRenameTitleDraft] = useState('');
+  const [isRenameSaving, setIsRenameSaving] = useState(false);
 
   // ── Rapid Fire voice state ─────────────────────────────────────────────────
   const [rfListening, setRfListening] = useState(false);
@@ -636,6 +641,7 @@ export default function SessionListScreen({ navigation }: Props) {
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
+            gap: 3,
             backgroundColor: theme.colors.primary + '33',
             paddingHorizontal: 8,
             paddingVertical: 2,
@@ -647,8 +653,9 @@ export default function SessionListScreen({ navigation }: Props) {
               color: theme.colors.primary,
               fontWeight: '500',
             }}>
-              {currentProfile?.name || 'Default'} ▼
+              {currentProfile?.name || 'Default'}
             </Text>
+            <Ionicons name="chevron-down" size={10} color={theme.colors.primary} />
           </View>
         </TouchableOpacity>
       ),
@@ -666,7 +673,7 @@ export default function SessionListScreen({ navigation }: Props) {
             accessibilityLabel={createButtonAccessibilityLabel('Open split view')}
             accessibilityHint="Opens two chats at once for comparison"
           >
-            <Text style={{ fontSize: 17, color: theme.colors.foreground }}>◫</Text>
+            <Ionicons name="git-compare-outline" size={18} color={theme.colors.foreground} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleCreateSession}
@@ -684,7 +691,7 @@ export default function SessionListScreen({ navigation }: Props) {
             accessibilityLabel={createButtonAccessibilityLabel('Open settings')}
             accessibilityHint="Opens app settings."
           >
-            <Text style={{ fontSize: 20, color: theme.colors.foreground }}>⚙️</Text>
+            <Ionicons name="settings-outline" size={20} color={theme.colors.foreground} />
           </TouchableOpacity>
         </View>
       ),
@@ -732,15 +739,32 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation.navigate('Chat');
   };
 
+  // Create a settings client for syncing pin/archive/delete state to server
+  const settingsClient = useMemo(() => {
+    if (config.baseUrl && config.apiKey) {
+      return new SettingsApiClient(config.baseUrl, config.apiKey);
+    }
+    return undefined;
+  }, [config.baseUrl, config.apiKey]);
+
   const handleDeleteSession = useCallback((session: SessionListItem) => {
-    const doDelete = () => {
-      connectionManager.removeConnection(session.id);
-      sessionStore.deleteSession(session.id);
+    const doDelete = async () => {
+      const serverConversationId = sessionStore.sessions.find(item => item.id === session.id)?.serverConversationId;
+
+      try {
+        if (settingsClient && serverConversationId) {
+          await settingsClient.deleteConversation(serverConversationId);
+        }
+        connectionManager.removeConnection(session.id);
+        await sessionStore.deleteSession(session.id);
+      } catch (error: any) {
+        Alert.alert('Delete Failed', error?.message || 'Failed to delete this chat');
+      }
     };
 
     if (Platform.OS === 'web') {
       if (window.confirm(`Delete "${session.title}"?`)) {
-        doDelete();
+        void doDelete();
       }
     } else {
       Alert.alert(
@@ -748,19 +772,57 @@ export default function SessionListScreen({ navigation }: Props) {
         `Are you sure you want to delete "${session.title}"?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: doDelete },
+          { text: 'Delete', style: 'destructive', onPress: () => { void doDelete(); } },
         ]
       );
     }
-  }, [connectionManager, sessionStore]);
+  }, [connectionManager, sessionStore, settingsClient]);
 
-  // Create a settings client for syncing pin/archive state to server
-  const settingsClient = useMemo(() => {
-    if (config.baseUrl && config.apiKey) {
-      return new SettingsApiClient(config.baseUrl, config.apiKey);
+  const handleOpenRenameSession = useCallback((session: SessionListItem) => {
+    setRenameSession(session);
+    setRenameTitleDraft(session.title);
+  }, []);
+
+  const handleCloseRenameSession = useCallback(() => {
+    if (isRenameSaving) return;
+    setRenameSession(null);
+    setRenameTitleDraft('');
+  }, [isRenameSaving]);
+
+  const handleSaveRenameSession = useCallback(async () => {
+    if (!renameSession || isRenameSaving) return;
+
+    const nextTitle = normalizeSessionTitleText(renameTitleDraft);
+    const previousTitle = normalizeSessionTitleText(renameSession.title);
+    if (nextTitle === previousTitle) {
+      handleCloseRenameSession();
+      return;
     }
-    return undefined;
-  }, [config.baseUrl, config.apiKey]);
+
+    setIsRenameSaving(true);
+    try {
+      let updatedTitle = nextTitle;
+      const serverConversationId = sessionStore.sessions.find(item => item.id === renameSession.id)?.serverConversationId;
+      if (settingsClient && serverConversationId) {
+        const updatedConversation = await settingsClient.updateConversation(serverConversationId, { title: nextTitle });
+        updatedTitle = updatedConversation.title || nextTitle;
+      }
+      await sessionStore.renameSessionTitle(renameSession.id, updatedTitle);
+      setRenameSession(null);
+      setRenameTitleDraft('');
+    } catch (error: any) {
+      Alert.alert('Rename Failed', error?.message || 'Failed to rename this chat');
+    } finally {
+      setIsRenameSaving(false);
+    }
+  }, [
+    handleCloseRenameSession,
+    isRenameSaving,
+    renameSession,
+    renameTitleDraft,
+    sessionStore,
+    settingsClient,
+  ]);
 
   const handleToggleSessionPinned = useCallback(async (sessionId: string) => {
     await sessionStore.toggleSessionPinned(sessionId, settingsClient);
@@ -778,15 +840,17 @@ export default function SessionListScreen({ navigation }: Props) {
 
     if (Platform.OS === 'web') {
       // On web, fall back to a simple confirm for delete
-      const action = window.prompt(`Choose action for "${session.title}":\n1. ${pinLabel}\n2. ${archiveLabel}\n3. Delete\n\nEnter 1, 2, or 3:`);
-      if (action === '1') void handleToggleSessionPinned(session.id);
-      else if (action === '2') void handleToggleSessionArchived(session.id);
-      else if (action === '3') handleDeleteSession(session);
+      const action = window.prompt(`Choose action for "${session.title}":\n1. Rename\n2. ${pinLabel}\n3. ${archiveLabel}\n4. Delete\n\nEnter 1, 2, 3, or 4:`);
+      if (action === '1') handleOpenRenameSession(session);
+      else if (action === '2') void handleToggleSessionPinned(session.id);
+      else if (action === '3') void handleToggleSessionArchived(session.id);
+      else if (action === '4') handleDeleteSession(session);
     } else {
       Alert.alert(
         session.title,
         undefined,
         [
+          { text: 'Rename', onPress: () => handleOpenRenameSession(session) },
           { text: pinLabel, onPress: () => void handleToggleSessionPinned(session.id) },
           { text: archiveLabel, onPress: () => void handleToggleSessionArchived(session.id) },
           { text: 'Delete', style: 'destructive', onPress: () => handleDeleteSession(session) },
@@ -794,7 +858,7 @@ export default function SessionListScreen({ navigation }: Props) {
         ]
       );
     }
-  }, [handleToggleSessionPinned, handleToggleSessionArchived, handleDeleteSession]);
+  }, [handleToggleSessionPinned, handleToggleSessionArchived, handleDeleteSession, handleOpenRenameSession]);
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -838,9 +902,13 @@ export default function SessionListScreen({ navigation }: Props) {
 
   const filteredSessions = useMemo(() => {
     const results = filterSessionSearchResults(sessionStore.sessions, searchQuery);
-    if (searchQuery.trim()) return results;
-    return results.filter((s) => !s.isArchived);
-  }, [sessionStore.sessions, searchQuery]);
+    return results.filter((s) => sessionListMode === 'archived' ? !!s.isArchived : !s.isArchived);
+  }, [sessionListMode, sessionStore.sessions, searchQuery]);
+
+  const archivedSessionCount = useMemo(
+    () => sessionStore.sessions.filter((session) => !!session.isArchived).length,
+    [sessionStore.sessions],
+  );
 
   const renderSession = ({ item }: { item: SessionSearchResult }) => {
     const isActive = item.id === sessionStore.currentSessionId;
@@ -889,6 +957,22 @@ export default function SessionListScreen({ navigation }: Props) {
                 {item.isPinned ? 'Pinned' : 'Pin'}
               </Text>
             </Pressable>
+            {item.isArchived ? (
+              <Pressable
+                style={[styles.sessionArchiveButton, styles.sessionArchiveButtonActive]}
+                onPress={(event: GestureResponderEvent) => {
+                  event.stopPropagation();
+                  void handleToggleSessionArchived(item.id);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel(`Unarchive ${item.title}`)}
+                accessibilityHint="Moves this chat back to the active chats list."
+              >
+                <Text style={[styles.sessionArchiveButtonText, styles.sessionArchiveButtonTextActive]}>
+                  Unarchive
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
         <Text style={styles.sessionPreview} numberOfLines={1}>
@@ -902,20 +986,34 @@ export default function SessionListScreen({ navigation }: Props) {
   const EmptyState = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyStateTextGroup}>
-        <Text style={styles.emptyTitle}>No chats yet</Text>
+        <Text style={styles.emptyTitle}>{sessionListMode === 'archived' ? 'No archived chats' : 'No chats yet'}</Text>
         <Text style={styles.emptySubtitle}>
-          Start your first chat so recent conversations show up here.
+          {sessionListMode === 'archived'
+            ? 'Archived chats will show up here after you archive them from the chat actions menu.'
+            : 'Start your first chat so recent conversations show up here.'}
         </Text>
       </View>
-      <TouchableOpacity
-        style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
-        onPress={handleCreateSession}
-        accessibilityRole="button"
-        accessibilityLabel={createButtonAccessibilityLabel('Start first chat')}
-        accessibilityHint="Creates and opens your first chat."
-      >
-        <Text style={styles.emptyStateButtonText}>Start first chat</Text>
-      </TouchableOpacity>
+      {sessionListMode === 'archived' ? (
+        <TouchableOpacity
+          style={[styles.emptySecondaryButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
+          onPress={() => setSessionListMode('active')}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Show active chats')}
+          accessibilityHint="Returns to the active chats list."
+        >
+          <Text style={styles.emptySecondaryButtonText}>Show active chats</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={[styles.newButton, styles.sessionActionTouchTarget, styles.emptyStateButton]}
+          onPress={handleCreateSession}
+          accessibilityRole="button"
+          accessibilityLabel={createButtonAccessibilityLabel('Start first chat')}
+          accessibilityHint="Creates and opens your first chat."
+        >
+          <Text style={styles.emptyStateButtonText}>Start first chat</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -1029,6 +1127,32 @@ export default function SessionListScreen({ navigation }: Props) {
             </TouchableOpacity>
           )}
         </View>
+        <View
+          style={styles.archiveFilterRow}
+          accessibilityRole="tablist"
+          accessibilityLabel="Chat archive filter"
+        >
+          {([
+            ['active', 'Active'],
+            ['archived', archivedSessionCount > 0 ? `Archived (${archivedSessionCount})` : 'Archived'],
+          ] as const).map(([mode, label]) => {
+            const selected = sessionListMode === mode;
+            return (
+              <TouchableOpacity
+                key={mode}
+                style={[styles.archiveFilterButton, selected && styles.archiveFilterButtonActive]}
+                onPress={() => setSessionListMode(mode)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={createButtonAccessibilityLabel(`Show ${mode} chats`)}
+              >
+                <Text style={[styles.archiveFilterButtonText, selected && styles.archiveFilterButtonTextActive]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       <FlatList
@@ -1091,6 +1215,53 @@ export default function SessionListScreen({ navigation }: Props) {
           </Text>
         </Pressable>
       </View>
+      <Modal
+        visible={!!renameSession}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseRenameSession}
+      >
+        <View style={styles.renameModalOverlay}>
+          <View style={styles.renameModalContent}>
+            <Text style={styles.renameModalTitle}>Rename chat</Text>
+            <TextInput
+              style={styles.renameInput}
+              value={renameTitleDraft}
+              onChangeText={setRenameTitleDraft}
+              placeholder="Chat title"
+              placeholderTextColor={theme.colors.mutedForeground}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => { void handleSaveRenameSession(); }}
+              accessibilityLabel={createTextInputAccessibilityLabel('Chat title')}
+            />
+            <View style={styles.renameActions}>
+              <TouchableOpacity
+                style={[styles.renameActionButton, styles.renameCancelButton]}
+                onPress={handleCloseRenameSession}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Cancel rename')}
+                disabled={isRenameSaving}
+              >
+                <Text style={styles.renameCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.renameActionButton,
+                  styles.renameSaveButton,
+                  isRenameSaving && styles.renameSaveButtonDisabled,
+                ]}
+                onPress={() => { void handleSaveRenameSession(); }}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Save chat title')}
+                disabled={isRenameSaving}
+              >
+                <Text style={styles.renameSaveText}>{isRenameSaving ? 'Saving' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <AgentSelectorSheet
         visible={agentSelectorVisible}
         onClose={() => setAgentSelectorVisible(false)}
@@ -1183,6 +1354,35 @@ function createStyles(theme: Theme, screenHeight: number) {
     searchClearButtonText: {
       color: theme.colors.primary,
       fontWeight: '600',
+    },
+    archiveFilterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginTop: spacing.xs,
+    },
+    archiveFilterButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+    },
+    archiveFilterButtonActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '14',
+    },
+    archiveFilterButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    archiveFilterButtonTextActive: {
+      color: theme.colors.primary,
     },
     list: {
       padding: spacing.md,
@@ -1305,6 +1505,29 @@ function createStyles(theme: Theme, screenHeight: number) {
     sessionPinButtonTextActive: {
       color: theme.colors.primary,
     },
+    sessionArchiveButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.xs,
+        verticalPadding: 4,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    sessionArchiveButtonActive: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary + '12',
+    },
+    sessionArchiveButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    sessionArchiveButtonTextActive: {
+      color: theme.colors.primary,
+    },
     sessionDate: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
@@ -1346,6 +1569,77 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
       textAlign: 'center',
+    },
+    emptySecondaryButton: {
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    emptySecondaryButtonText: {
+      color: theme.colors.foreground,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    renameModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing.lg,
+    },
+    renameModalContent: {
+      width: '100%' as const,
+      maxWidth: 420,
+      backgroundColor: theme.colors.background,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.lg,
+      gap: spacing.md,
+    },
+    renameModalTitle: {
+      ...theme.typography.h2,
+    },
+    renameInput: {
+      ...theme.input,
+    },
+    renameActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      gap: spacing.sm,
+      flexWrap: 'wrap',
+    },
+    renameActionButton: {
+      ...createMinimumTouchTargetStyle({
+        minSize: 44,
+        horizontalPadding: spacing.md,
+        verticalPadding: spacing.sm,
+        horizontalMargin: 0,
+      }),
+      borderRadius: radius.md,
+      alignItems: 'center',
+      minWidth: 96,
+    },
+    renameCancelButton: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    renameCancelText: {
+      color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    renameSaveButton: {
+      backgroundColor: theme.colors.primary,
+    },
+    renameSaveButtonDisabled: {
+      opacity: 0.6,
+    },
+    renameSaveText: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '600',
     },
     rfContainer: {
       borderTopWidth: theme.hairline,

@@ -55,6 +55,74 @@ describe("conversation lazy loading", () => {
     expect(item.lastMessage).toMatch(/…$/)
   })
 
+  it("indexes user prompts and agent final responses for saved conversation search", async () => {
+    const service = await setupConversationServiceTest()
+
+    await service.saveConversation({
+      id: "conv_search_text",
+      title: "Searchable history",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [
+        { id: "m1", role: "user", content: "Start the run", timestamp: 1 },
+        { id: "m2", role: "assistant", content: "Starting", timestamp: 2 },
+        { id: "m3", role: "tool", content: "tool-only phrase should not be indexed", timestamp: 3 },
+        { id: "m4", role: "user", content: "Find the cobalt catalog reference", timestamp: 4 },
+        {
+          id: "m5",
+          role: "assistant",
+          content: "",
+          timestamp: 5,
+          toolCalls: [{ name: "respond_to_user", arguments: { text: "Final answer mentions the quartz invoice" } }],
+        },
+        { id: "m6", role: "tool", content: "[respond_to_user] {\"success\":true}", timestamp: 6 },
+      ],
+    }, true)
+
+    const [item] = await service.getConversationHistory()
+
+    expect(item.searchText).toContain("cobalt catalog reference")
+    expect(item.searchText).toContain("Final answer mentions the quartz invoice")
+    expect(item.searchText).not.toContain("tool-only phrase should not be indexed")
+    expect(item.searchText?.length ?? 0).toBeLessThanOrEqual(8000)
+  })
+
+  it("orders saved conversation history by latest update or message timestamp", async () => {
+    const service = await setupConversationServiceTest()
+
+    await service.saveConversation({
+      id: "conv_newer_update",
+      title: "Newer update",
+      createdAt: 100,
+      updatedAt: 500,
+      messages: [
+        { id: "m1", role: "user", content: "Earlier message", timestamp: 120 },
+      ],
+    }, true)
+
+    await service.saveConversation({
+      id: "conv_newer_message",
+      title: "Newer message",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [
+        { id: "m1", role: "user", content: "Latest message", timestamp: 700 },
+      ],
+    }, true)
+
+    const history = await service.getConversationHistory()
+
+    expect(history.map((item) => item.id)).toEqual([
+      "conv_newer_message",
+      "conv_newer_update",
+    ])
+    expect(history[0]).toMatchObject({
+      id: "conv_newer_message",
+      updatedAt: 700,
+      lastMessageAt: 700,
+    })
+  })
+
   it("returns a tail message window without raw history payloads", async () => {
     const service = await setupConversationServiceTest()
     await service.saveConversation({

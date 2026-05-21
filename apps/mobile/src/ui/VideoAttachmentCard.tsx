@@ -1,17 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
+import { Ionicons } from '@expo/vector-icons';
 import {
   buildConversationVideoAssetHttpUrl,
   getVideoAssetLabel,
-  isConversationVideoAssetUrl,
   isRenderableVideoUrl,
+  parseConversationVideoAssetUrl,
 } from '@dotagents/shared';
+import { SettingsApiClient } from '../lib/settingsApi';
 import { useTheme } from './ThemeProvider';
 import { radius, spacing } from './theme';
 
-interface VideoAttachmentCardProps {
+export interface VideoAttachmentCardProps {
   sourceUrl: string;
   label?: string;
   assetBaseUrl?: string;
@@ -36,13 +38,27 @@ function getVideoCacheExtension(uri: string): string {
   }
 }
 
+function formatVideoAttachmentRequestFailedMessage(status: number): string {
+  return `Video request failed (${status})`;
+}
+
+const VIDEO_ATTACHMENT_HEIGHT = 180;
+
+function getHeaderRecord(headers: Headers): Record<string, string> {
+  const record: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    record[key] = value;
+  });
+  return record;
+}
+
 export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   sourceUrl,
   label,
   assetBaseUrl,
   authToken,
 }) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [playbackUri, setPlaybackUri] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -50,8 +66,13 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
   const objectUrlRef = useRef<string | null>(null);
   const displayLabel = getVideoAssetLabel(label, sourceUrl);
   const resolvedUri = resolveVideoUri(sourceUrl, assetBaseUrl);
-  const isConversationAsset = isConversationVideoAssetUrl(sourceUrl);
-  const shouldFetchWithAuth = isConversationAsset && !!authToken;
+  const conversationAssetRef = useMemo(() => parseConversationVideoAssetUrl(sourceUrl), [sourceUrl]);
+  const isConversationAsset = !!conversationAssetRef;
+  const assetApiClient = useMemo(
+    () => (assetBaseUrl && authToken ? new SettingsApiClient(assetBaseUrl, authToken) : null),
+    [assetBaseUrl, authToken],
+  );
+  const shouldFetchWithAuth = isConversationAsset && !!assetApiClient;
   const canRender = (() => {
     // Asset URLs (assets://) can't be played directly on mobile — they must be
     // resolved to an HTTP URL via buildConversationVideoAssetHttpUrl (which
@@ -96,11 +117,17 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         return;
       }
 
-      const headers = { Authorization: `Bearer ${authToken}` };
+      if (!assetApiClient || !conversationAssetRef) {
+        throw new Error('Missing video asset credentials.');
+      }
+
       if (Platform.OS === 'web') {
-        const response = await fetch(resolvedUri, { headers });
+        const response = await assetApiClient.getConversationVideoAssetResponse(
+          conversationAssetRef.conversationId,
+          conversationAssetRef.fileName,
+        );
         if (!response.ok) {
-          throw new Error(`Video request failed (${response.status})`);
+          throw new Error(formatVideoAttachmentRequestFailedMessage(response.status));
         }
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
@@ -114,6 +141,7 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         Paths.cache,
         `chat-video-${Date.now()}-${Math.floor(Math.random() * 1e6)}.${extension}`,
       );
+      const headers = getHeaderRecord(await assetApiClient.buildRequestHeaders());
       const file = await File.downloadFileAsync(resolvedUri, destination, {
         headers,
         idempotent: true,
@@ -125,37 +153,51 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [authToken, canRender, loading, playbackUri, resolvedUri, shouldFetchWithAuth]);
+  }, [assetApiClient, canRender, conversationAssetRef, loading, playbackUri, resolvedUri, shouldFetchWithAuth]);
 
   const styles = useMemo(() => StyleSheet.create({
     card: {
       borderWidth: 1,
       borderColor: theme.colors.border,
-      borderRadius: radius.lg,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.card,
       overflow: 'hidden',
       marginBottom: spacing.sm,
     },
     header: {
       padding: spacing.sm,
-      gap: 2,
+      gap: 6,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
     },
     title: {
       color: theme.colors.foreground,
       fontWeight: '600',
       fontSize: 13,
+      flex: 1,
+      minWidth: 0,
     },
     subtitle: {
       color: theme.colors.mutedForeground,
       fontSize: 11,
     },
     button: {
-      marginTop: spacing.xs,
+      marginTop: 2,
       alignSelf: 'flex-start',
-      borderRadius: radius.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      minHeight: 34,
+      borderRadius: radius.sm,
       backgroundColor: theme.colors.primary,
       paddingHorizontal: spacing.sm,
-      paddingVertical: 6,
+      paddingVertical: 5,
+    },
+    buttonDisabled: {
+      opacity: 0.72,
     },
     buttonText: {
       color: theme.colors.primaryForeground,
@@ -164,10 +206,13 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
     },
     video: {
       width: '100%',
-      height: 220,
+      height: VIDEO_ATTACHMENT_HEIGHT,
       backgroundColor: '#000',
     },
     fallbackLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
       paddingVertical: spacing.xs,
       marginBottom: spacing.sm,
     },
@@ -175,13 +220,15 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
       color: theme.colors.primary,
       fontSize: 13,
       textDecorationLine: 'underline',
+      flex: 1,
+      minWidth: 0,
     },
     errorText: {
       color: theme.colors.destructive,
       fontSize: 11,
-      marginTop: spacing.xs,
+      marginTop: 2,
     },
-  }), [isDark, theme]);
+  }), [theme]);
 
   if (!canRender) {
     return (
@@ -191,7 +238,8 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         onPress={() => Linking.openURL(resolvedUri)}
         style={styles.fallbackLink}
       >
-        <Text style={styles.fallbackLinkText}>🔗 {displayLabel}</Text>
+        <Ionicons name="link-outline" size={15} color={theme.colors.primary} />
+        <Text style={styles.fallbackLinkText} numberOfLines={2}>{displayLabel}</Text>
       </Pressable>
     );
   }
@@ -209,24 +257,37 @@ export const VideoAttachmentCard: React.FC<VideoAttachmentCardProps> = ({
         />
       ) : (
         <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>🎬 {displayLabel}</Text>
-          <Text style={styles.subtitle} numberOfLines={1}>Loads only when you tap play</Text>
+          <View style={styles.titleRow}>
+            <Ionicons name="videocam-outline" size={16} color={theme.colors.mutedForeground} />
+            <Text style={styles.title} numberOfLines={1}>{displayLabel}</Text>
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Play video ${displayLabel}`}
             accessibilityState={{ busy: loading }}
             onPress={loadVideo}
-            style={styles.button}
+            style={[styles.button, loading && styles.buttonDisabled]}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>{loading ? 'Loading…' : 'Play video'}</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color={theme.colors.primaryForeground} />
+            ) : (
+              <Ionicons name="play" size={14} color={theme.colors.primaryForeground} />
+            )}
+            <Text style={styles.buttonText}>{loading ? 'Loading...' : 'Play'}</Text>
           </Pressable>
           {loadError ? (
             <Text style={styles.errorText}>{loadError}</Text>
           ) : null}
           {canOpenExternally ? (
-            <Pressable onPress={() => Linking.openURL(resolvedUri)}>
-              <Text style={[styles.subtitle, { marginTop: spacing.xs }]}>Open externally</Text>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`Open video externally: ${displayLabel}`}
+              onPress={() => Linking.openURL(resolvedUri)}
+              style={styles.titleRow}
+            >
+              <Ionicons name="open-outline" size={14} color={theme.colors.mutedForeground} />
+              <Text style={styles.subtitle}>Open externally</Text>
             </Pressable>
           ) : null}
         </View>
