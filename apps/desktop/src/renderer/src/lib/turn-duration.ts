@@ -109,6 +109,23 @@ export function formatTurnDuration(ms: number): string {
 }
 
 /**
+ * Format a USD cost as a compact string for inline display next to the
+ * turn duration. Examples:
+ *   0       → ""        (caller should skip rendering)
+ *   0.003   → "<$0.01"
+ *   0.42    → "$0.42"
+ *   1.23    → "$1.23"
+ *   12.456  → "$12.46"
+ *   123.45  → "$123"
+ */
+export function formatUsdCost(usd: number | undefined): string {
+  if (!Number.isFinite(usd) || !usd || usd <= 0) return ""
+  if (usd < 0.01) return "<$0.01"
+  if (usd < 100) return `$${usd.toFixed(2)}`
+  return `$${Math.round(usd)}`
+}
+
+/**
  * React hook returning a wall-clock timestamp that refreshes every
  * `intervalMs` while `enabled` is true. Returns a stable timestamp when
  * disabled so memoized consumers do not re-render unnecessarily.

@@ -60,6 +60,13 @@ vi.mock("./langfuse-service", () => ({
   flushLangfuse: mockFlushLangfuse,
 }))
 
+vi.mock("./session-cost", () => ({
+  clearSessionCost: vi.fn(),
+  getSessionCost: vi.fn(() => undefined),
+  providerHintForAcpAgent: vi.fn(() => "anthropic"),
+  recordSessionTokenUsage: vi.fn(),
+}))
+
 describe("acp-main-agent", () => {
   beforeEach(() => {
     vi.resetModules()

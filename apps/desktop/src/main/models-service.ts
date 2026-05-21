@@ -26,7 +26,7 @@ const CACHE_DURATION = 5 * 60 * 1000
  * @param baseUrl - Optional base URL to detect OpenRouter
  * @returns The models.dev provider ID
  */
-function mapToModelsDevProviderId(providerId: string, baseUrl?: string): string {
+export function mapToModelsDevProviderId(providerId: string, baseUrl?: string): string {
   // Check if using OpenRouter
   if (providerId === "openai" && baseUrl?.includes("openrouter.ai")) {
     return "openrouter"
@@ -796,6 +796,40 @@ function getFallbackModels(providerId: string): ModelInfo[] {
  */
 export function clearModelsCache(): void {
   modelsCache.clear()
+}
+
+/** Per-token pricing for a model, in USD per million tokens. */
+export interface ModelPricing {
+  inputCost?: number
+  outputCost?: number
+  reasoningCost?: number
+  cacheReadCost?: number
+  cacheWriteCost?: number
+}
+
+/**
+ * Look up per-million-token pricing for a model from the models.dev cache.
+ *
+ * Falls back to fuzzy / cross-provider matching when the exact id is not
+ * registered under the requested provider. Returns undefined when no
+ * pricing data is available (e.g. cache not yet loaded, unknown model).
+ */
+export function getModelPricing(
+  providerId: string,
+  modelId: string,
+  baseUrl?: string,
+): ModelPricing | undefined {
+  if (!modelId) return undefined
+  const modelsDevProviderId = mapToModelsDevProviderId(providerId, baseUrl)
+  const m = getModelFromModelsDevByProviderId(modelId, modelsDevProviderId)
+  if (!m?.cost) return undefined
+  return {
+    inputCost: m.cost.input,
+    outputCost: m.cost.output,
+    reasoningCost: m.cost.reasoning,
+    cacheReadCost: m.cost.cache_read,
+    cacheWriteCost: m.cost.cache_write,
+  }
 }
 
 /**
