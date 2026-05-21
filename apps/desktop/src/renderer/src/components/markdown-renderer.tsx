@@ -3,7 +3,18 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeHighlight from "rehype-highlight"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { ChevronDown, ChevronRight, Brain, Copy, CheckCheck, PlayCircle, X } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronRight,
+  Brain,
+  Copy,
+  CheckCheck,
+  PlayCircle,
+  RotateCcw,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react"
 import { getVideoAssetLabel, isRenderableVideoUrl } from "@dotagents/shared"
 import { cn } from "@renderer/lib/utils"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
@@ -34,6 +45,8 @@ const COMPACT_THINK_PROSE_CLASS_NAME =
   `${COMPACT_PROSE_CLASS_NAME} prose-amber`
 
 const SELECTABLE_MARKDOWN_CLASS_NAME = "markdown-selectable"
+const LIGHTBOX_CONTROL_BUTTON_CLASS_NAME =
+  "inline-flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:pointer-events-none disabled:opacity-35"
 
 const ALLOWED_MARKDOWN_DATA_IMAGE_URL_REGEX =
   /^data:image\/(?:png|apng|gif|jpe?g|webp|bmp|avif)(?:;|,)/
@@ -135,6 +148,89 @@ export const markdownUrlTransform = (url: string, key?: string) => {
   return isAllowed ? url : ""
 }
 
+type ImageZoomState = {
+  scale: number
+  offsetX: number
+  offsetY: number
+}
+
+const IMAGE_ZOOM_MIN_SCALE = 1
+const IMAGE_ZOOM_MAX_SCALE = 5
+const IMAGE_ZOOM_STEP = 0.5
+const DEFAULT_IMAGE_ZOOM_STATE: ImageZoomState = {
+  scale: IMAGE_ZOOM_MIN_SCALE,
+  offsetX: 0,
+  offsetY: 0,
+}
+
+const clampNumber = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value))
+
+const getContainedImageSize = (
+  viewport: HTMLDivElement | null,
+  image: HTMLImageElement | null,
+) => {
+  if (!viewport || !image || !image.naturalWidth || !image.naturalHeight) {
+    return null
+  }
+
+  const viewportRect = viewport.getBoundingClientRect()
+  if (viewportRect.width <= 0 || viewportRect.height <= 0) return null
+
+  const fitScale = Math.min(
+    1,
+    viewportRect.width / image.naturalWidth,
+    viewportRect.height / image.naturalHeight,
+  )
+
+  return {
+    viewportWidth: viewportRect.width,
+    viewportHeight: viewportRect.height,
+    width: image.naturalWidth * fitScale,
+    height: image.naturalHeight * fitScale,
+  }
+}
+
+const clampImageZoomState = (
+  state: ImageZoomState,
+  viewport: HTMLDivElement | null,
+  image: HTMLImageElement | null,
+): ImageZoomState => {
+  const scale = clampNumber(
+    state.scale,
+    IMAGE_ZOOM_MIN_SCALE,
+    IMAGE_ZOOM_MAX_SCALE,
+  )
+
+  if (scale <= IMAGE_ZOOM_MIN_SCALE) {
+    return { ...DEFAULT_IMAGE_ZOOM_STATE }
+  }
+
+  const imageSize = getContainedImageSize(viewport, image)
+  if (!imageSize) {
+    return {
+      scale,
+      offsetX: state.offsetX,
+      offsetY: state.offsetY,
+    }
+  }
+
+  const maxOffsetX = Math.max(
+    0,
+    (imageSize.width * scale - imageSize.viewportWidth) / 2,
+  )
+  const maxOffsetY = Math.max(
+    0,
+    (imageSize.height * scale - imageSize.viewportHeight) / 2,
+  )
+
+  return {
+    scale,
+    offsetX: clampNumber(state.offsetX, -maxOffsetX, maxOffsetX),
+    offsetY: clampNumber(state.offsetY, -maxOffsetY, maxOffsetY),
+  }
+}
+
 const containsChatImageChild = (children: React.ReactNode): boolean => {
   // react-markdown passes link children as React elements whose .type is the
   // `img` override (markdownImageComponent), not the eventual ChatImage. Match
@@ -182,10 +278,198 @@ const markdownLinkComponent = ({
 
 const ChatImage = ({ src, alt }: { src: string; alt?: string }) => {
   const [open, setOpen] = useState(false)
+  const [zoom, setZoom] = useState<ImageZoomState>(DEFAULT_IMAGE_ZOOM_STATE)
+  const [isDragging, setIsDragging] = useState(false)
+  const viewportRef = useRef<HTMLDivElement | null>(null)
+  const lightboxImageRef = useRef<HTMLImageElement | null>(null)
+  const dragStartRef = useRef<{
+    pointerId: number
+    clientX: number
+    clientY: number
+    offsetX: number
+    offsetY: number
+  } | null>(null)
+  const dragMovedRef = useRef(false)
   const label = alt || "Image"
 
+  const resetZoom = useCallback(() => {
+    dragStartRef.current = null
+    dragMovedRef.current = false
+    setIsDragging(false)
+    setZoom({ ...DEFAULT_IMAGE_ZOOM_STATE })
+  }, [])
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      resetZoom()
+      setOpen(nextOpen)
+    },
+    [resetZoom],
+  )
+
+  const updateZoom = useCallback(
+    (scaleDelta: number, anchor?: { clientX: number; clientY: number }) => {
+      setZoom((current) => {
+        const viewport = viewportRef.current
+        const image = lightboxImageRef.current
+        const nextScale = clampNumber(
+          current.scale + scaleDelta,
+          IMAGE_ZOOM_MIN_SCALE,
+          IMAGE_ZOOM_MAX_SCALE,
+        )
+
+        if (!anchor || !viewport) {
+          return clampImageZoomState(
+            {
+              ...current,
+              scale: nextScale,
+            },
+            viewport,
+            image,
+          )
+        }
+
+        const viewportRect = viewport.getBoundingClientRect()
+        const pointX =
+          anchor.clientX - viewportRect.left - viewportRect.width / 2
+        const pointY =
+          anchor.clientY - viewportRect.top - viewportRect.height / 2
+        const localX = (pointX - current.offsetX) / current.scale
+        const localY = (pointY - current.offsetY) / current.scale
+
+        return clampImageZoomState(
+          {
+            scale: nextScale,
+            offsetX: pointX - localX * nextScale,
+            offsetY: pointY - localY * nextScale,
+          },
+          viewport,
+          image,
+        )
+      })
+    },
+    [],
+  )
+
+  const handleLightboxWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      updateZoom(e.deltaY > 0 ? -IMAGE_ZOOM_STEP : IMAGE_ZOOM_STEP, {
+        clientX: e.clientX,
+        clientY: e.clientY,
+      })
+    },
+    [updateZoom],
+  )
+
+  const handleLightboxPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0 || zoom.scale <= IMAGE_ZOOM_MIN_SCALE) return
+
+      e.preventDefault()
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        // Synthetic events in tests may not have an active pointer capture.
+      }
+
+      dragStartRef.current = {
+        pointerId: e.pointerId,
+        clientX: e.clientX,
+        clientY: e.clientY,
+        offsetX: zoom.offsetX,
+        offsetY: zoom.offsetY,
+      }
+      dragMovedRef.current = false
+      setIsDragging(true)
+    },
+    [zoom.offsetX, zoom.offsetY, zoom.scale],
+  )
+
+  const handleLightboxPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const dragStart = dragStartRef.current
+      if (!dragStart || dragStart.pointerId !== e.pointerId) return
+
+      const deltaX = e.clientX - dragStart.clientX
+      const deltaY = e.clientY - dragStart.clientY
+      if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+        dragMovedRef.current = true
+      }
+
+      setZoom((current) =>
+        clampImageZoomState(
+          {
+            ...current,
+            offsetX: dragStart.offsetX + deltaX,
+            offsetY: dragStart.offsetY + deltaY,
+          },
+          viewportRef.current,
+          lightboxImageRef.current,
+        ),
+      )
+    },
+    [],
+  )
+
+  const handleLightboxPointerEnd = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const dragStart = dragStartRef.current
+      if (!dragStart || dragStart.pointerId !== e.pointerId) return
+
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      } catch {
+        // See setPointerCapture guard above.
+      }
+      dragStartRef.current = null
+      setIsDragging(false)
+    },
+    [],
+  )
+
+  const handleLightboxClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (
+        e.target === e.currentTarget &&
+        zoom.scale <= IMAGE_ZOOM_MIN_SCALE &&
+        !dragMovedRef.current
+      ) {
+        setOpen(false)
+      }
+      dragMovedRef.current = false
+    },
+    [zoom.scale],
+  )
+
+  const handleLightboxDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      if (zoom.scale > IMAGE_ZOOM_MIN_SCALE) {
+        resetZoom()
+        return
+      }
+
+      updateZoom(IMAGE_ZOOM_STEP * 2, {
+        clientX: e.clientX,
+        clientY: e.clientY,
+      })
+    },
+    [resetZoom, updateZoom, zoom.scale],
+  )
+
+  const handleImageLoad = useCallback(() => {
+    setZoom((current) =>
+      clampImageZoomState(
+        current,
+        viewportRef.current,
+        lightboxImageRef.current,
+      ),
+    )
+  }, [])
+
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+    <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Trigger asChild>
         <button
           type="button"
@@ -209,21 +493,85 @@ const ChatImage = ({ src, alt }: { src: string; alt?: string }) => {
       </DialogPrimitive.Trigger>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content
-          className="fixed inset-0 z-50 flex items-center justify-center p-6 outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setOpen(false)
-          }}
-        >
+        <DialogPrimitive.Content className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden p-4 outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:p-6">
           <DialogPrimitive.Title className="sr-only">{label}</DialogPrimitive.Title>
-          <img
-            src={src}
-            alt={label}
-            className="block max-h-full max-w-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <DialogPrimitive.Description className="sr-only">
+            Full-size preview of {label}
+          </DialogPrimitive.Description>
+          <div
+            ref={viewportRef}
+            className={cn(
+              "relative flex h-full w-full touch-none select-none items-center justify-center overflow-hidden",
+              zoom.scale > IMAGE_ZOOM_MIN_SCALE
+                ? isDragging
+                  ? "cursor-grabbing"
+                  : "cursor-grab"
+                : "cursor-zoom-in",
+            )}
+            onWheel={handleLightboxWheel}
+            onPointerDown={handleLightboxPointerDown}
+            onPointerMove={handleLightboxPointerMove}
+            onPointerUp={handleLightboxPointerEnd}
+            onPointerCancel={handleLightboxPointerEnd}
+            onClick={handleLightboxClick}
+            onDoubleClick={handleLightboxDoubleClick}
+          >
+            <img
+              ref={lightboxImageRef}
+              src={src}
+              alt={label}
+              className={cn(
+                "block max-h-full max-w-full object-contain will-change-transform",
+                !isDragging && "transition-transform duration-150 ease-out",
+              )}
+              style={{
+                transform: `translate3d(${zoom.offsetX}px, ${zoom.offsetY}px, 0) scale(${zoom.scale})`,
+              }}
+              draggable={false}
+              onLoad={handleImageLoad}
+            />
+          </div>
+          <div className="absolute bottom-4 left-1/2 z-[1] flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/60 p-1 text-white shadow-lg backdrop-blur">
+            <button
+              type="button"
+              className={LIGHTBOX_CONTROL_BUTTON_CLASS_NAME}
+              aria-label="Zoom out image preview"
+              title="Zoom out"
+              disabled={zoom.scale <= IMAGE_ZOOM_MIN_SCALE}
+              onClick={() => updateZoom(-IMAGE_ZOOM_STEP)}
+            >
+              <ZoomOut className="h-4 w-4" />
+            </button>
+            <span className="min-w-12 select-none px-2 text-center text-xs font-medium tabular-nums text-white/90">
+              {Math.round(zoom.scale * 100)}%
+            </span>
+            <button
+              type="button"
+              className={LIGHTBOX_CONTROL_BUTTON_CLASS_NAME}
+              aria-label="Zoom in image preview"
+              title="Zoom in"
+              disabled={zoom.scale >= IMAGE_ZOOM_MAX_SCALE}
+              onClick={() => updateZoom(IMAGE_ZOOM_STEP)}
+            >
+              <ZoomIn className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className={LIGHTBOX_CONTROL_BUTTON_CLASS_NAME}
+              aria-label="Reset image preview zoom"
+              title="Reset"
+              disabled={
+                zoom.scale <= IMAGE_ZOOM_MIN_SCALE &&
+                zoom.offsetX === 0 &&
+                zoom.offsetY === 0
+              }
+              onClick={resetZoom}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          </div>
           <DialogPrimitive.Close
-            className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white opacity-90 transition-opacity hover:bg-black/80 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="absolute right-4 top-4 z-[1] inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white opacity-90 transition-opacity hover:bg-black/80 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
             aria-label="Close image preview"
           >
             <X className="h-5 w-5" />

@@ -44,4 +44,15 @@ describe("markdown renderer layout", () => {
     )
     expect(markdownRendererSource).toContain("SELECTABLE_MARKDOWN_CLASS_NAME")
   })
+
+  it("keeps the image lightbox zoomable and pannable", () => {
+    expect(markdownRendererSource).toContain('aria-label="Zoom in image preview"')
+    expect(markdownRendererSource).toContain('aria-label="Zoom out image preview"')
+    expect(markdownRendererSource).toContain('aria-label="Reset image preview zoom"')
+    expect(markdownRendererSource).toContain("onWheel={handleLightboxWheel}")
+    expect(markdownRendererSource).toContain("onPointerDown={handleLightboxPointerDown}")
+    expect(markdownRendererSource).toContain(
+      "translate3d(${zoom.offsetX}px, ${zoom.offsetY}px, 0) scale(${zoom.scale})"
+    )
+  })
 })
