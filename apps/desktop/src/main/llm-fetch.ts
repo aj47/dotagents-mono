@@ -40,6 +40,7 @@ import {
   isTracingEnabled,
 } from "./langfuse-service"
 import { recordActualTokenUsage } from "./context-budget"
+import { recordSessionTokenUsage } from "./session-cost"
 import { getCurrentChatGptWebModelName, isChatGptWebProvider, makeChatGptWebCompletion, makeChatGptWebResponse } from "./chatgpt-web-provider"
 import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./conversation-image-assets"
 import { sanitizeMessagesForLlmTransport, sanitizeTextForLlmTransport } from "./llm-text-sanitization"
@@ -55,6 +56,9 @@ interface ExtendedUsage {
     cacheReadTokens?: number
     cacheWriteTokens?: number
     noCacheTokens?: number
+  }
+  outputTokenDetails?: {
+    reasoningTokens?: number
   }
   totalTokens?: number
 }
@@ -910,6 +914,16 @@ export async function makeLLMCallWithFetch(
 
           const text = result.text.trim()
 
+          // Accumulate running session cost from this LLM call before any
+          // early returns (tool calls, tool markers, plain text all share it).
+          // chatgpt-web does not report cache-write tokens.
+          recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+            inputTokens: result.usage?.inputTokens,
+            outputTokens: result.usage?.outputTokens,
+            cacheReadTokens: result.usage?.inputTokenDetails?.cacheReadTokens,
+            reasoningTokens: result.usage?.outputTokenDetails?.reasoningTokens,
+          })
+
           if (!text && !result.toolCalls?.length && !result.reasoningSummary) {
             if (generationId) {
               endLLMGeneration(generationId, {
@@ -1025,6 +1039,16 @@ export async function makeLLMCallWithFetch(
 
         // Log prompt cache metrics from usage data
         logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
+
+        // Accumulate running session cost from this LLM call before any
+        // branch-specific return paths (tool calls, JSON, tool markers, text).
+        recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+          inputTokens: result.usage?.inputTokens,
+          outputTokens: result.usage?.outputTokens,
+          cacheReadTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheReadTokens,
+          cacheWriteTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheWriteTokens,
+          reasoningTokens: (result.usage as ExtendedUsage)?.outputTokenDetails?.reasoningTokens,
+        })
 
         const text = result.text?.trim() || ""
 
@@ -1209,6 +1233,16 @@ export async function makeLLMCallWithStreamingAndTools(
           })
           const text = result.text
 
+          // Accumulate running session cost from this LLM call before the
+          // tool-call / text early-return branches below. chatgpt-web does
+          // not report cache-write tokens.
+          recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+            inputTokens: result.usage?.inputTokens,
+            outputTokens: result.usage?.outputTokens,
+            cacheReadTokens: result.usage?.inputTokenDetails?.cacheReadTokens,
+            reasoningTokens: result.usage?.outputTokenDetails?.reasoningTokens,
+          })
+
           if (generationId) {
             endLLMGeneration(generationId, {
               output: result.toolCalls?.length
@@ -1359,6 +1393,14 @@ export async function makeLLMCallWithStreamingAndTools(
         if (sessionId && finishUsage?.inputTokens) {
           recordActualTokenUsage(sessionId, finishUsage.inputTokens, finishUsage.outputTokens ?? 0)
         }
+        // Accumulate running session cost from this LLM call
+        recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+          inputTokens: finishUsage?.inputTokens,
+          outputTokens: finishUsage?.outputTokens,
+          cacheReadTokens: (finishUsage as ExtendedUsage | undefined)?.inputTokenDetails?.cacheReadTokens,
+          cacheWriteTokens: (finishUsage as ExtendedUsage | undefined)?.inputTokenDetails?.cacheWriteTokens,
+          reasoningTokens: (finishUsage as ExtendedUsage | undefined)?.outputTokenDetails?.reasoningTokens,
+        })
 
         if (!accumulated && collectedToolCalls.length === 0) {
           throw new Error("LLM returned empty response")
@@ -1464,6 +1506,17 @@ export async function makeTextCompletionWithFetch(
               // Log prompt cache metrics
               logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
               usage = result.usage as ExtendedUsage
+
+              // Accumulate running session cost from this text-completion call
+              // (used for context summaries) so summarization-heavy turns don't
+              // undercount the cumulative session cost.
+              recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+                inputTokens: usage?.inputTokens,
+                outputTokens: usage?.outputTokens,
+                cacheReadTokens: usage?.inputTokenDetails?.cacheReadTokens,
+                cacheWriteTokens: usage?.inputTokenDetails?.cacheWriteTokens,
+                reasoningTokens: usage?.outputTokenDetails?.reasoningTokens,
+              })
 
               return result.text?.trim() || ""
             })()
@@ -1580,6 +1633,15 @@ export async function verifyCompletionWithFetch(
             usage = result.usage as ExtendedUsage
             // Log prompt cache metrics
             logCacheMetrics(usage, promptCaching?.strategy, effectiveProviderId)
+            // Accumulate running session cost from this verification call so
+            // turns that trigger completion verification don't undercount.
+            recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+              inputTokens: usage?.inputTokens,
+              outputTokens: usage?.outputTokens,
+              cacheReadTokens: usage?.inputTokenDetails?.cacheReadTokens,
+              cacheWriteTokens: usage?.inputTokenDetails?.cacheWriteTokens,
+              reasoningTokens: usage?.outputTokenDetails?.reasoningTokens,
+            })
             text = result.text?.trim() || ""
           }
         } catch (error) {
