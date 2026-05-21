@@ -56,6 +56,9 @@ interface ExtendedUsage {
     cacheWriteTokens?: number
     noCacheTokens?: number
   }
+  outputTokenDetails?: {
+    reasoningTokens?: number
+  }
   totalTokens?: number
 }
 
@@ -1042,6 +1045,7 @@ export async function makeLLMCallWithFetch(
           outputTokens: result.usage?.outputTokens,
           cacheReadTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheReadTokens,
           cacheWriteTokens: (result.usage as ExtendedUsage)?.inputTokenDetails?.cacheWriteTokens,
+          reasoningTokens: (result.usage as ExtendedUsage)?.outputTokenDetails?.reasoningTokens,
         })
 
         const text = result.text?.trim() || ""
@@ -1392,6 +1396,7 @@ export async function makeLLMCallWithStreamingAndTools(
           outputTokens: finishUsage?.outputTokens,
           cacheReadTokens: (finishUsage as ExtendedUsage | undefined)?.inputTokenDetails?.cacheReadTokens,
           cacheWriteTokens: (finishUsage as ExtendedUsage | undefined)?.inputTokenDetails?.cacheWriteTokens,
+          reasoningTokens: (finishUsage as ExtendedUsage | undefined)?.outputTokenDetails?.reasoningTokens,
         })
 
         if (!accumulated && collectedToolCalls.length === 0) {
@@ -1497,6 +1502,17 @@ export async function makeTextCompletionWithFetch(
               // Log prompt cache metrics
               logCacheMetrics(result.usage as ExtendedUsage, promptCaching?.strategy, effectiveProviderId)
               usage = result.usage as ExtendedUsage
+
+              // Accumulate running session cost from this text-completion call
+              // (used for context summaries) so summarization-heavy turns don't
+              // undercount the cumulative session cost.
+              recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+                inputTokens: usage?.inputTokens,
+                outputTokens: usage?.outputTokens,
+                cacheReadTokens: usage?.inputTokenDetails?.cacheReadTokens,
+                cacheWriteTokens: usage?.inputTokenDetails?.cacheWriteTokens,
+                reasoningTokens: usage?.outputTokenDetails?.reasoningTokens,
+              })
 
               return result.text?.trim() || ""
             })()
@@ -1612,6 +1628,15 @@ export async function verifyCompletionWithFetch(
             usage = result.usage as ExtendedUsage
             // Log prompt cache metrics
             logCacheMetrics(usage, promptCaching?.strategy, effectiveProviderId)
+            // Accumulate running session cost from this verification call so
+            // turns that trigger completion verification don't undercount.
+            recordSessionTokenUsage(sessionId, effectiveProviderId, modelName, {
+              inputTokens: usage?.inputTokens,
+              outputTokens: usage?.outputTokens,
+              cacheReadTokens: usage?.inputTokenDetails?.cacheReadTokens,
+              cacheWriteTokens: usage?.inputTokenDetails?.cacheWriteTokens,
+              reasoningTokens: usage?.outputTokenDetails?.reasoningTokens,
+            })
             text = result.text?.trim() || ""
           }
         } catch (error) {
