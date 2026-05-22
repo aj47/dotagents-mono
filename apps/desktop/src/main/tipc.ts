@@ -1575,6 +1575,129 @@ export const router = {
     }
   }),
 
+  createSyntheticAgentSessionsForE2E: t.procedure
+    .input<{
+      count?: number
+      prefix?: string
+      completed?: boolean
+      messageRepeat?: number
+      scenario?: string
+      cases?: Array<{
+        id?: string
+        title?: string
+        finalContent?: string
+        conversationHistory?: AgentProgressUpdate["conversationHistory"]
+        steps?: Array<Partial<AgentProgressUpdate["steps"][number]>>
+      }>
+    } | undefined>()
+    .action(async ({ input }) => {
+      if (process.env["DOTAGENTS_SESSION_E2E_HARNESS"] !== "1") {
+        throw new Error("Synthetic session e2e harness is disabled")
+      }
+
+      const inputCases = Array.isArray(input?.cases) ? input.cases : []
+      const requestedCount = input?.count ?? (inputCases.length > 0 ? inputCases.length : 12)
+      const count = Math.max(1, Math.min(200, Math.floor(requestedCount)))
+      const prefix = input?.prefix?.trim() || `e2e-session-${Date.now()}`
+      const completed = input?.completed ?? true
+      const messageRepeat = Math.max(1, Math.min(80, Math.floor(input?.messageRepeat ?? 8)))
+      const sessionIds: string[] = []
+
+      for (let index = 0; index < count; index += 1) {
+        const useCase = inputCases[index]
+        const title = useCase?.title?.trim() || `E2E Session ${index + 1}`
+        const conversationId = `e2e-conversation-${prefix}-${useCase?.id ?? index + 1}`
+        const sessionId = agentSessionTracker.startSession(conversationId, title, false)
+        const runId = agentSessionStateManager.startSessionRun(sessionId)
+        const timestamp = Date.now() - index * 1000
+        const body = `Synthetic session lifecycle payload ${index + 1}. `.repeat(messageRepeat)
+        const baseSteps: AgentProgressUpdate["steps"] = useCase?.steps?.length
+          ? useCase.steps.map((step, stepIndex) => ({
+              id: step.id ?? `${sessionId}-step-${stepIndex + 1}`,
+              type: step.type ?? "thinking",
+              title: step.title ?? `Synthetic step ${stepIndex + 1}`,
+              description: step.description ?? body.slice(0, 180),
+              status: step.status ?? "completed",
+              timestamp: step.timestamp ?? timestamp + stepIndex,
+              ...step,
+            }))
+          : [
+              {
+                id: `${sessionId}-step-1`,
+                type: "thinking",
+                title: completed ? "Completed synthetic work" : "Prepared synthetic work",
+                description: body.slice(0, 180),
+                status: "completed",
+                timestamp,
+              },
+            ]
+        const progressSteps: AgentProgressUpdate["steps"] = completed
+          ? baseSteps
+          : [
+              ...baseSteps.map((step, stepIndex) => ({
+                ...step,
+                status: (step.status === "error" ? "error" : "completed") as AgentProgressUpdate["steps"][number]["status"],
+                timestamp: typeof step.timestamp === "number" ? step.timestamp : timestamp + stepIndex,
+              })),
+              {
+                id: `${sessionId}-active-step`,
+                type: "thinking",
+                title: "Running synthetic use case",
+                description: `Keeping ${title} active while switching between sessions. ${body.slice(0, 120)}`,
+                status: "in_progress" as const,
+                timestamp: timestamp + baseSteps.length + 1,
+              },
+            ]
+
+        try {
+          await emitAgentProgress({
+            sessionId,
+            runId,
+            conversationId,
+            conversationTitle: title,
+            currentIteration: completed ? 1 : 0,
+            maxIterations: 1,
+            steps: progressSteps,
+            isComplete: completed,
+            finalContent: completed ? (useCase?.finalContent ?? `Done: ${body}`) : undefined,
+            conversationHistory: useCase?.conversationHistory ?? [
+              {
+                role: "user",
+                content: `Create synthetic session ${index + 1}`,
+                timestamp: timestamp - 10,
+              },
+              {
+                role: "assistant",
+                content: completed ? `Synthetic response ${index + 1}. ${body}` : "Working…",
+                timestamp,
+              },
+            ],
+            conversationHistoryStartIndex: 0,
+            conversationHistoryTotalCount: 2,
+            streamingContent: completed
+              ? undefined
+              : {
+                  text: `Running ${title}. ${body.slice(0, 120)}`,
+                  isStreaming: true,
+                },
+            isSnoozed: false,
+          })
+
+          if (completed) {
+            agentSessionTracker.completeSession(sessionId, "Synthetic E2E session completed")
+          }
+        } finally {
+          if (completed) {
+            agentSessionStateManager.cleanupSession(sessionId)
+          }
+        }
+
+        sessionIds.push(sessionId)
+      }
+
+      return { sessionIds }
+    }),
+
   // List active + recent completed sessions for UI pickers (e.g. repeat-task
   // "continue from session" selector). Returns the shape the picker needs,
   // tolerant of an optional limit for completed sessions.

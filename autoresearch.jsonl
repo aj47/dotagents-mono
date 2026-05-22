@@ -1,0 +1,1 @@
+{"type":"config","name":"Desktop concurrent running session lifecycle responsiveness (median of 3 repetitions)","metricName":"session_lifecycle_ms","metricUnit":"ms","bestDirection":"lower"}

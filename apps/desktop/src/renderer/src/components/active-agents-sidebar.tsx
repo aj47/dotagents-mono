@@ -1841,6 +1841,8 @@ export function ActiveAgentsSidebar({
             return (
               <div
                 key={key}
+                data-sidebar-session-id={session.id}
+                data-sidebar-session-kind="active"
                 draggable
                 onDragStart={(event) => handleSessionDragStart(event, session)}
                 onDragEnd={clearSessionDragState}

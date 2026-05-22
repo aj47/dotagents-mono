@@ -16,7 +16,7 @@ export class ElectronPathResolver implements PathResolver {
   }
 
   getAppDataPath(): string {
-    return app.getPath("appData")
+    return process.env["DOTAGENTS_APP_DATA_PATH"]?.trim() || app.getPath("appData")
   }
 
   getTempPath(): string {

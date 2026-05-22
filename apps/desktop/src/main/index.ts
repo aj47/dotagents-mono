@@ -448,7 +448,9 @@ if (!gotSingleInstanceLock) {
 
     electronApp.setAppUserModelId(process.env.APP_ID)
 
-    const accessibilityGranted = isAccessibilityGranted()
+    const accessibilityGranted =
+      process.env["DOTAGENTS_E2E_BYPASS_ACCESSIBILITY"] === "1" ||
+      isAccessibilityGranted()
     logApp(`Accessibility granted: ${accessibilityGranted}`)
 
     Menu.setApplicationMenu(createAppMenu())

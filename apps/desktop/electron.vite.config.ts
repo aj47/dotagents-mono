@@ -8,10 +8,11 @@ const builderConfig = require("./electron-builder.config.cjs")
 const sharedSrcRoot = resolve(__dirname, "../../packages/shared/src")
 
 const define = {
-  "process.env.APP_ID": JSON.stringify(builderConfig.appId),
+  "process.env.APP_ID": JSON.stringify(process.env.APP_ID || builderConfig.appId),
   "process.env.PRODUCT_NAME": JSON.stringify(builderConfig.productName),
   "process.env.APP_VERSION": JSON.stringify(pkg.version),
   "process.env.IS_MAC": JSON.stringify(process.platform === "darwin"),
+  "process.env.DOTAGENTS_SESSION_E2E_HARNESS": JSON.stringify(process.env.DOTAGENTS_SESSION_E2E_HARNESS || "0"),
 }
 
 // externalizeDepsPlugin only reads pkg.dependencies, not optionalDependencies.
