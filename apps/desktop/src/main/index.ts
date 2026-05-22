@@ -502,9 +502,17 @@ if (!gotSingleInstanceLock) {
         pendingHubBundleHandoffPath,
       )
 
-      createMainWindow(
+      const mainWindow = createMainWindow(
         launchDecision.url ? { url: launchDecision.url } : undefined,
       )
+
+      mainWindow?.webContents.once("did-finish-load", () => {
+        setTimeout(() => {
+          if (WINDOWS.has("panel")) return
+          createPanelWindow()
+          logApp("Panel window created after main window load")
+        }, 1000)
+      })
 
       if (launchDecision.reason === "onboarding") {
         logApp("Main window created (showing onboarding)")
@@ -524,8 +532,10 @@ if (!gotSingleInstanceLock) {
       logApp("Setup window created (accessibility not granted)")
     }
 
-    createPanelWindow()
-    logApp("Panel window created")
+    if (!WINDOWS.has("main")) {
+      createPanelWindow()
+      logApp("Panel window created")
+    }
 
     listenToKeyboardEvents()
     logApp("Keyboard event listener started")
@@ -688,7 +698,9 @@ if (!gotSingleInstanceLock) {
       void startDiscordIfConfigured("desktop")
     } catch (_e) {}
 
-    import("./updater").then((res) => res.init()).catch(console.error)
+    setTimeout(() => {
+      import("./updater").then((res) => res.init()).catch(console.error)
+    }, 8000)
 
     app.on("browser-window-created", (_, window) => {
       optimizer.watchWindowShortcuts(window)

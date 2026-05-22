@@ -388,6 +388,7 @@ export function ActiveAgentsSidebar({
   const setViewedConversationId = useAgentStore((s) => s.setViewedConversationId)
   const agentProgressById = useAgentStore((s) => s.agentProgressById)
   const updateSessionProgress = useAgentStore((s) => s.updateSessionProgress)
+  const dismissSessionProgress = useAgentStore((s) => s.dismissSessionProgress)
   const agentResponseReadAtBySessionId = useAgentStore(
     (s) => s.agentResponseReadAtBySessionId,
   )
@@ -444,6 +445,8 @@ export function ActiveAgentsSidebar({
   const repeatTasksQuery = useQuery<LoopConfig[]>({
     queryKey: ["loops"],
     queryFn: async () => await tipcClient.getLoops(),
+    enabled: tasksSectionExpanded,
+    refetchOnWindowFocus: false,
   })
 
   useEffect(() => {
@@ -1026,14 +1029,22 @@ export function ActiveAgentsSidebar({
 
   const handleActiveSessionSelect = useCallback((sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Active session selected:", sessionId)
+    const shouldNavigateToSessionsRoot =
+      location.pathname !== "/" ||
+      location.search.length > 0 ||
+      viewedConversationId !== null
     // Clear the saved-conversation view so no stale row stays highlighted.
     setViewedConversationId(null)
-    // Navigate to the sessions page and focus this live session.
-    navigate("/", { state: { clearPendingConversation: true } })
+    // Navigate only when leaving a saved/non-root route. Re-navigating to the
+    // already-active sessions root forces unnecessary router work on every
+    // sidebar switch.
+    if (shouldNavigateToSessionsRoot) {
+      navigate("/", { state: { clearPendingConversation: true } })
+    }
     setFocusedSessionId(sessionId)
     setExpandedSessionId(sessionId)
     focusSidebarSessionComposer()
-  }, [focusSidebarSessionComposer, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
+  }, [focusSidebarSessionComposer, location.pathname, location.search, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId, viewedConversationId])
 
   const handleSavedConversationOpen = useCallback((conversationId: string) => {
     logUI(
@@ -1114,15 +1125,17 @@ export function ActiveAgentsSidebar({
     e.stopPropagation() // Prevent session focus when clicking stop
     logUI("[ActiveAgentsSidebar] Stopping session:", sessionId)
     const sessionProgress = agentProgressById.get(sessionId)
+    // Hide the dismissed row immediately in this renderer and suppress any late
+    // stop-progress echo for the same session. The main-process stop/clear calls
+    // below still perform persisted response/TTS/tracker cleanup and keep other
+    // windows in sync.
+    dismissSessionProgress(sessionId)
     if (!sessionProgress?.isComplete) {
       try {
         await tipcClient.stopAgentSession({ sessionId })
       } catch (error) {
         console.error("Failed to stop session:", error)
       }
-    }
-    if (focusedSessionId === sessionId) {
-      setFocusedSessionId(null)
     }
     try {
       await tipcClient.clearAgentSessionProgress({ sessionId })

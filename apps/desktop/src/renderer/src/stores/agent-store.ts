@@ -136,6 +136,7 @@ export const createIdleTTSPlaybackState = (): DesktopTTSPlaybackState => ({
 interface AgentState {
   agentProgressById: Map<string, AgentProgressUpdate>
   agentResponseReadAtBySessionId: Map<string, number>
+  dismissedSessionIds: Set<string>
   focusedSessionId: string | null
   expandedSessionId: string | null
   viewedConversationId: string | null
@@ -162,6 +163,7 @@ interface AgentState {
   updateSessionProgress: (update: AgentProgressUpdate) => void
   clearAllProgress: () => void
   clearSessionProgress: (sessionId: string) => void
+  dismissSessionProgress: (sessionId: string) => void
   clearInactiveSessions: () => void
   setFocusedSessionId: (sessionId: string | null) => void
   setExpandedSessionId: (sessionId: string | null) => void
@@ -195,6 +197,7 @@ interface AgentState {
 export const useAgentStore = create<AgentState>((set, get) => ({
   agentProgressById: new Map(),
   agentResponseReadAtBySessionId: new Map(),
+  dismissedSessionIds: new Set(),
   focusedSessionId: null,
   expandedSessionId: null,
   viewedConversationId: null,
@@ -218,6 +221,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     const sessionId = update.sessionId
 
     set((state) => {
+      if (state.dismissedSessionIds.has(sessionId)) {
+        return state
+      }
+
       const newMap = new Map(state.agentProgressById)
       const isNewSession = !newMap.has(sessionId)
       const existingProgress = newMap.get(sessionId)
@@ -455,6 +462,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set({
       agentProgressById: new Map(),
       agentResponseReadAtBySessionId: new Map(),
+      dismissedSessionIds: new Set(),
       focusedSessionId: null,
       expandedSessionId: null,
     })
@@ -492,6 +500,36 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       return {
         agentProgressById: newMap,
         agentResponseReadAtBySessionId: nextReadTimestamps,
+        focusedSessionId: newFocusedSessionId,
+        expandedSessionId: newExpandedSessionId,
+      }
+    })
+  },
+
+  dismissSessionProgress: (sessionId: string) => {
+    clearSessionTTSTracking(sessionId)
+    set((state) => {
+      const newMap = new Map(state.agentProgressById)
+      const nextReadTimestamps = new Map(state.agentResponseReadAtBySessionId)
+      const nextDismissedSessionIds = new Set(state.dismissedSessionIds)
+      nextDismissedSessionIds.add(sessionId)
+      newMap.delete(sessionId)
+      nextReadTimestamps.delete(sessionId)
+
+      let newFocusedSessionId = state.focusedSessionId
+      if (state.focusedSessionId === sessionId) {
+        newFocusedSessionId = null
+      }
+
+      let newExpandedSessionId = state.expandedSessionId
+      if (state.expandedSessionId === sessionId) {
+        newExpandedSessionId = null
+      }
+
+      return {
+        agentProgressById: newMap,
+        agentResponseReadAtBySessionId: nextReadTimestamps,
+        dismissedSessionIds: nextDismissedSessionIds,
         focusedSessionId: newFocusedSessionId,
         expandedSessionId: newExpandedSessionId,
       }
@@ -550,29 +588,51 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   setFocusedSessionId: (sessionId: string | null) => {
-    set((state) => ({
-      focusedSessionId: sessionId,
-      agentResponseReadAtBySessionId: sessionId
+    set((state) => {
+      const nextReadTimestamps = sessionId
         ? markLatestAgentResponseReadInMap(
           state.agentResponseReadAtBySessionId,
           sessionId,
           state.agentProgressById.get(sessionId),
         )
-        : state.agentResponseReadAtBySessionId,
-    }))
+        : state.agentResponseReadAtBySessionId
+
+      if (
+        state.focusedSessionId === sessionId &&
+        nextReadTimestamps === state.agentResponseReadAtBySessionId
+      ) {
+        return state
+      }
+
+      return {
+        focusedSessionId: sessionId,
+        agentResponseReadAtBySessionId: nextReadTimestamps,
+      }
+    })
   },
 
   setExpandedSessionId: (sessionId: string | null) => {
-    set((state) => ({
-      expandedSessionId: sessionId,
-      agentResponseReadAtBySessionId: sessionId
+    set((state) => {
+      const nextReadTimestamps = sessionId
         ? markLatestAgentResponseReadInMap(
           state.agentResponseReadAtBySessionId,
           sessionId,
           state.agentProgressById.get(sessionId),
         )
-        : state.agentResponseReadAtBySessionId,
-    }))
+        : state.agentResponseReadAtBySessionId
+
+      if (
+        state.expandedSessionId === sessionId &&
+        nextReadTimestamps === state.agentResponseReadAtBySessionId
+      ) {
+        return state
+      }
+
+      return {
+        expandedSessionId: sessionId,
+        agentResponseReadAtBySessionId: nextReadTimestamps,
+      }
+    })
   },
 
   setViewedConversationId: (conversationId: string | null) => {
@@ -589,6 +649,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         }
       }
 
+      if (
+        state.viewedConversationId === conversationId &&
+        nextReadTimestamps === state.agentResponseReadAtBySessionId
+      ) {
+        return state
+      }
+
       return {
         viewedConversationId: conversationId,
         agentResponseReadAtBySessionId: nextReadTimestamps,
@@ -597,7 +664,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   setScrollToSessionId: (sessionId: string | null) => {
-    set({ scrollToSessionId: sessionId })
+    set((state) => (
+      state.scrollToSessionId === sessionId
+        ? state
+        : { scrollToSessionId: sessionId }
+    ))
   },
 
   setSessionSnoozed: (sessionId: string, isSnoozed: boolean) => {
@@ -760,7 +831,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   setFloatingPanelVisible: (visible: boolean) => {
-    set({ isFloatingPanelVisible: visible })
+    set((state) => (
+      state.isFloatingPanelVisible === visible
+        ? state
+        : { isFloatingPanelVisible: visible }
+    ))
   },
 
   setTTSPlaybackState: (ttsPlaybackState: DesktopTTSPlaybackState) => {

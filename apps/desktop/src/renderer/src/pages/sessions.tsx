@@ -313,7 +313,24 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
   selectedAgentId: string | null
   onSelectAgent: (id: string | null) => void
 }) {
-  const savedConversationsQuery = useSavedConversationsQuery()
+  const [shouldLoadRecentSavedConversations, setShouldLoadRecentSavedConversations] = useState(false)
+
+  useEffect(() => {
+    const win = window as Window & {
+      requestIdleCallback?: (callback: () => void) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+
+    if (win.requestIdleCallback) {
+      const idleId = win.requestIdleCallback(() => setShouldLoadRecentSavedConversations(true))
+      return () => win.cancelIdleCallback?.(idleId)
+    }
+
+    const timer = window.setTimeout(() => setShouldLoadRecentSavedConversations(true), 1500)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  const savedConversationsQuery = useSavedConversationsQuery(shouldLoadRecentSavedConversations)
   const pinnedSessionIds = useAgentStore((state) => state.pinnedSessionIds)
   const togglePinSession = useAgentStore((state) => state.togglePinSession)
   const sortedSavedConversations = useMemo(

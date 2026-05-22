@@ -266,7 +266,15 @@ const SessionModelPicker: React.FC<{
   const sessionModel = modelInfo?.model
   const currentValue = configuredModel || sessionModel || AGENT_MODEL_FALLBACKS[providerId]
   const providerLabel = modelInfo?.provider || getActiveModelPreset(config)?.name || providerId
-  const modelsQuery = useAvailableModelsQuery(providerId, !!providerId, providerId === "openai" ? config?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID : undefined)
+  const [shouldLoadModelOptions, setShouldLoadModelOptions] = useState(false)
+  const requestModelOptions = useCallback(() => {
+    setShouldLoadModelOptions(true)
+  }, [])
+  const modelsQuery = useAvailableModelsQuery(
+    providerId,
+    shouldLoadModelOptions && !!providerId,
+    providerId === "openai" ? config?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID : undefined,
+  )
   const modelOptions = useMemo(() => {
     const options = [...(modelsQuery.data || [])]
     if (currentValue && !options.some((model) => model.id === currentValue)) {
@@ -304,14 +312,17 @@ const SessionModelPicker: React.FC<{
       title={`Change agent model (${providerLabel}/${currentValue})`}
       aria-label="Change agent model"
       onClick={(event) => event.stopPropagation()}
+      onFocus={requestModelOptions}
+      onPointerDown={requestModelOptions}
+      onMouseEnter={requestModelOptions}
     >
       {modelOptions.map((model) => (
         <option key={model.id} value={model.id}>
           {providerLabel}/{model.name || getModelDisplayName(model.id)}
         </option>
       ))}
-      {modelsQuery.isLoading && modelOptions.length === 0 && (
-        <option value={currentValue}>Loading models...</option>
+      {modelsQuery.isLoading && (
+        <option value="__loading_models__" disabled>Loading models...</option>
       )}
       {modelOptions.length === 0 && !modelsQuery.isLoading && (
         <option value={currentValue}>No models available</option>

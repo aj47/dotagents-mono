@@ -26,6 +26,7 @@ import { configStore } from '../config';
 import { conversationService } from '../conversation-service';
 import { messageQueueService } from '../message-queue-service';
 import { clearAcpToAppSessionMapping, setAcpToAppSessionMapping } from '../acp-session-state';
+import { registerKnownInternalSubSessionParent } from './internal-subsession-registry';
 import { countPersistedSeedMessages, resolveQueuedSubSessionTarget } from './internal-agent-utils';
 import { stringifySubAgentToolResultContent } from '@shared/delegation-tool-display'
 import type { AgentProgressUpdate, SessionProfileSnapshot, ACPDelegationProgress, ACPSubAgentMessage, ConversationMessage, AgentProfile } from '../../shared/types';
@@ -188,6 +189,7 @@ function toAgentConversationHistory(history: ACPSubAgentMessage[]): Array<{
 }
 
 function addParentChildLink(parentSessionId: string, subSessionId: string): void {
+  registerKnownInternalSubSessionParent(parentSessionId);
   if (!parentToChildren.has(parentSessionId)) {
     parentToChildren.set(parentSessionId, new Set());
   }

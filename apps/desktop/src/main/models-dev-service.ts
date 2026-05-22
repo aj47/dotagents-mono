@@ -84,6 +84,7 @@ interface ModelsDevCache {
 const MODELS_DEV_API_URL = "https://models.dev/api.json"
 const CACHE_FILENAME = "models-dev-cache.json"
 const CACHE_REFRESH_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
+const STARTUP_BACKGROUND_REFRESH_DELAY_MS = 8_000
 
 // ============================================================================
 // Internal State
@@ -532,14 +533,17 @@ export function initModelsDevService(): void {
       "Cache is stale or missing, triggering background refresh"
     )
 
-    // Fire and forget - don't block startup
-    fetchModelsDevData().catch((error) => {
-      diagnosticsService.logError(
-        "models-dev-service",
-        "Background refresh failed",
-        error
-      )
-    })
+    // Fire and forget after the first UI settles. Fresh model metadata is
+    // useful, but not on the critical path for initial app responsiveness.
+    setTimeout(() => {
+      fetchModelsDevData().catch((error) => {
+        diagnosticsService.logError(
+          "models-dev-service",
+          "Background refresh failed",
+          error
+        )
+      })
+    }, STARTUP_BACKGROUND_REFRESH_DELAY_MS)
   }
 }
 

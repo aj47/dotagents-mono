@@ -93,6 +93,7 @@ import { agentProfileService, createSessionSnapshotFromProfile, refreshSessionSn
 import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
 import { getAppSessionForAcpSession } from "./acp-session-state"
+import { hasKnownInternalSubSessionsForParent } from "./acp/internal-subsession-registry"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
@@ -1646,48 +1647,55 @@ export const router = {
       const conversationIdsToPause = new Set<string>()
       let requestedSubSessionConversationId: string | undefined
 
-      // Cancel any internal sub-sessions spawned by this session
-      try {
-        const {
-          getChildSubSessions,
-          getAllSubSessionsForParent,
-          cancelSubSession,
-          getInternalSubSession,
-        } = await import("./acp/internal-agent")
-        requestedSubSessionConversationId = requestedSessionKind === "subsession"
-          ? getInternalSubSession(requestedSessionId)?.conversationId
-          : undefined
-        if (requestedSubSessionConversationId) {
-          conversationIdsToPause.add(requestedSubSessionConversationId)
-        }
-        const cancelledRequestedSubSession = requestedSessionKind === "subsession"
-          ? cancelSubSession(requestedSessionId)
-          : false
-        const childSessionsById = new Map(
-          [...getChildSubSessions(input.sessionId), ...getAllSubSessionsForParent(input.sessionId)]
-            .map((child) => [child.id, child] as const),
-        )
-        const childSessions = Array.from(childSessionsById.values())
-        const runningChildSessionIds = childSessions
-          .filter((child) => child.status === "running")
-          .map((child) => child.id)
-        for (const child of childSessions) {
-          if (child.conversationId) {
-            conversationIdsToPause.add(child.conversationId)
+      // Cancel any internal sub-sessions spawned by this session. Most sessions
+      // never create internal children, so avoid loading/scanning the internal
+      // agent module unless this session is known to need it.
+      if (
+        requestedSessionKind === "subsession" ||
+        hasKnownInternalSubSessionsForParent(input.sessionId)
+      ) {
+        try {
+          const {
+            getChildSubSessions,
+            getAllSubSessionsForParent,
+            cancelSubSession,
+            getInternalSubSession,
+          } = await import("./acp/internal-agent")
+          requestedSubSessionConversationId = requestedSessionKind === "subsession"
+            ? getInternalSubSession(requestedSessionId)?.conversationId
+            : undefined
+          if (requestedSubSessionConversationId) {
+            conversationIdsToPause.add(requestedSubSessionConversationId)
           }
-          if (child.status === "running") {
-            cancelSubSession(child.id)
-            logLLM(`[stopAgentSession] Cancelled internal sub-session ${child.id}`)
+          const cancelledRequestedSubSession = requestedSessionKind === "subsession"
+            ? cancelSubSession(requestedSessionId)
+            : false
+          const childSessionsById = new Map(
+            [...getChildSubSessions(input.sessionId), ...getAllSubSessionsForParent(input.sessionId)]
+              .map((child) => [child.id, child] as const),
+          )
+          const childSessions = Array.from(childSessionsById.values())
+          const runningChildSessionIds = childSessions
+            .filter((child) => child.status === "running")
+            .map((child) => child.id)
+          for (const child of childSessions) {
+            if (child.conversationId) {
+              conversationIdsToPause.add(child.conversationId)
+            }
+            if (child.status === "running") {
+              cancelSubSession(child.id)
+              logLLM(`[stopAgentSession] Cancelled internal sub-session ${child.id}`)
+            }
           }
+          logApp("[stopAgentSession] Internal sub-session scan complete", {
+            requestedSessionId,
+            cancelledRequestedSubSession,
+            childSessionCount: childSessions.length,
+            runningChildSessionIds,
+          })
+        } catch (error) {
+          logApp("[stopAgentSession] Error cancelling internal sub-sessions:", error)
         }
-        logApp("[stopAgentSession] Internal sub-session scan complete", {
-          requestedSessionId,
-          cancelledRequestedSubSession,
-          childSessionCount: childSessions.length,
-          runningChildSessionIds,
-        })
-      } catch (error) {
-        logApp("[stopAgentSession] Error cancelling internal sub-sessions:", error)
       }
 
       // Pause the message queue for this conversation to prevent processing the next queued message
