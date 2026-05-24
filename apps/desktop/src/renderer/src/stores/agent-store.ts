@@ -119,6 +119,13 @@ const mergeDelegationStep = (
   }
 }
 
+export type CommandQueueEntryKind = 'new' | 'steer' | 'reply'
+
+export interface CommandQueueEntry {
+  kind: CommandQueueEntryKind
+  sessionId?: string
+}
+
 export type SessionViewMode = 'grid' | 'list' | 'kanban'
 export type SessionFilter = 'all' | 'active' | 'completed' | 'error'
 export type SessionSortBy = 'recent' | 'oldest' | 'status'
@@ -190,6 +197,18 @@ interface AgentState {
 
   setFloatingPanelVisible: (visible: boolean) => void
   setTTSPlaybackState: (state: DesktopTTSPlaybackState) => void
+
+  // Command queue for rapid multi-agent coordination
+  isCommandQueueActive: boolean
+  commandQueue: CommandQueueEntry[]
+  commandQueueIndex: number
+
+  enterCommandQueue: () => void
+  exitCommandQueue: () => void
+  advanceCommandQueue: () => void
+  goBackCommandQueue: () => void
+  skipCommandEntry: () => void
+  appendNewSlot: () => void
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -201,6 +220,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   scrollToSessionId: null,
   messageQueuesByConversation: new Map(),
   pausedQueueConversations: new Set(),
+
+  isCommandQueueActive: false,
+  commandQueue: [],
+  commandQueueIndex: 0,
 
   viewMode: 'grid' as SessionViewMode,
   filter: 'all' as SessionFilter,
@@ -438,10 +461,35 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         )
       }
 
+      // Auto-update command queue when sessions change state
+      let updatedCommandQueue = state.commandQueue
+      if (state.isCommandQueueActive && !isDelegatedSubagentProgress(mergedUpdate) && !isDelegationOnlyProgressUpdate(update)) {
+        const existingEntryIdx = state.commandQueue.findIndex((e) => e.sessionId === sessionId)
+        if (existingEntryIdx !== -1 && state.commandQueue[existingEntryIdx].kind === 'steer') {
+          if (mergedUpdate.isComplete || mergedUpdate.conversationState === 'needs_input') {
+            updatedCommandQueue = state.commandQueue.map((e, i) =>
+              i === existingEntryIdx ? { kind: 'reply' as const, sessionId: e.sessionId } : e,
+            )
+          }
+        } else if (existingEntryIdx === -1 && isNewSession) {
+          const entryKind: CommandQueueEntryKind = mergedUpdate.isComplete ? 'reply' : 'steer'
+          let insertAt = state.commandQueue.length
+          for (let i = state.commandQueue.length - 1; i >= 0; i--) {
+            if (state.commandQueue[i].kind !== 'new') { insertAt = i + 1; break }
+          }
+          updatedCommandQueue = [
+            ...state.commandQueue.slice(0, insertAt),
+            { kind: entryKind, sessionId },
+            ...state.commandQueue.slice(insertAt),
+          ]
+        }
+      }
+
       return {
         agentProgressById: newMap,
         agentResponseReadAtBySessionId: nextReadTimestamps,
         focusedSessionId: newFocusedSessionId,
+        ...(updatedCommandQueue !== state.commandQueue ? { commandQueue: updatedCommandQueue } : {}),
       }
     })
   },
@@ -700,6 +748,108 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     return get().pausedQueueConversations.has(conversationId)
   },
 
+  enterCommandQueue: () => {
+    set((state) => {
+      const sessions = Array.from(state.agentProgressById.entries())
+        .filter(([, p]) => !isDelegatedSubagentProgress(p) && !p.isSnoozed)
+        .sort((a, b) => getProgressActivityTimestamp(b[1]) - getProgressActivityTimestamp(a[1]))
+
+      const entries: CommandQueueEntry[] = []
+
+      for (const [sessionId, progress] of sessions) {
+        if (progress.conversationState === 'needs_input') {
+          entries.push({ kind: 'reply', sessionId })
+        }
+      }
+      for (const [sessionId, progress] of sessions) {
+        if ((progress.isComplete || progress.conversationState === 'complete') && progress.conversationState !== 'needs_input') {
+          entries.push({ kind: 'reply', sessionId })
+        }
+      }
+      for (const [sessionId, progress] of sessions) {
+        if (!progress.isComplete && progress.conversationState === 'running') {
+          entries.push({ kind: 'steer', sessionId })
+        }
+      }
+      entries.push({ kind: 'new' })
+
+      const firstEntry = entries[0]
+      const firstSessionId = firstEntry?.kind !== 'new' ? (firstEntry?.sessionId ?? null) : null
+
+      return {
+        isCommandQueueActive: true,
+        commandQueue: entries,
+        commandQueueIndex: 0,
+        ...(firstSessionId ? { focusedSessionId: firstSessionId, expandedSessionId: firstSessionId } : {}),
+      }
+    })
+  },
+
+  exitCommandQueue: () => {
+    set({ isCommandQueueActive: false, commandQueue: [], commandQueueIndex: 0 })
+  },
+
+  advanceCommandQueue: () => {
+    set((state) => {
+      if (!state.isCommandQueueActive) return state
+      const nextIndex = state.commandQueueIndex + 1
+      if (nextIndex >= state.commandQueue.length) {
+        return { isCommandQueueActive: false, commandQueue: [], commandQueueIndex: 0 }
+      }
+      const nextEntry = state.commandQueue[nextIndex]
+      const nextSessionId = nextEntry.kind !== 'new' ? (nextEntry.sessionId ?? null) : null
+      return {
+        commandQueueIndex: nextIndex,
+        ...(nextSessionId ? { focusedSessionId: nextSessionId, expandedSessionId: nextSessionId } : {}),
+      }
+    })
+  },
+
+  goBackCommandQueue: () => {
+    set((state) => {
+      if (!state.isCommandQueueActive || state.commandQueueIndex <= 0) return state
+      const prevIndex = state.commandQueueIndex - 1
+      const prevEntry = state.commandQueue[prevIndex]
+      const prevSessionId = prevEntry.kind !== 'new' ? (prevEntry.sessionId ?? null) : null
+      return {
+        commandQueueIndex: prevIndex,
+        ...(prevSessionId ? { focusedSessionId: prevSessionId, expandedSessionId: prevSessionId } : {}),
+      }
+    })
+  },
+
+  skipCommandEntry: () => {
+    set((state) => {
+      if (!state.isCommandQueueActive || state.commandQueue.length <= 1) return state
+      const current = state.commandQueue[state.commandQueueIndex]
+      const rest = state.commandQueue.filter((_, i) => i !== state.commandQueueIndex)
+      const newQueue = [...rest, current]
+      const newIndex = Math.min(state.commandQueueIndex, newQueue.length - 1)
+      const nextEntry = newQueue[newIndex]
+      const nextSessionId = nextEntry.kind !== 'new' ? (nextEntry.sessionId ?? null) : null
+      return {
+        commandQueue: newQueue,
+        commandQueueIndex: newIndex,
+        ...(nextSessionId ? { focusedSessionId: nextSessionId, expandedSessionId: nextSessionId } : {}),
+      }
+    })
+  },
+
+  appendNewSlot: () => {
+    set((state) => {
+      if (!state.isCommandQueueActive) return state
+      let lastNewIdx = -1
+      for (let i = state.commandQueue.length - 1; i >= 0; i--) {
+        if (state.commandQueue[i].kind === 'new') { lastNewIdx = i; break }
+      }
+      if (lastNewIdx !== -1) {
+        return { commandQueueIndex: lastNewIdx }
+      }
+      const newQueue = [...state.commandQueue, { kind: 'new' as const }]
+      return { commandQueue: newQueue, commandQueueIndex: newQueue.length - 1 }
+    })
+  },
+
   // View settings actions
   setViewMode: (mode: SessionViewMode) => {
     set({ viewMode: mode })
@@ -812,3 +962,15 @@ export const useTTSPlaybackState = () => {
 export const useIsTTSPlaybackActive = (playbackId: string | null | undefined) => {
   return useAgentStore((state) => !!playbackId && state.ttsPlaybackState.playbackId === playbackId)
 }
+
+export const useIsCommandQueueActive = () =>
+  useAgentStore((state) => state.isCommandQueueActive)
+
+export const useCommandQueueState = () =>
+  useAgentStore((state) => ({
+    isActive: state.isCommandQueueActive,
+    queue: state.commandQueue,
+    index: state.commandQueueIndex,
+    current: state.commandQueue[state.commandQueueIndex] ?? null,
+    total: state.commandQueue.length,
+  }))
