@@ -14,6 +14,7 @@ import SkillEditScreen from './src/screens/SkillEditScreen';
 import { AppConfig, ConfigContext, useConfig, saveConfig } from './src/store/config';
 import { SessionContext, useSessions } from './src/store/sessions';
 import { MessageQueueContext, useMessageQueue } from './src/store/message-queue';
+import { CommandQueueContext, useCommandQueue } from './src/store/command-queue';
 import { ConnectionManagerContext, useConnectionManagerProvider } from './src/store/connectionManager';
 import { TunnelConnectionContext, useTunnelConnectionProvider } from './src/store/tunnelConnection';
 import { ProfileContext, useProfileProvider } from './src/store/profile';
@@ -84,6 +85,7 @@ function Navigation() {
   const cfg = useConfig();
   const sessionStore = useSessions();
   const messageQueueStore = useMessageQueue();
+  const commandQueueStore = useCommandQueue();
   const navigationRef = useNavigationContainerRef();
   const isNavigationReady = useRef(false);
   const [currentRouteName, setCurrentRouteName] = useState('Sessions');
@@ -481,6 +483,7 @@ function Navigation() {
     <ConfigContext.Provider value={cfg}>
       <ProfileContext.Provider value={profileProvider}>
         <SessionContext.Provider value={sessionStore}>
+          <CommandQueueContext.Provider value={commandQueueStore}>
           <MessageQueueContext.Provider value={messageQueueStore}>
             <ConnectionManagerContext.Provider value={connectionManager}>
               <TunnelConnectionContext.Provider value={tunnelConnection}>
@@ -589,6 +592,7 @@ function Navigation() {
               </TunnelConnectionContext.Provider>
             </ConnectionManagerContext.Provider>
           </MessageQueueContext.Provider>
+          </CommandQueueContext.Provider>
         </SessionContext.Provider>
       </ProfileContext.Provider>
     </ConfigContext.Provider>

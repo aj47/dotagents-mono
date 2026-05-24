@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Layers,
   Pin,
   Play,
   X,
@@ -394,6 +395,9 @@ export function ActiveAgentsSidebar({
   const pinnedSessionIds = useAgentStore((s) => s.pinnedSessionIds)
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const toggleArchiveSession = useAgentStore((s) => s.toggleArchiveSession)
+  const isCommandQueueActive = useAgentStore((s) => s.isCommandQueueActive)
+  const enterCommandQueue = useAgentStore((s) => s.enterCommandQueue)
+  const exitCommandQueue = useAgentStore((s) => s.exitCommandQueue)
   const [visibleSavedConversationCount, setVisibleSavedConversationCount] = useState<number | null>(null)
   const [visibleTaskConversationCount, setVisibleTaskConversationCount] = useState(
     SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
@@ -1553,6 +1557,25 @@ export function ActiveAgentsSidebar({
                 </div>
               )}
               <div className="ml-auto flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={isCommandQueueActive ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "h-8 w-8 shrink-0 rounded-md px-0 shadow-sm",
+                    isCommandQueueActive && "bg-blue-500 text-white hover:bg-blue-600",
+                  )}
+                  onClick={isCommandQueueActive ? exitCommandQueue : enterCommandQueue}
+                  title={
+                    isCommandQueueActive
+                      ? "Exit command queue (Esc)"
+                      : `Enter multi-agent command queue (${typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl"}+Shift+K)`
+                  }
+                  aria-label={isCommandQueueActive ? "Exit command queue" : "Enter multi-agent command queue"}
+                  aria-pressed={isCommandQueueActive}
+                >
+                  <Layers className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                </Button>
                 {onClearInactiveSessions && inactiveSessionCount > 0 && (
                   <Button
                     type="button"

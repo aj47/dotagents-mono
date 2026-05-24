@@ -19,6 +19,7 @@ import { useTTSPlaybackController } from "@renderer/lib/tts-playback-controller"
 import { applySelectedAgentToNextSession as applySelectedAgentForNextSession } from "@renderer/lib/apply-selected-agent"
 import { hasUnreadAgentResponse } from "@renderer/lib/sidebar-sessions"
 import { useAgentStore } from "@renderer/stores"
+import { AgentCommandBar } from "@renderer/components/agent-command-bar"
 import {
   Clock,
   PanelLeftClose,
@@ -86,6 +87,9 @@ export const Component = () => {
   const agentResponseReadAtBySessionId = useAgentStore(
     (s) => s.agentResponseReadAtBySessionId,
   )
+  const isCommandQueueActive = useAgentStore((s) => s.isCommandQueueActive)
+  const enterCommandQueue = useAgentStore((s) => s.enterCommandQueue)
+  const exitCommandQueue = useAgentStore((s) => s.exitCommandQueue)
 
   const { data: sessionData, refetch: refetchSessionData } =
     useQuery<SessionListResponse>({
@@ -213,6 +217,33 @@ export const Component = () => {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
+
+  useEffect(() => {
+    const handleCommandQueueHotkey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const tagName = target?.tagName?.toLowerCase()
+      const isEditable =
+        target?.isContentEditable ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select"
+
+      if (isEditable) return
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || !event.shiftKey) return
+      if (event.key.toLowerCase() !== "k") return
+
+      event.preventDefault()
+      event.stopPropagation()
+      if (isCommandQueueActive) {
+        exitCommandQueue()
+      } else {
+        enterCommandQueue()
+      }
+    }
+
+    window.addEventListener("keydown", handleCommandQueueHotkey)
+    return () => window.removeEventListener("keydown", handleCommandQueueHotkey)
+  }, [isCommandQueueActive, enterCommandQueue, exitCommandQueue])
 
   const handleStartTextSession = useCallback(async () => {
     const applied = await applySelectedAgentToNextSession()
@@ -882,6 +913,12 @@ export const Component = () => {
               }}
             />
           </div>
+          <AgentCommandBar
+            onOpenSessionDialog={(initialText, onSubmitted) => {
+              void applySelectedAgentToNextSession()
+              openSessionActionDialog({ mode: "text", initialText, onSubmitted })
+            }}
+          />
         </div>
       </div>
 

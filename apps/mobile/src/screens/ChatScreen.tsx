@@ -33,6 +33,8 @@ import {
 } from '../store/config';
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
+import { useCommandQueueContext } from '../store/command-queue';
+import { AgentCommandBar } from '../ui/AgentCommandBar';
 import { MessageQueuePanel } from '../ui/MessageQueuePanel';
 import { ResponseHistoryPanel } from '../ui/ResponseHistoryPanel';
 import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
@@ -627,6 +629,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
+  const commandQueue = useCommandQueueContext();
   const connectionManager = useConnectionManager();
   const { connectionInfo } = useTunnelConnection();
   const { currentProfile } = useProfile();
@@ -4792,6 +4795,15 @@ export default function ChatScreen({ route, navigation }: any) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      <AgentCommandBar
+        onSend={async (text, conversationId, sessionId) => {
+          await send(text);
+        }}
+        onDispatch={(text, onSubmitted) => {
+          setInput(text);
+          onSubmitted();
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
