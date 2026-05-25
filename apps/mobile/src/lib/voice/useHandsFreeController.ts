@@ -31,14 +31,11 @@ type HandsFreeControllerOptions = {
   wakePhrase: string;
   sleepPhrase: string;
   log?: VoiceDebugLog;
-  maxAwakeMs?: number;
-  noSpeechTimeoutMs?: number;
   repeatedErrorThreshold?: number;
 };
 
-export const DEFAULT_HANDS_FREE_MAX_AWAKE_MS = 10 * 60 * 1000;
-export const DEFAULT_HANDS_FREE_NO_SPEECH_TIMEOUT_MS = 45 * 1000;
 const DEFAULT_REPEATED_ERROR_THRESHOLD = 3;
+const BENIGN_RECOGNIZER_ERRORS = new Set(['no-speech', 'aborted']);
 
 export function createInitialHandsFreeState(): HandsFreeControllerState {
   return {
@@ -49,6 +46,29 @@ export function createInitialHandsFreeState(): HandsFreeControllerState {
     lastError: null,
     lastTranscript: '',
     recognizerErrorCount: 0,
+  };
+}
+
+function hasHandsFreeStateChanged(prev: HandsFreeControllerState, next: HandsFreeControllerState) {
+  return prev.phase !== next.phase
+    || prev.resumePhase !== next.resumePhase
+    || prev.pauseReason !== next.pauseReason
+    || prev.awakeSince !== next.awakeSince
+    || prev.lastError !== next.lastError
+    || prev.recognizerErrorCount !== next.recognizerErrorCount;
+}
+
+function createHandsFreeStateTransitionDetail(prev: HandsFreeControllerState, next: HandsFreeControllerState) {
+  return {
+    fromPhase: prev.phase,
+    toPhase: next.phase,
+    fromPauseReason: prev.pauseReason,
+    toPauseReason: next.pauseReason,
+    fromResumePhase: prev.resumePhase,
+    toResumePhase: next.resumePhase,
+    awakeSince: next.awakeSince,
+    lastError: next.lastError,
+    recognizerErrorCount: next.recognizerErrorCount,
   };
 }
 
@@ -67,6 +87,10 @@ function transitionToSleeping(state: HandsFreeControllerState): HandsFreeControl
     awakeSince: null,
     lastError: null,
   };
+}
+
+export function isBenignHandsFreeRecognizerError(message: string): boolean {
+  return BENIGN_RECOGNIZER_ERRORS.has(message.trim().toLowerCase());
 }
 
 export function getHandsFreeStatusLabel(phase: HandsFreePhase): string {
@@ -254,17 +278,28 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     wakePhrase,
     sleepPhrase,
     log,
-    maxAwakeMs = DEFAULT_HANDS_FREE_MAX_AWAKE_MS,
-    noSpeechTimeoutMs = DEFAULT_HANDS_FREE_NO_SPEECH_TIMEOUT_MS,
     repeatedErrorThreshold = DEFAULT_REPEATED_ERROR_THRESHOLD,
   } = options;
 
   const [state, setState] = useState<HandsFreeControllerState>(createInitialHandsFreeState);
   const stateRef = useRef(state);
+  const loggedStateRef = useRef(state);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  useEffect(() => {
+    const previous = loggedStateRef.current;
+    if (hasHandsFreeStateChanged(previous, state)) {
+      log?.(
+        'state-transition',
+        `Handsfree ${previous.phase} -> ${state.phase}.`,
+        createHandsFreeStateTransitionDetail(previous, state),
+      );
+    }
+    loggedStateRef.current = state;
+  }, [log, state]);
 
   const updateState = useCallback((updater: (prev: HandsFreeControllerState) => HandsFreeControllerState) => {
     setState((prev) => {
@@ -325,44 +360,6 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     return () => clearTimeout(timer);
   }, [state.phase, updateState]);
 
-  useEffect(() => {
-    if (!enabled || !runtimeActive || state.pauseReason === 'user') {
-      return;
-    }
-    if (state.phase !== 'listening' && state.phase !== 'waking' && state.phase !== 'processing' && state.phase !== 'speaking') {
-      return;
-    }
-
-    const sessionTimer = state.awakeSince
-      ? setTimeout(() => {
-          updateState((prev) => transitionToSleeping(prev));
-          log?.('session-timeout', 'Handsfree session timed out and returned to sleep.');
-        }, Math.max(0, maxAwakeMs - (Date.now() - state.awakeSince)))
-      : null;
-
-    const noSpeechTimer = state.phase === 'listening'
-      ? setTimeout(() => {
-          updateState((prev) => transitionToSleeping(prev));
-          log?.('no-speech-timeout', 'No speech heard; handsfree returned to sleep.');
-        }, noSpeechTimeoutMs)
-      : null;
-
-    return () => {
-      if (sessionTimer) clearTimeout(sessionTimer);
-      if (noSpeechTimer) clearTimeout(noSpeechTimer);
-    };
-  }, [
-    enabled,
-    runtimeActive,
-    state.phase,
-    state.awakeSince,
-    state.pauseReason,
-    updateState,
-    log,
-    maxAwakeMs,
-    noSpeechTimeoutMs,
-  ]);
-
   const handleFinalTranscript = useCallback((transcript: string): HandsFreeUtteranceAction => {
     const result = resolveHandsFreeUtterance({
       state: stateRef.current,
@@ -381,6 +378,11 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     }
     if (result.action.type === 'send') {
       log?.('auto-send', 'Handsfree request captured.', { text: result.action.text });
+    } else if (!result.matchedWake && !result.matchedSleep) {
+      log?.('transcript-ignored', 'Handsfree transcript did not produce an action.', {
+        phase: result.nextState.phase,
+        transcript: result.nextState.lastTranscript,
+      });
     }
 
     return result.action;
@@ -437,7 +439,8 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
       pauseReason: 'user',
       resumePhase: resumablePhase(prev.phase, prev.resumePhase),
     }));
-  }, [updateState]);
+    log?.('handsfree-control', 'Handsfree paused by user.');
+  }, [log, updateState]);
 
   const resumeByUser = useCallback(() => {
     updateState((prev) => ({
@@ -447,7 +450,8 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
       resumePhase: null,
       lastError: null,
     }));
-  }, [updateState]);
+    log?.('handsfree-control', 'Handsfree resumed by user.');
+  }, [log, updateState]);
 
   const wakeByUser = useCallback(() => {
     updateState((prev) => ({
@@ -459,20 +463,30 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
       lastError: null,
       recognizerErrorCount: 0,
     }));
-  }, [updateState]);
+    log?.('handsfree-control', 'Handsfree woken by user.');
+  }, [log, updateState]);
 
   const sleepByUser = useCallback(() => {
     updateState((prev) => transitionToSleeping(prev));
-  }, [updateState]);
+    log?.('handsfree-control', 'Handsfree put to sleep by user.');
+  }, [log, updateState]);
 
   const onRecognizerError = useCallback((message: string) => {
     updateState((prev) => {
+      if (isBenignHandsFreeRecognizerError(message)) {
+        return {
+          ...prev,
+          lastError: null,
+          recognizerErrorCount: 0,
+        };
+      }
+
       const recognizerErrorCount = prev.recognizerErrorCount + 1;
       if (recognizerErrorCount >= repeatedErrorThreshold) {
         return {
           ...prev,
           phase: 'error',
-          resumePhase: 'sleeping',
+          resumePhase: resumablePhase(prev.phase, prev.resumePhase),
           lastError: message,
           recognizerErrorCount,
         };
@@ -480,8 +494,6 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
 
       return {
         ...prev,
-        phase: 'sleeping',
-        resumePhase: null,
         lastError: message,
         recognizerErrorCount,
       };
@@ -491,18 +503,23 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
 
   const reset = useCallback(() => {
     updateState(() => createInitialHandsFreeState());
-  }, [updateState]);
+    log?.('handsfree-control', 'Handsfree controller reset.');
+  }, [log, updateState]);
 
   const resetError = useCallback(() => {
-    updateState((prev) => ({
-      ...prev,
-      phase: 'sleeping',
-      resumePhase: null,
-      pauseReason: null,
-      lastError: null,
-      recognizerErrorCount: 0,
-    }));
-  }, [updateState]);
+    updateState((prev) => {
+      const nextPhase = prev.resumePhase ?? (prev.awakeSince ? 'listening' : 'sleeping');
+      return {
+        ...prev,
+        phase: nextPhase,
+        resumePhase: null,
+        pauseReason: null,
+        lastError: null,
+        recognizerErrorCount: 0,
+      };
+    });
+    log?.('handsfree-control', 'Handsfree recognizer error reset.');
+  }, [log, updateState]);
 
   const shouldKeepRecognizerActive = useMemo(
     () => enabled

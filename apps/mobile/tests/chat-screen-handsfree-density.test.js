@@ -46,6 +46,9 @@ test('falls back to normal direct-send handling for stale handsfree finalization
 test('surfaces recent voice debug events in chat when internal diagnostics are enabled', () => {
   assert.match(screenSource, /handsFreeDebugEnabled && voiceEvents\.length > 0/);
   assert.match(screenSource, /formatVoiceDebugEntry\(entry\)/);
+  assert.match(screenSource, /const HANDS_FREE_DEBUG_STORAGE_KEY = 'dotagents:handsfree-debug';/);
+  assert.match(screenSource, /params\.get\('handsfreeDebug'\) === '1'/);
+  assert.match(screenSource, /handsFree && isAppActive && \(!handsFreeForegroundOnly \|\| isFocused\)/);
 });
 
 test('keeps wake/sleep controls inline and wires a dedicated pause/resume control button', () => {

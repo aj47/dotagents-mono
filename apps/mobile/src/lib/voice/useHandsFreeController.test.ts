@@ -84,6 +84,7 @@ async function loadUseHandsFreeController(runtime: ReturnType<typeof createHookR
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.resetModules();
   vi.unmock('react');
@@ -252,6 +253,82 @@ describe('resolveHandsFreeUtterance', () => {
 
     expect(controller.state.phase).toBe('listening');
     expect(controller.state.awakeSince).toBe(500);
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
+
+  it('keeps a user-woken session awake after a no-speech recognizer cycle', async () => {
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      enabled: true,
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+    controller.wakeByUser();
+
+    controller = runtime.render(useHook, options);
+    controller.onRecognizerError('no-speech');
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('listening');
+    expect(controller.state.lastError).toBeNull();
+    expect(controller.state.recognizerErrorCount).toBe(0);
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
+
+  it('does not automatically return an idle awake session to sleep', async () => {
+    vi.useFakeTimers();
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      enabled: true,
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+    controller.wakeByUser();
+
+    controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+    vi.advanceTimersByTime(11 * 60 * 1000);
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('listening');
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
+
+  it('recovers from a recognizer error back to the prior awake phase', async () => {
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      enabled: true,
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      repeatedErrorThreshold: 1,
+    };
+
+    let controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+    controller.wakeByUser();
+
+    controller = runtime.render(useHook, options);
+    controller.onRecognizerError('network');
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('error');
+    expect(controller.state.resumePhase).toBe('listening');
+
+    controller.resetError();
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('listening');
     expect(controller.shouldKeepRecognizerActive).toBe(true);
   });
 

@@ -8,6 +8,37 @@ import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syn
 const SESSIONS_KEY = 'chat_sessions_v1';
 const CURRENT_SESSION_KEY = 'current_session_id_v1';
 
+function isStorageQuotaExceededError(error: unknown): boolean {
+  const err = error as { name?: string; code?: number; message?: string };
+  return err?.name === 'QuotaExceededError'
+    || err?.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    || err?.code === 22
+    || err?.code === 1014
+    || /exceeded the quota|quota/i.test(err?.message || '');
+}
+
+function createQuotaCompactedSession(session: Session): Session {
+  const listItem = sessionToListItem(session);
+  return {
+    ...session,
+    messages: [],
+    serverMetadata: {
+      messageCount: listItem.messageCount,
+      lastMessage: listItem.lastMessage,
+      preview: listItem.preview,
+    },
+  };
+}
+
+export function compactSessionsForStorageQuota(sessions: Session[]): Session[] {
+  return sessions.map((session) => {
+    if (!session.serverConversationId || session.messages.length === 0) {
+      return session;
+    }
+    return createQuotaCompactedSession(session);
+  });
+}
+
 export interface SessionStore {
   sessions: Session[];
   currentSessionId: string | null;
@@ -59,7 +90,25 @@ async function loadSessions(): Promise<Session[]> {
 }
 
 async function saveSessions(sessions: Session[]): Promise<void> {
-  await AsyncStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+  const serialized = JSON.stringify(sessions);
+  try {
+    await AsyncStorage.setItem(SESSIONS_KEY, serialized);
+    return;
+  } catch (error) {
+    if (!isStorageQuotaExceededError(error)) {
+      throw error;
+    }
+  }
+
+  const compactedSessions = compactSessionsForStorageQuota(sessions);
+  const compactedSerialized = JSON.stringify(compactedSessions);
+
+  if (compactedSerialized === serialized) {
+    throw new Error('Session storage quota exceeded and no server-linked sessions were available to compact.');
+  }
+
+  await AsyncStorage.setItem(SESSIONS_KEY, compactedSerialized);
+  console.warn('[sessions] Storage quota exceeded; compacted server-linked session messages for local web storage.');
 }
 
 async function loadCurrentSessionId(): Promise<string | null> {

@@ -86,7 +86,7 @@ import {
 } from '../lib/accessibility';
 import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
-import { useHandsFreeController } from '../lib/voice/useHandsFreeController';
+import { isBenignHandsFreeRecognizerError, useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
 
 interface PendingImageAttachment {
@@ -105,6 +105,25 @@ const CHAT_COMPOSER_HINT_NATIVE_ID = 'chat-composer-hint';
 const CHAT_VOICE_STATUS_LIVE_REGION_NATIVE_ID = 'chat-voice-status-live-region';
 const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const MESSAGE_COPY_FEEDBACK_RESET_MS = 2_000;
+const HANDS_FREE_DEBUG_STORAGE_KEY = 'dotagents:handsfree-debug';
+
+function isHandsFreeDebugForcedInDev(): boolean {
+  if (!__DEV__ || Platform.OS !== 'web') return false;
+
+  const webWindow = globalThis as any;
+  try {
+    const params = new URLSearchParams(webWindow.location?.search || '');
+    if (params.get('handsfreeDebug') === '1' || params.get('voiceDebug') === '1') {
+      return true;
+    }
+  } catch {}
+
+  try {
+    return webWindow.localStorage?.getItem(HANDS_FREE_DEBUG_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.png': 'image/png',
@@ -668,7 +687,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
   const handsFreeSleepPhrase = config.handsFreeSleepPhrase || 'go to sleep';
-  const handsFreeDebugEnabled = config.handsFreeDebug === true;
+  const handsFreeDebugEnabled = config.handsFreeDebug === true || isHandsFreeDebugForcedInDev();
   const handsFreeForegroundOnly = config.handsFreeForegroundOnly !== false;
   const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
   const handsFreeRef = useRef<boolean>(handsFree);
@@ -681,7 +700,7 @@ export default function ChatScreen({ route, navigation }: any) {
   useEffect(() => { ttsEnabledRef.current = config.ttsEnabled !== false; }, [config.ttsEnabled]);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const isAppActive = appState === 'active';
-  const handsFreeRuntimeActive = handsFree && isFocused && isAppActive;
+  const handsFreeRuntimeActive = handsFree && isAppActive && (!handsFreeForegroundOnly || isFocused);
 
   const toggleHandsFree = async () => {
     const next = !handsFreeRef.current;
@@ -819,7 +838,7 @@ export default function ChatScreen({ route, navigation }: any) {
     return unsubscribe;
   }, [sessionStore.currentSessionId, connectionManager]);
 
-  const handleKillSwitch = async () => {
+  const handleKillSwitch = useCallback(async () => {
     console.log('[ChatScreen] Kill switch button pressed');
     const client = getSessionClient();
     if (!client) {
@@ -871,7 +890,7 @@ export default function ChatScreen({ route, navigation }: any) {
         },
       ],
     );
-  };
+  }, [getSessionClient]);
 
   const handleNewChat = useCallback(() => {
     // Reset all UI states unconditionally when creating a new chat
@@ -1160,7 +1179,25 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       ),
     });
-  }, [navigation, handsFree, handleKillSwitch, handleNewChat, handleToggleCurrentSessionPinned, isCurrentSessionPinned, responding, headerConversationLabel, headerConversationState, headerConversationChipStyle, headerTotalTurnDuration, turnDurations.hasLive, theme, isDark, sessionStore, currentProfile, styles]);
+  }, [
+    currentAgentLabel,
+    handleKillSwitch,
+    handleToggleCurrentSessionPinned,
+    handsFree,
+    headerConversationChipStyle,
+    headerConversationLabel,
+    headerConversationState,
+    headerTotalTurnDuration,
+    isCurrentSessionPinned,
+    isDark,
+    navigation,
+    styles,
+    theme.colors.danger,
+    theme.colors.foreground,
+    theme.colors.mutedForeground,
+    theme.colors.primary,
+    turnDurations.hasLive,
+  ]);
 
 
   const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
@@ -1270,6 +1307,30 @@ export default function ChatScreen({ route, navigation }: any) {
 		}
 	  }, [clearVoiceDebug, handsFreeDebugEnabled]);
 
+	  useEffect(() => {
+		if (!handsFree) {
+			return;
+		}
+		voiceLog('runtime-state', 'Handsfree runtime evaluated.', {
+			runtimeActive: handsFreeRuntimeActive,
+			appState,
+			isAppActive,
+			isFocused,
+			foregroundOnly: handsFreeForegroundOnly,
+			debugForcedInDev: config.handsFreeDebug !== true && handsFreeDebugEnabled,
+		});
+	  }, [
+		appState,
+		config.handsFreeDebug,
+		handsFree,
+		handsFreeDebugEnabled,
+		handsFreeForegroundOnly,
+		handsFreeRuntimeActive,
+		isAppActive,
+		isFocused,
+		voiceLog,
+	  ]);
+
 	  const handsFreeController = useHandsFreeController({
 		enabled: handsFree,
 		runtimeActive: handsFreeRuntimeActive,
@@ -1295,9 +1356,15 @@ export default function ChatScreen({ route, navigation }: any) {
 			handsFreeDebounceMs: handsFreeMessageDebounceMs,
 		willCancel,
 		audioInputDeviceId: config.audioInputDeviceId,
-		onVoiceFinalized: ({ text, mode }) => {
+		onVoiceFinalized: ({ text, mode, source }) => {
 			const finalText = text.trim();
 			if (!finalText) return;
+			voiceLog('transcript-finalized', 'Chat received finalized voice transcript.', {
+				mode,
+				source,
+				text: finalText,
+				textLength: finalText.length,
+			});
 
 			if (mode === 'edit') {
 				setInput((current) => mergeVoiceText(current, finalText));
@@ -1320,6 +1387,10 @@ export default function ChatScreen({ route, navigation }: any) {
 		},
 		onRecognizerError: (message) => {
 			handsFreeController.onRecognizerError(message);
+			if (handsFreeRef.current && isBenignHandsFreeRecognizerError(message)) {
+				setDebugInfo('Handsfree awake. Listening for your request.');
+				return;
+			}
 			setDebugInfo(`Voice error: ${message}`);
 		},
 		onPermissionDenied: () => {
