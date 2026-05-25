@@ -106,6 +106,16 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("canShowHotkeyBadge && (sessionPreview || lastMessageMinutesAgo)")
   })
 
+  it("captures sidebar hotkeys before focused controls can stop propagation", () => {
+    expect(sidebarSource).toContain("function getSidebarHotkeyDigit(event: KeyboardEvent): number | null")
+    expect(sidebarSource).toContain("event.code.match(/^(?:Digit|Numpad)([1-9])$/u)")
+    expect(sidebarSource).toContain("Number.parseInt(event.key, 10)")
+    expect(sidebarSource).toContain("if (!isMod || e.altKey || e.shiftKey) return")
+    expect(sidebarSource).toContain("const digit = getSidebarHotkeyDigit(e)")
+    expect(sidebarSource).toContain('window.addEventListener("keydown", handleKeyDown, true)')
+    expect(sidebarSource).toContain('window.removeEventListener("keydown", handleKeyDown, true)')
+  })
+
   it("lets the session list size naturally instead of keeping a collapsed gap", () => {
     expect(sidebarSource).not.toContain("max-h-[45vh]")
     expect(sidebarSource).toContain("mt-1 space-y-0.5 overflow-visible")

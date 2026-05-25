@@ -224,6 +224,15 @@ const UNGROUPED_SESSION_ORDER_STORAGE_KEY = "sidebar-ungrouped-session-order-v1"
 const SIDEBAR_SESSION_DRAG_MIME = "application/x-dotagents-sidebar-session-key"
 const SIDEBAR_GROUP_DRAG_MIME = "application/x-dotagents-sidebar-group-id"
 
+function getSidebarHotkeyDigit(event: KeyboardEvent): number | null {
+  const codeMatch = event.code.match(/^(?:Digit|Numpad)([1-9])$/u)
+  const digit = codeMatch
+    ? Number(codeMatch[1])
+    : Number.parseInt(event.key, 10)
+
+  return Number.isInteger(digit) && digit >= 1 && digit <= 9 ? digit : null
+}
+
 function readBooleanFromStorage(key: string, fallback: boolean): boolean {
   try {
     const stored = localStorage.getItem(key)
@@ -1052,10 +1061,10 @@ export function ActiveAgentsSidebar({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey
-      if (!isMod) return
+      if (!isMod || e.altKey || e.shiftKey) return
 
-      const digit = parseInt(e.key, 10)
-      if (isNaN(digit) || digit < 1 || digit > 9) return
+      const digit = getSidebarHotkeyDigit(e)
+      if (digit === null) return
 
       const index = digit - 1
       const target = visibleSidebarSessions[index]
@@ -1077,8 +1086,8 @@ export function ActiveAgentsSidebar({
 
     }
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
+    window.addEventListener("keydown", handleKeyDown, true)
+    return () => window.removeEventListener("keydown", handleKeyDown, true)
   }, [visibleSidebarSessions, handleSavedConversationOpen, handleActiveSessionSelect])
 
   const findLoopForSession = useCallback(
