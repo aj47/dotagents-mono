@@ -224,6 +224,45 @@ class LoopService {
     this.isStopping = false
   }
 
+  /**
+   * Durably stop any continuously-running tasks so they do not auto-resume.
+   *
+   * Emergency stop is treated as an explicit cancel signal: each affected
+   * continuous loop is disabled (`enabled = false`) and persisted, its active
+   * timer is cleared, and the renderer is notified so the UI reflects the new
+   * state. The user must re-enable the task to start it again.
+   *
+   * Non-continuous (interval / scheduled) tasks are intentionally left alone —
+   * their next run is governed by a wall-clock schedule, not by the
+   * just-interrupted execution.
+   *
+   * Returns the IDs of the loops that were disabled.
+   */
+  emergencyStopContinuousLoops(): string[] {
+    const disabled: string[] = []
+
+    for (const loop of this.loops) {
+      if (!isContinuousLoop(loop)) continue
+      if (!loop.enabled) continue
+
+      const updated: LoopConfig = { ...loop, enabled: false }
+      if (this.saveLoop(updated)) {
+        this.stopLoop(loop.id)
+        disabled.push(loop.id)
+        logApp(`[LoopService] Emergency stop disabled continuous loop "${loop.name}" (${loop.id})`)
+      } else {
+        logApp(`[LoopService] Emergency stop: failed to persist disabled state for "${loop.name}" (${loop.id}); stopping timer anyway`)
+        this.stopLoop(loop.id)
+      }
+    }
+
+    if (disabled.length > 0) {
+      notifyLoopsFolderChanged()
+    }
+
+    return disabled
+  }
+
   startLoop(loopId: string): boolean {
     const loop = this.getLoop(loopId)
     if (!loop) {

@@ -27,4 +27,19 @@ describe("continuous repeat tasks", () => {
     expect(getNextDelaySection).toContain("if (isContinuousLoop(loop))")
     expect(getNextDelaySection).toContain("return 0")
   })
+
+  it("durably disables continuous loops on emergency stop", () => {
+    // Emergency stop must persist the cancel signal so the loop does not pick
+    // back up after the in-flight session aborts — see issue #379.
+    const section = getSection(
+      loopServiceSource,
+      "  emergencyStopContinuousLoops(): string[] {",
+      "  private async executeLoop(",
+    )
+
+    expect(section).toContain("isContinuousLoop(loop)")
+    expect(section).toContain("enabled: false")
+    expect(section).toContain("this.saveLoop(updated)")
+    expect(section).toContain("this.stopLoop(loop.id)")
+  })
 })
