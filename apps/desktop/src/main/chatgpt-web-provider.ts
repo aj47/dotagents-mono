@@ -659,10 +659,24 @@ function buildCodexMessageContent(content: string): CodexInputContent {
   return hasResolvedImage && parts.length > 0 ? parts : content
 }
 
+const CODEX_TOOL_RESULT_PROVENANCE_HEADER =
+  "[Internal tool execution result — not user input. Continue the task using this output.]"
+
 export function buildCodexInput(messages: ChatGptWebMessage[]): Array<Record<string, unknown>> {
   return messages
     .filter((message) => message.role !== "system")
     .map((message) => {
+      if (message.role === "tool") {
+        const body = message.content.trim()
+        const text = body
+          ? `${CODEX_TOOL_RESULT_PROVENANCE_HEADER}\n${body}`
+          : CODEX_TOOL_RESULT_PROVENANCE_HEADER
+        return {
+          type: "message",
+          role: "developer",
+          content: text,
+        }
+      }
       const role = message.role === "assistant" ? "assistant" : "user"
       return {
         type: "message",

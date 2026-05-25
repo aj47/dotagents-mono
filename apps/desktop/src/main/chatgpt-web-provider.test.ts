@@ -94,6 +94,61 @@ describe("chatgpt-web provider image input", () => {
     ])
   })
 
+  it("routes persisted tool messages through the developer role with provenance instead of as user input", async () => {
+    await setupChatGptWebProviderTest()
+    const { buildCodexInput } = await import("./chatgpt-web-provider")
+
+    const input = buildCodexInput([
+      { role: "system", content: "System prompt" },
+      { role: "user", content: "list the files" },
+      { role: "assistant", content: "I'll run a command." },
+      {
+        role: "tool",
+        content: '[execute_command] {"success":true,"stdout":"a.txt\\nb.txt"}',
+      },
+    ])
+
+    expect(input).toEqual([
+      { type: "message", role: "user", content: "list the files" },
+      { type: "message", role: "assistant", content: "I'll run a command." },
+      {
+        type: "message",
+        role: "developer",
+        content:
+          '[Internal tool execution result — not user input. Continue the task using this output.]\n[execute_command] {"success":true,"stdout":"a.txt\\nb.txt"}',
+      },
+    ])
+
+    for (const item of input) {
+      if (item.role === "user") {
+        const content = item.content
+        const text = typeof content === "string"
+          ? content
+          : (content as Array<{ type: string; text?: string }>)
+              .filter((part) => part.type === "input_text")
+              .map((part) => part.text || "")
+              .join("")
+        expect(text).not.toContain("[execute_command]")
+      }
+    }
+  })
+
+  it("preserves the developer-role tool provenance header even when the persisted tool content is empty", async () => {
+    await setupChatGptWebProviderTest()
+    const { buildCodexInput } = await import("./chatgpt-web-provider")
+
+    const input = buildCodexInput([{ role: "tool", content: "   " }])
+
+    expect(input).toEqual([
+      {
+        type: "message",
+        role: "developer",
+        content:
+          "[Internal tool execution result — not user input. Continue the task using this output.]",
+      },
+    ])
+  })
+
   it("leaves oversized conversation image assets as text instead of inlining them", async () => {
     const { tempDir } = await setupChatGptWebProviderTest()
     await fs.writeFile(path.join(tempDir, "large.png"), Buffer.alloc(8 * 1024 * 1024 + 1))
