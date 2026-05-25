@@ -63,6 +63,7 @@ function createHookRuntime() {
 
 class FakeSpeechRecognition {
   static instances: FakeSpeechRecognition[] = [];
+  static nextStartError: Error | null = null;
   continuous = false;
   interimResults = false;
   lang = 'en-US';
@@ -76,6 +77,11 @@ class FakeSpeechRecognition {
   }
   start() {
     this.startCalls += 1;
+    if (FakeSpeechRecognition.nextStartError) {
+      const error = FakeSpeechRecognition.nextStartError;
+      FakeSpeechRecognition.nextStartError = null;
+      throw error;
+    }
     if (this.failNextStart) {
       this.failNextStart = false;
       throw new Error('restart failed');
@@ -121,6 +127,7 @@ afterEach(() => {
   vi.unmock('expo-modules-core');
   vi.unmock('@react-native-async-storage/async-storage');
   FakeSpeechRecognition.instances = [];
+  FakeSpeechRecognition.nextStartError = null;
   delete (globalThis as any).window;
 });
 
@@ -311,5 +318,86 @@ describe('useSpeechRecognizer', () => {
 
     vi.advanceTimersByTime(1);
     expect(onVoiceFinalized).toHaveBeenCalledWith({ text: 'hello world', mode: 'handsfree', source: 'web' });
+  });
+
+  it('logs the web hands-free recognizer lifecycle with transcript context', async () => {
+    vi.useFakeTimers();
+    (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };
+    const runtime = createHookRuntime();
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime);
+    const onVoiceFinalized = vi.fn();
+    const log = vi.fn();
+
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+      log,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const speechRecognition = FakeSpeechRecognition.instances[0];
+
+    speechRecognition.onresult?.({
+      resultIndex: 0,
+      results: [{ 0: { transcript: 'hello world' }, isFinal: true }],
+    });
+    speechRecognition.onend?.();
+    vi.advanceTimersByTime(500);
+
+    const eventTypes = log.mock.calls.map(([type]) => type);
+    expect(eventTypes).toEqual(expect.arrayContaining([
+      'recognizer-start',
+      'recognizer-result',
+      'finalization-scheduled',
+      'recognizer-end',
+      'recognizer-restart',
+      'finalization-fired',
+      'transcript-finalized',
+    ]));
+    expect(log.mock.calls.find(([type]) => type === 'recognizer-result')?.[2]).toMatchObject({
+      source: 'web',
+      handsFree: true,
+      finalText: 'hello world',
+    });
+    expect(log.mock.calls.find(([type]) => type === 'finalization-scheduled')?.[2]).toMatchObject({
+      source: 'web',
+      debounceMs: 500,
+      text: 'hello world',
+    });
+    expect(onVoiceFinalized).toHaveBeenCalledWith({ text: 'hello world', mode: 'handsfree', source: 'web' });
+  });
+
+  it('treats Chrome already-started web recognizer errors as an idempotent active state', async () => {
+    (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };
+    FakeSpeechRecognition.nextStartError = new Error(
+      "Failed to execute 'start' on 'SpeechRecognition': recognition has already started.",
+    );
+    const runtime = createHookRuntime();
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime);
+    const onVoiceFinalized = vi.fn();
+    const onRecognizerError = vi.fn();
+    const log = vi.fn();
+
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+      onRecognizerError,
+      log,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+
+    expect(onRecognizerError).not.toHaveBeenCalled();
+    expect(log.mock.calls.find(([, summary]) => summary === 'Web speech recognizer was already active.')?.[2]).toMatchObject({
+      source: 'web',
+      reason: 'initial-start',
+    });
+    expect(FakeSpeechRecognition.instances[0].startCalls).toBe(1);
   });
 });
