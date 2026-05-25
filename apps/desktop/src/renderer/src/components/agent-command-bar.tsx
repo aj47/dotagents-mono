@@ -15,15 +15,24 @@ import {
 } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 
-const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
-const SHORTCUT_MOD = IS_MAC ? "⌘" : "Ctrl"
+const IS_MAC =
+  typeof navigator !== "undefined" &&
+  navigator.platform.toLowerCase().includes("mac")
+const SHORTCUT_MOD_PREFIX = IS_MAC ? "⌘" : "Ctrl+"
+const PREVIOUS_ENTRY_SHORTCUT = `${SHORTCUT_MOD_PREFIX}[`
+const NEXT_ENTRY_SHORTCUT = `${SHORTCUT_MOD_PREFIX}]`
+const SKIP_ENTRY_SHORTCUT = `${SHORTCUT_MOD_PREFIX}S`
+const NEW_SLOT_SHORTCUT = `${SHORTCUT_MOD_PREFIX}N`
 
 interface AgentCommandBarProps {
   onOpenSessionDialog: (initialText: string, onSubmitted: () => void) => void
   className?: string
 }
 
-export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommandBarProps) {
+export function AgentCommandBar({
+  onOpenSessionDialog,
+  className,
+}: AgentCommandBarProps) {
   const isCommandQueueActive = useAgentStore((s) => s.isCommandQueueActive)
   const commandQueue = useAgentStore((s) => s.commandQueue)
   const commandQueueIndex = useAgentStore((s) => s.commandQueueIndex)
@@ -33,7 +42,9 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
   const goBackCommandQueue = useAgentStore((s) => s.goBackCommandQueue)
   const skipCommandEntry = useAgentStore((s) => s.skipCommandEntry)
   const appendNewSlot = useAgentStore((s) => s.appendNewSlot)
-  const appendUserMessageToSession = useAgentStore((s) => s.appendUserMessageToSession)
+  const appendUserMessageToSession = useAgentStore(
+    (s) => s.appendUserMessageToSession,
+  )
 
   const [text, setText] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -70,9 +81,10 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
   } as const
 
   const cfg = entryConfig[currentEntry?.kind ?? "new"]
-  const progressPercent = commandQueue.length > 0
-    ? Math.round((commandQueueIndex / commandQueue.length) * 100)
-    : 0
+  const progressPercent =
+    commandQueue.length > 0
+      ? Math.round((commandQueueIndex / commandQueue.length) * 100)
+      : 0
 
   // Focus textarea and clear text when active entry changes
   useEffect(() => {
@@ -85,7 +97,11 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
   }, [isCommandQueueActive, commandQueueIndex])
 
   const sendMutation = useMutation({
-    mutationFn: async (vars: { message: string; conversationId?: string; sessionId?: string }) => {
+    mutationFn: async (vars: {
+      message: string
+      conversationId?: string
+      sessionId?: string
+    }) => {
       return tipcClient.createMcpTextInput({
         text: vars.message,
         conversationId: vars.conversationId,
@@ -99,7 +115,9 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
         appendUserMessageToSession(vars.sessionId, vars.message)
       }
       if (vars.conversationId) {
-        queryClient.invalidateQueries({ queryKey: ["conversation", vars.conversationId] })
+        queryClient.invalidateQueries({
+          queryKey: ["conversation", vars.conversationId],
+        })
         queryClient.invalidateQueries({ queryKey: ["conversation-history"] })
       }
     },
@@ -130,54 +148,71 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
       setIsSubmitting(false)
     }
   }, [
-    text, isSubmitting, currentEntry, currentConversationId, currentSessionId,
-    sendMutation, advanceCommandQueue, onOpenSessionDialog,
+    text,
+    isSubmitting,
+    currentEntry,
+    currentConversationId,
+    currentSessionId,
+    sendMutation,
+    advanceCommandQueue,
+    onOpenSessionDialog,
   ])
 
-  const handleTextareaKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const isMod = e.metaKey || e.ctrlKey
+  const handleTextareaKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      const isMod = e.metaKey || e.ctrlKey
+      const isPlainMod = isMod && !e.altKey && !e.shiftKey
 
-    if (e.key === "Tab") {
-      e.preventDefault()
-      if (e.shiftKey) {
+      if (isPlainMod && e.key === "[") {
+        e.preventDefault()
         goBackCommandQueue()
-      } else {
+        return
+      }
+
+      if (isPlainMod && e.key === "]") {
+        e.preventDefault()
         advanceCommandQueue()
+        return
       }
-      return
-    }
 
-    if (e.key === "Escape") {
-      e.preventDefault()
-      if (text) {
-        setText("")
-      } else {
-        exitCommandQueue()
+      if (!isMod && e.key === "Escape") {
+        e.preventDefault()
+        if (text) {
+          setText("")
+        } else {
+          exitCommandQueue()
+        }
+        return
       }
-      return
-    }
 
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      void handleSubmit()
-      return
-    }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault()
+        void handleSubmit()
+        return
+      }
 
-    if (isMod && !e.shiftKey && e.key === "s") {
-      e.preventDefault()
-      skipCommandEntry()
-      return
-    }
+      if (isPlainMod && e.key.toLowerCase() === "s") {
+        e.preventDefault()
+        skipCommandEntry()
+        return
+      }
 
-    if (isMod && !e.shiftKey && e.key === "n") {
-      e.preventDefault()
-      appendNewSlot()
-      return
-    }
-  }, [
-    text, goBackCommandQueue, advanceCommandQueue, exitCommandQueue,
-    handleSubmit, skipCommandEntry, appendNewSlot,
-  ])
+      if (isPlainMod && e.key.toLowerCase() === "n") {
+        e.preventDefault()
+        appendNewSlot()
+        return
+      }
+    },
+    [
+      text,
+      goBackCommandQueue,
+      advanceCommandQueue,
+      exitCommandQueue,
+      handleSubmit,
+      skipCommandEntry,
+      appendNewSlot,
+    ],
+  )
 
   const adjustHeight = useCallback((el: HTMLTextAreaElement) => {
     el.style.height = "auto"
@@ -193,14 +228,14 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
   return (
     <div
       className={cn(
-        "border-t bg-background shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]",
+        "bg-background border-t shadow-[0_-4px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]",
         className,
       )}
       role="region"
       aria-label="Multi-agent command queue"
     >
       {/* Progress bar */}
-      <div className="h-0.5 bg-muted/60">
+      <div className="bg-muted/60 h-0.5">
         <div
           className="h-full bg-blue-500 transition-all duration-300 ease-out"
           style={{ width: `${progressPercent}%` }}
@@ -210,9 +245,12 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
 
       {/* Header strip */}
       <div className="flex items-center gap-2 border-b px-3 py-1.5">
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Layers className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
-          <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Layers
+            className="text-muted-foreground h-3.5 w-3.5"
+            aria-hidden="true"
+          />
+          <span className="text-muted-foreground text-[11px] font-semibold tabular-nums">
             {commandQueueIndex + 1} / {commandQueue.length}
           </span>
         </div>
@@ -224,7 +262,9 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
             </span>
           ) : (
             <span className="text-xs">
-              <span className={cn("font-semibold", cfg.colorClass)}>{cfg.action}</span>
+              <span className={cn("font-semibold", cfg.colorClass)}>
+                {cfg.action}
+              </span>
               <span className="text-muted-foreground"> · {currentTitle}</span>
             </span>
           )}
@@ -237,9 +277,9 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
             variant="ghost"
             onClick={goBackCommandQueue}
             disabled={isFirstEntry}
-            title={`Previous entry (Shift+Tab)`}
+            title={`Previous entry (${PREVIOUS_ENTRY_SHORTCUT})`}
             aria-label="Previous entry"
-            className="h-6 w-6 text-muted-foreground disabled:opacity-30"
+            className="text-muted-foreground h-6 w-6 disabled:opacity-30"
           >
             <ArrowLeft className="h-3 w-3" aria-hidden="true" />
           </Button>
@@ -249,9 +289,9 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
             variant="ghost"
             onClick={advanceCommandQueue}
             disabled={isLastEntry}
-            title="Next entry (Tab)"
+            title={`Next entry (${NEXT_ENTRY_SHORTCUT})`}
             aria-label="Next entry"
-            className="h-6 w-6 text-muted-foreground disabled:opacity-30"
+            className="text-muted-foreground h-6 w-6 disabled:opacity-30"
           >
             <ArrowRight className="h-3 w-3" aria-hidden="true" />
           </Button>
@@ -260,9 +300,9 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
             size="sm-icon"
             variant="ghost"
             onClick={skipCommandEntry}
-            title={`Skip to end (${SHORTCUT_MOD}S)`}
+            title={`Skip to end (${SKIP_ENTRY_SHORTCUT})`}
             aria-label="Skip current entry"
-            className="h-6 w-6 text-muted-foreground"
+            className="text-muted-foreground h-6 w-6"
           >
             <SkipForward className="h-3 w-3" aria-hidden="true" />
           </Button>
@@ -271,9 +311,9 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
             size="sm-icon"
             variant="ghost"
             onClick={appendNewSlot}
-            title={`Add new task slot (${SHORTCUT_MOD}N)`}
+            title={`Add new task slot (${NEW_SLOT_SHORTCUT})`}
             aria-label="Add new session slot"
-            className="h-6 w-6 text-muted-foreground"
+            className="text-muted-foreground h-6 w-6"
           >
             <Plus className="h-3 w-3" aria-hidden="true" />
           </Button>
@@ -284,7 +324,7 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
             onClick={exitCommandQueue}
             title="Exit command queue (Esc)"
             aria-label="Exit command queue"
-            className="h-6 w-6 text-muted-foreground"
+            className="text-muted-foreground h-6 w-6"
           >
             <X className="h-3 w-3" aria-hidden="true" />
           </Button>
@@ -306,9 +346,9 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
           aria-label={cfg.placeholder}
           disabled={isBusy}
           className={cn(
-            "min-h-[2rem] flex-1 resize-none rounded-md border bg-muted/30 px-3 py-1.5",
-            "text-sm text-foreground placeholder:text-muted-foreground/60",
-            "focus:outline-none focus:ring-1 focus:ring-blue-500/40 focus:border-blue-500/40",
+            "bg-muted/30 min-h-[2rem] flex-1 resize-none rounded-md border px-3 py-1.5",
+            "text-foreground placeholder:text-muted-foreground/60 text-sm",
+            "focus:border-blue-500/40 focus:outline-none focus:ring-1 focus:ring-blue-500/40",
             "disabled:opacity-50",
           )}
           style={{ overflowY: "hidden" }}
@@ -328,17 +368,17 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
 
       {/* Hotkey hint footer */}
       <div
-        className="flex items-center gap-4 border-t bg-muted/20 px-3 py-1"
+        className="bg-muted/20 flex items-center gap-4 border-t px-3 py-1"
         aria-hidden="true"
       >
         {[
-          ["Tab", "next"],
-          ["Shift+Tab", "prev"],
-          [`${SHORTCUT_MOD}S`, "skip"],
-          [`${SHORTCUT_MOD}N`, "new task"],
+          [NEXT_ENTRY_SHORTCUT, "next"],
+          [PREVIOUS_ENTRY_SHORTCUT, "prev"],
+          [SKIP_ENTRY_SHORTCUT, "skip"],
+          [NEW_SLOT_SHORTCUT, "new task"],
           ["Esc", "exit"],
         ].map(([key, label]) => (
-          <span key={key} className="text-[10px] text-muted-foreground">
+          <span key={key} className="text-muted-foreground text-[10px]">
             <kbd className="font-mono">{key}</kbd> {label}
           </span>
         ))}

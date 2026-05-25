@@ -11,42 +11,42 @@ Every hotkey and shortcut available in DotAgents.
 
 ## Voice Controls
 
-| Shortcut | Platform | Action |
-|----------|----------|--------|
-| Hold `Ctrl` | macOS, Linux | Start voice recording (dictation) |
-| Hold `Ctrl+/` | Windows | Start voice recording (dictation) |
-| Release `Ctrl` / `Ctrl+/` | All | Stop recording and transcribe |
-| `Fn` | macOS | Toggle dictation on/off |
-| Hold `Ctrl+Alt` | macOS | Start recording in agent mode |
-| Release `Ctrl+Alt` | macOS | Stop recording, process with tools |
+| Shortcut                  | Platform     | Action                             |
+| ------------------------- | ------------ | ---------------------------------- |
+| Hold `Ctrl`               | macOS, Linux | Start voice recording (dictation)  |
+| Hold `Ctrl+/`             | Windows      | Start voice recording (dictation)  |
+| Release `Ctrl` / `Ctrl+/` | All          | Stop recording and transcribe      |
+| `Fn`                      | macOS        | Toggle dictation on/off            |
+| Hold `Ctrl+Alt`           | macOS        | Start recording in agent mode      |
+| Release `Ctrl+Alt`        | macOS        | Stop recording, process with tools |
 
 ## Input
 
-| Shortcut | Platform | Action |
-|----------|----------|--------|
-| `Ctrl+T` | macOS, Linux | Open text input overlay |
-| `Ctrl+Shift+T` | Windows | Open text input overlay |
+| Shortcut       | Platform     | Action                  |
+| -------------- | ------------ | ----------------------- |
+| `Ctrl+T`       | macOS, Linux | Open text input overlay |
+| `Ctrl+Shift+T` | Windows      | Open text input overlay |
 
 ## System
 
-| Shortcut | Platform | Action |
-|----------|----------|--------|
-| `Ctrl+Shift+Escape` | All | Emergency stop — kill all active agents |
+| Shortcut            | Platform | Action                                  |
+| ------------------- | -------- | --------------------------------------- |
+| `Ctrl+Shift+Escape` | All      | Emergency stop — kill all active agents |
 
 ## Multi-Agent Command Queue
 
 The [command queue](/desktop/command-queue) lets you cycle through multiple agents through one adaptive input bar.
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Shift+K` (`⌘+Shift+K` on macOS) | Enter or exit the command queue |
-| `Tab` | Advance to next entry |
-| `Shift+Tab` | Go back to previous entry |
-| `Enter` | Submit message and auto-advance |
-| `Shift+Enter` | New line |
-| `Ctrl+N` (`⌘+N` on macOS) | Append a new dispatch slot |
-| `Ctrl+S` (`⌘+S` on macOS) | Skip current entry to end of queue |
-| `Esc` | Clear input — press again to exit |
+| Shortcut                              | Action                             |
+| ------------------------------------- | ---------------------------------- |
+| `Ctrl+Shift+K` (`⌘+Shift+K` on macOS) | Enter or exit the command queue    |
+| `Ctrl+]` (`⌘+]` on macOS)             | Advance to next entry              |
+| `Ctrl+[` (`⌘+[` on macOS)             | Go back to previous entry          |
+| `Enter`                               | Submit message and auto-advance    |
+| `Shift+Enter`                         | New line                           |
+| `Ctrl+N` (`⌘+N` on macOS)             | Append a new dispatch slot         |
+| `Ctrl+S` (`⌘+S` on macOS)             | Skip current entry to end of queue |
+| `Esc`                                 | Clear input — press again to exit  |
 
 ## Voice Flow Summary
 
@@ -60,12 +60,12 @@ Emergency Stop:     Ctrl+Shift+Escape → All agents stopped
 
 ## Mobile
 
-| Action | Gesture |
-|--------|---------|
-| Voice input | Press and hold mic button |
-| Send transcript | Release mic button |
+| Action          | Gesture                    |
+| --------------- | -------------------------- |
+| Voice input     | Press and hold mic button  |
+| Send transcript | Release mic button         |
 | Edit transcript | Release while in edit mode |
-| Hands-free mode | Toggle mic icon in header |
+| Hands-free mode | Toggle mic icon in header  |
 
 ---
 

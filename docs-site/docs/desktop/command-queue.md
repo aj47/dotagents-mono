@@ -17,14 +17,14 @@ You're running 3+ agents in parallel and want to:
 - Send mid-run guidance to running agents ("focus on X first")
 - Reply to each agent's report in the order they finish
 
-Without the queue, this requires clicking between sessions, hunting for the right composer, and remembering whose turn is next. With the queue, one input bar adapts to whichever session is "in focus" and `Tab` advances.
+Without the queue, this requires clicking between sessions, hunting for the right composer, and remembering whose turn is next. With the queue, one input bar adapts to whichever session is "in focus" and `Ctrl+]` (`⌘+]` on macOS) advances.
 
 ## How to enter
 
-| Method | Where |
-|---|---|
-| **`Ctrl+Shift+K`** (`⌘+Shift+K` on macOS) | From anywhere in the app |
-| Click the **Layers icon** | Sidebar header, next to the New Session button |
+| Method                                    | Where                                          |
+| ----------------------------------------- | ---------------------------------------------- |
+| **`Ctrl+Shift+K`** (`⌘+Shift+K` on macOS) | From anywhere in the app                       |
+| Click the **Layers icon**                 | Sidebar header, next to the New Session button |
 
 The bar appears at the bottom of the main panel and stays visible until you exit.
 
@@ -32,11 +32,11 @@ The bar appears at the bottom of the main panel and stays visible until you exit
 
 The bar's label, color, and submit button change based on what the current session needs:
 
-| State | Action | What it does |
-|---|---|---|
-| Session not yet created | **Dispatch** (green) | Spawns a new agent with your text |
-| Running / mid-task | **Steer** (blue) | Sends a guidance message to a live agent |
-| Complete / needs input | **Reply** (violet) | Continues the conversation |
+| State                   | Action               | What it does                             |
+| ----------------------- | -------------------- | ---------------------------------------- |
+| Session not yet created | **Dispatch** (green) | Spawns a new agent with your text        |
+| Running / mid-task      | **Steer** (blue)     | Sends a guidance message to a live agent |
+| Complete / needs input  | **Reply** (violet)   | Continues the conversation               |
 
 The queue auto-seeds with one entry per active session (sorted: `needs_input` first, then `complete`, then `running`) plus one trailing **Dispatch** slot for new agents. As sessions complete during the session, the queue auto-promotes `steer` → `reply`.
 
@@ -44,16 +44,16 @@ The queue auto-seeds with one entry per active session (sorted: `needs_input` fi
 
 All shortcuts work while the input is focused.
 
-| Shortcut | Action |
-|---|---|
-| `Ctrl+Shift+K` / `⌘+Shift+K` | Enter or exit the queue |
-| `Tab` | Advance to next entry |
-| `Shift+Tab` | Go back to previous entry |
-| `Enter` | Submit current message and advance |
-| `Shift+Enter` | New line in the input |
-| `Ctrl+N` / `⌘+N` | Append a new dispatch slot at the end |
-| `Ctrl+S` / `⌘+S` | Skip current entry (rotate to back of queue) |
-| `Esc` | Clear input — second press exits the queue |
+| Shortcut                     | Action                                       |
+| ---------------------------- | -------------------------------------------- |
+| `Ctrl+Shift+K` / `⌘+Shift+K` | Enter or exit the queue                      |
+| `Ctrl+]` / `⌘+]`             | Advance to next entry                        |
+| `Ctrl+[` / `⌘+[`             | Go back to previous entry                    |
+| `Enter`                      | Submit current message and advance           |
+| `Shift+Enter`                | New line in the input                        |
+| `Ctrl+N` / `⌘+N`             | Append a new dispatch slot at the end        |
+| `Ctrl+S` / `⌘+S`             | Skip current entry (rotate to back of queue) |
+| `Esc`                        | Clear input — second press exits the queue   |
 
 ## Auto-advance and routing
 
