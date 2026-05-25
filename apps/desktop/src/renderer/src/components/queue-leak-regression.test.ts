@@ -16,6 +16,14 @@ const sessionActionDialogSource = readFileSync(
   "utf8",
 )
 
+function expectQueuedModeDoesNotOptimisticallyAppend(source: string) {
+  expect(source).toContain('const shouldAppendOptimistically = inputPresentation.mode === "send"')
+  expect(source).toContain("const rollbackOptimisticAppend = sessionId && shouldAppendOptimistically")
+  expect(source).toContain("if (data?.queued) {")
+  expect(source).toContain("rollbackOptimisticAppend?.()")
+  expect(source).toContain("} else if (sessionId && !rollbackOptimisticAppend) {")
+}
+
 function expectQueuedGuardBeforeOptimisticAppend(source: string, guard: string) {
   const lines = source.split("\n")
   const appendIndex = lines.findIndex((line) =>
@@ -29,17 +37,14 @@ function expectQueuedGuardBeforeOptimisticAppend(source: string, guard: string) 
 
 describe("queued messages do not leak into main chat during analyzing/planning phase (#323)", () => {
   it("skips optimistic appendUserMessageToSession when overlay message is queued", () => {
-    // The onSuccess callback must check data?.queued and only append when NOT queued.
-    // When a message is queued (session already active), it should NOT be appended
-    // to the session's conversationHistory, preventing it from appearing in the
-    // main chat during the analyzing/planning phase.
-    expect(overlaySource).toContain("!data?.queued")
-    expectQueuedGuardBeforeOptimisticAppend(overlaySource, "!data?.queued")
+    // Queue-mode submissions must not optimistically append to conversationHistory.
+    // If the UI thought the session was complete but the backend races and queues
+    // the message anyway, the optimistic append is rolled back.
+    expectQueuedModeDoesNotOptimisticallyAppend(overlaySource)
   })
 
   it("skips optimistic appendUserMessageToSession when tile message is queued", () => {
-    expect(tileSource).toContain("!data?.queued")
-    expectQueuedGuardBeforeOptimisticAppend(tileSource, "!data?.queued")
+    expectQueuedModeDoesNotOptimisticallyAppend(tileSource)
   })
 
   it("skips optimistic appendUserMessageToSession when session-action-dialog message is queued", () => {

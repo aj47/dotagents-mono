@@ -105,7 +105,7 @@ export function OverlayFollowUpInput({
         })
       }
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       logUI("[OverlayFollowUpInput] message sent", {
         messageLength: variables.length,
         attachmentCount: imageAttachments.length,
@@ -113,13 +113,6 @@ export function OverlayFollowUpInput({
         sessionId: sessionId ?? null,
       })
 
-      setText("")
-      setImageAttachments([])
-      // Optimistically append user message to the session's conversation history
-      // so it appears immediately in the overlay without waiting for agent progress updates
-      if (sessionId && !data?.queued) {
-        useAgentStore.getState().appendUserMessageToSession(sessionId, variables)
-      }
       // Also invalidate React Query caches so other views stay in sync
       if (conversationId) {
         queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] })
@@ -150,10 +143,27 @@ export function OverlayFollowUpInput({
 
     submitInFlightRef.current = true
     setIsSubmitting(true)
+    const submittedText = text
+    const submittedImageAttachments = imageAttachments
+    const shouldAppendOptimistically = inputPresentation.mode === "send"
+    const rollbackOptimisticAppend = sessionId && shouldAppendOptimistically
+      ? useAgentStore.getState().appendUserMessageToSession(sessionId, message)
+      : null
+
+    setText("")
+    setImageAttachments([])
 
     try {
-      await sendMutation.mutateAsync(message)
+      const data = await sendMutation.mutateAsync(message)
+      if (data?.queued) {
+        rollbackOptimisticAppend?.()
+      } else if (sessionId && !rollbackOptimisticAppend) {
+        useAgentStore.getState().appendUserMessageToSession(sessionId, message)
+      }
     } catch (error) {
+      rollbackOptimisticAppend?.()
+      setText(submittedText)
+      setImageAttachments(submittedImageAttachments)
       console.error("Failed to submit overlay follow-up message:", error)
     } finally {
       submitInFlightRef.current = false

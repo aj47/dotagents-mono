@@ -176,7 +176,7 @@ interface AgentState {
   isQueuePaused: (conversationId: string) => boolean
 
   // Optimistic UI update: append a user message to a session's conversation history
-  appendUserMessageToSession: (sessionId: string, message: string) => void
+  appendUserMessageToSession: (sessionId: string, message: string) => (() => void) | null
 
   setViewMode: (mode: SessionViewMode) => void
   setFilter: (filter: SessionFilter) => void
@@ -634,6 +634,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   appendUserMessageToSession: (sessionId: string, message: string) => {
+    const previousProgress = get().agentProgressById.get(sessionId)
+    if (!previousProgress) return null
+
+    const optimisticTimestamp = Date.now()
+
     set((state) => {
       const existingProgress = state.agentProgressById.get(sessionId)
       if (!existingProgress) return state
@@ -660,11 +665,31 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         } : {}),
         conversationHistory: [
           ...existingHistory,
-          { role: "user" as const, content: message, timestamp: Date.now() },
+          { role: "user" as const, content: message, timestamp: optimisticTimestamp },
         ],
       })
       return { agentProgressById: newMap }
     })
+
+    return () => {
+      set((state) => {
+        const currentProgress = state.agentProgressById.get(sessionId)
+        if (!currentProgress) return state
+
+        const currentHistory = currentProgress.conversationHistory ?? []
+        const lastMessage = currentHistory[currentHistory.length - 1]
+        const canRollback =
+          lastMessage?.role === "user" &&
+          lastMessage.content === message &&
+          lastMessage.timestamp === optimisticTimestamp
+
+        if (!canRollback) return state
+
+        const newMap = new Map(state.agentProgressById)
+        newMap.set(sessionId, previousProgress)
+        return { agentProgressById: newMap }
+      })
+    }
   },
 
   // Message queue actions

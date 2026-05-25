@@ -217,6 +217,42 @@ describe('agent-store delegation merge', () => {
     ])
   })
 
+  it('rolls back an optimistic follow-up append when submission is rejected', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      isComplete: true,
+      conversationState: 'complete',
+      finalContent: 'Original answer',
+      userResponse: 'Original answer',
+      responseEvents: [
+        { id: 'response-1', sessionId: 'session-1', ordinal: 1, text: 'Original answer', timestamp: 2 },
+      ],
+      streamingContent: { text: 'Original answer', isStreaming: false },
+      steps: [
+        { id: 'complete-1', type: 'completion', title: 'Complete', status: 'completed', timestamp: 2 },
+      ],
+      conversationHistory: [
+        { role: 'user', content: 'Original question', timestamp: 1 },
+        { role: 'assistant', content: 'Original answer', timestamp: 2 },
+      ],
+    })
+
+    const rollback = useAgentStore.getState().appendUserMessageToSession('session-1', 'Follow-up prompt')
+    rollback?.()
+
+    const stored = useAgentStore.getState().agentProgressById.get('session-1')
+    expect(stored?.isComplete).toBe(true)
+    expect(stored?.conversationState).toBe('complete')
+    expect(stored?.finalContent).toBe('Original answer')
+    expect(stored?.userResponse).toBe('Original answer')
+    expect(stored?.responseEvents).toHaveLength(1)
+    expect(stored?.streamingContent?.text).toBe('Original answer')
+    expect(stored?.conversationHistory?.map((message) => message.content)).toEqual([
+      'Original question',
+      'Original answer',
+    ])
+  })
+
   it('does not regress a terminal delegation back to running when stale progress arrives late', () => {
     useAgentStore.getState().updateSessionProgress({
       ...createBaseUpdate(),

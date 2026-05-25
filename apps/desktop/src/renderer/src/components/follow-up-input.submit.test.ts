@@ -18,12 +18,24 @@ const presentationSource = readFileSync(
 
 describe("desktop follow-up input submit guardrails", () => {
   it("adds an immediate in-flight guard to the overlay composer", () => {
+    const submitBlock = overlaySource.slice(
+      overlaySource.indexOf("const handleSubmit"),
+      overlaySource.indexOf("const handleImageButtonClick"),
+    )
+
     expect(overlaySource).toContain("const [isSubmitting, setIsSubmitting] = useState(false)")
     expect(overlaySource).toContain("const submitInFlightRef = useRef(false)")
     expect(overlaySource).toContain(
       "pending: sendMutation.isPending || isSubmitting || submitInFlightRef.current",
     )
     expect(overlaySource).toContain("await sendMutation.mutateAsync(message)")
+    expect(submitBlock).toContain('const shouldAppendOptimistically = inputPresentation.mode === "send"')
+    expect(submitBlock.indexOf('setText("")')).toBeLessThan(
+      submitBlock.indexOf("await sendMutation.mutateAsync(message)"),
+    )
+    expect(submitBlock.indexOf("appendUserMessageToSession")).toBeLessThan(
+      submitBlock.indexOf("await sendMutation.mutateAsync(message)"),
+    )
     expect(overlaySource).toContain("console.error(\"Failed to submit overlay follow-up message:\", error)")
     expect(overlaySource).toContain(
       "const isDisabled = inputPresentation.isDisabled || isSubmitting || sendMutation.isPending",
@@ -32,12 +44,24 @@ describe("desktop follow-up input submit guardrails", () => {
   })
 
   it("adds the same immediate in-flight guard to the tile composer", () => {
+    const submitBlock = tileSource.slice(
+      tileSource.indexOf("const handleSubmit"),
+      tileSource.indexOf("const addImageAttachmentsFromFiles"),
+    )
+
     expect(tileSource).toContain("const [isSubmitting, setIsSubmitting] = useState(false)")
     expect(tileSource).toContain("const submitInFlightRef = useRef(false)")
     expect(tileSource).toContain(
       "pending: sendMutation.isPending || isSubmitting || submitInFlightRef.current",
     )
     expect(tileSource).toContain("await sendMutation.mutateAsync(message)")
+    expect(submitBlock).toContain('const shouldAppendOptimistically = inputPresentation.mode === "send"')
+    expect(submitBlock.indexOf('setText("")')).toBeLessThan(
+      submitBlock.indexOf("await sendMutation.mutateAsync(message)"),
+    )
+    expect(submitBlock.indexOf("appendUserMessageToSession")).toBeLessThan(
+      submitBlock.indexOf("await sendMutation.mutateAsync(message)"),
+    )
     expect(tileSource).toContain("console.error(\"Failed to submit tile follow-up message:\", error)")
     expect(tileSource).toContain("const isDisabled =")
     expect(tileSource).toContain('inputPresentation.mode === "initializing"')

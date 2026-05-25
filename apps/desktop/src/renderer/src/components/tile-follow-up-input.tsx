@@ -129,7 +129,7 @@ export function TileFollowUpInput({
         })
       }
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       logUI("[TileFollowUpInput] message sent", {
         messageLength: variables.length,
         attachmentCount: imageAttachments.length,
@@ -137,13 +137,6 @@ export function TileFollowUpInput({
         sessionId: sessionId ?? null,
       })
 
-      setText("")
-      setImageAttachments([])
-      // Optimistically append user message to the session's conversation history
-      // so it appears immediately in the session tile without waiting for agent progress updates
-      if (sessionId && !data?.queued) {
-        useAgentStore.getState().appendUserMessageToSession(sessionId, variables)
-      }
       // Also invalidate React Query caches so other views (e.g., panel) stay in sync
       if (conversationId) {
         queryClient.invalidateQueries({ queryKey: ["conversation", conversationId] })
@@ -177,10 +170,27 @@ export function TileFollowUpInput({
     submitInFlightRef.current = true
     setIsSubmitting(true)
     onMessageSubmitStarted?.()
+    const submittedText = text
+    const submittedImageAttachments = imageAttachments
+    const shouldAppendOptimistically = inputPresentation.mode === "send"
+    const rollbackOptimisticAppend = sessionId && shouldAppendOptimistically
+      ? useAgentStore.getState().appendUserMessageToSession(sessionId, message)
+      : null
+
+    setText("")
+    setImageAttachments([])
 
     try {
-      await sendMutation.mutateAsync(message)
+      const data = await sendMutation.mutateAsync(message)
+      if (data?.queued) {
+        rollbackOptimisticAppend?.()
+      } else if (sessionId && !rollbackOptimisticAppend) {
+        useAgentStore.getState().appendUserMessageToSession(sessionId, message)
+      }
     } catch (error) {
+      rollbackOptimisticAppend?.()
+      setText(submittedText)
+      setImageAttachments(submittedImageAttachments)
       console.error("Failed to submit tile follow-up message:", error)
       onMessageSubmitFailed?.()
     } finally {
