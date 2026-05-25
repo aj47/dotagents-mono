@@ -8,14 +8,23 @@ import type { PathResolver } from "@dotagents/core"
  */
 export class ElectronPathResolver implements PathResolver {
   getUserDataPath(): string {
+    if (process.env.DOTAGENTS_USER_DATA_DIR?.trim()) {
+      return process.env.DOTAGENTS_USER_DATA_DIR.trim()
+    }
     return app.getPath("userData")
   }
 
   getConfigPath(): string {
+    if (process.env.DOTAGENTS_USER_DATA_DIR?.trim()) {
+      return process.env.DOTAGENTS_USER_DATA_DIR.trim()
+    }
     return app.getPath("userData")
   }
 
   getAppDataPath(): string {
+    if (process.env.DOTAGENTS_APP_DATA_DIR?.trim()) {
+      return process.env.DOTAGENTS_APP_DATA_DIR.trim()
+    }
     return app.getPath("appData")
   }
 
