@@ -13,22 +13,17 @@ describe("rtk helpers", () => {
     process.env = { ...originalEnv }
   })
 
-  it("is disabled by default and leaves commands unchanged", async () => {
-    const { maybeWrapWithRtk } = await import("./rtk")
-    const result = await maybeWrapWithRtk("git status")
-    expect(result).toEqual({ command: "git status", wrapped: false })
-  })
-
-  it("recognizes truthy values of DOTAGENTS_RTK", async () => {
+  it("is enabled by default; falsy values disable it", async () => {
     const { isRtkEnabled } = await import("./rtk")
-    for (const value of ["1", "true", "TRUE", "yes", "on"]) {
+    expect(isRtkEnabled()).toBe(true)
+    for (const value of ["0", "false", "FALSE", "no", "off", ""]) {
       process.env.DOTAGENTS_RTK = value
-      expect(isRtkEnabled()).toBe(true)
+      expect(isRtkEnabled(), `value ${JSON.stringify(value)} should disable`).toBe(false)
     }
-    process.env.DOTAGENTS_RTK = "0"
-    expect(isRtkEnabled()).toBe(false)
-    delete process.env.DOTAGENTS_RTK
-    expect(isRtkEnabled()).toBe(false)
+    for (const value of ["1", "true", "yes", "on", "anything-else"]) {
+      process.env.DOTAGENTS_RTK = value
+      expect(isRtkEnabled(), `value ${JSON.stringify(value)} should enable`).toBe(true)
+    }
   })
 
   it("refuses to wrap commands with shell metacharacters or pipelines", async () => {
@@ -63,13 +58,25 @@ describe("rtk helpers", () => {
     }
   })
 
-  it("uses the configured binary name when wrapping", async () => {
-    process.env.DOTAGENTS_RTK = "1"
+  it("resolves the bundled binary path inside the app resources", async () => {
+    const { getRtkBinary } = await import("./rtk")
+    const resolved = getRtkBinary()
+    expect(resolved.replace(/\\/g, "/")).toContain("resources/bin/rtk")
+  })
+
+  it("honours DOTAGENTS_RTK_BINARY override", async () => {
+    process.env.DOTAGENTS_RTK_BINARY = "/opt/rtk/bin/rtk"
+    const { getRtkBinary } = await import("./rtk")
+    expect(getRtkBinary()).toBe("/opt/rtk/bin/rtk")
+  })
+
+  it("uses the configured binary when wrapping and the file exists", async () => {
     process.env.DOTAGENTS_RTK_BINARY = "/opt/rtk/bin/rtk"
 
-    vi.doMock("child_process", () => ({
-      exec: (_cmd: string, _opts: unknown, cb: (err: Error | null) => void) => cb(null),
-    }))
+    vi.doMock("fs", async () => {
+      const actual = await vi.importActual<typeof import("fs")>("fs")
+      return { ...actual, existsSync: (p: string) => p === "/opt/rtk/bin/rtk" }
+    })
 
     const { maybeWrapWithRtk, resetRtkAvailabilityCache } = await import("./rtk")
     resetRtkAvailabilityCache()
@@ -77,9 +84,13 @@ describe("rtk helpers", () => {
     expect(result).toEqual({ command: "/opt/rtk/bin/rtk git status", wrapped: true })
   })
 
-  it("silently skips wrapping when the rtk binary is not on PATH", async () => {
-    process.env.DOTAGENTS_RTK = "1"
+  it("silently skips wrapping when the bundled binary is missing and PATH lookup fails", async () => {
+    process.env.DOTAGENTS_RTK_BINARY = "rtk"
 
+    vi.doMock("fs", async () => {
+      const actual = await vi.importActual<typeof import("fs")>("fs")
+      return { ...actual, existsSync: () => false }
+    })
     vi.doMock("child_process", () => ({
       exec: (_cmd: string, _opts: unknown, cb: (err: Error | null) => void) =>
         cb(new Error("not found")),
@@ -87,6 +98,13 @@ describe("rtk helpers", () => {
 
     const { maybeWrapWithRtk, resetRtkAvailabilityCache } = await import("./rtk")
     resetRtkAvailabilityCache()
+    const result = await maybeWrapWithRtk("git status")
+    expect(result).toEqual({ command: "git status", wrapped: false })
+  })
+
+  it("skips wrapping when DOTAGENTS_RTK is explicitly disabled", async () => {
+    process.env.DOTAGENTS_RTK = "0"
+    const { maybeWrapWithRtk } = await import("./rtk")
     const result = await maybeWrapWithRtk("git status")
     expect(result).toEqual({ command: "git status", wrapped: false })
   })
