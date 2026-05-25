@@ -928,17 +928,32 @@ export async function processTranscriptWithAgentMode(
     )
   const materializedUserResponseEventIds = new Set<string>()
 
-  // Create bound emitter that always includes sessionId, conversationId, snooze state, sessionStartIndex, conversationTitle, and contextInfo
+  // Create bound emitter. Non-streaming updates include stable session metadata;
+  // high-frequency streaming token ticks omit unchanged metadata so renderer merge
+  // can preserve it without repeatedly broadcasting the same payload.
   const emit = (
     update: Omit<AgentProgressUpdate, 'sessionId' | 'runId' | 'conversationId' | 'isSnoozed' | 'conversationTitle'>,
+    options?: { sendRendererProgress?: boolean },
   ) => {
-    const isSnoozed = agentSessionTracker.isSessionSnoozed(currentSessionId)
-    const session = agentSessionTracker.getSession(currentSessionId)
-    const conversationTitle =
-      session?.conversationTitle ?? getAcpSessionTitleOverride(currentSessionId)
-    const profileName = session?.profileSnapshot?.profileName
-    const responseEvents = getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
-    const storedUserResponse = getSessionUserResponse(currentSessionId, effectiveRunId)
+    const isStreamingTokenProgress = update.streamingContent?.isStreaming === true && update.userResponse === undefined
+    const session = isStreamingTokenProgress
+      ? undefined
+      : agentSessionTracker.getSession(currentSessionId)
+    const isSnoozed = isStreamingTokenProgress
+      ? undefined
+      : agentSessionTracker.isSessionSnoozed(currentSessionId)
+    const conversationTitle = isStreamingTokenProgress
+      ? undefined
+      : session?.conversationTitle ?? getAcpSessionTitleOverride(currentSessionId)
+    const profileName = isStreamingTokenProgress
+      ? undefined
+      : session?.profileSnapshot?.profileName
+    const responseEvents = isStreamingTokenProgress
+      ? []
+      : getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
+    const storedUserResponse = isStreamingTokenProgress
+      ? undefined
+      : getSessionUserResponse(currentSessionId, effectiveRunId)
     // Live progress should only surface executed respond_to_user output. Falling
     // back to the current conversationHistory can read the planned tool-call args
     // before runtime-tools has materialized local image paths into renderable
@@ -967,10 +982,23 @@ export async function processTranscriptWithAgentMode(
       userResponseForUpdate !== lastEmittedUserResponse
 
     // Get history of past respond_to_user calls (excluding current)
-    const responseHistory = getSessionUserResponseHistory(currentSessionId, effectiveRunId)
+    const responseHistory = isStreamingTokenProgress
+      ? []
+      : getSessionUserResponseHistory(currentSessionId, effectiveRunId)
 
     const windowedConversationHistory = update.conversationHistory
       ? (() => {
+          if (
+            typeof update.conversationHistoryStartIndex === "number" &&
+            typeof update.conversationHistoryTotalCount === "number"
+          ) {
+            return {
+              conversationHistory: update.conversationHistory,
+              conversationHistoryStartIndex: update.conversationHistoryStartIndex,
+              conversationHistoryTotalCount: update.conversationHistoryTotalCount,
+            }
+          }
+
           const totalCount = update.conversationHistory?.length ?? 0
           const startIndex = Math.max(0, totalCount - AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE)
           return {
@@ -994,23 +1022,27 @@ export async function processTranscriptWithAgentMode(
       sessionId: currentSessionId,
       runId: effectiveRunId,
       conversationId: currentConversationId,
-      conversationTitle,
-      isSnoozed,
       sessionStartIndex,
-      // Always include current context info if available
-      contextInfo: update.contextInfo ?? contextInfoRef,
-      // Always include model info
-      modelInfo: modelInfoRef,
-      // Include profile name from session snapshot for UI display
-      profileName,
-      // Dual-model summarization data (from service - single source of truth)
-      stepSummaries: summarizationService.getSummaries(currentSessionId),
-      latestSummary: summarizationService.getLatestSummary(currentSessionId),
-      // Running session cost (USD + cumulative tokens). Omitted when no usage recorded.
-      ...(() => {
-        const sessionCost = getSessionCost(currentSessionId)
-        return sessionCost ? { sessionCost } : {}
-      })(),
+      ...(isStreamingTokenProgress
+        ? {}
+        : {
+            conversationTitle,
+            isSnoozed,
+            // Always include current context info if available
+            contextInfo: update.contextInfo ?? contextInfoRef,
+            // Always include model info
+            modelInfo: modelInfoRef,
+            // Include profile name from session snapshot for UI display
+            profileName,
+            // Dual-model summarization data (from service - single source of truth)
+            stepSummaries: summarizationService.getSummaries(currentSessionId),
+            latestSummary: summarizationService.getLatestSummary(currentSessionId),
+            // Running session cost (USD + cumulative tokens). Omitted when no usage recorded.
+            ...(() => {
+              const sessionCost = getSessionCost(currentSessionId)
+              return sessionCost ? { sessionCost } : {}
+            })(),
+          }),
     }
 
     if (shouldEmitUserResponse) {
@@ -1025,10 +1057,12 @@ export async function processTranscriptWithAgentMode(
       lastEmittedUserResponse = userResponseForUpdate
     }
 
-    // Fire and forget - don't await, but catch errors
-    emitAgentProgress(fullUpdate).catch(err => {
-      logLLM("[emit] Failed to emit agent progress:", err)
-    })
+    if (options?.sendRendererProgress !== false) {
+      // Fire and forget - don't await, but catch errors
+      emitAgentProgress(fullUpdate).catch(err => {
+        logLLM("[emit] Failed to emit agent progress:", err)
+      })
+    }
 
     // Also call external progress callback if provided (for SSE streaming, etc.)
     if (onProgress) {
@@ -1462,9 +1496,9 @@ export async function processTranscriptWithAgentMode(
       isComplete: false,
       retryInfo: retryInfo.isRetrying ? retryInfo : undefined,
       // Include conversationHistory to avoid "length: 0" logs in emitAgentProgress
-      conversationHistory: typeof formatConversationForProgress === 'function' && conversationHistory
-        ? formatConversationForProgress(conversationHistory)
-        : [],
+      ...(typeof formatConversationWindowForProgress === 'function' && conversationHistory
+        ? formatConversationWindowForProgress(conversationHistory)
+        : { conversationHistory: [] }),
     })
   }
 
@@ -1683,39 +1717,86 @@ export async function processTranscriptWithAgentMode(
   // Track empty response retries to prevent infinite loops
   let emptyResponseRetryCount = 0
 
-  // Helper function to convert conversation history to the format expected by AgentProgressUpdate
-  // - Filters out ephemeral messages (internal prompt-engineering nudges)
-  // - Filters out other internal "user" nudges that we don't want to render in the progress UI
+  // Helper functions to convert conversation history to the format expected by
+  // AgentProgressUpdate.
+  // - Filter out ephemeral messages (internal prompt-engineering nudges)
+  // - Filter out other internal "user" nudges that we don't want to render in the progress UI
+  const isConversationEntryVisibleInProgress = (entry: typeof conversationHistory[number]) => (
+    !entry.ephemeral && !(entry.role === "user" && isInternalNudgeContent(entry.content))
+  )
+
+  const formatConversationEntryForProgress = (entry: typeof conversationHistory[number]) => {
+    const formatted: NonNullable<AgentProgressUpdate["conversationHistory"]>[number] = {
+      role: entry.role,
+      content: entry.content,
+      // Preserve original timestamp if available, otherwise use current time
+      timestamp: entry.timestamp || Date.now(),
+      branchMessageIndex: entry.branchMessageIndex,
+    }
+
+    if (entry.displayContent) {
+      formatted.displayContent = entry.displayContent
+    }
+
+    if (entry.toolCalls?.length) {
+      formatted.toolCalls = entry.toolCalls.map((tc) => ({
+        name: tc.name,
+        arguments: tc.arguments,
+      }))
+    }
+
+    if (entry.toolResults?.length) {
+      formatted.toolResults = entry.toolResults.map((tr) => {
+        // Safely handle content - it should be an array, but add defensive check
+        const contentText = Array.isArray(tr.content)
+          ? tr.content.map((c) => c.text).join("\n")
+          : String(tr.content || "")
+
+        return {
+          success: !tr.isError,
+          content: contentText,
+          error: tr.isError ? contentText : undefined,
+        }
+      })
+    }
+
+    return formatted
+  }
+
   const formatConversationForProgress = (
     history: typeof conversationHistory,
   ) => {
     return history
-      .filter((entry) => !entry.ephemeral)
-      .filter((entry) => !(entry.role === "user" && isInternalNudgeContent(entry.content)))
-      .map((entry) => ({
-        role: entry.role,
-        content: entry.content,
-        ...(entry.displayContent ? { displayContent: entry.displayContent } : {}),
-        toolCalls: entry.toolCalls?.map((tc) => ({
-          name: tc.name,
-          arguments: tc.arguments,
-        })),
-        toolResults: entry.toolResults?.map((tr) => {
-          // Safely handle content - it should be an array, but add defensive check
-          const contentText = Array.isArray(tr.content)
-            ? tr.content.map((c) => c.text).join("\n")
-            : String(tr.content || "")
+      .filter(isConversationEntryVisibleInProgress)
+      .map(formatConversationEntryForProgress)
+  }
 
-          return {
-            success: !tr.isError,
-            content: contentText,
-            error: tr.isError ? contentText : undefined,
-          }
-        }),
-        // Preserve original timestamp if available, otherwise use current time
-        timestamp: entry.timestamp || Date.now(),
-        branchMessageIndex: entry.branchMessageIndex,
-      }))
+  const formatConversationWindowForProgress = (
+    history: typeof conversationHistory,
+  ) => {
+    const visibleHistory = history.filter(isConversationEntryVisibleInProgress)
+    const totalCount = visibleHistory.length
+    const startIndex = Math.max(0, totalCount - AGENT_PROGRESS_CONVERSATION_HISTORY_WINDOW_SIZE)
+    return {
+      conversationHistory: visibleHistory
+        .slice(startIndex)
+        .map(formatConversationEntryForProgress),
+      conversationHistoryStartIndex: startIndex,
+      conversationHistoryTotalCount: totalCount,
+    }
+  }
+
+  let cachedConversationWindowLength = -1
+  let cachedConversationWindowForProgress: ReturnType<typeof formatConversationWindowForProgress> | undefined
+  const getConversationWindowForProgress = () => {
+    if (
+      !cachedConversationWindowForProgress ||
+      cachedConversationWindowLength !== conversationHistory.length
+    ) {
+      cachedConversationWindowLength = conversationHistory.length
+      cachedConversationWindowForProgress = formatConversationWindowForProgress(conversationHistory)
+    }
+    return cachedConversationWindowForProgress
   }
 
   const finalizeEmergencyStop = (steps: AgentProgressStep[]) => {
@@ -1736,7 +1817,7 @@ export async function processTranscriptWithAgentMode(
       steps,
       isComplete: true,
       finalContent,
-      conversationHistory: formatConversationForProgress(conversationHistory),
+      ...getConversationWindowForProgress(),
     })
 
     wasAborted = true
@@ -1826,7 +1907,7 @@ export async function processTranscriptWithAgentMode(
       maxIterations,
       steps: progressSteps.slice(-3),
       isComplete: false,
-      conversationHistory: formatConversationForProgress(conversationHistory),
+      ...getConversationWindowForProgress(),
     })
 
     const postVerifySystemPrompt = constructSystemPrompt(
@@ -1865,7 +1946,7 @@ export async function processTranscriptWithAgentMode(
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: false,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
       },
     })
@@ -2137,7 +2218,7 @@ export async function processTranscriptWithAgentMode(
     maxIterations,
     steps: progressSteps.slice(-3), // Show max 3 steps
     isComplete: false,
-    conversationHistory: formatConversationForProgress(conversationHistory),
+    ...getConversationWindowForProgress(),
   })
 
   let noOpCount = 0 // Track iterations without meaningful progress
@@ -2247,7 +2328,7 @@ export async function processTranscriptWithAgentMode(
       maxIterations,
       steps: progressSteps.slice(-3),
       isComplete: false,
-      conversationHistory: formatConversationForProgress(conversationHistory),
+      ...getConversationWindowForProgress(),
     })
 
     const checkpointContextMessage = isInternalResumeTranscript
@@ -2324,7 +2405,7 @@ export async function processTranscriptWithAgentMode(
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: false,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
       },
     })
@@ -2343,7 +2424,7 @@ export async function processTranscriptWithAgentMode(
         maxIterations,
         steps: progressSteps.slice(-3),
         isComplete: false,
-        conversationHistory: formatConversationForProgress(conversationHistory),
+        ...getConversationWindowForProgress(),
       })
     }
 
@@ -2360,9 +2441,17 @@ export async function processTranscriptWithAgentMode(
     // Make LLM call (abort-aware) with streaming for real-time UI updates
     let llmResponse: any
     try {
-      // Create streaming callback that emits progress updates as content streams in
+      // Create streaming callback that emits progress updates as content streams in.
+      // The previous progress update already carried the conversation window, and
+      // the renderer store preserves existing history when an update omits it, so
+      // streamed token ticks only need to carry the changing step/streaming text.
       let lastStreamEmitTime = 0
+      let lastRendererStreamEmitTime = 0
       const STREAM_EMIT_THROTTLE_MS = 50
+      const RENDERER_STREAM_EMIT_THROTTLE_MS = 250
+      const streamingProgressSteps = progressSteps.length <= 3
+        ? progressSteps
+        : progressSteps.slice(-3)
 
       const onStreamingUpdate: StreamingCallback = (_chunk, accumulated) => {
         const now = Date.now()
@@ -2378,35 +2467,29 @@ export async function processTranscriptWithAgentMode(
           return // Skip emit, but content is updated
         }
         lastStreamEmitTime = now
+        const shouldSendRendererProgress =
+          now - lastRendererStreamEmitTime >= RENDERER_STREAM_EMIT_THROTTLE_MS
+        if (shouldSendRendererProgress) {
+          lastRendererStreamEmitTime = now
+        }
 
         // Emit progress update with streaming content
         emit({
           currentIteration: iteration,
           maxIterations,
-          steps: progressSteps.slice(-3),
+          steps: streamingProgressSteps,
           isComplete: false,
-          conversationHistory: formatConversationForProgress(conversationHistory),
           streamingContent: {
             text: accumulated,
             isStreaming: true,
           },
-        })
+        }, { sendRendererProgress: shouldSendRendererProgress })
       }
 
       llmResponse = await makeLLMCall(shrunkMessages, config, onRetryProgress, onStreamingUpdate, currentSessionId, activeTools)
 
-      // Clear streaming state after response is complete
-      emit({
-        currentIteration: iteration,
-        maxIterations,
-        steps: progressSteps.slice(-3),
-        isComplete: false,
-        conversationHistory: formatConversationForProgress(conversationHistory),
-        streamingContent: {
-          text: llmResponse?.content || "",
-          isStreaming: false,
-        },
-      })
+      // The next non-streaming progress update clears live streaming state in the renderer.
+      // Avoid an extra intermediate emit that would duplicate the completed text.
 
       // If stop was requested while the LLM call was in-flight and it returned before aborting, exit now
       if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
@@ -2449,7 +2532,7 @@ export async function processTranscriptWithAgentMode(
             isComplete: true,
             conversationState: "blocked",
             finalContent: emptyResponseFinalContent,
-            conversationHistory: formatConversationForProgress(conversationHistory),
+            ...getConversationWindowForProgress(),
           })
           break
         }
@@ -2460,7 +2543,7 @@ export async function processTranscriptWithAgentMode(
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: false,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
         addEphemeralMessage("user", "Previous request had empty response. Please retry or summarize progress.")
         continue
@@ -2527,7 +2610,7 @@ export async function processTranscriptWithAgentMode(
           isComplete: true,
           conversationState: "blocked",
           finalContent: emptyResponseFinalContent,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
         break
       }
@@ -2538,7 +2621,7 @@ export async function processTranscriptWithAgentMode(
         maxIterations,
         steps: progressSteps.slice(-3),
         isComplete: false,
-        conversationHistory: formatConversationForProgress(conversationHistory),
+        ...getConversationWindowForProgress(),
       })
       // Check if recent messages contain truncated content that might be confusing
       const recentMessages = conversationHistory.slice(-3)
@@ -2597,7 +2680,7 @@ export async function processTranscriptWithAgentMode(
       maxIterations,
       steps: progressSteps.slice(-3),
       isComplete: false,
-      conversationHistory: formatConversationForProgress(conversationHistory),
+      ...getConversationWindowForProgress(),
     })
 
     // Check for explicit completion signal
@@ -2633,7 +2716,7 @@ export async function processTranscriptWithAgentMode(
           isComplete: true,
           conversationState: "complete",
           finalContent,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
         break
       }
@@ -2707,7 +2790,7 @@ export async function processTranscriptWithAgentMode(
             isComplete: true,
             conversationState: "complete",
             finalContent,
-            conversationHistory: formatConversationForProgress(conversationHistory),
+            ...getConversationWindowForProgress(),
           })
           break
         }
@@ -2739,7 +2822,7 @@ export async function processTranscriptWithAgentMode(
             maxIterations,
             steps: progressSteps.slice(-3),
             isComplete: false,
-            conversationHistory: formatConversationForProgress(conversationHistory),
+            ...getConversationWindowForProgress(),
           })
 
           const result = await runVerificationAndHandleResult(
@@ -2826,7 +2909,7 @@ export async function processTranscriptWithAgentMode(
           isComplete: true,
           conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
           finalContent,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
 
         if (isSummarizationEnabled()) {
@@ -2856,7 +2939,7 @@ export async function processTranscriptWithAgentMode(
                 isComplete: true,
                 conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
                 finalContent,
-                conversationHistory: formatConversationForProgress(conversationHistory),
+                ...getConversationWindowForProgress(),
               })
             }
           } catch (err) {
@@ -2901,7 +2984,7 @@ export async function processTranscriptWithAgentMode(
             steps: progressSteps.slice(-3),
             isComplete: true,
             finalContent,
-            conversationHistory: formatConversationForProgress(conversationHistory),
+            ...getConversationWindowForProgress(),
           })
           break
         }
@@ -2941,7 +3024,7 @@ export async function processTranscriptWithAgentMode(
           isComplete: true,
           conversationState: "blocked",
           finalContent,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
         break
       }
@@ -2983,7 +3066,7 @@ export async function processTranscriptWithAgentMode(
       maxIterations,
       steps: progressSteps.slice(-3),
       isComplete: false,
-      conversationHistory: formatConversationForProgress(conversationHistory),
+      ...getConversationWindowForProgress(),
     })
 
     // Apply intelligent tool result processing to all queries to prevent context overflow
@@ -3031,7 +3114,7 @@ export async function processTranscriptWithAgentMode(
         maxIterations,
         steps: progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)),
         isComplete: false,
-        conversationHistory: formatConversationForProgress(conversationHistory),
+        ...getConversationWindowForProgress(),
       })
 
       // Execute all tools in parallel
@@ -3045,7 +3128,7 @@ export async function processTranscriptWithAgentMode(
             maxIterations,
             steps: progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)),
             isComplete: false,
-            conversationHistory: formatConversationForProgress(conversationHistory),
+            ...getConversationWindowForProgress(),
           })
         }
 
@@ -3109,7 +3192,7 @@ export async function processTranscriptWithAgentMode(
         maxIterations,
         steps: progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)),
         isComplete: false,
-        conversationHistory: formatConversationForProgress(conversationHistory),
+        ...getConversationWindowForProgress(),
       })
     } else {
       // SEQUENTIAL EXECUTION: Execute tool calls one at a time
@@ -3149,7 +3232,7 @@ export async function processTranscriptWithAgentMode(
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: false,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
 
         // Create progress callback to update tool execution step
@@ -3160,7 +3243,7 @@ export async function processTranscriptWithAgentMode(
             maxIterations,
             steps: progressSteps.slice(-3),
             isComplete: false,
-            conversationHistory: formatConversationForProgress(conversationHistory),
+            ...getConversationWindowForProgress(),
           })
         }
 
@@ -3225,7 +3308,7 @@ export async function processTranscriptWithAgentMode(
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: false,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
       }
     }
@@ -3284,7 +3367,7 @@ export async function processTranscriptWithAgentMode(
         maxIterations,
         steps: progressSteps.slice(-3),
         isComplete: false,
-        conversationHistory: formatConversationForProgress(conversationHistory),
+        ...getConversationWindowForProgress(),
       })
     }
 
@@ -3414,7 +3497,7 @@ export async function processTranscriptWithAgentMode(
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: false,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
 
         const result = await runVerificationAndHandleResult(
@@ -3454,7 +3537,7 @@ export async function processTranscriptWithAgentMode(
           isComplete: true,
           conversationState: completionForcedByVerificationLimit ? "blocked" : finalConversationState,
           finalContent,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
         break
       }
@@ -3480,7 +3563,7 @@ export async function processTranscriptWithAgentMode(
           isComplete: true,
           conversationState: "complete",
           finalContent,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
         break
       }
@@ -3543,7 +3626,7 @@ export async function processTranscriptWithAgentMode(
           maxIterations,
           steps: progressSteps.slice(-3),
           isComplete: false,
-          conversationHistory: formatConversationForProgress(conversationHistory),
+          ...getConversationWindowForProgress(),
         })
 
         // Get the summary from the agent
@@ -3580,7 +3663,7 @@ export async function processTranscriptWithAgentMode(
               maxIterations,
               steps: progressSteps.slice(-3),
               isComplete: false,
-              conversationHistory: formatConversationForProgress(conversationHistory),
+              ...getConversationWindowForProgress(),
             })
           },
         })
@@ -3686,7 +3769,7 @@ export async function processTranscriptWithAgentMode(
 	          maxIterations,
 	          steps: progressSteps.slice(-3),
 	          isComplete: false,
-	          conversationHistory: formatConversationForProgress(conversationHistory),
+	          ...getConversationWindowForProgress(),
 	        })
 
 	        const result = await runVerificationAndHandleResult(
@@ -3787,7 +3870,7 @@ export async function processTranscriptWithAgentMode(
         isComplete: true,
 	        conversationState: completionForcedByVerificationLimit2 ? "blocked" : finalConversationState2,
         finalContent,
-        conversationHistory: formatConversationForProgress(conversationHistory),
+        ...getConversationWindowForProgress(),
       })
 
       break
@@ -3857,7 +3940,7 @@ export async function processTranscriptWithAgentMode(
       isComplete: true,
       conversationState: "blocked",
       finalContent,
-      conversationHistory: formatConversationForProgress(conversationHistory),
+      ...getConversationWindowForProgress(),
     })
   }
 
