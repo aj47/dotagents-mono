@@ -21,6 +21,18 @@ describe("predefined prompts menu layout", () => {
     expect(predefinedPromptsMenuSource).toContain('className="truncate font-medium" title={skill.name}')
   })
 
+  it("keeps prompt action buttons outside the selectable prompt item", () => {
+    const promptRowIndex = predefinedPromptsMenuSource.indexOf('<div key={prompt.id} className="flex min-w-0 items-start rounded-sm">')
+    const selectableItemIndex = predefinedPromptsMenuSource.indexOf("onSelect={() => handleSelectPrompt(prompt)}", promptRowIndex)
+    const closeSelectableItemIndex = predefinedPromptsMenuSource.indexOf("</DropdownMenuItem>", selectableItemIndex)
+    const actionButtonsIndex = predefinedPromptsMenuSource.indexOf('aria-label={`Delete predefined prompt ${prompt.name}`}', closeSelectableItemIndex)
+
+    expect(promptRowIndex).toBeGreaterThan(-1)
+    expect(selectableItemIndex).toBeGreaterThan(promptRowIndex)
+    expect(closeSelectableItemIndex).toBeGreaterThan(selectableItemIndex)
+    expect(actionButtonsIndex).toBeGreaterThan(closeSelectableItemIndex)
+  })
+
   it("adds a top search filter for prompts, skills, and tasks", () => {
     expect(predefinedPromptsMenuSource).toContain('const [searchQuery, setSearchQuery] = useState("")')
     expect(predefinedPromptsMenuSource).toContain('placeholder="Search prompts, skills, tasks..."')

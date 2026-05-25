@@ -212,20 +212,17 @@ export function PredefinedPromptsMenu({
             </div>
           ) : (
             filteredPrompts.map((prompt) => (
-              <DropdownMenuItem
-                key={prompt.id}
-                className={entryClassName}
-                onSelect={() => handleSelectPrompt(prompt)}
-              >
-                <div className={entryTextClassName}>
-                  <div className="truncate font-medium" title={prompt.name}>{prompt.name}</div>
-                  <p className={secondaryTextClassName}>{prompt.content}</p>
-                </div>
-                <div
-                  className="mt-0.5 flex shrink-0 items-center gap-1 self-start"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
+              <div key={prompt.id} className="flex min-w-0 items-start rounded-sm">
+                <DropdownMenuItem
+                  className={cn(entryClassName, "min-w-0 flex-1 pr-1")}
+                  onSelect={() => handleSelectPrompt(prompt)}
                 >
+                  <div className={entryTextClassName}>
+                    <div className="truncate font-medium" title={prompt.name}>{prompt.name}</div>
+                    <p className={secondaryTextClassName}>{prompt.content}</p>
+                  </div>
+                </DropdownMenuItem>
+                <div className="mt-1.5 flex shrink-0 items-center gap-1 self-start pr-1">
                   <Button
                     type="button"
                     variant="ghost"
@@ -248,7 +245,7 @@ export function PredefinedPromptsMenu({
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-              </DropdownMenuItem>
+              </div>
             ))
           )}
           <DropdownMenuSeparator />
@@ -347,4 +344,3 @@ export function PredefinedPromptsMenu({
     </>
   )
 }
-
