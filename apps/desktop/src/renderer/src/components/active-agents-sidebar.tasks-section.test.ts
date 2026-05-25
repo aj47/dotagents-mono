@@ -93,16 +93,23 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("const tasksListVisible = visibleTaskSidebarSessions.length > 0")
   })
 
-  it("keeps hotkey targets aligned with active parent rows and visible badges", () => {
-    expect(sidebarSource).toContain("const isSidebarHotkeyEligible = useCallback")
-    expect(sidebarSource).toContain("if (entry.isSubagent && (entry.nestingDepth ?? 0) > 0) return false")
-    expect(sidebarSource).toContain("const hasActiveChildProgress = sessionsWithActiveChildProgress.has(entry.session.id)")
-    expect(sidebarSource).toContain("return hasActiveChildProgress || (")
-    expect(sidebarSource).toContain("return entries.filter(isSidebarHotkeyEligible)")
+  it("keeps hotkey targets aligned with switchable sidebar rows and visible badges", () => {
+    const hotkeySessionsIndex = sidebarSource.indexOf("const sidebarHotkeySessions = useMemo")
+    const hotkeyIndexIndex = sidebarSource.indexOf("const hotkeyIndexBySessionId = useMemo")
+    const hotkeySessionsBlock = sidebarSource.slice(hotkeySessionsIndex, hotkeyIndexIndex)
+
+    expect(hotkeySessionsIndex).toBeGreaterThan(-1)
+    expect(hotkeyIndexIndex).toBeGreaterThan(hotkeySessionsIndex)
+    expect(hotkeySessionsBlock).toContain("...visibleTaskSidebarSessions")
+    expect(hotkeySessionsBlock).toContain("...visibleGroupedUserSidebarSessions")
+    expect(hotkeySessionsBlock).toContain("return !entry.isSavedConversation || !!entry.session.conversationId")
+    expect(hotkeySessionsBlock).not.toContain("isExpanded")
+    expect(sidebarSource).not.toContain("const isSidebarHotkeyEligible = useCallback")
     expect(sidebarSource).toContain("const hotkeyIndexBySessionId = useMemo")
-    expect(sidebarSource).toContain("const hotkeyIndex = hotkeyIndexBySessionId.get(session.id)")
+    expect(sidebarSource).toContain("sidebarHotkeySessions.forEach((entry, idx) =>")
     expect(sidebarSource).toContain("const canShowHotkeyBadge =")
     expect(sidebarSource).toContain("!isNestedSubagent")
+    expect(sidebarSource).toContain("to open this conversation")
     expect(sidebarSource).toContain("canShowHotkeyBadge && (sessionPreview || lastMessageMinutesAgo)")
   })
 

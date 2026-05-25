@@ -906,34 +906,22 @@ export function ActiveAgentsSidebar({
   const hasTaskSessions = taskSidebarSessions.length > 0
   const tasksListVisible = visibleTaskSidebarSessions.length > 0
 
-  // Hotkeys (Cmd/Ctrl+1..9) only target *active* sessions/tasks, in the order
-  // they appear in the sidebar (visible task rows → user sessions). Saved
-  // conversations and completed/stopped sessions are skipped so the numbered
-  // shortcuts always cycle through running work.
-  const isSidebarHotkeyEligible = useCallback((entry: SidebarSessionEntry) => {
-    if (entry.isSavedConversation) return false
-    if (entry.isSubagent && (entry.nestingDepth ?? 0) > 0) return false
-    const progress = agentProgressById.get(entry.session.id)
-    const hasActiveChildProgress = sessionsWithActiveChildProgress.has(entry.session.id)
-    return hasActiveChildProgress || (
-      entry.session.status === "active" &&
-      progress?.isComplete !== true
-    )
-  }, [agentProgressById, sessionsWithActiveChildProgress])
-
-  const visibleSidebarSessions = useMemo(
+  // Hotkeys (Cmd/Ctrl+1..9) target switchable sidebar rows in sidebar order.
+  // Keep this independent of the Sessions disclosure state so keyboard
+  // switching still works when the list is collapsed.
+  const sidebarHotkeySessions = useMemo(
     () => {
       const entries = [
         ...visibleTaskSidebarSessions,
-        ...(isExpanded ? visibleGroupedUserSidebarSessions : []),
+        ...visibleGroupedUserSidebarSessions,
       ]
-      return entries.filter(isSidebarHotkeyEligible)
+      return entries.filter((entry) => {
+        return !entry.isSavedConversation || !!entry.session.conversationId
+      })
     },
     [
-      isExpanded,
       visibleTaskSidebarSessions,
       visibleGroupedUserSidebarSessions,
-      isSidebarHotkeyEligible,
     ],
   )
 
@@ -941,11 +929,11 @@ export function ActiveAgentsSidebar({
   // badge in sync with the hotkey handler above.
   const hotkeyIndexBySessionId = useMemo(() => {
     const map = new Map<string, number>()
-    visibleSidebarSessions.forEach((entry, idx) => {
+    sidebarHotkeySessions.forEach((entry, idx) => {
       map.set(entry.session.id, idx)
     })
     return map
-  }, [visibleSidebarSessions])
+  }, [sidebarHotkeySessions])
 
   const hasUserSidebarContent = userSidebarSessions.length > 0 || sessionGroups.length > 0
   const hasAnySessions = sidebarSessions.length > 0 || sessionGroups.length > 0
@@ -1067,7 +1055,7 @@ export function ActiveAgentsSidebar({
       if (digit === null) return
 
       const index = digit - 1
-      const target = visibleSidebarSessions[index]
+      const target = sidebarHotkeySessions[index]
       if (!target) return
 
       e.preventDefault()
@@ -1088,7 +1076,7 @@ export function ActiveAgentsSidebar({
 
     window.addEventListener("keydown", handleKeyDown, true)
     return () => window.removeEventListener("keydown", handleKeyDown, true)
-  }, [visibleSidebarSessions, handleSavedConversationOpen, handleActiveSessionSelect])
+  }, [sidebarHotkeySessions, handleSavedConversationOpen, handleActiveSessionSelect])
 
   const findLoopForSession = useCallback(
     (session: SidebarSessionRecord): LoopConfig | undefined => {
@@ -1672,6 +1660,7 @@ export function ActiveAgentsSidebar({
             const lastMessageMinutesAgo = formatMinutesAgo(
               getSessionLastMessageTimestamp(session, conversationTimestamp),
             )
+            const hotkeyIndex = hotkeyIndexBySessionId.get(session.id)
             const hasPendingApproval =
               !isSavedConversation && !!sessionProgress?.pendingToolApproval
             const hasActiveChildProgress = sessionsWithActiveChildProgress.has(
@@ -1708,6 +1697,8 @@ export function ActiveAgentsSidebar({
               const isPinned = session.conversationId
                 ? pinnedSessionIds.has(session.conversationId)
                 : false
+              const canShowHotkeyBadge =
+                hotkeyIndex !== undefined && hotkeyIndex < 9
               const pastStatusRailColor =
                 session.status === "error"
                   ? "bg-red-500"
@@ -1774,6 +1765,18 @@ export function ActiveAgentsSidebar({
                       {lastMessageMinutesAgo}
                     </span>
                   )}
+                  {canShowHotkeyBadge && (
+                    <span
+                      className={cn(
+                        "shrink-0 text-[10px] tabular-nums transition-opacity group-hover:opacity-0",
+                        isCurrentView ? "text-foreground/70" : "text-muted-foreground",
+                      )}
+                      title={`${IS_MAC ? "⌘" : "Ctrl+"}${hotkeyIndex + 1} to open this conversation`}
+                      aria-hidden="true"
+                    >
+                      {SHORTCUT_MOD_SYMBOL}{IS_MAC ? "" : "+"}{hotkeyIndex + 1}
+                    </span>
+                  )}
                   {session.conversationId && (
                     <div
                       className={cn(
@@ -1797,7 +1800,6 @@ export function ActiveAgentsSidebar({
 
             // Active session row
             // Retained completed turns should stay visually active until the user dismisses them.
-            const hotkeyIndex = hotkeyIndexBySessionId.get(session.id)
             const repeatTaskLoop = findLoopForSession(session)
             const isInactiveRepeatTask =
               !!repeatTaskLoop &&
