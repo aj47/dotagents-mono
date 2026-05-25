@@ -398,6 +398,17 @@ export function ActiveAgentsSidebar({
   const isCommandQueueActive = useAgentStore((s) => s.isCommandQueueActive)
   const enterCommandQueue = useAgentStore((s) => s.enterCommandQueue)
   const exitCommandQueue = useAgentStore((s) => s.exitCommandQueue)
+  // First-run discoverability: nudge users once they have 2+ live agents.
+  // Stored client-side so the cue stops the moment they try it (or dismiss).
+  const [commandQueueDiscovered, setCommandQueueDiscovered] = useState(
+    () => readBooleanFromStorage("command-queue-discovered", false),
+  )
+  useEffect(() => {
+    if (isCommandQueueActive && !commandQueueDiscovered) {
+      writeBooleanToStorage("command-queue-discovered", true)
+      setCommandQueueDiscovered(true)
+    }
+  }, [isCommandQueueActive, commandQueueDiscovered])
   const [visibleSavedConversationCount, setVisibleSavedConversationCount] = useState<number | null>(null)
   const [visibleTaskConversationCount, setVisibleTaskConversationCount] = useState(
     SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
@@ -1557,25 +1568,47 @@ export function ActiveAgentsSidebar({
                 </div>
               )}
               <div className="ml-auto flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant={isCommandQueueActive ? "default" : "outline"}
-                  size="sm"
-                  className={cn(
-                    "h-8 w-8 shrink-0 rounded-md px-0 shadow-sm",
-                    isCommandQueueActive && "bg-blue-500 text-white hover:bg-blue-600",
-                  )}
-                  onClick={isCommandQueueActive ? exitCommandQueue : enterCommandQueue}
-                  title={
-                    isCommandQueueActive
-                      ? "Exit command queue (Esc)"
-                      : `Enter multi-agent command queue (${typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl"}+Shift+K)`
+                {(() => {
+                  let liveTopLevelCount = 0
+                  for (const [, progress] of agentProgressById.entries()) {
+                    if (!progress.isComplete && !progress.parentSessionId) liveTopLevelCount++
                   }
-                  aria-label={isCommandQueueActive ? "Exit command queue" : "Enter multi-agent command queue"}
-                  aria-pressed={isCommandQueueActive}
-                >
-                  <Layers className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                </Button>
+                  const showDiscoveryPulse =
+                    !isCommandQueueActive && !commandQueueDiscovered && liveTopLevelCount >= 2
+                  return (
+                    <Button
+                      type="button"
+                      variant={isCommandQueueActive ? "default" : "outline"}
+                      size="sm"
+                      className={cn(
+                        "relative h-8 w-8 shrink-0 rounded-md px-0 shadow-sm",
+                        isCommandQueueActive && "bg-blue-500 text-white hover:bg-blue-600",
+                        showDiscoveryPulse && "ring-2 ring-blue-500/40",
+                      )}
+                      onClick={isCommandQueueActive ? exitCommandQueue : enterCommandQueue}
+                      title={
+                        isCommandQueueActive
+                          ? "Exit command queue (Esc)"
+                          : showDiscoveryPulse
+                            ? `Try it: cycle through ${liveTopLevelCount} agents with one input (${SHORTCUT_MOD_SYMBOL}+Shift+K)`
+                            : `Enter multi-agent command queue (${SHORTCUT_MOD_SYMBOL}+Shift+K)`
+                      }
+                      aria-label={isCommandQueueActive ? "Exit command queue" : "Enter multi-agent command queue"}
+                      aria-pressed={isCommandQueueActive}
+                    >
+                      <Layers className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      {showDiscoveryPulse && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5"
+                        >
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-75" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-500" />
+                        </span>
+                      )}
+                    </Button>
+                  )
+                })()}
                 {onClearInactiveSessions && inactiveSessionCount > 0 && (
                   <Button
                     type="button"

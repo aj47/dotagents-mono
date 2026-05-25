@@ -33,6 +33,21 @@ Every hotkey and shortcut available in DotAgents.
 |----------|----------|--------|
 | `Ctrl+Shift+Escape` | All | Emergency stop — kill all active agents |
 
+## Multi-Agent Command Queue
+
+The [command queue](/desktop/command-queue) lets you cycle through multiple agents through one adaptive input bar.
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Shift+K` (`⌘+Shift+K` on macOS) | Enter or exit the command queue |
+| `Tab` | Advance to next entry |
+| `Shift+Tab` | Go back to previous entry |
+| `Enter` | Submit message and auto-advance |
+| `Shift+Enter` | New line |
+| `Ctrl+N` (`⌘+N` on macOS) | Append a new dispatch slot |
+| `Ctrl+S` (`⌘+S` on macOS) | Skip current entry to end of queue |
+| `Esc` | Clear input — press again to exit |
+
 ## Voice Flow Summary
 
 ```

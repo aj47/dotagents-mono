@@ -25,6 +25,7 @@ Built with Expo SDK 54 and React Native, the mobile app provides a portable inte
 - Session history with search
 - QR code connection setup
 - Split chat view for multi-agent conversations
+- [Multi-agent command queue](../desktop/command-queue) — tap the Layers button in the chat list header to rapidly dispatch, steer, and reply across multiple sessions
 
 ## Supported Platforms
 

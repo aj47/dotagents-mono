@@ -17,6 +17,7 @@ Built with Electron, React, and Rust, the desktop app provides:
 - **Multi-agent system** — Specialized agents with distinct skills and tools
 - **MCP tool execution** — Connect to any tool via the Model Context Protocol
 - **Real-time progress** — Watch agents think and act step by step
+- **[Command queue](./command-queue)** — `Ctrl+Shift+K` to cycle through multiple agents through one adaptive input bar
 - **Cross-platform** — macOS (full support), Windows, and Linux
 - **Remote server** — Optional local HTTP API for mobile pairing, operator dashboards, and automation
 

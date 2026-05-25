@@ -8,6 +8,8 @@ import { spacing, radius, Theme } from '../ui/theme';
 import { useConfigContext } from '../store/config';
 import { useSessionContext, SessionStore, normalizeSessionTitleText } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
+import { useCommandQueueContext } from '../store/command-queue';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
@@ -618,6 +620,50 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation.navigate('SplitChat');
   }, [navigation]);
 
+  const commandQueueStore = useCommandQueueContext();
+  const [commandQueueDiscovered, setCommandQueueDiscovered] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem('command-queue-discovered-mobile')
+      .then((v) => setCommandQueueDiscovered(v === 'true'))
+      .catch(() => undefined);
+  }, []);
+
+  const handleEnterCommandQueue = useCallback(() => {
+    // Take the most recent non-archived sessions so the queue stays focused on
+    // current work rather than every chat the user has ever opened.
+    const inputs = sessionStore.sessions
+      .filter((s) => !s.isArchived && !isStubSession(s))
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 10)
+      .map((s) => {
+        const isActive = connectionManager.isConnectionActive(s.id);
+        return {
+          sessionId: s.id,
+          conversationId: s.serverConversationId,
+          title: s.title || 'Untitled',
+          isComplete: !isActive,
+          conversationState: isActive ? 'running' : 'complete',
+        };
+      });
+    commandQueueStore.enterCommandQueue(inputs);
+    if (!commandQueueDiscovered) {
+      AsyncStorage.setItem('command-queue-discovered-mobile', 'true').catch(() => undefined);
+      setCommandQueueDiscovered(true);
+    }
+    navigation.navigate('Chat');
+  }, [sessionStore, connectionManager, commandQueueStore, commandQueueDiscovered, navigation]);
+
+  // Show discovery pulse when 2+ sessions exist and the queue hasn't been used.
+  const liveSessionCount = useMemo(
+    () =>
+      sessionStore.sessions.filter(
+        (s) => !s.isArchived && !isStubSession(s),
+      ).length,
+    [sessionStore.sessions],
+  );
+  const showCommandQueuePulse =
+    !commandQueueStore.isActive && !commandQueueDiscovered && liveSessionCount >= 2;
+
   const handleOpenConnectionSettings = useCallback((openScanner = false) => {
     if (openScanner) {
       navigation.navigate('ConnectionSettings', { openScanner: true });
@@ -667,6 +713,31 @@ export default function SessionListScreen({ navigation }: Props) {
             compact
           />
           <TouchableOpacity
+            onPress={handleEnterCommandQueue}
+            style={styles.headerSettingsButton}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Enter multi-agent command queue')}
+            accessibilityHint="Cycle through your agents through one input bar"
+          >
+            <View>
+              <Ionicons name="layers-outline" size={18} color={theme.colors.foreground} />
+              {showCommandQueuePulse && (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: '#3b82f6',
+                  }}
+                />
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={handleOpenSplitView}
             style={styles.headerSettingsButton}
             accessibilityRole="button"
@@ -696,7 +767,7 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible, handleCreateSession, handleOpenSettings, handleOpenSplitView]);
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible, handleCreateSession, handleOpenSettings, handleOpenSplitView, handleEnterCommandQueue, showCommandQueuePulse]);
 
   if (!sessionStore.ready || !isInitialized) {
     return (

@@ -76,7 +76,7 @@ export function AgentCommandBar({ onOpenSessionDialog, className }: AgentCommand
 
   // Focus textarea and clear text when active entry changes
   useEffect(() => {
-    if (!isCommandQueueActive) return
+    if (!isCommandQueueActive) return undefined
     setText("")
     const t = window.setTimeout(() => {
       textareaRef.current?.focus()
