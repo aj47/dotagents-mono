@@ -228,9 +228,17 @@ class LoopService {
    * Durably stop any continuously-running tasks so they do not auto-resume.
    *
    * Emergency stop is treated as an explicit cancel signal: each affected
-   * continuous loop is disabled (`enabled = false`) and persisted, its active
-   * timer is cleared, and the renderer is notified so the UI reflects the new
-   * state. The user must re-enable the task to start it again.
+   * continuous loop is disabled (`enabled = false`) in memory AND persisted,
+   * its active timer is cleared, and the renderer is notified so the UI
+   * reflects the new state. The user must re-enable the task to start it
+   * again.
+   *
+   * Persistence-failure safety: the in-memory `this.loops` entry is mutated
+   * BEFORE we attempt to persist, so an in-flight `executeLoop()` cannot
+   * pass the `latestLoop?.enabled` check in its `finally` block and
+   * reschedule, even if the on-disk write fails. Without this ordering, a
+   * failed `saveLoop()` would leave the in-memory record enabled and the
+   * continuous task would auto-resume — exactly the bug we're fixing.
    *
    * Non-continuous (interval / scheduled) tasks are intentionally left alone —
    * their next run is governed by a wall-clock schedule, not by the
@@ -241,18 +249,33 @@ class LoopService {
   emergencyStopContinuousLoops(): string[] {
     const disabled: string[] = []
 
-    for (const loop of this.loops) {
+    for (let i = 0; i < this.loops.length; i++) {
+      const loop = this.loops[i]
       if (!isContinuousLoop(loop)) continue
       if (!loop.enabled) continue
 
       const updated: LoopConfig = { ...loop, enabled: false }
-      if (this.saveLoop(updated)) {
-        this.stopLoop(loop.id)
-        disabled.push(loop.id)
-        logApp(`[LoopService] Emergency stop disabled continuous loop "${loop.name}" (${loop.id})`)
+
+      // Mutate in-memory state FIRST. This is the critical guard against
+      // auto-resume: `executeLoop()`'s finally re-reads via `getLoop()`,
+      // so even if the persistence call below fails, the reschedule check
+      // will see `enabled: false` and skip rescheduling.
+      this.loops[i] = updated
+
+      // Clear any pending timer for this loop.
+      this.stopLoop(loop.id)
+      disabled.push(loop.id)
+
+      // Best-effort persistence. `saveTask` already swallows write errors
+      // and returns false; we log loudly so the failure is investigable
+      // but do not unwind the in-memory cancel.
+      const persisted = this.saveTask(updated)
+      if (!persisted) {
+        logApp(
+          `[LoopService] Emergency stop: failed to persist disabled state for "${loop.name}" (${loop.id}); in-memory cancel still blocks auto-resume`,
+        )
       } else {
-        logApp(`[LoopService] Emergency stop: failed to persist disabled state for "${loop.name}" (${loop.id}); stopping timer anyway`)
-        this.stopLoop(loop.id)
+        logApp(`[LoopService] Emergency stop disabled continuous loop "${loop.name}" (${loop.id})`)
       }
     }
 
