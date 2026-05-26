@@ -3247,6 +3247,7 @@ export default function SettingsScreen({ navigation, route }: any) {
           />
         </View>
         <Text style={styles.helperText}>
+          Use the Chat header microphone for no-hands requests. Audio cues announce listening, processing, sleep, and error states.
           Keep Foreground Only on for simple Chat-screen listening. Turn it off on Android to keep hands-free active after locking the phone.
         </Text>
 

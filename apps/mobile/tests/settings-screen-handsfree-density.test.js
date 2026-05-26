@@ -10,7 +10,8 @@ const settingsSource = fs.readFileSync(
 
 test('keeps the mobile handsfree MVP guidance visible in settings', () => {
   assert.match(settingsSource, /Hands-free Voice Mode/);
-  assert.match(settingsSource, /Mobile v1 only works while the app stays open on the Chat screen in the foreground\./);
+  assert.match(settingsSource, /Use the Chat header microphone for no-hands requests\./);
+  assert.match(settingsSource, /Turn it off on Android to keep hands-free active after locking the phone\./);
 });
 
 test('exposes wake and sleep phrase fields for handsfree tuning', () => {

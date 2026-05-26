@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
@@ -145,6 +146,7 @@ const HANDS_FREE_TTS_BARGE_IN_COMMANDS = new Set([
   'wait please',
   'please wait',
 ]);
+const HANDS_FREE_GUIDE_DISMISSED_KEY = 'dotagents:handsfree-guide-dismissed';
 const HANDS_FREE_PHASE_AUDIO_CUES: Record<HandsFreePhase, HandsFreeAudioCue> = {
   sleeping: 'sleeping',
   waking: 'listening',
@@ -436,6 +438,33 @@ const getMessageLogMeta = (content: string) => ({
 });
 
 const normalizeVoiceText = (text?: string) => (text || '').replace(/\s+/g, ' ').trim();
+
+type RecentHandsFreeSend = {
+  sessionId: string | null;
+  text: string;
+  timestamp: number;
+};
+
+let recentGlobalHandsFreeSend: RecentHandsFreeSend | null = null;
+
+const isRecentGlobalHandsFreeSendDuplicate = (
+  sessionId: string | null,
+  text: string,
+) => {
+  const normalizedText = normalizeVoiceText(text);
+  const now = Date.now();
+  const recent = recentGlobalHandsFreeSend;
+  if (
+    recent
+    && recent.sessionId === sessionId
+    && recent.text === normalizedText
+    && now - recent.timestamp < HANDS_FREE_FINALIZED_DUPLICATE_SUPPRESSION_MS
+  ) {
+    return true;
+  }
+  recentGlobalHandsFreeSend = { sessionId, text: normalizedText, timestamp: now };
+  return false;
+};
 
 const mergeVoiceText = (base?: string, live?: string) => {
 	const a = normalizeVoiceText(base);
@@ -859,7 +888,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const { theme, isDark } = useTheme();
   const isFocused = useIsFocused();
   const { height: screenHeight } = useWindowDimensions();
-  const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
+  const styles = useMemo(() => createStyles(theme, screenHeight, isDark), [theme, screenHeight, isDark]);
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
@@ -896,6 +925,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const effectiveEdgeTtsRate =
     config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteEdgeTtsRate;
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
+  const [handsFreeGuideVisible, setHandsFreeGuideVisible] = useState(false);
+  const [handsFreeGuideDismissed, setHandsFreeGuideDismissed] = useState<boolean | null>(null);
   const [editingPrompt, setEditingPrompt] = useState<PredefinedPromptSummary | null>(null);
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
@@ -918,6 +949,30 @@ export default function ChatScreen({ route, navigation }: any) {
   const ttsEnabledRef = useRef<boolean>(config.ttsEnabled !== false);
   useEffect(() => { ttsEnabledRef.current = config.ttsEnabled !== false; }, [config.ttsEnabled]);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+
+  useEffect(() => {
+    let mounted = true;
+    void AsyncStorage.getItem(HANDS_FREE_GUIDE_DISMISSED_KEY)
+      .then((value) => {
+        if (mounted) {
+          setHandsFreeGuideDismissed(value === 'true');
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setHandsFreeGuideDismissed(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (handsFree && handsFreeGuideDismissed === false) {
+      setHandsFreeGuideVisible(true);
+    }
+  }, [handsFree, handsFreeGuideDismissed]);
   const isAppActive = appState === 'active';
   const isHandsFreeForegroundCandidate = isAppActive && isFocused;
   const stableHandsFreeForeground = useStableForeground(
@@ -1198,6 +1253,20 @@ export default function ChatScreen({ route, navigation }: any) {
     setNewPromptName('');
     setNewPromptContent('');
   }, [isSavingPrompt]);
+
+  const openHandsFreeGuide = useCallback(() => {
+    setHandsFreeGuideVisible(true);
+  }, []);
+
+  const closeHandsFreeGuide = useCallback(() => {
+    setHandsFreeGuideVisible(false);
+  }, []);
+
+  const dismissHandsFreeGuide = useCallback(() => {
+    setHandsFreeGuideVisible(false);
+    setHandsFreeGuideDismissed(true);
+    void AsyncStorage.setItem(HANDS_FREE_GUIDE_DISMISSED_KEY, 'true').catch(() => {});
+  }, []);
 
   const handleQuickStartPress = useCallback((item: QuickStartShortcut) => {
     if (item.action === 'add-prompt') {
@@ -1919,6 +1988,11 @@ export default function ChatScreen({ route, navigation }: any) {
     setDebugInfo(`Voice error: ${message}`);
   }, [handsFreeController.onRecognizerError]);
 
+  const foregroundSpeechRecognizerEnabled =
+    isFocused
+    && isAppActive
+    && (!handsFree || foregroundHandsFreeRuntimeActive);
+
   const {
     listening,
     liveTranscript,
@@ -1930,6 +2004,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handlePushToTalkPressIn,
     handlePushToTalkPressOut,
   } = useSpeechRecognizer({
+    enabled: foregroundSpeechRecognizerEnabled,
     handsFree,
     handsFreeDebounceMs: handsFreeMessageDebounceMs,
     willCancel,
@@ -3563,30 +3638,51 @@ export default function ChatScreen({ route, navigation }: any) {
   }, []);
 
   const send = async (text: string, options?: { fromComposer?: boolean; source?: 'handsfree' }) => {
-    if (!text.trim()) return;
+    const trimmedText = text.trim();
+    if (!trimmedText) return;
 
     if (options?.source === 'handsfree' && isHandsFreeTranscriptSuppressedNow()) {
       voiceLog('transcript-ignored', 'Handsfree send blocked while assistant audio is speaking.', {
         phase: handsFreePhaseRef.current,
         hasLiveAgentTurn,
         hasGlobalTtsPlayback: !!getGlobalTtsPlayback(),
-        textLength: text.trim().length,
+        textLength: trimmedText.length,
       });
       return;
     }
 
-    // If message queue is enabled and we're already responding, queue the message
-    if (messageQueueEnabled && respondingRef.current) {
-      console.log('[ChatScreen] Agent busy, queuing message:', getMessageLogMeta(text));
-      messageQueue.enqueue(currentConversationId, text, currentConversationId);
+    if (
+      options?.source === 'handsfree'
+      && isRecentGlobalHandsFreeSendDuplicate(currentSessionIdRef.current, trimmedText)
+    ) {
+      voiceLog('transcript-ignored', 'Duplicate handsfree send ignored across mounted chat screens.', {
+        phase: handsFreePhaseRef.current,
+        sessionId: currentSessionIdRef.current,
+        textLength: trimmedText.length,
+      });
+      console.info(
+        `[DotAgentsHandsFreeJS] duplicate send ignored session=${currentSessionIdRef.current || 'none'} phase=${handsFreePhaseRef.current} textLength=${trimmedText.length}`,
+      );
+      return;
+    }
+
+    // Queue speculative follow-ups while the agent is still running. If the
+    // current turn is explicitly waiting for user input, send immediately so the
+    // reply continues the session instead of sitting behind the local queue.
+    if (messageQueueEnabled && respondingRef.current && conversationState !== 'needs_input') {
+      console.log('[ChatScreen] Agent busy, queuing message:', getMessageLogMeta(trimmedText));
+      messageQueue.enqueue(currentConversationId, trimmedText, currentConversationId);
       setInput('');
       if (options?.fromComposer) {
         setPendingImages([]);
       }
       return;
     }
+    if (respondingRef.current && conversationState === 'needs_input') {
+      console.log('[ChatScreen] Continuing needs-input session immediately:', getMessageLogMeta(trimmedText));
+    }
 
-    console.log('[ChatScreen] Sending message:', getMessageLogMeta(text));
+    console.log('[ChatScreen] Sending message:', getMessageLogMeta(trimmedText));
 
     // Get client from connection manager (preserves connections across session switches)
     const client = getSessionClient();
@@ -3600,7 +3696,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // Clear any previous failed message when starting a new send
     setLastFailedMessage(null);
 
-    const userMsg: ChatMessage = { role: 'user', content: text };
+    const userMsg: ChatMessage = { role: 'user', content: trimmedText };
 	    // Use ref to avoid stale closures (notably auto-send after rapid-fire session switch).
 	    const currentMessages = messagesRef.current;
 	    const messageCountBeforeTurn = currentMessages.length;
@@ -3990,7 +4086,7 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       // Save the failed message for retry
-      setLastFailedMessage(text);
+      setLastFailedMessage(trimmedText);
 
       // Check if there's partial content we can show
       const partialContent = client.getPartialContent();
@@ -4599,7 +4695,7 @@ export default function ChatScreen({ route, navigation }: any) {
 			case 'processing':
 				return 'Working on your request.';
 			case 'speaking':
-				return 'Speech recognition pauses while the assistant speaks.';
+				return 'Say "wait" or "stop" to interrupt and listen.';
 			case 'paused':
 				return 'Tap the mic to resume handsfree listening.';
 			case 'error':
@@ -5674,11 +5770,22 @@ export default function ChatScreen({ route, navigation }: any) {
 	          )}
           {handsFree && (
             <View style={styles.handsFreeStatusRow}>
-              <HandsFreeStatusChip
-                phase={handsFreeDisplayPhase}
-                label={handsFreeDisplayLabel}
-                subtitle={handsFreeStatusSubtitle}
-              />
+              <View style={styles.handsFreeStatusChipWrap}>
+                <HandsFreeStatusChip
+                  phase={handsFreeDisplayPhase}
+                  label={handsFreeDisplayLabel}
+                  subtitle={handsFreeStatusSubtitle}
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.handsFreeGuideButton}
+                onPress={openHandsFreeGuide}
+                accessibilityRole="button"
+                accessibilityLabel="Open hands-free guide"
+                accessibilityHint="Explains hands-free wake phrases, lock-screen use, interruption commands, and audio cues."
+              >
+                <Ionicons name="help-circle-outline" size={18} color={theme.colors.mutedForeground} />
+              </TouchableOpacity>
             </View>
           )}
 	          {/* Top row: TTS toggle, text input, send button */}
@@ -5820,6 +5927,84 @@ export default function ChatScreen({ route, navigation }: any) {
         </View>
       </View>
       <Modal
+        visible={handsFreeGuideVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeHandsFreeGuide}
+      >
+        <View style={styles.handsFreeGuideOverlay}>
+          <View style={styles.handsFreeGuideContent}>
+            <View style={styles.handsFreeGuideHeader}>
+              <View style={styles.handsFreeGuideIcon}>
+                <Ionicons name="mic-outline" size={18} color={theme.colors.primary} />
+              </View>
+              <View style={styles.handsFreeGuideTitleWrap}>
+                <Text style={styles.handsFreeGuideTitle}>Hands-free voice</Text>
+                <Text style={styles.handsFreeGuideSubtitle}>
+                  Listen, speak, interrupt, and lock the phone without watching the screen.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.handsFreeGuideCloseButton}
+                onPress={closeHandsFreeGuide}
+                accessibilityRole="button"
+                accessibilityLabel="Close hands-free guide"
+              >
+                <Ionicons name="close" size={18} color={theme.colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.handsFreeGuideScroll}
+              contentContainerStyle={styles.handsFreeGuideScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.handsFreeGuideSection}>
+                <Text style={styles.handsFreeGuideSectionTitle}>Basic flow</Text>
+                <Text style={styles.handsFreeGuideText}>
+                  Turn on the header microphone, tap Wake if needed, then speak after the listening cue.
+                  Pause briefly and DotAgents sends the request.
+                </Text>
+              </View>
+
+              <View style={styles.handsFreeGuideSection}>
+                <Text style={styles.handsFreeGuideSectionTitle}>Voice commands</Text>
+                <Text style={styles.handsFreeGuideText}>
+                  Say "{handsFreeSleepPhrase}" to sleep. While the assistant is speaking, say "wait" or
+                  "stop" to stop TTS and return to listening.
+                </Text>
+              </View>
+
+              <View style={styles.handsFreeGuideSection}>
+                <Text style={styles.handsFreeGuideSectionTitle}>Audio cues</Text>
+                <Text style={styles.handsFreeGuideText}>
+                  Rising tones mean listening, two short tones mean processing, a falling tone means stopped
+                  or sleeping, and repeated low tones mean an error.
+                </Text>
+              </View>
+
+              <View style={styles.handsFreeGuideSection}>
+                <Text style={styles.handsFreeGuideSectionTitle}>Locked-screen use</Text>
+                <Text style={styles.handsFreeGuideText}>
+                  On Android, turn off Foreground Only in Settings before locking the phone. A visible
+                  microphone service keeps capture active, and TTS can keep playing while locked.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.handsFreeGuidePrimaryButton}
+              onPress={dismissHandsFreeGuide}
+              accessibilityRole="button"
+              accessibilityLabel="Got it"
+            >
+              <Text style={styles.handsFreeGuidePrimaryButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
         visible={addPromptModalVisible}
         transparent={true}
         animationType="slide"
@@ -5882,7 +6067,7 @@ export default function ChatScreen({ route, navigation }: any) {
   );
 }
 
-function createStyles(theme: Theme, screenHeight: number) {
+function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
   const headerActionButton = createMinimumTouchTargetStyle();
   const headerEdgeActionButton = createMinimumTouchTargetStyle({ horizontalPadding: 16 });
   return StyleSheet.create({
@@ -6076,8 +6261,25 @@ function createStyles(theme: Theme, screenHeight: number) {
       paddingVertical: spacing.xs,
     },
     handsFreeStatusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
       paddingHorizontal: spacing.sm,
       paddingTop: spacing.xs,
+    },
+    handsFreeStatusChipWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    handsFreeGuideButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     chatHomeCard: {
       marginHorizontal: spacing.sm,
@@ -6175,6 +6377,99 @@ function createStyles(theme: Theme, screenHeight: number) {
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'center',
       padding: spacing.lg,
+    },
+    handsFreeGuideOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.56)',
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    handsFreeGuideContent: {
+      backgroundColor: theme.colors.background,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.md,
+      maxHeight: Math.min(screenHeight - spacing.xl * 2, 560),
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: isDark ? 0.42 : 0.18,
+      shadowRadius: 24,
+      elevation: 8,
+    },
+    handsFreeGuideHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    handsFreeGuideIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: hexToRgba(theme.colors.primary, 0.24),
+    },
+    handsFreeGuideTitleWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    handsFreeGuideTitle: {
+      ...theme.typography.h2,
+      color: theme.colors.foreground,
+      marginBottom: 2,
+    },
+    handsFreeGuideSubtitle: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+    },
+    handsFreeGuideCloseButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    handsFreeGuideScroll: {
+      maxHeight: Math.min(screenHeight * 0.54, 360),
+    },
+    handsFreeGuideScrollContent: {
+      gap: spacing.sm,
+      paddingBottom: spacing.xs,
+    },
+    handsFreeGuideSection: {
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    handsFreeGuideSectionTitle: {
+      ...theme.typography.label,
+      color: theme.colors.foreground,
+      marginBottom: 3,
+    },
+    handsFreeGuideText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+    },
+    handsFreeGuidePrimaryButton: {
+      marginTop: spacing.md,
+      minHeight: 44,
+      borderRadius: radius.md,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.lg,
+    },
+    handsFreeGuidePrimaryButtonText: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '700',
+      fontSize: 14,
     },
     modalContent: {
       backgroundColor: theme.colors.background,

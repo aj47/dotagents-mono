@@ -36,7 +36,7 @@ test('wires ChatScreen through the extracted handsfree controller and recognizer
 
 test('resets the handsfree controller before shutting down recognizer state when toggled off', () => {
   assert.match(screenSource, /const next = !handsFreeRef\.current;\s*handsFreeRef\.current = next;/);
-  assert.match(screenSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\?\.\(\);[\s\S]*?Speech\.stop\(\);[\s\S]*?Handsfree mode turned off\./);
+  assert.match(screenSource, /if \(!next\) \{[\s\S]*?handsFreeController\.reset\(\);[\s\S]*?void stopRecognitionOnly\?\.\(\);[\s\S]*?stopGlobalTtsPlayback\(\);[\s\S]*?Handsfree mode turned off\./);
 });
 
 test('falls back to normal direct-send handling for stale handsfree finalizations after toggle-off', () => {
@@ -48,15 +48,15 @@ test('surfaces recent voice debug events in chat when internal diagnostics are e
   assert.match(screenSource, /formatVoiceDebugEntry\(entry\)/);
   assert.match(screenSource, /const HANDS_FREE_DEBUG_STORAGE_KEY = 'dotagents:handsfree-debug';/);
   assert.match(screenSource, /params\.get\('handsfreeDebug'\) === '1'/);
-  assert.match(screenSource, /handsFree && isAppActive && \(!handsFreeForegroundOnly \|\| isFocused\)/);
+  assert.match(screenSource, /const foregroundHandsFreeRuntimeActive =[\s\S]*?isAppActive && \(!handsFreeForegroundOnly \|\| isFocused\);/);
 });
 
-test('keeps wake/sleep controls inline and wires a dedicated pause/resume control button', () => {
+test('keeps wake and pause/resume controls wired through the primary mic button', () => {
   assert.match(screenSource, /const wakeHandsFreeByUser = useCallback\(\(\) => \{[\s\S]*?handsFreeController\.wakeByUser\(\);[\s\S]*?void startRecording\(\);/);
-  assert.match(screenSource, /<View style=\{styles\.handsFreeControlsRow\}>[\s\S]*?handsFreeController\.state\.phase === 'sleeping'[\s\S]*?onPress=\{wakeHandsFreeByUser\}[\s\S]*?<Text style=\{styles\.handsFreeControlButtonText\}>Wake<\/Text>[\s\S]*?onPress=\{sleepHandsFreeByUser\}[\s\S]*?<Text style=\{styles\.handsFreeControlButtonText\}>Sleep<\/Text>[\s\S]*?<\/View>/);
-  assert.match(screenSource, /<View style=\{styles\.handsFreeControlsRow\}>[\s\S]*?onPress=\{handsFreeController\.state\.phase === 'paused' \? resumeHandsFreeByUser : pauseHandsFreeByUser\}[\s\S]*?<Text style=\{styles\.handsFreeControlButtonText\}>\s*\{handsFreePauseResumeLabel\}\s*<\/Text>[\s\S]*?<\/View>/);
-  assert.match(screenSource, /const micButtonLabel = handsFree\s*\? \(handsFreeController\.state\.phase === 'sleeping' \? 'Wake' : handsFreePauseResumeLabel\)/);
+  assert.match(screenSource, /const handleHandsFreePrimaryControl = useCallback\(\(\) => \{[\s\S]*?handsFreeController\.state\.phase === 'sleeping'[\s\S]*?wakeHandsFreeByUser\(\);[\s\S]*?handsFreeController\.state\.phase === 'paused'[\s\S]*?resumeHandsFreeByUser\(\);[\s\S]*?pauseHandsFreeByUser\(\);/);
+  assert.match(screenSource, /const micButtonLabel = handsFree[\s\S]*?'Wake'[\s\S]*?'Resume'[\s\S]*?'Pause'/);
   assert.match(screenSource, /onPress=\{handsFree \? handleHandsFreePrimaryControl : undefined\}/);
+  assert.match(screenSource, /accessibilityLabel="Open hands-free guide"/);
 });
 
 test('pauses queued-message auto-processing while handsfree is paused', () => {
