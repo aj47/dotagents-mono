@@ -102,6 +102,7 @@ module.exports = {
     "!components.json",
     "!.prettierrc",
     "!dotagents-rs/*",
+    "!tmp/**/*",
   ],
   asar: false,
   win: {
