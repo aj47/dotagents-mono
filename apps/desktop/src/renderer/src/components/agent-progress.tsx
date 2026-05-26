@@ -4790,14 +4790,23 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     clearPendingInitialScrollAttempts()
 
     const scrollAttempts = [0, 50, 100, 200, 400, 800, 1500]
-    pendingInitialScrollTimeoutsRef.current = scrollAttempts.map((delay) => {
-      return setTimeout(() => {
+    const scheduled = scrollAttempts.map((delay) => {
+      let timeoutId: ReturnType<typeof setTimeout>
+      timeoutId = setTimeout(() => {
+        // Remove this attempt's id so the pending list accurately reflects
+        // still-pending attempts. Without this, fired-but-not-cleared ids
+        // would keep handleScroll from ever disabling auto-scroll on real
+        // user scrolls (issue #408).
+        pendingInitialScrollTimeoutsRef.current =
+          pendingInitialScrollTimeoutsRef.current.filter((id) => id !== timeoutId)
         requestAnimationFrame(() => {
           if (!shouldAutoScrollRef.current) return
           scrollToBottom("auto")
         })
       }, delay)
+      return timeoutId
     })
+    pendingInitialScrollTimeoutsRef.current = scheduled
 
     return clearPendingInitialScrollAttempts
   }, [clearPendingInitialScrollAttempts, scrollToBottom, shouldAutoScrollContent, visibleDisplayItems.length > 0, progress?.sessionId])
