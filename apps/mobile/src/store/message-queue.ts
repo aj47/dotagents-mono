@@ -57,13 +57,11 @@ export function useMessageQueue(): MessageQueueStore {
   const queuesRef = useRef<Map<string, QueuedMessage[]>>(queues);
 
   // Wrapper that updates both state AND ref synchronously, so subsequent reads
-  // within the same tick see the updated value (fixes stale state issue)
+  // within the same tick see the updated value.
   const updateQueues = useCallback((updater: (prev: Map<string, QueuedMessage[]>) => Map<string, QueuedMessage[]>) => {
-    setQueues(prev => {
-      const newValue = updater(prev);
-      queuesRef.current = newValue;  // Sync ref immediately
-      return newValue;
-    });
+    const newValue = updater(queuesRef.current);
+    queuesRef.current = newValue;
+    setQueues(newValue);
   }, []);
 
   const enqueue = useCallback((conversationId: string, text: string, sessionId = conversationId): QueuedMessage => {

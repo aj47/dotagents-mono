@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback, type SetStateAction } from 'react';
 import {
   View,
   Text,
@@ -147,6 +147,7 @@ const HANDS_FREE_TTS_BARGE_IN_COMMANDS = new Set([
   'please wait',
 ]);
 const HANDS_FREE_GUIDE_DISMISSED_KEY = 'dotagents:handsfree-guide-dismissed';
+const HANDS_FREE_SESSION_READY_CUE_MIN_INTERVAL_MS = 1_500;
 const HANDS_FREE_PHASE_AUDIO_CUES: Record<HandsFreePhase, HandsFreeAudioCue> = {
   sleeping: 'sleeping',
   waking: 'listening',
@@ -815,9 +816,18 @@ type SessionMessagesVersionSource = {
   messages: Array<Partial<ChatMessage> & { id?: string }>;
 };
 
+const hashMessageVersionContent = (content: string): number => {
+  let hash = 0;
+  for (let i = 0; i < content.length; i += 1) {
+    hash = ((hash << 5) - hash + content.charCodeAt(i)) | 0;
+  }
+  return hash >>> 0;
+};
+
 const getChatMessageVersionPart = (message: (Partial<ChatMessage> & { id?: string }) | undefined, index: number): string => {
   if (!message) return `${index}:empty`;
   const content = message.content || '';
+  const displayContent = message.displayContent || '';
   const toolCallCount = Array.isArray(message.toolCalls) ? message.toolCalls.length : 0;
   const toolResultCount = Array.isArray(message.toolResults) ? message.toolResults.length : 0;
   return [
@@ -825,7 +835,9 @@ const getChatMessageVersionPart = (message: (Partial<ChatMessage> & { id?: strin
     message.role ?? '',
     message.timestamp ?? '',
     content.length,
-    content.slice(-64),
+    hashMessageVersionContent(content),
+    displayContent.length,
+    hashMessageVersionContent(displayContent),
     toolCallCount,
     toolResultCount,
   ].join(':');
@@ -840,6 +852,15 @@ const getSessionMessagesVersionKey = (session: SessionMessagesVersionSource | nu
     messages.length,
     getChatMessageVersionPart(messages[0], 0),
     getChatMessageVersionPart(messages[messages.length - 1], messages.length - 1),
+  ].join('|');
+};
+
+const getLocalMessagesVersionKey = (sessionId: string | null | undefined, messages: ChatMessage[]): string | null => {
+  if (!sessionId) return null;
+  return [
+    sessionId,
+    messages.length,
+    messages.map((message, index) => getChatMessageVersionPart(message, index)).join('|'),
   ].join('|');
 };
 
@@ -1057,7 +1078,16 @@ export default function ChatScreen({ route, navigation }: any) {
   const [conversationState, setConversationState] = useState<AgentConversationState | null>(null);
   const [connectionState, setConnectionState] = useState<RecoveryState | null>(null);
   const [handsFreeHasHeadsetRoute, setHandsFreeHasHeadsetRoute] = useState<boolean | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessagesState] = useState<ChatMessage[]>([]);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const setMessages = useCallback((nextMessages: SetStateAction<ChatMessage[]>) => {
+    const resolvedMessages =
+      typeof nextMessages === 'function'
+        ? (nextMessages as (previousMessages: ChatMessage[]) => ChatMessage[])(messagesRef.current)
+        : nextMessages;
+    messagesRef.current = resolvedMessages;
+    setMessagesState(resolvedMessages);
+  }, []);
   const [turnDurationNow, setTurnDurationNow] = useState(() => Date.now());
   const hasLiveAgentTurn = responding || conversationState === 'running';
   useEffect(() => {
@@ -1456,8 +1486,6 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [settingsClient]);
   const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_CHAT_MESSAGES);
-  // Keep a ref to messages to avoid stale closures in setTimeout callbacks (PR review fix)
-  const messagesRef = useRef<ChatMessage[]>(messages);
   // Track progress messages so we can merge them with final conversationHistory
   // instead of replacing, preventing intermediate messages from disappearing (#1083)
   const progressMessagesRef = useRef<ChatMessage[]>([]);
@@ -1473,6 +1501,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const androidHandsFreeTtsHandlersRef = useRef<Map<string, AndroidHandsFreeTtsHandler>>(new Map());
   const ttsBargeInLastHandledRef = useRef<{ command: 'stop' | 'wait'; timestamp: number } | null>(null);
   const lastHandsFreeAudioCuePhaseRef = useRef<HandsFreePhase | null>(null);
+  const lastHandsFreeSessionReadyCueAtRef = useRef(0);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string, options?: { fromComposer?: boolean; source?: 'handsfree' }) => Promise<void>>(async () => {});
@@ -1677,6 +1706,43 @@ export default function ChatScreen({ route, navigation }: any) {
     playHandsFreeAudioCue(cue);
     voiceLog('runtime-state', 'Handsfree audio cue played.', { cue });
   }, [voiceLog]);
+
+  const playHandsFreeSessionReadyCue = useCallback((source: string) => {
+    const now = Date.now();
+    if (now - lastHandsFreeSessionReadyCueAtRef.current < HANDS_FREE_SESSION_READY_CUE_MIN_INTERVAL_MS) {
+      return;
+    }
+    lastHandsFreeSessionReadyCueAtRef.current = now;
+    playHandsFreeCue('session-ready');
+    voiceLog('runtime-state', 'Handsfree session ready cue played.', { source });
+  }, [playHandsFreeCue, voiceLog]);
+
+  const playProgressToolCallCues = useCallback((
+    update: AgentProgressUpdate,
+    announcedToolCallKeys: Set<string>,
+  ) => {
+    if (!handsFreeRef.current || !update.steps?.length) {
+      return;
+    }
+
+    update.steps.forEach((step: any, index) => {
+      if (step?.type !== 'tool_call' || !step.toolCall) {
+        return;
+      }
+
+      const toolCall = step.toolCall;
+      const toolKey = [
+        index,
+        toolCall.id ?? toolCall.callId ?? toolCall.name ?? step.title ?? 'tool',
+      ].join(':');
+      if (announcedToolCallKeys.has(toolKey)) {
+        return;
+      }
+
+      announcedToolCallKeys.add(toolKey);
+      playHandsFreeCue('tool-called');
+    });
+  }, [playHandsFreeCue]);
 
   const clearAndroidHandsFreePartialTimer = useCallback(() => {
     if (androidHandsFreePartialTimerRef.current) {
@@ -2032,6 +2098,7 @@ export default function ChatScreen({ route, navigation }: any) {
   useEffect(() => {
     if (!handsFree) {
       lastHandsFreeAudioCuePhaseRef.current = null;
+      lastHandsFreeSessionReadyCueAtRef.current = 0;
       return;
     }
 
@@ -2047,6 +2114,20 @@ export default function ChatScreen({ route, navigation }: any) {
 
     playHandsFreeCue(HANDS_FREE_PHASE_AUDIO_CUES[phase]);
   }, [handsFree, handsFreeController.state.phase, playHandsFreeCue]);
+
+  useEffect(() => {
+    if (!handsFree || !handsFreeRuntimeActive || handsFreeController.state.phase !== 'listening') {
+      return;
+    }
+
+    playHandsFreeSessionReadyCue(androidBackgroundHandsFree ? 'background-listening' : 'foreground-listening');
+  }, [
+    androidBackgroundHandsFree,
+    handsFree,
+    handsFreeController.state.phase,
+    handsFreeRuntimeActive,
+    playHandsFreeSessionReadyCue,
+  ]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
@@ -2067,6 +2148,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }).then(() => {
       if (!cancelled) {
         setDebugInfo('Locked-screen handsfree is ready.');
+        playHandsFreeSessionReadyCue('service-start-command');
       }
     }).catch((error) => {
       const message = (error as any)?.message || String(error);
@@ -2082,7 +2164,7 @@ export default function ChatScreen({ route, navigation }: any) {
         });
       });
     };
-  }, [shouldRunAndroidHandsFreeService, voiceLog]);
+  }, [playHandsFreeSessionReadyCue, shouldRunAndroidHandsFreeService, voiceLog]);
 
   useEffect(() => {
     if (!shouldRunAndroidHandsFreeService) {
@@ -2211,6 +2293,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (event.type === 'service-started') {
         setDebugInfo('Locked-screen handsfree is ready.');
+        playHandsFreeSessionReadyCue('service-started-event');
         return;
       }
 
@@ -2236,6 +2319,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handleRecognizerError,
     isHandsFreeTranscriptSuppressedNow,
     playHandsFreeCue,
+    playHandsFreeSessionReadyCue,
     scheduleAndroidHandsFreePartialTranscript,
     setSttPreviewWithExpiry,
     shouldRunAndroidHandsFreeService,
@@ -2314,6 +2398,10 @@ export default function ChatScreen({ route, navigation }: any) {
           recentAutoSpeechByTextRef.current.delete(key);
         }
       }
+
+    if (handsFree) {
+      playHandsFreeCue('agent-response');
+    }
 
     const useAndroidServiceTts = shouldUseAndroidHandsFreeServiceTtsRef.current;
     const playbackId = beginGlobalTtsPlayback({
@@ -2456,7 +2544,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return false;
     }
 		return true;
-		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, sessionStore, voiceLog]);
+		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, playHandsFreeCue, sessionStore, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
@@ -3093,9 +3181,7 @@ export default function ChatScreen({ route, navigation }: any) {
       lastLoadedSessionMessagesKeyRef.current = currentSessionMessagesKey;
 
       if (currentSession.messages.length > 0) {
-        if (!isSessionSwitch) {
-          skipNextPersistRef.current = true;
-        }
+        skipNextPersistRef.current = true;
         const chatMessages: ChatMessage[] = currentSession.messages.map(m => ({
           role: m.role,
           content: m.content,
@@ -3235,10 +3321,11 @@ export default function ChatScreen({ route, navigation }: any) {
     return () => clearTimeout(timer);
 	}, [navigation, sessionStore.currentSessionId]);
 
-  const prevMessagesLengthRef = useRef(0);
+  const prevPersistedMessagesKeyRef = useRef<string | null>(null);
   const prevSessionIdRef = useRef<string | null>(null);
   useEffect(() => {
     const currentSessionId = sessionStore.currentSessionId;
+    const currentMessagesKey = getLocalMessagesVersionKey(currentSessionId, messages);
 
     // Don't save messages if the current session is being deleted (fixes #571)
     // Only skip if the current session is in the deleting set, not for any deletion
@@ -3250,11 +3337,11 @@ export default function ChatScreen({ route, navigation }: any) {
     prevSessionIdRef.current = currentSessionId;
 
     if (isSessionSwitch) {
-      prevMessagesLengthRef.current = messages.length;
+      prevPersistedMessagesKeyRef.current = currentMessagesKey;
       return;
     }
 
-    if (messages.length > 0 && messages.length !== prevMessagesLengthRef.current) {
+    if (messages.length > 0 && currentMessagesKey !== prevPersistedMessagesKeyRef.current) {
       if (skipNextPersistRef.current) {
         // Messages were just hydrated from a server lazy-load and are already
         // saved by loadSessionMessages; skip to avoid ID/updatedAt regeneration.
@@ -3263,12 +3350,12 @@ export default function ChatScreen({ route, navigation }: any) {
         sessionStore.setMessages(messages);
       }
     } else if (skipNextPersistRef.current) {
-      // Length didn't change (or is 0), so the effect above won't fire — clear
-      // the flag now to prevent it from accidentally skipping the next real
+      // The message snapshot did not change (or is empty), so clear the flag
+      // now to prevent it from accidentally skipping the next real
       // message persistence (e.g., lazy-load returned same count as before).
       skipNextPersistRef.current = false;
     }
-    prevMessagesLengthRef.current = messages.length;
+    prevPersistedMessagesKeyRef.current = currentMessagesKey;
   }, [messages, sessionStore, sessionStore.currentSessionId, sessionStore.deletingSessionIds]);
 
   const toggleMessageExpansion = useCallback((index: number) => {
@@ -3703,6 +3790,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // Clear progress messages ref for this new request (#1083)
     progressMessagesRef.current = [];
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
+    playHandsFreeCue('prompt-submitted');
     setRespondingValue(true);
     setConversationState('running');
 	    if (handsFree) {
@@ -3754,6 +3842,7 @@ export default function ChatScreen({ route, navigation }: any) {
       let lastUserResponse: string | undefined;
 	      let lastResponseEvents: AgentUserResponseEvent[] = [];
 	      let midTurnLegacyResponseText: string | undefined;
+      const announcedToolCallCueKeys = new Set<string>();
 
       const serverConversationId = sessionStore.getServerConversationId();
 	      console.log('[ChatScreen] Starting chat request with', currentMessages.length + 1, 'messages, conversationId:', serverConversationId || 'new');
@@ -3774,6 +3863,7 @@ export default function ChatScreen({ route, navigation }: any) {
         }
         latestConversationState = resolveConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
+        playProgressToolCallCues(update, announcedToolCallCueKeys);
         const currentRunResponseEvents = getCurrentRunResponseEvents(update);
         if (currentRunResponseEvents.length) {
 		          lastResponseEvents = currentRunResponseEvents;
@@ -4204,6 +4294,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const currentMessages = messagesRef.current;
     const messageCountBeforeTurn = currentMessages.length;
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
+    playHandsFreeCue('prompt-submitted');
     setRespondingValue(true);
     setConversationState('running');
 	    if (handsFree) {
@@ -4230,12 +4321,15 @@ export default function ChatScreen({ route, navigation }: any) {
       let lastUserResponse: string | undefined;
 	      let lastResponseEvents: AgentUserResponseEvent[] = [];
 	      let midTurnLegacyResponseText: string | undefined;
+      let queuedProgressMessages: ChatMessage[] = [];
+      const announcedToolCallCueKeys = new Set<string>();
 
       const onProgress = (update: AgentProgressUpdate) => {
         if (sessionStore.currentSessionId !== requestSessionId) return;
         if (activeRequestIdRef.current !== thisRequestId) return;
         latestConversationState = resolveConversationStateFromProgress(update, 'running');
         setConversationState(latestConversationState);
+        playProgressToolCallCues(update, announcedToolCallCueKeys);
         const currentRunResponseEvents = getCurrentRunResponseEvents(update);
         if (currentRunResponseEvents.length) {
 		          lastResponseEvents = currentRunResponseEvents;
@@ -4260,6 +4354,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	        }
         const progressMessages = convertProgressToMessages(update, lastUserResponse);
         if (progressMessages.length > 0) {
+          queuedProgressMessages = progressMessages;
           setMessages((m) => {
             const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
             return [...beforePlaceholder, ...progressMessages];
@@ -4327,6 +4422,23 @@ export default function ChatScreen({ route, navigation }: any) {
         for (let i = currentTurnStartIndex; i < response.conversationHistory.length; i++) {
           const historyMsg = response.conversationHistory[i];
           if (historyMsg.role === 'user') continue;
+
+          // Merge tool results into the preceding assistant message to avoid duplication.
+          if (historyMsg.role === 'tool' && newMessages.length > 0) {
+            const lastMessage = newMessages[newMessages.length - 1];
+            if (lastMessage.role === 'assistant' && lastMessage.toolCalls && lastMessage.toolCalls.length > 0) {
+              const hasToolResults = historyMsg.toolResults && historyMsg.toolResults.length > 0;
+
+              if (hasToolResults) {
+                lastMessage.toolResults = [
+                  ...(lastMessage.toolResults || []),
+                  ...(historyMsg.toolResults || []),
+                ];
+                continue;
+              }
+            }
+          }
+
           // Drop synthetic tool-role summaries (e.g. "TOOL FAILED: ...") that
           // carry no toolResults/toolCalls — the underlying failures are
           // already visible inside the tool call stack via toolResults on the
@@ -4350,7 +4462,19 @@ export default function ChatScreen({ route, navigation }: any) {
 
         setMessages((m) => {
           const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
-          return [...beforePlaceholder, ...finalTurnMessages];
+          let mergedMessages: ChatMessage[];
+          if (queuedProgressMessages.length > 0 && finalTurnMessages.length === 0) {
+            mergedMessages = [...queuedProgressMessages];
+          } else if (queuedProgressMessages.length > finalTurnMessages.length && finalTurnMessages.length > 0) {
+            mergedMessages = [...queuedProgressMessages];
+            mergedMessages[mergedMessages.length - 1] = preserveDisplayContentFromProgress(
+              [finalTurnMessages[finalTurnMessages.length - 1]],
+              [mergedMessages[mergedMessages.length - 1]],
+            )[0];
+          } else {
+            mergedMessages = preserveDisplayContentFromProgress(finalTurnMessages, queuedProgressMessages);
+          }
+          return [...beforePlaceholder, ...mergedMessages];
         });
       } else if (finalDisplayText) {
         setMessages((m) => {

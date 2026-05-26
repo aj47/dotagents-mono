@@ -65,3 +65,27 @@ test('pauses queued-message auto-processing while handsfree is paused', () => {
   assert.match(screenSource, /if \(messageQueueEnabled && \(!handsFree \|\| handsFreePhaseRef\.current !== 'paused'\)\) \{/);
   assert.match(screenSource, /if \(handsFreeRef\.current && handsFreePhaseRef\.current === 'paused'\) \{\s*return;\s*\}[\s\S]*?messageQueue\.markProcessing\(currentConversationId, nextMessage\.id\);/);
 });
+
+test('persists same-count final message updates and keeps queued turns on fresh message state', () => {
+  assert.match(screenSource, /const \[messages, setMessagesState\] = useState<ChatMessage\[\]>\(\[\]\);/);
+  assert.match(screenSource, /messagesRef\.current = resolvedMessages;[\s\S]*?setMessagesState\(resolvedMessages\);/);
+  assert.match(screenSource, /const prevPersistedMessagesKeyRef = useRef<string \| null>\(null\);/);
+  assert.match(screenSource, /const currentMessagesKey = getLocalMessagesVersionKey\(currentSessionId, messages\);/);
+  assert.match(screenSource, /messages\.length > 0 && currentMessagesKey !== prevPersistedMessagesKeyRef\.current/);
+  assert.doesNotMatch(screenSource, /prevMessagesLengthRef/);
+});
+
+test('merges queued progress messages with final queued response history', () => {
+  assert.match(screenSource, /let queuedProgressMessages: ChatMessage\[\] = \[\];[\s\S]*?queuedProgressMessages = progressMessages;/);
+  assert.match(screenSource, /if \(queuedProgressMessages\.length > 0 && finalTurnMessages\.length === 0\)/);
+  assert.match(screenSource, /preserveDisplayContentFromProgress\(finalTurnMessages, queuedProgressMessages\)/);
+});
+
+test('plays distinct handsfree cues for ready, prompt, tool, and response milestones', () => {
+  assert.match(screenSource, /playHandsFreeCue\('session-ready'\)/);
+  assert.match(screenSource, /playHandsFreeCue\('prompt-submitted'\)/);
+  assert.match(screenSource, /playHandsFreeCue\('tool-called'\)/);
+  assert.match(screenSource, /playHandsFreeCue\('agent-response'\)/);
+  assert.match(screenSource, /playProgressToolCallCues\(update, announcedToolCallCueKeys\)/);
+  assert.match(screenSource, /playHandsFreeSessionReadyCue\('service-started-event'\)/);
+});

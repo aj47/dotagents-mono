@@ -9,6 +9,10 @@ import { File, Paths } from 'expo-file-system';
 export type HandsFreeAudioCue =
   | 'enabled'
   | 'disabled'
+  | 'session-ready'
+  | 'prompt-submitted'
+  | 'tool-called'
+  | 'agent-response'
   | 'listening'
   | 'processing'
   | 'speaking'
@@ -37,6 +41,30 @@ const CUE_DEFINITIONS: Record<HandsFreeAudioCue, CueTone[]> = {
     { frequency: 560, durationMs: 80 },
     { frequency: 0, durationMs: 30 },
     { frequency: 330, durationMs: 110 },
+  ],
+  'session-ready': [
+    { frequency: 660, durationMs: 55 },
+    { frequency: 0, durationMs: 24 },
+    { frequency: 880, durationMs: 55 },
+    { frequency: 0, durationMs: 24 },
+    { frequency: 1_100, durationMs: 80, gain: 0.14 },
+  ],
+  'prompt-submitted': [
+    { frequency: 880, durationMs: 50 },
+    { frequency: 0, durationMs: 22 },
+    { frequency: 660, durationMs: 80 },
+  ],
+  'tool-called': [
+    { frequency: 520, durationMs: 42 },
+    { frequency: 0, durationMs: 36 },
+    { frequency: 740, durationMs: 42 },
+    { frequency: 0, durationMs: 36 },
+    { frequency: 520, durationMs: 42 },
+  ],
+  'agent-response': [
+    { frequency: 1_120, durationMs: 45, gain: 0.14 },
+    { frequency: 0, durationMs: 20 },
+    { frequency: 1_320, durationMs: 65, gain: 0.14 },
   ],
   listening: [
     { frequency: 740, durationMs: 55 },
