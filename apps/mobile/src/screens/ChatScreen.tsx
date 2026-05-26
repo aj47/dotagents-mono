@@ -3999,14 +3999,9 @@ export default function ChatScreen({ route, navigation }: any) {
         return;
       }
 
-      // Save conversation ID to the appropriate session
-      if (response.conversationId) {
-        if (sessionChanged && requestSessionId) {
-          await sessionStore.setServerConversationIdForSession(requestSessionId, response.conversationId);
-        } else {
-          await sessionStore.setServerConversationId(response.conversationId);
-        }
-        resolvedConversationId = response.conversationId;
+      const responseConversationId = response.conversationId;
+      if (responseConversationId) {
+        resolvedConversationId = responseConversationId;
       }
 
       if (response.conversationHistory && response.conversationHistory.length > 0) {
@@ -4080,6 +4075,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	            const messagesBeforeTurn = currentMessages.slice(0, messageCountBeforeTurn);
 	            const finalMessages = [...messagesBeforeTurn, userMsg, ...finalTurnMessages];
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
+            if (responseConversationId) {
+              await sessionStore.setServerConversationIdForSession(requestSessionId, responseConversationId);
+            }
           } else {
             console.log('[ChatScreen] Skipping background persistence - request superseded within session:', {
               thisRequestId,
@@ -4087,10 +4085,13 @@ export default function ChatScreen({ route, navigation }: any) {
             });
           }
         } else {
-          // Normal case: update UI state (persistence happens via useEffect)
+          // Normal case: update UI state and persist the completed turn before
+          // saving the server conversation id, so rehydration cannot restore
+          // the pre-final progress snapshot.
           // Merge progress messages with final history to prevent intermediate messages
           // from disappearing when the server's history has fewer messages (#1083)
           const progressMsgs = progressMessagesRef.current;
+          let finalMessagesForSession: ChatMessage[] | null = null;
           setMessages((m) => {
             console.log('[ChatScreen] Current messages before update:', m.length);
             const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
@@ -4115,10 +4116,26 @@ export default function ChatScreen({ route, navigation }: any) {
               // History is authoritative when it has >= messages
               mergedMessages = preserveDisplayContentFromProgress(finalTurnMessages, progressMsgs);
             }
-            const result = [...beforePlaceholder, ...mergedMessages];
+            const visibleMergedMessages = applyUserResponseToMessages(mergedMessages, finalDisplayText);
+            const result = [...beforePlaceholder, ...visibleMergedMessages];
+            finalMessagesForSession = result;
             console.log('[ChatScreen] Final messages count:', result.length);
             return result;
           });
+          if (finalMessagesForSession) {
+            if (requestSessionId) {
+              await sessionStore.setMessagesForSession(requestSessionId, finalMessagesForSession);
+            } else {
+              await sessionStore.setMessages(finalMessagesForSession);
+            }
+          }
+          if (responseConversationId) {
+            if (requestSessionId) {
+              await sessionStore.setServerConversationIdForSession(requestSessionId, responseConversationId);
+            } else {
+              await sessionStore.setServerConversationId(responseConversationId);
+            }
+          }
         }
 	      } else if (finalDisplayText) {
         console.log('[ChatScreen] FALLBACK: No conversationHistory, using finalText only. response.conversationHistory:', response.conversationHistory);
@@ -4130,6 +4147,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	            const messagesBeforeTurn = currentMessages.slice(0, messageCountBeforeTurn);
 	            const finalMessages = [...messagesBeforeTurn, userMsg, { role: 'assistant' as const, content: finalDisplayText }];
             await sessionStore.setMessagesForSession(requestSessionId, finalMessages);
+            if (responseConversationId) {
+              await sessionStore.setServerConversationIdForSession(requestSessionId, responseConversationId);
+            }
           } else {
             console.log('[ChatScreen] Skipping fallback background persistence - request superseded within session:', {
               thisRequestId,
@@ -4138,6 +4158,7 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         } else {
           // Normal case: update UI state
+          let finalMessagesForSession: ChatMessage[] | null = null;
           setMessages((m) => {
             const copy = [...m];
             for (let i = copy.length - 1; i >= 0; i--) {
@@ -4146,15 +4167,36 @@ export default function ChatScreen({ route, navigation }: any) {
                 break;
               }
             }
+            finalMessagesForSession = copy;
             return copy;
           });
+          if (finalMessagesForSession) {
+            if (requestSessionId) {
+              await sessionStore.setMessagesForSession(requestSessionId, finalMessagesForSession);
+            } else {
+              await sessionStore.setMessages(finalMessagesForSession);
+            }
+          }
+          if (responseConversationId) {
+            if (requestSessionId) {
+              await sessionStore.setServerConversationIdForSession(requestSessionId, responseConversationId);
+            } else {
+              await sessionStore.setServerConversationId(responseConversationId);
+            }
+          }
+        }
+      } else if (responseConversationId) {
+        if (sessionChanged && requestSessionId) {
+          await sessionStore.setServerConversationIdForSession(requestSessionId, responseConversationId);
+        } else {
+          await sessionStore.setServerConversationId(responseConversationId);
         }
       } else {
         console.log('[ChatScreen] WARNING: No conversationHistory and no finalText!');
       }
 
-      // Note: Removed duplicate setServerConversationId call that was after the message handling
-      // The conversation ID is now saved once at the beginning of this block
+      // The conversation ID is saved after final message persistence so session
+      // rehydration cannot restore a pre-final progress snapshot.
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // userResponse is explicitly set by the agent for user communication
@@ -4441,9 +4483,9 @@ export default function ChatScreen({ route, navigation }: any) {
       }
       setConversationState(latestConversationState === 'running' ? 'complete' : latestConversationState);
 
-      if (response.conversationId) {
-        await sessionStore.setServerConversationId(response.conversationId);
-        resolvedConversationId = response.conversationId;
+      const responseConversationId = response.conversationId;
+      if (responseConversationId) {
+        resolvedConversationId = responseConversationId;
       }
 
       if (response.conversationHistory && response.conversationHistory.length > 0) {
@@ -4496,6 +4538,7 @@ export default function ChatScreen({ route, navigation }: any) {
         }
 		        const finalTurnMessages = applyUserResponseToMessages(newMessages, finalDisplayText);
 
+        let finalMessagesForSession: ChatMessage[] | null = null;
         setMessages((m) => {
           const beforePlaceholder = m.slice(0, messageCountBeforeTurn + 1);
           let mergedMessages: ChatMessage[];
@@ -4510,9 +4553,27 @@ export default function ChatScreen({ route, navigation }: any) {
           } else {
             mergedMessages = preserveDisplayContentFromProgress(finalTurnMessages, queuedProgressMessages);
           }
-          return [...beforePlaceholder, ...mergedMessages];
+          const visibleMergedMessages = applyUserResponseToMessages(mergedMessages, finalDisplayText);
+          const result = [...beforePlaceholder, ...visibleMergedMessages];
+          finalMessagesForSession = result;
+          return result;
         });
+        if (finalMessagesForSession) {
+          if (requestSessionId) {
+            await sessionStore.setMessagesForSession(requestSessionId, finalMessagesForSession);
+          } else {
+            await sessionStore.setMessages(finalMessagesForSession);
+          }
+        }
+        if (responseConversationId) {
+          if (requestSessionId) {
+            await sessionStore.setServerConversationIdForSession(requestSessionId, responseConversationId);
+          } else {
+            await sessionStore.setServerConversationId(responseConversationId);
+          }
+        }
       } else if (finalDisplayText) {
+        let finalMessagesForSession: ChatMessage[] | null = null;
         setMessages((m) => {
           const copy = [...m];
           for (let i = copy.length - 1; i >= 0; i--) {
@@ -4521,8 +4582,29 @@ export default function ChatScreen({ route, navigation }: any) {
               break;
             }
           }
+          finalMessagesForSession = copy;
           return copy;
         });
+        if (finalMessagesForSession) {
+          if (requestSessionId) {
+            await sessionStore.setMessagesForSession(requestSessionId, finalMessagesForSession);
+          } else {
+            await sessionStore.setMessages(finalMessagesForSession);
+          }
+        }
+        if (responseConversationId) {
+          if (requestSessionId) {
+            await sessionStore.setServerConversationIdForSession(requestSessionId, responseConversationId);
+          } else {
+            await sessionStore.setServerConversationId(responseConversationId);
+          }
+        }
+      } else if (responseConversationId) {
+        if (requestSessionId) {
+          await sessionStore.setServerConversationIdForSession(requestSessionId, responseConversationId);
+        } else {
+          await sessionStore.setServerConversationId(responseConversationId);
+        }
       }
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText

@@ -81,6 +81,14 @@ test('merges queued progress messages with final queued response history', () =>
   assert.match(screenSource, /preserveDisplayContentFromProgress\(finalTurnMessages, queuedProgressMessages\)/);
 });
 
+test('keeps spoken final responses visible after progress and session persistence merges', () => {
+  const visibleMergeOccurrences = screenSource.match(/const visibleMergedMessages = applyUserResponseToMessages\(mergedMessages, finalDisplayText\);/g) || [];
+  assert.equal(visibleMergeOccurrences.length, 2);
+  assert.match(screenSource, /const result = \[\.\.\.beforePlaceholder, \.\.\.visibleMergedMessages\];/);
+  assert.match(screenSource, /await sessionStore\.setMessagesForSession\(requestSessionId, finalMessagesForSession\);/);
+  assert.match(screenSource, /await sessionStore\.setServerConversationIdForSession\(requestSessionId, responseConversationId\);/);
+});
+
 test('relinks existing unlinked sessions before sending follow-ups', () => {
   assert.match(screenSource, /const ensureServerConversationForExistingFollowUp = useCallback/);
   assert.match(screenSource, /Existing session missing serverConversationId before follow-up; syncing before send/);

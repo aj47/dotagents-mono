@@ -641,6 +641,10 @@ export function useSessions(): SessionStore {
     const now = Date.now();
 
     pendingServerConversationSessionIdsRef.current.delete(targetSessionId);
+    const currentSession = currentSessions.find(session => session.id === targetSessionId);
+    if (currentSession?.serverConversationId === serverConversationId) {
+      return;
+    }
 
     const sessionsToSave = currentSessions.map(session => {
       if (session.id !== targetSessionId) return session;
@@ -673,6 +677,10 @@ export function useSessions(): SessionStore {
     const now = Date.now();
 
     pendingServerConversationSessionIdsRef.current.delete(sessionId);
+    const currentSession = currentSessions.find(session => session.id === sessionId);
+    if (currentSession?.serverConversationId === serverConversationId) {
+      return;
+    }
 
     const sessionsToSave = currentSessions.map(session => {
       if (session.id !== sessionId) return session;
