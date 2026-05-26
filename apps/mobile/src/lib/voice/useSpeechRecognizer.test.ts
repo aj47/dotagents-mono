@@ -193,6 +193,17 @@ describe('mergeVoiceText', () => {
       'open settings and turn on hands free',
     );
   });
+  it('uses recognizer final rewrites instead of appending them as new speech', () => {
+    expect(mergeVoiceText(
+      'can you give me some dope points about',
+      'can you give me some points about it',
+    )).toBe('can you give me some points about it');
+  });
+  it('keeps separate utterances that only share a short opener', () => {
+    expect(mergeVoiceText('can you open settings', 'can you start a timer')).toBe(
+      'can you open settings can you start a timer',
+    );
+  });
   it('matches overlap despite case or punctuation changes', () => {
     expect(mergeVoiceText('Turn on the lights.', 'lights in the kitchen')).toBe('Turn on the lights in the kitchen');
   });

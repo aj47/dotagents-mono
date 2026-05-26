@@ -34,6 +34,51 @@ const containsWordRun = (haystack: string[], needle: string[]) => {
   return false;
 };
 
+const getCommonPrefixLength = (leftWords: string[], rightWords: string[]) => {
+  const maxLength = Math.min(leftWords.length, rightWords.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftKey = getWordKey(leftWords[index] || '');
+    const rightKey = getWordKey(rightWords[index] || '');
+    if (!leftKey || leftKey !== rightKey) {
+      return index;
+    }
+  }
+  return maxLength;
+};
+
+const getOrderedSharedWordCount = (leftWords: string[], rightWords: string[]) => {
+  const leftKeys = leftWords.map(getWordKey).filter(Boolean);
+  const rightKeys = rightWords.map(getWordKey).filter(Boolean);
+  const lengths = Array.from({ length: leftKeys.length + 1 }, () =>
+    Array(rightKeys.length + 1).fill(0),
+  );
+
+  for (let leftIndex = leftKeys.length - 1; leftIndex >= 0; leftIndex -= 1) {
+    for (let rightIndex = rightKeys.length - 1; rightIndex >= 0; rightIndex -= 1) {
+      lengths[leftIndex][rightIndex] = leftKeys[leftIndex] === rightKeys[rightIndex]
+        ? lengths[leftIndex + 1][rightIndex + 1] + 1
+        : Math.max(lengths[leftIndex + 1][rightIndex], lengths[leftIndex][rightIndex + 1]);
+    }
+  }
+
+  return lengths[0][0];
+};
+
+const isLikelyCumulativeRewrite = (previousWords: string[], nextWords: string[]) => {
+  const shorterLength = Math.min(previousWords.length, nextWords.length);
+  if (shorterLength < 4) {
+    return false;
+  }
+
+  const commonPrefixLength = getCommonPrefixLength(previousWords, nextWords);
+  if (commonPrefixLength >= Math.min(5, Math.ceil(shorterLength * 0.6))) {
+    return true;
+  }
+
+  return commonPrefixLength >= 2 &&
+    getOrderedSharedWordCount(previousWords, nextWords) >= Math.ceil(shorterLength * 0.75);
+};
+
 const dedupeRepeatedWordRuns = (text: string) => {
   const words = normalizeVoiceWhitespace(text).split(' ').filter(Boolean);
   if (words.length < 2) {
@@ -80,6 +125,9 @@ export function mergeVoiceText(finalText?: string, liveText?: string): string {
   }
   if (wordRunsMatch(finalWords, 0, liveWords, 0, liveWords.length)) {
     return finalClean;
+  }
+  if (isLikelyCumulativeRewrite(finalWords, liveWords)) {
+    return liveClean;
   }
   if (containsWordRun(finalWords, liveWords)) {
     return finalClean;
