@@ -1722,6 +1722,56 @@ export default function ChatScreen({ route, navigation }: any) {
     });
   }, [playHandsFreeCue]);
 
+  const ensureServerConversationForExistingFollowUp = useCallback(async (
+    source: 'send' | 'queued',
+  ): Promise<string | undefined> => {
+    const sessionId = currentSessionIdRef.current;
+    const session = sessionStore.getCurrentSession();
+    if (!sessionId || !session || session.id !== sessionId) {
+      return undefined;
+    }
+    if (session.serverConversationId) {
+      return session.serverConversationId;
+    }
+    if (session.messages.length === 0 || !settingsClient) {
+      return undefined;
+    }
+
+    console.log('[ChatScreen] Existing session missing serverConversationId before follow-up; syncing before send:', {
+      source,
+      sessionId,
+      messageCount: session.messages.length,
+      title: session.title,
+    });
+
+    try {
+      await sessionStore.syncWithServer(settingsClient);
+    } catch (error: any) {
+      console.warn('[ChatScreen] Failed to sync unlinked session before follow-up:', error?.message || error);
+      return undefined;
+    }
+
+    if (currentSessionIdRef.current !== sessionId) {
+      return undefined;
+    }
+
+    const refreshedSession = sessionStore.getCurrentSession();
+    const serverConversationId = refreshedSession?.serverConversationId;
+    if (serverConversationId) {
+      console.log('[ChatScreen] Linked existing session before follow-up:', {
+        source,
+        sessionId,
+        serverConversationId,
+      });
+    } else {
+      console.warn('[ChatScreen] Existing session still missing serverConversationId after sync:', {
+        source,
+        sessionId,
+      });
+    }
+    return serverConversationId;
+  }, [sessionStore, settingsClient]);
+
   const clearAndroidHandsFreePartialTimer = useCallback(() => {
     if (androidHandsFreePartialTimerRef.current) {
       clearTimeout(androidHandsFreePartialTimerRef.current);
@@ -3782,8 +3832,12 @@ export default function ChatScreen({ route, navigation }: any) {
     // but the primary "superseded" check now uses per-session tracking (PR review fix #13)
     activeRequestIdRef.current = thisRequestId;
 
-    const currentSession = sessionStore.getCurrentSession();
-    const startingServerConversationId = currentSession?.serverConversationId;
+    let currentSession = sessionStore.getCurrentSession();
+    let startingServerConversationId = currentSession?.serverConversationId;
+    if (!startingServerConversationId && currentSession?.messages.length) {
+      startingServerConversationId = await ensureServerConversationForExistingFollowUp('send');
+      currentSession = sessionStore.getCurrentSession();
+    }
 
     console.log('[ChatScreen] Session info:', {
       sessionId: currentSession?.id,
@@ -4282,8 +4336,12 @@ export default function ChatScreen({ route, navigation }: any) {
     const thisRequestId = Date.now();
     activeRequestIdRef.current = thisRequestId;
 
-    const currentSession = sessionStore.getCurrentSession();
-    const startingServerConversationId = currentSession?.serverConversationId;
+    let currentSession = sessionStore.getCurrentSession();
+    let startingServerConversationId = currentSession?.serverConversationId;
+    if (!startingServerConversationId && currentSession?.messages.length) {
+      startingServerConversationId = await ensureServerConversationForExistingFollowUp('queued');
+      currentSession = sessionStore.getCurrentSession();
+    }
 
     const requestSessionId = sessionStore.currentSessionId;
     let resolvedConversationId: string | undefined;

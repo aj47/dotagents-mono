@@ -81,6 +81,14 @@ test('merges queued progress messages with final queued response history', () =>
   assert.match(screenSource, /preserveDisplayContentFromProgress\(finalTurnMessages, queuedProgressMessages\)/);
 });
 
+test('relinks existing unlinked sessions before sending follow-ups', () => {
+  assert.match(screenSource, /const ensureServerConversationForExistingFollowUp = useCallback/);
+  assert.match(screenSource, /Existing session missing serverConversationId before follow-up; syncing before send/);
+  assert.match(screenSource, /await sessionStore\.syncWithServer\(settingsClient\)/);
+  assert.match(screenSource, /startingServerConversationId = await ensureServerConversationForExistingFollowUp\('send'\)/);
+  assert.match(screenSource, /startingServerConversationId = await ensureServerConversationForExistingFollowUp\('queued'\)/);
+});
+
 test('plays distinct handsfree cues for ready, prompt, tool, and response milestones', () => {
   assert.match(screenSource, /playHandsFreeCue\('session-ready'\)/);
   assert.match(screenSource, /playHandsFreeCue\('prompt-submitted'\)/);
