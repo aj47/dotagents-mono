@@ -39,10 +39,11 @@ class HandsFreeVoiceService : Service() {
   private var pendingTtsRequest: TtsRequest? = null
   private var activeTtsUtteranceId: String? = null
   private var activeTtsRestoreListeningAfterDone = false
+  private var activeTtsAllowBargeIn = false
   private var ttsSpeaking = false
 
   private val restartRunnable = Runnable {
-    if (captureEnabled && activeTtsUtteranceId == null) {
+    if (captureEnabled && (activeTtsUtteranceId == null || activeTtsAllowBargeIn)) {
       startListening()
     }
   }
@@ -55,6 +56,7 @@ class HandsFreeVoiceService : Service() {
     val pitch: Float,
     val voice: String?,
     val restoreListeningAfterDone: Boolean,
+    val allowBargeIn: Boolean,
   )
 
   override fun onCreate() {
@@ -134,7 +136,7 @@ class HandsFreeVoiceService : Service() {
         it.putBoolean("listeningEnabled", captureEnabled)
       }
 
-      if (captureEnabled && activeTtsUtteranceId == null) {
+      if (captureEnabled && (activeTtsUtteranceId == null || activeTtsAllowBargeIn)) {
         startListening()
       } else {
         mainHandler.removeCallbacks(restartRunnable)
@@ -214,8 +216,8 @@ class HandsFreeVoiceService : Service() {
   }
 
   private fun startListening() {
-    if (!captureEnabled || listening || activeTtsUtteranceId != null) {
-      Log.i(TAG, "recognizer start skipped captureEnabled=$captureEnabled listening=$listening activeTts=${activeTtsUtteranceId != null}")
+    if (!captureEnabled || listening || (activeTtsUtteranceId != null && !activeTtsAllowBargeIn)) {
+      Log.i(TAG, "recognizer start skipped captureEnabled=$captureEnabled listening=$listening activeTts=${activeTtsUtteranceId != null} activeTtsAllowBargeIn=$activeTtsAllowBargeIn")
       return
     }
 
@@ -299,6 +301,7 @@ class HandsFreeVoiceService : Service() {
     pitch: Float,
     voice: String?,
     restoreListeningAfterDone: Boolean,
+    allowBargeIn: Boolean,
   ) {
     val request = TtsRequest(
       utteranceId = utteranceId,
@@ -308,6 +311,7 @@ class HandsFreeVoiceService : Service() {
       pitch = pitch.coerceIn(MIN_TTS_PITCH, MAX_TTS_PITCH),
       voice = voice?.takeIf { it.isNotBlank() },
       restoreListeningAfterDone = restoreListeningAfterDone,
+      allowBargeIn = allowBargeIn,
     )
 
     mainHandler.post {
@@ -326,13 +330,14 @@ class HandsFreeVoiceService : Service() {
   private fun speakTtsOnMain(request: TtsRequest) {
     Log.i(
       TAG,
-      "tts speak requested utteranceId=${request.utteranceId} textLength=${request.text.length} language=${request.language} restoreListening=${request.restoreListeningAfterDone} ready=$textToSpeechReady initializing=$textToSpeechInitializing",
+      "tts speak requested utteranceId=${request.utteranceId} textLength=${request.text.length} language=${request.language} restoreListening=${request.restoreListeningAfterDone} allowBargeIn=${request.allowBargeIn} ready=$textToSpeechReady initializing=$textToSpeechInitializing",
     )
 
     stopTtsOnMain(emitStopped = true)
-    suspendCaptureForTts(request.restoreListeningAfterDone)
+    prepareCaptureForTts(request)
     activeTtsUtteranceId = request.utteranceId
     activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
+    activeTtsAllowBargeIn = request.allowBargeIn
     ttsSpeaking = false
 
     val engine = ensureTextToSpeech()
@@ -353,7 +358,22 @@ class HandsFreeVoiceService : Service() {
     startTtsRequest(request)
   }
 
-  private fun suspendCaptureForTts(restoreListeningAfterDone: Boolean) {
+  private fun prepareCaptureForTts(request: TtsRequest) {
+    if (request.allowBargeIn) {
+      mainHandler.removeCallbacks(restartRunnable)
+      if (request.restoreListeningAfterDone && !captureEnabled) {
+        captureEnabled = true
+        HandsFreeVoiceEvents.emit("capture-state") {
+          it.putBoolean("listeningEnabled", true)
+        }
+      }
+      if (captureEnabled) {
+        startListening()
+      }
+      activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
+      return
+    }
+
     mainHandler.removeCallbacks(restartRunnable)
     stopListening()
     HandsFreeAudioRouter.release(this, ROUTE_REQUESTER)
@@ -364,7 +384,7 @@ class HandsFreeVoiceService : Service() {
         it.putBoolean("listeningEnabled", false)
       }
     }
-    activeTtsRestoreListeningAfterDone = restoreListeningAfterDone
+    activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
   }
 
   private fun ensureTextToSpeech(): TextToSpeech? {
@@ -540,6 +560,7 @@ class HandsFreeVoiceService : Service() {
     val shouldRestoreListening = activeTtsRestoreListeningAfterDone && eventType != "tts-stopped"
     activeTtsUtteranceId = null
     activeTtsRestoreListeningAfterDone = false
+    activeTtsAllowBargeIn = false
     pendingTtsRequest = null
     ttsSpeaking = false
 
@@ -566,6 +587,7 @@ class HandsFreeVoiceService : Service() {
     val hadActiveTts = utteranceId != null || pendingTtsRequest != null || ttsSpeaking
     activeTtsUtteranceId = null
     activeTtsRestoreListeningAfterDone = false
+    activeTtsAllowBargeIn = false
     pendingTtsRequest = null
     ttsSpeaking = false
     try {
@@ -594,6 +616,7 @@ class HandsFreeVoiceService : Service() {
       pendingTtsRequest = null
       activeTtsUtteranceId = null
       activeTtsRestoreListeningAfterDone = false
+      activeTtsAllowBargeIn = false
       ttsSpeaking = false
     }
   }
@@ -862,6 +885,7 @@ class HandsFreeVoiceService : Service() {
       pitch: Float,
       voice: String?,
       restoreListeningAfterDone: Boolean,
+      allowBargeIn: Boolean,
     ): Boolean {
       val service = activeService ?: return false
       service.speakTts(
@@ -872,6 +896,7 @@ class HandsFreeVoiceService : Service() {
         pitch = pitch,
         voice = voice,
         restoreListeningAfterDone = restoreListeningAfterDone,
+        allowBargeIn = allowBargeIn,
       )
       return true
     }

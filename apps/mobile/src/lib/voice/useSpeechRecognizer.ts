@@ -19,6 +19,12 @@ type VoiceFinalizedPayload = {
   source: 'native' | 'web';
 };
 
+type SuppressedHandsFreeTranscriptPayload = {
+  text: string;
+  source: 'native' | 'web';
+  isFinal?: boolean;
+};
+
 type DeferredPushToTalkFinal = {
   gestureId: number;
   text: string;
@@ -33,6 +39,7 @@ type UseSpeechRecognizerOptions = {
   onRecognizerError?: (message: string) => void;
   onPermissionDenied?: () => void;
   shouldSuppressHandsFreeTranscript?: () => boolean;
+  onSuppressedHandsFreeTranscript?: (payload: SuppressedHandsFreeTranscriptPayload) => boolean;
   log?: VoiceDebugLog;
   /** Preferred microphone device ID (web only). When set, getUserMedia is called
    *  with this deviceId before starting the Web Speech API recognizer so the
@@ -85,6 +92,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     onRecognizerError,
     onPermissionDenied,
     shouldSuppressHandsFreeTranscript,
+    onSuppressedHandsFreeTranscript,
     log,
     audioInputDeviceId,
   } = options;
@@ -117,7 +125,9 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const pendingPushToTalkFinalRef = useRef<DeferredPushToTalkFinal | null>(null);
   const suppressFinalizeRef = useRef(false);
   const shouldSuppressHandsFreeTranscriptRef = useRef(shouldSuppressHandsFreeTranscript);
+  const onSuppressedHandsFreeTranscriptRef = useRef(onSuppressedHandsFreeTranscript);
   shouldSuppressHandsFreeTranscriptRef.current = shouldSuppressHandsFreeTranscript;
+  onSuppressedHandsFreeTranscriptRef.current = onSuppressedHandsFreeTranscript;
 
   const setListeningValue = useCallback((value: boolean) => {
     listeningRef.current = value;
@@ -155,17 +165,27 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     handsFree && shouldSuppressHandsFreeTranscriptRef.current?.() === true
   ), [handsFree]);
 
-  const clearSuppressedHandsFreeTranscript = useCallback((source: 'native' | 'web', text?: string) => {
+  const clearSuppressedHandsFreeTranscript = useCallback((source: 'native' | 'web', text?: string, isFinal?: boolean) => {
+    const normalizedText = normalizeVoiceText(text);
+    const handled = normalizedText
+      ? onSuppressedHandsFreeTranscriptRef.current?.({
+        text: normalizedText,
+        source,
+        isFinal,
+      }) === true
+      : false;
     clearHandsFreeDebounce();
     pendingHandsFreeFinalRef.current = '';
     nativeFinalRef.current = '';
     webFinalRef.current = '';
     setLiveTranscriptValue('');
     setSttPreview('');
-    log?.('transcript-ignored', 'Hands-free transcript ignored before finalization while the assistant is busy or speaking.', {
+    log?.('transcript-ignored', handled
+      ? 'Hands-free transcript handled as a TTS control command.'
+      : 'Hands-free transcript ignored before finalization while the assistant is busy or speaking.', {
       source,
-      text: truncateDebugText(text),
-      textLength: normalizeVoiceText(text).length,
+      text: truncateDebugText(normalizedText),
+      textLength: normalizedText.length,
     });
   }, [clearHandsFreeDebounce, log, setLiveTranscriptValue]);
 
@@ -481,7 +501,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
 
       const rawResultText = normalizeVoiceText(mergeVoiceText(finalText, interim));
       if (handsFree && rawResultText && isHandsFreeTranscriptSuppressed()) {
-        clearSuppressedHandsFreeTranscript('web', rawResultText);
+        clearSuppressedHandsFreeTranscript('web', rawResultText, !!finalText);
         return;
       }
 
@@ -704,7 +724,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
                 pendingText: truncateDebugText(pendingHandsFreeFinalRef.current || nativeFinalRef.current),
               });
               if (handsFree && text && isHandsFreeTranscriptSuppressed()) {
-                clearSuppressedHandsFreeTranscript('native', text);
+                clearSuppressedHandsFreeTranscript('native', text, !!nativeEvent?.isFinal);
                 return;
               }
               if (nativeEvent?.isFinal && text) {

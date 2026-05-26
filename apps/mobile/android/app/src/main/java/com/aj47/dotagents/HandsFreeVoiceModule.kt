@@ -94,9 +94,10 @@ class HandsFreeVoiceModule(
     val pitch = readDouble(options, "pitch", 1.0).toFloat()
     val voice = readString(options, "voice")?.takeIf { it.isNotBlank() }
     val restoreListeningAfterDone = readBoolean(options, "restoreListeningAfterDone", false)
+    val allowBargeIn = readBoolean(options, "allowBargeIn", false)
 
     try {
-      Log.i(tag, "module speak requested utteranceId=$utteranceId textLength=${text.length} isRunning=${HandsFreeVoiceService.isRunning()} restoreListening=$restoreListeningAfterDone")
+      Log.i(tag, "module speak requested utteranceId=$utteranceId textLength=${text.length} isRunning=${HandsFreeVoiceService.isRunning()} restoreListening=$restoreListeningAfterDone allowBargeIn=$allowBargeIn")
       val started = HandsFreeVoiceService.speakTts(
         utteranceId = utteranceId,
         text = text,
@@ -105,6 +106,7 @@ class HandsFreeVoiceModule(
         pitch = pitch,
         voice = voice,
         restoreListeningAfterDone = restoreListeningAfterDone,
+        allowBargeIn = allowBargeIn,
       )
       Log.i(tag, "module speak result utteranceId=$utteranceId started=$started")
       promise.resolve(if (started) utteranceId else null)

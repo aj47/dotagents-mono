@@ -44,6 +44,7 @@ type AndroidHandsFreeVoiceModule = {
     pitch?: number;
     voice?: string;
     restoreListeningAfterDone?: boolean;
+    allowBargeIn?: boolean;
   }): Promise<string | null>;
   stopSpeaking(): Promise<boolean>;
   isSpeaking(): Promise<boolean>;
@@ -95,6 +96,7 @@ export async function speakAndroidHandsFreeTts(options: {
   pitch?: number;
   voice?: string;
   restoreListeningAfterDone?: boolean;
+  allowBargeIn?: boolean;
 }): Promise<string | null> {
   if (!nativeModule) return null;
   return nativeModule.speak(options);

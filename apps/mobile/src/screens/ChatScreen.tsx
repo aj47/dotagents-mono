@@ -105,6 +105,7 @@ import {
   subscribeAndroidHandsFreeVoiceEvents,
 } from '../lib/voice/androidHandsFreeService';
 import { isBenignHandsFreeRecognizerError, useHandsFreeController } from '../lib/voice/useHandsFreeController';
+import { normalizeVoicePhrase } from '../lib/voice/phraseMatcher';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
 
 interface PendingImageAttachment {
@@ -128,6 +129,18 @@ const ANDROID_HANDS_FREE_DUPLICATE_SUPPRESSION_MS = 3_000;
 const HANDS_FREE_FINALIZED_DUPLICATE_SUPPRESSION_MS = 3_000;
 const ANDROID_HANDS_FREE_FOREGROUND_HANDOFF_DELAY_MS = 1_500;
 const HANDS_FREE_KEEP_AWAKE_TAG = 'dotagents-handsfree';
+const HANDS_FREE_TTS_BARGE_IN_DUPLICATE_SUPPRESSION_MS = 1_200;
+const HANDS_FREE_TTS_BARGE_IN_COMMANDS = new Set([
+  'stop',
+  'stop please',
+  'please stop',
+  'stop talking',
+  'stop speaking',
+  'stop tts',
+  'wait',
+  'wait please',
+  'please wait',
+]);
 const NATIVE_TTS_WATCHDOG_GRACE_MS = 1_500;
 const NATIVE_TTS_WATCHDOG_INTERVAL_MS = 750;
 const NATIVE_TTS_MIN_WATCHDOG_MS = 4_000;
@@ -168,6 +181,14 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
 const escapeMarkdownImageAlt = (value: string) => value.replace(/[\[\]\\]/g, '').trim();
 
 const normalizeAutoTtsTextKey = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
+
+const matchHandsFreeTtsBargeInCommand = (text?: string | null): 'stop' | 'wait' | null => {
+  const normalized = normalizeVoicePhrase(text);
+  if (!normalized || !HANDS_FREE_TTS_BARGE_IN_COMMANDS.has(normalized)) {
+    return null;
+  }
+  return normalized.includes('stop') ? 'stop' : 'wait';
+};
 
 const estimateNativeTtsWatchdogMs = (text: string, rate = 1.0) => {
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
@@ -1363,8 +1384,10 @@ export default function ChatScreen({ route, navigation }: any) {
   const playedResponseEventIdsRef = useRef<Set<string>>(new Set());
   const queuedResponseEventsRef = useRef<QueuedResponseSpeechItem[]>([]);
   const activeAutoSpeechEventRef = useRef<QueuedResponseSpeechItem | null>(null);
+  const autoTtsSuppressedRequestIdsRef = useRef<Set<number>>(new Set());
   const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
   const androidHandsFreeTtsHandlersRef = useRef<Map<string, AndroidHandsFreeTtsHandler>>(new Map());
+  const ttsBargeInLastHandledRef = useRef<{ command: 'stop' | 'wait'; timestamp: number } | null>(null);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string, options?: { fromComposer?: boolean; source?: 'handsfree' }) => Promise<void>>(async () => {});
@@ -1547,14 +1570,65 @@ export default function ChatScreen({ route, navigation }: any) {
   const isAssistantAudioPendingOrSpeaking =
     isAssistantAudioLoading
     || isAssistantAudioSpeaking;
-  const shouldKeepHandsFreeMicArmed =
-    handsFreeController.shouldKeepRecognizerActive
-    && !isAssistantAudioPendingOrSpeaking;
+  const shouldKeepHandsFreeMicArmed = handsFreeController.shouldKeepRecognizerActive;
   const shouldSuppressHandsFreeTranscript =
     handsFree
     && isAssistantAudioPendingOrSpeaking;
   const shouldSuppressHandsFreeTranscriptRef = useRef(shouldSuppressHandsFreeTranscript);
   shouldSuppressHandsFreeTranscriptRef.current = shouldSuppressHandsFreeTranscript;
+
+  const clearAndroidHandsFreePartialTimer = useCallback(() => {
+    if (androidHandsFreePartialTimerRef.current) {
+      clearTimeout(androidHandsFreePartialTimerRef.current);
+      androidHandsFreePartialTimerRef.current = null;
+    }
+  }, []);
+
+  const handleHandsFreeTtsBargeInCommand = useCallback((text: string, source: 'native' | 'web') => {
+    const command = matchHandsFreeTtsBargeInCommand(text);
+    if (!command || !handsFreeRef.current) {
+      return false;
+    }
+
+    const playback = getGlobalTtsPlayback();
+    if (!playback && handsFreePhaseRef.current !== 'speaking') {
+      return false;
+    }
+
+    const now = Date.now();
+    const lastHandled = ttsBargeInLastHandledRef.current;
+    if (
+      lastHandled
+      && lastHandled.command === command
+      && now - lastHandled.timestamp < HANDS_FREE_TTS_BARGE_IN_DUPLICATE_SUPPRESSION_MS
+    ) {
+      return true;
+    }
+    ttsBargeInLastHandledRef.current = { command, timestamp: now };
+
+    clearAndroidHandsFreePartialTimer();
+    androidHandsFreePendingPartialRef.current = '';
+    queuedResponseEventsRef.current = [];
+    activeAutoSpeechEventRef.current = null;
+    if (activeRequestIdRef.current) {
+      autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
+    }
+    stopGlobalTtsPlayback();
+    if (handsFreePhaseRef.current === 'speaking') {
+      handsFreeController.onSpeechFinished();
+    }
+    setDebugInfo('Stopped speaking. Listening.');
+    voiceLog('tts-stopped', `Assistant speech interrupted by "${command}".`, {
+      source,
+      command,
+      text,
+    });
+    return true;
+  }, [
+    clearAndroidHandsFreePartialTimer,
+    handsFreeController.onSpeechFinished,
+    voiceLog,
+  ]);
 
   const handleVoiceFinalized = useCallback(({
     text,
@@ -1578,6 +1652,9 @@ export default function ChatScreen({ route, navigation }: any) {
         `[DotAgentsHandsFreeJS] finalized source=${source} phase=${handsFreePhaseRef.current} textLength=${finalText.length}`,
       );
       if (shouldSuppressHandsFreeTranscriptRef.current) {
+        if (handleHandsFreeTtsBargeInCommand(finalText, source)) {
+          return;
+        }
         voiceLog('transcript-ignored', 'Handsfree transcript ignored while assistant audio is speaking.', {
           source,
           phase: handsFreePhaseRef.current,
@@ -1639,18 +1716,12 @@ export default function ChatScreen({ route, navigation }: any) {
     void sendRef.current(finalText);
   }, [
     globalTtsPlayback,
+    handleHandsFreeTtsBargeInCommand,
     handsFreeController.handleFinalTranscript,
     handsFreeHasHeadsetRoute,
     hasLiveAgentTurn,
     voiceLog,
   ]);
-
-  const clearAndroidHandsFreePartialTimer = useCallback(() => {
-    if (androidHandsFreePartialTimerRef.current) {
-      clearTimeout(androidHandsFreePartialTimerRef.current);
-      androidHandsFreePartialTimerRef.current = null;
-    }
-  }, []);
 
   const isRecentAndroidHandsFreeDuplicate = useCallback((text: string) => {
     const finalText = normalizeVoiceText(text);
@@ -1676,6 +1747,9 @@ export default function ChatScreen({ route, navigation }: any) {
       return false;
     }
     if (shouldSuppressHandsFreeTranscriptRef.current) {
+      if (handleHandsFreeTtsBargeInCommand(finalText, 'native')) {
+        return true;
+      }
       voiceLog('transcript-ignored', 'Android handsfree partial flush ignored while the assistant is busy or speaking.', {
         phase: handsFreePhaseRef.current,
         text: finalText,
@@ -1705,6 +1779,7 @@ export default function ChatScreen({ route, navigation }: any) {
     return true;
   }, [
     clearAndroidHandsFreePartialTimer,
+    handleHandsFreeTtsBargeInCommand,
     handleVoiceFinalized,
     isRecentAndroidHandsFreeDuplicate,
     markAndroidHandsFreeSent,
@@ -1719,6 +1794,9 @@ export default function ChatScreen({ route, navigation }: any) {
     if (shouldSuppressHandsFreeTranscriptRef.current) {
       clearAndroidHandsFreePartialTimer();
       androidHandsFreePendingPartialRef.current = '';
+      if (handleHandsFreeTtsBargeInCommand(finalText, 'native')) {
+        return true;
+      }
       voiceLog('transcript-ignored', 'Android handsfree partial schedule ignored while the assistant is busy or speaking.', {
         phase: handsFreePhaseRef.current,
         text: finalText,
@@ -1748,6 +1826,7 @@ export default function ChatScreen({ route, navigation }: any) {
     clearAndroidHandsFreePartialTimer,
     flushAndroidHandsFreePartialTranscript,
     handsFreeMessageDebounceMs,
+    handleHandsFreeTtsBargeInCommand,
     isRecentAndroidHandsFreeDuplicate,
     voiceLog,
   ]);
@@ -1761,6 +1840,9 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     if (shouldSuppressHandsFreeTranscriptRef.current) {
+      if (handleHandsFreeTtsBargeInCommand(finalText, 'native')) {
+        return;
+      }
       voiceLog('transcript-ignored', 'Android handsfree final ignored while the assistant is busy or speaking.', {
         phase: handsFreePhaseRef.current,
         text: finalText,
@@ -1784,6 +1866,7 @@ export default function ChatScreen({ route, navigation }: any) {
     });
   }, [
     clearAndroidHandsFreePartialTimer,
+    handleHandsFreeTtsBargeInCommand,
     handleVoiceFinalized,
     isRecentAndroidHandsFreeDuplicate,
     markAndroidHandsFreeSent,
@@ -1816,6 +1899,7 @@ export default function ChatScreen({ route, navigation }: any) {
     audioInputDeviceId: config.audioInputDeviceId,
     onVoiceFinalized: handleVoiceFinalized,
     shouldSuppressHandsFreeTranscript: () => shouldSuppressHandsFreeTranscriptRef.current,
+    onSuppressedHandsFreeTranscript: ({ text, source }) => handleHandsFreeTtsBargeInCommand(text, source),
     onRecognizerError: handleRecognizerError,
     onPermissionDenied: () => {
       setDebugInfo('Speech recognition permission denied.');
@@ -1926,6 +2010,9 @@ export default function ChatScreen({ route, navigation }: any) {
         if (shouldSuppressHandsFreeTranscriptRef.current) {
           clearAndroidHandsFreePartialTimer();
           androidHandsFreePendingPartialRef.current = '';
+          if (handleHandsFreeTtsBargeInCommand(partialText, 'native')) {
+            return;
+          }
           voiceLog('transcript-ignored', 'Android handsfree partial ignored while the assistant is busy or speaking.', {
             phase: handsFreePhaseRef.current,
             text: partialText,
@@ -1943,6 +2030,9 @@ export default function ChatScreen({ route, navigation }: any) {
         if (shouldSuppressHandsFreeTranscriptRef.current) {
           clearAndroidHandsFreePartialTimer();
           androidHandsFreePendingPartialRef.current = '';
+          if (handleHandsFreeTtsBargeInCommand(finalText, 'native')) {
+            return;
+          }
           voiceLog('transcript-ignored', 'Android handsfree final ignored while the assistant is busy or speaking.', {
             phase: handsFreePhaseRef.current,
             text: finalText,
@@ -1957,8 +2047,12 @@ export default function ChatScreen({ route, navigation }: any) {
 
       if (event.type === 'speech-ended' && androidHandsFreePendingPartialRef.current) {
         if (shouldSuppressHandsFreeTranscriptRef.current) {
+          const pendingText = androidHandsFreePendingPartialRef.current;
           clearAndroidHandsFreePartialTimer();
           androidHandsFreePendingPartialRef.current = '';
+          if (handleHandsFreeTtsBargeInCommand(pendingText, 'native')) {
+            return;
+          }
           voiceLog('transcript-ignored', 'Android handsfree speech-ended ignored while the assistant is busy or speaking.', {
             phase: handsFreePhaseRef.current,
           });
@@ -2000,6 +2094,7 @@ export default function ChatScreen({ route, navigation }: any) {
     clearAndroidHandsFreePartialTimer,
     handsFreeMessageDebounceMs,
     handleAndroidHandsFreeFinalResult,
+    handleHandsFreeTtsBargeInCommand,
     handleRecognizerError,
     scheduleAndroidHandsFreePartialTranscript,
     setSttPreviewWithExpiry,
@@ -2165,6 +2260,7 @@ export default function ChatScreen({ route, navigation }: any) {
         pitch: config.ttsPitch ?? 1.0,
         voice: config.ttsVoiceId,
         restoreListeningAfterDone: true,
+        allowBargeIn: true,
       }).then((startedUtteranceId) => {
         if (!startedUtteranceId) {
           voiceLog('tts-stopped', `Android service TTS did not start (${reason}).`, { utteranceId });
@@ -2275,7 +2371,11 @@ export default function ChatScreen({ route, navigation }: any) {
     const isCurrentRequest =
       currentSessionIdRef.current === nextItem.sessionId &&
       activeRequestIdRef.current === nextItem.requestId;
-    if (!isCurrentRequest || !ttsEnabledRef.current) {
+    if (
+      !isCurrentRequest
+      || !ttsEnabledRef.current
+      || autoTtsSuppressedRequestIdsRef.current.has(nextItem.requestId)
+    ) {
       processAutoSpeechQueue();
       return;
     }
@@ -2315,6 +2415,7 @@ export default function ChatScreen({ route, navigation }: any) {
     // callback was scheduled still suppresses queueing.
     if (config.ttsEnabled === false || !ttsEnabledRef.current || !events.length) return;
     if (currentSessionIdRef.current !== sessionId || activeRequestIdRef.current !== requestId) return;
+    if (autoTtsSuppressedRequestIdsRef.current.has(requestId)) return;
 
     const queuedIds = new Set(queuedResponseEventsRef.current.map((item) => item.event.id));
     const activeId = activeAutoSpeechEventRef.current?.event.id;
@@ -3779,7 +3880,8 @@ export default function ChatScreen({ route, navigation }: any) {
 	      const alreadySpokenMidTurn = !!(finalResponseEvent
 	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
 	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
-	      if (!alreadySpokenMidTurn && !sessionChanged && ttsText && config.ttsEnabled !== false) {
+        const autoTtsSuppressed = autoTtsSuppressedRequestIdsRef.current.has(thisRequestId);
+	      if (!alreadySpokenMidTurn && !autoTtsSuppressed && !sessionChanged && ttsText && config.ttsEnabled !== false) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();
 	        }
@@ -4108,7 +4210,8 @@ export default function ChatScreen({ route, navigation }: any) {
 	      const alreadySpokenMidTurn = !!(finalResponseEvent
 	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
 	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
-      if (!alreadySpokenMidTurn && ttsText && config.ttsEnabled !== false) {
+      const autoTtsSuppressed = autoTtsSuppressedRequestIdsRef.current.has(thisRequestId);
+      if (!alreadySpokenMidTurn && !autoTtsSuppressed && ttsText && config.ttsEnabled !== false) {
 	        if (handsFree) {
 	          handsFreeController.onRequestCompleted();
 	        }
