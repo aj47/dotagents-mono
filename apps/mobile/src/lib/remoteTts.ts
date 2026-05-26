@@ -52,6 +52,7 @@ export type RemoteSpeakOptions = {
   voice?: string;
   model?: string;
   rate?: number;
+  onStart?: () => void;
   onDone?: () => void;
   onError?: () => void;
   onStopped?: () => void;
@@ -177,6 +178,13 @@ function startWebPlayback(
     onStopped: options.onStopped,
   };
   currentPlayback = playback;
+  let hasStartedPlaying = false;
+
+  const markStarted = () => {
+    if (hasStartedPlaying || playback.stopped) return;
+    hasStartedPlaying = true;
+    options.onStart?.();
+  };
 
   try {
     const rate = Math.min(2.0, Math.max(0.5, options.rate ?? 1.0));
@@ -192,6 +200,7 @@ function startWebPlayback(
     }
   };
 
+  audio.onplaying = markStarted;
   audio.onended = () => {
     playback.stopped = true;
     cleanup();
@@ -210,7 +219,14 @@ function startWebPlayback(
     }
   };
 
-  void audio.play();
+  void audio.play()
+    .then(markStarted)
+    .catch(() => {
+      if (playback.stopped) return;
+      playback.stopped = true;
+      cleanup();
+      options.onError?.();
+    });
   return true;
 }
 
@@ -264,7 +280,10 @@ function startNativePlayback(
     playback.subscription = player.addListener('playbackStatusUpdate', (status) => {
       if (playback.stopped) return;
       if (status.playing) {
-        hasStartedPlaying = true;
+        if (!hasStartedPlaying) {
+          hasStartedPlaying = true;
+          options.onStart?.();
+        }
       }
       if (status.didJustFinish) {
         playback.stopped = true;

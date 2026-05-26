@@ -1540,15 +1540,19 @@ export default function ChatScreen({ route, navigation }: any) {
     log: voiceLog,
   });
   handsFreePhaseRef.current = handsFreeController.state.phase;
+  const isAssistantAudioLoading = globalTtsPlayback?.status === 'loading';
   const isAssistantAudioSpeaking =
     handsFreeController.state.phase === 'speaking'
     || globalTtsPlayback?.status === 'speaking';
+  const isAssistantAudioPendingOrSpeaking =
+    isAssistantAudioLoading
+    || isAssistantAudioSpeaking;
   const shouldKeepHandsFreeMicArmed =
     handsFreeController.shouldKeepRecognizerActive
-    && !isAssistantAudioSpeaking;
+    && !isAssistantAudioPendingOrSpeaking;
   const shouldSuppressHandsFreeTranscript =
     handsFree
-    && isAssistantAudioSpeaking;
+    && isAssistantAudioPendingOrSpeaking;
   const shouldSuppressHandsFreeTranscriptRef = useRef(shouldSuppressHandsFreeTranscript);
   shouldSuppressHandsFreeTranscriptRef.current = shouldSuppressHandsFreeTranscript;
 
@@ -2089,6 +2093,14 @@ export default function ChatScreen({ route, navigation }: any) {
 
 		let settled = false;
     let clearSpeechWatchdog: (() => void) | null = null;
+    let handsFreeSpeechStarted = false;
+    const markAssistantSpeechStarted = (message?: string, extra?: Record<string, unknown>) => {
+      markGlobalTtsPlaybackSpeaking(playbackId);
+      if (!handsFree || handsFreeSpeechStarted) return;
+      handsFreeSpeechStarted = true;
+      handsFreeController.onSpeechStarted();
+      voiceLog('tts-started', message ?? `Assistant speech started (${reason}).`, extra);
+    };
 		const settle = () => {
 			if (settled) return;
 			settled = true;
@@ -2096,16 +2108,11 @@ export default function ChatScreen({ route, navigation }: any) {
       clearSpeechWatchdog = null;
       completeGlobalTtsPlayback(playbackId);
 				onSettled?.();
-			if (handsFree) {
+			if (handsFree && handsFreeSpeechStarted) {
 				handsFreeController.onSpeechFinished();
 				voiceLog('tts-stopped', `Assistant speech stopped (${reason}).`);
 			}
 		};
-
-		if (handsFree) {
-			handsFreeController.onSpeechStarted();
-			voiceLog('tts-started', `Assistant speech started (${reason}).`);
-		}
 
 		if (!useAndroidServiceTts && effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
 			// Edge TTS routes through the paired desktop's /v1/tts/speak.
@@ -2115,14 +2122,11 @@ export default function ChatScreen({ route, navigation }: any) {
 				providerId: 'edge',
 				voice: effectiveEdgeTtsVoice,
 				rate: effectiveEdgeTtsRate,
+				onStart: () => markAssistantSpeechStarted(`Remote TTS started (${reason}).`),
 				onDone: settle,
 				onError: settle,
 				onStopped: settle,
-			}).then((started) => {
-        if (started) {
-          markGlobalTtsPlaybackSpeaking(playbackId);
-        }
-      });
+			});
 			return true;
 		}
 
@@ -2137,8 +2141,7 @@ export default function ChatScreen({ route, navigation }: any) {
       clearSpeechWatchdog = clearNativeTtsHandler;
       androidHandsFreeTtsHandlersRef.current.set(utteranceId, {
         onStarted: () => {
-          markGlobalTtsPlaybackSpeaking(playbackId);
-          voiceLog('tts-started', `Android service TTS started (${reason}).`, { utteranceId });
+          markAssistantSpeechStarted(`Android service TTS started (${reason}).`, { utteranceId });
         },
         onSettled: (type, message) => {
           voiceLog('tts-stopped', `Android service TTS settled (${reason}, ${type}).`, {
@@ -2184,7 +2187,7 @@ export default function ChatScreen({ route, navigation }: any) {
 			pitch: config.ttsPitch ?? 1.0,
       onStart: () => {
         nativeSpeechStarted = true;
-        markGlobalTtsPlaybackSpeaking(playbackId);
+        markAssistantSpeechStarted();
       },
 			onDone: settle,
 			onError: settle,
@@ -4405,8 +4408,19 @@ export default function ChatScreen({ route, navigation }: any) {
 			pauseHandsFreeByUser();
 		}, [handsFreeController.state.phase, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
 
+  const isHandsFreeTtsLoading = handsFree && globalTtsPlayback?.status === 'loading';
+  const handsFreeDisplayPhase: HandsFreePhase = isHandsFreeTtsLoading
+    ? 'processing'
+    : handsFreeController.state.phase;
+  const handsFreeDisplayLabel = isHandsFreeTtsLoading
+    ? 'Loading TTS'
+    : handsFreeController.statusLabel;
+
 	const handsFreeStatusSubtitle = useMemo(() => {
 		if (!handsFree) return undefined;
+    if (isHandsFreeTtsLoading) {
+      return 'Preparing audio output.';
+    }
 		switch (handsFreeController.state.phase) {
 			case 'sleeping':
 					return 'Tap the mic to wake handsfree listening.';
@@ -4433,6 +4447,7 @@ export default function ChatScreen({ route, navigation }: any) {
 		handsFreeController.state.phase,
 		handsFreeForegroundOnly,
 		handsFreeSleepPhrase,
+    isHandsFreeTtsLoading,
 	]);
 
 	const composerPlaceholder = handsFree
@@ -5492,8 +5507,8 @@ export default function ChatScreen({ route, navigation }: any) {
           {handsFree && (
             <View style={styles.handsFreeStatusRow}>
               <HandsFreeStatusChip
-                phase={handsFreeController.state.phase}
-                label={handsFreeController.statusLabel}
+                phase={handsFreeDisplayPhase}
+                label={handsFreeDisplayLabel}
                 subtitle={handsFreeStatusSubtitle}
               />
             </View>
