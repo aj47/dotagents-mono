@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.media.AudioAttributes
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -19,6 +20,8 @@ import android.speech.RecognitionPart
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.core.content.ContextCompat
 import java.util.Locale
@@ -30,12 +33,29 @@ class HandsFreeVoiceService : Service() {
   private var listening = false
   private var language = DEFAULT_LANGUAGE
   private var suppressRecognizerEnd = false
+  private var textToSpeech: TextToSpeech? = null
+  private var textToSpeechReady = false
+  private var textToSpeechInitializing = false
+  private var pendingTtsRequest: TtsRequest? = null
+  private var activeTtsUtteranceId: String? = null
+  private var activeTtsRestoreListeningAfterDone = false
+  private var ttsSpeaking = false
 
   private val restartRunnable = Runnable {
-    if (captureEnabled) {
+    if (captureEnabled && activeTtsUtteranceId == null) {
       startListening()
     }
   }
+
+  private data class TtsRequest(
+    val utteranceId: String,
+    val text: String,
+    val language: String,
+    val rate: Float,
+    val pitch: Float,
+    val voice: String?,
+    val restoreListeningAfterDone: Boolean,
+  )
 
   override fun onCreate() {
     super.onCreate()
@@ -45,18 +65,23 @@ class HandsFreeVoiceService : Service() {
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    Log.i(TAG, "service onStartCommand action=${intent?.action ?: "-"} startId=$startId flags=$flags running=$running captureEnabled=$captureEnabled")
     when (intent?.action) {
       ACTION_STOP -> {
+        Log.i(TAG, "service stop action received")
         stopSelf()
         return START_NOT_STICKY
       }
       ACTION_SET_LISTENING -> {
-        setCaptureEnabled(intent.getBooleanExtra(EXTRA_LISTENING_ENABLED, true))
+        val enabled = intent.getBooleanExtra(EXTRA_LISTENING_ENABLED, true)
+        Log.i(TAG, "service set-listening action received enabled=$enabled")
+        setCaptureEnabled(enabled)
         return START_NOT_STICKY
       }
       else -> {
         language = intent?.getStringExtra(EXTRA_LANGUAGE)?.takeIf { it.isNotBlank() } ?: DEFAULT_LANGUAGE
         captureEnabled = intent?.getBooleanExtra(EXTRA_LISTENING_ENABLED, true) ?: true
+        Log.i(TAG, "service start action language=$language captureEnabled=$captureEnabled")
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
           HandsFreeVoiceEvents.emit("error") {
             it.putString("message", "permission-denied")
@@ -84,6 +109,8 @@ class HandsFreeVoiceService : Service() {
     captureEnabled = false
     mainHandler.removeCallbacks(restartRunnable)
     stopListening(suppressEvent = true)
+    stopTtsOnMain(emitStopped = false)
+    shutdownTextToSpeech()
     HandsFreeAudioRouter.release(this, ROUTE_REQUESTER)
     destroyRecognizer()
     running = false
@@ -97,15 +124,17 @@ class HandsFreeVoiceService : Service() {
   fun setCaptureEnabled(enabled: Boolean) {
     mainHandler.post {
       if (captureEnabled == enabled) {
+        Log.i(TAG, "service capture unchanged enabled=$enabled listening=$listening")
         return@post
       }
 
       captureEnabled = enabled
+      Log.i(TAG, "service capture changed enabled=$captureEnabled listening=$listening")
       HandsFreeVoiceEvents.emit("capture-state") {
         it.putBoolean("listeningEnabled", captureEnabled)
       }
 
-      if (captureEnabled) {
+      if (captureEnabled && activeTtsUtteranceId == null) {
         startListening()
       } else {
         mainHandler.removeCallbacks(restartRunnable)
@@ -118,8 +147,10 @@ class HandsFreeVoiceService : Service() {
   private fun startForegroundWithNotification() {
     val notification = buildNotification()
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      Log.i(TAG, "service startForeground type=microphone sdk=${Build.VERSION.SDK_INT}")
       startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
     } else {
+      Log.i(TAG, "service startForeground sdk=${Build.VERSION.SDK_INT}")
       startForeground(NOTIFICATION_ID, notification)
     }
   }
@@ -183,7 +214,10 @@ class HandsFreeVoiceService : Service() {
   }
 
   private fun startListening() {
-    if (!captureEnabled || listening) return
+    if (!captureEnabled || listening || activeTtsUtteranceId != null) {
+      Log.i(TAG, "recognizer start skipped captureEnabled=$captureEnabled listening=$listening activeTts=${activeTtsUtteranceId != null}")
+      return
+    }
 
     if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
       HandsFreeVoiceEvents.emit("error") {
@@ -245,6 +279,7 @@ class HandsFreeVoiceService : Service() {
   }
 
   private fun stopListening(suppressEvent: Boolean = false) {
+    Log.i(TAG, "recognizer stop requested suppressEvent=$suppressEvent listening=$listening captureEnabled=$captureEnabled")
     suppressRecognizerEnd = true
     mainHandler.removeCallbacks(restartRunnable)
     try {
@@ -253,6 +288,313 @@ class HandsFreeVoiceService : Service() {
     listening = false
     if (!suppressEvent) {
       HandsFreeVoiceEvents.emit("recognizer-stopped")
+    }
+  }
+
+  fun speakTts(
+    utteranceId: String,
+    text: String,
+    language: String,
+    rate: Float,
+    pitch: Float,
+    voice: String?,
+    restoreListeningAfterDone: Boolean,
+  ) {
+    val request = TtsRequest(
+      utteranceId = utteranceId,
+      text = text,
+      language = language.ifBlank { DEFAULT_LANGUAGE },
+      rate = rate.coerceIn(MIN_TTS_RATE, MAX_TTS_RATE),
+      pitch = pitch.coerceIn(MIN_TTS_PITCH, MAX_TTS_PITCH),
+      voice = voice?.takeIf { it.isNotBlank() },
+      restoreListeningAfterDone = restoreListeningAfterDone,
+    )
+
+    mainHandler.post {
+      speakTtsOnMain(request)
+    }
+  }
+
+  fun stopTts() {
+    mainHandler.post {
+      stopTtsOnMain(emitStopped = true)
+    }
+  }
+
+  fun isTtsSpeaking(): Boolean = activeTtsUtteranceId != null || ttsSpeaking
+
+  private fun speakTtsOnMain(request: TtsRequest) {
+    Log.i(
+      TAG,
+      "tts speak requested utteranceId=${request.utteranceId} textLength=${request.text.length} language=${request.language} restoreListening=${request.restoreListeningAfterDone} ready=$textToSpeechReady initializing=$textToSpeechInitializing",
+    )
+
+    stopTtsOnMain(emitStopped = true)
+    suspendCaptureForTts(request.restoreListeningAfterDone)
+    activeTtsUtteranceId = request.utteranceId
+    activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
+    ttsSpeaking = false
+
+    val engine = ensureTextToSpeech()
+    if (engine == null) {
+      failTtsRequest(request, "tts-init-unavailable")
+      return
+    }
+
+    if (!textToSpeechReady) {
+      pendingTtsRequest = request
+      HandsFreeVoiceEvents.emit("tts-loading") {
+        it.putString("utteranceId", request.utteranceId)
+        it.putInt("textLength", request.text.length)
+      }
+      return
+    }
+
+    startTtsRequest(request)
+  }
+
+  private fun suspendCaptureForTts(restoreListeningAfterDone: Boolean) {
+    mainHandler.removeCallbacks(restartRunnable)
+    stopListening()
+    HandsFreeAudioRouter.release(this, ROUTE_REQUESTER)
+
+    if (captureEnabled) {
+      captureEnabled = false
+      HandsFreeVoiceEvents.emit("capture-state") {
+        it.putBoolean("listeningEnabled", false)
+      }
+    }
+    activeTtsRestoreListeningAfterDone = restoreListeningAfterDone
+  }
+
+  private fun ensureTextToSpeech(): TextToSpeech? {
+    val existing = textToSpeech
+    if (existing != null) return existing
+    if (textToSpeechInitializing) return textToSpeech
+
+    textToSpeechInitializing = true
+    return try {
+      TextToSpeech(applicationContext) { status ->
+        mainHandler.post {
+          textToSpeechInitializing = false
+          if (status != TextToSpeech.SUCCESS) {
+            textToSpeechReady = false
+            val pending = pendingTtsRequest
+            pendingTtsRequest = null
+            Log.e(TAG, "tts init failed status=$status")
+            if (pending != null) {
+              failTtsRequest(pending, "tts-init-failed-$status")
+            }
+            return@post
+          }
+
+          textToSpeechReady = true
+          configureTextToSpeechEngine()
+          val pending = pendingTtsRequest
+          pendingTtsRequest = null
+          if (pending != null && activeTtsUtteranceId == pending.utteranceId) {
+            startTtsRequest(pending)
+          }
+        }
+      }.also { engine ->
+        textToSpeech = engine
+      }
+    } catch (error: Throwable) {
+      textToSpeechInitializing = false
+      Log.e(TAG, "tts init threw", error)
+      null
+    }
+  }
+
+  private fun configureTextToSpeechEngine() {
+    val engine = textToSpeech ?: return
+    engine.setOnUtteranceProgressListener(createTtsProgressListener())
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+      try {
+        engine.setAudioAttributes(
+          AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build(),
+        )
+      } catch (error: Throwable) {
+        Log.w(TAG, "tts audio attributes failed", error)
+      }
+    }
+  }
+
+  private fun startTtsRequest(request: TtsRequest) {
+    val engine = textToSpeech
+    if (engine == null || !textToSpeechReady) {
+      pendingTtsRequest = request
+      return
+    }
+
+    try {
+      val locale = Locale.forLanguageTag(request.language)
+      val languageResult = engine.setLanguage(locale)
+      if (
+        languageResult == TextToSpeech.LANG_MISSING_DATA
+        || languageResult == TextToSpeech.LANG_NOT_SUPPORTED
+      ) {
+        Log.w(TAG, "tts language unsupported language=${request.language} result=$languageResult")
+      }
+
+      request.voice?.let { voiceName ->
+        val selectedVoice = try {
+          engine.voices?.firstOrNull { it.name == voiceName }
+        } catch (_: Throwable) {
+          null
+        }
+        if (selectedVoice != null) {
+          engine.voice = selectedVoice
+        } else {
+          Log.w(TAG, "tts voice unavailable voice=$voiceName")
+        }
+      }
+
+      engine.setSpeechRate(request.rate)
+      engine.setPitch(request.pitch)
+
+      val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        engine.speak(request.text, TextToSpeech.QUEUE_FLUSH, null, request.utteranceId)
+      } else {
+        @Suppress("DEPRECATION")
+        engine.speak(request.text, TextToSpeech.QUEUE_FLUSH, null)
+      }
+
+      if (result != TextToSpeech.SUCCESS) {
+        failTtsRequest(request, "tts-speak-failed-$result")
+      } else {
+        Log.i(TAG, "tts speak dispatched utteranceId=${request.utteranceId}")
+      }
+    } catch (error: Throwable) {
+      Log.e(TAG, "tts speak failed utteranceId=${request.utteranceId}", error)
+      failTtsRequest(request, error.message ?: "tts-speak-failed")
+    }
+  }
+
+  private fun createTtsProgressListener(): UtteranceProgressListener {
+    return object : UtteranceProgressListener() {
+      override fun onStart(utteranceId: String?) {
+        mainHandler.post {
+          if (utteranceId == null || activeTtsUtteranceId != utteranceId) return@post
+          ttsSpeaking = true
+          Log.i(TAG, "tts started utteranceId=$utteranceId")
+          HandsFreeVoiceEvents.emit("tts-started") {
+            it.putString("utteranceId", utteranceId)
+          }
+        }
+      }
+
+      override fun onDone(utteranceId: String?) {
+        mainHandler.post {
+          if (utteranceId != null) {
+            completeTts(utteranceId, "tts-done")
+          }
+        }
+      }
+
+      @Deprecated("Deprecated in Java")
+      override fun onError(utteranceId: String?) {
+        mainHandler.post {
+          if (utteranceId != null) {
+            completeTts(utteranceId, "tts-error", "tts-error")
+          }
+        }
+      }
+
+      override fun onError(utteranceId: String?, errorCode: Int) {
+        mainHandler.post {
+          if (utteranceId != null) {
+            completeTts(utteranceId, "tts-error", "tts-error-$errorCode", errorCode)
+          }
+        }
+      }
+
+      override fun onStop(utteranceId: String?, interrupted: Boolean) {
+        mainHandler.post {
+          if (utteranceId != null) {
+            completeTts(utteranceId, "tts-stopped", if (interrupted) "interrupted" else "stopped")
+          }
+        }
+      }
+    }
+  }
+
+  private fun failTtsRequest(request: TtsRequest, message: String) {
+    if (activeTtsUtteranceId != request.utteranceId) return
+    completeTts(request.utteranceId, "tts-error", message)
+  }
+
+  private fun completeTts(
+    utteranceId: String,
+    eventType: String,
+    message: String? = null,
+    errorCode: Int? = null,
+  ) {
+    if (activeTtsUtteranceId != utteranceId) {
+      return
+    }
+
+    val shouldRestoreListening = activeTtsRestoreListeningAfterDone && eventType != "tts-stopped"
+    activeTtsUtteranceId = null
+    activeTtsRestoreListeningAfterDone = false
+    pendingTtsRequest = null
+    ttsSpeaking = false
+
+    Log.i(TAG, "tts completed utteranceId=$utteranceId eventType=$eventType restoreListening=$shouldRestoreListening message=${message ?: "-"}")
+    HandsFreeVoiceEvents.emit(eventType) {
+      it.putString("utteranceId", utteranceId)
+      message?.let { value -> it.putString("message", value) }
+      errorCode?.let { value -> it.putInt("errorCode", value) }
+    }
+
+    if (shouldRestoreListening || captureEnabled) {
+      if (shouldRestoreListening) {
+        captureEnabled = true
+        HandsFreeVoiceEvents.emit("capture-state") {
+          it.putBoolean("listeningEnabled", true)
+        }
+      }
+      startListening()
+    }
+  }
+
+  private fun stopTtsOnMain(emitStopped: Boolean) {
+    val utteranceId = activeTtsUtteranceId
+    val hadActiveTts = utteranceId != null || pendingTtsRequest != null || ttsSpeaking
+    activeTtsUtteranceId = null
+    activeTtsRestoreListeningAfterDone = false
+    pendingTtsRequest = null
+    ttsSpeaking = false
+    try {
+      textToSpeech?.stop()
+    } catch (_: Throwable) {
+    }
+    if (emitStopped && utteranceId != null) {
+      Log.i(TAG, "tts stopped utteranceId=$utteranceId")
+      HandsFreeVoiceEvents.emit("tts-stopped") {
+        it.putString("utteranceId", utteranceId)
+        it.putString("message", "stopped")
+      }
+    } else if (emitStopped && hadActiveTts) {
+      Log.i(TAG, "tts stopped pending")
+    }
+  }
+
+  private fun shutdownTextToSpeech() {
+    try {
+      textToSpeech?.shutdown()
+    } catch (_: Throwable) {
+    } finally {
+      textToSpeech = null
+      textToSpeechReady = false
+      textToSpeechInitializing = false
+      pendingTtsRequest = null
+      activeTtsUtteranceId = null
+      activeTtsRestoreListeningAfterDone = false
+      ttsSpeaking = false
     }
   }
 
@@ -472,6 +814,10 @@ class HandsFreeVoiceService : Service() {
     private const val NOTIFICATION_CHANNEL_ID = "dotagents_handsfree_voice"
     private const val NOTIFICATION_ID = 4701
     private const val ROUTE_REQUESTER = "service"
+    private const val MIN_TTS_RATE = 0.1f
+    private const val MAX_TTS_RATE = 3.0f
+    private const val MIN_TTS_PITCH = 0.1f
+    private const val MAX_TTS_PITCH = 3.0f
 
     @Volatile
     private var running = false
@@ -506,6 +852,38 @@ class HandsFreeVoiceService : Service() {
       val service = activeService ?: return false
       service.setCaptureEnabled(enabled)
       return true
+    }
+
+    fun speakTts(
+      utteranceId: String,
+      text: String,
+      language: String,
+      rate: Float,
+      pitch: Float,
+      voice: String?,
+      restoreListeningAfterDone: Boolean,
+    ): Boolean {
+      val service = activeService ?: return false
+      service.speakTts(
+        utteranceId = utteranceId,
+        text = text,
+        language = language,
+        rate = rate,
+        pitch = pitch,
+        voice = voice,
+        restoreListeningAfterDone = restoreListeningAfterDone,
+      )
+      return true
+    }
+
+    fun stopTts(): Boolean {
+      val service = activeService ?: return false
+      service.stopTts()
+      return true
+    }
+
+    fun isTtsSpeaking(): Boolean {
+      return activeService?.isTtsSpeaking() ?: false
     }
   }
 }

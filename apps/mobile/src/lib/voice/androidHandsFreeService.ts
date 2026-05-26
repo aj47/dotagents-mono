@@ -11,6 +11,11 @@ export type AndroidHandsFreeVoiceEvent =
   | { type: 'speech-ended' }
   | { type: 'partial-result'; text?: string; isFinal?: false }
   | { type: 'result'; text?: string; isFinal?: true }
+  | { type: 'tts-loading'; utteranceId?: string; textLength?: number }
+  | { type: 'tts-started'; utteranceId?: string; textLength?: number }
+  | { type: 'tts-done'; utteranceId?: string }
+  | { type: 'tts-error'; utteranceId?: string; message?: string; errorCode?: number }
+  | { type: 'tts-stopped'; utteranceId?: string; message?: string }
   | { type: 'error'; message?: string; errorCode?: number; recoverable?: boolean };
 
 export type AndroidHandsFreeAudioRoute = {
@@ -31,6 +36,17 @@ type AndroidHandsFreeVoiceModule = {
   stop(): Promise<void>;
   setListeningEnabled(enabled: boolean): Promise<boolean>;
   isRunning(): Promise<boolean>;
+  speak(options: {
+    utteranceId?: string;
+    text: string;
+    language?: string;
+    rate?: number;
+    pitch?: number;
+    voice?: string;
+    restoreListeningAfterDone?: boolean;
+  }): Promise<string | null>;
+  stopSpeaking(): Promise<boolean>;
+  isSpeaking(): Promise<boolean>;
   getAudioRoute(): Promise<AndroidHandsFreeAudioRoute>;
   setAudioRoutingEnabled(enabled: boolean, reason?: string): Promise<AndroidHandsFreeAudioRoute>;
 };
@@ -69,6 +85,29 @@ export async function setAndroidHandsFreeListeningEnabled(enabled: boolean): Pro
 export async function isAndroidHandsFreeServiceRunning(): Promise<boolean> {
   if (!nativeModule) return false;
   return nativeModule.isRunning();
+}
+
+export async function speakAndroidHandsFreeTts(options: {
+  utteranceId?: string;
+  text: string;
+  language?: string;
+  rate?: number;
+  pitch?: number;
+  voice?: string;
+  restoreListeningAfterDone?: boolean;
+}): Promise<string | null> {
+  if (!nativeModule) return null;
+  return nativeModule.speak(options);
+}
+
+export async function stopAndroidHandsFreeTts(): Promise<boolean> {
+  if (!nativeModule) return false;
+  return nativeModule.stopSpeaking();
+}
+
+export async function isAndroidHandsFreeTtsSpeaking(): Promise<boolean> {
+  if (!nativeModule) return false;
+  return nativeModule.isSpeaking();
 }
 
 export async function getAndroidHandsFreeAudioRoute(): Promise<AndroidHandsFreeAudioRoute | null> {

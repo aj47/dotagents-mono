@@ -30,7 +30,7 @@ object HandsFreeVoiceEvents {
     }
     Log.i(
       TAG,
-      "event type=$type textLength=${readTextLength(payload)} message=${readString(payload, "message") ?: "-"} errorCode=${readInt(payload, "errorCode") ?: "-"} recoverable=${readBoolean(payload, "recoverable") ?: "-"}",
+      "event type=$type language=${readString(payload, "language") ?: "-"} listeningEnabled=${readBoolean(payload, "listeningEnabled") ?: "-"} callback=${readString(payload, "callback") ?: "-"} utteranceId=${readString(payload, "utteranceId") ?: "-"} textLength=${readTextLength(payload)} message=${readString(payload, "message") ?: "-"} errorCode=${readInt(payload, "errorCode") ?: "-"} recoverable=${readBoolean(payload, "recoverable") ?: "-"}",
     )
 
     val context = reactContext ?: return
@@ -52,7 +52,9 @@ object HandsFreeVoiceEvents {
 
   private fun readTextLength(payload: WritableMap): Int {
     return try {
-      if (payload.hasKey("text") && !payload.isNull("text")) {
+      if (payload.hasKey("textLength") && !payload.isNull("textLength")) {
+        payload.getInt("textLength")
+      } else if (payload.hasKey("text") && !payload.isNull("text")) {
         payload.getString("text")?.length ?: 0
       } else {
         0

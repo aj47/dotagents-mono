@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import * as Speech from 'expo-speech';
 import { stopRemoteTts } from '../lib/remoteTts';
+import { stopAndroidHandsFreeTts } from '../lib/voice/androidHandsFreeService';
 
 export type GlobalTtsPlaybackSource = 'auto' | 'message' | 'history' | 'settings';
 export type GlobalTtsPlaybackStatus = 'loading' | 'speaking';
@@ -88,6 +89,7 @@ export function stopGlobalTtsPlayback(): void {
   stopGeneration += 1;
   Speech.stop();
   stopRemoteTts();
+  void stopAndroidHandsFreeTts();
   completeGlobalTtsPlayback();
 }
 

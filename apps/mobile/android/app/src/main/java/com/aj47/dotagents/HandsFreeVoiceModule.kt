@@ -1,6 +1,7 @@
 package com.aj47.dotagents
 
 import android.os.Bundle
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -9,10 +10,13 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
+import java.util.UUID
 
 class HandsFreeVoiceModule(
   private val reactContext: ReactApplicationContext,
 ) : ReactContextBaseJavaModule(reactContext) {
+  private val tag = "DotAgentsHandsFree"
+
   init {
     HandsFreeVoiceEvents.bind(reactContext)
   }
@@ -33,10 +37,13 @@ class HandsFreeVoiceModule(
     }
 
     try {
+      Log.i(tag, "module start requested language=$language listeningEnabled=$listeningEnabled isRunning=${HandsFreeVoiceService.isRunning()}")
       val intent = HandsFreeVoiceService.createStartIntent(reactContext, language, listeningEnabled)
       ContextCompat.startForegroundService(reactContext, intent)
+      Log.i(tag, "module start dispatched")
       promise.resolve(null)
     } catch (error: Throwable) {
+      Log.e(tag, "module start failed language=$language listeningEnabled=$listeningEnabled", error)
       promise.reject("handsfree_start_failed", error.message, error)
     }
   }
@@ -44,9 +51,12 @@ class HandsFreeVoiceModule(
   @ReactMethod
   fun stop(promise: Promise) {
     try {
+      Log.i(tag, "module stop requested isRunning=${HandsFreeVoiceService.isRunning()}")
       reactContext.stopService(HandsFreeVoiceService.createStopIntent(reactContext))
+      Log.i(tag, "module stop dispatched")
       promise.resolve(null)
     } catch (error: Throwable) {
+      Log.e(tag, "module stop failed", error)
       promise.reject("handsfree_stop_failed", error.message, error)
     }
   }
@@ -54,9 +64,12 @@ class HandsFreeVoiceModule(
   @ReactMethod
   fun setListeningEnabled(enabled: Boolean, promise: Promise) {
     try {
+      Log.i(tag, "module setListeningEnabled requested enabled=$enabled isRunning=${HandsFreeVoiceService.isRunning()}")
       val updated = HandsFreeVoiceService.setListeningEnabled(enabled)
+      Log.i(tag, "module setListeningEnabled result enabled=$enabled updated=$updated")
       promise.resolve(updated)
     } catch (error: Throwable) {
+      Log.e(tag, "module setListeningEnabled failed enabled=$enabled", error)
       promise.reject("handsfree_set_listening_failed", error.message, error)
     }
   }
@@ -64,6 +77,59 @@ class HandsFreeVoiceModule(
   @ReactMethod
   fun isRunning(promise: Promise) {
     promise.resolve(HandsFreeVoiceService.isRunning())
+  }
+
+  @ReactMethod
+  fun speak(options: ReadableMap?, promise: Promise) {
+    val text = readString(options, "text")?.trim()
+    if (text.isNullOrBlank()) {
+      promise.resolve(null)
+      return
+    }
+
+    val utteranceId = readString(options, "utteranceId")?.takeIf { it.isNotBlank() }
+      ?: "handsfree-tts-${UUID.randomUUID()}"
+    val language = readString(options, "language")?.takeIf { it.isNotBlank() } ?: "en-US"
+    val rate = readDouble(options, "rate", 1.0).toFloat()
+    val pitch = readDouble(options, "pitch", 1.0).toFloat()
+    val voice = readString(options, "voice")?.takeIf { it.isNotBlank() }
+    val restoreListeningAfterDone = readBoolean(options, "restoreListeningAfterDone", false)
+
+    try {
+      Log.i(tag, "module speak requested utteranceId=$utteranceId textLength=${text.length} isRunning=${HandsFreeVoiceService.isRunning()} restoreListening=$restoreListeningAfterDone")
+      val started = HandsFreeVoiceService.speakTts(
+        utteranceId = utteranceId,
+        text = text,
+        language = language,
+        rate = rate,
+        pitch = pitch,
+        voice = voice,
+        restoreListeningAfterDone = restoreListeningAfterDone,
+      )
+      Log.i(tag, "module speak result utteranceId=$utteranceId started=$started")
+      promise.resolve(if (started) utteranceId else null)
+    } catch (error: Throwable) {
+      Log.e(tag, "module speak failed utteranceId=$utteranceId", error)
+      promise.reject("handsfree_tts_failed", error.message, error)
+    }
+  }
+
+  @ReactMethod
+  fun stopSpeaking(promise: Promise) {
+    try {
+      Log.i(tag, "module stopSpeaking requested isRunning=${HandsFreeVoiceService.isRunning()}")
+      val stopped = HandsFreeVoiceService.stopTts()
+      Log.i(tag, "module stopSpeaking result stopped=$stopped")
+      promise.resolve(stopped)
+    } catch (error: Throwable) {
+      Log.e(tag, "module stopSpeaking failed", error)
+      promise.reject("handsfree_tts_stop_failed", error.message, error)
+    }
+  }
+
+  @ReactMethod
+  fun isSpeaking(promise: Promise) {
+    promise.resolve(HandsFreeVoiceService.isTtsSpeaking())
   }
 
   @ReactMethod
@@ -112,6 +178,30 @@ class HandsFreeVoiceModule(
           else -> putString(key, value.toString())
         }
       }
+    }
+  }
+
+  private fun readString(options: ReadableMap?, key: String): String? {
+    return if (options?.hasKey(key) == true && !options.isNull(key)) {
+      options.getString(key)
+    } else {
+      null
+    }
+  }
+
+  private fun readBoolean(options: ReadableMap?, key: String, defaultValue: Boolean): Boolean {
+    return if (options?.hasKey(key) == true && !options.isNull(key)) {
+      options.getBoolean(key)
+    } else {
+      defaultValue
+    }
+  }
+
+  private fun readDouble(options: ReadableMap?, key: String, defaultValue: Double): Double {
+    return if (options?.hasKey(key) == true && !options.isNull(key)) {
+      options.getDouble(key)
+    } else {
+      defaultValue
     }
   }
 }
