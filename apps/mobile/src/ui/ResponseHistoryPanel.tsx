@@ -18,7 +18,13 @@ import { preprocessTextForTTS } from '@dotagents/shared';
 import { useTheme } from './ThemeProvider';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { spacing, radius } from './theme';
-import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
+import { speakRemoteTts } from '../lib/remoteTts';
+import {
+  beginGlobalTtsPlayback,
+  completeGlobalTtsPlayback,
+  markGlobalTtsPlaybackSpeaking,
+  stopGlobalTtsPlayback,
+} from '../store/ttsPlayback';
 
 export interface ResponseHistoryEntry {
   id?: string;
@@ -35,6 +41,8 @@ interface ResponseHistoryPanelProps {
   ttsVoiceId?: string;
   remoteBaseUrl?: string;
   remoteApiKey?: string;
+  sessionId?: string | null;
+  sessionTitle?: string | null;
 }
 
 /**
@@ -75,6 +83,8 @@ export function ResponseHistoryPanel({
   ttsVoiceId,
   remoteBaseUrl,
   remoteApiKey,
+  sessionId,
+  sessionTitle,
 }: ResponseHistoryPanelProps) {
   const { theme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -98,16 +108,14 @@ export function ResponseHistoryPanel({
     return () => {
       isMountedRef.current = false;
       nextSpeechRequestId();
-      Speech.stop();
-      stopRemoteTts();
+      stopGlobalTtsPlayback();
     };
   }, [nextSpeechRequestId]);
 
   useEffect(() => {
     if (isCollapsed && speakingIndex !== null) {
       nextSpeechRequestId();
-      Speech.stop();
-      stopRemoteTts();
+      stopGlobalTtsPlayback();
       safeSetSpeakingIndex(null);
     }
   }, [isCollapsed, speakingIndex, safeSetSpeakingIndex, nextSpeechRequestId]);
@@ -120,16 +128,14 @@ export function ResponseHistoryPanel({
     // If already speaking this message, stop it
     if (speakingIndex === index) {
       nextSpeechRequestId();
-      Speech.stop();
-      stopRemoteTts();
+      stopGlobalTtsPlayback();
       safeSetSpeakingIndex(null);
       return;
     }
 
     // Stop any current speech
     const requestId = nextSpeechRequestId();
-    Speech.stop();
-    stopRemoteTts();
+    stopGlobalTtsPlayback();
 
     const processedText = preprocessTextForTTS(text);
     if (!processedText) {
@@ -137,8 +143,17 @@ export function ResponseHistoryPanel({
       return;
     }
 
+    const playbackId = beginGlobalTtsPlayback({
+      source: 'history',
+      status: ttsProvider === 'edge' && remoteBaseUrl && remoteApiKey ? 'loading' : 'speaking',
+      sessionId,
+      sessionTitle,
+      text: processedText,
+    });
+
     const clearIfCurrentRequest = () => {
       if (speechRequestIdRef.current === requestId) {
+        completeGlobalTtsPlayback(playbackId);
         safeSetSpeakingIndex(null);
       }
     };
@@ -157,6 +172,10 @@ export function ResponseHistoryPanel({
           onDone: clearIfCurrentRequest,
           onStopped: clearIfCurrentRequest,
           onError: clearIfCurrentRequest,
+        }).then((started) => {
+          if (started) {
+            markGlobalTtsPlaybackSpeaking(playbackId);
+          }
         });
         return;
       }

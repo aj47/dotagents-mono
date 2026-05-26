@@ -36,7 +36,6 @@ test('moves new chat into the navigation header and removes the old inline actio
 test('uses mobile icons for session header chrome instead of raw glyphs', () => {
   assert.match(screenSource, /import \{ Ionicons \} from '@expo\/vector-icons';/);
   assert.match(screenSource, /name="chevron-down"/);
-  assert.match(screenSource, /name="git-compare-outline"/);
   assert.match(screenSource, /name="settings-outline"/);
   assert.doesNotMatch(screenSource, />◫<\/Text>/);
   assert.doesNotMatch(screenSource, />⚙️<\/Text>/);

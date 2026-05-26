@@ -61,6 +61,8 @@ type WebPlayback = {
   kind: 'web';
   audio: HTMLAudioElement;
   objectUrl: string;
+  stopped: boolean;
+  onStopped?: () => void;
 };
 
 type NativePlayback = {
@@ -69,18 +71,24 @@ type NativePlayback = {
   file: File;
   subscription: { remove: () => void } | null;
   stopped: boolean;
+  onStopped?: () => void;
 };
 
 let currentPlayback: WebPlayback | NativePlayback | null = null;
 let audioModeConfigured = false;
+let playbackGeneration = 0;
 
-async function ensureNativeAudioMode(): Promise<void> {
+export async function ensureNativeTtsAudioMode(): Promise<void> {
   if (audioModeConfigured || Platform.OS === 'web') return;
   try {
-    await setAudioModeAsync({ playsInSilentMode: true });
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'duckOthers',
+    });
     audioModeConfigured = true;
   } catch {
-    // Non-fatal: the audio will still play, it just might be muted by the switch.
+    // Non-fatal: the audio will still play, but it may not survive backgrounding.
   }
 }
 
@@ -92,15 +100,29 @@ export async function speakRemoteTts(text: string, options: RemoteSpeakOptions):
     return false;
   }
 
+  const requestGeneration = ++playbackGeneration;
+  stopCurrentRemotePlayback(true);
+
   try {
     const { audio, mimeType } = await fetchRemoteTts(text, options);
-    stopRemoteTts();
+    if (requestGeneration !== playbackGeneration) {
+      options.onStopped?.();
+      return false;
+    }
     if (Platform.OS === 'web') {
       return startWebPlayback(audio, mimeType, options);
     }
-    await ensureNativeAudioMode();
+    await ensureNativeTtsAudioMode();
+    if (requestGeneration !== playbackGeneration) {
+      options.onStopped?.();
+      return false;
+    }
     return startNativePlayback(audio, mimeType, options);
   } catch (error) {
+    if (requestGeneration !== playbackGeneration) {
+      options.onStopped?.();
+      return false;
+    }
     logRemoteTts('warn', 'speakRemoteTts failed', error);
     options.onError?.();
     return false;
@@ -147,7 +169,13 @@ function startWebPlayback(
   const blob = new Blob([audioBuffer], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
-  const playback: WebPlayback = { kind: 'web', audio, objectUrl: url };
+  const playback: WebPlayback = {
+    kind: 'web',
+    audio,
+    objectUrl: url,
+    stopped: false,
+    onStopped: options.onStopped,
+  };
   currentPlayback = playback;
 
   try {
@@ -165,15 +193,21 @@ function startWebPlayback(
   };
 
   audio.onended = () => {
+    playback.stopped = true;
     cleanup();
     options.onDone?.();
   };
   audio.onerror = () => {
+    playback.stopped = true;
     cleanup();
     options.onError?.();
   };
   audio.onpause = () => {
-    if (!audio.ended) options.onStopped?.();
+    if (!audio.ended && !playback.stopped) {
+      playback.stopped = true;
+      cleanup();
+      options.onStopped?.();
+    }
   };
 
   void audio.play();
@@ -210,7 +244,9 @@ function startNativePlayback(
     file,
     subscription: null,
     stopped: false,
+    onStopped: options.onStopped,
   };
+  let hasStartedPlaying = false;
 
   const finalize = (reason: 'done' | 'error' | 'stopped') => {
     try { playback.subscription?.remove(); } catch {}
@@ -227,9 +263,18 @@ function startNativePlayback(
   try {
     playback.subscription = player.addListener('playbackStatusUpdate', (status) => {
       if (playback.stopped) return;
+      if (status.playing) {
+        hasStartedPlaying = true;
+      }
       if (status.didJustFinish) {
         playback.stopped = true;
         finalize('done');
+        return;
+      }
+      if (hasStartedPlaying && !status.playing && !status.isBuffering) {
+        playback.stopped = true;
+        const reachedEnd = status.duration > 0 && status.currentTime >= Math.max(0, status.duration - 0.25);
+        finalize(reachedEnd ? 'done' : 'stopped');
       }
     });
   } catch {
@@ -248,22 +293,30 @@ function startNativePlayback(
 }
 
 export function stopRemoteTts(): void {
+  playbackGeneration += 1;
+  stopCurrentRemotePlayback(true);
+}
+
+function stopCurrentRemotePlayback(notifyStopped: boolean): void {
   const playback = currentPlayback;
   if (!playback) return;
   currentPlayback = null;
+  const shouldNotifyStopped = notifyStopped && !playback.stopped;
+  playback.stopped = true;
 
   if (playback.kind === 'web') {
     try { playback.audio.pause(); } catch {}
     try { playback.audio.currentTime = 0; } catch {}
     try { URL.revokeObjectURL(playback.objectUrl); } catch {}
+    if (shouldNotifyStopped) playback.onStopped?.();
     return;
   }
 
-  playback.stopped = true;
   try { playback.subscription?.remove(); } catch {}
   try { playback.player.pause(); } catch {}
   try { playback.player.remove(); } catch {}
   try { playback.file.delete(); } catch {}
+  if (shouldNotifyStopped) playback.onStopped?.();
 }
 
 function mimeTypeToExtension(mimeType: string): string {

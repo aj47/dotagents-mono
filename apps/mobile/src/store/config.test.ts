@@ -30,7 +30,19 @@ describe('normalizeStoredConfig', () => {
     expect(normalized.handsFreeSleepPhrase).toBe(DEFAULT_HANDS_FREE_SLEEP_PHRASE);
     expect(normalized.handsFreeDebug).toBe(false);
     expect(normalized.handsFreeForegroundOnly).toBe(true);
+    expect(normalized.handsFreeForegroundOnlyConfigured).toBe(false);
     expect(normalized.baseUrl).toBe('https://api.openai.com/v1');
+  });
+
+  it('preserves an explicit foreground-only preference', () => {
+    const normalized = normalizeStoredConfig({
+      ...DEFAULT_APP_CONFIG,
+      handsFreeForegroundOnly: true,
+      handsFreeForegroundOnlyConfigured: true,
+    });
+
+    expect(normalized.handsFreeForegroundOnly).toBe(true);
+    expect(normalized.handsFreeForegroundOnlyConfigured).toBe(true);
   });
 
   it('trims custom handsfree phrases', () => {

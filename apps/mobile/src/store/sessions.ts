@@ -76,8 +76,32 @@ export interface SessionStore {
   lastSyncResult: SyncResult | null;
 
   // Lazy loading
-  loadSessionMessages: (sessionId: string, client: SettingsApiClient) => Promise<{ messages: ChatMessage[]; freshlyFetched: boolean } | null>;
+  loadSessionMessages: (sessionId: string, client: SettingsApiClient, options?: { force?: boolean }) => Promise<{ messages: ChatMessage[]; freshlyFetched: boolean } | null>;
   isLoadingMessages: boolean;
+}
+
+function hashMessageContent(content: string): number {
+  let hash = 0;
+  for (let i = 0; i < content.length; i += 1) {
+    hash = ((hash << 5) - hash + content.charCodeAt(i)) | 0;
+  }
+  return hash >>> 0;
+}
+
+function getSessionMessageSnapshotKey(messages: ChatMessage[]): string {
+  return messages.map((message) => {
+    const content = message.content || '';
+    const toolCallCount = Array.isArray(message.toolCalls) ? message.toolCalls.length : 0;
+    const toolResultCount = Array.isArray(message.toolResults) ? message.toolResults.length : 0;
+    return [
+      message.role,
+      message.timestamp ?? '',
+      content.length,
+      hashMessageContent(content),
+      toolCallCount,
+      toolResultCount,
+    ].join(':');
+  }).join('|');
 }
 
 async function loadSessions(): Promise<Session[]> {
@@ -439,9 +463,10 @@ export function useSessions(): SessionStore {
   }, [queueSave]);
 
   const getCurrentSession = useCallback((): Session | null => {
-    if (!currentSessionId) return null;
-    return sessions.find(s => s.id === currentSessionId) || null;
-  }, [sessions, currentSessionId]);
+    const id = currentSessionIdRef.current;
+    if (!id) return null;
+    return sessionsRef.current.find(s => s.id === id) || null;
+  }, []);
 
   const getSessionList = useCallback((): SessionListItem[] => {
     const sortedSessions = sortSessionsByPinnedFirst(sessions);
@@ -798,11 +823,12 @@ export function useSessions(): SessionStore {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
   // Lazy-load messages for a stub session from server
-  const loadSessionMessages = useCallback(async (sessionId: string, client: SettingsApiClient): Promise<{ messages: ChatMessage[]; freshlyFetched: boolean } | null> => {
+  const loadSessionMessages = useCallback(async (sessionId: string, client: SettingsApiClient, options: { force?: boolean } = {}): Promise<{ messages: ChatMessage[]; freshlyFetched: boolean } | null> => {
     const session = sessionsRef.current.find(s => s.id === sessionId);
     if (!session?.serverConversationId) return null;
+    const force = options.force === true;
     // Already has messages - no need to fetch
-    if (session.messages.length > 0) return { messages: session.messages, freshlyFetched: false };
+    if (session.messages.length > 0 && !force) return { messages: session.messages, freshlyFetched: false };
 
     setIsLoadingMessages(true);
     try {
@@ -814,8 +840,16 @@ export function useSessions(): SessionStore {
       // sync updated the session), bail out to avoid clobbering newer local data.
       const currentSessions = sessionsRef.current;
       const latestSession = currentSessions.find(s => s.id === sessionId);
-      if (latestSession && latestSession.messages.length > 0) {
+      if (!latestSession) return null;
+      if (!force && latestSession.messages.length > 0) {
         return { messages: latestSession.messages, freshlyFetched: false };
+      }
+      if (force && latestSession.messages.length > 0) {
+        const localKey = getSessionMessageSnapshotKey(latestSession.messages as ChatMessage[]);
+        const serverKey = getSessionMessageSnapshotKey(result.messages);
+        if (latestSession.updatedAt > result.updatedAt || (latestSession.updatedAt === result.updatedAt && localKey === serverKey)) {
+          return { messages: latestSession.messages, freshlyFetched: false };
+        }
       }
 
       const sessionsToSave = currentSessions.map(s => {

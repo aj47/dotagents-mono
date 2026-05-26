@@ -4,7 +4,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import SessionListScreen from './src/screens/SessionListScreen';
-import SplitChatScreen from './src/screens/SplitChatScreen';
 import ConnectionSettingsScreen from './src/screens/ConnectionSettingsScreen';
 import OperationsScreen from './src/screens/OperationsScreen';
 import AgentEditScreen from './src/screens/AgentEditScreen';
@@ -554,11 +553,6 @@ function Navigation() {
                           name="Sessions"
                           component={SessionListScreen}
                           options={{ title: 'Chats' }}
-                        />
-                        <Stack.Screen
-                          name="SplitChat"
-                          component={SplitChatScreen}
-                          options={{ title: 'Split View' }}
                         />
                         <Stack.Screen name="Chat" component={ChatScreen} />
                         <Stack.Screen

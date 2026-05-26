@@ -1,0 +1,115 @@
+import { NativeEventEmitter, NativeModules, PermissionsAndroid, Platform } from 'react-native';
+
+export type AndroidHandsFreeVoiceEvent =
+  | { type: 'service-started'; language?: string; listeningEnabled?: boolean }
+  | { type: 'service-stopped' }
+  | { type: 'capture-state'; listeningEnabled?: boolean }
+  | { type: 'recognizer-started'; language?: string }
+  | { type: 'recognizer-stopped' }
+  | { type: 'ready-for-speech' }
+  | { type: 'speech-started' }
+  | { type: 'speech-ended' }
+  | { type: 'partial-result'; text?: string; isFinal?: false }
+  | { type: 'result'; text?: string; isFinal?: true }
+  | { type: 'error'; message?: string; errorCode?: number; recoverable?: boolean };
+
+export type AndroidHandsFreeAudioRoute = {
+  hasHeadset: boolean;
+  route: string;
+  inputTypes?: string;
+  outputTypes?: string;
+  communicationDevice?: string;
+  routingActive?: boolean;
+  routingRequested?: boolean;
+  routeApplied?: boolean;
+  requesters?: string;
+  mode?: string;
+};
+
+type AndroidHandsFreeVoiceModule = {
+  start(options?: { language?: string; listeningEnabled?: boolean }): Promise<void>;
+  stop(): Promise<void>;
+  setListeningEnabled(enabled: boolean): Promise<boolean>;
+  isRunning(): Promise<boolean>;
+  getAudioRoute(): Promise<AndroidHandsFreeAudioRoute>;
+  setAudioRoutingEnabled(enabled: boolean, reason?: string): Promise<AndroidHandsFreeAudioRoute>;
+};
+
+const EVENT_NAME = 'DotAgentsHandsFreeVoiceEvent';
+
+const nativeModule = Platform.OS === 'android'
+  ? (NativeModules.DotAgentsHandsFreeVoice as AndroidHandsFreeVoiceModule | undefined)
+  : undefined;
+
+const eventEmitter = nativeModule ? new NativeEventEmitter(nativeModule as any) : null;
+
+export function isAndroidHandsFreeServiceAvailable(): boolean {
+  return Platform.OS === 'android' && !!nativeModule;
+}
+
+export async function startAndroidHandsFreeService(options?: {
+  language?: string;
+  listeningEnabled?: boolean;
+}): Promise<void> {
+  if (!nativeModule) return;
+  await ensureAndroidHandsFreePermissions();
+  await nativeModule.start(options);
+}
+
+export async function stopAndroidHandsFreeService(): Promise<void> {
+  if (!nativeModule) return;
+  await nativeModule.stop();
+}
+
+export async function setAndroidHandsFreeListeningEnabled(enabled: boolean): Promise<boolean> {
+  if (!nativeModule) return false;
+  return nativeModule.setListeningEnabled(enabled);
+}
+
+export async function isAndroidHandsFreeServiceRunning(): Promise<boolean> {
+  if (!nativeModule) return false;
+  return nativeModule.isRunning();
+}
+
+export async function getAndroidHandsFreeAudioRoute(): Promise<AndroidHandsFreeAudioRoute | null> {
+  if (!nativeModule) return null;
+  return nativeModule.getAudioRoute();
+}
+
+export async function setAndroidHandsFreeAudioRoutingEnabled(
+  enabled: boolean,
+  reason = 'foreground',
+): Promise<AndroidHandsFreeAudioRoute | null> {
+  if (!nativeModule) return null;
+  return nativeModule.setAudioRoutingEnabled(enabled, reason);
+}
+
+export function subscribeAndroidHandsFreeVoiceEvents(
+  listener: (event: AndroidHandsFreeVoiceEvent) => void,
+): { remove: () => void } {
+  if (!eventEmitter) {
+    return { remove: () => undefined };
+  }
+
+  return eventEmitter.addListener(EVENT_NAME, listener);
+}
+
+async function ensureAndroidHandsFreePermissions(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+
+  const recordAudio = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+  if (!recordAudio) {
+    const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+    if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+      throw new Error('Microphone permission is required for locked-screen hands-free mode.');
+    }
+  }
+
+  if (Platform.Version >= 33) {
+    const notificationPermission = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS;
+    const notifications = await PermissionsAndroid.check(notificationPermission);
+    if (!notifications) {
+      await PermissionsAndroid.request(notificationPermission);
+    }
+  }
+}

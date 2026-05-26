@@ -93,7 +93,37 @@ class FakeSpeechRecognition {
   }
 }
 
-async function loadUseSpeechRecognizer(runtime: ReturnType<typeof createHookRuntime>) {
+class FakeNativeSpeechEventEmitter {
+  static instances: FakeNativeSpeechEventEmitter[] = [];
+  private listeners = new Map<string, Set<(event: any) => void>>();
+
+  constructor() {
+    FakeNativeSpeechEventEmitter.instances.push(this);
+  }
+
+  addListener(eventName: string, listener: (event: any) => void) {
+    const eventListeners = this.listeners.get(eventName) ?? new Set<(event: any) => void>();
+    eventListeners.add(listener);
+    this.listeners.set(eventName, eventListeners);
+    return {
+      remove: () => eventListeners.delete(listener),
+    };
+  }
+
+  emit(eventName: string, event: any) {
+    this.listeners.get(eventName)?.forEach((listener) => listener(event));
+  }
+}
+
+async function loadUseSpeechRecognizer(
+  runtime: ReturnType<typeof createHookRuntime>,
+  options: {
+    platform?: 'android' | 'ios' | 'web';
+    eventEmitterClass?: typeof FakeNativeSpeechEventEmitter;
+    speechRecognitionModule?: Record<string, any>;
+    androidHandsFreeService?: Record<string, any>;
+  } = {},
+) {
   vi.resetModules();
   vi.doMock('react', async () => {
     const actual = await vi.importActual<typeof import('react')>('react');
@@ -106,14 +136,24 @@ async function loadUseSpeechRecognizer(runtime: ReturnType<typeof createHookRunt
       },
     };
   });
-  vi.doMock('react-native', () => ({ Alert: { alert: vi.fn() }, Platform: { OS: 'web' }, View: function MockView() { return null; } }));
-  vi.doMock('expo-modules-core', () => ({ EventEmitter: class MockEventEmitter {} }));
+  vi.doMock('react-native', () => ({
+    Alert: { alert: vi.fn() },
+    Platform: { OS: options.platform ?? 'web' },
+    View: function MockView() { return null; },
+  }));
+  vi.doMock('expo-modules-core', () => ({ EventEmitter: options.eventEmitterClass ?? class MockEventEmitter {} }));
+  vi.doMock('expo-speech-recognition', () => ({
+    ExpoSpeechRecognitionModule: options.speechRecognitionModule,
+  }));
   vi.doMock('@react-native-async-storage/async-storage', () => ({
     default: {
       getItem: vi.fn(),
       setItem: vi.fn(),
       removeItem: vi.fn(),
     },
+  }));
+  vi.doMock('./androidHandsFreeService', () => ({
+    setAndroidHandsFreeAudioRoutingEnabled: options.androidHandsFreeService?.setAndroidHandsFreeAudioRoutingEnabled ?? vi.fn(),
   }));
   return import('./useSpeechRecognizer');
 }
@@ -125,9 +165,12 @@ afterEach(() => {
   vi.unmock('react');
   vi.unmock('react-native');
   vi.unmock('expo-modules-core');
+  vi.unmock('expo-speech-recognition');
   vi.unmock('@react-native-async-storage/async-storage');
+  vi.unmock('./androidHandsFreeService');
   FakeSpeechRecognition.instances = [];
   FakeSpeechRecognition.nextStartError = null;
+  FakeNativeSpeechEventEmitter.instances = [];
   delete (globalThis as any).window;
 });
 
@@ -368,6 +411,138 @@ describe('useSpeechRecognizer', () => {
       text: 'hello world',
     });
     expect(onVoiceFinalized).toHaveBeenCalledWith({ text: 'hello world', mode: 'handsfree', source: 'web' });
+  });
+
+  it('finalizes native hands-free partial results after the silence delay when no final event arrives', async () => {
+    vi.useFakeTimers();
+    const runtime = createHookRuntime();
+    const speechRecognitionModule = {
+      getPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
+      requestPermissionsAsync: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime, {
+      platform: 'android',
+      eventEmitterClass: FakeNativeSpeechEventEmitter,
+      speechRecognitionModule,
+    });
+    const onVoiceFinalized = vi.fn();
+
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    expect(speechRecognitionModule.start).toHaveBeenCalledWith(expect.objectContaining({
+      continuous: true,
+      interimResults: true,
+      volumeChangeEventOptions: { enabled: true, intervalMillis: 250 },
+    }));
+
+    const eventEmitter = FakeNativeSpeechEventEmitter.instances[0];
+    eventEmitter.emit('result', {
+      isFinal: false,
+      results: [{ transcript: 'send this message' }],
+    });
+
+    vi.advanceTimersByTime(499);
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(onVoiceFinalized).toHaveBeenCalledWith({
+      text: 'send this message',
+      mode: 'handsfree',
+      source: 'native',
+    });
+  });
+
+  it('suppresses native hands-free partial results while the assistant is busy or speaking', async () => {
+    vi.useFakeTimers();
+    const runtime = createHookRuntime();
+    const speechRecognitionModule = {
+      getPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
+      requestPermissionsAsync: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime, {
+      platform: 'android',
+      eventEmitterClass: FakeNativeSpeechEventEmitter,
+      speechRecognitionModule,
+    });
+    const onVoiceFinalized = vi.fn();
+    const log = vi.fn();
+    const shouldSuppressHandsFreeTranscript = vi.fn(() => true);
+    const props = {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+      shouldSuppressHandsFreeTranscript,
+      log,
+    };
+
+    let recognizer = runtime.render(useSpeechRecognizer, props);
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const eventEmitter = FakeNativeSpeechEventEmitter.instances[0];
+    eventEmitter.emit('result', {
+      isFinal: false,
+      results: [{ transcript: 'assistant speech should not queue' }],
+    });
+
+    recognizer = runtime.render(useSpeechRecognizer, props);
+    expect(recognizer.sttPreview).toBe('');
+
+    vi.advanceTimersByTime(500);
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+    expect(log.mock.calls.find(([type]) => type === 'transcript-ignored')?.[2]).toMatchObject({
+      source: 'native',
+      text: 'assistant speech should not queue',
+    });
+  });
+
+  it('acquires Android hands-free audio routing before foreground native recognition starts', async () => {
+    const runtime = createHookRuntime();
+    const speechRecognitionModule = {
+      getPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
+      requestPermissionsAsync: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+    const setAndroidHandsFreeAudioRoutingEnabled = vi.fn().mockResolvedValue(null);
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime, {
+      platform: 'android',
+      eventEmitterClass: FakeNativeSpeechEventEmitter,
+      speechRecognitionModule,
+      androidHandsFreeService: { setAndroidHandsFreeAudioRoutingEnabled },
+    });
+    const onVoiceFinalized = vi.fn();
+
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+
+    expect(setAndroidHandsFreeAudioRoutingEnabled).toHaveBeenCalledWith(true, 'foreground');
+    expect(setAndroidHandsFreeAudioRoutingEnabled.mock.invocationCallOrder[0]).toBeLessThan(
+      speechRecognitionModule.start.mock.invocationCallOrder[0],
+    );
+
+    await recognizer.stopRecognitionOnly();
+
+    expect(setAndroidHandsFreeAudioRoutingEnabled).toHaveBeenLastCalledWith(false, 'foreground');
   });
 
   it('treats Chrome already-started web recognizer errors as an idempotent active state', async () => {
