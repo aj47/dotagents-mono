@@ -5170,9 +5170,80 @@ export default function ChatScreen({ route, navigation }: any) {
             const turnDuration = m.role === 'user' && typeof m.timestamp === 'number'
               ? turnDurations.byUserTimestamp.get(m.timestamp)
               : undefined;
-            const turnDurationLabel = turnDuration
-              ? `Agent time ${formatTurnDuration(turnDuration.durationMs)}${turnDuration.isLive ? ' live' : ''}`
+            const turnDurationText = turnDuration
+              ? formatTurnDuration(turnDuration.durationMs)
               : null;
+            const turnDurationAccessibilityLabel = turnDurationText
+              ? `Agent time ${turnDurationText}${turnDuration?.isLive ? ' live' : ''}`
+              : null;
+            const turnDurationBadge = turnDurationText ? (
+              <View
+                style={[
+                  styles.turnDurationBadge,
+                  turnDuration?.isLive && styles.turnDurationBadgeLive,
+                ]}
+                accessibilityRole="text"
+                accessibilityLabel={turnDurationAccessibilityLabel || undefined}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={11}
+                  color={turnDuration?.isLive ? theme.colors.primary : theme.colors.mutedForeground}
+                />
+                <Text style={[
+                  styles.turnDurationBadgeText,
+                  turnDuration?.isLive && { color: theme.colors.primary },
+                ]}>
+                  {turnDurationText}
+                </Text>
+              </View>
+            ) : null;
+            const shouldShowMessageActions = canCopyMessage || canBranchFromMessage;
+            const shouldShowInlineMessageActions =
+              (shouldShowMessageActions || !!turnDurationText) &&
+              (shouldShowExpandedContent || shouldShowCollapsedTextPreview);
+            const messageActionControls = shouldShowMessageActions ? (
+              <>
+                {canCopyMessage && (
+                  <Pressable
+                    hitSlop={8}
+                    style={[
+                      styles.messageActionButton,
+                      copiedMessageIndex === i && styles.messageActionButtonActive,
+                    ]}
+                    onPress={() => { void handleCopyMessage(i, visibleMessageContent); }}
+                    accessibilityRole="button"
+                    accessibilityLabel={copiedMessageIndex === i ? `Copied ${m.role} message ${i + 1}` : `Copy ${m.role} message ${i + 1}`}
+                  >
+                    <Ionicons
+                      name={copiedMessageIndex === i ? 'checkmark' : 'copy-outline'}
+                      size={13}
+                      color={copiedMessageIndex === i ? theme.colors.success : theme.colors.primary}
+                    />
+                  </Pressable>
+                )}
+                {canBranchFromMessage && (
+                  <Pressable
+                    hitSlop={8}
+                    style={[
+                      styles.messageActionButton,
+                      branchingMessageIndex !== null && styles.messageActionButtonDisabled,
+                    ]}
+                    onPress={() => { void handleBranchFromMessage(i); }}
+                    disabled={branchingMessageIndex !== null}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Branch conversation from ${m.role} message ${i + 1}`}
+                    accessibilityState={{ disabled: branchingMessageIndex !== null }}
+                  >
+                    {branchingMessageIndex === i ? (
+                      <ActivityIndicator size="small" color={theme.colors.mutedForeground} />
+                    ) : (
+                      <Ionicons name="git-branch-outline" size={13} color={theme.colors.primary} />
+                    )}
+                  </Pressable>
+                )}
+              </>
+            ) : null;
 
             const toolCalls = m.toolCalls ?? [];
             const toolResults = m.toolResults ?? [];
@@ -5337,8 +5408,8 @@ export default function ChatScreen({ route, navigation }: any) {
                 ) : (
                   <>
                     {shouldShowExpandedContent ? (
-                      <View style={m.role === 'assistant' ? styles.assistantMessageRow : undefined}>
-                        <View style={m.role === 'assistant' ? styles.assistantMessageBody : undefined}>
+                      <View style={styles.messageContentRow}>
+                        <View style={styles.messageContentBody}>
                           <MarkdownRenderer
                             content={visibleMessageContent}
                             assetBaseUrl={config.baseUrl}
@@ -5363,9 +5434,15 @@ export default function ChatScreen({ route, navigation }: any) {
                             </Text>
                           </TouchableOpacity>
                         )}
+                        {shouldShowInlineMessageActions && (
+                          <View style={styles.messageInlineActions}>
+                            {turnDurationBadge}
+                            {messageActionControls}
+                          </View>
+                        )}
                       </View>
                     ) : shouldShowCollapsedTextPreview ? (
-                      <View style={m.role === 'assistant' ? styles.assistantMessageRow : undefined}>
+                      <View style={styles.messageContentRow}>
                         <Text
                           style={styles.collapsedMessagePreview}
                           numberOfLines={1}
@@ -5390,31 +5467,14 @@ export default function ChatScreen({ route, navigation }: any) {
                             </Text>
                           </TouchableOpacity>
                         )}
+                        {shouldShowInlineMessageActions && (
+                          <View style={styles.messageInlineActions}>
+                            {turnDurationBadge}
+                            {messageActionControls}
+                          </View>
+                        )}
                       </View>
                     ) : null}
-
-                    {turnDurationLabel && (
-                      <View
-                        style={[
-                          styles.turnDurationBadge,
-                          turnDuration?.isLive && styles.turnDurationBadgeLive,
-                        ]}
-                        accessibilityRole="text"
-                        accessibilityLabel={turnDurationLabel}
-                      >
-                        <Ionicons
-                          name="time-outline"
-                          size={12}
-                          color={turnDuration?.isLive ? theme.colors.primary : theme.colors.mutedForeground}
-                        />
-                        <Text style={[
-                          styles.turnDurationBadgeText,
-                          turnDuration?.isLive && { color: theme.colors.primary },
-                        ]}>
-                          {turnDurationLabel}
-                        </Text>
-                      </View>
-                    )}
 
                     {/* Unified Tool Execution Display - only show when there are displayable tool calls */}
                     {displayToolCallCount > 0 && (
@@ -5653,47 +5713,10 @@ export default function ChatScreen({ route, navigation }: any) {
                         )}
 	                      </>
 	                    )}
-                    {(canCopyMessage || canBranchFromMessage) && (
+                    {!shouldShowInlineMessageActions && (shouldShowMessageActions || !!turnDurationText) && (
                       <View style={styles.messageActionsRow}>
-                        {canCopyMessage && (
-                          <Pressable
-                            style={[
-                              styles.messageActionButton,
-                              copiedMessageIndex === i && styles.messageActionButtonActive,
-                            ]}
-                            onPress={() => { void handleCopyMessage(i, visibleMessageContent); }}
-                            accessibilityRole="button"
-                            accessibilityLabel={copiedMessageIndex === i ? `Copied ${m.role} message ${i + 1}` : `Copy ${m.role} message ${i + 1}`}
-                          >
-                            <Ionicons
-                              name={copiedMessageIndex === i ? 'checkmark' : 'copy-outline'}
-                              size={12}
-                              color={copiedMessageIndex === i ? theme.colors.success : theme.colors.primary}
-                            />
-                            <Text style={[
-                              styles.messageActionButtonText,
-                              copiedMessageIndex === i && styles.messageActionButtonTextActive,
-                            ]}>
-                              {copiedMessageIndex === i ? 'Copied' : 'Copy'}
-                            </Text>
-                          </Pressable>
-                        )}
-                        {canBranchFromMessage && (
-                        <Pressable
-                          style={[
-                            styles.messageActionButton,
-                            branchingMessageIndex !== null && styles.messageActionButtonDisabled,
-                          ]}
-                          onPress={() => { void handleBranchFromMessage(i); }}
-                          disabled={branchingMessageIndex !== null}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Branch conversation from ${m.role} message ${i + 1}`}
-                        >
-                          <Text style={styles.messageActionButtonText}>
-                            {branchingMessageIndex === i ? 'Branching...' : 'Branch'}
-                          </Text>
-                        </Pressable>
-                        )}
+                        {turnDurationBadge}
+                        {messageActionControls}
                       </View>
                     )}
 	                  </>
@@ -6384,13 +6407,11 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       paddingLeft: spacing.xs,
     },
     turnDurationBadge: {
-      alignSelf: 'flex-end',
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      marginTop: 3,
-      paddingHorizontal: 7,
-      paddingVertical: 3,
+      gap: 3,
+      height: 26,
+      paddingHorizontal: 6,
       borderRadius: 999,
       backgroundColor: theme.colors.muted,
     },
@@ -6400,7 +6421,7 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     turnDurationBadgeText: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: '700',
     },
     messageHeader: {
@@ -7340,13 +7361,13 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       padding: 3,
       borderRadius: radius.sm,
     },
-    assistantMessageRow: {
+    messageContentRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: spacing.xs,
       width: '100%',
     },
-    assistantMessageBody: {
+    messageContentBody: {
       flex: 1,
       minWidth: 0,
     },
@@ -7361,18 +7382,21 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      marginTop: 2,
-      gap: spacing.xs,
+      marginTop: 1,
+      gap: 4,
+    },
+    messageInlineActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      flexShrink: 0,
+      marginTop: 1,
     },
     messageActionButton: {
-      ...createMinimumTouchTargetStyle({
-        horizontalPadding: spacing.sm,
-        verticalPadding: spacing.xs,
-        horizontalMargin: 0,
-      }),
+      width: 26,
+      height: 26,
       flexDirection: 'row',
-      gap: 4,
-      borderRadius: radius.lg,
+      borderRadius: radius.sm,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.background,
