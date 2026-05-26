@@ -213,11 +213,10 @@ class HandsFreeVoiceService : Service() {
       putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
       putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        putExtra(
-          RecognizerIntent.EXTRA_SEGMENTED_SESSION,
-          RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS
-        )
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, SEGMENT_SESSION_TIMEOUT_MS)
+        val segmentedSessionMode = RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS
+        // EXTRA_SEGMENTED_SESSION expects the name of the timing extra that controls segmentation.
+        putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, segmentedSessionMode)
+        putExtra(segmentedSessionMode, SEGMENT_SESSION_TIMEOUT_MS)
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SEGMENT_COMPLETE_SILENCE_MS)
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, SEGMENT_POSSIBLY_COMPLETE_SILENCE_MS)
       } else {

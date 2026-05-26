@@ -45,6 +45,17 @@ describe('normalizeStoredConfig', () => {
     expect(normalized.handsFreeForegroundOnlyConfigured).toBe(true);
   });
 
+  it('preserves an explicit background handsfree opt-in', () => {
+    const normalized = normalizeStoredConfig({
+      ...DEFAULT_APP_CONFIG,
+      handsFreeForegroundOnly: false,
+      handsFreeForegroundOnlyConfigured: true,
+    });
+
+    expect(normalized.handsFreeForegroundOnly).toBe(false);
+    expect(normalized.handsFreeForegroundOnlyConfigured).toBe(true);
+  });
+
   it('trims custom handsfree phrases', () => {
     const normalized = normalizeStoredConfig({
       ...DEFAULT_APP_CONFIG,

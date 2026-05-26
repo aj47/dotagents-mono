@@ -3038,9 +3038,7 @@ export default function SettingsScreen({ navigation, route }: any) {
       </Text>
     </>
   );
-  const effectiveHandsFreeForegroundOnly = draft.handsFreeForegroundOnlyConfigured === true
-    ? draft.handsFreeForegroundOnly !== false
-    : Platform.OS !== 'android';
+  const effectiveHandsFreeForegroundOnly = draft.handsFreeForegroundOnly !== false;
 
   return (
     <>

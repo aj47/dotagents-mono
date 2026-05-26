@@ -22,6 +22,7 @@
         "NSCameraUsageDescription": "This app uses the camera to scan QR codes for configuration.",
         "NSUserNotificationsUsageDescription": "This app sends notifications when new messages arrive from your AI assistant.",
         "UIBackgroundModes": [
+          "audio",
           "remote-notification"
         ]
       }

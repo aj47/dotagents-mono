@@ -75,6 +75,7 @@ import { GlobalTtsStatusPill } from '../ui/GlobalTtsStatusPill';
 import {
   beginGlobalTtsPlayback,
   completeGlobalTtsPlayback,
+  getGlobalTtsPlayback,
   getGlobalTtsStopGeneration,
   markGlobalTtsPlaybackSpeaking,
   stopGlobalTtsPlayback,
@@ -130,6 +131,7 @@ const NATIVE_TTS_WATCHDOG_GRACE_MS = 1_500;
 const NATIVE_TTS_WATCHDOG_INTERVAL_MS = 750;
 const NATIVE_TTS_MIN_WATCHDOG_MS = 4_000;
 const NATIVE_TTS_MAX_WATCHDOG_MS = 90_000;
+const NATIVE_TTS_STARTUP_TIMEOUT_MS = 8_000;
 const NATIVE_TTS_ESTIMATED_WORDS_PER_MINUTE = 150;
 
 function isHandsFreeDebugForcedInDev(): boolean {
@@ -176,24 +178,29 @@ const estimateNativeTtsWatchdogMs = (text: string, rate = 1.0) => {
   );
 };
 
+type NativeTtsWatchdogReason = 'idle' | 'timeout' | 'startup-timeout';
+
 const startNativeTtsSettlementWatchdog = (
   text: string,
   rate: number,
+  hasSpeechStarted: () => boolean,
   onSettled: () => void,
-  onWatchdogSettled?: (reason: 'idle' | 'timeout') => void,
+  onWatchdogSettled?: (reason: NativeTtsWatchdogReason) => void,
 ) => {
   let cleared = false;
   const startedAt = Date.now();
   let interval: ReturnType<typeof setInterval> | null = null;
   let timeout: ReturnType<typeof setTimeout> | null = null;
+  let startupTimeout: ReturnType<typeof setTimeout> | null = null;
   const clear = () => {
     if (cleared) return;
     cleared = true;
     if (interval) clearInterval(interval);
     if (timeout) clearTimeout(timeout);
+    if (startupTimeout) clearTimeout(startupTimeout);
   };
 
-  const settleFromWatchdog = (reason: 'idle' | 'timeout') => {
+  const settleFromWatchdog = (reason: NativeTtsWatchdogReason) => {
     if (cleared) return;
     clear();
     onWatchdogSettled?.(reason);
@@ -206,16 +213,26 @@ const startNativeTtsSettlementWatchdog = (
     }
     void Speech.isSpeakingAsync()
       .then((isSpeaking) => {
-        if (!isSpeaking) {
+        if (hasSpeechStarted() && !isSpeaking) {
           settleFromWatchdog('idle');
         }
       })
       .catch(() => undefined);
   }, NATIVE_TTS_WATCHDOG_INTERVAL_MS);
 
+  startupTimeout = setTimeout(() => {
+    if (!hasSpeechStarted()) {
+      settleFromWatchdog('startup-timeout');
+    }
+  }, NATIVE_TTS_STARTUP_TIMEOUT_MS);
+
+  const maxWatchdogMs = Math.max(
+    estimateNativeTtsWatchdogMs(text, rate),
+    NATIVE_TTS_STARTUP_TIMEOUT_MS + NATIVE_TTS_MIN_WATCHDOG_MS,
+  );
   timeout = setTimeout(() => {
     settleFromWatchdog('timeout');
-  }, estimateNativeTtsWatchdogMs(text, rate));
+  }, maxWatchdogMs);
 
   return clear;
 };
@@ -843,9 +860,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const handsFreeSleepPhrase = config.handsFreeSleepPhrase || 'go to sleep';
   const handsFreeDebugEnabled = config.handsFreeDebug === true || isHandsFreeDebugForcedInDev();
   const androidHandsFreeServiceAvailable = Platform.OS === 'android' && isAndroidHandsFreeServiceAvailable();
-  const handsFreeForegroundOnly = androidHandsFreeServiceAvailable
-    ? config.handsFreeForegroundOnlyConfigured === true && config.handsFreeForegroundOnly !== false
-    : config.handsFreeForegroundOnly !== false;
+  const handsFreeForegroundOnly = config.handsFreeForegroundOnly !== false;
+  const shouldRunAndroidHandsFreeService =
+    androidHandsFreeServiceAvailable && handsFree && !handsFreeForegroundOnly;
   const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
@@ -868,9 +885,7 @@ export default function ChatScreen({ route, navigation }: any) {
     ? stableHandsFreeForeground
     : isAppActive && (!handsFreeForegroundOnly || isFocused);
   const androidBackgroundHandsFree =
-    androidHandsFreeServiceAvailable
-    && handsFree
-    && !handsFreeForegroundOnly
+    shouldRunAndroidHandsFreeService
     && !stableHandsFreeForeground;
   const allowHandsFreeDirectSpeechWhileSleeping = Platform.OS === 'android' && androidHandsFreeServiceAvailable
     ? stableHandsFreeForeground
@@ -1785,6 +1800,9 @@ export default function ChatScreen({ route, navigation }: any) {
     log: voiceLog,
   });
 
+  const androidHandsFreeServiceListeningEnabled =
+    androidBackgroundHandsFree && shouldKeepHandsFreeMicArmed;
+
   useEffect(() => {
     if (!shouldSuppressHandsFreeTranscript) return;
     clearAndroidHandsFreePartialTimer();
@@ -1800,17 +1818,17 @@ export default function ChatScreen({ route, navigation }: any) {
   }, []);
 
   useEffect(() => {
-    if (!androidBackgroundHandsFree) {
+    if (!shouldRunAndroidHandsFreeService) {
       return;
     }
 
     let cancelled = false;
     void startAndroidHandsFreeService({
       language: 'en-US',
-      listeningEnabled: true,
+      listeningEnabled: false,
     }).then(() => {
       if (!cancelled) {
-        setDebugInfo('Locked-screen handsfree is active.');
+        setDebugInfo('Locked-screen handsfree is ready.');
       }
     }).catch((error) => {
       const message = (error as any)?.message || String(error);
@@ -1826,22 +1844,22 @@ export default function ChatScreen({ route, navigation }: any) {
         });
       });
     };
-  }, [androidBackgroundHandsFree, voiceLog]);
+  }, [shouldRunAndroidHandsFreeService, voiceLog]);
 
   useEffect(() => {
-    if (!androidBackgroundHandsFree) {
+    if (!shouldRunAndroidHandsFreeService) {
       return;
     }
 
-    void setAndroidHandsFreeListeningEnabled(shouldKeepHandsFreeMicArmed).catch((error) => {
+    void setAndroidHandsFreeListeningEnabled(androidHandsFreeServiceListeningEnabled).catch((error) => {
       voiceLog('recognizer-error', 'Android handsfree service failed to update capture state.', {
         message: (error as any)?.message || String(error),
       });
     });
-  }, [androidBackgroundHandsFree, shouldKeepHandsFreeMicArmed, voiceLog]);
+  }, [androidHandsFreeServiceListeningEnabled, shouldRunAndroidHandsFreeService, voiceLog]);
 
   useEffect(() => {
-    if (!androidBackgroundHandsFree) {
+    if (!shouldRunAndroidHandsFreeService) {
       return;
     }
 
@@ -1917,7 +1935,7 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       if (event.type === 'service-started') {
-        setDebugInfo('Locked-screen handsfree is active.');
+        setDebugInfo('Locked-screen handsfree is ready.');
         return;
       }
 
@@ -1942,6 +1960,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handleRecognizerError,
     scheduleAndroidHandsFreePartialTranscript,
     setSttPreviewWithExpiry,
+    shouldRunAndroidHandsFreeService,
     voiceLog,
   ]);
 
@@ -2065,10 +2084,15 @@ export default function ChatScreen({ route, navigation }: any) {
 			return true;
 		}
 
+    let nativeSpeechStarted = false;
 		const speechOptions: Speech.SpeechOptions = {
 			language: 'en-US',
 			rate: config.ttsRate ?? 1.0,
 			pitch: config.ttsPitch ?? 1.0,
+      onStart: () => {
+        nativeSpeechStarted = true;
+        markGlobalTtsPlaybackSpeaking(playbackId);
+      },
 			onDone: settle,
 			onError: settle,
 			onStopped: settle,
@@ -2077,11 +2101,19 @@ export default function ChatScreen({ route, navigation }: any) {
 			speechOptions.voice = config.ttsVoiceId;
 		}
 		try {
-		  void ensureNativeTtsAudioMode();
-		  Speech.speak(processedText, speechOptions);
+		  void (async () => {
+		    try {
+		      await ensureNativeTtsAudioMode();
+		      if (settled) return;
+		      Speech.speak(processedText, speechOptions);
+		    } catch {
+		      settle();
+		    }
+		  })();
       clearSpeechWatchdog = startNativeTtsSettlementWatchdog(
         processedText,
         config.ttsRate ?? 1.0,
+        () => nativeSpeechStarted,
         settle,
         (watchdogReason) => {
           voiceLog('tts-stopped', `Assistant speech watchdog settled (${reason}, ${watchdogReason}).`);
@@ -2291,10 +2323,15 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     let clearSpeechWatchdog: (() => void) | null = null;
+    let nativeSpeechStarted = false;
     const speechOptions: Speech.SpeechOptions = {
       language: 'en-US',
       rate: config.ttsRate ?? 1.0,
       pitch: config.ttsPitch ?? 1.0,
+      onStart: () => {
+        nativeSpeechStarted = true;
+        markGlobalTtsPlaybackSpeaking(playbackId);
+      },
       onDone: () => {
         clearSpeechWatchdog?.();
         clearSpeechWatchdog = null;
@@ -2336,12 +2373,31 @@ export default function ChatScreen({ route, navigation }: any) {
     if (config.ttsVoiceId) {
       speechOptions.voice = config.ttsVoiceId;
     }
+    const settleNativeSpeechError = () => {
+      clearSpeechWatchdog?.();
+      clearSpeechWatchdog = null;
+      intendedSpeakingIndexRef.current = null;
+      completeGlobalTtsPlayback(playbackId);
+      if (handsFree) {
+        handsFreeController.onSpeechFinished();
+        voiceLog('tts-stopped', 'Assistant speech errored during message playback.');
+      }
+      setSpeakingMessageIndex(null);
+    };
     try {
-      void ensureNativeTtsAudioMode();
-      Speech.speak(processedText, speechOptions);
+      void (async () => {
+        try {
+          await ensureNativeTtsAudioMode();
+          if (getGlobalTtsPlayback()?.id !== playbackId) return;
+          Speech.speak(processedText, speechOptions);
+        } catch {
+          settleNativeSpeechError();
+        }
+      })();
       clearSpeechWatchdog = startNativeTtsSettlementWatchdog(
         processedText,
         config.ttsRate ?? 1.0,
+        () => nativeSpeechStarted,
         () => {
           if (intendedSpeakingIndexRef.current !== index) {
             return;
@@ -2356,15 +2412,7 @@ export default function ChatScreen({ route, navigation }: any) {
         },
       );
     } catch {
-      clearSpeechWatchdog?.();
-      clearSpeechWatchdog = null;
-      intendedSpeakingIndexRef.current = null;
-      completeGlobalTtsPlayback(playbackId);
-      if (handsFree) {
-        handsFreeController.onSpeechFinished();
-        voiceLog('tts-stopped', 'Assistant speech errored during message playback.');
-      }
-      setSpeakingMessageIndex(null);
+      settleNativeSpeechError();
     }
 	  }, [
 		speakingMessageIndex,
