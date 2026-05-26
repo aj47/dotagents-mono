@@ -7,8 +7,8 @@ A React Native (Expo) mobile client for DotAgents. Pair it with the desktop remo
 - Chat with DotAgents agent profiles from your desktop runtime
 - Voice input two ways:
   - Press‑and‑hold mic for real‑time transcription; release to send (or release in edit mode to keep the text in the input)
-  - Hands‑free mode (VAD-backed) to toggle listening without holding the button
-- Assistant responses can be spoken aloud using text‑to‑speech (expo-speech)
+  - Hands‑free mode to listen, auto-send after silence, and keep capture active while the assistant speaks
+- Assistant responses can be spoken aloud using text‑to‑speech, including Android locked-screen playback through the hands-free service
 - Local vs Cloud environment toggle with separate Manage API and Run API base URLs
 - Agent profile, skill, knowledge note, loop, and MCP management through the desktop remote API
 - Persisted settings (API key, IDs, URLs, voice prefs) via AsyncStorage
@@ -72,7 +72,12 @@ For the desktop flow, enable **Settings > Remote Server** in DotAgents desktop a
   - Release to send; or release while in "edit" state to place the transcript into the text box for editing
 - Hands‑free mode:
   - Toggle from the Chat screen header (microphone icon)
-  - App will listen without needing to hold the button and send on final speech segments
+  - If the chip says Sleeping, tap **Wake** or say the configured wake phrase (default: `hey dot agents`)
+  - Speak after the listening cue; the app auto-sends after the configured silence window
+  - Say the sleep phrase (default: `go to sleep`) to return to sleep
+  - While the assistant is speaking, say `wait` or `stop` to interrupt TTS and return to listening
+  - On Android, turn **Foreground Only** off in Settings before locking the phone to keep the microphone service and TTS active in the background
+  - Short audio cues announce state when the screen is not visible: rising tones for listening, double tones for processing, falling tones for stopped/sleeping, and low repeated tones for errors
 - Assistant replies can be read aloud via text‑to‑speech
 
 Notes:

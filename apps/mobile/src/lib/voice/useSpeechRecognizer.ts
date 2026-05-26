@@ -8,7 +8,8 @@ import {
 import { EventEmitter } from 'expo-modules-core';
 import { DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS } from '../../store/config';
 import type { VoiceDebugLog } from './voiceDebug';
-import { mergeVoiceText } from './mergeVoiceText';
+import { mergeVoiceText, normalizeVoiceText } from './mergeVoiceText';
+import { setAndroidHandsFreeAudioRoutingEnabled } from './androidHandsFreeService';
 
 export type VoiceFinalizationMode = 'edit' | 'send' | 'handsfree';
 
@@ -18,6 +19,12 @@ type VoiceFinalizedPayload = {
   source: 'native' | 'web';
 };
 
+type SuppressedHandsFreeTranscriptPayload = {
+  text: string;
+  source: 'native' | 'web';
+  isFinal?: boolean;
+};
+
 type DeferredPushToTalkFinal = {
   gestureId: number;
   text: string;
@@ -25,12 +32,15 @@ type DeferredPushToTalkFinal = {
 };
 
 type UseSpeechRecognizerOptions = {
+  enabled?: boolean;
   handsFree: boolean;
   handsFreeDebounceMs?: number;
   willCancel: boolean;
   onVoiceFinalized: (payload: VoiceFinalizedPayload) => void;
   onRecognizerError?: (message: string) => void;
   onPermissionDenied?: () => void;
+  shouldSuppressHandsFreeTranscript?: () => boolean;
+  onSuppressedHandsFreeTranscript?: (payload: SuppressedHandsFreeTranscriptPayload) => boolean;
   log?: VoiceDebugLog;
   /** Preferred microphone device ID (web only). When set, getUserMedia is called
    *  with this deviceId before starting the Web Speech API recognizer so the
@@ -43,8 +53,6 @@ const MIN_HOLD_MS = 200;
 const DEBUG_TRANSCRIPT_MAX_LENGTH = 160;
 const WEB_RECOGNITION_ALREADY_STARTED_PATTERN = /recognition has already started/i;
 
-const normalizeVoiceText = (text?: string) => (text || '').replace(/\s+/g, ' ').trim();
-
 const truncateDebugText = (text?: string) => {
   const normalized = normalizeVoiceText(text);
   return normalized.length > DEBUG_TRANSCRIPT_MAX_LENGTH
@@ -54,6 +62,21 @@ const truncateDebugText = (text?: string) => {
 
 const getRecognitionSource = (): 'native' | 'web' => (Platform.OS === 'web' ? 'web' : 'native');
 
+const createNativeSpeechStartOptions = (
+  _SR: any,
+  options: {
+    continuous: boolean;
+    volumeChangeEvents: boolean;
+  },
+) => {
+  return {
+    lang: 'en-US',
+    interimResults: true,
+    continuous: options.continuous,
+    volumeChangeEventOptions: { enabled: options.volumeChangeEvents, intervalMillis: 250 },
+  };
+};
+
 const isWebRecognitionAlreadyStartedError = (error: unknown) => {
   const message = (error as any)?.message || String(error);
   return WEB_RECOGNITION_ALREADY_STARTED_PATTERN.test(message);
@@ -61,12 +84,15 @@ const isWebRecognitionAlreadyStartedError = (error: unknown) => {
 
 export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const {
+    enabled = true,
     handsFree,
     handsFreeDebounceMs = DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
     willCancel,
     onVoiceFinalized,
     onRecognizerError,
     onPermissionDenied,
+    shouldSuppressHandsFreeTranscript,
+    onSuppressedHandsFreeTranscript,
     log,
     audioInputDeviceId,
   } = options;
@@ -98,6 +124,12 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const voiceGestureFinalizedIdRef = useRef(0);
   const pendingPushToTalkFinalRef = useRef<DeferredPushToTalkFinal | null>(null);
   const suppressFinalizeRef = useRef(false);
+  const shouldSuppressHandsFreeTranscriptRef = useRef(shouldSuppressHandsFreeTranscript);
+  const onSuppressedHandsFreeTranscriptRef = useRef(onSuppressedHandsFreeTranscript);
+  const enabledRef = useRef(enabled);
+  shouldSuppressHandsFreeTranscriptRef.current = shouldSuppressHandsFreeTranscript;
+  onSuppressedHandsFreeTranscriptRef.current = onSuppressedHandsFreeTranscript;
+  enabledRef.current = enabled;
 
   const setListeningValue = useCallback((value: boolean) => {
     listeningRef.current = value;
@@ -131,13 +163,76 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
   }, []);
 
+  const isHandsFreeTranscriptSuppressed = useCallback(() => (
+    handsFree && shouldSuppressHandsFreeTranscriptRef.current?.() === true
+  ), [handsFree]);
+
+  const clearSuppressedHandsFreeTranscript = useCallback((source: 'native' | 'web', text?: string, isFinal?: boolean) => {
+    const normalizedText = normalizeVoiceText(text);
+    const handled = normalizedText
+      ? onSuppressedHandsFreeTranscriptRef.current?.({
+        text: normalizedText,
+        source,
+        isFinal,
+      }) === true
+      : false;
+    clearHandsFreeDebounce();
+    pendingHandsFreeFinalRef.current = '';
+    nativeFinalRef.current = '';
+    webFinalRef.current = '';
+    setLiveTranscriptValue('');
+    setSttPreview('');
+    log?.('transcript-ignored', handled
+      ? 'Hands-free transcript handled as a TTS control command.'
+      : 'Hands-free transcript ignored before finalization while the assistant is busy or speaking.', {
+      source,
+      text: truncateDebugText(normalizedText),
+      textLength: normalizedText.length,
+    });
+  }, [clearHandsFreeDebounce, log, setLiveTranscriptValue]);
+
+  const setForegroundAndroidHandsFreeAudioRouting = useCallback(async (enabled: boolean) => {
+    if (Platform.OS !== 'android' || !handsFree) {
+      return;
+    }
+
+    try {
+      const route = await setAndroidHandsFreeAudioRoutingEnabled(enabled, 'foreground');
+      log?.('runtime-state', 'Android handsfree audio routing updated.', {
+        enabled,
+        route: route?.route,
+        communicationDevice: route?.communicationDevice,
+        routingActive: route?.routingActive,
+        routeApplied: route?.routeApplied,
+      });
+    } catch (error) {
+      log?.('recognizer-error', 'Android handsfree audio routing update failed.', {
+        enabled,
+        message: (error as any)?.message || String(error),
+      });
+    }
+  }, [handsFree, log]);
+
   const emitFinalized = useCallback((text: string, source: 'native' | 'web') => {
+    if (!enabledRef.current) {
+      log?.('transcript-ignored', 'Voice transcript ignored while speech recognizer is inactive.', {
+        source,
+        text: truncateDebugText(text),
+        textLength: normalizeVoiceText(text).length,
+      });
+      return;
+    }
+
     const finalText = normalizeVoiceText(text);
     if (!finalText) {
       log?.('transcript-ignored', 'Empty voice transcript ignored.', { source });
       return;
     }
     const mode = handsFree ? 'handsfree' : (willCancel ? 'edit' : 'send');
+    if (mode === 'handsfree' && isHandsFreeTranscriptSuppressed()) {
+      clearSuppressedHandsFreeTranscript(source, finalText);
+      return;
+    }
     log?.('transcript-finalized', 'Voice transcript finalized.', {
       source,
       mode,
@@ -150,7 +245,15 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       mode,
       source,
     });
-  }, [handsFree, log, onVoiceFinalized, setSttPreviewWithExpiry, willCancel]);
+  }, [
+    clearSuppressedHandsFreeTranscript,
+    handsFree,
+    isHandsFreeTranscriptSuppressed,
+    log,
+    onVoiceFinalized,
+    setSttPreviewWithExpiry,
+    willCancel,
+  ]);
 
   const deferPushToTalkFinalization = useCallback((text: string, source: 'native' | 'web') => {
     const finalText = normalizeVoiceText(text);
@@ -215,6 +318,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
         } catch {}
       }
     } finally {
+      await setForegroundAndroidHandsFreeAudioRouting(false);
       setListeningValue(false);
       setLiveTranscriptValue('');
       pendingHandsFreeFinalRef.current = '';
@@ -224,9 +328,28 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       webPressInSeenRef.current = false;
       log?.('recognizer-stop', 'Speech recognizer stopped.');
     }
-  }, [clearHandsFreeDebounce, handsFree, log, setListeningValue, setLiveTranscriptValue]);
+  }, [clearHandsFreeDebounce, handsFree, log, setForegroundAndroidHandsFreeAudioRouting, setListeningValue, setLiveTranscriptValue]);
+
+  useEffect(() => {
+    if (enabled || !listeningRef.current) {
+      return;
+    }
+    void stopRecognitionOnly();
+  }, [enabled, stopRecognitionOnly]);
 
   const finalizePendingHandsFree = useCallback((source: 'native' | 'web') => {
+    if (!enabledRef.current) {
+      pendingHandsFreeFinalRef.current = '';
+      if (source === 'web') {
+        webFinalRef.current = '';
+      } else {
+        nativeFinalRef.current = '';
+      }
+      setLiveTranscriptValue('');
+      log?.('transcript-ignored', 'Hands-free finalization skipped while speech recognizer is inactive.', { source });
+      return false;
+    }
+
     const textToSend = normalizeVoiceText(
       pendingHandsFreeFinalRef.current
       || (source === 'web' ? webFinalRef.current : nativeFinalRef.current)
@@ -246,6 +369,11 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       return false;
     }
 
+    if (isHandsFreeTranscriptSuppressed()) {
+      clearSuppressedHandsFreeTranscript(source, textToSend);
+      return false;
+    }
+
     log?.('finalization-fired', 'Hands-free transcript debounce elapsed.', {
       source,
       text: truncateDebugText(textToSend),
@@ -254,12 +382,24 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     void stopRecognitionOnly();
     emitFinalized(textToSend, source);
     return true;
-  }, [emitFinalized, log, setLiveTranscriptValue, stopRecognitionOnly]);
+  }, [clearSuppressedHandsFreeTranscript, emitFinalized, isHandsFreeTranscriptSuppressed, log, setLiveTranscriptValue, stopRecognitionOnly]);
 
   const scheduleHandsFreeFinalization = useCallback((source: 'native' | 'web', text: string) => {
+    if (!enabledRef.current) {
+      return false;
+    }
+
     const finalText = normalizeVoiceText(text);
     if (!finalText) {
       return false;
+    }
+    if (isHandsFreeTranscriptSuppressed()) {
+      clearSuppressedHandsFreeTranscript(source, finalText);
+      return false;
+    }
+
+    if (normalizeVoiceText(pendingHandsFreeFinalRef.current) === finalText && handsFreeDebounceRef.current) {
+      return true;
     }
 
     pendingHandsFreeFinalRef.current = finalText;
@@ -281,10 +421,18 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       finalizePendingHandsFree(source);
     }, Math.max(0, handsFreeDebounceMs));
     return true;
-  }, [clearHandsFreeDebounce, finalizePendingHandsFree, handsFreeDebounceMs, log]);
+  }, [clearHandsFreeDebounce, clearSuppressedHandsFreeTranscript, finalizePendingHandsFree, handsFreeDebounceMs, isHandsFreeTranscriptSuppressed, log]);
 
   const startWebRecognizer = useCallback((reason: string) => {
     if (Platform.OS !== 'web' || !webRecognitionRef.current) {
+      return false;
+    }
+
+    if (!enabledRef.current) {
+      log?.('recognizer-start', 'Web speech recognizer start skipped while inactive.', {
+        source: 'web',
+        reason,
+      });
       return false;
     }
 
@@ -342,18 +490,24 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       return false;
     }
 
+    if (!enabledRef.current) {
+      log?.('recognizer-restart', 'Native speech recognizer restart skipped while inactive.', {
+        source: 'native',
+      });
+      return false;
+    }
+
     try {
       const SR: any = await import('expo-speech-recognition');
       if (!SR?.ExpoSpeechRecognitionModule?.start) {
         return false;
       }
 
-      SR.ExpoSpeechRecognitionModule.start({
-        lang: 'en-US',
-        interimResults: true,
+      await setForegroundAndroidHandsFreeAudioRouting(true);
+      SR.ExpoSpeechRecognitionModule.start(createNativeSpeechStartOptions(SR, {
         continuous: true,
-        volumeChangeEventOptions: { enabled: true, intervalMillis: 250 },
-      });
+        volumeChangeEvents: true,
+      }));
       log?.('recognizer-restart', 'Native speech recognizer restarted for hands-free mode.', {
         source: 'native',
       });
@@ -365,7 +519,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       });
       return false;
     }
-  }, [log]);
+  }, [log, setForegroundAndroidHandsFreeAudioRouting]);
 
   const bindWebRecognizerHandlers = useCallback((rec: any) => {
     rec.onstart = () => {
@@ -383,6 +537,17 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       onRecognizerError?.(message);
     };
     rec.onresult = (event: any) => {
+      if (!enabledRef.current) {
+        clearHandsFreeDebounce();
+        pendingHandsFreeFinalRef.current = '';
+        webFinalRef.current = '';
+        setLiveTranscriptValue('');
+        log?.('transcript-ignored', 'Web speech recognizer result ignored while inactive.', {
+          source: 'web',
+        });
+        return;
+      }
+
       let interim = '';
       let finalText = '';
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
@@ -401,6 +566,12 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
         interimText: truncateDebugText(interim),
         pendingText: truncateDebugText(pendingHandsFreeFinalRef.current || webFinalRef.current),
       });
+
+      const rawResultText = normalizeVoiceText(mergeVoiceText(finalText, interim));
+      if (handsFree && rawResultText && isHandsFreeTranscriptSuppressed()) {
+        clearSuppressedHandsFreeTranscript('web', rawResultText, !!finalText);
+        return;
+      }
 
       if (finalText) {
         if (handsFree) {
@@ -440,7 +611,25 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
         return;
       }
 
+      if (!enabledRef.current) {
+        clearHandsFreeDebounce();
+        pendingHandsFreeFinalRef.current = '';
+        pendingPushToTalkFinalRef.current = null;
+        webFinalRef.current = '';
+        setListeningValue(false);
+        setLiveTranscriptValue('');
+        log?.('recognizer-end', 'Web recognizer end ignored while inactive.', { source: 'web' });
+        return;
+      }
+
       if (handsFree) {
+        if (isHandsFreeTranscriptSuppressed()) {
+          clearSuppressedHandsFreeTranscript('web', pendingHandsFreeFinalRef.current || webFinalRef.current || liveTranscriptRef.current);
+          if (!restartWebHandsFreeRecognition()) {
+            setListeningValue(false);
+          }
+          return;
+        }
         pendingPushToTalkFinalRef.current = null;
         const finalText = normalizeVoiceText(
           mergeVoiceText(
@@ -516,9 +705,11 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     };
   }, [
     clearHandsFreeDebounce,
+    clearSuppressedHandsFreeTranscript,
     deferPushToTalkFinalization,
     emitFinalized,
     handsFree,
+    isHandsFreeTranscriptSuppressed,
     log,
     onRecognizerError,
     restartWebHandsFreeRecognition,
@@ -559,6 +750,14 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   }, [bindWebRecognizerHandlers, log]);
 
   const startRecording = useCallback(async (event?: GestureResponderEvent) => {
+    if (!enabledRef.current) {
+      log?.('recognizer-start', 'Speech recognizer start skipped while inactive.', {
+        source: getRecognitionSource(),
+        handsFree,
+      });
+      return;
+    }
+
     if (startingRef.current || listeningRef.current) {
       log?.('recognizer-start', 'Speech recognizer start skipped.', {
         source: getRecognitionSource(),
@@ -603,6 +802,17 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
             cleanupNativeSubs();
 
             const subResult = srEmitterRef.current.addListener('result', (nativeEvent: any) => {
+              if (!enabledRef.current) {
+                clearHandsFreeDebounce();
+                pendingHandsFreeFinalRef.current = '';
+                nativeFinalRef.current = '';
+                setLiveTranscriptValue('');
+                log?.('transcript-ignored', 'Native speech recognizer result ignored while inactive.', {
+                  source: 'native',
+                });
+                return;
+              }
+
               const text = nativeEvent?.results?.[0]?.transcript ?? nativeEvent?.text ?? nativeEvent?.transcript ?? '';
               log?.('recognizer-result', 'Native speech recognizer produced a result.', {
                 source: 'native',
@@ -611,6 +821,10 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
                 text: truncateDebugText(text),
                 pendingText: truncateDebugText(pendingHandsFreeFinalRef.current || nativeFinalRef.current),
               });
+              if (handsFree && text && isHandsFreeTranscriptSuppressed()) {
+                clearSuppressedHandsFreeTranscript('native', text, !!nativeEvent?.isFinal);
+                return;
+              }
               if (nativeEvent?.isFinal && text) {
                 if (handsFree) {
                   const final = text.trim();
@@ -629,6 +843,9 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
                 if (previewText) {
                   setLiveTranscriptValue(previewText);
                   setSttPreviewWithExpiry(previewText);
+                  if (handsFree && !nativeEvent?.isFinal) {
+                    scheduleHandsFreeFinalization('native', previewText);
+                  }
                 }
               }
             });
@@ -662,7 +879,25 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
                 return;
               }
 
+              if (!enabledRef.current) {
+                clearHandsFreeDebounce();
+                pendingHandsFreeFinalRef.current = '';
+                pendingPushToTalkFinalRef.current = null;
+                nativeFinalRef.current = '';
+                setListeningValue(false);
+                setLiveTranscriptValue('');
+                log?.('recognizer-end', 'Native recognizer end ignored while inactive.', { source: 'native' });
+                return;
+              }
+
               if (handsFree) {
+                if (isHandsFreeTranscriptSuppressed()) {
+                  clearSuppressedHandsFreeTranscript('native', pendingHandsFreeFinalRef.current || nativeFinalRef.current || liveTranscriptRef.current);
+                  if (!await restartNativeHandsFreeRecognition()) {
+                    setListeningValue(false);
+                  }
+                  return;
+                }
                 pendingPushToTalkFinalRef.current = null;
                 const finalText = normalizeVoiceText(
                   mergeVoiceText(
@@ -698,12 +933,10 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
                 try {
                   const SRRestart: any = await import('expo-speech-recognition');
                   if (SRRestart?.ExpoSpeechRecognitionModule?.start) {
-                    SRRestart.ExpoSpeechRecognitionModule.start({
-                      lang: 'en-US',
-                      interimResults: true,
+                    SRRestart.ExpoSpeechRecognitionModule.start(createNativeSpeechStartOptions(SRRestart, {
                       continuous: true,
-                      volumeChangeEventOptions: { enabled: false, intervalMillis: 250 },
-                    });
+                      volumeChangeEvents: false,
+                    }));
                     return;
                   }
                 } catch {}
@@ -759,12 +992,11 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
               }
             } catch {}
 
-            SR.ExpoSpeechRecognitionModule.start({
-              lang: 'en-US',
-              interimResults: true,
+            await setForegroundAndroidHandsFreeAudioRouting(true);
+            SR.ExpoSpeechRecognitionModule.start(createNativeSpeechStartOptions(SR, {
               continuous: true,
-              volumeChangeEventOptions: { enabled: handsFree, intervalMillis: 250 },
-            });
+              volumeChangeEvents: handsFree,
+            }));
             log?.('recognizer-start', 'Speech recognizer started.', { source: 'native' });
             startingRef.current = false;
             return;
@@ -838,16 +1070,19 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     audioInputDeviceId,
     cleanupNativeSubs,
     clearHandsFreeDebounce,
+    clearSuppressedHandsFreeTranscript,
     deferPushToTalkFinalization,
     emitFinalized,
     ensureWebRecognizer,
     handsFree,
     handsFreeDebounceMs,
+    isHandsFreeTranscriptSuppressed,
     log,
     onPermissionDenied,
     onRecognizerError,
     restartNativeHandsFreeRecognition,
     scheduleHandsFreeFinalization,
+    setForegroundAndroidHandsFreeAudioRouting,
     setListeningValue,
     setLiveTranscriptValue,
     setSttPreviewWithExpiry,
@@ -890,11 +1125,12 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
         }
       }
     } finally {
+      await setForegroundAndroidHandsFreeAudioRouting(false);
       webPressInSeenRef.current = false;
       stoppingRef.current = false;
       log?.('recognizer-stop', 'Speech recognizer stopped.');
     }
-  }, [flushPendingPushToTalkFinalization, handsFree, log, setListeningValue]);
+  }, [flushPendingPushToTalkFinalization, handsFree, log, setForegroundAndroidHandsFreeAudioRouting, setListeningValue]);
 
   stopRecordingAndHandleRef.current = stopRecordingAndHandle;
 
@@ -992,10 +1228,11 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   useEffect(() => () => {
     cleanupNativeSubs();
     clearHandsFreeDebounce();
+    void setForegroundAndroidHandsFreeAudioRouting(false);
     if (sttPreviewTimeoutRef.current) {
       clearTimeout(sttPreviewTimeoutRef.current);
     }
-  }, [cleanupNativeSubs, clearHandsFreeDebounce]);
+  }, [cleanupNativeSubs, clearHandsFreeDebounce, setForegroundAndroidHandsFreeAudioRouting]);
 
   return {
     listening,

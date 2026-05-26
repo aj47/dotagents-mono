@@ -15,7 +15,7 @@ Built with Expo SDK 54 and React Native, the mobile app provides a portable inte
 
 ### Key Capabilities
 
-- Voice input with press-and-hold or hands-free VAD mode
+- Voice input with press-and-hold or hands-free mode
 - Text chat with streaming responses
 - Text-to-speech for assistant replies
 - Agent profile management
@@ -45,7 +45,7 @@ The primary interface for conversations with your agent:
 - **Text input** — Type messages and receive streaming responses
 - **Voice input** — Press-and-hold the mic button for real-time transcription
 - **TTS playback** — Assistant replies can be spoken aloud via `expo-speech`
-- **Hands-free mode** — Toggle VAD (Voice Activity Detection) for no-hands interaction
+- **Hands-free mode** — Toggle no-hands listening, auto-send after silence, interrupt TTS with voice, and use Android locked-screen capture
 - **Edit mode** — Release the mic while in edit state to place the transcript in the input box for review before sending
 
 ### Settings Screen
@@ -132,19 +132,42 @@ Multi-agent conversation view:
 3. **Release to send** — the transcript is immediately sent to the agent
 4. Or **release in edit mode** — the transcript goes into the text box for review
 
-### Hands-Free Mode (VAD)
+### Hands-Free Mode
 
 1. **Toggle** hands-free from the chat screen header (microphone icon)
-2. The app **listens continuously** using Voice Activity Detection
-3. When speech is detected, it **automatically transcribes**
-4. On silence (end of speech segment), it **automatically sends**
-5. Great for driving, cooking, or any hands-busy scenario
+2. If the status chip says **Sleeping**, tap **Wake** or say the configured wake phrase (default: `hey dot agents`)
+3. Speak after the listening cue
+4. Pause briefly; after the configured silence window, the app **automatically sends**
+5. Say the sleep phrase (default: `go to sleep`) to return to sleep
+6. While the assistant is speaking, say `wait` or `stop` to stop TTS and return to listening
+
+Hands-free mode is designed for driving, cooking, or any hands-busy scenario. The Chat screen includes a help button beside the hands-free status chip, and first-time users see a short guide modal.
+
+#### Audio Cues
+
+Hands-free mode plays short non-speech cues so you can use it without looking at the screen:
+
+- Rising tones: listening
+- Two short tones: processing
+- Falling tones: stopped or sleeping
+- Repeated low tones: error
+
+#### Locked-Screen Use On Android
+
+Android can keep hands-free capture and assistant TTS active after the phone locks:
+
+1. Open **Settings**
+2. Turn **Foreground Only** off
+3. Return to Chat and enable hands-free mode before locking the phone
+
+The app starts a visible microphone foreground service. Keep the notification active while testing locked-screen conversations.
 
 ### Text-to-Speech
 
 - Assistant replies can be read aloud via `expo-speech`
 - Configure voice and auto-play preferences in Settings
 - Works across all platforms (iOS, Android, Web)
+- In hands-free mode, TTS starts only after audio playback actually begins. If you say `wait` or `stop` during playback, TTS stops and the app listens again.
 
 ## Architecture
 

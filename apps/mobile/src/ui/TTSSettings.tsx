@@ -6,7 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeProvider';
 import { Theme, spacing, radius } from './theme';
 import { isEnglishVoice, sortVoicesForTtsPicker } from '../lib/ttsVoices';
-import { speakRemoteTts, stopRemoteTts } from '../lib/remoteTts';
+import { speakRemoteTts } from '../lib/remoteTts';
+import {
+  beginGlobalTtsPlayback,
+  completeGlobalTtsPlayback,
+  markGlobalTtsPlaybackSpeaking,
+  stopGlobalTtsPlayback,
+} from '../store/ttsPlayback';
 
 export type Voice = {
   identifier: string;
@@ -170,8 +176,7 @@ export function TTSSettings({
 
   const testVoice = () => {
     // Stop any in-flight playback before testing
-    Speech.stop();
-    stopRemoteTts();
+    stopGlobalTtsPlayback();
 
     if (selectedVoice?.provider === 'edge') {
       if (!edgeTtsAvailable || !remoteBaseUrl || !remoteApiKey) {
@@ -181,26 +186,45 @@ export function TTSSettings({
         );
         return;
       }
+      const playbackId = beginGlobalTtsPlayback({
+        source: 'settings',
+        status: 'loading',
+        text: TTS_TEST_PHRASE,
+      });
       void speakRemoteTts(TTS_TEST_PHRASE, {
         baseUrl: remoteBaseUrl,
         apiKey: remoteApiKey,
         providerId: 'edge',
         voice: selectedVoice.identifier,
         rate,
+        onDone: () => completeGlobalTtsPlayback(playbackId),
+        onStopped: () => completeGlobalTtsPlayback(playbackId),
         onError: () => {
+          completeGlobalTtsPlayback(playbackId);
           Alert.alert(
             EDGE_TTS_FAILED_TITLE,
             EDGE_TTS_FAILED_MESSAGE,
           );
         },
+      }).then((started) => {
+        if (started) {
+          markGlobalTtsPlaybackSpeaking(playbackId);
+        }
       });
       return;
     }
 
+    const playbackId = beginGlobalTtsPlayback({
+      source: 'settings',
+      text: TTS_TEST_PHRASE,
+    });
     const options: Speech.SpeechOptions = {
       language: 'en-US',
       rate,
       pitch,
+      onDone: () => completeGlobalTtsPlayback(playbackId),
+      onStopped: () => completeGlobalTtsPlayback(playbackId),
+      onError: () => completeGlobalTtsPlayback(playbackId),
     };
     if (selectedVoice?.provider === 'native') {
       options.voice = selectedVoice.identifier;

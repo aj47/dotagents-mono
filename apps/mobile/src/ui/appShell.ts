@@ -125,7 +125,6 @@ export const APP_SHELL_MOBILE_ROUTE_TITLES = {
   ConnectionSettings: 'Connection',
   Operations: 'Operations',
   Sessions: 'Chats',
-  SplitChat: 'Split View',
   Chat: 'Chat',
   AgentEdit: 'Agent',
   KnowledgeNoteEdit: 'Note',
@@ -142,7 +141,7 @@ export function shouldHideMobileStackHeaderForDesktopShell(routeName: string): b
 }
 
 export function getMobilePrimaryNavItemId(routeName: string): AppShellPrimaryNavItemId {
-  if (routeName === 'Sessions' || routeName === 'Chat' || routeName === 'SplitChat') return 'sessions';
+  if (routeName === 'Sessions' || routeName === 'Chat') return 'sessions';
   if (routeName === 'Settings') return 'settings';
   return 'sessions';
 }

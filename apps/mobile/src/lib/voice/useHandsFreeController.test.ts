@@ -105,6 +105,22 @@ describe('resolveHandsFreeUtterance', () => {
     expect(result.nextState.lastTranscript).toBe('tell me a joke');
   });
 
+  it('sends direct foreground speech while sleeping when explicitly allowed', () => {
+    const result = resolveHandsFreeUtterance({
+      state: createInitialHandsFreeState(),
+      transcript: 'tell me a joke',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      allowDirectSpeechWhileSleeping: true,
+      now: 100,
+    });
+
+    expect(result.action).toEqual({ type: 'send', text: 'tell me a joke' });
+    expect(result.nextState.phase).toBe('processing');
+    expect(result.nextState.resumePhase).toBe('listening');
+    expect(result.nextState.awakeSince).toBe(100);
+  });
+
   it('wakes without sending when only the wake phrase is heard', () => {
     const result = resolveHandsFreeUtterance({
       state: createInitialHandsFreeState(),
@@ -160,7 +176,7 @@ describe('resolveHandsFreeUtterance', () => {
     expect(result.nextState.phase).toBe('processing');
   });
 
-  it('queues another utterance while already processing', () => {
+  it('sends non-control speech while already processing so the chat queue can capture follow-ups', () => {
     const result = resolveHandsFreeUtterance({
       state: { ...createInitialHandsFreeState(), phase: 'processing', awakeSince: 100, resumePhase: 'listening' },
       transcript: 'also draft a summary email',
@@ -172,6 +188,34 @@ describe('resolveHandsFreeUtterance', () => {
     expect(result.action).toEqual({ type: 'send', text: 'also draft a summary email' });
     expect(result.nextState.phase).toBe('processing');
     expect(result.nextState.lastTranscript).toBe('also draft a summary email');
+  });
+
+  it('sends the wake phrase remainder while already processing', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'processing', awakeSince: 100, resumePhase: 'listening' },
+      transcript: 'hey dot agents also check my calendar',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 255,
+    });
+
+    expect(result.action).toEqual({ type: 'send', text: 'also check my calendar' });
+    expect(result.nextState.phase).toBe('processing');
+    expect(result.matchedWake).toBe(true);
+  });
+
+  it('ignores non-control speech while assistant audio is speaking', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'speaking', awakeSince: 100, resumePhase: 'listening' },
+      transcript: 'this sounds like assistant audio leaking back into the mic',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 250,
+    });
+
+    expect(result.action).toEqual({ type: 'none' });
+    expect(result.nextState.phase).toBe('speaking');
+    expect(result.nextState.lastTranscript).toBe('this sounds like assistant audio leaking back into the mic');
   });
 
   it('honors sleep phrase while processing', () => {
@@ -280,6 +324,30 @@ describe('resolveHandsFreeUtterance', () => {
     expect(controller.shouldKeepRecognizerActive).toBe(true);
   });
 
+  it('treats Android server-disconnected recognizer errors as recoverable', async () => {
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      enabled: true,
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+    controller.wakeByUser();
+
+    controller = runtime.render(useHook, options);
+    controller.onRecognizerError('Server disconnected');
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('listening');
+    expect(controller.state.lastError).toBeNull();
+    expect(controller.state.recognizerErrorCount).toBe(0);
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
+
   it('does not automatically return an idle awake session to sleep', async () => {
     vi.useFakeTimers();
     const runtime = createHookRuntime();
@@ -332,7 +400,7 @@ describe('resolveHandsFreeUtterance', () => {
     expect(controller.shouldKeepRecognizerActive).toBe(true);
   });
 
-  it('keeps the recognizer active while processing so overlapping utterances can be queued', async () => {
+  it('keeps the recognizer armed while processing to avoid audio route churn', async () => {
     const runtime = createHookRuntime();
     const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
     const options = {

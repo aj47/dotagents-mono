@@ -22,6 +22,7 @@ type ResolveHandsFreeUtteranceArgs = {
   transcript: string;
   wakePhrase: string;
   sleepPhrase: string;
+  allowDirectSpeechWhileSleeping?: boolean;
   now: number;
 };
 
@@ -30,12 +31,17 @@ type HandsFreeControllerOptions = {
   runtimeActive: boolean;
   wakePhrase: string;
   sleepPhrase: string;
+  allowDirectSpeechWhileSleeping?: boolean;
   log?: VoiceDebugLog;
   repeatedErrorThreshold?: number;
 };
 
 const DEFAULT_REPEATED_ERROR_THRESHOLD = 3;
 const BENIGN_RECOGNIZER_ERRORS = new Set(['no-speech', 'aborted']);
+const BENIGN_RECOGNIZER_ERROR_PATTERNS = [
+  /server\s+disconnected/i,
+  /server[_-]disconnected/i,
+];
 
 export function createInitialHandsFreeState(): HandsFreeControllerState {
   return {
@@ -90,7 +96,9 @@ function transitionToSleeping(state: HandsFreeControllerState): HandsFreeControl
 }
 
 export function isBenignHandsFreeRecognizerError(message: string): boolean {
-  return BENIGN_RECOGNIZER_ERRORS.has(message.trim().toLowerCase());
+  const normalized = message.trim().toLowerCase();
+  return BENIGN_RECOGNIZER_ERRORS.has(normalized)
+    || BENIGN_RECOGNIZER_ERROR_PATTERNS.some((pattern) => pattern.test(message));
 }
 
 export function getHandsFreeStatusLabel(phase: HandsFreePhase): string {
@@ -119,6 +127,7 @@ export function resolveHandsFreeUtterance({
   transcript,
   wakePhrase,
   sleepPhrase,
+  allowDirectSpeechWhileSleeping = false,
   now,
 }: ResolveHandsFreeUtteranceArgs): {
   nextState: HandsFreeControllerState;
@@ -143,6 +152,23 @@ export function resolveHandsFreeUtterance({
   if (state.phase === 'sleeping') {
     const wakeMatch = matchWakePhrase(normalizedTranscript, wakePhrase);
     if (!wakeMatch.matched) {
+      if (allowDirectSpeechWhileSleeping) {
+        return {
+          nextState: {
+            ...state,
+            phase: 'processing',
+            resumePhase: 'listening',
+            awakeSince: state.awakeSince ?? now,
+            lastTranscript: normalizedTranscript,
+            lastError: null,
+            recognizerErrorCount: 0,
+          },
+          action: { type: 'send', text: normalizedTranscript },
+          matchedWake: false,
+          matchedSleep: false,
+        };
+      }
+
       return {
         nextState: { ...state, lastTranscript: normalizedTranscript },
         action: { type: 'none' },
@@ -213,7 +239,7 @@ export function resolveHandsFreeUtterance({
     };
   }
 
-  if (state.phase === 'processing' || state.phase === 'speaking') {
+  if (state.phase === 'speaking') {
     const sleepMatch = matchSleepPhrase(normalizedTranscript, sleepPhrase);
     if (sleepMatch.matched) {
       return {
@@ -229,24 +255,52 @@ export function resolveHandsFreeUtterance({
 
     const wakeMatch = matchWakePhrase(normalizedTranscript, wakePhrase);
     if (wakeMatch.matched) {
-      if (wakeMatch.remainder) {
-        return {
-          nextState: {
-            ...state,
-            lastTranscript: wakeMatch.remainder,
-          },
-          action: { type: 'send', text: wakeMatch.remainder },
-          matchedWake: true,
-          matchedSleep: false,
-        };
-      }
-
       return {
         nextState: {
           ...state,
-          lastTranscript: wakeMatch.normalizedTranscript,
+          lastTranscript: wakeMatch.remainder || wakeMatch.normalizedTranscript,
         },
         action: { type: 'none' },
+        matchedWake: true,
+        matchedSleep: false,
+      };
+    }
+
+    return {
+      nextState: {
+        ...state,
+        lastTranscript: normalizedTranscript,
+      },
+      action: { type: 'none' },
+      matchedWake: false,
+      matchedSleep: false,
+    };
+  }
+
+  if (state.phase === 'processing') {
+    const sleepMatch = matchSleepPhrase(normalizedTranscript, sleepPhrase);
+    if (sleepMatch.matched) {
+      return {
+        nextState: {
+          ...transitionToSleeping(state),
+          lastTranscript: sleepMatch.normalizedTranscript,
+        },
+        action: { type: 'none' },
+        matchedWake: false,
+        matchedSleep: true,
+      };
+    }
+
+    const wakeMatch = matchWakePhrase(normalizedTranscript, wakePhrase);
+    if (wakeMatch.matched) {
+      return {
+        nextState: {
+          ...state,
+          lastTranscript: wakeMatch.remainder || wakeMatch.normalizedTranscript,
+        },
+        action: wakeMatch.remainder
+          ? { type: 'send', text: wakeMatch.remainder }
+          : { type: 'none' },
         matchedWake: true,
         matchedSleep: false,
       };
@@ -277,6 +331,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     runtimeActive,
     wakePhrase,
     sleepPhrase,
+    allowDirectSpeechWhileSleeping = false,
     log,
     repeatedErrorThreshold = DEFAULT_REPEATED_ERROR_THRESHOLD,
   } = options;
@@ -366,6 +421,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
       transcript,
       wakePhrase,
       sleepPhrase,
+      allowDirectSpeechWhileSleeping,
       now: Date.now(),
     });
     updateState(() => result.nextState);
@@ -386,7 +442,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     }
 
     return result.action;
-  }, [log, sleepPhrase, updateState, wakePhrase]);
+  }, [allowDirectSpeechWhileSleeping, log, sleepPhrase, updateState, wakePhrase]);
 
   const onRequestStarted = useCallback(() => {
     updateState((prev) => ({
@@ -525,10 +581,8 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     () => enabled
       && runtimeActive
       && state.pauseReason !== 'user'
-      && (state.phase === 'sleeping'
-        || state.phase === 'waking'
-        || state.phase === 'listening'
-        || state.phase === 'processing'),
+      && state.phase !== 'paused'
+      && state.phase !== 'error',
     [enabled, runtimeActive, state.phase, state.pauseReason],
   );
 

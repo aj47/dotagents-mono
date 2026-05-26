@@ -12,6 +12,7 @@ export type AppConfig = {
   handsFreeSleepPhrase?: string; // sleep phrase for foreground handsfree mode
   handsFreeDebug?: boolean; // show structured handsfree debug state/events in chat
   handsFreeForegroundOnly?: boolean; // v1 safeguard: only run while chat is foregrounded
+  handsFreeForegroundOnlyConfigured?: boolean; // true once the user explicitly changes the foreground-only toggle
   ttsEnabled?: boolean; // text-to-speech toggle (optional for backward compatibility)
   ttsProvider?: 'native' | 'edge';
   messageQueueEnabled?: boolean; // message queue toggle (allows queuing messages while agent is busy)
@@ -64,6 +65,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   handsFreeSleepPhrase: DEFAULT_HANDS_FREE_SLEEP_PHRASE,
   handsFreeDebug: false,
   handsFreeForegroundOnly: true,
+  handsFreeForegroundOnlyConfigured: false,
   ttsEnabled: true,
   ttsProvider: 'native',
   messageQueueEnabled: true,
@@ -81,6 +83,7 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
   // so if no desktop is paired fall back to native.
   const hasPairing = Boolean(cfg.baseUrl && cfg.apiKey);
   const ttsProvider = cfg.ttsProvider === 'edge' && !hasPairing ? 'native' : cfg.ttsProvider;
+  const handsFreeForegroundOnlyConfigured = cfg.handsFreeForegroundOnlyConfigured === true;
   return {
     ...DEFAULT_APP_CONFIG,
     ...cfg,
@@ -90,6 +93,7 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
     handsFreeSleepPhrase: cfg.handsFreeSleepPhrase?.trim() || DEFAULT_HANDS_FREE_SLEEP_PHRASE,
     handsFreeDebug: cfg.handsFreeDebug ?? false,
     handsFreeForegroundOnly: cfg.handsFreeForegroundOnly ?? true,
+    handsFreeForegroundOnlyConfigured,
     edgeTtsVoice: migrateEdgeTtsVoice(cfg.edgeTtsVoice),
     ttsProvider,
   };

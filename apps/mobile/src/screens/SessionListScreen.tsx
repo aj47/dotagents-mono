@@ -9,13 +9,16 @@ import { useConfigContext } from '../store/config';
 import { useSessionContext, SessionStore, normalizeSessionTitleText } from '../store/sessions';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
-import { useProfile } from '../store/profile';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
-import { AgentSelectorSheet } from '../ui/AgentSelectorSheet';
+import { GlobalTtsStatusPill } from '../ui/GlobalTtsStatusPill';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { SessionListItem, isStubSession } from '../types/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createTextInputAccessibilityLabel } from '../lib/accessibility';
+import {
+  mergeVoiceText as mergeRecognizedVoiceText,
+  normalizeVoiceText as normalizeRecognizedVoiceText,
+} from '../lib/voice/mergeVoiceText';
 import { filterSessionSearchResults, type SessionSearchResult } from './session-list-search';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
@@ -32,8 +35,6 @@ export default function SessionListScreen({ navigation }: Props) {
   const { config } = useConfigContext();
   const connectionManager = useConnectionManager();
   const { connectionInfo, isInitialized } = useTunnelConnection();
-  const { currentProfile } = useProfile();
-  const [agentSelectorVisible, setAgentSelectorVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sessionListMode, setSessionListMode] = useState<'active' | 'archived'>('active');
   const [renameSession, setRenameSession] = useState<SessionListItem | null>(null);
@@ -70,32 +71,8 @@ export default function SessionListScreen({ navigation }: Props) {
     else console.log(`[RapidFireDebug] ${msg}`);
   }, []);
 
-  const normalizeVoiceText = useCallback((t?: string) => (t || '').replace(/\s+/g, ' ').trim(), []);
-  const mergeVoiceText = useCallback((base?: string, live?: string) => {
-    const a = normalizeVoiceText(base);
-    const b = normalizeVoiceText(live);
-    if (!a) return b;
-    if (!b) return a;
-    if (a === b) return a;
-    if (b.startsWith(a)) return b;
-    if (a.startsWith(b)) return a;
-    const bWordBoundary = new RegExp(`(?:^|\\s)${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
-    if (bWordBoundary.test(a)) return a;
-    const aWordBoundary = new RegExp(`(?:^|\\s)${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
-    if (aWordBoundary.test(b)) return b;
-    const aWords = a.split(' ');
-    const bWords = b.split(' ');
-    const maxOverlap = Math.min(aWords.length, bWords.length);
-    for (let k = maxOverlap; k > 0; k--) {
-      const aSuffix = aWords.slice(-k).join(' ');
-      const bPrefix = bWords.slice(0, k).join(' ');
-      if (aSuffix === bPrefix) {
-        const prefix = aWords.slice(0, aWords.length - k).join(' ');
-        return normalizeVoiceText(`${prefix} ${b}`);
-      }
-    }
-    return normalizeVoiceText(`${a} ${b}`);
-  }, [normalizeVoiceText]);
+  const normalizeVoiceText = useCallback((t?: string) => normalizeRecognizedVoiceText(t), []);
+  const mergeVoiceText = useCallback((base?: string, live?: string) => mergeRecognizedVoiceText(base, live), []);
 
   const rfBuildMessagesFromHistory = useCallback((history: any[]): ChatMessage[] => {
     if (!history || history.length === 0) return [];
@@ -614,9 +591,16 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation.navigate('Settings');
   }, [navigation]);
 
-  const handleOpenSplitView = useCallback(() => {
-    navigation.navigate('SplitChat');
-  }, [navigation]);
+  const handleOpenGlobalTtsSession = useCallback((sessionId: string) => {
+    if (!sessionId) return;
+    if (!sessionStore.sessions.some(session => session.id === sessionId)) {
+      return;
+    }
+    if (sessionStore.currentSessionId !== sessionId) {
+      sessionStore.setCurrentSession(sessionId);
+    }
+    navigation.navigate('Chat');
+  }, [navigation, sessionStore]);
 
   const handleOpenConnectionSettings = useCallback((openScanner = false) => {
     if (openScanner) {
@@ -630,34 +614,13 @@ export default function SessionListScreen({ navigation }: Props) {
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerTitle: () => (
-        <TouchableOpacity
-          style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-          onPress={() => setAgentSelectorVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Current agent: ${currentProfile?.name || 'Default'}. Tap to change.`}
-          accessibilityHint="Opens agent selection menu"
-        >
+        <View style={{ flexDirection: 'column', alignItems: 'center', justifyContent: 'center', maxWidth: 210 }}>
           <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.foreground }}>Chats</Text>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 3,
-            backgroundColor: theme.colors.primary + '33',
-            paddingHorizontal: 8,
-            paddingVertical: 2,
-            borderRadius: 10,
-            marginTop: 2,
-          }}>
-            <Text style={{
-              fontSize: 11,
-              color: theme.colors.primary,
-              fontWeight: '500',
-            }}>
-              {currentProfile?.name || 'Default'}
-            </Text>
-            <Ionicons name="chevron-down" size={10} color={theme.colors.primary} />
-          </View>
-        </TouchableOpacity>
+          <GlobalTtsStatusPill
+            compact
+            onOpenSession={handleOpenGlobalTtsSession}
+          />
+        </View>
       ),
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -666,15 +629,6 @@ export default function SessionListScreen({ navigation }: Props) {
             retryCount={connectionInfo.retryCount}
             compact
           />
-          <TouchableOpacity
-            onPress={handleOpenSplitView}
-            style={styles.headerSettingsButton}
-            accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel('Open split view')}
-            accessibilityHint="Opens two chats at once for comparison"
-          >
-            <Ionicons name="git-compare-outline" size={18} color={theme.colors.foreground} />
-          </TouchableOpacity>
           <TouchableOpacity
             onPress={handleCreateSession}
             style={styles.headerNewChatButton}
@@ -696,20 +650,7 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, currentProfile, setAgentSelectorVisible, handleCreateSession, handleOpenSettings, handleOpenSplitView]);
-
-  if (!sessionStore.ready || !isInitialized) {
-    return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <Image
-          source={isDark ? darkSpinner : lightSpinner}
-          style={styles.spinner}
-          resizeMode="contain"
-        />
-        <Text style={styles.loadingText}>Loading chats...</Text>
-      </View>
-    );
-  }
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, handleCreateSession, handleOpenSettings, handleOpenGlobalTtsSession]);
 
   const handleSelectSession = async (sessionId: string) => {
     const selectedSession = sessionStore.sessions.find(s => s.id === sessionId) || null;
@@ -1091,6 +1032,19 @@ export default function SessionListScreen({ navigation }: Props) {
                 ? 'Rapid Fire failed. Try again.'
                 : 'Hold to talk (Rapid Fire)';
 
+  if (!sessionStore.ready || !isInitialized) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Image
+          source={isDark ? darkSpinner : lightSpinner}
+          style={styles.spinner}
+          resizeMode="contain"
+        />
+        <Text style={styles.loadingText}>Loading chats...</Text>
+      </View>
+    );
+  }
+
   if (!isConnected) {
     return (
       <View style={[styles.container, styles.disconnectedContainer, { paddingBottom: insets.bottom }] }>
@@ -1262,10 +1216,6 @@ export default function SessionListScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
-      <AgentSelectorSheet
-        visible={agentSelectorVisible}
-        onClose={() => setAgentSelectorVisible(false)}
-      />
     </View>
   );
 }

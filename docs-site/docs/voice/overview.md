@@ -44,13 +44,29 @@ Instead of holding a key, toggle dictation on and off:
 
 ### Hands-Free Mode (Mobile)
 
-On the mobile app, hands-free mode uses Voice Activity Detection (VAD):
+On the mobile app, hands-free mode is built for screen-off or hands-busy conversations:
 
 1. Toggle the **microphone icon** in the chat header
-2. The app listens continuously
-3. When you speak, it transcribes automatically
-4. When you stop speaking, it sends the message
-5. Perfect for driving, cooking, or multitasking
+2. If the status chip says **Sleeping**, tap **Wake** or say the wake phrase (default: `hey dot agents`)
+3. Speak after the listening cue
+4. Pause briefly; the app sends after the configured silence window
+5. Say the sleep phrase (default: `go to sleep`) to return to sleep
+6. While the assistant is speaking, say `wait` or `stop` to stop TTS playback and return to listening
+
+The mobile app includes a hands-free guide modal the first time you enable the mode. You can reopen it from the help button beside the hands-free status chip.
+
+#### Mobile Audio Cues
+
+Hands-free mode uses short sounds for screen-off operation:
+
+- Rising tones: listening
+- Two short tones: processing
+- Falling tones: stopped or sleeping
+- Repeated low tones: error
+
+#### Android Locked-Screen Mode
+
+On Android, turn **Foreground Only** off in mobile Settings before locking the phone. DotAgents starts a visible microphone foreground service so speech recognition and TTS can continue while the phone is locked.
 
 ### Text Input
 

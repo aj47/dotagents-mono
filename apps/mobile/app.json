@@ -22,6 +22,7 @@
         "NSCameraUsageDescription": "This app uses the camera to scan QR codes for configuration.",
         "NSUserNotificationsUsageDescription": "This app sends notifications when new messages arrive from your AI assistant.",
         "UIBackgroundModes": [
+          "audio",
           "remote-notification"
         ]
       }
@@ -35,7 +36,10 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "RECORD_AUDIO",
-        "CAMERA"
+        "CAMERA",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "POST_NOTIFICATIONS"
       ],
       "package": "com.aj47.dotagents"
     },
