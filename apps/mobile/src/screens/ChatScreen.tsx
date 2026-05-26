@@ -94,6 +94,7 @@ import {
   createVoiceInputLiveRegionAnnouncement,
 } from '../lib/accessibility';
 import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
+import { mergeVoiceText, normalizeVoiceText } from '../lib/voice/mergeVoiceText';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useStableForeground } from '../lib/voice/useStableForeground';
 import {
@@ -438,8 +439,6 @@ const getMessageLogMeta = (content: string) => ({
   inlineImageCount: (content.match(/!\[[^\]]*\]\((?:data:image\/[^)]+)\)/gi) || []).length,
 });
 
-const normalizeVoiceText = (text?: string) => (text || '').replace(/\s+/g, ' ').trim();
-
 type RecentHandsFreeSend = {
   sessionId: string | null;
   text: string;
@@ -465,27 +464,6 @@ const isRecentGlobalHandsFreeSendDuplicate = (
   }
   recentGlobalHandsFreeSend = { sessionId, text: normalizedText, timestamp: now };
   return false;
-};
-
-const mergeVoiceText = (base?: string, live?: string) => {
-	const a = normalizeVoiceText(base);
-	const b = normalizeVoiceText(live);
-	if (!a) return b;
-	if (!b) return a;
-	if (a === b) return a;
-	if (b.startsWith(a)) return b;
-	if (a.startsWith(b)) return a;
-	const aWords = a.split(' ');
-	const bWords = b.split(' ');
-	const maxOverlap = Math.min(aWords.length, bWords.length);
-	for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
-		const aSuffix = aWords.slice(-overlap).join(' ');
-		const bPrefix = bWords.slice(0, overlap).join(' ');
-		if (aSuffix === bPrefix) {
-			return normalizeVoiceText(`${a} ${bWords.slice(overlap).join(' ')}`);
-		}
-	}
-	return normalizeVoiceText(`${a} ${b}`);
 };
 
 const getCollapsedMessagePreview = (content: string) =>

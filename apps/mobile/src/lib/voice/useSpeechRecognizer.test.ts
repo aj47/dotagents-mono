@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { mergeVoiceText } from './mergeVoiceText';
+import { mergeVoiceText, normalizeVoiceText } from './mergeVoiceText';
 
 type EffectRecord = {
   callback?: () => void | (() => void);
@@ -183,6 +183,18 @@ describe('mergeVoiceText', () => {
   });
   it('preserves non-overlapping chunks in order', () => {
     expect(mergeVoiceText('summarize my', 'latest emails')).toBe('summarize my latest emails');
+  });
+  it('collapses repeated word runs in a single recognizer candidate', () => {
+    expect(normalizeVoiceText('what is the weather what is the weather today')).toBe('what is the weather today');
+    expect(normalizeVoiceText('go to to settings')).toBe('go to settings');
+  });
+  it('collapses repeated cumulative prefixes before sending', () => {
+    expect(mergeVoiceText('open settings', 'open settings open settings and turn on hands free')).toBe(
+      'open settings and turn on hands free',
+    );
+  });
+  it('matches overlap despite case or punctuation changes', () => {
+    expect(mergeVoiceText('Turn on the lights.', 'lights in the kitchen')).toBe('Turn on the lights in the kitchen');
   });
 });
 

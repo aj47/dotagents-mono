@@ -15,6 +15,10 @@ import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { SessionListItem, isStubSession } from '../types/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createTextInputAccessibilityLabel } from '../lib/accessibility';
+import {
+  mergeVoiceText as mergeRecognizedVoiceText,
+  normalizeVoiceText as normalizeRecognizedVoiceText,
+} from '../lib/voice/mergeVoiceText';
 import { filterSessionSearchResults, type SessionSearchResult } from './session-list-search';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
@@ -67,32 +71,8 @@ export default function SessionListScreen({ navigation }: Props) {
     else console.log(`[RapidFireDebug] ${msg}`);
   }, []);
 
-  const normalizeVoiceText = useCallback((t?: string) => (t || '').replace(/\s+/g, ' ').trim(), []);
-  const mergeVoiceText = useCallback((base?: string, live?: string) => {
-    const a = normalizeVoiceText(base);
-    const b = normalizeVoiceText(live);
-    if (!a) return b;
-    if (!b) return a;
-    if (a === b) return a;
-    if (b.startsWith(a)) return b;
-    if (a.startsWith(b)) return a;
-    const bWordBoundary = new RegExp(`(?:^|\\s)${b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
-    if (bWordBoundary.test(a)) return a;
-    const aWordBoundary = new RegExp(`(?:^|\\s)${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`);
-    if (aWordBoundary.test(b)) return b;
-    const aWords = a.split(' ');
-    const bWords = b.split(' ');
-    const maxOverlap = Math.min(aWords.length, bWords.length);
-    for (let k = maxOverlap; k > 0; k--) {
-      const aSuffix = aWords.slice(-k).join(' ');
-      const bPrefix = bWords.slice(0, k).join(' ');
-      if (aSuffix === bPrefix) {
-        const prefix = aWords.slice(0, aWords.length - k).join(' ');
-        return normalizeVoiceText(`${prefix} ${b}`);
-      }
-    }
-    return normalizeVoiceText(`${a} ${b}`);
-  }, [normalizeVoiceText]);
+  const normalizeVoiceText = useCallback((t?: string) => normalizeRecognizedVoiceText(t), []);
+  const mergeVoiceText = useCallback((base?: string, live?: string) => mergeRecognizedVoiceText(base, live), []);
 
   const rfBuildMessagesFromHistory = useCallback((history: any[]): ChatMessage[] => {
     if (!history || history.length === 0) return [];
