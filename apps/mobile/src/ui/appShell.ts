@@ -126,6 +126,7 @@ export const APP_SHELL_MOBILE_ROUTE_TITLES = {
   Operations: 'Operations',
   Sessions: 'Chats',
   Chat: 'Chat',
+  RealtimeChat: 'Realtime',
   AgentEdit: 'Agent',
   KnowledgeNoteEdit: 'Note',
   LoopEdit: 'Loop',
@@ -141,7 +142,7 @@ export function shouldHideMobileStackHeaderForDesktopShell(routeName: string): b
 }
 
 export function getMobilePrimaryNavItemId(routeName: string): AppShellPrimaryNavItemId {
-  if (routeName === 'Sessions' || routeName === 'Chat') return 'sessions';
+  if (routeName === 'Sessions' || routeName === 'Chat' || routeName === 'RealtimeChat') return 'sessions';
   if (routeName === 'Settings') return 'settings';
   return 'sessions';
 }

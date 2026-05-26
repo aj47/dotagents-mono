@@ -56,6 +56,7 @@ import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } 
 import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { generateTTS } from "./tts-service"
+import { registerRealtimeProxy } from "./realtime-proxy"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -227,7 +228,14 @@ async function getMergedModelPresetState(cfg: Pick<Config, "modelPresets" | "ope
   const mergedBuiltInPresets = builtInPresets.map((builtIn) => {
     const savedOverride = savedPresets.find((preset) => preset.id === builtIn.id)
     const mergedPreset: ModelPreset = savedOverride
-      ? { ...builtIn, ...savedOverride, isBuiltIn: true }
+      ? {
+          ...builtIn,
+          ...savedOverride,
+          id: builtIn.id,
+          name: builtIn.name,
+          baseUrl: builtIn.baseUrl,
+          isBuiltIn: true,
+        }
       : { ...builtIn, isBuiltIn: true }
 
     if (mergedPreset.id === DEFAULT_MODEL_PRESET_ID && !mergedPreset.apiKey && cfg.openaiApiKey) {
@@ -2203,6 +2211,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
   // include long conversation histories. Raise it to 50MB to accommodate large payloads
   // (mobile clients send the full message history on each /v1/chat/completions call).
   const fastify = Fastify({ logger: { level: logLevel }, bodyLimit: 50 * 1024 * 1024 })
+
+  const unregisterRealtimeProxy = registerRealtimeProxy({
+    server: fastify.server,
+    getConfig: () => configStore.get(),
+    getRemoteServerApiKey: () => getResolvedRemoteServerApiKey(configStore.get()),
+    logger: {
+      info: (message, details) => diagnosticsService.logInfo("remote-server", details ? `${message}: ${JSON.stringify(details)}` : message),
+      warning: (message, details) => diagnosticsService.logWarning("remote-server", message, details),
+      error: (message, details) => diagnosticsService.logError("remote-server", message, details),
+    },
+  })
+
+  fastify.addHook("onClose", async () => {
+    unregisterRealtimeProxy()
+  })
 
   // Configure CORS
   const corsOrigins = cfg.remoteServerCorsOrigins || ["*"]
@@ -4694,6 +4717,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     try {
       const cfg = configStore.get()
       const { defaultModelPresetId, presets } = await getMergedModelPresetState(cfg)
+      const currentModelPresetId = cfg.currentModelPresetId || defaultModelPresetId
+      const currentPreset = presets.find((preset) => preset.id === currentModelPresetId)
 
       return reply.send({
         // Agent model settings (agent* preferred; mcpTools* legacy aliases)
@@ -4710,7 +4735,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         openaiReasoningEffort: cfg.openaiReasoningEffort,
         codexTextVerbosity: cfg.codexTextVerbosity,
         openaiApiKey: cfg.openaiApiKey ? REMOTE_SERVER_SECRET_MASK : "",
-        openaiBaseUrl: cfg.openaiBaseUrl ?? "",
+        openaiBaseUrl: currentPreset?.baseUrl || cfg.openaiBaseUrl || "",
         groqApiKey: cfg.groqApiKey ? REMOTE_SERVER_SECRET_MASK : "",
         groqBaseUrl: cfg.groqBaseUrl ?? "",
         geminiApiKey: cfg.geminiApiKey ? REMOTE_SERVER_SECRET_MASK : "",
@@ -4719,7 +4744,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         chatgptWebSessionToken: cfg.chatgptWebSessionToken ? REMOTE_SERVER_SECRET_MASK : "",
         chatgptWebBaseUrl: cfg.chatgptWebBaseUrl ?? "",
         // OpenAI compatible preset settings
-        currentModelPresetId: cfg.currentModelPresetId || defaultModelPresetId,
+        currentModelPresetId,
         availablePresets: presets.map(formatModelPresetSummary),
         predefinedPrompts: (cfg.predefinedPrompts || []).map(prompt => ({
           id: prompt.id,

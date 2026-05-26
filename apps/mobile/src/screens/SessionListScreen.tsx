@@ -587,6 +587,10 @@ export default function SessionListScreen({ navigation }: Props) {
     navigation.navigate('Chat');
   }, [navigation, sessionStore]);
 
+  const handleOpenRealtime = useCallback(() => {
+    navigation.navigate('RealtimeChat');
+  }, [navigation]);
+
   const handleOpenSettings = useCallback(() => {
     navigation.navigate('Settings');
   }, [navigation]);
@@ -630,6 +634,15 @@ export default function SessionListScreen({ navigation }: Props) {
             compact
           />
           <TouchableOpacity
+            onPress={handleOpenRealtime}
+            style={styles.headerRealtimeButton}
+            accessibilityRole="button"
+            accessibilityLabel={createButtonAccessibilityLabel('Open Realtime prototype')}
+            accessibilityHint="Opens the GPT Realtime hands-free prototype."
+          >
+            <Text style={styles.headerRealtimeButtonText}>Realtime</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={handleCreateSession}
             style={styles.headerNewChatButton}
             accessibilityRole="button"
@@ -650,7 +663,7 @@ export default function SessionListScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, handleCreateSession, handleOpenSettings, handleOpenGlobalTtsSession]);
+  }, [navigation, styles, theme, connectionInfo.state, connectionInfo.retryCount, handleCreateSession, handleOpenRealtime, handleOpenSettings, handleOpenGlobalTtsSession]);
 
   const handleSelectSession = async (sessionId: string) => {
     const selectedSession = sessionStore.sessions.find(s => s.id === sessionId) || null;
@@ -1258,6 +1271,22 @@ function createStyles(theme: Theme, screenHeight: number) {
       color: theme.colors.primaryForeground,
       fontSize: 12,
       fontWeight: '600',
+    },
+    headerRealtimeButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.sm,
+        verticalPadding: spacing.xs,
+        horizontalMargin: 0,
+      }),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: radius.lg,
+      marginLeft: spacing.xs,
+    },
+    headerRealtimeButtonText: {
+      color: theme.colors.primary,
+      fontSize: 12,
+      fontWeight: '700',
     },
     sessionActionTouchTarget: {
       ...createMinimumTouchTargetStyle({

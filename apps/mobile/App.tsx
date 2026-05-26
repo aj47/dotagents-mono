@@ -3,6 +3,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme, useNavigationContainerRef
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ChatScreen from './src/screens/ChatScreen';
+import RealtimeChatScreen from './src/screens/RealtimeChatScreen';
 import SessionListScreen from './src/screens/SessionListScreen';
 import ConnectionSettingsScreen from './src/screens/ConnectionSettingsScreen';
 import OperationsScreen from './src/screens/OperationsScreen';
@@ -555,6 +556,11 @@ function Navigation() {
                           options={{ title: 'Chats' }}
                         />
                         <Stack.Screen name="Chat" component={ChatScreen} />
+                        <Stack.Screen
+                          name="RealtimeChat"
+                          component={RealtimeChatScreen}
+                          options={{ title: 'Realtime' }}
+                        />
                         <Stack.Screen
                           name="AgentEdit"
                           component={AgentEditScreen}

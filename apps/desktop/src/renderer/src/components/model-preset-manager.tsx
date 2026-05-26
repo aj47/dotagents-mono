@@ -56,7 +56,14 @@ export function ModelPresetManager({
       const saved = custom.find(c => c.id === preset.id)
       if (saved) {
         // Merge all saved properties (apiKey, agentModel, transcriptProcessingModel, etc.)
-        const merged = { ...preset, ...saved }
+        const merged = {
+          ...preset,
+          ...saved,
+          id: preset.id,
+          name: preset.name,
+          baseUrl: preset.baseUrl,
+          isBuiltIn: true,
+        }
         // For builtin-openai, fallback to legacy openaiApiKey if saved preset has empty apiKey
         // This handles the case where saveModelWithPreset persisted a preset with apiKey: ''
         if (preset.id === DEFAULT_MODEL_PRESET_ID && !merged.apiKey && config?.openaiApiKey) {
@@ -373,7 +380,7 @@ export function ModelPresetManager({
                 type="url"
                 value={newPreset.baseUrl}
                 onChange={(e) => setNewPreset({ ...newPreset, baseUrl: e.target.value })}
-                placeholder="https://api.example.com/v1"
+                placeholder="https://api.openai.com/v1"
               />
             </div>
             <div>
