@@ -142,12 +142,17 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   }, []);
 
   const setSttPreviewWithExpiry = useCallback((value: string) => {
-    setSttPreview(value);
     if (sttPreviewTimeoutRef.current) {
       clearTimeout(sttPreviewTimeoutRef.current);
+      sttPreviewTimeoutRef.current = null;
+    }
+    setSttPreview(value);
+    if (!value) {
+      return;
     }
     sttPreviewTimeoutRef.current = setTimeout(() => {
       setSttPreview('');
+      sttPreviewTimeoutRef.current = null;
     }, 5000);
   }, []);
 
@@ -181,7 +186,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     nativeFinalRef.current = '';
     webFinalRef.current = '';
     setLiveTranscriptValue('');
-    setSttPreview('');
+    setSttPreviewWithExpiry('');
     log?.('transcript-ignored', handled
       ? 'Hands-free transcript handled as a TTS control command.'
       : 'Hands-free transcript ignored before finalization while the assistant is busy or speaking.', {
@@ -189,7 +194,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       text: truncateDebugText(normalizedText),
       textLength: normalizedText.length,
     });
-  }, [clearHandsFreeDebounce, log, setLiveTranscriptValue]);
+  }, [clearHandsFreeDebounce, log, setLiveTranscriptValue, setSttPreviewWithExpiry]);
 
   const setForegroundAndroidHandsFreeAudioRouting = useCallback(async (enabled: boolean) => {
     if (Platform.OS !== 'android' || !handsFree) {
@@ -294,14 +299,24 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     return true;
   }, [emitFinalized, log]);
 
-  const stopRecognitionOnly = useCallback(async () => {
+  const stopRecognitionOnly = useCallback(async (options?: { preservePendingHandsFreeFinal?: boolean }) => {
+    const pendingHandsFreeFinal = normalizeVoiceText(pendingHandsFreeFinalRef.current);
+    const shouldPreservePendingHandsFreeFinal = !!options?.preservePendingHandsFreeFinal
+      && handsFree
+      && !!pendingHandsFreeFinal
+      && !!handsFreeDebounceRef.current
+      && !isHandsFreeTranscriptSuppressed();
     suppressFinalizeRef.current = true;
     userReleasedButtonRef.current = true;
-    clearHandsFreeDebounce();
+    if (!shouldPreservePendingHandsFreeFinal) {
+      clearHandsFreeDebounce();
+    }
     log?.('recognizer-stop', 'Stopping speech recognizer without finalization.', {
       source: getRecognitionSource(),
       handsFree,
       listening: listeningRef.current,
+      preservePendingHandsFreeFinal: shouldPreservePendingHandsFreeFinal,
+      pendingText: truncateDebugText(pendingHandsFreeFinal),
     });
 
     try {
@@ -320,15 +335,17 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     } finally {
       await setForegroundAndroidHandsFreeAudioRouting(false);
       setListeningValue(false);
-      setLiveTranscriptValue('');
-      pendingHandsFreeFinalRef.current = '';
+      if (!shouldPreservePendingHandsFreeFinal) {
+        setLiveTranscriptValue('');
+        pendingHandsFreeFinalRef.current = '';
+      }
       pendingPushToTalkFinalRef.current = null;
       nativeFinalRef.current = '';
       webFinalRef.current = '';
       webPressInSeenRef.current = false;
       log?.('recognizer-stop', 'Speech recognizer stopped.');
     }
-  }, [clearHandsFreeDebounce, handsFree, log, setForegroundAndroidHandsFreeAudioRouting, setListeningValue, setLiveTranscriptValue]);
+  }, [clearHandsFreeDebounce, handsFree, isHandsFreeTranscriptSuppressed, log, setForegroundAndroidHandsFreeAudioRouting, setListeningValue, setLiveTranscriptValue]);
 
   useEffect(() => {
     if (enabled || !listeningRef.current) {

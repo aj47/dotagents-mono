@@ -484,6 +484,90 @@ describe('useSpeechRecognizer', () => {
     });
   });
 
+  it('keeps a pending native hands-free final when the recognizer is auto-disarmed before debounce fires', async () => {
+    vi.useFakeTimers();
+    const runtime = createHookRuntime();
+    const speechRecognitionModule = {
+      getPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
+      requestPermissionsAsync: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime, {
+      platform: 'android',
+      eventEmitterClass: FakeNativeSpeechEventEmitter,
+      speechRecognitionModule,
+    });
+    const onVoiceFinalized = vi.fn();
+
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const eventEmitter = FakeNativeSpeechEventEmitter.instances[0];
+    eventEmitter.emit('result', {
+      isFinal: true,
+      results: [{ transcript: 'what were we even trying to do' }],
+    });
+
+    await recognizer.stopRecognitionOnly({ preservePendingHandsFreeFinal: true });
+    vi.advanceTimersByTime(499);
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(onVoiceFinalized).toHaveBeenCalledWith({
+      text: 'what were we even trying to do',
+      mode: 'handsfree',
+      source: 'native',
+    });
+  });
+
+  it('clears the STT preview immediately without leaving an expiry timer active', async () => {
+    vi.useFakeTimers();
+    const runtime = createHookRuntime();
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime);
+    const onVoiceFinalized = vi.fn();
+
+    let recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+    });
+
+    recognizer.setSttPreviewWithExpiry('follow up prompt');
+    recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+    });
+    expect(recognizer.sttPreview).toBe('follow up prompt');
+
+    recognizer.setSttPreviewWithExpiry('');
+    recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+    });
+    expect(recognizer.sttPreview).toBe('');
+
+    vi.advanceTimersByTime(5_000);
+    recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+    });
+    expect(recognizer.sttPreview).toBe('');
+  });
+
   it('suppresses native hands-free partial results while the assistant is busy or speaking', async () => {
     vi.useFakeTimers();
     const runtime = createHookRuntime();

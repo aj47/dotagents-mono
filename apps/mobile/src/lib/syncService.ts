@@ -3,7 +3,7 @@
  * Handles syncing chat sessions between mobile and desktop.
  */
 
-import { Session, ChatMessage } from '../types/session';
+import { generateSessionTitle, type Session, type ChatMessage } from '../types/session';
 import {
   SettingsApiClient,
   ServerConversation,
@@ -44,6 +44,55 @@ function getServerConversationActivityTimestamp(item: ServerConversation): numbe
       : 0;
 
   return Math.max(updatedAt, lastMessageAt);
+}
+
+function getFirstUserMessageText(session: Session): string {
+  return session.messages.find(message => message.role === 'user')?.content?.trim() ?? '';
+}
+
+function normalizeTitleText(title: string): string {
+  return title.replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+
+function generateDesktopFallbackSessionTitle(firstMessage: string): string {
+  const normalized = firstMessage.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return 'New Chat';
+  }
+  return normalized.length > 50 ? `${normalized.slice(0, 50)}...` : normalized;
+}
+
+function isLikelyFallbackTitleForSession(session: Session, title: string): boolean {
+  const firstUserMessage = getFirstUserMessageText(session);
+  const normalizedTitle = normalizeTitleText(title);
+  if (!firstUserMessage) {
+    return normalizedTitle === 'New Chat';
+  }
+  return normalizedTitle === normalizeTitleText(generateSessionTitle(firstUserMessage))
+    || normalizedTitle === normalizeTitleText(generateDesktopFallbackSessionTitle(firstUserMessage));
+}
+
+function isLikelyMobileFallbackTitle(session: Session): boolean {
+  return isLikelyFallbackTitleForSession(session, session.title);
+}
+
+function shouldPreferServerTitle(session: Session, serverTitle: string | undefined): serverTitle is string {
+  const normalizedServerTitle = serverTitle?.trim();
+  if (!normalizedServerTitle || normalizeTitleText(normalizedServerTitle) === normalizeTitleText(session.title)) {
+    return false;
+  }
+  return isLikelyMobileFallbackTitle(session)
+    && !isLikelyFallbackTitleForSession(session, normalizedServerTitle);
+}
+
+function logServerTitlePreferred(session: Session, serverConversationId: string, serverTitle: string, reason: string): void {
+  console.info('[syncService] Preserving server conversation title over mobile fallback title.', {
+    sessionId: session.id,
+    serverConversationId,
+    localTitle: session.title,
+    serverTitle,
+    reason,
+  });
 }
 
 /**
@@ -162,6 +211,7 @@ export async function syncConversations(
     // mapping is lost (e.g. app restart before AsyncStorage save completes).
     // Key: "createdAt|title" → most recently updated ServerConversation
     const serverByContentKey = new Map<string, ServerConversation>();
+    const serverByCreatedAt = new Map<number, ServerConversation[]>();
     for (const sc of serverList) {
       const key = `${sc.createdAt}|${sc.title}`;
       const existing = serverByContentKey.get(key);
@@ -173,6 +223,10 @@ export async function syncConversations(
       ) {
         serverByContentKey.set(key, sc);
       }
+
+      const createdAtMatches = serverByCreatedAt.get(sc.createdAt) ?? [];
+      createdAtMatches.push(sc);
+      serverByCreatedAt.set(sc.createdAt, createdAtMatches);
     }
 
     // Step 2: Process local sessions
@@ -204,22 +258,38 @@ export async function syncConversations(
           } else if (session.updatedAt > serverActivityAt && session.messages.length > 0) {
             // Local is newer - push to server
             try {
+              const outgoingTitle = shouldPreferServerTitle(session, serverItem.title)
+                ? serverItem.title
+                : session.title;
+              if (outgoingTitle !== session.title) {
+                logServerTitlePreferred(session, session.serverConversationId, outgoingTitle, 'local-newer-push');
+              }
               const updated = await client.updateConversation(session.serverConversationId, {
-                title: session.title,
+                title: outgoingTitle,
                 messages: session.messages.map(toServerMessage),
                 updatedAt: session.updatedAt,
               });
               // Update local session with server-returned updatedAt to prevent sync oscillation
               updatedSessions[i] = {
                 ...session,
+                title: updated.title || outgoingTitle,
                 updatedAt: updated.updatedAt,
               };
               result.updated++;
             } catch (err: any) {
               result.errors.push(`Failed to push ${session.serverConversationId}: ${err.message}`);
             }
+          } else if (shouldPreferServerTitle(session, serverItem.title)) {
+            // Equal timestamps can still hide a better server-generated title.
+            // Keep local messages, but replace the first-message mobile fallback title.
+            logServerTitlePreferred(session, session.serverConversationId, serverItem.title, 'same-timestamp-title-only');
+            updatedSessions[i] = {
+              ...session,
+              title: serverItem.title,
+            };
+            result.updated++;
           }
-          // If timestamps are equal, no action needed
+          // If timestamps and title are equal, no action needed
         }
         // If server item not found, the conversation may have been deleted on server
         // We could handle this by either deleting locally or re-pushing
@@ -234,12 +304,23 @@ export async function syncConversations(
         // This handles the case where a previous sync pushed this session
         // but the serverConversationId mapping was lost locally.
         const contentKey = `${session.createdAt}|${session.title}`;
-        const existingMatch = serverByContentKey.get(contentKey);
+        let existingMatch = serverByContentKey.get(contentKey);
+        if (!existingMatch && isLikelyMobileFallbackTitle(session)) {
+          const createdAtMatches = serverByCreatedAt.get(session.createdAt) ?? [];
+          const titleUpgradeMatches = createdAtMatches.filter(candidate => shouldPreferServerTitle(session, candidate.title));
+          if (titleUpgradeMatches.length === 1) {
+            existingMatch = titleUpgradeMatches[0];
+          }
+        }
 
         if (existingMatch && !localByServerId.has(existingMatch.id)) {
           // Found a matching server conversation — re-link instead of creating a duplicate
+          if (existingMatch.title !== session.title) {
+            logServerTitlePreferred(session, existingMatch.id, existingMatch.title, 'unlinked-existing-match');
+          }
           updatedSessions[i] = {
             ...session,
+            title: existingMatch.title,
             serverConversationId: existingMatch.id,
             updatedAt: existingMatch.updatedAt,
           };
@@ -259,6 +340,7 @@ export async function syncConversations(
             // Update local session with server ID and updatedAt
             updatedSessions[i] = {
               ...session,
+              title: created.title || session.title,
               serverConversationId: created.id,
               updatedAt: created.updatedAt,
             };

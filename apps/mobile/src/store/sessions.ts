@@ -61,6 +61,7 @@ export interface SessionStore {
   getSessionList: () => SessionListItem[];
   setMessages: (messages: ChatMessage[]) => Promise<void>;
   setMessagesForSession: (sessionId: string, messages: ChatMessage[]) => Promise<void>;
+  setServerGeneratedTitleForSession: (sessionId: string, serverConversationId: string, title: string) => Promise<boolean>;
 
   // Server conversation ID management (for continuing conversations with DotAgents server)
   markPendingServerConversation: (sessionId: string, pending: boolean) => void;
@@ -153,6 +154,54 @@ async function saveCurrentSessionId(id: string | null): Promise<void> {
 export function normalizeSessionTitleText(title: string, maxChars = 80): string {
   const normalized = title.replace(/\s+/g, ' ').trim();
   return (normalized || 'New Chat').slice(0, maxChars);
+}
+
+function getFirstUserMessageText(session: Session): string {
+  return session.messages.find(message => message.role === 'user')?.content?.trim() ?? '';
+}
+
+function generateDesktopFallbackSessionTitle(firstMessage: string): string {
+  const normalized = firstMessage.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return 'New Chat';
+  }
+  return normalized.length > 50 ? `${normalized.slice(0, 50)}...` : normalized;
+}
+
+function isLikelyGeneratedFallbackTitleForSession(session: Session, title: string): boolean {
+  const firstUserMessage = getFirstUserMessageText(session);
+  const normalizedTitle = normalizeSessionTitleText(title);
+  if (!firstUserMessage) {
+    return normalizedTitle === 'New Chat';
+  }
+
+  return normalizedTitle === normalizeSessionTitleText(generateSessionTitle(firstUserMessage))
+    || normalizedTitle === normalizeSessionTitleText(generateDesktopFallbackSessionTitle(firstUserMessage));
+}
+
+function isLikelyGeneratedMobileFallbackTitle(session: Session): boolean {
+  return isLikelyGeneratedFallbackTitleForSession(session, session.title);
+}
+
+function getServerGeneratedTitleSkipReason(session: Session, title: string): string {
+  if (normalizeSessionTitleText(session.title) === normalizeSessionTitleText(title)) {
+    return 'same-title';
+  }
+  if (!isLikelyGeneratedMobileFallbackTitle(session)) {
+    return 'local-title-not-fallback';
+  }
+  if (isLikelyGeneratedFallbackTitleForSession(session, title)) {
+    return 'server-title-is-fallback';
+  }
+  return 'not-applicable';
+}
+
+export function shouldApplyServerGeneratedSessionTitle(session: Session, serverConversationId: string, title: string): boolean {
+  const normalizedTitle = normalizeSessionTitleText(title);
+  return session.serverConversationId === serverConversationId
+    && normalizeSessionTitleText(session.title) !== normalizedTitle
+    && isLikelyGeneratedMobileFallbackTitle(session)
+    && !isLikelyGeneratedFallbackTitleForSession(session, normalizedTitle);
 }
 
 export function useSessions(): SessionStore {
@@ -630,6 +679,46 @@ export function useSessions(): SessionStore {
     });
   }, [queueSave]);
 
+  const setServerGeneratedTitleForSession = useCallback(async (sessionId: string, serverConversationId: string, title: string): Promise<boolean> => {
+    const normalizedTitle = normalizeSessionTitleText(title);
+    const currentSessions = sessionsRef.current;
+    const currentSession = currentSessions.find(session => session.id === sessionId);
+    if (!currentSession || currentSession.serverConversationId !== serverConversationId) {
+      return false;
+    }
+    if (!shouldApplyServerGeneratedSessionTitle(currentSession, serverConversationId, normalizedTitle)) {
+      console.info('[sessions] Skipped server-generated title update.', {
+        sessionId,
+        serverConversationId,
+        localTitle: currentSession.title,
+        serverTitle: normalizedTitle,
+        reason: getServerGeneratedTitleSkipReason(currentSession, normalizedTitle),
+      });
+      return false;
+    }
+
+    const sessionsToSave = currentSessions.map(session => (
+      session.id === sessionId
+        ? { ...session, title: normalizedTitle }
+        : session
+    ));
+
+    console.info('[sessions] Applied server-generated title to mobile fallback session.', {
+      sessionId,
+      serverConversationId,
+      previousTitle: currentSession.title,
+      serverTitle: normalizedTitle,
+      updatedAt: currentSession.updatedAt,
+    });
+
+    sessionsRef.current = sessionsToSave;
+    setSessions(() => sessionsToSave);
+    queueSave(async () => {
+      await saveSessions(sessionsToSave);
+    });
+    return true;
+  }, [queueSave]);
+
   // Set the server-side conversation ID for the current session (fixes #501)
   const setServerConversationId = useCallback(async (serverConversationId: string) => {
     if (!currentSessionId) return;
@@ -638,12 +727,19 @@ export function useSessions(): SessionStore {
     // is exactly what we intend to set (same pattern as createNewSession/deleteSession)
     const currentSessions = sessionsRef.current;
     const targetSessionId = currentSessionId;
-    const now = Date.now();
-
     pendingServerConversationSessionIdsRef.current.delete(targetSessionId);
     const currentSession = currentSessions.find(session => session.id === targetSessionId);
     if (currentSession?.serverConversationId === serverConversationId) {
       return;
+    }
+
+    if (currentSession) {
+      console.info('[sessions] Linked server conversation id without changing session activity timestamp.', {
+        sessionId: targetSessionId,
+        serverConversationId,
+        title: currentSession.title,
+        updatedAt: currentSession.updatedAt,
+      });
     }
 
     const sessionsToSave = currentSessions.map(session => {
@@ -651,7 +747,6 @@ export function useSessions(): SessionStore {
       return {
         ...session,
         serverConversationId,
-        updatedAt: now,
       };
     });
 
@@ -674,12 +769,19 @@ export function useSessions(): SessionStore {
     // Compute the new sessions array BEFORE setSessions to guarantee the value we save
     // is exactly what we intend to set (same pattern as setServerConversationId)
     const currentSessions = sessionsRef.current;
-    const now = Date.now();
-
     pendingServerConversationSessionIdsRef.current.delete(sessionId);
     const currentSession = currentSessions.find(session => session.id === sessionId);
     if (currentSession?.serverConversationId === serverConversationId) {
       return;
+    }
+
+    if (currentSession) {
+      console.info('[sessions] Linked server conversation id without changing session activity timestamp.', {
+        sessionId,
+        serverConversationId,
+        title: currentSession.title,
+        updatedAt: currentSession.updatedAt,
+      });
     }
 
     const sessionsToSave = currentSessions.map(session => {
@@ -687,7 +789,6 @@ export function useSessions(): SessionStore {
       return {
         ...session,
         serverConversationId,
-        updatedAt: now,
       };
     });
 
@@ -907,6 +1008,7 @@ export function useSessions(): SessionStore {
     hasPendingServerConversation,
     setMessages,
     setMessagesForSession,
+    setServerGeneratedTitleForSession,
     setServerConversationId,
     setServerConversationIdForSession,
     getServerConversationId,

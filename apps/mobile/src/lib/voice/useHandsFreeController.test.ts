@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createInitialHandsFreeState, resolveHandsFreeUtterance } from './useHandsFreeController';
+import {
+  createInitialHandsFreeState,
+  isExpectedHandsFreeRecognizerStopError,
+  resolveHandsFreeUtterance,
+} from './useHandsFreeController';
 
 type EffectRecord = {
   callback?: () => void | (() => void);
@@ -348,6 +352,37 @@ describe('resolveHandsFreeUtterance', () => {
     expect(controller.shouldKeepRecognizerActive).toBe(true);
   });
 
+  it('identifies recognizer stop errors expected during assistant speech handoff', () => {
+    expect(isExpectedHandsFreeRecognizerStopError('client')).toBe(true);
+    expect(isExpectedHandsFreeRecognizerStopError('Other client side errors.')).toBe(true);
+    expect(isExpectedHandsFreeRecognizerStopError('CANCELLED')).toBe(true);
+    expect(isExpectedHandsFreeRecognizerStopError('network')).toBe(false);
+  });
+
+  it('treats expected Android stop/cancel recognizer errors as recoverable', async () => {
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      enabled: true,
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+    controller.wakeByUser();
+
+    controller = runtime.render(useHook, options);
+    controller.onRecognizerError('Other client side errors.');
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('listening');
+    expect(controller.state.lastError).toBeNull();
+    expect(controller.state.recognizerErrorCount).toBe(0);
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
+
   it('does not automatically return an idle awake session to sleep', async () => {
     vi.useFakeTimers();
     const runtime = createHookRuntime();
@@ -396,6 +431,36 @@ describe('resolveHandsFreeUtterance', () => {
 
     controller.resetError();
     controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('listening');
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
+
+  it('keeps the recognizer armed while assistant speech is active for stop/wait barge-in commands', async () => {
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      enabled: true,
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+    controller.wakeByUser();
+    controller = runtime.render(useHook, options);
+
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+
+    controller.onSpeechStarted();
+    controller = runtime.render(useHook, options);
+
+    expect(controller.state.phase).toBe('speaking');
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+
+    controller.onSpeechFinished();
+    controller = runtime.render(useHook, options);
+
     expect(controller.state.phase).toBe('listening');
     expect(controller.shouldKeepRecognizerActive).toBe(true);
   });
