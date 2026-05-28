@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions, Modal } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions, Modal, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
 import { Ionicons } from '@expo/vector-icons';
@@ -688,6 +688,19 @@ export default function SessionListScreen({ navigation }: Props) {
     return undefined;
   }, [config.baseUrl, config.apiKey]);
 
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const handleRefreshSessions = useCallback(async () => {
+    if (!settingsClient) return;
+    setIsManualRefreshing(true);
+    try {
+      await sessionStore.syncWithServer(settingsClient);
+    } catch (error) {
+      console.warn('Pull-to-refresh sessions sync failed', error);
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [settingsClient, sessionStore]);
+
   const handleDeleteSession = useCallback((session: SessionListItem) => {
     const doDelete = async () => {
       const serverConversationId = sessionStore.sessions.find(item => item.id === session.id)?.serverConversationId;
@@ -1116,6 +1129,14 @@ export default function SessionListScreen({ navigation }: Props) {
         contentContainerStyle={filteredSessions.length === 0 ? styles.emptyList : styles.list}
         ListEmptyComponent={hasActiveSearch ? SearchEmptyState : EmptyState}
         keyboardShouldPersistTaps="handled"
+        refreshControl={settingsClient ? (
+          <RefreshControl
+            refreshing={isManualRefreshing || sessionStore.isSyncing}
+            onRefresh={handleRefreshSessions}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+        ) : undefined}
       />
 
       {/* Rapid Fire hold-to-speak button */}
