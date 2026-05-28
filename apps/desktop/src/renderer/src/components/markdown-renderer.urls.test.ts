@@ -36,4 +36,77 @@ describe("markdown renderer URL guardrails", () => {
       "data:image/webp;base64,UklGRg==",
     )
   })
+
+  describe("deriveImageDownloadFileName", () => {
+    it("uses the last path segment when it already includes an extension", () => {
+      expect(
+        markdownRenderer.deriveImageDownloadFileName(
+          "assets://conversation-image/conv_1/abcd1234.png",
+        ),
+      ).toBe("abcd1234.png")
+      expect(
+        markdownRenderer.deriveImageDownloadFileName(
+          "https://example.com/path/to/cool-photo.JPG?ts=1",
+        ),
+      ).toBe("cool-photo.JPG")
+    })
+
+    it("decodes percent-encoded URL segments before sanitizing", () => {
+      expect(
+        markdownRenderer.deriveImageDownloadFileName(
+          "https://example.com/Screen%20Shot%202026.png",
+        ),
+      ).toBe("Screen_Shot_2026.png")
+    })
+
+    it("appends an extension derived from the blob MIME type when the URL has none", () => {
+      expect(
+        markdownRenderer.deriveImageDownloadFileName(
+          "https://example.com/image",
+          undefined,
+          "image/webp",
+        ),
+      ).toBe("image.webp")
+      expect(
+        markdownRenderer.deriveImageDownloadFileName(
+          "https://example.com/image",
+          undefined,
+          "image/jpeg; charset=binary",
+        ),
+      ).toBe("image.jpg")
+    })
+
+    it("falls back to alt text when the URL has no usable segment", () => {
+      expect(
+        markdownRenderer.deriveImageDownloadFileName(
+          "data:image/png;base64,AAAA",
+          "Quarterly chart",
+          "image/png",
+        ),
+      ).toBe("Quarterly_chart.png")
+    })
+
+    it("defaults to image.<ext> when no hint is available", () => {
+      expect(
+        markdownRenderer.deriveImageDownloadFileName("data:image/png;base64,AAAA"),
+      ).toBe("image.png")
+      expect(
+        markdownRenderer.deriveImageDownloadFileName("not a url"),
+      ).toBe("image.png")
+    })
+
+    it("strips path traversal and disallowed filesystem characters", () => {
+      expect(
+        markdownRenderer.deriveImageDownloadFileName(
+          "https://example.com/path/..%2Fevil.png",
+        ),
+      ).toBe("evil.png")
+      expect(
+        markdownRenderer.deriveImageDownloadFileName(
+          "data:image/png;base64,AAAA",
+          'bad: name/with*chars?.png',
+        ),
+      ).toBe("bad_name_with_chars_.png")
+    })
+  })
 })
