@@ -35,6 +35,8 @@ PAST CONVERSATIONS:
 - Prior DotAgents conversations are JSON in the runtime-supplied conversations directory
 - If the prompt includes an absolute conversations path, use it; otherwise infer the app-data folder in an OS-appropriate way
 - Use index.json to discover relevant conversations, then open matching conv_*.json files for full history when prior chat context would help
+- Whenever you determine you need more context before answering or proceeding - especially for continuation, status, debugging, or high-context planning requests - searching the conversations index and relevant conv_*.json history is a standard context-gathering step, not a last resort; do this before asking the user
+- If recovered conversations contain enough facts to answer or continue, use them and respond; only ask the user when prior conversations do not contain the needed information, or when credentials/approval are required
 - Before asking the user for facts that may already be known, or whenever the current task likely relates to prior work, search relevant knowledge notes first and prior conversations second; always prefer knowledge notes over recalled conversation context when they conflict
 - For personal legal/immigration, health, finance, career, or other high-context planning, inspect both relevant knowledge notes and recent conversations with a shell/file tool before generic advice
 

@@ -113,6 +113,54 @@ describe("constructSystemPrompt", () => {
     expect(prompt).not.toContain("Use save_memory")
   })
 
+  it("instructs agents to search prior conversations whenever they need more context", async () => {
+    const { DEFAULT_SYSTEM_PROMPT, constructSystemPrompt } = await import("./system-prompts")
+
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("Whenever you determine you need more context before answering or proceeding")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("continuation, status, debugging, or high-context planning")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("searching the conversations index and relevant conv_*.json history is a standard context-gathering step")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("do this before asking the user")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("If recovered conversations contain enough facts to answer or continue, use them and respond")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("only ask the user when prior conversations do not contain the needed information, or when credentials/approval are required")
+    // The "knowledge notes take precedence" guarantee from #494 must remain intact
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("always prefer knowledge notes over recalled conversation context when they conflict")
+
+    const agentPrompt = constructSystemPrompt([
+      { name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, true)
+
+    expect(agentPrompt).toContain("whenever you need more context to answer or proceed")
+    expect(agentPrompt).toContain("search index.json then conv_*.json as a standard step before asking the user")
+    expect(agentPrompt).toContain("use the recovered context to answer or continue when sufficient")
+    expect(agentPrompt).toContain("Only ask the user when prior conversations do not contain the needed facts, or when credentials/approval are required")
+    expect(agentPrompt).toContain("Always prefer knowledge notes over recalled conversation context when they conflict")
+    // The old narrower phrasing should no longer be present in the agent-mode block
+    expect(agentPrompt).not.toContain("recover state before asking when the user wants to resume prior work")
+  })
+
+  it("teaches the minimal fallback prompt to search prior conversations when more context is needed", async () => {
+    const { constructMinimalSystemPrompt } = await import("./system-prompts")
+
+    const promptWithReadMore = constructMinimalSystemPrompt([
+      { name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } },
+      { name: "read_more_context", description: "Read compacted context", inputSchema: { type: "object", properties: {} } },
+    ], true)
+
+    expect(promptWithReadMore).toContain("Whenever you need more context")
+    expect(promptWithReadMore).toContain("continuation, status, debugging, or high-context planning")
+    expect(promptWithReadMore).toContain("search the conversation store (index.json then conv_*.json) before asking")
+    expect(promptWithReadMore).toContain("use recovered context to answer or continue when sufficient")
+    expect(promptWithReadMore).not.toContain("If the user asks to resume or find prior context")
+
+    const promptWithoutReadMore = constructMinimalSystemPrompt([
+      { name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } },
+    ], true)
+
+    expect(promptWithoutReadMore).toContain("search the conversation store (index.json then conv_*.json) before asking")
+    expect(promptWithoutReadMore).toContain("use recovered context to answer or continue when sufficient")
+    expect(promptWithoutReadMore).not.toContain("If the user asks to resume/find prior context")
+  })
+
   it("preserves knowledge note guidance in the minimal fallback prompt when file tools are available", async () => {
     const { constructMinimalSystemPrompt } = await import("./system-prompts")
 
