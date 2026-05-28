@@ -11,6 +11,16 @@ export interface LoadedMedia {
   mimetype?: string
 }
 
+/** WhatsApp's own image cap is ~16 MB; allow some headroom for video/document. */
+export const MAX_URL_MEDIA_BYTES = 64 * 1024 * 1024
+
+/** Strip parameters like `; charset=binary` from a Content-Type header value. */
+function parseContentTypeMime(value: string | null | undefined): string | undefined {
+  if (!value) return undefined
+  const main = value.split(";")[0]?.trim().toLowerCase()
+  return main || undefined
+}
+
 /**
  * Load media bytes from a source descriptor.
  * Exactly one of buffer/path/url/base64 must be set.
@@ -58,8 +68,24 @@ export async function loadMediaSource(
   if (!response.ok) {
     throw new Error(`Failed to fetch media from URL (HTTP ${response.status})`)
   }
+
+  // Reject early if the server advertised a body larger than our cap, so we
+  // don't pull a multi-GB response into memory.
+  const advertisedLength = Number(response.headers.get("content-length") || "")
+  if (Number.isFinite(advertisedLength) && advertisedLength > MAX_URL_MEDIA_BYTES) {
+    throw new Error(
+      `Media at URL exceeds the ${MAX_URL_MEDIA_BYTES}-byte limit (advertised ${advertisedLength} bytes)`
+    )
+  }
+
   const arrayBuffer = await response.arrayBuffer()
-  const headerMimetype = response.headers.get("content-type") || undefined
+  if (arrayBuffer.byteLength > MAX_URL_MEDIA_BYTES) {
+    throw new Error(
+      `Media at URL exceeds the ${MAX_URL_MEDIA_BYTES}-byte limit (received ${arrayBuffer.byteLength} bytes)`
+    )
+  }
+
+  const headerMimetype = parseContentTypeMime(response.headers.get("content-type"))
   return {
     buffer: Buffer.from(arrayBuffer),
     mimetype: source.mimetype || headerMimetype,

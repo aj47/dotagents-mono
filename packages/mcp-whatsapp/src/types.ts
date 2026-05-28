@@ -88,7 +88,7 @@ export interface WhatsAppMediaSource {
   path?: string
   /** HTTP(S) URL to fetch */
   url?: string
-  /** Raw base64-encoded media (no data: prefix) */
+  /** Base64-encoded media. Plain base64 or a `data:<mime>;base64,...` URL — both are accepted. */
   base64?: string
   /** Mime type. Required for documents/audio; inferred when possible for image/video. */
   mimetype?: string

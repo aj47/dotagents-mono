@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest"
 import fs from "fs"
 import os from "os"
 import path from "path"
-import { buildMediaPayload, loadMediaSource } from "./media.js"
+import { buildMediaPayload, loadMediaSource, MAX_URL_MEDIA_BYTES } from "./media.js"
 
 describe("buildMediaPayload", () => {
   const buf = Buffer.from("hello")
@@ -152,5 +152,31 @@ describe("loadMediaSource", () => {
     await expect(
       loadMediaSource({ url: "https://example.com/x" }, fakeFetch)
     ).rejects.toThrow("HTTP 404")
+  })
+
+  it("strips parameters from a Content-Type header", async () => {
+    const fakeFetch = (async () =>
+      new Response(Buffer.from("x"), {
+        status: 200,
+        headers: { "content-type": "image/jpeg; charset=binary" },
+      })) as unknown as typeof fetch
+
+    const result = await loadMediaSource({ url: "https://example.com/x" }, fakeFetch)
+    expect(result.mimetype).toBe("image/jpeg")
+  })
+
+  it("rejects URL responses that advertise a length above the cap", async () => {
+    const fakeFetch = (async () =>
+      new Response(Buffer.from("x"), {
+        status: 200,
+        headers: {
+          "content-type": "image/png",
+          "content-length": String(MAX_URL_MEDIA_BYTES + 1),
+        },
+      })) as unknown as typeof fetch
+
+    await expect(
+      loadMediaSource({ url: "https://example.com/x" }, fakeFetch)
+    ).rejects.toThrow("exceeds the")
   })
 })
