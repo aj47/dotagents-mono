@@ -29,7 +29,7 @@ import path from "path"
 import os from "os"
 import fs from "fs"
 import { WhatsAppSession } from "./session.js"
-import type { WhatsAppConfig, WhatsAppMessage } from "./types.js"
+import type { SendMediaOptions, WhatsAppConfig, WhatsAppMediaType, WhatsAppMessage } from "./types.js"
 import { normalizeWhatsAppId } from "./whatsapp-id.js"
 
 // Configuration from environment variables
@@ -1245,6 +1245,54 @@ const tools = [
     },
   },
   {
+    name: "whatsapp_send_media",
+    description:
+      "Send a media attachment (image, video, audio, or document) to a WhatsApp chat. Provide exactly one of image_path/image_url/image_base64. Optional caption is included with image/video/document. Use this when responding to a user with a generated or fetched image.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        to: {
+          type: "string",
+          description: "Recipient phone number in international format (e.g., 14155551234) or chat JID",
+        },
+        type: {
+          type: "string",
+          enum: ["image", "video", "audio", "document"],
+          description: "Type of media to send (defaults to 'image')",
+        },
+        image_path: {
+          type: "string",
+          description: "Local filesystem path to the media file",
+        },
+        image_url: {
+          type: "string",
+          description: "HTTP(S) URL to fetch the media from",
+        },
+        image_base64: {
+          type: "string",
+          description: "Raw base64-encoded media (data: URL prefix is tolerated)",
+        },
+        mimetype: {
+          type: "string",
+          description: "Mime type (e.g. image/png). Required for documents/audio if not inferable.",
+        },
+        caption: {
+          type: "string",
+          description: "Optional caption (image/video/document only)",
+        },
+        file_name: {
+          type: "string",
+          description: "Filename to display for documents",
+        },
+        ptt: {
+          type: "boolean",
+          description: "When type=audio, send as a voice note",
+        },
+      },
+      required: ["to"],
+    },
+  },
+  {
     name: "whatsapp_send_typing",
     description:
       "Send a typing indicator to a WhatsApp chat. This shows the 'typing...' status to the recipient. Call this immediately when you receive a message to let the user know you're processing their request. The typing indicator will automatically stop when you send a message.",
@@ -1577,6 +1625,92 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               text: "Logged out from WhatsApp. Credentials cleared. You will need to scan QR code again.",
             },
           ],
+        }
+      }
+
+      case "whatsapp_send_media": {
+        const {
+          to,
+          type = "image",
+          image_path,
+          image_url,
+          image_base64,
+          mimetype,
+          caption,
+          file_name,
+          ptt,
+        } = args as {
+          to?: string
+          type?: WhatsAppMediaType
+          image_path?: string
+          image_url?: string
+          image_base64?: string
+          mimetype?: string
+          caption?: string
+          file_name?: string
+          ptt?: boolean
+        }
+
+        if (!to) {
+          return {
+            content: [{ type: "text", text: "Error: 'to' is required" }],
+            isError: true,
+          }
+        }
+
+        const sourceCount =
+          (image_path ? 1 : 0) + (image_url ? 1 : 0) + (image_base64 ? 1 : 0)
+        if (sourceCount === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "Error: provide exactly one of image_path, image_url, or image_base64",
+              },
+            ],
+            isError: true,
+          }
+        }
+        if (sourceCount > 1) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "Error: provide exactly one of image_path, image_url, or image_base64 (not multiple)",
+              },
+            ],
+            isError: true,
+          }
+        }
+
+        const mediaOptions: SendMediaOptions = {
+          to,
+          type,
+          source: image_path
+            ? { path: image_path, mimetype }
+            : image_url
+            ? { url: image_url, mimetype }
+            : { base64: image_base64!, mimetype },
+          caption,
+          fileName: file_name,
+          ptt,
+        }
+
+        console.error(`[MCP-WhatsApp] TOOL whatsapp_send_media: ${type} -> ${to}`)
+        const result = await whatsapp.sendMedia(mediaOptions)
+        if (result.success) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Media sent successfully to ${to}. Message ID: ${result.messageId || "unknown"}`,
+              },
+            ],
+          }
+        }
+        return {
+          content: [{ type: "text", text: `Failed to send media: ${result.error}` }],
+          isError: true,
         }
       }
 

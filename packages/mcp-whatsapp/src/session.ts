@@ -14,6 +14,7 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   Browsers,
   downloadMediaMessage,
+  AnyMessageContent,
 } from "@whiskeysockets/baileys"
 import { Boom } from "@hapi/boom"
 import pino from "pino"
@@ -27,10 +28,12 @@ import type {
   ConnectionStatus,
   ConnectionState as AppConnectionState,
   SendMessageOptions,
+  SendMediaOptions,
   SendMessageResult,
   WhatsAppChat,
 } from "./types.js"
 import { normalizeWhatsAppId } from "./whatsapp-id.js"
+import { buildMediaPayload, loadMediaSource } from "./media.js"
 
 // Simple pino logger for Baileys
 const logger = pino({
@@ -641,6 +644,84 @@ export class WhatsAppSession extends EventEmitter {
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.error(`[WhatsApp] Failed to send message: ${errorMessage}`)
       return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * Send a media message (image, video, audio, or document) to a chat.
+   * Honors the same JID normalization + @s.whatsapp.net/@lid fallback as sendMessage.
+   */
+  async sendMedia(options: SendMediaOptions): Promise<SendMessageResult> {
+    if (!this.socket || this.connectionState !== "connected") {
+      return { success: false, error: "Not connected to WhatsApp" }
+    }
+
+    let buffer: Buffer
+    let resolvedMimetype: string | undefined
+    try {
+      const loaded = await loadMediaSource(options.source)
+      buffer = loaded.buffer
+      resolvedMimetype = loaded.mimetype
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error(`[WhatsApp] Failed to load outbound media: ${errorMessage}`)
+      return { success: false, error: errorMessage }
+    }
+
+    const { jid, fallbackJid } = this.resolveJidWithFallback(options.to)
+    const payload = buildMediaPayload(options, buffer, resolvedMimetype)
+
+    const sendToJid = async (targetJid: string): Promise<SendMessageResult> => {
+      // buildMediaPayload returns a Record<string, unknown> so it stays unit-testable
+      // without pulling Baileys types into the helper; cast at the call boundary.
+      const result = await this.socket!.sendMessage(
+        targetJid,
+        payload as unknown as AnyMessageContent
+      )
+      return { success: true, messageId: result?.key?.id || undefined }
+    }
+
+    try {
+      try {
+        const result = await sendToJid(jid)
+        console.error(
+          `[WhatsApp] Sent ${options.type} (${buffer.length} bytes) to ${jid}` +
+            (options.caption ? ` with caption (${options.caption.length} chars)` : "")
+        )
+        return result
+      } catch (primaryError) {
+        if (fallbackJid) {
+          console.error(
+            `[WhatsApp] Primary JID failed for media send, trying fallback: ${fallbackJid}`
+          )
+          return await sendToJid(fallbackJid)
+        }
+        throw primaryError
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error(`[WhatsApp] Failed to send media: ${errorMessage}`)
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  /**
+   * Resolve a target identifier into a primary JID and optional fallback JID.
+   * Phone numbers without a suffix default to @s.whatsapp.net with @lid fallback,
+   * matching the behavior of sendMessage / sendTypingIndicator.
+   */
+  private resolveJidWithFallback(to: string): { jid: string; fallbackJid: string | null } {
+    if (to.includes("@")) {
+      return { jid: to, fallbackJid: null }
+    }
+    const numericId = normalizeWhatsAppId(to)
+    const isKnownLid = this.lidToPhoneMap.has(numericId)
+    if (isKnownLid) {
+      return { jid: `${numericId}@lid`, fallbackJid: null }
+    }
+    return {
+      jid: `${numericId}@s.whatsapp.net`,
+      fallbackJid: `${numericId}@lid`,
     }
   }
 
