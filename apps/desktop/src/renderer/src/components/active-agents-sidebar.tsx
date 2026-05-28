@@ -251,7 +251,11 @@ function writeBooleanToStorage(key: string, value: boolean): void {
   }
 }
 
-function readSidebarSessionGroupsFromStorage(): SidebarSessionGroup[] {
+// Sidebar groups + ungrouped order are persisted via TIPC to
+// <dataFolder>/sidebar-state.json (with rotating backups). The two
+// localStorage helpers below only exist to migrate data forward from the
+// previous storage location on first run after upgrade.
+function readLegacySidebarGroupsFromLocalStorage(): SidebarSessionGroup[] {
   try {
     const stored = localStorage.getItem(SESSION_GROUPS_STORAGE_KEY)
     return stored ? normalizeSidebarSessionGroups(JSON.parse(stored)) : []
@@ -260,15 +264,7 @@ function readSidebarSessionGroupsFromStorage(): SidebarSessionGroup[] {
   }
 }
 
-function writeSidebarSessionGroupsToStorage(groups: SidebarSessionGroup[]): void {
-  try {
-    localStorage.setItem(SESSION_GROUPS_STORAGE_KEY, JSON.stringify(groups))
-  } catch {
-    // localStorage may be unavailable; ignore.
-  }
-}
-
-function readUngroupedSessionOrderFromStorage(): string[] {
+function readLegacyUngroupedOrderFromLocalStorage(): string[] {
   try {
     const stored = localStorage.getItem(UNGROUPED_SESSION_ORDER_STORAGE_KEY)
     return stored ? normalizeSidebarSessionKeyOrder(JSON.parse(stored)) : []
@@ -277,12 +273,10 @@ function readUngroupedSessionOrderFromStorage(): string[] {
   }
 }
 
-function writeUngroupedSessionOrderToStorage(sessionKeys: string[]): void {
+function clearLegacySidebarLocalStorage(): void {
   try {
-    localStorage.setItem(
-      UNGROUPED_SESSION_ORDER_STORAGE_KEY,
-      JSON.stringify(normalizeSidebarSessionKeyOrder(sessionKeys)),
-    )
+    localStorage.removeItem(SESSION_GROUPS_STORAGE_KEY)
+    localStorage.removeItem(UNGROUPED_SESSION_ORDER_STORAGE_KEY)
   } catch {
     // localStorage may be unavailable; ignore.
   }
@@ -409,12 +403,16 @@ export function ActiveAgentsSidebar({
   )
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
-  const [sessionGroups, setSessionGroups] = useState<SidebarSessionGroup[]>(
-    readSidebarSessionGroupsFromStorage,
-  )
-  const [ungroupedSessionOrder, setUngroupedSessionOrder] = useState<string[]>(
-    readUngroupedSessionOrderFromStorage,
-  )
+  // Hydrated from <dataFolder>/sidebar-state.json via TIPC on mount. Until
+  // hydration completes we keep the persist effects no-op so we never
+  // clobber the file with empty initial state during the first render.
+  // `lastPersistedSidebarStateRef` snapshots the JSON we last wrote (or
+  // hydrated) so the persist effect can skip echoing the hydrated value
+  // back to disk, which is the class of bug that previously wiped groups.
+  const [sessionGroups, setSessionGroups] = useState<SidebarSessionGroup[]>([])
+  const [ungroupedSessionOrder, setUngroupedSessionOrder] = useState<string[]>([])
+  const sidebarStateHydratedRef = useRef(false)
+  const lastPersistedSidebarStateRef = useRef<string | null>(null)
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [editingGroupName, setEditingGroupName] = useState("")
   const [draggingSessionKey, setDraggingSessionKey] = useState<string | null>(null)
@@ -987,13 +985,72 @@ export function ActiveAgentsSidebar({
     writeBooleanToStorage(TASKS_SECTION_EXPANDED_STORAGE_KEY, tasksSectionExpanded)
   }, [tasksSectionExpanded])
 
+  // Hydrate sidebar state from the main-process JSON file (with rotating
+  // backups) on first mount. If the file is empty but legacy localStorage
+  // keys exist, migrate them forward then clear localStorage so this only
+  // runs once.
   useEffect(() => {
-    writeSidebarSessionGroupsToStorage(sessionGroups)
-  }, [sessionGroups])
+    let cancelled = false
+    void (async () => {
+      try {
+        const persisted = await tipcClient.getSidebarState()
+        const persistedGroups = normalizeSidebarSessionGroups(persisted?.groups ?? [])
+        const persistedOrder = normalizeSidebarSessionKeyOrder(persisted?.ungroupedOrder ?? [])
+
+        let groups = persistedGroups
+        let order = persistedOrder
+
+        const fileIsEmpty = persistedGroups.length === 0 && persistedOrder.length === 0
+        if (fileIsEmpty) {
+          const legacyGroups = readLegacySidebarGroupsFromLocalStorage()
+          const legacyOrder = readLegacyUngroupedOrderFromLocalStorage()
+          if (legacyGroups.length > 0 || legacyOrder.length > 0) {
+            groups = legacyGroups
+            order = legacyOrder
+            try {
+              await tipcClient.setSidebarState({ groups, ungroupedOrder: order, force: true })
+              clearLegacySidebarLocalStorage()
+            } catch (error) {
+              logUI("[sidebar] Failed to migrate legacy localStorage state:", error)
+            }
+          }
+        }
+
+        if (cancelled) return
+        // Record what we hydrated so the persist effect can skip writing the
+        // exact same payload back to disk (which would also bypass the
+        // main-process empty-payload guard if state is empty).
+        lastPersistedSidebarStateRef.current = JSON.stringify({ groups, ungroupedOrder: order })
+        setSessionGroups(groups)
+        setUngroupedSessionOrder(order)
+      } catch (error) {
+        logUI("[sidebar] Failed to hydrate persisted sidebar state:", error)
+      } finally {
+        if (!cancelled) sidebarStateHydratedRef.current = true
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
-    writeUngroupedSessionOrderToStorage(ungroupedSessionOrder)
-  }, [ungroupedSessionOrder])
+    if (!sidebarStateHydratedRef.current) return
+    const payload = { groups: sessionGroups, ungroupedOrder: ungroupedSessionOrder }
+    const serialized = JSON.stringify(payload)
+    // Skip if nothing actually changed since the last write/hydrate. This
+    // prevents echoing the hydrated value back and protects the main-process
+    // empty-payload guard from being bypassed by an unchanged-empty write.
+    if (serialized === lastPersistedSidebarStateRef.current) return
+    lastPersistedSidebarStateRef.current = serialized
+    // `force: true` here means "the user really did change something" -
+    // including emptying everything - so the main-process guard should
+    // accept the write. The guard exists for stale-hydration writes, not
+    // for genuine user edits.
+    void tipcClient
+      .setSidebarState({ ...payload, force: true })
+      .catch((error) => logUI("[sidebar] Failed to persist sidebar state:", error))
+  }, [sessionGroups, ungroupedSessionOrder])
 
   const focusSidebarSessionComposer = useCallback(() => {
     let attemptCount = 0

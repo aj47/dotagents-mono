@@ -1605,6 +1605,25 @@ export const router = {
       return { activeSessions: active, completedSessions: completed }
     }),
 
+  // Sidebar groups + ungrouped session order are persisted to
+  // <dataFolder>/sidebar-state.json via the same safe-write/backup machinery
+  // every other piece of app state uses. Previously these lived only in the
+  // renderer's localStorage (under the Electron `userData` path), which has
+  // no `.backups/` rotation and is silently wiped by webview/profile resets.
+  getSidebarState: t.procedure.action(async () => {
+    const { loadSidebarState } = await import("./sidebar-state")
+    return loadSidebarState()
+  }),
+
+  setSidebarState: t.procedure
+    .input<{ groups: unknown[]; ungroupedOrder: string[]; force?: boolean }>()
+    .action(async ({ input }) => {
+      const { saveSidebarState } = await import("./sidebar-state")
+      const { force, ...payload } = input
+      const result = saveSidebarState(payload, { force })
+      return { success: result.written, reason: result.reason }
+    }),
+
   // Get the profile snapshot for a specific session
   // This allows the UI to display which profile a session is using
   getSessionProfileSnapshot: t.procedure
