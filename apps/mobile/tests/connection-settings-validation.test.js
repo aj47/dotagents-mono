@@ -10,14 +10,33 @@ const screenSource = fs.readFileSync(
 
 test('blocks first-time save when no API key is provided', () => {
   assert.match(screenSource, /if \(!isConnected && !hasApiKey\) \{/);
-  assert.match(screenSource, /Enter an API key or scan a DotAgents QR code before saving/);
-});
-
-test('keeps the custom URL validation after the no-key guard', () => {
   assert.match(
     screenSource,
-    /if \(!isConnected && !hasApiKey\) \{[\s\S]*?return;[\s\S]*?if \(hasCustomUrl && !hasApiKey\) \{/
+    /Scan the DotAgents QR code or enter your server URL and API key before saving/
   );
+});
+
+test('requires both server URL and API key together', () => {
+  // The previous "custom URL" branch existed because the screen silently filled
+  // in https://api.openai.com/v1 when the URL was blank, making the default
+  // appear configured. Now the URL must be supplied explicitly, so the
+  // validation is symmetric — neither field can be set without the other.
+  assert.match(
+    screenSource,
+    /if \(hasApiKey && !hasBaseUrl\) \{[\s\S]*?Base URL is required when an API key is provided/
+  );
+  assert.match(
+    screenSource,
+    /if \(hasBaseUrl && !hasApiKey\) \{[\s\S]*?API key is required when a server URL is provided/
+  );
+});
+
+test('does not silently default the base URL to api.openai.com', () => {
+  // Mobile is a companion to the DotAgents desktop remote server. A fresh
+  // install used to fall back to https://api.openai.com/v1 with an empty API
+  // key, which made the app look configured while being unreachable.
+  assert.doesNotMatch(screenSource, /https:\/\/api\.openai\.com\/v1[^']*['"]\s*\)\s*;?\s*$/m);
+  assert.doesNotMatch(screenSource, /DEFAULT_OPENAI_BASE_URL\s*=/);
 });
 
 test('exposes the API key visibility toggle as a button with a larger touch target', () => {
@@ -25,9 +44,12 @@ test('exposes the API key visibility toggle as a button with a larger touch targ
   assert.match(screenSource, /inlineActionButton:\s*\{[\s\S]*?createMinimumTouchTargetStyle\([\s\S]*?minSize:\s*44,/);
 });
 
-test('exposes the reset action as an accessible button with a descriptive label', () => {
-  assert.match(screenSource, /createButtonAccessibilityLabel\('Reset base URL to default'\)/);
-  assert.match(screenSource, /Restores the default OpenAI-compatible base URL/);
+test('exposes the clear action as an accessible button with a descriptive label', () => {
+  assert.match(screenSource, /createButtonAccessibilityLabel\('Clear base URL'\)/);
+  assert.match(
+    screenSource,
+    /Clears the server URL so you can scan a fresh DotAgents QR code or paste a new one/
+  );
 });
 
 test('surfaces a clear error when QR scanning cannot get camera permission', () => {

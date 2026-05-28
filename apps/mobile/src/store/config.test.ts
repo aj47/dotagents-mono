@@ -16,6 +16,16 @@ import {
   normalizeStoredConfig,
 } from './config';
 
+describe('DEFAULT_APP_CONFIG', () => {
+  // Mobile is a companion to the DotAgents desktop remote server, so a fresh
+  // install must not advertise OpenAI as a working default — that left the UI
+  // looking pre-configured while still disconnected.
+  it('starts unconfigured so the disconnected state is honest', () => {
+    expect(DEFAULT_APP_CONFIG.baseUrl).toBe('');
+    expect(DEFAULT_APP_CONFIG.apiKey).toBe('');
+  });
+});
+
 describe('normalizeStoredConfig', () => {
   it('backfills the handsfree defaults for older configs', () => {
     const normalized = normalizeStoredConfig({

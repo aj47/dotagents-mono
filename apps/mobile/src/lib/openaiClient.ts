@@ -153,11 +153,11 @@ export class OpenAIClient {
   }
 
   private normalizeBaseUrl(raw: string): string {
-    const normalized = normalizeApiBaseUrl(raw ?? '');
-    if (!normalized) {
-      throw new Error('OpenAIClient requires a baseUrl');
-    }
-    return normalized;
+    // Allow empty baseUrl at construction so unconfigured mobile clients (no
+    // remote-server pairing yet) don't crash on instantiation. Calls that
+    // actually need the URL — health(), chat(), etc. — will surface a clear
+    // error or natural network failure when invoked.
+    return normalizeApiBaseUrl(raw ?? '');
   }
 
   private authHeaders() {
