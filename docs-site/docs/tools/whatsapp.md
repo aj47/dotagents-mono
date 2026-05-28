@@ -69,9 +69,10 @@ Once connected, the WhatsApp MCP server exposes these tools:
 | Tool | Description |
 |------|-------------|
 | `whatsapp_send_message` | Send a text message to a phone number or chat. |
+| `whatsapp_send_media` | Send an image, video, audio, or document attachment (from path, URL, or base64). |
 | `whatsapp_get_messages` | Retrieve recent messages from a chat. |
 | `whatsapp_list_chats` | List available chats with recent activity. |
-| `whatsapp_get_pending_messages` | Return messages that arrived since the last poll. |
+| `whatsapp_get_pending_messages` | Return messages that arrived since the last poll. Image attachments are returned inline as base64 image content. |
 | `whatsapp_get_status` | Check connection and auth status. |
 | `whatsapp_connect` | Connect to WhatsApp and generate a QR code if needed. |
 | `whatsapp_disconnect` | Disconnect while keeping stored credentials. |

@@ -74,12 +74,39 @@ export interface SendMessageOptions {
   to: string
   /** Message text */
   text: string
-  /** Optional media URL to attach */
-  mediaUrl?: string
-  /** Media type if sending media */
-  mediaType?: "image" | "video" | "audio" | "document"
   /** Whether to send as a reply */
   quotedMessageId?: string
+}
+
+export type WhatsAppMediaType = "image" | "video" | "audio" | "document"
+
+/** A source for outbound media. Exactly one of buffer/path/url/base64 must be set. */
+export interface WhatsAppMediaSource {
+  /** Pre-loaded media buffer */
+  buffer?: Buffer
+  /** Local filesystem path to read */
+  path?: string
+  /** HTTP(S) URL to fetch */
+  url?: string
+  /** Raw base64-encoded media (no data: prefix) */
+  base64?: string
+  /** Mime type. Required for documents/audio; inferred when possible for image/video. */
+  mimetype?: string
+}
+
+export interface SendMediaOptions {
+  /** Recipient phone number or group JID */
+  to: string
+  /** Type of media to send */
+  type: WhatsAppMediaType
+  /** Media source (one of buffer/path/url/base64) */
+  source: WhatsAppMediaSource
+  /** Optional caption — used for image, video, and document */
+  caption?: string
+  /** Filename to surface for documents */
+  fileName?: string
+  /** When true, audio is sent as a voice note */
+  ptt?: boolean
 }
 
 export interface SendMessageResult {
