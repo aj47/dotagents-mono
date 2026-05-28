@@ -58,6 +58,10 @@ import {
 } from "./agent-run-utils"
 import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-history-utils"
 import {
+  ExecuteCommandThrashDetector,
+  extractExecuteCommandObservation,
+} from "./execute-command-thrash-detector"
+import {
   filterNamedItemsToAllowedTools,
 } from "./llm-tool-gating"
 import { sanitizeMessageContentForDisplay } from "@dotagents/shared"
@@ -2245,6 +2249,10 @@ export async function processTranscriptWithAgentMode(
   let lastExcludedToolCount = 0 // Track previous excluded count to avoid unnecessary system prompt rebuilds
   let cachedSystemPrompt: string | undefined // Cached rebuilt prompt when tools are excluded
   let suppressReadMoreContextAfterExactAnswer = false
+  // Detects when the model is stuck re-running broad/truncated `execute_command`
+  // probes against the same files instead of producing a deliverable. The
+  // detector lives for the lifetime of this run so observations span iterations.
+  const executeCommandThrashDetector = new ExecuteCommandThrashDetector()
 
   while (iteration < maxIterations) {
     iteration++
@@ -3388,11 +3396,38 @@ export async function processTranscriptWithAgentMode(
     const hasErrors = toolResults.some((result) => result.isError)
     const allToolsSuccessful = toolResults.length > 0 && !hasErrors
 
+    // Record this batch's successful execute_command results so the thrash
+    // detector can decide whether repeated broad/truncated inspection should
+    // count as forward progress. Errored / non-execute_command results are
+    // filtered inside extractExecuteCommandObservation.
+    const executeCommandObservations: ReturnType<typeof extractExecuteCommandObservation>[] = []
+    for (let i = 0; i < toolResults.length; i++) {
+      const observation = extractExecuteCommandObservation(toolCallsArray[i]!, toolResults[i])
+      if (observation) executeCommandObservations.push(observation)
+    }
+    if (executeCommandObservations.length > 0) {
+      executeCommandThrashDetector.recordBatch(
+        executeCommandObservations.filter((o): o is NonNullable<typeof o> => !!o),
+      )
+    }
+    const executeCommandThrashEvaluation = executeCommandThrashDetector.evaluate()
+    const batchIsExecuteCommandOnly =
+      toolCallsArray.length > 0
+      && toolCallsArray.every((toolCall) => toolCall.name === "execute_command")
+    // Treat a thrashy execute_command-only batch as "not real forward progress"
+    // for the verifier streak. Mixed batches (e.g. execute_command + write_file
+    // + mark_work_complete) still get the reset because they include genuine
+    // deliverable-shaped work.
+    const suppressVerificationResetForThrash =
+      executeCommandThrashEvaluation.thrashing
+      && batchIsExecuteCommandOnly
+      && !completionToolCalled
+
     // A successful real-work tool batch is forward progress, so it breaks any
     // verifier-failure streak. Communication-only tools such as respond_to_user
     // are intentionally excluded; otherwise a model that repeatedly talks but
     // never calls mark_work_complete can reset the verifier budget forever.
-    if (allToolsSuccessful && !onlyCommunicationTools) {
+    if (allToolsSuccessful && !onlyCommunicationTools && !suppressVerificationResetForThrash) {
       verificationFailCount = 0
     }
 
@@ -3418,6 +3453,21 @@ export async function processTranscriptWithAgentMode(
           ? `The latest read_more_context call returned the exact requested answer: ${exactAnswer}. Answer with that now; do not call read_more_context again.`
           : "The latest read_more_context call returned matching context. Use that returned context to answer now; avoid repeating read_more_context for the same query unless a specific detail is still missing.",
       )
+    }
+
+    // Synthesize-now nudge: when execute_command results indicate the agent is
+    // thrashing on broad/truncated inspection, push it toward producing a
+    // deliverable using what it already knows. Skipped when the batch already
+    // signalled completion so we don't second-guess a finished run.
+    if (
+      !completionSignalConfirmed
+      && !hasErrors
+      && executeCommandThrashEvaluation.thrashing
+      && executeCommandThrashEvaluation.message
+      && !executeCommandThrashDetector.wasNudgedAtIteration(iteration)
+    ) {
+      addEphemeralMessage("user", executeCommandThrashEvaluation.message)
+      executeCommandThrashDetector.markNudged(iteration)
     }
 
     if (hasErrors) {
