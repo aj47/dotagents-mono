@@ -26,6 +26,15 @@ function truncatePromptNoteText(text: string, maxChars: number): string {
   return `${text.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`
 }
 
+function formatPromptIsoDate(timestamp: number | undefined): string {
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || timestamp <= 0) {
+    return ""
+  }
+  const iso = new Date(timestamp).toISOString()
+  // YYYY-MM-DD (UTC). Stable across machines and easy for the model to compare to the CURRENT TIME line.
+  return iso.slice(0, 10)
+}
+
 function formatWorkingNotesForPrompt(notes: KnowledgeNote[], maxNotes: number = 6): string {
   if (!notes || notes.length === 0) return ""
 
@@ -36,7 +45,14 @@ function formatWorkingNotesForPrompt(notes: KnowledgeNote[], maxNotes: number = 
       const summary = truncatePromptNoteText(normalizePromptNoteText(note.summary ?? ''), 180)
       const body = truncatePromptNoteText(normalizePromptNoteText(note.body), 140)
       const fallback = body ? `${note.title}: ${body}` : note.title
-      return `- [${note.id}] ${summary || fallback}`
+      const updated = formatPromptIsoDate(note.updatedAt)
+      const created = formatPromptIsoDate(note.createdAt)
+      const dateLabel = updated
+        ? `updated ${updated}`
+        : created
+          ? `created ${created}`
+          : "undated"
+      return `- [${note.id}] (${dateLabel}) ${summary || fallback}`
     })
     .join("\n")
 }
@@ -379,7 +395,7 @@ export function constructSystemPrompt(
   // Only a tiny subset of context:auto knowledge notes should be injected at runtime.
   const formattedWorkingNotes = formatWorkingNotesForPrompt(workingNotes || [])
   if (formattedWorkingNotes) {
-    prompt += `\n\nWORKING NOTES:\nThese were injected from configured knowledge roots because their frontmatter sets context: auto. Prefer note summaries when present, keep this subset tiny, and leave most notes as context: search-only.\n\n${formattedWorkingNotes}`
+    prompt += `\n\nWORKING NOTES:\nThese were injected from configured knowledge roots because their frontmatter sets context: auto. Each entry is annotated with the date it was last updated; compare it to CURRENT TIME and treat older or undated entries as potentially stale. For time-sensitive requests ("today", "current", "now", "the thing we were working on"), do not answer from a stale note - verify by searching recent conversations/notes first, and if you must use a stale source, say so explicitly. Prefer note summaries when present, keep this subset tiny, and leave most notes as context: search-only.\n\n${formattedWorkingNotes}`
   }
 
   // Format full tool info for relevant tools only (when provided)

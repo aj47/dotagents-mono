@@ -288,15 +288,20 @@ Skills are filesystem instructions. When a task matches a skill below, read its 
     expect(prompt).not.toContain("AVAILABLE TOOLS:")
   })
 
-  it("formats injected working notes from knowledge notes", async () => {
+  it("formats injected working notes from knowledge notes with their source date", async () => {
     const { constructSystemPrompt } = await import("./system-prompts")
+
+    // 2024-03-15T00:00:00Z and 2025-01-20T00:00:00Z so the date annotation is
+    // both human-readable and stable across machines/timezones.
+    const updatedArch = Date.UTC(2024, 2, 15)
+    const updatedRelease = Date.UTC(2025, 0, 20)
 
     const prompt = constructSystemPrompt([], undefined, false, undefined, undefined, undefined, undefined, [
       {
         id: "project-architecture",
         title: "Project Architecture",
         context: "auto",
-        updatedAt: 2,
+        updatedAt: updatedArch,
         tags: ["architecture"],
         summary: "Layered Electron app with workspace-overrides-global note loading.",
         body: "Longer details here.",
@@ -305,7 +310,7 @@ Skills are filesystem instructions. When a task matches a skill below, read its 
         id: "release-plan",
         title: "Release Plan",
         context: "auto",
-        updatedAt: 1,
+        updatedAt: updatedRelease,
         tags: ["release"],
         body: "# Milestones\nShip the staged rollout next week.",
       } as any,
@@ -313,9 +318,42 @@ Skills are filesystem instructions. When a task matches a skill below, read its 
 
     expect(prompt).toContain("WORKING NOTES")
     expect(prompt).toContain("context: auto")
-    expect(prompt).toContain("[project-architecture] Layered Electron app with workspace-overrides-global note loading.")
-    expect(prompt).toContain("[release-plan] Release Plan: Milestones Ship the staged rollout next week.")
+    expect(prompt).toContain("[project-architecture] (updated 2024-03-15) Layered Electron app with workspace-overrides-global note loading.")
+    expect(prompt).toContain("[release-plan] (updated 2025-01-20) Release Plan: Milestones Ship the staged rollout next week.")
+    // The header should teach the model to treat older entries as potentially stale.
+    expect(prompt).toMatch(/stale/i)
     expect(prompt).not.toContain("KNOWLEDGE FROM PREVIOUS SESSIONS")
+  })
+
+  it("falls back to created date or 'undated' when updatedAt is missing on a recalled note", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const createdAt = Date.UTC(2023, 5, 1)
+
+    const prompt = constructSystemPrompt([], undefined, false, undefined, undefined, undefined, undefined, [
+      {
+        id: "legacy-note",
+        title: "Legacy Note",
+        context: "auto",
+        createdAt,
+        // updatedAt deliberately missing
+        tags: [],
+        summary: "An older recalled snippet without an updated timestamp.",
+        body: "body",
+      } as any,
+      {
+        id: "ghost-note",
+        title: "Ghost Note",
+        context: "auto",
+        // no createdAt, no updatedAt
+        tags: [],
+        summary: "Source has no timestamps at all.",
+        body: "body",
+      } as any,
+    ] as any)
+
+    expect(prompt).toContain("[legacy-note] (created 2023-06-01) An older recalled snippet without an updated timestamp.")
+    expect(prompt).toContain("[ghost-note] (undated) Source has no timestamps at all.")
   })
 
   it("prefers direct execution over mandatory delegation for simple tasks", async () => {
