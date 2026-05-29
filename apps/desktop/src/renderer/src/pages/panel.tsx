@@ -2,6 +2,7 @@ import { AgentProgress } from "@renderer/components/agent-progress"
 import { AgentProcessingView } from "@renderer/components/agent-processing-view"
 import { MultiAgentProgressView } from "@renderer/components/multi-agent-progress-view"
 import { Recorder } from "@renderer/lib/recorder"
+import { HANDS_FREE_AUDIO_CONSTRAINTS } from "@renderer/lib/hands-free-coordinator"
 import { playSound, setSoundOutputDevice } from "@renderer/lib/sound"
 import { cn } from "@renderer/lib/utils"
 import { useMutation, useQuery } from "@tanstack/react-query"
@@ -357,16 +358,21 @@ export function Component() {
   // ref is refreshed in the background so the synchronous visualizer UI stays accurate.
   const startRecordingWithFreshDevice = async () => {
     let deviceId = audioInputDeviceIdRef.current
+    let handsFree = configQuery.data?.handsFreeSpeakerMode ?? false
     try {
       const freshConfig = await tipcClient.getConfig()
       if (freshConfig) {
         deviceId = freshConfig.audioInputDeviceId
         audioInputDeviceIdRef.current = deviceId
+        handsFree = !!freshConfig.handsFreeSpeakerMode
       }
     } catch {
       // Best-effort: fall back to the ref value on IPC failure.
     }
-    return recorderRef.current?.startRecording(deviceId)
+    return recorderRef.current?.startRecording({
+      deviceId,
+      ...(handsFree ? HANDS_FREE_AUDIO_CONSTRAINTS : {}),
+    })
   }
 
   // Apply selected audio output device to sound effects (recording start/stop beeps)

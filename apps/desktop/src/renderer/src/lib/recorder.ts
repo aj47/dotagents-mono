@@ -9,24 +9,53 @@ const isInvalidAudioInputDeviceError = (error: unknown) => {
   return name === "OverconstrainedError" || name === "NotFoundError"
 }
 
-const getUserMediaAudioStream = async (deviceId?: string) => {
+export interface RecorderAudioConstraints {
+  echoCancellation?: boolean
+  noiseSuppression?: boolean
+  autoGainControl?: boolean
+}
+
+export interface RecorderStartOptions extends RecorderAudioConstraints {
+  deviceId?: string
+}
+
+const normalizeStartOptions = (input?: string | RecorderStartOptions): RecorderStartOptions => {
+  if (!input) return {}
+  if (typeof input === "string") return { deviceId: input }
+  return input
+}
+
+const buildAudioConstraints = (options: RecorderStartOptions, includeDeviceId: boolean): MediaTrackConstraints | true => {
+  const constraints: MediaTrackConstraints = {}
+  if (includeDeviceId && options.deviceId) {
+    constraints.deviceId = { exact: options.deviceId }
+  }
+  if (options.echoCancellation !== undefined) constraints.echoCancellation = options.echoCancellation
+  if (options.noiseSuppression !== undefined) constraints.noiseSuppression = options.noiseSuppression
+  if (options.autoGainControl !== undefined) constraints.autoGainControl = options.autoGainControl
+
+  return Object.keys(constraints).length > 0 ? constraints : true
+}
+
+const getUserMediaAudioStream = async (options: RecorderStartOptions) => {
+  const primaryConstraints = buildAudioConstraints(options, true)
   try {
     return await navigator.mediaDevices.getUserMedia({
-      audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+      audio: primaryConstraints,
       video: false,
     })
   } catch (error) {
-    if (!deviceId || !isInvalidAudioInputDeviceError(error)) {
+    if (!options.deviceId || !isInvalidAudioInputDeviceError(error)) {
       throw error
     }
 
     console.warn("[Recorder] Configured audio input device unavailable, falling back to system default", {
-      deviceId,
+      deviceId: options.deviceId,
       error,
     })
 
     return navigator.mediaDevices.getUserMedia({
-      audio: true,
+      audio: buildAudioConstraints(options, false),
       video: false,
     })
   }
@@ -106,10 +135,10 @@ export class Recorder extends EventEmitter<{
     }
   }
 
-  async startRecording(deviceId?: string) {
+  async startRecording(options?: string | RecorderStartOptions) {
     this.stopRecording()
 
-    const stream = (this.stream = await getUserMediaAudioStream(deviceId))
+    const stream = (this.stream = await getUserMediaAudioStream(normalizeStartOptions(options)))
 
     const mediaRecorder = (this.mediaRecorder = new MediaRecorder(stream, {
       audioBitsPerSecond: 128e3,

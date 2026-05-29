@@ -43,7 +43,10 @@ async function loadSessionActionDialog(runtime: ReturnType<typeof createHookRunt
   const soundMock = { playSound: vi.fn(async () => undefined) }
   const tipcClientMock = { tipcClient: { createMcpTextInput: vi.fn(), createMcpRecording: vi.fn(), getConfig: vi.fn(async () => null) } }
   const queryClientMock = { queryClient: { invalidateQueries: vi.fn(async () => undefined) } }
-  const storeMock = { useAgentStore: { getState: () => ({ appendUserMessageToSession: vi.fn() }) } }
+  const idleTTSPlaybackState = { playbackId: null, status: "idle", currentTime: 0, duration: 0, volume: 1, muted: false, updatedAt: 0 }
+  const useAgentStore: any = (selector?: (state: any) => any) => (typeof selector === "function" ? selector({ ttsPlaybackState: idleTTSPlaybackState }) : idleTTSPlaybackState)
+  useAgentStore.getState = () => ({ appendUserMessageToSession: vi.fn(), ttsPlaybackState: idleTTSPlaybackState })
+  const storeMock = { useAgentStore }
 
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)

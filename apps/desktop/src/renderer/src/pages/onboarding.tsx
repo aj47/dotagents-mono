@@ -15,6 +15,7 @@ import { Config } from "@shared/types"
 import { useNavigate } from "react-router-dom"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { Recorder } from "@renderer/lib/recorder"
+import { HANDS_FREE_AUDIO_CONSTRAINTS } from "@renderer/lib/hands-free-coordinator"
 import { useMutation } from "@tanstack/react-query"
 import { KeyRecorder } from "@renderer/components/key-recorder"
 import { getAgentShortcutDisplay } from "@shared/key-utils"
@@ -146,7 +147,10 @@ export function Component() {
     setMicError(null)
     try {
       const config = await tipcClient.getConfig()
-      await recorderRef.current?.startRecording(config?.audioInputDeviceId)
+      await recorderRef.current?.startRecording({
+        deviceId: config?.audioInputDeviceId,
+        ...(config?.handsFreeSpeakerMode ? HANDS_FREE_AUDIO_CONSTRAINTS : {}),
+      })
     } catch (error: any) {
       console.error("Failed to start recording:", error)
       const errorMessage = error?.message || String(error)

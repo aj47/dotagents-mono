@@ -65,4 +65,66 @@ describe("Recorder audio input fallback", () => {
     await expect(recorder.startRecording("missing-mic")).rejects.toEqual({ name: "NotAllowedError" })
     expect(getUserMedia).toHaveBeenCalledTimes(1)
   })
+
+  it("forwards hands-free audio constraints alongside the configured device", async () => {
+    const stream = { getTracks: () => [] } as unknown as MediaStream
+    const getUserMedia = vi.fn().mockResolvedValueOnce(stream)
+
+    vi.stubGlobal("navigator", {
+      mediaDevices: { getUserMedia },
+    })
+
+    const { Recorder } = await import("./recorder")
+    const recorder = new Recorder()
+
+    await recorder.startRecording({
+      deviceId: "preferred-mic",
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    })
+
+    expect(getUserMedia).toHaveBeenCalledTimes(1)
+    expect(getUserMedia).toHaveBeenCalledWith({
+      audio: {
+        deviceId: { exact: "preferred-mic" },
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    })
+  })
+
+  it("preserves hands-free audio constraints when falling back from an invalid device", async () => {
+    const stream = { getTracks: () => [] } as unknown as MediaStream
+    const getUserMedia = vi
+      .fn()
+      .mockRejectedValueOnce({ name: "OverconstrainedError" })
+      .mockResolvedValueOnce(stream)
+
+    vi.stubGlobal("navigator", {
+      mediaDevices: { getUserMedia },
+    })
+
+    vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    const { Recorder } = await import("./recorder")
+    const recorder = new Recorder()
+
+    await recorder.startRecording({
+      deviceId: "missing-mic",
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    })
+
+    expect(getUserMedia).toHaveBeenNthCalledWith(2, {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    })
+  })
 })

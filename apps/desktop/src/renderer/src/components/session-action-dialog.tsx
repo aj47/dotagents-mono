@@ -10,6 +10,11 @@ import { queryClient } from "@renderer/lib/queries"
 import { cn } from "@renderer/lib/utils"
 import { playSound } from "@renderer/lib/sound"
 import { useAgentStore } from "@renderer/stores"
+import {
+  HANDS_FREE_AUDIO_CONSTRAINTS,
+  evaluateHandsFreeSubmit,
+  isTTSAudible,
+} from "@renderer/lib/hands-free-coordinator"
 
 export type SessionActionDialogMode = "text" | "voice"
 
@@ -61,6 +66,11 @@ export function SessionActionDialog({
   const recorderRef = useRef<Recorder | null>(null)
   const shouldSubmitVoiceRef = useRef(false)
   const isClosedRef = useRef(false)
+  const recordingStartedAtRef = useRef<number>(0)
+  const ttsLastAudibleEndedAtRef = useRef<number | null>(null)
+  const ttsAudibleDuringRecordingRef = useRef<boolean>(false)
+
+  const ttsPlaybackState = useAgentStore((state) => state.ttsPlaybackState)
 
   const canUpdateDialogState = () => isMountedRef.current && !isClosedRef.current
 
@@ -157,6 +167,35 @@ export function SessionActionDialog({
           return
         }
 
+        const handsFreeConfig = await tipcClient.getConfig()
+        if (handsFreeConfig?.handsFreeSpeakerMode) {
+          const recordingEndedAt = Date.now()
+          const verdict = evaluateHandsFreeSubmit({
+            ttsState: useAgentStore.getState().ttsPlaybackState,
+            recordingStartedAt: recordingStartedAtRef.current || recordingEndedAt - duration,
+            recordingEndedAt,
+            ttsLastAudibleEndedAt: ttsAudibleDuringRecordingRef.current
+              ? ttsLastAudibleEndedAtRef.current ?? recordingEndedAt
+              : ttsLastAudibleEndedAtRef.current,
+          })
+          if (!verdict.shouldSubmit) {
+            if (!canHandleRecorderCallback(recorder, true)) return
+            shouldSubmitVoiceRef.current = false
+            setIsSubmitting(false)
+            const message = verdict.reason === "tts-active"
+              ? "Waiting for assistant to finish speaking…"
+              : "Skipped capture that overlapped assistant speech — try again."
+            setStatusMessage(message)
+            if (verdict.reason !== "tts-active") {
+              toast.message(message)
+            }
+            if (canUpdateDialogState()) {
+              await startVoiceRecording()
+            }
+            return
+          }
+        }
+
         try {
           playSound("end_record")
           if (!canHandleRecorderCallback(recorder, true)) return
@@ -200,7 +239,16 @@ export function SessionActionDialog({
       if (!canUpdateDialogState()) return
       setRecording(true)
       const config = await tipcClient.getConfig()
-      await recorder.startRecording(config?.audioInputDeviceId)
+      recordingStartedAtRef.current = Date.now()
+      ttsAudibleDuringRecordingRef.current = false
+      const handsFree = config?.handsFreeSpeakerMode
+      if (handsFree && isTTSAudible(useAgentStore.getState().ttsPlaybackState)) {
+        ttsAudibleDuringRecordingRef.current = true
+      }
+      await recorder.startRecording({
+        deviceId: config?.audioInputDeviceId,
+        ...(handsFree ? HANDS_FREE_AUDIO_CONSTRAINTS : {}),
+      })
     } catch (error) {
       stopRecorder()
       if (!canUpdateDialogState()) return
@@ -239,6 +287,23 @@ export function SessionActionDialog({
       stopRecorder()
     }
   }, [open, mode])
+
+  // Track whether TTS was audible at any point during the active recording
+  // window. Used by hands-free mode to drop captures that overlap the
+  // assistant's own speech, plus to expose a tail-window suppression after
+  // playback ends.
+  useEffect(() => {
+    if (!open || mode !== "voice") return
+    const audible = isTTSAudible(ttsPlaybackState)
+    if (audible) {
+      if (recording) {
+        ttsAudibleDuringRecordingRef.current = true
+      }
+      ttsLastAudibleEndedAtRef.current = null
+    } else if (ttsLastAudibleEndedAtRef.current === null && ttsPlaybackState?.updatedAt) {
+      ttsLastAudibleEndedAtRef.current = ttsPlaybackState.updatedAt
+    }
+  }, [open, mode, recording, ttsPlaybackState])
 
   useEffect(() => {
     if (!open || mode !== "voice" || !recording || isSubmitting) return undefined

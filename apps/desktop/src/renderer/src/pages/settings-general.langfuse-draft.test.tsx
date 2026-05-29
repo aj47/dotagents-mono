@@ -205,7 +205,7 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   vi.doMock("@renderer/lib/tipc-client", () => tipcClientMock)
   vi.doMock("../lib/tipc-client", () => tipcClientMock)
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-  vi.doMock("lucide-react", () => ({ ExternalLink: Null, AlertCircle: Null, FolderOpen: Null, FolderUp: Null, FileText: Null, Search: Null }))
+  vi.doMock("lucide-react", () => ({ ExternalLink: Null, AlertCircle: Null, AlertTriangle: Null, FolderOpen: Null, FolderUp: Null, FileText: Null, Search: Null, X: Null }))
   vi.doMock("@dotagents/shared", () => ({ __esModule: true, STT_PROVIDER_ID: {}, SUPPORTED_LANGUAGES: [] }))
   vi.doMock("@shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
   vi.doMock("../shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))

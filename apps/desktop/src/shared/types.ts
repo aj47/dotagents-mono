@@ -1198,6 +1198,12 @@ export type Config = {
   audioInputDeviceLabel?: string // Last resolved microphone label (used to remap rotated IDs)
   audioOutputDeviceId?: string  // Speaker device ID (from enumerateDevices / setSinkId)
 
+  // Hands-free speaker mode: when listening through speakers, request mic input
+  // with browser echo cancellation / noise suppression / AGC and gate recording
+  // around active TTS playback so the assistant's own audio is not captured as
+  // a new user turn.
+  handsFreeSpeakerMode?: boolean
+
   // Text Input Configuration
   textInputEnabled?: boolean
   textInputShortcut?: "ctrl-t" | "ctrl-shift-t" | "alt-t" | "custom"

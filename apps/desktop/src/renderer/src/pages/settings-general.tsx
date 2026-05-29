@@ -32,6 +32,7 @@ import {
 import { RemoteServerSettingsGroups } from "./settings-remote-server"
 import { useAudioDevices } from "@renderer/hooks/use-audio-devices"
 import { hasResolvedAudioInputDeviceLabel } from "@renderer/hooks/audio-input-device-utils"
+import { isLikelyFeedbackPairing } from "@renderer/lib/hands-free-coordinator"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 const MCP_MAX_ITERATIONS_MIN = 1
@@ -1006,6 +1007,54 @@ export function Component() {
               </SelectContent>
             </Select>
           </Control>
+
+          <Control
+            label={
+              <ControlLabel
+                label="Hands-free speaker mode"
+                tooltip="When listening through speakers, request browser echo cancellation/noise suppression/AGC and pause voice capture while the assistant is speaking, so its own audio is not picked back up as a new user turn."
+              />
+            }
+            className="px-3"
+          >
+            <Switch
+              checked={configQuery.data.handsFreeSpeakerMode ?? false}
+              onCheckedChange={(value) => {
+                saveConfig({ handsFreeSpeakerMode: value })
+              }}
+            />
+          </Control>
+
+          {(() => {
+            const selectedInput = audioInputDevices.find(
+              (device) => device.deviceId === configQuery.data?.audioInputDeviceId,
+            )
+            const selectedOutput = audioOutputDevices.find(
+              (device) => device.deviceId === configQuery.data?.audioOutputDeviceId,
+            )
+            const showFeedbackWarning = isLikelyFeedbackPairing({
+              inputLabel: selectedInput?.label ?? configQuery.data?.audioInputDeviceLabel,
+              outputLabel: selectedOutput?.label,
+              inputDeviceId: configQuery.data?.audioInputDeviceId,
+              outputDeviceId: configQuery.data?.audioOutputDeviceId,
+            })
+            if (!showFeedbackWarning) return null
+            return (
+              <div className="px-3">
+                <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-medium">Microphone and speaker share the same device path.</p>
+                    <p>
+                      Audio output is likely to feed back into the mic. {configQuery.data?.handsFreeSpeakerMode
+                        ? "Hands-free speaker mode helps, but plugging in a headset removes feedback risk entirely."
+                        : "Enable Hands-free speaker mode above, or pick a separate headset/microphone."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </ControlGroup>
 
         <ControlGroup collapsible defaultCollapsed title="Speech-to-Text" forceOpen={isSearching}>
