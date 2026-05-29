@@ -10,6 +10,7 @@ import {
   collectRecentRealUserRequestIndices,
   hasMappedToolResultPrefix,
   isGeneratedContextSummaryContent,
+  isRealUserRequestContent,
   MAPPED_TOOL_RESULT_PREFIX_RE,
 } from "./conversation-history-utils"
 
@@ -1174,6 +1175,38 @@ function collectPinnedContextIndices(messages: LLMMessage[]): number[] {
   return indices
 }
 
+function collectRecentRealUserRequestAnchorIndices(
+  messages: LLMMessage[],
+  limit: number,
+  beforeIndex: number,
+  maxPreviousContentChars: number,
+): number[] {
+  if (limit <= 0) return []
+
+  let latestIndex: number | undefined
+  const end = Math.max(0, Math.min(beforeIndex, messages.length))
+  for (let index = end - 1; index >= 0; index--) {
+    const message = messages[index]
+    if (message?.role === "user" && isRealUserRequestContent(message.content)) {
+      latestIndex = index
+      break
+    }
+  }
+
+  if (latestIndex === undefined) return []
+
+  // The active task must stay raw even when it is a long prompt; only older
+  // anchors keep the normal size cap so bulky historical requests can compact.
+  const previousIndices = collectRecentRealUserRequestIndices(
+    messages,
+    limit - 1,
+    latestIndex,
+    maxPreviousContentChars,
+  )
+
+  return [...previousIndices, latestIndex]
+}
+
 function truncateMiddleForSummaryInput(content: string, maxChars: number): string {
   if (content.length <= maxChars) return content
 
@@ -1260,7 +1293,7 @@ function getArchiveFrontierState(
   if (!sessionId) return null
 
   const pinnedIndices = collectPinnedContextIndices(messages)
-  const anchorIndices = collectRecentRealUserRequestIndices(
+  const anchorIndices = collectRecentRealUserRequestAnchorIndices(
     messages,
     RECENT_USER_REQUEST_ANCHOR_COUNT,
     messages.length,
@@ -1749,7 +1782,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
 
   // Tier 1: Batch-summarize oversized conversational messages.
   // Tool/payload blobs are truncated above and protected from LLM summarization here.
-  const protectedAnchorIndices = new Set(collectRecentRealUserRequestIndices(
+  const protectedAnchorIndices = new Set(collectRecentRealUserRequestAnchorIndices(
     messages,
     RECENT_USER_REQUEST_ANCHOR_COUNT,
     messages.length,
@@ -1833,7 +1866,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   const effectiveLastN = tokens > targetTokens * 1.5 ? Math.max(1, Math.floor(lastN / 2)) : lastN
 
   const pinnedIndices = collectPinnedContextIndices(messages)
-  const anchorIndices = collectRecentRealUserRequestIndices(
+  const anchorIndices = collectRecentRealUserRequestAnchorIndices(
     messages,
     RECENT_USER_REQUEST_ANCHOR_COUNT,
     messages.length,
@@ -1856,7 +1889,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
   for (let i = 0; i < messages.length; i++) {
     if (!keptSet.has(i)) {
       droppedMessages.push(messages[i])
-      if (messages[i].role === "tool") {
+      if (messages[i].role === "tool" || hasMappedToolResultPrefix(messages[i].content)) {
         toolMessagesToBeDropped.push(messages[i])
       }
     }

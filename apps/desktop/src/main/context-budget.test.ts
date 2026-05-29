@@ -470,6 +470,39 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(result.messages.some((msg) => msg.role === 'user' && msg.content === oldRequest)).toBe(false)
   })
 
+  it('keeps an oversized latest real user request raw when tool-result tail is archived', async () => {
+    makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.95,
+      mcpMaxContextTokensOverride: 12000,
+    })
+
+    const currentRequest = `current task: inspect the running process logs and fix the tool context issue ${'details '.repeat(420)}`
+    const messages = [
+      { role: 'system', content: 'system prompt' },
+      { role: 'user', content: 'earlier short request' },
+      ...Array.from({ length: 12 }, (_, index) => ({
+        role: 'assistant',
+        content: `older-work-${index} ${'o'.repeat(120)}`,
+      })),
+      { role: 'user', content: currentRequest },
+      ...Array.from({ length: 30 }, (_, index) => ({
+        role: 'user',
+        content: `[execute_command] tool result fragment ${index} ${'t'.repeat(120)}`,
+      })),
+    ]
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-latest-user',
+      messages,
+      lastNMessages: 3,
+    })
+
+    expect(currentRequest.length).toBeGreaterThan(mockConfig.mcpContextSummarizeCharThreshold)
+    expect(result.appliedStrategies).toContain('archive_frontier')
+    expect(result.messages.some((msg) => msg.role === 'user' && msg.content === currentRequest)).toBe(true)
+  })
+
   it('keeps injected historical context blocks pinned during archive frontier compaction', async () => {
     makeTextCompletionWithFetchMock.mockResolvedValue('archived work summary')
     Object.assign(mockConfig, {
@@ -752,6 +785,31 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(result.appliedStrategies).not.toContain('microcompact')
     expect(result.messages.filter((msg) => msg.role === 'tool')).toHaveLength(10)
     expect(result.messages.some((msg) => msg.content.includes('[Tool result cleared for context management]'))).toBe(false)
+  })
+
+  it('summarizes mapped user-role tool results before drop_middle removes them', async () => {
+    Object.assign(mockConfig, {
+      mcpContextTargetRatio: 0.5,
+      mcpContextSummarizeCharThreshold: 10000,
+      mcpMaxContextTokensOverride: 300,
+    })
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-no-microcompact',
+      lastNMessages: 1,
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'task request' },
+        { role: 'user', content: '[execute_command] discovered target file path' },
+        { role: 'assistant', content: `verbose intermediate reasoning ${'r'.repeat(2500)}` },
+        { role: 'user', content: 'latest follow up' },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('drop_middle')
+    expect(result.toolResultsSummarized).toBe(true)
+    expect(result.messages.some((msg) => msg.content.includes('Previously executed tools:'))).toBe(true)
+    expect(result.messages.some((msg) => msg.content.includes('[execute_command] discovered target file path'))).toBe(true)
   })
 
   it('keeps truncated payload messages protected after archive frontier reorders messages', async () => {
