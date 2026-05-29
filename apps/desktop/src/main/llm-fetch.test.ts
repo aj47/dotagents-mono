@@ -1324,4 +1324,44 @@ describe('LLM Fetch with AI SDK', () => {
 
     expect(callCount).toBe(1)
   })
+
+  it('passes per-run langfuse trace id to createLLMGeneration', async () => {
+    // The fetch-side LLM call must associate its generation event with the
+    // per-RUN trace id, not the long-lived DotAgents agent session id. The
+    // session id is preserved as a separate function arg for abort-controller
+    // wiring and token-usage recording.
+    const { createLLMGeneration, isTracingEnabled } = await import('./langfuse-service')
+    const isTracingEnabledMock = vi.mocked(isTracingEnabled)
+    const createLLMGenerationMock = vi.mocked(createLLMGeneration)
+    isTracingEnabledMock.mockReturnValue(true)
+    createLLMGenerationMock.mockReturnValue(null)
+
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+    generateTextMock.mockResolvedValue({
+      text: '{"content":"ok"}',
+      finishReason: 'stop',
+      usage: { promptTokens: 1, completionTokens: 1 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+
+    await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'test' }],
+      'openai',
+      undefined,
+      'agent-sess-1',
+      undefined,
+      'trace-uuid-Q',
+    )
+
+    expect(createLLMGenerationMock).toHaveBeenCalledWith(
+      'trace-uuid-Q',
+      expect.any(String),
+      expect.any(Object),
+    )
+
+    const firstArgs = createLLMGenerationMock.mock.calls.map(call => call[0])
+    expect(firstArgs).not.toContain('agent-sess-1')
+  })
 })

@@ -416,8 +416,8 @@ async function runAgentCLI(prompt: string): Promise<void> {
       ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
       : mcpService.getAvailableTools()
 
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
-      return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig)
+    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void, langfuseTraceId?: string): Promise<MCPToolResult> => {
+      return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig, langfuseTraceId)
     }
 
     // Track last shown step to avoid duplicates

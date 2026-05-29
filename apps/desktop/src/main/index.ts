@@ -843,6 +843,10 @@ if (!gotSingleInstanceLock) {
           withCleanupTimeout("keyboard", () => stopListeningToKeyboardEvents()),
           withCleanupTimeout("ACP", () => acpService.shutdown()),
           withCleanupTimeout("MCP", () => mcpService.cleanup()),
+          withCleanupTimeout("langfuse", async () => {
+            const { shutdownLangfuse } = await import("./langfuse-service")
+            await shutdownLangfuse()
+          }),
         ])
 
         for (const result of cleanupResults) {

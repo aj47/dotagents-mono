@@ -1331,9 +1331,11 @@ export async function runAgent(options: RunAgentOptions): Promise<{
       ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
       : mcpService.getAvailableTools()
 
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
-      // Pass sessionId for ACP router tools progress, and profileSnapshot.mcpServerConfig for session-aware server availability
-      return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig)
+    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void, langfuseTraceId?: string): Promise<MCPToolResult> => {
+      // Pass sessionId for ACP router tools progress, profileSnapshot.mcpServerConfig
+      // for session-aware server availability, and langfuseTraceId so the tool span
+      // is linked to the correct per-run trace.
+      return await mcpService.executeToolCall(toolCall, onProgress, false, sessionId, profileSnapshot?.mcpServerConfig, langfuseTraceId)
     }
 
     const agentResult = await processTranscriptWithAgentMode(

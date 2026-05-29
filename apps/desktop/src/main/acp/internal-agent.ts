@@ -684,7 +684,8 @@ export async function runInternalSubSession(
     // Create tool executor that respects session isolation
     const executeToolCall = async (
       toolCall: MCPToolCall,
-      toolOnProgress?: (message: string) => void
+      toolOnProgress?: (message: string) => void,
+      langfuseTraceId?: string,
     ): Promise<MCPToolResult> => {
       // Check if session should stop
       if (agentSessionStateManager.shouldStopSession(subSessionId)) {
@@ -701,7 +702,8 @@ export async function runInternalSubSession(
         toolOnProgress,
         false, // skipApprovalCheck
         subSessionId,
-        effectiveProfileSnapshot?.mcpServerConfig
+        effectiveProfileSnapshot?.mcpServerConfig,
+        langfuseTraceId,
       );
 
       // Add tool result to conversation history for UI display
@@ -973,7 +975,8 @@ export async function continueInternalSubSession(
 
     const executeToolCall = async (
       toolCall: MCPToolCall,
-      toolOnProgress?: (message: string) => void
+      toolOnProgress?: (message: string) => void,
+      langfuseTraceId?: string,
     ): Promise<MCPToolResult> => {
       if (agentSessionStateManager.shouldStopSession(subSessionId)) {
         return {
@@ -987,7 +990,8 @@ export async function continueInternalSubSession(
         toolOnProgress,
         false,
         subSessionId,
-        effectiveProfileSnapshot?.mcpServerConfig
+        effectiveProfileSnapshot?.mcpServerConfig,
+        langfuseTraceId,
       );
 
       subSession.conversationHistory.push({

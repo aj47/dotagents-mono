@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto"
 import { configStore, conversationsFolder, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import type {
   MCPTool,
@@ -24,6 +25,7 @@ import { DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT, getCurrentPresetName } from 
 import {
   createAgentTrace,
   endAgentTrace,
+  forceCloseActiveTrace,
   isTracingEnabled,
   flushLangfuse,
 } from "./langfuse-service"
@@ -703,7 +705,7 @@ interface ToolExecutionResult {
  */
 async function executeToolWithRetries(
   toolCall: MCPToolCall,
-  executeToolCall: (toolCall: MCPToolCall, onProgress?: (message: string) => void) => Promise<MCPToolResult>,
+  executeToolCall: (toolCall: MCPToolCall, onProgress?: (message: string) => void, langfuseTraceId?: string) => Promise<MCPToolResult>,
   currentSessionId: string,
   onToolProgress: (message: string) => void,
   maxRetries: number = 2,
@@ -811,7 +813,7 @@ async function executeToolWithRetries(
 export async function processTranscriptWithAgentMode(
   transcript: string,
   availableTools: MCPTool[],
-  executeToolCall: (toolCall: MCPToolCall, onProgress?: (message: string) => void) => Promise<MCPToolResult>,
+  executeToolCall: (toolCall: MCPToolCall, onProgress?: (message: string) => void, langfuseTraceId?: string) => Promise<MCPToolResult>,
   maxIterations: number = 10,
   previousConversationHistory?: Array<{
     role: "user" | "assistant" | "tool"
@@ -865,16 +867,24 @@ export async function processTranscriptWithAgentMode(
   // Track step summaries for dual-model mode
   const stepSummaries: import("../shared/types").AgentStepSummary[] = []
 
-  // Create an observability trace for this agent session if enabled
-  // - traceId: unique ID for this trace (our agent session ID)
-  // - sessionId: groups traces together (our conversation ID)
+  // Create an observability trace for this agent RUN if enabled.
+  //
+  // Important: trace ids are now per-RUN (one UUID per call to this function)
+  // and decoupled from the DotAgents `currentSessionId` (a long-lived agent
+  // session that may span many runs). Langfuse `sessionId` continues to be the
+  // conversation id so the dashboard's Sessions view still groups runs by
+  // conversation.
+  const langfuseTraceId = randomUUID()
   if (isTracingEnabled()) {
-    createAgentTrace(currentSessionId, {
+    createAgentTrace(langfuseTraceId, {
       name: "Agent Session",
       sessionId: currentConversationId,  // Groups all agent sessions in this conversation
       metadata: {
         maxIterations,
         hasHistory: !!previousConversationHistory?.length,
+        agentSessionId: currentSessionId,
+        runId: effectiveRunId,
+        conversationId: currentConversationId,
         profileId: effectiveProfileSnapshot?.profileId,
         profileName: effectiveProfileSnapshot?.profileName,
       },
@@ -884,6 +894,11 @@ export async function processTranscriptWithAgentMode(
         : undefined,
     })
   }
+
+  // Wrap caller-provided executeToolCall so every tool call gets the per-run
+  // trace id without each call site having to thread it through manually.
+  const tracedExecuteToolCall: typeof executeToolCall = (toolCall, onProgress) =>
+    executeToolCall(toolCall, onProgress, langfuseTraceId)
 
   // Declare variables that need to be accessible in the finally block for Langfuse tracing
   let iteration = 0
@@ -1349,7 +1364,7 @@ export async function processTranscriptWithAgentMode(
 
       const executeTitleUpdate = executeToolWithRetries(
         toolCall,
-        executeToolCall,
+        tracedExecuteToolCall,
         currentSessionId,
         onToolProgress,
         2,
@@ -1370,7 +1385,7 @@ export async function processTranscriptWithAgentMode(
     if (!cacheKey) {
       return executeToolWithRetries(
         toolCall,
-        executeToolCall,
+        tracedExecuteToolCall,
         currentSessionId,
         onToolProgress,
         2,
@@ -1411,7 +1426,7 @@ export async function processTranscriptWithAgentMode(
 
     const execution = executeToolWithRetries(
       toolCall,
-      executeToolCall,
+      tracedExecuteToolCall,
       currentSessionId,
       onToolProgress,
       2,
@@ -1953,7 +1968,7 @@ export async function processTranscriptWithAgentMode(
     // Update context info for progress display
     contextInfoRef = { estTokens: verifyEstTokens, maxTokens: verifyMaxTokens }
 
-    const response = await makeLLMCall(shrunkMessages, config, onRetryProgress, undefined, currentSessionId)
+    const response = await makeLLMCall(shrunkMessages, config, onRetryProgress, undefined, currentSessionId, undefined, langfuseTraceId)
 
     // Check for stop request if needed
     if (checkForStop && agentSessionStateManager.shouldStopSession(currentSessionId)) {
@@ -2486,7 +2501,7 @@ export async function processTranscriptWithAgentMode(
         }, { sendRendererProgress: shouldSendRendererProgress })
       }
 
-      llmResponse = await makeLLMCall(shrunkMessages, config, onRetryProgress, onStreamingUpdate, currentSessionId, activeTools)
+      llmResponse = await makeLLMCall(shrunkMessages, config, onRetryProgress, onStreamingUpdate, currentSessionId, activeTools, langfuseTraceId)
 
       // The next non-streaming progress update clears live streaming state in the renderer.
       // Avoid an extra intermediate emit that would duplicate the completed text.
@@ -3672,7 +3687,7 @@ export async function processTranscriptWithAgentMode(
 
 
         try {
-          const summaryResponse = await makeLLMCall(shrunkSummaryMessages, config, onRetryProgress, undefined, currentSessionId)
+          const summaryResponse = await makeLLMCall(shrunkSummaryMessages, config, onRetryProgress, undefined, currentSessionId, undefined, langfuseTraceId)
 
           // Check if stop was requested during summary generation
           if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
@@ -3969,14 +3984,26 @@ export async function processTranscriptWithAgentMode(
       totalIterations: iteration,
     }
   } finally {
-    // End observability trace for this agent session if enabled
-    // This is in a finally block to ensure traces are closed even on unexpected exceptions
+    // End observability trace for this agent run if enabled.
+    // This is in a finally block to ensure traces are closed even on unexpected exceptions.
     if (isTracingEnabled()) {
-      endAgentTrace(currentSessionId, {
+      // If the run was aborted, force-close any in-flight tool spans / LLM
+      // generations under this trace BEFORE marking the trace finished so
+      // dashboards show clear ERROR terminal states instead of orphans.
+      if (wasAborted) {
+        forceCloseActiveTrace(langfuseTraceId, {
+          statusMessage: "Agent run aborted",
+          level: "ERROR",
+        })
+      }
+
+      endAgentTrace(langfuseTraceId, {
         output: finalContent,
         metadata: {
           totalIterations: iteration,
           wasAborted,
+          runId: effectiveRunId,
+          agentSessionId: currentSessionId,
           ...(lastContextBudgetInfo && {
             contextBudget: {
               estTokensAfter: lastContextBudgetInfo.estTokensAfter,
@@ -3986,8 +4013,9 @@ export async function processTranscriptWithAgentMode(
           }),
         },
       })
-      // Flush to ensure local trace writes and/or Langfuse events are completed
-      flushLangfuse().catch(() => {})
+      // Flush to ensure local trace writes and/or Langfuse events are completed.
+      // Await so the run truly finishes once tracing is fully flushed.
+      await flushLangfuse().catch(() => {})
     }
 
     // Clean up context budget tracking for this session
@@ -4015,6 +4043,7 @@ async function makeLLMCall(
   onStreamingUpdate?: StreamingCallback,
   sessionId?: string,
   tools?: MCPTool[],
+  langfuseTraceId?: string,
 ): Promise<LLMToolCallResponse> {
   const chatProviderId = config.mcpToolsProviderId
 
@@ -4046,9 +4075,10 @@ async function makeLLMCall(
         onRetryProgress,
         sessionId,
         tools,
+        langfuseTraceId,
       )
     } else {
-      result = await makeLLMCallWithFetch(messages, chatProviderId, onRetryProgress, sessionId, tools)
+      result = await makeLLMCallWithFetch(messages, chatProviderId, onRetryProgress, sessionId, tools, langfuseTraceId)
     }
 
     if (isDebugLLM()) {

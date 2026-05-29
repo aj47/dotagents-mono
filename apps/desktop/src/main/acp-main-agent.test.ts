@@ -427,29 +427,95 @@ describe("acp-main-agent", () => {
       profileSnapshot: { profileId: "profile-1", profileName: "Debug Agent" } as any,
     })
 
-    expect(mockCreateAgentTrace).toHaveBeenCalledWith("ui-session-1", expect.objectContaining({
-      name: "ACP Agent Session",
-      sessionId: "conversation-1",
-      input: "hello",
-      tags: ["profile:Debug Agent", "acp"],
-    }))
-    expect(mockCreateToolSpan).toHaveBeenCalledWith("ui-session-1", "acp-tool-tool-123", expect.objectContaining({
+    // The trace id must be a freshly-generated per-run UUID, NOT the long-lived
+    // DotAgents agent session id. The agent session id is now carried inside
+    // trace metadata so it can be filtered/grouped in dashboards.
+    const uuidPattern = /^[0-9a-f-]{36}$/i
+    expect(mockCreateAgentTrace).toHaveBeenCalledWith(
+      expect.stringMatching(uuidPattern),
+      expect.objectContaining({
+        name: "ACP Agent Session",
+        sessionId: "conversation-1",
+        input: "hello",
+        tags: ["profile:Debug Agent", "acp"],
+        metadata: expect.objectContaining({
+          agentName: "test-agent",
+          agentSessionId: "ui-session-1",
+          runId: 1,
+          conversationId: "conversation-1",
+          profileId: "profile-1",
+          profileName: "Debug Agent",
+        }),
+      }),
+    )
+
+    const traceId = mockCreateAgentTrace.mock.calls[0]?.[0]
+    expect(typeof traceId).toBe("string")
+    expect(traceId).toMatch(uuidPattern)
+
+    expect(mockCreateToolSpan).toHaveBeenCalledWith(traceId, "acp-tool-tool-123", expect.objectContaining({
       name: "ACP Tool: web_search",
       input: { query: "trace this" },
+      metadata: expect.objectContaining({
+        agentSessionId: "ui-session-1",
+      }),
     }))
     expect(mockEndToolSpan).toHaveBeenCalledWith("acp-tool-tool-123", expect.objectContaining({
       level: "DEFAULT",
     }))
-    expect(mockEndAgentTrace).toHaveBeenCalledWith("ui-session-1", expect.objectContaining({
+    expect(mockEndAgentTrace).toHaveBeenCalledWith(traceId, expect.objectContaining({
       output: "done",
       metadata: expect.objectContaining({
         agentName: "test-agent",
+        agentSessionId: "ui-session-1",
+        runId: 1,
         conversationId: "conversation-1",
         acpSessionId: "acp-session-1",
         success: true,
         stopReason: "complete",
       }),
     }))
+    expect(mockFlushLangfuse).toHaveBeenCalled()
+  })
+
+  it("abort with active tool span emits ERROR-level span.end", async () => {
+    mockIsTracingEnabled.mockReturnValue(true)
+    mockSendPrompt.mockImplementation(async () => {
+      // Emit a `running` tool sessionUpdate but NO corresponding `completed` update,
+      // so the span is still open when the prompt rejects.
+      sessionUpdateHandler?.({
+        sessionId: "acp-session-1",
+        toolCall: {
+          toolCallId: "tool-aborted",
+          title: "Tool: web_search",
+          status: "running",
+          rawInput: { query: "abort this" },
+        },
+        isComplete: false,
+      })
+
+      throw new Error("agent run aborted")
+    })
+
+    const { processTranscriptWithACPAgent } = await import("./acp-main-agent")
+
+    const result = await processTranscriptWithACPAgent("hello", {
+      agentName: "test-agent",
+      conversationId: "conversation-1",
+      sessionId: "ui-session-1",
+      runId: 1,
+      profileSnapshot: { profileId: "profile-1", profileName: "Debug Agent" } as any,
+    })
+
+    expect(result.success).toBe(false)
+
+    // The leftover open span should be ended at ERROR level because traceError
+    // is set on this failure path. The plan's contract: WARNING for graceful
+    // truncation (no traceError), ERROR for abnormal termination.
+    expect(mockEndToolSpan).toHaveBeenCalledWith(
+      "acp-tool-tool-aborted",
+      expect.objectContaining({ level: "ERROR" }),
+    )
     expect(mockFlushLangfuse).toHaveBeenCalled()
   })
 

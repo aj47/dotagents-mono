@@ -489,7 +489,7 @@ async function processWithAgentMode(
       : mcpService.getAvailableTools()
 
     // Use agent mode for iterative tool calling
-    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
+    const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void, langfuseTraceId?: string): Promise<MCPToolResult> => {
       // Handle inline tool approval if enabled in config
       if (config.mcpRequireApprovalBeforeToolCall) {
         // Request approval and wait for user response via the UI
@@ -542,8 +542,10 @@ async function processWithAgentMode(
       }
 
       // Execute the tool call (approval either not required or was granted)
-      // Pass sessionId for ACP router tools progress, and profileSnapshot.mcpServerConfig for session-aware server availability
-      return await mcpService.executeToolCall(toolCall, onProgress, true, sessionId, profileSnapshot?.mcpServerConfig)
+      // Pass sessionId for ACP router tools progress, profileSnapshot.mcpServerConfig
+      // for session-aware server availability, and langfuseTraceId so the tool span
+      // is linked to the correct per-run trace.
+      return await mcpService.executeToolCall(toolCall, onProgress, true, sessionId, profileSnapshot?.mcpServerConfig, langfuseTraceId)
     }
 
     // Load previous conversation history if continuing a conversation.
@@ -3339,7 +3341,7 @@ export const router = {
 
         if (langfuseConfigChanged) {
           const { reinitializeLangfuse } = await import("./langfuse-service")
-          reinitializeLangfuse()
+          await reinitializeLangfuse()
         } else if (localTraceConfigChanged) {
           const { resetLocalTraceLogger } = await import("./local-trace-logger")
           resetLocalTraceLogger()

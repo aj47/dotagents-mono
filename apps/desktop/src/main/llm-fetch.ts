@@ -860,7 +860,8 @@ export async function makeLLMCallWithFetch(
   providerId?: string,
   onRetryProgress?: RetryProgressCallback,
   sessionId?: string,
-  tools?: MCPTool[]
+  tools?: MCPTool[],
+  langfuseTraceId?: string,
 ): Promise<LLMToolCallResponse> {
   const effectiveProviderId = (providerId ||
     getCurrentProviderId()) as ProviderType
@@ -883,7 +884,7 @@ export async function makeLLMCallWithFetch(
           const modelName = getCurrentChatGptWebModelName("mcp")
           const generationId = isTracingEnabled() ? randomUUID() : null
           if (generationId) {
-            createLLMGeneration(sessionId || null, generationId, {
+            createLLMGeneration(langfuseTraceId ?? null, generationId, {
               name: "LLM Call",
               model: modelName,
               modelParameters: {
@@ -1000,7 +1001,7 @@ export async function makeLLMCallWithFetch(
         // Create generation trace event if observability is enabled
         const generationId = isTracingEnabled() ? randomUUID() : null
         if (generationId) {
-          createLLMGeneration(sessionId || null, generationId, {
+          createLLMGeneration(langfuseTraceId ?? null, generationId, {
             name: "LLM Call",
             model: modelName,
             modelParameters: {
@@ -1186,7 +1187,8 @@ export async function makeLLMCallWithStreamingAndTools(
   providerId?: string,
   onRetryProgress?: RetryProgressCallback,
   sessionId?: string,
-  tools?: MCPTool[]
+  tools?: MCPTool[],
+  langfuseTraceId?: string,
 ): Promise<LLMToolCallResponse> {
   const effectiveProviderId = (providerId || getCurrentProviderId()) as ProviderType
   const transportMessages = sanitizeMessagesForLlmTransport(messages)
@@ -1205,7 +1207,7 @@ export async function makeLLMCallWithStreamingAndTools(
       if (isChatGptWebProvider(effectiveProviderId)) {
         const generationId = isTracingEnabled() ? randomUUID() : null
         if (generationId) {
-          createLLMGeneration(sessionId || null, generationId, {
+          createLLMGeneration(langfuseTraceId ?? null, generationId, {
             name: "Streaming LLM Call",
             model: modelName,
             modelParameters: {
@@ -1302,7 +1304,7 @@ export async function makeLLMCallWithStreamingAndTools(
 
       const generationId = isTracingEnabled() ? randomUUID() : null
       if (generationId) {
-        createLLMGeneration(sessionId || null, generationId, {
+        createLLMGeneration(langfuseTraceId ?? null, generationId, {
           name: "Streaming LLM Call",
           model: modelName,
           modelParameters: {
@@ -1436,7 +1438,8 @@ export async function makeTextCompletionWithFetch(
   prompt: string,
   providerId?: string,
   sessionId?: string,
-  onRetryProgress?: RetryProgressCallback
+  onRetryProgress?: RetryProgressCallback,
+  langfuseTraceId?: string,
 ): Promise<string> {
   // Use transcript provider as default since this is primarily used for transcript post-processing
   const effectiveProviderId = (providerId ||
@@ -1454,7 +1457,7 @@ export async function makeTextCompletionWithFetch(
         : getCurrentModelName(effectiveProviderId, "transcript")
 
       if (generationId) {
-        createLLMGeneration(sessionId || null, generationId, {
+        createLLMGeneration(langfuseTraceId ?? null, generationId, {
           name: "Text Completion",
           model: modelName,
           modelParameters: { provider: effectiveProviderId },
@@ -1556,7 +1559,8 @@ export async function verifyCompletionWithFetch(
   messages: Array<{ role: string; content: string }>,
   providerId?: string,
   sessionId?: string,
-  onRetryProgress?: RetryProgressCallback
+  onRetryProgress?: RetryProgressCallback,
+  langfuseTraceId?: string,
 ): Promise<CompletionVerification> {
   const effectiveProviderId = (providerId ||
     getCurrentProviderId()) as ProviderType
@@ -1593,7 +1597,7 @@ export async function verifyCompletionWithFetch(
         )
         const { system, messages: convertedMessages } = convertMessages(transportMessages)
         if (generationId) {
-          createLLMGeneration(sessionId || null, generationId, {
+          createLLMGeneration(langfuseTraceId ?? null, generationId, {
             name: "Verification Call",
             model: modelName,
             modelParameters: {

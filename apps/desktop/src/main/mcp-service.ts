@@ -2672,15 +2672,19 @@ export class MCPService {
     onProgress?: (message: string) => void,
     skipApprovalCheck: boolean = false,
     sessionId?: string,
-    profileMcpConfig?: ProfileMcpServerConfig
+    profileMcpConfig?: ProfileMcpServerConfig,
+    langfuseTraceId?: string,
   ): Promise<MCPToolResult> {
-    // Create tool span event if observability is enabled and we have a trace
-    const spanId = isTracingEnabled() && sessionId ? randomUUID() : null
-    if (spanId && sessionId) {
-      createToolSpan(sessionId, spanId, {
+    // Create tool span event only when we have a per-run langfuse trace id.
+    // The DotAgents sessionId is no longer the langfuse trace id (which is now
+    // a per-run UUID generated in processTranscriptWithAgentMode / ACP), so
+    // sessionId by itself is insufficient to link a span to a trace.
+    const spanId = isTracingEnabled() && langfuseTraceId ? randomUUID() : null
+    if (spanId && langfuseTraceId) {
+      createToolSpan(langfuseTraceId, spanId, {
         name: `Tool: ${toolCall.name}`,
         input: toolCall.arguments as Record<string, unknown>,
-        metadata: { toolName: toolCall.name },
+        metadata: { toolName: toolCall.name, agentSessionId: sessionId },
       })
     }
 

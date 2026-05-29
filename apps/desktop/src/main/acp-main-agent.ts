@@ -5,6 +5,7 @@
  * This allows using agents like Claude Code as the "brain" for DotAgents.
  */
 
+import { randomUUID } from "crypto"
 import {
   acpService,
   ACPContentBlock,
@@ -369,14 +370,23 @@ export async function processTranscriptWithACPAgent(
   let traceStopReason: string | undefined
   let traceAcpSessionId: string | undefined
 
+  // Generate a per-RUN Langfuse trace id (was previously reusing the DotAgents
+  // sessionId which is long-lived and shared across many runs). Langfuse
+  // sessionId stays the conversation id so the dashboard's Sessions view still
+  // groups all runs of a conversation together.
+  const langfuseTraceId = randomUUID()
+
   if (tracingEnabled) {
-    createAgentTrace(sessionId, {
+    createAgentTrace(langfuseTraceId, {
       name: "ACP Agent Session",
       sessionId: conversationId,
       input: transcript,
       metadata: {
         agentName,
         forceNewSession: forceNewSession === true,
+        agentSessionId: sessionId,
+        runId,
+        conversationId,
         profileId: profileSnapshot?.profileId,
         profileName: profileSnapshot?.profileName,
       },
@@ -522,10 +532,15 @@ export async function processTranscriptWithACPAgent(
       }
       trackedToolCalls.set(toolCallId, tracked)
       if (spanId) {
-        createToolSpan(sessionId, spanId, {
+        createToolSpan(langfuseTraceId, spanId, {
           name: `ACP Tool: ${toolCall.name}`,
           input: toolCall.arguments as Record<string, unknown>,
-          metadata: { toolName: toolCall.name, acpToolCallId: toolCallId, agentName },
+          metadata: {
+            toolName: toolCall.name,
+            acpToolCallId: toolCallId,
+            agentName,
+            agentSessionId: sessionId,
+          },
         })
       }
     } else {
@@ -995,18 +1010,24 @@ export async function processTranscriptWithACPAgent(
     if (tracingEnabled) {
       for (const tracked of trackedToolCalls.values()) {
         if (tracked.spanId && !tracked.spanEnded) {
+          // If we already recorded a trace error (abnormal termination), promote
+          // the leftover span to ERROR; otherwise keep the existing WARNING level
+          // for the "session ended before tool reported completion" case.
+          const leftoverLevel: "ERROR" | "WARNING" = traceError ? "ERROR" : "WARNING"
           endToolSpan(tracked.spanId, {
-            level: "WARNING",
+            level: leftoverLevel,
             statusMessage: traceError || "ACP session ended before tool completed",
           })
           tracked.spanEnded = true
         }
       }
 
-      endAgentTrace(sessionId, {
+      endAgentTrace(langfuseTraceId, {
         output: traceOutput,
         metadata: {
           agentName,
+          agentSessionId: sessionId,
+          runId,
           conversationId,
           acpSessionId: traceAcpSessionId,
           success: !traceError,

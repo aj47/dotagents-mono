@@ -35,6 +35,13 @@ const activeTraces = new Map<string, LangfuseTraceClient>()
 const activeSpans = new Map<string, LangfuseSpanClient>()
 const activeGenerations = new Map<string, LangfuseGenerationClient>()
 
+// Reverse-link maps from span/generation id back to their owning langfuse trace id.
+// These let force-close paths (abort, reinit, shutdown) iterate the active spans
+// and generations that belong to a given trace without needing the caller to track
+// them. Entries are added on creation and removed on end.
+const spanTraceLinks = new Map<string, string>()
+const generationTraceLinks = new Map<string, string>()
+
 /**
  * Check if Langfuse package is installed and available
  */
@@ -102,17 +109,42 @@ export function getLangfuse(): LangfuseInstance | null {
 }
 
 /**
- * Reinitialize Langfuse when config changes
+ * Reinitialize Langfuse when config changes.
+ *
+ * Any active spans/generations are force-closed with ERROR level before the
+ * Langfuse instance is shut down so consumers see a clear terminal event
+ * instead of orphaned in-flight records.
  */
-export function reinitializeLangfuse(): void {
+export async function reinitializeLangfuse(): Promise<void> {
+  // Snapshot then iterate so endToolSpan/endLLMGeneration can mutate the maps.
+  for (const spanId of Array.from(activeSpans.keys())) {
+    endToolSpan(spanId, {
+      level: "ERROR",
+      statusMessage: "Langfuse reinitialized",
+    })
+  }
+  for (const generationId of Array.from(activeGenerations.keys())) {
+    endLLMGeneration(generationId, {
+      output: "",
+      level: "ERROR",
+      statusMessage: "Langfuse reinitialized",
+    })
+  }
+
   if (langfuseInstance) {
-    langfuseInstance.shutdownAsync().catch(console.error)
+    try {
+      await langfuseInstance.shutdownAsync()
+    } catch (error) {
+      console.error("[Langfuse] Failed to shut down on reinit:", error)
+    }
     langfuseInstance = null
   }
-  // Clear all active traces/spans
+  // Clear all active traces/spans and reverse links
   activeTraces.clear()
   activeSpans.clear()
   activeGenerations.clear()
+  spanTraceLinks.clear()
+  generationTraceLinks.clear()
   // Local trace logger caches the resolved path; reset so config changes apply.
   resetLocalTraceLogger()
 }
@@ -227,7 +259,13 @@ export function endAgentTrace(
 }
 
 /**
- * Create a span for a tool call
+ * Create a span for a tool call.
+ *
+ * @param traceId The per-run Langfuse trace id, NOT a DotAgents session id.
+ *   Each agent RUN has its own UUID, generated in `processTranscriptWithAgentMode`
+ *   or `processTranscriptWithACPAgent`. The DotAgents session id (long-lived
+ *   across many runs in the same UI session) lives on the trace metadata
+ *   under `agentSessionId`.
  */
 export function createToolSpan(
   traceId: string,
@@ -247,6 +285,10 @@ export function createToolSpan(
     metadata: options.metadata,
   })
 
+  // Remember the reverse link unconditionally so force-close paths work even
+  // when langfuse cloud is not configured (local-trace-only mode).
+  spanTraceLinks.set(spanId, traceId)
+
   const trace = activeTraces.get(traceId)
   if (!trace) return null
 
@@ -265,7 +307,11 @@ export function createToolSpan(
 }
 
 /**
- * End a tool span with output
+ * End a tool span with output.
+ *
+ * Idempotent: if the span has already been ended (e.g. by `forceCloseActiveTrace`
+ * during an abort), this is a no-op so callers don't have to track lifecycle
+ * state themselves.
  */
 export function endToolSpan(
   spanId: string,
@@ -276,6 +322,13 @@ export function endToolSpan(
     statusMessage?: string
   }
 ): void {
+  // If neither the langfuse span client nor the reverse trace link is around,
+  // the span has already been ended (or was never opened). Drop the event so
+  // we don't emit duplicate span.end lines after a force-close.
+  const span = activeSpans.get(spanId)
+  const hasLink = spanTraceLinks.has(spanId)
+  if (!span && !hasLink) return
+
   appendLocalTraceEvent({
     type: "span.end",
     spanId,
@@ -285,7 +338,8 @@ export function endToolSpan(
     statusMessage: options.statusMessage,
   })
 
-  const span = activeSpans.get(spanId)
+  spanTraceLinks.delete(spanId)
+
   if (!span) return
 
   try {
@@ -302,7 +356,13 @@ export function endToolSpan(
 }
 
 /**
- * Create a generation for an LLM call
+ * Create a generation for an LLM call.
+ *
+ * @param traceId The per-run Langfuse trace id, NOT a DotAgents session id.
+ *   When null, the generation is created as an orphan (no parent trace), which
+ *   is the correct behaviour for callers that have no agent run associated
+ *   (e.g. MCP sampling). When set, it must be the run-scoped UUID generated
+ *   by `processTranscriptWithAgentMode` / `processTranscriptWithACPAgent`.
  */
 export function createLLMGeneration(
   traceId: string | null,
@@ -325,6 +385,12 @@ export function createLLMGeneration(
     input: options.input,
     metadata: options.metadata,
   })
+
+  // Remember the reverse link unconditionally so force-close paths work even
+  // when langfuse cloud is not configured (local-trace-only mode).
+  if (traceId) {
+    generationTraceLinks.set(generationId, traceId)
+  }
 
   const langfuse = getLangfuse()
   if (!langfuse) return null
@@ -359,7 +425,10 @@ export function createLLMGeneration(
 }
 
 /**
- * End an LLM generation with output and usage metrics
+ * End an LLM generation with output and usage metrics.
+ *
+ * Idempotent: if the generation has already been ended (e.g. via
+ * `forceCloseActiveTrace` during an abort), this is a no-op.
  */
 export function endLLMGeneration(
   generationId: string,
@@ -375,6 +444,10 @@ export function endLLMGeneration(
     statusMessage?: string
   }
 ): void {
+  const generation = activeGenerations.get(generationId)
+  const hasLink = generationTraceLinks.has(generationId)
+  if (!generation && !hasLink) return
+
   appendLocalTraceEvent({
     type: "generation.end",
     generationId,
@@ -385,7 +458,8 @@ export function endLLMGeneration(
     statusMessage: options.statusMessage,
   })
 
-  const generation = activeGenerations.get(generationId)
+  generationTraceLinks.delete(generationId)
+
   if (!generation) return
 
   try {
@@ -399,6 +473,108 @@ export function endLLMGeneration(
     activeGenerations.delete(generationId)
   } catch (error) {
     console.error("[Langfuse] Failed to end generation:", error)
+  }
+}
+
+/**
+ * Force-close any active spans and generations attached to a trace.
+ *
+ * Used when an agent run is aborted or otherwise terminates abnormally so the
+ * trace doesn't leave dangling in-flight events. Does NOT end the trace itself
+ * — callers must still call `endAgentTrace` to finalize the trace.
+ *
+ * Subsequent normal end calls (e.g. from `mcp-service.endSpanAndReturn`) for
+ * the same span ids are no-ops, since `endToolSpan` / `endLLMGeneration` are
+ * idempotent.
+ */
+export function forceCloseActiveTrace(
+  traceId: string,
+  reason: { statusMessage: string; level?: "ERROR" | "WARNING" }
+): void {
+  const level = reason.level ?? "ERROR"
+
+  // Snapshot keys first because endToolSpan/endLLMGeneration mutate the maps.
+  const spanIds: string[] = []
+  for (const [spanId, owningTraceId] of spanTraceLinks.entries()) {
+    if (owningTraceId === traceId) spanIds.push(spanId)
+  }
+  for (const spanId of spanIds) {
+    endToolSpan(spanId, {
+      output: { error: reason.statusMessage },
+      level,
+      statusMessage: reason.statusMessage,
+    })
+  }
+
+  const generationIds: string[] = []
+  for (const [generationId, owningTraceId] of generationTraceLinks.entries()) {
+    if (owningTraceId === traceId) generationIds.push(generationId)
+  }
+  for (const generationId of generationIds) {
+    endLLMGeneration(generationId, {
+      output: "",
+      level,
+      statusMessage: reason.statusMessage,
+    })
+  }
+}
+
+/**
+ * Best-effort cleanup at app shutdown.
+ *
+ * Force-closes any active spans, generations, and traces, flushes pending
+ * local + langfuse events, then shuts down the langfuse client. Safe to call
+ * multiple times.
+ */
+export async function shutdownLangfuse(): Promise<void> {
+  for (const spanId of Array.from(activeSpans.keys())) {
+    endToolSpan(spanId, {
+      level: "ERROR",
+      statusMessage: "App shutdown",
+    })
+  }
+  // Also catch any links left over (e.g. local-trace-only mode where the
+  // langfuse activeSpans map is empty but link entries still exist).
+  for (const spanId of Array.from(spanTraceLinks.keys())) {
+    endToolSpan(spanId, {
+      level: "ERROR",
+      statusMessage: "App shutdown",
+    })
+  }
+
+  for (const generationId of Array.from(activeGenerations.keys())) {
+    endLLMGeneration(generationId, {
+      output: "",
+      level: "ERROR",
+      statusMessage: "App shutdown",
+    })
+  }
+  for (const generationId of Array.from(generationTraceLinks.keys())) {
+    endLLMGeneration(generationId, {
+      output: "",
+      level: "ERROR",
+      statusMessage: "App shutdown",
+    })
+  }
+
+  // Snapshot trace ids first because endAgentTrace mutates activeTraces.
+  const traceIds = Array.from(activeTraces.keys())
+  for (const traceId of traceIds) {
+    endAgentTrace(traceId, {
+      output: "",
+      metadata: { shutdown: true },
+    })
+  }
+
+  await flushLangfuse()
+
+  if (langfuseInstance) {
+    try {
+      await langfuseInstance.shutdownAsync()
+    } catch (error) {
+      console.error("[Langfuse] Failed to shut down:", error)
+    }
+    langfuseInstance = null
   }
 }
 
