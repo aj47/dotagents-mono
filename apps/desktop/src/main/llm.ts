@@ -2102,6 +2102,8 @@ export async function processTranscriptWithAgentMode(
         verificationMessages,
         config.mcpToolsProviderId,
         currentSessionId,
+        undefined,
+        langfuseTraceId,
       ), { verificationMessages })
       if (verification?.isComplete === true) {
         verified = true
