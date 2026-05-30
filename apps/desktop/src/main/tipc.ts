@@ -2263,6 +2263,8 @@ export const router = {
         transcript = json.text || ""
       }
 
+      transcript = await postProcessTranscriptSafely(transcript, "transcribeChunk")
+
       return { text: transcript }
     }),
 
