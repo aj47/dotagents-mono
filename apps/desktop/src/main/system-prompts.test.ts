@@ -72,7 +72,13 @@ describe("constructSystemPrompt", () => {
     expect(DEFAULT_SYSTEM_PROMPT).toContain("search relevant knowledge notes first and prior conversations second")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("Before asking the user for facts that may already be known")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("whenever the current task likely relates to prior work")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("always prefer knowledge notes over recalled conversation context when they conflict")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("Treat memory as layered")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("continuation/status/latest-state")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("search recent conversations (default last 7-14 days) before or alongside knowledge")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("resolve by freshness, domain, confidence, and source type")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("prefer knowledge notes for durable facts")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("prefer recent conversations for current state")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("surface the conflict explicitly when uncertain")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("personal legal/immigration")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("inspect both relevant knowledge notes and recent conversations with a shell/file tool")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("configured knowledge roots")
@@ -113,6 +119,24 @@ describe("constructSystemPrompt", () => {
     expect(prompt).not.toContain("Use save_memory")
   })
 
+  it("teaches layered recency-aware memory retrieval in the agent-mode local memory section", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt(
+      [{ name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } }] as any,
+      undefined,
+      true,
+    )
+
+    expect(prompt).toContain("LOCAL MEMORY & CONFIG:")
+    expect(prompt).toContain("Memory is layered")
+    expect(prompt).toContain("knowledge notes are canonical for durable facts")
+    expect(prompt).toContain("recent conversation history is fresher working memory")
+    expect(prompt).toContain('"continue"/"what happened"/"where are we"/"latest"/"status" style requests')
+    expect(prompt).toContain("prefer recent conversations")
+    expect(prompt).toContain("resolve conflicts by freshness, domain, and confidence")
+  })
+
   it("preserves knowledge note guidance in the minimal fallback prompt when file tools are available", async () => {
     const { constructMinimalSystemPrompt } = await import("./system-prompts")
 
@@ -132,6 +156,9 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("DOTAGENTS_TOOL_MANIFEST")
     expect(prompt).toContain("index.json")
     expect(prompt).toContain("conv_*.json")
+    expect(prompt).toContain("Memory is layered")
+    expect(prompt).toContain("recent conversations for current state/continuation/status")
+    expect(prompt).toContain("on conflict resolve by freshness, domain, and confidence")
     expect(prompt).toContain("layered global/workspace .agents folders")
     expect(prompt).toContain("dotagents-config-admin")
   })

@@ -35,7 +35,9 @@ PAST CONVERSATIONS:
 - Prior DotAgents conversations are JSON in the runtime-supplied conversations directory
 - If the prompt includes an absolute conversations path, use it; otherwise infer the app-data folder in an OS-appropriate way
 - Use index.json to discover relevant conversations, then open matching conv_*.json files for full history when prior chat context would help
-- Before asking the user for facts that may already be known, or whenever the current task likely relates to prior work, search relevant knowledge notes first and prior conversations second; always prefer knowledge notes over recalled conversation context when they conflict
+- Treat memory as layered: knowledge notes are canonical for durable facts (user preferences, canonical decisions, reusable workflows, config and location facts); recent conversation history is fresher working memory for current project state, latest blockers, temporary plans, and continuation/status tasks
+- Before asking the user for facts that may already be known, or whenever the current task likely relates to prior work, search relevant knowledge notes first and prior conversations second for durable facts; for continuation/status/latest-state requests (terms like "continue", "what happened", "where are we", "what's next", "latest", "recent", "status"), search recent conversations (default last 7-14 days) before or alongside knowledge
+- When knowledge notes and recalled conversation context conflict, resolve by freshness, domain, confidence, and source type: prefer knowledge notes for durable facts, prefer recent conversations for current state, and surface the conflict explicitly when uncertain rather than silently picking one
 - For personal legal/immigration, health, finance, career, or other high-context planning, inspect both relevant knowledge notes and recent conversations with a shell/file tool before generic advice
 
 RUNTIME METADATA:
