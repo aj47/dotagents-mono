@@ -167,8 +167,69 @@ describe("emitAgentProgress snoozed propagation", () => {
     // Second update is no longer "critical", so it should be throttled.
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
 
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(250)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
+    vi.useRealTimers()
+  })
+
+  it("uses a shorter trailing throttle and omits repeated steps for streaming text", async () => {
+    vi.useFakeTimers()
+    mocks.isSessionSnoozed.mockReturnValue(false)
+
+    const activeThinkingStep = {
+      id: "thinking-stream-1",
+      type: "thinking" as const,
+      title: "Agent response",
+      status: "in_progress" as const,
+      timestamp: 1,
+      llmContent: "",
+    }
+
+    await emitAgentProgress({
+      sessionId: "session-fast-streaming",
+      runId: 1,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [activeThinkingStep],
+    })
+
+    const firstSendCount = mocks.sendSpy.mock.calls.length
+
+    await emitAgentProgress({
+      sessionId: "session-fast-streaming",
+      runId: 1,
+      currentIteration: 0,
+      maxIterations: 1,
+      isComplete: false,
+      steps: [{
+        ...activeThinkingStep,
+        llmContent: "Hello",
+      }],
+      streamingContent: {
+        text: "Hello",
+        isStreaming: true,
+      },
+    })
+
+    expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
+
+    vi.advanceTimersByTime(49)
+    expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
+
+    vi.advanceTimersByTime(1)
+    expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
+
+    const latestUpdate = mocks.sendSpy.mock.calls.at(-1)?.[0]
+    expect(latestUpdate).toEqual(expect.objectContaining({
+      sessionId: "session-fast-streaming",
+      streamingContent: {
+        text: "Hello",
+        isStreaming: true,
+      },
+      steps: [],
+    }))
+
     vi.useRealTimers()
   })
 
@@ -200,7 +261,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     // Follow-up update should be throttled because only the first update is critical.
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
 
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(250)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })
@@ -244,7 +305,7 @@ describe("emitAgentProgress snoozed propagation", () => {
 
     // Follow-up run-scoped updates should be throttled.
     expect(mocks.sendSpy.mock.calls.length).toBe(firstRunScopedSendCount)
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(250)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstRunScopedSendCount)
     vi.useRealTimers()
   })
@@ -292,7 +353,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     })
 
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(250)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })

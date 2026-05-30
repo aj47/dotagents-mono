@@ -10,15 +10,39 @@ import { sanitizeAgentProgressUpdateForDisplay } from "@dotagents/shared"
 // Throttle interval for non-critical progress updates (ms).
 // Updates within this window are collapsed — only the latest is sent.
 const THROTTLE_INTERVAL_MS = 250
+const STREAMING_THROTTLE_INTERVAL_MS = 50
 
 // Per-session throttle state
 const sessionThrottleState = new Map<string, {
   timer: ReturnType<typeof setTimeout> | null
+  timerDueAt: number | null
   lastSendTime: number
   pendingUpdate: AgentProgressUpdate | null
   runId?: number
   sentTerminalDelegationKeys: Set<string>
 }>()
+
+function isStreamingTextUpdate(update: AgentProgressUpdate): boolean {
+  return update.streamingContent?.isStreaming === true && !update.isComplete && update.userResponse === undefined
+}
+
+function getThrottleInterval(update: AgentProgressUpdate): number {
+  return isStreamingTextUpdate(update) ? STREAMING_THROTTLE_INTERVAL_MS : THROTTLE_INTERVAL_MS
+}
+
+function getRendererProgressUpdate(update: AgentProgressUpdate): AgentProgressUpdate {
+  if (!isStreamingTextUpdate(update) || (update.steps?.length ?? 0) === 0) {
+    return update
+  }
+
+  // The renderer already has the active steps from the previous progress update.
+  // Streaming ticks only need to advance the visible text; preserving steps in
+  // the store avoids rebuilding the whole timeline for every token batch.
+  return {
+    ...update,
+    steps: [],
+  }
+}
 
 function getDelegationIdentity(step: AgentProgressUpdate["steps"][number]): string | undefined {
   if (step.delegation?.runId) return `run:${step.delegation.runId}`
@@ -178,6 +202,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
     if (!state) {
       state = {
         timer: null,
+        timerDueAt: null,
         lastSendTime: 0,
         pendingUpdate: null,
         runId: incomingRunId,
@@ -193,6 +218,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
       isFirstUpdateForSession = true
       state = {
         timer: null,
+        timerDueAt: null,
         lastSendTime: 0,
         pendingUpdate: null,
         runId: incomingRunId,
@@ -211,15 +237,17 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
     if (state?.timer) {
       clearTimeout(state.timer)
       state.timer = null
+      state.timerDueAt = null
       state.pendingUpdate = null
     }
 
     // Send immediately
-    sendToWindows(displayUpdate)
+    sendToWindows(getRendererProgressUpdate(displayUpdate))
 
     // Update throttle state
     sessionThrottleState.set(sessionId, {
       timer: null,
+      timerDueAt: null,
       lastSendTime: Date.now(),
       pendingUpdate: null,
       runId: typeof incomingRunId === "number" ? incomingRunId : state?.runId,
@@ -237,6 +265,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
   if (!state) {
     state = {
       timer: null,
+      timerDueAt: null,
       lastSendTime: 0,
       pendingUpdate: null,
       runId: typeof incomingRunId === "number" ? incomingRunId : undefined,
@@ -247,22 +276,30 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
 
   const now = Date.now()
   const elapsed = now - state.lastSendTime
+  const throttleInterval = getThrottleInterval(displayUpdate)
+  const rendererUpdate = getRendererProgressUpdate(displayUpdate)
 
-  if (elapsed >= THROTTLE_INTERVAL_MS) {
+  if (elapsed >= throttleInterval) {
     // Enough time has passed — send immediately
     if (state.timer) {
       clearTimeout(state.timer)
       state.timer = null
+      state.timerDueAt = null
     }
     state.pendingUpdate = null
     state.lastSendTime = now
     state.sentTerminalDelegationKeys = mergeTerminalDelegationKeys(state.sentTerminalDelegationKeys, displayUpdate)
-    sendToWindows(displayUpdate)
+    sendToWindows(rendererUpdate)
   } else {
     // Within throttle window — store as pending and schedule a trailing send
-    state.pendingUpdate = displayUpdate
-    if (!state.timer) {
-      const remaining = THROTTLE_INTERVAL_MS - elapsed
+    state.pendingUpdate = rendererUpdate
+    const remaining = throttleInterval - elapsed
+    const timerDueAt = now + remaining
+    if (!state.timer || state.timerDueAt === null || timerDueAt < state.timerDueAt) {
+      if (state.timer) {
+        clearTimeout(state.timer)
+      }
+      state.timerDueAt = timerDueAt
       state.timer = setTimeout(() => {
         const s = sessionThrottleState.get(sessionId)
         if (s?.pendingUpdate) {
@@ -270,6 +307,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
           if (typeof pendingRunId === "number" && typeof s.runId === "number" && pendingRunId < s.runId) {
             s.pendingUpdate = null
             s.timer = null
+            s.timerDueAt = null
             return
           }
           if (
@@ -279,6 +317,7 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
           ) {
             s.pendingUpdate = null
             s.timer = null
+            s.timerDueAt = null
             sessionThrottleState.delete(sessionId)
             return
           }
@@ -287,7 +326,10 @@ export async function emitAgentProgress(update: AgentProgressUpdate): Promise<vo
           sendToWindows(s.pendingUpdate)
           s.pendingUpdate = null
         }
-        if (s) s.timer = null
+        if (s) {
+          s.timer = null
+          s.timerDueAt = null
+        }
       }, remaining)
     }
   }

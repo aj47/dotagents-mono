@@ -2448,7 +2448,7 @@ export async function processTranscriptWithAgentMode(
       let lastStreamEmitTime = 0
       let lastRendererStreamEmitTime = 0
       const STREAM_EMIT_THROTTLE_MS = 50
-      const RENDERER_STREAM_EMIT_THROTTLE_MS = 250
+      const RENDERER_STREAM_EMIT_THROTTLE_MS = STREAM_EMIT_THROTTLE_MS
       const streamingProgressSteps = progressSteps.length <= 3
         ? progressSteps
         : progressSteps.slice(-3)
