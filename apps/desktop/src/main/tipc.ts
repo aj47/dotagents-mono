@@ -3145,6 +3145,16 @@ export const router = {
       configStore.save(merged)
 
       try {
+        const prevPanelProgressEnabled = (prev as any)?.floatingPanelAgentProgressEnabled !== false
+        const nextPanelProgressEnabled = (merged as any)?.floatingPanelAgentProgressEnabled !== false
+        if (prevPanelProgressEnabled && !nextPanelProgressEnabled && !state.isRecording && !state.isTextInputActive) {
+          closeAgentModeAndHidePanelWindow()
+        }
+      } catch (_e) {
+        // panel cleanup is best-effort only
+      }
+
+      try {
         const { globalAgentsFolder, resolveWorkspaceAgentsFolder } = await import("./config")
         const { getAgentsLayerPaths } = await import("./agents-files/modular-config")
         const { cleanupInvalidMcpServerReferencesInLayers } = await import("./agent-profile-mcp-cleanup")

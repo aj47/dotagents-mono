@@ -156,6 +156,7 @@ const LAYOUT_KEYS = new Set<string>([
   "panelWaveformSize",
   "panelProgressSize",
   "floatingPanelAutoShow",
+  "floatingPanelAgentProgressEnabled",
   "hidePanelWhenMainFocused",
 ])
 

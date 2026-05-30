@@ -237,6 +237,8 @@ const getConfig = (): LoadedConfig => {
     panelProgressSize: undefined,
     // Floating panel auto-show - when true, panel auto-shows during agent sessions
     floatingPanelAutoShow: true,
+    // Floating panel agent progress - when false, agent progress stays out of the panel
+    floatingPanelAgentProgressEnabled: true,
     // Hide floating panel when main app is focused (default: enabled)
     hidePanelWhenMainFocused: true,
     // Theme preference defaults

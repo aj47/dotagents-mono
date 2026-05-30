@@ -75,10 +75,11 @@ describe("panel recording layout", () => {
       panelSource.indexOf("// Note: We don't need to hide text input")
     )
 
-    expect(panelSource).toContain("const shouldShowProgressPanel = anyVisibleSessions && !recording")
+    expect(panelSource).toContain("const showAgentProgressInPanel = configQuery.data?.floatingPanelAgentProgressEnabled !== false")
+    expect(panelSource).toContain("const shouldShowProgressPanel = showAgentProgressInPanel && anyVisibleSessions && !recording")
     expect(modeSwitchSection).toContain("if (recording) {")
     expect(modeSwitchSection).toContain('targetMode = "normal"')
-    expect(modeSwitchSection).toContain("} else if (anyActiveNonSnoozed) {")
+    expect(modeSwitchSection).toContain("} else if (showAgentProgressInPanel && anyActiveNonSnoozed) {")
     expect(modeSwitchSection).toContain("} else if (shouldShowProgressPanel) {")
     expect(modeSwitchSection).toContain('targetMode = "agent"')
     expect(modeSwitchSection).not.toContain("recorderRef.current?.stopRecording()")

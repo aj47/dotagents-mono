@@ -4,10 +4,13 @@ const mocks = vi.hoisted(() => ({
   sendSpy: vi.fn(),
   showPanelWindow: vi.fn(),
   resizePanelForAgentMode: vi.fn(),
+  closeAgentModeAndHidePanelWindow: vi.fn(),
   isSessionSnoozed: vi.fn(),
   getSession: vi.fn(),
   shouldStopSession: vi.fn(() => false),
   getSessionRunId: vi.fn(() => undefined),
+  appState: { isRecording: false, isTextInputActive: false },
+  config: { floatingPanelAutoShow: true, floatingPanelAgentProgressEnabled: true, hidePanelWhenMainFocused: true },
   mainWindow: { isVisible: vi.fn(() => true), isFocused: vi.fn(() => false), webContents: { id: "main" } },
   panelWindow: { isVisible: vi.fn(() => false), webContents: { id: "panel" } },
 }))
@@ -20,11 +23,13 @@ vi.mock("./window", () => ({
   WINDOWS: { get: (id: string) => (id === "main" ? mocks.mainWindow : id === "panel" ? mocks.panelWindow : null) },
   showPanelWindow: mocks.showPanelWindow,
   resizePanelForAgentMode: mocks.resizePanelForAgentMode,
+  closeAgentModeAndHidePanelWindow: mocks.closeAgentModeAndHidePanelWindow,
 }))
 
 vi.mock("./state", () => ({
   isPanelAutoShowSuppressed: vi.fn(() => false),
   agentSessionStateManager: { shouldStopSession: mocks.shouldStopSession, getSessionRunId: mocks.getSessionRunId },
+  state: mocks.appState,
 }))
 
 vi.mock("./agent-session-tracker", () => ({
@@ -32,7 +37,7 @@ vi.mock("./agent-session-tracker", () => ({
 }))
 
 vi.mock("./config", () => ({
-  configStore: { get: () => ({ floatingPanelAutoShow: true, hidePanelWhenMainFocused: true }) },
+  configStore: { get: () => mocks.config },
 }))
 
 vi.mock("@dotagents/shared", () => ({
@@ -46,10 +51,16 @@ describe("emitAgentProgress snoozed propagation", () => {
     mocks.sendSpy.mockClear()
     mocks.showPanelWindow.mockClear()
     mocks.resizePanelForAgentMode.mockClear()
+    mocks.closeAgentModeAndHidePanelWindow.mockClear()
     mocks.isSessionSnoozed.mockReset()
     mocks.getSession.mockReset()
     mocks.shouldStopSession.mockClear()
     mocks.getSessionRunId.mockClear()
+    mocks.appState.isRecording = false
+    mocks.appState.isTextInputActive = false
+    mocks.config.floatingPanelAutoShow = true
+    mocks.config.floatingPanelAgentProgressEnabled = true
+    mocks.config.hidePanelWhenMainFocused = true
   })
 
   it("backfills isSnoozed from the session tracker when callers omit it", async () => {
@@ -90,6 +101,32 @@ describe("emitAgentProgress snoozed propagation", () => {
     expect(mocks.sendSpy).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-tile-visible", isSnoozed: false }))
     expect(mocks.resizePanelForAgentMode).not.toHaveBeenCalled()
     expect(mocks.showPanelWindow).not.toHaveBeenCalled()
+  })
+
+  it("keeps agent progress out of the panel when panel progress is disabled", async () => {
+    mocks.config.floatingPanelAgentProgressEnabled = false
+    mocks.isSessionSnoozed.mockReturnValue(false)
+
+    await emitAgentProgress({ sessionId: "session-panel-disabled", currentIteration: 0, maxIterations: 1, steps: [], isComplete: false })
+
+    expect(mocks.sendSpy).toHaveBeenCalledTimes(1)
+    expect(mocks.sendSpy).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-panel-disabled" }))
+    expect(mocks.resizePanelForAgentMode).not.toHaveBeenCalled()
+    expect(mocks.showPanelWindow).not.toHaveBeenCalled()
+    expect(mocks.closeAgentModeAndHidePanelWindow).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not close an active waveform recording when panel progress is disabled", async () => {
+    mocks.config.floatingPanelAgentProgressEnabled = false
+    mocks.appState.isRecording = true
+    mocks.isSessionSnoozed.mockReturnValue(false)
+
+    await emitAgentProgress({ sessionId: "session-panel-disabled-recording", currentIteration: 0, maxIterations: 1, steps: [], isComplete: false })
+
+    expect(mocks.sendSpy).toHaveBeenCalledTimes(1)
+    expect(mocks.resizePanelForAgentMode).not.toHaveBeenCalled()
+    expect(mocks.showPanelWindow).not.toHaveBeenCalled()
+    expect(mocks.closeAgentModeAndHidePanelWindow).not.toHaveBeenCalled()
   })
 
   it("sends terminal delegation updates immediately instead of leaving them behind the throttle", async () => {
@@ -167,7 +204,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     // Second update is no longer "critical", so it should be throttled.
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
 
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(250)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })
@@ -200,7 +237,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     // Follow-up update should be throttled because only the first update is critical.
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
 
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(250)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })
@@ -244,7 +281,7 @@ describe("emitAgentProgress snoozed propagation", () => {
 
     // Follow-up run-scoped updates should be throttled.
     expect(mocks.sendSpy.mock.calls.length).toBe(firstRunScopedSendCount)
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(250)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstRunScopedSendCount)
     vi.useRealTimers()
   })
@@ -292,7 +329,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     })
 
     expect(mocks.sendSpy.mock.calls.length).toBe(firstSendCount)
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(250)
     expect(mocks.sendSpy.mock.calls.length).toBeGreaterThan(firstSendCount)
     vi.useRealTimers()
   })
