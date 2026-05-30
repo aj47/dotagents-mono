@@ -7,7 +7,15 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
-import { STT_PROVIDER_ID, SUPPORTED_LANGUAGES } from "@dotagents/shared"
+import {
+  DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+  DEFAULT_HANDS_FREE_WAKE_PHRASE,
+  MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  STT_PROVIDER_ID,
+  SUPPORTED_LANGUAGES,
+  normalizeHandsFreeMessageDebounceMs,
+} from "@dotagents/shared"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Input } from "@renderer/components/ui/input"
 import { Button } from "@renderer/components/ui/button"
@@ -55,6 +63,12 @@ function parseMcpMaxIterationsDraft(value: string) {
   return parsedValue
 }
 
+function parseHandsFreeDebounceDraft(value: string) {
+  const parsedValue = Number.parseInt(value, 10)
+  if (Number.isNaN(parsedValue) || parsedValue < MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS) return null
+  return normalizeHandsFreeMessageDebounceMs(parsedValue)
+}
+
 export function Component() {
   const configQuery = useConfigQuery()
   const queryClient = useQueryClient()
@@ -71,6 +85,15 @@ export function Component() {
     () => String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
   )
   const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [handsFreeWakePhraseDraft, setHandsFreeWakePhraseDraft] = useState(
+    () => cfg?.handsFreeWakePhrase ?? DEFAULT_HANDS_FREE_WAKE_PHRASE,
+  )
+  const [handsFreeSleepPhraseDraft, setHandsFreeSleepPhraseDraft] = useState(
+    () => cfg?.handsFreeSleepPhrase ?? DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+  )
+  const [handsFreeDebounceDraft, setHandsFreeDebounceDraft] = useState(
+    () => String(cfg?.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS),
+  )
 
   // Settings search
   const [searchQuery, setSearchQuery] = useState("")
@@ -225,6 +248,18 @@ export function Component() {
   }, [cfg?.mcpMaxIterations])
 
   useEffect(() => {
+    setHandsFreeWakePhraseDraft(cfg?.handsFreeWakePhrase ?? DEFAULT_HANDS_FREE_WAKE_PHRASE)
+  }, [cfg?.handsFreeWakePhrase])
+
+  useEffect(() => {
+    setHandsFreeSleepPhraseDraft(cfg?.handsFreeSleepPhrase ?? DEFAULT_HANDS_FREE_SLEEP_PHRASE)
+  }, [cfg?.handsFreeSleepPhrase])
+
+  useEffect(() => {
+    setHandsFreeDebounceDraft(String(cfg?.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS))
+  }, [cfg?.handsFreeMessageDebounceMs])
+
+  useEffect(() => {
     return () => {
       for (const timeout of Object.values(langfuseSaveTimeoutsRef.current) as Array<ReturnType<typeof setTimeout> | undefined>) {
         if (timeout) clearTimeout(timeout)
@@ -329,6 +364,29 @@ export function Component() {
     setMcpMaxIterationsDraft(value)
     scheduleMcpMaxIterationsSave(value)
   }, [scheduleMcpMaxIterationsSave])
+
+  const flushHandsFreeWakePhrase = useCallback((value: string) => {
+    const nextValue = value.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE
+    setHandsFreeWakePhraseDraft(nextValue)
+    saveConfig({ handsFreeWakePhrase: nextValue })
+  }, [saveConfig])
+
+  const flushHandsFreeSleepPhrase = useCallback((value: string) => {
+    const nextValue = value.trim() || DEFAULT_HANDS_FREE_SLEEP_PHRASE
+    setHandsFreeSleepPhraseDraft(nextValue)
+    saveConfig({ handsFreeSleepPhrase: nextValue })
+  }, [saveConfig])
+
+  const flushHandsFreeDebounce = useCallback((value: string) => {
+    const parsedValue = parseHandsFreeDebounceDraft(value)
+    if (parsedValue === null) {
+      setHandsFreeDebounceDraft(String(cfgRef.current?.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS))
+      return
+    }
+
+    setHandsFreeDebounceDraft(String(parsedValue))
+    saveConfig({ handsFreeMessageDebounceMs: parsedValue })
+  }, [saveConfig])
 
   // Sync theme preference from config to localStorage when config loads
   useEffect(() => {
@@ -1136,6 +1194,63 @@ export function Component() {
             />
           </Control>
 
+        </ControlGroup>
+
+        <ControlGroup
+          collapsible
+          defaultCollapsed
+          title="Hands-free Voice"
+          forceOpen={isSearching}
+        >
+          <Control label={<ControlLabel label="Hands-free Voice Mode" tooltip="Enable no-hands voice requests with wake and sleep phrases." />} className="px-3">
+            <Switch
+              checked={configQuery.data.handsFree ?? false}
+              onCheckedChange={(value) => {
+                saveConfig({ handsFree: value })
+              }}
+            />
+          </Control>
+
+          <Control label={<ControlLabel label="Wake phrase" tooltip="Phrase that wakes hands-free listening from sleep." />} className="px-3">
+            <Input
+              value={handsFreeWakePhraseDraft}
+              onChange={(event) => setHandsFreeWakePhraseDraft(event.currentTarget.value)}
+              onBlur={(event) => flushHandsFreeWakePhrase(event.currentTarget.value)}
+              placeholder={DEFAULT_HANDS_FREE_WAKE_PHRASE}
+              className="w-full sm:w-[240px]"
+            />
+          </Control>
+
+          <Control label={<ControlLabel label="Sleep phrase" tooltip="Phrase that puts hands-free listening back to sleep." />} className="px-3">
+            <Input
+              value={handsFreeSleepPhraseDraft}
+              onChange={(event) => setHandsFreeSleepPhraseDraft(event.currentTarget.value)}
+              onBlur={(event) => flushHandsFreeSleepPhrase(event.currentTarget.value)}
+              placeholder={DEFAULT_HANDS_FREE_SLEEP_PHRASE}
+              className="w-full sm:w-[240px]"
+            />
+          </Control>
+
+          <Control label={<ControlLabel label="Send after silence" tooltip="Milliseconds without new speech before a hands-free message is sent. Any value 0 or higher is accepted." />} className="px-3">
+            <Input
+              type="number"
+              min={MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS}
+              value={handsFreeDebounceDraft}
+              onChange={(event) => setHandsFreeDebounceDraft(event.currentTarget.value.replace(/[^0-9]/g, ""))}
+              onBlur={(event) => flushHandsFreeDebounce(event.currentTarget.value)}
+              placeholder={String(DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS)}
+              className="w-full sm:w-[160px]"
+            />
+          </Control>
+
+          <Control label={<ControlLabel label="Debug Voice State" tooltip="Show structured recognizer and hands-free events in clients that support the debug panel." />} className="px-3">
+            <Switch
+              checked={configQuery.data.handsFreeDebug ?? false}
+              onCheckedChange={(value) => {
+                saveConfig({ handsFreeDebug: value })
+              }}
+            />
+          </Control>
         </ControlGroup>
 
         <ControlGroup collapsible defaultCollapsed title="Text to Speech" forceOpen={isSearching}>

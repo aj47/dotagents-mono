@@ -85,6 +85,11 @@
       "types": "./dist/api-key-error-utils.d.ts",
       "import": "./dist/api-key-error-utils.mjs",
       "require": "./dist/api-key-error-utils.js"
+    },
+    "./hands-free": {
+      "types": "./dist/hands-free.d.ts",
+      "import": "./dist/hands-free.mjs",
+      "require": "./dist/hands-free.js"
     }
   },
   "scripts": {
@@ -104,4 +109,3 @@
   ],
   "private": true
 }
-

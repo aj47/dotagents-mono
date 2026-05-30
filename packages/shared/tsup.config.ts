@@ -18,10 +18,10 @@ export default defineConfig({
     'message-display-utils': 'src/message-display-utils.ts',
     'stt-models': 'src/stt-models.ts',
     'api-key-error-utils': 'src/api-key-error-utils.ts',
+    'hands-free': 'src/hands-free.ts',
   },
   format: ['cjs', 'esm'],
   dts: true,
   clean: true,
   sourcemap: true,
 });
-

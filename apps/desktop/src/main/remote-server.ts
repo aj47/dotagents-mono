@@ -110,6 +110,13 @@ import type {
   OperatorUpdaterStatus,
   OperatorWhatsAppIntegrationSummary,
 } from "@dotagents/shared"
+import {
+  DEFAULT_HANDS_FREE_CONFIG,
+  DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+  DEFAULT_HANDS_FREE_WAKE_PHRASE,
+  normalizeHandsFreeMessageDebounceMs,
+} from "@dotagents/shared"
 import type { RendererHandlers } from "./renderer-handlers"
 import { INJECTED_RUNTIME_TOOL_TRANSPORT_NAME, RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "../shared/runtime-tool-names"
 
@@ -4741,6 +4748,14 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         // Speech-to-Text
         sttLanguage: cfg.sttLanguage ?? "",
         transcriptionPreviewEnabled: cfg.transcriptionPreviewEnabled ?? true,
+        // Hands-free voice settings shared with mobile clients.
+        handsFree: cfg.handsFree ?? DEFAULT_HANDS_FREE_CONFIG.handsFree,
+        handsFreeMessageDebounceMs: cfg.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+        handsFreeWakePhrase: cfg.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE,
+        handsFreeSleepPhrase: cfg.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+        handsFreeDebug: cfg.handsFreeDebug ?? DEFAULT_HANDS_FREE_CONFIG.handsFreeDebug,
+        handsFreeForegroundOnly: cfg.handsFreeForegroundOnly ?? DEFAULT_HANDS_FREE_CONFIG.handsFreeForegroundOnly,
+        handsFreeForegroundOnlyConfigured: cfg.handsFreeForegroundOnlyConfigured ?? DEFAULT_HANDS_FREE_CONFIG.handsFreeForegroundOnlyConfigured,
         transcriptPostProcessingPrompt: cfg.transcriptPostProcessingPrompt ?? "",
         // Text-to-Speech
         ttsAutoPlay: cfg.ttsAutoPlay ?? true,
@@ -4982,6 +4997,28 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.transcriptionPreviewEnabled === "boolean") {
         updates.transcriptionPreviewEnabled = body.transcriptionPreviewEnabled
+      }
+      // Hands-free voice settings
+      if (typeof body.handsFree === "boolean") {
+        updates.handsFree = body.handsFree
+      }
+      if (typeof body.handsFreeMessageDebounceMs === "number" && Number.isFinite(body.handsFreeMessageDebounceMs)) {
+        updates.handsFreeMessageDebounceMs = normalizeHandsFreeMessageDebounceMs(body.handsFreeMessageDebounceMs)
+      }
+      if (typeof body.handsFreeWakePhrase === "string") {
+        updates.handsFreeWakePhrase = body.handsFreeWakePhrase.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE
+      }
+      if (typeof body.handsFreeSleepPhrase === "string") {
+        updates.handsFreeSleepPhrase = body.handsFreeSleepPhrase.trim() || DEFAULT_HANDS_FREE_SLEEP_PHRASE
+      }
+      if (typeof body.handsFreeDebug === "boolean") {
+        updates.handsFreeDebug = body.handsFreeDebug
+      }
+      if (typeof body.handsFreeForegroundOnly === "boolean") {
+        updates.handsFreeForegroundOnly = body.handsFreeForegroundOnly
+      }
+      if (typeof body.handsFreeForegroundOnlyConfigured === "boolean") {
+        updates.handsFreeForegroundOnlyConfigured = body.handsFreeForegroundOnlyConfigured
       }
       if (typeof body.transcriptPostProcessingPrompt === "string") {
         updates.transcriptPostProcessingPrompt = body.transcriptPostProcessingPrompt
