@@ -16,7 +16,7 @@ import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-m
 import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
 import { useSavedConversationsQuery } from "@renderer/lib/queries"
-import { getAgentShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay } from "@shared/key-utils"
+import { getAgentShortcutDisplay, getTextInputShortcutDisplay, getDictationShortcutDisplay, getVoiceScreenshotShortcutDisplay } from "@shared/key-utils"
 import dayjs from "dayjs"
 import type { SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { orderActiveSessionsByPinnedFirst } from "@renderer/lib/sidebar-sessions"
@@ -29,6 +29,7 @@ import {
 } from "@renderer/lib/session-progress-hydration"
 
 const CLEAR_INACTIVE_EVENT = "sessions:clear-inactive"
+const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
 
 interface LayoutContext {
   onOpenSavedConversationsDialog: () => void
@@ -301,7 +302,7 @@ const ActiveSessionTile = React.memo(function ActiveSessionTile({
   )
 })
 
-function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversationClick, onOpenSavedConversationsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut, selectedAgentId, onSelectAgent }: {
+function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversationClick, onOpenSavedConversationsDialog, textInputShortcut, voiceInputShortcut, dictationShortcut, screenshotShortcut, selectedAgentId, onSelectAgent }: {
   onTextClick: () => void
   onVoiceClick: () => void
   onSelectPrompt: (content: string) => void
@@ -310,6 +311,7 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
   textInputShortcut: string
   voiceInputShortcut: string
   dictationShortcut: string
+  screenshotShortcut: string | null
   selectedAgentId: string | null
   onSelectAgent: (id: string | null) => void
 }) {
@@ -382,6 +384,14 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
               {dictationShortcut}
             </kbd>
           </div>
+          {screenshotShortcut && (
+            <div className="flex items-center gap-1.5">
+              <span>Screenshot:</span>
+              <kbd className="px-1.5 py-0.5 font-semibold bg-muted border rounded">
+                {screenshotShortcut}
+              </kbd>
+            </div>
+          )}
         </div>
       </div>
 
@@ -473,6 +483,10 @@ export function Component() {
   const textInputShortcut = getTextInputShortcutDisplay(configQuery.data?.textInputShortcut, configQuery.data?.customTextInputShortcut)
   const voiceInputShortcut = getAgentShortcutDisplay(configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut, configQuery.data?.customAgentShortcut || configQuery.data?.customMcpToolsShortcut)
   const dictationShortcut = getDictationShortcutDisplay(configQuery.data?.shortcut, configQuery.data?.customShortcut)
+  // Voice screenshot keybinding only fires on macOS today, so hide the hint elsewhere.
+  const screenshotShortcut = IS_MAC && configQuery.data?.voiceScreenshotShortcutEnabled !== false
+    ? getVoiceScreenshotShortcutDisplay(configQuery.data?.voiceScreenshotShortcut, configQuery.data?.customVoiceScreenshotShortcut)
+    : null
 
   const { data: sessionData, refetch: refetchSessionData } = useQuery<SessionListResponse>({
     queryKey: ["agentSessions"],
@@ -1033,6 +1047,7 @@ export function Component() {
             textInputShortcut={textInputShortcut}
             voiceInputShortcut={voiceInputShortcut}
             dictationShortcut={dictationShortcut}
+            screenshotShortcut={screenshotShortcut}
             selectedAgentId={selectedAgentId}
             onSelectAgent={setSelectedAgentId}
           />

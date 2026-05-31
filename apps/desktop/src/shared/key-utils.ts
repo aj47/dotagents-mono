@@ -263,3 +263,24 @@ export function getDictationShortcutDisplay(
       return "Hold Ctrl"
   }
 }
+
+/**
+ * Get the display string for the voice screenshot shortcut.
+ * Used by both Settings UI and the empty session screen hint.
+ */
+export function getVoiceScreenshotShortcutDisplay(
+  shortcut: "ctrl-shift-x" | "custom" | undefined,
+  customShortcut?: string,
+): string {
+  switch (shortcut) {
+    case "ctrl-shift-x":
+      return "Ctrl+Shift+X"
+    case "custom":
+      if (customShortcut) {
+        return formatKeyComboForDisplay(customShortcut)
+      }
+      return "Ctrl+Shift+X"
+    default:
+      return "Ctrl+Shift+X"
+  }
+}
