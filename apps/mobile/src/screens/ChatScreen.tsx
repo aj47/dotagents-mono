@@ -65,6 +65,8 @@ import {
   type PredefinedPromptSummary,
   type Skill,
   type ToolActivityGroup,
+  type VoiceCommandId,
+  getVoiceCommandMenuLabels,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
@@ -1827,6 +1829,71 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceLog,
   ]);
 
+  const handleHandsFreeVoiceCommand = useCallback((
+    command: VoiceCommandId,
+    label: string,
+  ) => {
+    voiceLog('handsfree-control', `Handsfree voice command dispatched: ${label}.`, { command });
+    switch (command) {
+      case 'stop-tts': {
+        clearAndroidHandsFreePartialTimer();
+        androidHandsFreePendingPartialRef.current = '';
+        queuedResponseEventsRef.current = [];
+        activeAutoSpeechEventRef.current = null;
+        if (activeRequestIdRef.current) {
+          autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
+        }
+        stopGlobalTtsPlayback();
+        if (handsFreePhaseRef.current === 'speaking') {
+          handsFreeController.onSpeechFinished();
+        }
+        setDebugInfo('Stopped speaking.');
+        playHandsFreeCue('stopped');
+        break;
+      }
+      case 'stop-agent-turn': {
+        const client = getSessionClient();
+        if (client) {
+          client.cleanup();
+        }
+        stopGlobalTtsPlayback();
+        if (handsFreePhaseRef.current === 'speaking') {
+          handsFreeController.onSpeechFinished();
+        }
+        handsFreeController.onRequestCompleted();
+        setRespondingValue(false);
+        setDebugInfo('Stopped the current agent turn.');
+        playHandsFreeCue('stopped');
+        break;
+      }
+      case 'new-session': {
+        handleNewChat();
+        setDebugInfo('Started a new chat.');
+        playHandsFreeCue('session-ready');
+        break;
+      }
+      case 'open-menu': {
+        setDebugInfo(`Say: ${getVoiceCommandMenuLabels().join(', ')}.`);
+        playHandsFreeCue('listening');
+        break;
+      }
+      default: {
+        // Exhaustive over VoiceCommandId; unknown ids fall through with no-op.
+        const _exhaustive: never = command;
+        void _exhaustive;
+      }
+    }
+  }, [
+    clearAndroidHandsFreePartialTimer,
+    getSessionClient,
+    handleNewChat,
+    handsFreeController.onRequestCompleted,
+    handsFreeController.onSpeechFinished,
+    playHandsFreeCue,
+    setRespondingValue,
+    voiceLog,
+  ]);
+
   const handleVoiceFinalized = useCallback(({
     text,
     mode,
@@ -1905,6 +1972,8 @@ export default function ChatScreen({ route, navigation }: any) {
         );
         if (action.type === 'send') {
           void sendRef.current(action.text, { source: 'handsfree' });
+        } else if (action.type === 'command') {
+          handleHandsFreeVoiceCommand(action.command, action.label);
         }
         return;
       }
@@ -1913,6 +1982,7 @@ export default function ChatScreen({ route, navigation }: any) {
     void sendRef.current(finalText);
   }, [
     handleHandsFreeTtsBargeInCommand,
+    handleHandsFreeVoiceCommand,
     handsFreeController.handleFinalTranscript,
     handsFreeHasHeadsetRoute,
     hasLiveAgentTurn,

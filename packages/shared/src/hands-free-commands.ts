@@ -1,0 +1,196 @@
+/**
+ * Hands-free voice command registry and phrase matcher.
+ *
+ * Shared between mobile and desktop so wake/sleep/dictation flows can
+ * recognize a small, extensible vocabulary of imperative commands
+ * (stop the agent, stop talking, new chat, open menu) regardless of
+ * which surface the user is on. Phrases are normalized the same way as
+ * wake/sleep matching (lowercase, ASCII letters/digits, single spaces).
+ */
+
+export type VoiceCommandId =
+  | 'stop-agent-turn'
+  | 'stop-tts'
+  | 'new-session'
+  | 'open-menu';
+
+export interface VoiceCommandDefinition {
+  /** Stable id used by callers to dispatch app actions. */
+  id: VoiceCommandId;
+  /** Short label suitable for menu announcements and confirmation TTS. */
+  label: string;
+  /**
+   * Spoken phrases that resolve to this command. Matching is case- and
+   * punctuation-insensitive and matches the phrase at the start, end, or
+   * entirety of the utterance. Longer aliases win over shorter ones, so
+   * "stop talking" is preferred over "stop" when both apply.
+   */
+  aliases: readonly string[];
+}
+
+export const DEFAULT_VOICE_COMMANDS: readonly VoiceCommandDefinition[] = [
+  {
+    id: 'stop-tts',
+    label: 'Stop talking',
+    aliases: [
+      'stop talking',
+      'stop speaking',
+      'stop the audio',
+      'stop audio',
+      'pause speech',
+      'pause speaking',
+      'stop tts',
+      'be quiet',
+      'quiet please',
+    ],
+  },
+  {
+    id: 'stop-agent-turn',
+    label: 'Stop agent',
+    aliases: [
+      'stop the agent',
+      'stop this turn',
+      'stop this run',
+      'cancel this run',
+      'cancel the agent',
+      'cancel agent',
+      'cancel turn',
+      'cancel run',
+      'stop the turn',
+      'stop the run',
+      'stop turn',
+      'stop run',
+      'stop agent',
+      'cancel',
+      'stop',
+    ],
+  },
+  {
+    id: 'new-session',
+    label: 'New chat',
+    aliases: [
+      'new chat',
+      'new session',
+      'start a new session',
+      'start a new chat',
+      'start new chat',
+      'start new session',
+      'open a new chat',
+      'open new chat',
+      'start a new agent session',
+      'new agent session',
+    ],
+  },
+  {
+    id: 'open-menu',
+    label: 'Open menu',
+    aliases: [
+      'command menu',
+      'open command menu',
+      'agent menu',
+      'open agent menu',
+      'open menu',
+      'open the menu',
+      'show menu',
+      'show commands',
+    ],
+  },
+];
+
+export interface VoiceCommandMatch {
+  command: VoiceCommandId;
+  label: string;
+  matchedPhrase: string;
+  remainder: string;
+}
+
+const PUNCTUATION_REGEX = /[^a-z0-9 ]+/gi;
+
+function normalize(text: string | null | undefined): string {
+  return (text || '')
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(PUNCTUATION_REGEX, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+interface IndexedPhrase {
+  command: VoiceCommandDefinition;
+  phrase: string;
+}
+
+function indexPhrases(commands: readonly VoiceCommandDefinition[]): IndexedPhrase[] {
+  const phrases: IndexedPhrase[] = [];
+  for (const command of commands) {
+    for (const alias of command.aliases) {
+      const phrase = normalize(alias);
+      if (phrase) phrases.push({ command, phrase });
+    }
+  }
+  // Longest phrases first so "stop talking" wins over "stop" when both
+  // would match the same utterance.
+  phrases.sort((a, b) => b.phrase.length - a.phrase.length);
+  return phrases;
+}
+
+/**
+ * Match a recognized utterance against the supplied command registry.
+ * Returns the first command whose phrase occurs as the whole utterance
+ * or at the leading/trailing boundary, with the remainder of the
+ * utterance preserved so callers can decide what to do with extra
+ * speech (e.g. "stop and start a new chat").
+ */
+export function matchVoiceCommand(
+  transcript: string,
+  commands: readonly VoiceCommandDefinition[] = DEFAULT_VOICE_COMMANDS,
+): VoiceCommandMatch | null {
+  const normalized = normalize(transcript);
+  if (!normalized) return null;
+
+  for (const { command, phrase } of indexPhrases(commands)) {
+    if (normalized === phrase) {
+      return {
+        command: command.id,
+        label: command.label,
+        matchedPhrase: phrase,
+        remainder: '',
+      };
+    }
+    if (normalized.startsWith(`${phrase} `)) {
+      return {
+        command: command.id,
+        label: command.label,
+        matchedPhrase: phrase,
+        remainder: normalized.slice(phrase.length + 1),
+      };
+    }
+    if (normalized.endsWith(` ${phrase}`)) {
+      return {
+        command: command.id,
+        label: command.label,
+        matchedPhrase: phrase,
+        remainder: normalized.slice(0, normalized.length - phrase.length - 1),
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Convenience: distinct human-readable labels for menu prompts ("Say
+ * stop talking, stop agent, or new chat").
+ */
+export function getVoiceCommandMenuLabels(
+  commands: readonly VoiceCommandDefinition[] = DEFAULT_VOICE_COMMANDS,
+): string[] {
+  const seen = new Set<string>();
+  const labels: string[] = [];
+  for (const command of commands) {
+    if (seen.has(command.label)) continue;
+    seen.add(command.label);
+    labels.push(command.label);
+  }
+  return labels;
+}
