@@ -6,6 +6,10 @@ const sidebarSource = readFileSync(new URL("../components/active-agents-sidebar.
 const agentProgressSource = readFileSync(new URL("../components/agent-progress.tsx", import.meta.url), "utf8")
 const sessionsSource = readFileSync(new URL("./sessions.tsx", import.meta.url), "utf8")
 const tileFollowUpSource = readFileSync(new URL("../components/tile-follow-up-input.tsx", import.meta.url), "utf8")
+const desktopHandsFreeSource = readFileSync(
+  new URL("../components/desktop-hands-free-voice.tsx", import.meta.url),
+  "utf8",
+)
 const sessionActionDialogSource = readFileSync(
   new URL("../components/session-action-dialog.tsx", import.meta.url),
   "utf8",
@@ -20,13 +24,41 @@ const compactSource = (source: string) => source.replace(/\s+/g, " ")
 describe("sessions in-app actions", () => {
   it("opens the in-app session action dialog from shared layout handlers instead of the hover panel", () => {
     expect(appLayoutSource).toContain("<SessionActionDialog")
+    expect(appLayoutSource).toContain("<DesktopHandsFreeVoice")
     expect(appLayoutSource).toContain("const handleStartTextSession = useCallback(async () => {")
     expect(appLayoutSource).toContain("const handleStartVoiceSession = useCallback(async (options?: {")
     expect(appLayoutSource).toContain("openSessionActionDialog({ mode: \"text\" })")
     expect(appLayoutSource).toContain('mode: "voice"')
+    expect(appLayoutSource).toContain('dialogState.mode === "voice" && configQuery.data?.handsFree')
+    expect(appLayoutSource).toContain("followFocusedTarget: !dialogState.conversationId && !dialogState.sessionId")
     expect(appLayoutSource).toContain("continueConversationTitle: options?.continueConversationTitle")
+    expect(appLayoutSource).toContain("const handleStartHandsFreeNewSession = useCallback")
+    expect(appLayoutSource).toContain("onStartNewSession={handleStartHandsFreeNewSession}")
     expect(appLayoutSource).not.toContain("await tipcClient.showPanelWindowWithTextInput({})")
     expect(appLayoutSource).not.toContain("await tipcClient.triggerMcpRecording({})")
+  })
+
+  it("shows and wires visible voice hotkey hints for hands-free and standard voice", () => {
+    expect(desktopHandsFreeSource).toContain('aria-label="Voice hotkeys"')
+    expect(desktopHandsFreeSource).toContain('aria-keyshortcuts="V"')
+    expect(desktopHandsFreeSource).toContain('aria-keyshortcuts="S"')
+    expect(desktopHandsFreeSource).toContain('aria-keyshortcuts="N"')
+    expect(desktopHandsFreeSource).toContain('aria-keyshortcuts="F"')
+    expect(desktopHandsFreeSource).toContain('aria-keyshortcuts="Escape"')
+    expect(desktopHandsFreeSource).toContain('event.key.toLowerCase()')
+    expect(desktopHandsFreeSource).toContain('key === "v"')
+    expect(desktopHandsFreeSource).toContain('key === "s"')
+    expect(desktopHandsFreeSource).toContain('key === "n"')
+    expect(desktopHandsFreeSource).toContain('key === "f"')
+    expect(desktopHandsFreeSource).toContain('event.key === "Escape"')
+    expect(desktopHandsFreeSource).toContain('isEditableKeyboardTarget(event.target)')
+    expect(desktopHandsFreeSource).toContain("setForceNewSessionTarget(true)")
+    expect(desktopHandsFreeSource).toContain("onStartNewSession?.()")
+
+    expect(sessionActionDialogSource).toContain('aria-label="Voice hotkeys"')
+    expect(sessionActionDialogSource).toContain('<VoiceHotkeyHint keys="Enter" label="Run"')
+    expect(sessionActionDialogSource).toContain('<VoiceHotkeyHint keys="Esc" label="Cancel"')
+    expect(sessionActionDialogSource).toContain('aria-keyshortcuts="Enter"')
   })
 
   it("renders a single full-height session view instead of the old card grid", () => {

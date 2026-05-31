@@ -1,6 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { normalizeApiBaseUrl } from '@dotagents/shared';
+import {
+  DEFAULT_HANDS_FREE_CONFIG,
+  DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS as SHARED_DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  DEFAULT_HANDS_FREE_SLEEP_PHRASE as SHARED_DEFAULT_HANDS_FREE_SLEEP_PHRASE,
+  DEFAULT_HANDS_FREE_WAKE_PHRASE as SHARED_DEFAULT_HANDS_FREE_WAKE_PHRASE,
+  MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS as SHARED_MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  normalizeApiBaseUrl,
+  normalizeHandsFreeConfig,
+} from '@dotagents/shared';
 
 export type AppConfig = {
   apiKey: string;
@@ -29,10 +37,10 @@ export type AppConfig = {
   audioInputDeviceId?: string;
 };
 
-export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'hey dot agents';
-export const DEFAULT_HANDS_FREE_SLEEP_PHRASE = 'go to sleep';
-export const DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 1500;
-export const MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 0;
+export const DEFAULT_HANDS_FREE_WAKE_PHRASE = SHARED_DEFAULT_HANDS_FREE_WAKE_PHRASE;
+export const DEFAULT_HANDS_FREE_SLEEP_PHRASE = SHARED_DEFAULT_HANDS_FREE_SLEEP_PHRASE;
+export const DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS = SHARED_DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
+export const MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS = SHARED_MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
 
 // Edge TTS voices removed from Microsoft's active catalog. Stored values
 // matching one of these get migrated to the default on load/save so users
@@ -47,25 +55,11 @@ function migrateEdgeTtsVoice(voice: string | undefined): string | undefined {
   return voice;
 }
 
-function normalizeHandsFreeMessageDebounceMs(value?: number) {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
-  }
-
-  return Math.max(MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS, Math.round(value as number));
-}
-
 export const DEFAULT_APP_CONFIG: AppConfig = {
   apiKey: '',
   baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-4.1-mini',
-  handsFree: false,
-  handsFreeMessageDebounceMs: DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
-  handsFreeWakePhrase: DEFAULT_HANDS_FREE_WAKE_PHRASE,
-  handsFreeSleepPhrase: DEFAULT_HANDS_FREE_SLEEP_PHRASE,
-  handsFreeDebug: false,
-  handsFreeForegroundOnly: true,
-  handsFreeForegroundOnlyConfigured: false,
+  ...DEFAULT_HANDS_FREE_CONFIG,
   ttsEnabled: true,
   ttsProvider: 'native',
   messageQueueEnabled: true,
@@ -83,17 +77,12 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
   // so if no desktop is paired fall back to native.
   const hasPairing = Boolean(cfg.baseUrl && cfg.apiKey);
   const ttsProvider = cfg.ttsProvider === 'edge' && !hasPairing ? 'native' : cfg.ttsProvider;
-  const handsFreeForegroundOnlyConfigured = cfg.handsFreeForegroundOnlyConfigured === true;
+  const handsFreeConfig = normalizeHandsFreeConfig(cfg);
   return {
     ...DEFAULT_APP_CONFIG,
     ...cfg,
     baseUrl: cfg.baseUrl ? normalizeApiBaseUrl(cfg.baseUrl) : cfg.baseUrl,
-    handsFreeMessageDebounceMs: normalizeHandsFreeMessageDebounceMs(cfg.handsFreeMessageDebounceMs),
-    handsFreeWakePhrase: cfg.handsFreeWakePhrase?.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE,
-    handsFreeSleepPhrase: cfg.handsFreeSleepPhrase?.trim() || DEFAULT_HANDS_FREE_SLEEP_PHRASE,
-    handsFreeDebug: cfg.handsFreeDebug ?? false,
-    handsFreeForegroundOnly: cfg.handsFreeForegroundOnly ?? true,
-    handsFreeForegroundOnlyConfigured,
+    ...handsFreeConfig,
     edgeTtsVoice: migrateEdgeTtsVoice(cfg.edgeTtsVoice),
     ttsProvider,
   };

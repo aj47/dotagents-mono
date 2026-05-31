@@ -4,7 +4,13 @@ import os from "os"
 import type { Config, ModelPreset } from "./types"
 import type { PathResolver } from "./interfaces/path-resolver"
 import { container, ServiceTokens } from "./service-container"
-import { getBuiltInModelPresets, DEFAULT_MODEL_PRESET_ID, DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT } from "@dotagents/shared"
+import {
+  DEFAULT_HANDS_FREE_CONFIG,
+  DEFAULT_MODEL_PRESET_ID,
+  DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT,
+  getBuiltInModelPresets,
+  normalizeHandsFreeConfig,
+} from "@dotagents/shared"
 
 import {
   getAgentsLayerPaths,
@@ -247,6 +253,9 @@ const getConfig = (): LoadedConfig => {
     openaiSttModel: "whisper-1",
     groqSttModel: "whisper-large-v3-turbo",
 
+    // Hands-free voice defaults shared with mobile.
+    ...DEFAULT_HANDS_FREE_CONFIG,
+
     // Transcript post-processing defaults
     transcriptPostProcessingEnabled: false,
     transcriptPostProcessingProviderId: "openai",
@@ -419,8 +428,10 @@ const getConfig = (): LoadedConfig => {
     }
   })()
 
+  const normalizedHandsFreeConfig = normalizeHandsFreeConfig(mergedConfig)
+
   return {
-    config: migrateGroqTtsConfig(mergedConfig),
+    config: migrateGroqTtsConfig({ ...mergedConfig, ...normalizedHandsFreeConfig }),
     source: hasAnyAgentsFiles ? "agents" : legacyExists ? "legacy" : "defaults",
   }
 }

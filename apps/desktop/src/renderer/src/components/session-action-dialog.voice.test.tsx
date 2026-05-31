@@ -41,14 +41,33 @@ async function loadSessionActionDialog(runtime: ReturnType<typeof createHookRunt
   const Null = () => null
   const utilsMock = { cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" ") }
   const soundMock = { playSound: vi.fn(async () => undefined) }
-  const tipcClientMock = { tipcClient: { createMcpTextInput: vi.fn(), createMcpRecording: vi.fn(), getConfig: vi.fn(async () => null) } }
+  const tipcClientMock = {
+    tipcClient: { createMcpTextInput: vi.fn(), createMcpRecording: vi.fn(), getConfig: vi.fn(async () => null) },
+    rendererHandlers: {
+      agentProgressUpdate: { listen: vi.fn(() => vi.fn()) },
+      ttsPlaybackStateChanged: { listen: vi.fn(() => vi.fn()) },
+    },
+  }
   const queryClientMock = { queryClient: { invalidateQueries: vi.fn(async () => undefined) } }
   const storeMock = { useAgentStore: { getState: () => ({ appendUserMessageToSession: vi.fn() }) } }
 
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
-  vi.doMock("lucide-react", () => ({ Bot: Null, Loader2: Null, Mic: Null, Send: Null }))
+  vi.doMock("lucide-react", () => ({
+    Bot: Null,
+    Ear: Null,
+    Loader2: Null,
+    Mic: Null,
+    Moon: Null,
+    Pause: Null,
+    Play: Null,
+    Radio: Null,
+    RotateCcw: Null,
+    Send: Null,
+    Square: Null,
+    Volume2: Null,
+  }))
   vi.doMock("sonner", () => ({ toast: { error: vi.fn() } }))
   vi.doMock("./ui/dialog", () => ({ Dialog: (props: any) => ({ type: "Dialog", props }), DialogContent: (props: any) => ({ type: "DialogContent", props }), DialogDescription: (props: any) => ({ type: "DialogDescription", props }), DialogHeader: (props: any) => ({ type: "DialogHeader", props }), DialogTitle: (props: any) => ({ type: "DialogTitle", props }) }))
   vi.doMock("./text-input-panel", () => ({ TextInputPanel: Null }))

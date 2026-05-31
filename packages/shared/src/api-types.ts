@@ -471,6 +471,15 @@ export interface Settings {
   transcriptionPreviewEnabled?: boolean;
   parakeetNumThreads?: number;
 
+  // Hands-free Voice Configuration
+  handsFree?: boolean;
+  handsFreeMessageDebounceMs?: number;
+  handsFreeWakePhrase?: string;
+  handsFreeSleepPhrase?: string;
+  handsFreeDebug?: boolean;
+  handsFreeForegroundOnly?: boolean;
+  handsFreeForegroundOnlyConfigured?: boolean;
+
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;
   transcriptPostProcessingProviderId?: 'openai' | 'groq' | 'gemini' | 'chatgpt-web';
@@ -646,6 +655,15 @@ export interface SettingsUpdate {
   groqSttPrompt?: string;
   transcriptionPreviewEnabled?: boolean;
   parakeetNumThreads?: number;
+
+  // Hands-free Voice Configuration
+  handsFree?: boolean;
+  handsFreeMessageDebounceMs?: number;
+  handsFreeWakePhrase?: string;
+  handsFreeSleepPhrase?: string;
+  handsFreeDebug?: boolean;
+  handsFreeForegroundOnly?: boolean;
+  handsFreeForegroundOnlyConfigured?: boolean;
 
   // Transcript Post-Processing
   transcriptPostProcessingEnabled?: boolean;

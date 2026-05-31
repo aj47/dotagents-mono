@@ -1135,6 +1135,15 @@ export type Config = {
   // Transcription Preview - show live transcription while recording
   transcriptionPreviewEnabled?: boolean
 
+  // Hands-free voice configuration shared with mobile.
+  handsFree?: boolean
+  handsFreeMessageDebounceMs?: number
+  handsFreeWakePhrase?: string
+  handsFreeSleepPhrase?: string
+  handsFreeDebug?: boolean
+  handsFreeForegroundOnly?: boolean
+  handsFreeForegroundOnlyConfigured?: boolean
+
   // Parakeet (Local) STT Configuration
   parakeetModelPath?: string // Optional custom model path
   parakeetNumThreads?: number // Number of threads (default: 2)

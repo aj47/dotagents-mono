@@ -6,6 +6,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom"
 import { Button } from "@renderer/components/ui/button"
 import { ActiveAgentsSidebar } from "@renderer/components/active-agents-sidebar"
 import { SandboxSlotIndicator } from "@renderer/components/sandbox-slot-switcher"
+import { DesktopHandsFreeVoice } from "@renderer/components/desktop-hands-free-voice"
 import { SessionActionDialog, type SessionActionDialogMode } from "@renderer/components/session-action-dialog"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
 
@@ -65,6 +66,10 @@ type SessionActionDialogState = {
   onSubmitted?: () => void
 }
 
+type HandsFreeVoiceState = Omit<SessionActionDialogState, "mode" | "initialText"> & {
+  followFocusedTarget?: boolean
+}
+
 export const Component = () => {
   useTTSPlaybackController()
   const navigate = useNavigate()
@@ -74,6 +79,7 @@ export const Component = () => {
   const [savedConversationsHotkeyOpen, setSavedConversationsHotkeyOpen] = useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const [sessionActionDialog, setSessionActionDialog] = useState<SessionActionDialogState | null>(null)
+  const [handsFreeVoice, setHandsFreeVoice] = useState<HandsFreeVoiceState | null>(null)
   const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
   const { isCollapsed, width, isResizing, toggleCollapse, handleResizeStart } =
     useSidebar()
@@ -163,6 +169,9 @@ export const Component = () => {
     () => collapsedActiveSessions.slice(0, 3),
     [collapsedActiveSessions],
   )
+  const focusedProgress = focusedSessionId
+    ? agentProgressById.get(focusedSessionId) ?? null
+    : null
   const clearInactiveSessions = useCallback(() => {
     navigate("/")
     window.dispatchEvent(new Event("sessions:clear-inactive"))
@@ -185,9 +194,23 @@ export const Component = () => {
 
   const openSessionActionDialog = useCallback(
     (dialogState: SessionActionDialogState) => {
+      if (dialogState.mode === "voice" && configQuery.data?.handsFree) {
+        setHandsFreeVoice({
+          conversationId: dialogState.conversationId,
+          sessionId: dialogState.sessionId,
+          fromTile: dialogState.fromTile,
+          continueConversationTitle: dialogState.continueConversationTitle,
+          agentName: dialogState.agentName,
+          onSubmitted: dialogState.onSubmitted,
+          followFocusedTarget: !dialogState.conversationId && !dialogState.sessionId,
+        })
+        setSessionActionDialog(null)
+        return
+      }
+
       setSessionActionDialog(dialogState)
     },
-    [],
+    [configQuery.data?.handsFree],
   )
 
   useEffect(() => {
@@ -311,6 +334,27 @@ export const Component = () => {
     },
     [navigate, setFocusedSessionId, setScrollToSessionId],
   )
+
+  const handleFocusHandsFreeTarget = useCallback((target: {
+    conversationId?: string
+    sessionId?: string
+  }) => {
+    if (target.sessionId) {
+      navigate("/", { state: { clearPendingConversation: true } })
+      setFocusedSessionId(target.sessionId)
+      setScrollToSessionId(target.sessionId)
+      return
+    }
+
+    if (target.conversationId) {
+      navigate(`/${target.conversationId}`)
+    }
+  }, [navigate, setFocusedSessionId, setScrollToSessionId])
+
+  const handleStartHandsFreeNewSession = useCallback(() => {
+    navigate("/", { state: { clearPendingConversation: true } })
+    setFocusedSessionId(null)
+  }, [navigate, setFocusedSessionId])
 
   const settingsNavLinks: NavLinkItem[] = [
     {
@@ -903,6 +947,25 @@ export const Component = () => {
               setSessionActionDialog(null)
             }
           }}
+        />
+      )}
+
+      {handsFreeVoice && (
+        <DesktopHandsFreeVoice
+          open={true}
+          conversationId={handsFreeVoice.conversationId}
+          sessionId={handsFreeVoice.sessionId}
+          continueConversationTitle={handsFreeVoice.continueConversationTitle}
+          agentName={handsFreeVoice.agentName}
+          followFocusedTarget={handsFreeVoice.followFocusedTarget}
+          focusedConversationId={focusedProgress?.conversationId}
+          focusedSessionId={focusedSessionId}
+          focusedConversationTitle={focusedProgress?.conversationTitle}
+          focusedAgentName={focusedProgress?.profileName}
+          onSubmitted={handsFreeVoice.onSubmitted}
+          onFocusTarget={handleFocusHandsFreeTarget}
+          onStartNewSession={handleStartHandsFreeNewSession}
+          onClose={() => setHandsFreeVoice(null)}
         />
       )}
     </>
