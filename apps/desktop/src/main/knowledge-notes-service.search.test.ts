@@ -12,7 +12,9 @@ vi.mock("electron", () => ({
 }))
 
 vi.mock("./config", () => ({
-  globalAgentsFolder: mockPaths.globalAgentsFolder,
+  get globalAgentsFolder() {
+    return mockPaths.globalAgentsFolder
+  },
   resolveWorkspaceAgentsFolder: () => null,
 }))
 
@@ -102,5 +104,67 @@ describe("KnowledgeNotesService search", () => {
         expect.objectContaining({ id: "old-auto" }),
         expect.objectContaining({ id: "new-search-only" }),
       ])
+  })
+
+  it("boosts recent notes ahead of older notes when the query is time-sensitive", async () => {
+    const now = Date.now()
+    const { KnowledgeNotesService } = await import("./knowledge-notes-service")
+    const service = new KnowledgeNotesService()
+
+    await service.saveNote({
+      id: "old-video",
+      title: "Clawdbot Moltbot Video Strategy",
+      context: "search-only",
+      createdAt: now - 120 * 24 * 60 * 60 * 1000,
+      updatedAt: now - 120 * 24 * 60 * 60 * 1000,
+      tags: ["video", "clawdbot"],
+      body: "Older recording plan with extensive video direction notes.",
+    })
+    await service.saveNote({
+      id: "fresh-video",
+      title: "Random Note",
+      context: "search-only",
+      createdAt: now - 60 * 60 * 1000,
+      updatedAt: now - 60 * 60 * 1000,
+      tags: ["video"],
+      body: "A quick mention of video shot today.",
+    })
+
+    const baseline = await service.searchNotes("video")
+    expect(baseline[0].id).toBe("old-video")
+
+    const todayResults = await service.searchNotes("video today")
+    expect(todayResults[0]?.id).toBe("fresh-video")
+
+    const recentResults = await service.searchNotes("latest video")
+    expect(recentResults[0]?.id).toBe("fresh-video")
+  })
+
+  it("leaves ordering unchanged for non-time-sensitive queries", async () => {
+    const now = Date.now()
+    const { KnowledgeNotesService } = await import("./knowledge-notes-service")
+    const service = new KnowledgeNotesService()
+
+    await service.saveNote({
+      id: "weighty-old",
+      title: "Strategy Playbook",
+      context: "search-only",
+      createdAt: now - 200 * 24 * 60 * 60 * 1000,
+      updatedAt: now - 200 * 24 * 60 * 60 * 1000,
+      tags: ["strategy"],
+      body: "Long-form strategy reference.",
+    })
+    await service.saveNote({
+      id: "fresh-shallow",
+      title: "Random Note",
+      context: "search-only",
+      createdAt: now - 60 * 1000,
+      updatedAt: now - 60 * 1000,
+      tags: [],
+      body: "A weaker mention of strategy in the body.",
+    })
+
+    const results = await service.searchNotes("strategy")
+    expect(results[0].id).toBe("weighty-old")
   })
 })
