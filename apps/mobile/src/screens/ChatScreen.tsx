@@ -3042,6 +3042,38 @@ export default function ChatScreen({ route, navigation }: any) {
   const isUserDraggingRef = useRef(false);
   // Track drag end timeout to prevent flaky behavior with rapid re-drags
   const dragEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // While true, the next content size change should snap to the bottom. Used to
+  // keep large sessions pinned to the latest message as messages render in
+  // multiple frames (issue #408).
+  const initialScrollPendingRef = useRef(false);
+  const initialScrollWindowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearInitialScrollWindow = useCallback(() => {
+    if (initialScrollWindowTimeoutRef.current) {
+      clearTimeout(initialScrollWindowTimeoutRef.current);
+      initialScrollWindowTimeoutRef.current = null;
+    }
+    initialScrollPendingRef.current = false;
+  }, []);
+
+  const beginInitialScrollWindow = useCallback(() => {
+    if (initialScrollWindowTimeoutRef.current) {
+      clearTimeout(initialScrollWindowTimeoutRef.current);
+    }
+    initialScrollPendingRef.current = true;
+    // Safety net: stop pinning to bottom after 2.5s so streaming-only updates
+    // can't get stuck snapping when the user wants to read history.
+    initialScrollWindowTimeoutRef.current = setTimeout(() => {
+      initialScrollPendingRef.current = false;
+      initialScrollWindowTimeoutRef.current = null;
+    }, 2500);
+  }, []);
+
+  const handleContentSizeChange = useCallback(() => {
+    if (initialScrollPendingRef.current && scrollViewRef.current) {
+      scrollViewRef.current.scrollToEnd({ animated: false });
+    }
+  }, []);
 
   // Cleanup: stop speech on unmount (#1078)
   useEffect(() => {
@@ -3068,7 +3100,9 @@ export default function ChatScreen({ route, navigation }: any) {
       dragEndTimeoutRef.current = null;
     }
     isUserDraggingRef.current = true;
-  }, []);
+    // User is taking control - stop snapping to bottom on content size changes.
+    clearInitialScrollWindow();
+  }, [clearInitialScrollWindow]);
 
   // Handle user ending drag - keep flag active briefly for momentum scroll
   const handleScrollEndDrag = useCallback(() => {
@@ -3114,6 +3148,22 @@ export default function ChatScreen({ route, navigation }: any) {
     });
   }, [messages.length]);
 
+  // When messages first arrive for a session (e.g. lazy-load from server
+  // completes after the session-change window expired), re-enter the initial
+  // scroll window so we still land at the latest message (issue #408).
+  const previousMessagesLengthRef = useRef(0);
+  useEffect(() => {
+    if (
+      messages.length > 0 &&
+      previousMessagesLengthRef.current === 0 &&
+      !isUserDraggingRef.current
+    ) {
+      beginInitialScrollWindow();
+      scrollViewRef.current?.scrollToEnd({ animated: false });
+    }
+    previousMessagesLengthRef.current = messages.length;
+  }, [messages.length, beginInitialScrollWindow]);
+
   // Scroll to bottom when messages change and auto-scroll is enabled
   // Uses debouncing to handle rapid streaming updates efficiently
   useEffect(() => {
@@ -3141,6 +3191,9 @@ export default function ChatScreen({ route, navigation }: any) {
       }
       if (dragEndTimeoutRef.current) {
         clearTimeout(dragEndTimeoutRef.current);
+      }
+      if (initialScrollWindowTimeoutRef.current) {
+        clearTimeout(initialScrollWindowTimeoutRef.current);
       }
     };
   }, []);
@@ -3286,15 +3339,20 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
   }, [handleDeletePromptConfirmed, isSavingPrompt, settingsClient]);
 
-  // Reset auto-scroll when session changes
+  // Reset auto-scroll when session changes. For large sessions the content
+  // height grows across multiple frames as messages render, so a single
+  // delayed scrollToEnd lands in the middle. Instead, enter an "initial scroll"
+  // window where onContentSizeChange keeps pinning to the bottom until the
+  // user drags or the window expires (issue #408).
   useEffect(() => {
     setShouldAutoScroll(true);
-    // Scroll to bottom when switching sessions
-    const timeoutId = setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: false });
-    }, 100);
-    return () => clearTimeout(timeoutId);
-  }, [sessionStore.currentSessionId]);
+    previousMessagesLengthRef.current = 0;
+    beginInitialScrollWindow();
+    scrollViewRef.current?.scrollToEnd({ animated: false });
+    return () => {
+      clearInitialScrollWindow();
+    };
+  }, [sessionStore.currentSessionId, beginInitialScrollWindow, clearInitialScrollWindow]);
 
   const lastLoadedSessionIdRef = useRef<string | null>(null);
   const lastLoadedSessionMessagesKeyRef = useRef<string | null>(null);
@@ -5160,6 +5218,7 @@ export default function ChatScreen({ route, navigation }: any) {
           onScroll={handleScroll}
           onScrollBeginDrag={handleScrollBeginDrag}
           onScrollEndDrag={handleScrollEndDrag}
+          onContentSizeChange={handleContentSizeChange}
           scrollEventThrottle={16}
         >
           {sessionStore.isLoadingMessages && messages.length === 0 && (
