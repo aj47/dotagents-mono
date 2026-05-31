@@ -502,6 +502,45 @@ describe('resolveHandsFreeUtterance', () => {
     expect(controller.shouldKeepRecognizerActive).toBe(true);
   });
 
+  it('resumes to listening after a request completes while user-paused during processing', async () => {
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      enabled: true,
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+    controller.wakeByUser();
+
+    controller = runtime.render(useHook, options);
+    controller.onRequestStarted();
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('processing');
+
+    controller.pauseByUser();
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('paused');
+    expect(controller.state.resumePhase).toBe('processing');
+
+    controller.onRequestCompleted();
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('paused');
+    expect(controller.state.resumePhase).toBe('listening');
+
+    controller.resumeByUser();
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('listening');
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
+
   it('keeps the recognizer armed while assistant speech is active for stop/wait barge-in commands', async () => {
     const runtime = createHookRuntime();
     const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);

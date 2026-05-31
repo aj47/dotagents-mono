@@ -619,7 +619,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
         return { ...prev, resumePhase: 'listening' };
       }
       if (prev.pauseReason === 'user') {
-        return prev;
+        return { ...prev, resumePhase: 'listening', lastError: null };
       }
       return { ...prev, phase: 'listening', resumePhase: null, lastError: null };
     });
