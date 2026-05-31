@@ -40,6 +40,7 @@ type UseSpeechRecognizerOptions = {
   onRecognizerError?: (message: string) => void;
   onPermissionDenied?: () => void;
   shouldSuppressHandsFreeTranscript?: () => boolean;
+  shouldFinalizeHandsFreeTranscript?: () => boolean;
   onSuppressedHandsFreeTranscript?: (payload: SuppressedHandsFreeTranscriptPayload) => boolean;
   log?: VoiceDebugLog;
   /** Preferred microphone device ID (web only). When set, getUserMedia is called
@@ -92,6 +93,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     onRecognizerError,
     onPermissionDenied,
     shouldSuppressHandsFreeTranscript,
+    shouldFinalizeHandsFreeTranscript,
     onSuppressedHandsFreeTranscript,
     log,
     audioInputDeviceId,
@@ -125,9 +127,11 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const pendingPushToTalkFinalRef = useRef<DeferredPushToTalkFinal | null>(null);
   const suppressFinalizeRef = useRef(false);
   const shouldSuppressHandsFreeTranscriptRef = useRef(shouldSuppressHandsFreeTranscript);
+  const shouldFinalizeHandsFreeTranscriptRef = useRef(shouldFinalizeHandsFreeTranscript);
   const onSuppressedHandsFreeTranscriptRef = useRef(onSuppressedHandsFreeTranscript);
   const enabledRef = useRef(enabled);
   shouldSuppressHandsFreeTranscriptRef.current = shouldSuppressHandsFreeTranscript;
+  shouldFinalizeHandsFreeTranscriptRef.current = shouldFinalizeHandsFreeTranscript;
   onSuppressedHandsFreeTranscriptRef.current = onSuppressedHandsFreeTranscript;
   enabledRef.current = enabled;
 
@@ -165,6 +169,10 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
 
   const isHandsFreeTranscriptSuppressed = useCallback(() => (
     handsFree && shouldSuppressHandsFreeTranscriptRef.current?.() === true
+  ), [handsFree]);
+
+  const isHandsFreeFinalizationEligible = useCallback(() => (
+    !handsFree || shouldFinalizeHandsFreeTranscriptRef.current?.() !== false
   ), [handsFree]);
 
   const clearSuppressedHandsFreeTranscript = useCallback((source: 'native' | 'web', text?: string, isFinal?: boolean) => {
@@ -233,6 +241,14 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       clearSuppressedHandsFreeTranscript(source, finalText);
       return;
     }
+    if (mode === 'handsfree' && !isHandsFreeFinalizationEligible()) {
+      log?.('transcript-ignored', 'Hands-free transcript ignored because the capture turn is no longer eligible.', {
+        source,
+        text: truncateDebugText(finalText),
+        textLength: finalText.length,
+      });
+      return;
+    }
     log?.('transcript-finalized', 'Voice transcript finalized.', {
       source,
       mode,
@@ -248,6 +264,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   }, [
     clearSuppressedHandsFreeTranscript,
     handsFree,
+    isHandsFreeFinalizationEligible,
     isHandsFreeTranscriptSuppressed,
     log,
     onVoiceFinalized,
@@ -374,6 +391,15 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       return false;
     }
 
+    if (!isHandsFreeFinalizationEligible()) {
+      log?.('transcript-ignored', 'Hands-free finalization skipped because the capture turn is no longer eligible.', {
+        source,
+        text: truncateDebugText(textToSend),
+        textLength: textToSend.length,
+      });
+      return false;
+    }
+
     log?.('finalization-fired', 'Hands-free transcript debounce elapsed.', {
       source,
       text: truncateDebugText(textToSend),
@@ -382,7 +408,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     void stopRecognitionOnly();
     emitFinalized(textToSend, source);
     return true;
-  }, [clearSuppressedHandsFreeTranscript, emitFinalized, isHandsFreeTranscriptSuppressed, log, setLiveTranscriptValue, stopRecognitionOnly]);
+  }, [clearSuppressedHandsFreeTranscript, emitFinalized, isHandsFreeFinalizationEligible, isHandsFreeTranscriptSuppressed, log, setLiveTranscriptValue, stopRecognitionOnly]);
 
   const scheduleHandsFreeFinalization = useCallback((source: 'native' | 'web', text: string) => {
     if (!enabledRef.current) {
@@ -395,6 +421,16 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
     if (isHandsFreeTranscriptSuppressed()) {
       clearSuppressedHandsFreeTranscript(source, finalText);
+      return false;
+    }
+    if (!isHandsFreeFinalizationEligible()) {
+      clearHandsFreeDebounce();
+      pendingHandsFreeFinalRef.current = '';
+      log?.('transcript-ignored', 'Hands-free finalization schedule skipped because the capture turn is no longer eligible.', {
+        source,
+        text: truncateDebugText(finalText),
+        textLength: finalText.length,
+      });
       return false;
     }
 
@@ -421,7 +457,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       finalizePendingHandsFree(source);
     }, Math.max(0, handsFreeDebounceMs));
     return true;
-  }, [clearHandsFreeDebounce, clearSuppressedHandsFreeTranscript, finalizePendingHandsFree, handsFreeDebounceMs, isHandsFreeTranscriptSuppressed, log]);
+  }, [clearHandsFreeDebounce, clearSuppressedHandsFreeTranscript, finalizePendingHandsFree, handsFreeDebounceMs, isHandsFreeFinalizationEligible, isHandsFreeTranscriptSuppressed, log]);
 
   const startWebRecognizer = useCallback((reason: string) => {
     if (Platform.OS !== 'web' || !webRecognitionRef.current) {
