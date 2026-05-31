@@ -78,6 +78,7 @@ import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { HandsFreeStatusChip } from '../ui/HandsFreeStatusChip';
 import { GlobalTtsStatusPill } from '../ui/GlobalTtsStatusPill';
+import { TtsQueueDock } from '../ui/TtsQueueDock';
 import {
   beginGlobalTtsPlayback,
   completeGlobalTtsPlayback,
@@ -87,6 +88,13 @@ import {
   stopGlobalTtsPlayback,
   useGlobalTtsPlayback,
 } from '../store/ttsPlayback';
+import {
+  globalTtsQueue,
+  setTtsQueueSpeaker,
+  setTtsQueueConflictPolicy,
+  describeTtsQueue,
+} from '../store/globalTtsQueue';
+import { formatAgentSpokenPrefix, type TtsQueueItem } from '../store/ttsQueue';
 import {
   createButtonAccessibilityLabel,
   createChatComposerAccessibilityHint,
@@ -1870,12 +1878,11 @@ export default function ChatScreen({ route, navigation }: any) {
 
     clearAndroidHandsFreePartialTimer();
     androidHandsFreePendingPartialRef.current = '';
-    queuedResponseEventsRef.current = [];
-    activeAutoSpeechEventRef.current = null;
     if (activeRequestIdRef.current) {
       autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
     }
-    stopGlobalTtsPlayback();
+    // Silence the whole multi-agent queue so the user can speak immediately.
+    globalTtsQueue.stopAll();
     if (handsFreePhaseRef.current === 'speaking') {
       handsFreeController.onSpeechFinished();
     }
@@ -1913,13 +1920,10 @@ export default function ChatScreen({ route, navigation }: any) {
       case 'stop-tts': {
         clearAndroidHandsFreePartialTimer();
         androidHandsFreePendingPartialRef.current = '';
-        queuedResponseEventsRef.current = [];
-        activeAutoSpeechEventRef.current = null;
-        if (activeRequestIdRef.current) {
-          autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
-        }
-        stopGlobalTtsPlayback();
-        if (handsFreePhaseRef.current === 'speaking') {
+        // "stop talking" stops the current speaker and advances to the next
+        // queued agent (if any). Use "stop everyone" to clear the whole queue.
+        globalTtsQueue.skip();
+        if (handsFreePhaseRef.current === 'speaking' && !globalTtsQueue.getState().active) {
           handsFreeController.onSpeechFinished();
         }
         setDebugInfo('Stopped speaking.');
@@ -1931,7 +1935,10 @@ export default function ChatScreen({ route, navigation }: any) {
         if (client) {
           client.cleanup();
         }
-        stopGlobalTtsPlayback();
+        if (activeRequestIdRef.current) {
+          autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
+        }
+        globalTtsQueue.stopAll();
         if (handsFreePhaseRef.current === 'speaking') {
           handsFreeController.onSpeechFinished();
         }
@@ -1939,6 +1946,103 @@ export default function ChatScreen({ route, navigation }: any) {
         setRespondingValue(false);
         setDebugInfo('Stopped the current agent turn.');
         playHandsFreeCue('stopped');
+        break;
+      }
+      case 'tts-stop-all': {
+        globalTtsQueue.stopAll();
+        if (handsFreePhaseRef.current === 'speaking') {
+          handsFreeController.onSpeechFinished();
+        }
+        setDebugInfo('Stopped all playback.');
+        playHandsFreeCue('stopped');
+        break;
+      }
+      case 'tts-skip': {
+        globalTtsQueue.skip();
+        setDebugInfo('Skipped.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-pause': {
+        globalTtsQueue.pause();
+        setDebugInfo('Playback paused.');
+        playHandsFreeCue('stopped');
+        break;
+      }
+      case 'tts-resume': {
+        globalTtsQueue.resume();
+        setDebugInfo('Playback resumed.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-whats-playing': {
+        setDebugInfo(describeTtsQueue());
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-read-everything': {
+        setTtsQueueConflictPolicy('queue');
+        globalTtsQueue.readAllDeferred();
+        setDebugInfo('Reading everything.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-announce-only': {
+        setTtsQueueConflictPolicy('announce');
+        void saveConfig({ ...config, ttsConflictPolicy: 'announce' }).catch(() => {});
+        setDebugInfo('Announce-only mode. Say "read everything" to catch up.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-repeat': {
+        const ok = globalTtsQueue.repeatLast(remainder || undefined);
+        setDebugInfo(ok ? 'Repeating.' : 'Nothing to repeat.');
+        playHandsFreeCue(ok ? 'listening' : 'stopped');
+        break;
+      }
+      case 'tts-mute-agent': {
+        const target = findAgentSessionByName(remainder);
+        const name = target?.title || remainder;
+        if (name) {
+          globalTtsQueue.muteAgent(name);
+          setDebugInfo(`Muted ${name}.`);
+          playHandsFreeCue('stopped');
+        } else {
+          setDebugInfo('Which agent should I mute?');
+          playHandsFreeCue('listening');
+        }
+        break;
+      }
+      case 'tts-unmute-agent': {
+        const target = findAgentSessionByName(remainder);
+        const name = target?.title || remainder;
+        if (name) {
+          globalTtsQueue.unmuteAgent(name);
+          setDebugInfo(`Unmuted ${name}.`);
+        } else {
+          setDebugInfo('Which agent should I unmute?');
+        }
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-solo-agent': {
+        const target = findAgentSessionByName(remainder);
+        const name = target?.title || remainder;
+        if (name) {
+          globalTtsQueue.soloAgent(name);
+          setDebugInfo(`Only ${name} now.`);
+        } else {
+          setDebugInfo('Which agent should I focus the audio on?');
+        }
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-read-agent': {
+        const target = findAgentSessionByName(remainder);
+        const name = target?.title || remainder;
+        const ok = name ? globalTtsQueue.readAgent(name) : false;
+        setDebugInfo(ok ? `Reading ${name}.` : `Nothing waiting for ${name || 'that agent'}.`);
+        playHandsFreeCue(ok ? 'listening' : 'stopped');
         break;
       }
       case 'new-session': {
@@ -1992,6 +2096,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [
     clearAndroidHandsFreePartialTimer,
+    config,
     findAgentSessionByName,
     getSessionClient,
     handleNewChat,
@@ -6471,6 +6576,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	              ))}
 	            </ScrollView>
 	          )}
+          {/* Multi-agent TTS queue dock (auto agent responses). */}
+          <TtsQueueDock onOpenSession={handleOpenGlobalTtsSession} />
+
           {handsFree && (
             <View style={styles.handsFreeStatusRow}>
               <View style={styles.handsFreeStatusChipWrap}>

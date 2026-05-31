@@ -15,7 +15,20 @@ export type VoiceCommandId =
   | 'open-menu'
   | 'list-recent-agents'
   | 'list-old-agents'
-  | 'focus-agent';
+  | 'focus-agent'
+  // Multi-agent TTS playback controls.
+  | 'tts-stop-all'
+  | 'tts-skip'
+  | 'tts-pause'
+  | 'tts-resume'
+  | 'tts-whats-playing'
+  | 'tts-read-everything'
+  | 'tts-announce-only'
+  | 'tts-repeat'
+  | 'tts-mute-agent'
+  | 'tts-unmute-agent'
+  | 'tts-solo-agent'
+  | 'tts-read-agent';
 
 /**
  * Commands whose meaning depends on the words that follow the matched
@@ -24,6 +37,10 @@ export type VoiceCommandId =
  */
 export const PARAMETERIZED_VOICE_COMMANDS: ReadonlySet<VoiceCommandId> = new Set([
   'focus-agent',
+  'tts-mute-agent',
+  'tts-unmute-agent',
+  'tts-solo-agent',
+  'tts-read-agent',
 ]);
 
 export interface VoiceCommandDefinition {
@@ -158,6 +175,147 @@ export const DEFAULT_VOICE_COMMANDS: readonly VoiceCommandDefinition[] = [
       'open the menu',
       'show menu',
       'show commands',
+    ],
+  },
+  {
+    id: 'tts-stop-all',
+    label: 'Stop everyone',
+    aliases: [
+      'stop everyone',
+      'stop all audio',
+      'stop everything',
+      'silence everyone',
+      'silence all',
+      'quiet everyone',
+      'stop all',
+    ],
+  },
+  {
+    id: 'tts-skip',
+    label: 'Skip',
+    aliases: [
+      'skip this',
+      'skip that',
+      'next one',
+      'skip',
+      'next',
+    ],
+  },
+  {
+    id: 'tts-pause',
+    label: 'Pause playback',
+    aliases: [
+      'pause playback',
+      'pause audio',
+      'pause the audio',
+      'pause',
+    ],
+  },
+  {
+    id: 'tts-resume',
+    label: 'Resume playback',
+    aliases: [
+      'resume playback',
+      'resume audio',
+      'continue playback',
+      'keep going',
+      'resume',
+      'continue',
+    ],
+  },
+  {
+    id: 'tts-whats-playing',
+    label: "What's playing",
+    aliases: [
+      'whats playing',
+      'what is playing',
+      'whos talking',
+      'who is talking',
+      'who is speaking',
+      'whats in the queue',
+      'what is in the queue',
+      'queue status',
+    ],
+  },
+  {
+    id: 'tts-read-everything',
+    label: 'Read everything',
+    aliases: [
+      'read everything',
+      'read all agents',
+      'read the rest',
+      'catch up',
+      'read all',
+    ],
+  },
+  {
+    id: 'tts-announce-only',
+    label: 'Announce only',
+    aliases: [
+      'announce only',
+      'announcements only',
+      'summaries only',
+      'just announce',
+    ],
+  },
+  {
+    id: 'tts-repeat',
+    label: 'Repeat',
+    aliases: [
+      'say that again',
+      'repeat that',
+      'come again',
+      'repeat',
+    ],
+  },
+  {
+    id: 'tts-mute-agent',
+    label: 'Mute agent',
+    aliases: [
+      'mute the agent',
+      'mute agent',
+      'ignore the agent',
+      'ignore agent',
+      'mute',
+      'ignore',
+    ],
+  },
+  {
+    id: 'tts-unmute-agent',
+    label: 'Unmute agent',
+    aliases: [
+      'unmute the agent',
+      'unmute agent',
+      'listen to the agent',
+      'listen to',
+      'unmute',
+    ],
+  },
+  {
+    id: 'tts-solo-agent',
+    label: 'Only this agent',
+    aliases: [
+      'only listen to',
+      'only the agent',
+      'solo the agent',
+      'just listen to',
+      'solo agent',
+      'only',
+      'just',
+      'solo',
+    ],
+  },
+  {
+    id: 'tts-read-agent',
+    label: 'Read agent now',
+    aliases: [
+      'read me the agent',
+      'read the agent',
+      'play the agent',
+      'read agent',
+      'play agent',
+      'read',
+      'play',
     ],
   },
 ];
