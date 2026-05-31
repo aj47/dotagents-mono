@@ -27,7 +27,7 @@ import {
   getSidebarActivityPresentation,
   getSidebarSessionGroupKey,
   getLatestAgentResponseTimestamp,
-  getSidebarProgressTitle,
+  resolveSidebarSessionMetadata,
   hasSidebarSessionGroupKey,
   getSessionIdsWithActiveChildProgress,
   getSubagentTitleBySessionIdMap,
@@ -220,6 +220,7 @@ const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 const TASKS_SECTION_EXPANDED_STORAGE_KEY = "sidebar-tasks-section-expanded"
 const SESSION_GROUPS_STORAGE_KEY = "sidebar-session-groups-v1"
+const SESSION_GROUPS_BACKUP_STORAGE_KEY = "sidebar-session-groups-backup-v1"
 const UNGROUPED_SESSION_ORDER_STORAGE_KEY = "sidebar-ungrouped-session-order-v1"
 const SIDEBAR_SESSION_DRAG_MIME = "application/x-dotagents-sidebar-session-key"
 const SIDEBAR_GROUP_DRAG_MIME = "application/x-dotagents-sidebar-group-id"
@@ -254,7 +255,11 @@ function writeBooleanToStorage(key: string, value: boolean): void {
 function readSidebarSessionGroupsFromStorage(): SidebarSessionGroup[] {
   try {
     const stored = localStorage.getItem(SESSION_GROUPS_STORAGE_KEY)
-    return stored ? normalizeSidebarSessionGroups(JSON.parse(stored)) : []
+    const groups = stored ? normalizeSidebarSessionGroups(JSON.parse(stored)) : []
+    if (groups.length > 0) return groups
+
+    const backup = localStorage.getItem(SESSION_GROUPS_BACKUP_STORAGE_KEY)
+    return backup ? normalizeSidebarSessionGroups(JSON.parse(backup)) : []
   } catch {
     return []
   }
@@ -262,7 +267,20 @@ function readSidebarSessionGroupsFromStorage(): SidebarSessionGroup[] {
 
 function writeSidebarSessionGroupsToStorage(groups: SidebarSessionGroup[]): void {
   try {
-    localStorage.setItem(SESSION_GROUPS_STORAGE_KEY, JSON.stringify(groups))
+    const normalizedGroups = normalizeSidebarSessionGroups(groups)
+    const serialized = JSON.stringify(normalizedGroups)
+    localStorage.setItem(SESSION_GROUPS_STORAGE_KEY, serialized)
+    if (normalizedGroups.length > 0) {
+      localStorage.setItem(SESSION_GROUPS_BACKUP_STORAGE_KEY, serialized)
+    }
+  } catch {
+    // localStorage may be unavailable; ignore.
+  }
+}
+
+function clearSidebarSessionGroupsBackup(): void {
+  try {
+    localStorage.removeItem(SESSION_GROUPS_BACKUP_STORAGE_KEY)
   } catch {
     // localStorage may be unavailable; ignore.
   }
@@ -514,18 +532,18 @@ export function ActiveAgentsSidebar({
         progress.parentSessionId ??
         subagentParentSessionIds.get(sessionId) ??
         existingSession?.parentSessionId
-      const conversationTitle = getSidebarProgressTitle(
+      const resolvedSessionMetadata = resolveSidebarSessionMetadata(
         sessionId,
         progress,
         subagentTitleBySessionId,
-        existingSession?.conversationTitle,
+        existingSession,
       )
 
       mergedSessions.set(sessionId, {
         id: sessionId,
-        conversationId: progress.conversationId ?? existingSession?.conversationId,
+        conversationId: resolvedSessionMetadata.conversationId,
         parentSessionId,
-        conversationTitle,
+        conversationTitle: resolvedSessionMetadata.conversationTitle,
         status: progress.isComplete
           ? existingSession?.status === "error" ||
             existingSession?.status === "stopped"
@@ -1170,7 +1188,13 @@ export function ActiveAgentsSidebar({
   }, [clearGroupEditing, editingGroupName])
 
   const removeSessionGroup = useCallback((groupId: string) => {
-    setSessionGroups((prev) => prev.filter((group) => group.id !== groupId))
+    setSessionGroups((prev) => {
+      const nextGroups = prev.filter((group) => group.id !== groupId)
+      if (nextGroups.length === 0) {
+        clearSidebarSessionGroupsBackup()
+      }
+      return nextGroups
+    })
     if (editingGroupId === groupId) clearGroupEditing()
   }, [clearGroupEditing, editingGroupId])
 

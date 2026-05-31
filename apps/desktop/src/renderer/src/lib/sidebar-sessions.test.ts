@@ -29,6 +29,7 @@ import {
   partitionTaskAndUserEntries,
   reorderSidebarSessionGroups,
   reorderSidebarSessionKeys,
+  resolveSidebarSessionMetadata,
   summarizeSidebarSessionLifecycleStates,
 } from "./sidebar-sessions"
 
@@ -412,6 +413,52 @@ describe("getSidebarProgressTitle", () => {
         new Map(),
       ),
     ).toBe("Fix the failing sidebar error preview")
+  })
+})
+
+describe("resolveSidebarSessionMetadata", () => {
+  it("prefers upgraded tracker metadata over stale temporary transcription progress", () => {
+    const resolved = resolveSidebarSessionMetadata(
+      "session-1",
+      {
+        conversationId: "temp_123",
+        conversationTitle: "Transcribing...",
+        steps: [],
+      },
+      new Map(),
+      {
+        conversationId: "conversation-1",
+        conversationTitle: "Can you find where we saved this?",
+      },
+    )
+
+    expect(resolved).toEqual({
+      conversationId: "conversation-1",
+      conversationTitle: "Can you find where we saved this?",
+    })
+    expect(
+      filterPastSessionsAgainstActiveSessions(
+        [pastSession("conversation-1", "conversation-1")],
+        [activeSession("session-1", resolved.conversationId)],
+      ),
+    ).toEqual([])
+  })
+
+  it("keeps the transcription placeholder while no real conversation exists yet", () => {
+    expect(
+      resolveSidebarSessionMetadata(
+        "session-1",
+        {
+          conversationId: "temp_123",
+          conversationTitle: "Transcribing...",
+          steps: [],
+        },
+        new Map(),
+      ),
+    ).toEqual({
+      conversationId: "temp_123",
+      conversationTitle: "Transcribing...",
+    })
   })
 })
 

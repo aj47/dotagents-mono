@@ -16,4 +16,11 @@ describe("active agents sidebar layout", () => {
     expect(sidebarSource).toContain("bg-blue-500/15 text-foreground ring-1 ring-inset ring-blue-500/25")
     expect(sidebarSource).toContain('isSelectedNestedSubagent ? "bg-blue-500" : statusRailColor')
   })
+
+  it("keeps a backup of non-empty session groups so refreshes cannot blank folders", () => {
+    expect(sidebarSource).toContain('const SESSION_GROUPS_BACKUP_STORAGE_KEY = "sidebar-session-groups-backup-v1"')
+    expect(sidebarSource).toContain("localStorage.getItem(SESSION_GROUPS_BACKUP_STORAGE_KEY)")
+    expect(sidebarSource).toContain("localStorage.setItem(SESSION_GROUPS_BACKUP_STORAGE_KEY, serialized)")
+    expect(sidebarSource).toContain("clearSidebarSessionGroupsBackup()")
+  })
 })

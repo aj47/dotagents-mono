@@ -48,8 +48,13 @@ type TitledSessionLike = SessionLike & {
 
 type ProgressTitleLike = Pick<
   AgentProgressUpdate,
-  "conversationTitle" | "conversationHistory" | "latestSummary" | "steps"
+  "conversationId" | "conversationTitle" | "conversationHistory" | "latestSummary" | "steps"
 >
+
+type SidebarSessionMetadataLike = {
+  conversationId?: string | null
+  conversationTitle?: string | null
+}
 
 type ProgressLifecycleLike = Pick<AgentProgressUpdate, "isComplete" | "steps">
 
@@ -694,6 +699,48 @@ export function getSidebarProgressTitle(
   }
 
   return explicitTitle ?? fallbackTitle ?? undefined
+}
+
+export function isTemporarySidebarConversationId(value?: string | null): boolean {
+  const normalized = normalizeSidebarActivityText(value)
+  return !!normalized && normalized.startsWith("temp_")
+}
+
+export function resolveSidebarSessionMetadata(
+  sessionId: string,
+  progress: ProgressTitleLike,
+  delegationTitlesBySessionId: ReadonlyMap<string, string>,
+  existingSession?: SidebarSessionMetadataLike,
+): { conversationId?: string; conversationTitle?: string } {
+  const progressConversationId = normalizeSidebarActivityText(progress.conversationId)
+  const existingConversationId = normalizeSidebarActivityText(existingSession?.conversationId)
+  const existingTitle = normalizeSidebarActivityText(existingSession?.conversationTitle)
+  const shouldPreferExistingConversation =
+    !!existingConversationId &&
+    !!progressConversationId &&
+    existingConversationId !== progressConversationId &&
+    isTemporarySidebarConversationId(progressConversationId) &&
+    !isTemporarySidebarConversationId(existingConversationId)
+
+  if (shouldPreferExistingConversation && existingTitle) {
+    return {
+      conversationId: existingConversationId,
+      conversationTitle: existingTitle,
+    }
+  }
+
+  return {
+    conversationId:
+      (shouldPreferExistingConversation ? existingConversationId : progress.conversationId) ??
+      existingSession?.conversationId ??
+      undefined,
+    conversationTitle: getSidebarProgressTitle(
+      sessionId,
+      progress,
+      delegationTitlesBySessionId,
+      existingSession?.conversationTitle ?? undefined,
+    ),
+  }
 }
 
 function normalizeSidebarActivityText(value?: string | null): string | null {

@@ -2880,6 +2880,23 @@ export const router = {
         conversationId,
         conversationTitle,
       })
+      await emitAgentProgress({
+        sessionId,
+        conversationId,
+        currentIteration: 0,
+        maxIterations: 1,
+        steps: [{
+          id: `transcribe_complete_${Date.now()}`,
+          type: "thinking",
+          title: "Transcription complete",
+          description: "Starting agent...",
+          status: "completed",
+          timestamp: Date.now(),
+        }],
+        isComplete: false,
+        isSnoozed: startSnoozed,
+        conversationTitle,
+      })
 
       // Save the recording file immediately
       const recordingId = Date.now().toString()
