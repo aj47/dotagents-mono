@@ -28,10 +28,10 @@ test('removes the redundant Chat title from the mobile conversation header', () 
   assert.doesNotMatch(screenSource, />Chat<\/Text>/);
 });
 
-test('keeps pinning available from the individual chat view header', () => {
-  assert.match(screenSource, /isCurrentSessionPinned \? 'Unpin current chat' : 'Pin current chat'/);
-  assert.match(screenSource, /styles\.headerPinButton/);
-  assert.match(screenSource, /\{isCurrentSessionPinned \? 'Pinned' : 'Pin'\}/);
+test('shows handsfree status in the individual chat view header', () => {
+  assert.match(screenSource, /const headerHandsFreePhase: HandsFreePhase \| 'off'/);
+  assert.match(screenSource, /styles\.headerVoiceStatusButton/);
+  assert.match(screenSource, /name=\{headerHandsFreeIcon\}/);
 });
 
 test('shows total and per-turn agent time without shared runtime chrome', () => {

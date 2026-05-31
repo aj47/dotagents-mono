@@ -907,7 +907,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const { connectionInfo } = useTunnelConnection();
   const globalTtsPlayback = useGlobalTtsPlayback();
   const currentSession = sessionStore.getCurrentSession();
-  const isCurrentSessionPinned = !!currentSession?.isPinned;
   const handsFree = !!config.handsFree;
   const settingsClient = useMemo(() => {
     if (!config.baseUrl || !config.apiKey) {
@@ -1324,11 +1323,22 @@ export default function ChatScreen({ route, navigation }: any) {
     handleInsertQuickStartPrompt(item.content);
   }, [handleInsertQuickStartPrompt, handleRunPromptTask, openAddPromptModal]);
 
-  const handleToggleCurrentSessionPinned = useCallback(() => {
-    const currentSessionId = sessionStore.currentSessionId;
-    if (!currentSessionId) return;
-    void sessionStore.toggleSessionPinned(currentSessionId);
-  }, [sessionStore]);
+  const headerHandsFreePhase: HandsFreePhase | 'off' = handsFree
+    ? (globalTtsPlayback?.status === 'loading' ? 'processing' : handsFreeController.state.phase)
+    : 'off';
+  const headerHandsFreeIcon = ({
+    off: 'mic-off-outline',
+    sleeping: 'moon-outline',
+    waking: 'radio-outline',
+    listening: 'ear-outline',
+    processing: 'sync-outline',
+    speaking: 'volume-high-outline',
+    paused: 'pause-outline',
+    error: 'warning-outline',
+  } as const)[headerHandsFreePhase];
+  const headerHandsFreeLabel = headerHandsFreePhase === 'off'
+    ? 'Hands-free off'
+    : `Hands-free ${headerHandsFreePhase}`;
 
   const handleOpenGlobalTtsSession = useCallback((sessionId: string) => {
     if (!sessionId) return;
@@ -1400,17 +1410,27 @@ export default function ChatScreen({ route, navigation }: any) {
             <Text style={{ fontSize: 20, color: theme.colors.foreground }}>←</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={handleToggleCurrentSessionPinned}
+            onPress={openChatMenu}
             accessibilityRole="button"
-            accessibilityLabel={isCurrentSessionPinned ? 'Unpin current chat' : 'Pin current chat'}
-            accessibilityHint={isCurrentSessionPinned
-              ? 'Removes this chat from the pinned chats list.'
-              : 'Keeps this chat at the top of the chats list.'}
-            style={[styles.headerPinButton, isCurrentSessionPinned && styles.headerPinButtonActive]}
+            accessibilityLabel={headerHandsFreeLabel}
+            accessibilityHint="Opens the voice menu for hands-free status and controls."
+            style={[
+              styles.headerVoiceStatusButton,
+              handsFree && styles.headerVoiceStatusButtonActive,
+              headerHandsFreePhase === 'error' && styles.headerVoiceStatusButtonError,
+            ]}
           >
-            <Text style={[styles.headerPinButtonText, isCurrentSessionPinned && styles.headerPinButtonTextActive]}>
-              {isCurrentSessionPinned ? 'Pinned' : 'Pin'}
-            </Text>
+            <Ionicons
+              name={headerHandsFreeIcon}
+              size={18}
+              color={
+                headerHandsFreePhase === 'error'
+                  ? theme.colors.danger
+                  : handsFree
+                    ? theme.colors.primary
+                    : theme.colors.mutedForeground
+              }
+            />
           </TouchableOpacity>
         </View>
       ),
@@ -1432,10 +1452,11 @@ export default function ChatScreen({ route, navigation }: any) {
     currentSession?.title,
     globalTtsPlayback,
     handleOpenGlobalTtsSession,
-    handleToggleCurrentSessionPinned,
     handsFree,
+    headerHandsFreeIcon,
+    headerHandsFreeLabel,
+    headerHandsFreePhase,
     isAgentRunningInHeader,
-    isCurrentSessionPinned,
     navigation,
     openChatMenu,
     styles,
@@ -5493,55 +5514,6 @@ export default function ChatScreen({ route, navigation }: any) {
 			pauseHandsFreeByUser();
 		}, [handsFreeController.state.phase, hasPendingHandsFreeSend, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
 
-  const isHandsFreeTtsLoading = handsFree && globalTtsPlayback?.status === 'loading';
-  const handsFreeDisplayPhase: HandsFreePhase = isHandsFreeTtsLoading
-    ? 'processing'
-    : handsFreeController.state.phase;
-  const handsFreeDisplayLabel = isHandsFreeTtsLoading
-    ? 'Loading TTS'
-    : hasPendingHandsFreeSend
-      ? `Sending in ${handsFreeCountdownSeconds}s`
-    : handsFreeController.statusLabel;
-
-	const handsFreeStatusSubtitle = useMemo(() => {
-		if (!handsFree) return undefined;
-    if (hasPendingHandsFreeSend) {
-      return 'Tap to pause and edit before sending.';
-    }
-    if (isHandsFreeTtsLoading) {
-      return 'Preparing audio output.';
-    }
-		switch (handsFreeController.state.phase) {
-			case 'sleeping':
-					return 'Tap the mic to wake handsfree listening.';
-			case 'waking':
-				return 'Listening for your next request.';
-			case 'listening':
-				return `Say “${handsFreeSleepPhrase}” to return to sleep.`;
-			case 'processing':
-				return 'Working on your request.';
-			case 'speaking':
-				return 'Say "wait" or "stop" to interrupt and listen.';
-			case 'paused':
-				return 'Tap the mic to resume handsfree listening.';
-			case 'error':
-				return handsFreeController.state.lastError || 'Voice recognition is recovering.';
-			default:
-				return handsFreeForegroundOnly
-					? 'Handsfree works while Chat stays open in the foreground.'
-					: undefined;
-		}
-	}, [
-		handsFree,
-		handsFreeController.state.lastError,
-		handsFreeController.state.phase,
-		handsFreeForegroundOnly,
-		handsFreeSleepPhrase,
-    hasPendingHandsFreeSend,
-    handsFreeCountdownSeconds,
-    isHandsFreeTtsLoading,
-	]);
-
   // Clean, data-driven reference of everything the user can say in hands-free
   // mode. The imperative commands come straight from the shared registry so
   // the guide never drifts from what the matcher actually recognizes.
@@ -5586,7 +5558,7 @@ export default function ChatScreen({ route, navigation }: any) {
 				? 'Wake'
 				: handsFreeController.state.phase === 'paused'
 					? 'Resume'
-					: 'Pause')
+					: 'Stop Listening')
 		: (listening ? '...' : 'Hold');
   const isMessageQueuePaused = handsFree && handsFreeController.state.phase === 'paused';
 
@@ -6727,18 +6699,9 @@ export default function ChatScreen({ route, navigation }: any) {
                     color={effectiveMicListening ? theme.colors.primaryForeground : theme.colors.mutedForeground}
                   />
                   <Text style={[styles.micLabel, effectiveMicListening && styles.micLabelOn]} selectable={false}>
-		                {handsFree ? handsFreeDisplayLabel : micButtonLabel}
+		                {micButtonLabel}
                   </Text>
                 </View>
-                {handsFree && !!handsFreeStatusSubtitle && (
-                  <Text
-                    style={[styles.micSubtitle, effectiveMicListening && styles.micSubtitleOn]}
-                    numberOfLines={1}
-                    selectable={false}
-                  >
-                    {handsFreeStatusSubtitle}
-                  </Text>
-                )}
               </View>
             </Pressable>
           </View>
@@ -7064,24 +7027,22 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     },
     headerActionButton,
     headerEdgeActionButton,
-    headerPinButton: {
+    headerVoiceStatusButton: {
       ...createMinimumTouchTargetStyle({ horizontalPadding: 10, verticalPadding: 8 }),
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    headerPinButtonActive: {
+    headerVoiceStatusButtonActive: {
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.primary + '18',
     },
-    headerPinButtonText: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      fontWeight: '600',
-    },
-    headerPinButtonTextActive: {
-      color: theme.colors.primary,
+    headerVoiceStatusButtonError: {
+      borderColor: theme.colors.danger,
+      backgroundColor: hexToRgba(theme.colors.danger, 0.12),
     },
     loadOlderContainer: {
       alignItems: 'center',
@@ -7690,14 +7651,6 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     },
     micLabelOn: {
       color: theme.colors.primaryForeground,
-    },
-    micSubtitle: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      textAlign: 'center',
-    },
-    micSubtitleOn: {
-      color: hexToRgba(theme.colors.primaryForeground, 0.86),
     },
     ttsToggle: {
 	      width: 44,
