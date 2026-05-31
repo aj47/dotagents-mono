@@ -12,7 +12,19 @@ export type VoiceCommandId =
   | 'stop-agent-turn'
   | 'stop-tts'
   | 'new-session'
-  | 'open-menu';
+  | 'open-menu'
+  | 'list-recent-agents'
+  | 'list-old-agents'
+  | 'focus-agent';
+
+/**
+ * Commands whose meaning depends on the words that follow the matched
+ * phrase (e.g. "focus on calendar"). Callers should treat the match
+ * `remainder` as an argument rather than ignoring it.
+ */
+export const PARAMETERIZED_VOICE_COMMANDS: ReadonlySet<VoiceCommandId> = new Set([
+  'focus-agent',
+]);
 
 export interface VoiceCommandDefinition {
   /** Stable id used by callers to dispatch app actions. */
@@ -67,8 +79,11 @@ export const DEFAULT_VOICE_COMMANDS: readonly VoiceCommandDefinition[] = [
   },
   {
     id: 'new-session',
-    label: 'New chat',
+    label: 'New agent',
     aliases: [
+      'new agent',
+      'start a new agent',
+      'start new agent',
       'new chat',
       'new session',
       'start a new session',
@@ -79,6 +94,56 @@ export const DEFAULT_VOICE_COMMANDS: readonly VoiceCommandDefinition[] = [
       'open new chat',
       'start a new agent session',
       'new agent session',
+    ],
+  },
+  {
+    id: 'list-recent-agents',
+    label: 'Recent agents',
+    aliases: [
+      'list recent agents',
+      'show recent agents',
+      'recent agents',
+      'list my agents',
+      'show my agents',
+      'list agents',
+      'show agents',
+      'my agents',
+      'recent chats',
+      'list recent chats',
+    ],
+  },
+  {
+    id: 'list-old-agents',
+    label: 'Old agents',
+    aliases: [
+      'list old agents',
+      'show old agents',
+      'old agents',
+      'list archived agents',
+      'show archived agents',
+      'archived agents',
+      'old chats',
+      'archived chats',
+      'list old chats',
+    ],
+  },
+  {
+    id: 'focus-agent',
+    label: 'Focus agent',
+    aliases: [
+      'switch to the agent',
+      'switch to agent',
+      'focus on the agent',
+      'focus on agent',
+      'focus the agent',
+      'focus agent',
+      'select the agent',
+      'select agent',
+      'switch to',
+      'focus on',
+      'open agent',
+      'go to agent',
+      'focus',
     ],
   },
   {

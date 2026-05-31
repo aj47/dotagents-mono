@@ -29,6 +29,8 @@ const lightSpinner = require('../../assets/light-spinner.gif');
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
 	DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+	DEFAULT_HANDS_FREE_WAKE_PHRASE,
+	DEFAULT_HANDS_FREE_SLEEP_PHRASE,
 	useConfigContext,
 	saveConfig,
 } from '../store/config';
@@ -111,6 +113,7 @@ import {
 } from '../lib/voice/androidHandsFreeService';
 import { isBenignHandsFreeRecognizerError, useHandsFreeController } from '../lib/voice/useHandsFreeController';
 import { normalizeVoicePhrase } from '../lib/voice/phraseMatcher';
+import { findAgentSessionMatch } from '../lib/voice/agentSessionMatch';
 import {
   playHandsFreeAudioCue,
   type HandsFreeAudioCue,
@@ -937,8 +940,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const [newPromptContent, setNewPromptContent] = useState('');
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
   const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
-  const handsFreeWakePhrase = config.handsFreeWakePhrase || 'hey dot agents';
-  const handsFreeSleepPhrase = config.handsFreeSleepPhrase || 'go to sleep';
+  const handsFreeWakePhrase = config.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE;
+  const handsFreeSleepPhrase = config.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
   const handsFreeDebugEnabled = config.handsFreeDebug === true || isHandsFreeDebugForcedInDev();
   const androidHandsFreeServiceAvailable = Platform.OS === 'android' && isAndroidHandsFreeServiceAvailable();
   const handsFreeForegroundOnly = config.handsFreeForegroundOnly !== false;
@@ -1833,11 +1836,21 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceLog,
   ]);
 
+  const findAgentSessionByName = useCallback((spokenName: string) => {
+    return findAgentSessionMatch(
+      spokenName,
+      sessionStore.sessions
+        .filter((session) => !session.isArchived)
+        .map((session) => ({ id: session.id, title: session.title, updatedAt: session.updatedAt })),
+    );
+  }, [sessionStore.sessions]);
+
   const handleHandsFreeVoiceCommand = useCallback((
     command: VoiceCommandId,
     label: string,
+    remainder = '',
   ) => {
-    voiceLog('handsfree-control', `Handsfree voice command dispatched: ${label}.`, { command });
+    voiceLog('handsfree-control', `Handsfree voice command dispatched: ${label}.`, { command, remainder });
     switch (command) {
       case 'stop-tts': {
         clearAndroidHandsFreePartialTimer();
@@ -1876,6 +1889,37 @@ export default function ChatScreen({ route, navigation }: any) {
         playHandsFreeCue('session-ready');
         break;
       }
+      case 'list-recent-agents': {
+        navigation.navigate('Sessions', { initialMode: 'active' });
+        setDebugInfo('Showing recent agents.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'list-old-agents': {
+        navigation.navigate('Sessions', { initialMode: 'archived' });
+        setDebugInfo('Showing old agents.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'focus-agent': {
+        const match = findAgentSessionByName(remainder);
+        if (match) {
+          sessionStore.setCurrentSession(match.id);
+          setDebugInfo(`Focused agent: ${match.title}.`);
+          playHandsFreeCue('session-ready');
+        } else {
+          // No confident match — fall back to the recent agents list so the
+          // user can pick visually instead of guessing.
+          navigation.navigate('Sessions', { initialMode: 'active' });
+          setDebugInfo(
+            remainder
+              ? `No agent matched "${remainder}". Showing recent agents.`
+              : 'Showing recent agents to focus.',
+          );
+          playHandsFreeCue('listening');
+        }
+        break;
+      }
       case 'open-menu': {
         setDebugInfo(`Say: ${getVoiceCommandMenuLabels().join(', ')}.`);
         openHandsFreeGuide();
@@ -1890,12 +1934,15 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [
     clearAndroidHandsFreePartialTimer,
+    findAgentSessionByName,
     getSessionClient,
     handleNewChat,
     handsFreeController.onRequestCompleted,
     handsFreeController.onSpeechFinished,
+    navigation,
     openHandsFreeGuide,
     playHandsFreeCue,
+    sessionStore,
     setRespondingValue,
     voiceLog,
   ]);
@@ -1979,7 +2026,7 @@ export default function ChatScreen({ route, navigation }: any) {
         if (action.type === 'send') {
           void sendRef.current(action.text, { source: 'handsfree' });
         } else if (action.type === 'command') {
-          handleHandsFreeVoiceCommand(action.command, action.label);
+          handleHandsFreeVoiceCommand(action.command, action.label, action.remainder);
         }
         return;
       }
@@ -5041,7 +5088,9 @@ export default function ChatScreen({ route, navigation }: any) {
       ...DEFAULT_VOICE_COMMANDS.map((command) => ({
         key: command.id,
         label: command.label,
-        phrase: command.aliases[0] ?? command.label.toLowerCase(),
+        phrase: command.id === 'focus-agent'
+          ? 'focus on <agent>'
+          : command.aliases[0] ?? command.label.toLowerCase(),
       })),
       { key: 'sleep', label: 'Go to sleep', phrase: handsFreeSleepPhrase },
     ],

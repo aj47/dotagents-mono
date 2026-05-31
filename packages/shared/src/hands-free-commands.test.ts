@@ -49,6 +49,20 @@ describe('matchVoiceCommand', () => {
     expect(matchVoiceCommand('pause speech')?.command).toBe('stop-tts');
     expect(matchVoiceCommand('start a new chat')?.command).toBe('new-session');
     expect(matchVoiceCommand('open the menu')?.command).toBe('open-menu');
+    expect(matchVoiceCommand('list recent agents')?.command).toBe('list-recent-agents');
+    expect(matchVoiceCommand('show old agents')?.command).toBe('list-old-agents');
+    expect(matchVoiceCommand('focus on calendar')?.command).toBe('focus-agent');
+  });
+
+  it('returns the spoken agent name as the remainder of a focus command', () => {
+    const match = matchVoiceCommand('focus on calendar planner');
+    expect(match?.command).toBe('focus-agent');
+    expect(match?.remainder).toBe('calendar planner');
+  });
+
+  it('does not confuse "open agent menu" with "open agent"', () => {
+    expect(matchVoiceCommand('open agent menu')?.command).toBe('open-menu');
+    expect(matchVoiceCommand('open agent research bot')?.command).toBe('focus-agent');
   });
 
   it('respects a caller-supplied command registry', () => {

@@ -3,6 +3,7 @@ import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, Touchable
 import {
   AppConfig,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  DEFAULT_HANDS_FREE_WAKE_PHRASE,
   saveConfig,
   useConfigContext,
 } from '../store/config';
@@ -3254,10 +3255,10 @@ export default function SettingsScreen({ navigation, route }: any) {
         <Text style={[styles.label, { marginTop: spacing.md }]}>Wake phrase</Text>
         <TextInput
           style={styles.input}
-          value={draft.handsFreeWakePhrase || 'hey dot agents'}
+          value={draft.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE}
           onChangeText={(value) => updateDraftField({ handsFreeWakePhrase: value })}
-          onEndEditing={() => updateLocalConfig({ handsFreeWakePhrase: draft.handsFreeWakePhrase || 'hey dot agents' })}
-          placeholder='hey dot agents'
+          onEndEditing={() => updateLocalConfig({ handsFreeWakePhrase: draft.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE })}
+          placeholder={DEFAULT_HANDS_FREE_WAKE_PHRASE}
           placeholderTextColor={theme.colors.mutedForeground}
           autoCapitalize='none'
           autoCorrect={false}

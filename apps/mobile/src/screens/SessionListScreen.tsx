@@ -26,9 +26,10 @@ const lightSpinner = require('../../assets/light-spinner.gif');
 
 interface Props {
   navigation: any;
+  route?: any;
 }
 
-export default function SessionListScreen({ navigation }: Props) {
+export default function SessionListScreen({ navigation, route }: Props) {
   const { theme, isDark } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
@@ -36,7 +37,18 @@ export default function SessionListScreen({ navigation }: Props) {
   const connectionManager = useConnectionManager();
   const { connectionInfo, isInitialized } = useTunnelConnection();
   const [searchQuery, setSearchQuery] = useState('');
-  const [sessionListMode, setSessionListMode] = useState<'active' | 'archived'>('active');
+  const [sessionListMode, setSessionListMode] = useState<'active' | 'archived'>(
+    route?.params?.initialMode === 'archived' ? 'archived' : 'active',
+  );
+
+  // Allow callers (e.g. hands-free voice commands) to open straight to the
+  // archived ("old agents") tab via a navigation param.
+  useEffect(() => {
+    const mode = route?.params?.initialMode;
+    if (mode === 'archived' || mode === 'active') {
+      setSessionListMode(mode);
+    }
+  }, [route?.params?.initialMode]);
   const [renameSession, setRenameSession] = useState<SessionListItem | null>(null);
   const [renameTitleDraft, setRenameTitleDraft] = useState('');
   const [isRenameSaving, setIsRenameSaving] = useState(false);
