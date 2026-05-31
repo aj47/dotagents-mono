@@ -476,6 +476,11 @@ class HandsFreeVoiceService : Service() {
       engine.setSpeechRate(request.rate)
       engine.setPitch(request.pitch)
 
+      Log.i(
+        TAG,
+        "tts dispatching utteranceId=${request.utteranceId} textLength=${request.text.length} language=${request.language} rate=${request.rate} pitch=${request.pitch} voice=${request.voice ?: "default"} audioRoute=${HandsFreeAudioRouter.currentRoute(this)}",
+      )
+
       val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         engine.speak(request.text, TextToSpeech.QUEUE_FLUSH, null, request.utteranceId)
       } else {
@@ -564,7 +569,10 @@ class HandsFreeVoiceService : Service() {
     pendingTtsRequest = null
     ttsSpeaking = false
 
-    Log.i(TAG, "tts completed utteranceId=$utteranceId eventType=$eventType restoreListening=$shouldRestoreListening message=${message ?: "-"}")
+    Log.i(
+      TAG,
+      "tts completed utteranceId=$utteranceId eventType=$eventType restoreListening=$shouldRestoreListening message=${message ?: "-"} errorCode=${errorCode ?: "-"} audioRoute=${HandsFreeAudioRouter.currentRoute(this)}",
+    )
     HandsFreeVoiceEvents.emit(eventType) {
       it.putString("utteranceId", utteranceId)
       message?.let { value -> it.putString("message", value) }

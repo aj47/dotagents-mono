@@ -50,9 +50,11 @@ const CUE_DEFINITIONS: Record<HandsFreeAudioCue, CueTone[]> = {
     { frequency: 1_100, durationMs: 80, gain: 0.14 },
   ],
   'prompt-submitted': [
-    { frequency: 880, durationMs: 50 },
-    { frequency: 0, durationMs: 22 },
-    { frequency: 660, durationMs: 80 },
+    { frequency: 880, durationMs: 110, gain: 0.38 },
+    { frequency: 0, durationMs: 45 },
+    { frequency: 1_240, durationMs: 150, gain: 0.42 },
+    { frequency: 0, durationMs: 40 },
+    { frequency: 1_560, durationMs: 190, gain: 0.36 },
   ],
   'tool-called': [
     { frequency: 520, durationMs: 42 },
