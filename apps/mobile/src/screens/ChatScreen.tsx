@@ -159,6 +159,7 @@ const HANDS_FREE_TTS_BARGE_IN_COMMANDS = new Set([
 const HANDS_FREE_GUIDE_DISMISSED_KEY = 'dotagents:handsfree-guide-dismissed';
 const HANDS_FREE_SESSION_READY_CUE_MIN_INTERVAL_MS = 1_500;
 const HANDS_FREE_PREVIEW_SUBMITTED_PROCESSING_CUE_SUPPRESSION_MS = 900;
+const HANDS_FREE_SUBMITTED_CUE_ANDROID_DELAY_MS = 120;
 const SERVER_GENERATED_TITLE_REFRESH_DELAYS_MS = [1_500, 5_000, 12_000, 25_000] as const;
 const HANDS_FREE_PHASE_AUDIO_CUES: Record<HandsFreePhase, HandsFreeAudioCue> = {
   sleeping: 'sleeping',
@@ -1692,6 +1693,18 @@ export default function ChatScreen({ route, navigation }: any) {
     playHandsFreeAudioCue(cue);
     voiceLog('runtime-state', 'Handsfree audio cue played.', { cue });
   }, [voiceLog]);
+
+  const playHandsFreeSubmittedCue = useCallback(() => {
+    lastHandsFreePreviewSubmittedCueAtRef.current = Date.now();
+    const delayMs = Platform.OS === 'android' ? HANDS_FREE_SUBMITTED_CUE_ANDROID_DELAY_MS : 0;
+
+    if (delayMs > 0) {
+      setTimeout(() => playHandsFreeCue('prompt-submitted'), delayMs);
+      return;
+    }
+
+    playHandsFreeCue('prompt-submitted');
+  }, [playHandsFreeCue]);
 
   const playHandsFreeSessionReadyCue = useCallback((source: string) => {
     const now = Date.now();
@@ -4304,8 +4317,7 @@ export default function ChatScreen({ route, navigation }: any) {
       messageQueue.enqueue(currentConversationId, trimmedText, currentConversationId);
       if (options?.source === 'handsfree') {
         setSttPreviewWithExpiry('');
-        lastHandsFreePreviewSubmittedCueAtRef.current = Date.now();
-        playHandsFreeCue('preview-submitted');
+        playHandsFreeSubmittedCue();
         voiceLog('auto-send', 'Handsfree prompt queued while the assistant is still responding.', {
           textLength: trimmedText.length,
           phase: handsFreePhaseRef.current,
@@ -4350,8 +4362,7 @@ export default function ChatScreen({ route, navigation }: any) {
       });
     }
     if (options?.source === 'handsfree') {
-      lastHandsFreePreviewSubmittedCueAtRef.current = Date.now();
-      playHandsFreeCue('preview-submitted');
+      playHandsFreeSubmittedCue();
     } else {
       playHandsFreeCue('prompt-submitted');
     }
@@ -4906,7 +4917,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const messageCountBeforeTurn = currentMessages.length;
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     setSttPreviewWithExpiry('');
-    playHandsFreeCue('prompt-submitted');
+    playHandsFreeSubmittedCue();
     setRespondingValue(true);
     setConversationState('running');
 	    if (handsFree) {
@@ -6410,20 +6421,6 @@ export default function ChatScreen({ route, navigation }: any) {
             <Text style={styles.scrollToBottomText}>↓</Text>
           </TouchableOpacity>
         )}
-		        {listening && (
-		          <View style={[styles.overlay, { bottom: 72 + insets.bottom }]} pointerEvents="none">
-		            <View style={styles.overlayCard}>
-		              <Text style={styles.overlayText}>
-		                {handsFree ? 'Listening...' : (willCancel ? 'Release to edit' : 'Release to send')}
-		              </Text>
-		              {!!liveTranscript && (
-		                <Text style={styles.overlayTranscript} numberOfLines={3}>
-		                  {liveTranscript}
-		                </Text>
-		              )}
-		            </View>
-		          </View>
-		        )}
         {/* Message Queue Panel */}
         {messageQueueEnabled && queuedMessages.length > 0 && (
           <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
@@ -7821,37 +7818,6 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
     },
-	    overlay: {
-	      position: 'absolute',
-	      left: 0,
-	      right: 0,
-	      bottom: 72,
-	      // Ensure the live transcription overlay renders above the input area.
-	      zIndex: 1000,
-	      elevation: 10,
-	      alignItems: 'center',
-	      paddingHorizontal: spacing.md,
-	      paddingBottom: spacing.sm,
-	    },
-	    overlayCard: {
-	      maxWidth: '88%',
-	      borderRadius: radius.xl,
-	      backgroundColor: hexToRgba(theme.colors.foreground, 0.72),
-	      paddingHorizontal: 12,
-	      paddingVertical: 8,
-	    },
-	    overlayText: {
-	      ...theme.typography.caption,
-	      color: theme.colors.background,
-	      textAlign: 'center',
-	    },
-	    overlayTranscript: {
-	      color: theme.colors.background,
-	      marginTop: 4,
-	      fontSize: 12,
-	      lineHeight: 16,
-	      opacity: 0.92,
-	    },
     toolApprovalCard: {
       gap: spacing.xs,
       padding: spacing.sm,
