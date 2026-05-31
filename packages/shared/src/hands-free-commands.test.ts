@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_VOICE_COMMANDS,
+  PARAMETERIZED_VOICE_COMMANDS,
   getVoiceCommandMenuLabels,
   matchVoiceCommand,
 } from './hands-free-commands';
@@ -63,6 +64,44 @@ describe('matchVoiceCommand', () => {
   it('does not confuse "open agent menu" with "open agent"', () => {
     expect(matchVoiceCommand('open agent menu')?.command).toBe('open-menu');
     expect(matchVoiceCommand('open agent research bot')?.command).toBe('focus-agent');
+  });
+
+  it('resolves multi-agent TTS playback commands', () => {
+    expect(matchVoiceCommand('stop everyone')?.command).toBe('tts-stop-all');
+    expect(matchVoiceCommand('stop all')?.command).toBe('tts-stop-all');
+    expect(matchVoiceCommand('skip')?.command).toBe('tts-skip');
+    expect(matchVoiceCommand('next')?.command).toBe('tts-skip');
+    expect(matchVoiceCommand('pause')?.command).toBe('tts-pause');
+    expect(matchVoiceCommand('resume')?.command).toBe('tts-resume');
+    expect(matchVoiceCommand('whats playing')?.command).toBe('tts-whats-playing');
+    expect(matchVoiceCommand('read everything')?.command).toBe('tts-read-everything');
+    expect(matchVoiceCommand('announce only')?.command).toBe('tts-announce-only');
+    expect(matchVoiceCommand('say that again')?.command).toBe('tts-repeat');
+  });
+
+  it('"stop all" wins over the bare "stop" agent-turn alias', () => {
+    expect(matchVoiceCommand('stop all')?.command).toBe('tts-stop-all');
+    expect(matchVoiceCommand('stop')?.command).toBe('stop-agent-turn');
+  });
+
+  it('parses agent-scoped TTS commands with a remainder', () => {
+    const mute = matchVoiceCommand('mute the agent travel bot');
+    expect(mute?.command).toBe('tts-mute-agent');
+    expect(mute?.remainder).toBe('travel bot');
+
+    const solo = matchVoiceCommand('only listen to calendar');
+    expect(solo?.command).toBe('tts-solo-agent');
+    expect(solo?.remainder).toBe('calendar');
+
+    const read = matchVoiceCommand('read the agent email');
+    expect(read?.command).toBe('tts-read-agent');
+    expect(read?.remainder).toBe('email');
+  });
+
+  it('marks agent-scoped TTS commands as parameterized', () => {
+    for (const id of ['tts-mute-agent', 'tts-unmute-agent', 'tts-solo-agent', 'tts-read-agent']) {
+      expect(PARAMETERIZED_VOICE_COMMANDS.has(id as any)).toBe(true);
+    }
   });
 
   it('respects a caller-supplied command registry', () => {

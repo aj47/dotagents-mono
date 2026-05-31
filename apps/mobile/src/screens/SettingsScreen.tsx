@@ -3252,6 +3252,59 @@ export default function SettingsScreen({ navigation, route }: any) {
           Keep Foreground Only on for simple Chat-screen listening. Turn it off on Android to keep hands-free active after locking the phone.
         </Text>
 
+        <Text style={[styles.label, { marginTop: spacing.md }]}>Multi-agent voice playback</Text>
+        <Text style={{ color: theme.colors.mutedForeground, fontSize: 12, marginBottom: spacing.xs }}>
+          When a second agent finishes while another is still speaking.
+        </Text>
+        <View style={{ flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm }}>
+          {([
+            { value: 'queue', label: 'Queue', hint: 'Finish, then next' },
+            { value: 'announce', label: 'Announce', hint: 'Say who finished' },
+            { value: 'interrupt', label: 'Interrupt', hint: 'Urgent cut in' },
+          ] as const).map((option) => {
+            const selected = (draft.ttsConflictPolicy ?? 'queue') === option.value;
+            return (
+              <TouchableOpacity
+                key={option.value}
+                onPress={() => updateLocalConfig({ ttsConflictPolicy: option.value })}
+                accessibilityRole="button"
+                accessibilityLabel={`${option.label}: ${option.hint}`}
+                style={{
+                  flex: 1,
+                  paddingVertical: spacing.sm,
+                  paddingHorizontal: spacing.xs,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: selected ? theme.colors.primary : theme.colors.border,
+                  backgroundColor: selected ? theme.colors.primary : theme.colors.background,
+                  alignItems: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    color: selected ? theme.colors.primaryForeground : theme.colors.foreground,
+                    fontWeight: '700',
+                    fontSize: 13,
+                  }}
+                >
+                  {option.label}
+                </Text>
+                <Text
+                  style={{
+                    color: selected ? theme.colors.primaryForeground : theme.colors.mutedForeground,
+                    fontSize: 10,
+                    textAlign: 'center',
+                    marginTop: 2,
+                  }}
+                  numberOfLines={2}
+                >
+                  {option.hint}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <Text style={[styles.label, { marginTop: spacing.md }]}>Wake phrase</Text>
         <TextInput
           style={styles.input}

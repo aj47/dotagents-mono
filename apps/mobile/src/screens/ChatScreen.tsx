@@ -78,6 +78,7 @@ import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 import { HandsFreeStatusChip } from '../ui/HandsFreeStatusChip';
 import { GlobalTtsStatusPill } from '../ui/GlobalTtsStatusPill';
+import { TtsQueueDock } from '../ui/TtsQueueDock';
 import {
   beginGlobalTtsPlayback,
   completeGlobalTtsPlayback,
@@ -87,6 +88,13 @@ import {
   stopGlobalTtsPlayback,
   useGlobalTtsPlayback,
 } from '../store/ttsPlayback';
+import {
+  globalTtsQueue,
+  setTtsQueueSpeaker,
+  setTtsQueueConflictPolicy,
+  describeTtsQueue,
+} from '../store/globalTtsQueue';
+import { formatAgentSpokenPrefix, type TtsQueueItem } from '../store/ttsQueue';
 import {
   createButtonAccessibilityLabel,
   createChatComposerAccessibilityHint,
@@ -396,12 +404,6 @@ type RespondToUserHistorySourceMessage = {
   role: 'user' | 'assistant' | 'tool';
   timestamp?: number;
   toolCalls?: Array<{ name: string; arguments: unknown }>;
-};
-
-type QueuedResponseSpeechItem = {
-  event: AgentUserResponseEvent;
-  requestId: number;
-  sessionId: string | null;
 };
 
 type AndroidHandsFreeTtsSettleType = 'tts-done' | 'tts-error' | 'tts-stopped';
@@ -1045,8 +1047,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!next) {
       intendedSpeakingIndexRef.current = null;
       stopGlobalTtsPlayback();
-      queuedResponseEventsRef.current = [];
-      activeAutoSpeechEventRef.current = null;
+      globalTtsQueue.stopAll();
       setSpeakingMessageIndex(null);
       // Only transition the hands-free controller when it was actually speaking;
       // calling onSpeechFinished mid-`processing` would prematurely return to
@@ -1486,8 +1487,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const respondToUserHistoryRef = useRef<AgentUserResponseEvent[]>([]);
   const nextResponseEventOrdinalRef = useRef(1);
   const playedResponseEventIdsRef = useRef<Set<string>>(new Set());
-  const queuedResponseEventsRef = useRef<QueuedResponseSpeechItem[]>([]);
-  const activeAutoSpeechEventRef = useRef<QueuedResponseSpeechItem | null>(null);
   const autoTtsSuppressedRequestIdsRef = useRef<Set<number>>(new Set());
   const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
   const androidHandsFreeTtsHandlersRef = useRef<Map<string, AndroidHandsFreeTtsHandler>>(new Map());
@@ -1870,12 +1869,11 @@ export default function ChatScreen({ route, navigation }: any) {
 
     clearAndroidHandsFreePartialTimer();
     androidHandsFreePendingPartialRef.current = '';
-    queuedResponseEventsRef.current = [];
-    activeAutoSpeechEventRef.current = null;
     if (activeRequestIdRef.current) {
       autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
     }
-    stopGlobalTtsPlayback();
+    // Silence the whole multi-agent queue so the user can speak immediately.
+    globalTtsQueue.stopAll();
     if (handsFreePhaseRef.current === 'speaking') {
       handsFreeController.onSpeechFinished();
     }
@@ -1913,13 +1911,10 @@ export default function ChatScreen({ route, navigation }: any) {
       case 'stop-tts': {
         clearAndroidHandsFreePartialTimer();
         androidHandsFreePendingPartialRef.current = '';
-        queuedResponseEventsRef.current = [];
-        activeAutoSpeechEventRef.current = null;
-        if (activeRequestIdRef.current) {
-          autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
-        }
-        stopGlobalTtsPlayback();
-        if (handsFreePhaseRef.current === 'speaking') {
+        // "stop talking" stops the current speaker and advances to the next
+        // queued agent (if any). Use "stop everyone" to clear the whole queue.
+        globalTtsQueue.skip();
+        if (handsFreePhaseRef.current === 'speaking' && !globalTtsQueue.getState().active) {
           handsFreeController.onSpeechFinished();
         }
         setDebugInfo('Stopped speaking.');
@@ -1931,7 +1926,10 @@ export default function ChatScreen({ route, navigation }: any) {
         if (client) {
           client.cleanup();
         }
-        stopGlobalTtsPlayback();
+        if (activeRequestIdRef.current) {
+          autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
+        }
+        globalTtsQueue.stopAll();
         if (handsFreePhaseRef.current === 'speaking') {
           handsFreeController.onSpeechFinished();
         }
@@ -1939,6 +1937,103 @@ export default function ChatScreen({ route, navigation }: any) {
         setRespondingValue(false);
         setDebugInfo('Stopped the current agent turn.');
         playHandsFreeCue('stopped');
+        break;
+      }
+      case 'tts-stop-all': {
+        globalTtsQueue.stopAll();
+        if (handsFreePhaseRef.current === 'speaking') {
+          handsFreeController.onSpeechFinished();
+        }
+        setDebugInfo('Stopped all playback.');
+        playHandsFreeCue('stopped');
+        break;
+      }
+      case 'tts-skip': {
+        globalTtsQueue.skip();
+        setDebugInfo('Skipped.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-pause': {
+        globalTtsQueue.pause();
+        setDebugInfo('Playback paused.');
+        playHandsFreeCue('stopped');
+        break;
+      }
+      case 'tts-resume': {
+        globalTtsQueue.resume();
+        setDebugInfo('Playback resumed.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-whats-playing': {
+        setDebugInfo(describeTtsQueue());
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-read-everything': {
+        setTtsQueueConflictPolicy('queue');
+        globalTtsQueue.readAllDeferred();
+        setDebugInfo('Reading everything.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-announce-only': {
+        setTtsQueueConflictPolicy('announce');
+        void saveConfig({ ...config, ttsConflictPolicy: 'announce' }).catch(() => {});
+        setDebugInfo('Announce-only mode. Say "read everything" to catch up.');
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-repeat': {
+        const ok = globalTtsQueue.repeatLast(remainder || undefined);
+        setDebugInfo(ok ? 'Repeating.' : 'Nothing to repeat.');
+        playHandsFreeCue(ok ? 'listening' : 'stopped');
+        break;
+      }
+      case 'tts-mute-agent': {
+        const target = findAgentSessionByName(remainder);
+        const name = target?.title || remainder;
+        if (name) {
+          globalTtsQueue.muteAgent(name);
+          setDebugInfo(`Muted ${name}.`);
+          playHandsFreeCue('stopped');
+        } else {
+          setDebugInfo('Which agent should I mute?');
+          playHandsFreeCue('listening');
+        }
+        break;
+      }
+      case 'tts-unmute-agent': {
+        const target = findAgentSessionByName(remainder);
+        const name = target?.title || remainder;
+        if (name) {
+          globalTtsQueue.unmuteAgent(name);
+          setDebugInfo(`Unmuted ${name}.`);
+        } else {
+          setDebugInfo('Which agent should I unmute?');
+        }
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-solo-agent': {
+        const target = findAgentSessionByName(remainder);
+        const name = target?.title || remainder;
+        if (name) {
+          globalTtsQueue.soloAgent(name);
+          setDebugInfo(`Only ${name} now.`);
+        } else {
+          setDebugInfo('Which agent should I focus the audio on?');
+        }
+        playHandsFreeCue('listening');
+        break;
+      }
+      case 'tts-read-agent': {
+        const target = findAgentSessionByName(remainder);
+        const name = target?.title || remainder;
+        const ok = name ? globalTtsQueue.readAgent(name) : false;
+        setDebugInfo(ok ? `Reading ${name}.` : `Nothing waiting for ${name || 'that agent'}.`);
+        playHandsFreeCue(ok ? 'listening' : 'stopped');
         break;
       }
       case 'new-session': {
@@ -1992,6 +2087,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [
     clearAndroidHandsFreePartialTimer,
+    config,
     findAgentSessionByName,
     getSessionClient,
     handleNewChat,
@@ -2958,80 +3054,77 @@ export default function ChatScreen({ route, navigation }: any) {
 	    setRespondToUserHistory(mergedEvents);
 	  }, [syncResponseHistoryRefs]);
 
-  const processAutoSpeechQueue = useCallback(() => {
-    if (activeAutoSpeechEventRef.current || queuedResponseEventsRef.current.length === 0) {
-      return;
-    }
+  // Keep a ref to the latest engine so the (stable) queue speaker always uses
+  // current config without re-registering on every render.
+  const speakEngineRef = useRef(speakAssistantResponse);
+  speakEngineRef.current = speakAssistantResponse;
 
-    const nextItem = queuedResponseEventsRef.current.shift();
-    if (!nextItem) return;
-
-    const isCurrentRequest =
-      currentSessionIdRef.current === nextItem.sessionId &&
-      activeRequestIdRef.current === nextItem.requestId;
-    if (
-      !isCurrentRequest
-      || !ttsEnabledRef.current
-      || autoTtsSuppressedRequestIdsRef.current.has(nextItem.requestId)
-    ) {
-      processAutoSpeechQueue();
-      return;
-    }
-
-    activeAutoSpeechEventRef.current = nextItem;
-    const stopGenerationAtStart = getGlobalTtsStopGeneration();
-
-    const spoken = speakAssistantResponse(nextItem.event.text, `response event ${nextItem.event.ordinal}`, () => {
-      activeAutoSpeechEventRef.current = null;
-      if (getGlobalTtsStopGeneration() !== stopGenerationAtStart) {
-        queuedResponseEventsRef.current = [];
-        return;
-      }
-      if (
-        currentSessionIdRef.current === nextItem.sessionId &&
-        activeRequestIdRef.current === nextItem.requestId
-      ) {
-        processAutoSpeechQueue();
-      }
+  // Register the global TTS queue's speaker once. The queue owns ordering and
+  // identity across agents; this adapter only performs the audio and reports
+  // completion back. speakAssistantResponse always invokes its onSettled
+  // callback (even when it declines to speak), so the queue never wedges.
+  useEffect(() => {
+    setTtsQueueSpeaker({
+      speak: (item: TtsQueueItem, handle) => {
+        const multiAgent = globalTtsQueue.distinctActiveAgentCount() > 1;
+        const prefix = formatAgentSpokenPrefix(item.agentName || item.sessionTitle, { multiAgent });
+        handle.onLoading();
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          handle.onDone();
+        };
+        const spoken = speakEngineRef.current(`${prefix}${item.text}`, `queue ${item.source}`, done);
+        if (spoken === false) {
+          done();
+        } else {
+          handle.onSpeaking();
+        }
+      },
+      cancel: () => {
+        stopGlobalTtsPlayback();
+      },
     });
+    return () => setTtsQueueSpeaker(null);
+  }, []);
 
-    if (!spoken) {
-      activeAutoSpeechEventRef.current = null;
-      processAutoSpeechQueue();
-      return;
-    }
-
-    playedResponseEventIdsRef.current.add(nextItem.event.id);
-  }, [speakAssistantResponse]);
+  // Mirror the configured conflict policy into the queue.
+  useEffect(() => {
+    setTtsQueueConflictPolicy(config.ttsConflictPolicy ?? 'queue');
+  }, [config.ttsConflictPolicy]);
 
   const enqueueResponseEventsForSpeech = useCallback((
     events: AgentUserResponseEvent[],
     sessionId: string | null,
-    requestId: number
+    requestId: number,
   ) => {
-    // Use the ref alongside the captured config so a mute that landed after this
-    // callback was scheduled still suppresses queueing.
-    if (config.ttsEnabled === false || !ttsEnabledRef.current || !events.length) return;
-    if (currentSessionIdRef.current !== sessionId || activeRequestIdRef.current !== requestId) return;
+    if (!ttsEnabledRef.current) return;
+    // Background-agent responses are no longer dropped: the global TTS queue
+    // serializes utterances across agents (announcing background agents per the
+    // conflict policy) so a background agent that finishes mid-speech is queued,
+    // not lost. Suppressed requests (barge-in / stop-agent) are still skipped.
     if (autoTtsSuppressedRequestIdsRef.current.has(requestId)) return;
-
-    const queuedIds = new Set(queuedResponseEventsRef.current.map((item) => item.event.id));
-    const activeId = activeAutoSpeechEventRef.current?.event.id;
-    const unseenEvents = events.filter((event) => (
-      !playedResponseEventIdsRef.current.has(event.id)
-      && !queuedIds.has(event.id)
-      && event.id !== activeId
-    ));
-
-    if (!unseenEvents.length) return;
-
-    queuedResponseEventsRef.current = [
-      ...queuedResponseEventsRef.current,
-      ...unseenEvents.map((event) => ({ event, sessionId, requestId })),
-    ].sort((a, b) => compareResponseEvents(a.event, b.event));
-
-    processAutoSpeechQueue();
-  }, [config.ttsEnabled, processAutoSpeechQueue]);
+    const newEvents = events
+      .filter((event) => !playedResponseEventIdsRef.current.has(event.id))
+      .sort((a, b) => compareResponseEvents(a, b));
+    if (newEvents.length === 0) return;
+    const sessionTitle = sessionId === sessionStore.currentSessionId
+      ? sessionStore.getCurrentSession()?.title ?? null
+      : sessionStore.sessions.find((sess) => sess.id === sessionId)?.title ?? null;
+    for (const event of newEvents) {
+      playedResponseEventIdsRef.current.add(event.id);
+      globalTtsQueue.enqueue({
+        id: event.id,
+        source: 'auto',
+        sessionId,
+        sessionTitle,
+        agentName: sessionTitle,
+        text: event.text,
+        requestId,
+      });
+    }
+  }, [sessionStore]);
 
   // Per-message TTS: track which message index is currently being spoken (#1078)
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
@@ -3594,8 +3687,7 @@ export default function ChatScreen({ route, navigation }: any) {
       // Clear respond_to_user history for the new session
       replaceResponseHistory([]);
       playedResponseEventIdsRef.current = new Set();
-      queuedResponseEventsRef.current = [];
-      activeAutoSpeechEventRef.current = null;
+      globalTtsQueue.stopAll();
       // Clear stale in-flight marker when switching sessions.
       pendingLazyLoadSessionIdRef.current = null;
       // Clear skipNextPersistRef to prevent the first real message in the new session
@@ -3624,8 +3716,7 @@ export default function ChatScreen({ route, navigation }: any) {
         const savedResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
 	        replaceResponseHistory(savedResponses);
         playedResponseEventIdsRef.current = new Set(savedResponses.map((event) => event.id));
-        queuedResponseEventsRef.current = [];
-        activeAutoSpeechEventRef.current = null;
+        globalTtsQueue.stopAll();
         if (isSessionSwitch && currentSession.serverConversationId && hasServerAuth) {
           const refreshSessionId = currentSession.id;
           const client = settingsClient || new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
@@ -3674,8 +3765,7 @@ export default function ChatScreen({ route, navigation }: any) {
             );
 	            replaceResponseHistory(lazyResponses);
             playedResponseEventIdsRef.current = new Set(lazyResponses.map((event) => event.id));
-            queuedResponseEventsRef.current = [];
-            activeAutoSpeechEventRef.current = null;
+            globalTtsQueue.stopAll();
           })
           .catch((err) => {
             console.warn('[ChatScreen] Failed to lazy-load session messages:', err);
@@ -3717,8 +3807,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const newResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
 	      replaceResponseHistory(newResponses);
       playedResponseEventIdsRef.current = new Set(newResponses.map((event) => event.id));
-      queuedResponseEventsRef.current = [];
-      activeAutoSpeechEventRef.current = null;
+      globalTtsQueue.stopAll();
     } else {
       setMessages([]);
 	      replaceResponseHistory([]);
@@ -5384,9 +5473,14 @@ export default function ChatScreen({ route, navigation }: any) {
       ...DEFAULT_VOICE_COMMANDS.map((command) => ({
         key: command.id,
         label: command.label,
-        phrase: command.id === 'focus-agent'
-          ? 'focus on <agent>'
-          : command.aliases[0] ?? command.label.toLowerCase(),
+        phrase: ({
+          'focus-agent': 'focus on <agent>',
+          'tts-mute-agent': 'mute <agent>',
+          'tts-unmute-agent': 'unmute <agent>',
+          'tts-solo-agent': 'only <agent>',
+          'tts-read-agent': 'read <agent>',
+        } as Partial<Record<VoiceCommandId, string>>)[command.id]
+          ?? command.aliases[0] ?? command.label.toLowerCase(),
       })),
       { key: 'sleep', label: 'Go to sleep', phrase: handsFreeSleepPhrase },
     ],
@@ -6471,6 +6565,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	              ))}
 	            </ScrollView>
 	          )}
+          {/* Multi-agent TTS queue dock (auto agent responses). */}
+          <TtsQueueDock onOpenSession={handleOpenGlobalTtsSession} />
+
           {handsFree && (
             <View style={styles.handsFreeStatusRow}>
               <View style={styles.handsFreeStatusChipWrap}>

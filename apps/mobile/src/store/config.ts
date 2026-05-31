@@ -15,6 +15,11 @@ export type AppConfig = {
   handsFreeForegroundOnlyConfigured?: boolean; // true once the user explicitly changes the foreground-only toggle
   ttsEnabled?: boolean; // text-to-speech toggle (optional for backward compatibility)
   ttsProvider?: 'native' | 'edge';
+  // How multi-agent TTS handles a new utterance arriving while another agent
+  // is still speaking. 'queue' (default) finishes then reads next; 'announce'
+  // withholds the body and only says who finished; 'interrupt' lets a
+  // higher-priority agent preempt the current one.
+  ttsConflictPolicy?: 'queue' | 'announce' | 'interrupt';
   messageQueueEnabled?: boolean; // message queue toggle (allows queuing messages while agent is busy)
   // TTS voice settings
   ttsVoiceId?: string; // Voice identifier (e.g., "Google US English" or native voice URI)
@@ -68,6 +73,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   handsFreeForegroundOnlyConfigured: false,
   ttsEnabled: true,
   ttsProvider: 'native',
+  ttsConflictPolicy: 'queue',
   messageQueueEnabled: true,
   ttsVoiceId: undefined, // Use system default
   ttsRate: 1.0,
