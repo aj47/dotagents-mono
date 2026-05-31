@@ -67,6 +67,7 @@ import {
   type ToolActivityGroup,
   type VoiceCommandId,
   getVoiceCommandMenuLabels,
+  DEFAULT_VOICE_COMMANDS,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
@@ -928,6 +929,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
   const [handsFreeGuideVisible, setHandsFreeGuideVisible] = useState(false);
   const [handsFreeGuideDismissed, setHandsFreeGuideDismissed] = useState<boolean | null>(null);
+  // Lets the user compact the persistent hands-free status row down to a bare
+  // phase pill (hiding the contextual subtitle) so voice mode stays unobtrusive.
+  const [handsFreeStatusCollapsed, setHandsFreeStatusCollapsed] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<PredefinedPromptSummary | null>(null);
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
@@ -1874,6 +1878,7 @@ export default function ChatScreen({ route, navigation }: any) {
       }
       case 'open-menu': {
         setDebugInfo(`Say: ${getVoiceCommandMenuLabels().join(', ')}.`);
+        openHandsFreeGuide();
         playHandsFreeCue('listening');
         break;
       }
@@ -1889,6 +1894,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handleNewChat,
     handsFreeController.onRequestCompleted,
     handsFreeController.onSpeechFinished,
+    openHandsFreeGuide,
     playHandsFreeCue,
     setRespondingValue,
     voiceLog,
@@ -5026,6 +5032,22 @@ export default function ChatScreen({ route, navigation }: any) {
     isHandsFreeTtsLoading,
 	]);
 
+  // Clean, data-driven reference of everything the user can say in hands-free
+  // mode. The imperative commands come straight from the shared registry so
+  // the guide never drifts from what the matcher actually recognizes.
+  const voiceCommandReference = useMemo(
+    () => [
+      { key: 'wake', label: 'Wake from sleep', phrase: handsFreeWakePhrase },
+      ...DEFAULT_VOICE_COMMANDS.map((command) => ({
+        key: command.id,
+        label: command.label,
+        phrase: command.aliases[0] ?? command.label.toLowerCase(),
+      })),
+      { key: 'sleep', label: 'Go to sleep', phrase: handsFreeSleepPhrase },
+    ],
+    [handsFreeWakePhrase, handsFreeSleepPhrase],
+  );
+
 	const composerPlaceholder = handsFree
 		? (handsFreeController.state.phase === 'paused'
 			? 'Handsfree paused — tap mic to resume or type a message'
@@ -6109,9 +6131,22 @@ export default function ChatScreen({ route, navigation }: any) {
                 <HandsFreeStatusChip
                   phase={handsFreeDisplayPhase}
                   label={handsFreeDisplayLabel}
-                  subtitle={handsFreeStatusSubtitle}
+                  subtitle={handsFreeStatusCollapsed ? undefined : handsFreeStatusSubtitle}
                 />
               </View>
+              <TouchableOpacity
+                style={styles.handsFreeGuideButton}
+                onPress={() => setHandsFreeStatusCollapsed((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityLabel={handsFreeStatusCollapsed ? 'Expand hands-free status' : 'Collapse hands-free status'}
+                accessibilityHint="Toggles the contextual hint under the voice status so the row stays compact."
+              >
+                <Ionicons
+                  name={handsFreeStatusCollapsed ? 'chevron-down' : 'chevron-up'}
+                  size={18}
+                  color={theme.colors.mutedForeground}
+                />
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.handsFreeGuideButton}
                 onPress={openHandsFreeGuide}
@@ -6304,9 +6339,23 @@ export default function ChatScreen({ route, navigation }: any) {
 
               <View style={styles.handsFreeGuideSection}>
                 <Text style={styles.handsFreeGuideSectionTitle}>Voice commands</Text>
-                <Text style={styles.handsFreeGuideText}>
-                  Say "{handsFreeSleepPhrase}" to sleep. While the assistant is speaking, say "wait" or
-                  "stop" to stop TTS and return to listening.
+                <View style={styles.handsFreeCommandList}>
+                  {voiceCommandReference.map((entry) => (
+                    <View key={entry.key} style={styles.handsFreeCommandRow}>
+                      <Text style={styles.handsFreeCommandLabel} numberOfLines={1}>
+                        {entry.label}
+                      </Text>
+                      <View style={styles.handsFreeCommandPhrase}>
+                        <Text style={styles.handsFreeCommandPhraseText} numberOfLines={1}>
+                          “{entry.phrase}”
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.handsFreeCommandHint}>
+                  Works while the assistant is processing or speaking — commands are dispatched
+                  instead of sent as a message.
                 </Text>
               </View>
 
@@ -6789,6 +6838,42 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     handsFreeGuideText: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
+    },
+    handsFreeCommandList: {
+      gap: spacing.xs,
+    },
+    handsFreeCommandRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    handsFreeCommandLabel: {
+      ...theme.typography.caption,
+      color: theme.colors.foreground,
+      fontWeight: '600',
+      flexShrink: 0,
+      width: 116,
+    },
+    handsFreeCommandPhrase: {
+      flex: 1,
+      minWidth: 0,
+      alignSelf: 'flex-start',
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+    },
+    handsFreeCommandPhraseText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    handsFreeCommandHint: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      marginTop: spacing.xs,
     },
     handsFreeGuidePrimaryButton: {
       marginTop: spacing.md,
