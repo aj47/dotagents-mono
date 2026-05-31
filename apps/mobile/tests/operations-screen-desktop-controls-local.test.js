@@ -56,11 +56,13 @@ test('settings client and desktop server expose narrow local operator routes', (
   assert.match(settingsClientSource, /async stopOperatorTtsPlayback\(\)/);
   assert.match(settingsClientSource, /async showOperatorMainWindow/);
   assert.match(settingsClientSource, /async clearInactiveOperatorAgentSessions\(\)/);
+  assert.match(settingsClientSource, /async stopOperatorAgentSession\(sessionId: string\)/);
   assert.match(settingsClientSource, /async snoozeOperatorAgentSessionsAndHidePanel/);
   assert.match(settingsClientSource, /async getOperatorDiagnosticReport\(\)/);
   assert.match(remoteServerSource, /"\/v1\/operator\/actions\/stop-tts"/);
   assert.match(remoteServerSource, /"\/v1\/operator\/windows\/main\/show"/);
   assert.match(remoteServerSource, /"\/v1\/operator\/sessions\/:sessionId\/show"/);
+  assert.match(remoteServerSource, /"\/v1\/operator\/sessions\/:sessionId\/stop"/);
   assert.match(remoteServerSource, /"\/v1\/operator\/sessions\/clear-inactive"/);
   assert.match(remoteServerSource, /"\/v1\/operator\/diagnostics\/report"/);
   assert.doesNotMatch(remoteServerSource, /registerDesktopRemoteServerRoutes/);

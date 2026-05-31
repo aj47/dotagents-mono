@@ -1323,23 +1323,6 @@ export default function ChatScreen({ route, navigation }: any) {
     handleInsertQuickStartPrompt(item.content);
   }, [handleInsertQuickStartPrompt, handleRunPromptTask, openAddPromptModal]);
 
-  const headerHandsFreePhase: HandsFreePhase | 'off' = handsFree
-    ? (globalTtsPlayback?.status === 'loading' ? 'processing' : handsFreeController.state.phase)
-    : 'off';
-  const headerHandsFreeIcon = ({
-    off: 'mic-off-outline',
-    sleeping: 'moon-outline',
-    waking: 'radio-outline',
-    listening: 'ear-outline',
-    processing: 'sync-outline',
-    speaking: 'volume-high-outline',
-    paused: 'pause-outline',
-    error: 'warning-outline',
-  } as const)[headerHandsFreePhase];
-  const headerHandsFreeLabel = headerHandsFreePhase === 'off'
-    ? 'Hands-free off'
-    : `Hands-free ${headerHandsFreePhase}`;
-
   const handleOpenGlobalTtsSession = useCallback((sessionId: string) => {
     if (!sessionId) return;
     if (!sessionStore.sessions.some(session => session.id === sessionId)) {
@@ -1376,94 +1359,6 @@ export default function ChatScreen({ route, navigation }: any) {
       setBranchingMessageIndex(null);
     }
   }, [currentSession?.serverConversationId, navigation, sessionStore, settingsClient]);
-
-  const isAgentRunningInHeader = conversationState === 'running' || responding;
-
-  useLayoutEffect(() => {
-    navigation?.setOptions?.({
-      headerTitle: () => (
-        <View style={{ alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 44, maxWidth: 230 }}>
-          {globalTtsPlayback ? (
-            <GlobalTtsStatusPill
-              compact
-              onOpenSession={handleOpenGlobalTtsSession}
-            />
-          ) : (
-            <Text
-              style={{ fontSize: 15, fontWeight: '700', color: theme.colors.foreground, maxWidth: 230 }}
-              numberOfLines={1}
-            >
-              {currentSession?.title || 'Chat'}
-            </Text>
-          )}
-        </View>
-      ),
-      headerLeft: () => (
-        <View style={styles.headerActionsRow}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Sessions')}
-            accessibilityRole="button"
-            accessibilityLabel="Back to chat history"
-            accessibilityHint="Returns to the chat history list"
-            style={styles.headerEdgeActionButton}
-          >
-            <Text style={{ fontSize: 20, color: theme.colors.foreground }}>←</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={openChatMenu}
-            accessibilityRole="button"
-            accessibilityLabel={headerHandsFreeLabel}
-            accessibilityHint="Opens the voice menu for hands-free status and controls."
-            style={[
-              styles.headerVoiceStatusButton,
-              handsFree && styles.headerVoiceStatusButtonActive,
-              headerHandsFreePhase === 'error' && styles.headerVoiceStatusButtonError,
-            ]}
-          >
-            <Ionicons
-              name={headerHandsFreeIcon}
-              size={18}
-              color={
-                headerHandsFreePhase === 'error'
-                  ? theme.colors.danger
-                  : handsFree
-                    ? theme.colors.primary
-                    : theme.colors.mutedForeground
-              }
-            />
-          </TouchableOpacity>
-        </View>
-      ),
-      headerRight: () => (
-        <View style={styles.headerActionsRow}>
-          <TouchableOpacity
-            onPress={openChatMenu}
-            accessibilityRole="button"
-            accessibilityLabel="Open chat voice menu"
-            accessibilityHint="Opens hands-free help, microphone selection, and chat controls."
-            style={styles.headerActionButton}
-          >
-            <Ionicons name="ellipsis-vertical" size={22} color={theme.colors.foreground} />
-          </TouchableOpacity>
-        </View>
-      ),
-    });
-  }, [
-    currentSession?.title,
-    globalTtsPlayback,
-    handleOpenGlobalTtsSession,
-    handsFree,
-    headerHandsFreeIcon,
-    headerHandsFreeLabel,
-    headerHandsFreePhase,
-    isAgentRunningInHeader,
-    navigation,
-    openChatMenu,
-    styles,
-    theme.colors.danger,
-    theme.colors.foreground,
-  ]);
-
 
   const respondToToolApproval = useCallback(async (approvalId: string, approved: boolean) => {
     if (!settingsClient) {
@@ -1688,6 +1583,108 @@ export default function ChatScreen({ route, navigation }: any) {
     isAssistantAudioLoading
     || isAssistantAudioSpeaking;
   const shouldKeepHandsFreeMicArmed = handsFreeController.shouldKeepRecognizerActive;
+  const isAgentRunningInHeader = conversationState === 'running' || responding;
+  const headerHandsFreePhase: HandsFreePhase | 'off' = handsFree
+    ? (isAssistantAudioLoading ? 'processing' : handsFreeController.state.phase)
+    : 'off';
+  const headerHandsFreeIcon = ({
+    off: 'mic-off-outline',
+    sleeping: 'moon-outline',
+    waking: 'radio-outline',
+    listening: 'ear-outline',
+    processing: 'sync-outline',
+    speaking: 'volume-high-outline',
+    paused: 'pause-outline',
+    error: 'warning-outline',
+  } as const)[headerHandsFreePhase];
+  const headerHandsFreeLabel = headerHandsFreePhase === 'off'
+    ? 'Hands-free off'
+    : `Hands-free ${headerHandsFreePhase}`;
+
+  useLayoutEffect(() => {
+    navigation?.setOptions?.({
+      headerTitle: () => (
+        <View style={{ alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 44, maxWidth: 230 }}>
+          {globalTtsPlayback ? (
+            <GlobalTtsStatusPill
+              compact
+              onOpenSession={handleOpenGlobalTtsSession}
+            />
+          ) : (
+            <Text
+              style={{ fontSize: 15, fontWeight: '700', color: theme.colors.foreground, maxWidth: 230 }}
+              numberOfLines={1}
+            >
+              {currentSession?.title || 'Chat'}
+            </Text>
+          )}
+        </View>
+      ),
+      headerLeft: () => (
+        <View style={styles.headerActionsRow}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Sessions')}
+            accessibilityRole="button"
+            accessibilityLabel="Back to chat history"
+            accessibilityHint="Returns to the chat history list"
+            style={styles.headerEdgeActionButton}
+          >
+            <Text style={{ fontSize: 20, color: theme.colors.foreground }}>←</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={openChatMenu}
+            accessibilityRole="button"
+            accessibilityLabel={headerHandsFreeLabel}
+            accessibilityHint="Opens the voice menu for hands-free status and controls."
+            style={[
+              styles.headerVoiceStatusButton,
+              handsFree && styles.headerVoiceStatusButtonActive,
+              headerHandsFreePhase === 'error' && styles.headerVoiceStatusButtonError,
+            ]}
+          >
+            <Ionicons
+              name={headerHandsFreeIcon}
+              size={18}
+              color={
+                headerHandsFreePhase === 'error'
+                  ? theme.colors.danger
+                  : handsFree
+                    ? theme.colors.primary
+                    : theme.colors.mutedForeground
+              }
+            />
+          </TouchableOpacity>
+        </View>
+      ),
+      headerRight: () => (
+        <View style={styles.headerActionsRow}>
+          <TouchableOpacity
+            onPress={openChatMenu}
+            accessibilityRole="button"
+            accessibilityLabel="Open chat voice menu"
+            accessibilityHint="Opens hands-free help, microphone selection, and chat controls."
+            style={styles.headerActionButton}
+          >
+            <Ionicons name="ellipsis-vertical" size={22} color={theme.colors.foreground} />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [
+    currentSession?.title,
+    globalTtsPlayback,
+    handleOpenGlobalTtsSession,
+    handsFree,
+    headerHandsFreeIcon,
+    headerHandsFreeLabel,
+    headerHandsFreePhase,
+    navigation,
+    openChatMenu,
+    styles,
+    theme.colors.danger,
+    theme.colors.foreground,
+  ]);
+
   const shouldSuppressHandsFreeTranscript =
     handsFree
     && isAssistantAudioPendingOrSpeaking;

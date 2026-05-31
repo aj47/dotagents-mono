@@ -46,3 +46,11 @@ test('keeps pin controls in chat rows and removes the helper copy under search',
   assert.match(screenSource, /styles\.sessionPinButton/);
   assert.doesNotMatch(screenSource, /styles\.searchHelperText/);
 });
+
+test('shows mobile agent state and per-session stop controls in chat rows', () => {
+  assert.match(screenSource, /operatorSessionByConversationId/);
+  assert.match(screenSource, /settingsClient\.stopOperatorAgentSession\(sessionId\)/);
+  assert.match(screenSource, /styles\.sessionAgentRow/);
+  assert.match(screenSource, /styles\.sessionStopButton/);
+  assert.match(screenSource, /last message \$\{formatSince\(item\.updatedAt, sessionListNow\)\}/);
+});

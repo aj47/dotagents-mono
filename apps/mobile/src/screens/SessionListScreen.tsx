@@ -12,7 +12,7 @@ import { useTunnelConnection } from '../store/tunnelConnection';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
 import { GlobalTtsStatusPill } from '../ui/GlobalTtsStatusPill';
 import { ChatMessage, AgentProgressUpdate } from '../lib/openaiClient';
-import { SettingsApiClient } from '../lib/settingsApi';
+import { SettingsApiClient, type OperatorRuntimeStatus } from '../lib/settingsApi';
 import { SessionListItem, isStubSession } from '../types/session';
 import { createButtonAccessibilityLabel, createMinimumTouchTargetStyle, createTextInputAccessibilityLabel } from '../lib/accessibility';
 import {
@@ -23,6 +23,23 @@ import { filterSessionSearchResults, type SessionSearchResult } from './session-
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
 const lightSpinner = require('../../assets/light-spinner.gif');
+
+type OperatorSessionSummary = OperatorRuntimeStatus['sessions']['activeSessionDetails'][number];
+
+function formatCompactDuration(ms: number): string {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+function formatSince(timestamp: number, now: number): string {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return 'No messages';
+  return `${formatCompactDuration(now - timestamp)} ago`;
+}
 
 interface Props {
   navigation: any;
@@ -52,6 +69,9 @@ export default function SessionListScreen({ navigation, route }: Props) {
   const [renameSession, setRenameSession] = useState<SessionListItem | null>(null);
   const [renameTitleDraft, setRenameTitleDraft] = useState('');
   const [isRenameSaving, setIsRenameSaving] = useState(false);
+  const [operatorSessions, setOperatorSessions] = useState<OperatorSessionSummary[]>([]);
+  const [stoppingSessionIds, setStoppingSessionIds] = useState<Set<string>>(() => new Set());
+  const [sessionListNow, setSessionListNow] = useState(Date.now());
 
   // ── Rapid Fire voice state ─────────────────────────────────────────────────
   const [rfListening, setRfListening] = useState(false);
@@ -700,18 +720,66 @@ export default function SessionListScreen({ navigation, route }: Props) {
     return undefined;
   }, [config.baseUrl, config.apiKey]);
 
+  const refreshOperatorSessions = useCallback(async () => {
+    if (!settingsClient) {
+      setOperatorSessions([]);
+      return;
+    }
+    try {
+      const status = await settingsClient.getOperatorStatus();
+      setOperatorSessions(status.sessions.activeSessionDetails ?? []);
+    } catch (error) {
+      console.warn('[SessionList] Failed to refresh operator sessions:', error);
+    }
+  }, [settingsClient]);
+
+  useEffect(() => {
+    void refreshOperatorSessions();
+    if (!settingsClient || !isConnected) return;
+    const interval = setInterval(() => {
+      void refreshOperatorSessions();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isConnected, refreshOperatorSessions, settingsClient]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setSessionListNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const serverConversationIdBySessionId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const session of sessionStore.sessions) {
+      if (session.serverConversationId) {
+        map.set(session.id, session.serverConversationId);
+      }
+    }
+    return map;
+  }, [sessionStore.sessions]);
+
+  const operatorSessionByConversationId = useMemo(() => {
+    const map = new Map<string, OperatorSessionSummary>();
+    for (const session of operatorSessions) {
+      if (session.conversationId) {
+        map.set(session.conversationId, session);
+      }
+    }
+    return map;
+  }, [operatorSessions]);
+
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const handleRefreshSessions = useCallback(async () => {
     if (!settingsClient) return;
     setIsManualRefreshing(true);
     try {
       await sessionStore.syncWithServer(settingsClient);
+      await refreshOperatorSessions();
     } catch (error) {
       console.warn('Pull-to-refresh sessions sync failed', error);
     } finally {
       setIsManualRefreshing(false);
     }
-  }, [settingsClient, sessionStore]);
+  }, [refreshOperatorSessions, settingsClient, sessionStore]);
 
   const handleDeleteSession = useCallback((session: SessionListItem) => {
     const doDelete = async () => {
@@ -798,6 +866,23 @@ export default function SessionListScreen({ navigation, route }: Props) {
     await sessionStore.toggleSessionArchived(sessionId, settingsClient);
   }, [sessionStore, settingsClient]);
 
+  const handleStopOperatorSession = useCallback(async (sessionId: string) => {
+    if (!settingsClient || stoppingSessionIds.has(sessionId)) return;
+    setStoppingSessionIds((prev) => new Set(prev).add(sessionId));
+    try {
+      await settingsClient.stopOperatorAgentSession(sessionId);
+      await refreshOperatorSessions();
+    } catch (error: any) {
+      Alert.alert('Stop Failed', error?.message || 'Failed to stop this agent');
+    } finally {
+      setStoppingSessionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(sessionId);
+        return next;
+      });
+    }
+  }, [refreshOperatorSessions, settingsClient, stoppingSessionIds]);
+
   const handleSessionLongPress = useCallback((session: SessionListItem) => {
     const isPinned = session.isPinned;
     const isArchived = session.isArchived;
@@ -879,6 +964,37 @@ export default function SessionListScreen({ navigation, route }: Props) {
   const renderSession = ({ item }: { item: SessionSearchResult }) => {
     const isActive = item.id === sessionStore.currentSessionId;
     const isStub = stubSessionIds.has(item.id);
+    const serverConversationId = serverConversationIdBySessionId.get(item.id);
+    const operatorSession = serverConversationId ? operatorSessionByConversationId.get(serverConversationId) : undefined;
+    const hasLocalActiveRequest = connectionManager.isConnectionActive(item.id);
+    const isAgentActive = hasLocalActiveRequest || !!operatorSession;
+    const connectionState = connectionManager.getConnectionState(item.id);
+    const agentStateLabel = operatorSession?.status === 'active' || hasLocalActiveRequest
+      ? 'Running'
+      : connectionState?.status === 'reconnecting'
+        ? 'Reconnecting'
+        : connectionState?.status === 'failed'
+          ? 'Connection issue'
+          : item.isArchived
+            ? 'Archived'
+            : 'Idle';
+    const agentStateIcon = isAgentActive
+      ? 'radio-button-on'
+      : connectionState?.status === 'failed'
+        ? 'warning-outline'
+        : item.isArchived
+          ? 'archive-outline'
+          : 'ellipse-outline';
+    const agentStateColor = isAgentActive
+      ? theme.colors.primary
+      : connectionState?.status === 'failed'
+        ? theme.colors.destructive
+        : theme.colors.mutedForeground;
+    const durationLabel = operatorSession
+      ? `running ${formatCompactDuration(sessionListNow - operatorSession.startTime)}`
+      : `last message ${formatSince(item.updatedAt, sessionListNow)}`;
+    const stopSessionId = operatorSession?.id;
+    const isStoppingSession = stopSessionId ? stoppingSessionIds.has(stopSessionId) : false;
     const rawPreview = (item.searchPreview ?? item.preview) || 'No messages yet';
     const sessionPreviewText = rawPreview.startsWith('tool: [') || rawPreview.includes('{"success":')
       ? 'Used a tool'
@@ -945,6 +1061,33 @@ export default function SessionListScreen({ navigation, route }: Props) {
           <Text style={styles.sessionPreviewMeta}>{sessionMetaLabel}</Text>
           {` · ${sessionPreviewText}`}
         </Text>
+        <View style={styles.sessionAgentRow}>
+          <View style={styles.sessionAgentState}>
+            <Ionicons name={agentStateIcon as any} size={13} color={agentStateColor} />
+            <Text style={[styles.sessionAgentStateText, isAgentActive && styles.sessionAgentStateTextActive]} numberOfLines={1}>
+              {agentStateLabel}
+            </Text>
+            <Text style={styles.sessionAgentDuration} numberOfLines={1}>
+              {durationLabel}
+            </Text>
+          </View>
+          {stopSessionId ? (
+            <Pressable
+              style={[styles.sessionStopButton, isStoppingSession && styles.sessionStopButtonDisabled]}
+              onPress={(event: GestureResponderEvent) => {
+                event.stopPropagation();
+                void handleStopOperatorSession(stopSessionId);
+              }}
+              disabled={isStoppingSession}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel(`Stop ${item.title}`)}
+              accessibilityHint="Stops this running agent session and pauses its queue."
+            >
+              <Ionicons name="stop-circle-outline" size={16} color={theme.colors.destructive} />
+              <Text style={styles.sessionStopButtonText}>{isStoppingSession ? 'Stopping' : 'Stop'}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </Pressable>
     );
   };
@@ -1523,6 +1666,55 @@ function createStyles(theme: Theme, screenHeight: number) {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
       fontWeight: '500',
+    },
+    sessionAgentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+    sessionAgentState: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    sessionAgentStateText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontWeight: '600',
+    },
+    sessionAgentStateTextActive: {
+      color: theme.colors.primary,
+    },
+    sessionAgentDuration: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      flexShrink: 1,
+    },
+    sessionStopButton: {
+      ...createMinimumTouchTargetStyle({
+        horizontalPadding: spacing.xs,
+        verticalPadding: 4,
+        horizontalMargin: 0,
+      }),
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.destructive + '55',
+      backgroundColor: theme.colors.destructive + '10',
+    },
+    sessionStopButtonDisabled: {
+      opacity: 0.55,
+    },
+    sessionStopButtonText: {
+      ...theme.typography.caption,
+      color: theme.colors.destructive,
+      fontWeight: '700',
     },
     emptyState: {
       alignItems: 'center',

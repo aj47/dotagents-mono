@@ -62,6 +62,7 @@ import {
   getAppSessionForAcpSession,
   getPendingAppSessionForClientSessionToken,
 } from "./acp-session-state"
+import { emitAgentProgress } from "./emit-agent-progress"
 import {
   MANUAL_RELEASES_URL,
   checkForUpdatesAndDownload,
@@ -444,6 +445,14 @@ function getAcpMcpRequestContext(
     appSessionId,
     profileSnapshot,
   }
+}
+
+function describeRemoteAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
+  if (!sessionId) return "missing"
+  if (sessionId.startsWith("pending-")) return "pending"
+  if (sessionId.startsWith("subsession_")) return "subsession"
+  if (sessionId.startsWith("session_")) return "session"
+  return "unknown"
 }
 
 function getInjectedRuntimeToolsForAcpSession(
@@ -2009,6 +2018,7 @@ function buildOperatorSessionsSummary(): OperatorSessionsSummary {
 function formatOperatorSessionSummary(session: ReturnType<typeof agentSessionTracker.getActiveSessions>[number]) {
   return {
     id: session.id,
+    conversationId: session.conversationId,
     title: session.conversationTitle,
     status: session.status,
     startTime: session.startTime,
@@ -2019,6 +2029,91 @@ function formatOperatorSessionSummary(session: ReturnType<typeof agentSessionTra
     profileId: session.profileSnapshot?.profileId,
     profileName: session.profileSnapshot?.profileName,
   }
+}
+
+async function stopOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+  const requestedSessionId = sessionId.trim()
+  const requestedSessionKind = describeRemoteAgentSessionId(requestedSessionId)
+  const mappedAppSessionId = getAppSessionForAcpSession(requestedSessionId)
+  const mappedTrackedSession = mappedAppSessionId
+    ? agentSessionTracker.getSession(mappedAppSessionId)
+    : undefined
+
+  agentSessionStateManager.stopSession(requestedSessionId)
+  toolApprovalManager.cancelSessionApprovals(requestedSessionId)
+
+  const conversationIdsToPause = new Set<string>()
+  let requestedSubSessionConversationId: string | undefined
+
+  try {
+    const {
+      getChildSubSessions,
+      getAllSubSessionsForParent,
+      cancelSubSession,
+      getInternalSubSession,
+    } = await import("./acp/internal-agent")
+    requestedSubSessionConversationId = requestedSessionKind === "subsession"
+      ? getInternalSubSession(requestedSessionId)?.conversationId
+      : undefined
+    if (requestedSubSessionConversationId) {
+      conversationIdsToPause.add(requestedSubSessionConversationId)
+    }
+    if (requestedSessionKind === "subsession") {
+      cancelSubSession(requestedSessionId)
+    }
+    for (const child of [...getChildSubSessions(requestedSessionId), ...getAllSubSessionsForParent(requestedSessionId)]) {
+      if (child.conversationId) conversationIdsToPause.add(child.conversationId)
+      if (child.status === "running") cancelSubSession(child.id)
+    }
+  } catch (error) {
+    diagnosticsService.logError("remote-server", "Failed to cancel internal sub-sessions", error)
+  }
+
+  const trackedSession = agentSessionTracker.getSession(requestedSessionId)
+  const conversationIdToPause = trackedSession?.conversationId
+    ?? requestedSubSessionConversationId
+    ?? mappedTrackedSession?.conversationId
+  if (conversationIdToPause) {
+    conversationIdsToPause.add(conversationIdToPause)
+  }
+
+  for (const conversationId of conversationIdsToPause) {
+    messageQueueService.pauseQueue(conversationId)
+  }
+
+  const runId = agentSessionStateManager.getSessionRunId(requestedSessionId)
+  await emitAgentProgress({
+    sessionId: requestedSessionId,
+    runId,
+    currentIteration: 0,
+    maxIterations: 0,
+    steps: [
+      {
+        id: `stop_${Date.now()}`,
+        type: "completion",
+        title: "Agent stopped",
+        description: "Agent mode was stopped from mobile. Queue paused.",
+        status: "error",
+        timestamp: Date.now(),
+      },
+    ],
+    isComplete: true,
+    finalContent: "(Agent mode was stopped from mobile)",
+  })
+
+  if (requestedSessionKind !== "subsession") {
+    agentSessionTracker.stopSession(requestedSessionId)
+  }
+
+  return buildOperatorMessageQueueActionResponse(
+    "stop-session",
+    true,
+    "Agent session stopped.",
+    {
+      sessionId: requestedSessionId,
+      pausedConversationIds: Array.from(conversationIdsToPause),
+    },
+  )
 }
 
 function buildOperatorMessageQueuesResponse(): OperatorMessageQueuesResponse {
@@ -3165,6 +3260,27 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
     setOperatorAuditContext(req, { action: response.action, success: true, details: response.details })
     return reply.send(response)
+  })
+
+  fastify.post("/v1/operator/sessions/:sessionId/stop", async (req, reply) => {
+    const { sessionId } = req.params as { sessionId?: string }
+    if (!sessionId) {
+      return reply.code(400).send(
+        buildOperatorMessageQueueActionResponse("stop-session", false, "Missing session id."),
+      )
+    }
+    try {
+      return reply.send(await stopOperatorAgentSession(decodeURIComponent(sessionId)))
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to stop operator session", error)
+      return reply.code(500).send(
+        buildOperatorMessageQueueActionResponse(
+          "stop-session",
+          false,
+          error?.message || "Failed to stop agent session.",
+        ),
+      )
+    }
   })
 
   fastify.post("/v1/operator/sessions/:sessionId/clear", async (req, reply) => {
