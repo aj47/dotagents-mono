@@ -1235,6 +1235,66 @@ describe('LLM Fetch with AI SDK', () => {
     )
   })
 
+  it('routes mcp-context text completions through the active provider when none is explicit', async () => {
+    makeChatGptWebCompletionMock.mockResolvedValue('session title')
+
+    const { getCurrentProviderId, getTranscriptProviderId } = await import('./ai-sdk-provider')
+    vi.mocked(getCurrentProviderId).mockReturnValue('chatgpt-web' as any)
+    vi.mocked(getTranscriptProviderId).mockReturnValue('openai' as any)
+
+    const { makeTextCompletionWithFetch } = await import('./llm-fetch')
+    const result = await makeTextCompletionWithFetch(
+      'title this session',
+      undefined,
+      'session-title-test',
+      undefined,
+      { modelContext: 'mcp' },
+    )
+
+    expect(result).toBe('session title')
+    expect(getCurrentProviderId).toHaveBeenCalled()
+    expect(getTranscriptProviderId).not.toHaveBeenCalled()
+    expect(makeChatGptWebCompletionMock).toHaveBeenCalledWith(
+      [{ role: 'user', content: 'title this session' }],
+      expect.objectContaining({ modelContext: 'mcp' }),
+    )
+  })
+
+  it('keeps optional text completion failures at warning level when configured', async () => {
+    const titleError = new Error('title failed')
+    makeChatGptWebCompletionMock.mockRejectedValue(titleError)
+
+    const { diagnosticsService } = await import('./diagnostics')
+    const { makeTextCompletionWithFetch } = await import('./llm-fetch')
+
+    await expect(
+      makeTextCompletionWithFetch(
+        'title this session',
+        'chatgpt-web',
+        'session-title-test',
+        undefined,
+        {
+          modelContext: 'mcp',
+          generationName: 'Conversation Title Generation',
+          maxRetries: 0,
+          failureLogLevel: 'warning',
+        },
+      ),
+    ).rejects.toThrow('title failed')
+
+    expect(diagnosticsService.logError).not.toHaveBeenCalled()
+    expect(diagnosticsService.logWarning).toHaveBeenCalledWith(
+      'llm-fetch',
+      'Conversation Title Generation failed',
+      titleError,
+    )
+    expect(diagnosticsService.logWarning).toHaveBeenCalledWith(
+      'llm-fetch',
+      'API call failed after all retries',
+      expect.objectContaining({ attempts: 1 }),
+    )
+  })
+
   it('routes chatgpt-web llm calls through the custom conversation client', async () => {
     makeChatGptWebResponseMock.mockResolvedValue({ text: 'chatgpt answer' })
 

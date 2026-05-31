@@ -42,6 +42,7 @@ type PersistedAgentSessionState = {
 
 const AGENT_SESSION_STATE_PATH = join(dataFolder, "agent-session-state.json")
 const MAX_COMPLETED_SESSIONS = 20
+const UNREGISTERED_SESSION_RECONCILE_GRACE_MS = 5000
 
 /**
  * Emit session updates to all renderer windows
@@ -362,6 +363,8 @@ class AgentSessionTracker {
     for (const session of this.sessions.values()) {
       if (session.status !== "active") continue
       if (isRuntimeSessionActive(session)) continue
+      const sessionAgeMs = now - session.startTime
+      if (sessionAgeMs >= 0 && sessionAgeMs < UNREGISTERED_SESSION_RECONCILE_GRACE_MS) continue
 
       retiredSessions.push({
         ...session,

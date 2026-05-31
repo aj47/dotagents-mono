@@ -2750,6 +2750,7 @@ export const router = {
         isSnoozed: startSnoozed,
         suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow,
       })
+      agentSessionStateManager.createSession(sessionId, profileSnapshot)
 
       try {
         // Emit initial "initializing" progress update
@@ -2967,6 +2968,7 @@ export const router = {
 
         // Mark the session as errored to clean up the UI
         agentSessionTracker.errorSession(sessionId, getErrorMessage(error, "Transcription failed"))
+        agentSessionStateManager.cleanupSession(sessionId)
 
         // Re-throw the error so the caller knows transcription failed
         throw error
