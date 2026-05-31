@@ -266,6 +266,13 @@ function Navigation() {
     }
   }, [navigationRef]);
 
+  const handleDesktopNewChat = useCallback(() => {
+    sessionStore.createNewSession();
+    (navigationRef as any).navigate('Chat');
+    setCurrentRouteName('Chat');
+    setSelectedPrimaryNavItemId(null);
+  }, [sessionStore, navigationRef]);
+
   const navigatePrimaryShellItem = useCallback((item: AppShellPrimaryNavItem) => {
     if (!isNavigationReady.current) return;
     setSelectedPrimaryNavItemId(item.id);
@@ -281,6 +288,16 @@ function Navigation() {
           <Text style={navigationStyles.desktopShellTitle}>{APP_SHELL_PRODUCT_LABEL}</Text>
         </View>
       </View>
+
+      <TouchableOpacity
+        onPress={handleDesktopNewChat}
+        style={navigationStyles.desktopShellNewChatButton}
+        accessibilityRole="button"
+        accessibilityLabel="New chat"
+        accessibilityHint="Creates and opens a new chat."
+      >
+        <Text style={navigationStyles.desktopShellNewChatButtonText}>+ New Chat</Text>
+      </TouchableOpacity>
 
       <View style={navigationStyles.desktopShellNav}>
         {APP_SHELL_PRIMARY_NAV_ITEMS.map((item) => {
@@ -674,6 +691,19 @@ function createNavigationStyles(theme: Theme) {
       color: theme.colors.foreground,
       fontSize: 14,
       fontWeight: '700',
+    },
+    desktopShellNewChatButton: {
+      marginBottom: 10,
+      backgroundColor: theme.colors.accent,
+      borderRadius: 6,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      alignItems: 'center',
+    },
+    desktopShellNewChatButtonText: {
+      color: theme.colors.accentForeground,
+      fontSize: 13,
+      fontWeight: '600',
     },
     desktopShellNav: {
       gap: 4,
