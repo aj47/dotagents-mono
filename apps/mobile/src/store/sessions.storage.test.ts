@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Session } from '../types/session';
-import { compactSessionsForStorageQuota } from './sessions';
+import { generateSessionTitle } from '../types/session';
+import { compactSessionsForStorageQuota, shouldApplyServerGeneratedSessionTitle } from './sessions';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
@@ -50,5 +51,60 @@ describe('compactSessionsForStorageQuota', () => {
     }];
 
     expect(compactSessionsForStorageQuota(sessions)).toEqual(sessions);
+  });
+});
+
+describe('shouldApplyServerGeneratedSessionTitle', () => {
+  it('allows a server-generated title to replace the mobile first-message fallback', () => {
+    const session: Session = {
+      id: 'session-1',
+      title: 'what did we do today',
+      createdAt: 100,
+      updatedAt: 200,
+      serverConversationId: 'conv-1',
+      messages: [
+        { id: 'm1', role: 'user', content: 'what did we do today', timestamp: 100 },
+        { id: 'm2', role: 'assistant', content: 'We debugged hands-free mode.', timestamp: 200 },
+      ],
+    };
+
+    expect(shouldApplyServerGeneratedSessionTitle(session, 'conv-1', 'Hands-Free Debugging Recap')).toBe(true);
+  });
+
+  it('preserves an explicit local title', () => {
+    const session: Session = {
+      id: 'session-1',
+      title: 'My custom title',
+      createdAt: 100,
+      updatedAt: 200,
+      serverConversationId: 'conv-1',
+      messages: [
+        { id: 'm1', role: 'user', content: 'what did we do today', timestamp: 100 },
+      ],
+    };
+
+    expect(shouldApplyServerGeneratedSessionTitle(session, 'conv-1', 'Hands-Free Debugging Recap')).toBe(false);
+  });
+
+  it('does not treat the desktop first-message fallback as a generated title', () => {
+    const firstMessage = 'can you refresh me on the demo for snyk we discussed today';
+    const session: Session = {
+      id: 'session-1',
+      title: generateSessionTitle(firstMessage),
+      createdAt: 100,
+      updatedAt: 200,
+      serverConversationId: 'conv-1',
+      messages: [
+        { id: 'm1', role: 'user', content: firstMessage, timestamp: 100 },
+      ],
+    };
+
+    expect(
+      shouldApplyServerGeneratedSessionTitle(
+        session,
+        'conv-1',
+        `${firstMessage.slice(0, 50)}...`,
+      ),
+    ).toBe(false);
   });
 });

@@ -24,7 +24,19 @@ describe("agent progress scroll behavior", () => {
     expect(agentProgressSource).toContain("return clearPendingInitialScrollAttempts")
     expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, progress?.sessionId])")
     expect(agentProgressSource).toContain("}, [shouldAutoScrollContent, visibleDisplayItems.length > 0])")
-    expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, scrollToBottom, shouldAutoScrollContent, visibleDisplayItems.length > 0])")
+    expect(agentProgressSource).toContain("}, [clearPendingInitialScrollAttempts, scrollToBottom, shouldAutoScrollContent, visibleDisplayItems.length > 0, progress?.sessionId])")
+  })
+
+  it("removes each fired initial-scroll timeout from the pending list so user scrolls can still disable auto-scroll", () => {
+    // Regression for #408 review: relying solely on the effect cleanup to clear
+    // pendingInitialScrollTimeoutsRef would leave stale ids in the list after
+    // the timeouts fire, preventing handleScroll from ever disabling auto-scroll.
+    expect(agentProgressSource).toContain(
+      "pendingInitialScrollTimeoutsRef.current =\n          pendingInitialScrollTimeoutsRef.current.filter((id) => id !== timeoutId)",
+    )
+    expect(agentProgressSource).toContain(
+      "pendingInitialScrollTimeoutsRef.current.length === 0",
+    )
   })
 
   it("pins ACP sub-agent conversation updates without smooth-scroll lag while messages stream in", () => {

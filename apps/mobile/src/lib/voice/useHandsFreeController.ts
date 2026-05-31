@@ -51,6 +51,12 @@ const BENIGN_RECOGNIZER_ERROR_PATTERNS = [
   /server\s+disconnected/i,
   /server[_-]disconnected/i,
 ];
+const EXPECTED_RECOGNIZER_STOP_ERROR_PATTERNS = [
+  /^client$/i,
+  /cancelled|canceled/i,
+  /stopListening called while listening isn't in progress/i,
+  /other client side errors/i,
+];
 
 export function createInitialHandsFreeState(): HandsFreeControllerState {
   return {
@@ -107,7 +113,13 @@ function transitionToSleeping(state: HandsFreeControllerState): HandsFreeControl
 export function isBenignHandsFreeRecognizerError(message: string): boolean {
   const normalized = message.trim().toLowerCase();
   return BENIGN_RECOGNIZER_ERRORS.has(normalized)
-    || BENIGN_RECOGNIZER_ERROR_PATTERNS.some((pattern) => pattern.test(message));
+    || BENIGN_RECOGNIZER_ERROR_PATTERNS.some((pattern) => pattern.test(message))
+    || isExpectedHandsFreeRecognizerStopError(message);
+}
+
+export function isExpectedHandsFreeRecognizerStopError(message: string): boolean {
+  const trimmed = message.trim();
+  return EXPECTED_RECOGNIZER_STOP_ERROR_PATTERNS.some((pattern) => pattern.test(trimmed));
 }
 
 export function getHandsFreeStatusLabel(phase: HandsFreePhase): string {

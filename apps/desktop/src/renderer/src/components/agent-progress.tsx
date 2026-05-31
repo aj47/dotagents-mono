@@ -4692,8 +4692,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       lastContentLengthRef.current = 0
       lastDisplayItemsCountRef.current = 0
       lastScrollContentHeightRef.current = 0
-      // Also reset auto-scroll state for new sessions
+      // Also reset auto-scroll state for new sessions. Update the ref
+      // synchronously too so the ResizeObserver doesn't race the state-sync
+      // effect on the first content commit of the new session (issue #408).
+      shouldAutoScrollRef.current = true
       setShouldAutoScroll(true)
+      setIsUserScrolling(false)
     }
   }, [clearPendingInitialScrollAttempts, progress?.sessionId])
 
@@ -4772,26 +4776,40 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     return () => observer.disconnect()
   }, [shouldAutoScrollContent, visibleDisplayItems.length > 0])
 
-  // Initial scroll to bottom on mount and when first display item appears
+  // Initial scroll to bottom on mount, when first display item appears, and
+  // whenever the session changes. Large sessions render across many frames as
+  // markdown highlights and images settle, so a small number of early attempts
+  // can land in the middle. Schedule attempts that span a wider window
+  // (issue #408). The ResizeObserver above also continues to re-pin while
+  // shouldAutoScroll is true, so the last attempt only needs to outlast the
+  // initial layout settle.
   useEffect(() => {
     if (!shouldAutoScrollContent) return undefined
     if (!scrollContainerRef.current) return undefined
 
     clearPendingInitialScrollAttempts()
 
-    // Multiple attempts to ensure scrolling works with dynamic content
-    const scrollAttempts = [0, 50, 100, 200]
-    pendingInitialScrollTimeoutsRef.current = scrollAttempts.map((delay) => {
-      return setTimeout(() => {
+    const scrollAttempts = [0, 50, 100, 200, 400, 800, 1500]
+    const scheduled = scrollAttempts.map((delay) => {
+      let timeoutId: ReturnType<typeof setTimeout>
+      timeoutId = setTimeout(() => {
+        // Remove this attempt's id so the pending list accurately reflects
+        // still-pending attempts. Without this, fired-but-not-cleared ids
+        // would keep handleScroll from ever disabling auto-scroll on real
+        // user scrolls (issue #408).
+        pendingInitialScrollTimeoutsRef.current =
+          pendingInitialScrollTimeoutsRef.current.filter((id) => id !== timeoutId)
         requestAnimationFrame(() => {
           if (!shouldAutoScrollRef.current) return
           scrollToBottom("auto")
         })
       }, delay)
+      return timeoutId
     })
+    pendingInitialScrollTimeoutsRef.current = scheduled
 
     return clearPendingInitialScrollAttempts
-  }, [clearPendingInitialScrollAttempts, scrollToBottom, shouldAutoScrollContent, visibleDisplayItems.length > 0])
+  }, [clearPendingInitialScrollAttempts, scrollToBottom, shouldAutoScrollContent, visibleDisplayItems.length > 0, progress?.sessionId])
 
   // Make panel focusable when agent completes (overlay variant only)
   // This enables the continue conversation input to receive focus and be interactable
@@ -4815,9 +4833,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       setShouldAutoScroll(true)
       setIsUserScrolling(false)
     }
-    // If user scrolled up from bottom, stop auto-scroll
-    else if (!isAtBottom && shouldAutoScroll) {
-      clearPendingInitialScrollAttempts()
+    // If user scrolled up from bottom, stop auto-scroll. Ignore scroll events
+    // that fire while we still have pending initial scroll attempts: for large
+    // sessions, content can grow between a programmatic scrollTop assignment
+    // and the event being processed, leaving isAtBottom=false even though the
+    // user hasn't touched anything (issue #408).
+    else if (
+      !isAtBottom &&
+      shouldAutoScroll &&
+      pendingInitialScrollTimeoutsRef.current.length === 0
+    ) {
       setShouldAutoScroll(false)
       setIsUserScrolling(true)
     }

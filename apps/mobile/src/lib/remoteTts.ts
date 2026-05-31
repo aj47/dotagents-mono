@@ -43,6 +43,26 @@ function logRemoteTts(level: 'warn' | 'info', message: string, extra?: unknown):
   }
 }
 
+function summarizeRemoteTtsError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message, stack: error.stack?.split('\n').slice(0, 3).join(' | ') };
+  }
+  return { message: String(error) };
+}
+
+function summarizePlaybackStatus(status: unknown): Record<string, unknown> {
+  const value = status as Record<string, unknown> | null;
+  if (!value || typeof value !== 'object') return { statusType: typeof status };
+  return {
+    playing: value.playing,
+    isBuffering: value.isBuffering,
+    didJustFinish: value.didJustFinish,
+    duration: value.duration,
+    currentTime: value.currentTime,
+    error: value.error,
+  };
+}
+
 export type RemoteSpeakOptions = {
   /** Paired desktop remote-server base URL including /v1. From AppConfig.baseUrl. */
   baseUrl: string;
@@ -88,7 +108,9 @@ export async function ensureNativeTtsAudioMode(): Promise<void> {
       interruptionMode: 'duckOthers',
     });
     audioModeConfigured = true;
-  } catch {
+    logRemoteTts('info', 'native audio mode configured', { platform: Platform.OS });
+  } catch (error) {
+    logRemoteTts('warn', 'native audio mode configuration failed', summarizeRemoteTtsError(error));
     // Non-fatal: the audio will still play, but it may not survive backgrounding.
   }
 }
@@ -102,6 +124,15 @@ export async function speakRemoteTts(text: string, options: RemoteSpeakOptions):
   }
 
   const requestGeneration = ++playbackGeneration;
+  logRemoteTts('info', 'speakRemoteTts start', {
+    generation: requestGeneration,
+    platform: Platform.OS,
+    providerId: options.providerId,
+    voice: options.voice,
+    model: options.model,
+    rate: options.rate,
+    textLength: text.length,
+  });
   stopCurrentRemotePlayback(true);
 
   try {
@@ -110,6 +141,11 @@ export async function speakRemoteTts(text: string, options: RemoteSpeakOptions):
       options.onStopped?.();
       return false;
     }
+    logRemoteTts('info', 'remote audio fetched', {
+      generation: requestGeneration,
+      mimeType,
+      bytes: audio.byteLength,
+    });
     if (Platform.OS === 'web') {
       return startWebPlayback(audio, mimeType, options);
     }
@@ -124,7 +160,7 @@ export async function speakRemoteTts(text: string, options: RemoteSpeakOptions):
       options.onStopped?.();
       return false;
     }
-    logRemoteTts('warn', 'speakRemoteTts failed', error);
+    logRemoteTts('warn', 'speakRemoteTts failed', summarizeRemoteTtsError(error));
     options.onError?.();
     return false;
   }
@@ -136,6 +172,14 @@ async function fetchRemoteTts(
 ): Promise<{ audio: ArrayBuffer; mimeType: string }> {
   const base = options.baseUrl.replace(/\/+$/, '');
   const url = `${base}/tts/speak`;
+  logRemoteTts('info', 'fetchRemoteTts request', {
+    host: safeUrlHost(url),
+    providerId: options.providerId,
+    voice: options.voice,
+    model: options.model,
+    rate: options.rate,
+    textLength: text.length,
+  });
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -159,7 +203,22 @@ async function fetchRemoteTts(
 
   const mimeType = response.headers.get('content-type') || 'audio/mpeg';
   const audio = await response.arrayBuffer();
+  logRemoteTts('info', 'fetchRemoteTts response', {
+    status: response.status,
+    mimeType,
+    bytes: audio.byteLength,
+    contentLength: response.headers.get('content-length'),
+  });
   return { audio, mimeType };
+}
+
+function safeUrlHost(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+  } catch {
+    return 'invalid-url';
+  }
 }
 
 function startWebPlayback(
@@ -238,14 +297,37 @@ function startNativePlayback(
   const ext = mimeTypeToExtension(mimeType);
   const filename = `remote-tts-${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
   const file = new File(Paths.cache, filename);
+  logRemoteTts('info', 'native playback preparing file', {
+    filename,
+    mimeType,
+    ext,
+    bytes: audioBuffer.byteLength,
+    rate: options.rate,
+  });
   try {
     file.create({ overwrite: true });
-  } catch {
+  } catch (error) {
+    logRemoteTts('warn', 'native playback file create failed; continuing', summarizeRemoteTtsError(error));
     // File may already exist as a fresh handle; write() will still succeed.
   }
-  file.write(new Uint8Array(audioBuffer));
+  try {
+    file.write(new Uint8Array(audioBuffer));
+  } catch (error) {
+    logRemoteTts('warn', 'native playback file write failed', summarizeRemoteTtsError(error));
+    options.onError?.();
+    return false;
+  }
 
-  const player = createAudioPlayer({ uri: file.uri });
+  let player: AudioPlayer;
+  try {
+    player = createAudioPlayer({ uri: file.uri });
+    logRemoteTts('info', 'native playback player created', { filename });
+  } catch (error) {
+    logRemoteTts('warn', 'native playback player create failed', summarizeRemoteTtsError(error));
+    try { file.delete(); } catch {}
+    options.onError?.();
+    return false;
+  }
 
   const desiredRate = Math.min(2.0, Math.max(0.5, options.rate ?? 1.0));
   try {
@@ -263,8 +345,14 @@ function startNativePlayback(
     onStopped: options.onStopped,
   };
   let hasStartedPlaying = false;
+  let hasLoggedFirstStatus = false;
 
   const finalize = (reason: 'done' | 'error' | 'stopped') => {
+    logRemoteTts(reason === 'error' ? 'warn' : 'info', 'native playback finalize', {
+      reason,
+      filename,
+      started: hasStartedPlaying,
+    });
     try { playback.subscription?.remove(); } catch {}
     try { player.remove(); } catch {}
     try { file.delete(); } catch {}
@@ -279,9 +367,21 @@ function startNativePlayback(
   try {
     playback.subscription = player.addListener('playbackStatusUpdate', (status) => {
       if (playback.stopped) return;
+      const statusAny = status as Record<string, unknown>;
+      if (!hasLoggedFirstStatus) {
+        hasLoggedFirstStatus = true;
+        logRemoteTts('info', 'native playback first status', summarizePlaybackStatus(status));
+      }
+      if (statusAny.error) {
+        logRemoteTts('warn', 'native playback status error', summarizePlaybackStatus(status));
+        playback.stopped = true;
+        finalize('error');
+        return;
+      }
       if (status.playing) {
         if (!hasStartedPlaying) {
           hasStartedPlaying = true;
+          logRemoteTts('info', 'native playback started', summarizePlaybackStatus(status));
           options.onStart?.();
         }
       }
@@ -293,17 +393,24 @@ function startNativePlayback(
       if (hasStartedPlaying && !status.playing && !status.isBuffering) {
         playback.stopped = true;
         const reachedEnd = status.duration > 0 && status.currentTime >= Math.max(0, status.duration - 0.25);
+        logRemoteTts('info', 'native playback stopped status', {
+          ...summarizePlaybackStatus(status),
+          reachedEnd,
+        });
         finalize(reachedEnd ? 'done' : 'stopped');
       }
     });
-  } catch {
+  } catch (error) {
+    logRemoteTts('warn', 'native playback status listener failed', summarizeRemoteTtsError(error));
     // If we can't subscribe to status updates, cleanup will still happen on stopRemoteTts().
   }
 
   currentPlayback = playback;
   try {
+    logRemoteTts('info', 'native playback play invoked', { filename });
     player.play();
-  } catch {
+  } catch (error) {
+    logRemoteTts('warn', 'native playback play threw', summarizeRemoteTtsError(error));
     playback.stopped = true;
     finalize('error');
     return false;

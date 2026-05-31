@@ -111,7 +111,11 @@ import {
   stopAndroidHandsFreeService,
   subscribeAndroidHandsFreeVoiceEvents,
 } from '../lib/voice/androidHandsFreeService';
-import { isBenignHandsFreeRecognizerError, useHandsFreeController } from '../lib/voice/useHandsFreeController';
+import {
+  isBenignHandsFreeRecognizerError,
+  isExpectedHandsFreeRecognizerStopError,
+  useHandsFreeController,
+} from '../lib/voice/useHandsFreeController';
 import { normalizeVoicePhrase } from '../lib/voice/phraseMatcher';
 import { findAgentSessionMatch } from '../lib/voice/agentSessionMatch';
 import {
@@ -155,6 +159,7 @@ const HANDS_FREE_TTS_BARGE_IN_COMMANDS = new Set([
 ]);
 const HANDS_FREE_GUIDE_DISMISSED_KEY = 'dotagents:handsfree-guide-dismissed';
 const HANDS_FREE_SESSION_READY_CUE_MIN_INTERVAL_MS = 1_500;
+const SERVER_GENERATED_TITLE_REFRESH_DELAYS_MS = [1_500, 5_000, 12_000, 25_000] as const;
 const HANDS_FREE_PHASE_AUDIO_CUES: Record<HandsFreePhase, HandsFreeAudioCue> = {
   sleeping: 'sleeping',
   waking: 'listening',
@@ -1737,6 +1742,52 @@ export default function ChatScreen({ route, navigation }: any) {
     });
   }, [playHandsFreeCue]);
 
+  const scheduleServerGeneratedTitleRefresh = useCallback((
+    sessionId: string | null | undefined,
+    serverConversationId: string | undefined,
+    source: 'send' | 'queued',
+  ) => {
+    if (!settingsClient || !sessionId || !serverConversationId) {
+      return;
+    }
+
+    SERVER_GENERATED_TITLE_REFRESH_DELAYS_MS.forEach((delayMs, index) => {
+      setTimeout(() => {
+        void (async () => {
+          try {
+            console.info('[ChatScreen] Refreshing server-generated conversation title.', {
+              source,
+              sessionId,
+              serverConversationId,
+              attempt: index + 1,
+              delayMs,
+            });
+            const fullConversation = await settingsClient.getConversation(serverConversationId);
+            const applied = await sessionStore.setServerGeneratedTitleForSession(
+              sessionId,
+              serverConversationId,
+              fullConversation.title,
+            );
+            console.info('[ChatScreen] Server-generated title refresh completed.', {
+              source,
+              sessionId,
+              serverConversationId,
+              title: fullConversation.title,
+              applied,
+            });
+          } catch (error: any) {
+            console.warn('[ChatScreen] Failed to refresh server-generated conversation title:', {
+              source,
+              sessionId,
+              serverConversationId,
+              message: error?.message || String(error),
+            });
+          }
+        })();
+      }, delayMs);
+    });
+  }, [sessionStore, settingsClient]);
+
   const ensureServerConversationForExistingFollowUp = useCallback(async (
     source: 'send' | 'queued',
   ): Promise<string | undefined> => {
@@ -2255,13 +2306,23 @@ export default function ChatScreen({ route, navigation }: any) {
   ]);
 
   const handleRecognizerError = useCallback((message: string) => {
+    if (handsFreeRef.current && isExpectedHandsFreeRecognizerStopError(message)) {
+      handsFreeController.onRecognizerError(message);
+      voiceLog('recognizer-error', 'Suppressed expected handsfree recognizer handoff error.', {
+        message,
+        phase: handsFreePhaseRef.current,
+        suppressedTranscript: isHandsFreeTranscriptSuppressedNow(),
+        hasGlobalTtsPlayback: !!getGlobalTtsPlayback(),
+      });
+      return;
+    }
     handsFreeController.onRecognizerError(message);
     if (handsFreeRef.current && isBenignHandsFreeRecognizerError(message)) {
       setDebugInfo('Handsfree awake. Listening for your request.');
       return;
     }
     setDebugInfo(`Voice error: ${message}`);
-  }, [handsFreeController.onRecognizerError]);
+  }, [handsFreeController.onRecognizerError, isHandsFreeTranscriptSuppressedNow, voiceLog]);
 
   const foregroundSpeechRecognizerEnabled =
     isFocused
@@ -2581,7 +2642,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (!shouldKeepHandsFreeMicArmed && listening) {
-      void stopRecognitionOnly();
+	      void stopRecognitionOnly({ preservePendingHandsFreeFinal: true });
     }
   }, [
     androidBackgroundHandsFree,
@@ -2598,11 +2659,13 @@ export default function ChatScreen({ route, navigation }: any) {
 		// Honor a mute that may have happened after this callback was scheduled but
 		// before it ran (stale closures inside in-flight send() progress handlers).
 		if (!ttsEnabledRef.current) {
+				console.info('[DotAgentsTTS] skipped because TTS is disabled', { reason, contentLength: content.length });
 			onSettled?.();
 			return false;
 		}
 		const processedText = preprocessTextForTTS(content);
 		if (!processedText) {
+				console.info('[DotAgentsTTS] skipped because processed text is empty', { reason, contentLength: content.length });
 				onSettled?.();
 			return false;
 		}
@@ -2611,6 +2674,11 @@ export default function ChatScreen({ route, navigation }: any) {
       const now = Date.now();
       const lastSpokenAt = recentAutoSpeechByTextRef.current.get(ttsTextKey) ?? 0;
       if (now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
+	        console.info('[DotAgentsTTS] skipped duplicate auto speech', {
+	          reason,
+	          textLength: processedText.length,
+	          sinceLastMs: now - lastSpokenAt,
+	        });
         onSettled?.();
         return false;
       }
@@ -2626,6 +2694,35 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     const useAndroidServiceTts = shouldUseAndroidHandsFreeServiceTtsRef.current;
+	    console.info('[DotAgentsTTS] selecting playback path', {
+	      reason,
+	      platform: Platform.OS,
+	      handsFree,
+	      phase: handsFreePhaseRef.current,
+	      textLength: processedText.length,
+	      effectiveTtsProvider,
+	      useAndroidServiceTts,
+	      hasRemoteBaseUrl: !!config.baseUrl,
+	      hasRemoteApiKey: !!config.apiKey,
+	      edgeVoice: effectiveEdgeTtsVoice,
+	      edgeRate: effectiveEdgeTtsRate,
+	      nativeRate: config.ttsRate ?? 1.0,
+	      nativeVoiceConfigured: !!config.ttsVoiceId,
+	      androidBackgroundHandsFree,
+	      stableForeground: stableHandsFreeForeground,
+	    });
+	    if (Platform.OS === 'android' && androidHandsFreeServiceAvailable) {
+	      void getAndroidHandsFreeAudioRoute()
+	        .then((route) => {
+	          console.info('[DotAgentsTTS] android audio route before playback', { reason, route });
+	        })
+	        .catch((error) => {
+	          console.warn('[DotAgentsTTS] android audio route lookup failed before playback', {
+	            reason,
+	            message: (error as any)?.message || String(error),
+	          });
+	        });
+	    }
     const playbackId = beginGlobalTtsPlayback({
       source: 'auto',
       status: (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) || useAndroidServiceTts
@@ -2661,22 +2758,48 @@ export default function ChatScreen({ route, navigation }: any) {
 
 		if (!useAndroidServiceTts && effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
 			// Edge TTS routes through the paired desktop's /v1/tts/speak.
+				console.info('[DotAgentsTTS] remote edge playback requested', {
+					reason,
+					textLength: processedText.length,
+					voice: effectiveEdgeTtsVoice,
+					rate: effectiveEdgeTtsRate,
+				});
 			void speakRemoteTts(processedText, {
 				baseUrl: config.baseUrl,
 				apiKey: config.apiKey,
 				providerId: 'edge',
 				voice: effectiveEdgeTtsVoice,
 				rate: effectiveEdgeTtsRate,
-				onStart: () => markAssistantSpeechStarted(`Remote TTS started (${reason}).`),
-				onDone: settle,
-				onError: settle,
-				onStopped: settle,
+					onStart: () => {
+						console.info('[DotAgentsTTS] remote edge playback started', { reason });
+						markAssistantSpeechStarted(`Remote TTS started (${reason}).`);
+					},
+					onDone: () => {
+						console.info('[DotAgentsTTS] remote edge playback done', { reason });
+						settle();
+					},
+					onError: () => {
+						console.warn('[DotAgentsTTS] remote edge playback error callback', { reason });
+						settle();
+					},
+					onStopped: () => {
+						console.info('[DotAgentsTTS] remote edge playback stopped callback', { reason });
+						settle();
+					},
 			});
 			return true;
 		}
 
     if (useAndroidServiceTts) {
       const utteranceId = createAndroidHandsFreeTtsUtteranceId();
+	      console.info('[DotAgentsTTS] android service playback requested', {
+	        reason,
+	        utteranceId,
+	        textLength: processedText.length,
+	        rate: config.ttsRate ?? 1.0,
+	        pitch: config.ttsPitch ?? 1.0,
+	        voiceConfigured: !!config.ttsVoiceId,
+	      });
       let clearNativeTtsTimeout: (() => void) | null = null;
       const clearNativeTtsHandler = () => {
         androidHandsFreeTtsHandlersRef.current.delete(utteranceId);
@@ -2686,9 +2809,11 @@ export default function ChatScreen({ route, navigation }: any) {
       clearSpeechWatchdog = clearNativeTtsHandler;
       androidHandsFreeTtsHandlersRef.current.set(utteranceId, {
         onStarted: () => {
+	          console.info('[DotAgentsTTS] android service playback started', { reason, utteranceId });
           markAssistantSpeechStarted(`Android service TTS started (${reason}).`, { utteranceId });
         },
         onSettled: (type, message) => {
+	          console.info('[DotAgentsTTS] android service playback settled', { reason, utteranceId, type, message });
           voiceLog('tts-stopped', `Android service TTS settled (${reason}, ${type}).`, {
             utteranceId,
             message,
@@ -2713,10 +2838,16 @@ export default function ChatScreen({ route, navigation }: any) {
         allowBargeIn: true,
       }).then((startedUtteranceId) => {
         if (!startedUtteranceId) {
+	          console.warn('[DotAgentsTTS] android service playback did not start', { reason, utteranceId });
           voiceLog('tts-stopped', `Android service TTS did not start (${reason}).`, { utteranceId });
           settle();
         }
       }).catch((error) => {
+	        console.warn('[DotAgentsTTS] android service playback promise failed', {
+	          reason,
+	          utteranceId,
+	          message: (error as any)?.message || String(error),
+	        });
         voiceLog('tts-stopped', `Android service TTS failed (${reason}).`, {
           utteranceId,
           message: (error as any)?.message || String(error),
@@ -2727,17 +2858,34 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     let nativeSpeechStarted = false;
+	    console.info('[DotAgentsTTS] expo speech playback requested', {
+	      reason,
+	      textLength: processedText.length,
+	      rate: config.ttsRate ?? 1.0,
+	      pitch: config.ttsPitch ?? 1.0,
+	      voiceConfigured: !!config.ttsVoiceId,
+	    });
 		const speechOptions: Speech.SpeechOptions = {
 			language: 'en-US',
 			rate: config.ttsRate ?? 1.0,
 			pitch: config.ttsPitch ?? 1.0,
       onStart: () => {
         nativeSpeechStarted = true;
+	        console.info('[DotAgentsTTS] expo speech playback started', { reason });
         markAssistantSpeechStarted();
       },
-			onDone: settle,
-			onError: settle,
-			onStopped: settle,
+				onDone: () => {
+					console.info('[DotAgentsTTS] expo speech playback done', { reason });
+					settle();
+				},
+				onError: () => {
+					console.warn('[DotAgentsTTS] expo speech playback error callback', { reason });
+					settle();
+				},
+				onStopped: () => {
+					console.info('[DotAgentsTTS] expo speech playback stopped callback', { reason });
+					settle();
+				},
 		};
 		if (config.ttsVoiceId) {
 			speechOptions.voice = config.ttsVoiceId;
@@ -2766,7 +2914,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return false;
     }
 		return true;
-		  }, [config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, playHandsFreeCue, sessionStore, voiceLog]);
+			  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
@@ -3088,6 +3236,38 @@ export default function ChatScreen({ route, navigation }: any) {
   const isUserDraggingRef = useRef(false);
   // Track drag end timeout to prevent flaky behavior with rapid re-drags
   const dragEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // While true, the next content size change should snap to the bottom. Used to
+  // keep large sessions pinned to the latest message as messages render in
+  // multiple frames (issue #408).
+  const initialScrollPendingRef = useRef(false);
+  const initialScrollWindowTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearInitialScrollWindow = useCallback(() => {
+    if (initialScrollWindowTimeoutRef.current) {
+      clearTimeout(initialScrollWindowTimeoutRef.current);
+      initialScrollWindowTimeoutRef.current = null;
+    }
+    initialScrollPendingRef.current = false;
+  }, []);
+
+  const beginInitialScrollWindow = useCallback(() => {
+    if (initialScrollWindowTimeoutRef.current) {
+      clearTimeout(initialScrollWindowTimeoutRef.current);
+    }
+    initialScrollPendingRef.current = true;
+    // Safety net: stop pinning to bottom after 2.5s so streaming-only updates
+    // can't get stuck snapping when the user wants to read history.
+    initialScrollWindowTimeoutRef.current = setTimeout(() => {
+      initialScrollPendingRef.current = false;
+      initialScrollWindowTimeoutRef.current = null;
+    }, 2500);
+  }, []);
+
+  const handleContentSizeChange = useCallback(() => {
+    if (initialScrollPendingRef.current && scrollViewRef.current) {
+      scrollViewRef.current.scrollToEnd({ animated: false });
+    }
+  }, []);
 
   // Cleanup: stop speech on unmount (#1078)
   useEffect(() => {
@@ -3114,7 +3294,9 @@ export default function ChatScreen({ route, navigation }: any) {
       dragEndTimeoutRef.current = null;
     }
     isUserDraggingRef.current = true;
-  }, []);
+    // User is taking control - stop snapping to bottom on content size changes.
+    clearInitialScrollWindow();
+  }, [clearInitialScrollWindow]);
 
   // Handle user ending drag - keep flag active briefly for momentum scroll
   const handleScrollEndDrag = useCallback(() => {
@@ -3160,6 +3342,22 @@ export default function ChatScreen({ route, navigation }: any) {
     });
   }, [messages.length]);
 
+  // When messages first arrive for a session (e.g. lazy-load from server
+  // completes after the session-change window expired), re-enter the initial
+  // scroll window so we still land at the latest message (issue #408).
+  const previousMessagesLengthRef = useRef(0);
+  useEffect(() => {
+    if (
+      messages.length > 0 &&
+      previousMessagesLengthRef.current === 0 &&
+      !isUserDraggingRef.current
+    ) {
+      beginInitialScrollWindow();
+      scrollViewRef.current?.scrollToEnd({ animated: false });
+    }
+    previousMessagesLengthRef.current = messages.length;
+  }, [messages.length, beginInitialScrollWindow]);
+
   // Scroll to bottom when messages change and auto-scroll is enabled
   // Uses debouncing to handle rapid streaming updates efficiently
   useEffect(() => {
@@ -3187,6 +3385,9 @@ export default function ChatScreen({ route, navigation }: any) {
       }
       if (dragEndTimeoutRef.current) {
         clearTimeout(dragEndTimeoutRef.current);
+      }
+      if (initialScrollWindowTimeoutRef.current) {
+        clearTimeout(initialScrollWindowTimeoutRef.current);
       }
     };
   }, []);
@@ -3332,15 +3533,20 @@ export default function ChatScreen({ route, navigation }: any) {
     ]);
   }, [handleDeletePromptConfirmed, isSavingPrompt, settingsClient]);
 
-  // Reset auto-scroll when session changes
+  // Reset auto-scroll when session changes. For large sessions the content
+  // height grows across multiple frames as messages render, so a single
+  // delayed scrollToEnd lands in the middle. Instead, enter an "initial scroll"
+  // window where onContentSizeChange keeps pinning to the bottom until the
+  // user drags or the window expires (issue #408).
   useEffect(() => {
     setShouldAutoScroll(true);
-    // Scroll to bottom when switching sessions
-    const timeoutId = setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: false });
-    }, 100);
-    return () => clearTimeout(timeoutId);
-  }, [sessionStore.currentSessionId]);
+    previousMessagesLengthRef.current = 0;
+    beginInitialScrollWindow();
+    scrollViewRef.current?.scrollToEnd({ animated: false });
+    return () => {
+      clearInitialScrollWindow();
+    };
+  }, [sessionStore.currentSessionId, beginInitialScrollWindow, clearInitialScrollWindow]);
 
   const lastLoadedSessionIdRef = useRef<string | null>(null);
   const lastLoadedSessionMessagesKeyRef = useRef<string | null>(null);
@@ -3981,6 +4187,14 @@ export default function ChatScreen({ route, navigation }: any) {
     if (messageQueueEnabled && respondingRef.current && conversationState !== 'needs_input') {
       console.log('[ChatScreen] Agent busy, queuing message:', getMessageLogMeta(trimmedText));
       messageQueue.enqueue(currentConversationId, trimmedText, currentConversationId);
+      if (options?.source === 'handsfree') {
+        setSttPreviewWithExpiry('');
+        playHandsFreeCue('prompt-submitted');
+        voiceLog('auto-send', 'Handsfree prompt queued while the assistant is still responding.', {
+          textLength: trimmedText.length,
+          phase: handsFreePhaseRef.current,
+        });
+      }
       setInput('');
       if (options?.fromComposer) {
         setPendingImages([]);
@@ -4012,6 +4226,13 @@ export default function ChatScreen({ route, navigation }: any) {
     // Clear progress messages ref for this new request (#1083)
     progressMessagesRef.current = [];
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
+    if (options?.source === 'handsfree') {
+      setSttPreviewWithExpiry('');
+      voiceLog('auto-send', 'Handsfree prompt submitted.', {
+        textLength: trimmedText.length,
+        phase: handsFreePhaseRef.current,
+      });
+    }
     playHandsFreeCue('prompt-submitted');
     setRespondingValue(true);
     setConversationState('running');
@@ -4391,6 +4612,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       // The conversation ID is saved after final message persistence so session
       // rehydration cannot restore a pre-final progress snapshot.
+      scheduleServerGeneratedTitleRefresh(requestSessionId, responseConversationId, 'send');
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // userResponse is explicitly set by the agent for user communication
@@ -4562,6 +4784,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const currentMessages = messagesRef.current;
     const messageCountBeforeTurn = currentMessages.length;
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
+    setSttPreviewWithExpiry('');
     playHandsFreeCue('prompt-submitted');
     setRespondingValue(true);
     setConversationState('running');
@@ -4800,6 +5023,8 @@ export default function ChatScreen({ route, navigation }: any) {
           await sessionStore.setServerConversationId(responseConversationId);
         }
       }
+
+      scheduleServerGeneratedTitleRefresh(requestSessionId, responseConversationId, 'queued');
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // Skip TTS if we already played the same text mid-turn
@@ -5205,6 +5430,7 @@ export default function ChatScreen({ route, navigation }: any) {
           onScroll={handleScroll}
           onScrollBeginDrag={handleScrollBeginDrag}
           onScrollEndDrag={handleScrollEndDrag}
+          onContentSizeChange={handleContentSizeChange}
           scrollEventThrottle={16}
         >
           {sessionStore.isLoadingMessages && messages.length === 0 && (
