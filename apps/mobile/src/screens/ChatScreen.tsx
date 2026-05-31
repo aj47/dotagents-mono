@@ -37,7 +37,6 @@ import {
 import { useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import { MessageQueuePanel } from '../ui/MessageQueuePanel';
-import { ResponseHistoryPanel } from '../ui/ResponseHistoryPanel';
 import { ensureNativeTtsAudioMode, speakRemoteTts } from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
@@ -76,9 +75,8 @@ import { useIsFocused } from '@react-navigation/native';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme, hexToRgba } from '../ui/theme';
 import { MarkdownRenderer } from '../ui/MarkdownRenderer';
-import { HandsFreeStatusChip } from '../ui/HandsFreeStatusChip';
 import { GlobalTtsStatusPill } from '../ui/GlobalTtsStatusPill';
-import { TtsQueueDock } from '../ui/TtsQueueDock';
+import { MicrophoneSelector } from '../ui/MicrophoneSelector';
 import {
   beginGlobalTtsPlayback,
   completeGlobalTtsPlayback,
@@ -88,13 +86,6 @@ import {
   stopGlobalTtsPlayback,
   useGlobalTtsPlayback,
 } from '../store/ttsPlayback';
-import {
-  globalTtsQueue,
-  setTtsQueueSpeaker,
-  setTtsQueueConflictPolicy,
-  describeTtsQueue,
-} from '../store/globalTtsQueue';
-import { formatAgentSpokenPrefix, type TtsQueueItem } from '../store/ttsQueue';
 import {
   createButtonAccessibilityLabel,
   createChatComposerAccessibilityHint,
@@ -167,6 +158,7 @@ const HANDS_FREE_TTS_BARGE_IN_COMMANDS = new Set([
 ]);
 const HANDS_FREE_GUIDE_DISMISSED_KEY = 'dotagents:handsfree-guide-dismissed';
 const HANDS_FREE_SESSION_READY_CUE_MIN_INTERVAL_MS = 1_500;
+const HANDS_FREE_PREVIEW_SUBMITTED_PROCESSING_CUE_SUPPRESSION_MS = 900;
 const SERVER_GENERATED_TITLE_REFRESH_DELAYS_MS = [1_500, 5_000, 12_000, 25_000] as const;
 const HANDS_FREE_PHASE_AUDIO_CUES: Record<HandsFreePhase, HandsFreeAudioCue> = {
   sleeping: 'sleeping',
@@ -404,6 +396,12 @@ type RespondToUserHistorySourceMessage = {
   role: 'user' | 'assistant' | 'tool';
   timestamp?: number;
   toolCalls?: Array<{ name: string; arguments: unknown }>;
+};
+
+type QueuedResponseSpeechItem = {
+  event: AgentUserResponseEvent;
+  requestId: number;
+  sessionId: string | null;
 };
 
 type AndroidHandsFreeTtsSettleType = 'tts-done' | 'tts-error' | 'tts-stopped';
@@ -937,11 +935,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const effectiveEdgeTtsRate =
     config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteEdgeTtsRate;
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
+  const [chatMenuVisible, setChatMenuVisible] = useState(false);
   const [handsFreeGuideVisible, setHandsFreeGuideVisible] = useState(false);
   const [handsFreeGuideDismissed, setHandsFreeGuideDismissed] = useState<boolean | null>(null);
-  // Lets the user compact the persistent hands-free status row down to a bare
-  // phase pill (hiding the contextual subtitle) so voice mode stays unobtrusive.
-  const [handsFreeStatusCollapsed, setHandsFreeStatusCollapsed] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<PredefinedPromptSummary | null>(null);
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
@@ -1032,6 +1028,24 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   };
 
+  const openChatMenu = useCallback(() => {
+    setChatMenuVisible(true);
+  }, []);
+
+  const closeChatMenu = useCallback(() => {
+    setChatMenuVisible(false);
+  }, []);
+
+  const handleToggleHandsFreeFromMenu = useCallback(() => {
+    void toggleHandsFree();
+  }, [toggleHandsFree]);
+
+  const handleAudioInputDeviceChange = useCallback((deviceId: string | undefined) => {
+    const nextCfg = { ...config, audioInputDeviceId: deviceId };
+    setConfig(nextCfg);
+    void saveConfig(nextCfg).catch(() => {});
+  }, [config, setConfig]);
+
   // TTS toggle
   const ttsEnabled = config.ttsEnabled !== false; // default true
   useEffect(() => {
@@ -1047,7 +1061,8 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!next) {
       intendedSpeakingIndexRef.current = null;
       stopGlobalTtsPlayback();
-      globalTtsQueue.stopAll();
+      queuedResponseEventsRef.current = [];
+      activeAutoSpeechEventRef.current = null;
       setSpeakingMessageIndex(null);
       // Only transition the hands-free controller when it was actually speaking;
       // calling onSpeechFinished mid-`processing` would prematurely return to
@@ -1285,6 +1300,11 @@ export default function ChatScreen({ route, navigation }: any) {
     setHandsFreeGuideVisible(false);
   }, []);
 
+  const handleOpenHandsFreeGuideFromMenu = useCallback(() => {
+    closeChatMenu();
+    openHandsFreeGuide();
+  }, [closeChatMenu, openHandsFreeGuide]);
+
   const dismissHandsFreeGuide = useCallback(() => {
     setHandsFreeGuideVisible(false);
     setHandsFreeGuideDismissed(true);
@@ -1395,50 +1415,14 @@ export default function ChatScreen({ route, navigation }: any) {
       ),
       headerRight: () => (
         <View style={styles.headerActionsRow}>
-          {isAgentRunningInHeader && (
-            <TouchableOpacity
-              onPress={handleKillSwitch}
-              accessibilityRole="button"
-              accessibilityLabel="Emergency stop - kill all agent sessions"
-              accessibilityHint="Shows a confirmation before stopping all running sessions"
-              style={styles.headerActionButton}
-            >
-              <View style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                backgroundColor: theme.colors.danger,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>⏹</Text>
-              </View>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
-            onPress={toggleHandsFree}
-            accessibilityRole="switch"
-            accessibilityLabel={createSwitchAccessibilityLabel('Hands-free voice mode')}
-            accessibilityHint="When enabled, speech is sent automatically after each phrase"
-            accessibilityState={{ checked: handsFree }}
-            aria-checked={handsFree}
+            onPress={openChatMenu}
+            accessibilityRole="button"
+            accessibilityLabel="Open chat voice menu"
+            accessibilityHint="Opens hands-free help, microphone selection, and chat controls."
             style={styles.headerActionButton}
           >
-            <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 18 }}>🎙️</Text>
-              {!handsFree && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    width: 20,
-                    height: 2,
-                    backgroundColor: theme.colors.danger,
-                    transform: [{ rotate: '45deg' }],
-                    borderRadius: 1,
-                  }}
-                />
-              )}
-            </View>
+            <Ionicons name="ellipsis-vertical" size={22} color={theme.colors.foreground} />
           </TouchableOpacity>
         </View>
       ),
@@ -1446,13 +1430,13 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [
     currentSession?.title,
     globalTtsPlayback,
-    handleKillSwitch,
     handleOpenGlobalTtsSession,
     handleToggleCurrentSessionPinned,
     handsFree,
     isAgentRunningInHeader,
     isCurrentSessionPinned,
     navigation,
+    openChatMenu,
     styles,
     theme.colors.danger,
     theme.colors.foreground,
@@ -1483,16 +1467,18 @@ export default function ChatScreen({ route, navigation }: any) {
   // instead of replacing, preventing intermediate messages from disappearing (#1083)
   const progressMessagesRef = useRef<ChatMessage[]>([]);
   // Track respond_to_user history for the current session (Issue #26)
-  const [respondToUserHistory, setRespondToUserHistory] = useState<AgentUserResponseEvent[]>([]);
   const respondToUserHistoryRef = useRef<AgentUserResponseEvent[]>([]);
   const nextResponseEventOrdinalRef = useRef(1);
   const playedResponseEventIdsRef = useRef<Set<string>>(new Set());
+  const queuedResponseEventsRef = useRef<QueuedResponseSpeechItem[]>([]);
+  const activeAutoSpeechEventRef = useRef<QueuedResponseSpeechItem | null>(null);
   const autoTtsSuppressedRequestIdsRef = useRef<Set<number>>(new Set());
   const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
   const androidHandsFreeTtsHandlersRef = useRef<Map<string, AndroidHandsFreeTtsHandler>>(new Map());
   const ttsBargeInLastHandledRef = useRef<{ command: 'stop' | 'wait'; timestamp: number } | null>(null);
   const lastHandsFreeAudioCuePhaseRef = useRef<HandsFreePhase | null>(null);
   const lastHandsFreeSessionReadyCueAtRef = useRef(0);
+  const lastHandsFreePreviewSubmittedCueAtRef = useRef(0);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string, options?: { fromComposer?: boolean; source?: 'handsfree' }) => Promise<void>>(async () => {});
@@ -1501,10 +1487,13 @@ export default function ChatScreen({ route, navigation }: any) {
   const androidHandsFreeCaptureGenerationRef = useRef(0);
   const androidHandsFreeLastSentRef = useRef<{ text: string; timestamp: number } | null>(null);
   const handsFreeLastFinalizedRef = useRef<{ text: string; timestamp: number } | null>(null);
+  const voicePreviewComposerTextRef = useRef('');
 		  const [input, setInput] = useState('');
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [androidHandsFreeDebounceEndsAt, setAndroidHandsFreeDebounceEndsAt] = useState<number | null>(null);
+  const [handsFreeCountdownNow, setHandsFreeCountdownNow] = useState(Date.now());
   const [expandedMessages, setExpandedMessages] = useState<Record<number, boolean>>({});
   // Track which individual tool calls are fully expanded to show all input/output details
   // Key format: "messageId-toolCallIndex" (messageId falls back to message array index if undefined)
@@ -1842,6 +1831,7 @@ export default function ChatScreen({ route, navigation }: any) {
       clearTimeout(androidHandsFreePartialTimerRef.current);
       androidHandsFreePartialTimerRef.current = null;
     }
+    setAndroidHandsFreeDebounceEndsAt(null);
     androidHandsFreeCaptureGenerationRef.current += 1;
   }, []);
 
@@ -1869,11 +1859,12 @@ export default function ChatScreen({ route, navigation }: any) {
 
     clearAndroidHandsFreePartialTimer();
     androidHandsFreePendingPartialRef.current = '';
+    queuedResponseEventsRef.current = [];
+    activeAutoSpeechEventRef.current = null;
     if (activeRequestIdRef.current) {
       autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
     }
-    // Silence the whole multi-agent queue so the user can speak immediately.
-    globalTtsQueue.stopAll();
+    stopGlobalTtsPlayback();
     if (handsFreePhaseRef.current === 'speaking') {
       handsFreeController.onSpeechFinished();
     }
@@ -1911,10 +1902,13 @@ export default function ChatScreen({ route, navigation }: any) {
       case 'stop-tts': {
         clearAndroidHandsFreePartialTimer();
         androidHandsFreePendingPartialRef.current = '';
-        // "stop talking" stops the current speaker and advances to the next
-        // queued agent (if any). Use "stop everyone" to clear the whole queue.
-        globalTtsQueue.skip();
-        if (handsFreePhaseRef.current === 'speaking' && !globalTtsQueue.getState().active) {
+        queuedResponseEventsRef.current = [];
+        activeAutoSpeechEventRef.current = null;
+        if (activeRequestIdRef.current) {
+          autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
+        }
+        stopGlobalTtsPlayback();
+        if (handsFreePhaseRef.current === 'speaking') {
           handsFreeController.onSpeechFinished();
         }
         setDebugInfo('Stopped speaking.');
@@ -1929,7 +1923,9 @@ export default function ChatScreen({ route, navigation }: any) {
         if (activeRequestIdRef.current) {
           autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
         }
-        globalTtsQueue.stopAll();
+        queuedResponseEventsRef.current = [];
+        activeAutoSpeechEventRef.current = null;
+        stopGlobalTtsPlayback();
         if (handsFreePhaseRef.current === 'speaking') {
           handsFreeController.onSpeechFinished();
         }
@@ -1940,7 +1936,9 @@ export default function ChatScreen({ route, navigation }: any) {
         break;
       }
       case 'tts-stop-all': {
-        globalTtsQueue.stopAll();
+        queuedResponseEventsRef.current = [];
+        activeAutoSpeechEventRef.current = null;
+        stopGlobalTtsPlayback();
         if (handsFreePhaseRef.current === 'speaking') {
           handsFreeController.onSpeechFinished();
         }
@@ -1949,91 +1947,70 @@ export default function ChatScreen({ route, navigation }: any) {
         break;
       }
       case 'tts-skip': {
-        globalTtsQueue.skip();
-        setDebugInfo('Skipped.');
-        playHandsFreeCue('listening');
+        queuedResponseEventsRef.current = [];
+        activeAutoSpeechEventRef.current = null;
+        stopGlobalTtsPlayback();
+        setDebugInfo('Skipped current playback.');
+        playHandsFreeCue('stopped');
         break;
       }
       case 'tts-pause': {
-        globalTtsQueue.pause();
+        stopGlobalTtsPlayback();
         setDebugInfo('Playback paused.');
         playHandsFreeCue('stopped');
         break;
       }
       case 'tts-resume': {
-        globalTtsQueue.resume();
-        setDebugInfo('Playback resumed.');
+        setDebugInfo('Resuming pending playback.');
         playHandsFreeCue('listening');
         break;
       }
       case 'tts-whats-playing': {
-        setDebugInfo(describeTtsQueue());
+        setDebugInfo(activeAutoSpeechEventRef.current ? 'Assistant audio is playing.' : 'No assistant audio is playing.');
         playHandsFreeCue('listening');
         break;
       }
       case 'tts-read-everything': {
-        setTtsQueueConflictPolicy('queue');
-        globalTtsQueue.readAllDeferred();
-        setDebugInfo('Reading everything.');
+        setDebugInfo('Reading pending responses.');
         playHandsFreeCue('listening');
         break;
       }
       case 'tts-announce-only': {
-        setTtsQueueConflictPolicy('announce');
-        void saveConfig({ ...config, ttsConflictPolicy: 'announce' }).catch(() => {});
-        setDebugInfo('Announce-only mode. Say "read everything" to catch up.');
+        setDebugInfo('Announce-only mode is unavailable without queue mode.');
         playHandsFreeCue('listening');
         break;
       }
       case 'tts-repeat': {
-        const ok = globalTtsQueue.repeatLast(remainder || undefined);
-        setDebugInfo(ok ? 'Repeating.' : 'Nothing to repeat.');
-        playHandsFreeCue(ok ? 'listening' : 'stopped');
+        setDebugInfo('Repeat is unavailable without queue mode.');
+        playHandsFreeCue('stopped');
         break;
       }
       case 'tts-mute-agent': {
         const target = findAgentSessionByName(remainder);
         const name = target?.title || remainder;
-        if (name) {
-          globalTtsQueue.muteAgent(name);
-          setDebugInfo(`Muted ${name}.`);
-          playHandsFreeCue('stopped');
-        } else {
-          setDebugInfo('Which agent should I mute?');
-          playHandsFreeCue('listening');
-        }
+        setDebugInfo(name ? `Agent audio mute is unavailable without queue mode: ${name}.` : 'Which agent should I mute?');
+        playHandsFreeCue(name ? 'stopped' : 'listening');
         break;
       }
       case 'tts-unmute-agent': {
         const target = findAgentSessionByName(remainder);
         const name = target?.title || remainder;
-        if (name) {
-          globalTtsQueue.unmuteAgent(name);
-          setDebugInfo(`Unmuted ${name}.`);
-        } else {
-          setDebugInfo('Which agent should I unmute?');
-        }
+        setDebugInfo(name ? `Agent audio unmute is unavailable without queue mode: ${name}.` : 'Which agent should I unmute?');
         playHandsFreeCue('listening');
         break;
       }
       case 'tts-solo-agent': {
         const target = findAgentSessionByName(remainder);
         const name = target?.title || remainder;
-        if (name) {
-          globalTtsQueue.soloAgent(name);
-          setDebugInfo(`Only ${name} now.`);
-        } else {
-          setDebugInfo('Which agent should I focus the audio on?');
-        }
+        setDebugInfo(name ? `Solo audio is unavailable without queue mode: ${name}.` : 'Which agent should I focus the audio on?');
         playHandsFreeCue('listening');
         break;
       }
       case 'tts-read-agent': {
         const target = findAgentSessionByName(remainder);
         const name = target?.title || remainder;
-        const ok = name ? globalTtsQueue.readAgent(name) : false;
-        setDebugInfo(ok ? `Reading ${name}.` : `Nothing waiting for ${name || 'that agent'}.`);
-        playHandsFreeCue(ok ? 'listening' : 'stopped');
+        setDebugInfo(`Nothing waiting for ${name || 'that agent'}.`);
+        playHandsFreeCue('stopped');
         break;
       }
       case 'new-session': {
@@ -2190,8 +2167,14 @@ export default function ChatScreen({ route, navigation }: any) {
           `[DotAgentsHandsFreeJS] controller action=${action.type} phaseBefore=${handsFreePhaseRef.current} textLength=${finalText.length}`,
         );
         if (action.type === 'send') {
+          voicePreviewComposerTextRef.current = '';
+          setInput('');
+          setSttPreviewWithExpiry('');
           void sendRef.current(action.text, { source: 'handsfree' });
         } else if (action.type === 'command') {
+          voicePreviewComposerTextRef.current = '';
+          setInput('');
+          setSttPreviewWithExpiry('');
           handleHandsFreeVoiceCommand(action.command, action.label, action.remainder);
         }
         return;
@@ -2318,15 +2301,18 @@ export default function ChatScreen({ route, navigation }: any) {
 
     androidHandsFreePendingPartialRef.current = finalText;
     clearAndroidHandsFreePartialTimer();
+    const debounceMs = Math.max(0, delayMs);
+    setAndroidHandsFreeDebounceEndsAt(Date.now() + debounceMs);
     const captureGeneration = androidHandsFreeCaptureGenerationRef.current;
     voiceLog('finalization-scheduled', 'Android handsfree partial transcript debounce scheduled.', {
       source: 'native',
-      debounceMs: Math.max(0, delayMs),
+      debounceMs,
       text: finalText,
       textLength: finalText.length,
     });
     androidHandsFreePartialTimerRef.current = setTimeout(() => {
       androidHandsFreePartialTimerRef.current = null;
+      setAndroidHandsFreeDebounceEndsAt(null);
       if (captureGeneration !== androidHandsFreeCaptureGenerationRef.current) {
         voiceLog('transcript-ignored', 'Android handsfree partial debounce ignored after capture generation changed.', {
           source: 'native',
@@ -2336,7 +2322,7 @@ export default function ChatScreen({ route, navigation }: any) {
         return;
       }
       flushAndroidHandsFreePartialTranscript(finalText);
-    }, Math.max(0, delayMs));
+    }, debounceMs);
     return true;
   }, [
     clearAndroidHandsFreePartialTimer,
@@ -2429,6 +2415,7 @@ export default function ChatScreen({ route, navigation }: any) {
     listening,
     liveTranscript,
     sttPreview,
+    handsFreeDebounceEndsAt,
     micButtonRef,
     startRecording,
     setSttPreviewWithExpiry,
@@ -2451,6 +2438,34 @@ export default function ChatScreen({ route, navigation }: any) {
     },
     log: voiceLog,
   });
+
+  useEffect(() => {
+    const previewText = normalizeVoiceText(sttPreview || liveTranscript);
+    const previousPreviewText = voicePreviewComposerTextRef.current;
+
+    if (!handsFree || !previewText) {
+      if (!previewText) {
+        voicePreviewComposerTextRef.current = '';
+      }
+      return;
+    }
+
+    setInput((current) => {
+      const currentTrimmed = current.trim();
+
+      if (!currentTrimmed || currentTrimmed === previousPreviewText) {
+        voicePreviewComposerTextRef.current = previewText;
+        return previewText;
+      }
+
+      if (previousPreviewText && current.endsWith(previousPreviewText)) {
+        voicePreviewComposerTextRef.current = previewText;
+        return `${current.slice(0, -previousPreviewText.length)}${previewText}`;
+      }
+
+      return current;
+    });
+  }, [handsFree, liveTranscript, sttPreview]);
 
   const androidHandsFreeServiceListeningEnabled =
     androidBackgroundHandsFree && shouldKeepHandsFreeMicArmed;
@@ -2488,6 +2503,12 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     if (phase === 'speaking') {
+      return;
+    }
+    if (
+      phase === 'processing'
+      && Date.now() - lastHandsFreePreviewSubmittedCueAtRef.current < HANDS_FREE_PREVIEW_SUBMITTED_PROCESSING_CUE_SUPPRESSION_MS
+    ) {
       return;
     }
 
@@ -3020,7 +3041,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	  const replaceResponseHistory = useCallback((events: AgentUserResponseEvent[]) => {
 	    const sortedEvents = sortResponseEvents(events);
 	    syncResponseHistoryRefs(sortedEvents);
-	    setRespondToUserHistory(sortedEvents);
 	  }, [syncResponseHistoryRefs]);
 
 	  const createFallbackResponseEvent = useCallback((
@@ -3051,80 +3071,82 @@ export default function ChatScreen({ route, navigation }: any) {
 
 	    const mergedEvents = sortResponseEvents(Array.from(merged.values()));
 	    syncResponseHistoryRefs(mergedEvents);
-	    setRespondToUserHistory(mergedEvents);
 	  }, [syncResponseHistoryRefs]);
 
-  // Keep a ref to the latest engine so the (stable) queue speaker always uses
-  // current config without re-registering on every render.
-  const speakEngineRef = useRef(speakAssistantResponse);
-  speakEngineRef.current = speakAssistantResponse;
+  const processAutoSpeechQueue = useCallback(() => {
+    if (activeAutoSpeechEventRef.current || queuedResponseEventsRef.current.length === 0) {
+      return;
+    }
 
-  // Register the global TTS queue's speaker once. The queue owns ordering and
-  // identity across agents; this adapter only performs the audio and reports
-  // completion back. speakAssistantResponse always invokes its onSettled
-  // callback (even when it declines to speak), so the queue never wedges.
-  useEffect(() => {
-    setTtsQueueSpeaker({
-      speak: (item: TtsQueueItem, handle) => {
-        const multiAgent = globalTtsQueue.distinctActiveAgentCount() > 1;
-        const prefix = formatAgentSpokenPrefix(item.agentName || item.sessionTitle, { multiAgent });
-        handle.onLoading();
-        let settled = false;
-        const done = () => {
-          if (settled) return;
-          settled = true;
-          handle.onDone();
-        };
-        const spoken = speakEngineRef.current(`${prefix}${item.text}`, `queue ${item.source}`, done);
-        if (spoken === false) {
-          done();
-        } else {
-          handle.onSpeaking();
-        }
-      },
-      cancel: () => {
-        stopGlobalTtsPlayback();
-      },
+    const nextItem = queuedResponseEventsRef.current.shift();
+    if (!nextItem) return;
+
+    const isCurrentRequest =
+      currentSessionIdRef.current === nextItem.sessionId &&
+      activeRequestIdRef.current === nextItem.requestId;
+    if (
+      !isCurrentRequest
+      || !ttsEnabledRef.current
+      || autoTtsSuppressedRequestIdsRef.current.has(nextItem.requestId)
+    ) {
+      processAutoSpeechQueue();
+      return;
+    }
+
+    activeAutoSpeechEventRef.current = nextItem;
+    const stopGenerationAtStart = getGlobalTtsStopGeneration();
+
+    const spoken = speakAssistantResponse(nextItem.event.text, `response event ${nextItem.event.ordinal}`, () => {
+      activeAutoSpeechEventRef.current = null;
+      if (getGlobalTtsStopGeneration() !== stopGenerationAtStart) {
+        queuedResponseEventsRef.current = [];
+        return;
+      }
+      if (
+        currentSessionIdRef.current === nextItem.sessionId &&
+        activeRequestIdRef.current === nextItem.requestId
+      ) {
+        processAutoSpeechQueue();
+      }
     });
-    return () => setTtsQueueSpeaker(null);
-  }, []);
 
-  // Mirror the configured conflict policy into the queue.
-  useEffect(() => {
-    setTtsQueueConflictPolicy(config.ttsConflictPolicy ?? 'queue');
-  }, [config.ttsConflictPolicy]);
+    if (!spoken) {
+      activeAutoSpeechEventRef.current = null;
+      processAutoSpeechQueue();
+      return;
+    }
+
+    playedResponseEventIdsRef.current.add(nextItem.event.id);
+  }, [speakAssistantResponse]);
 
   const enqueueResponseEventsForSpeech = useCallback((
     events: AgentUserResponseEvent[],
     sessionId: string | null,
-    requestId: number,
+    requestId: number
   ) => {
-    if (!ttsEnabledRef.current) return;
-    // Background-agent responses are no longer dropped: the global TTS queue
-    // serializes utterances across agents (announcing background agents per the
-    // conflict policy) so a background agent that finishes mid-speech is queued,
-    // not lost. Suppressed requests (barge-in / stop-agent) are still skipped.
+    // Use the ref alongside the captured config so a mute that landed after this
+    // callback was scheduled still suppresses queueing.
+    if (config.ttsEnabled === false || !ttsEnabledRef.current || !events.length) return;
+    if (currentSessionIdRef.current !== sessionId || activeRequestIdRef.current !== requestId) return;
     if (autoTtsSuppressedRequestIdsRef.current.has(requestId)) return;
-    const newEvents = events
-      .filter((event) => !playedResponseEventIdsRef.current.has(event.id))
-      .sort((a, b) => compareResponseEvents(a, b));
-    if (newEvents.length === 0) return;
-    const sessionTitle = sessionId === sessionStore.currentSessionId
-      ? sessionStore.getCurrentSession()?.title ?? null
-      : sessionStore.sessions.find((sess) => sess.id === sessionId)?.title ?? null;
-    for (const event of newEvents) {
-      playedResponseEventIdsRef.current.add(event.id);
-      globalTtsQueue.enqueue({
-        id: event.id,
-        source: 'auto',
-        sessionId,
-        sessionTitle,
-        agentName: sessionTitle,
-        text: event.text,
-        requestId,
-      });
-    }
-  }, [sessionStore]);
+
+    const queuedIds = new Set(queuedResponseEventsRef.current.map((item) => item.event.id));
+    const activeId = activeAutoSpeechEventRef.current?.event.id;
+    const unseenEvents = events.filter((event) => (
+      !playedResponseEventIdsRef.current.has(event.id)
+      && !queuedIds.has(event.id)
+      && event.id !== activeId
+    ));
+
+    if (!unseenEvents.length) return;
+
+    queuedResponseEventsRef.current = [
+      ...queuedResponseEventsRef.current,
+      ...unseenEvents.map((event) => ({ event, sessionId, requestId })),
+    ].sort((a, b) => compareResponseEvents(a.event, b.event));
+
+    processAutoSpeechQueue();
+  }, [config.ttsEnabled, processAutoSpeechQueue]);
 
   // Per-message TTS: track which message index is currently being spoken (#1078)
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
@@ -3687,7 +3709,8 @@ export default function ChatScreen({ route, navigation }: any) {
       // Clear respond_to_user history for the new session
       replaceResponseHistory([]);
       playedResponseEventIdsRef.current = new Set();
-      globalTtsQueue.stopAll();
+      queuedResponseEventsRef.current = [];
+      activeAutoSpeechEventRef.current = null;
       // Clear stale in-flight marker when switching sessions.
       pendingLazyLoadSessionIdRef.current = null;
       // Clear skipNextPersistRef to prevent the first real message in the new session
@@ -3716,7 +3739,8 @@ export default function ChatScreen({ route, navigation }: any) {
         const savedResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
 	        replaceResponseHistory(savedResponses);
         playedResponseEventIdsRef.current = new Set(savedResponses.map((event) => event.id));
-        globalTtsQueue.stopAll();
+        queuedResponseEventsRef.current = [];
+        activeAutoSpeechEventRef.current = null;
         if (isSessionSwitch && currentSession.serverConversationId && hasServerAuth) {
           const refreshSessionId = currentSession.id;
           const client = settingsClient || new ExtendedSettingsApiClient(config.baseUrl, config.apiKey);
@@ -3765,7 +3789,8 @@ export default function ChatScreen({ route, navigation }: any) {
             );
 	            replaceResponseHistory(lazyResponses);
             playedResponseEventIdsRef.current = new Set(lazyResponses.map((event) => event.id));
-            globalTtsQueue.stopAll();
+            queuedResponseEventsRef.current = [];
+            activeAutoSpeechEventRef.current = null;
           })
           .catch((err) => {
             console.warn('[ChatScreen] Failed to lazy-load session messages:', err);
@@ -3807,7 +3832,8 @@ export default function ChatScreen({ route, navigation }: any) {
       const newResponses = extractRespondToUserHistory(chatMessages as RespondToUserHistorySourceMessage[]);
 	      replaceResponseHistory(newResponses);
       playedResponseEventIdsRef.current = new Set(newResponses.map((event) => event.id));
-      globalTtsQueue.stopAll();
+      queuedResponseEventsRef.current = [];
+      activeAutoSpeechEventRef.current = null;
     } else {
       setMessages([]);
 	      replaceResponseHistory([]);
@@ -4278,7 +4304,8 @@ export default function ChatScreen({ route, navigation }: any) {
       messageQueue.enqueue(currentConversationId, trimmedText, currentConversationId);
       if (options?.source === 'handsfree') {
         setSttPreviewWithExpiry('');
-        playHandsFreeCue('prompt-submitted');
+        lastHandsFreePreviewSubmittedCueAtRef.current = Date.now();
+        playHandsFreeCue('preview-submitted');
         voiceLog('auto-send', 'Handsfree prompt queued while the assistant is still responding.', {
           textLength: trimmedText.length,
           phase: handsFreePhaseRef.current,
@@ -4322,7 +4349,12 @@ export default function ChatScreen({ route, navigation }: any) {
         phase: handsFreePhaseRef.current,
       });
     }
-    playHandsFreeCue('prompt-submitted');
+    if (options?.source === 'handsfree') {
+      lastHandsFreePreviewSubmittedCueAtRef.current = Date.now();
+      playHandsFreeCue('preview-submitted');
+    } else {
+      playHandsFreeCue('prompt-submitted');
+    }
     setRespondingValue(true);
     setConversationState('running');
 	    if (handsFree) {
@@ -5269,18 +5301,22 @@ export default function ChatScreen({ route, navigation }: any) {
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
     if (!composedMessage.trim()) return;
+    voicePreviewComposerTextRef.current = '';
+    setSttPreviewWithExpiry('');
     void send(composedMessage, { fromComposer: true });
-  }, [input, pendingImages, send]);
+  }, [input, pendingImages, send, setSttPreviewWithExpiry]);
 
   const queueComposerInput = useCallback(() => {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
     if (!composedMessage.trim()) return;
 
     messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);
+    voicePreviewComposerTextRef.current = '';
     setInput('');
+    setSttPreviewWithExpiry('');
     setPendingImages([]);
     setDebugInfo('Message queued. Use Send Next when you are ready.');
-  }, [currentConversationId, input, messageQueue, pendingImages]);
+  }, [currentConversationId, input, messageQueue, pendingImages, setSttPreviewWithExpiry]);
 
   // Track modifier keys for keyboard shortcut handling
   const modifierKeysRef = useRef<{ shift: boolean; ctrl: boolean; meta: boolean }>({
@@ -5383,8 +5419,26 @@ export default function ChatScreen({ route, navigation }: any) {
       suppressNextChangeRef.current = false;
       return;
     }
+    voicePreviewComposerTextRef.current = '';
     setInput(text);
   }, []);
+
+  const handsFreeSendDeadline = useMemo(() => {
+    const deadlines = [handsFreeDebounceEndsAt, androidHandsFreeDebounceEndsAt]
+      .filter((value): value is number => typeof value === 'number' && value > Date.now());
+    return deadlines.length > 0 ? Math.max(...deadlines) : null;
+  }, [androidHandsFreeDebounceEndsAt, handsFreeCountdownNow, handsFreeDebounceEndsAt]);
+  const handsFreeCountdownSeconds = handsFreeSendDeadline
+    ? Math.max(0, Math.ceil((handsFreeSendDeadline - handsFreeCountdownNow) / 1000))
+    : 0;
+  const hasPendingHandsFreeSend = handsFree && handsFreeCountdownSeconds > 0;
+
+  useEffect(() => {
+    if (!handsFreeSendDeadline) return;
+    setHandsFreeCountdownNow(Date.now());
+    const interval = setInterval(() => setHandsFreeCountdownNow(Date.now()), 200);
+    return () => clearInterval(interval);
+  }, [handsFreeSendDeadline]);
 
 		const wakeHandsFreeByUser = useCallback(() => {
 			handsFreeController.wakeByUser();
@@ -5403,14 +5457,20 @@ export default function ChatScreen({ route, navigation }: any) {
 		}, [androidBackgroundHandsFree, handsFreeController.resumeByUser, listening, startRecording]);
 
 		const pauseHandsFreeByUser = useCallback(() => {
+      clearAndroidHandsFreePartialTimer();
+      androidHandsFreePendingPartialRef.current = '';
 			handsFreeController.pauseByUser();
 			if (!androidBackgroundHandsFree) {
 				void stopRecognitionOnly();
 			}
 			setDebugInfo('Handsfree paused.');
-		}, [androidBackgroundHandsFree, handsFreeController.pauseByUser, stopRecognitionOnly]);
+		}, [androidBackgroundHandsFree, clearAndroidHandsFreePartialTimer, handsFreeController.pauseByUser, stopRecognitionOnly]);
 
 		const handleHandsFreePrimaryControl = useCallback(() => {
+			if (hasPendingHandsFreeSend) {
+				pauseHandsFreeByUser();
+				return;
+			}
 			if (handsFreeController.state.phase === 'sleeping') {
 				wakeHandsFreeByUser();
 				return;
@@ -5420,7 +5480,7 @@ export default function ChatScreen({ route, navigation }: any) {
 				return;
 			}
 			pauseHandsFreeByUser();
-		}, [handsFreeController.state.phase, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
+		}, [handsFreeController.state.phase, hasPendingHandsFreeSend, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
 
   const isHandsFreeTtsLoading = handsFree && globalTtsPlayback?.status === 'loading';
   const handsFreeDisplayPhase: HandsFreePhase = isHandsFreeTtsLoading
@@ -5428,10 +5488,15 @@ export default function ChatScreen({ route, navigation }: any) {
     : handsFreeController.state.phase;
   const handsFreeDisplayLabel = isHandsFreeTtsLoading
     ? 'Loading TTS'
+    : hasPendingHandsFreeSend
+      ? `Sending in ${handsFreeCountdownSeconds}s`
     : handsFreeController.statusLabel;
 
 	const handsFreeStatusSubtitle = useMemo(() => {
 		if (!handsFree) return undefined;
+    if (hasPendingHandsFreeSend) {
+      return 'Tap to pause and edit before sending.';
+    }
     if (isHandsFreeTtsLoading) {
       return 'Preparing audio output.';
     }
@@ -5461,6 +5526,8 @@ export default function ChatScreen({ route, navigation }: any) {
 		handsFreeController.state.phase,
 		handsFreeForegroundOnly,
 		handsFreeSleepPhrase,
+    hasPendingHandsFreeSend,
+    handsFreeCountdownSeconds,
     isHandsFreeTtsLoading,
 	]);
 
@@ -5487,6 +5554,16 @@ export default function ChatScreen({ route, navigation }: any) {
     [handsFreeWakePhrase, handsFreeSleepPhrase],
   );
 
+  const editVoiceCommandReference = useCallback((phrase: string) => {
+    const editablePhrase = phrase.replace(/<agent>/g, '').trim();
+    if (!editablePhrase) return;
+
+    setInput(editablePhrase);
+    closeHandsFreeGuide();
+    setDebugInfo('Voice command moved to composer.');
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }, [closeHandsFreeGuide]);
+
 	const composerPlaceholder = handsFree
 		? (handsFreeController.state.phase === 'paused'
 			? 'Handsfree paused — tap mic to resume or type a message'
@@ -5505,20 +5582,23 @@ export default function ChatScreen({ route, navigation }: any) {
   const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
   const visibleMessages = messages.slice(firstVisibleMessageIndex);
   const canLoadOlderMessages = firstVisibleMessageIndex > 0;
+  const chatScrollBottomPadding = Platform.OS === 'android'
+    ? Math.min(Math.round(screenHeight * 0.32), 380)
+    : insets.bottom;
 
 
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: theme.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={headerHeight}
     >
       <View style={{ flex: 1 }}>
         <ScrollView
           ref={scrollViewRef}
           style={{ flex: 1, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: theme.colors.background }}
-          contentContainerStyle={{ paddingBottom: insets.bottom, gap: spacing.xs }}
+          contentContainerStyle={{ paddingBottom: chatScrollBottomPadding, gap: spacing.xs }}
           keyboardShouldPersistTaps="handled"
           contentInsetAdjustmentBehavior="automatic"
           onScroll={handleScroll}
@@ -6303,11 +6383,6 @@ export default function ChatScreen({ route, navigation }: any) {
               </Text>
             </View>
           )}
-          {debugInfo && (
-            <View style={styles.debugInfo}>
-              <Text style={styles.debugText}>{debugInfo}</Text>
-            </View>
-          )}
 	          {handsFreeDebugEnabled && voiceEvents.length > 0 && (
 	            <View style={styles.debugInfo}>
 	              <Text style={styles.debugText}>Voice debug</Text>
@@ -6319,21 +6394,6 @@ export default function ChatScreen({ route, navigation }: any) {
 	            </View>
 	          )}
         </ScrollView>
-        {/* Respond-to-user history panel - sticky at bottom of conversation */}
-        {respondToUserHistory.length > 0 && (
-          <ResponseHistoryPanel
-            responses={respondToUserHistory}
-            ttsProvider={effectiveTtsProvider}
-            edgeTtsVoice={effectiveEdgeTtsVoice}
-            ttsRate={config.ttsRate ?? 1.0}
-            ttsPitch={config.ttsPitch ?? 1.0}
-            ttsVoiceId={config.ttsVoiceId}
-            remoteBaseUrl={config.baseUrl}
-            remoteApiKey={config.apiKey}
-            sessionId={sessionStore.currentSessionId}
-            sessionTitle={currentSession?.title ?? 'Chat'}
-          />
-        )}
         {/* Scroll to bottom button - appears when user scrolls up */}
         {!shouldAutoScroll && (
           <TouchableOpacity
@@ -6538,13 +6598,13 @@ export default function ChatScreen({ route, navigation }: any) {
             </View>
           </View>
         )}
-		        <View style={[styles.inputArea, { paddingBottom: 12 + insets.bottom }]}>
-	          {!!sttPreview && (
-	            <View style={styles.sttPreviewBox}>
-	              <Text style={styles.sttPreviewLabel}>STT preview</Text>
-		              <Text style={styles.sttPreviewText}>{sttPreview}</Text>
-	            </View>
-	          )}
+        <View
+          style={[
+            styles.inputArea,
+            Platform.OS === 'android' && styles.inputAreaAndroidDocked,
+            { paddingBottom: Platform.OS === 'ios' ? 12 + insets.bottom : spacing.sm },
+          ]}
+        >
 	          {pendingImages.length > 0 && (
 	            <ScrollView
 	              horizontal
@@ -6565,43 +6625,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	              ))}
 	            </ScrollView>
 	          )}
-          {/* Multi-agent TTS queue dock (auto agent responses). */}
-          <TtsQueueDock onOpenSession={handleOpenGlobalTtsSession} />
-
-          {handsFree && (
-            <View style={styles.handsFreeStatusRow}>
-              <View style={styles.handsFreeStatusChipWrap}>
-                <HandsFreeStatusChip
-                  phase={handsFreeDisplayPhase}
-                  label={handsFreeDisplayLabel}
-                  subtitle={handsFreeStatusCollapsed ? undefined : handsFreeStatusSubtitle}
-                />
-              </View>
-              <TouchableOpacity
-                style={styles.handsFreeGuideButton}
-                onPress={() => setHandsFreeStatusCollapsed((prev) => !prev)}
-                accessibilityRole="button"
-                accessibilityLabel={handsFreeStatusCollapsed ? 'Expand hands-free status' : 'Collapse hands-free status'}
-                accessibilityHint="Toggles the contextual hint under the voice status so the row stays compact."
-              >
-                <Ionicons
-                  name={handsFreeStatusCollapsed ? 'chevron-down' : 'chevron-up'}
-                  size={18}
-                  color={theme.colors.mutedForeground}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.handsFreeGuideButton}
-                onPress={openHandsFreeGuide}
-                accessibilityRole="button"
-                accessibilityLabel="Open hands-free guide"
-                accessibilityHint="Explains hands-free wake phrases, lock-screen use, interruption commands, and audio cues."
-              >
-                <Ionicons name="help-circle-outline" size={18} color={theme.colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          )}
-	          {/* Top row: TTS toggle, text input, send button */}
+		          {/* Top row: TTS toggle, text input, send button */}
 		          <View style={styles.inputRow}>
 	            <TouchableOpacity
 	              style={[styles.ttsToggle, pendingImages.length > 0 && styles.ttsToggleOn]}
@@ -6617,24 +6641,8 @@ export default function ChatScreen({ route, navigation }: any) {
                   color={pendingImages.length > 0 ? theme.colors.primary : theme.colors.mutedForeground}
                 />
 	            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.ttsToggle, ttsEnabled && styles.ttsToggleOn]}
-              onPress={toggleTts}
-              activeOpacity={0.7}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: ttsEnabled }}
-              accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
-              accessibilityHint="Toggles spoken playback for assistant responses."
-              aria-checked={ttsEnabled}
-            >
-              <Ionicons
-                name={ttsEnabled ? 'volume-high-outline' : 'volume-mute-outline'}
-                size={18}
-                color={ttsEnabled ? theme.colors.primary : theme.colors.mutedForeground}
-              />
-            </TouchableOpacity>
-	            {!handsFree && (
-	              <TouchableOpacity
+		            {!handsFree && (
+		              <TouchableOpacity
 	                style={[styles.ttsToggle, willCancel && styles.ttsToggleOn]}
 		                onPress={() => setWillCancel((current) => !current)}
 	                activeOpacity={0.7}
@@ -6679,21 +6687,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	                {voiceInputLiveRegionAnnouncement}
 	              </Text>
 	            )}
-            {handsFree && messageQueueEnabled && (
-              <TouchableOpacity
-                style={[styles.queueButton, !composerHasContent && styles.sendButtonDisabled]}
-                onPress={queueComposerInput}
-                activeOpacity={0.7}
-                disabled={!composerHasContent}
-                accessibilityRole="button"
-                accessibilityLabel={createButtonAccessibilityLabel('Queue message')}
-                accessibilityHint="Adds your typed text and attached images to the queued-messages list without sending immediately."
-                accessibilityState={{ disabled: !composerHasContent }}
-              >
-                <Ionicons name="time-outline" size={18} color={theme.colors.primary} />
-              </TouchableOpacity>
-            )}
-	            <TouchableOpacity
+		            <TouchableOpacity
 	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
 	              activeOpacity={0.7}
@@ -6723,22 +6717,182 @@ export default function ChatScreen({ route, navigation }: any) {
               accessibilityHint={micControlAccessibilityHint}
               accessibilityState={{ busy: effectiveMicListening }}
               aria-busy={effectiveMicListening}
-	              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
+              onLongPress={undefined}
+	              onPressIn={handsFree && isWebPlatform ? handleHandsFreePrimaryControl : (!handsFree ? handlePushToTalkPressIn : undefined)}
 	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
-	              onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
+	              onPress={handsFree && !isWebPlatform ? handleHandsFreePrimaryControl : undefined}
             >
-              <Ionicons
-                name={effectiveMicListening ? 'mic' : 'mic-outline'}
-                size={20}
-                color={effectiveMicListening ? theme.colors.primaryForeground : theme.colors.mutedForeground}
-              />
-              <Text style={[styles.micLabel, effectiveMicListening && styles.micLabelOn]} selectable={false}>
-	                {micButtonLabel}
-              </Text>
+              <View style={styles.micContent}>
+                <View style={styles.micTitleRow}>
+                  <Ionicons
+                    name={effectiveMicListening ? 'mic' : 'mic-outline'}
+                    size={20}
+                    color={effectiveMicListening ? theme.colors.primaryForeground : theme.colors.mutedForeground}
+                  />
+                  <Text style={[styles.micLabel, effectiveMicListening && styles.micLabelOn]} selectable={false}>
+		                {handsFree ? handsFreeDisplayLabel : micButtonLabel}
+                  </Text>
+                </View>
+                {handsFree && !!handsFreeStatusSubtitle && (
+                  <Text
+                    style={[styles.micSubtitle, effectiveMicListening && styles.micSubtitleOn]}
+                    numberOfLines={1}
+                    selectable={false}
+                  >
+                    {handsFreeStatusSubtitle}
+                  </Text>
+                )}
+              </View>
             </Pressable>
           </View>
         </View>
       </View>
+      <Modal
+        visible={chatMenuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeChatMenu}
+      >
+        <Pressable style={styles.chatMenuOverlay} onPress={closeChatMenu}>
+          <Pressable style={styles.chatMenuContent} onPress={(event) => event.stopPropagation()}>
+            <View style={styles.chatMenuHeader}>
+              <Text style={styles.chatMenuTitle}>Voice menu</Text>
+              <TouchableOpacity
+                style={styles.chatMenuCloseButton}
+                onPress={closeChatMenu}
+                accessibilityRole="button"
+                accessibilityLabel="Close voice menu"
+              >
+                <Ionicons name="close" size={20} color={theme.colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            {isAgentRunningInHeader && (
+              <TouchableOpacity
+                style={[styles.chatMenuRow, styles.chatMenuDangerRow]}
+                onPress={() => {
+                  closeChatMenu();
+                  handleKillSwitch();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Emergency stop all agent sessions"
+                accessibilityHint="Shows a confirmation before stopping all running sessions."
+              >
+                <View style={[styles.chatMenuIcon, styles.chatMenuDangerIcon]}>
+                  <Ionicons name="stop" size={16} color="#FFFFFF" />
+                </View>
+                <View style={styles.chatMenuRowText}>
+                  <Text style={[styles.chatMenuRowLabel, styles.chatMenuDangerText]}>Emergency stop</Text>
+                  <Text style={styles.chatMenuRowHelper}>Stop all running agent sessions.</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.chatMenuRow}
+              onPress={handleToggleHandsFreeFromMenu}
+              accessibilityRole="switch"
+              accessibilityLabel={createSwitchAccessibilityLabel('Hands-free voice mode')}
+              accessibilityHint="When enabled, speech is sent automatically after each phrase."
+              accessibilityState={{ checked: handsFree }}
+              aria-checked={handsFree}
+            >
+              <View style={[styles.chatMenuIcon, handsFree && styles.chatMenuIconActive]}>
+                <Ionicons
+                  name={handsFree ? 'mic' : 'mic-outline'}
+                  size={16}
+                  color={handsFree ? theme.colors.primaryForeground : theme.colors.primary}
+                />
+              </View>
+              <View style={styles.chatMenuRowText}>
+                <Text style={styles.chatMenuRowLabel}>Hands-free voice</Text>
+                <Text style={styles.chatMenuRowHelper}>
+                  {handsFree ? 'On. Say the wake phrase or tap the mic.' : 'Off. Hold the mic for push-to-talk.'}
+                </Text>
+              </View>
+              <View style={[styles.chatMenuSwitchTrack, handsFree && styles.chatMenuSwitchTrackOn]}>
+                <View style={[styles.chatMenuSwitchThumb, handsFree && styles.chatMenuSwitchThumbOn]} />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.chatMenuRow}
+              onPress={toggleTts}
+              accessibilityRole="switch"
+              accessibilityLabel={createSwitchAccessibilityLabel('Text-to-Speech')}
+              accessibilityHint="Toggles spoken playback for assistant responses."
+              accessibilityState={{ checked: ttsEnabled }}
+              aria-checked={ttsEnabled}
+            >
+              <View style={[styles.chatMenuIcon, ttsEnabled && styles.chatMenuIconActive]}>
+                <Ionicons
+                  name={ttsEnabled ? 'volume-high-outline' : 'volume-mute-outline'}
+                  size={16}
+                  color={ttsEnabled ? theme.colors.primaryForeground : theme.colors.primary}
+                />
+              </View>
+              <View style={styles.chatMenuRowText}>
+                <Text style={styles.chatMenuRowLabel}>Text-to-speech</Text>
+                <Text style={styles.chatMenuRowHelper}>
+                  {ttsEnabled ? 'On. Assistant responses speak aloud.' : 'Off. Assistant responses stay silent.'}
+                </Text>
+              </View>
+              <View style={[styles.chatMenuSwitchTrack, ttsEnabled && styles.chatMenuSwitchTrackOn]}>
+                <View style={[styles.chatMenuSwitchThumb, ttsEnabled && styles.chatMenuSwitchThumbOn]} />
+              </View>
+            </TouchableOpacity>
+
+            {messageQueueEnabled && (
+              <TouchableOpacity
+                style={[styles.chatMenuRow, !composerHasContent && styles.chatMenuRowDisabled]}
+                onPress={() => {
+                  queueComposerInput();
+                  closeChatMenu();
+                }}
+                disabled={!composerHasContent}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel('Queue message')}
+                accessibilityHint="Adds your typed text and attached images to the queued-messages list without sending immediately."
+                accessibilityState={{ disabled: !composerHasContent }}
+              >
+                <View style={styles.chatMenuIcon}>
+                  <Ionicons name="time-outline" size={16} color={theme.colors.primary} />
+                </View>
+                <View style={styles.chatMenuRowText}>
+                  <Text style={styles.chatMenuRowLabel}>Queue message</Text>
+                  <Text style={styles.chatMenuRowHelper}>
+                    {composerHasContent ? 'Add the composer draft to the message queue.' : 'Type a message before queueing.'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={17} color={theme.colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={styles.chatMenuRow}
+              onPress={handleOpenHandsFreeGuideFromMenu}
+              accessibilityRole="button"
+              accessibilityLabel="Open hands-free guide"
+              accessibilityHint="Shows wake phrases, interruption commands, and audio cue details."
+            >
+              <View style={styles.chatMenuIcon}>
+                <Ionicons name="help-circle-outline" size={16} color={theme.colors.primary} />
+              </View>
+              <View style={styles.chatMenuRowText}>
+                <Text style={styles.chatMenuRowLabel}>Hands-free guide</Text>
+                <Text style={styles.chatMenuRowHelper}>Wake phrases, commands, and audio cues.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={17} color={theme.colors.mutedForeground} />
+            </TouchableOpacity>
+
+            <View style={styles.chatMenuDivider} />
+            <MicrophoneSelector
+              selectedDeviceId={config.audioInputDeviceId}
+              onDeviceChange={handleAudioInputDeviceChange}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
       <Modal
         visible={handsFreeGuideVisible}
         transparent={true}
@@ -6775,7 +6929,7 @@ export default function ChatScreen({ route, navigation }: any) {
               <View style={styles.handsFreeGuideSection}>
                 <Text style={styles.handsFreeGuideSectionTitle}>Basic flow</Text>
                 <Text style={styles.handsFreeGuideText}>
-                  Turn on the header microphone, tap Wake if needed, then speak after the listening cue.
+                  Turn on Hands-free voice from the top-right voice menu, tap Wake if needed, then speak after the listening cue.
                   Pause briefly and DotAgents sends the request.
                 </Text>
               </View>
@@ -6788,11 +6942,19 @@ export default function ChatScreen({ route, navigation }: any) {
                       <Text style={styles.handsFreeCommandLabel} numberOfLines={1}>
                         {entry.label}
                       </Text>
-                      <View style={styles.handsFreeCommandPhrase}>
+                      <TouchableOpacity
+                        style={styles.handsFreeCommandPhrase}
+                        onPress={() => editVoiceCommandReference(entry.phrase)}
+                        activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Edit voice command ${entry.phrase}`}
+                        accessibilityHint="Moves this command into the composer so you can edit it before sending."
+                      >
                         <Text style={styles.handsFreeCommandPhraseText} numberOfLines={1}>
                           “{entry.phrase}”
                         </Text>
-                      </View>
+                        <Ionicons name="create-outline" size={13} color={theme.colors.primary} />
+                      </TouchableOpacity>
                     </View>
                   ))}
                 </View>
@@ -7021,6 +7183,13 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
     },
+    inputAreaAndroidDocked: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 20,
+    },
     pendingImagesRow: {
       paddingHorizontal: spacing.sm,
       paddingTop: spacing.xs,
@@ -7058,53 +7227,12 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       fontWeight: '700',
       lineHeight: 12,
     },
-    sttPreviewBox: {
-      marginHorizontal: spacing.sm,
-      marginTop: spacing.xs,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-    },
-    sttPreviewLabel: {
-      ...theme.typography.caption,
-      color: theme.colors.mutedForeground,
-      marginBottom: 2,
-      fontWeight: '600',
-    },
-    sttPreviewText: {
-      ...theme.typography.body,
-      color: theme.colors.foreground,
-    },
     inputRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.xs,
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.xs,
-    },
-    handsFreeStatusRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.sm,
-      paddingTop: spacing.xs,
-    },
-    handsFreeStatusChipWrap: {
-      flex: 1,
-      minWidth: 0,
-    },
-    handsFreeGuideButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.card,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     chatHomeCard: {
       marginHorizontal: spacing.sm,
@@ -7301,6 +7429,10 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       flex: 1,
       minWidth: 0,
       alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.xs,
       borderRadius: radius.sm,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -7390,6 +7522,122 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
     },
+    chatMenuOverlay: {
+      flex: 1,
+      backgroundColor: hexToRgba(theme.colors.foreground, isDark ? 0.24 : 0.18),
+      alignItems: 'flex-end',
+      justifyContent: 'flex-start',
+      paddingTop: 54,
+      paddingHorizontal: spacing.sm,
+    },
+    chatMenuContent: {
+      width: '100%',
+      maxWidth: 390,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      padding: spacing.md,
+      gap: spacing.sm,
+      shadowColor: '#000000',
+      shadowOpacity: isDark ? 0.35 : 0.14,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 8,
+    },
+    chatMenuHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    chatMenuTitle: {
+      ...theme.typography.h2,
+      color: theme.colors.foreground,
+      flex: 1,
+    },
+    chatMenuCloseButton: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chatMenuRow: {
+      minHeight: 58,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.sm,
+    },
+    chatMenuDangerRow: {
+      borderColor: hexToRgba(theme.colors.danger, 0.35),
+    },
+    chatMenuRowDisabled: {
+      opacity: 0.52,
+    },
+    chatMenuIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+    },
+    chatMenuIconActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    chatMenuDangerIcon: {
+      backgroundColor: theme.colors.danger,
+    },
+    chatMenuRowText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    chatMenuRowLabel: {
+      ...theme.typography.body,
+      color: theme.colors.foreground,
+      fontWeight: '700',
+    },
+    chatMenuDangerText: {
+      color: theme.colors.danger,
+    },
+    chatMenuRowHelper: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      marginTop: 2,
+    },
+    chatMenuSwitchTrack: {
+      width: 42,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: theme.colors.border,
+      padding: 3,
+      justifyContent: 'center',
+    },
+    chatMenuSwitchTrackOn: {
+      backgroundColor: theme.colors.primary,
+    },
+    chatMenuSwitchThumb: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: theme.colors.background,
+    },
+    chatMenuSwitchThumbOn: {
+      alignSelf: 'flex-end',
+      backgroundColor: theme.colors.primaryForeground,
+    },
+    chatMenuDivider: {
+      height: 1,
+      backgroundColor: theme.colors.border,
+      marginVertical: spacing.xs,
+    },
     input: {
       ...theme.input,
       flex: 1,
@@ -7407,12 +7655,26 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     },
     mic: {
       width: '100%' as any,
-      height: 56,
+      minHeight: 64,
       flexDirection: 'row',
       borderRadius: radius.lg,
       borderWidth: 1.5,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    micContent: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+      gap: 2,
+    },
+    micTitleRow: {
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: spacing.sm,
@@ -7431,6 +7693,14 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     },
     micLabelOn: {
       color: theme.colors.primaryForeground,
+    },
+    micSubtitle: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      textAlign: 'center',
+    },
+    micSubtitleOn: {
+      color: hexToRgba(theme.colors.primaryForeground, 0.86),
     },
     ttsToggle: {
 	      width: 44,
@@ -7461,27 +7731,8 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       justifyContent: 'center',
       gap: 4,
     },
-    queueButton: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      minHeight: 44,
-      minWidth: 44,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 4,
-    },
     sendButtonDisabled: {
       opacity: 0.5,
-    },
-    queueButtonText: {
-      color: theme.colors.foreground,
-      fontWeight: '600',
-      fontSize: 13,
     },
     sendButtonText: {
       color: theme.colors.primaryForeground,

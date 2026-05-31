@@ -896,7 +896,7 @@ export default function SessionListScreen({ navigation, route }: Props) {
         ]}
         onPress={() => handleSelectSession(item.id)}
         onLongPress={() => handleSessionLongPress(item)}
-        accessibilityRole="button"
+        accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
         accessibilityLabel={`${item.isPinned ? 'Pinned, ' : ''}${item.isArchived ? 'Archived, ' : ''}${item.title}, ${item.messageCount} message${item.messageCount !== 1 ? 's' : ''}`}
       >
         <View style={styles.sessionHeader}>

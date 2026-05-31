@@ -101,6 +101,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const [listening, setListening] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [sttPreview, setSttPreview] = useState('');
+  const [handsFreeDebounceEndsAt, setHandsFreeDebounceEndsAt] = useState<number | null>(null);
 
   const listeningRef = useRef(false);
   const webRecognitionRef = useRef<any>(null);
@@ -170,6 +171,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       clearTimeout(handsFreeDebounceRef.current);
       handsFreeDebounceRef.current = null;
     }
+    setHandsFreeDebounceEndsAt(null);
   }, []);
 
   const isHandsFreeTranscriptSuppressed = useCallback(() => (
@@ -391,6 +393,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     );
 
     pendingHandsFreeFinalRef.current = '';
+    setHandsFreeDebounceEndsAt(null);
     if (source === 'web') {
       webFinalRef.current = '';
     } else {
@@ -463,16 +466,19 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
 
     clearHandsFreeDebounce();
+    const debounceMs = Math.max(0, handsFreeDebounceMs);
+    setHandsFreeDebounceEndsAt(Date.now() + debounceMs);
     log?.('finalization-scheduled', 'Hands-free transcript debounce scheduled.', {
       source,
-      debounceMs: Math.max(0, handsFreeDebounceMs),
+      debounceMs,
       text: truncateDebugText(finalText),
       textLength: finalText.length,
     });
     handsFreeDebounceRef.current = setTimeout(() => {
       handsFreeDebounceRef.current = null;
+      setHandsFreeDebounceEndsAt(null);
       finalizePendingHandsFree(source);
-    }, Math.max(0, handsFreeDebounceMs));
+    }, debounceMs);
     return true;
   }, [clearHandsFreeDebounce, clearSuppressedHandsFreeTranscript, finalizePendingHandsFree, handsFreeDebounceMs, isHandsFreeFinalizationEligible, isHandsFreeTranscriptSuppressed, log]);
 
@@ -1291,6 +1297,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     listening,
     liveTranscript,
     sttPreview,
+    handsFreeDebounceEndsAt,
     micButtonRef,
     startRecording,
     stopRecordingAndHandle,

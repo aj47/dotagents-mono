@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useGlobalTtsPlayback, stopGlobalTtsPlayback } from '../store/ttsPlayback';
-import { useTtsQueueState } from '../store/globalTtsQueue';
 import { useTheme } from './ThemeProvider';
 import { Theme, hexToRgba, radius, spacing } from './theme';
 
@@ -18,13 +17,6 @@ export function GlobalTtsStatusPill({
   const playback = useGlobalTtsPlayback();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme, compact), [theme, compact]);
-  // The multi-agent TTS dock owns the display while the queue is active, so
-  // hide this single-utterance pill to avoid two mini-players at once.
-  const queue = useTtsQueueState();
-
-  if (queue.active || queue.queue.length > 0 || queue.paused) {
-    return null;
-  }
 
   if (!playback) {
     return null;

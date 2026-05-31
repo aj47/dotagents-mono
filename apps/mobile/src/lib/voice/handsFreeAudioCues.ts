@@ -10,6 +10,7 @@ export type HandsFreeAudioCue =
   | 'enabled'
   | 'disabled'
   | 'session-ready'
+  | 'preview-submitted'
   | 'prompt-submitted'
   | 'tool-called'
   | 'agent-response'
@@ -48,6 +49,13 @@ const CUE_DEFINITIONS: Record<HandsFreeAudioCue, CueTone[]> = {
     { frequency: 880, durationMs: 55 },
     { frequency: 0, durationMs: 24 },
     { frequency: 1_100, durationMs: 80, gain: 0.14 },
+  ],
+  'preview-submitted': [
+    { frequency: 784, durationMs: 80, gain: 0.34 },
+    { frequency: 0, durationMs: 34 },
+    { frequency: 1_176, durationMs: 115, gain: 0.40 },
+    { frequency: 0, durationMs: 34 },
+    { frequency: 1_568, durationMs: 150, gain: 0.34 },
   ],
   'prompt-submitted': [
     { frequency: 880, durationMs: 110, gain: 0.38 },
