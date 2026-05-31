@@ -550,29 +550,51 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   setFocusedSessionId: (sessionId: string | null) => {
-    set((state) => ({
-      focusedSessionId: sessionId,
-      agentResponseReadAtBySessionId: sessionId
+    set((state) => {
+      const nextReadTimestamps = sessionId
         ? markLatestAgentResponseReadInMap(
           state.agentResponseReadAtBySessionId,
           sessionId,
           state.agentProgressById.get(sessionId),
         )
-        : state.agentResponseReadAtBySessionId,
-    }))
+        : state.agentResponseReadAtBySessionId
+
+      if (
+        state.focusedSessionId === sessionId &&
+        nextReadTimestamps === state.agentResponseReadAtBySessionId
+      ) {
+        return state
+      }
+
+      return {
+        focusedSessionId: sessionId,
+        agentResponseReadAtBySessionId: nextReadTimestamps,
+      }
+    })
   },
 
   setExpandedSessionId: (sessionId: string | null) => {
-    set((state) => ({
-      expandedSessionId: sessionId,
-      agentResponseReadAtBySessionId: sessionId
+    set((state) => {
+      const nextReadTimestamps = sessionId
         ? markLatestAgentResponseReadInMap(
           state.agentResponseReadAtBySessionId,
           sessionId,
           state.agentProgressById.get(sessionId),
         )
-        : state.agentResponseReadAtBySessionId,
-    }))
+        : state.agentResponseReadAtBySessionId
+
+      if (
+        state.expandedSessionId === sessionId &&
+        nextReadTimestamps === state.agentResponseReadAtBySessionId
+      ) {
+        return state
+      }
+
+      return {
+        expandedSessionId: sessionId,
+        agentResponseReadAtBySessionId: nextReadTimestamps,
+      }
+    })
   },
 
   setViewedConversationId: (conversationId: string | null) => {
@@ -604,6 +626,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set((state) => {
       const existingProgress = state.agentProgressById.get(sessionId)
       if (!existingProgress) return state
+      if ((existingProgress.isSnoozed ?? false) === isSnoozed) return state
 
       const newMap = new Map(state.agentProgressById)
       newMap.set(sessionId, { ...existingProgress, isSnoozed })
