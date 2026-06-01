@@ -158,7 +158,7 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 
   sections.push(`LOCAL MEMORY & CONFIG:
 - Durable notes live in configured knowledge roots, defaulting to global/workspace .agents/knowledge; edit note/config files directly and keep context:auto rare
-- Prior conversations live under the runtime-supplied conversations directory; search index.json then conv_*.json, and recover state before asking when the user wants to resume prior work
+- Prior conversations live under the runtime-supplied conversations directory; whenever you need more context to answer or proceed - including continuation, status, debugging, and high-context planning - search index.json then conv_*.json as a standard step before asking the user, and use the recovered context to answer or continue when sufficient. Only ask the user when prior conversations do not contain the needed facts, or when credentials/approval are required. Always prefer knowledge notes over recalled conversation context when they conflict.
 - For personal legal/immigration, health, finance, career, or other high-context planning, inspect both knowledge notes and recent conversations with execute_command before generic advice
 - DotAgents config is layered global .agents plus workspace .agents when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, read the dotagents-config-admin SKILL.md path if it is listed under Available Skills`)
 
@@ -497,8 +497,8 @@ export function constructMinimalSystemPrompt(
 
   if (isAgentMode) {
     prompt += hasReadMoreContext
-      ? " Agent mode: continue with tools until the requested work is resolved. If the user asks to resume or find prior context, search the conversation store before asking follow-up questions."
-      : " Agent mode: continue with tools until the requested work is resolved. If the user asks to resume/find prior context, search the conversation store before asking."
+      ? " Agent mode: continue with tools until the requested work is resolved. Whenever you need more context - continuation, status, debugging, or high-context planning - search the conversation store (index.json then conv_*.json) before asking follow-up questions, and use recovered context to answer or continue when sufficient."
+      : " Agent mode: continue with tools until the requested work is resolved. Whenever you need more context - continuation, status, debugging, or high-context planning - search the conversation store (index.json then conv_*.json) before asking, and use recovered context to answer or continue when sufficient."
     if (hasReadMoreContext) {
       prompt += ' For compacted Context refs, call read_more_context(mode: "search") with the exact needed query when known; once the returned result contains the requested evidence, answer instead of searching again.'
     }
