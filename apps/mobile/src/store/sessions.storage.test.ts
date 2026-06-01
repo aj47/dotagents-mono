@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Session } from '../types/session';
-import { compactSessionsForStorageQuota, discardLocalEmptyDraftSessions, shouldApplyServerGeneratedSessionTitle } from './sessions';
+import {
+  canRefreshServerGeneratedSessionTitle,
+  compactSessionsForStorageQuota,
+  discardLocalEmptyDraftSessions,
+  shouldApplyServerGeneratedSessionTitle,
+} from './sessions';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
@@ -182,6 +187,28 @@ describe('shouldApplyServerGeneratedSessionTitle', () => {
     ).toBe(false);
   });
 
+  it('requires explicit non-fallback server provenance before replacing a local fallback', () => {
+    const session: Session = {
+      id: 'session-1',
+      title: 'what did we do today',
+      titleSource: 'local_generated',
+      createdAt: 100,
+      updatedAt: 200,
+      serverConversationId: 'conv-1',
+      messages: [
+        { id: 'm1', role: 'user', content: 'what did we do today', timestamp: 100 },
+      ],
+    };
+
+    expect(
+      shouldApplyServerGeneratedSessionTitle(
+        session,
+        'conv-1',
+        'Hands-Free Debugging Recap',
+      ),
+    ).toBe(false);
+  });
+
   it('does not infer fallback provenance from matching title text', () => {
     const session: Session = {
       id: 'session-1',
@@ -202,5 +229,29 @@ describe('shouldApplyServerGeneratedSessionTitle', () => {
         'server_generated',
       ),
     ).toBe(false);
+  });
+});
+
+describe('canRefreshServerGeneratedSessionTitle', () => {
+  it('only refreshes titles for sessions still using a fallback title source', () => {
+    const fallbackSession: Session = {
+      id: 'session-1',
+      title: 'first user message',
+      titleSource: 'local_generated',
+      createdAt: 100,
+      updatedAt: 200,
+      serverConversationId: 'conv-1',
+      messages: [],
+    };
+
+    const settledSession: Session = {
+      ...fallbackSession,
+      title: 'Server Title',
+      titleSource: 'server_generated',
+    };
+
+    expect(canRefreshServerGeneratedSessionTitle(fallbackSession, 'conv-1')).toBe(true);
+    expect(canRefreshServerGeneratedSessionTitle(settledSession, 'conv-1')).toBe(false);
+    expect(canRefreshServerGeneratedSessionTitle(fallbackSession, 'conv-other')).toBe(false);
   });
 });

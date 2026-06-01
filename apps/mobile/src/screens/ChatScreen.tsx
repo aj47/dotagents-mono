@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback, type SetStateAction } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback, type ComponentProps, type SetStateAction } from 'react';
 import {
   View,
   Text,
@@ -34,7 +34,7 @@ import {
 	useConfigContext,
 	saveConfig,
 } from '../store/config';
-import { useSessionContext } from '../store/sessions';
+import { canRefreshServerGeneratedSessionTitle, useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import { MessageQueuePanel } from '../ui/MessageQueuePanel';
 import { ensureNativeTtsAudioMode, speakRemoteTts } from '../lib/remoteTts';
@@ -90,8 +90,6 @@ import {
   createButtonAccessibilityLabel,
   createChatComposerAccessibilityHint,
   createExpandCollapseAccessibilityLabel,
-  createMicControlAccessibilityHint,
-  createMicControlAccessibilityLabel,
   createMinimumTouchTargetStyle,
   createSwitchAccessibilityLabel,
   createTextInputAccessibilityLabel,
@@ -162,6 +160,10 @@ const HANDS_FREE_SESSION_READY_CUE_MIN_INTERVAL_MS = 1_500;
 const HANDS_FREE_PREVIEW_SUBMITTED_PROCESSING_CUE_SUPPRESSION_MS = 900;
 const HANDS_FREE_SUBMITTED_CUE_ANDROID_DELAY_MS = 120;
 const SERVER_GENERATED_TITLE_REFRESH_DELAYS_MS = [1_500, 5_000, 12_000, 25_000] as const;
+type ServerGeneratedTitleRefreshJob = {
+  cancelled: boolean;
+  timer: ReturnType<typeof setTimeout> | null;
+};
 const HANDS_FREE_PHASE_AUDIO_CUES: Record<HandsFreePhase, HandsFreeAudioCue> = {
   sleeping: 'sleeping',
   waking: 'listening',
@@ -177,6 +179,206 @@ const NATIVE_TTS_MIN_WATCHDOG_MS = 4_000;
 const NATIVE_TTS_MAX_WATCHDOG_MS = 90_000;
 const NATIVE_TTS_STARTUP_TIMEOUT_MS = 8_000;
 const NATIVE_TTS_ESTIMATED_WORDS_PER_MINUTE = 150;
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+type HandsFreeDisplayPhase = HandsFreePhase | 'off';
+type MicControlTone = 'idle' | 'active' | 'danger';
+type MicControlIndicator = {
+  key: string;
+  icon: IoniconName;
+  label: string;
+  active?: boolean;
+  warning?: boolean;
+};
+type MicControlVisual = {
+  icon: IoniconName;
+  label: string;
+  status: string;
+  tone: MicControlTone;
+  busy: boolean;
+  indicators: MicControlIndicator[];
+  accessibilityLabel: string;
+  accessibilityHint: string;
+};
+
+function compactVoiceStatus(message: string | null | undefined, fallback: string): string {
+  const normalized = message?.trim();
+  if (!normalized) return fallback;
+  return normalized.length > 72 ? `${normalized.slice(0, 69)}...` : normalized;
+}
+
+function createMicStateIndicator(effectiveMicListening: boolean): MicControlIndicator {
+  return {
+    key: 'mic',
+    icon: effectiveMicListening ? 'mic' : 'mic-off-outline',
+    label: effectiveMicListening ? 'Mic armed' : 'Mic idle',
+    active: effectiveMicListening,
+  };
+}
+
+function createMicControlVisual({
+  handsFree,
+  displayPhase,
+  effectiveMicListening,
+  hasPendingHandsFreeSend,
+  handsFreeCountdownSeconds,
+  willCancel,
+  wakePhrase,
+  lastError,
+}: {
+  handsFree: boolean;
+  displayPhase: HandsFreeDisplayPhase;
+  effectiveMicListening: boolean;
+  hasPendingHandsFreeSend: boolean;
+  handsFreeCountdownSeconds: number;
+  willCancel: boolean;
+  wakePhrase: string;
+  lastError: string | null;
+}): MicControlVisual {
+  if (!handsFree) {
+    const listeningLabel = willCancel ? 'Release to edit' : 'Release to send';
+    return {
+      icon: effectiveMicListening ? 'mic' : 'mic-outline',
+      label: effectiveMicListening ? 'Listening' : 'Hold',
+      status: effectiveMicListening
+        ? (willCancel ? 'Release to edit before sending.' : 'Release to send.')
+        : 'Hold to speak. Release to send.',
+      tone: effectiveMicListening ? 'active' : 'idle',
+      busy: effectiveMicListening,
+      indicators: effectiveMicListening
+        ? [{
+            key: 'mode',
+            icon: willCancel ? 'create-outline' : 'send-outline',
+            label: listeningLabel,
+            active: true,
+          }]
+        : [{
+            key: 'mode',
+            icon: 'mic-outline',
+            label: 'Push to talk',
+          }],
+      accessibilityLabel: effectiveMicListening ? 'Voice input listening' : 'Voice input hold to talk',
+      accessibilityHint: effectiveMicListening
+        ? (willCancel ? 'Release to edit dictated text before sending.' : 'Release to send your dictated message.')
+        : 'Press and hold to dictate your message.',
+    };
+  }
+
+  const micIndicator = createMicStateIndicator(effectiveMicListening);
+  const countdownIndicator: MicControlIndicator | null = hasPendingHandsFreeSend
+    ? {
+        key: 'countdown',
+        icon: 'time-outline',
+        label: `${handsFreeCountdownSeconds}s`,
+        active: true,
+      }
+    : null;
+  const trimmedWakePhrase = wakePhrase.trim();
+
+  switch (displayPhase) {
+    case 'sleeping':
+      return {
+        icon: 'moon-outline',
+        label: 'Wake',
+        status: trimmedWakePhrase
+          ? `Sleeping. Tap Wake or say "${trimmedWakePhrase}".`
+          : 'Sleeping. Tap Wake to listen.',
+        tone: 'idle',
+        busy: false,
+        indicators: [micIndicator, { key: 'sleep', icon: 'moon-outline', label: 'Sleeping' }],
+        accessibilityLabel: 'Hands-free sleeping',
+        accessibilityHint: 'Double tap to wake hands-free listening.',
+      };
+    case 'waking':
+      return {
+        icon: 'radio-outline',
+        label: 'Waking',
+        status: 'Starting listener.',
+        tone: 'active',
+        busy: true,
+        indicators: [micIndicator, { key: 'wake', icon: 'radio-outline', label: 'Wake heard', active: true }],
+        accessibilityLabel: 'Hands-free waking',
+        accessibilityHint: 'Hands-free is starting. Double tap to pause.',
+      };
+    case 'listening':
+      return {
+        icon: 'ear-outline',
+        label: 'Listening',
+        status: hasPendingHandsFreeSend
+          ? `Auto-sending in ${handsFreeCountdownSeconds}s. Tap to pause.`
+          : 'Listening for your request.',
+        tone: 'active',
+        busy: true,
+        indicators: [
+          micIndicator,
+          { key: 'send-mode', icon: 'send-outline', label: 'Auto-send', active: true },
+          ...(countdownIndicator ? [countdownIndicator] : []),
+        ],
+        accessibilityLabel: hasPendingHandsFreeSend
+          ? `Hands-free listening, sending in ${handsFreeCountdownSeconds} seconds`
+          : 'Hands-free listening',
+        accessibilityHint: hasPendingHandsFreeSend
+          ? 'Double tap to pause hands-free before the automatic send.'
+          : 'Double tap to pause hands-free listening.',
+      };
+    case 'processing':
+      return {
+        icon: 'sync-outline',
+        label: 'Processing',
+        status: 'Agent is working. Mic stays ready for stop commands.',
+        tone: 'active',
+        busy: true,
+        indicators: [micIndicator, { key: 'agent', icon: 'sync-outline', label: 'Agent working', active: true }],
+        accessibilityLabel: 'Hands-free processing',
+        accessibilityHint: 'Double tap to pause hands-free.',
+      };
+    case 'speaking':
+      return {
+        icon: 'volume-high-outline',
+        label: 'Speaking',
+        status: 'TTS playing. Say stop to interrupt.',
+        tone: 'active',
+        busy: true,
+        indicators: [micIndicator, { key: 'tts', icon: 'volume-high-outline', label: 'TTS playing', active: true }],
+        accessibilityLabel: 'Hands-free speaking',
+        accessibilityHint: 'Say stop to interrupt text to speech, or double tap to pause hands-free.',
+      };
+    case 'paused':
+      return {
+        icon: 'pause-outline',
+        label: 'Resume',
+        status: 'Hands-free paused. Tap to resume.',
+        tone: 'idle',
+        busy: false,
+        indicators: [micIndicator, { key: 'paused', icon: 'pause-outline', label: 'Paused' }],
+        accessibilityLabel: 'Hands-free paused',
+        accessibilityHint: 'Double tap to resume hands-free listening.',
+      };
+    case 'error':
+      return {
+        icon: 'warning-outline',
+        label: 'Retry voice',
+        status: compactVoiceStatus(lastError, 'Voice error. Tap to retry.'),
+        tone: 'danger',
+        busy: false,
+        indicators: [micIndicator, { key: 'error', icon: 'warning-outline', label: 'Needs retry', warning: true }],
+        accessibilityLabel: 'Hands-free voice error',
+        accessibilityHint: 'Double tap to retry hands-free listening.',
+      };
+    case 'off':
+    default:
+      return {
+        icon: 'mic-outline',
+        label: 'Hold',
+        status: 'Hold to speak. Release to send.',
+        tone: 'idle',
+        busy: false,
+        indicators: [{ key: 'mode', icon: 'mic-outline', label: 'Push to talk' }],
+        accessibilityLabel: 'Voice input hold to talk',
+        accessibilityHint: 'Press and hold to dictate your message.',
+      };
+  }
+}
 
 function isHandsFreeDebugForcedInDev(): boolean {
   if (!__DEV__ || Platform.OS !== 'web') return false;
@@ -1123,6 +1325,21 @@ export default function ChatScreen({ route, navigation }: any) {
   useEffect(() => {
     currentSessionIdRef.current = sessionStore.currentSessionId;
   }, [sessionStore.currentSessionId]);
+  const sessionListRef = useRef(sessionStore.sessions);
+  useEffect(() => {
+    sessionListRef.current = sessionStore.sessions;
+  }, [sessionStore.sessions]);
+  const serverGeneratedTitleRefreshJobsRef = useRef<Map<string, ServerGeneratedTitleRefreshJob>>(new Map());
+
+  useEffect(() => () => {
+    for (const job of serverGeneratedTitleRefreshJobsRef.current.values()) {
+      job.cancelled = true;
+      if (job.timer) {
+        clearTimeout(job.timer);
+      }
+    }
+    serverGeneratedTitleRefreshJobsRef.current.clear();
+  }, []);
 
   // Get or create a connection for the current session using the connection manager
   // This preserves connections when switching between sessions (fixes #608)
@@ -1426,6 +1643,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const lastHandsFreeAudioCuePhaseRef = useRef<HandsFreePhase | null>(null);
   const lastHandsFreeSessionReadyCueAtRef = useRef(0);
   const lastHandsFreePreviewSubmittedCueAtRef = useRef(0);
+  const lastForegroundHandsFreeAutoStartAtRef = useRef(0);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
 	const sendRef = useRef<(text: string, options?: { fromComposer?: boolean; source?: 'handsfree' }) => Promise<void>>(async () => {});
@@ -1657,22 +1875,15 @@ export default function ChatScreen({ route, navigation }: any) {
     || isAssistantAudioSpeaking;
   const shouldKeepHandsFreeMicArmed = handsFreeController.shouldKeepRecognizerActive;
   const isAgentRunningInHeader = conversationState === 'running' || responding;
-  const headerHandsFreePhase: HandsFreePhase | 'off' = handsFree
-    ? (isAssistantAudioLoading ? 'processing' : handsFreeController.state.phase)
+  const handsFreeDisplayPhase: HandsFreeDisplayPhase = handsFree
+    ? (
+        isAssistantAudioLoading
+          ? 'processing'
+          : isAssistantAudioSpeaking
+            ? 'speaking'
+            : handsFreeController.state.phase
+      )
     : 'off';
-  const headerHandsFreeIcon = ({
-    off: 'mic-off-outline',
-    sleeping: 'moon-outline',
-    waking: 'radio-outline',
-    listening: 'ear-outline',
-    processing: 'sync-outline',
-    speaking: 'volume-high-outline',
-    paused: 'pause-outline',
-    error: 'warning-outline',
-  } as const)[headerHandsFreePhase];
-  const headerHandsFreeLabel = headerHandsFreePhase === 'off'
-    ? 'Hands-free off'
-    : `Hands-free ${headerHandsFreePhase}`;
 
   useLayoutEffect(() => {
     navigation?.setOptions?.({
@@ -1704,29 +1915,6 @@ export default function ChatScreen({ route, navigation }: any) {
           >
             <Text style={{ fontSize: 20, color: theme.colors.foreground }}>←</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={openChatMenu}
-            accessibilityRole="button"
-            accessibilityLabel={headerHandsFreeLabel}
-            accessibilityHint="Opens the voice menu for hands-free status and controls."
-            style={[
-              styles.headerVoiceStatusButton,
-              handsFree && styles.headerVoiceStatusButtonActive,
-              headerHandsFreePhase === 'error' && styles.headerVoiceStatusButtonError,
-            ]}
-          >
-            <Ionicons
-              name={headerHandsFreeIcon}
-              size={18}
-              color={
-                headerHandsFreePhase === 'error'
-                  ? theme.colors.danger
-                  : handsFree
-                    ? theme.colors.primary
-                    : theme.colors.mutedForeground
-              }
-            />
-          </TouchableOpacity>
         </View>
       ),
       headerRight: () => (
@@ -1747,14 +1935,9 @@ export default function ChatScreen({ route, navigation }: any) {
     currentSession?.title,
     globalTtsPlayback,
     handleOpenGlobalTtsSession,
-    handsFree,
-    headerHandsFreeIcon,
-    headerHandsFreeLabel,
-    headerHandsFreePhase,
     navigation,
     openChatMenu,
     styles,
-    theme.colors.danger,
     theme.colors.foreground,
   ]);
 
@@ -1875,15 +2058,71 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
 
-    SERVER_GENERATED_TITLE_REFRESH_DELAYS_MS.forEach((delayMs, index) => {
-      setTimeout(() => {
+    const refreshKey = `${sessionId}:${serverConversationId}`;
+    const existingJob = serverGeneratedTitleRefreshJobsRef.current.get(refreshKey);
+    if (existingJob) {
+      existingJob.cancelled = true;
+      if (existingJob.timer) {
+        clearTimeout(existingJob.timer);
+      }
+      serverGeneratedTitleRefreshJobsRef.current.delete(refreshKey);
+    }
+
+    const getTargetSession = () => (
+      sessionListRef.current.find(session => session.id === sessionId)
+    );
+    const shouldContinue = () => (
+      canRefreshServerGeneratedSessionTitle(getTargetSession(), serverConversationId)
+    );
+    if (!shouldContinue()) {
+      return;
+    }
+
+    const job: ServerGeneratedTitleRefreshJob = { cancelled: false, timer: null };
+    serverGeneratedTitleRefreshJobsRef.current.set(refreshKey, job);
+    let attemptIndex = 0;
+
+    const finish = () => {
+      job.cancelled = true;
+      if (job.timer) {
+        clearTimeout(job.timer);
+        job.timer = null;
+      }
+      if (serverGeneratedTitleRefreshJobsRef.current.get(refreshKey) === job) {
+        serverGeneratedTitleRefreshJobsRef.current.delete(refreshKey);
+      }
+    };
+
+    const scheduleNextAttempt = () => {
+      if (job.cancelled) return;
+      if (!shouldContinue()) {
+        finish();
+        return;
+      }
+
+      const delayMs = SERVER_GENERATED_TITLE_REFRESH_DELAYS_MS[attemptIndex];
+      if (delayMs === undefined) {
+        finish();
+        return;
+      }
+
+      const attempt = attemptIndex + 1;
+      attemptIndex += 1;
+      job.timer = setTimeout(() => {
+        job.timer = null;
         void (async () => {
+          if (job.cancelled) return;
+          if (!shouldContinue()) {
+            finish();
+            return;
+          }
+
           try {
             console.info('[ChatScreen] Refreshing server-generated conversation title.', {
               source,
               sessionId,
               serverConversationId,
-              attempt: index + 1,
+              attempt,
               delayMs,
             });
             const fullConversation = await settingsClient.getConversation(serverConversationId);
@@ -1898,19 +2137,30 @@ export default function ChatScreen({ route, navigation }: any) {
               sessionId,
               serverConversationId,
               title: fullConversation.title,
+              titleSource: fullConversation.titleSource,
               applied,
             });
+
+            if (applied || !shouldContinue()) {
+              finish();
+              return;
+            }
           } catch (error: any) {
             console.warn('[ChatScreen] Failed to refresh server-generated conversation title:', {
               source,
               sessionId,
               serverConversationId,
+              attempt,
               message: error?.message || String(error),
             });
           }
+
+          scheduleNextAttempt();
         })();
       }, delayMs);
-    });
+    };
+
+    scheduleNextAttempt();
   }, [sessionStore, settingsClient]);
 
   const ensureServerConversationForExistingFollowUp = useCallback(async (
@@ -2894,6 +3144,11 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (shouldKeepHandsFreeMicArmed && !listening) {
+      const now = Date.now();
+      if (now - lastForegroundHandsFreeAutoStartAtRef.current < 1500) {
+        return;
+      }
+      lastForegroundHandsFreeAutoStartAtRef.current = now;
       void startRecording();
       return;
     }
@@ -3014,6 +3269,67 @@ export default function ChatScreen({ route, navigation }: any) {
 			}
 		};
 
+    const startExpoSpeechPlayback = (playbackReason: string): boolean => {
+      let nativeSpeechStarted = false;
+	      console.info('[DotAgentsTTS] expo speech playback requested', {
+	        reason: playbackReason,
+	        fallbackFor: playbackReason === reason ? undefined : reason,
+	        textLength: processedText.length,
+	        rate: config.ttsRate ?? 1.0,
+	        pitch: config.ttsPitch ?? 1.0,
+	        voiceConfigured: !!config.ttsVoiceId,
+	      });
+		  const speechOptions: Speech.SpeechOptions = {
+			  language: 'en-US',
+			  rate: config.ttsRate ?? 1.0,
+			  pitch: config.ttsPitch ?? 1.0,
+        onStart: () => {
+          nativeSpeechStarted = true;
+	        console.info('[DotAgentsTTS] expo speech playback started', { reason: playbackReason });
+          markAssistantSpeechStarted();
+        },
+				onDone: () => {
+					console.info('[DotAgentsTTS] expo speech playback done', { reason: playbackReason });
+					settle();
+				},
+				onError: () => {
+					console.warn('[DotAgentsTTS] expo speech playback error callback', { reason: playbackReason });
+					settle();
+				},
+				onStopped: () => {
+					console.info('[DotAgentsTTS] expo speech playback stopped callback', { reason: playbackReason });
+					settle();
+				},
+		  };
+		  if (config.ttsVoiceId) {
+			  speechOptions.voice = config.ttsVoiceId;
+		  }
+		  try {
+		    void (async () => {
+		      try {
+		        await ensureNativeTtsAudioMode();
+		        if (settled) return;
+		        Speech.speak(processedText, speechOptions);
+		      } catch {
+		        settle();
+		      }
+		    })();
+        clearSpeechWatchdog = startNativeTtsSettlementWatchdog(
+          processedText,
+          config.ttsRate ?? 1.0,
+          () => nativeSpeechStarted,
+          settle,
+          (watchdogReason) => {
+            voiceLog('tts-stopped', `Assistant speech watchdog settled (${playbackReason}, ${watchdogReason}).`);
+          },
+        );
+      } catch {
+        settle();
+        return false;
+      }
+		  return true;
+    };
+
 		if (!useAndroidServiceTts && effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
 			// Edge TTS routes through the paired desktop's /v1/tts/speak.
 				console.info('[DotAgentsTTS] remote edge playback requested', {
@@ -3038,7 +3354,9 @@ export default function ChatScreen({ route, navigation }: any) {
 					},
 					onError: () => {
 						console.warn('[DotAgentsTTS] remote edge playback error callback', { reason });
-						settle();
+            if (settled) return;
+            voiceLog('tts-stopped', `Remote TTS failed; falling back to native speech (${reason}).`);
+            startExpoSpeechPlayback(`${reason} native fallback`);
 					},
 					onStopped: () => {
 						console.info('[DotAgentsTTS] remote edge playback stopped callback', { reason });
@@ -3115,63 +3433,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return true;
     }
 
-    let nativeSpeechStarted = false;
-	    console.info('[DotAgentsTTS] expo speech playback requested', {
-	      reason,
-	      textLength: processedText.length,
-	      rate: config.ttsRate ?? 1.0,
-	      pitch: config.ttsPitch ?? 1.0,
-	      voiceConfigured: !!config.ttsVoiceId,
-	    });
-		const speechOptions: Speech.SpeechOptions = {
-			language: 'en-US',
-			rate: config.ttsRate ?? 1.0,
-			pitch: config.ttsPitch ?? 1.0,
-      onStart: () => {
-        nativeSpeechStarted = true;
-	        console.info('[DotAgentsTTS] expo speech playback started', { reason });
-        markAssistantSpeechStarted();
-      },
-				onDone: () => {
-					console.info('[DotAgentsTTS] expo speech playback done', { reason });
-					settle();
-				},
-				onError: () => {
-					console.warn('[DotAgentsTTS] expo speech playback error callback', { reason });
-					settle();
-				},
-				onStopped: () => {
-					console.info('[DotAgentsTTS] expo speech playback stopped callback', { reason });
-					settle();
-				},
-		};
-		if (config.ttsVoiceId) {
-			speechOptions.voice = config.ttsVoiceId;
-		}
-		try {
-		  void (async () => {
-		    try {
-		      await ensureNativeTtsAudioMode();
-		      if (settled) return;
-		      Speech.speak(processedText, speechOptions);
-		    } catch {
-		      settle();
-		    }
-		  })();
-      clearSpeechWatchdog = startNativeTtsSettlementWatchdog(
-        processedText,
-        config.ttsRate ?? 1.0,
-        () => nativeSpeechStarted,
-        settle,
-        (watchdogReason) => {
-          voiceLog('tts-stopped', `Assistant speech watchdog settled (${reason}, ${watchdogReason}).`);
-        },
-      );
-    } catch {
-      settle();
-      return false;
-    }
-		return true;
+    return startExpoSpeechPlayback(reason);
 			  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, invalidateHandsFreeCapture, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
@@ -3324,6 +3586,13 @@ export default function ChatScreen({ route, navigation }: any) {
       messageIndex: index,
       text: processedText,
     });
+    const isCurrentMessagePlayback = () => getGlobalTtsPlayback()?.id === playbackId;
+    const clearStaleMessagePlaybackState = () => {
+      if (intendedSpeakingIndexRef.current === index) {
+        intendedSpeakingIndexRef.current = null;
+      }
+      setSpeakingMessageIndex((current) => (current === index ? null : current));
+    };
 	    if (handsFree) {
 	      handsFreeController.onSpeechStarted();
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');
@@ -3339,6 +3608,10 @@ export default function ChatScreen({ route, navigation }: any) {
         androidHandsFreeTtsHandlersRef.current.delete(utteranceId);
         clearNativeTtsTimeout?.();
         clearNativeTtsTimeout = null;
+        if (!isCurrentMessagePlayback()) {
+          clearStaleMessagePlaybackState();
+          return;
+        }
         intendedSpeakingIndexRef.current = null;
         completeGlobalTtsPlayback(playbackId);
         if (handsFree) {
@@ -3353,6 +3626,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       androidHandsFreeTtsHandlersRef.current.set(utteranceId, {
         onStarted: () => {
+          if (!isCurrentMessagePlayback()) return;
           markGlobalTtsPlaybackSpeaking(playbackId);
         },
         onSettled: (type, message) => {
@@ -3391,6 +3665,10 @@ export default function ChatScreen({ route, navigation }: any) {
         voice: effectiveEdgeTtsVoice,
         rate: effectiveEdgeTtsRate,
         onDone: () => {
+          if (!isCurrentMessagePlayback()) {
+            clearStaleMessagePlaybackState();
+            return;
+          }
           intendedSpeakingIndexRef.current = null;
           completeGlobalTtsPlayback(playbackId);
           if (handsFree) {
@@ -3400,6 +3678,10 @@ export default function ChatScreen({ route, navigation }: any) {
           setSpeakingMessageIndex(null);
         },
         onError: () => {
+          if (!isCurrentMessagePlayback()) {
+            clearStaleMessagePlaybackState();
+            return;
+          }
           intendedSpeakingIndexRef.current = null;
           completeGlobalTtsPlayback(playbackId);
           if (handsFree) {
@@ -3409,6 +3691,10 @@ export default function ChatScreen({ route, navigation }: any) {
           setSpeakingMessageIndex(null);
         },
         onStopped: () => {
+          if (!isCurrentMessagePlayback()) {
+            clearStaleMessagePlaybackState();
+            return;
+          }
           if (intendedSpeakingIndexRef.current === null || intendedSpeakingIndexRef.current === index) {
             intendedSpeakingIndexRef.current = null;
             completeGlobalTtsPlayback(playbackId);
@@ -3421,6 +3707,7 @@ export default function ChatScreen({ route, navigation }: any) {
         },
       }).then((started) => {
         if (started) {
+          if (!isCurrentMessagePlayback()) return;
           markGlobalTtsPlaybackSpeaking(playbackId);
         }
       });
@@ -3434,10 +3721,15 @@ export default function ChatScreen({ route, navigation }: any) {
       rate: config.ttsRate ?? 1.0,
       pitch: config.ttsPitch ?? 1.0,
       onStart: () => {
+        if (!isCurrentMessagePlayback()) return;
         nativeSpeechStarted = true;
         markGlobalTtsPlaybackSpeaking(playbackId);
       },
       onDone: () => {
+        if (!isCurrentMessagePlayback()) {
+          clearStaleMessagePlaybackState();
+          return;
+        }
         clearSpeechWatchdog?.();
         clearSpeechWatchdog = null;
         intendedSpeakingIndexRef.current = null;
@@ -3449,6 +3741,10 @@ export default function ChatScreen({ route, navigation }: any) {
         setSpeakingMessageIndex(null);
       },
       onError: () => {
+        if (!isCurrentMessagePlayback()) {
+          clearStaleMessagePlaybackState();
+          return;
+        }
         clearSpeechWatchdog?.();
         clearSpeechWatchdog = null;
         intendedSpeakingIndexRef.current = null;
@@ -3460,6 +3756,10 @@ export default function ChatScreen({ route, navigation }: any) {
         setSpeakingMessageIndex(null);
       },
       onStopped: () => {
+        if (!isCurrentMessagePlayback()) {
+          clearStaleMessagePlaybackState();
+          return;
+        }
         // Only clear if this callback is for the current intended message,
         // not a stale callback from a previously stopped utterance
         if (intendedSpeakingIndexRef.current === null || intendedSpeakingIndexRef.current === index) {
@@ -5427,19 +5727,14 @@ export default function ChatScreen({ route, navigation }: any) {
 	const effectiveMicListening = handsFree
 		? (androidBackgroundHandsFree ? shouldKeepHandsFreeMicArmed : listening)
 		: listening;
-	const composerAccessibilityHint = createChatComposerAccessibilityHint({
-	  handsFree,
-	  listening: effectiveMicListening,
-	  isWeb: isWebPlatform,
-	});
-	const micControlAccessibilityHint = createMicControlAccessibilityHint({
-	  handsFree,
-	  listening: effectiveMicListening,
-	  willCancel,
-	});
-	const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
-	  listening: effectiveMicListening,
-	  handsFree,
+		const composerAccessibilityHint = createChatComposerAccessibilityHint({
+		  handsFree,
+		  listening: effectiveMicListening,
+		  isWeb: isWebPlatform,
+		});
+		const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
+		  listening: effectiveMicListening,
+		  handsFree,
 	  willCancel,
 	  liveTranscript,
 		  sttPreview,
@@ -5718,13 +6013,23 @@ export default function ChatScreen({ route, navigation }: any) {
 			: 'Tap mic to wake handsfree or type a message')
 		: (listening ? 'Listening…' : 'Type or hold mic');
 
-	const micButtonLabel = handsFree
-			? (handsFreeController.state.phase === 'sleeping'
-				? 'Wake'
-				: handsFreeController.state.phase === 'paused'
-					? 'Resume'
-					: 'Stop Listening')
-		: (listening ? '...' : 'Hold');
+  const micControlVisual = createMicControlVisual({
+    handsFree,
+    displayPhase: handsFreeDisplayPhase,
+    effectiveMicListening,
+    hasPendingHandsFreeSend,
+    handsFreeCountdownSeconds,
+    willCancel,
+    wakePhrase: handsFreeWakePhrase,
+    lastError: handsFreeController.state.lastError,
+  });
+  const micControlActive = micControlVisual.tone === 'active';
+  const micControlDanger = micControlVisual.tone === 'danger';
+  const micControlForeground = micControlActive
+    ? theme.colors.primaryForeground
+    : micControlDanger
+      ? theme.colors.danger
+      : theme.colors.mutedForeground;
   const isMessageQueuePaused = handsFree && handsFreeController.state.phase === 'paused';
 
   const firstVisibleMessageIndex = Math.max(0, messages.length - visibleMessageCount);
@@ -6821,17 +7126,27 @@ export default function ChatScreen({ route, navigation }: any) {
 	                {voiceInputLiveRegionAnnouncement}
 	              </Text>
 	            )}
-		            <TouchableOpacity
-	              style={[styles.sendButton, !composerHasContent && styles.sendButtonDisabled]}
+            <TouchableOpacity
+	              style={[styles.sendButton, !composerHasContent && !hasPendingHandsFreeSend && styles.sendButtonDisabled]}
 	              onPress={sendComposerInput}
 	              activeOpacity={0.7}
 	              disabled={!composerHasContent}
               accessibilityRole="button"
-              accessibilityLabel={createButtonAccessibilityLabel('Send message')}
-	              accessibilityHint="Sends your typed text and any attached images to the selected agent."
+              accessibilityLabel={createButtonAccessibilityLabel(
+                hasPendingHandsFreeSend
+                  ? `Handsfree sending in ${handsFreeCountdownSeconds} seconds`
+                  : 'Send message',
+              )}
+	              accessibilityHint={hasPendingHandsFreeSend
+                  ? 'Shows the remaining handsfree auto-send countdown.'
+                  : 'Sends your typed text and any attached images to the selected agent.'}
               accessibilityState={{ disabled: !composerHasContent }}
 	            >
-              <Ionicons name="send-outline" size={18} color={theme.colors.primaryForeground} />
+              {hasPendingHandsFreeSend ? (
+                <Text style={styles.sendButtonCountdownText}>{handsFreeCountdownSeconds}s</Text>
+              ) : (
+                <Ionicons name="send-outline" size={18} color={theme.colors.primaryForeground} />
+              )}
             </TouchableOpacity>
           </View>
           {/* Large mic button - ~20% of screen height */}
@@ -6842,30 +7157,87 @@ export default function ChatScreen({ route, navigation }: any) {
             <Pressable
               style={[
                 styles.mic,
-                effectiveMicListening && styles.micOn,
+                micControlActive && styles.micOn,
+                micControlDanger && styles.micDanger,
                 // @ts-ignore - Web-only CSS to disable long-press selection/callouts
                 Platform.OS === 'web' && { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation' },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={createMicControlAccessibilityLabel()}
-              accessibilityHint={micControlAccessibilityHint}
-              accessibilityState={{ busy: effectiveMicListening }}
-              aria-busy={effectiveMicListening}
+              accessibilityLabel={micControlVisual.accessibilityLabel}
+              accessibilityHint={micControlVisual.accessibilityHint}
+              accessibilityState={{ busy: micControlVisual.busy }}
+              aria-busy={micControlVisual.busy}
               onLongPress={undefined}
-	              onPressIn={handsFree && isWebPlatform ? handleHandsFreePrimaryControl : (!handsFree ? handlePushToTalkPressIn : undefined)}
-	              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
-	              onPress={handsFree && !isWebPlatform ? handleHandsFreePrimaryControl : undefined}
+              onPressIn={handsFree && isWebPlatform ? handleHandsFreePrimaryControl : (!handsFree ? handlePushToTalkPressIn : undefined)}
+              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
+              onPress={handsFree && !isWebPlatform ? handleHandsFreePrimaryControl : undefined}
             >
               <View style={styles.micContent}>
                 <View style={styles.micTitleRow}>
                   <Ionicons
-                    name={effectiveMicListening ? 'mic' : 'mic-outline'}
+                    name={micControlVisual.icon}
                     size={20}
-                    color={effectiveMicListening ? theme.colors.primaryForeground : theme.colors.mutedForeground}
+                    color={micControlForeground}
                   />
-                  <Text style={[styles.micLabel, effectiveMicListening && styles.micLabelOn]} selectable={false}>
-		                {micButtonLabel}
+                  <Text
+                    style={[
+                      styles.micLabel,
+                      micControlActive && styles.micLabelOn,
+                      micControlDanger && styles.micLabelDanger,
+                    ]}
+                    selectable={false}
+                  >
+                    {micControlVisual.label}
                   </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.micStatusText,
+                    micControlActive && styles.micStatusTextOn,
+                    micControlDanger && styles.micStatusTextDanger,
+                  ]}
+                  numberOfLines={2}
+                  selectable={false}
+                >
+                  {micControlVisual.status}
+                </Text>
+                <View style={styles.micIndicatorRow}>
+                  {micControlVisual.indicators.map((indicator) => {
+                    const indicatorWarning = micControlDanger || indicator.warning;
+                    const indicatorEmphasized = micControlActive || indicator.active;
+                    const indicatorColor = micControlActive
+                      ? theme.colors.primaryForeground
+                      : indicatorWarning
+                        ? theme.colors.danger
+                        : indicator.active
+                          ? theme.colors.primary
+                          : theme.colors.mutedForeground;
+                    return (
+                      <View
+                        key={indicator.key}
+                        style={[
+                          styles.micIndicatorPill,
+                          micControlActive && styles.micIndicatorPillOn,
+                          indicator.active && !micControlActive && styles.micIndicatorPillActive,
+                          indicatorWarning && !micControlActive && styles.micIndicatorPillWarning,
+                        ]}
+                      >
+                        <Ionicons name={indicator.icon} size={12} color={indicatorColor} />
+                        <Text
+                          style={[
+                            styles.micIndicatorText,
+                            indicatorEmphasized && styles.micIndicatorTextActive,
+                            micControlActive && styles.micIndicatorTextOn,
+                            indicatorWarning && !micControlActive && styles.micIndicatorTextWarning,
+                          ]}
+                          numberOfLines={1}
+                          selectable={false}
+                        >
+                          {indicator.label}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
               </View>
             </Pressable>
@@ -7192,23 +7564,6 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     },
     headerActionButton,
     headerEdgeActionButton,
-    headerVoiceStatusButton: {
-      ...createMinimumTouchTargetStyle({ horizontalPadding: 10, verticalPadding: 8 }),
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    headerVoiceStatusButtonActive: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.primary + '18',
-    },
-    headerVoiceStatusButtonError: {
-      borderColor: theme.colors.danger,
-      backgroundColor: hexToRgba(theme.colors.danger, 0.12),
-    },
     loadOlderContainer: {
       alignItems: 'center',
       paddingVertical: spacing.xs,
@@ -7778,14 +8133,13 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     },
     mic: {
       width: '100%' as any,
-      minHeight: 64,
-      flexDirection: 'row',
+      minHeight: 94,
       borderRadius: radius.lg,
       borderWidth: 1.5,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      alignItems: 'stretch',
+      justifyContent: 'center',
       gap: spacing.sm,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
@@ -7794,7 +8148,7 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       flex: 1,
       minWidth: 0,
       alignItems: 'center',
-      gap: 2,
+      gap: 6,
     },
     micTitleRow: {
       flexDirection: 'row',
@@ -7806,16 +8160,78 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       backgroundColor: theme.colors.primary,
       borderColor: theme.colors.primary,
     },
-    micText: {
-      fontSize: 20,
+    micDanger: {
+      backgroundColor: hexToRgba(theme.colors.danger, 0.12),
+      borderColor: theme.colors.danger,
     },
     micLabel: {
-      fontSize: 15,
+      fontSize: 16,
       color: theme.colors.mutedForeground,
-      fontWeight: '600',
+      fontWeight: '700',
     },
     micLabelOn: {
       color: theme.colors.primaryForeground,
+    },
+    micLabelDanger: {
+      color: theme.colors.danger,
+    },
+    micStatusText: {
+      color: theme.colors.mutedForeground,
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '500',
+      textAlign: 'center',
+    },
+    micStatusTextOn: {
+      color: hexToRgba(theme.colors.primaryForeground, 0.84),
+    },
+    micStatusTextDanger: {
+      color: theme.colors.danger,
+    },
+    micIndicatorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    micIndicatorPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      maxWidth: '100%' as any,
+    },
+    micIndicatorPillActive: {
+      borderColor: hexToRgba(theme.colors.primary, 0.45),
+      backgroundColor: hexToRgba(theme.colors.primary, 0.12),
+    },
+    micIndicatorPillOn: {
+      borderColor: hexToRgba(theme.colors.primaryForeground, 0.34),
+      backgroundColor: hexToRgba(theme.colors.primaryForeground, 0.14),
+    },
+    micIndicatorPillWarning: {
+      borderColor: hexToRgba(theme.colors.danger, 0.45),
+      backgroundColor: hexToRgba(theme.colors.danger, 0.1),
+    },
+    micIndicatorText: {
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    micIndicatorTextActive: {
+      color: theme.colors.primary,
+    },
+    micIndicatorTextOn: {
+      color: theme.colors.primaryForeground,
+    },
+    micIndicatorTextWarning: {
+      color: theme.colors.danger,
     },
     ttsToggle: {
 	      width: 44,
@@ -7853,6 +8269,12 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
       fontSize: 13,
+    },
+    sendButtonCountdownText: {
+      color: theme.colors.primaryForeground,
+      fontWeight: '700',
+      fontSize: 13,
+      fontVariant: ['tabular-nums'],
     },
     debugInfo: {
       backgroundColor: theme.colors.muted,

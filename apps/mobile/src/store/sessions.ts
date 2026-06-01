@@ -186,28 +186,6 @@ function normalizeLoadedSession(session: Session): Session {
   return { ...session, titleSource: session.title === 'New Chat' ? 'default' : 'manual' };
 }
 
-function getServerGeneratedTitleSkipReason(session: Session, title: string, titleSource?: TitleSource): string {
-  if (normalizeSessionTitleText(session.title) === normalizeSessionTitleText(title)) {
-    if (isSessionFallbackTitle(session) && titleSource && !isFallbackTitleSource(titleSource)) {
-      return 'same-title-source-upgrade';
-    }
-    return 'same-title';
-  }
-  if (getSessionTitleSource(session) === 'manual') {
-    return 'local-title-manual';
-  }
-  if (!isSessionFallbackTitle(session)) {
-    return 'local-title-not-fallback';
-  }
-  if (titleSource && isFallbackTitleSource(titleSource)) {
-    return 'server-title-source-is-fallback';
-  }
-  if (!titleSource) {
-    return 'server-title-source-missing';
-  }
-  return 'not-applicable';
-}
-
 export function shouldApplyServerGeneratedSessionTitle(session: Session, serverConversationId: string, title: string, titleSource?: TitleSource): boolean {
   const normalizedTitle = normalizeSessionTitleText(title);
   const normalizedTitleSource = isTitleSource(titleSource) ? titleSource : undefined;
@@ -222,6 +200,12 @@ export function shouldApplyServerGeneratedSessionTitle(session: Session, serverC
     && isSessionFallbackTitle(session)
     && !!normalizedTitleSource
     && !isFallbackTitleSource(normalizedTitleSource);
+}
+
+export function canRefreshServerGeneratedSessionTitle(session: Session | undefined, serverConversationId: string): boolean {
+  return !!session
+    && session.serverConversationId === serverConversationId
+    && isSessionFallbackTitle(session);
 }
 
 export function useSessions(): SessionStore {
@@ -722,20 +706,13 @@ export function useSessions(): SessionStore {
 
   const setServerGeneratedTitleForSession = useCallback(async (sessionId: string, serverConversationId: string, title: string, titleSource?: TitleSource): Promise<boolean> => {
     const normalizedTitle = normalizeSessionTitleText(title);
-    const normalizedTitleSource = isTitleSource(titleSource) ? titleSource : 'server_generated';
+    const normalizedTitleSource = isTitleSource(titleSource) ? titleSource : undefined;
     const currentSessions = sessionsRef.current;
     const currentSession = currentSessions.find(session => session.id === sessionId);
     if (!currentSession || currentSession.serverConversationId !== serverConversationId) {
       return false;
     }
     if (!shouldApplyServerGeneratedSessionTitle(currentSession, serverConversationId, normalizedTitle, normalizedTitleSource)) {
-      console.info('[sessions] Skipped server-generated title update.', {
-        sessionId,
-        serverConversationId,
-        localTitle: currentSession.title,
-        serverTitle: normalizedTitle,
-        reason: getServerGeneratedTitleSkipReason(currentSession, normalizedTitle, normalizedTitleSource),
-      });
       return false;
     }
 
