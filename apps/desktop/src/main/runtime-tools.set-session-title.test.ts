@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockRenameConversationTitle = vi.fn()
 const mockGetSession = vi.fn()
 const mockUpdateSession = vi.fn()
+const mockFindSessionByConversationId = vi.fn()
 const mockGetRootAppSessionForAcpSession = vi.fn()
 const mockSetAcpSessionTitleOverride = vi.fn()
 const mockEmitAgentProgress = vi.fn()
@@ -16,6 +17,7 @@ vi.mock("./agent-session-tracker", () => ({
   agentSessionTracker: {
     getSession: mockGetSession,
     updateSession: mockUpdateSession,
+    findSessionByConversationId: mockFindSessionByConversationId,
     getActiveSessions: vi.fn(() => []),
   },
 }))
@@ -53,6 +55,9 @@ describe("runtime-tools set_session_title", () => {
         ? { id: "app-session-1", conversationId: "conversation-1", conversationTitle: "Old title", status: "active" }
         : undefined,
     )
+    mockFindSessionByConversationId.mockImplementation((conversationId: string) =>
+      conversationId === "conversation-1" ? "app-session-1" : undefined,
+    )
     mockRenameConversationTitle.mockResolvedValue({ id: "conversation-1", title: "Delegated title" })
   })
 
@@ -78,6 +83,19 @@ describe("runtime-tools set_session_title", () => {
       isComplete: false,
       conversationState: "running",
     })
+    expect(result).toEqual({
+      content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],
+      isError: false,
+    })
+  })
+
+  it("updates the tracked session when invoked with a conversation id context", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "conversation-1")
+
+    expect(mockFindSessionByConversationId).toHaveBeenCalledWith("conversation-1")
+    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title")
+    expect(mockUpdateSession).toHaveBeenCalledWith("app-session-1", { conversationTitle: "Delegated title" })
     expect(result).toEqual({
       content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],
       isError: false,
