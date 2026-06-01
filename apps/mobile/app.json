@@ -3,7 +3,7 @@
     "name": "DotAgents",
     "slug": "dotagents-mobile",
     "scheme": "dotagents",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "orientation": "portrait",
     "icon": "./assets/dotagents-icon.png",
     "userInterfaceStyle": "light",
