@@ -208,7 +208,7 @@ describe("panel recording layout", () => {
     expect(panelSource).toContain('lastRequestedModeRef.current = "textInput"')
     expect(panelSource).toContain('lastRequestedModeRef.current = "normal"')
     expect(mainWindowSource).toContain('export const stopTextInputAndHidePanelWindow = () => {')
-    expect(mainWindowSource).toContain('export const closeAgentModeAndHidePanelWindow = () => {')
+    expect(mainWindowSource).toContain('export const closeAgentModeAndHidePanelWindow = (options?: { preserveAgentStopState?: boolean }) => {')
     expect(mainWindowSource).toContain('export function hideFloatingPanelWindow()')
     expect(mainWindowSource).toContain('setPanelMode("normal")')
     expect(tipcSource).toContain('state.isTextInputActive = false')

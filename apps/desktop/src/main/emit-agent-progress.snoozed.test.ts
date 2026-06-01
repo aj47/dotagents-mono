@@ -114,6 +114,8 @@ describe("emitAgentProgress snoozed propagation", () => {
     expect(mocks.resizePanelForAgentMode).not.toHaveBeenCalled()
     expect(mocks.showPanelWindow).not.toHaveBeenCalled()
     expect(mocks.closeAgentModeAndHidePanelWindow).toHaveBeenCalledTimes(1)
+    // Must preserve shouldStopAgent so a trailing update can't undo an emergency stop.
+    expect(mocks.closeAgentModeAndHidePanelWindow).toHaveBeenCalledWith({ preserveAgentStopState: true })
   })
 
   it("does not close an active waveform recording when panel progress is disabled", async () => {

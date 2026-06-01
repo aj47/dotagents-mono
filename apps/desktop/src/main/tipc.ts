@@ -3148,7 +3148,9 @@ export const router = {
         const prevPanelProgressEnabled = (prev as any)?.floatingPanelAgentProgressEnabled !== false
         const nextPanelProgressEnabled = (merged as any)?.floatingPanelAgentProgressEnabled !== false
         if (prevPanelProgressEnabled && !nextPanelProgressEnabled && !state.isRecording && !state.isTextInputActive) {
-          closeAgentModeAndHidePanelWindow()
+          // Toggling a display preference must not touch agent execution control,
+          // so preserve shouldStopAgent (don't undo a prior emergency stop).
+          closeAgentModeAndHidePanelWindow({ preserveAgentStopState: true })
         }
       } catch (_e) {
         // panel cleanup is best-effort only
