@@ -15,8 +15,6 @@ import {
 } from '../lib/accessibility';
 import { resolveQrScannerActivation } from './connection-settings-qr';
 
-const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
-
 function parseQRCode(data: string): { baseUrl?: string; apiKey?: string; model?: string } | null {
   try {
     const parsed = Linking.parse(data);
@@ -74,29 +72,18 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
     // Clear any previous error
     setConnectionError(null);
 
-    // Default to OpenAI URL if baseUrl is empty
-    if (!normalizedDraft.baseUrl) {
-      normalizedDraft.baseUrl = DEFAULT_OPENAI_BASE_URL;
-    }
-
-    const hasCustomUrl = normalizedDraft.baseUrl && normalizedDraft.baseUrl.replace(/\/+$/, '') !== DEFAULT_OPENAI_BASE_URL;
     const hasApiKey = normalizedDraft.apiKey && normalizedDraft.apiKey.length > 0;
 
     // On first-time setup, do not silently save a disconnected default config.
     if (!isConnected && !hasApiKey) {
-      setConnectionError('Enter an API key or scan a DotAgents QR code before saving');
+      setConnectionError('Scan a DotAgents QR code or enter a base URL and API key before saving');
       return;
     }
 
-    // Require API key when using a custom server URL
-    if (hasCustomUrl && !hasApiKey) {
-      setConnectionError('API Key is required when using a custom server URL');
-      return;
-    }
-
-    // Validate: if API key is set, base URL must also be set
+    // Require a base URL whenever an API key is provided — we no longer fall
+    // back to a hidden OpenAI default for the mobile companion app.
     if (hasApiKey && !normalizedDraft.baseUrl) {
-      setConnectionError('Base URL is required when an API key is provided');
+      setConnectionError('Scan a DotAgents QR code or enter a base URL before saving');
       return;
     }
 
@@ -206,7 +193,7 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
   };
 
   const resetBaseUrl = () => {
-    setDraft(prev => ({ ...prev, baseUrl: DEFAULT_OPENAI_BASE_URL }));
+    setDraft(prev => ({ ...prev, baseUrl: '' }));
   };
 
   // Connection status indicator
@@ -284,20 +271,20 @@ export default function ConnectionSettingsScreen({ navigation, route }: any) {
             onPress={resetBaseUrl}
             style={styles.inlineActionButton}
             accessibilityRole="button"
-            accessibilityLabel={createButtonAccessibilityLabel('Reset base URL to default')}
-            accessibilityHint="Restores the default OpenAI-compatible base URL"
+            accessibilityLabel={createButtonAccessibilityLabel('Clear base URL')}
+            accessibilityHint="Clears the base URL so you can re-pair via QR code"
           >
-            <Text style={styles.resetText}>Reset to default</Text>
+            <Text style={styles.resetText}>Clear</Text>
           </TouchableOpacity>
         </View>
         <TextInput
           style={styles.input}
           value={draft.baseUrl}
           onChangeText={(t) => setDraft({ ...draft, baseUrl: t })}
-          placeholder='https://api.openai.com/v1'
+          placeholder='Scan a QR code or enter a custom URL'
           placeholderTextColor={theme.colors.mutedForeground}
           accessibilityLabel={createTextInputAccessibilityLabel('Base URL')}
-          accessibilityHint="Enter the base URL for your OpenAI-compatible server"
+          accessibilityHint="Enter the base URL of your DotAgents remote server or another OpenAI-compatible endpoint"
           autoCapitalize='none'
         />
 

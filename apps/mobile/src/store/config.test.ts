@@ -16,7 +16,35 @@ import {
   normalizeStoredConfig,
 } from './config';
 
+describe('DEFAULT_APP_CONFIG', () => {
+  it('leaves baseUrl empty so fresh installs do not falsely look paired to OpenAI', () => {
+    expect(DEFAULT_APP_CONFIG.baseUrl).toBe('');
+    expect(DEFAULT_APP_CONFIG.apiKey).toBe('');
+  });
+});
+
 describe('normalizeStoredConfig', () => {
+  it('preserves an explicitly stored OpenAI base URL for legacy users', () => {
+    const normalized = normalizeStoredConfig({
+      apiKey: 'sk-legacy',
+      baseUrl: 'https://api.openai.com/v1/',
+      model: 'gpt-4.1-mini',
+    });
+
+    expect(normalized.baseUrl).toBe('https://api.openai.com/v1');
+    expect(normalized.apiKey).toBe('sk-legacy');
+  });
+
+  it('keeps an empty baseUrl empty rather than backfilling it from the defaults', () => {
+    const normalized = normalizeStoredConfig({
+      apiKey: '',
+      baseUrl: '',
+      model: 'gpt-4.1-mini',
+    });
+
+    expect(normalized.baseUrl).toBe('');
+  });
+
   it('backfills the handsfree defaults for older configs', () => {
     const normalized = normalizeStoredConfig({
       apiKey: 'test',
