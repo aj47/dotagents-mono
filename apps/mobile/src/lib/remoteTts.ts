@@ -63,6 +63,23 @@ function summarizePlaybackStatus(status: unknown): Record<string, unknown> {
   };
 }
 
+function safePlayerNumber(read: () => number): number | undefined {
+  try {
+    const value = read();
+    return Number.isFinite(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function safePlayerBoolean(read: () => boolean): boolean | undefined {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
+}
+
 export type RemoteSpeakOptions = {
   /** Paired desktop remote-server base URL including /v1. From AppConfig.baseUrl. */
   baseUrl: string;
@@ -94,6 +111,10 @@ type NativePlayback = {
   stopped: boolean;
   onStopped?: () => void;
 };
+
+const NATIVE_PLAYBACK_STARTUP_STALL_MS = 1800;
+const NATIVE_PLAYBACK_STARTUP_FAIL_MS = 4200;
+const NATIVE_PLAYBACK_ZERO_PROGRESS_STOP_RETRY_MS = 3600;
 
 let currentPlayback: WebPlayback | NativePlayback | null = null;
 let audioModeConfigured = false;
@@ -345,13 +366,32 @@ function startNativePlayback(
     onStopped: options.onStopped,
   };
   let hasStartedPlaying = false;
+  let hasAdvancedPlayback = false;
   let hasLoggedFirstStatus = false;
+  let startedAtMs: number | null = null;
+  let transientStopRetries = 0;
+  let startupReplayAttempts = 0;
+  let startupStallTimer: ReturnType<typeof setTimeout> | null = null;
+  let startupFailTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const clearStartupTimers = () => {
+    if (startupStallTimer) {
+      clearTimeout(startupStallTimer);
+      startupStallTimer = null;
+    }
+    if (startupFailTimer) {
+      clearTimeout(startupFailTimer);
+      startupFailTimer = null;
+    }
+  };
 
   const finalize = (reason: 'done' | 'error' | 'stopped') => {
+    clearStartupTimers();
     logRemoteTts(reason === 'error' ? 'warn' : 'info', 'native playback finalize', {
       reason,
       filename,
       started: hasStartedPlaying,
+      advanced: hasAdvancedPlayback,
     });
     try { playback.subscription?.remove(); } catch {}
     try { player.remove(); } catch {}
@@ -362,6 +402,48 @@ function startNativePlayback(
     if (reason === 'done') options.onDone?.();
     else if (reason === 'error') options.onError?.();
     else options.onStopped?.();
+  };
+
+  const scheduleStartupWatchdog = () => {
+    if (startupStallTimer || startupFailTimer) return;
+    startupStallTimer = setTimeout(() => {
+      startupStallTimer = null;
+      if (playback.stopped || hasAdvancedPlayback) return;
+      const currentTime = safePlayerNumber(() => player.currentTime);
+      const playing = safePlayerBoolean(() => player.playing);
+      startupReplayAttempts += 1;
+      logRemoteTts('warn', 'native playback startup stalled', {
+        filename,
+        playing,
+        currentTime,
+        attempt: startupReplayAttempts,
+        elapsedSinceStartMs: startedAtMs ? Date.now() - startedAtMs : null,
+      });
+      try {
+        void player.seekTo(0);
+      } catch (error) {
+        logRemoteTts('warn', 'native playback startup seek failed', summarizeRemoteTtsError(error));
+      }
+      try {
+        player.play();
+      } catch (error) {
+        logRemoteTts('warn', 'native playback startup replay failed', summarizeRemoteTtsError(error));
+      }
+    }, NATIVE_PLAYBACK_STARTUP_STALL_MS);
+
+    startupFailTimer = setTimeout(() => {
+      startupFailTimer = null;
+      if (playback.stopped || hasAdvancedPlayback) return;
+      logRemoteTts('warn', 'native playback startup failed to advance', {
+        filename,
+        playing: safePlayerBoolean(() => player.playing),
+        currentTime: safePlayerNumber(() => player.currentTime),
+        duration: safePlayerNumber(() => player.duration),
+        elapsedSinceStartMs: startedAtMs ? Date.now() - startedAtMs : null,
+      });
+      playback.stopped = true;
+      finalize('error');
+    }, NATIVE_PLAYBACK_STARTUP_FAIL_MS);
   };
 
   try {
@@ -381,8 +463,15 @@ function startNativePlayback(
       if (status.playing) {
         if (!hasStartedPlaying) {
           hasStartedPlaying = true;
+          startedAtMs = Date.now();
           logRemoteTts('info', 'native playback started', summarizePlaybackStatus(status));
           options.onStart?.();
+          scheduleStartupWatchdog();
+        }
+        if (!hasAdvancedPlayback && status.currentTime > 0.25) {
+          hasAdvancedPlayback = true;
+          clearStartupTimers();
+          logRemoteTts('info', 'native playback advanced', summarizePlaybackStatus(status));
         }
       }
       if (status.didJustFinish) {
@@ -391,11 +480,50 @@ function startNativePlayback(
         return;
       }
       if (hasStartedPlaying && !status.playing && !status.isBuffering) {
-        playback.stopped = true;
         const reachedEnd = status.duration > 0 && status.currentTime >= Math.max(0, status.duration - 0.25);
+        const elapsedSinceStartMs = startedAtMs ? Date.now() - startedAtMs : null;
+        const stoppedAtStart = status.currentTime <= 0.25 && !reachedEnd;
+        const stillWithinStartupRetryWindow =
+          !hasAdvancedPlayback
+          && stoppedAtStart
+          && (elapsedSinceStartMs === null || elapsedSinceStartMs < NATIVE_PLAYBACK_ZERO_PROGRESS_STOP_RETRY_MS);
+        if (
+          stoppedAtStart
+          && transientStopRetries < 2
+          && (elapsedSinceStartMs === null || elapsedSinceStartMs < 1500)
+        ) {
+          transientStopRetries += 1;
+          logRemoteTts('info', 'native playback transient stop ignored', {
+            ...summarizePlaybackStatus(status),
+            elapsedSinceStartMs,
+            retry: transientStopRetries,
+          });
+          try {
+            player.play();
+          } catch (error) {
+            logRemoteTts('warn', 'native playback transient resume failed', summarizeRemoteTtsError(error));
+          }
+          return;
+        }
+        if (stillWithinStartupRetryWindow) {
+          startupReplayAttempts += 1;
+          logRemoteTts('warn', 'native playback zero-progress stop ignored while startup watchdog is active', {
+            ...summarizePlaybackStatus(status),
+            elapsedSinceStartMs,
+            attempt: startupReplayAttempts,
+          });
+          try {
+            player.play();
+          } catch (error) {
+            logRemoteTts('warn', 'native playback zero-progress resume failed', summarizeRemoteTtsError(error));
+          }
+          return;
+        }
+        playback.stopped = true;
         logRemoteTts('info', 'native playback stopped status', {
           ...summarizePlaybackStatus(status),
           reachedEnd,
+          elapsedSinceStartMs,
         });
         finalize(reachedEnd ? 'done' : 'stopped');
       }
@@ -429,6 +557,11 @@ function stopCurrentRemotePlayback(notifyStopped: boolean): void {
   currentPlayback = null;
   const shouldNotifyStopped = notifyStopped && !playback.stopped;
   playback.stopped = true;
+  logRemoteTts('info', 'stop current playback', {
+    kind: playback.kind,
+    notifyStopped,
+    shouldNotifyStopped,
+  });
 
   if (playback.kind === 'web') {
     try { playback.audio.pause(); } catch {}
