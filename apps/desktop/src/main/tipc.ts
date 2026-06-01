@@ -2263,7 +2263,9 @@ export const router = {
         transcript = json.text || ""
       }
 
-      transcript = await postProcessTranscriptSafely(transcript, "transcribeChunk")
+      if (transcript.trim()) {
+        transcript = await postProcessTranscriptSafely(transcript, "transcribeChunk")
+      }
 
       return { text: transcript }
     }),
