@@ -464,16 +464,17 @@ class HandsFreeVoiceService : Service() {
         Log.w(TAG, "tts language unsupported language=${request.language} result=$languageResult")
       }
 
-      request.voice?.let { voiceName ->
+      request.voice?.let { requestedVoice ->
         val selectedVoice = try {
-          engine.voices?.firstOrNull { it.name == voiceName }
+          selectTtsVoice(engine.voices, requestedVoice)
         } catch (_: Throwable) {
           null
         }
         if (selectedVoice != null) {
           engine.voice = selectedVoice
+          Log.i(TAG, "tts voice selected requested=$requestedVoice selected=${selectedVoice.name} locale=${selectedVoice.locale}")
         } else {
-          Log.w(TAG, "tts voice unavailable voice=$voiceName")
+          Log.w(TAG, "tts voice unavailable requested=$requestedVoice available=${availableTtsVoiceSummary(engine)}")
         }
       }
 
@@ -549,6 +550,33 @@ class HandsFreeVoiceService : Service() {
           }
         }
       }
+    }
+  }
+
+  private fun selectTtsVoice(voices: Set<android.speech.tts.Voice>?, requestedVoice: String): android.speech.tts.Voice? {
+    if (voices.isNullOrEmpty()) return null
+    val normalizedRequested = normalizeTtsVoiceId(requestedVoice)
+    return voices.firstOrNull { it.name == requestedVoice }
+      ?: voices.firstOrNull { normalizeTtsVoiceId(it.name) == normalizedRequested }
+      ?: voices.firstOrNull { requestedVoice.endsWith(it.name) }
+      ?: voices.firstOrNull { it.name.endsWith(normalizedRequested) }
+  }
+
+  private fun normalizeTtsVoiceId(value: String): String {
+    return value.substringAfterLast(':')
+      .substringAfterLast('/')
+      .trim()
+      .lowercase(Locale.US)
+  }
+
+  private fun availableTtsVoiceSummary(engine: TextToSpeech): String {
+    return try {
+      engine.voices
+        ?.take(12)
+        ?.joinToString("|") { voice -> "${voice.name}:${voice.locale}" }
+        ?: "unavailable"
+    } catch (_: Throwable) {
+      "unreadable"
     }
   }
 
