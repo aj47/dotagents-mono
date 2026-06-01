@@ -3,6 +3,7 @@ import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { messageQueueService } from "./message-queue-service"
 import { acpService } from "./acp-service"
+import { loopService } from "./loop-service"
 
 /**
  * Centralized emergency stop: abort LLM requests, kill tracked child processes,
@@ -16,6 +17,16 @@ import { acpService } from "./acp-service"
 export async function emergencyStopAll(): Promise<{ before: number; after: number }> {
   // Signal all sessions to stop ASAP (both new session-based and legacy global)
   agentSessionStateManager.stopAllSessions()
+
+  // Durably stop continuously-running tasks so they don't auto-resume after the
+  // current iteration's session is aborted. Without this the loop scheduler
+  // would re-fire `executeLoop` with a 0ms delay and the "stopped" task would
+  // immediately pick back up.
+  try {
+    loopService.emergencyStopContinuousLoops()
+  } catch (error) {
+    console.error("[EmergencyStop] Error stopping continuous loops:", error)
+  }
 
   // Mark all active agent sessions as stopped in the tracker and emit progress updates
   try {

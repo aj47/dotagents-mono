@@ -27,4 +27,36 @@ describe("continuous repeat tasks", () => {
     expect(getNextDelaySection).toContain("if (isContinuousLoop(loop))")
     expect(getNextDelaySection).toContain("return 0")
   })
+
+  it("durably disables continuous loops on emergency stop", () => {
+    // Emergency stop must persist the cancel signal so the loop does not pick
+    // back up after the in-flight session aborts — see issue #379.
+    const section = getSection(
+      loopServiceSource,
+      "  emergencyStopContinuousLoops(): string[] {",
+      "  startLoop(loopId: string): boolean {",
+    )
+
+    expect(section).toContain("isContinuousLoop(loop)")
+    expect(section).toContain("enabled: false")
+    expect(section).toContain("this.stopLoop(loop.id)")
+  })
+
+  it("mutates in-memory loop state before attempting persistence", () => {
+    // Critical for the persistence-failure path: if we persisted first and
+    // failed, the in-memory loop would still be `enabled: true` and the
+    // in-flight executeLoop()'s finally would reschedule. See PR #492 review.
+    const section = getSection(
+      loopServiceSource,
+      "  emergencyStopContinuousLoops(): string[] {",
+      "  startLoop(loopId: string): boolean {",
+    )
+
+    const inMemoryAssignIdx = section.indexOf("this.loops[i] = updated")
+    const persistCallIdx = section.indexOf("this.saveTask(updated)")
+
+    expect(inMemoryAssignIdx).toBeGreaterThanOrEqual(0)
+    expect(persistCallIdx).toBeGreaterThanOrEqual(0)
+    expect(inMemoryAssignIdx).toBeLessThan(persistCallIdx)
+  })
 })
