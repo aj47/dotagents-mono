@@ -1336,6 +1336,11 @@ export type Config = {
   // Users can still manually access the panel via hotkeys, tray menu, or UI
   floatingPanelAutoShow?: boolean
 
+  // Floating Panel Agent Progress Configuration
+  // When false, agent progress will not render in the floating panel.
+  // Voice waveform recording can still use the floating panel.
+  floatingPanelAgentProgressEnabled?: boolean
+
   // Hide Floating Panel When Main App is Focused
   // When true (default), the floating panel will automatically hide when the main DotAgents window is focused
   // The panel will reappear when the main window loses focus (if auto-show conditions are met)

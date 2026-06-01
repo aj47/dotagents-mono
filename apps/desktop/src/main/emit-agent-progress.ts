@@ -1,8 +1,8 @@
 import { getRendererHandlers } from "@egoist/tipc/main"
-import { WINDOWS, showPanelWindow, resizePanelForAgentMode } from "./window"
+import { WINDOWS, showPanelWindow, resizePanelForAgentMode, closeAgentModeAndHidePanelWindow } from "./window"
 import { RendererHandlers } from "./renderer-handlers"
 import { AgentProgressUpdate } from "../shared/types"
-import { isPanelAutoShowSuppressed, agentSessionStateManager } from "./state"
+import { isPanelAutoShowSuppressed, agentSessionStateManager, state as appState } from "./state"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { configStore } from "./config"
 import { sanitizeAgentProgressUpdateForDisplay } from "@dotagents/shared"
@@ -87,9 +87,19 @@ function sendToWindows(update: AgentProgressUpdate): void {
 
   // Handle auto-show logic for panel window
   const config = configStore.get()
+  const floatingPanelAgentProgressEnabled = config.floatingPanelAgentProgressEnabled !== false
   const floatingPanelAutoShowEnabled = config.floatingPanelAutoShow !== false
   const hidePanelWhenMainFocused = config.hidePanelWhenMainFocused !== false
   const isMainFocused = main?.isFocused() ?? false
+
+  if (!floatingPanelAgentProgressEnabled) {
+    if (update.sessionId && !appState.isRecording && !appState.isTextInputActive) {
+      // Preserve shouldStopAgent: this fires on every progress update, so a
+      // trailing update after an emergency stop must not re-enable the agent.
+      closeAgentModeAndHidePanelWindow({ preserveAgentStopState: true })
+    }
+    return
+  }
 
   if (!panel.isVisible() && update.sessionId) {
     const isSnoozed = agentSessionTracker.isSessionSnoozed(update.sessionId)

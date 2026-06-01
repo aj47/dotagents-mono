@@ -1369,6 +1369,26 @@ export function Component() {
             </div>
           </Control>
 
+          <Control label={<ControlLabel label="Agent Progress in Floating Panel" tooltip="When enabled, agent progress can appear in the floating panel. When disabled, agent progress stays in the main app; the voice waveform still uses the floating panel." />} className="px-3">
+            <div className="space-y-2">
+              <div className="flex justify-start sm:justify-end">
+                <Switch
+                  checked={configQuery.data?.floatingPanelAgentProgressEnabled !== false}
+                  onCheckedChange={(value) => {
+                    saveConfig({
+                      floatingPanelAgentProgressEnabled: value,
+                    })
+                  }}
+                />
+              </div>
+              {configQuery.data?.floatingPanelAgentProgressEnabled === false && (
+                <div className="text-xs text-muted-foreground sm:text-right">
+                  Agent progress stays in the main app. Voice waveform recording still uses the floating panel.
+                </div>
+              )}
+            </div>
+          </Control>
+
           <Control label={<ControlLabel label="Hide Panel When Main App Focused" tooltip="When enabled, the floating panel automatically hides when the main DotAgents window is focused. The panel reappears when the main window loses focus." />} className="px-3">
             <Switch
               checked={configQuery.data?.hidePanelWhenMainFocused !== false}

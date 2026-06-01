@@ -1322,12 +1322,19 @@ export const stopTextInputAndHidePanelWindow = () => {
   }
 }
 
-export const closeAgentModeAndHidePanelWindow = () => {
+export const closeAgentModeAndHidePanelWindow = (options?: { preserveAgentStopState?: boolean }) => {
   const win = WINDOWS.get("panel")
   if (win) {
     // Update agent state
     state.isAgentModeActive = false
-    state.shouldStopAgent = false
+    // Normally a panel close clears the stop flag (it's a user-initiated "done"
+    // action). When invoked automatically — e.g. to keep agent progress out of
+    // the panel because the display preference is off — preserve shouldStopAgent
+    // so a late/in-flight update can't undo an emergency stop's intentional block
+    // on trailing progress (see emergency-stop.ts).
+    if (!options?.preserveAgentStopState) {
+      state.shouldStopAgent = false
+    }
     state.agentIterationCount = 0
 
     // Hide the panel immediately to avoid flash when mode changes

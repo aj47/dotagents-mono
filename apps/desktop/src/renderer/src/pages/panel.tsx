@@ -286,6 +286,14 @@ export function Component() {
     return result
   }
 
+  const configQuery = useConfigQuery()
+  const isDragEnabled = (configQuery.data as any)?.panelDragEnabled ?? true
+  const showAgentProgressInPanel = configQuery.data?.floatingPanelAgentProgressEnabled !== false
+  // Disable transcription preview for Parakeet since live chunk PCM conversion is expensive.
+  const isPreviewEnabled =
+    (configQuery.data?.transcriptionPreviewEnabled ?? false) &&
+    configQuery.data?.sttProviderId !== "parakeet"
+
   const activeSessionCount = Array.from(agentProgressById?.values() ?? [])
     .filter(progress => progress && !progress.isSnoozed && !progress.isComplete).length
 
@@ -299,14 +307,7 @@ export function Component() {
   // Any non-snoozed session (including completed) should show the overlay
   // Also show overlay if there's a focused session (user explicitly selected it, even if snoozed)
   const anyVisibleSessions = visibleSessionCount > 0 || (focusedSessionId && agentProgressById?.has(focusedSessionId))
-  const shouldShowProgressPanel = anyVisibleSessions && !recording
-
-  const configQuery = useConfigQuery()
-  const isDragEnabled = (configQuery.data as any)?.panelDragEnabled ?? true
-  // Disable transcription preview for Parakeet since live chunk PCM conversion is expensive.
-  const isPreviewEnabled =
-    (configQuery.data?.transcriptionPreviewEnabled ?? false) &&
-    configQuery.data?.sttProviderId !== "parakeet"
+  const shouldShowProgressPanel = showAgentProgressInPanel && anyVisibleSessions && !recording
 
   useEffect(() => {
     const updateNativePanelSize = (size: unknown) => {
@@ -1122,7 +1123,7 @@ export function Component() {
     let targetMode: "agent" | "normal" | null = null
     if (recording) {
       targetMode = "normal"
-    } else if (anyActiveNonSnoozed) {
+    } else if (showAgentProgressInPanel && anyActiveNonSnoozed) {
       targetMode = "agent"
     } else if (shouldShowProgressPanel) {
       targetMode = "agent"
@@ -1142,7 +1143,7 @@ export function Component() {
     return () => {
       if (tid) clearTimeout(tid)
     }
-  }, [anyActiveNonSnoozed, recording, shouldShowProgressPanel, textInputMutation.isPending, mcpTextInputMutation.isPending, showTextInput])
+  }, [anyActiveNonSnoozed, recording, shouldShowProgressPanel, showAgentProgressInPanel, textInputMutation.isPending, mcpTextInputMutation.isPending, showTextInput])
 
   // Note: We don't need to hide text input when agentProgress changes because:
   // 1. handleTextSubmit already hides it immediately on submit (line 375)
@@ -1215,7 +1216,7 @@ export function Component() {
 
 	  // Track latest state values in a ref to avoid race conditions with auto-close timeout
 	  const autoCloseStateRef = useRef({
-	    anyVisibleSessions,
+	    showsAgentOverlay: shouldShowProgressPanel,
 	    showTextInput,
 	    recording,
 	    isTextSubmissionPending: textInputMutation.isPending || mcpTextInputMutation.isPending
@@ -1224,18 +1225,18 @@ export function Component() {
 	  // Keep ref in sync with latest state
 	  useEffect(() => {
 	    autoCloseStateRef.current = {
-	      anyVisibleSessions,
+	      showsAgentOverlay: shouldShowProgressPanel,
 	      showTextInput,
 	      recording,
 	      isTextSubmissionPending: textInputMutation.isPending || mcpTextInputMutation.isPending
 	    }
-	  }, [anyVisibleSessions, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending])
+	  }, [shouldShowProgressPanel, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending])
 
 	  // Auto-close the panel when there's nothing to show
 	  useEffect(() => {
 	    // Keep panel open if a text submission is still pending (to avoid flicker)
 	    const isTextSubmissionPending = textInputMutation.isPending || mcpTextInputMutation.isPending
-	    const showsAgentOverlay = anyVisibleSessions
+	    const showsAgentOverlay = shouldShowProgressPanel
 
 	    const shouldAutoClose =
 	      !showsAgentOverlay &&
@@ -1249,7 +1250,7 @@ export function Component() {
 	        // State may have changed during the 200ms delay
 	        const latestState = autoCloseStateRef.current
 	        const stillShouldClose =
-	          !latestState.anyVisibleSessions &&
+	          !latestState.showsAgentOverlay &&
 	          !latestState.showTextInput &&
 	          !latestState.recording &&
 	          !latestState.isTextSubmissionPending
@@ -1263,7 +1264,7 @@ export function Component() {
 
       return undefined as void
 
-	  }, [anyVisibleSessions, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending])
+	  }, [shouldShowProgressPanel, showTextInput, recording, textInputMutation.isPending, mcpTextInputMutation.isPending])
 
   // Use appropriate minimum height based on current mode
   const hasPreviewVisible = recording && isPreviewEnabled && previewText.length > 0
@@ -1357,7 +1358,7 @@ export function Component() {
             isProcessing={
               textInputMutation.isPending || mcpTextInputMutation.isPending
             }
-            agentProgress={agentProgress}
+            agentProgress={showAgentProgressInPanel ? agentProgress : null}
             continueConversationTitle={continueConversationTitle}
           />
         ) : (
