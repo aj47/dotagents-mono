@@ -39,6 +39,15 @@ export function compactSessionsForStorageQuota(sessions: Session[]): Session[] {
   });
 }
 
+function isDiscardableLocalDraftSession(session: Session): boolean {
+  const messageCount = Array.isArray(session.messages) ? session.messages.length : 0;
+  return !session.serverConversationId && messageCount === 0;
+}
+
+export function discardLocalEmptyDraftSessions(sessions: Session[]): Session[] {
+  return sessions.filter((session) => !isDiscardableLocalDraftSession(session));
+}
+
 export interface SessionStore {
   sessions: Session[];
   currentSessionId: string | null;
@@ -111,9 +120,9 @@ async function loadSessions(): Promise<Session[]> {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed
+    return discardLocalEmptyDraftSessions(parsed
       .filter((session): session is Session => !!session && typeof session === 'object' && typeof session.id === 'string')
-      .map(normalizeLoadedSession);
+      .map(normalizeLoadedSession));
   } catch {}
   return [];
 }
@@ -247,14 +256,20 @@ export function useSessions(): SessionStore {
         loadSessions(),
         loadCurrentSessionId(),
       ]);
+      const validCurrentId = loadedSessions.some(session => session.id === loadedCurrentId)
+        ? loadedCurrentId
+        : null;
       // Update refs synchronously BEFORE setting state to prevent stale refs
       // This fixes the race condition where createNewSession could read empty sessionsRef.current
       // if called immediately after mount (before the useEffect that syncs refs from state runs)
       sessionsRef.current = loadedSessions;
-      currentSessionIdRef.current = loadedCurrentId;
+      currentSessionIdRef.current = validCurrentId;
       setSessions(loadedSessions);
-      setCurrentSessionIdState(loadedCurrentId);
+      setCurrentSessionIdState(validCurrentId);
       setReady(true);
+      if (validCurrentId !== loadedCurrentId) {
+        void saveCurrentSessionId(null);
+      }
     })();
   }, []);
 
@@ -272,7 +287,9 @@ export function useSessions(): SessionStore {
     // Compute the new sessions array BEFORE setSessions to guarantee the value we save
     // is exactly what we intend to set (fixes PR review: avoids React updater timing race)
     const currentSessions = sessionsRef.current;
-    const cleanedPrev = currentSessions.filter(s => !deletingSessionIds.has(s.id));
+    const cleanedPrev = currentSessions.filter(
+      s => !deletingSessionIds.has(s.id) && !isDiscardableLocalDraftSession(s)
+    );
     const sessionsToSave = [newSession, ...cleanedPrev];
 
     // Update ref synchronously so any subsequent operations see the new state immediately
@@ -282,7 +299,9 @@ export function useSessions(): SessionStore {
     // The functional update also serves as a safeguard against stale closures in edge cases
     setSessions(prev => {
       // Re-filter to handle any edge case where state diverged from ref
-      const freshCleanedPrev = prev.filter(s => !deletingSessionIds.has(s.id));
+      const freshCleanedPrev = prev.filter(
+        s => !deletingSessionIds.has(s.id) && !isDiscardableLocalDraftSession(s)
+      );
       return [newSession, ...freshCleanedPrev];
     });
 

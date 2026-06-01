@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Session } from '../types/session';
-import { compactSessionsForStorageQuota, shouldApplyServerGeneratedSessionTitle } from './sessions';
+import { compactSessionsForStorageQuota, discardLocalEmptyDraftSessions, shouldApplyServerGeneratedSessionTitle } from './sessions';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
@@ -50,6 +50,41 @@ describe('compactSessionsForStorageQuota', () => {
     }];
 
     expect(compactSessionsForStorageQuota(sessions)).toEqual(sessions);
+  });
+});
+
+describe('discardLocalEmptyDraftSessions', () => {
+  it('drops empty local-only draft sessions', () => {
+    const draft: Session = {
+      id: 'draft',
+      title: 'New Chat',
+      titleSource: 'default',
+      createdAt: 100,
+      updatedAt: 100,
+      messages: [],
+    };
+    const localWithMessages: Session = {
+      id: 'local-with-messages',
+      title: 'Unsynced',
+      createdAt: 200,
+      updatedAt: 220,
+      messages: [
+        { id: 'm1', role: 'user', content: 'keep me', timestamp: 210 },
+      ],
+    };
+    const serverStub: Session = {
+      id: 'server-stub',
+      title: 'Server conversation',
+      createdAt: 300,
+      updatedAt: 320,
+      messages: [],
+      serverConversationId: 'conv-1',
+    };
+
+    expect(discardLocalEmptyDraftSessions([draft, localWithMessages, serverStub])).toEqual([
+      localWithMessages,
+      serverStub,
+    ]);
   });
 });
 
