@@ -359,6 +359,36 @@ export function Component() {
         : `Hold ${customRecordingShortcutDisplay} to record, release it to finish, and press any other key to cancel.`
       : "Press Ctrl+/ to start and finish recording. Press Esc to cancel."
 
+  const agentShortcut = cfg?.agentShortcut || cfg?.mcpToolsShortcut
+  const customAgentShortcutMode = cfg?.customAgentShortcutMode || "hold"
+  const effectiveAgentShortcut = getEffectiveShortcut(
+    agentShortcut,
+    cfg?.customAgentShortcut || cfg?.customMcpToolsShortcut,
+  )
+  const customAgentShortcutDisplay = effectiveAgentShortcut
+    ? formatKeyComboForDisplay(effectiveAgentShortcut)
+    : "your custom shortcut"
+  const agentShortcutHelperText = agentShortcut === "toggle-ctrl-alt"
+    ? "Press Ctrl+Alt to start agent mode, press again to send. Press Esc to cancel."
+    : agentShortcut === "ctrl-alt-slash"
+      ? "Press Ctrl+Alt+/ to start agent mode, press again to send. Press Esc to cancel."
+      : agentShortcut === "custom"
+        ? customAgentShortcutMode === "toggle"
+          ? `Press ${customAgentShortcutDisplay} to start agent mode, press again to send. Press Esc to cancel.`
+          : `Hold ${customAgentShortcutDisplay} to record an agent prompt, release to send.`
+        : "Hold Ctrl+Alt to record an agent prompt, release to send."
+
+  const toggleVoiceDictationHotkey = cfg?.toggleVoiceDictationHotkey || "fn"
+  const effectiveToggleVoiceDictationShortcut = getEffectiveShortcut(
+    toggleVoiceDictationHotkey,
+    cfg?.customToggleVoiceDictationHotkey,
+  )
+  const toggleVoiceDictationDisplay = effectiveToggleVoiceDictationShortcut
+    ? formatKeyComboForDisplay(effectiveToggleVoiceDictationShortcut)
+    : "your custom shortcut"
+  const toggleVoiceDictationHelperText =
+    `Press ${toggleVoiceDictationDisplay} to start dictation, press again to stop. Press Esc to cancel.`
+
 
   const isSearching = searchQuery.length > 0
 
@@ -698,11 +728,6 @@ export function Component() {
           defaultCollapsed
           title="Shortcuts"
           forceOpen={isSearching}
-          endDescription={
-            <div className="leading-relaxed">
-              {recordingShortcutHelperText}
-            </div>
-          }
         >
           <Control label="Recording" className="px-3">
             <div className="space-y-2">
@@ -756,6 +781,9 @@ export function Component() {
                   />
                 </>
               )}
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {recordingShortcutHelperText}
+              </p>
             </div>
           </Control>
 
@@ -817,6 +845,9 @@ export function Component() {
                       placeholder="Click to record custom toggle shortcut"
                     />
                   )}
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {toggleVoiceDictationHelperText}
+                  </p>
                 </>
               )}
             </div>
@@ -938,14 +969,36 @@ export function Component() {
               </Select>
 
               {(configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut) === "custom" && (
-                <KeyRecorder
-                  value={configQuery.data?.customAgentShortcut || configQuery.data?.customMcpToolsShortcut || ""}
-                  onChange={(keyCombo) => {
-                    saveConfig({ customAgentShortcut: keyCombo })
-                  }}
-                  placeholder="Click to record custom agent mode shortcut"
-                />
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Mode</label>
+                    <Select
+                      value={configQuery.data?.customAgentShortcutMode || configQuery.data?.customMcpToolsShortcutMode || "hold"}
+                      onValueChange={(value: "hold" | "toggle") => {
+                        saveConfig({ customAgentShortcutMode: value })
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hold">Hold (Press and hold to record)</SelectItem>
+                        <SelectItem value="toggle">Toggle (Press once to start, again to send)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <KeyRecorder
+                    value={configQuery.data?.customAgentShortcut || configQuery.data?.customMcpToolsShortcut || ""}
+                    onChange={(keyCombo) => {
+                      saveConfig({ customAgentShortcut: keyCombo })
+                    }}
+                    placeholder="Click to record custom agent mode shortcut"
+                  />
+                </>
               )}
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {agentShortcutHelperText}
+              </p>
             </div>
           </Control>
         </ControlGroup>
