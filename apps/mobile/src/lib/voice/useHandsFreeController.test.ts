@@ -253,6 +253,39 @@ describe('resolveHandsFreeUtterance', () => {
     expect(result.nextState.phase).toBe('processing');
   });
 
+  it('sends long dictation that starts with a stop command word', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'listening', awakeSince: 100 },
+      transcript: 'stop okay I think we need to plan my reintroduction into the game',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 275,
+    });
+
+    expect(result.action).toEqual({
+      type: 'send',
+      text: 'okay i think we need to plan my reintroduction into the game',
+    });
+    expect(result.matchedCommand).toBeNull();
+    expect(result.nextState.phase).toBe('processing');
+  });
+
+  it('keeps short stop phrases as commands', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'listening', awakeSince: 100 },
+      transcript: 'stop talking',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 276,
+    });
+
+    expect(result.action.type).toBe('command');
+    if (result.action.type === 'command') {
+      expect(result.action.command).toBe('stop-tts');
+    }
+    expect(result.matchedCommand).toBe('stop-tts');
+  });
+
   it('emits a stop-tts command while the assistant is speaking', () => {
     const result = resolveHandsFreeUtterance({
       state: { ...createInitialHandsFreeState(), phase: 'speaking', awakeSince: 100, resumePhase: 'listening' },
