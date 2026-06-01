@@ -111,6 +111,13 @@ export class Recorder extends EventEmitter<{
 
     const stream = (this.stream = await getUserMediaAudioStream(deviceId))
 
+    // Wire up the analyser + waveform RAF loop as soon as the stream is
+    // available so visualizer-data starts flowing immediately. MediaRecorder's
+    // onstart callback can take a few hundred ms to fire, and gating the
+    // analyser on it left the voice modal visibly dead for that window.
+    const stopAnalysing = this.analyseAudio(stream)
+    this.once("destroy", stopAnalysing)
+
     const mediaRecorder = (this.mediaRecorder = new MediaRecorder(stream, {
       audioBitsPerSecond: 128e3,
     }))
@@ -121,8 +128,6 @@ export class Recorder extends EventEmitter<{
     mediaRecorder.onstart = () => {
       startTime = Date.now()
       this.emit("record-start")
-      const stopAnalysing = this.analyseAudio(stream)
-      this.once("destroy", stopAnalysing)
     }
 
     mediaRecorder.ondataavailable = (event) => {
