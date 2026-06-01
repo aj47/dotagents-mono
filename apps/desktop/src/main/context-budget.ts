@@ -996,6 +996,7 @@ export function readMoreContext(
       preview: entry.preview,
       scope,
       description: describeContextKind(entry.kind, entry.toolName, entry.messageCount),
+      contentDigest: summarizeElidedSpan(entry.content) || undefined,
       searchScope: "underlying_payload",
       suggestedCalls: buildSuggestedCalls(totalChars),
     }
@@ -1302,11 +1303,69 @@ function isLikelyPayloadLikeMessage(message: LLMMessage): boolean {
     || startsWithJsonLikeArray(content)
 }
 
+/**
+ * Build a compact, deterministic fingerprint of an elided span so the inline
+ * truncation marker can tell the model *what* was cut without it having to
+ * call read_more_context. Cheap regex scans only — no allocation of the whole
+ * span beyond what the matches need.
+ */
+function summarizeElidedSpan(span: string): string {
+  if (!span) return ""
+  const parts: string[] = []
+
+  const urlCount = (span.match(/https?:\/\/[^\s"'<>)\]]+/g) || []).length
+  if (urlCount > 0) parts.push(`${urlCount} URL${urlCount === 1 ? "" : "s"}`)
+
+  const stackFrames = (span.match(/\n\s+at\s+\S/g) || []).length
+  const hasTraceback = /Traceback \(most recent call last\)/.test(span)
+  if (hasTraceback || stackFrames >= 2) {
+    parts.push("stack trace")
+  } else {
+    const errorMentions = (span.match(/\b(?:error|exception|failed|panic)\b/gi) || []).length
+    if (errorMentions > 0) parts.push(`${errorMentions} error mention${errorMentions === 1 ? "" : "s"}`)
+  }
+
+  const codeBlocks = Math.floor((span.match(/```/g) || []).length / 2)
+  if (codeBlocks > 0) parts.push(`${codeBlocks} code block${codeBlocks === 1 ? "" : "s"}`)
+
+  const keySet = new Set<string>()
+  const keyRe = /"([A-Za-z0-9_-]{1,40})"\s*:/g
+  let keyMatch: RegExpExecArray | null
+  while (keySet.size < 12 && (keyMatch = keyRe.exec(span)) !== null) {
+    keySet.add(keyMatch[1])
+  }
+  if (keySet.size > 0) {
+    const shown = Array.from(keySet).slice(0, 6)
+    const more = keySet.size > shown.length ? ", …" : ""
+    parts.push(`JSON keys: ${shown.join(", ")}${more}`)
+  }
+
+  if (parts.length === 0) {
+    const lineCount = span.split("\n").length
+    if (lineCount > 1) parts.push(`${lineCount} lines of text`)
+  }
+
+  return parts.join(", ")
+}
+
+/**
+ * Build the inline elision marker placed at the cut point. Surfaces the
+ * approximate size of the gap, a content fingerprint of what was removed, and
+ * the Context ref to expand it — so the model sees the gap *in place* and
+ * usually never needs a follow-up read_more_context call.
+ */
+function buildElisionMarker(marker: string, removedChars: number, elidedSpan: string, contextRef?: string): string {
+  const digest = summarizeElidedSpan(elidedSpan)
+  const digestNote = digest ? ` · contains: ${digest}` : ""
+  const refNote = contextRef ? ` · Context ref: ${contextRef}` : ""
+  return `${marker} (≈${removedChars} chars elided${digestNote}${refNote})`
+}
+
 function truncateWithMarker(
   content: string,
   keepChars: number,
   marker: string,
-  options?: { preserveTail?: boolean },
+  options?: { preserveTail?: boolean; contextRef?: string },
 ): string {
   if (content.length <= keepChars) return content
   const preserveTail = options?.preserveTail === true && keepChars >= 200
@@ -1317,11 +1376,13 @@ function truncateWithMarker(
     const tailChars = Math.floor(keepChars / 2)
     const head = content.slice(0, headChars).trimEnd()
     const tail = content.slice(content.length - tailChars).trimStart()
-    return `${head}\n\n${marker} (${removedChars} chars omitted)\n\n${tail}`
+    const elidedSpan = content.slice(headChars, content.length - tailChars)
+    return `${head}\n\n${buildElisionMarker(marker, removedChars, elidedSpan, options?.contextRef)}\n\n${tail}`
   }
 
   const head = content.slice(0, keepChars).trimEnd()
-  return `${head}\n\n${marker} (${removedChars} chars omitted)`
+  const elidedSpan = content.slice(keepChars)
+  return `${head}\n\n${buildElisionMarker(marker, removedChars, elidedSpan, options?.contextRef)}`
 }
 
 function isTruncationProtectedMessage(message: LLMMessage): boolean {
@@ -1910,10 +1971,10 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       content: msg.content,
       toolName: toolName !== "unknown" ? toolName : undefined,
     })
-    const truncatedContent = addContextRefNote(
-      truncateWithMarker(msg.content, keepChars, marker, { preserveTail: isToolResultLike }),
-      contextRef,
-    )
+    const truncatedContent = truncateWithMarker(msg.content, keepChars, marker, {
+      preserveTail: true,
+      contextRef: contextRef ?? undefined,
+    })
 
     if (truncatedContent !== msg.content) {
       messages[i] = {

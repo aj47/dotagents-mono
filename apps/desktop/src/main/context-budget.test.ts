@@ -247,6 +247,48 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(truncatedMessage?.content).toContain('-TAIL')
   })
 
+  it('describes what was elided inline at the cut point and keeps the ref in place', async () => {
+    const toolPayload = [
+      '[server:search] HEAD-MARKER',
+      'a'.repeat(1300),
+      'https://example.com/one https://example.com/two',
+      '{"status":"ok","results":[1,2,3],"items":[]}',
+      'b'.repeat(3000),
+      'TAIL-MARKER',
+    ].join(' ')
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-elision',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'tool', content: toolPayload },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('aggressive_truncate')
+    const truncated = result.messages.find((msg) => msg.content.includes('Large tool result truncated for context management'))
+    expect(truncated).toBeTruthy()
+    const content = truncated!.content
+
+    // head + tail are both kept inline so the gap is visible in place
+    expect(content).toContain('HEAD-MARKER')
+    expect(content).toContain('TAIL-MARKER')
+
+    // the marker self-describes the elided span: size, fingerprint, and ref
+    expect(content).toMatch(/≈\d+ chars elided/)
+    expect(content).toContain('contains:')
+    expect(content).toContain('URLs')
+    expect(content).toContain('JSON keys')
+
+    // ref is still recoverable from the inline marker
+    const contextRef = content.match(/Context ref: (ctx_[a-z0-9]+)/)?.[1]
+    expect(contextRef).toBeTruthy()
+    const recovered = readMoreContext('session-elision', contextRef!, { mode: 'search', query: 'example.com' })
+    expect(recovered).toEqual(expect.objectContaining({ success: true }))
+    expect(Number(recovered.matchCount)).toBeGreaterThan(0)
+  })
+
   it('does not re-truncate already truncated runtime tool output', async () => {
     const runtimeTruncated = [
       '[server:shell] {',
@@ -880,6 +922,22 @@ describe('registerContextRef export for MCP tool summarization', () => {
     expect(suggested.length).toBeGreaterThan(1)
     expect(suggested.some((s) => s.call.mode === 'search')).toBe(true)
     expect(suggested.some((s) => s.call.mode === 'head')).toBe(true)
+  })
+
+  it('overview surfaces a content digest of what the payload contains', () => {
+    const original = `{"status":"ok","results":[1,2]} see https://example.com/a and https://example.com/b`
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: original,
+    })
+
+    const overview = readMoreContext('session-mcp-ref', ref!)
+
+    expect(overview.success).toBe(true)
+    expect(typeof overview.contentDigest).toBe('string')
+    expect(String(overview.contentDigest)).toContain('URLs')
+    expect(String(overview.contentDigest)).toContain('JSON keys')
   })
 
   it('head/tail/window return nextWindow / previousWindow navigation hints', () => {
