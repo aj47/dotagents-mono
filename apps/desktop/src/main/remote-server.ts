@@ -7554,13 +7554,23 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           return reply.code(404).send({ error: "Repeat task not found" })
         }
 
-        const triggered = await loopService.triggerLoop(params.id)
+        const body = req.body && typeof req.body === "object" && !Array.isArray(req.body)
+          ? req.body as { clientSessionId?: unknown }
+          : {}
+        const triggered = await loopService.triggerLoop(params.id, {
+          clientSessionId: normalizeClientSessionIdInput(body.clientSessionId),
+        })
 
         if (!triggered) {
           return reply.code(409).send({ error: "Task is already running" })
         }
 
-        return reply.send({ success: true, id: params.id })
+        return reply.send({
+          success: true,
+          id: params.id,
+          conversationId: triggered.conversationId,
+          sessionId: triggered.sessionId,
+        })
       }
 
       return reply.code(503).send({ error: "Repeat task service is unavailable" })

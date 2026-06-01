@@ -302,6 +302,16 @@ describe("remote-server route registration", () => {
     expect(successIndex).toBeGreaterThan(failureIndex)
   })
 
+  it("links mobile-triggered repeat tasks to the requesting mobile session", () => {
+    const source = getRemoteServerSource()
+    const runLoopSection = getSection(source, 'fastify.post("/v1/loops/:id/run"', '// POST /v1/knowledge/notes - Create a new knowledge note')
+
+    expect(runLoopSection).toContain("normalizeClientSessionIdInput(body.clientSessionId)")
+    expect(runLoopSection).toContain("loopService.triggerLoop(params.id,")
+    expect(runLoopSection).toContain("conversationId: triggered.conversationId")
+    expect(runLoopSection).toContain("sessionId: triggered.sessionId")
+  })
+
   it("does not report repeat task creation as successful when loop persistence fails", () => {
     const source = getRemoteServerSource()
     const createLoopSection = getSection(source, 'fastify.post("/v1/loops"', '// PATCH /v1/loops/:id - Update a loop/repeat task')
