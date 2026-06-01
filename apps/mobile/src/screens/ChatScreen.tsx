@@ -1988,6 +1988,7 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [recoverStaleHandsFreeTtsIfNeeded]);
   const isHandsFreeFinalizationEligibleNow = useCallback(() => (
     !handsFreeRef.current
+    || handsFreePhaseRef.current === 'sleeping'
     || handsFreePhaseRef.current === 'waking'
     || handsFreePhaseRef.current === 'listening'
   ), []);
