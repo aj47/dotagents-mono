@@ -55,4 +55,12 @@ describe("markdown renderer layout", () => {
       "translate3d(${zoom.offsetX}px, ${zoom.offsetY}px, 0) scale(${zoom.scale})"
     )
   })
+
+  it("exposes a download action in the image lightbox controls", () => {
+    expect(markdownRendererSource).toContain('aria-label="Download image"')
+    expect(markdownRendererSource).toContain('title="Download image"')
+    expect(markdownRendererSource).toContain("handleDownload")
+    expect(markdownRendererSource).toContain("deriveImageDownloadFileName")
+    expect(markdownRendererSource).toContain('link.download = fileName')
+  })
 })

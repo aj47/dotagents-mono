@@ -9,6 +9,7 @@ import {
   Brain,
   Copy,
   CheckCheck,
+  Download,
   PlayCircle,
   RotateCcw,
   X,
@@ -166,6 +167,80 @@ const DEFAULT_IMAGE_ZOOM_STATE: ImageZoomState = {
 
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
+
+const IMAGE_MIME_TO_EXTENSION: Record<string, string> = {
+  "image/png": "png",
+  "image/apng": "apng",
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+  "image/bmp": "bmp",
+  "image/svg+xml": "svg",
+}
+
+const FILENAME_DISALLOWED_CHARS_REGEX = /[\\/:*?"<>|\x00-\x1f]+/g
+const FILENAME_HAS_EXTENSION_REGEX = /\.[a-z0-9]{1,8}$/i
+
+const sanitizeDownloadBasename = (raw: string): string => {
+  const collapsed = raw
+    .replace(FILENAME_DISALLOWED_CHARS_REGEX, "_")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^[._]+/, "")
+  return collapsed.slice(0, 128)
+}
+
+const extensionFromMimeType = (mimeType?: string): string => {
+  if (!mimeType) return ""
+  const primary = mimeType.split(";")[0]?.trim().toLowerCase() ?? ""
+  return IMAGE_MIME_TO_EXTENSION[primary] ?? ""
+}
+
+export const deriveImageDownloadFileName = (
+  src: string,
+  alt?: string,
+  mimeType?: string,
+): string => {
+  const fallbackExtension = extensionFromMimeType(mimeType) || "png"
+
+  try {
+    const url = new URL(src)
+    if (url.protocol !== "data:") {
+      const segments = url.pathname.split("/").filter(Boolean)
+      const last = segments[segments.length - 1]
+      if (last) {
+        let decoded = last
+        try {
+          decoded = decodeURIComponent(last)
+        } catch {
+          // Fall back to the raw segment.
+        }
+        const sanitized = sanitizeDownloadBasename(decoded)
+        if (sanitized && FILENAME_HAS_EXTENSION_REGEX.test(sanitized)) {
+          return sanitized
+        }
+        if (sanitized) {
+          return `${sanitized}.${fallbackExtension}`
+        }
+      }
+    }
+  } catch {
+    // Not a parseable URL (e.g., relative or malformed); fall through.
+  }
+
+  if (alt) {
+    const sanitized = sanitizeDownloadBasename(alt)
+    if (sanitized) {
+      return FILENAME_HAS_EXTENSION_REGEX.test(sanitized)
+        ? sanitized
+        : `${sanitized}.${fallbackExtension}`
+    }
+  }
+
+  return `image.${fallbackExtension}`
+}
 
 const getContainedImageSize = (
   viewport: HTMLDivElement | null,
@@ -469,6 +544,47 @@ const ChatImage = ({ src, alt }: { src: string; alt?: string }) => {
     )
   }, [])
 
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownload = useCallback(async () => {
+    if (isDownloading) return
+    setIsDownloading(true)
+    let objectUrl: string | null = null
+    try {
+      const response = await fetch(src)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      const blob = await response.blob()
+      objectUrl = URL.createObjectURL(blob)
+      const fileName = deriveImageDownloadFileName(src, alt, blob.type)
+      const link = document.createElement("a")
+      link.href = objectUrl
+      link.download = fileName
+      link.rel = "noopener"
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      logUI("[MarkdownRenderer] image download failed", {
+        alt: label,
+        srcPreview: src.slice(0, 64),
+        error: error instanceof Error ? error.message : String(error),
+      })
+    } finally {
+      if (objectUrl) {
+        setTimeout(() => {
+          try {
+            URL.revokeObjectURL(objectUrl as string)
+          } catch {
+            // Already revoked.
+          }
+        }, 0)
+      }
+      setIsDownloading(false)
+    }
+  }, [alt, isDownloading, label, src])
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Trigger asChild>
@@ -569,6 +685,19 @@ const ChatImage = ({ src, alt }: { src: string; alt?: string }) => {
               onClick={resetZoom}
             >
               <RotateCcw className="h-4 w-4" />
+            </button>
+            <span className="mx-1 h-5 w-px bg-white/20" aria-hidden="true" />
+            <button
+              type="button"
+              className={LIGHTBOX_CONTROL_BUTTON_CLASS_NAME}
+              aria-label="Download image"
+              title="Download image"
+              disabled={isDownloading}
+              onClick={() => {
+                void handleDownload()
+              }}
+            >
+              <Download className="h-4 w-4" />
             </button>
           </div>
           <DialogPrimitive.Close
