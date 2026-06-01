@@ -247,6 +247,48 @@ describe('shrinkMessagesForLLM replacement policy', () => {
     expect(truncatedMessage?.content).toContain('-TAIL')
   })
 
+  it('describes what was elided inline at the cut point and keeps the ref in place', async () => {
+    const toolPayload = [
+      '[server:search] HEAD-MARKER',
+      'a'.repeat(1300),
+      'https://example.com/one https://example.com/two',
+      '{"status":"ok","results":[1,2,3],"items":[]}',
+      'b'.repeat(3000),
+      'TAIL-MARKER',
+    ].join(' ')
+
+    const result = await shrinkMessagesForLLM({
+      sessionId: 'session-elision',
+      messages: [
+        { role: 'system', content: 'system prompt' },
+        { role: 'user', content: 'inspect this result' },
+        { role: 'tool', content: toolPayload },
+      ],
+    })
+
+    expect(result.appliedStrategies).toContain('aggressive_truncate')
+    const truncated = result.messages.find((msg) => msg.content.includes('Large tool result truncated for context management'))
+    expect(truncated).toBeTruthy()
+    const content = truncated!.content
+
+    // head + tail are both kept inline so the gap is visible in place
+    expect(content).toContain('HEAD-MARKER')
+    expect(content).toContain('TAIL-MARKER')
+
+    // the marker self-describes the elided span: size, fingerprint, and ref
+    expect(content).toMatch(/≈\d+ chars elided/)
+    expect(content).toContain('contains:')
+    expect(content).toContain('URLs')
+    expect(content).toContain('JSON keys')
+
+    // ref is still recoverable from the inline marker
+    const contextRef = content.match(/Context ref: (ctx_[a-z0-9]+)/)?.[1]
+    expect(contextRef).toBeTruthy()
+    const recovered = readMoreContext('session-elision', contextRef!, { mode: 'search', query: 'example.com' })
+    expect(recovered).toEqual(expect.objectContaining({ success: true }))
+    expect(Number(recovered.matchCount)).toBeGreaterThan(0)
+  })
+
   it('does not re-truncate already truncated runtime tool output', async () => {
     const runtimeTruncated = [
       '[server:shell] {',
@@ -907,5 +949,176 @@ describe('registerContextRef export for MCP tool summarization', () => {
       content: 'anything',
     })
     expect(ref).toBeUndefined()
+  })
+
+  it('overview includes description, scope, and suggested next calls', () => {
+    const original = `tool payload ${'z'.repeat(5000)} END`
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: original,
+      toolName: 'exa:web_search_advanced_exa',
+    })
+
+    const overview = readMoreContext('session-mcp-ref', ref!)
+
+    expect(overview.success).toBe(true)
+    expect(typeof overview.description).toBe('string')
+    expect(String(overview.description)).toContain('exa:web_search_advanced_exa')
+    expect(overview.searchScope).toBe('underlying_payload')
+
+    const scope = overview.scope as Record<string, unknown>
+    expect(scope).toEqual(expect.objectContaining({
+      kind: 'truncated_tool',
+      role: 'tool',
+      toolName: 'exa:web_search_advanced_exa',
+      totalChars: original.length,
+    }))
+
+    const suggested = overview.suggestedCalls as Array<{ description: string; call: Record<string, unknown> }>
+    expect(Array.isArray(suggested)).toBe(true)
+    expect(suggested.length).toBeGreaterThan(1)
+    expect(suggested.some((s) => s.call.mode === 'search')).toBe(true)
+    expect(suggested.some((s) => s.call.mode === 'head')).toBe(true)
+  })
+
+  it('overview surfaces a content digest of what the payload contains', () => {
+    const original = `{"status":"ok","results":[1,2]} see https://example.com/a and https://example.com/b`
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: original,
+    })
+
+    const overview = readMoreContext('session-mcp-ref', ref!)
+
+    expect(overview.success).toBe(true)
+    expect(typeof overview.contentDigest).toBe('string')
+    expect(String(overview.contentDigest)).toContain('URLs')
+    expect(String(overview.contentDigest)).toContain('JSON keys')
+  })
+
+  it('head/tail/window return nextWindow / previousWindow navigation hints', () => {
+    const original = `START-${'y'.repeat(20000)}-MID-${'q'.repeat(20000)}-END`
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_payload',
+      role: 'user',
+      content: original,
+    })
+
+    const head = readMoreContext('session-mcp-ref', ref!, { mode: 'head', maxChars: 1000 })
+    expect(head.success).toBe(true)
+    expect(head.nextWindow).toEqual(expect.objectContaining({ mode: 'window', offset: 1000 }))
+    expect(head.previousWindow).toBeUndefined()
+
+    const tail = readMoreContext('session-mcp-ref', ref!, { mode: 'tail', maxChars: 1000 })
+    expect(tail.success).toBe(true)
+    expect(tail.previousWindow).toEqual(expect.objectContaining({ mode: 'window' }))
+    expect(tail.nextWindow).toBeUndefined()
+
+    const win = readMoreContext('session-mcp-ref', ref!, { mode: 'window', offset: 5000, length: 1000 })
+    expect(win.success).toBe(true)
+    expect(win.previousWindow).toEqual(expect.objectContaining({ mode: 'window' }))
+    expect(win.nextWindow).toEqual(expect.objectContaining({ mode: 'window', offset: 6000 }))
+
+    const fullHead = readMoreContext('session-mcp-ref', ref!, { mode: 'head', maxChars: 12000 })
+    expect(fullHead.success).toBe(true)
+    expect(fullHead.nextWindow).toEqual(expect.objectContaining({ mode: 'window', offset: 12000 }))
+  })
+
+  it('search finds case-, punctuation-, and underscore-insensitive matches via normalized matching', () => {
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: 'before HIDDEN_AUDIT_TOKEN=abc123 after',
+    })
+
+    const search = readMoreContext('session-mcp-ref', ref!, {
+      mode: 'search',
+      query: 'hidden audit token',
+    })
+
+    expect(search.success).toBe(true)
+    expect(Number(search.matchCount)).toBeGreaterThan(0)
+    const matches = search.matches as Array<Record<string, unknown>>
+    expect(matches[0].matchType).toBe('normalized')
+    expect(String(matches[0].excerpt)).toContain('HIDDEN_AUDIT_TOKEN')
+    expect(matches[0]).toEqual(expect.objectContaining({
+      matchedQuery: 'hidden audit token',
+    }))
+    expect(matches[0].expandCall).toEqual(expect.objectContaining({ mode: 'window' }))
+  })
+
+  it('labels exact, case-insensitive, and normalized matches with the right matchType', () => {
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: 'alpha BetaToken gamma delta foo_bar_value baz',
+    })
+
+    const exact = readMoreContext('session-mcp-ref', ref!, { mode: 'search', query: 'BetaToken' })
+    const exactMatches = exact.matches as Array<Record<string, unknown>>
+    expect(exactMatches[0]?.matchType).toBe('exact')
+
+    const ci = readMoreContext('session-mcp-ref', ref!, { mode: 'search', query: 'betatoken' })
+    const ciMatches = ci.matches as Array<Record<string, unknown>>
+    expect(ciMatches[0]?.matchType).toBe('case_insensitive')
+
+    const norm = readMoreContext('session-mcp-ref', ref!, { mode: 'search', query: 'foo bar value' })
+    const normMatches = norm.matches as Array<Record<string, unknown>>
+    expect(normMatches[0]?.matchType).toBe('normalized')
+    expect(String(normMatches[0]?.excerpt)).toContain('foo_bar_value')
+  })
+
+  it('zero-result searches explain what was tried and how to recover', () => {
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: 'nothing useful in here at all',
+    })
+
+    const search = readMoreContext('session-mcp-ref', ref!, { mode: 'search', query: 'completely-absent-thing' })
+
+    expect(search.success).toBe(true)
+    expect(search.matchCount).toBe(0)
+    expect(search.searchedChars).toBe('nothing useful in here at all'.length)
+    expect(search.searchScope).toBe('underlying_payload')
+
+    const tried = search.needlesTried as Array<Record<string, unknown>>
+    expect(Array.isArray(tried)).toBe(true)
+    expect(tried.length).toBeGreaterThan(0)
+    expect(tried.every((t) => t.found === false)).toBe(true)
+
+    expect(typeof search.suggestion).toBe('string')
+    expect(String(search.suggestion)).toContain('No matches')
+  })
+
+  it('search results include a per-match expandCall for fetching the surrounding window', () => {
+    const ref = registerContextRef('session-mcp-ref', {
+      kind: 'truncated_tool',
+      role: 'tool',
+      content: `prefix ${'x'.repeat(2000)} NEEDLE ${'y'.repeat(2000)} suffix`,
+    })
+
+    const search = readMoreContext('session-mcp-ref', ref!, {
+      mode: 'search',
+      query: 'NEEDLE',
+      maxChars: 400,
+    })
+
+    expect(search.success).toBe(true)
+    const matches = search.matches as Array<Record<string, unknown>>
+    expect(matches.length).toBe(1)
+    const expand = matches[0].expandCall as Record<string, number | string>
+    expect(expand.mode).toBe('window')
+    expect(typeof expand.offset).toBe('number')
+    expect(typeof expand.length).toBe('number')
+
+    const expanded = readMoreContext('session-mcp-ref', ref!, {
+      mode: 'window',
+      offset: expand.offset as number,
+      length: expand.length as number,
+    })
+    expect(String(expanded.excerpt)).toContain('NEEDLE')
   })
 })

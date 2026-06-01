@@ -639,6 +639,271 @@ function upsertArchiveHistoryRef(sessionId: string, archivedMessages: LLMMessage
   return ref
 }
 
+function describeContextKind(
+  kind: ContextRefKind,
+  toolName: string | undefined,
+  messageCount: number | undefined,
+): string {
+  switch (kind) {
+    case "truncated_tool":
+      return toolName
+        ? `Full output from tool '${toolName}'. The inline message excerpt was shortened to fit the context budget; this ref holds the original payload.`
+        : `Full tool output. The inline message excerpt was shortened to fit the context budget; this ref holds the original payload.`
+    case "truncated_payload":
+      return `Full payload from a large conversation message that was inlined as a shortened excerpt. This ref holds the original content.`
+    case "batch_summary":
+      return messageCount && messageCount > 0
+        ? `Original contents of ${messageCount} earlier-conversation message${messageCount === 1 ? "" : "s"} that were replaced inline by a brief summary.`
+        : `Original contents of earlier-conversation messages that were replaced inline by a brief summary.`
+    case "archived_history":
+      return messageCount && messageCount > 0
+        ? `Archived background history: ${messageCount} message${messageCount === 1 ? "" : "s"} moved out of the live window. Original raw contents are stored here.`
+        : `Archived background history that was moved out of the live conversation window. Original raw contents are stored here.`
+    case "dropped_messages":
+      return messageCount && messageCount > 0
+        ? `${messageCount} older message${messageCount === 1 ? "" : "s"} dropped from the live window. Original raw contents are stored here.`
+        : `Older messages dropped from the live window. Original raw contents are stored here.`
+  }
+}
+
+function buildSuggestedCalls(
+  totalChars: number,
+): Array<{ description: string; call: Record<string, unknown> }> {
+  const suggestions: Array<{ description: string; call: Record<string, unknown> }> = [
+    {
+      description: "Find specific text (case-, punctuation-, and underscore-insensitive)",
+      call: { mode: "search", query: "<term>" },
+    },
+  ]
+  if (totalChars > 1500) {
+    const span = Math.min(totalChars, 4000)
+    suggestions.push({
+      description: "Read the first portion",
+      call: { mode: "head", maxChars: span },
+    })
+    suggestions.push({
+      description: "Read the last portion",
+      call: { mode: "tail", maxChars: span },
+    })
+    suggestions.push({
+      description: "Read a specific window",
+      call: { mode: "window", offset: 0, length: span },
+    })
+  } else {
+    suggestions.push({
+      description: "Read the full content",
+      call: { mode: "head", maxChars: Math.min(totalChars, 12000) },
+    })
+  }
+  return suggestions
+}
+
+function buildScopeLabel(entry: ContextRefEntry): Record<string, unknown> {
+  return {
+    kind: entry.kind,
+    role: entry.role,
+    ...(entry.toolName ? { toolName: entry.toolName } : {}),
+    ...(typeof entry.messageCount === "number" ? { messageCount: entry.messageCount } : {}),
+    totalChars: entry.totalChars,
+  }
+}
+
+function buildRangeNavigationHints(
+  totalChars: number,
+  start: number,
+  end: number,
+  maxChars: number,
+): { previousWindow?: Record<string, number | string>; nextWindow?: Record<string, number | string> } {
+  const step = Math.max(100, Math.min(maxChars, 12000))
+  const hints: { previousWindow?: Record<string, number | string>; nextWindow?: Record<string, number | string> } = {}
+  if (start > 0) {
+    const prevStart = Math.max(0, start - step)
+    hints.previousWindow = { mode: "window", offset: prevStart, length: start - prevStart }
+  }
+  if (end < totalChars) {
+    hints.nextWindow = { mode: "window", offset: end, length: Math.min(step, totalChars - end) }
+  }
+  return hints
+}
+
+function buildNormalizedIndex(content: string): { normalized: string; origIndex: number[] } {
+  const normalizedChars: string[] = []
+  const origIndex: number[] = []
+  for (let i = 0; i < content.length; i++) {
+    const code = content.charCodeAt(i)
+    const isDigit = code >= 0x30 && code <= 0x39
+    const isUpper = code >= 0x41 && code <= 0x5a
+    const isLower = code >= 0x61 && code <= 0x7a
+    if (isDigit || isUpper || isLower) {
+      normalizedChars.push(isUpper ? String.fromCharCode(code + 32) : content[i])
+      origIndex.push(i)
+    }
+  }
+  return { normalized: normalizedChars.join(""), origIndex }
+}
+
+function normalizeSearchQuery(query: string): string {
+  return query.replace(/[^A-Za-z0-9]+/g, "").toLowerCase()
+}
+
+type SearchMatchType = "exact" | "case_insensitive" | "normalized" | "token"
+
+interface SearchMatchRecord {
+  start: number
+  end: number
+  matchStart: number
+  matchEnd: number
+  excerpt: string
+  matchedQuery: string
+  matchType: SearchMatchType
+  returnedChars: number
+  expandCall: Record<string, number | string>
+}
+
+interface NeedleTried {
+  needle: string
+  matchType: SearchMatchType
+  found: boolean
+}
+
+function appendMatchAtRange(
+  matches: SearchMatchRecord[],
+  content: string,
+  totalChars: number,
+  matchStart: number,
+  matchEnd: number,
+  maxChars: number,
+  matchedQuery: string,
+  matchType: SearchMatchType,
+): void {
+  const matchLen = matchEnd - matchStart
+  const desiredBefore = Math.floor(maxChars / 4)
+  const desiredAfter = Math.floor(maxChars / 2)
+  let start = matchStart
+  let end = Math.min(totalChars, matchStart + maxChars)
+  if (matchLen < maxChars) {
+    const availableContextChars = maxChars - matchLen
+    const totalDesiredContext = desiredBefore + desiredAfter
+    const contextBefore = Math.min(
+      desiredBefore,
+      Math.floor((availableContextChars * desiredBefore) / Math.max(1, totalDesiredContext)),
+    )
+    const contextAfter = availableContextChars - contextBefore
+    start = Math.max(0, matchStart - contextBefore)
+    end = Math.min(totalChars, matchEnd + contextAfter)
+  }
+  if (matches.some((m) => start < m.end && end > m.start)) return
+  const excerpt = content.slice(start, end)
+  matches.push({
+    start,
+    end,
+    matchStart,
+    matchEnd,
+    excerpt,
+    matchedQuery,
+    matchType,
+    returnedChars: excerpt.length,
+    expandCall: { mode: "window", offset: start, length: end - start },
+  })
+}
+
+function searchContextContent(
+  content: string,
+  totalChars: number,
+  query: string,
+  maxChars: number,
+): { matches: SearchMatchRecord[]; needlesTried: NeedleTried[] } {
+  const matches: SearchMatchRecord[] = []
+  const needlesTried: NeedleTried[] = []
+  const LIMIT = 5
+
+  if (query.length > 0) {
+    const initialLen = matches.length
+    let cursor = 0
+    while (cursor <= content.length && matches.length < LIMIT) {
+      const foundAt = content.indexOf(query, cursor)
+      if (foundAt === -1) break
+      appendMatchAtRange(matches, content, totalChars, foundAt, foundAt + query.length, maxChars, query, "exact")
+      cursor = foundAt + Math.max(1, query.length)
+    }
+    needlesTried.push({ needle: query, matchType: "exact", found: matches.length > initialLen })
+  }
+
+  if (matches.length === 0) {
+    const lowerQuery = query.toLowerCase()
+    if (lowerQuery.length > 0) {
+      const lowerContent = content.toLowerCase()
+      const initialLen = matches.length
+      let cursor = 0
+      while (cursor <= lowerContent.length && matches.length < LIMIT) {
+        const foundAt = lowerContent.indexOf(lowerQuery, cursor)
+        if (foundAt === -1) break
+        appendMatchAtRange(
+          matches,
+          content,
+          totalChars,
+          foundAt,
+          foundAt + lowerQuery.length,
+          maxChars,
+          query,
+          "case_insensitive",
+        )
+        cursor = foundAt + Math.max(1, lowerQuery.length)
+      }
+      needlesTried.push({ needle: query, matchType: "case_insensitive", found: matches.length > initialLen })
+    }
+  }
+
+  if (matches.length === 0) {
+    const normalizedQuery = normalizeSearchQuery(query)
+    if (normalizedQuery.length >= 2) {
+      const { normalized: normalizedContent, origIndex } = buildNormalizedIndex(content)
+      const initialLen = matches.length
+      let cursor = 0
+      while (cursor <= normalizedContent.length && matches.length < LIMIT) {
+        const foundAt = normalizedContent.indexOf(normalizedQuery, cursor)
+        if (foundAt === -1) break
+        const origStart = origIndex[foundAt]
+        const origEnd = origIndex[foundAt + normalizedQuery.length - 1] + 1
+        appendMatchAtRange(matches, content, totalChars, origStart, origEnd, maxChars, query, "normalized")
+        cursor = foundAt + normalizedQuery.length
+      }
+      needlesTried.push({ needle: normalizedQuery, matchType: "normalized", found: matches.length > initialLen })
+    }
+  }
+
+  if (matches.length === 0) {
+    const tokens = collectContextSearchNeedles(query).filter((needle) => needle !== query)
+    const lowerContent = content.toLowerCase()
+    for (const token of tokens) {
+      if (matches.length >= LIMIT) break
+      const lowerToken = token.toLowerCase()
+      if (lowerToken.length === 0) continue
+      const initialLen = matches.length
+      let cursor = 0
+      while (cursor <= lowerContent.length && matches.length < LIMIT) {
+        const foundAt = lowerContent.indexOf(lowerToken, cursor)
+        if (foundAt === -1) break
+        appendMatchAtRange(
+          matches,
+          content,
+          totalChars,
+          foundAt,
+          foundAt + lowerToken.length,
+          maxChars,
+          token,
+          "token",
+        )
+        cursor = foundAt + Math.max(1, lowerToken.length)
+      }
+      needlesTried.push({ needle: token, matchType: "token", found: matches.length > initialLen })
+      if (matches.length > initialLen) break
+    }
+  }
+
+  return { matches, needlesTried }
+}
+
 function collectContextSearchNeedles(query: string): string[] {
   const trimmed = query.trim()
   const seen = new Set<string>()
@@ -717,6 +982,7 @@ export function readMoreContext(
   const modeMaxChars = mode === "search" ? 2500 : 12000
   const maxChars = Math.max(100, Math.min(options.maxChars ?? defaultMaxChars, modeMaxChars))
   const totalChars = entry.totalChars
+  const scope = buildScopeLabel(entry)
 
   if (mode === "overview") {
     return {
@@ -729,17 +995,26 @@ export function readMoreContext(
       messageCount: entry.messageCount,
       totalChars,
       preview: entry.preview,
+      scope,
+      description: describeContextKind(entry.kind, entry.toolName, entry.messageCount),
+      contentDigest: summarizeElidedSpan(entry.content) || undefined,
+      searchScope: "underlying_payload",
+      suggestedCalls: buildSuggestedCalls(totalChars),
     }
   }
 
   if (mode === "head") {
+    const returnedChars = Math.min(maxChars, totalChars)
+    const end = returnedChars
     return {
       success: true,
       contextRef,
       mode,
       totalChars,
-      returnedChars: Math.min(maxChars, totalChars),
+      returnedChars,
       excerpt: entry.content.slice(0, maxChars),
+      scope,
+      ...buildRangeNavigationHints(totalChars, 0, end, maxChars),
     }
   }
 
@@ -753,6 +1028,8 @@ export function readMoreContext(
       start,
       returnedChars: totalChars - start,
       excerpt: entry.content.slice(start),
+      scope,
+      ...buildRangeNavigationHints(totalChars, start, totalChars, maxChars),
     }
   }
 
@@ -770,6 +1047,8 @@ export function readMoreContext(
       end,
       returnedChars: end - start,
       excerpt: entry.content.slice(start, end),
+      scope,
+      ...buildRangeNavigationHints(totalChars, start, end, maxChars),
     }
   }
 
@@ -781,66 +1060,44 @@ export function readMoreContext(
         contextRef,
         mode,
         error: "query is required for search mode",
+        scope,
       }
     }
 
-    const haystack = entry.content.toLowerCase()
-    const matches: Array<{ start: number; end: number; excerpt: string; matchedQuery?: string }> = []
-    const searchNeedles = collectContextSearchNeedles(query)
-    for (const searchNeedle of searchNeedles) {
-      const needle = searchNeedle.toLowerCase()
-      let cursor = 0
-      while (cursor < haystack.length && matches.length < 5) {
-        const foundAt = haystack.indexOf(needle, cursor)
-        if (foundAt === -1) break
-        const desiredBefore = Math.floor(maxChars / 4)
-        const desiredAfter = Math.floor(maxChars / 2)
-        let start = foundAt
-        let end = Math.min(totalChars, foundAt + maxChars)
+    const { matches, needlesTried } = searchContextContent(entry.content, totalChars, query, maxChars)
 
-        if (needle.length < maxChars) {
-          const totalDesiredContext = desiredBefore + desiredAfter
-          const availableContextChars = maxChars - needle.length
-          const contextBefore = Math.min(
-            desiredBefore,
-            Math.floor((availableContextChars * desiredBefore) / Math.max(1, totalDesiredContext)),
-          )
-          const contextAfter = availableContextChars - contextBefore
-
-          start = Math.max(0, foundAt - contextBefore)
-          end = Math.min(totalChars, foundAt + needle.length + contextAfter)
-        }
-
-        const overlapsExisting = matches.some((match) => start < match.end && end > match.start)
-        if (!overlapsExisting) {
-          matches.push({
-            start,
-            end,
-            excerpt: entry.content.slice(start, end),
-            ...(searchNeedle === query ? {} : { matchedQuery: searchNeedle }),
-          })
-        }
-        cursor = foundAt + Math.max(1, needle.length)
-      }
-      if (matches.length > 0) break
-    }
-
-    return {
+    const baseResponse: Record<string, unknown> = {
       success: true,
       contextRef,
       mode,
       query,
       totalChars,
+      searchedChars: totalChars,
+      searchScope: "underlying_payload",
       matchCount: matches.length,
       matches,
+      needlesTried,
+      scope,
     }
+
+    if (matches.length === 0) {
+      const triedDescriptors = needlesTried
+        .map((n) => `${n.matchType}:'${n.needle}'`)
+        .join(", ")
+      baseResponse.suggestion = totalChars === 0
+        ? "The underlying payload is empty; nothing to search."
+        : `No matches found for the query or any of its tokens in the full ${totalChars}-char payload (tried ${triedDescriptors || "none"}). Try a shorter substring, switch to mode='head' or mode='tail' to read the actual content, or use mode='window' with a specific offset.`
+    }
+
+    return baseResponse
   }
 
   return {
     success: false,
     contextRef,
     mode,
-    error: `Unsupported mode: ${mode}`,
+    error: `Unsupported mode: ${mode}. Supported modes: overview, head, tail, window, search.`,
+    scope,
   }
 }
 
@@ -1047,11 +1304,69 @@ function isLikelyPayloadLikeMessage(message: LLMMessage): boolean {
     || startsWithJsonLikeArray(content)
 }
 
+/**
+ * Build a compact, deterministic fingerprint of an elided span so the inline
+ * truncation marker can tell the model *what* was cut without it having to
+ * call read_more_context. Cheap regex scans only — no allocation of the whole
+ * span beyond what the matches need.
+ */
+function summarizeElidedSpan(span: string): string {
+  if (!span) return ""
+  const parts: string[] = []
+
+  const urlCount = (span.match(/https?:\/\/[^\s"'<>)\]]+/g) || []).length
+  if (urlCount > 0) parts.push(`${urlCount} URL${urlCount === 1 ? "" : "s"}`)
+
+  const stackFrames = (span.match(/\n\s+at\s+\S/g) || []).length
+  const hasTraceback = /Traceback \(most recent call last\)/.test(span)
+  if (hasTraceback || stackFrames >= 2) {
+    parts.push("stack trace")
+  } else {
+    const errorMentions = (span.match(/\b(?:error|exception|failed|panic)\b/gi) || []).length
+    if (errorMentions > 0) parts.push(`${errorMentions} error mention${errorMentions === 1 ? "" : "s"}`)
+  }
+
+  const codeBlocks = Math.floor((span.match(/```/g) || []).length / 2)
+  if (codeBlocks > 0) parts.push(`${codeBlocks} code block${codeBlocks === 1 ? "" : "s"}`)
+
+  const keySet = new Set<string>()
+  const keyRe = /"([A-Za-z0-9_-]{1,40})"\s*:/g
+  let keyMatch: RegExpExecArray | null
+  while (keySet.size < 12 && (keyMatch = keyRe.exec(span)) !== null) {
+    keySet.add(keyMatch[1])
+  }
+  if (keySet.size > 0) {
+    const shown = Array.from(keySet).slice(0, 6)
+    const more = keySet.size > shown.length ? ", …" : ""
+    parts.push(`JSON keys: ${shown.join(", ")}${more}`)
+  }
+
+  if (parts.length === 0) {
+    const lineCount = span.split("\n").length
+    if (lineCount > 1) parts.push(`${lineCount} lines of text`)
+  }
+
+  return parts.join(", ")
+}
+
+/**
+ * Build the inline elision marker placed at the cut point. Surfaces the
+ * approximate size of the gap, a content fingerprint of what was removed, and
+ * the Context ref to expand it — so the model sees the gap *in place* and
+ * usually never needs a follow-up read_more_context call.
+ */
+function buildElisionMarker(marker: string, removedChars: number, elidedSpan: string, contextRef?: string): string {
+  const digest = summarizeElidedSpan(elidedSpan)
+  const digestNote = digest ? ` · contains: ${digest}` : ""
+  const refNote = contextRef ? ` · Context ref: ${contextRef}` : ""
+  return `${marker} (≈${removedChars} chars elided${digestNote}${refNote})`
+}
+
 function truncateWithMarker(
   content: string,
   keepChars: number,
   marker: string,
-  options?: { preserveTail?: boolean },
+  options?: { preserveTail?: boolean; contextRef?: string },
 ): string {
   if (content.length <= keepChars) return content
   const preserveTail = options?.preserveTail === true && keepChars >= 200
@@ -1062,11 +1377,13 @@ function truncateWithMarker(
     const tailChars = Math.floor(keepChars / 2)
     const head = content.slice(0, headChars).trimEnd()
     const tail = content.slice(content.length - tailChars).trimStart()
-    return `${head}\n\n${marker} (${removedChars} chars omitted)\n\n${tail}`
+    const elidedSpan = content.slice(headChars, content.length - tailChars)
+    return `${head}\n\n${buildElisionMarker(marker, removedChars, elidedSpan, options?.contextRef)}\n\n${tail}`
   }
 
   const head = content.slice(0, keepChars).trimEnd()
-  return `${head}\n\n${marker} (${removedChars} chars omitted)`
+  const elidedSpan = content.slice(keepChars)
+  return `${head}\n\n${buildElisionMarker(marker, removedChars, elidedSpan, options?.contextRef)}`
 }
 
 function isTruncationProtectedMessage(message: LLMMessage): boolean {
@@ -1687,10 +2004,10 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
       content: msg.content,
       toolName: toolName !== "unknown" ? toolName : undefined,
     })
-    const truncatedContent = addContextRefNote(
-      truncateWithMarker(msg.content, keepChars, marker, { preserveTail: isToolResultLike }),
-      contextRef,
-    )
+    const truncatedContent = truncateWithMarker(msg.content, keepChars, marker, {
+      preserveTail: true,
+      contextRef: contextRef ?? undefined,
+    })
 
     if (truncatedContent !== msg.content) {
       messages[i] = {

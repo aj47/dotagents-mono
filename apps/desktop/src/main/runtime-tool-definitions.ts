@@ -149,7 +149,7 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   },
   {
     name: "read_more_context",
-    description: "Read a specific slice of earlier compacted context using a Context ref shown in truncated or summarized messages. Prefer overview/search/window reads over fetching large heads or tails.",
+    description: "Read a specific slice of earlier compacted context using a Context ref shown in truncated or summarized messages. Acts as a scoped document navigator over the full underlying payload (not just the inline excerpt). Start with mode='overview' to see what the ref covers and get suggested next calls. Use mode='search' for case-, punctuation-, and underscore-insensitive lookup; each match is labeled with matchType and includes an expandCall for fetching surrounding text. head/tail/window results include nextWindow/previousWindow hints so you can keep paging without guessing offsets.",
     inputSchema: {
       type: "object",
       properties: {
