@@ -346,6 +346,8 @@ function startNativePlayback(
   };
   let hasStartedPlaying = false;
   let hasLoggedFirstStatus = false;
+  let startedAtMs: number | null = null;
+  let transientStopRetries = 0;
 
   const finalize = (reason: 'done' | 'error' | 'stopped') => {
     logRemoteTts(reason === 'error' ? 'warn' : 'info', 'native playback finalize', {
@@ -381,6 +383,7 @@ function startNativePlayback(
       if (status.playing) {
         if (!hasStartedPlaying) {
           hasStartedPlaying = true;
+          startedAtMs = Date.now();
           logRemoteTts('info', 'native playback started', summarizePlaybackStatus(status));
           options.onStart?.();
         }
@@ -391,11 +394,32 @@ function startNativePlayback(
         return;
       }
       if (hasStartedPlaying && !status.playing && !status.isBuffering) {
-        playback.stopped = true;
         const reachedEnd = status.duration > 0 && status.currentTime >= Math.max(0, status.duration - 0.25);
+        const elapsedSinceStartMs = startedAtMs ? Date.now() - startedAtMs : null;
+        const stoppedAtStart = status.currentTime <= 0.25 && !reachedEnd;
+        if (
+          stoppedAtStart
+          && transientStopRetries < 2
+          && (elapsedSinceStartMs === null || elapsedSinceStartMs < 1500)
+        ) {
+          transientStopRetries += 1;
+          logRemoteTts('info', 'native playback transient stop ignored', {
+            ...summarizePlaybackStatus(status),
+            elapsedSinceStartMs,
+            retry: transientStopRetries,
+          });
+          try {
+            player.play();
+          } catch (error) {
+            logRemoteTts('warn', 'native playback transient resume failed', summarizeRemoteTtsError(error));
+          }
+          return;
+        }
+        playback.stopped = true;
         logRemoteTts('info', 'native playback stopped status', {
           ...summarizePlaybackStatus(status),
           reachedEnd,
+          elapsedSinceStartMs,
         });
         finalize(reachedEnd ? 'done' : 'stopped');
       }
@@ -429,6 +453,11 @@ function stopCurrentRemotePlayback(notifyStopped: boolean): void {
   currentPlayback = null;
   const shouldNotifyStopped = notifyStopped && !playback.stopped;
   playback.stopped = true;
+  logRemoteTts('info', 'stop current playback', {
+    kind: playback.kind,
+    notifyStopped,
+    shouldNotifyStopped,
+  });
 
   if (playback.kind === 'web') {
     try { playback.audio.pause(); } catch {}
