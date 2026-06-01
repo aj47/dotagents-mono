@@ -39,6 +39,16 @@ export interface LoopStatus {
   schedule?: LoopConfig["schedule"]
 }
 
+export interface LoopTriggerOptions {
+  clientSessionId?: string
+}
+
+export interface LoopExecutionResult {
+  loopId: string
+  conversationId?: string
+  sessionId?: string
+}
+
 export function isContinuousLoop(loop: Pick<LoopConfig, "runContinuously">): boolean {
   return loop.runContinuously === true
 }
@@ -328,23 +338,25 @@ class LoopService {
     return true
   }
 
-  async triggerLoop(loopId: string): Promise<boolean> {
+  async triggerLoop(loopId: string, options: LoopTriggerOptions = {}): Promise<LoopExecutionResult | null> {
     const loop = this.getLoop(loopId)
     if (!loop) {
       logApp(`[LoopService] Cannot trigger loop ${loopId}: not found`)
-      return false
+      return null
     }
 
     if (this.executingLoops.has(loopId)) {
       logApp(`[LoopService] Skip manual trigger for "${loop.name}" (${loopId}): already executing`)
-      return false
+      return null
     }
 
     logApp(`[LoopService] Manually triggering loop "${loop.name}" (${loopId})`)
     // Reschedule after manual run if the loop is enabled so we don't lose the timer
     const shouldReschedule = loop.enabled && this.activeTimers.has(loopId)
-    await this.executeLoop(loopId, { rescheduleAfterRun: shouldReschedule })
-    return true
+    return await this.executeLoop(loopId, {
+      rescheduleAfterRun: shouldReschedule,
+      clientSessionId: options.clientSessionId,
+    })
   }
 
   getLoopStatuses(): LoopStatus[] {
@@ -378,23 +390,25 @@ class LoopService {
     }
   }
 
-  private async executeLoop(loopId: string, options: { rescheduleAfterRun: boolean }): Promise<void> {
+  private async executeLoop(loopId: string, options: { rescheduleAfterRun: boolean; clientSessionId?: string }): Promise<LoopExecutionResult | null> {
     const loop = this.getLoop(loopId)
 
     if (!loop) {
       logApp(`[LoopService] Cannot execute loop ${loopId}: not found`)
-      return
+      return null
     }
 
     if (this.executingLoops.has(loopId)) {
       logApp(`[LoopService] Skip execution for "${loop.name}" (${loopId}): already executing`)
-      return
+      return null
     }
 
     this.executingLoops.add(loopId)
     this.clearScheduledTimer(loopId)
 
     logApp(`[LoopService] Executing loop "${loop.name}" (${loopId})`)
+    let conversationId: string | undefined
+    let sessionId: string | undefined
 
     try {
       // Update lastRunAt in memory and persist
@@ -415,9 +429,6 @@ class LoopService {
       // so the renderer's TTS auto-play gate fires on the finished response
       // without popping the panel open for the entire run.
       const startSnoozed = true
-
-      let conversationId: string | undefined
-      let sessionId: string | undefined
 
       // Try to resume a prior session if `continueInSession` is enabled and
       // we have a `lastSessionId` (either auto-tracked from the previous run
@@ -448,6 +459,7 @@ class LoopService {
               await conversationService.renameConversationTitle(
                 conversationId,
                 conversationTitle,
+                "system",
               )
               agentSessionTracker.updateSession(sessionId, { conversationTitle, isRepeatTask: true })
               logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
@@ -469,9 +481,14 @@ class LoopService {
       if (!sessionId || !conversationId) {
         const conversation = await conversationService.createConversation(loop.prompt, "user")
         conversationId = conversation.id
+        if (options.clientSessionId) {
+          conversation.clientSessionId = options.clientSessionId
+          await conversationService.saveConversation(conversation, true)
+        }
         await conversationService.renameConversationTitle(
           conversationId,
           conversationTitle,
+          "system",
         )
         sessionId = agentSessionTracker.startSession(
           conversationId,
@@ -529,8 +546,11 @@ class LoopService {
         }
         logApp(`[LoopService] Unsnoozed session ${sessionId} for loop "${loop.name}" (speakOnTrigger)`)
       }
+
+      return { loopId, conversationId, sessionId }
     } catch (error) {
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
+      return { loopId, conversationId, sessionId }
     } finally {
       this.executingLoops.delete(loopId)
 

@@ -44,7 +44,7 @@ import {
   getConversationVideoMimeTypeFromFileName,
 } from "./conversation-video-assets"
 import { getConversationImageAssetPath } from "./conversation-image-assets"
-import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, MCPConfig, MCPServerConfig, OAuthConfig, normalizeAgentProfileRole } from "../shared/types"
+import { AgentProgressUpdate, SessionProfileSnapshot, LoopConfig, Config, MCPConfig, MCPServerConfig, OAuthConfig, TitleSource, normalizeAgentProfileRole } from "../shared/types"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { inferTransportType } from "../shared/mcp-utils"
 import { agentSessionTracker } from "./agent-session-tracker"
@@ -5610,7 +5610,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       return reply.send({
         id: conversation.id,
+        clientSessionId: conversation.clientSessionId,
         title: conversation.title,
+        titleSource: conversation.titleSource,
         createdAt: conversation.createdAt,
         updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
@@ -5924,6 +5926,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     return null
   }
 
+  const normalizeTitleSourceInput = (value: unknown): TitleSource | undefined => {
+    return value === "default" ||
+      value === "local_generated" ||
+      value === "server_generated" ||
+      value === "manual" ||
+      value === "system"
+      ? value
+      : undefined
+  }
+
+  const normalizeClientSessionIdInput = (value: unknown): string | undefined => {
+    if (typeof value !== "string") return undefined
+    const normalized = value.trim()
+    return normalized ? normalized.slice(0, 200) : undefined
+  }
+
   // GET /v1/conversations - List all conversations
   fastify.get("/v1/conversations", async (_req, reply) => {
     try {
@@ -5945,7 +5963,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       const body = req.body as {
+        clientSessionId?: string
         title?: string
+        titleSource?: TitleSource
         messages: Array<{
           role: "user" | "assistant" | "tool"
           content: string
@@ -5975,6 +5995,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const title = body.title || (firstMessageContent.length > 50
         ? `${firstMessageContent.slice(0, 50)}...`
         : firstMessageContent || "New Conversation")
+      const titleSource: TitleSource = normalizeTitleSourceInput(body.titleSource) ?? (body.title ? "local_generated" : "default")
 
       // Convert input messages to ConversationMessage format with IDs
       const messages = body.messages.map((msg, index) => ({
@@ -5988,7 +6009,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       const conversation = {
         id: conversationId,
+        clientSessionId: normalizeClientSessionIdInput(body.clientSessionId),
         title,
+        titleSource,
         createdAt: body.createdAt ?? now,
         updatedAt: body.updatedAt ?? now,
         messages,
@@ -6002,7 +6025,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       return reply.code(201).send({
         id: conversation.id,
+        clientSessionId: conversation.clientSessionId,
         title: conversation.title,
+        titleSource: conversation.titleSource,
         createdAt: conversation.createdAt,
         updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
@@ -6042,7 +6067,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
 
       const body = req.body as {
+        clientSessionId?: string
         title?: string
+        titleSource?: TitleSource
         messages?: Array<{
           role: "user" | "assistant" | "tool"
           content: string
@@ -6072,6 +6099,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         const title = body.title || (firstMessageContent.length > 50
           ? `${firstMessageContent.slice(0, 50)}...`
           : firstMessageContent || "New Conversation")
+        const titleSource: TitleSource = normalizeTitleSourceInput(body.titleSource) ?? (body.title ? "local_generated" : "default")
 
         const messages = body.messages.map((msg, index) => ({
           id: `msg_${now}_${index}_${Math.random().toString(36).substr(2, 9)}`,
@@ -6084,7 +6112,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
         conversation = {
           id: conversationId,
+          clientSessionId: normalizeClientSessionIdInput(body.clientSessionId),
           title,
+          titleSource,
           createdAt: now,
           updatedAt: body.updatedAt ?? now,
           messages,
@@ -6094,8 +6124,15 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         diagnosticsService.logInfo("remote-server", `Created conversation ${conversationId} via PUT with ${messages.length} messages`)
       } else {
         // Update existing conversation
+        if (body.clientSessionId !== undefined) {
+          conversation.clientSessionId = normalizeClientSessionIdInput(body.clientSessionId)
+        }
+
         if (body.title !== undefined) {
           conversation.title = body.title
+          conversation.titleSource = normalizeTitleSourceInput(body.titleSource) ?? "manual"
+        } else if (body.titleSource !== undefined) {
+          conversation.titleSource = normalizeTitleSourceInput(body.titleSource)
         }
 
         if (body.messages !== undefined && !Array.isArray(body.messages)) {
@@ -6130,7 +6167,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       return reply.send({
         id: conversation.id,
+        clientSessionId: conversation.clientSessionId,
         title: conversation.title,
+        titleSource: conversation.titleSource,
         createdAt: conversation.createdAt,
         updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
@@ -6181,7 +6220,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       return reply.send({
         id: conversation.id,
+        clientSessionId: conversation.clientSessionId,
         title: conversation.title,
+        titleSource: conversation.titleSource,
         createdAt: conversation.createdAt,
         updatedAt: conversationService.getConversationActivityTimestamp(conversation),
         messages: conversation.messages.map(msg => ({
@@ -7629,13 +7670,23 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           return reply.code(404).send({ error: "Repeat task not found" })
         }
 
-        const triggered = await loopService.triggerLoop(params.id)
+        const body = req.body && typeof req.body === "object" && !Array.isArray(req.body)
+          ? req.body as { clientSessionId?: unknown }
+          : {}
+        const triggered = await loopService.triggerLoop(params.id, {
+          clientSessionId: normalizeClientSessionIdInput(body.clientSessionId),
+        })
 
         if (!triggered) {
           return reply.code(409).send({ error: "Task is already running" })
         }
 
-        return reply.send({ success: true, id: params.id })
+        return reply.send({
+          success: true,
+          id: params.id,
+          conversationId: triggered.conversationId,
+          sessionId: triggered.sessionId,
+        })
       }
 
       return reply.code(503).send({ error: "Repeat task service is unavailable" })

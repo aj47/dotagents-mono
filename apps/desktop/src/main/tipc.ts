@@ -48,6 +48,7 @@ import path from "path"
 import { configStore, recordingsFolder, conversationsFolder, trySaveConfig } from "./config"
 import {
   Config,
+  SidebarSessionGroupConfig,
   RecordingHistoryItem,
   MCPConfig,
   MCPServerConfig,
@@ -253,6 +254,40 @@ async function postProcessTranscriptSafely(transcript: string, context: string):
 
 function getRemoteSttModel(config: Config): string {
   return getConfiguredSttModel(config) || DEFAULT_STT_MODELS.openai
+}
+
+function normalizeSidebarSessionKeyOrder(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+
+  const seen = new Set<string>()
+  return input.flatMap((value) => {
+    if (typeof value !== "string") return []
+    const normalized = value.trim()
+    if (!normalized || seen.has(normalized)) return []
+    seen.add(normalized)
+    return [normalized]
+  })
+}
+
+function normalizeSidebarSessionGroups(input: unknown): SidebarSessionGroupConfig[] {
+  if (!Array.isArray(input)) return []
+
+  const seenGroupIds = new Set<string>()
+  return input.flatMap((value) => {
+    if (!value || typeof value !== "object") return []
+    const raw = value as Partial<SidebarSessionGroupConfig>
+    const id = typeof raw.id === "string" ? raw.id.trim() : ""
+    if (!id || seenGroupIds.has(id)) return []
+    seenGroupIds.add(id)
+
+    const name = typeof raw.name === "string" ? raw.name.trim() : ""
+    return [{
+      id,
+      name: name || "Untitled group",
+      sessionKeys: normalizeSidebarSessionKeyOrder(raw.sessionKeys),
+      expanded: raw.expanded !== false,
+    }]
+  })
 }
 
 async function initializeMcpWithProgress(config: Config, sessionId: string, runId?: number): Promise<void> {
@@ -2676,7 +2711,7 @@ export const router = {
       // No active session or queuing disabled - proceed with normal processing
       // Emit initial loading progress immediately BEFORE transcription
       // This ensures users see feedback during the (potentially long) STT call
-      const tempConversationId = input.conversationId || `temp_${Date.now()}`
+      const startupConversationId = input.conversationId
 
       // Determine profile snapshot for session isolation
       // If reusing an existing session, use its stored snapshot to maintain isolation
@@ -2722,7 +2757,7 @@ export const router = {
           })
         } else {
           // Session not found, create a new one with profile snapshot
-          sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
+          sessionId = agentSessionTracker.startSession(startupConversationId, "Transcribing...", startSnoozed, profileSnapshot)
         }
       } else if (input.conversationId) {
         // No sessionId but have conversationId - try to find existing session for this conversation
@@ -2739,27 +2774,28 @@ export const router = {
             })
           } else {
             // Revive failed, create new session with profile snapshot
-            sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
+            sessionId = agentSessionTracker.startSession(startupConversationId, "Transcribing...", startSnoozed, profileSnapshot)
           }
         } else {
           // No existing session for this conversation, create new with profile snapshot
-          sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
+          sessionId = agentSessionTracker.startSession(startupConversationId, "Transcribing...", startSnoozed, profileSnapshot)
         }
       } else {
         // No sessionId or conversationId provided, create a new session with profile snapshot
-        sessionId = agentSessionTracker.startSession(tempConversationId, "Transcribing...", startSnoozed, profileSnapshot)
+        sessionId = agentSessionTracker.startSession(startupConversationId, "Transcribing...", startSnoozed, profileSnapshot)
       }
 
       agentSessionTracker.updateSession(sessionId, {
         isSnoozed: startSnoozed,
         suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow,
       })
+      agentSessionStateManager.createSession(sessionId, profileSnapshot)
 
       try {
         // Emit initial "initializing" progress update
         await emitAgentProgress({
           sessionId,
-          conversationId: tempConversationId,
+          ...(startupConversationId ? { conversationId: startupConversationId } : {}),
           currentIteration: 0,
           maxIterations: 1,
           steps: [{
@@ -2884,6 +2920,23 @@ export const router = {
         conversationId,
         conversationTitle,
       })
+      await emitAgentProgress({
+        sessionId,
+        conversationId,
+        currentIteration: 0,
+        maxIterations: 1,
+        steps: [{
+          id: `transcribe_complete_${Date.now()}`,
+          type: "thinking",
+          title: "Transcription complete",
+          description: "Starting agent...",
+          status: "completed",
+          timestamp: Date.now(),
+        }],
+        isComplete: false,
+        isSnoozed: startSnoozed,
+        conversationTitle,
+      })
 
       // Save the recording file immediately
       const recordingId = Date.now().toString()
@@ -2935,7 +2988,7 @@ export const router = {
         // Clean up the session and emit error state
         await emitAgentProgress({
           sessionId,
-          conversationId: tempConversationId,
+          ...(startupConversationId ? { conversationId: startupConversationId } : {}),
           currentIteration: 1,
           maxIterations: 1,
           steps: [{
@@ -2954,6 +3007,7 @@ export const router = {
 
         // Mark the session as errored to clean up the UI
         agentSessionTracker.errorSession(sessionId, getErrorMessage(error, "Transcription failed"))
+        agentSessionStateManager.cleanupSession(sessionId)
 
         // Re-throw the error so the caller knows transcription failed
         throw error
@@ -2979,6 +3033,33 @@ export const router = {
   getConfig: t.procedure.action(async () => {
     return configStore.get()
   }),
+
+  getSidebarSessionState: t.procedure.action(async () => {
+    const config = configStore.get()
+    return {
+      groups: normalizeSidebarSessionGroups(config.sidebarSessionGroups),
+      ungroupedSessionOrder: normalizeSidebarSessionKeyOrder(config.sidebarUngroupedSessionOrder),
+    }
+  }),
+
+  saveSidebarSessionState: t.procedure
+    .input<{
+      groups: SidebarSessionGroupConfig[]
+      ungroupedSessionOrder: string[]
+    }>()
+    .action(async ({ input }) => {
+      const config = configStore.get()
+      const updatedConfig: Config = {
+        ...config,
+        sidebarSessionGroups: normalizeSidebarSessionGroups(input.groups),
+        sidebarUngroupedSessionOrder: normalizeSidebarSessionKeyOrder(input.ungroupedSessionOrder),
+      }
+      configStore.save(updatedConfig)
+      return {
+        groups: updatedConfig.sidebarSessionGroups ?? [],
+        ungroupedSessionOrder: updatedConfig.sidebarUngroupedSessionOrder ?? [],
+      }
+    }),
 
   getChatGptWebAuthStatus: t.procedure.action(async () => {
     const { getChatGptWebAuthStatus } = await import("./chatgpt-web-provider")

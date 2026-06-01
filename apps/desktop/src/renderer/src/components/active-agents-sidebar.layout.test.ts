@@ -16,4 +16,12 @@ describe("active agents sidebar layout", () => {
     expect(sidebarSource).toContain("bg-blue-500/15 text-foreground ring-1 ring-inset ring-blue-500/25")
     expect(sidebarSource).toContain('isSelectedNestedSubagent ? "bg-blue-500" : statusRailColor')
   })
+
+  it("persists session groups through app config", () => {
+    expect(sidebarSource).toContain('queryKey: ["sidebar-session-state"]')
+    expect(sidebarSource).toContain("tipcClient.getSidebarSessionState()")
+    expect(sidebarSource).toContain("tipcClient.saveSidebarSessionState({")
+    expect(sidebarSource).not.toContain("sidebar-session-groups-backup-v1")
+    expect(sidebarSource).not.toContain("readLegacySidebarSessionGroupsFromStorage")
+  })
 })

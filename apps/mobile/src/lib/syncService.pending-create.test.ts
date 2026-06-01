@@ -9,6 +9,7 @@ function createLocalSession(overrides: Partial<Session> = {}): Session {
   return {
     id: overrides.id ?? 'session-local-1',
     title: overrides.title ?? 'New Chat',
+    titleSource: overrides.titleSource ?? 'default',
     createdAt: overrides.createdAt ?? 1,
     updatedAt: overrides.updatedAt ?? 2,
     messages: overrides.messages ?? [
@@ -74,6 +75,9 @@ describe('syncConversations pending create guard', () => {
     const { result, sessions } = await syncConversations(client, [localSession]);
 
     expect(client.createConversation).toHaveBeenCalledTimes(1);
+    expect(client.createConversation).toHaveBeenCalledWith(expect.objectContaining({
+      clientSessionId: localSession.id,
+    }));
     expect(result.pushed).toBe(1);
     expect(sessions[0]?.serverConversationId).toBe('conv-created-by-sync');
   });
@@ -81,6 +85,7 @@ describe('syncConversations pending create guard', () => {
   it('does not push a mobile first-message fallback title over a better server title', async () => {
     const localSession = createLocalSession({
       title: 'what did you try to do today',
+      titleSource: 'local_generated',
       updatedAt: 200,
       serverConversationId: 'conv-title-generated',
       messages: [
@@ -93,7 +98,9 @@ describe('syncConversations pending create guard', () => {
         conversations: [
           {
             id: 'conv-title-generated',
+            clientSessionId: localSession.id,
             title: 'Debugging Hands-Free Voice Mode',
+            titleSource: 'server_generated',
             createdAt: 1,
             updatedAt: 150,
             messageCount: 2,
@@ -122,9 +129,83 @@ describe('syncConversations pending create guard', () => {
     expect(sessions[0]?.title).toBe('Debugging Hands-Free Voice Mode');
   });
 
+  it('re-links an unlinked local session by explicit client session id', async () => {
+    const localSession = createLocalSession({
+      id: 'session-relink',
+      title: 'New Chat',
+      titleSource: 'default',
+      createdAt: 100,
+      updatedAt: 100,
+    });
+    const client = {
+      getConversations: vi.fn().mockResolvedValue({
+        conversations: [
+          {
+            id: 'conv-existing',
+            clientSessionId: 'session-relink',
+            title: 'Recovered Conversation Title',
+            titleSource: 'server_generated',
+            createdAt: 999,
+            updatedAt: 120,
+            messageCount: 1,
+          },
+        ],
+      }),
+      createConversation: vi.fn(),
+      getConversation: vi.fn(),
+      updateConversation: vi.fn(),
+    } as any;
+
+    const { result, sessions } = await syncConversations(client, [localSession]);
+
+    expect(client.createConversation).not.toHaveBeenCalled();
+    expect(result.updated).toBe(1);
+    expect(sessions[0]).toMatchObject({
+      id: 'session-relink',
+      serverConversationId: 'conv-existing',
+      title: 'Recovered Conversation Title',
+      titleSource: 'server_generated',
+    });
+  });
+
+  it('uses explicit fallback provenance to accept a better server title even when the local title looks custom', async () => {
+    const localSession = createLocalSession({
+      title: 'My custom-looking generated title',
+      titleSource: 'local_generated',
+      updatedAt: 100,
+      serverConversationId: 'conv-explicit-fallback',
+      messages: [
+        { id: 'msg-1', role: 'user', content: 'what did you try to do today', timestamp: 100 },
+      ],
+    });
+    const client = {
+      getConversations: vi.fn().mockResolvedValue({
+        conversations: [
+          {
+            id: 'conv-explicit-fallback',
+            title: 'Debugging Hands-Free Voice Mode',
+            titleSource: 'server_generated',
+            createdAt: 1,
+            updatedAt: 100,
+            messageCount: 1,
+          },
+        ],
+      }),
+      createConversation: vi.fn(),
+      getConversation: vi.fn(),
+      updateConversation: vi.fn(),
+    } as any;
+
+    const { sessions } = await syncConversations(client, [localSession]);
+
+    expect(sessions[0]?.title).toBe('Debugging Hands-Free Voice Mode');
+    expect(sessions[0]?.titleSource).toBe('server_generated');
+  });
+
   it('keeps an explicit local rename when the local session is newer than the server', async () => {
     const localSession = createLocalSession({
       title: 'My explicit mobile title',
+      titleSource: 'manual',
       updatedAt: 200,
       serverConversationId: 'conv-explicit-title',
       messages: [
@@ -167,6 +248,7 @@ describe('syncConversations pending create guard', () => {
     const firstMessage = 'can you refresh me on the demo for snyk we discussed today';
     const localSession = createLocalSession({
       title: generateSessionTitle(firstMessage),
+      titleSource: 'local_generated',
       updatedAt: 200,
       serverConversationId: 'conv-fallback-title',
       messages: [
@@ -181,6 +263,7 @@ describe('syncConversations pending create guard', () => {
           {
             id: 'conv-fallback-title',
             title: serverFallbackTitle,
+            titleSource: 'local_generated',
             createdAt: 1,
             updatedAt: 150,
             messageCount: 2,

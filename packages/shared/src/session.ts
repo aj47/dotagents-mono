@@ -8,6 +8,26 @@ import { filterVisibleChatMessages } from './chat-utils';
 const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\((?:data:image\/[^)]+|[^)]+)\)/gi;
 const MARKDOWN_VIDEO_LINK_REGEX = /(^|[^!])\[[^\]]*\]\((?:assets:\/\/conversation-video\/[^)]+|https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?)\)/gi;
 
+export type TitleSource =
+  | 'default'
+  | 'local_generated'
+  | 'server_generated'
+  | 'manual'
+  | 'system';
+
+export function isTitleSource(value: unknown): value is TitleSource {
+  return value === 'default'
+    || value === 'local_generated'
+    || value === 'server_generated'
+    || value === 'manual'
+    || value === 'system';
+}
+
+export function isFallbackTitleSource(titleSource: TitleSource | undefined): boolean {
+  return titleSource === 'default'
+    || titleSource === 'local_generated';
+}
+
 export function sanitizeSessionText(content: string): string {
   return content
     .replace(MARKDOWN_IMAGE_REGEX, '[Image]')
@@ -28,6 +48,7 @@ export interface SessionChatMessage {
 export interface Session {
   id: string;
   title: string;
+  titleSource?: TitleSource;
   createdAt: number;
   updatedAt: number;
   isPinned?: boolean;
@@ -51,6 +72,7 @@ export interface Session {
 export interface SessionListItem {
   id: string;
   title: string;
+  titleSource?: TitleSource;
   createdAt: number;
   updatedAt: number;
   isPinned?: boolean;
@@ -109,6 +131,7 @@ export function sessionToListItem(session: Session): SessionListItem {
     return {
       id: session.id,
       title: session.title,
+      titleSource: session.titleSource,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       isPinned: session.isPinned,
@@ -126,6 +149,7 @@ export function sessionToListItem(session: Session): SessionListItem {
   return {
     id: session.id,
     title: session.title,
+    titleSource: session.titleSource,
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
     isPinned: session.isPinned,

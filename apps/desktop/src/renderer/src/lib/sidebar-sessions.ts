@@ -48,8 +48,13 @@ type TitledSessionLike = SessionLike & {
 
 type ProgressTitleLike = Pick<
   AgentProgressUpdate,
-  "conversationTitle" | "conversationHistory" | "latestSummary" | "steps"
+  "conversationId" | "conversationTitle" | "conversationHistory" | "latestSummary" | "steps"
 >
+
+type SidebarSessionMetadataLike = {
+  conversationId?: string | null
+  conversationTitle?: string | null
+}
 
 type ProgressLifecycleLike = Pick<AgentProgressUpdate, "isComplete" | "steps">
 
@@ -102,7 +107,7 @@ export function getSidebarSessionGroupKey(session: SessionLike): string {
 export function getSidebarSessionGroupKeys(session: SessionLike): string[] {
   const conversationId = session.conversationId?.trim()
   const keys = conversationId
-    ? [`conversation:${conversationId}`, `session:${session.id}`]
+    ? [`session:${session.id}`, `conversation:${conversationId}`]
     : [`session:${session.id}`]
   return Array.from(new Set(keys))
 }
@@ -694,6 +699,23 @@ export function getSidebarProgressTitle(
   }
 
   return explicitTitle ?? fallbackTitle ?? undefined
+}
+
+export function resolveSidebarSessionMetadata(
+  sessionId: string,
+  progress: ProgressTitleLike,
+  delegationTitlesBySessionId: ReadonlyMap<string, string>,
+  existingSession?: SidebarSessionMetadataLike,
+): { conversationId?: string; conversationTitle?: string } {
+  return {
+    conversationId: progress.conversationId ?? existingSession?.conversationId ?? undefined,
+    conversationTitle: getSidebarProgressTitle(
+      sessionId,
+      progress,
+      delegationTitlesBySessionId,
+      existingSession?.conversationTitle ?? undefined,
+    ),
+  }
 }
 
 function normalizeSidebarActivityText(value?: string | null): string | null {

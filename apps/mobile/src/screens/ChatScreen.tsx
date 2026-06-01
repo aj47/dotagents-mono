@@ -1259,16 +1259,42 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const handleRunPromptTask = useCallback(async (task: Loop) => {
     if (!settingsClient || runningPromptTaskId) return;
+    const launchSession = sessionStore.getCurrentSession();
+    const launchDraftSessionId =
+      launchSession &&
+      !launchSession.serverConversationId &&
+      launchSession.messages.length === 0
+        ? launchSession.id
+        : undefined;
+
     setRunningPromptTaskId(task.id);
     try {
-      await settingsClient.runLoop(task.id);
-      Alert.alert('Task started', `Running "${task.name}" on desktop.`);
+      const result = await settingsClient.runLoop(task.id, {
+        clientSessionId: launchDraftSessionId,
+      });
+      if (result.conversationId) {
+        const syncResult = await sessionStore.syncWithServer(settingsClient);
+        if (syncResult.errors.includes('Sync already in progress')) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await sessionStore.syncWithServer(settingsClient);
+        }
+        const taskSession = sessionStore.findSessionByServerConversationId(result.conversationId);
+        if (taskSession) {
+          sessionStore.setCurrentSession(taskSession.id);
+          if (launchDraftSessionId && taskSession.id !== launchDraftSessionId) {
+            void sessionStore.deleteSession(launchDraftSessionId);
+          }
+          navigation.navigate('Chat');
+          return;
+        }
+      }
+      Alert.alert('Task completed', `"${task.name}" finished on desktop. It will appear in chat history after sync.`);
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to run task.');
     } finally {
       setRunningPromptTaskId(null);
     }
-  }, [runningPromptTaskId, settingsClient]);
+  }, [navigation, runningPromptTaskId, sessionStore, settingsClient]);
 
   const openAddPromptModal = useCallback(() => {
     setEditingPrompt(null);
@@ -1786,6 +1812,7 @@ export default function ChatScreen({ route, navigation }: any) {
               sessionId,
               serverConversationId,
               fullConversation.title,
+              fullConversation.titleSource,
             );
             console.info('[ChatScreen] Server-generated title refresh completed.', {
               source,

@@ -27,7 +27,7 @@ import {
   getSidebarActivityPresentation,
   getSidebarSessionGroupKey,
   getLatestAgentResponseTimestamp,
-  getSidebarProgressTitle,
+  resolveSidebarSessionMetadata,
   hasSidebarSessionGroupKey,
   getSessionIdsWithActiveChildProgress,
   getSubagentTitleBySessionIdMap,
@@ -219,8 +219,6 @@ const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 const TASKS_SECTION_EXPANDED_STORAGE_KEY = "sidebar-tasks-section-expanded"
-const SESSION_GROUPS_STORAGE_KEY = "sidebar-session-groups-v1"
-const UNGROUPED_SESSION_ORDER_STORAGE_KEY = "sidebar-ungrouped-session-order-v1"
 const SIDEBAR_SESSION_DRAG_MIME = "application/x-dotagents-sidebar-session-key"
 const SIDEBAR_GROUP_DRAG_MIME = "application/x-dotagents-sidebar-group-id"
 
@@ -246,43 +244,6 @@ function readBooleanFromStorage(key: string, fallback: boolean): boolean {
 function writeBooleanToStorage(key: string, value: boolean): void {
   try {
     localStorage.setItem(key, String(value))
-  } catch {
-    // localStorage may be unavailable; ignore.
-  }
-}
-
-function readSidebarSessionGroupsFromStorage(): SidebarSessionGroup[] {
-  try {
-    const stored = localStorage.getItem(SESSION_GROUPS_STORAGE_KEY)
-    return stored ? normalizeSidebarSessionGroups(JSON.parse(stored)) : []
-  } catch {
-    return []
-  }
-}
-
-function writeSidebarSessionGroupsToStorage(groups: SidebarSessionGroup[]): void {
-  try {
-    localStorage.setItem(SESSION_GROUPS_STORAGE_KEY, JSON.stringify(groups))
-  } catch {
-    // localStorage may be unavailable; ignore.
-  }
-}
-
-function readUngroupedSessionOrderFromStorage(): string[] {
-  try {
-    const stored = localStorage.getItem(UNGROUPED_SESSION_ORDER_STORAGE_KEY)
-    return stored ? normalizeSidebarSessionKeyOrder(JSON.parse(stored)) : []
-  } catch {
-    return []
-  }
-}
-
-function writeUngroupedSessionOrderToStorage(sessionKeys: string[]): void {
-  try {
-    localStorage.setItem(
-      UNGROUPED_SESSION_ORDER_STORAGE_KEY,
-      JSON.stringify(normalizeSidebarSessionKeyOrder(sessionKeys)),
-    )
   } catch {
     // localStorage may be unavailable; ignore.
   }
@@ -409,12 +370,8 @@ export function ActiveAgentsSidebar({
   )
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
-  const [sessionGroups, setSessionGroups] = useState<SidebarSessionGroup[]>(
-    readSidebarSessionGroupsFromStorage,
-  )
-  const [ungroupedSessionOrder, setUngroupedSessionOrder] = useState<string[]>(
-    readUngroupedSessionOrderFromStorage,
-  )
+  const [sessionGroups, setSessionGroups] = useState<SidebarSessionGroup[]>([])
+  const [ungroupedSessionOrder, setUngroupedSessionOrder] = useState<string[]>([])
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [editingGroupName, setEditingGroupName] = useState("")
   const [draggingSessionKey, setDraggingSessionKey] = useState<string | null>(null)
@@ -431,6 +388,7 @@ export function ActiveAgentsSidebar({
   } | null>(null)
   const [isUngroupDropTargetActive, setIsUngroupDropTargetActive] = useState(false)
   const skipTitleSaveOnBlurRef = useRef(false)
+  const sidebarSessionStateHydratedRef = useRef(false)
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -453,6 +411,13 @@ export function ActiveAgentsSidebar({
   const repeatTasksQuery = useQuery<LoopConfig[]>({
     queryKey: ["loops"],
     queryFn: async () => await tipcClient.getLoops(),
+  })
+  const sidebarSessionStateQuery = useQuery<{
+    groups: SidebarSessionGroup[]
+    ungroupedSessionOrder: string[]
+  }>({
+    queryKey: ["sidebar-session-state"],
+    queryFn: async () => await tipcClient.getSidebarSessionState(),
   })
 
   useEffect(() => {
@@ -514,18 +479,18 @@ export function ActiveAgentsSidebar({
         progress.parentSessionId ??
         subagentParentSessionIds.get(sessionId) ??
         existingSession?.parentSessionId
-      const conversationTitle = getSidebarProgressTitle(
+      const resolvedSessionMetadata = resolveSidebarSessionMetadata(
         sessionId,
         progress,
         subagentTitleBySessionId,
-        existingSession?.conversationTitle,
+        existingSession,
       )
 
       mergedSessions.set(sessionId, {
         id: sessionId,
-        conversationId: progress.conversationId ?? existingSession?.conversationId,
+        conversationId: resolvedSessionMetadata.conversationId,
         parentSessionId,
-        conversationTitle,
+        conversationTitle: resolvedSessionMetadata.conversationTitle,
         status: progress.isComplete
           ? existingSession?.status === "error" ||
             existingSession?.status === "stopped"
@@ -988,12 +953,26 @@ export function ActiveAgentsSidebar({
   }, [tasksSectionExpanded])
 
   useEffect(() => {
-    writeSidebarSessionGroupsToStorage(sessionGroups)
-  }, [sessionGroups])
+    if (sidebarSessionStateHydratedRef.current || !sidebarSessionStateQuery.data) return
+
+    const persistedGroups = normalizeSidebarSessionGroups(sidebarSessionStateQuery.data.groups)
+    const persistedUngroupedOrder = normalizeSidebarSessionKeyOrder(
+      sidebarSessionStateQuery.data.ungroupedSessionOrder,
+    )
+
+    setSessionGroups(persistedGroups)
+    setUngroupedSessionOrder(persistedUngroupedOrder)
+    sidebarSessionStateHydratedRef.current = true
+  }, [sidebarSessionStateQuery.data])
 
   useEffect(() => {
-    writeUngroupedSessionOrderToStorage(ungroupedSessionOrder)
-  }, [ungroupedSessionOrder])
+    if (!sidebarSessionStateHydratedRef.current) return
+
+    void tipcClient.saveSidebarSessionState({
+      groups: normalizeSidebarSessionGroups(sessionGroups),
+      ungroupedSessionOrder: normalizeSidebarSessionKeyOrder(ungroupedSessionOrder),
+    })
+  }, [sessionGroups, ungroupedSessionOrder])
 
   const focusSidebarSessionComposer = useCallback(() => {
     let attemptCount = 0

@@ -103,7 +103,7 @@ describe("AgentSessionTracker", () => {
 
   it("reconciles tracker-only active sessions into recent history", async () => {
     const { agentSessionTracker } = await import("./agent-session-tracker")
-    const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(987654)
+    const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(1000)
 
     try {
       agentSessionTracker.clearAllSessions()
@@ -116,6 +116,7 @@ describe("AgentSessionTracker", () => {
         lastActivity: "Agent completed successfully",
       })
 
+      dateNowSpy.mockReturnValue(987654)
       const retiredSessions = agentSessionTracker.reconcileActiveSessions((session) =>
         session.id === liveSessionId,
       )
@@ -140,6 +141,35 @@ describe("AgentSessionTracker", () => {
           lastActivity: "Session no longer running",
         }),
       )
+    } finally {
+      dateNowSpy.mockRestore()
+      agentSessionTracker.clearAllSessions()
+      agentSessionTracker.clearCompletedSessions()
+    }
+  })
+
+  it("does not reconcile freshly-created sessions before runtime registration can catch up", async () => {
+    const { agentSessionTracker } = await import("./agent-session-tracker")
+    const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(2000)
+
+    try {
+      agentSessionTracker.clearAllSessions()
+      agentSessionTracker.clearCompletedSessions()
+
+      const sessionId = agentSessionTracker.startSession("temp-voice", "Transcribing...")
+
+      dateNowSpy.mockReturnValue(2500)
+      const retiredSessions = agentSessionTracker.reconcileActiveSessions(() => false)
+
+      expect(retiredSessions).toEqual([])
+      expect(agentSessionTracker.getSession(sessionId)).toEqual(
+        expect.objectContaining({
+          id: sessionId,
+          conversationId: "temp-voice",
+          status: "active",
+        }),
+      )
+      expect(agentSessionTracker.findCompletedSession(sessionId)).toBeUndefined()
     } finally {
       dateNowSpy.mockRestore()
       agentSessionTracker.clearAllSessions()

@@ -9,6 +9,12 @@ describe("repeat-task max-iterations plumbing", () => {
     expect(loopServiceSource).toContain("runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)")
   })
 
+  it("preserves mobile session identity for manually triggered repeat tasks", () => {
+    expect(loopServiceSource).toContain("clientSessionId?: string")
+    expect(loopServiceSource).toContain("conversation.clientSessionId = options.clientSessionId")
+    expect(loopServiceSource).toContain("return { loopId, conversationId, sessionId }")
+  })
+
   it("allows loop-triggered agent runs to override the default iteration budget", () => {
     expect(tipcSource).toContain("maxIterationsOverride?: number")
     expect(tipcSource).toContain('typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)')

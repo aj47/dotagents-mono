@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { Session, SessionListItem, generateSessionId, generateMessageId, generateSessionTitle, sessionToListItem, sortSessionsByPinnedFirst } from '../types/session';
+import { Session, SessionListItem, TitleSource, generateSessionId, generateMessageId, generateSessionTitle, isFallbackTitleSource, isTitleSource, sessionToListItem, sortSessionsByPinnedFirst } from '../types/session';
 import { ChatMessage } from '../lib/openaiClient';
 import { SettingsApiClient } from '../lib/settingsApi';
 import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syncService';
@@ -39,6 +39,15 @@ export function compactSessionsForStorageQuota(sessions: Session[]): Session[] {
   });
 }
 
+function isDiscardableLocalDraftSession(session: Session): boolean {
+  const messageCount = Array.isArray(session.messages) ? session.messages.length : 0;
+  return !session.serverConversationId && messageCount === 0;
+}
+
+export function discardLocalEmptyDraftSessions(sessions: Session[]): Session[] {
+  return sessions.filter((session) => !isDiscardableLocalDraftSession(session));
+}
+
 export interface SessionStore {
   sessions: Session[];
   currentSessionId: string | null;
@@ -61,7 +70,7 @@ export interface SessionStore {
   getSessionList: () => SessionListItem[];
   setMessages: (messages: ChatMessage[]) => Promise<void>;
   setMessagesForSession: (sessionId: string, messages: ChatMessage[]) => Promise<void>;
-  setServerGeneratedTitleForSession: (sessionId: string, serverConversationId: string, title: string) => Promise<boolean>;
+  setServerGeneratedTitleForSession: (sessionId: string, serverConversationId: string, title: string, titleSource?: TitleSource) => Promise<boolean>;
 
   // Server conversation ID management (for continuing conversations with DotAgents server)
   markPendingServerConversation: (sessionId: string, pending: boolean) => void;
@@ -109,7 +118,11 @@ async function loadSessions(): Promise<Session[]> {
   try {
     const raw = await AsyncStorage.getItem(SESSIONS_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return discardLocalEmptyDraftSessions(parsed
+      .filter((session): session is Session => !!session && typeof session === 'object' && typeof session.id === 'string')
+      .map(normalizeLoadedSession));
   } catch {}
   return [];
 }
@@ -156,52 +169,59 @@ export function normalizeSessionTitleText(title: string, maxChars = 80): string 
   return (normalized || 'New Chat').slice(0, maxChars);
 }
 
-function getFirstUserMessageText(session: Session): string {
-  return session.messages.find(message => message.role === 'user')?.content?.trim() ?? '';
+function getSessionTitleSource(session: Session): TitleSource | undefined {
+  return isTitleSource(session.titleSource) ? session.titleSource : undefined;
 }
 
-function generateDesktopFallbackSessionTitle(firstMessage: string): string {
-  const normalized = firstMessage.replace(/\s+/g, ' ').trim();
-  if (!normalized) {
-    return 'New Chat';
-  }
-  return normalized.length > 50 ? `${normalized.slice(0, 50)}...` : normalized;
+function isSessionFallbackTitle(session: Session): boolean {
+  const titleSource = getSessionTitleSource(session);
+  return titleSource ? isFallbackTitleSource(titleSource) : false;
 }
 
-function isLikelyGeneratedFallbackTitleForSession(session: Session, title: string): boolean {
-  const firstUserMessage = getFirstUserMessageText(session);
-  const normalizedTitle = normalizeSessionTitleText(title);
-  if (!firstUserMessage) {
-    return normalizedTitle === 'New Chat';
+function normalizeLoadedSession(session: Session): Session {
+  if (isTitleSource(session.titleSource)) {
+    return session;
   }
 
-  return normalizedTitle === normalizeSessionTitleText(generateSessionTitle(firstUserMessage))
-    || normalizedTitle === normalizeSessionTitleText(generateDesktopFallbackSessionTitle(firstUserMessage));
+  return { ...session, titleSource: session.title === 'New Chat' ? 'default' : 'manual' };
 }
 
-function isLikelyGeneratedMobileFallbackTitle(session: Session): boolean {
-  return isLikelyGeneratedFallbackTitleForSession(session, session.title);
-}
-
-function getServerGeneratedTitleSkipReason(session: Session, title: string): string {
+function getServerGeneratedTitleSkipReason(session: Session, title: string, titleSource?: TitleSource): string {
   if (normalizeSessionTitleText(session.title) === normalizeSessionTitleText(title)) {
+    if (isSessionFallbackTitle(session) && titleSource && !isFallbackTitleSource(titleSource)) {
+      return 'same-title-source-upgrade';
+    }
     return 'same-title';
   }
-  if (!isLikelyGeneratedMobileFallbackTitle(session)) {
+  if (getSessionTitleSource(session) === 'manual') {
+    return 'local-title-manual';
+  }
+  if (!isSessionFallbackTitle(session)) {
     return 'local-title-not-fallback';
   }
-  if (isLikelyGeneratedFallbackTitleForSession(session, title)) {
-    return 'server-title-is-fallback';
+  if (titleSource && isFallbackTitleSource(titleSource)) {
+    return 'server-title-source-is-fallback';
+  }
+  if (!titleSource) {
+    return 'server-title-source-missing';
   }
   return 'not-applicable';
 }
 
-export function shouldApplyServerGeneratedSessionTitle(session: Session, serverConversationId: string, title: string): boolean {
+export function shouldApplyServerGeneratedSessionTitle(session: Session, serverConversationId: string, title: string, titleSource?: TitleSource): boolean {
   const normalizedTitle = normalizeSessionTitleText(title);
+  const normalizedTitleSource = isTitleSource(titleSource) ? titleSource : undefined;
+  const sameTitle = normalizeSessionTitleText(session.title) === normalizedTitle;
+  const hasServerSourceUpgrade = sameTitle
+    && isSessionFallbackTitle(session)
+    && !!normalizedTitleSource
+    && !isFallbackTitleSource(normalizedTitleSource);
+
   return session.serverConversationId === serverConversationId
-    && normalizeSessionTitleText(session.title) !== normalizedTitle
-    && isLikelyGeneratedMobileFallbackTitle(session)
-    && !isLikelyGeneratedFallbackTitleForSession(session, normalizedTitle);
+    && (!sameTitle || hasServerSourceUpgrade)
+    && isSessionFallbackTitle(session)
+    && !!normalizedTitleSource
+    && !isFallbackTitleSource(normalizedTitleSource);
 }
 
 export function useSessions(): SessionStore {
@@ -236,14 +256,20 @@ export function useSessions(): SessionStore {
         loadSessions(),
         loadCurrentSessionId(),
       ]);
+      const validCurrentId = loadedSessions.some(session => session.id === loadedCurrentId)
+        ? loadedCurrentId
+        : null;
       // Update refs synchronously BEFORE setting state to prevent stale refs
       // This fixes the race condition where createNewSession could read empty sessionsRef.current
       // if called immediately after mount (before the useEffect that syncs refs from state runs)
       sessionsRef.current = loadedSessions;
-      currentSessionIdRef.current = loadedCurrentId;
+      currentSessionIdRef.current = validCurrentId;
       setSessions(loadedSessions);
-      setCurrentSessionIdState(loadedCurrentId);
+      setCurrentSessionIdState(validCurrentId);
       setReady(true);
+      if (validCurrentId !== loadedCurrentId) {
+        void saveCurrentSessionId(null);
+      }
     })();
   }, []);
 
@@ -252,6 +278,7 @@ export function useSessions(): SessionStore {
     const newSession: Session = {
       id: generateSessionId(),
       title: 'New Chat',
+      titleSource: 'default',
       createdAt: now,
       updatedAt: now,
       messages: [],
@@ -260,7 +287,9 @@ export function useSessions(): SessionStore {
     // Compute the new sessions array BEFORE setSessions to guarantee the value we save
     // is exactly what we intend to set (fixes PR review: avoids React updater timing race)
     const currentSessions = sessionsRef.current;
-    const cleanedPrev = currentSessions.filter(s => !deletingSessionIds.has(s.id));
+    const cleanedPrev = currentSessions.filter(
+      s => !deletingSessionIds.has(s.id) && !isDiscardableLocalDraftSession(s)
+    );
     const sessionsToSave = [newSession, ...cleanedPrev];
 
     // Update ref synchronously so any subsequent operations see the new state immediately
@@ -270,7 +299,9 @@ export function useSessions(): SessionStore {
     // The functional update also serves as a safeguard against stale closures in edge cases
     setSessions(prev => {
       // Re-filter to handle any edge case where state diverged from ref
-      const freshCleanedPrev = prev.filter(s => !deletingSessionIds.has(s.id));
+      const freshCleanedPrev = prev.filter(
+        s => !deletingSessionIds.has(s.id) && !isDiscardableLocalDraftSession(s)
+      );
       return [newSession, ...freshCleanedPrev];
     });
 
@@ -389,12 +420,13 @@ export function useSessions(): SessionStore {
     const normalizedTitle = normalizeSessionTitleText(title);
     const currentSessions = sessionsRef.current;
     const existingSession = currentSessions.find(session => session.id === id);
-    if (!existingSession || existingSession.title === normalizedTitle) return;
+    if (!existingSession) return;
+    if (existingSession.title === normalizedTitle && getSessionTitleSource(existingSession) === 'manual') return;
 
     const now = Date.now();
     const sessionsToSave = currentSessions.map(session =>
       session.id === id
-        ? { ...session, title: normalizedTitle, updatedAt: now }
+        ? { ...session, title: normalizedTitle, titleSource: 'manual' as const, updatedAt: now }
         : session
     );
 
@@ -550,13 +582,16 @@ export function useSessions(): SessionStore {
 
       // Update title if this is the first user message
       let title = session.title;
+      let titleSource = session.titleSource;
       if (role === 'user' && session.messages.length === 0) {
         title = generateSessionTitle(content);
+        titleSource = 'local_generated';
       }
 
       return {
         ...session,
         title,
+        titleSource,
         updatedAt: now,
         messages: [...session.messages, newMessage],
       };
@@ -603,13 +638,16 @@ export function useSessions(): SessionStore {
 
       // Update title from first user message if needed
       let title = session.title;
-      if (title === 'New Chat' && firstUserMsg?.content) {
+      let titleSource = session.titleSource;
+      if (isSessionFallbackTitle(session) && firstUserMsg?.content) {
         title = generateSessionTitle(firstUserMsg.content);
+        titleSource = 'local_generated';
       }
 
       return {
         ...session,
         title,
+        titleSource,
         updatedAt: now,
         messages: sessionMessages,
       };
@@ -655,13 +693,16 @@ export function useSessions(): SessionStore {
 
       // Update title from first user message if needed
       let title = session.title;
-      if (title === 'New Chat' && firstUserMsg?.content) {
+      let titleSource = session.titleSource;
+      if (isSessionFallbackTitle(session) && firstUserMsg?.content) {
         title = generateSessionTitle(firstUserMsg.content);
+        titleSource = 'local_generated';
       }
 
       return {
         ...session,
         title,
+        titleSource,
         updatedAt: now,
         messages: sessionMessages,
       };
@@ -679,27 +720,28 @@ export function useSessions(): SessionStore {
     });
   }, [queueSave]);
 
-  const setServerGeneratedTitleForSession = useCallback(async (sessionId: string, serverConversationId: string, title: string): Promise<boolean> => {
+  const setServerGeneratedTitleForSession = useCallback(async (sessionId: string, serverConversationId: string, title: string, titleSource?: TitleSource): Promise<boolean> => {
     const normalizedTitle = normalizeSessionTitleText(title);
+    const normalizedTitleSource = isTitleSource(titleSource) ? titleSource : 'server_generated';
     const currentSessions = sessionsRef.current;
     const currentSession = currentSessions.find(session => session.id === sessionId);
     if (!currentSession || currentSession.serverConversationId !== serverConversationId) {
       return false;
     }
-    if (!shouldApplyServerGeneratedSessionTitle(currentSession, serverConversationId, normalizedTitle)) {
+    if (!shouldApplyServerGeneratedSessionTitle(currentSession, serverConversationId, normalizedTitle, normalizedTitleSource)) {
       console.info('[sessions] Skipped server-generated title update.', {
         sessionId,
         serverConversationId,
         localTitle: currentSession.title,
         serverTitle: normalizedTitle,
-        reason: getServerGeneratedTitleSkipReason(currentSession, normalizedTitle),
+        reason: getServerGeneratedTitleSkipReason(currentSession, normalizedTitle, normalizedTitleSource),
       });
       return false;
     }
 
     const sessionsToSave = currentSessions.map(session => (
       session.id === sessionId
-        ? { ...session, title: normalizedTitle }
+        ? { ...session, title: normalizedTitle, titleSource: normalizedTitleSource }
         : session
     ));
 
@@ -963,9 +1005,15 @@ export function useSessions(): SessionStore {
 
       const sessionsToSave = currentSessions.map(s => {
         if (s.id !== sessionId) return s;
+        const serverTitleSource = isTitleSource(result.titleSource) ? result.titleSource : undefined;
+        const shouldApplyServerTitle = normalizeSessionTitleText(s.title) !== normalizeSessionTitleText(result.title)
+          && isSessionFallbackTitle(s)
+          && !!serverTitleSource
+          && !isFallbackTitleSource(serverTitleSource);
         return {
           ...s,
-          title: result.title,
+          title: shouldApplyServerTitle ? result.title : s.title,
+          titleSource: shouldApplyServerTitle ? (serverTitleSource ?? 'server_generated') : s.titleSource,
           updatedAt: result.updatedAt,
           messages: result.messages,
           // Clear serverMetadata since we now have real messages

@@ -316,6 +316,53 @@ export type CompletionVerification = {
   reason?: string
 }
 
+type TextCompletionModelContext = "mcp" | "transcript"
+type FailureLogLevel = "error" | "warning" | "info" | "silent"
+
+export interface TextCompletionOptions {
+  modelContext?: TextCompletionModelContext
+  generationName?: string
+  generationMetadata?: Record<string, unknown>
+  maxRetries?: number
+  failureLogLevel?: FailureLogLevel
+}
+
+function getGenerationLevelForFailure(
+  failureLogLevel: FailureLogLevel,
+): "DEFAULT" | "WARNING" | "ERROR" {
+  switch (failureLogLevel) {
+    case "warning":
+      return "WARNING"
+    case "info":
+    case "silent":
+      return "DEFAULT"
+    case "error":
+    default:
+      return "ERROR"
+  }
+}
+
+function logDiagnosticsFailure(
+  failureLogLevel: FailureLogLevel | undefined,
+  component: string,
+  message: string,
+  details?: unknown,
+): void {
+  switch (failureLogLevel ?? "error") {
+    case "warning":
+      diagnosticsService.logWarning(component, message, details)
+      return
+    case "info":
+      diagnosticsService.logInfo(component, message, details)
+      return
+    case "silent":
+      return
+    case "error":
+    default:
+      diagnosticsService.logError(component, message, details)
+  }
+}
+
 /**
  * Calculate exponential backoff delay with jitter
  */
@@ -501,6 +548,7 @@ async function withRetry<T>(
     maxDelay?: number
     onRetryProgress?: RetryProgressCallback
     sessionId?: string
+    failureLogLevel?: FailureLogLevel
   } = {}
 ): Promise<T> {
   const config = configStore.get()
@@ -573,7 +621,8 @@ async function withRetry<T>(
 
       // Check if retryable
       if (!isRetryableError(error)) {
-        diagnosticsService.logError(
+        logDiagnosticsFailure(
+          options.failureLogLevel,
           "llm-fetch",
           "Non-retryable API error",
           error
@@ -605,7 +654,8 @@ async function withRetry<T>(
       // Rate limits retry indefinitely, other errors respect the limit
       // Empty response errors also respect the limit but skip backoff
       if (!isRateLimit && attempt >= maxRetries) {
-        diagnosticsService.logError(
+        logDiagnosticsFailure(
+          options.failureLogLevel,
           "llm-fetch",
           "API call failed after all retries",
           { attempts: attempt + 1, error, isEmptyResponse }
@@ -1436,11 +1486,20 @@ export async function makeTextCompletionWithFetch(
   prompt: string,
   providerId?: string,
   sessionId?: string,
-  onRetryProgress?: RetryProgressCallback
+  onRetryProgress?: RetryProgressCallback,
+  options: TextCompletionOptions = {},
 ): Promise<string> {
-  // Use transcript provider as default since this is primarily used for transcript post-processing
-  const effectiveProviderId = (providerId ||
-    getTranscriptProviderId()) as ProviderType
+  const modelContext = options.modelContext ?? "transcript"
+  const generationName = options.generationName ?? "Text Completion"
+  const failureLogLevel = options.failureLogLevel ?? "error"
+
+  // Transcript-style calls keep using the transcript provider by default.
+  // MCP-context calls inherit the active agent provider when no explicit
+  // provider is passed, so side-path helpers do not hit stale transcript config.
+  const effectiveProviderId = (
+    providerId ||
+    (modelContext === "mcp" ? getCurrentProviderId() : getTranscriptProviderId())
+  ) as ProviderType
   const transportPrompt = sanitizeTextForLlmTransport(prompt)
 
   return withRetry(
@@ -1450,15 +1509,16 @@ export async function makeTextCompletionWithFetch(
       // Create generation trace event if observability is enabled
       const generationId = isTracingEnabled() ? randomUUID() : null
       const modelName = isChatGptWebProvider(effectiveProviderId)
-        ? getCurrentChatGptWebModelName("transcript")
-        : getCurrentModelName(effectiveProviderId, "transcript")
+        ? getCurrentChatGptWebModelName(modelContext)
+        : getCurrentModelName(effectiveProviderId, modelContext)
 
       if (generationId) {
         createLLMGeneration(sessionId || null, generationId, {
-          name: "Text Completion",
+          name: generationName,
           model: modelName,
-          modelParameters: { provider: effectiveProviderId },
+          modelParameters: { provider: effectiveProviderId, modelContext },
           input: transportPrompt,
+          metadata: options.generationMetadata,
         })
       }
 
@@ -1476,14 +1536,14 @@ export async function makeTextCompletionWithFetch(
           ? (await makeChatGptWebCompletion(
               [{ role: "user", content: transportPrompt }],
               {
-                modelContext: "transcript",
+                modelContext,
                 signal: abortController.signal,
               },
             )).trim()
           : await (async () => {
-              const model = createLanguageModel(effectiveProviderId, "transcript")
-              const promptCaching = getPromptCachingConfig(effectiveProviderId, "transcript")
-              const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId, "transcript")
+              const model = createLanguageModel(effectiveProviderId, modelContext)
+              const promptCaching = getPromptCachingConfig(effectiveProviderId, modelContext)
+              const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId, modelContext)
               const mergedProviderOptions = mergeProviderOptions(
                 promptCaching?.providerOptions,
                 reasoningOptions,
@@ -1492,6 +1552,7 @@ export async function makeTextCompletionWithFetch(
               if (isDebugLLM()) {
                 logLLM("🚀 AI SDK text completion call", {
                   provider: effectiveProviderId,
+                  modelContext,
                   promptLength: transportPrompt.length,
                 })
               }
@@ -1534,17 +1595,22 @@ export async function makeTextCompletionWithFetch(
         // End Langfuse generation with error
         if (generationId) {
           endLLMGeneration(generationId, {
-            level: "ERROR",
+            level: getGenerationLevelForFailure(failureLogLevel),
             statusMessage: error instanceof Error ? error.message : "Text completion failed",
           })
         }
-        diagnosticsService.logError("llm-fetch", "Text completion failed", error)
+        logDiagnosticsFailure(failureLogLevel, "llm-fetch", `${generationName} failed`, error)
         throw error
       } finally {
         unregisterSessionAbortController(abortController, sessionId)
       }
     },
-    { onRetryProgress, sessionId }
+    {
+      onRetryProgress,
+      sessionId,
+      maxRetries: options.maxRetries,
+      failureLogLevel,
+    }
   )
 }
 

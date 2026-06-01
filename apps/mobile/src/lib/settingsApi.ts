@@ -1374,9 +1374,12 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
     });
   }
 
-  async runLoop(id: string): Promise<{ success: boolean; id: string }> {
+  async runLoop(id: string, options: { clientSessionId?: string } = {}): Promise<{ success: boolean; id: string; conversationId?: string; sessionId?: string }> {
     return this.request(`/loops/${encodeURIComponent(id)}/run`, {
       method: 'POST',
+      body: JSON.stringify({
+        clientSessionId: options.clientSessionId,
+      }),
     });
   }
 

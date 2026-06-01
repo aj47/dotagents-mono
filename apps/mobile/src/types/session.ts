@@ -9,6 +9,8 @@ export {
   generateSessionId,
   generateMessageId,
   generateSessionTitle,
+  isFallbackTitleSource,
+  isTitleSource,
   sessionToListItem,
   sortSessionsByPinnedFirst,
   isStubSession,
@@ -16,7 +18,7 @@ export {
 
 // Re-export session types from shared
 // Note: SessionChatMessage is re-exported as ChatMessage for backward compatibility
-export type { Session, SessionListItem, SessionChatMessage as ChatMessage } from '@dotagents/shared';
+export type { Session, SessionListItem, SessionChatMessage as ChatMessage, TitleSource } from '@dotagents/shared';
 
 // Re-export ToolCall/ToolResult for backward compat
 export type { ToolCall, ToolResult } from '@dotagents/shared';
