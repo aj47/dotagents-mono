@@ -15,13 +15,15 @@ object HandsFreeAudioRouter {
 
   @Synchronized
   fun acquire(context: Context, reason: String): Bundle {
-    requesters.add(normalizeReason(reason))
+    val normalizedReason = normalizeReason(reason)
+    requesters.add(normalizedReason)
     val audioManager = context.getSystemService(AudioManager::class.java)
     val target = preferredCommunicationHeadset(audioManager)
 
     if (target == null) {
-      Log.i(TAG, "audio-route acquire reason=$reason target=none requesters=${requesters.joinToString(",")}")
-      return routeBundle(audioManager, false)
+      val route = routeBundle(audioManager, false)
+      Log.i(TAG, "audio-route acquire reason=$normalizedReason target=none ${routeSummary(route)}")
+      return route
     }
 
     if (previousMode == null) {
@@ -44,24 +46,24 @@ object HandsFreeAudioRouter {
       }
       routingApplied = routingApplied || applied
     } catch (error: Throwable) {
-      Log.w(TAG, "audio-route acquire failed reason=$reason target=${audioDeviceTypeName(target.type)}", error)
+      Log.w(TAG, "audio-route acquire failed reason=$normalizedReason target=${audioDeviceTypeName(target.type)}", error)
     }
 
-    Log.i(
-      TAG,
-      "audio-route acquire reason=$reason target=${audioDeviceTypeName(target.type)} applied=$applied requesters=${requesters.joinToString(",")}"
-    )
-    return routeBundle(audioManager, applied)
+    val route = routeBundle(audioManager, applied)
+    Log.i(TAG, "audio-route acquire reason=$normalizedReason target=${audioDeviceTypeName(target.type)} ${routeSummary(route)}")
+    return route
   }
 
   @Synchronized
   fun release(context: Context, reason: String): Bundle {
-    requesters.remove(normalizeReason(reason))
+    val normalizedReason = normalizeReason(reason)
+    requesters.remove(normalizedReason)
     val audioManager = context.getSystemService(AudioManager::class.java)
 
     if (requesters.isNotEmpty()) {
-      Log.i(TAG, "audio-route release reason=$reason deferred requesters=${requesters.joinToString(",")}")
-      return routeBundle(audioManager, false)
+      val route = routeBundle(audioManager, false)
+      Log.i(TAG, "audio-route release reason=$normalizedReason deferred ${routeSummary(route)}")
+      return route
     }
 
     try {
@@ -77,19 +79,27 @@ object HandsFreeAudioRouter {
       }
       previousMode?.let { audioManager.mode = it }
     } catch (error: Throwable) {
-      Log.w(TAG, "audio-route release failed reason=$reason", error)
+      Log.w(TAG, "audio-route release failed reason=$normalizedReason", error)
     } finally {
       previousMode = null
       routingApplied = false
     }
 
-    Log.i(TAG, "audio-route release reason=$reason requesters=none")
-    return routeBundle(audioManager, false)
+    val route = routeBundle(audioManager, false)
+    Log.i(TAG, "audio-route release reason=$normalizedReason ${routeSummary(route)}")
+    return route
   }
 
   @Synchronized
   fun currentRoute(context: Context): Bundle {
     return routeBundle(context.getSystemService(AudioManager::class.java), false)
+  }
+
+  @Synchronized
+  fun logCurrentRoute(context: Context, reason: String): Bundle {
+    val route = currentRoute(context)
+    Log.i(TAG, "audio-route snapshot reason=${normalizeReason(reason)} ${routeSummary(route)}")
+    return route
   }
 
   private fun preferredCommunicationHeadset(audioManager: AudioManager): AudioDeviceInfo? {
@@ -146,6 +156,10 @@ object HandsFreeAudioRouter {
 
   private fun normalizeReason(reason: String): String {
     return reason.ifBlank { "unknown" }
+  }
+
+  private fun routeSummary(route: Bundle): String {
+    return "hasHeadset=${route.getBoolean("hasHeadset")} mode=${route.getString("mode")} communicationDevice=${route.getString("communicationDevice")} route=${route.getString("route")} routingRequested=${route.getBoolean("routingRequested")} routingActive=${route.getBoolean("routingActive")} routeApplied=${route.getBoolean("routeApplied")} requesters=${route.getString("requesters") ?: "-"} inputTypes=${route.getString("inputTypes")} outputTypes=${route.getString("outputTypes")}"
   }
 
   private fun isCommunicationHeadset(type: Int): Boolean {

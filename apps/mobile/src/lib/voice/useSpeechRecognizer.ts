@@ -116,6 +116,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const sttPreviewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startingRef = useRef(false);
   const stoppingRef = useRef(false);
+  const foregroundAndroidRoutingRequestedRef = useRef(false);
   const userReleasedButtonRef = useRef(false);
   const webPressInSeenRef = useRef(false);
   const lastGrantTimeRef = useRef(0);
@@ -223,18 +224,29 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   }, [clearHandsFreeDebounce, log, setLiveTranscriptValue, setSttPreviewWithExpiry]);
 
   const setForegroundAndroidHandsFreeAudioRouting = useCallback(async (enabled: boolean) => {
-    if (Platform.OS !== 'android' || !handsFree) {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+    if (enabled && !handsFree) {
+      return;
+    }
+    if (!enabled && !foregroundAndroidRoutingRequestedRef.current) {
       return;
     }
 
     try {
       const route = await setAndroidHandsFreeAudioRoutingEnabled(enabled, 'foreground');
+      foregroundAndroidRoutingRequestedRef.current = enabled;
       log?.('runtime-state', 'Android handsfree audio routing updated.', {
         enabled,
+        hasHeadset: route?.hasHeadset,
+        mode: route?.mode,
         route: route?.route,
         communicationDevice: route?.communicationDevice,
+        routingRequested: route?.routingRequested,
         routingActive: route?.routingActive,
         routeApplied: route?.routeApplied,
+        requesters: route?.requesters,
       });
     } catch (error) {
       log?.('recognizer-error', 'Android handsfree audio routing update failed.', {

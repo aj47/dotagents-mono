@@ -104,6 +104,7 @@ import { useStableForeground } from '../lib/voice/useStableForeground';
 import {
   getAndroidHandsFreeAudioRoute,
   isAndroidHandsFreeServiceAvailable,
+  setAndroidHandsFreeAudioRoutingEnabled,
   setAndroidHandsFreeListeningEnabled,
   speakAndroidHandsFreeTts,
   startAndroidHandsFreeService,
@@ -1000,7 +1001,7 @@ export default function ChatScreen({ route, navigation }: any) {
     && !stableHandsFreeForeground;
   const shouldUseAndroidHandsFreeServiceTts =
     Platform.OS === 'android'
-    && androidBackgroundHandsFree;
+    && shouldRunAndroidHandsFreeService;
   const shouldUseAndroidHandsFreeServiceTtsRef = useRef(shouldUseAndroidHandsFreeServiceTts);
   shouldUseAndroidHandsFreeServiceTtsRef.current = shouldUseAndroidHandsFreeServiceTts;
   const allowHandsFreeDirectSpeechWhileSleeping = Platform.OS === 'android' && androidHandsFreeServiceAvailable
@@ -1503,6 +1504,49 @@ export default function ChatScreen({ route, navigation }: any) {
       clearVoiceDebug();
     }
   }, [clearVoiceDebug, handsFreeDebugEnabled]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !androidHandsFreeServiceAvailable || !handsFree) {
+      return;
+    }
+
+    let released = false;
+    void setAndroidHandsFreeAudioRoutingEnabled(true, 'session').then((route) => {
+      voiceLog('runtime-state', 'Android handsfree session audio routing acquired.', {
+        hasHeadset: route?.hasHeadset,
+        mode: route?.mode,
+        communicationDevice: route?.communicationDevice,
+        routingRequested: route?.routingRequested,
+        routingActive: route?.routingActive,
+        requesters: route?.requesters,
+      });
+    }).catch((error) => {
+      voiceLog('recognizer-error', 'Android handsfree session audio routing acquire failed.', {
+        message: (error as any)?.message || String(error),
+      });
+    });
+
+    return () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      void setAndroidHandsFreeAudioRoutingEnabled(false, 'session').then((route) => {
+        voiceLog('runtime-state', 'Android handsfree session audio routing released.', {
+          hasHeadset: route?.hasHeadset,
+          mode: route?.mode,
+          communicationDevice: route?.communicationDevice,
+          routingRequested: route?.routingRequested,
+          routingActive: route?.routingActive,
+          requesters: route?.requesters,
+        });
+      }).catch((error) => {
+        voiceLog('recognizer-error', 'Android handsfree session audio routing release failed.', {
+          message: (error as any)?.message || String(error),
+        });
+      });
+    };
+  }, [androidHandsFreeServiceAvailable, handsFree, voiceLog]);
 
   useEffect(() => {
     if (Platform.OS === 'web' || !handsFree || !isAppActive || !isFocused) {
@@ -3236,9 +3280,10 @@ export default function ChatScreen({ route, navigation }: any) {
       intendedSpeakingIndexRef.current = null;
       return;
     }
+    const useAndroidServiceTts = shouldUseAndroidHandsFreeServiceTtsRef.current;
     const playbackId = beginGlobalTtsPlayback({
       source: 'message',
-      status: effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey ? 'loading' : 'speaking',
+      status: (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) || useAndroidServiceTts ? 'loading' : 'speaking',
       sessionId: sessionStore.currentSessionId,
       sessionTitle: sessionStore.getCurrentSession()?.title ?? 'Chat',
       messageIndex: index,
@@ -3249,6 +3294,59 @@ export default function ChatScreen({ route, navigation }: any) {
 	      voiceLog('tts-started', 'Assistant speech started from message playback.');
 	    }
     setSpeakingMessageIndex(index);
+    if (useAndroidServiceTts) {
+      const utteranceId = createAndroidHandsFreeTtsUtteranceId();
+      let settled = false;
+      let clearNativeTtsTimeout: (() => void) | null = null;
+      const settle = (eventType: AndroidHandsFreeTtsSettleType | 'not-started' | 'promise-error', message?: string) => {
+        if (settled) return;
+        settled = true;
+        androidHandsFreeTtsHandlersRef.current.delete(utteranceId);
+        clearNativeTtsTimeout?.();
+        clearNativeTtsTimeout = null;
+        intendedSpeakingIndexRef.current = null;
+        completeGlobalTtsPlayback(playbackId);
+        if (handsFree) {
+          handsFreeController.onSpeechFinished();
+          voiceLog('tts-stopped', `Android service TTS settled from message playback (${eventType}).`, {
+            utteranceId,
+            message,
+          });
+        }
+        setSpeakingMessageIndex(null);
+      };
+
+      androidHandsFreeTtsHandlersRef.current.set(utteranceId, {
+        onStarted: () => {
+          markGlobalTtsPlaybackSpeaking(playbackId);
+        },
+        onSettled: (type, message) => {
+          settle(type, message);
+        },
+      });
+      const timeout = setTimeout(() => {
+        settle('not-started', 'watchdog');
+      }, estimateNativeTtsWatchdogMs(processedText, config.ttsRate ?? 1.0));
+      clearNativeTtsTimeout = () => clearTimeout(timeout);
+
+      void speakAndroidHandsFreeTts({
+        utteranceId,
+        text: processedText,
+        language: 'en-US',
+        rate: config.ttsRate ?? 1.0,
+        pitch: config.ttsPitch ?? 1.0,
+        voice: config.ttsVoiceId,
+        restoreListeningAfterDone: true,
+        allowBargeIn: true,
+      }).then((startedUtteranceId) => {
+        if (!startedUtteranceId) {
+          settle('not-started');
+        }
+      }).catch((error) => {
+        settle('promise-error', (error as any)?.message || String(error));
+      });
+      return;
+    }
     if (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
       // Edge TTS routes through the paired desktop's /v1/tts/speak.
       void speakRemoteTts(processedText, {

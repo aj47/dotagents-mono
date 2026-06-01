@@ -93,6 +93,7 @@ class HandsFreeVoiceService : Service() {
           return START_NOT_STICKY
         }
         startForegroundWithNotification()
+        HandsFreeAudioRouter.acquire(this, SESSION_ROUTE_REQUESTER)
         HandsFreeVoiceEvents.emit("service-started") {
           it.putString("language", language)
           it.putBoolean("listeningEnabled", captureEnabled)
@@ -113,7 +114,8 @@ class HandsFreeVoiceService : Service() {
     stopListening(suppressEvent = true)
     stopTtsOnMain(emitStopped = false)
     shutdownTextToSpeech()
-    HandsFreeAudioRouter.release(this, ROUTE_REQUESTER)
+    HandsFreeAudioRouter.release(this, CAPTURE_ROUTE_REQUESTER)
+    HandsFreeAudioRouter.release(this, SESSION_ROUTE_REQUESTER)
     destroyRecognizer()
     running = false
     if (activeService === this) {
@@ -141,7 +143,7 @@ class HandsFreeVoiceService : Service() {
       } else {
         mainHandler.removeCallbacks(restartRunnable)
         stopListening()
-        HandsFreeAudioRouter.release(this@HandsFreeVoiceService, ROUTE_REQUESTER)
+        HandsFreeAudioRouter.release(this@HandsFreeVoiceService, CAPTURE_ROUTE_REQUESTER)
       }
     }
   }
@@ -240,7 +242,7 @@ class HandsFreeVoiceService : Service() {
     }
 
     val recognizer = ensureRecognizer()
-    HandsFreeAudioRouter.acquire(this, ROUTE_REQUESTER)
+    HandsFreeAudioRouter.acquire(this, CAPTURE_ROUTE_REQUESTER)
     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
       putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
       putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
@@ -376,7 +378,8 @@ class HandsFreeVoiceService : Service() {
 
     mainHandler.removeCallbacks(restartRunnable)
     stopListening()
-    HandsFreeAudioRouter.release(this, ROUTE_REQUESTER)
+    HandsFreeAudioRouter.release(this, CAPTURE_ROUTE_REQUESTER)
+    HandsFreeAudioRouter.logCurrentRoute(this, "tts-prepare")
 
     if (captureEnabled) {
       captureEnabled = false
@@ -478,8 +481,9 @@ class HandsFreeVoiceService : Service() {
 
       Log.i(
         TAG,
-        "tts dispatching utteranceId=${request.utteranceId} textLength=${request.text.length} language=${request.language} rate=${request.rate} pitch=${request.pitch} voice=${request.voice ?: "default"} audioRoute=${HandsFreeAudioRouter.currentRoute(this)}",
+        "tts dispatching utteranceId=${request.utteranceId} textLength=${request.text.length} language=${request.language} rate=${request.rate} pitch=${request.pitch} voice=${request.voice ?: "default"}",
       )
+      HandsFreeAudioRouter.logCurrentRoute(this, "tts-dispatch")
 
       val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         engine.speak(request.text, TextToSpeech.QUEUE_FLUSH, null, request.utteranceId)
@@ -571,8 +575,9 @@ class HandsFreeVoiceService : Service() {
 
     Log.i(
       TAG,
-      "tts completed utteranceId=$utteranceId eventType=$eventType restoreListening=$shouldRestoreListening message=${message ?: "-"} errorCode=${errorCode ?: "-"} audioRoute=${HandsFreeAudioRouter.currentRoute(this)}",
+      "tts completed utteranceId=$utteranceId eventType=$eventType restoreListening=$shouldRestoreListening message=${message ?: "-"} errorCode=${errorCode ?: "-"}",
     )
+    HandsFreeAudioRouter.logCurrentRoute(this, "tts-complete-$eventType")
     HandsFreeVoiceEvents.emit(eventType) {
       it.putString("utteranceId", utteranceId)
       message?.let { value -> it.putString("message", value) }
@@ -844,7 +849,8 @@ class HandsFreeVoiceService : Service() {
     private const val LONG_SESSION_TIMEOUT_MS = 600000
     private const val NOTIFICATION_CHANNEL_ID = "dotagents_handsfree_voice"
     private const val NOTIFICATION_ID = 4701
-    private const val ROUTE_REQUESTER = "service"
+    private const val SESSION_ROUTE_REQUESTER = "service-session"
+    private const val CAPTURE_ROUTE_REQUESTER = "service-capture"
     private const val MIN_TTS_RATE = 0.1f
     private const val MAX_TTS_RATE = 3.0f
     private const val MIN_TTS_PITCH = 0.1f
