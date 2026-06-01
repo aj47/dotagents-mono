@@ -236,6 +236,73 @@ describe('resolveHandsFreeUtterance', () => {
     expect(result.matchedSleep).toBe(true);
   });
 
+  it('emits a command action when the user says "stop" while processing instead of sending it as a message', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'processing', awakeSince: 100, resumePhase: 'listening' },
+      transcript: 'stop',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 270,
+    });
+
+    expect(result.action.type).toBe('command');
+    if (result.action.type === 'command') {
+      expect(result.action.command).toBe('stop-agent-turn');
+    }
+    expect(result.matchedCommand).toBe('stop-agent-turn');
+    expect(result.nextState.phase).toBe('processing');
+  });
+
+  it('emits a stop-tts command while the assistant is speaking', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'speaking', awakeSince: 100, resumePhase: 'listening' },
+      transcript: 'stop talking',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 280,
+    });
+
+    expect(result.action.type).toBe('command');
+    if (result.action.type === 'command') {
+      expect(result.action.command).toBe('stop-tts');
+    }
+    expect(result.matchedCommand).toBe('stop-tts');
+    expect(result.nextState.phase).toBe('speaking');
+  });
+
+  it('emits a new-session command while awake instead of treating it as chat input', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'listening', awakeSince: 100 },
+      transcript: 'new chat',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 290,
+    });
+
+    expect(result.action.type).toBe('command');
+    if (result.action.type === 'command') {
+      expect(result.action.command).toBe('new-session');
+    }
+    expect(result.nextState.phase).toBe('listening');
+  });
+
+  it('emits a command after the wake phrase from sleep without round-tripping through the assistant', () => {
+    const result = resolveHandsFreeUtterance({
+      state: createInitialHandsFreeState(),
+      transcript: 'hey dot agents stop talking',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 100,
+    });
+
+    expect(result.matchedWake).toBe(true);
+    expect(result.action.type).toBe('command');
+    if (result.action.type === 'command') {
+      expect(result.action.command).toBe('stop-tts');
+    }
+    expect(result.nextState.phase).toBe('listening');
+  });
+
   it('does not send a bare wake phrase while already processing', () => {
     const result = resolveHandsFreeUtterance({
       state: { ...createInitialHandsFreeState(), phase: 'processing', awakeSince: 100, resumePhase: 'listening' },
@@ -430,6 +497,45 @@ describe('resolveHandsFreeUtterance', () => {
     expect(controller.state.resumePhase).toBe('listening');
 
     controller.resetError();
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('listening');
+    expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
+
+  it('resumes to listening after a request completes while user-paused during processing', async () => {
+    const runtime = createHookRuntime();
+    const { useHandsFreeController: useHook } = await loadUseHandsFreeController(runtime);
+    const options = {
+      enabled: true,
+      runtimeActive: true,
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+    };
+
+    let controller = runtime.render(useHook, options);
+    runtime.commitEffects();
+    controller.wakeByUser();
+
+    controller = runtime.render(useHook, options);
+    controller.onRequestStarted();
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('processing');
+
+    controller.pauseByUser();
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('paused');
+    expect(controller.state.resumePhase).toBe('processing');
+
+    controller.onRequestCompleted();
+
+    controller = runtime.render(useHook, options);
+    expect(controller.state.phase).toBe('paused');
+    expect(controller.state.resumePhase).toBe('listening');
+
+    controller.resumeByUser();
+
     controller = runtime.render(useHook, options);
     expect(controller.state.phase).toBe('listening');
     expect(controller.shouldKeepRecognizerActive).toBe(true);

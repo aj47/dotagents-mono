@@ -8,16 +8,16 @@ const screenSource = fs.readFileSync(
   'utf8'
 );
 
-test('renders the extracted handsfree status chip in the mobile chat composer', () => {
-  assert.match(screenSource, /<HandsFreeStatusChip/);
-  assert.match(screenSource, /<View style=\{styles\.handsFreeStatusRow\}>[\s\S]*?<HandsFreeStatusChip/);
-  assert.match(screenSource, /handsFreeController\.statusLabel/);
-  assert.match(screenSource, /handsFreeStatusSubtitle/);
+test('renders handsfree status as an icon in the mobile chat header', () => {
+  assert.match(screenSource, /const headerHandsFreeIcon = \(\{/);
+  assert.match(screenSource, /listening: 'ear-outline'/);
+  assert.match(screenSource, /styles\.headerVoiceStatusButtonActive/);
+  assert.doesNotMatch(screenSource, /<HandsFreeStatusChip/);
 });
 
 test('lets handsfree users queue a drafted message without sending immediately', () => {
   assert.match(screenSource, /const queueComposerInput = useCallback\(\(\) => \{[\s\S]*?messageQueue\.enqueue\(currentConversationId, composedMessage(?:, currentConversationId)?\);[\s\S]*?setInput\(''\);[\s\S]*?setPendingImages\(\[\]\);/);
-  assert.match(screenSource, /handsFree && messageQueueEnabled && \([\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Queue message'\)\}[\s\S]*?<Ionicons name="time-outline" size=\{18\} color=\{theme\.colors\.primary\} \/>/);
+  assert.match(screenSource, /messageQueueEnabled && \([\s\S]*?accessibilityLabel=\{createButtonAccessibilityLabel\('Queue message'\)\}[\s\S]*?<Ionicons name="time-outline" size=\{16\} color=\{theme\.colors\.primary\} \/>/);
   assert.doesNotMatch(screenSource, /<Text style=\{styles\.queueButtonText\}>Queue<\/Text>/);
 });
 
@@ -54,8 +54,8 @@ test('surfaces recent voice debug events in chat when internal diagnostics are e
 test('keeps wake and pause/resume controls wired through the primary mic button', () => {
   assert.match(screenSource, /const wakeHandsFreeByUser = useCallback\(\(\) => \{[\s\S]*?handsFreeController\.wakeByUser\(\);[\s\S]*?void startRecording\(\);/);
   assert.match(screenSource, /const handleHandsFreePrimaryControl = useCallback\(\(\) => \{[\s\S]*?handsFreeController\.state\.phase === 'sleeping'[\s\S]*?wakeHandsFreeByUser\(\);[\s\S]*?handsFreeController\.state\.phase === 'paused'[\s\S]*?resumeHandsFreeByUser\(\);[\s\S]*?pauseHandsFreeByUser\(\);/);
-  assert.match(screenSource, /const micButtonLabel = handsFree[\s\S]*?'Wake'[\s\S]*?'Resume'[\s\S]*?'Pause'/);
-  assert.match(screenSource, /onPress=\{handsFree \? handleHandsFreePrimaryControl : undefined\}/);
+  assert.match(screenSource, /const micButtonLabel = handsFree[\s\S]*?'Wake'[\s\S]*?'Resume'[\s\S]*?'Stop Listening'/);
+  assert.match(screenSource, /onPress=\{handsFree && !isWebPlatform \? handleHandsFreePrimaryControl : undefined\}/);
   assert.match(screenSource, /accessibilityLabel="Open hands-free guide"/);
 });
 

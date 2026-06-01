@@ -29,7 +29,7 @@ export type AppConfig = {
   audioInputDeviceId?: string;
 };
 
-export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'hey dot agents';
+export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'hey agents';
 export const DEFAULT_HANDS_FREE_SLEEP_PHRASE = 'go to sleep';
 export const DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 1500;
 export const MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 0;

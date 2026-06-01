@@ -1023,6 +1023,16 @@ export function ActiveAgentsSidebar({
 
   const handleActiveSessionSelect = useCallback((sessionId: string) => {
     logUI("[ActiveAgentsSidebar] Active session selected:", sessionId)
+
+    if (
+      isSessionsRoute &&
+      viewedConversationId === null &&
+      focusedSessionId === sessionId &&
+      expandedSessionId === sessionId
+    ) {
+      return
+    }
+
     // Clear the saved-conversation view so no stale row stays highlighted.
     setViewedConversationId(null)
     // Navigate to the sessions page and focus this live session.
@@ -1030,7 +1040,17 @@ export function ActiveAgentsSidebar({
     setFocusedSessionId(sessionId)
     setExpandedSessionId(sessionId)
     focusSidebarSessionComposer()
-  }, [focusSidebarSessionComposer, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
+  }, [
+    expandedSessionId,
+    focusedSessionId,
+    focusSidebarSessionComposer,
+    isSessionsRoute,
+    navigate,
+    setExpandedSessionId,
+    setFocusedSessionId,
+    setViewedConversationId,
+    viewedConversationId,
+  ])
 
   const handleSavedConversationOpen = useCallback((conversationId: string) => {
     logUI(

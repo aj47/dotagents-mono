@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { HandsFreePhase, HandsFreeResumePhase } from '@dotagents/shared';
+import {
+  matchVoiceCommand,
+  type HandsFreePhase,
+  type HandsFreeResumePhase,
+  type VoiceCommandDefinition,
+  type VoiceCommandId,
+} from '@dotagents/shared';
 import { matchSleepPhrase, matchWakePhrase, normalizeVoicePhrase } from './phraseMatcher';
 import type { VoiceDebugLog } from './voiceDebug';
 
@@ -15,7 +21,8 @@ export type HandsFreeControllerState = {
 
 export type HandsFreeUtteranceAction =
   | { type: 'none' }
-  | { type: 'send'; text: string };
+  | { type: 'send'; text: string }
+  | { type: 'command'; command: VoiceCommandId; label: string; remainder: string };
 
 type ResolveHandsFreeUtteranceArgs = {
   state: HandsFreeControllerState;
@@ -23,6 +30,7 @@ type ResolveHandsFreeUtteranceArgs = {
   wakePhrase: string;
   sleepPhrase: string;
   allowDirectSpeechWhileSleeping?: boolean;
+  voiceCommands?: readonly VoiceCommandDefinition[];
   now: number;
 };
 
@@ -32,6 +40,7 @@ type HandsFreeControllerOptions = {
   wakePhrase: string;
   sleepPhrase: string;
   allowDirectSpeechWhileSleeping?: boolean;
+  voiceCommands?: readonly VoiceCommandDefinition[];
   log?: VoiceDebugLog;
   repeatedErrorThreshold?: number;
 };
@@ -134,22 +143,42 @@ export function getHandsFreeStatusLabel(phase: HandsFreePhase): string {
   }
 }
 
+function buildCommandAction(
+  match: ReturnType<typeof matchVoiceCommand>,
+): HandsFreeUtteranceAction {
+  if (!match) return { type: 'none' };
+  return {
+    type: 'command',
+    command: match.command,
+    label: match.label,
+    remainder: match.remainder,
+  };
+}
+
 export function resolveHandsFreeUtterance({
   state,
   transcript,
   wakePhrase,
   sleepPhrase,
   allowDirectSpeechWhileSleeping = false,
+  voiceCommands,
   now,
 }: ResolveHandsFreeUtteranceArgs): {
   nextState: HandsFreeControllerState;
   action: HandsFreeUtteranceAction;
   matchedWake: boolean;
   matchedSleep: boolean;
+  matchedCommand: VoiceCommandId | null;
 } {
   const normalizedTranscript = normalizeVoicePhrase(transcript);
   if (!normalizedTranscript) {
-    return { nextState: state, action: { type: 'none' }, matchedWake: false, matchedSleep: false };
+    return {
+      nextState: state,
+      action: { type: 'none' },
+      matchedWake: false,
+      matchedSleep: false,
+      matchedCommand: null,
+    };
   }
 
   if (state.pauseReason === 'user' || state.phase === 'paused' || state.phase === 'error') {
@@ -158,6 +187,7 @@ export function resolveHandsFreeUtterance({
       action: { type: 'none' },
       matchedWake: false,
       matchedSleep: false,
+      matchedCommand: null,
     };
   }
 
@@ -165,6 +195,22 @@ export function resolveHandsFreeUtterance({
     const wakeMatch = matchWakePhrase(normalizedTranscript, wakePhrase);
     if (!wakeMatch.matched) {
       if (allowDirectSpeechWhileSleeping) {
+        const commandMatch = matchVoiceCommand(normalizedTranscript, voiceCommands);
+        if (commandMatch) {
+          return {
+            nextState: {
+              ...state,
+              awakeSince: state.awakeSince ?? now,
+              lastTranscript: normalizedTranscript,
+              lastError: null,
+              recognizerErrorCount: 0,
+            },
+            action: buildCommandAction(commandMatch),
+            matchedWake: false,
+            matchedSleep: false,
+            matchedCommand: commandMatch.command,
+          };
+        }
         return {
           nextState: {
             ...state,
@@ -178,6 +224,7 @@ export function resolveHandsFreeUtterance({
           action: { type: 'send', text: normalizedTranscript },
           matchedWake: false,
           matchedSleep: false,
+          matchedCommand: null,
         };
       }
 
@@ -186,10 +233,29 @@ export function resolveHandsFreeUtterance({
         action: { type: 'none' },
         matchedWake: false,
         matchedSleep: false,
+        matchedCommand: null,
       };
     }
 
     if (wakeMatch.remainder) {
+      const commandMatch = matchVoiceCommand(wakeMatch.remainder, voiceCommands);
+      if (commandMatch) {
+        return {
+          nextState: {
+            ...state,
+            phase: 'listening',
+            resumePhase: null,
+            awakeSince: state.awakeSince ?? now,
+            lastTranscript: wakeMatch.remainder,
+            lastError: null,
+            recognizerErrorCount: 0,
+          },
+          action: buildCommandAction(commandMatch),
+          matchedWake: true,
+          matchedSleep: false,
+          matchedCommand: commandMatch.command,
+        };
+      }
       return {
         nextState: {
           ...state,
@@ -203,6 +269,7 @@ export function resolveHandsFreeUtterance({
         action: { type: 'send', text: wakeMatch.remainder },
         matchedWake: true,
         matchedSleep: false,
+        matchedCommand: null,
       };
     }
 
@@ -218,6 +285,7 @@ export function resolveHandsFreeUtterance({
       action: { type: 'none' },
       matchedWake: true,
       matchedSleep: false,
+      matchedCommand: null,
     };
   }
 
@@ -232,6 +300,25 @@ export function resolveHandsFreeUtterance({
         action: { type: 'none' },
         matchedWake: false,
         matchedSleep: true,
+        matchedCommand: null,
+      };
+    }
+
+    const commandMatch = matchVoiceCommand(normalizedTranscript, voiceCommands);
+    if (commandMatch) {
+      return {
+        nextState: {
+          ...state,
+          phase: 'listening',
+          awakeSince: state.awakeSince ?? now,
+          lastTranscript: normalizedTranscript,
+          lastError: null,
+          recognizerErrorCount: 0,
+        },
+        action: buildCommandAction(commandMatch),
+        matchedWake: false,
+        matchedSleep: false,
+        matchedCommand: commandMatch.command,
       };
     }
 
@@ -248,6 +335,7 @@ export function resolveHandsFreeUtterance({
       action: { type: 'send', text: normalizedTranscript },
       matchedWake: false,
       matchedSleep: false,
+      matchedCommand: null,
     };
   }
 
@@ -262,6 +350,21 @@ export function resolveHandsFreeUtterance({
         action: { type: 'none' },
         matchedWake: false,
         matchedSleep: true,
+        matchedCommand: null,
+      };
+    }
+
+    const commandMatch = matchVoiceCommand(normalizedTranscript, voiceCommands);
+    if (commandMatch) {
+      return {
+        nextState: {
+          ...state,
+          lastTranscript: normalizedTranscript,
+        },
+        action: buildCommandAction(commandMatch),
+        matchedWake: false,
+        matchedSleep: false,
+        matchedCommand: commandMatch.command,
       };
     }
 
@@ -275,6 +378,7 @@ export function resolveHandsFreeUtterance({
         action: { type: 'none' },
         matchedWake: true,
         matchedSleep: false,
+        matchedCommand: null,
       };
     }
 
@@ -286,6 +390,7 @@ export function resolveHandsFreeUtterance({
       action: { type: 'none' },
       matchedWake: false,
       matchedSleep: false,
+      matchedCommand: null,
     };
   }
 
@@ -300,11 +405,41 @@ export function resolveHandsFreeUtterance({
         action: { type: 'none' },
         matchedWake: false,
         matchedSleep: true,
+        matchedCommand: null,
+      };
+    }
+
+    const commandMatch = matchVoiceCommand(normalizedTranscript, voiceCommands);
+    if (commandMatch) {
+      return {
+        nextState: {
+          ...state,
+          lastTranscript: normalizedTranscript,
+        },
+        action: buildCommandAction(commandMatch),
+        matchedWake: false,
+        matchedSleep: false,
+        matchedCommand: commandMatch.command,
       };
     }
 
     const wakeMatch = matchWakePhrase(normalizedTranscript, wakePhrase);
     if (wakeMatch.matched) {
+      const remainderCommand = wakeMatch.remainder
+        ? matchVoiceCommand(wakeMatch.remainder, voiceCommands)
+        : null;
+      if (remainderCommand) {
+        return {
+          nextState: {
+            ...state,
+            lastTranscript: wakeMatch.remainder,
+          },
+          action: buildCommandAction(remainderCommand),
+          matchedWake: true,
+          matchedSleep: false,
+          matchedCommand: remainderCommand.command,
+        };
+      }
       return {
         nextState: {
           ...state,
@@ -315,6 +450,7 @@ export function resolveHandsFreeUtterance({
           : { type: 'none' },
         matchedWake: true,
         matchedSleep: false,
+        matchedCommand: null,
       };
     }
 
@@ -326,6 +462,7 @@ export function resolveHandsFreeUtterance({
       action: { type: 'send', text: normalizedTranscript },
       matchedWake: false,
       matchedSleep: false,
+      matchedCommand: null,
     };
   }
 
@@ -334,6 +471,7 @@ export function resolveHandsFreeUtterance({
     action: { type: 'none' },
     matchedWake: false,
     matchedSleep: false,
+    matchedCommand: null,
   };
 }
 
@@ -344,6 +482,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     wakePhrase,
     sleepPhrase,
     allowDirectSpeechWhileSleeping = false,
+    voiceCommands,
     log,
     repeatedErrorThreshold = DEFAULT_REPEATED_ERROR_THRESHOLD,
   } = options;
@@ -434,6 +573,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
       wakePhrase,
       sleepPhrase,
       allowDirectSpeechWhileSleeping,
+      voiceCommands,
       now: Date.now(),
     });
     updateState(() => result.nextState);
@@ -446,6 +586,13 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     }
     if (result.action.type === 'send') {
       log?.('auto-send', 'Handsfree request captured.', { text: result.action.text });
+    } else if (result.action.type === 'command') {
+      log?.('handsfree-control', 'Handsfree voice command recognized.', {
+        command: result.action.command,
+        label: result.action.label,
+        remainder: result.action.remainder,
+        phase: result.nextState.phase,
+      });
     } else if (!result.matchedWake && !result.matchedSleep) {
       log?.('transcript-ignored', 'Handsfree transcript did not produce an action.', {
         phase: result.nextState.phase,
@@ -454,7 +601,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
     }
 
     return result.action;
-  }, [allowDirectSpeechWhileSleeping, log, sleepPhrase, updateState, wakePhrase]);
+  }, [allowDirectSpeechWhileSleeping, log, sleepPhrase, updateState, voiceCommands, wakePhrase]);
 
   const onRequestStarted = useCallback(() => {
     updateState((prev) => ({
@@ -472,7 +619,7 @@ export function useHandsFreeController(options: HandsFreeControllerOptions) {
         return { ...prev, resumePhase: 'listening' };
       }
       if (prev.pauseReason === 'user') {
-        return prev;
+        return { ...prev, resumePhase: 'listening', lastError: null };
       }
       return { ...prev, phase: 'listening', resumePhase: null, lastError: null };
     });

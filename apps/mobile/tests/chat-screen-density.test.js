@@ -28,10 +28,10 @@ test('removes the redundant Chat title from the mobile conversation header', () 
   assert.doesNotMatch(screenSource, />Chat<\/Text>/);
 });
 
-test('keeps pinning available from the individual chat view header', () => {
-  assert.match(screenSource, /isCurrentSessionPinned \? 'Unpin current chat' : 'Pin current chat'/);
-  assert.match(screenSource, /styles\.headerPinButton/);
-  assert.match(screenSource, /\{isCurrentSessionPinned \? 'Pinned' : 'Pin'\}/);
+test('shows handsfree status in the individual chat view header', () => {
+  assert.match(screenSource, /const headerHandsFreePhase: HandsFreePhase \| 'off'/);
+  assert.match(screenSource, /styles\.headerVoiceStatusButton/);
+  assert.match(screenSource, /name=\{headerHandsFreeIcon\}/);
 });
 
 test('shows total and per-turn agent time without shared runtime chrome', () => {
@@ -52,14 +52,9 @@ test('does not render a duplicate composer agent chip above the mobile chat inpu
   assert.doesNotMatch(screenSource, /agentSelectorChip(Label|Value)?:/);
 });
 
-test('keeps the live voice overlay compact by grouping status and transcript into one card', () => {
-  assert.match(screenSource, /\{listening && \([\s\S]*?<View style=\{styles\.overlayCard\}>[\s\S]*?<Text style=\{styles\.overlayText\}>/);
-  assert.match(screenSource, /overlayCard:\s*\{[\s\S]*?maxWidth:\s*'88%',[\s\S]*?paddingHorizontal:\s*12,[\s\S]*?paddingVertical:\s*8,/);
-});
-
-test('caps live transcript height so the recording overlay is less likely to cover the chat surface', () => {
-  assert.match(screenSource, /<Text style=\{styles\.overlayTranscript\} numberOfLines=\{3\}>/);
-  assert.match(screenSource, /overlayTranscript:\s*\{[\s\S]*?marginTop:\s*4,[\s\S]*?lineHeight:\s*16,[\s\S]*?opacity:\s*0\.92,/);
+test('does not render the old floating voice transcript overlay', () => {
+  assert.doesNotMatch(screenSource, /styles\.overlay(Card|Text|Transcript)?/);
+  assert.doesNotMatch(screenSource, /Release to send/);
 });
 
 test('derives visible assistant content from respond_to_user output and suppresses raw tool payloads', () => {

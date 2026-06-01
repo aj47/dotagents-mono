@@ -1043,6 +1043,12 @@ export class SettingsApiClient {
     });
   }
 
+  async stopOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
+    return this.request<OperatorActionResponse>(`/operator/sessions/${encodeURIComponent(sessionId)}/stop`, {
+      method: 'POST',
+    });
+  }
+
   async clearOperatorAgentSession(sessionId: string): Promise<OperatorActionResponse> {
     return this.request<OperatorActionResponse>(`/operator/sessions/${encodeURIComponent(sessionId)}/clear`, {
       method: 'POST',

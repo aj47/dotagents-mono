@@ -750,9 +750,19 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const title = args.title.trim()
     const mappedAppSessionId = getRootAppSessionForAcpSession(context.sessionId)
-    const trackedSessionId = mappedAppSessionId ?? context.sessionId
-    const session = agentSessionTracker.getSession(trackedSessionId)
-    if (!session?.conversationId) {
+    let trackedSessionId = mappedAppSessionId ?? context.sessionId
+    let session = agentSessionTracker.getSession(trackedSessionId)
+
+    if (!session && !mappedAppSessionId) {
+      const sessionIdForConversation = agentSessionTracker.findSessionByConversationId(context.sessionId)
+      if (sessionIdForConversation) {
+        trackedSessionId = sessionIdForConversation
+        session = agentSessionTracker.getSession(trackedSessionId)
+      }
+    }
+
+    const conversationId = session?.conversationId ?? (context.sessionId.startsWith("conv_") ? context.sessionId : undefined)
+    if (!conversationId) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not linked to a conversation" }) }],
         isError: true,
@@ -760,7 +770,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const updatedConversation = await conversationService.renameConversationTitle(
-      session.conversationId,
+      conversationId,
       title,
     )
 
@@ -771,9 +781,11 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    agentSessionTracker.updateSession(trackedSessionId, {
-      conversationTitle: updatedConversation.title,
-    })
+    if (session) {
+      agentSessionTracker.updateSession(trackedSessionId, {
+        conversationTitle: updatedConversation.title,
+      })
+    }
 
     if (mappedAppSessionId) {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)

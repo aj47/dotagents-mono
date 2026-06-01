@@ -319,6 +319,7 @@ export interface OperatorSessionsSummary {
   recentSessions: number;
   activeSessionDetails: Array<{
     id: string;
+    conversationId?: string;
     title?: string;
     status: string;
     startTime: number;
@@ -330,6 +331,7 @@ export interface OperatorSessionsSummary {
   }>;
   recentSessionDetails?: Array<{
     id: string;
+    conversationId?: string;
     title?: string;
     status: string;
     startTime: number;
