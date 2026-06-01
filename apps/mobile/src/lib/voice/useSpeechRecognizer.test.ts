@@ -563,6 +563,55 @@ describe('useSpeechRecognizer', () => {
     });
   });
 
+  it('finalizes configured native hands-free control phrases immediately', async () => {
+    vi.useFakeTimers();
+    const runtime = createHookRuntime();
+    const speechRecognitionModule = {
+      getPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
+      requestPermissionsAsync: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime, {
+      platform: 'android',
+      eventEmitterClass: FakeNativeSpeechEventEmitter,
+      speechRecognitionModule,
+    });
+    const onVoiceFinalized = vi.fn();
+    const log = vi.fn();
+
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 5_000,
+      willCancel: false,
+      onVoiceFinalized,
+      shouldImmediatelyFinalizeHandsFreeTranscript: ({ text }) => text === 'hey bro',
+      log,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const eventEmitter = FakeNativeSpeechEventEmitter.instances[0];
+    eventEmitter.emit('result', {
+      isFinal: false,
+      results: [{ transcript: 'hey bro' }],
+    });
+
+    expect(onVoiceFinalized).toHaveBeenCalledWith({
+      text: 'hey bro',
+      mode: 'handsfree',
+      source: 'native',
+    });
+    expect(log.mock.calls.find(([, summary]) => summary === 'Hands-free transcript finalized immediately.')?.[2]).toMatchObject({
+      source: 'native',
+      isFinal: false,
+      text: 'hey bro',
+    });
+
+    vi.advanceTimersByTime(5_000);
+    expect(onVoiceFinalized).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps a pending native hands-free final when the recognizer is auto-disarmed before debounce fires', async () => {
     vi.useFakeTimers();
     const runtime = createHookRuntime();

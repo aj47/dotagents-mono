@@ -114,7 +114,7 @@ import {
   isExpectedHandsFreeRecognizerStopError,
   useHandsFreeController,
 } from '../lib/voice/useHandsFreeController';
-import { normalizeVoicePhrase } from '../lib/voice/phraseMatcher';
+import { matchWakePhrase, normalizeVoicePhrase } from '../lib/voice/phraseMatcher';
 import { findAgentSessionMatch } from '../lib/voice/agentSessionMatch';
 import {
   playHandsFreeAudioCue,
@@ -1992,6 +1992,19 @@ export default function ChatScreen({ route, navigation }: any) {
     || handsFreePhaseRef.current === 'waking'
     || handsFreePhaseRef.current === 'listening'
   ), []);
+  const shouldImmediatelyFinalizeHandsFreeTranscript = useCallback(({
+    text,
+  }: {
+    text: string;
+    source: 'native' | 'web';
+    isFinal?: boolean;
+  }) => {
+    if (!handsFreeRef.current || handsFreePhaseRef.current !== 'sleeping') {
+      return false;
+    }
+    const wakeMatch = matchWakePhrase(text, handsFreeWakePhrase);
+    return wakeMatch.matched && !wakeMatch.remainder;
+  }, [handsFreeWakePhrase]);
 
   const playHandsFreeCue = useCallback((cue: HandsFreeAudioCue) => {
     if (!handsFreeRef.current) {
@@ -2820,6 +2833,7 @@ export default function ChatScreen({ route, navigation }: any) {
     onVoiceFinalized: handleVoiceFinalized,
     shouldSuppressHandsFreeTranscript: isHandsFreeTranscriptSuppressedNow,
     shouldFinalizeHandsFreeTranscript: isHandsFreeFinalizationEligibleNow,
+    shouldImmediatelyFinalizeHandsFreeTranscript,
     onSuppressedHandsFreeTranscript: ({ text, source }) => handleHandsFreeTtsBargeInCommand(text, source),
     onRecognizerError: handleRecognizerError,
     onPermissionDenied: () => {
