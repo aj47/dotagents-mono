@@ -3,7 +3,7 @@
  * Handles syncing chat sessions between mobile and desktop.
  */
 
-import { generateSessionTitle, type Session, type ChatMessage } from '../types/session';
+import { isFallbackTitleSource, isTitleSource, type Session, type ChatMessage, type TitleSource } from '../types/session';
 import {
   SettingsApiClient,
   ServerConversation,
@@ -46,43 +46,64 @@ function getServerConversationActivityTimestamp(item: ServerConversation): numbe
   return Math.max(updatedAt, lastMessageAt);
 }
 
-function getFirstUserMessageText(session: Session): string {
-  return session.messages.find(message => message.role === 'user')?.content?.trim() ?? '';
-}
-
 function normalizeTitleText(title: string): string {
   return title.replace(/\s+/g, ' ').trim().slice(0, 80);
 }
 
-function generateDesktopFallbackSessionTitle(firstMessage: string): string {
-  const normalized = firstMessage.replace(/\s+/g, ' ').trim();
-  if (!normalized) {
-    return 'New Chat';
-  }
-  return normalized.length > 50 ? `${normalized.slice(0, 50)}...` : normalized;
+function getSessionTitleSource(session: Session): TitleSource | undefined {
+  return isTitleSource(session.titleSource) ? session.titleSource : undefined;
 }
 
-function isLikelyFallbackTitleForSession(session: Session, title: string): boolean {
-  const firstUserMessage = getFirstUserMessageText(session);
-  const normalizedTitle = normalizeTitleText(title);
-  if (!firstUserMessage) {
-    return normalizedTitle === 'New Chat';
-  }
-  return normalizedTitle === normalizeTitleText(generateSessionTitle(firstUserMessage))
-    || normalizedTitle === normalizeTitleText(generateDesktopFallbackSessionTitle(firstUserMessage));
+function isSessionFallbackTitle(session: Session): boolean {
+  const titleSource = getSessionTitleSource(session);
+  return titleSource ? isFallbackTitleSource(titleSource) : false;
 }
 
-function isLikelyMobileFallbackTitle(session: Session): boolean {
-  return isLikelyFallbackTitleForSession(session, session.title);
-}
-
-function shouldPreferServerTitle(session: Session, serverTitle: string | undefined): serverTitle is string {
+function shouldPreferServerTitle(
+  session: Session,
+  serverTitle: string | undefined,
+  serverTitleSource?: TitleSource,
+): serverTitle is string {
   const normalizedServerTitle = serverTitle?.trim();
   if (!normalizedServerTitle || normalizeTitleText(normalizedServerTitle) === normalizeTitleText(session.title)) {
     return false;
   }
-  return isLikelyMobileFallbackTitle(session)
-    && !isLikelyFallbackTitleForSession(session, normalizedServerTitle);
+  const normalizedServerTitleSource = isTitleSource(serverTitleSource) ? serverTitleSource : undefined;
+  return isSessionFallbackTitle(session)
+    && !!normalizedServerTitleSource
+    && !isFallbackTitleSource(normalizedServerTitleSource);
+}
+
+function getTitleSourceForPushedSession(session: Session): TitleSource {
+  return getSessionTitleSource(session) ?? 'manual';
+}
+
+function applyServerTitleIfAllowed(
+  session: Session,
+  serverTitle: string | undefined,
+  serverTitleSource?: TitleSource,
+): Session {
+  if (!shouldPreferServerTitle(session, serverTitle, serverTitleSource)) {
+    if (
+      serverTitle &&
+      normalizeTitleText(serverTitle) === normalizeTitleText(session.title) &&
+      serverTitleSource &&
+      !isFallbackTitleSource(serverTitleSource) &&
+      isSessionFallbackTitle(session)
+    ) {
+      return {
+        ...session,
+        titleSource: serverTitleSource,
+      };
+    }
+    return session;
+  }
+
+  return {
+    ...session,
+    title: serverTitle,
+    titleSource: serverTitleSource ?? 'server_generated',
+  };
 }
 
 function logServerTitlePreferred(session: Session, serverConversationId: string, serverTitle: string, reason: string): void {
@@ -134,8 +155,9 @@ function fromServerMessage(msg: ServerConversationMessage, index: number): ChatM
  */
 function serverConversationToSession(conv: ServerConversationFull): Session {
   return {
-    id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: conv.clientSessionId ?? `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: conv.title,
+    titleSource: conv.titleSource ?? 'server_generated',
     createdAt: conv.createdAt,
     updatedAt: conv.updatedAt,
     messages: conv.messages.map(fromServerMessage),
@@ -149,11 +171,27 @@ function serverConversationToSession(conv: ServerConversationFull): Session {
  */
 function serverConversationToStubSession(item: ServerConversation): Session {
   return {
-    id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: item.clientSessionId ?? `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: item.title,
+    titleSource: item.titleSource ?? 'server_generated',
     createdAt: item.createdAt,
     updatedAt: getServerConversationActivityTimestamp(item),
     messages: [],
+    serverConversationId: item.id,
+    serverMetadata: {
+      messageCount: item.messageCount,
+      lastMessage: (item.lastMessage || '').substring(0, 100),
+      preview: (item.preview || '').substring(0, 200),
+    },
+  };
+}
+
+function applyServerListItemToLocalSession(session: Session, item: ServerConversation): Session {
+  return {
+    ...session,
+    title: item.title,
+    titleSource: item.titleSource ?? 'server_generated',
+    updatedAt: getServerConversationActivityTimestamp(item),
     serverConversationId: item.id,
     serverMetadata: {
       messageCount: item.messageCount,
@@ -204,29 +242,22 @@ export async function syncConversations(
         localByServerId.set(session.serverConversationId, { session, index });
       }
     });
+    const localByClientSessionId = new Map(localSessions.map((session, index) => [
+      session.id,
+      { session, index },
+    ] as const));
 
-    // Build a content-based lookup for dedup: find server conversations that
-    // match an unlinked local session by (createdAt, title). This prevents
-    // duplicate server conversations when the local serverConversationId
-    // mapping is lost (e.g. app restart before AsyncStorage save completes).
-    // Key: "createdAt|title" → most recently updated ServerConversation
-    const serverByContentKey = new Map<string, ServerConversation>();
-    const serverByCreatedAt = new Map<number, ServerConversation[]>();
+    const serverByClientSessionId = new Map<string, ServerConversation>();
     for (const sc of serverList) {
-      const key = `${sc.createdAt}|${sc.title}`;
-      const existing = serverByContentKey.get(key);
-      // Keep the most recently updated match
+      if (!sc.clientSessionId) continue;
+      const existing = serverByClientSessionId.get(sc.clientSessionId);
       if (
         !existing ||
         getServerConversationActivityTimestamp(sc) >
           getServerConversationActivityTimestamp(existing)
       ) {
-        serverByContentKey.set(key, sc);
+        serverByClientSessionId.set(sc.clientSessionId, sc);
       }
-
-      const createdAtMatches = serverByCreatedAt.get(sc.createdAt) ?? [];
-      createdAtMatches.push(sc);
-      serverByCreatedAt.set(sc.createdAt, createdAtMatches);
     }
 
     // Step 2: Process local sessions
@@ -245,9 +276,9 @@ export async function syncConversations(
             // Server is newer - pull full conversation
             try {
               const fullConv = await client.getConversation(session.serverConversationId);
+              const titleUpdatedSession = applyServerTitleIfAllowed(session, fullConv.title, fullConv.titleSource);
               updatedSessions[i] = {
-                ...session,
-                title: fullConv.title,
+                ...titleUpdatedSession,
                 updatedAt: fullConv.updatedAt,
                 messages: fullConv.messages.map(fromServerMessage),
               };
@@ -258,14 +289,27 @@ export async function syncConversations(
           } else if (session.updatedAt > serverActivityAt && session.messages.length > 0) {
             // Local is newer - push to server
             try {
-              const outgoingTitle = shouldPreferServerTitle(session, serverItem.title)
+              const outgoingTitle = shouldPreferServerTitle(session, serverItem.title, serverItem.titleSource)
                 ? serverItem.title
                 : session.title;
               if (outgoingTitle !== session.title) {
                 logServerTitlePreferred(session, session.serverConversationId, outgoingTitle, 'local-newer-push');
               }
+              const shouldAdoptServerTitleSource =
+                outgoingTitle === session.title &&
+                serverItem.titleSource &&
+                !isFallbackTitleSource(serverItem.titleSource) &&
+                isSessionFallbackTitle(session) &&
+                normalizeTitleText(serverItem.title) === normalizeTitleText(session.title);
+              const outgoingTitleSource = outgoingTitle !== session.title
+                ? (serverItem.titleSource ?? 'server_generated')
+                : shouldAdoptServerTitleSource
+                  ? serverItem.titleSource
+                  : getTitleSourceForPushedSession(session);
               const updated = await client.updateConversation(session.serverConversationId, {
+                clientSessionId: session.id,
                 title: outgoingTitle,
+                titleSource: outgoingTitleSource,
                 messages: session.messages.map(toServerMessage),
                 updatedAt: session.updatedAt,
               });
@@ -273,21 +317,29 @@ export async function syncConversations(
               updatedSessions[i] = {
                 ...session,
                 title: updated.title || outgoingTitle,
+                titleSource: updated.titleSource ?? outgoingTitleSource,
                 updatedAt: updated.updatedAt,
               };
               result.updated++;
             } catch (err: any) {
               result.errors.push(`Failed to push ${session.serverConversationId}: ${err.message}`);
             }
-          } else if (shouldPreferServerTitle(session, serverItem.title)) {
+          } else if (shouldPreferServerTitle(session, serverItem.title, serverItem.titleSource)) {
             // Equal timestamps can still hide a better server-generated title.
             // Keep local messages, but replace the first-message mobile fallback title.
             logServerTitlePreferred(session, session.serverConversationId, serverItem.title, 'same-timestamp-title-only');
             updatedSessions[i] = {
               ...session,
               title: serverItem.title,
+              titleSource: serverItem.titleSource ?? 'server_generated',
             };
             result.updated++;
+          } else {
+            const titleSourceUpdatedSession = applyServerTitleIfAllowed(session, serverItem.title, serverItem.titleSource);
+            if (titleSourceUpdatedSession !== session) {
+              updatedSessions[i] = titleSourceUpdatedSession;
+              result.updated++;
+            }
           }
           // If timestamps and title are equal, no action needed
         }
@@ -299,30 +351,19 @@ export async function syncConversations(
           continue;
         }
 
-        // Before creating a new server conversation, check if one already
-        // exists with the same createdAt + title (content-based dedup).
-        // This handles the case where a previous sync pushed this session
-        // but the serverConversationId mapping was lost locally.
-        const contentKey = `${session.createdAt}|${session.title}`;
-        let existingMatch = serverByContentKey.get(contentKey);
-        if (!existingMatch && isLikelyMobileFallbackTitle(session)) {
-          const createdAtMatches = serverByCreatedAt.get(session.createdAt) ?? [];
-          const titleUpgradeMatches = createdAtMatches.filter(candidate => shouldPreferServerTitle(session, candidate.title));
-          if (titleUpgradeMatches.length === 1) {
-            existingMatch = titleUpgradeMatches[0];
-          }
-        }
-
+        const existingMatch = serverByClientSessionId.get(session.id);
         if (existingMatch && !localByServerId.has(existingMatch.id)) {
           // Found a matching server conversation — re-link instead of creating a duplicate
-          if (existingMatch.title !== session.title) {
+          if (shouldPreferServerTitle(session, existingMatch.title, existingMatch.titleSource)) {
             logServerTitlePreferred(session, existingMatch.id, existingMatch.title, 'unlinked-existing-match');
           }
           updatedSessions[i] = {
             ...session,
-            title: existingMatch.title,
+            ...(shouldPreferServerTitle(session, existingMatch.title, existingMatch.titleSource)
+              ? { title: existingMatch.title, titleSource: existingMatch.titleSource ?? ('server_generated' as const) }
+              : {}),
             serverConversationId: existingMatch.id,
-            updatedAt: existingMatch.updatedAt,
+            updatedAt: getServerConversationActivityTimestamp(existingMatch),
           };
           // Mark this server ID as claimed so Step 3 won't pull it as a new stub
           localByServerId.set(existingMatch.id, { session: updatedSessions[i], index: i });
@@ -331,7 +372,9 @@ export async function syncConversations(
           // Truly new local-only session - push to server
           try {
             const created = await client.createConversation({
+              clientSessionId: session.id,
               title: session.title,
+              titleSource: getTitleSourceForPushedSession(session),
               messages: session.messages.map(toServerMessage),
               createdAt: session.createdAt,
               updatedAt: session.updatedAt,
@@ -341,6 +384,7 @@ export async function syncConversations(
             updatedSessions[i] = {
               ...session,
               title: created.title || session.title,
+              titleSource: created.titleSource ?? getTitleSourceForPushedSession(session),
               serverConversationId: created.id,
               updatedAt: created.updatedAt,
             };
@@ -358,6 +402,22 @@ export async function syncConversations(
     for (const serverItem of serverList) {
       if (!localByServerId.has(serverItem.id)) {
         if (shouldDeferUnmatchedPulls) {
+          continue;
+        }
+
+        const localClientMatch = serverItem.clientSessionId
+          ? localByClientSessionId.get(serverItem.clientSessionId)
+          : undefined;
+        if (localClientMatch && !localClientMatch.session.serverConversationId) {
+          updatedSessions[localClientMatch.index] = applyServerListItemToLocalSession(
+            localClientMatch.session,
+            serverItem,
+          );
+          localByServerId.set(serverItem.id, {
+            session: updatedSessions[localClientMatch.index],
+            index: localClientMatch.index,
+          });
+          result.updated++;
           continue;
         }
 
@@ -390,12 +450,13 @@ export async function syncConversations(
 export async function fetchFullConversation(
   client: SettingsApiClient,
   serverConversationId: string
-): Promise<{ messages: ChatMessage[]; title: string; updatedAt: number } | null> {
+): Promise<{ messages: ChatMessage[]; title: string; titleSource?: TitleSource; updatedAt: number } | null> {
   try {
     const fullConv = await client.getConversation(serverConversationId);
     return {
       messages: fullConv.messages.map(fromServerMessage),
       title: fullConv.title,
+      titleSource: fullConv.titleSource,
       updatedAt: fullConv.updatedAt,
     };
   } catch (err: any) {

@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Session } from '../types/session';
-import { generateSessionTitle } from '../types/session';
 import { compactSessionsForStorageQuota, shouldApplyServerGeneratedSessionTitle } from './sessions';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
@@ -55,10 +54,11 @@ describe('compactSessionsForStorageQuota', () => {
 });
 
 describe('shouldApplyServerGeneratedSessionTitle', () => {
-  it('allows a server-generated title to replace the mobile first-message fallback', () => {
+  it('allows a server-generated title to replace an explicit local fallback', () => {
     const session: Session = {
       id: 'session-1',
       title: 'what did we do today',
+      titleSource: 'local_generated',
       createdAt: 100,
       updatedAt: 200,
       serverConversationId: 'conv-1',
@@ -68,13 +68,21 @@ describe('shouldApplyServerGeneratedSessionTitle', () => {
       ],
     };
 
-    expect(shouldApplyServerGeneratedSessionTitle(session, 'conv-1', 'Hands-Free Debugging Recap')).toBe(true);
+    expect(
+      shouldApplyServerGeneratedSessionTitle(
+        session,
+        'conv-1',
+        'Hands-Free Debugging Recap',
+        'server_generated',
+      ),
+    ).toBe(true);
   });
 
   it('preserves an explicit local title', () => {
     const session: Session = {
       id: 'session-1',
       title: 'My custom title',
+      titleSource: 'manual',
       createdAt: 100,
       updatedAt: 200,
       serverConversationId: 'conv-1',
@@ -83,19 +91,26 @@ describe('shouldApplyServerGeneratedSessionTitle', () => {
       ],
     };
 
-    expect(shouldApplyServerGeneratedSessionTitle(session, 'conv-1', 'Hands-Free Debugging Recap')).toBe(false);
+    expect(
+      shouldApplyServerGeneratedSessionTitle(
+        session,
+        'conv-1',
+        'Hands-Free Debugging Recap',
+        'server_generated',
+      ),
+    ).toBe(false);
   });
 
-  it('does not treat the desktop first-message fallback as a generated title', () => {
-    const firstMessage = 'can you refresh me on the demo for snyk we discussed today';
+  it('uses explicit fallback provenance instead of title string matching when available', () => {
     const session: Session = {
       id: 'session-1',
-      title: generateSessionTitle(firstMessage),
+      title: 'My custom title',
+      titleSource: 'local_generated',
       createdAt: 100,
       updatedAt: 200,
       serverConversationId: 'conv-1',
       messages: [
-        { id: 'm1', role: 'user', content: firstMessage, timestamp: 100 },
+        { id: 'm1', role: 'user', content: 'what did we do today', timestamp: 100 },
       ],
     };
 
@@ -103,7 +118,53 @@ describe('shouldApplyServerGeneratedSessionTitle', () => {
       shouldApplyServerGeneratedSessionTitle(
         session,
         'conv-1',
-        `${firstMessage.slice(0, 50)}...`,
+        'Hands-Free Debugging Recap',
+        'server_generated',
+      ),
+    ).toBe(true);
+  });
+
+  it('does not let a fallback-sourced server title replace a local fallback', () => {
+    const session: Session = {
+      id: 'session-1',
+      title: 'what did we do today',
+      titleSource: 'local_generated',
+      createdAt: 100,
+      updatedAt: 200,
+      serverConversationId: 'conv-1',
+      messages: [
+        { id: 'm1', role: 'user', content: 'what did we do today', timestamp: 100 },
+      ],
+    };
+
+    expect(
+      shouldApplyServerGeneratedSessionTitle(
+        session,
+        'conv-1',
+        'Debugging Recap',
+        'local_generated',
+      ),
+    ).toBe(false);
+  });
+
+  it('does not infer fallback provenance from matching title text', () => {
+    const session: Session = {
+      id: 'session-1',
+      title: 'what did we do today',
+      createdAt: 100,
+      updatedAt: 200,
+      serverConversationId: 'conv-1',
+      messages: [
+        { id: 'm1', role: 'user', content: 'what did we do today', timestamp: 100 },
+      ],
+    };
+
+    expect(
+      shouldApplyServerGeneratedSessionTitle(
+        session,
+        'conv-1',
+        'Hands-Free Debugging Recap',
+        'server_generated',
       ),
     ).toBe(false);
   });

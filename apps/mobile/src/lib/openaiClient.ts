@@ -6,6 +6,7 @@ import type {
   AgentProgressUpdate,
   AgentProgressStep,
   OnProgressCallback,
+  TitleSource,
 } from '@dotagents/shared';
 import { normalizeApiBaseUrl } from '@dotagents/shared';
 import { Platform } from 'react-native';
@@ -65,7 +66,9 @@ export type ChatResponse = ChatApiResponse;
 
 export type RecoveryConversation = {
   id: string;
+  clientSessionId?: string;
   title: string;
+  titleSource?: TitleSource;
   createdAt: number;
   updatedAt: number;
   messages: Array<{

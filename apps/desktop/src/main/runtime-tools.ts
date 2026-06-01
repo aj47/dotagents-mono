@@ -762,6 +762,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     const updatedConversation = await conversationService.renameConversationTitle(
       session.conversationId,
       title,
+      "server_generated",
     )
 
     if (!updatedConversation) {

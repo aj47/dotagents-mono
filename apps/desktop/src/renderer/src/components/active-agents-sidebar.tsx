@@ -219,9 +219,6 @@ const SHORTCUT_MOD_SYMBOL = IS_MAC ? "⌘" : "Ctrl"
 
 const STORAGE_KEY = "active-agents-sidebar-expanded"
 const TASKS_SECTION_EXPANDED_STORAGE_KEY = "sidebar-tasks-section-expanded"
-const SESSION_GROUPS_STORAGE_KEY = "sidebar-session-groups-v1"
-const SESSION_GROUPS_BACKUP_STORAGE_KEY = "sidebar-session-groups-backup-v1"
-const UNGROUPED_SESSION_ORDER_STORAGE_KEY = "sidebar-ungrouped-session-order-v1"
 const SIDEBAR_SESSION_DRAG_MIME = "application/x-dotagents-sidebar-session-key"
 const SIDEBAR_GROUP_DRAG_MIME = "application/x-dotagents-sidebar-group-id"
 
@@ -247,60 +244,6 @@ function readBooleanFromStorage(key: string, fallback: boolean): boolean {
 function writeBooleanToStorage(key: string, value: boolean): void {
   try {
     localStorage.setItem(key, String(value))
-  } catch {
-    // localStorage may be unavailable; ignore.
-  }
-}
-
-function readSidebarSessionGroupsFromStorage(): SidebarSessionGroup[] {
-  try {
-    const stored = localStorage.getItem(SESSION_GROUPS_STORAGE_KEY)
-    const groups = stored ? normalizeSidebarSessionGroups(JSON.parse(stored)) : []
-    if (groups.length > 0) return groups
-
-    const backup = localStorage.getItem(SESSION_GROUPS_BACKUP_STORAGE_KEY)
-    return backup ? normalizeSidebarSessionGroups(JSON.parse(backup)) : []
-  } catch {
-    return []
-  }
-}
-
-function writeSidebarSessionGroupsToStorage(groups: SidebarSessionGroup[]): void {
-  try {
-    const normalizedGroups = normalizeSidebarSessionGroups(groups)
-    const serialized = JSON.stringify(normalizedGroups)
-    localStorage.setItem(SESSION_GROUPS_STORAGE_KEY, serialized)
-    if (normalizedGroups.length > 0) {
-      localStorage.setItem(SESSION_GROUPS_BACKUP_STORAGE_KEY, serialized)
-    }
-  } catch {
-    // localStorage may be unavailable; ignore.
-  }
-}
-
-function clearSidebarSessionGroupsBackup(): void {
-  try {
-    localStorage.removeItem(SESSION_GROUPS_BACKUP_STORAGE_KEY)
-  } catch {
-    // localStorage may be unavailable; ignore.
-  }
-}
-
-function readUngroupedSessionOrderFromStorage(): string[] {
-  try {
-    const stored = localStorage.getItem(UNGROUPED_SESSION_ORDER_STORAGE_KEY)
-    return stored ? normalizeSidebarSessionKeyOrder(JSON.parse(stored)) : []
-  } catch {
-    return []
-  }
-}
-
-function writeUngroupedSessionOrderToStorage(sessionKeys: string[]): void {
-  try {
-    localStorage.setItem(
-      UNGROUPED_SESSION_ORDER_STORAGE_KEY,
-      JSON.stringify(normalizeSidebarSessionKeyOrder(sessionKeys)),
-    )
   } catch {
     // localStorage may be unavailable; ignore.
   }
@@ -427,12 +370,8 @@ export function ActiveAgentsSidebar({
   )
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
-  const [sessionGroups, setSessionGroups] = useState<SidebarSessionGroup[]>(
-    readSidebarSessionGroupsFromStorage,
-  )
-  const [ungroupedSessionOrder, setUngroupedSessionOrder] = useState<string[]>(
-    readUngroupedSessionOrderFromStorage,
-  )
+  const [sessionGroups, setSessionGroups] = useState<SidebarSessionGroup[]>([])
+  const [ungroupedSessionOrder, setUngroupedSessionOrder] = useState<string[]>([])
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [editingGroupName, setEditingGroupName] = useState("")
   const [draggingSessionKey, setDraggingSessionKey] = useState<string | null>(null)
@@ -449,6 +388,7 @@ export function ActiveAgentsSidebar({
   } | null>(null)
   const [isUngroupDropTargetActive, setIsUngroupDropTargetActive] = useState(false)
   const skipTitleSaveOnBlurRef = useRef(false)
+  const sidebarSessionStateHydratedRef = useRef(false)
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -471,6 +411,13 @@ export function ActiveAgentsSidebar({
   const repeatTasksQuery = useQuery<LoopConfig[]>({
     queryKey: ["loops"],
     queryFn: async () => await tipcClient.getLoops(),
+  })
+  const sidebarSessionStateQuery = useQuery<{
+    groups: SidebarSessionGroup[]
+    ungroupedSessionOrder: string[]
+  }>({
+    queryKey: ["sidebar-session-state"],
+    queryFn: async () => await tipcClient.getSidebarSessionState(),
   })
 
   useEffect(() => {
@@ -1006,12 +953,26 @@ export function ActiveAgentsSidebar({
   }, [tasksSectionExpanded])
 
   useEffect(() => {
-    writeSidebarSessionGroupsToStorage(sessionGroups)
-  }, [sessionGroups])
+    if (sidebarSessionStateHydratedRef.current || !sidebarSessionStateQuery.data) return
+
+    const persistedGroups = normalizeSidebarSessionGroups(sidebarSessionStateQuery.data.groups)
+    const persistedUngroupedOrder = normalizeSidebarSessionKeyOrder(
+      sidebarSessionStateQuery.data.ungroupedSessionOrder,
+    )
+
+    setSessionGroups(persistedGroups)
+    setUngroupedSessionOrder(persistedUngroupedOrder)
+    sidebarSessionStateHydratedRef.current = true
+  }, [sidebarSessionStateQuery.data])
 
   useEffect(() => {
-    writeUngroupedSessionOrderToStorage(ungroupedSessionOrder)
-  }, [ungroupedSessionOrder])
+    if (!sidebarSessionStateHydratedRef.current) return
+
+    void tipcClient.saveSidebarSessionState({
+      groups: normalizeSidebarSessionGroups(sessionGroups),
+      ungroupedSessionOrder: normalizeSidebarSessionKeyOrder(ungroupedSessionOrder),
+    })
+  }, [sessionGroups, ungroupedSessionOrder])
 
   const focusSidebarSessionComposer = useCallback(() => {
     let attemptCount = 0
@@ -1188,13 +1149,7 @@ export function ActiveAgentsSidebar({
   }, [clearGroupEditing, editingGroupName])
 
   const removeSessionGroup = useCallback((groupId: string) => {
-    setSessionGroups((prev) => {
-      const nextGroups = prev.filter((group) => group.id !== groupId)
-      if (nextGroups.length === 0) {
-        clearSidebarSessionGroupsBackup()
-      }
-      return nextGroups
-    })
+    setSessionGroups((prev) => prev.filter((group) => group.id !== groupId))
     if (editingGroupId === groupId) clearGroupEditing()
   }, [clearGroupEditing, editingGroupId])
 

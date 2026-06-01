@@ -1752,6 +1752,7 @@ export default function ChatScreen({ route, navigation }: any) {
               sessionId,
               serverConversationId,
               fullConversation.title,
+              fullConversation.titleSource,
             );
             console.info('[ChatScreen] Server-generated title refresh completed.', {
               source,

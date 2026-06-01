@@ -4,6 +4,7 @@
  */
 
 import type { ModelPreset } from './providers';
+import type { TitleSource } from './session';
 import type { QueuedMessage } from './types';
 
 export type OpenAiReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
@@ -779,7 +780,9 @@ export interface ServerConversationMessage {
 
 export interface ServerConversation {
   id: string;
+  clientSessionId?: string;
   title: string;
+  titleSource?: TitleSource;
   createdAt: number;
   updatedAt: number;
   lastMessageAt?: number | null;
@@ -791,7 +794,9 @@ export interface ServerConversation {
 
 export interface ServerConversationFull {
   id: string;
+  clientSessionId?: string;
   title: string;
+  titleSource?: TitleSource;
   createdAt: number;
   updatedAt: number;
   messages: ServerConversationMessage[];
@@ -799,14 +804,18 @@ export interface ServerConversationFull {
 }
 
 export interface CreateConversationRequest {
+  clientSessionId?: string;
   title?: string;
+  titleSource?: TitleSource;
   messages: ServerConversationMessage[];
   createdAt?: number;
   updatedAt?: number;
 }
 
 export interface UpdateConversationRequest {
+  clientSessionId?: string;
   title?: string;
+  titleSource?: TitleSource;
   messages?: ServerConversationMessage[];
   updatedAt?: number;
 }

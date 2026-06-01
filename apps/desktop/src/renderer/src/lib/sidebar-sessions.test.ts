@@ -61,13 +61,13 @@ describe("orderActiveSessionsByPinnedFirst", () => {
 })
 
 describe("sidebar session groups", () => {
-  it("uses conversation ids as stable group keys when available", () => {
+  it("uses stable session ids as primary group keys with conversation ids as secondary links", () => {
     expect(getSidebarSessionGroupKey(activeSession("session-1", "conversation-1"))).toBe(
-      "conversation:conversation-1",
+      "session:session-1",
     )
     expect(getSidebarSessionGroupKeys(activeSession("session-1", "conversation-1"))).toEqual([
-      "conversation:conversation-1",
       "session:session-1",
+      "conversation:conversation-1",
     ])
     expect(getSidebarSessionGroupKey(activeSession("session-2"))).toBe(
       "session:session-2",
@@ -417,46 +417,43 @@ describe("getSidebarProgressTitle", () => {
 })
 
 describe("resolveSidebarSessionMetadata", () => {
-  it("prefers upgraded tracker metadata over stale temporary transcription progress", () => {
+  it("uses progress metadata when it is present", () => {
     const resolved = resolveSidebarSessionMetadata(
       "session-1",
       {
-        conversationId: "temp_123",
-        conversationTitle: "Transcribing...",
+        conversationId: "conversation-2",
+        conversationTitle: "Can you find where we saved this?",
         steps: [],
       },
       new Map(),
       {
         conversationId: "conversation-1",
-        conversationTitle: "Can you find where we saved this?",
+        conversationTitle: "Older title",
       },
     )
 
     expect(resolved).toEqual({
-      conversationId: "conversation-1",
+      conversationId: "conversation-2",
       conversationTitle: "Can you find where we saved this?",
     })
-    expect(
-      filterPastSessionsAgainstActiveSessions(
-        [pastSession("conversation-1", "conversation-1")],
-        [activeSession("session-1", resolved.conversationId)],
-      ),
-    ).toEqual([])
   })
 
-  it("keeps the transcription placeholder while no real conversation exists yet", () => {
+  it("falls back to existing conversation metadata while progress has no conversation link", () => {
     expect(
       resolveSidebarSessionMetadata(
         "session-1",
         {
-          conversationId: "temp_123",
           conversationTitle: "Transcribing...",
           steps: [],
         },
         new Map(),
+        {
+          conversationId: "conversation-1",
+          conversationTitle: "Can you find where we saved this?",
+        },
       ),
     ).toEqual({
-      conversationId: "temp_123",
+      conversationId: "conversation-1",
       conversationTitle: "Transcribing...",
     })
   })

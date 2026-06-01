@@ -59,6 +59,7 @@ describe("conversation session titles", () => {
     )
 
     expect(updated?.title).toBe("Session Title Fix")
+    expect(updated?.titleSource).toBe("server_generated")
     expect(getCurrentProviderIdMock).toHaveBeenCalled()
     expect(makeTextCompletionWithFetchMock).toHaveBeenCalledWith(
       expect.stringContaining("Generate a short session title"),
@@ -76,5 +77,36 @@ describe("conversation session titles", () => {
         }),
       }),
     )
+  })
+
+  it("does not replace manual titles with automatic title generation", async () => {
+    makeTextCompletionWithFetchMock.mockResolvedValue("Automatic Title")
+    const service = await setupConversationServiceTest()
+
+    await service.createConversationWithId(
+      "conv_manual_title",
+      "summarize the launch plan",
+    )
+    await service.addMessageToConversation(
+      "conv_manual_title",
+      "Here is the launch plan summary.",
+      "assistant",
+    )
+    await service.renameConversationTitle(
+      "conv_manual_title",
+      "My Manual Launch Notes",
+      "manual",
+    )
+
+    const updated = await service.maybeAutoGenerateConversationTitle(
+      "conv_manual_title",
+      "session-title-test",
+    )
+
+    expect(updated).toBeNull()
+    expect(makeTextCompletionWithFetchMock).not.toHaveBeenCalled()
+    const conversation = await service.loadConversation("conv_manual_title")
+    expect(conversation?.title).toBe("My Manual Launch Notes")
+    expect(conversation?.titleSource).toBe("manual")
   })
 })

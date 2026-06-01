@@ -386,6 +386,7 @@ class LoopService {
               await conversationService.renameConversationTitle(
                 conversationId,
                 conversationTitle,
+                "system",
               )
               agentSessionTracker.updateSession(sessionId, { conversationTitle, isRepeatTask: true })
               logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
@@ -410,6 +411,7 @@ class LoopService {
         await conversationService.renameConversationTitle(
           conversationId,
           conversationTitle,
+          "system",
         )
         sessionId = agentSessionTracker.startSession(
           conversationId,

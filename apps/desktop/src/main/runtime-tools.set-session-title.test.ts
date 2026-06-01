@@ -63,7 +63,7 @@ describe("runtime-tools set_session_title", () => {
     const result = await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "delegated-session-1")
 
     expect(mockGetRootAppSessionForAcpSession).toHaveBeenCalledWith("delegated-session-1")
-    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title")
+    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title", "server_generated")
     expect(mockUpdateSession).toHaveBeenCalledWith("app-session-1", { conversationTitle: "Delegated title" })
     expect(mockSetAcpSessionTitleOverride).toHaveBeenCalledWith("delegated-session-1", "Delegated title")
     expect(mockGetSessionRunId).toHaveBeenCalledWith("app-session-1")

@@ -6,9 +6,10 @@ import type {
   ToolCall,
   ToolResult,
   AgentConversationState,
+  TitleSource,
 } from '@dotagents/shared'
 
-export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, AgentConversationState } from '@dotagents/shared'
+export type { ToolCall, ToolResult, BaseChatMessage, ConversationHistoryMessage, ChatApiResponse, AgentConversationState, TitleSource } from '@dotagents/shared'
 export type { AgentProgressUpdate, AgentProgressStep, ACPSubAgentMessage, ACPDelegationProgress, ACPDelegationState, ACPConfigOption, ACPConfigOptionValue, AgentStepSummary, OnProgressCallback, SessionCost } from '@dotagents/shared'
 export type { KnowledgeNote, KnowledgeNoteContext, KnowledgeNoteEntryType } from '../../../../packages/core/src/types'
 
@@ -272,7 +273,9 @@ export interface ConversationBranchSource {
 
 export interface Conversation {
   id: string
+  clientSessionId?: string
   title: string
+  titleSource?: TitleSource
   createdAt: number
   updatedAt: number
   messages: ConversationMessage[]
@@ -299,7 +302,9 @@ export interface LoadedConversation extends Conversation {
 
 export interface ConversationHistoryItem {
   id: string
+  clientSessionId?: string
   title: string
+  titleSource?: TitleSource
   createdAt: number
   updatedAt: number
   lastMessageAt?: number | null
@@ -1073,6 +1078,13 @@ export interface LoopConfig {
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
 }
 
+export interface SidebarSessionGroupConfig {
+  id: string
+  name: string
+  sessionKeys: string[]
+  expanded: boolean
+}
+
 export type Config = {
   shortcut?: "hold-ctrl" | "ctrl-slash" | "custom"
   customShortcut?: string
@@ -1291,6 +1303,8 @@ export type Config = {
   // Session History Configuration
   pinnedSessionIds?: string[]
   archivedSessionIds?: string[]
+  sidebarSessionGroups?: SidebarSessionGroupConfig[]
+  sidebarUngroupedSessionOrder?: string[]
 
   // Provider Section Collapse Configuration
   providerSectionCollapsedOpenai?: boolean
