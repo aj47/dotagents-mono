@@ -381,6 +381,9 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       }
     } finally {
       await setForegroundAndroidHandsFreeAudioRouting(false);
+      if (Platform.OS !== 'web') {
+        cleanupNativeSubs();
+      }
       setListeningValue(false);
       if (!shouldPreservePendingHandsFreeFinal) {
         setLiveTranscriptValue('');
@@ -392,7 +395,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       webPressInSeenRef.current = false;
       log?.('recognizer-stop', 'Speech recognizer stopped.');
     }
-  }, [clearHandsFreeDebounce, handsFree, isHandsFreeTranscriptSuppressed, log, setForegroundAndroidHandsFreeAudioRouting, setListeningValue, setLiveTranscriptValue]);
+  }, [cleanupNativeSubs, clearHandsFreeDebounce, handsFree, isHandsFreeTranscriptSuppressed, log, setForegroundAndroidHandsFreeAudioRouting, setListeningValue, setLiveTranscriptValue]);
 
   useEffect(() => {
     if (enabled || !listeningRef.current) {
@@ -400,6 +403,13 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
     void stopRecognitionOnly();
   }, [enabled, stopRecognitionOnly]);
+
+  useEffect(() => {
+    if (enabled || Platform.OS === 'web') {
+      return;
+    }
+    cleanupNativeSubs();
+  }, [cleanupNativeSubs, enabled]);
 
   const finalizePendingHandsFree = useCallback((source: 'native' | 'web') => {
     if (!enabledRef.current) {

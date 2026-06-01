@@ -113,6 +113,10 @@ class FakeNativeSpeechEventEmitter {
   emit(eventName: string, event: any) {
     this.listeners.get(eventName)?.forEach((listener) => listener(event));
   }
+
+  listenerCount(eventName: string) {
+    return this.listeners.get(eventName)?.size ?? 0;
+  }
 }
 
 async function loadUseSpeechRecognizer(
@@ -600,6 +604,49 @@ describe('useSpeechRecognizer', () => {
       mode: 'handsfree',
       source: 'native',
     });
+  });
+
+  it('removes native speech listeners when foreground recognition is disarmed', async () => {
+    vi.useFakeTimers();
+    const runtime = createHookRuntime();
+    const speechRecognitionModule = {
+      getPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
+      requestPermissionsAsync: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime, {
+      platform: 'android',
+      eventEmitterClass: FakeNativeSpeechEventEmitter,
+      speechRecognitionModule,
+    });
+    const onVoiceFinalized = vi.fn();
+    const log = vi.fn();
+
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+      log,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const eventEmitter = FakeNativeSpeechEventEmitter.instances[0];
+    expect(eventEmitter.listenerCount('result')).toBe(1);
+
+    await recognizer.stopRecognitionOnly();
+    expect(eventEmitter.listenerCount('result')).toBe(0);
+
+    eventEmitter.emit('result', {
+      isFinal: true,
+      results: [{ transcript: 'hey bro' }],
+    });
+    vi.advanceTimersByTime(500);
+
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+    expect(log.mock.calls.map(([, summary]) => summary)).not.toContain('Native speech recognizer produced a result.');
   });
 
   it('clears the STT preview immediately without leaving an expiry timer active', async () => {
