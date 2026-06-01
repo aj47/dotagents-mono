@@ -141,6 +141,7 @@ const MESSAGE_COPY_FEEDBACK_RESET_MS = 2_000;
 const HANDS_FREE_DEBUG_STORAGE_KEY = 'dotagents:handsfree-debug';
 const ANDROID_HANDS_FREE_DUPLICATE_SUPPRESSION_MS = 3_000;
 const HANDS_FREE_FINALIZED_DUPLICATE_SUPPRESSION_MS = 3_000;
+const HANDS_FREE_ACCEPTED_CONTROL_PREVIEW_SUPPRESSION_MS = 3_000;
 const ANDROID_HANDS_FREE_FOREGROUND_HANDOFF_DELAY_MS = 1_500;
 const HANDS_FREE_KEEP_AWAKE_TAG = 'dotagents-handsfree';
 const HANDS_FREE_TTS_BARGE_IN_DUPLICATE_SUPPRESSION_MS = 1_200;
@@ -1653,6 +1654,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const androidHandsFreeLastSentRef = useRef<{ text: string; timestamp: number } | null>(null);
   const handsFreeLastFinalizedRef = useRef<{ text: string; timestamp: number } | null>(null);
   const voicePreviewComposerTextRef = useRef('');
+  const acceptedHandsFreeControlPreviewRef = useRef<{ text: string; timestamp: number } | null>(null);
 		  const [input, setInput] = useState('');
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
@@ -1992,19 +1994,64 @@ export default function ChatScreen({ route, navigation }: any) {
     || handsFreePhaseRef.current === 'waking'
     || handsFreePhaseRef.current === 'listening'
   ), []);
-  const shouldImmediatelyFinalizeHandsFreeTranscript = useCallback(({
-    text,
-  }: {
-    text: string;
-    source: 'native' | 'web';
-    isFinal?: boolean;
-  }) => {
+  const isExactSleepingWakeTranscript = useCallback((text: string) => {
     if (!handsFreeRef.current || handsFreePhaseRef.current !== 'sleeping') {
       return false;
     }
     const wakeMatch = matchWakePhrase(text, handsFreeWakePhrase);
     return wakeMatch.matched && !wakeMatch.remainder;
   }, [handsFreeWakePhrase]);
+  const shouldImmediatelyFinalizeHandsFreeTranscript = useCallback(({
+    text,
+  }: {
+    text: string;
+    source: 'native' | 'web';
+    isFinal?: boolean;
+  }) => isExactSleepingWakeTranscript(text), [isExactSleepingWakeTranscript]);
+
+  const clearAcceptedHandsFreeControlPreview = useCallback((acceptedText: string) => {
+    const normalizedAcceptedText = normalizeVoiceText(acceptedText);
+    const previousPreviewText = voicePreviewComposerTextRef.current;
+    const normalizedPreviousPreviewText = normalizeVoiceText(previousPreviewText);
+    const textToRemove = normalizedPreviousPreviewText || normalizedAcceptedText;
+
+    if (normalizedAcceptedText) {
+      acceptedHandsFreeControlPreviewRef.current = {
+        text: normalizedAcceptedText,
+        timestamp: Date.now(),
+      };
+    }
+
+    voicePreviewComposerTextRef.current = '';
+    setSttPreviewWithExpiry('');
+    setInput((current) => {
+      const normalizedCurrent = normalizeVoiceText(current);
+
+      if (!normalizedCurrent) {
+        return current;
+      }
+
+      if (
+        normalizedCurrent === normalizedAcceptedText
+        || (normalizedPreviousPreviewText && normalizedCurrent === normalizedPreviousPreviewText)
+      ) {
+        return '';
+      }
+
+      if (textToRemove && current.endsWith(textToRemove)) {
+        return current.slice(0, -textToRemove.length).trimEnd();
+      }
+
+      if (previousPreviewText && current.endsWith(previousPreviewText)) {
+        return current.slice(0, -previousPreviewText.length).trimEnd();
+      }
+
+      return current;
+    });
+    voiceLog('runtime-state', 'Accepted handsfree wake phrase cleared from composer preview.', {
+      textLength: normalizedAcceptedText.length,
+    });
+  }, [voiceLog]);
 
   const playHandsFreeCue = useCallback((cue: HandsFreeAudioCue) => {
     if (!handsFreeRef.current) {
@@ -2563,9 +2610,11 @@ export default function ChatScreen({ route, navigation }: any) {
 
     if (mode === 'handsfree') {
       if (handsFreeRef.current) {
+        const acceptedWakeControlText = isExactSleepingWakeTranscript(finalText);
+        const phaseBeforeFinalTranscript = handsFreePhaseRef.current;
         const action = handsFreeController.handleFinalTranscript(finalText);
         console.info(
-          `[DotAgentsHandsFreeJS] controller action=${action.type} phaseBefore=${handsFreePhaseRef.current} textLength=${finalText.length}`,
+          `[DotAgentsHandsFreeJS] controller action=${action.type} phaseBefore=${phaseBeforeFinalTranscript} textLength=${finalText.length}`,
         );
         if (action.type === 'send') {
           voicePreviewComposerTextRef.current = '';
@@ -2577,6 +2626,8 @@ export default function ChatScreen({ route, navigation }: any) {
           setInput('');
           setSttPreviewWithExpiry('');
           handleHandsFreeVoiceCommand(action.command, action.label, action.remainder);
+        } else if (acceptedWakeControlText) {
+          clearAcceptedHandsFreeControlPreview(finalText);
         }
         return;
       }
@@ -2584,6 +2635,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     void sendRef.current(finalText);
   }, [
+    clearAcceptedHandsFreeControlPreview,
     handleHandsFreeTtsBargeInCommand,
     handleHandsFreeVoiceCommand,
     handsFreeController.handleFinalTranscript,
@@ -2591,6 +2643,7 @@ export default function ChatScreen({ route, navigation }: any) {
     hasLiveAgentTurn,
     isHandsFreeFinalizationEligibleNow,
     isHandsFreeTranscriptSuppressedNow,
+    isExactSleepingWakeTranscript,
     voiceLog,
   ]);
 
@@ -2849,8 +2902,22 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!handsFree || !previewText) {
       if (!previewText) {
         voicePreviewComposerTextRef.current = '';
+        acceptedHandsFreeControlPreviewRef.current = null;
       }
       return;
+    }
+
+    const acceptedControlPreview = acceptedHandsFreeControlPreviewRef.current;
+    if (acceptedControlPreview) {
+      const acceptedControlPreviewExpired =
+        Date.now() - acceptedControlPreview.timestamp > HANDS_FREE_ACCEPTED_CONTROL_PREVIEW_SUPPRESSION_MS;
+
+      if (acceptedControlPreviewExpired || acceptedControlPreview.text !== previewText) {
+        acceptedHandsFreeControlPreviewRef.current = null;
+      } else {
+        voicePreviewComposerTextRef.current = '';
+        return;
+      }
     }
 
     setInput((current) => {
