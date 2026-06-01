@@ -112,6 +112,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const nativeFinalRef = useRef('');
   const pendingHandsFreeFinalRef = useRef('');
   const handsFreeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handsFreeCaptureGenerationRef = useRef(0);
   const sttPreviewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startingRef = useRef(false);
   const stoppingRef = useRef(false);
@@ -173,6 +174,21 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
     setHandsFreeDebounceEndsAt(null);
   }, []);
+
+  const invalidateHandsFreeCapture = useCallback((reason?: string) => {
+    const hadPending = !!handsFreeDebounceRef.current || !!pendingHandsFreeFinalRef.current;
+    handsFreeCaptureGenerationRef.current += 1;
+    clearHandsFreeDebounce();
+    pendingHandsFreeFinalRef.current = '';
+    webFinalRef.current = '';
+    nativeFinalRef.current = '';
+    if (hadPending) {
+      log?.('finalization-cancelled', 'Hands-free transcript capture invalidated.', {
+        reason: reason ?? 'unspecified',
+        generation: handsFreeCaptureGenerationRef.current,
+      });
+    }
+  }, [clearHandsFreeDebounce, log]);
 
   const isHandsFreeTranscriptSuppressed = useCallback(() => (
     handsFree && shouldSuppressHandsFreeTranscriptRef.current?.() === true
@@ -467,16 +483,32 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
 
     clearHandsFreeDebounce();
     const debounceMs = Math.max(0, handsFreeDebounceMs);
+    const scheduledGeneration = handsFreeCaptureGenerationRef.current;
     setHandsFreeDebounceEndsAt(Date.now() + debounceMs);
     log?.('finalization-scheduled', 'Hands-free transcript debounce scheduled.', {
       source,
       debounceMs,
+      generation: scheduledGeneration,
       text: truncateDebugText(finalText),
       textLength: finalText.length,
     });
     handsFreeDebounceRef.current = setTimeout(() => {
       handsFreeDebounceRef.current = null;
       setHandsFreeDebounceEndsAt(null);
+      if (handsFreeCaptureGenerationRef.current !== scheduledGeneration) {
+        pendingHandsFreeFinalRef.current = '';
+        if (source === 'web') {
+          webFinalRef.current = '';
+        } else {
+          nativeFinalRef.current = '';
+        }
+        log?.('finalization-cancelled', 'Hands-free transcript debounce fired after capture invalidation.', {
+          source,
+          scheduledGeneration,
+          currentGeneration: handsFreeCaptureGenerationRef.current,
+        });
+        return;
+      }
       finalizePendingHandsFree(source);
     }, debounceMs);
     return true;
@@ -1305,5 +1337,6 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     handlePushToTalkPressIn,
     handlePushToTalkPressOut,
     setSttPreviewWithExpiry,
+    invalidateHandsFreeCapture,
   } as const;
 }

@@ -123,6 +123,7 @@ export type HandsFreeDebugEventType =
   | 'transcript-ignored'
   | 'finalization-scheduled'
   | 'finalization-fired'
+  | 'finalization-cancelled'
   | 'handsfree-control'
   | 'runtime-state'
   | 'tts-started'

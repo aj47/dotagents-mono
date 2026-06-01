@@ -2453,6 +2453,7 @@ export default function ChatScreen({ route, navigation }: any) {
     stopRecognitionOnly,
     handlePushToTalkPressIn,
     handlePushToTalkPressOut,
+    invalidateHandsFreeCapture,
   } = useSpeechRecognizer({
     enabled: foregroundSpeechRecognizerEnabled,
     handsFree,
@@ -2513,9 +2514,11 @@ export default function ChatScreen({ route, navigation }: any) {
     clearAndroidHandsFreePartialTimer();
     androidHandsFreePendingPartialRef.current = '';
     setSttPreviewWithExpiry('');
+    invalidateHandsFreeCapture(`phase-${handsFreeController.state.phase}`);
   }, [
     clearAndroidHandsFreePartialTimer,
     handsFreeController.state.phase,
+    invalidateHandsFreeCapture,
     isHandsFreeFinalizationEligibleNow,
     setSttPreviewWithExpiry,
   ]);
@@ -2888,6 +2891,7 @@ export default function ChatScreen({ route, navigation }: any) {
       markGlobalTtsPlaybackSpeaking(playbackId);
       if (!handsFree || handsFreeSpeechStarted) return;
       handsFreeSpeechStarted = true;
+      invalidateHandsFreeCapture('tts-started');
       handsFreeController.onSpeechStarted();
       voiceLog('tts-started', message ?? `Assistant speech started (${reason}).`, extra);
     };
@@ -3062,7 +3066,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return false;
     }
 		return true;
-			  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
+			  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, invalidateHandsFreeCapture, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
