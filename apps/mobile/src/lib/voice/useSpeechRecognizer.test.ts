@@ -266,6 +266,41 @@ describe('useSpeechRecognizer', () => {
     expect(onVoiceFinalized).toHaveBeenCalledWith({ text: 'hello world', mode: 'handsfree', source: 'web' });
   });
 
+  it('cancels a pending hands-free debounce when capture is invalidated mid-debounce', async () => {
+    vi.useFakeTimers();
+    (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };
+    const runtime = createHookRuntime();
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime);
+    const onVoiceFinalized = vi.fn();
+    const log = vi.fn();
+
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 500,
+      willCancel: false,
+      onVoiceFinalized,
+      log,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const speechRecognition = FakeSpeechRecognition.instances[0];
+
+    speechRecognition.onresult?.({
+      resultIndex: 0,
+      results: [{ 0: { transcript: 'pending request' }, isFinal: true }],
+    });
+
+    vi.advanceTimersByTime(250);
+    recognizer.invalidateHandsFreeCapture('tts-started');
+
+    vi.advanceTimersByTime(500);
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+    const eventTypes = log.mock.calls.map(([type]) => type);
+    expect(eventTypes).toContain('finalization-cancelled');
+    expect(eventTypes).not.toContain('finalization-fired');
+  });
+
   it('does not finalize a hands-free debounce after the listening turn becomes ineligible', async () => {
     vi.useFakeTimers();
     (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };
