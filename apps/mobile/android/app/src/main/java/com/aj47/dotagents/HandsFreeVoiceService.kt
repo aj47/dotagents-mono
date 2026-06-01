@@ -134,6 +134,9 @@ class HandsFreeVoiceService : Service() {
       }
 
       captureEnabled = enabled
+      if (captureEnabled) {
+        consecutiveRecognizerErrors = 0
+      }
       Log.i(TAG, "service capture changed enabled=$captureEnabled listening=$listening")
       HandsFreeVoiceEvents.emit("capture-state") {
         it.putBoolean("listeningEnabled", captureEnabled)
@@ -725,6 +728,17 @@ class HandsFreeVoiceService : Service() {
           destroyRecognizer()
         }
         consecutiveRecognizerErrors += 1
+        if (message == "server-disconnected" && consecutiveRecognizerErrors >= 5) {
+          Log.w(TAG, "recognizer server-disconnected retry limit reached; disabling service capture consecutive=$consecutiveRecognizerErrors")
+          captureEnabled = false
+          mainHandler.removeCallbacks(restartRunnable)
+          stopListening(suppressEvent = true)
+          HandsFreeAudioRouter.release(this@HandsFreeVoiceService, CAPTURE_ROUTE_REQUESTER)
+          HandsFreeVoiceEvents.emit("capture-state") {
+            it.putBoolean("listeningEnabled", captureEnabled)
+          }
+          return
+        }
         val restartDelay = when {
           message == "no-speech" -> 1500L
           message == "server-disconnected" -> 2500L

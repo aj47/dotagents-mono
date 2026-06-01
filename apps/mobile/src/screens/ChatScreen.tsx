@@ -413,6 +413,8 @@ type AndroidHandsFreeTtsHandler = {
   onSettled: (type: AndroidHandsFreeTtsSettleType, message?: string) => void;
 };
 
+const STALE_HANDS_FREE_TTS_RECOVERY_MS = 15000;
+
 const createAndroidHandsFreeTtsUtteranceId = () =>
   `handsfree-tts-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -1761,14 +1763,46 @@ export default function ChatScreen({ route, navigation }: any) {
     && isAssistantAudioPendingOrSpeaking;
   const shouldSuppressHandsFreeTranscriptRef = useRef(shouldSuppressHandsFreeTranscript);
   shouldSuppressHandsFreeTranscriptRef.current = shouldSuppressHandsFreeTranscript;
-  const isHandsFreeTranscriptSuppressedNow = useCallback(() => (
-    handsFreeRef.current
-    && (
+  const recoverStaleHandsFreeTtsIfNeeded = useCallback((reason: string) => {
+    if (!handsFreeRef.current) return false;
+    const playback = getGlobalTtsPlayback();
+    const phase = handsFreePhaseRef.current;
+    const playbackAgeMs = playback ? Date.now() - playback.startedAt : null;
+    const stalePlayback =
+      !!playback
+      && playback.status === 'speaking'
+      && playbackAgeMs !== null
+      && playbackAgeMs > STALE_HANDS_FREE_TTS_RECOVERY_MS;
+    const staleControllerSpeech = phase === 'speaking' && !playback;
+    if (!stalePlayback && !staleControllerSpeech) {
+      return false;
+    }
+
+    stopGlobalTtsPlayback();
+    if (phase === 'speaking') {
+      handsFreeController.onSpeechFinished();
+    }
+    voiceLog('tts-stopped', 'Recovered stale handsfree TTS state.', {
+      reason,
+      phase,
+      playbackStatus: playback?.status,
+      playbackAgeMs,
+      playbackSource: playback?.source,
+      textPreview: playback?.textPreview,
+    });
+    return true;
+  }, [handsFreeController.onSpeechFinished, voiceLog]);
+  const isHandsFreeTranscriptSuppressedNow = useCallback(() => {
+    if (!handsFreeRef.current) return false;
+    if (recoverStaleHandsFreeTtsIfNeeded('transcript-suppression-check')) {
+      return false;
+    }
+    return (
       shouldSuppressHandsFreeTranscriptRef.current
       || !!getGlobalTtsPlayback()
       || handsFreePhaseRef.current === 'speaking'
-    )
-  ), []);
+    );
+  }, [recoverStaleHandsFreeTtsIfNeeded]);
   const isHandsFreeFinalizationEligibleNow = useCallback(() => (
     !handsFreeRef.current
     || handsFreePhaseRef.current === 'waking'
