@@ -22,6 +22,8 @@ import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
 
+import { startSessionCommandLog, type SessionCommandLogHandle } from "./session-command-runtime"
+
 const execAsync = promisify(exec)
 
 // Re-export from the dependency-free definitions module.
@@ -945,23 +947,46 @@ const toolHandlers: Record<string, ToolHandler> = {
       // should still work if they cannot be prepared.
     }
 
+    const execOptions: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string; env?: NodeJS.ProcessEnv } = {
+      maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
+      shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
+      env: {
+        ...process.env,
+        ...runtimeFilesystemEnv,
+      },
+    }
+
+    execOptions.cwd = effectiveCwd
+
+    if (timeout > 0) {
+      execOptions.timeout = timeout
+    }
+
+    let commandLog: SessionCommandLogHandle | null = null
+    if (context.sessionId) {
+      try {
+        commandLog = await startSessionCommandLog({
+          sessionId: context.sessionId,
+          command: effectiveCommand,
+          cwd: effectiveCwd,
+          shell: execOptions.shell ?? "",
+          timeoutMs: timeout > 0 ? timeout : undefined,
+        })
+      } catch {
+        // Logging is best-effort; never block command execution on log failures.
+      }
+    }
+
     try {
-      const execOptions: { cwd?: string; timeout?: number; maxBuffer?: number; shell?: string; env?: NodeJS.ProcessEnv } = {
-        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large outputs
-        shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
-        env: {
-          ...process.env,
-          ...runtimeFilesystemEnv,
-        },
-      }
-
-      execOptions.cwd = effectiveCwd
-
-      if (timeout > 0) {
-        execOptions.timeout = timeout
-      }
-
       const { stdout, stderr } = await execAsync(effectiveCommand, execOptions)
+
+      if (commandLog) {
+        await commandLog.finalize({
+          exitCode: 0,
+          stdout: stdout || "",
+          stderr: stderr || "",
+        }).catch(() => undefined)
+      }
 
       // Truncate large outputs to prevent context bloat
       // Keep first 5K + last 5K chars so agent sees both beginning and end
@@ -995,6 +1020,11 @@ const toolHandlers: Record<string, ToolHandler> = {
               stdout: truncatedStdout,
               stderr: stderr || "",
               ...(outputTruncated ? { outputTruncated: true, hint: "Output was truncated. Use head -n/tail -n/sed -n 'X,Yp' to read specific sections." } : {}),
+              ...(commandLog ? {
+                commandId: commandLog.commandId,
+                fullStdoutPath: commandLog.stdoutPath,
+                fullStderrPath: commandLog.stderrPath,
+              } : {}),
             }, null, 2),
           },
         ],
@@ -1002,14 +1032,28 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     } catch (error: any) {
       // exec errors include stdout/stderr in the error object
-      let stdout = error.stdout || ""
-      const stderr = error.stderr || ""
+      const fullStdout: string = error.stdout || ""
+      const stderr: string = error.stderr || ""
       const errorMessage = error.message || String(error)
       const exitCode = error.code
+      const signal = typeof error.signal === "string" ? error.signal : null
+      const timedOut = error.killed === true && error.signal === "SIGTERM" && timeout > 0
+
+      if (commandLog) {
+        await commandLog.finalize({
+          exitCode: typeof exitCode === "number" ? exitCode : null,
+          signal,
+          stdout: fullStdout,
+          stderr,
+          errorMessage,
+          timedOut,
+        }).catch(() => undefined)
+      }
 
       // Truncate large error outputs too
       const MAX_OUTPUT_CHARS = 10000
       const HALF = Math.floor(MAX_OUTPUT_CHARS / 2)
+      let stdout = fullStdout
       if (stdout.length > MAX_OUTPUT_CHARS) {
         const totalLines = stdout.split("\n").length
         const head = stdout.substring(0, HALF)
@@ -1039,6 +1083,11 @@ const toolHandlers: Record<string, ToolHandler> = {
               exitCode,
               stdout,
               stderr,
+              ...(commandLog ? {
+                commandId: commandLog.commandId,
+                fullStdoutPath: commandLog.stdoutPath,
+                fullStderrPath: commandLog.stderrPath,
+              } : {}),
             }, null, 2),
           },
         ],
