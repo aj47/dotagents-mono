@@ -118,7 +118,7 @@ Manual downloads:
 | **Multi-Agent** | Agent profiles, skill-based delegation, persistent knowledge, `acpx`-backed coordination |
 | **MCP Tools** | Tool execution, OAuth 2.1 auth, real-time progress, conversation context |
 | **Remote Server** | Optional local API for mobile pairing, OpenAI-compatible clients, operator dashboards, and tunnels |
-| **Observability** | [Langfuse](https://langfuse.com/) integration for LLM tracing, token usage, and debugging |
+| **Observability** | [Langfuse](https://langfuse.com/) integration plus server-less local trace logging + viewer (`pnpm traces:view`) for LLM tracing, token usage, and debugging |
 | **Platform** | macOS/Windows/Linux, rate limit handling, multi-provider AI |
 | **UX** | Dark/light themes, resizable panels, kill switch, conversation history |
 
