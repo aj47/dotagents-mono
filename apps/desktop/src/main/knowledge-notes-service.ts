@@ -66,6 +66,42 @@ const VALID_ENTRY_TYPE_VALUES = new Set<KnowledgeNoteEntryType>(["note", "entry"
 const LEGACY_NOTE_META_PREFIX = "<!-- dotagents-memory-meta:"
 const DAY_MS = 24 * 60 * 60 * 1000
 
+const TIME_SENSITIVE_QUERY_PATTERN_SOURCES: string[] = [
+  "today(?:'s)?",
+  "tonight",
+  "(?:right )?now",
+  "current(?:ly)?",
+  "latest",
+  "recent(?:ly)?",
+  "yesterday",
+  "this (?:morning|afternoon|evening|week|month)",
+  "what (?:were we|was i|are we|am i) (?:working|doing) on",
+]
+const TIME_SENSITIVE_QUERY_REGEX = new RegExp(
+  `\\b(?:${TIME_SENSITIVE_QUERY_PATTERN_SOURCES.join("|")})\\b`,
+  "gi",
+)
+
+function isTimeSensitiveQuery(query: string | undefined): boolean {
+  if (!query) return false
+  TIME_SENSITIVE_QUERY_REGEX.lastIndex = 0
+  return TIME_SENSITIVE_QUERY_REGEX.test(query)
+}
+
+function stripTimeSensitiveMarkers(query: string): string {
+  return query.replace(TIME_SENSITIVE_QUERY_REGEX, " ").replace(/\s+/g, " ").trim()
+}
+
+function recencyBoostMultiplier(updatedAtMs: number, nowMs: number): number {
+  const ageDays = Math.max(0, nowMs - updatedAtMs) / DAY_MS
+  if (ageDays <= 2) return 1.6
+  if (ageDays <= 7) return 1.3
+  if (ageDays <= 30) return 1.1
+  if (ageDays <= 90) return 1.0
+  if (ageDays <= 365) return 0.85
+  return 0.7
+}
+
 type SearchIndexEntry = {
   note: KnowledgeNote
   title: string
@@ -585,12 +621,18 @@ export class KnowledgeNotesService {
   } = {}): Promise<KnowledgeNote[]> {
     await this.initialize()
     const scores = new Map<string, number>()
+    const timeSensitive = isTimeSensitiveQuery(query)
+    const scoringQuery = timeSensitive ? (stripTimeSensitiveMarkers(query) || query) : query
+    const nowMs = Date.now()
     const matches = this.searchIndex
       .filter((entry) => {
         if (filter.context && entry.note.context !== filter.context) return false
         if (!matchesDateFilter(entry.note, filter.dateFilter)) return false
-        const score = scoreSearchEntry(entry, query)
+        let score = scoreSearchEntry(entry, scoringQuery)
         if (score <= 0) return false
+        if (timeSensitive) {
+          score *= recencyBoostMultiplier(getNoteTimestamp(entry.note, "updated"), nowMs)
+        }
         scores.set(entry.note.id, score)
         return true
       })
