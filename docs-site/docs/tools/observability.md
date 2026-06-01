@@ -88,6 +88,68 @@ MCP tool executions showing:
 | **Generations** | Individual LLM API calls with token usage |
 | **Spans** | MCP tool executions with inputs/outputs |
 
+## Local Trace Logging (No Server)
+
+You don't need Langfuse Cloud, a self-hosted server, or Docker to inspect
+traces. DotAgents can record each agent run as **Langfuse-shaped JSONL** on
+disk, and ships a server-less viewer that renders those files as a
+Langfuse-style trace tree.
+
+This is independent of the Langfuse integration above — it works whether or not
+the `langfuse` package is installed and whether or not Langfuse tracing is
+enabled.
+
+### 1. Capture traces locally
+
+Enable **local trace logging** in the app (sets
+`config.localTraceLoggingEnabled = true`). Each agent **run** writes one file:
+
+```
+<appData>/app.dotagents/traces/<traceId>.jsonl
+```
+
+- Each line is one event: `trace.start` / `trace.end`,
+  `generation.start` / `generation.end`, `span.start` / `span.end`.
+- Set `config.localTraceLogPath` to write somewhere else. If it points at a
+  `.jsonl` file, its parent directory is used as the trace directory.
+
+### 2. View traces
+
+From `apps/desktop`:
+
+```bash
+# Auto-discover the traces directory and print a Langfuse-style tree
+pnpm traces:view
+
+# A specific file or directory
+pnpm traces:view ~/path/to/traces
+pnpm traces:view ~/path/to/traces/<traceId>.jsonl
+
+# Generate a self-contained, offline HTML report (open in any browser)
+pnpm traces:view --html local-traces.html
+
+# Machine-readable reconstructed traces
+pnpm traces:view --json
+
+# Only the N most recent traces; disable color
+pnpm traces:view --limit 10 --no-color
+```
+
+With no target, the directory is auto-discovered the same way the logger
+resolves it: `config.localTraceLogPath` if set, otherwise
+`<appData>/<APP_ID|app.dotagents>/traces`.
+
+The viewer shows trace name, id, Langfuse `sessionId`, duration, aggregated
+token usage, and every tool span (`TOOL`) and LLM generation (`GEN`) in time
+order with model, duration, tokens, input/output previews, and level
+(`ERROR` > `WARNING` > `DEFAULT` > `DEBUG`).
+
+It is also resilient to aborted or crashed runs: unclosed spans/generations are
+surfaced as `⚠ unclosed` warnings rather than dropped, malformed lines are
+counted and skipped, and a file with no `trace.start` (orphan/`unlinked.jsonl`)
+is rendered as a synthetic trace — so a trace reads cleanly no matter how the
+run terminated.
+
 ## Self-Hosted Langfuse
 
 For organizations requiring data privacy, set the base URL to your instance:
