@@ -4170,6 +4170,10 @@ export default function ChatScreen({ route, navigation }: any) {
   const queuedMessages = messageQueue.getQueue(currentConversationId);
   const pendingQueuedMessages = queuedMessages.filter((message) => message.status === 'pending');
   const nextQueuedMessage = !responding ? messageQueue.peek(currentConversationId) : null;
+  // The MessageQueuePanel below renders the same queued messages. Track whether
+  // it will appear so the inline "Follow-up queued" bubbles can be suppressed
+  // and avoid showing the same message in two surfaces at once (#527).
+  const messageQueuePanelVisible = messageQueueEnabled && queuedMessages.length > 0;
 
   useEffect(() => {
     if (pendingQueuedMessages.length === 0 || !shouldAutoScroll) return;
@@ -6333,7 +6337,7 @@ export default function ChatScreen({ route, navigation }: any) {
               </View>
             );
           })}
-          {pendingQueuedMessages.map((queuedMessage) => (
+          {!messageQueuePanelVisible && pendingQueuedMessages.map((queuedMessage) => (
             <View
               key={`queued-inline-${queuedMessage.id}`}
               style={[
@@ -6391,7 +6395,7 @@ export default function ChatScreen({ route, navigation }: any) {
           </TouchableOpacity>
         )}
         {/* Message Queue Panel */}
-        {messageQueueEnabled && queuedMessages.length > 0 && (
+        {messageQueuePanelVisible && (
           <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
             <MessageQueuePanel
               conversationId={currentConversationId}
