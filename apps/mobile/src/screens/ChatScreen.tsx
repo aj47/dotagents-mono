@@ -2571,7 +2571,7 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [handsFree, liveTranscript, sttPreview]);
 
   const androidHandsFreeServiceListeningEnabled =
-    androidBackgroundHandsFree && shouldKeepHandsFreeMicArmed;
+    androidBackgroundHandsFree && shouldKeepHandsFreeMicArmed && !listening;
 
   useEffect(() => {
     if (!shouldSuppressHandsFreeTranscript) return;
@@ -2839,7 +2839,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     if (!handsFreeRuntimeActive && listening) {
-      void stopRecognitionOnly();
+      void stopRecognitionOnly({ preservePendingHandsFreeFinal: true });
     }
   }, [androidBackgroundHandsFree, handsFree, handsFreeRuntimeActive, listening, stopRecognitionOnly]);
 

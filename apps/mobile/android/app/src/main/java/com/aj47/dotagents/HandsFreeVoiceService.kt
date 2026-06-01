@@ -41,6 +41,7 @@ class HandsFreeVoiceService : Service() {
   private var activeTtsRestoreListeningAfterDone = false
   private var activeTtsAllowBargeIn = false
   private var ttsSpeaking = false
+  private var consecutiveRecognizerErrors = 0
 
   private val restartRunnable = Runnable {
     if (captureEnabled && (activeTtsUtteranceId == null || activeTtsAllowBargeIn)) {
@@ -657,6 +658,7 @@ class HandsFreeVoiceService : Service() {
   private fun createRecognitionListener(): RecognitionListener {
     return object : RecognitionListener {
       override fun onReadyForSpeech(params: Bundle?) {
+        consecutiveRecognizerErrors = 0
         HandsFreeVoiceEvents.emit("ready-for-speech")
       }
 
@@ -694,11 +696,20 @@ class HandsFreeVoiceService : Service() {
         if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY || error == SpeechRecognizer.ERROR_CLIENT) {
           destroyRecognizer()
         }
-        scheduleRestart(if (message == "no-speech") 1500L else 1000L)
+        consecutiveRecognizerErrors += 1
+        val restartDelay = when {
+          message == "no-speech" -> 1500L
+          message == "server-disconnected" -> 2500L
+          consecutiveRecognizerErrors >= 3 -> 3000L
+          else -> 1000L
+        }
+        Log.i(TAG, "recognizer recoverable error message=$message consecutive=$consecutiveRecognizerErrors restartDelayMs=$restartDelay")
+        scheduleRestart(restartDelay)
       }
 
       override fun onResults(results: Bundle?) {
         listening = false
+        consecutiveRecognizerErrors = 0
         emitBestResult(results, callback = "results", isFinal = true)
         if (captureEnabled) {
           scheduleRestart(300L)
@@ -827,6 +838,7 @@ class HandsFreeVoiceService : Service() {
       SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "recognizer-busy"
       SpeechRecognizer.ERROR_SERVER -> "server"
       SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "no-speech"
+      11 -> "server-disconnected"
       else -> String.format(Locale.US, "speech-error-%d", error)
     }
   }
