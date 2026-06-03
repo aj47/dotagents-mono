@@ -102,6 +102,11 @@ object HandsFreeAudioRouter {
     return route
   }
 
+  @Synchronized
+  fun isCommunicationRoutingActive(): Boolean {
+    return requesters.isNotEmpty() && routingApplied
+  }
+
   private fun preferredCommunicationHeadset(audioManager: AudioManager): AudioDeviceInfo? {
     val communicationDevices = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       audioManager.availableCommunicationDevices

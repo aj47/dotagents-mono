@@ -144,9 +144,14 @@ class HandsFreeVoiceModule(
     }
 
     try {
-      val played = HandsFreeVoiceService.playCue(cueId, filePath)
-      Log.i(tag, "module playCue cueId=$cueId played=$played isRunning=${HandsFreeVoiceService.isRunning()}")
-      promise.resolve(played)
+      val routed = HandsFreeVoiceService.playCue(cueId, filePath) { played ->
+        Log.i(tag, "module playCue cueId=$cueId played=$played isRunning=${HandsFreeVoiceService.isRunning()}")
+        promise.resolve(played)
+      }
+      if (!routed) {
+        Log.i(tag, "module playCue cueId=$cueId played=false isRunning=${HandsFreeVoiceService.isRunning()}")
+        promise.resolve(false)
+      }
     } catch (error: Throwable) {
       Log.e(tag, "module playCue failed cueId=$cueId", error)
       promise.reject("handsfree_cue_failed", error.message, error)

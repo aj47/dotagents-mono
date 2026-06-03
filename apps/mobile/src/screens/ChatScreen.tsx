@@ -1207,8 +1207,7 @@ export default function ChatScreen({ route, navigation }: any) {
     && !stableHandsFreeForeground;
   const shouldUseAndroidHandsFreeServiceTts =
     Platform.OS === 'android'
-    && shouldRunAndroidHandsFreeService
-    && effectiveTtsProvider === 'native';
+    && shouldRunAndroidHandsFreeService;
   const shouldUseAndroidHandsFreeServiceTtsRef = useRef(shouldUseAndroidHandsFreeServiceTts);
   shouldUseAndroidHandsFreeServiceTtsRef.current = shouldUseAndroidHandsFreeServiceTts;
   const allowHandsFreeDirectSpeechWhileSleeping = Platform.OS === 'android' && androidHandsFreeServiceAvailable
