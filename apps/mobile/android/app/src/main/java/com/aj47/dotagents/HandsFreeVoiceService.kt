@@ -11,6 +11,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -42,6 +44,7 @@ class HandsFreeVoiceService : Service() {
   private var activeTtsAllowBargeIn = false
   private var ttsSpeaking = false
   private var consecutiveRecognizerErrors = 0
+  private val activeCuePlayers = mutableListOf<MediaPlayer>()
 
   private val restartRunnable = Runnable {
     if (captureEnabled && (activeTtsUtteranceId == null || activeTtsAllowBargeIn)) {
@@ -115,6 +118,7 @@ class HandsFreeVoiceService : Service() {
     stopListening(suppressEvent = true)
     stopTtsOnMain(emitStopped = false)
     shutdownTextToSpeech()
+    releaseAllCuePlayers()
     HandsFreeAudioRouter.release(this, CAPTURE_ROUTE_REQUESTER)
     HandsFreeAudioRouter.release(this, SESSION_ROUTE_REQUESTER)
     destroyRecognizer()
@@ -331,6 +335,12 @@ class HandsFreeVoiceService : Service() {
     }
   }
 
+  fun playCue(cueId: String, filePath: String) {
+    mainHandler.post {
+      playCueOnMain(cueId, filePath)
+    }
+  }
+
   fun isTtsSpeaking(): Boolean = activeTtsUtteranceId != null || ttsSpeaking
 
   private fun speakTtsOnMain(request: TtsRequest) {
@@ -489,6 +499,11 @@ class HandsFreeVoiceService : Service() {
         "tts dispatching utteranceId=${request.utteranceId} textLength=${request.text.length} language=${request.language} rate=${request.rate} pitch=${request.pitch} voice=${request.voice ?: "default"}",
       )
       HandsFreeAudioRouter.logCurrentRoute(this, "tts-dispatch")
+      HandsFreeVoiceEvents.emit("tts-native-fallback") {
+        it.putString("utteranceId", request.utteranceId)
+        it.putString("language", request.language)
+        request.voice?.let { value -> it.putString("voice", value) }
+      }
 
       val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         engine.speak(request.text, TextToSpeech.QUEUE_FLUSH, null, request.utteranceId)
@@ -889,6 +904,83 @@ class HandsFreeVoiceService : Service() {
     return error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS
   }
 
+  private fun playCueOnMain(cueId: String, filePath: String) {
+    val uri = parseCueUri(filePath)
+    if (uri == null) {
+      Log.w(TAG, "cue uri unparseable cueId=$cueId path=$filePath")
+      HandsFreeVoiceEvents.emit("cue-error") {
+        it.putString("cueId", cueId)
+        it.putString("message", "invalid-path")
+      }
+      return
+    }
+
+    val player = MediaPlayer()
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        player.setAudioAttributes(
+          AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build(),
+        )
+      }
+      player.setDataSource(applicationContext, uri)
+      player.setOnCompletionListener { releaseCuePlayer(it) }
+      player.setOnErrorListener { errored, what, extra ->
+        Log.w(TAG, "cue error cueId=$cueId what=$what extra=$extra")
+        releaseCuePlayer(errored)
+        HandsFreeVoiceEvents.emit("cue-error") {
+          it.putString("cueId", cueId)
+          it.putInt("errorCode", what)
+        }
+        true
+      }
+      player.prepare()
+      activeCuePlayers.add(player)
+      player.start()
+      Log.i(TAG, "cue played cueId=$cueId uri=$uri")
+      HandsFreeVoiceEvents.emit("cue-played") {
+        it.putString("cueId", cueId)
+      }
+    } catch (error: Throwable) {
+      Log.w(TAG, "cue playback failed cueId=$cueId", error)
+      activeCuePlayers.remove(player)
+      try { player.release() } catch (_: Throwable) {}
+      HandsFreeVoiceEvents.emit("cue-error") {
+        it.putString("cueId", cueId)
+        it.putString("message", error.message ?: "cue-failed")
+      }
+    }
+  }
+
+  private fun parseCueUri(filePath: String): Uri? {
+    return try {
+      val trimmed = filePath.trim()
+      if (trimmed.isEmpty()) return null
+      if (trimmed.startsWith("file://") || trimmed.startsWith("content://")) {
+        Uri.parse(trimmed)
+      } else {
+        Uri.fromFile(java.io.File(trimmed))
+      }
+    } catch (_: Throwable) {
+      null
+    }
+  }
+
+  private fun releaseCuePlayer(player: MediaPlayer) {
+    activeCuePlayers.remove(player)
+    try { player.release() } catch (_: Throwable) {}
+  }
+
+  private fun releaseAllCuePlayers() {
+    val snapshot = activeCuePlayers.toList()
+    activeCuePlayers.clear()
+    for (player in snapshot) {
+      try { player.release() } catch (_: Throwable) {}
+    }
+  }
+
   companion object {
     private const val ACTION_START = "com.aj47.dotagents.handsfree.START"
     private const val ACTION_STOP = "com.aj47.dotagents.handsfree.STOP"
@@ -972,6 +1064,12 @@ class HandsFreeVoiceService : Service() {
     fun stopTts(): Boolean {
       val service = activeService ?: return false
       service.stopTts()
+      return true
+    }
+
+    fun playCue(cueId: String, filePath: String): Boolean {
+      val service = activeService ?: return false
+      service.playCue(cueId, filePath)
       return true
     }
 

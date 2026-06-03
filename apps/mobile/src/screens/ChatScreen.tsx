@@ -118,6 +118,7 @@ import { matchWakePhrase, normalizeVoicePhrase } from '../lib/voice/phraseMatche
 import { findAgentSessionMatch } from '../lib/voice/agentSessionMatch';
 import {
   playHandsFreeAudioCue,
+  setAndroidHandsFreeCueRoutingEnabled,
   type HandsFreeAudioCue,
 } from '../lib/voice/handsFreeAudioCues';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
@@ -1771,6 +1772,16 @@ export default function ChatScreen({ route, navigation }: any) {
     };
   }, [androidHandsFreeServiceAvailable, handsFree, voiceLog]);
 
+  // Route hands-free audio cues through the Android foreground service while
+  // background hands-free is configured, so beeps remain audible/consistent
+  // when the app is backgrounded (matches issue #541 acceptance criteria).
+  useEffect(() => {
+    setAndroidHandsFreeCueRoutingEnabled(shouldRunAndroidHandsFreeService);
+    return () => {
+      setAndroidHandsFreeCueRoutingEnabled(false);
+    };
+  }, [shouldRunAndroidHandsFreeService]);
+
   useEffect(() => {
     if (Platform.OS === 'web' || !handsFree || !isAppActive || !isFocused) {
       return;
@@ -3071,6 +3082,19 @@ export default function ChatScreen({ route, navigation }: any) {
       });
 
       if (event.type === 'tts-loading') {
+        return;
+      }
+
+      if (event.type === 'tts-native-fallback') {
+        voiceLog('tts-started', 'Android service TTS falling back to native Android voice.', {
+          utteranceId: event.utteranceId,
+          language: event.language,
+          voice: event.voice,
+        });
+        return;
+      }
+
+      if (event.type === 'cue-played' || event.type === 'cue-error') {
         return;
       }
 

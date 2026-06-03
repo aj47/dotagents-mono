@@ -5,6 +5,7 @@ import {
   setAudioModeAsync,
 } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
+import { playAndroidHandsFreeCue } from './androidHandsFreeService';
 
 export type HandsFreeAudioCue =
   | 'enabled'
@@ -121,6 +122,21 @@ const cueFiles = new Map<HandsFreeAudioCue, File>();
 const activeNativeCuePlaybacks = new Set<NativeCuePlayback>();
 const lastCuePlayedAt = new Map<HandsFreeAudioCue, number>();
 let audioModeConfigured = false;
+let androidServiceCueRoutingEnabled = false;
+
+// When the Android hands-free foreground service is active, the JS-side
+// expo-audio playback path becomes unreliable: the JS thread may be throttled
+// while the app is backgrounded, and the service's audio routing for capture
+// can pre-empt cue playback. Routing through the service makes cue playback
+// run inside the foreground service via Android MediaPlayer, which is what
+// keeps foreground and background hands-free audibly consistent.
+export function setAndroidHandsFreeCueRoutingEnabled(enabled: boolean): void {
+  androidServiceCueRoutingEnabled = enabled && Platform.OS === 'android';
+}
+
+export function isAndroidHandsFreeCueRoutingEnabled(): boolean {
+  return androidServiceCueRoutingEnabled;
+}
 
 export function playHandsFreeAudioCue(cue: HandsFreeAudioCue): void {
   const now = Date.now();
@@ -156,6 +172,15 @@ async function playNativeCue(cue: HandsFreeAudioCue): Promise<void> {
   try {
     await ensureCueAudioMode();
     const file = ensureCueFile(cue);
+
+    if (androidServiceCueRoutingEnabled) {
+      const routed = await playAndroidHandsFreeCue({ cueId: cue, filePath: file.uri })
+        .catch(() => false);
+      if (routed) return;
+      // Service was unavailable (not running, or method missing on older
+      // builds); fall through to the expo-audio path.
+    }
+
     const player = createAudioPlayer({ uri: file.uri });
     const playback: NativeCuePlayback = {
       player,

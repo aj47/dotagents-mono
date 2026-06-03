@@ -135,6 +135,25 @@ class HandsFreeVoiceModule(
   }
 
   @ReactMethod
+  fun playCue(options: ReadableMap?, promise: Promise) {
+    val cueId = readString(options, "cueId")?.takeIf { it.isNotBlank() }
+    val filePath = readString(options, "filePath")?.takeIf { it.isNotBlank() }
+    if (cueId == null || filePath == null) {
+      promise.resolve(false)
+      return
+    }
+
+    try {
+      val played = HandsFreeVoiceService.playCue(cueId, filePath)
+      Log.i(tag, "module playCue cueId=$cueId played=$played isRunning=${HandsFreeVoiceService.isRunning()}")
+      promise.resolve(played)
+    } catch (error: Throwable) {
+      Log.e(tag, "module playCue failed cueId=$cueId", error)
+      promise.reject("handsfree_cue_failed", error.message, error)
+    }
+  }
+
+  @ReactMethod
   fun getAudioRoute(promise: Promise) {
     try {
       promise.resolve(bundleToWritableMap(HandsFreeAudioRouter.currentRoute(reactContext)))
