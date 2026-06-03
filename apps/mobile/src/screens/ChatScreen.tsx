@@ -1225,9 +1225,7 @@ export default function ChatScreen({ route, navigation }: any) {
   shouldUseAndroidHandsFreeServiceRemoteTtsRef.current = shouldUseAndroidHandsFreeServiceRemoteTts;
   const shouldUseAndroidHandsFreeServiceNativeTtsRef = useRef(shouldUseAndroidHandsFreeServiceNativeTts);
   shouldUseAndroidHandsFreeServiceNativeTtsRef.current = shouldUseAndroidHandsFreeServiceNativeTts;
-  const allowHandsFreeDirectSpeechWhileSleeping = Platform.OS === 'android' && androidHandsFreeServiceAvailable
-    ? stableHandsFreeForeground
-    : isAppActive && isFocused;
+  const allowHandsFreeDirectSpeechWhileSleeping = false;
   const handsFreeRuntimeActive =
     handsFree
     && (androidBackgroundHandsFree || foregroundHandsFreeRuntimeActive);
@@ -1858,7 +1856,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     console.info(
-      `[DotAgentsHandsFreeJS] runtime active=${handsFreeRuntimeActive} appState=${appState} focused=${isFocused} stableForeground=${stableHandsFreeForeground} backgroundService=${androidBackgroundHandsFree} foregroundOnly=${handsFreeForegroundOnly}`,
+      `[DotAgentsHandsFreeJS] runtime active=${handsFreeRuntimeActive} appState=${appState} focused=${isFocused} stableForeground=${stableHandsFreeForeground} backgroundService=${androidBackgroundHandsFree} foregroundOnly=${handsFreeForegroundOnly} directWhileSleeping=${allowHandsFreeDirectSpeechWhileSleeping}`,
     );
     voiceLog('runtime-state', 'Handsfree runtime evaluated.', {
       runtimeActive: handsFreeRuntimeActive,
@@ -1868,9 +1866,11 @@ export default function ChatScreen({ route, navigation }: any) {
       stableForeground: stableHandsFreeForeground,
       foregroundOnly: handsFreeForegroundOnly,
       androidBackgroundHandsFree,
+      allowDirectSpeechWhileSleeping: allowHandsFreeDirectSpeechWhileSleeping,
       debugForcedInDev: config.handsFreeDebug !== true && handsFreeDebugEnabled,
     });
   }, [
+    allowHandsFreeDirectSpeechWhileSleeping,
     androidBackgroundHandsFree,
     appState,
     config.handsFreeDebug,
