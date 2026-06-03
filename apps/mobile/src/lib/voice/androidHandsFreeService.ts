@@ -51,6 +51,13 @@ type AndroidHandsFreeVoiceModule = {
   }): Promise<string | null>;
   stopSpeaking(): Promise<boolean>;
   isSpeaking(): Promise<boolean>;
+  playTtsAudio(options: {
+    utteranceId?: string;
+    filePath: string;
+    restoreListeningAfterDone?: boolean;
+    allowBargeIn?: boolean;
+    deleteFileOnRelease?: boolean;
+  }): Promise<string | null>;
   playCue(options: { cueId: string; filePath: string }): Promise<boolean>;
   getAudioRoute(): Promise<AndroidHandsFreeAudioRoute>;
   setAudioRoutingEnabled(enabled: boolean, reason?: string): Promise<AndroidHandsFreeAudioRoute>;
@@ -114,6 +121,17 @@ export async function stopAndroidHandsFreeTts(): Promise<boolean> {
 export async function isAndroidHandsFreeTtsSpeaking(): Promise<boolean> {
   if (!nativeModule) return false;
   return nativeModule.isSpeaking();
+}
+
+export async function playAndroidHandsFreeTtsAudio(options: {
+  utteranceId?: string;
+  filePath: string;
+  restoreListeningAfterDone?: boolean;
+  allowBargeIn?: boolean;
+  deleteFileOnRelease?: boolean;
+}): Promise<string | null> {
+  if (!nativeModule || typeof nativeModule.playTtsAudio !== 'function') return null;
+  return nativeModule.playTtsAudio(options);
 }
 
 export async function playAndroidHandsFreeCue(options: {

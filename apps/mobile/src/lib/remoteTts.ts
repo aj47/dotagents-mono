@@ -157,7 +157,7 @@ export async function speakRemoteTts(text: string, options: RemoteSpeakOptions):
   stopCurrentRemotePlayback(true);
 
   try {
-    const { audio, mimeType } = await fetchRemoteTts(text, options);
+    const { audio, mimeType } = await fetchRemoteTtsAudio(text, options);
     if (requestGeneration !== playbackGeneration) {
       options.onStopped?.();
       return false;
@@ -187,7 +187,7 @@ export async function speakRemoteTts(text: string, options: RemoteSpeakOptions):
   }
 }
 
-async function fetchRemoteTts(
+export async function fetchRemoteTtsAudio(
   text: string,
   options: RemoteSpeakOptions,
 ): Promise<{ audio: ArrayBuffer; mimeType: string }> {
@@ -315,29 +315,15 @@ function startNativePlayback(
   mimeType: string,
   options: RemoteSpeakOptions,
 ): boolean {
-  const ext = mimeTypeToExtension(mimeType);
-  const filename = `remote-tts-${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
-  const file = new File(Paths.cache, filename);
-  logRemoteTts('info', 'native playback preparing file', {
-    filename,
-    mimeType,
-    ext,
-    bytes: audioBuffer.byteLength,
-    rate: options.rate,
-  });
+  let file: File;
   try {
-    file.create({ overwrite: true });
-  } catch (error) {
-    logRemoteTts('warn', 'native playback file create failed; continuing', summarizeRemoteTtsError(error));
-    // File may already exist as a fresh handle; write() will still succeed.
-  }
-  try {
-    file.write(new Uint8Array(audioBuffer));
+    file = writeRemoteTtsAudioFile(audioBuffer, mimeType);
   } catch (error) {
     logRemoteTts('warn', 'native playback file write failed', summarizeRemoteTtsError(error));
     options.onError?.();
     return false;
   }
+  const filename = file.uri;
 
   let player: AudioPlayer;
   try {
@@ -544,6 +530,30 @@ function startNativePlayback(
     return false;
   }
   return true;
+}
+
+export function writeRemoteTtsAudioFile(
+  audioBuffer: ArrayBuffer,
+  mimeType: string,
+  prefix = 'remote-tts',
+): File {
+  const ext = mimeTypeToExtension(mimeType);
+  const filename = `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
+  const file = new File(Paths.cache, filename);
+  logRemoteTts('info', 'native playback preparing file', {
+    filename,
+    mimeType,
+    ext,
+    bytes: audioBuffer.byteLength,
+  });
+  try {
+    file.create({ overwrite: true });
+  } catch (error) {
+    logRemoteTts('warn', 'native playback file create failed; continuing', summarizeRemoteTtsError(error));
+    // File may already exist as a fresh handle; write() will still succeed.
+  }
+  file.write(new Uint8Array(audioBuffer));
+  return file;
 }
 
 export function stopRemoteTts(): void {

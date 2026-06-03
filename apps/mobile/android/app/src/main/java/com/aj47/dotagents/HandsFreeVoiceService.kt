@@ -44,6 +44,7 @@ class HandsFreeVoiceService : Service() {
   private var activeTtsAllowBargeIn = false
   private var ttsSpeaking = false
   private var consecutiveRecognizerErrors = 0
+  private var activeTtsAudioPlayback: TtsAudioPlayback? = null
   private val activeCuePlayers = mutableListOf<CuePlayback>()
 
   private val restartRunnable = Runnable {
@@ -62,6 +63,23 @@ class HandsFreeVoiceService : Service() {
     val restoreListeningAfterDone: Boolean,
     val allowBargeIn: Boolean,
   )
+
+  private data class TtsAudioRequest(
+    val utteranceId: String,
+    val filePath: String,
+    val restoreListeningAfterDone: Boolean,
+    val allowBargeIn: Boolean,
+    val deleteFileOnRelease: Boolean,
+  )
+
+  private class TtsAudioPlayback(
+    val utteranceId: String,
+    val player: MediaPlayer,
+    val filePath: String?,
+    val deleteFileOnRelease: Boolean,
+  ) {
+    var prepareTimeout: Runnable? = null
+  }
 
   private class CuePlayback(
     val cueId: String,
@@ -344,6 +362,25 @@ class HandsFreeVoiceService : Service() {
     }
   }
 
+  fun playTtsAudio(
+    utteranceId: String,
+    filePath: String,
+    restoreListeningAfterDone: Boolean,
+    allowBargeIn: Boolean,
+    deleteFileOnRelease: Boolean,
+  ) {
+    val request = TtsAudioRequest(
+      utteranceId = utteranceId,
+      filePath = filePath,
+      restoreListeningAfterDone = restoreListeningAfterDone,
+      allowBargeIn = allowBargeIn,
+      deleteFileOnRelease = deleteFileOnRelease,
+    )
+    mainHandler.post {
+      playTtsAudioOnMain(request)
+    }
+  }
+
   fun playCue(cueId: String, filePath: String, onStartResult: ((Boolean) -> Unit)?) {
     mainHandler.post {
       playCueOnMain(cueId, filePath, onStartResult)
@@ -359,7 +396,10 @@ class HandsFreeVoiceService : Service() {
     )
 
     stopTtsOnMain(emitStopped = true)
-    prepareCaptureForTts(request)
+    prepareCaptureForTts(
+      restoreListeningAfterDone = request.restoreListeningAfterDone,
+      allowBargeIn = request.allowBargeIn,
+    )
     activeTtsUtteranceId = request.utteranceId
     activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
     activeTtsAllowBargeIn = request.allowBargeIn
@@ -383,10 +423,13 @@ class HandsFreeVoiceService : Service() {
     startTtsRequest(request)
   }
 
-  private fun prepareCaptureForTts(request: TtsRequest) {
-    if (request.allowBargeIn) {
+  private fun prepareCaptureForTts(
+    restoreListeningAfterDone: Boolean,
+    allowBargeIn: Boolean,
+  ) {
+    if (allowBargeIn) {
       mainHandler.removeCallbacks(restartRunnable)
-      if (request.restoreListeningAfterDone && !captureEnabled) {
+      if (restoreListeningAfterDone && !captureEnabled) {
         captureEnabled = true
         HandsFreeVoiceEvents.emit("capture-state") {
           it.putBoolean("listeningEnabled", true)
@@ -395,7 +438,7 @@ class HandsFreeVoiceService : Service() {
       if (captureEnabled) {
         startListening()
       }
-      activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
+      activeTtsRestoreListeningAfterDone = restoreListeningAfterDone
       return
     }
 
@@ -410,7 +453,7 @@ class HandsFreeVoiceService : Service() {
         it.putBoolean("listeningEnabled", false)
       }
     }
-    activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
+    activeTtsRestoreListeningAfterDone = restoreListeningAfterDone
   }
 
   private fun ensureTextToSpeech(): TextToSpeech? {
@@ -619,6 +662,117 @@ class HandsFreeVoiceService : Service() {
     completeTts(request.utteranceId, "tts-error", message)
   }
 
+  private fun playTtsAudioOnMain(request: TtsAudioRequest) {
+    Log.i(
+      TAG,
+      "tts audio playback requested utteranceId=${request.utteranceId} filePath=${request.filePath} restoreListening=${request.restoreListeningAfterDone} allowBargeIn=${request.allowBargeIn}",
+    )
+
+    if (!running || activeService !== this) {
+      HandsFreeVoiceEvents.emit("tts-error") {
+        it.putString("utteranceId", request.utteranceId)
+        it.putString("message", "service-unavailable")
+      }
+      return
+    }
+
+    stopTtsOnMain(emitStopped = true)
+    prepareCaptureForTts(
+      restoreListeningAfterDone = request.restoreListeningAfterDone,
+      allowBargeIn = request.allowBargeIn,
+    )
+    activeTtsUtteranceId = request.utteranceId
+    activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
+    activeTtsAllowBargeIn = request.allowBargeIn
+    ttsSpeaking = false
+
+    val uri = parseAudioUri(request.filePath)
+    if (uri == null) {
+      completeTts(request.utteranceId, "tts-error", "invalid-audio-path")
+      return
+    }
+
+    HandsFreeVoiceEvents.emit("tts-loading") {
+      it.putString("utteranceId", request.utteranceId)
+      it.putInt("textLength", 0)
+    }
+
+    val player = MediaPlayer()
+    val playback = TtsAudioPlayback(
+      utteranceId = request.utteranceId,
+      player = player,
+      filePath = request.filePath,
+      deleteFileOnRelease = request.deleteFileOnRelease,
+    )
+
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        val usage = if (HandsFreeAudioRouter.isCommunicationRoutingActive()) {
+          AudioAttributes.USAGE_VOICE_COMMUNICATION
+        } else {
+          AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY
+        }
+        player.setAudioAttributes(
+          AudioAttributes.Builder()
+            .setUsage(usage)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build(),
+        )
+        Log.i(TAG, "tts audio playback attributes configured utteranceId=${request.utteranceId} usage=$usage")
+      }
+      player.setDataSource(applicationContext, uri)
+      player.setOnPreparedListener { prepared ->
+        try {
+          if (
+            activeTtsAudioPlayback !== playback
+            || activeTtsUtteranceId != request.utteranceId
+            || !running
+            || activeService !== this
+          ) {
+            releaseTtsAudioPlayback(playback)
+            return@setOnPreparedListener
+          }
+          prepared.start()
+          ttsSpeaking = true
+          Log.i(TAG, "tts audio playback started utteranceId=${request.utteranceId} uri=$uri")
+          HandsFreeVoiceEvents.emit("tts-started") {
+            it.putString("utteranceId", request.utteranceId)
+          }
+        } catch (error: Throwable) {
+          Log.w(TAG, "tts audio playback start failed utteranceId=${request.utteranceId}", error)
+          releaseTtsAudioPlayback(playback)
+          completeTts(request.utteranceId, "tts-error", error.message ?: "audio-start-failed")
+        }
+      }
+      player.setOnCompletionListener {
+        Log.i(TAG, "tts audio playback completed utteranceId=${request.utteranceId}")
+        releaseTtsAudioPlayback(playback)
+        completeTts(request.utteranceId, "tts-done")
+      }
+      player.setOnErrorListener { _, what, extra ->
+        Log.w(TAG, "tts audio playback error utteranceId=${request.utteranceId} what=$what extra=$extra")
+        releaseTtsAudioPlayback(playback)
+        completeTts(request.utteranceId, "tts-error", "audio-error-$what", what)
+        true
+      }
+      activeTtsAudioPlayback = playback
+      playback.prepareTimeout = Runnable {
+        if (activeTtsAudioPlayback !== playback || activeTtsUtteranceId != request.utteranceId) {
+          return@Runnable
+        }
+        Log.w(TAG, "tts audio playback prepare timed out utteranceId=${request.utteranceId}")
+        releaseTtsAudioPlayback(playback)
+        completeTts(request.utteranceId, "tts-error", "audio-prepare-timeout")
+      }
+      mainHandler.postDelayed(playback.prepareTimeout!!, TTS_AUDIO_PREPARE_TIMEOUT_MS)
+      player.prepareAsync()
+    } catch (error: Throwable) {
+      Log.w(TAG, "tts audio playback failed utteranceId=${request.utteranceId}", error)
+      releaseTtsAudioPlayback(playback)
+      completeTts(request.utteranceId, "tts-error", error.message ?: "audio-playback-failed")
+    }
+  }
+
   private fun completeTts(
     utteranceId: String,
     eventType: String,
@@ -630,6 +784,9 @@ class HandsFreeVoiceService : Service() {
     }
 
     val shouldRestoreListening = activeTtsRestoreListeningAfterDone && eventType != "tts-stopped"
+    activeTtsAudioPlayback
+      ?.takeIf { it.utteranceId == utteranceId }
+      ?.let { releaseTtsAudioPlayback(it) }
     activeTtsUtteranceId = null
     activeTtsRestoreListeningAfterDone = false
     activeTtsAllowBargeIn = false
@@ -661,6 +818,7 @@ class HandsFreeVoiceService : Service() {
   private fun stopTtsOnMain(emitStopped: Boolean) {
     val utteranceId = activeTtsUtteranceId
     val hadActiveTts = utteranceId != null || pendingTtsRequest != null || ttsSpeaking
+    activeTtsAudioPlayback?.let { releaseTtsAudioPlayback(it) }
     activeTtsUtteranceId = null
     activeTtsRestoreListeningAfterDone = false
     activeTtsAllowBargeIn = false
@@ -693,6 +851,7 @@ class HandsFreeVoiceService : Service() {
       activeTtsUtteranceId = null
       activeTtsRestoreListeningAfterDone = false
       activeTtsAllowBargeIn = false
+      activeTtsAudioPlayback?.let { releaseTtsAudioPlayback(it) }
       ttsSpeaking = false
     }
   }
@@ -1013,6 +1172,10 @@ class HandsFreeVoiceService : Service() {
   }
 
   private fun parseCueUri(filePath: String): Uri? {
+    return parseAudioUri(filePath)
+  }
+
+  private fun parseAudioUri(filePath: String): Uri? {
     return try {
       val trimmed = filePath.trim()
       if (trimmed.isEmpty()) return null
@@ -1023,6 +1186,35 @@ class HandsFreeVoiceService : Service() {
       }
     } catch (_: Throwable) {
       null
+    }
+  }
+
+  private fun releaseTtsAudioPlayback(playback: TtsAudioPlayback) {
+    if (activeTtsAudioPlayback === playback) {
+      activeTtsAudioPlayback = null
+    }
+    playback.prepareTimeout?.let { mainHandler.removeCallbacks(it) }
+    playback.prepareTimeout = null
+    try { playback.player.release() } catch (_: Throwable) {}
+    if (playback.deleteFileOnRelease) {
+      deleteAudioFile(playback.filePath)
+    }
+  }
+
+  private fun deleteAudioFile(filePath: String?) {
+    if (filePath.isNullOrBlank()) return
+    try {
+      val uri = parseAudioUri(filePath)
+      val path = when {
+        uri?.scheme == "file" -> uri.path
+        uri?.scheme == null -> filePath
+        else -> null
+      }
+      if (!path.isNullOrBlank()) {
+        java.io.File(path).delete()
+      }
+    } catch (error: Throwable) {
+      Log.w(TAG, "tts audio file delete failed path=$filePath", error)
     }
   }
 
@@ -1073,6 +1265,7 @@ class HandsFreeVoiceService : Service() {
     private const val MIN_TTS_PITCH = 0.1f
     private const val MAX_TTS_PITCH = 3.0f
     private const val CUE_PREPARE_TIMEOUT_MS = 1500L
+    private const val TTS_AUDIO_PREPARE_TIMEOUT_MS = 2500L
 
     @Volatile
     private var running = false
@@ -1136,6 +1329,24 @@ class HandsFreeVoiceService : Service() {
     fun stopTts(): Boolean {
       val service = activeService ?: return false
       service.stopTts()
+      return true
+    }
+
+    fun playTtsAudio(
+      utteranceId: String,
+      filePath: String,
+      restoreListeningAfterDone: Boolean,
+      allowBargeIn: Boolean,
+      deleteFileOnRelease: Boolean,
+    ): Boolean {
+      val service = activeService ?: return false
+      service.playTtsAudio(
+        utteranceId = utteranceId,
+        filePath = filePath,
+        restoreListeningAfterDone = restoreListeningAfterDone,
+        allowBargeIn = allowBargeIn,
+        deleteFileOnRelease = deleteFileOnRelease,
+      )
       return true
     }
 

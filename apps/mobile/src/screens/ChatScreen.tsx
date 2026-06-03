@@ -37,7 +37,12 @@ import {
 import { canRefreshServerGeneratedSessionTitle, useSessionContext } from '../store/sessions';
 import { useMessageQueueContext } from '../store/message-queue';
 import { MessageQueuePanel } from '../ui/MessageQueuePanel';
-import { ensureNativeTtsAudioMode, speakRemoteTts } from '../lib/remoteTts';
+import {
+  ensureNativeTtsAudioMode,
+  fetchRemoteTtsAudio,
+  speakRemoteTts,
+  writeRemoteTtsAudioFile,
+} from '../lib/remoteTts';
 import { useConnectionManager } from '../store/connectionManager';
 import { useTunnelConnection } from '../store/tunnelConnection';
 import { ConnectionStatusIndicator } from '../ui/ConnectionStatusIndicator';
@@ -102,6 +107,7 @@ import { useStableForeground } from '../lib/voice/useStableForeground';
 import {
   getAndroidHandsFreeAudioRoute,
   isAndroidHandsFreeServiceAvailable,
+  playAndroidHandsFreeTtsAudio,
   setAndroidHandsFreeAudioRoutingEnabled,
   setAndroidHandsFreeListeningEnabled,
   speakAndroidHandsFreeTts,
@@ -1132,7 +1138,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [pendingToolApprovalResponseId, setPendingToolApprovalResponseId] = useState<string | null>(null);
   const [branchingMessageIndex, setBranchingMessageIndex] = useState<number | null>(null);
   // Effective TTS provider/voice/rate — local mobile config takes precedence over
-  // any value pulled from the connected desktop's settings. Edge TTS only plays on web.
+  // any value pulled from the connected desktop's settings.
   const effectiveTtsProvider: 'native' | 'edge' =
     config.ttsProvider === 'edge' ? 'edge' : remoteTtsProvider;
   const effectiveEdgeTtsVoice =
@@ -1205,11 +1211,20 @@ export default function ChatScreen({ route, navigation }: any) {
   const androidBackgroundHandsFree =
     shouldRunAndroidHandsFreeService
     && !stableHandsFreeForeground;
-  const shouldUseAndroidHandsFreeServiceTts =
+  const shouldUseAndroidHandsFreeServiceRemoteTts =
     Platform.OS === 'android'
-    && shouldRunAndroidHandsFreeService;
-  const shouldUseAndroidHandsFreeServiceTtsRef = useRef(shouldUseAndroidHandsFreeServiceTts);
-  shouldUseAndroidHandsFreeServiceTtsRef.current = shouldUseAndroidHandsFreeServiceTts;
+    && shouldRunAndroidHandsFreeService
+    && effectiveTtsProvider === 'edge'
+    && !!config.baseUrl
+    && !!config.apiKey;
+  const shouldUseAndroidHandsFreeServiceNativeTts =
+    Platform.OS === 'android'
+    && shouldRunAndroidHandsFreeService
+    && !shouldUseAndroidHandsFreeServiceRemoteTts;
+  const shouldUseAndroidHandsFreeServiceRemoteTtsRef = useRef(shouldUseAndroidHandsFreeServiceRemoteTts);
+  shouldUseAndroidHandsFreeServiceRemoteTtsRef.current = shouldUseAndroidHandsFreeServiceRemoteTts;
+  const shouldUseAndroidHandsFreeServiceNativeTtsRef = useRef(shouldUseAndroidHandsFreeServiceNativeTts);
+  shouldUseAndroidHandsFreeServiceNativeTtsRef.current = shouldUseAndroidHandsFreeServiceNativeTts;
   const allowHandsFreeDirectSpeechWhileSleeping = Platform.OS === 'android' && androidHandsFreeServiceAvailable
     ? stableHandsFreeForeground
     : isAppActive && isFocused;
@@ -2220,13 +2235,13 @@ export default function ChatScreen({ route, navigation }: any) {
             console.warn('[ChatScreen] Failed to refresh server-generated conversation title:', {
               source,
               sessionId,
-              serverConversationId,
-              attempt,
-              message: error?.message || String(error),
-            });
-          }
+	              serverConversationId,
+	              attempt,
+	              message: error?.message || String(error),
+	            });
+	          }
 
-          scheduleNextAttempt();
+	          scheduleNextAttempt();
         })();
       }, delayMs);
     };
@@ -3310,7 +3325,10 @@ export default function ChatScreen({ route, navigation }: any) {
       playHandsFreeCue('agent-response');
     }
 
-    const useAndroidServiceTts = shouldUseAndroidHandsFreeServiceTtsRef.current;
+    const useAndroidServiceRemoteTts = shouldUseAndroidHandsFreeServiceRemoteTtsRef.current;
+    const useAndroidServiceNativeTts = shouldUseAndroidHandsFreeServiceNativeTtsRef.current;
+    const useAndroidServiceTts = useAndroidServiceRemoteTts || useAndroidServiceNativeTts;
+    const hasRemoteEdgeTts = effectiveTtsProvider === 'edge' && !!config.baseUrl && !!config.apiKey;
 	    console.info('[DotAgentsTTS] selecting playback path', {
 	      reason,
 	      platform: Platform.OS,
@@ -3318,7 +3336,8 @@ export default function ChatScreen({ route, navigation }: any) {
 	      phase: handsFreePhaseRef.current,
 	      textLength: processedText.length,
 	      effectiveTtsProvider,
-	      useAndroidServiceTts,
+	      useAndroidServiceNativeTts,
+	      useAndroidServiceRemoteTts,
 	      hasRemoteBaseUrl: !!config.baseUrl,
 	      hasRemoteApiKey: !!config.apiKey,
 	      edgeVoice: effectiveEdgeTtsVoice,
@@ -3340,11 +3359,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	          });
 	        });
 	    }
-    const playbackId = beginGlobalTtsPlayback({
-      source: 'auto',
-      status: (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) || useAndroidServiceTts
-        ? 'loading'
-        : 'speaking',
+	    const playbackId = beginGlobalTtsPlayback({
+	      source: 'auto',
+	      status: hasRemoteEdgeTts || useAndroidServiceTts
+	        ? 'loading'
+	        : 'speaking',
       sessionId: sessionStore.currentSessionId,
       sessionTitle: sessionStore.getCurrentSession()?.title ?? 'Chat',
       text: processedText,
@@ -3435,7 +3454,182 @@ export default function ChatScreen({ route, navigation }: any) {
 		  return true;
     };
 
-		if (!useAndroidServiceTts && effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
+    const startAndroidServicePlayback = (
+      playbackReason: string,
+      playbackKind: 'native' | 'remote',
+      startRequest: (
+        utteranceId: string,
+        startWatchdog: (rate?: number) => void,
+        isSettled: () => boolean,
+      ) => Promise<string | null>,
+      defaultWatchdogRate = config.ttsRate ?? 1.0,
+    ): boolean => {
+      const utteranceId = createAndroidHandsFreeTtsUtteranceId();
+	      console.info('[DotAgentsTTS] android service playback requested', {
+	        reason: playbackReason,
+	        utteranceId,
+        kind: playbackKind,
+	        textLength: processedText.length,
+	        rate: config.ttsRate ?? 1.0,
+	        pitch: config.ttsPitch ?? 1.0,
+	        voiceConfigured: !!config.ttsVoiceId,
+        edgeVoice: playbackKind === 'remote' ? effectiveEdgeTtsVoice : undefined,
+        edgeRate: playbackKind === 'remote' ? effectiveEdgeTtsRate : undefined,
+	      });
+      let clearNativeTtsTimeout: (() => void) | null = null;
+      const startWatchdog = (watchdogRate = defaultWatchdogRate) => {
+        if (clearNativeTtsTimeout || settled) return;
+        const timeout = setTimeout(() => {
+          voiceLog('tts-stopped', `Android service TTS watchdog settled (${playbackReason}).`, {
+            utteranceId,
+            kind: playbackKind,
+          });
+          settle();
+        }, estimateNativeTtsWatchdogMs(processedText, watchdogRate));
+        clearNativeTtsTimeout = () => clearTimeout(timeout);
+      };
+      const clearNativeTtsHandler = () => {
+        androidHandsFreeTtsHandlersRef.current.delete(utteranceId);
+        clearNativeTtsTimeout?.();
+        clearNativeTtsTimeout = null;
+      };
+      clearSpeechWatchdog = clearNativeTtsHandler;
+      androidHandsFreeTtsHandlersRef.current.set(utteranceId, {
+        onStarted: () => {
+	          console.info('[DotAgentsTTS] android service playback started', {
+            reason: playbackReason,
+            utteranceId,
+            kind: playbackKind,
+          });
+          markAssistantSpeechStarted(`Android service TTS started (${playbackReason}).`, {
+            utteranceId,
+            kind: playbackKind,
+          });
+        },
+        onSettled: (type, message) => {
+	          console.info('[DotAgentsTTS] android service playback settled', {
+            reason: playbackReason,
+            utteranceId,
+            kind: playbackKind,
+            type,
+            message,
+          });
+          voiceLog('tts-stopped', `Android service TTS settled (${playbackReason}, ${type}).`, {
+            utteranceId,
+            kind: playbackKind,
+            message,
+          });
+          settle();
+        },
+      });
+
+      void startRequest(utteranceId, startWatchdog, () => settled).then((startedUtteranceId) => {
+        if (!startedUtteranceId && !settled) {
+	          console.warn('[DotAgentsTTS] android service playback did not start', {
+            reason: playbackReason,
+            utteranceId,
+            kind: playbackKind,
+          });
+          voiceLog('tts-stopped', `Android service TTS did not start (${playbackReason}).`, {
+            utteranceId,
+            kind: playbackKind,
+          });
+          settle();
+        }
+      }).catch((error) => {
+	        console.warn('[DotAgentsTTS] android service playback promise failed', {
+	          reason: playbackReason,
+	          utteranceId,
+          kind: playbackKind,
+	          message: (error as any)?.message || String(error),
+	        });
+        voiceLog('tts-stopped', `Android service TTS failed (${playbackReason}).`, {
+          utteranceId,
+          kind: playbackKind,
+          message: (error as any)?.message || String(error),
+        });
+        settle();
+      });
+      return true;
+    };
+
+		if (useAndroidServiceRemoteTts) {
+      return startAndroidServicePlayback(
+        reason,
+        'remote',
+        async (utteranceId, startWatchdog, isSettled) => {
+          const fallbackToNativeServiceTts = async (message: string) => {
+            if (isSettled()) return null;
+            console.warn('[DotAgentsTTS] android service remote edge playback fallback requested', {
+              reason,
+              utteranceId,
+              message,
+            });
+            voiceLog('tts-stopped', `Remote TTS failed; falling back to Android service native TTS (${reason}).`, {
+              utteranceId,
+              message,
+            });
+            startWatchdog(config.ttsRate ?? 1.0);
+            return speakAndroidHandsFreeTts({
+              utteranceId,
+              text: processedText,
+              language: 'en-US',
+              rate: config.ttsRate ?? 1.0,
+              pitch: config.ttsPitch ?? 1.0,
+              voice: config.ttsVoiceId,
+              restoreListeningAfterDone: true,
+              allowBargeIn: true,
+            });
+          };
+
+          try {
+            console.info('[DotAgentsTTS] android service remote edge fetch requested', {
+              reason,
+              utteranceId,
+              textLength: processedText.length,
+              voice: effectiveEdgeTtsVoice,
+              rate: effectiveEdgeTtsRate,
+            });
+            const { audio, mimeType } = await fetchRemoteTtsAudio(processedText, {
+              baseUrl: config.baseUrl,
+              apiKey: config.apiKey,
+              providerId: 'edge',
+              voice: effectiveEdgeTtsVoice,
+              rate: effectiveEdgeTtsRate,
+            });
+            if (isSettled()) return null;
+            const file = writeRemoteTtsAudioFile(audio, mimeType, 'handsfree-edge-tts');
+            if (isSettled()) {
+              try { file.delete(); } catch {}
+              return null;
+            }
+            try {
+              const startedUtteranceId = await playAndroidHandsFreeTtsAudio({
+                utteranceId,
+                filePath: file.uri,
+                restoreListeningAfterDone: true,
+                allowBargeIn: true,
+                deleteFileOnRelease: true,
+              });
+              if (!startedUtteranceId) {
+                try { file.delete(); } catch {}
+                return fallbackToNativeServiceTts('remote audio handoff did not start');
+              }
+              startWatchdog(effectiveEdgeTtsRate);
+              return startedUtteranceId;
+            } catch (error) {
+              try { file.delete(); } catch {}
+              throw error;
+            }
+          } catch (error) {
+            return fallbackToNativeServiceTts((error as any)?.message || String(error));
+          }
+        },
+        effectiveEdgeTtsRate,
+      );
+		}
+
+		if (!useAndroidServiceTts && hasRemoteEdgeTts) {
 			// Edge TTS routes through the paired desktop's /v1/tts/speak.
 				console.info('[DotAgentsTTS] remote edge playback requested', {
 					reason,
@@ -3471,44 +3665,10 @@ export default function ChatScreen({ route, navigation }: any) {
 			return true;
 		}
 
-    if (useAndroidServiceTts) {
-      const utteranceId = createAndroidHandsFreeTtsUtteranceId();
-	      console.info('[DotAgentsTTS] android service playback requested', {
-	        reason,
-	        utteranceId,
-	        textLength: processedText.length,
-	        rate: config.ttsRate ?? 1.0,
-	        pitch: config.ttsPitch ?? 1.0,
-	        voiceConfigured: !!config.ttsVoiceId,
-	      });
-      let clearNativeTtsTimeout: (() => void) | null = null;
-      const clearNativeTtsHandler = () => {
-        androidHandsFreeTtsHandlersRef.current.delete(utteranceId);
-        clearNativeTtsTimeout?.();
-        clearNativeTtsTimeout = null;
-      };
-      clearSpeechWatchdog = clearNativeTtsHandler;
-      androidHandsFreeTtsHandlersRef.current.set(utteranceId, {
-        onStarted: () => {
-	          console.info('[DotAgentsTTS] android service playback started', { reason, utteranceId });
-          markAssistantSpeechStarted(`Android service TTS started (${reason}).`, { utteranceId });
-        },
-        onSettled: (type, message) => {
-	          console.info('[DotAgentsTTS] android service playback settled', { reason, utteranceId, type, message });
-          voiceLog('tts-stopped', `Android service TTS settled (${reason}, ${type}).`, {
-            utteranceId,
-            message,
-          });
-          settle();
-        },
-      });
-      const timeout = setTimeout(() => {
-        voiceLog('tts-stopped', `Android service TTS watchdog settled (${reason}).`, { utteranceId });
-        settle();
-      }, estimateNativeTtsWatchdogMs(processedText, config.ttsRate ?? 1.0));
-      clearNativeTtsTimeout = () => clearTimeout(timeout);
-
-      void speakAndroidHandsFreeTts({
+    if (useAndroidServiceNativeTts) {
+      return startAndroidServicePlayback(reason, 'native', (utteranceId, startWatchdog) => {
+        startWatchdog(config.ttsRate ?? 1.0);
+        return speakAndroidHandsFreeTts({
         utteranceId,
         text: processedText,
         language: 'en-US',
@@ -3516,29 +3676,12 @@ export default function ChatScreen({ route, navigation }: any) {
         pitch: config.ttsPitch ?? 1.0,
         voice: config.ttsVoiceId,
         restoreListeningAfterDone: true,
-        allowBargeIn: true,
-      }).then((startedUtteranceId) => {
-        if (!startedUtteranceId) {
-	          console.warn('[DotAgentsTTS] android service playback did not start', { reason, utteranceId });
-          voiceLog('tts-stopped', `Android service TTS did not start (${reason}).`, { utteranceId });
-          settle();
-        }
-      }).catch((error) => {
-	        console.warn('[DotAgentsTTS] android service playback promise failed', {
-	          reason,
-	          utteranceId,
-	          message: (error as any)?.message || String(error),
-	        });
-        voiceLog('tts-stopped', `Android service TTS failed (${reason}).`, {
-          utteranceId,
-          message: (error as any)?.message || String(error),
-        });
-        settle();
-      });
-      return true;
+	        allowBargeIn: true,
+	      });
+		    });
     }
 
-    return startExpoSpeechPlayback(reason);
+	    return startExpoSpeechPlayback(reason);
 			  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, invalidateHandsFreeCapture, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
@@ -3682,10 +3825,13 @@ export default function ChatScreen({ route, navigation }: any) {
       intendedSpeakingIndexRef.current = null;
       return;
     }
-    const useAndroidServiceTts = shouldUseAndroidHandsFreeServiceTtsRef.current;
+    const useAndroidServiceRemoteTts = shouldUseAndroidHandsFreeServiceRemoteTtsRef.current;
+    const useAndroidServiceNativeTts = shouldUseAndroidHandsFreeServiceNativeTtsRef.current;
+    const useAndroidServiceTts = useAndroidServiceRemoteTts || useAndroidServiceNativeTts;
+    const hasRemoteEdgeTts = effectiveTtsProvider === 'edge' && !!config.baseUrl && !!config.apiKey;
     const playbackId = beginGlobalTtsPlayback({
       source: 'message',
-      status: (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) || useAndroidServiceTts ? 'loading' : 'speaking',
+      status: hasRemoteEdgeTts || useAndroidServiceTts ? 'loading' : 'speaking',
       sessionId: sessionStore.currentSessionId,
       sessionTitle: sessionStore.getCurrentSession()?.title ?? 'Chat',
       messageIndex: index,
@@ -3705,8 +3851,16 @@ export default function ChatScreen({ route, navigation }: any) {
     setSpeakingMessageIndex(index);
     if (useAndroidServiceTts) {
       const utteranceId = createAndroidHandsFreeTtsUtteranceId();
+      const servicePlaybackKind = useAndroidServiceRemoteTts ? 'remote' : 'native';
       let settled = false;
       let clearNativeTtsTimeout: (() => void) | null = null;
+      const startServiceTtsWatchdog = (rate = config.ttsRate ?? 1.0) => {
+        if (clearNativeTtsTimeout || settled) return;
+        const timeout = setTimeout(() => {
+          settle('not-started', 'watchdog');
+        }, estimateNativeTtsWatchdogMs(processedText, rate));
+        clearNativeTtsTimeout = () => clearTimeout(timeout);
+      };
       const settle = (eventType: AndroidHandsFreeTtsSettleType | 'not-started' | 'promise-error', message?: string) => {
         if (settled) return;
         settled = true;
@@ -3723,6 +3877,7 @@ export default function ChatScreen({ route, navigation }: any) {
           handsFreeController.onSpeechFinished();
           voiceLog('tts-stopped', `Android service TTS settled from message playback (${eventType}).`, {
             utteranceId,
+            kind: servicePlaybackKind,
             message,
           });
         }
@@ -3738,30 +3893,88 @@ export default function ChatScreen({ route, navigation }: any) {
           settle(type, message);
         },
       });
-      const timeout = setTimeout(() => {
-        settle('not-started', 'watchdog');
-      }, estimateNativeTtsWatchdogMs(processedText, config.ttsRate ?? 1.0));
-      clearNativeTtsTimeout = () => clearTimeout(timeout);
 
-      void speakAndroidHandsFreeTts({
-        utteranceId,
-        text: processedText,
-        language: 'en-US',
-        rate: config.ttsRate ?? 1.0,
-        pitch: config.ttsPitch ?? 1.0,
-        voice: config.ttsVoiceId,
-        restoreListeningAfterDone: true,
-        allowBargeIn: true,
-      }).then((startedUtteranceId) => {
+      const speakNativeServiceMessageTts = async (fallbackMessage?: string) => {
+        if (fallbackMessage && handsFree) {
+          voiceLog('tts-stopped', 'Remote TTS failed; falling back to Android service native TTS for message playback.', {
+            utteranceId,
+            message: fallbackMessage,
+          });
+        }
+        startServiceTtsWatchdog(config.ttsRate ?? 1.0);
+        const startedUtteranceId = await speakAndroidHandsFreeTts({
+          utteranceId,
+          text: processedText,
+          language: 'en-US',
+          rate: config.ttsRate ?? 1.0,
+          pitch: config.ttsPitch ?? 1.0,
+          voice: config.ttsVoiceId,
+          restoreListeningAfterDone: true,
+          allowBargeIn: true,
+        });
         if (!startedUtteranceId) {
           settle('not-started');
         }
-      }).catch((error) => {
-        settle('promise-error', (error as any)?.message || String(error));
-      });
+      };
+
+      void (async () => {
+        try {
+          if (useAndroidServiceRemoteTts) {
+            try {
+              const { audio, mimeType } = await fetchRemoteTtsAudio(processedText, {
+                baseUrl: config.baseUrl,
+                apiKey: config.apiKey,
+                providerId: 'edge',
+                voice: effectiveEdgeTtsVoice,
+                rate: effectiveEdgeTtsRate,
+              });
+              if (!isCurrentMessagePlayback()) {
+                clearStaleMessagePlaybackState();
+                return;
+              }
+              const file = writeRemoteTtsAudioFile(audio, mimeType, 'handsfree-edge-message-tts');
+              if (!isCurrentMessagePlayback()) {
+                try { file.delete(); } catch {}
+                clearStaleMessagePlaybackState();
+                return;
+              }
+              try {
+                const startedUtteranceId = await playAndroidHandsFreeTtsAudio({
+                  utteranceId,
+                  filePath: file.uri,
+                  restoreListeningAfterDone: true,
+                  allowBargeIn: true,
+                  deleteFileOnRelease: true,
+                });
+                if (!startedUtteranceId) {
+                  try { file.delete(); } catch {}
+                  await speakNativeServiceMessageTts('remote audio handoff did not start');
+                  return;
+                }
+                startServiceTtsWatchdog(effectiveEdgeTtsRate);
+                return;
+              } catch (error) {
+                try { file.delete(); } catch {}
+                throw error;
+              }
+            } catch (error) {
+              if (!isCurrentMessagePlayback()) {
+                clearStaleMessagePlaybackState();
+                return;
+              }
+              await speakNativeServiceMessageTts((error as any)?.message || String(error));
+              return;
+            }
+          }
+
+          await speakNativeServiceMessageTts();
+        } catch (error) {
+          settle('promise-error', (error as any)?.message || String(error));
+        }
+      })();
       return;
     }
-    if (effectiveTtsProvider === 'edge' && config.baseUrl && config.apiKey) {
+    if (hasRemoteEdgeTts) {
       // Edge TTS routes through the paired desktop's /v1/tts/speak.
       void speakRemoteTts(processedText, {
         baseUrl: config.baseUrl,

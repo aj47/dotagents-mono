@@ -135,6 +135,37 @@ class HandsFreeVoiceModule(
   }
 
   @ReactMethod
+  fun playTtsAudio(options: ReadableMap?, promise: Promise) {
+    val utteranceId = readString(options, "utteranceId")?.takeIf { it.isNotBlank() }
+      ?: "handsfree-tts-${UUID.randomUUID()}"
+    val filePath = readString(options, "filePath")?.takeIf { it.isNotBlank() }
+    if (filePath == null) {
+      promise.resolve(null)
+      return
+    }
+
+    val restoreListeningAfterDone = readBoolean(options, "restoreListeningAfterDone", false)
+    val allowBargeIn = readBoolean(options, "allowBargeIn", false)
+    val deleteFileOnRelease = readBoolean(options, "deleteFileOnRelease", false)
+
+    try {
+      Log.i(tag, "module playTtsAudio requested utteranceId=$utteranceId isRunning=${HandsFreeVoiceService.isRunning()} restoreListening=$restoreListeningAfterDone allowBargeIn=$allowBargeIn")
+      val started = HandsFreeVoiceService.playTtsAudio(
+        utteranceId = utteranceId,
+        filePath = filePath,
+        restoreListeningAfterDone = restoreListeningAfterDone,
+        allowBargeIn = allowBargeIn,
+        deleteFileOnRelease = deleteFileOnRelease,
+      )
+      Log.i(tag, "module playTtsAudio result utteranceId=$utteranceId started=$started")
+      promise.resolve(if (started) utteranceId else null)
+    } catch (error: Throwable) {
+      Log.e(tag, "module playTtsAudio failed utteranceId=$utteranceId", error)
+      promise.reject("handsfree_tts_audio_failed", error.message, error)
+    }
+  }
+
+  @ReactMethod
   fun playCue(options: ReadableMap?, promise: Promise) {
     val cueId = readString(options, "cueId")?.takeIf { it.isNotBlank() }
     val filePath = readString(options, "filePath")?.takeIf { it.isNotBlank() }
