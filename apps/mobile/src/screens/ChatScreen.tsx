@@ -1980,7 +1980,6 @@ export default function ChatScreen({ route, navigation }: any) {
     const playbackAgeMs = playback ? Date.now() - playback.startedAt : null;
     const stalePlayback =
       !!playback
-      && playback.status === 'speaking'
       && playbackAgeMs !== null
       && playbackAgeMs > STALE_HANDS_FREE_TTS_RECOVERY_MS;
     const staleControllerSpeech = phase === 'speaking' && !playback;
