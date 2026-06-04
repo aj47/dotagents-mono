@@ -31,6 +31,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import * as Font from 'expo-font';
 import { ThemeProvider, useTheme } from './src/ui/ThemeProvider';
 import type { Theme } from './src/ui/theme';
 import { ConnectionStatusIndicator } from './src/ui/ConnectionStatusIndicator';
@@ -85,6 +87,7 @@ function Navigation() {
   const messageQueueStore = useMessageQueue();
   const navigationRef = useNavigationContainerRef();
   const isNavigationReady = useRef(false);
+  const [iconFontsReady, setIconFontsReady] = useState(() => Font.isLoaded('ionicons'));
   const [currentRouteName, setCurrentRouteName] = useState('Sessions');
   const [selectedPrimaryNavItemId, setSelectedPrimaryNavItemId] =
     useState<AppShellPrimaryNavItemId | null>(null);
@@ -95,6 +98,27 @@ function Navigation() {
     currentRouteName === 'Settings' && selectedPrimaryNavItemId
       ? selectedPrimaryNavItemId
       : getMobilePrimaryNavItemId(currentRouteName);
+
+  useEffect(() => {
+    if (iconFontsReady) {
+      return;
+    }
+
+    let mounted = true;
+    Ionicons.loadFont()
+      .catch((error) => {
+        console.warn('[App] Failed to load Ionicons font:', error);
+      })
+      .finally(() => {
+        if (mounted) {
+          setIconFontsReady(true);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [iconFontsReady]);
 
   // Initialize tunnel connection manager for persistence and auto-reconnection
   const tunnelConnection = useTunnelConnectionProvider();
@@ -478,7 +502,7 @@ function Navigation() {
     };
   }, [cfg.ready, cfg.config.baseUrl, cfg.config.apiKey, sessionStore.ready, sessionStore.syncWithServer]);
 
-  if (!cfg.ready || !sessionStore.ready) {
+  if (!iconFontsReady || !cfg.ready || !sessionStore.ready) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
         <Image
