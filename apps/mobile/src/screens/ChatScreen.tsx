@@ -181,6 +181,13 @@ const HANDS_FREE_PHASE_AUDIO_CUES: Record<HandsFreePhase, HandsFreeAudioCue> = {
   paused: 'paused',
   error: 'error',
 };
+const HANDS_FREE_CUES_ALLOWED_DURING_TTS = new Set<HandsFreeAudioCue>([
+  'stopped',
+  'paused',
+  'sleeping',
+  'disabled',
+  'error',
+]);
 const NATIVE_TTS_WATCHDOG_GRACE_MS = 1_500;
 const NATIVE_TTS_WATCHDOG_INTERVAL_MS = 750;
 const NATIVE_TTS_MIN_WATCHDOG_MS = 4_000;
@@ -2116,12 +2123,22 @@ export default function ChatScreen({ route, navigation }: any) {
     });
   }, [voiceLog]);
 
-  const playHandsFreeCue = useCallback((cue: HandsFreeAudioCue) => {
+  const playHandsFreeCue = useCallback((cue: HandsFreeAudioCue): boolean => {
     if (!handsFreeRef.current) {
-      return;
+      return false;
+    }
+    const activeTts = getGlobalTtsPlayback();
+    if (activeTts && !HANDS_FREE_CUES_ALLOWED_DURING_TTS.has(cue)) {
+      voiceLog('runtime-state', 'Handsfree audio cue suppressed during TTS.', {
+        cue,
+        ttsStatus: activeTts.status,
+        ttsSource: activeTts.source,
+      });
+      return false;
     }
     playHandsFreeAudioCue(cue);
     voiceLog('runtime-state', 'Handsfree audio cue played.', { cue });
+    return true;
   }, [voiceLog]);
 
   const playHandsFreeSubmittedCue = useCallback(() => {
@@ -2142,8 +2159,9 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     lastHandsFreeSessionReadyCueAtRef.current = now;
-    playHandsFreeCue('session-ready');
-    voiceLog('runtime-state', 'Handsfree session ready cue played.', { source });
+    if (playHandsFreeCue('session-ready')) {
+      voiceLog('runtime-state', 'Handsfree session ready cue played.', { source });
+    }
   }, [playHandsFreeCue, voiceLog]);
 
   const playProgressToolCallCues = useCallback((
@@ -5221,6 +5239,15 @@ export default function ChatScreen({ route, navigation }: any) {
     }
     if (respondingRef.current && conversationState === 'needs_input') {
       console.log('[ChatScreen] Continuing needs-input session immediately:', getMessageLogMeta(trimmedText));
+    }
+
+    if (options?.source === 'handsfree' && !isFocusedRef.current) {
+      navigation?.navigate?.('Chat');
+      voiceLog('runtime-state', 'Handsfree send restored chat focus.', {
+        appState: appStateRef.current,
+        phase: handsFreePhaseRef.current,
+        textLength: trimmedText.length,
+      });
     }
 
     console.log('[ChatScreen] Sending message:', getMessageLogMeta(trimmedText));
