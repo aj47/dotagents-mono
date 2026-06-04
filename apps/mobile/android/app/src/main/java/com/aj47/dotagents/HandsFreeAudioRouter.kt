@@ -5,52 +5,40 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 
 object HandsFreeAudioRouter {
   private const val TAG = "DotAgentsHandsFree"
+  private const val ROUTE_KEEP_ALIVE_MS = 1000L
   private val requesters = linkedSetOf<String>()
+  private val mainHandler = Handler(Looper.getMainLooper())
   private var previousMode: Int? = null
   private var routingApplied = false
+  private var routeContext: Context? = null
+  private var routeKeepAliveScheduled = false
+  private val routeKeepAliveRunnable = Runnable {
+    synchronized(this@HandsFreeAudioRouter) {
+      routeKeepAliveScheduled = false
+      val context = routeContext
+      if (context == null || requesters.isEmpty()) {
+        return@synchronized
+      }
+      applyCommunicationRouting(context.getSystemService(AudioManager::class.java), "keepalive")
+      startRouteKeepAliveLocked(context)
+    }
+  }
 
   @Synchronized
   fun acquire(context: Context, reason: String): Bundle {
     val normalizedReason = normalizeReason(reason)
     requesters.add(normalizedReason)
+    startRouteKeepAliveLocked(context.applicationContext)
     val audioManager = context.getSystemService(AudioManager::class.java)
-    val target = preferredCommunicationHeadset(audioManager)
-
-    if (target == null) {
-      val route = routeBundle(audioManager, false)
-      Log.i(TAG, "audio-route acquire reason=$normalizedReason target=none ${routeSummary(route)}")
-      return route
-    }
-
-    if (previousMode == null) {
-      previousMode = audioManager.mode
-    }
-
-    var applied = false
-    try {
-      audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-      applied = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        audioManager.setCommunicationDevice(target)
-      } else {
-        @Suppress("DEPRECATION")
-        audioManager.isSpeakerphoneOn = false
-        @Suppress("DEPRECATION")
-        audioManager.startBluetoothSco()
-        @Suppress("DEPRECATION")
-        audioManager.isBluetoothScoOn = true
-        true
-      }
-      routingApplied = routingApplied || applied
-    } catch (error: Throwable) {
-      Log.w(TAG, "audio-route acquire failed reason=$normalizedReason target=${audioDeviceTypeName(target.type)}", error)
-    }
-
+    val applied = applyCommunicationRouting(audioManager, normalizedReason)
     val route = routeBundle(audioManager, applied)
-    Log.i(TAG, "audio-route acquire reason=$normalizedReason target=${audioDeviceTypeName(target.type)} ${routeSummary(route)}")
+    Log.i(TAG, "audio-route acquire reason=$normalizedReason target=${route.getString("route")} ${routeSummary(route)}")
     return route
   }
 
@@ -61,7 +49,8 @@ object HandsFreeAudioRouter {
     val audioManager = context.getSystemService(AudioManager::class.java)
 
     if (requesters.isNotEmpty()) {
-      val route = routeBundle(audioManager, false)
+      val applied = applyCommunicationRouting(audioManager, normalizedReason)
+      val route = routeBundle(audioManager, applied)
       Log.i(TAG, "audio-route release reason=$normalizedReason deferred ${routeSummary(route)}")
       return route
     }
@@ -83,6 +72,7 @@ object HandsFreeAudioRouter {
     } finally {
       previousMode = null
       routingApplied = false
+      stopRouteKeepAliveLocked()
     }
 
     val route = routeBundle(audioManager, false)
@@ -92,7 +82,14 @@ object HandsFreeAudioRouter {
 
   @Synchronized
   fun currentRoute(context: Context): Bundle {
-    return routeBundle(context.getSystemService(AudioManager::class.java), false)
+    val audioManager = context.getSystemService(AudioManager::class.java)
+    val applied = if (requesters.isNotEmpty()) {
+      startRouteKeepAliveLocked(context.applicationContext)
+      applyCommunicationRouting(audioManager, "current-route")
+    } else {
+      false
+    }
+    return routeBundle(audioManager, applied)
   }
 
   @Synchronized
@@ -105,6 +102,55 @@ object HandsFreeAudioRouter {
   @Synchronized
   fun isCommunicationRoutingActive(): Boolean {
     return requesters.isNotEmpty() && routingApplied
+  }
+
+  private fun applyCommunicationRouting(audioManager: AudioManager, reason: String): Boolean {
+    val target = preferredCommunicationHeadset(audioManager)
+
+    if (previousMode == null) {
+      previousMode = audioManager.mode
+    }
+
+    var applied = false
+    try {
+      audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+      applied = true
+
+      if (target != null) {
+        val deviceApplied = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+          audioManager.setCommunicationDevice(target)
+        } else {
+          @Suppress("DEPRECATION")
+          audioManager.isSpeakerphoneOn = false
+          @Suppress("DEPRECATION")
+          audioManager.startBluetoothSco()
+          @Suppress("DEPRECATION")
+          audioManager.isBluetoothScoOn = true
+          true
+        }
+        applied = applied || deviceApplied
+      }
+      routingApplied = routingApplied || applied
+    } catch (error: Throwable) {
+      Log.w(TAG, "audio-route acquire failed reason=$reason target=${target?.let { audioDeviceTypeName(it.type) } ?: "none"}", error)
+    }
+
+    return applied
+  }
+
+  private fun startRouteKeepAliveLocked(context: Context) {
+    routeContext = context.applicationContext
+    if (routeKeepAliveScheduled) {
+      return
+    }
+    routeKeepAliveScheduled = true
+    mainHandler.postDelayed(routeKeepAliveRunnable, ROUTE_KEEP_ALIVE_MS)
+  }
+
+  private fun stopRouteKeepAliveLocked() {
+    routeContext = null
+    routeKeepAliveScheduled = false
+    mainHandler.removeCallbacks(routeKeepAliveRunnable)
   }
 
   private fun preferredCommunicationHeadset(audioManager: AudioManager): AudioDeviceInfo? {

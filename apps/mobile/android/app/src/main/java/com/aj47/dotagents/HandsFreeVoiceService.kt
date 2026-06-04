@@ -253,7 +253,13 @@ class HandsFreeVoiceService : Service() {
   }
 
   private fun startListening() {
-    if (!captureEnabled || listening || (activeTtsUtteranceId != null && !activeTtsAllowBargeIn)) {
+    if (listening) {
+      HandsFreeAudioRouter.acquire(this, CAPTURE_ROUTE_REQUESTER)
+      Log.i(TAG, "recognizer start skipped captureEnabled=$captureEnabled listening=$listening activeTts=${activeTtsUtteranceId != null} activeTtsAllowBargeIn=$activeTtsAllowBargeIn")
+      return
+    }
+
+    if (!captureEnabled || (activeTtsUtteranceId != null && !activeTtsAllowBargeIn)) {
       Log.i(TAG, "recognizer start skipped captureEnabled=$captureEnabled listening=$listening activeTts=${activeTtsUtteranceId != null} activeTtsAllowBargeIn=$activeTtsAllowBargeIn")
       return
     }
@@ -435,6 +441,7 @@ class HandsFreeVoiceService : Service() {
           it.putBoolean("listeningEnabled", true)
         }
       }
+      HandsFreeAudioRouter.acquire(this, CAPTURE_ROUTE_REQUESTER)
       if (captureEnabled) {
         startListening()
       }
