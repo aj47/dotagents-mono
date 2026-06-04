@@ -722,6 +722,8 @@ class HandsFreeVoiceService : Service() {
       }
       player.setDataSource(applicationContext, uri)
       player.setOnPreparedListener { prepared ->
+        playback.prepareTimeout?.let { mainHandler.removeCallbacks(it) }
+        playback.prepareTimeout = null
         try {
           if (
             activeTtsAudioPlayback !== playback
