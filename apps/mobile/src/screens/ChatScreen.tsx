@@ -1173,6 +1173,10 @@ export default function ChatScreen({ route, navigation }: any) {
   const ttsEnabledRef = useRef<boolean>(config.ttsEnabled !== false);
   useEffect(() => { ttsEnabledRef.current = config.ttsEnabled !== false; }, [config.ttsEnabled]);
   const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  appStateRef.current = appState;
+  const isFocusedRef = useRef<boolean>(isFocused);
+  isFocusedRef.current = isFocused;
 
   useEffect(() => {
     let mounted = true;
@@ -1211,6 +1215,36 @@ export default function ChatScreen({ route, navigation }: any) {
   const androidBackgroundHandsFree =
     shouldRunAndroidHandsFreeService
     && !stableHandsFreeForeground;
+  const stableHandsFreeForegroundRef = useRef(stableHandsFreeForeground);
+  stableHandsFreeForegroundRef.current = stableHandsFreeForeground;
+  const shouldRunAndroidHandsFreeServiceRef = useRef(shouldRunAndroidHandsFreeService);
+  shouldRunAndroidHandsFreeServiceRef.current = shouldRunAndroidHandsFreeService;
+  const androidBackgroundHandsFreeRef = useRef(androidBackgroundHandsFree);
+  androidBackgroundHandsFreeRef.current = androidBackgroundHandsFree;
+  const getCurrentAndroidHandsFreeTtsRuntime = useCallback(() => {
+    const currentAppState = appStateRef.current;
+    const currentIsFocused = isFocusedRef.current;
+    const serviceRunning = Platform.OS === 'android' && shouldRunAndroidHandsFreeServiceRef.current;
+    const stableForeground =
+      serviceRunning
+      && currentAppState === 'active'
+      && currentIsFocused
+      && stableHandsFreeForegroundRef.current;
+    const backgroundHandsFree =
+      serviceRunning
+      && (
+        androidBackgroundHandsFreeRef.current
+        || !stableForeground
+        || currentAppState !== 'active'
+        || !currentIsFocused
+      );
+    return {
+      appState: currentAppState,
+      backgroundHandsFree,
+      isFocused: currentIsFocused,
+      stableForeground,
+    };
+  }, []);
   const shouldUseAndroidHandsFreeServiceRemoteTts =
     Platform.OS === 'android'
     && shouldRunAndroidHandsFreeService
@@ -3027,6 +3061,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
+      appStateRef.current = nextState;
       setAppState(nextState);
     });
     return () => subscription.remove();
@@ -3324,28 +3359,41 @@ export default function ChatScreen({ route, navigation }: any) {
       playHandsFreeCue('agent-response');
     }
 
-    const useAndroidServiceRemoteTts = shouldUseAndroidHandsFreeServiceRemoteTtsRef.current;
-    const useAndroidServiceNativeTts = shouldUseAndroidHandsFreeServiceNativeTtsRef.current;
+    const currentAndroidHandsFreeTtsRuntime = getCurrentAndroidHandsFreeTtsRuntime();
+    const configuredAndroidServiceRemoteTts = shouldUseAndroidHandsFreeServiceRemoteTtsRef.current;
+    const forceNativeAndroidServiceTts =
+      configuredAndroidServiceRemoteTts
+      && currentAndroidHandsFreeTtsRuntime.backgroundHandsFree;
+    const useAndroidServiceRemoteTts =
+      configuredAndroidServiceRemoteTts
+      && !forceNativeAndroidServiceTts;
+    const useAndroidServiceNativeTts =
+      shouldUseAndroidHandsFreeServiceNativeTtsRef.current
+      || forceNativeAndroidServiceTts;
     const useAndroidServiceTts = useAndroidServiceRemoteTts || useAndroidServiceNativeTts;
     const hasRemoteEdgeTts = effectiveTtsProvider === 'edge' && !!config.baseUrl && !!config.apiKey;
-	    console.info('[DotAgentsTTS] selecting playback path', {
-	      reason,
-	      platform: Platform.OS,
-	      handsFree,
-	      phase: handsFreePhaseRef.current,
-	      textLength: processedText.length,
-	      effectiveTtsProvider,
-	      useAndroidServiceNativeTts,
-	      useAndroidServiceRemoteTts,
-	      hasRemoteBaseUrl: !!config.baseUrl,
-	      hasRemoteApiKey: !!config.apiKey,
-	      edgeVoice: effectiveEdgeTtsVoice,
-	      edgeRate: effectiveEdgeTtsRate,
-	      nativeRate: config.ttsRate ?? 1.0,
-	      nativeVoiceConfigured: !!config.ttsVoiceId,
-	      androidBackgroundHandsFree,
-	      stableForeground: stableHandsFreeForeground,
-	    });
+    console.info('[DotAgentsTTS] selecting playback path', {
+      reason,
+      platform: Platform.OS,
+      handsFree,
+      phase: handsFreePhaseRef.current,
+      textLength: processedText.length,
+      effectiveTtsProvider,
+      configuredAndroidServiceRemoteTts,
+      forceNativeAndroidServiceTts,
+      useAndroidServiceNativeTts,
+      useAndroidServiceRemoteTts,
+      hasRemoteBaseUrl: !!config.baseUrl,
+      hasRemoteApiKey: !!config.apiKey,
+      edgeVoice: effectiveEdgeTtsVoice,
+      edgeRate: effectiveEdgeTtsRate,
+      nativeRate: config.ttsRate ?? 1.0,
+      nativeVoiceConfigured: !!config.ttsVoiceId,
+      appState: currentAndroidHandsFreeTtsRuntime.appState,
+      isFocused: currentAndroidHandsFreeTtsRuntime.isFocused,
+      androidBackgroundHandsFree: currentAndroidHandsFreeTtsRuntime.backgroundHandsFree,
+      stableForeground: currentAndroidHandsFreeTtsRuntime.stableForeground,
+    });
 	    if (Platform.OS === 'android' && androidHandsFreeServiceAvailable) {
 	      void getAndroidHandsFreeAudioRoute()
 	        .then((route) => {
@@ -3680,8 +3728,8 @@ export default function ChatScreen({ route, navigation }: any) {
 		    });
     }
 
-	    return startExpoSpeechPlayback(reason);
-			  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, handsFree, handsFreeController, invalidateHandsFreeCapture, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
+		    return startExpoSpeechPlayback(reason);
+				  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, getCurrentAndroidHandsFreeTtsRuntime, handsFree, handsFreeController, invalidateHandsFreeCapture, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
@@ -3824,10 +3872,32 @@ export default function ChatScreen({ route, navigation }: any) {
       intendedSpeakingIndexRef.current = null;
       return;
     }
-    const useAndroidServiceRemoteTts = shouldUseAndroidHandsFreeServiceRemoteTtsRef.current;
-    const useAndroidServiceNativeTts = shouldUseAndroidHandsFreeServiceNativeTtsRef.current;
+    const currentAndroidHandsFreeTtsRuntime = getCurrentAndroidHandsFreeTtsRuntime();
+    const configuredAndroidServiceRemoteTts = shouldUseAndroidHandsFreeServiceRemoteTtsRef.current;
+    const forceNativeAndroidServiceTts =
+      configuredAndroidServiceRemoteTts
+      && currentAndroidHandsFreeTtsRuntime.backgroundHandsFree;
+    const useAndroidServiceRemoteTts =
+      configuredAndroidServiceRemoteTts
+      && !forceNativeAndroidServiceTts;
+    const useAndroidServiceNativeTts =
+      shouldUseAndroidHandsFreeServiceNativeTtsRef.current
+      || forceNativeAndroidServiceTts;
     const useAndroidServiceTts = useAndroidServiceRemoteTts || useAndroidServiceNativeTts;
     const hasRemoteEdgeTts = effectiveTtsProvider === 'edge' && !!config.baseUrl && !!config.apiKey;
+    console.info('[DotAgentsTTS] selecting message playback path', {
+      index,
+      textLength: processedText.length,
+      effectiveTtsProvider,
+      configuredAndroidServiceRemoteTts,
+      forceNativeAndroidServiceTts,
+      useAndroidServiceNativeTts,
+      useAndroidServiceRemoteTts,
+      appState: currentAndroidHandsFreeTtsRuntime.appState,
+      isFocused: currentAndroidHandsFreeTtsRuntime.isFocused,
+      androidBackgroundHandsFree: currentAndroidHandsFreeTtsRuntime.backgroundHandsFree,
+      stableForeground: currentAndroidHandsFreeTtsRuntime.stableForeground,
+    });
     const playbackId = beginGlobalTtsPlayback({
       source: 'message',
       status: hasRemoteEdgeTts || useAndroidServiceTts ? 'loading' : 'speaking',
@@ -4136,20 +4206,21 @@ export default function ChatScreen({ route, navigation }: any) {
     } catch {
       settleNativeSpeechError();
     }
-	  }, [
-		speakingMessageIndex,
-		config.apiKey,
-		config.baseUrl,
-		config.ttsRate,
-		config.ttsPitch,
-		config.ttsVoiceId,
-		effectiveEdgeTtsRate,
-		effectiveEdgeTtsVoice,
-		effectiveTtsProvider,
-		handsFree,
-		handsFreeController,
+		  }, [
+	    speakingMessageIndex,
+	    config.apiKey,
+	    config.baseUrl,
+	    config.ttsRate,
+	    config.ttsPitch,
+	    config.ttsVoiceId,
+	    effectiveEdgeTtsRate,
+	    effectiveEdgeTtsVoice,
+	    effectiveTtsProvider,
+	    getCurrentAndroidHandsFreeTtsRuntime,
+	    handsFree,
+	    handsFreeController,
     sessionStore,
-		voiceLog,
+	    voiceLog,
 	  ]);
 
   // Auto-scroll state and ref for mobile chat
