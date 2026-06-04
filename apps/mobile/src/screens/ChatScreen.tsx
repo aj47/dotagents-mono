@@ -1215,6 +1215,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const androidBackgroundHandsFree =
     shouldRunAndroidHandsFreeService
     && !stableHandsFreeForeground;
+  const androidServiceHandlesHandsFreeMic =
+    Platform.OS === 'android'
+    && shouldRunAndroidHandsFreeService;
   const stableHandsFreeForegroundRef = useRef(stableHandsFreeForeground);
   stableHandsFreeForegroundRef.current = stableHandsFreeForeground;
   const shouldRunAndroidHandsFreeServiceRef = useRef(shouldRunAndroidHandsFreeService);
@@ -1890,7 +1893,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     console.info(
-      `[DotAgentsHandsFreeJS] runtime active=${handsFreeRuntimeActive} appState=${appState} focused=${isFocused} stableForeground=${stableHandsFreeForeground} backgroundService=${androidBackgroundHandsFree} foregroundOnly=${handsFreeForegroundOnly} directWhileSleeping=${allowHandsFreeDirectSpeechWhileSleeping}`,
+      `[DotAgentsHandsFreeJS] runtime active=${handsFreeRuntimeActive} appState=${appState} focused=${isFocused} stableForeground=${stableHandsFreeForeground} backgroundService=${androidBackgroundHandsFree} serviceMic=${androidServiceHandlesHandsFreeMic} foregroundOnly=${handsFreeForegroundOnly} directWhileSleeping=${allowHandsFreeDirectSpeechWhileSleeping}`,
     );
     voiceLog('runtime-state', 'Handsfree runtime evaluated.', {
       runtimeActive: handsFreeRuntimeActive,
@@ -1900,12 +1903,14 @@ export default function ChatScreen({ route, navigation }: any) {
       stableForeground: stableHandsFreeForeground,
       foregroundOnly: handsFreeForegroundOnly,
       androidBackgroundHandsFree,
+      androidServiceHandlesHandsFreeMic,
       allowDirectSpeechWhileSleeping: allowHandsFreeDirectSpeechWhileSleeping,
       debugForcedInDev: config.handsFreeDebug !== true && handsFreeDebugEnabled,
     });
   }, [
     allowHandsFreeDirectSpeechWhileSleeping,
     androidBackgroundHandsFree,
+    androidServiceHandlesHandsFreeMic,
     appState,
     config.handsFreeDebug,
     handsFree,
@@ -2897,7 +2902,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const foregroundSpeechRecognizerEnabled =
     isFocused
     && isAppActive
-    && (!handsFree || foregroundHandsFreeRuntimeActive);
+    && (!handsFree || (foregroundHandsFreeRuntimeActive && !androidServiceHandlesHandsFreeMic));
 
   const {
     listening,
@@ -2972,7 +2977,9 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [handsFree, liveTranscript, sttPreview]);
 
   const androidHandsFreeServiceListeningEnabled =
-    androidBackgroundHandsFree && shouldKeepHandsFreeMicArmed && !listening;
+    androidServiceHandlesHandsFreeMic && shouldKeepHandsFreeMicArmed;
+  const androidHandsFreeServiceListeningEnabledRef = useRef(androidHandsFreeServiceListeningEnabled);
+  androidHandsFreeServiceListeningEnabledRef.current = androidHandsFreeServiceListeningEnabled;
 
   useEffect(() => {
     if (!shouldSuppressHandsFreeTranscript) return;
@@ -3051,7 +3058,7 @@ export default function ChatScreen({ route, navigation }: any) {
     let cancelled = false;
     void startAndroidHandsFreeService({
       language: 'en-US',
-      listeningEnabled: false,
+      listeningEnabled: androidHandsFreeServiceListeningEnabledRef.current,
     }).then(() => {
       if (!cancelled) {
         setDebugInfo('Locked-screen handsfree is ready.');
@@ -3215,6 +3222,13 @@ export default function ChatScreen({ route, navigation }: any) {
       }
 
       if (event.type === 'service-started') {
+        if (androidHandsFreeServiceListeningEnabledRef.current && !event.listeningEnabled) {
+          void setAndroidHandsFreeListeningEnabled(true).catch((error) => {
+            voiceLog('recognizer-error', 'Android handsfree service failed to arm after start.', {
+              message: (error as any)?.message || String(error),
+            });
+          });
+        }
         setDebugInfo('Locked-screen handsfree is ready.');
         playHandsFreeSessionReadyCue('service-started-event');
         return;
@@ -3254,19 +3268,19 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!handsFree) {
       return;
     }
-    if (androidBackgroundHandsFree) {
+    if (androidServiceHandlesHandsFreeMic) {
+      if (listening) {
+        void stopRecognitionOnly({ preservePendingHandsFreeFinal: true });
+      }
       return;
     }
     if (!handsFreeRuntimeActive && listening) {
       void stopRecognitionOnly({ preservePendingHandsFreeFinal: true });
     }
-  }, [androidBackgroundHandsFree, handsFree, handsFreeRuntimeActive, listening, stopRecognitionOnly]);
+  }, [androidServiceHandlesHandsFreeMic, handsFree, handsFreeRuntimeActive, listening, stopRecognitionOnly]);
 
   useEffect(() => {
     if (!handsFree) {
-      return;
-    }
-    if (androidBackgroundHandsFree) {
       return;
     }
 
@@ -3275,6 +3289,10 @@ export default function ChatScreen({ route, navigation }: any) {
         handsFreeController.resetError();
       }, 2500);
       return () => clearTimeout(timer);
+    }
+
+    if (androidServiceHandlesHandsFreeMic) {
+      return;
     }
 
     if (shouldKeepHandsFreeMicArmed && !listening) {
@@ -3291,7 +3309,7 @@ export default function ChatScreen({ route, navigation }: any) {
 	      void stopRecognitionOnly({ preservePendingHandsFreeFinal: true });
     }
   }, [
-    androidBackgroundHandsFree,
+    androidServiceHandlesHandsFreeMic,
     handsFree,
     handsFreeController.resetError,
     shouldKeepHandsFreeMicArmed,
@@ -6093,16 +6111,16 @@ export default function ChatScreen({ route, navigation }: any) {
 
 	const isWebPlatform = Platform.OS === 'web';
 	const effectiveMicListening = handsFree
-		? (androidBackgroundHandsFree ? shouldKeepHandsFreeMicArmed : listening)
+		? (androidServiceHandlesHandsFreeMic ? shouldKeepHandsFreeMicArmed : listening)
 		: listening;
-		const composerAccessibilityHint = createChatComposerAccessibilityHint({
-		  handsFree,
-		  listening: effectiveMicListening,
-		  isWeb: isWebPlatform,
-		});
-		const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
-		  listening: effectiveMicListening,
-		  handsFree,
+	const composerAccessibilityHint = createChatComposerAccessibilityHint({
+	  handsFree,
+	  listening: effectiveMicListening,
+	  isWeb: isWebPlatform,
+	});
+	const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
+	  listening: effectiveMicListening,
+	  handsFree,
 	  willCancel,
 	  liveTranscript,
 		  sttPreview,
@@ -6302,29 +6320,29 @@ export default function ChatScreen({ route, navigation }: any) {
 
 		const wakeHandsFreeByUser = useCallback(() => {
 			handsFreeController.wakeByUser();
-			if (!androidBackgroundHandsFree && !listening) {
+			if (!androidServiceHandlesHandsFreeMic && !listening) {
 				void startRecording();
 			}
 			setDebugInfo('Handsfree awake. Listening for your request.');
-		}, [androidBackgroundHandsFree, handsFreeController.wakeByUser, listening, startRecording]);
+		}, [androidServiceHandlesHandsFreeMic, handsFreeController.wakeByUser, listening, startRecording]);
 
 		const resumeHandsFreeByUser = useCallback(() => {
 			handsFreeController.resumeByUser();
-			if (!androidBackgroundHandsFree && !listening) {
+			if (!androidServiceHandlesHandsFreeMic && !listening) {
 				void startRecording();
 			}
 			setDebugInfo('Handsfree resumed.');
-		}, [androidBackgroundHandsFree, handsFreeController.resumeByUser, listening, startRecording]);
+		}, [androidServiceHandlesHandsFreeMic, handsFreeController.resumeByUser, listening, startRecording]);
 
 		const pauseHandsFreeByUser = useCallback(() => {
-      clearAndroidHandsFreePartialTimer();
-      androidHandsFreePendingPartialRef.current = '';
+			clearAndroidHandsFreePartialTimer();
+			androidHandsFreePendingPartialRef.current = '';
 			handsFreeController.pauseByUser();
-			if (!androidBackgroundHandsFree) {
+			if (!androidServiceHandlesHandsFreeMic) {
 				void stopRecognitionOnly();
 			}
 			setDebugInfo('Handsfree paused.');
-		}, [androidBackgroundHandsFree, clearAndroidHandsFreePartialTimer, handsFreeController.pauseByUser, stopRecognitionOnly]);
+		}, [androidServiceHandlesHandsFreeMic, clearAndroidHandsFreePartialTimer, handsFreeController.pauseByUser, stopRecognitionOnly]);
 
 		const handleHandsFreePrimaryControl = useCallback(() => {
 			if (hasPendingHandsFreeSend) {
