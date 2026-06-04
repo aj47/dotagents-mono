@@ -2720,6 +2720,15 @@ export default function ChatScreen({ route, navigation }: any) {
     };
   }, []);
 
+  const mergeAndroidHandsFreePendingTranscript = useCallback((text: string) => {
+    const nextText = normalizeVoiceText(text);
+    if (!nextText) {
+      return '';
+    }
+    const pendingText = androidHandsFreePendingPartialRef.current;
+    return pendingText ? mergeVoiceText(pendingText, nextText) : nextText;
+  }, []);
+
   const flushAndroidHandsFreePartialTranscript = useCallback((text?: string) => {
     const finalText = normalizeVoiceText(text ?? androidHandsFreePendingPartialRef.current);
     clearAndroidHandsFreePartialTimer();
@@ -2732,7 +2741,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (handleHandsFreeTtsBargeInCommand(finalText, 'native')) {
         return true;
       }
-      voiceLog('transcript-ignored', 'Android handsfree partial flush ignored while the assistant is busy or speaking.', {
+      voiceLog('transcript-ignored', 'Android handsfree transcript flush ignored while the assistant is busy or speaking.', {
         phase: handsFreePhaseRef.current,
         text: finalText,
         textLength: finalText.length,
@@ -2740,7 +2749,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return false;
     }
     if (!isHandsFreeFinalizationEligibleNow()) {
-      voiceLog('transcript-ignored', 'Android handsfree partial flush ignored because the listening turn is no longer active.', {
+      voiceLog('transcript-ignored', 'Android handsfree transcript flush ignored because the listening turn is no longer active.', {
         phase: handsFreePhaseRef.current,
         text: finalText,
         textLength: finalText.length,
@@ -2756,7 +2765,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     markAndroidHandsFreeSent(finalText);
-    voiceLog('finalization-fired', 'Android handsfree partial transcript debounce elapsed.', {
+    voiceLog('finalization-fired', 'Android handsfree transcript debounce elapsed.', {
       source: 'native',
       text: finalText,
       textLength: finalText.length,
@@ -2778,7 +2787,11 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceLog,
   ]);
 
-  const scheduleAndroidHandsFreePartialTranscript = useCallback((text: string, delayMs = handsFreeMessageDebounceMs) => {
+  const scheduleAndroidHandsFreePartialTranscript = useCallback((
+    text: string,
+    delayMs = handsFreeMessageDebounceMs,
+    options?: { resetExisting?: boolean },
+  ) => {
     const finalText = normalizeVoiceText(text);
     if (!finalText || isRecentAndroidHandsFreeDuplicate(finalText)) {
       return false;
@@ -2789,7 +2802,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (handleHandsFreeTtsBargeInCommand(finalText, 'native')) {
         return true;
       }
-      voiceLog('transcript-ignored', 'Android handsfree partial schedule ignored while the assistant is busy or speaking.', {
+      voiceLog('transcript-ignored', 'Android handsfree transcript schedule ignored while the assistant is busy or speaking.', {
         phase: handsFreePhaseRef.current,
         text: finalText,
         textLength: finalText.length,
@@ -2799,7 +2812,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!isHandsFreeFinalizationEligibleNow()) {
       clearAndroidHandsFreePartialTimer();
       androidHandsFreePendingPartialRef.current = '';
-      voiceLog('transcript-ignored', 'Android handsfree partial schedule ignored because the listening turn is no longer active.', {
+      voiceLog('transcript-ignored', 'Android handsfree transcript schedule ignored because the listening turn is no longer active.', {
         phase: handsFreePhaseRef.current,
         text: finalText,
         textLength: finalText.length,
@@ -2807,7 +2820,11 @@ export default function ChatScreen({ route, navigation }: any) {
       return false;
     }
 
-    if (androidHandsFreePendingPartialRef.current === finalText && androidHandsFreePartialTimerRef.current) {
+    if (
+      !options?.resetExisting
+      && androidHandsFreePendingPartialRef.current === finalText
+      && androidHandsFreePartialTimerRef.current
+    ) {
       return true;
     }
 
@@ -2816,7 +2833,7 @@ export default function ChatScreen({ route, navigation }: any) {
     const debounceMs = Math.max(0, delayMs);
     setAndroidHandsFreeDebounceEndsAt(Date.now() + debounceMs);
     const captureGeneration = androidHandsFreeCaptureGenerationRef.current;
-    voiceLog('finalization-scheduled', 'Android handsfree partial transcript debounce scheduled.', {
+    voiceLog('finalization-scheduled', 'Android handsfree transcript debounce scheduled.', {
       source: 'native',
       debounceMs,
       text: finalText,
@@ -2826,7 +2843,7 @@ export default function ChatScreen({ route, navigation }: any) {
       androidHandsFreePartialTimerRef.current = null;
       setAndroidHandsFreeDebounceEndsAt(null);
       if (captureGeneration !== androidHandsFreeCaptureGenerationRef.current) {
-        voiceLog('transcript-ignored', 'Android handsfree partial debounce ignored after capture generation changed.', {
+        voiceLog('transcript-ignored', 'Android handsfree transcript debounce ignored after capture generation changed.', {
           source: 'native',
           text: finalText,
           textLength: finalText.length,
@@ -2849,54 +2866,13 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const handleAndroidHandsFreeFinalResult = useCallback((text: string) => {
     const finalText = normalizeVoiceText(text);
-    clearAndroidHandsFreePartialTimer();
-    androidHandsFreePendingPartialRef.current = '';
-
     if (!finalText) {
       return;
     }
-    if (isHandsFreeTranscriptSuppressedNow()) {
-      if (handleHandsFreeTtsBargeInCommand(finalText, 'native')) {
-        return;
-      }
-      voiceLog('transcript-ignored', 'Android handsfree final ignored while the assistant is busy or speaking.', {
-        phase: handsFreePhaseRef.current,
-        text: finalText,
-        textLength: finalText.length,
-      });
-      return;
-    }
-    if (!isHandsFreeFinalizationEligibleNow()) {
-      voiceLog('transcript-ignored', 'Android handsfree final ignored because the listening turn is no longer active.', {
-        phase: handsFreePhaseRef.current,
-        text: finalText,
-        textLength: finalText.length,
-      });
-      return;
-    }
-    if (isRecentAndroidHandsFreeDuplicate(finalText)) {
-      voiceLog('transcript-ignored', 'Android handsfree final result matched a recent partial send.', {
-        text: finalText,
-        textLength: finalText.length,
-      });
-      return;
-    }
-
-    markAndroidHandsFreeSent(finalText);
-    handleVoiceFinalized({
-      text: finalText,
-      mode: 'handsfree',
-      source: 'native',
-    });
+    scheduleAndroidHandsFreePartialTranscript(finalText, handsFreeMessageDebounceMs, { resetExisting: true });
   }, [
-    clearAndroidHandsFreePartialTimer,
-    handleHandsFreeTtsBargeInCommand,
-    handleVoiceFinalized,
-    isHandsFreeFinalizationEligibleNow,
-    isHandsFreeTranscriptSuppressedNow,
-    isRecentAndroidHandsFreeDuplicate,
-    markAndroidHandsFreeSent,
-    voiceLog,
+    handsFreeMessageDebounceMs,
+    scheduleAndroidHandsFreePartialTranscript,
   ]);
 
   const handleRecognizerError = useCallback((message: string) => {
@@ -3184,8 +3160,9 @@ export default function ChatScreen({ route, navigation }: any) {
           });
           return;
         }
-        setSttPreviewWithExpiry(partialText);
-        scheduleAndroidHandsFreePartialTranscript(partialText);
+        const mergedText = mergeAndroidHandsFreePendingTranscript(partialText);
+        setSttPreviewWithExpiry(mergedText);
+        scheduleAndroidHandsFreePartialTranscript(mergedText);
         return;
       }
 
@@ -3204,8 +3181,9 @@ export default function ChatScreen({ route, navigation }: any) {
           });
           return;
         }
-        setSttPreviewWithExpiry(finalText);
-        handleAndroidHandsFreeFinalResult(finalText);
+        const mergedText = mergeAndroidHandsFreePendingTranscript(finalText);
+        setSttPreviewWithExpiry(mergedText);
+        handleAndroidHandsFreeFinalResult(mergedText);
         return;
       }
 
@@ -3225,7 +3203,8 @@ export default function ChatScreen({ route, navigation }: any) {
         clearAndroidHandsFreePartialTimer();
         scheduleAndroidHandsFreePartialTranscript(
           androidHandsFreePendingPartialRef.current,
-          Math.min(300, handsFreeMessageDebounceMs),
+          handsFreeMessageDebounceMs,
+          { resetExisting: true },
         );
         return;
       }
@@ -3262,6 +3241,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handleHandsFreeTtsBargeInCommand,
     handleRecognizerError,
     isHandsFreeTranscriptSuppressedNow,
+    mergeAndroidHandsFreePendingTranscript,
     playHandsFreeCue,
     playHandsFreeSessionReadyCue,
     scheduleAndroidHandsFreePartialTranscript,
