@@ -45,11 +45,28 @@ class HandsFreeVoiceService : Service() {
   private var ttsSpeaking = false
   private var consecutiveRecognizerErrors = 0
   private var activeTtsAudioPlayback: TtsAudioPlayback? = null
+  private var transcriptDebounceMs = DEFAULT_TRANSCRIPT_DEBOUNCE_MS
+  private var pendingDebouncedResultText: String? = null
+  private var pendingDebouncedResultCallback: String? = null
   private val activeCuePlayers = mutableListOf<CuePlayback>()
 
   private val restartRunnable = Runnable {
     if (captureEnabled && (activeTtsUtteranceId == null || activeTtsAllowBargeIn)) {
       startListening()
+    }
+  }
+
+  private val debouncedResultRunnable = Runnable {
+    val text = pendingDebouncedResultText?.takeIf { it.isNotBlank() } ?: return@Runnable
+    val callback = pendingDebouncedResultCallback ?: "native-debounce"
+    pendingDebouncedResultText = null
+    pendingDebouncedResultCallback = null
+    Log.i(TAG, "transcript debounce elapsed textLength=${text.length} debounceMs=$transcriptDebounceMs callback=$callback")
+    HandsFreeVoiceEvents.emit("debounced-result") {
+      it.putString("text", text)
+      it.putBoolean("isFinal", true)
+      it.putString("callback", callback)
+      it.putInt("debounceMs", transcriptDebounceMs.toInt())
     }
   }
 
@@ -114,7 +131,11 @@ class HandsFreeVoiceService : Service() {
       else -> {
         language = intent?.getStringExtra(EXTRA_LANGUAGE)?.takeIf { it.isNotBlank() } ?: DEFAULT_LANGUAGE
         captureEnabled = intent?.getBooleanExtra(EXTRA_LISTENING_ENABLED, true) ?: true
-        Log.i(TAG, "service start action language=$language captureEnabled=$captureEnabled")
+        transcriptDebounceMs = intent
+          ?.getLongExtra(EXTRA_TRANSCRIPT_DEBOUNCE_MS, DEFAULT_TRANSCRIPT_DEBOUNCE_MS)
+          ?.coerceAtLeast(0L)
+          ?: DEFAULT_TRANSCRIPT_DEBOUNCE_MS
+        Log.i(TAG, "service start action language=$language captureEnabled=$captureEnabled transcriptDebounceMs=$transcriptDebounceMs")
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
           HandsFreeVoiceEvents.emit("error") {
             it.putString("message", "permission-denied")
@@ -142,6 +163,7 @@ class HandsFreeVoiceService : Service() {
   override fun onDestroy() {
     captureEnabled = false
     mainHandler.removeCallbacks(restartRunnable)
+    cancelDebouncedResult()
     stopListening(suppressEvent = true)
     stopTtsOnMain(emitStopped = false)
     shutdownTextToSpeech()
@@ -176,6 +198,7 @@ class HandsFreeVoiceService : Service() {
       if (captureEnabled && (activeTtsUtteranceId == null || activeTtsAllowBargeIn)) {
         startListening()
       } else {
+        cancelDebouncedResult()
         mainHandler.removeCallbacks(restartRunnable)
         stopListening()
         HandsFreeAudioRouter.release(this@HandsFreeVoiceService, CAPTURE_ROUTE_REQUESTER)
@@ -983,11 +1006,26 @@ class HandsFreeVoiceService : Service() {
       return
     }
 
+    scheduleDebouncedResult(text, callback)
     HandsFreeVoiceEvents.emit(if (isFinal) "result" else "partial-result") {
       it.putString("text", text)
       it.putBoolean("isFinal", isFinal)
       it.putString("callback", callback)
     }
+  }
+
+  private fun scheduleDebouncedResult(text: String, callback: String) {
+    pendingDebouncedResultText = text
+    pendingDebouncedResultCallback = callback
+    mainHandler.removeCallbacks(debouncedResultRunnable)
+    Log.i(TAG, "transcript debounce scheduled textLength=${text.length} debounceMs=$transcriptDebounceMs callback=$callback")
+    mainHandler.postDelayed(debouncedResultRunnable, transcriptDebounceMs)
+  }
+
+  private fun cancelDebouncedResult() {
+    pendingDebouncedResultText = null
+    pendingDebouncedResultCallback = null
+    mainHandler.removeCallbacks(debouncedResultRunnable)
   }
 
   private fun normalizeRecognizerText(text: String?): String? {
@@ -1259,8 +1297,10 @@ class HandsFreeVoiceService : Service() {
     private const val ACTION_SET_LISTENING = "com.aj47.dotagents.handsfree.SET_LISTENING"
     private const val EXTRA_LANGUAGE = "language"
     private const val EXTRA_LISTENING_ENABLED = "listeningEnabled"
+    private const val EXTRA_TRANSCRIPT_DEBOUNCE_MS = "transcriptDebounceMs"
     private const val DEFAULT_LANGUAGE = "en-US"
     private const val TAG = "DotAgentsHandsFree"
+    private const val DEFAULT_TRANSCRIPT_DEBOUNCE_MS = 1500L
     private const val SEGMENT_COMPLETE_SILENCE_MS = 1800
     private const val SEGMENT_POSSIBLY_COMPLETE_SILENCE_MS = 1200
     private const val SEGMENT_SESSION_TIMEOUT_MS = 30000
@@ -1282,11 +1322,17 @@ class HandsFreeVoiceService : Service() {
     @Volatile
     private var activeService: HandsFreeVoiceService? = null
 
-    fun createStartIntent(context: Context, language: String, listeningEnabled: Boolean): Intent {
+    fun createStartIntent(
+      context: Context,
+      language: String,
+      listeningEnabled: Boolean,
+      transcriptDebounceMs: Long,
+    ): Intent {
       return Intent(context, HandsFreeVoiceService::class.java).apply {
         action = ACTION_START
         putExtra(EXTRA_LANGUAGE, language)
         putExtra(EXTRA_LISTENING_ENABLED, listeningEnabled)
+        putExtra(EXTRA_TRANSCRIPT_DEBOUNCE_MS, transcriptDebounceMs.coerceAtLeast(0L))
       }
     }
 

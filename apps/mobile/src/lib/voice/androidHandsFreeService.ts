@@ -11,6 +11,7 @@ export type AndroidHandsFreeVoiceEvent =
   | { type: 'speech-ended' }
   | { type: 'partial-result'; text?: string; isFinal?: false }
   | { type: 'result'; text?: string; isFinal?: true }
+  | { type: 'debounced-result'; text?: string; isFinal?: true; debounceMs?: number }
   | { type: 'tts-loading'; utteranceId?: string; textLength?: number }
   | { type: 'tts-started'; utteranceId?: string; textLength?: number }
   | { type: 'tts-done'; utteranceId?: string }
@@ -35,7 +36,7 @@ export type AndroidHandsFreeAudioRoute = {
 };
 
 type AndroidHandsFreeVoiceModule = {
-  start(options?: { language?: string; listeningEnabled?: boolean }): Promise<void>;
+  start(options?: { language?: string; listeningEnabled?: boolean; debounceMs?: number }): Promise<void>;
   stop(): Promise<void>;
   setListeningEnabled(enabled: boolean): Promise<boolean>;
   isRunning(): Promise<boolean>;
@@ -78,6 +79,7 @@ export function isAndroidHandsFreeServiceAvailable(): boolean {
 export async function startAndroidHandsFreeService(options?: {
   language?: string;
   listeningEnabled?: boolean;
+  debounceMs?: number;
 }): Promise<void> {
   if (!nativeModule) return;
   await ensureAndroidHandsFreePermissions();

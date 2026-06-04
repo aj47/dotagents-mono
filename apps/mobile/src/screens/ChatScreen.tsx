@@ -2837,13 +2837,18 @@ export default function ChatScreen({ route, navigation }: any) {
     clearAndroidHandsFreePartialTimer();
     const debounceMs = Math.max(0, delayMs);
     setAndroidHandsFreeDebounceEndsAt(Date.now() + debounceMs);
-    const captureGeneration = androidHandsFreeCaptureGenerationRef.current;
-    voiceLog('finalization-scheduled', 'Android handsfree transcript debounce scheduled.', {
+    voiceLog('finalization-scheduled', androidServiceHandlesHandsFreeMic
+      ? 'Android handsfree native transcript debounce scheduled.'
+      : 'Android handsfree transcript debounce scheduled.', {
       source: 'native',
       debounceMs,
       text: finalText,
       textLength: finalText.length,
     });
+    if (androidServiceHandlesHandsFreeMic) {
+      return true;
+    }
+    const captureGeneration = androidHandsFreeCaptureGenerationRef.current;
     androidHandsFreePartialTimerRef.current = setTimeout(() => {
       androidHandsFreePartialTimerRef.current = null;
       setAndroidHandsFreeDebounceEndsAt(null);
@@ -2863,6 +2868,7 @@ export default function ChatScreen({ route, navigation }: any) {
     flushAndroidHandsFreePartialTranscript,
     handsFreeMessageDebounceMs,
     handleHandsFreeTtsBargeInCommand,
+    androidServiceHandlesHandsFreeMic,
     isHandsFreeFinalizationEligibleNow,
     isHandsFreeTranscriptSuppressedNow,
     isRecentAndroidHandsFreeDuplicate,
@@ -3059,6 +3065,7 @@ export default function ChatScreen({ route, navigation }: any) {
     void startAndroidHandsFreeService({
       language: 'en-US',
       listeningEnabled: androidHandsFreeServiceListeningEnabledRef.current,
+      debounceMs: handsFreeMessageDebounceMs,
     }).then(() => {
       if (!cancelled) {
         setDebugInfo('Locked-screen handsfree is ready.');
@@ -3078,7 +3085,7 @@ export default function ChatScreen({ route, navigation }: any) {
         });
       });
     };
-  }, [playHandsFreeSessionReadyCue, shouldRunAndroidHandsFreeService, voiceLog]);
+  }, [handsFreeMessageDebounceMs, playHandsFreeSessionReadyCue, shouldRunAndroidHandsFreeService, voiceLog]);
 
   useEffect(() => {
     if (!shouldRunAndroidHandsFreeService) {
@@ -3194,6 +3201,16 @@ export default function ChatScreen({ route, navigation }: any) {
         return;
       }
 
+      if (event.type === 'debounced-result' && event.text) {
+        const finalText = normalizeVoiceText(event.text);
+        if (!finalText) {
+          return;
+        }
+        setSttPreviewWithExpiry(finalText);
+        flushAndroidHandsFreePartialTranscript(finalText);
+        return;
+      }
+
       if (event.type === 'speech-ended' && androidHandsFreePendingPartialRef.current) {
         if (isHandsFreeTranscriptSuppressedNow()) {
           const pendingText = androidHandsFreePendingPartialRef.current;
@@ -3250,6 +3267,7 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [
     androidBackgroundHandsFree,
     clearAndroidHandsFreePartialTimer,
+    flushAndroidHandsFreePartialTranscript,
     handsFreeMessageDebounceMs,
     handleAndroidHandsFreeFinalResult,
     handleHandsFreeTtsBargeInCommand,

@@ -35,15 +35,18 @@ class HandsFreeVoiceModule(
     } else {
       true
     }
+    val transcriptDebounceMs = readDouble(options, "debounceMs", 1500.0)
+      .toLong()
+      .coerceAtLeast(0L)
 
     try {
-      Log.i(tag, "module start requested language=$language listeningEnabled=$listeningEnabled isRunning=${HandsFreeVoiceService.isRunning()}")
-      val intent = HandsFreeVoiceService.createStartIntent(reactContext, language, listeningEnabled)
+      Log.i(tag, "module start requested language=$language listeningEnabled=$listeningEnabled transcriptDebounceMs=$transcriptDebounceMs isRunning=${HandsFreeVoiceService.isRunning()}")
+      val intent = HandsFreeVoiceService.createStartIntent(reactContext, language, listeningEnabled, transcriptDebounceMs)
       ContextCompat.startForegroundService(reactContext, intent)
       Log.i(tag, "module start dispatched")
       promise.resolve(null)
     } catch (error: Throwable) {
-      Log.e(tag, "module start failed language=$language listeningEnabled=$listeningEnabled", error)
+      Log.e(tag, "module start failed language=$language listeningEnabled=$listeningEnabled transcriptDebounceMs=$transcriptDebounceMs", error)
       promise.reject("handsfree_start_failed", error.message, error)
     }
   }
