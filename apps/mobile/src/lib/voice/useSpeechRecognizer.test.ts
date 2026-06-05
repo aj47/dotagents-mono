@@ -286,6 +286,55 @@ describe('useSpeechRecognizer', () => {
     });
   });
 
+  it('keeps desktop provider recording active across rerenders before release', async () => {
+    const runtime = createHookRuntime();
+    const audioRecorder = new FakeAudioRecorder();
+    const transcribeRemoteSttRecording = vi.fn(async () => ({
+      text: 'rerender transcript',
+      provider: 'openai',
+      model: 'whisper-1',
+    }));
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime, {
+      platform: 'android',
+      audioRecorder,
+      transcribeRemoteSttRecording,
+    });
+    const onVoiceFinalized = vi.fn();
+    const props = {
+      handsFree: false,
+      willCancel: false,
+      desktopStt: {
+        enabled: true,
+        baseUrl: 'https://desktop.example/v1',
+        apiKey: 'test-key',
+      },
+      onVoiceFinalized,
+    };
+    const recognizer = runtime.render(useSpeechRecognizer, props);
+    runtime.commitEffects();
+
+    await recognizer.startRecording({} as any);
+    expect(audioRecorder.record).toHaveBeenCalled();
+
+    const rerendered = runtime.render(useSpeechRecognizer, props);
+    runtime.commitEffects();
+    expect(audioRecorder.stop).not.toHaveBeenCalled();
+
+    await rerendered.stopRecordingAndHandle();
+    expect(audioRecorder.stop).toHaveBeenCalledTimes(1);
+    expect(transcribeRemoteSttRecording).toHaveBeenCalledWith({
+      baseUrl: 'https://desktop.example/v1',
+      apiKey: 'test-key',
+      uri: 'file:///tmp/mobile-recording.m4a',
+      durationMs: expect.any(Number),
+    });
+    expect(onVoiceFinalized).toHaveBeenCalledWith({
+      text: 'rerender transcript',
+      mode: 'send',
+      source: 'native',
+    });
+  });
+
   it('waits for push-to-talk release before finalizing if the recognizer ends mid-hold', async () => {
     vi.useFakeTimers();
     let now = 1_000;

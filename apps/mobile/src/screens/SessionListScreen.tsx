@@ -2,6 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions, Modal, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EventEmitter } from 'expo-modules-core';
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ui/ThemeProvider';
 import { spacing, radius, Theme } from '../ui/theme';
@@ -19,6 +25,7 @@ import {
   mergeVoiceText as mergeRecognizedVoiceText,
   normalizeVoiceText as normalizeRecognizedVoiceText,
 } from '../lib/voice/mergeVoiceText';
+import { logRemoteSttFailure, transcribeRemoteSttRecording } from '../lib/remoteStt';
 import { filterSessionSearchResults, type SessionSearchResult } from './session-list-search';
 
 const darkSpinner = require('../../assets/loading-spinner.gif');
@@ -72,6 +79,8 @@ export default function SessionListScreen({ navigation, route }: Props) {
   const [operatorSessions, setOperatorSessions] = useState<OperatorSessionSummary[]>([]);
   const [stoppingSessionIds, setStoppingSessionIds] = useState<Set<string>>(() => new Set());
   const [sessionListNow, setSessionListNow] = useState(Date.now());
+  const rfDesktopSttRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const rfUseDesktopStt = config.mobileSttProvider === 'desktop' && !!config.baseUrl && !!config.apiKey;
 
   // ── Rapid Fire voice state ─────────────────────────────────────────────────
   const [rfListening, setRfListening] = useState(false);
@@ -93,6 +102,8 @@ export default function SessionListScreen({ navigation, route }: Props) {
   const rfPressInSeenRef = useRef(false);
   const rfStopAndFireRef = useRef<(() => Promise<void>) | null>(null);
   const rfInFlightSessionIdsRef = useRef<Set<string>>(new Set());
+  const rfDesktopRecordingRef = useRef(false);
+  const rfDesktopStartedAtRef = useRef<number | null>(null);
   const rfMinHoldMs = 200;
   const sessionStoreRef = useRef<SessionStore | null>(null);
   const rfStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -306,6 +317,80 @@ export default function SessionListScreen({ navigation, route }: Props) {
     }, clearAfterMs);
   }, []);
 
+  const rfStartDesktopRecording = useCallback(async () => {
+    if (!rfUseDesktopStt) return false;
+
+    try {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission?.granted) {
+        rfSetListening(false);
+        rfStartingRef.current = false;
+        rfSetTransientStatus('permissionDenied', 4000);
+        Alert.alert(
+          'Microphone Permission Required',
+          'Rapid Fire needs microphone permission. Enable it in system settings and try again.',
+          [{ text: 'OK' }],
+        );
+        return true;
+      }
+
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        shouldPlayInBackground: false,
+        interruptionMode: 'doNotMix',
+      });
+      await rfDesktopSttRecorder.prepareToRecordAsync();
+      rfDesktopSttRecorder.record();
+      rfDesktopRecordingRef.current = true;
+      rfDesktopStartedAtRef.current = Date.now();
+      rfLog('desktop:start', { provider: 'desktop', baseUrl: config.baseUrl });
+      return true;
+    } catch (err) {
+      rfDesktopRecordingRef.current = false;
+      rfDesktopStartedAtRef.current = null;
+      rfSetListening(false);
+      rfSetTransientStatus('error');
+      rfLog('desktop:start:error', { error: (err as any)?.message || String(err) });
+      return true;
+    }
+  }, [config.baseUrl, rfDesktopSttRecorder, rfLog, rfSetListening, rfSetTransientStatus, rfUseDesktopStt]);
+
+  const rfStopDesktopRecordingAndTranscribe = useCallback(async () => {
+    if (!rfDesktopRecordingRef.current) return '';
+
+    const startedAt = rfDesktopStartedAtRef.current;
+    const durationMs = startedAt ? Date.now() - startedAt : undefined;
+    rfDesktopRecordingRef.current = false;
+    rfDesktopStartedAtRef.current = null;
+    rfLog('desktop:stop', { durationMs });
+
+    try {
+      await rfDesktopSttRecorder.stop();
+    } finally {
+      void setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+    }
+
+    const uri = rfDesktopSttRecorder.getStatus().url;
+    if (!uri) {
+      throw new Error('Desktop speech-to-text recording did not produce an audio file.');
+    }
+
+    rfLog('desktop:transcribe:start', { uri, durationMs });
+    const result = await transcribeRemoteSttRecording({
+      baseUrl: config.baseUrl || '',
+      apiKey: config.apiKey || '',
+      uri,
+      durationMs,
+    });
+    rfLog('desktop:transcribe:done', {
+      provider: result.provider,
+      model: result.model,
+      textLength: result.text?.length ?? 0,
+    });
+    return normalizeVoiceText(result.text || '');
+  }, [config.apiKey, config.baseUrl, normalizeVoiceText, rfDesktopSttRecorder, rfLog]);
+
   // On web, capture raw DOM release events in case RN Pressable misses onPressOut on long-press.
   useEffect(() => {
     if (Platform.OS !== 'web' || !rfButtonRef.current) return;
@@ -405,6 +490,11 @@ export default function SessionListScreen({ navigation, route }: Props) {
     rfGrantTimeRef.current = Date.now();
     rfSetListening(true);
     try {
+      if (await rfStartDesktopRecording()) {
+        rfStartingRef.current = false;
+        return;
+      }
+
       if (Platform.OS !== 'web') {
         const SR: any = await import('expo-speech-recognition');
         if (SR?.ExpoSpeechRecognitionModule?.start) {
@@ -530,7 +620,7 @@ export default function SessionListScreen({ navigation, route }: Props) {
     }
     rfSetListening(false);
     rfStartingRef.current = false;
-  }, [mergeVoiceText, normalizeVoiceText, rfCleanupSubs, rfLog, rfSetListening, rfSetTransientStatus]);
+  }, [mergeVoiceText, normalizeVoiceText, rfCleanupSubs, rfLog, rfSetListening, rfSetTransientStatus, rfStartDesktopRecording]);
 
   const rfStopAndFire = useCallback(async () => {
     rfLog('stopAndFire called', {
@@ -543,20 +633,37 @@ export default function SessionListScreen({ navigation, route }: Props) {
     rfStoppingRef.current = true;
     rfUserReleasedRef.current = true;
     rfPressInSeenRef.current = false;
+    setRfStatus('sending');
+    let finalText = '';
+
     try {
-      if (Platform.OS !== 'web') {
-        const SR: any = await import('expo-speech-recognition');
-        if (SR?.ExpoSpeechRecognitionModule?.stop) SR.ExpoSpeechRecognitionModule.stop();
+      if (rfDesktopRecordingRef.current) {
+        finalText = await rfStopDesktopRecordingAndTranscribe();
+      } else {
+        try {
+          if (Platform.OS !== 'web') {
+            const SR: any = await import('expo-speech-recognition');
+            if (SR?.ExpoSpeechRecognitionModule?.stop) SR.ExpoSpeechRecognitionModule.stop();
+          }
+          if (Platform.OS === 'web' && rfWebRecRef.current) {
+            try { rfWebRecRef.current.stop(); } catch {}
+            rfWebRecRef.current = null;
+          }
+        } catch {}
+        finalText = mergeVoiceText(rfFinalRef.current, rfLiveRef.current).trim();
       }
-      if (Platform.OS === 'web' && rfWebRecRef.current) {
-        try { rfWebRecRef.current.stop(); } catch {}
-        rfWebRecRef.current = null;
-      }
-    } catch {}
+    } catch (err) {
+      logRemoteSttFailure(err);
+      rfLog('desktop:transcribe:error', { error: (err as any)?.message || String(err) });
+      rfCleanupSubs();
+      rfSetListening(false);
+      rfSetTransientStatus('error');
+      rfStoppingRef.current = false;
+      return;
+    }
+
     rfCleanupSubs();
     rfSetListening(false);
-    setRfStatus('sending');
-    const finalText = mergeVoiceText(rfFinalRef.current, rfLiveRef.current).trim();
     rfFinalRef.current = '';
     rfLiveRef.current = '';
     setRfTranscript('');
@@ -590,13 +697,19 @@ export default function SessionListScreen({ navigation, route }: Props) {
       rfSetTransientStatus('empty');
     }
     rfStoppingRef.current = false;
-  }, [mergeVoiceText, rfCleanupSubs, rfLog, rfRunBackgroundSend, rfSetListening, rfSetTransientStatus]);
+  }, [mergeVoiceText, rfCleanupSubs, rfLog, rfRunBackgroundSend, rfSetListening, rfSetTransientStatus, rfStopDesktopRecordingAndTranscribe]);
 
   rfStopAndFireRef.current = rfStopAndFire;
   // ── end Rapid Fire ─────────────────────────────────────────────────────────
 
   useLayoutEffect(() => {
     return () => {
+      if (rfDesktopRecordingRef.current) {
+        rfDesktopRecordingRef.current = false;
+        rfDesktopStartedAtRef.current = null;
+        void rfDesktopSttRecorder.stop().catch(() => {});
+        void setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+      }
       rfCleanupSubs();
       if (rfWebRecRef.current) {
         try { rfWebRecRef.current.stop(); } catch {}

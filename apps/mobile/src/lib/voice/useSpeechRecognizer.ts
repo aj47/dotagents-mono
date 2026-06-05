@@ -142,6 +142,9 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const lastGrantTimeRef = useRef(0);
   const micButtonRef = useRef<View>(null);
   const stopRecordingAndHandleRef = useRef<(() => Promise<void>) | null>(null);
+  const stopDesktopSttRecordingRef = useRef<((options?: { finalize?: boolean }) => Promise<boolean>) | null>(null);
+  const cleanupNativeSubsRef = useRef<(() => void) | null>(null);
+  const clearHandsFreeDebounceRef = useRef<(() => void) | null>(null);
   const nativeSRUnavailableShownRef = useRef(false);
   const srEmitterRef = useRef<any>(null);
   const srSubsRef = useRef<any[]>([]);
@@ -192,6 +195,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     srSubsRef.current.forEach((sub) => sub?.remove?.());
     srSubsRef.current = [];
   }, []);
+  cleanupNativeSubsRef.current = cleanupNativeSubs;
 
   const clearHandsFreeDebounce = useCallback(() => {
     if (handsFreeDebounceRef.current) {
@@ -200,6 +204,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
     setHandsFreeDebounceEndsAt(null);
   }, []);
+  clearHandsFreeDebounceRef.current = clearHandsFreeDebounce;
 
   const invalidateHandsFreeCapture = useCallback((reason?: string) => {
     const hadPending = !!handsFreeDebounceRef.current || !!pendingHandsFreeFinalRef.current;
@@ -406,6 +411,11 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     const durationMs = startedAt ? Date.now() - startedAt : undefined;
     desktopSttRecordingRef.current = false;
     desktopSttStartedAtRef.current = null;
+    log?.('recognizer-stop', 'Desktop provider speech-to-text recording stopping.', {
+      source: getRecognitionSource(),
+      finalize: shouldFinalize,
+      durationMs,
+    });
 
     try {
       await desktopSttRecorder.stop();
@@ -476,6 +486,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     setListeningValue,
     setLiveTranscriptValue,
   ]);
+  stopDesktopSttRecordingRef.current = stopDesktopSttRecording;
 
   const stopRecognitionOnly = useCallback(async (options?: { preservePendingHandsFreeFinal?: boolean }) => {
     const pendingHandsFreeFinal = normalizeVoiceText(pendingHandsFreeFinalRef.current);
@@ -1564,13 +1575,13 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   }, [handsFree]);
 
   useEffect(() => () => {
-    void stopDesktopSttRecording({ finalize: false });
-    cleanupNativeSubs();
-    clearHandsFreeDebounce();
+    void stopDesktopSttRecordingRef.current?.({ finalize: false });
+    cleanupNativeSubsRef.current?.();
+    clearHandsFreeDebounceRef.current?.();
     if (sttPreviewTimeoutRef.current) {
       clearTimeout(sttPreviewTimeoutRef.current);
     }
-  }, [cleanupNativeSubs, clearHandsFreeDebounce, stopDesktopSttRecording]);
+  }, []);
 
   return {
     listening,
