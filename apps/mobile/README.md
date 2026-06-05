@@ -72,16 +72,16 @@ For the desktop flow, enable **Settings > Remote Server** in DotAgents desktop a
   - Release to send; or release while in "edit" state to place the transcript into the text box for editing
 - Hands‑free mode:
   - Toggle from the Chat screen header (microphone icon)
-  - If the chip says Sleeping, tap **Wake** or say the configured wake phrase (default: `hey dot agents`)
+  - If the chip says Sleeping, tap **Wake** or say the configured wake phrase (default: `hey agents`)
   - Speak after the listening cue; the app auto-sends after the configured silence window
   - Say the sleep phrase (default: `go to sleep`) to return to sleep
   - While the assistant is speaking, say `wait` or `stop` to interrupt TTS and return to listening
-  - On Android, turn **Foreground Only** off in Settings before locking the phone to keep the microphone service and TTS active in the background
+  - On Android, a visible microphone service keeps capture and TTS active after the app is backgrounded or locked
   - Short audio cues announce state when the screen is not visible: rising tones for listening, double tones for processing, falling tones for stopped/sleeping, and low repeated tones for errors
 - Assistant replies can be read aloud via text‑to‑speech
 
 Notes:
-- On native devices, the app uses expo-speech-recognition; on web, it falls back to the browser’s Web Speech API when available
+- On native devices, the app uses platform speech recognition; on web, it falls back to the browser’s Web Speech API when available
 - Permissions for microphone and speech recognition are requested at runtime (see app.json for iOS `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`; Android uses `RECORD_AUDIO`)
 
 ## Android hands-free harness

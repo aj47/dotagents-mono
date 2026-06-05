@@ -61,7 +61,6 @@ type AndroidHandsFreeVoiceModule = {
   }): Promise<string | null>;
   playCue(options: { cueId: string; filePath: string }): Promise<boolean>;
   getAudioRoute(): Promise<AndroidHandsFreeAudioRoute>;
-  setAudioRoutingEnabled(enabled: boolean, reason?: string): Promise<AndroidHandsFreeAudioRoute>;
 };
 
 const EVENT_NAME = 'DotAgentsHandsFreeVoiceEvent';
@@ -147,14 +146,6 @@ export async function playAndroidHandsFreeCue(options: {
 export async function getAndroidHandsFreeAudioRoute(): Promise<AndroidHandsFreeAudioRoute | null> {
   if (!nativeModule) return null;
   return nativeModule.getAudioRoute();
-}
-
-export async function setAndroidHandsFreeAudioRoutingEnabled(
-  enabled: boolean,
-  reason = 'foreground',
-): Promise<AndroidHandsFreeAudioRoute | null> {
-  if (!nativeModule) return null;
-  return nativeModule.setAudioRoutingEnabled(enabled, reason);
 }
 
 export function subscribeAndroidHandsFreeVoiceEvents(

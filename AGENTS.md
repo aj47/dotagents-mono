@@ -7,6 +7,7 @@ Concise gotchas for AI coding agents working in this repo.
 - **Use `pnpm` only.** This repo uses `pnpm-lock.yaml`; do not use npm or yarn.
 - **If you change `packages/shared`, run `pnpm build:shared` before `pnpm dev`.**
 - **Prefer existing patterns over new abstractions.** This codebase has a lot of app-specific wiring.
+- **This is a greenfield project.** Do not preserve backwards compatibility unless explicitly requested.
 - **Avoid circular imports.** Check dependency direction before adding imports, especially around main-process services and tool code.
 
 ## Imports and process boundaries

@@ -9,7 +9,6 @@ import { EventEmitter } from 'expo-modules-core';
 import { DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS } from '../../store/config';
 import type { VoiceDebugLog } from './voiceDebug';
 import { mergeVoiceText, normalizeVoiceText } from './mergeVoiceText';
-import { setAndroidHandsFreeAudioRoutingEnabled } from './androidHandsFreeService';
 
 export type VoiceFinalizationMode = 'edit' | 'send' | 'handsfree';
 
@@ -124,7 +123,6 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const sttPreviewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startingRef = useRef(false);
   const stoppingRef = useRef(false);
-  const foregroundAndroidRoutingRequestedRef = useRef(false);
   const userReleasedButtonRef = useRef(false);
   const webPressInSeenRef = useRef(false);
   const lastGrantTimeRef = useRef(0);
@@ -232,39 +230,6 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       textLength: normalizedText.length,
     });
   }, [clearHandsFreeDebounce, log, setLiveTranscriptValue, setSttPreviewWithExpiry]);
-
-  const setForegroundAndroidHandsFreeAudioRouting = useCallback(async (enabled: boolean) => {
-    if (Platform.OS !== 'android') {
-      return;
-    }
-    if (enabled && !handsFree) {
-      return;
-    }
-    if (!enabled && !foregroundAndroidRoutingRequestedRef.current) {
-      return;
-    }
-
-    try {
-      const route = await setAndroidHandsFreeAudioRoutingEnabled(enabled, 'foreground');
-      foregroundAndroidRoutingRequestedRef.current = enabled;
-      log?.('runtime-state', 'Android handsfree audio routing updated.', {
-        enabled,
-        hasHeadset: route?.hasHeadset,
-        mode: route?.mode,
-        route: route?.route,
-        communicationDevice: route?.communicationDevice,
-        routingRequested: route?.routingRequested,
-        routingActive: route?.routingActive,
-        routeApplied: route?.routeApplied,
-        requesters: route?.requesters,
-      });
-    } catch (error) {
-      log?.('recognizer-error', 'Android handsfree audio routing update failed.', {
-        enabled,
-        message: (error as any)?.message || String(error),
-      });
-    }
-  }, [handsFree, log]);
 
   const emitFinalized = useCallback((text: string, source: 'native' | 'web') => {
     if (!enabledRef.current) {
@@ -390,7 +355,6 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
         } catch {}
       }
     } finally {
-      await setForegroundAndroidHandsFreeAudioRouting(false);
       if (Platform.OS !== 'web') {
         cleanupNativeSubs();
       }
@@ -405,7 +369,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       webPressInSeenRef.current = false;
       log?.('recognizer-stop', 'Speech recognizer stopped.');
     }
-  }, [cleanupNativeSubs, clearHandsFreeDebounce, handsFree, isHandsFreeTranscriptSuppressed, log, setForegroundAndroidHandsFreeAudioRouting, setListeningValue, setLiveTranscriptValue]);
+  }, [cleanupNativeSubs, clearHandsFreeDebounce, handsFree, isHandsFreeTranscriptSuppressed, log, setListeningValue, setLiveTranscriptValue]);
 
   useEffect(() => {
     if (enabled || !listeningRef.current) {
@@ -686,7 +650,6 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
         return false;
       }
 
-      await setForegroundAndroidHandsFreeAudioRouting(true);
       SR.ExpoSpeechRecognitionModule.start(createNativeSpeechStartOptions(SR, {
         continuous: true,
         volumeChangeEvents: true,
@@ -702,7 +665,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       });
       return false;
     }
-  }, [log, setForegroundAndroidHandsFreeAudioRouting]);
+  }, [log]);
 
   const bindWebRecognizerHandlers = useCallback((rec: any) => {
     rec.onstart = () => {
@@ -1198,7 +1161,6 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
               }
             } catch {}
 
-            await setForegroundAndroidHandsFreeAudioRouting(true);
             SR.ExpoSpeechRecognitionModule.start(createNativeSpeechStartOptions(SR, {
               continuous: true,
               volumeChangeEvents: handsFree,
@@ -1289,7 +1251,6 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     onRecognizerError,
     restartNativeHandsFreeRecognition,
     scheduleHandsFreeFinalization,
-    setForegroundAndroidHandsFreeAudioRouting,
     setListeningValue,
     setLiveTranscriptValue,
     setSttPreviewWithExpiry,
@@ -1332,12 +1293,11 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
         }
       }
     } finally {
-      await setForegroundAndroidHandsFreeAudioRouting(false);
       webPressInSeenRef.current = false;
       stoppingRef.current = false;
       log?.('recognizer-stop', 'Speech recognizer stopped.');
     }
-  }, [flushPendingPushToTalkFinalization, handsFree, log, setForegroundAndroidHandsFreeAudioRouting, setListeningValue]);
+  }, [flushPendingPushToTalkFinalization, handsFree, log, setListeningValue]);
 
   stopRecordingAndHandleRef.current = stopRecordingAndHandle;
 
@@ -1435,11 +1395,10 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   useEffect(() => () => {
     cleanupNativeSubs();
     clearHandsFreeDebounce();
-    void setForegroundAndroidHandsFreeAudioRouting(false);
     if (sttPreviewTimeoutRef.current) {
       clearTimeout(sttPreviewTimeoutRef.current);
     }
-  }, [cleanupNativeSubs, clearHandsFreeDebounce, setForegroundAndroidHandsFreeAudioRouting]);
+  }, [cleanupNativeSubs, clearHandsFreeDebounce]);
 
   return {
     listening,

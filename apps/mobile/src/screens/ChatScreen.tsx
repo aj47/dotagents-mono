@@ -108,7 +108,6 @@ import {
   getAndroidHandsFreeAudioRoute,
   isAndroidHandsFreeServiceAvailable,
   playAndroidHandsFreeTtsAudio,
-  setAndroidHandsFreeAudioRoutingEnabled,
   setAndroidHandsFreeListeningEnabled,
   speakAndroidHandsFreeTts,
   startAndroidHandsFreeService,
@@ -1167,9 +1166,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const handsFreeSleepPhrase = config.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
   const handsFreeDebugEnabled = config.handsFreeDebug === true || isHandsFreeDebugForcedInDev();
   const androidHandsFreeServiceAvailable = Platform.OS === 'android' && isAndroidHandsFreeServiceAvailable();
-  const handsFreeForegroundOnly = config.handsFreeForegroundOnly !== false;
   const shouldRunAndroidHandsFreeService =
-    androidHandsFreeServiceAvailable && handsFree && !handsFreeForegroundOnly;
+    androidHandsFreeServiceAvailable && handsFree;
   const messageQueueEnabled = config.messageQueueEnabled !== false; // default true
   const handsFreeRef = useRef<boolean>(handsFree);
   useEffect(() => { handsFreeRef.current = !!config.handsFree; }, [config.handsFree]);
@@ -1217,8 +1215,8 @@ export default function ChatScreen({ route, navigation }: any) {
       : 0,
   );
   const foregroundHandsFreeRuntimeActive = Platform.OS === 'android' && androidHandsFreeServiceAvailable
-    ? stableHandsFreeForeground
-    : isAppActive && (!handsFreeForegroundOnly || isFocused);
+    ? shouldRunAndroidHandsFreeService
+    : isAppActive && isFocused;
   const androidBackgroundHandsFree =
     shouldRunAndroidHandsFreeService
     && !stableHandsFreeForeground;
@@ -1272,7 +1270,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const allowHandsFreeDirectSpeechWhileSleeping = false;
   const handsFreeRuntimeActive =
     handsFree
-    && (androidBackgroundHandsFree || foregroundHandsFreeRuntimeActive);
+    && (shouldRunAndroidHandsFreeService || foregroundHandsFreeRuntimeActive);
 
   const toggleHandsFree = async () => {
     const next = !handsFreeRef.current;
@@ -1704,10 +1702,8 @@ export default function ChatScreen({ route, navigation }: any) {
   const lastForegroundHandsFreeAutoStartAtRef = useRef(0);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
-	const sendRef = useRef<(text: string, options?: { fromComposer?: boolean; source?: 'handsfree' }) => Promise<void>>(async () => {});
+  const sendRef = useRef<(text: string, options?: { fromComposer?: boolean; source?: 'handsfree' }) => Promise<void>>(async () => {});
   const androidHandsFreePendingPartialRef = useRef('');
-  const androidHandsFreePartialTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const androidHandsFreeCaptureGenerationRef = useRef(0);
   const androidHandsFreeLastSentRef = useRef<{ text: string; timestamp: number } | null>(null);
   const handsFreeLastFinalizedRef = useRef<{ text: string; timestamp: number } | null>(null);
   const voicePreviewComposerTextRef = useRef('');
@@ -1785,49 +1781,6 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [clearVoiceDebug, handsFreeDebugEnabled]);
 
-  useEffect(() => {
-    if (Platform.OS !== 'android' || !androidHandsFreeServiceAvailable || !handsFree) {
-      return;
-    }
-
-    let released = false;
-    void setAndroidHandsFreeAudioRoutingEnabled(true, 'session').then((route) => {
-      voiceLog('runtime-state', 'Android handsfree session audio routing acquired.', {
-        hasHeadset: route?.hasHeadset,
-        mode: route?.mode,
-        communicationDevice: route?.communicationDevice,
-        routingRequested: route?.routingRequested,
-        routingActive: route?.routingActive,
-        requesters: route?.requesters,
-      });
-    }).catch((error) => {
-      voiceLog('recognizer-error', 'Android handsfree session audio routing acquire failed.', {
-        message: (error as any)?.message || String(error),
-      });
-    });
-
-    return () => {
-      if (released) {
-        return;
-      }
-      released = true;
-      void setAndroidHandsFreeAudioRoutingEnabled(false, 'session').then((route) => {
-        voiceLog('runtime-state', 'Android handsfree session audio routing released.', {
-          hasHeadset: route?.hasHeadset,
-          mode: route?.mode,
-          communicationDevice: route?.communicationDevice,
-          routingRequested: route?.routingRequested,
-          routingActive: route?.routingActive,
-          requesters: route?.requesters,
-        });
-      }).catch((error) => {
-        voiceLog('recognizer-error', 'Android handsfree session audio routing release failed.', {
-          message: (error as any)?.message || String(error),
-        });
-      });
-    };
-  }, [androidHandsFreeServiceAvailable, handsFree, voiceLog]);
-
   // Route hands-free audio cues through the Android foreground service while
   // background hands-free is configured, so beeps remain audible/consistent
   // when the app is backgrounded (matches issue #541 acceptance criteria).
@@ -1900,7 +1853,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return;
     }
     console.info(
-      `[DotAgentsHandsFreeJS] runtime active=${handsFreeRuntimeActive} appState=${appState} focused=${isFocused} stableForeground=${stableHandsFreeForeground} backgroundService=${androidBackgroundHandsFree} serviceMic=${androidServiceHandlesHandsFreeMic} foregroundOnly=${handsFreeForegroundOnly} directWhileSleeping=${allowHandsFreeDirectSpeechWhileSleeping}`,
+      `[DotAgentsHandsFreeJS] runtime active=${handsFreeRuntimeActive} appState=${appState} focused=${isFocused} stableForeground=${stableHandsFreeForeground} backgroundService=${androidBackgroundHandsFree} serviceMic=${androidServiceHandlesHandsFreeMic} directWhileSleeping=${allowHandsFreeDirectSpeechWhileSleeping}`,
     );
     voiceLog('runtime-state', 'Handsfree runtime evaluated.', {
       runtimeActive: handsFreeRuntimeActive,
@@ -1908,7 +1861,6 @@ export default function ChatScreen({ route, navigation }: any) {
       isAppActive,
       isFocused,
       stableForeground: stableHandsFreeForeground,
-      foregroundOnly: handsFreeForegroundOnly,
       androidBackgroundHandsFree,
       androidServiceHandlesHandsFreeMic,
       allowDirectSpeechWhileSleeping: allowHandsFreeDirectSpeechWhileSleeping,
@@ -1922,7 +1874,6 @@ export default function ChatScreen({ route, navigation }: any) {
     config.handsFreeDebug,
     handsFree,
     handsFreeDebugEnabled,
-    handsFreeForegroundOnly,
     handsFreeRuntimeActive,
     isAppActive,
     isFocused,
@@ -2356,12 +2307,7 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [sessionStore, settingsClient]);
 
   const clearAndroidHandsFreePartialTimer = useCallback(() => {
-    if (androidHandsFreePartialTimerRef.current) {
-      clearTimeout(androidHandsFreePartialTimerRef.current);
-      androidHandsFreePartialTimerRef.current = null;
-    }
     setAndroidHandsFreeDebounceEndsAt(null);
-    androidHandsFreeCaptureGenerationRef.current += 1;
   }, []);
 
   const handleHandsFreeTtsBargeInCommand = useCallback((text: string, source: 'native' | 'web') => {
@@ -2843,11 +2789,7 @@ export default function ChatScreen({ route, navigation }: any) {
       return false;
     }
 
-    if (
-      !options?.resetExisting
-      && androidHandsFreePendingPartialRef.current === finalText
-      && androidHandsFreePartialTimerRef.current
-    ) {
+    if (!options?.resetExisting && androidHandsFreePendingPartialRef.current === finalText) {
       return true;
     }
 
@@ -2855,38 +2797,17 @@ export default function ChatScreen({ route, navigation }: any) {
     clearAndroidHandsFreePartialTimer();
     const debounceMs = Math.max(0, delayMs);
     setAndroidHandsFreeDebounceEndsAt(Date.now() + debounceMs);
-    voiceLog('finalization-scheduled', androidServiceHandlesHandsFreeMic
-      ? 'Android handsfree native transcript debounce scheduled.'
-      : 'Android handsfree transcript debounce scheduled.', {
+    voiceLog('finalization-scheduled', 'Android handsfree native transcript debounce scheduled.', {
       source: 'native',
       debounceMs,
       text: finalText,
       textLength: finalText.length,
     });
-    if (androidServiceHandlesHandsFreeMic) {
-      return true;
-    }
-    const captureGeneration = androidHandsFreeCaptureGenerationRef.current;
-    androidHandsFreePartialTimerRef.current = setTimeout(() => {
-      androidHandsFreePartialTimerRef.current = null;
-      setAndroidHandsFreeDebounceEndsAt(null);
-      if (captureGeneration !== androidHandsFreeCaptureGenerationRef.current) {
-        voiceLog('transcript-ignored', 'Android handsfree transcript debounce ignored after capture generation changed.', {
-          source: 'native',
-          text: finalText,
-          textLength: finalText.length,
-        });
-        return;
-      }
-      flushAndroidHandsFreePartialTranscript(finalText);
-    }, debounceMs);
     return true;
   }, [
     clearAndroidHandsFreePartialTimer,
-    flushAndroidHandsFreePartialTranscript,
     handsFreeMessageDebounceMs,
     handleHandsFreeTtsBargeInCommand,
-    androidServiceHandlesHandsFreeMic,
     isHandsFreeFinalizationEligibleNow,
     isHandsFreeTranscriptSuppressedNow,
     isRecentAndroidHandsFreeDuplicate,
@@ -7937,8 +7858,8 @@ export default function ChatScreen({ route, navigation }: any) {
               <View style={styles.handsFreeGuideSection}>
                 <Text style={styles.handsFreeGuideSectionTitle}>Locked-screen use</Text>
                 <Text style={styles.handsFreeGuideText}>
-                  On Android, turn off Foreground Only in Settings before locking the phone. A visible
-                  microphone service keeps capture active, and TTS can keep playing while locked.
+                  On Android, a visible microphone service keeps capture active, and TTS can keep
+                  playing while locked.
                 </Text>
               </View>
             </ScrollView>

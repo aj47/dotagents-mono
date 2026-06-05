@@ -202,20 +202,6 @@ class HandsFreeVoiceModule(
   }
 
   @ReactMethod
-  fun setAudioRoutingEnabled(enabled: Boolean, reason: String?, promise: Promise) {
-    try {
-      val route = if (enabled) {
-        HandsFreeAudioRouter.acquire(reactContext, reason ?: "foreground")
-      } else {
-        HandsFreeAudioRouter.release(reactContext, reason ?: "foreground")
-      }
-      promise.resolve(bundleToWritableMap(route))
-    } catch (error: Throwable) {
-      promise.reject("handsfree_audio_route_update_failed", error.message, error)
-    }
-  }
-
-  @ReactMethod
   fun addListener(eventName: String) = Unit
 
   @ReactMethod

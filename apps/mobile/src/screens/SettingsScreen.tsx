@@ -3039,8 +3039,6 @@ export default function SettingsScreen({ navigation, route }: any) {
       </Text>
     </>
   );
-  const effectiveHandsFreeForegroundOnly = draft.handsFreeForegroundOnly !== false;
-
   return (
     <>
     <AppShellSettingsLayout
@@ -3249,7 +3247,7 @@ export default function SettingsScreen({ navigation, route }: any) {
         </View>
         <Text style={styles.helperText}>
           Use the Chat top-right voice menu for no-hands requests. Audio cues announce listening, processing, sleep, and error states.
-          Keep Foreground Only on for simple Chat-screen listening. Turn it off on Android to keep hands-free active after locking the phone.
+          On Android, a visible microphone service keeps hands-free active while the app is backgrounded or locked.
         </Text>
 
         <Text style={[styles.label, { marginTop: spacing.md }]}>Wake phrase</Text>
@@ -3302,23 +3300,6 @@ export default function SettingsScreen({ navigation, route }: any) {
             accessibilityLabel={createSwitchAccessibilityLabel('Debug Voice State')}
             trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
             thumbColor={draft.handsFreeDebug ? theme.colors.primaryForeground : theme.colors.background}
-          />
-        </View>
-
-        <View style={styles.row}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Foreground Only</Text>
-            <Text style={[styles.helperText, { marginTop: 2 }]}>Off on Android starts a visible microphone service from Chat before the app goes to the background.</Text>
-          </View>
-          <Switch
-            value={effectiveHandsFreeForegroundOnly}
-            onValueChange={(v) => updateLocalConfig({
-              handsFreeForegroundOnly: v,
-              handsFreeForegroundOnlyConfigured: true,
-            })}
-            accessibilityLabel={createSwitchAccessibilityLabel('Foreground Only')}
-            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-            thumbColor={effectiveHandsFreeForegroundOnly ? theme.colors.primaryForeground : theme.colors.background}
           />
         </View>
 

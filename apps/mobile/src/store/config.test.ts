@@ -8,6 +8,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 import {
+  type AppConfig,
   DEFAULT_APP_CONFIG,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   DEFAULT_HANDS_FREE_SLEEP_PHRASE,
@@ -29,31 +30,21 @@ describe('normalizeStoredConfig', () => {
     expect(normalized.handsFreeWakePhrase).toBe(DEFAULT_HANDS_FREE_WAKE_PHRASE);
     expect(normalized.handsFreeSleepPhrase).toBe(DEFAULT_HANDS_FREE_SLEEP_PHRASE);
     expect(normalized.handsFreeDebug).toBe(false);
-    expect(normalized.handsFreeForegroundOnly).toBe(true);
-    expect(normalized.handsFreeForegroundOnlyConfigured).toBe(false);
     expect(normalized.baseUrl).toBe('https://api.openai.com/v1');
   });
 
-  it('preserves an explicit foreground-only preference', () => {
+  it('drops the removed foreground-only handsfree settings', () => {
     const normalized = normalizeStoredConfig({
       ...DEFAULT_APP_CONFIG,
       handsFreeForegroundOnly: true,
       handsFreeForegroundOnlyConfigured: true,
+    } as AppConfig & {
+      handsFreeForegroundOnly: boolean;
+      handsFreeForegroundOnlyConfigured: boolean;
     });
 
-    expect(normalized.handsFreeForegroundOnly).toBe(true);
-    expect(normalized.handsFreeForegroundOnlyConfigured).toBe(true);
-  });
-
-  it('preserves an explicit background handsfree opt-in', () => {
-    const normalized = normalizeStoredConfig({
-      ...DEFAULT_APP_CONFIG,
-      handsFreeForegroundOnly: false,
-      handsFreeForegroundOnlyConfigured: true,
-    });
-
-    expect(normalized.handsFreeForegroundOnly).toBe(false);
-    expect(normalized.handsFreeForegroundOnlyConfigured).toBe(true);
+    expect('handsFreeForegroundOnly' in normalized).toBe(false);
+    expect('handsFreeForegroundOnlyConfigured' in normalized).toBe(false);
   });
 
   it('trims custom handsfree phrases', () => {

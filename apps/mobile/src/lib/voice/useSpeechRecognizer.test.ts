@@ -125,7 +125,6 @@ async function loadUseSpeechRecognizer(
     platform?: 'android' | 'ios' | 'web';
     eventEmitterClass?: typeof FakeNativeSpeechEventEmitter;
     speechRecognitionModule?: Record<string, any>;
-    androidHandsFreeService?: Record<string, any>;
   } = {},
 ) {
   vi.resetModules();
@@ -156,9 +155,6 @@ async function loadUseSpeechRecognizer(
       removeItem: vi.fn(),
     },
   }));
-  vi.doMock('./androidHandsFreeService', () => ({
-    setAndroidHandsFreeAudioRoutingEnabled: options.androidHandsFreeService?.setAndroidHandsFreeAudioRoutingEnabled ?? vi.fn(),
-  }));
   return import('./useSpeechRecognizer');
 }
 
@@ -171,7 +167,6 @@ afterEach(() => {
   vi.unmock('expo-modules-core');
   vi.unmock('expo-speech-recognition');
   vi.unmock('@react-native-async-storage/async-storage');
-  vi.unmock('./androidHandsFreeService');
   FakeSpeechRecognition.instances = [];
   FakeSpeechRecognition.nextStartError = null;
   FakeNativeSpeechEventEmitter.instances = [];
@@ -784,43 +779,6 @@ describe('useSpeechRecognizer', () => {
       source: 'native',
       text: 'assistant speech should not queue',
     });
-  });
-
-  it('acquires Android hands-free audio routing before foreground native recognition starts', async () => {
-    const runtime = createHookRuntime();
-    const speechRecognitionModule = {
-      getPermissionsAsync: vi.fn().mockResolvedValue({ granted: true }),
-      requestPermissionsAsync: vi.fn(),
-      start: vi.fn(),
-      stop: vi.fn(),
-    };
-    const setAndroidHandsFreeAudioRoutingEnabled = vi.fn().mockResolvedValue(null);
-    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime, {
-      platform: 'android',
-      eventEmitterClass: FakeNativeSpeechEventEmitter,
-      speechRecognitionModule,
-      androidHandsFreeService: { setAndroidHandsFreeAudioRoutingEnabled },
-    });
-    const onVoiceFinalized = vi.fn();
-
-    const recognizer = runtime.render(useSpeechRecognizer, {
-      handsFree: true,
-      handsFreeDebounceMs: 500,
-      willCancel: false,
-      onVoiceFinalized,
-    });
-    runtime.commitEffects();
-
-    await recognizer.startRecording();
-
-    expect(setAndroidHandsFreeAudioRoutingEnabled).toHaveBeenCalledWith(true, 'foreground');
-    expect(setAndroidHandsFreeAudioRoutingEnabled.mock.invocationCallOrder[0]).toBeLessThan(
-      speechRecognitionModule.start.mock.invocationCallOrder[0],
-    );
-
-    await recognizer.stopRecognitionOnly();
-
-    expect(setAndroidHandsFreeAudioRoutingEnabled).toHaveBeenLastCalledWith(false, 'foreground');
   });
 
   it('treats Chrome already-started web recognizer errors as an idempotent active state', async () => {
