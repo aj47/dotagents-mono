@@ -84,6 +84,27 @@ Notes:
 - On native devices, the app uses expo-speech-recognition; on web, it falls back to the browser’s Web Speech API when available
 - Permissions for microphone and speech recognition are requested at runtime (see app.json for iOS `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`; Android uses `RECORD_AUDIO`)
 
+## Android hands-free harness
+
+Use the ADB harness to regression-test locked-screen hands-free behavior without speaking into the phone:
+
+```bash
+pnpm --filter @dotagents/mobile android
+pnpm --filter @dotagents/mobile test:handsfree:android
+```
+
+The harness requires a debug/dev build because it drives a debug-only test receiver. It verifies the foreground microphone service, communication audio routing, app backgrounding, mic disarm/rearm, synthetic voice input debounce, and native service TTS restore behavior. It writes `logcat.txt` and `report.json` under `apps/mobile/test-artifacts/handsfree/`.
+
+Useful options:
+
+```bash
+pnpm --filter @dotagents/mobile test:handsfree:android -- --skip-tts
+pnpm --filter @dotagents/mobile test:handsfree:android -- --lock
+pnpm --filter @dotagents/mobile test:handsfree:android -- --serial <device-id>
+```
+
+Synthetic transcript injection covers the app/native debounce path deterministically. It does not prove the Google speech service can hear a real microphone phrase in every acoustic or Bluetooth condition; use the harness to catch routing, service, TTS, and state regressions, then do a short real-voice smoke test when changing recognizer integration.
+
 ## OpenAI API compatibility
 
 The app works with any OpenAI-compatible API endpoint:

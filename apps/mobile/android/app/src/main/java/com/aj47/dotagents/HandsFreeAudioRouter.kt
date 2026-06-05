@@ -111,14 +111,22 @@ object HandsFreeAudioRouter {
       previousMode = audioManager.mode
     }
 
-    var applied = false
+    var modeApplied = false
+    var deviceApplied = false
     try {
-      audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-      applied = true
+      if (audioManager.mode != AudioManager.MODE_IN_COMMUNICATION) {
+        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+        modeApplied = audioManager.mode == AudioManager.MODE_IN_COMMUNICATION
+      }
 
       if (target != null) {
-        val deviceApplied = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-          audioManager.setCommunicationDevice(target)
+        deviceApplied = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+          val currentDevice = audioManager.communicationDevice
+          if (sameAudioDevice(currentDevice, target)) {
+            false
+          } else {
+            audioManager.setCommunicationDevice(target)
+          }
         } else {
           @Suppress("DEPRECATION")
           audioManager.isSpeakerphoneOn = false
@@ -128,14 +136,27 @@ object HandsFreeAudioRouter {
           audioManager.isBluetoothScoOn = true
           true
         }
-        applied = applied || deviceApplied
       }
-      routingApplied = routingApplied || applied
+
+      // Some Android builds briefly restore MODE_NORMAL while applying a
+      // communication device. Reassert mode after device selection so route
+      // snapshots cannot report an active request outside communication mode.
+      if (audioManager.mode != AudioManager.MODE_IN_COMMUNICATION) {
+        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+        modeApplied = modeApplied || audioManager.mode == AudioManager.MODE_IN_COMMUNICATION
+      }
+      val modeActive = audioManager.mode == AudioManager.MODE_IN_COMMUNICATION
+      val routeActive = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && target != null) {
+        sameAudioDevice(audioManager.communicationDevice, target)
+      } else {
+        target == null || deviceApplied || routingApplied
+      }
+      routingApplied = routingApplied || modeApplied || deviceApplied || (modeActive && routeActive)
     } catch (error: Throwable) {
       Log.w(TAG, "audio-route acquire failed reason=$reason target=${target?.let { audioDeviceTypeName(it.type) } ?: "none"}", error)
     }
 
-    return applied
+    return modeApplied || deviceApplied
   }
 
   private fun startRouteKeepAliveLocked(context: Context) {
@@ -177,6 +198,13 @@ object HandsFreeAudioRouter {
       devices.firstOrNull { it.type == type }?.let { return it }
     }
     return devices.firstOrNull { isCommunicationHeadset(it.type) }
+  }
+
+  private fun sameAudioDevice(left: AudioDeviceInfo?, right: AudioDeviceInfo?): Boolean {
+    if (left == null || right == null) {
+      return left == right
+    }
+    return left.id == right.id || left.type == right.type
   }
 
   private fun routeBundle(audioManager: AudioManager, routeApplied: Boolean): Bundle {

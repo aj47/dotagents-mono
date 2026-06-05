@@ -5666,18 +5666,36 @@ export default function ChatScreen({ route, navigation }: any) {
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // userResponse is explicitly set by the agent for user communication
       // Skip TTS if we already played the same text mid-turn
-	      const ttsText = finalResponseEvent?.text || lastUserResponse || finalText;
-	      const alreadySpokenMidTurn = !!(finalResponseEvent
-	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
-	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
-        const autoTtsSuppressed = autoTtsSuppressedRequestIdsRef.current.has(thisRequestId);
-	      if (!alreadySpokenMidTurn && !autoTtsSuppressed && !sessionChanged && ttsText && config.ttsEnabled !== false) {
-	        if (handsFree) {
-	          handsFreeController.onRequestCompleted();
-	        }
-	        speakAssistantResponse(ttsText, 'final response');
-	      } else if (handsFree) {
-	        handsFreeController.onRequestCompleted();
+      const ttsText = finalResponseEvent?.text || lastUserResponse || finalText;
+      const alreadySpokenMidTurn = !!(finalResponseEvent
+        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
+        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
+      const autoTtsSuppressed = autoTtsSuppressedRequestIdsRef.current.has(thisRequestId);
+      if (!alreadySpokenMidTurn && !autoTtsSuppressed && !sessionChanged && ttsText && config.ttsEnabled !== false) {
+        if (handsFree) {
+          handsFreeController.onRequestCompleted();
+        }
+        speakAssistantResponse(ttsText, 'final response');
+      } else {
+        console.info('[DotAgentsTTS] auto speech skipped', {
+          reason: 'final response',
+          skipReasons: [
+            alreadySpokenMidTurn ? 'already-spoken-mid-turn' : null,
+            autoTtsSuppressed ? 'auto-tts-suppressed' : null,
+            sessionChanged ? 'session-changed' : null,
+            !ttsText ? 'empty-tts-text' : null,
+            config.ttsEnabled === false ? 'tts-disabled' : null,
+          ].filter(Boolean),
+          textLength: ttsText?.length ?? 0,
+          handsFree,
+          sessionChanged,
+          alreadySpokenMidTurn,
+          autoTtsSuppressed,
+          ttsEnabled: config.ttsEnabled !== false,
+        });
+        if (handsFree) {
+          handsFreeController.onRequestCompleted();
+        }
       }
     } catch (e: any) {
       console.error('[ChatScreen] Chat error:', e);
@@ -6077,18 +6095,34 @@ export default function ChatScreen({ route, navigation }: any) {
 
       // TTS: prefer userResponse (from respond_to_user tool) over finalText
       // Skip TTS if we already played the same text mid-turn
-	      const ttsText = finalResponseEvent?.text || lastUserResponse || finalText;
-	      const alreadySpokenMidTurn = !!(finalResponseEvent
-	        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
-	        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
+      const ttsText = finalResponseEvent?.text || lastUserResponse || finalText;
+      const alreadySpokenMidTurn = !!(finalResponseEvent
+        ? playedResponseEventIdsRef.current.has(finalResponseEvent.id)
+        : midTurnLegacyResponseText && ttsText === midTurnLegacyResponseText);
       const autoTtsSuppressed = autoTtsSuppressedRequestIdsRef.current.has(thisRequestId);
       if (!alreadySpokenMidTurn && !autoTtsSuppressed && ttsText && config.ttsEnabled !== false) {
-	        if (handsFree) {
-	          handsFreeController.onRequestCompleted();
-	        }
-	        speakAssistantResponse(ttsText, 'queued final response');
-	      } else if (handsFree) {
-	        handsFreeController.onRequestCompleted();
+        if (handsFree) {
+          handsFreeController.onRequestCompleted();
+        }
+        speakAssistantResponse(ttsText, 'queued final response');
+      } else {
+        console.info('[DotAgentsTTS] auto speech skipped', {
+          reason: 'queued final response',
+          skipReasons: [
+            alreadySpokenMidTurn ? 'already-spoken-mid-turn' : null,
+            autoTtsSuppressed ? 'auto-tts-suppressed' : null,
+            !ttsText ? 'empty-tts-text' : null,
+            config.ttsEnabled === false ? 'tts-disabled' : null,
+          ].filter(Boolean),
+          textLength: ttsText?.length ?? 0,
+          handsFree,
+          alreadySpokenMidTurn,
+          autoTtsSuppressed,
+          ttsEnabled: config.ttsEnabled !== false,
+        });
+        if (handsFree) {
+          handsFreeController.onRequestCompleted();
+        }
       }
 
       // Mark as processed on success

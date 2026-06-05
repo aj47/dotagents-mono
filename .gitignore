@@ -67,6 +67,7 @@ release/
 # Test artifacts
 trace-session*.json
 apps/desktop/tmp/
+apps/mobile/test-artifacts/
 
 # Playwright automation artifacts
 **/.playwright-cli/

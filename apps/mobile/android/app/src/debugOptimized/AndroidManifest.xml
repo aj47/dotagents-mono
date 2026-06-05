@@ -3,5 +3,18 @@
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
-    <application android:usesCleartextTraffic="true" tools:targetApi="28" tools:ignore="GoogleAppIndexingWarning" tools:replace="android:usesCleartextTraffic" />
+    <application android:usesCleartextTraffic="true" tools:targetApi="28" tools:ignore="GoogleAppIndexingWarning" tools:replace="android:usesCleartextTraffic">
+        <receiver android:name=".HandsFreeTestReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="com.aj47.dotagents.handsfree.TEST_START"/>
+                <action android:name="com.aj47.dotagents.handsfree.TEST_STOP"/>
+                <action android:name="com.aj47.dotagents.handsfree.TEST_SET_LISTENING"/>
+                <action android:name="com.aj47.dotagents.handsfree.TEST_SNAPSHOT"/>
+                <action android:name="com.aj47.dotagents.handsfree.TEST_INJECT_PARTIAL"/>
+                <action android:name="com.aj47.dotagents.handsfree.TEST_INJECT_FINAL"/>
+                <action android:name="com.aj47.dotagents.handsfree.TEST_SPEAK"/>
+                <action android:name="com.aj47.dotagents.handsfree.TEST_STOP_SPEAKING"/>
+            </intent-filter>
+        </receiver>
+    </application>
 </manifest>

@@ -18,6 +18,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.speech.RecognitionPart
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -48,6 +49,11 @@ class HandsFreeVoiceService : Service() {
   private var transcriptDebounceMs = DEFAULT_TRANSCRIPT_DEBOUNCE_MS
   private var pendingDebouncedResultText: String? = null
   private var pendingDebouncedResultCallback: String? = null
+  private var consecutiveEmptyFinalResults = 0
+  private var standardRecognizerModeUntilElapsed = 0L
+  private var recognizerSessionMode = "standard"
+  private var currentRecognizerSessionHadSpeech = false
+  private var pendingDebouncedResultHeld = false
   private val activeCuePlayers = mutableListOf<CuePlayback>()
 
   private val restartRunnable = Runnable {
@@ -61,6 +67,7 @@ class HandsFreeVoiceService : Service() {
     val callback = pendingDebouncedResultCallback ?: "native-debounce"
     pendingDebouncedResultText = null
     pendingDebouncedResultCallback = null
+    pendingDebouncedResultHeld = false
     Log.i(TAG, "transcript debounce elapsed textLength=${text.length} debounceMs=$transcriptDebounceMs callback=$callback")
     HandsFreeVoiceEvents.emit("debounced-result") {
       it.putString("text", text)
@@ -307,6 +314,10 @@ class HandsFreeVoiceService : Service() {
 
     val recognizer = ensureRecognizer()
     HandsFreeAudioRouter.acquire(this, CAPTURE_ROUTE_REQUESTER)
+    val useSegmentedSession = shouldUseSegmentedRecognizerSession()
+    recognizerSessionMode = if (useSegmentedSession) "segmented-minimum" else "standard-silence"
+    currentRecognizerSessionHadSpeech = false
+
     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
       putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
       putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
@@ -314,7 +325,7 @@ class HandsFreeVoiceService : Service() {
       putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
       putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
       putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      if (useSegmentedSession) {
         val segmentedSessionMode = RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS
         // EXTRA_SEGMENTED_SESSION expects the name of the timing extra that controls segmentation.
         putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, segmentedSessionMode)
@@ -322,9 +333,9 @@ class HandsFreeVoiceService : Service() {
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SEGMENT_COMPLETE_SILENCE_MS)
         putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, SEGMENT_POSSIBLY_COMPLETE_SILENCE_MS)
       } else {
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, LONG_SESSION_TIMEOUT_MS)
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, LONG_SESSION_TIMEOUT_MS)
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, LONG_SESSION_TIMEOUT_MS)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, STANDARD_COMPLETE_SILENCE_MS)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, STANDARD_MINIMUM_LENGTH_MS)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, STANDARD_POSSIBLY_COMPLETE_SILENCE_MS)
       }
     }
 
@@ -334,7 +345,7 @@ class HandsFreeVoiceService : Service() {
       recognizer.startListening(intent)
       HandsFreeVoiceEvents.emit("recognizer-started") {
         it.putString("language", language)
-        it.putString("sessionMode", if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) "segmented-minimum" else "long-standard")
+        it.putString("sessionMode", recognizerSessionMode)
       }
     } catch (error: Throwable) {
       listening = false
@@ -429,6 +440,7 @@ class HandsFreeVoiceService : Service() {
       restoreListeningAfterDone = request.restoreListeningAfterDone,
       allowBargeIn = request.allowBargeIn,
     )
+    HandsFreeAudioRouter.acquire(this, TTS_ROUTE_REQUESTER)
     activeTtsUtteranceId = request.utteranceId
     activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
     activeTtsAllowBargeIn = request.allowBargeIn
@@ -711,6 +723,7 @@ class HandsFreeVoiceService : Service() {
       restoreListeningAfterDone = request.restoreListeningAfterDone,
       allowBargeIn = request.allowBargeIn,
     )
+    HandsFreeAudioRouter.acquire(this, TTS_ROUTE_REQUESTER)
     activeTtsUtteranceId = request.utteranceId
     activeTtsRestoreListeningAfterDone = request.restoreListeningAfterDone
     activeTtsAllowBargeIn = request.allowBargeIn
@@ -830,6 +843,7 @@ class HandsFreeVoiceService : Service() {
       "tts completed utteranceId=$utteranceId eventType=$eventType restoreListening=$shouldRestoreListening message=${message ?: "-"} errorCode=${errorCode ?: "-"}",
     )
     HandsFreeAudioRouter.logCurrentRoute(this, "tts-complete-$eventType")
+    HandsFreeAudioRouter.release(this, TTS_ROUTE_REQUESTER)
     HandsFreeVoiceEvents.emit(eventType) {
       it.putString("utteranceId", utteranceId)
       message?.let { value -> it.putString("message", value) }
@@ -860,6 +874,9 @@ class HandsFreeVoiceService : Service() {
       textToSpeech?.stop()
     } catch (_: Throwable) {
     }
+    if (hadActiveTts) {
+      HandsFreeAudioRouter.release(this, TTS_ROUTE_REQUESTER)
+    }
     if (emitStopped && utteranceId != null) {
       Log.i(TAG, "tts stopped utteranceId=$utteranceId")
       HandsFreeVoiceEvents.emit("tts-stopped") {
@@ -885,6 +902,7 @@ class HandsFreeVoiceService : Service() {
       activeTtsAllowBargeIn = false
       activeTtsAudioPlayback?.let { releaseTtsAudioPlayback(it) }
       ttsSpeaking = false
+      HandsFreeAudioRouter.release(this, TTS_ROUTE_REQUESTER)
     }
   }
 
@@ -916,6 +934,8 @@ class HandsFreeVoiceService : Service() {
       }
 
       override fun onBeginningOfSpeech() {
+        currentRecognizerSessionHadSpeech = true
+        holdDebouncedResult("speech-started")
         HandsFreeVoiceEvents.emit("speech-started")
       }
 
@@ -953,6 +973,11 @@ class HandsFreeVoiceService : Service() {
         ) {
           destroyRecognizer()
         }
+        if (message == "no-speech") {
+          noteEmptyFinalRecognition("error-no-speech")
+          settlePendingDebouncedResultAfterNoSpeech()
+        }
+        currentRecognizerSessionHadSpeech = false
         consecutiveRecognizerErrors += 1
         val restartDelay = when {
           message == "no-speech" -> 1500L
@@ -992,7 +1017,7 @@ class HandsFreeVoiceService : Service() {
     }
   }
 
-  private fun emitBestResult(results: Bundle?, callback: String, isFinal: Boolean) {
+  private fun emitBestResult(results: Bundle?, callback: String, isFinal: Boolean): Boolean {
     val candidates = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
     val text = normalizeRecognizerText(candidates?.firstOrNull())
       ?: extractRecognitionPartsText(results)
@@ -1003,29 +1028,90 @@ class HandsFreeVoiceService : Service() {
     )
 
     if (text.isNullOrBlank()) {
-      return
+      if (isFinal) {
+        noteEmptyFinalRecognition("empty-$callback")
+      }
+      return false
     }
 
+    consecutiveEmptyFinalResults = 0
     scheduleDebouncedResult(text, callback)
     HandsFreeVoiceEvents.emit(if (isFinal) "result" else "partial-result") {
       it.putString("text", text)
       it.putBoolean("isFinal", isFinal)
       it.putString("callback", callback)
     }
+    return true
+  }
+
+  private fun injectRecognitionResultForTest(text: String, isFinal: Boolean, callback: String) {
+    if (!BuildConfig.DEBUG) return
+
+    val normalized = normalizeRecognizerText(text) ?: return
+    Log.i(TAG, "test transcript inject isFinal=$isFinal callback=$callback textLength=${normalized.length}")
+
+    if (isFinal) {
+      suppressRecognizerEnd = true
+      try {
+        speechRecognizer?.cancel()
+      } catch (_: Throwable) {
+      }
+      listening = false
+      consecutiveRecognizerErrors = 0
+    }
+
+    scheduleDebouncedResult(normalized, callback)
+    HandsFreeVoiceEvents.emit(if (isFinal) "result" else "partial-result") {
+      it.putString("text", normalized)
+      it.putBoolean("isFinal", isFinal)
+      it.putString("callback", callback)
+    }
+
+    if (isFinal && captureEnabled) {
+      scheduleRestart(300L)
+    }
   }
 
   private fun scheduleDebouncedResult(text: String, callback: String) {
-    pendingDebouncedResultText = text
+    val mergedText = mergeRecognizerSegments(pendingDebouncedResultText, text)
+    pendingDebouncedResultText = mergedText
     pendingDebouncedResultCallback = callback
+    pendingDebouncedResultHeld = false
     mainHandler.removeCallbacks(debouncedResultRunnable)
-    Log.i(TAG, "transcript debounce scheduled textLength=${text.length} debounceMs=$transcriptDebounceMs callback=$callback")
+    Log.i(TAG, "transcript debounce scheduled textLength=${mergedText.length} debounceMs=$transcriptDebounceMs callback=$callback incomingTextLength=${text.length}")
     mainHandler.postDelayed(debouncedResultRunnable, transcriptDebounceMs)
   }
 
   private fun cancelDebouncedResult() {
     pendingDebouncedResultText = null
     pendingDebouncedResultCallback = null
+    pendingDebouncedResultHeld = false
     mainHandler.removeCallbacks(debouncedResultRunnable)
+  }
+
+  private fun holdDebouncedResult(reason: String) {
+    val text = pendingDebouncedResultText?.takeIf { it.isNotBlank() } ?: return
+    mainHandler.removeCallbacks(debouncedResultRunnable)
+    pendingDebouncedResultHeld = true
+    Log.i(TAG, "transcript debounce held reason=$reason textLength=${text.length} debounceMs=$transcriptDebounceMs")
+  }
+
+  private fun settlePendingDebouncedResultAfterNoSpeech() {
+    if (currentRecognizerSessionHadSpeech || pendingDebouncedResultHeld) {
+      reschedulePendingDebouncedResult("no-speech-after-speech")
+      return
+    }
+
+    val text = pendingDebouncedResultText?.takeIf { it.isNotBlank() } ?: return
+    Log.i(TAG, "transcript debounce preserved reason=no-speech textLength=${text.length} debounceMs=$transcriptDebounceMs")
+  }
+
+  private fun reschedulePendingDebouncedResult(reason: String) {
+    val text = pendingDebouncedResultText?.takeIf { it.isNotBlank() } ?: return
+    mainHandler.removeCallbacks(debouncedResultRunnable)
+    pendingDebouncedResultHeld = false
+    Log.i(TAG, "transcript debounce rescheduled reason=$reason textLength=${text.length} debounceMs=$transcriptDebounceMs")
+    mainHandler.postDelayed(debouncedResultRunnable, transcriptDebounceMs)
   }
 
   private fun normalizeRecognizerText(text: String?): String? {
@@ -1035,6 +1121,53 @@ class HandsFreeVoiceService : Service() {
       ?.trim()
 
     return normalized?.takeIf { it.isNotBlank() }
+  }
+
+  private fun mergeRecognizerSegments(existing: String?, next: String): String {
+    val current = normalizeRecognizerText(existing)
+    val incoming = normalizeRecognizerText(next) ?: return current ?: ""
+    if (current == null) return incoming
+    if (current == incoming) return current
+    if (incoming.startsWith(current, ignoreCase = true)) return incoming
+    if (current.endsWith(incoming, ignoreCase = true)) return current
+
+    val currentWords = current.split(" ")
+    val incomingWords = incoming.split(" ")
+    val maxOverlap = minOf(currentWords.size, incomingWords.size)
+    for (overlap in maxOverlap downTo 1) {
+      val currentSuffix = currentWords.takeLast(overlap).joinToString(" ")
+      val incomingPrefix = incomingWords.take(overlap).joinToString(" ")
+      if (currentSuffix.equals(incomingPrefix, ignoreCase = true)) {
+        return (currentWords + incomingWords.drop(overlap)).joinToString(" ")
+      }
+    }
+    return "$current $incoming"
+  }
+
+  private fun shouldUseSegmentedRecognizerSession(): Boolean {
+    return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+      SystemClock.elapsedRealtime() >= standardRecognizerModeUntilElapsed
+  }
+
+  private fun noteEmptyFinalRecognition(reason: String) {
+    if (recognizerSessionMode != "segmented-minimum") return
+    consecutiveEmptyFinalResults += 1
+    Log.i(TAG, "recognizer empty final reason=$reason sessionMode=$recognizerSessionMode consecutive=$consecutiveEmptyFinalResults")
+    if (consecutiveEmptyFinalResults < EMPTY_SEGMENT_FALLBACK_THRESHOLD) return
+
+    consecutiveEmptyFinalResults = 0
+    standardRecognizerModeUntilElapsed = SystemClock.elapsedRealtime() + STANDARD_RECOGNIZER_FALLBACK_MS
+    Log.i(TAG, "recognizer switching to standard session reason=$reason cooldownMs=$STANDARD_RECOGNIZER_FALLBACK_MS")
+    try {
+      suppressRecognizerEnd = true
+      speechRecognizer?.cancel()
+    } catch (_: Throwable) {
+    } finally {
+      destroyRecognizer()
+      if (captureEnabled) {
+        scheduleRestart(300L)
+      }
+    }
   }
 
   private fun extractRecognitionPartsText(results: Bundle?): String? {
@@ -1304,11 +1437,16 @@ class HandsFreeVoiceService : Service() {
     private const val SEGMENT_COMPLETE_SILENCE_MS = 1800
     private const val SEGMENT_POSSIBLY_COMPLETE_SILENCE_MS = 1200
     private const val SEGMENT_SESSION_TIMEOUT_MS = 30000
-    private const val LONG_SESSION_TIMEOUT_MS = 600000
+    private const val STANDARD_COMPLETE_SILENCE_MS = 1800
+    private const val STANDARD_POSSIBLY_COMPLETE_SILENCE_MS = 1200
+    private const val STANDARD_MINIMUM_LENGTH_MS = 1000
+    private const val EMPTY_SEGMENT_FALLBACK_THRESHOLD = 2
+    private const val STANDARD_RECOGNIZER_FALLBACK_MS = 120000L
     private const val NOTIFICATION_CHANNEL_ID = "dotagents_handsfree_voice"
     private const val NOTIFICATION_ID = 4701
     private const val SESSION_ROUTE_REQUESTER = "service-session"
     private const val CAPTURE_ROUTE_REQUESTER = "service-capture"
+    private const val TTS_ROUTE_REQUESTER = "service-tts"
     private const val MIN_TTS_RATE = 0.1f
     private const val MAX_TTS_RATE = 3.0f
     private const val MIN_TTS_PITCH = 0.1f
@@ -1354,6 +1492,15 @@ class HandsFreeVoiceService : Service() {
     fun setListeningEnabled(enabled: Boolean): Boolean {
       val service = activeService ?: return false
       service.setCaptureEnabled(enabled)
+      return true
+    }
+
+    fun debugInjectRecognitionResult(text: String, isFinal: Boolean, callback: String): Boolean {
+      if (!BuildConfig.DEBUG) return false
+      val service = activeService ?: return false
+      service.mainHandler.post {
+        service.injectRecognitionResultForTest(text, isFinal, callback)
+      }
       return true
     }
 
