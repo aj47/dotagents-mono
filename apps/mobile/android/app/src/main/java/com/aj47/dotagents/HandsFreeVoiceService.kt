@@ -54,6 +54,8 @@ class HandsFreeVoiceService : Service() {
   private var recognizerSessionMode = "standard"
   private var currentRecognizerSessionHadSpeech = false
   private var pendingDebouncedResultHeld = false
+  private var pendingDebouncedResultDueAtElapsed: Long? = null
+  private var pendingDebouncedResultRemainingMs: Long? = null
   private val activeCuePlayers = mutableListOf<CuePlayback>()
 
   private val restartRunnable = Runnable {
@@ -68,6 +70,8 @@ class HandsFreeVoiceService : Service() {
     pendingDebouncedResultText = null
     pendingDebouncedResultCallback = null
     pendingDebouncedResultHeld = false
+    pendingDebouncedResultDueAtElapsed = null
+    pendingDebouncedResultRemainingMs = null
     Log.i(TAG, "transcript debounce elapsed textLength=${text.length} debounceMs=$transcriptDebounceMs callback=$callback")
     HandsFreeVoiceEvents.emit("debounced-result") {
       it.putString("text", text)
@@ -930,6 +934,7 @@ class HandsFreeVoiceService : Service() {
     return object : RecognitionListener {
       override fun onReadyForSpeech(params: Bundle?) {
         consecutiveRecognizerErrors = 0
+        resumeHeldDebouncedResult("ready-for-speech")
         HandsFreeVoiceEvents.emit("ready-for-speech")
       }
 
@@ -1078,15 +1083,17 @@ class HandsFreeVoiceService : Service() {
     pendingDebouncedResultText = mergedText
     pendingDebouncedResultCallback = callback
     pendingDebouncedResultHeld = false
-    mainHandler.removeCallbacks(debouncedResultRunnable)
+    pendingDebouncedResultRemainingMs = null
     Log.i(TAG, "transcript debounce scheduled textLength=${mergedText.length} debounceMs=$transcriptDebounceMs callback=$callback incomingTextLength=${text.length}")
-    mainHandler.postDelayed(debouncedResultRunnable, transcriptDebounceMs)
+    postDebouncedResult(transcriptDebounceMs)
   }
 
   private fun cancelDebouncedResult() {
     pendingDebouncedResultText = null
     pendingDebouncedResultCallback = null
     pendingDebouncedResultHeld = false
+    pendingDebouncedResultDueAtElapsed = null
+    pendingDebouncedResultRemainingMs = null
     mainHandler.removeCallbacks(debouncedResultRunnable)
   }
 
@@ -1094,6 +1101,8 @@ class HandsFreeVoiceService : Service() {
     val text = pendingDebouncedResultText?.takeIf { it.isNotBlank() } ?: return
     mainHandler.removeCallbacks(debouncedResultRunnable)
     pendingDebouncedResultHeld = true
+    pendingDebouncedResultDueAtElapsed = null
+    pendingDebouncedResultRemainingMs = null
     Log.i(TAG, "transcript debounce held reason=$reason textLength=${text.length} debounceMs=$transcriptDebounceMs")
   }
 
@@ -1104,15 +1113,40 @@ class HandsFreeVoiceService : Service() {
     }
 
     val text = pendingDebouncedResultText?.takeIf { it.isNotBlank() } ?: return
-    Log.i(TAG, "transcript debounce preserved reason=$reason textLength=${text.length} debounceMs=$transcriptDebounceMs")
+    val remainingMs = pendingDebouncedResultDueAtElapsed
+      ?.let { (it - SystemClock.elapsedRealtime()).coerceAtLeast(0L) }
+      ?: transcriptDebounceMs
+    mainHandler.removeCallbacks(debouncedResultRunnable)
+    pendingDebouncedResultHeld = true
+    pendingDebouncedResultDueAtElapsed = null
+    pendingDebouncedResultRemainingMs = remainingMs
+    Log.i(TAG, "transcript debounce held reason=$reason-until-ready textLength=${text.length} debounceMs=$transcriptDebounceMs remainingMs=$remainingMs")
   }
 
   private fun reschedulePendingDebouncedResult(reason: String) {
     val text = pendingDebouncedResultText?.takeIf { it.isNotBlank() } ?: return
-    mainHandler.removeCallbacks(debouncedResultRunnable)
     pendingDebouncedResultHeld = false
+    pendingDebouncedResultRemainingMs = null
     Log.i(TAG, "transcript debounce rescheduled reason=$reason textLength=${text.length} debounceMs=$transcriptDebounceMs")
-    mainHandler.postDelayed(debouncedResultRunnable, transcriptDebounceMs)
+    postDebouncedResult(transcriptDebounceMs)
+  }
+
+  private fun resumeHeldDebouncedResult(reason: String) {
+    if (!pendingDebouncedResultHeld) return
+    val text = pendingDebouncedResultText?.takeIf { it.isNotBlank() } ?: return
+    val readyGraceMs = minOf(RESUMED_DEBOUNCE_READY_GRACE_MS, transcriptDebounceMs)
+    val delayMs = maxOf(pendingDebouncedResultRemainingMs ?: transcriptDebounceMs, readyGraceMs)
+    pendingDebouncedResultHeld = false
+    pendingDebouncedResultRemainingMs = null
+    Log.i(TAG, "transcript debounce resumed reason=$reason textLength=${text.length} debounceMs=$transcriptDebounceMs delayMs=$delayMs")
+    postDebouncedResult(delayMs)
+  }
+
+  private fun postDebouncedResult(delayMs: Long) {
+    val safeDelayMs = delayMs.coerceAtLeast(0L)
+    mainHandler.removeCallbacks(debouncedResultRunnable)
+    pendingDebouncedResultDueAtElapsed = SystemClock.elapsedRealtime() + safeDelayMs
+    mainHandler.postDelayed(debouncedResultRunnable, safeDelayMs)
   }
 
   private fun normalizeRecognizerText(text: String?): String? {
@@ -1443,6 +1477,7 @@ class HandsFreeVoiceService : Service() {
     private const val STANDARD_MINIMUM_LENGTH_MS = 1000
     private const val EMPTY_SEGMENT_FALLBACK_THRESHOLD = 2
     private const val STANDARD_RECOGNIZER_FALLBACK_MS = 120000L
+    private const val RESUMED_DEBOUNCE_READY_GRACE_MS = 750L
     private const val NOTIFICATION_CHANNEL_ID = "dotagents_handsfree_voice"
     private const val NOTIFICATION_ID = 4701
     private const val SESSION_ROUTE_REQUESTER = "service-session"

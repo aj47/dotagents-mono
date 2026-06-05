@@ -151,6 +151,7 @@ const HANDS_FREE_ACCEPTED_CONTROL_PREVIEW_SUPPRESSION_MS = 3_000;
 const ANDROID_HANDS_FREE_FOREGROUND_HANDOFF_DELAY_MS = 1_500;
 const HANDS_FREE_KEEP_AWAKE_TAG = 'dotagents-handsfree';
 const HANDS_FREE_TTS_BARGE_IN_DUPLICATE_SUPPRESSION_MS = 1_200;
+const HANDS_FREE_TTS_BARGE_IN_TRANSCRIPT_SUPPRESSION_MS = 1_500;
 const HANDS_FREE_TTS_BARGE_IN_COMMANDS = new Set([
   'stop',
   'stop please',
@@ -1714,6 +1715,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
   const androidHandsFreeTtsHandlersRef = useRef<Map<string, AndroidHandsFreeTtsHandler>>(new Map());
   const ttsBargeInLastHandledRef = useRef<{ command: 'stop' | 'wait'; timestamp: number } | null>(null);
+  const handsFreeBargeInTranscriptSuppressedUntilRef = useRef(0);
   const lastHandsFreeAudioCuePhaseRef = useRef<HandsFreePhase | null>(null);
   const lastHandsFreeSessionReadyCueAtRef = useRef(0);
   const lastHandsFreePreviewSubmittedCueAtRef = useRef(0);
@@ -2018,6 +2020,9 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [handsFreeController.onSpeechFinished, voiceLog]);
   const isHandsFreeTranscriptSuppressedNow = useCallback(() => {
     if (!handsFreeRef.current) return false;
+    if (Date.now() < handsFreeBargeInTranscriptSuppressedUntilRef.current) {
+      return true;
+    }
     if (recoverStaleHandsFreeTtsIfNeeded('transcript-suppression-check')) {
       return false;
     }
@@ -2352,6 +2357,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     clearAndroidHandsFreePartialTimer();
     androidHandsFreePendingPartialRef.current = '';
+    handsFreeBargeInTranscriptSuppressedUntilRef.current = now + HANDS_FREE_TTS_BARGE_IN_TRANSCRIPT_SUPPRESSION_MS;
     queuedResponseEventsRef.current = [];
     activeAutoSpeechEventRef.current = null;
     if (activeRequestIdRef.current) {
@@ -2367,6 +2373,51 @@ export default function ChatScreen({ route, navigation }: any) {
       source,
       command,
       text,
+    });
+    return true;
+  }, [
+    clearAndroidHandsFreePartialTimer,
+    handsFreeController.onSpeechFinished,
+    playHandsFreeCue,
+    voiceLog,
+  ]);
+
+  const handleHandsFreeTtsBargeInSpeechStarted = useCallback((source: 'native' | 'web') => {
+    if (!handsFreeRef.current) {
+      return false;
+    }
+
+    const playback = getGlobalTtsPlayback();
+    if (!playback && handsFreePhaseRef.current !== 'speaking') {
+      return false;
+    }
+
+    const now = Date.now();
+    const lastHandled = ttsBargeInLastHandledRef.current;
+    if (
+      lastHandled
+      && now - lastHandled.timestamp < HANDS_FREE_TTS_BARGE_IN_DUPLICATE_SUPPRESSION_MS
+    ) {
+      return true;
+    }
+    ttsBargeInLastHandledRef.current = { command: 'stop', timestamp: now };
+
+    clearAndroidHandsFreePartialTimer();
+    androidHandsFreePendingPartialRef.current = '';
+    handsFreeBargeInTranscriptSuppressedUntilRef.current = now + HANDS_FREE_TTS_BARGE_IN_TRANSCRIPT_SUPPRESSION_MS;
+    queuedResponseEventsRef.current = [];
+    activeAutoSpeechEventRef.current = null;
+    if (activeRequestIdRef.current) {
+      autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
+    }
+    stopGlobalTtsPlayback();
+    if (handsFreePhaseRef.current === 'speaking') {
+      handsFreeController.onSpeechFinished();
+    }
+    setDebugInfo('Stopped speaking. Listening.');
+    playHandsFreeCue('stopped');
+    voiceLog('tts-stopped', 'Assistant speech interrupted by detected user speech.', {
+      source,
     });
     return true;
   }, [
@@ -3106,6 +3157,12 @@ export default function ChatScreen({ route, navigation }: any) {
         return;
       }
 
+      if (event.type === 'speech-started') {
+        if (handleHandsFreeTtsBargeInSpeechStarted('native')) {
+          return;
+        }
+      }
+
       if (event.type === 'tts-started' && event.utteranceId) {
         androidHandsFreeTtsHandlersRef.current.get(event.utteranceId)?.onStarted();
         return;
@@ -3234,6 +3291,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeMessageDebounceMs,
     handleAndroidHandsFreeFinalResult,
     handleHandsFreeTtsBargeInCommand,
+    handleHandsFreeTtsBargeInSpeechStarted,
     handleRecognizerError,
     isHandsFreeTranscriptSuppressedNow,
     mergeAndroidHandsFreePendingTranscript,
