@@ -57,6 +57,21 @@ test('does not render the old floating voice transcript overlay', () => {
   assert.doesNotMatch(screenSource, /Release to send/);
 });
 
+test('keeps the mobile chat composer keyboard-aware without Android-only overlay padding', () => {
+  assert.match(screenSource, /Keyboard\.addListener\('keyboardDidShow'/);
+  assert.match(screenSource, /Keyboard\.addListener\('keyboardDidHide'/);
+  assert.match(screenSource, /import \{ APP_SHELL_DIMENSIONS, resolveAppShellLayout \} from '\.\.\/ui\/appShell';/);
+  assert.match(screenSource, /const \[androidKeyboardHeight, setAndroidKeyboardHeight\] = useState\(0\);/);
+  assert.match(screenSource, /const \[composerHeight, setComposerHeight\] = useState\(0\);/);
+  assert.match(screenSource, /const compactPrimaryNavHeight =[\s\S]*?APP_SHELL_DIMENSIONS\.compactPrimaryNavHeight/);
+  assert.match(screenSource, /measuredHeight - compactPrimaryNavHeight/);
+  assert.match(screenSource, /const chatScrollBottomPadding = Platform\.OS === 'android'\s+\? composerHeight \+ androidKeyboardHeight \+ spacing\.sm\s+: insets\.bottom;/);
+  assert.match(screenSource, /onLayout=\{handleComposerLayout\}/);
+  assert.match(screenSource, /Platform\.OS === 'android' && styles\.inputAreaAndroidDocked/);
+  assert.match(screenSource, /Platform\.OS === 'android' && \{ bottom: androidKeyboardHeight \}/);
+  assert.doesNotMatch(screenSource, /screenHeight \* 0\.32/);
+});
+
 test('derives visible assistant content from respond_to_user output and suppresses raw tool payloads', () => {
   assert.match(screenSource, /const getVisibleMessageContent = \(message: ChatMessage\): string =>/);
   assert.match(screenSource, /extractRespondToUserContentFromArgs\(call\.arguments\)/);
