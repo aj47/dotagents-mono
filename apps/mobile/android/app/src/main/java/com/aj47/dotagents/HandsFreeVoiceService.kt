@@ -974,8 +974,8 @@ class HandsFreeVoiceService : Service() {
           destroyRecognizer()
         }
         if (message == "no-speech") {
+          settlePendingDebouncedResultAfterRecognizerSilence("no-speech")
           noteEmptyFinalRecognition("error-no-speech")
-          settlePendingDebouncedResultAfterNoSpeech()
         }
         currentRecognizerSessionHadSpeech = false
         consecutiveRecognizerErrors += 1
@@ -1029,6 +1029,7 @@ class HandsFreeVoiceService : Service() {
 
     if (text.isNullOrBlank()) {
       if (isFinal) {
+        settlePendingDebouncedResultAfterRecognizerSilence("empty-$callback")
         noteEmptyFinalRecognition("empty-$callback")
       }
       return false
@@ -1096,14 +1097,14 @@ class HandsFreeVoiceService : Service() {
     Log.i(TAG, "transcript debounce held reason=$reason textLength=${text.length} debounceMs=$transcriptDebounceMs")
   }
 
-  private fun settlePendingDebouncedResultAfterNoSpeech() {
+  private fun settlePendingDebouncedResultAfterRecognizerSilence(reason: String) {
     if (currentRecognizerSessionHadSpeech || pendingDebouncedResultHeld) {
-      reschedulePendingDebouncedResult("no-speech-after-speech")
+      reschedulePendingDebouncedResult("$reason-after-speech")
       return
     }
 
     val text = pendingDebouncedResultText?.takeIf { it.isNotBlank() } ?: return
-    Log.i(TAG, "transcript debounce preserved reason=no-speech textLength=${text.length} debounceMs=$transcriptDebounceMs")
+    Log.i(TAG, "transcript debounce preserved reason=$reason textLength=${text.length} debounceMs=$transcriptDebounceMs")
   }
 
   private fun reschedulePendingDebouncedResult(reason: String) {
