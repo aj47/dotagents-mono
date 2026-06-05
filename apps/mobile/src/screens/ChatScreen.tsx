@@ -2862,9 +2862,10 @@ export default function ChatScreen({ route, navigation }: any) {
     setDebugInfo(`Voice error: ${message}`);
   }, [handsFreeController.onRecognizerError, isHandsFreeTranscriptSuppressedNow, voiceLog]);
 
+  const pushToTalkDesktopSttActive = !handsFree && desktopSttSelected;
   const foregroundSpeechRecognizerEnabled =
     isFocused
-    && isAppActive
+    && (isAppActive || pushToTalkDesktopSttActive)
     && (!handsFree || (foregroundHandsFreeRuntimeActive && !androidServiceHandlesHandsFreeMic));
 
   const {
