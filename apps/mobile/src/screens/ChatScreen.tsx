@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
+  Keyboard,
   ActivityIndicator,
   Alert,
   Pressable,
@@ -17,6 +18,8 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
+  type KeyboardEvent as RNKeyboardEvent,
+  type LayoutChangeEvent,
   useWindowDimensions,
   Modal,
 } from 'react-native';
@@ -105,6 +108,7 @@ import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { mergeVoiceText, normalizeVoiceText } from '../lib/voice/mergeVoiceText';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useStableForeground } from '../lib/voice/useStableForeground';
+import { APP_SHELL_DIMENSIONS, resolveAppShellLayout } from '../ui/appShell';
 import {
   getAndroidHandsFreeAudioRoute,
   isAndroidHandsFreeServiceAvailable,
@@ -1163,8 +1167,12 @@ export default function ChatScreen({ route, navigation }: any) {
   const headerHeight = useHeaderHeight();
   const { theme, isDark } = useTheme();
   const isFocused = useIsFocused();
-  const { height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight, isDark), [theme, screenHeight, isDark]);
+  const compactPrimaryNavHeight =
+    resolveAppShellLayout(screenWidth) === 'compact'
+      ? APP_SHELL_DIMENSIONS.compactPrimaryNavHeight
+      : 0;
   const { config, setConfig } = useConfigContext();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
@@ -1777,6 +1785,8 @@ export default function ChatScreen({ route, navigation }: any) {
 		  const [input, setInput] = useState('');
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
+  const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
+  const [composerHeight, setComposerHeight] = useState(0);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [androidHandsFreeDebounceEndsAt, setAndroidHandsFreeDebounceEndsAt] = useState<number | null>(null);
   const [handsFreeCountdownNow, setHandsFreeCountdownNow] = useState(Date.now());
@@ -1814,6 +1824,47 @@ export default function ChatScreen({ route, navigation }: any) {
       copiedMessageTimeoutRef.current = null;
     }
   }, []);
+
+  const getAndroidKeyboardHeight = useCallback((event?: RNKeyboardEvent) => {
+    const eventHeight = event?.endCoordinates?.height ?? 0;
+    const keyboardTop = event?.endCoordinates?.screenY;
+    const heightFromTop =
+      typeof keyboardTop === 'number'
+        ? Math.max(0, screenHeight - keyboardTop)
+        : 0;
+    const measuredHeight = heightFromTop > 0 ? heightFromTop : eventHeight;
+    return Math.round(Math.max(0, measuredHeight - compactPrimaryNavHeight));
+  }, [compactPrimaryNavHeight, screenHeight]);
+
+  const handleComposerLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+    if (nextHeight <= 0) return;
+    setComposerHeight((current) => (current === nextHeight ? current : nextHeight));
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const visibleMetrics = Keyboard.metrics();
+    if (visibleMetrics) {
+      const metricsHeightFromTop = Math.max(0, screenHeight - visibleMetrics.screenY);
+      const metricsHeight = metricsHeightFromTop > 0 ? metricsHeightFromTop : visibleMetrics.height;
+      setAndroidKeyboardHeight(Math.round(Math.max(0, metricsHeight - compactPrimaryNavHeight)));
+    }
+
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (event) => {
+      setAndroidKeyboardHeight(getAndroidKeyboardHeight(event));
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setAndroidKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [compactPrimaryNavHeight, getAndroidKeyboardHeight, screenHeight]);
+
   const handleCopyMessage = useCallback(async (messageIndex: number, content: string) => {
     const copyContent = content.trim();
     if (!copyContent) return;
@@ -6596,8 +6647,11 @@ export default function ChatScreen({ route, navigation }: any) {
   const visibleMessages = messages.slice(firstVisibleMessageIndex);
   const canLoadOlderMessages = firstVisibleMessageIndex > 0;
   const chatScrollBottomPadding = Platform.OS === 'android'
-    ? Math.min(Math.round(screenHeight * 0.32), 380)
+    ? composerHeight + androidKeyboardHeight + spacing.sm
     : insets.bottom;
+  const scrollToBottomButtonBottom = Platform.OS === 'android'
+    ? androidKeyboardHeight + composerHeight + spacing.md
+    : 80 + insets.bottom;
 
 
 
@@ -7410,7 +7464,7 @@ export default function ChatScreen({ route, navigation }: any) {
         {/* Scroll to bottom button - appears when user scrolls up */}
         {!shouldAutoScroll && (
           <TouchableOpacity
-            style={[styles.scrollToBottomButton, { bottom: 80 + insets.bottom }]}
+            style={[styles.scrollToBottomButton, { bottom: scrollToBottomButtonBottom }]}
             onPress={() => {
               setShouldAutoScroll(true);
               scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -7598,9 +7652,11 @@ export default function ChatScreen({ route, navigation }: any) {
           </View>
         )}
         <View
+          onLayout={handleComposerLayout}
           style={[
             styles.inputArea,
             Platform.OS === 'android' && styles.inputAreaAndroidDocked,
+            Platform.OS === 'android' && { bottom: androidKeyboardHeight },
             { paddingBottom: Platform.OS === 'ios' ? 12 + insets.bottom : spacing.sm },
           ]}
         >
