@@ -28,7 +28,7 @@
       }
     },
     "android": {
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/dotagents-icon.png",
         "backgroundColor": "#ffffff"

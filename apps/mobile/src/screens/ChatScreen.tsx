@@ -51,6 +51,7 @@ import { ExtendedSettingsApiClient } from '../lib/settingsApi';
 import { RecoveryState, formatConnectionStatus } from '../lib/connectionRecovery';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
 import * as KeepAwake from 'expo-keep-awake';
 import {
   extractRespondToUserResponseEvents,
@@ -152,6 +153,7 @@ const ANDROID_HANDS_FREE_FOREGROUND_HANDOFF_DELAY_MS = 1_500;
 const HANDS_FREE_KEEP_AWAKE_TAG = 'dotagents-handsfree';
 const HANDS_FREE_TTS_BARGE_IN_DUPLICATE_SUPPRESSION_MS = 1_200;
 const HANDS_FREE_TTS_BARGE_IN_TRANSCRIPT_SUPPRESSION_MS = 1_500;
+const HANDS_FREE_TTS_SPEECH_STARTED_BARGE_IN_GRACE_MS = 1_000;
 const HANDS_FREE_TTS_BARGE_IN_COMMANDS = new Set([
   'stop',
   'stop please',
@@ -425,6 +427,16 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   '.heif': 'image/heif',
 };
 
+const inferImageMimeTypeFromBase64 = (base64: string) => {
+  const normalized = base64.replace(/\s+/g, '');
+  if (normalized.startsWith('/9j/')) return 'image/jpeg';
+  if (normalized.startsWith('iVBORw0KGgo')) return 'image/png';
+  if (normalized.startsWith('R0lGOD')) return 'image/gif';
+  if (normalized.startsWith('UklGR')) return 'image/webp';
+  if (normalized.startsWith('Qk')) return 'image/bmp';
+  return null;
+};
+
 const escapeMarkdownImageAlt = (value: string) => value.replace(/[\[\]\\]/g, '').trim();
 
 const normalizeAutoTtsTextKey = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -539,6 +551,39 @@ const inferImageMimeType = (asset: {
     return null;
   }
   return IMAGE_MIME_BY_EXTENSION[`.${extensionMatch[1].toLowerCase()}`] || null;
+};
+
+const summarizeImageAttachmentError = (error: unknown): Record<string, unknown> => {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message };
+  }
+  return { message: String(error) };
+};
+
+const readPickerAssetBase64 = async (
+  asset: ImagePicker.ImagePickerAsset,
+): Promise<{ base64: string; source: 'picker' | 'file' } | null> => {
+  const pickerBase64 = asset.base64?.trim();
+  if (pickerBase64) {
+    return { base64: pickerBase64, source: 'picker' };
+  }
+
+  if (!asset.uri) {
+    return null;
+  }
+
+  try {
+    const file = new File(asset.uri);
+    const fileBase64 = (await file.base64()).trim();
+    return fileBase64 ? { base64: fileBase64, source: 'file' } : null;
+  } catch (error) {
+    console.warn('[DotAgentsImages] failed to read selected image URI', {
+      name: asset.fileName,
+      uri: asset.uri,
+      ...summarizeImageAttachmentError(error),
+    });
+    return null;
+  }
 };
 
 const buildMessageWithPendingImages = (text: string, images: PendingImageAttachment[]) => {
@@ -1716,6 +1761,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const androidHandsFreeTtsHandlersRef = useRef<Map<string, AndroidHandsFreeTtsHandler>>(new Map());
   const ttsBargeInLastHandledRef = useRef<{ command: 'stop' | 'wait'; timestamp: number } | null>(null);
   const handsFreeBargeInTranscriptSuppressedUntilRef = useRef(0);
+  const assistantSpeechStartedAtRef = useRef(0);
   const lastHandsFreeAudioCuePhaseRef = useRef<HandsFreePhase | null>(null);
   const lastHandsFreeSessionReadyCueAtRef = useRef(0);
   const lastHandsFreePreviewSubmittedCueAtRef = useRef(0);
@@ -2360,6 +2406,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeBargeInTranscriptSuppressedUntilRef.current = now + HANDS_FREE_TTS_BARGE_IN_TRANSCRIPT_SUPPRESSION_MS;
     queuedResponseEventsRef.current = [];
     activeAutoSpeechEventRef.current = null;
+    assistantSpeechStartedAtRef.current = 0;
     if (activeRequestIdRef.current) {
       autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
     }
@@ -2388,11 +2435,16 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     const playback = getGlobalTtsPlayback();
-    if (!playback && handsFreePhaseRef.current !== 'speaking') {
+    const now = Date.now();
+    if (playback?.status !== 'speaking') {
       return false;
     }
 
-    const now = Date.now();
+    const assistantSpeechStartedAt = assistantSpeechStartedAtRef.current || playback.startedAt;
+    if (now - assistantSpeechStartedAt < HANDS_FREE_TTS_SPEECH_STARTED_BARGE_IN_GRACE_MS) {
+      return false;
+    }
+
     const lastHandled = ttsBargeInLastHandledRef.current;
     if (
       lastHandled
@@ -2407,6 +2459,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeBargeInTranscriptSuppressedUntilRef.current = now + HANDS_FREE_TTS_BARGE_IN_TRANSCRIPT_SUPPRESSION_MS;
     queuedResponseEventsRef.current = [];
     activeAutoSpeechEventRef.current = null;
+    assistantSpeechStartedAtRef.current = 0;
     if (activeRequestIdRef.current) {
       autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
     }
@@ -3457,6 +3510,7 @@ export default function ChatScreen({ route, navigation }: any) {
     let clearSpeechWatchdog: (() => void) | null = null;
     let handsFreeSpeechStarted = false;
     const markAssistantSpeechStarted = (message?: string, extra?: Record<string, unknown>) => {
+      assistantSpeechStartedAtRef.current = Date.now();
       markGlobalTtsPlaybackSpeaking(playbackId);
       if (!handsFree || handsFreeSpeechStarted) return;
       handsFreeSpeechStarted = true;
@@ -3466,9 +3520,10 @@ export default function ChatScreen({ route, navigation }: any) {
     };
 		const settle = () => {
 			if (settled) return;
-			settled = true;
+      settled = true;
       clearSpeechWatchdog?.();
       clearSpeechWatchdog = null;
+      assistantSpeechStartedAtRef.current = 0;
       completeGlobalTtsPlayback(playbackId);
 				onSettled?.();
 			if (handsFree && handsFreeSpeechStarted) {
@@ -3893,6 +3948,7 @@ export default function ChatScreen({ route, navigation }: any) {
     if (speakingMessageIndex === index) {
       // Toggle off - stop speaking
       intendedSpeakingIndexRef.current = null;
+      assistantSpeechStartedAtRef.current = 0;
       stopGlobalTtsPlayback();
 	      if (handsFree) {
 	        handsFreeController.onSpeechFinished();
@@ -3903,6 +3959,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
     // Stop any current speech first
     intendedSpeakingIndexRef.current = index;
+    assistantSpeechStartedAtRef.current = 0;
     stopGlobalTtsPlayback();
     const processedText = preprocessTextForTTS(content);
     if (!processedText) {
@@ -3993,6 +4050,7 @@ export default function ChatScreen({ route, navigation }: any) {
       androidHandsFreeTtsHandlersRef.current.set(utteranceId, {
         onStarted: () => {
           if (!isCurrentMessagePlayback()) return;
+          assistantSpeechStartedAtRef.current = Date.now();
           markGlobalTtsPlaybackSpeaking(playbackId);
         },
         onSettled: (type, message) => {
@@ -4088,12 +4146,18 @@ export default function ChatScreen({ route, navigation }: any) {
         providerId: 'edge',
         voice: effectiveEdgeTtsVoice,
         rate: effectiveEdgeTtsRate,
+        onStart: () => {
+          if (!isCurrentMessagePlayback()) return;
+          assistantSpeechStartedAtRef.current = Date.now();
+          markGlobalTtsPlaybackSpeaking(playbackId);
+        },
         onDone: () => {
           if (!isCurrentMessagePlayback()) {
             clearStaleMessagePlaybackState();
             return;
           }
           intendedSpeakingIndexRef.current = null;
+          assistantSpeechStartedAtRef.current = 0;
           completeGlobalTtsPlayback(playbackId);
           if (handsFree) {
             handsFreeController.onSpeechFinished();
@@ -4107,6 +4171,7 @@ export default function ChatScreen({ route, navigation }: any) {
             return;
           }
           intendedSpeakingIndexRef.current = null;
+          assistantSpeechStartedAtRef.current = 0;
           completeGlobalTtsPlayback(playbackId);
           if (handsFree) {
             handsFreeController.onSpeechFinished();
@@ -4121,6 +4186,7 @@ export default function ChatScreen({ route, navigation }: any) {
           }
           if (intendedSpeakingIndexRef.current === null || intendedSpeakingIndexRef.current === index) {
             intendedSpeakingIndexRef.current = null;
+            assistantSpeechStartedAtRef.current = 0;
             completeGlobalTtsPlayback(playbackId);
             if (handsFree) {
               handsFreeController.onSpeechFinished();
@@ -4132,6 +4198,7 @@ export default function ChatScreen({ route, navigation }: any) {
       }).then((started) => {
         if (started) {
           if (!isCurrentMessagePlayback()) return;
+          assistantSpeechStartedAtRef.current = assistantSpeechStartedAtRef.current || Date.now();
           markGlobalTtsPlaybackSpeaking(playbackId);
         }
       });
@@ -4147,6 +4214,7 @@ export default function ChatScreen({ route, navigation }: any) {
       onStart: () => {
         if (!isCurrentMessagePlayback()) return;
         nativeSpeechStarted = true;
+        assistantSpeechStartedAtRef.current = Date.now();
         markGlobalTtsPlaybackSpeaking(playbackId);
       },
       onDone: () => {
@@ -4157,6 +4225,7 @@ export default function ChatScreen({ route, navigation }: any) {
         clearSpeechWatchdog?.();
         clearSpeechWatchdog = null;
         intendedSpeakingIndexRef.current = null;
+        assistantSpeechStartedAtRef.current = 0;
         completeGlobalTtsPlayback(playbackId);
 	        if (handsFree) {
 	          handsFreeController.onSpeechFinished();
@@ -4172,6 +4241,7 @@ export default function ChatScreen({ route, navigation }: any) {
         clearSpeechWatchdog?.();
         clearSpeechWatchdog = null;
         intendedSpeakingIndexRef.current = null;
+        assistantSpeechStartedAtRef.current = 0;
         completeGlobalTtsPlayback(playbackId);
 	        if (handsFree) {
 	          handsFreeController.onSpeechFinished();
@@ -4190,6 +4260,7 @@ export default function ChatScreen({ route, navigation }: any) {
           clearSpeechWatchdog?.();
           clearSpeechWatchdog = null;
           intendedSpeakingIndexRef.current = null;
+          assistantSpeechStartedAtRef.current = 0;
           completeGlobalTtsPlayback(playbackId);
 	          if (handsFree) {
 	            handsFreeController.onSpeechFinished();
@@ -4206,6 +4277,7 @@ export default function ChatScreen({ route, navigation }: any) {
       clearSpeechWatchdog?.();
       clearSpeechWatchdog = null;
       intendedSpeakingIndexRef.current = null;
+      assistantSpeechStartedAtRef.current = 0;
       completeGlobalTtsPlayback(playbackId);
       if (handsFree) {
         handsFreeController.onSpeechFinished();
@@ -4232,6 +4304,7 @@ export default function ChatScreen({ route, navigation }: any) {
             return;
           }
           intendedSpeakingIndexRef.current = null;
+          assistantSpeechStartedAtRef.current = 0;
           completeGlobalTtsPlayback(playbackId);
           if (handsFree) {
             handsFreeController.onSpeechFinished();
@@ -5097,7 +5170,7 @@ export default function ChatScreen({ route, navigation }: any) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         selectionLimit: MAX_PENDING_IMAGES - pendingImages.length,
-        quality: 0.8,
+        quality: 0.5,
         base64: true,
       });
 
@@ -5111,34 +5184,37 @@ export default function ChatScreen({ route, navigation }: any) {
       const unknownMimeNames: string[] = [];
       const budgetExceededNames: string[] = [];
       let runningEmbeddedBytes = existingEmbeddedBytes;
+      let pickerBase64Count = 0;
+      let fileBase64FallbackCount = 0;
 
-      selectedAssets.forEach((asset, index) => {
+      for (const [index, asset] of selectedAssets.entries()) {
         const displayName = asset.fileName || `Image ${index + 1}`;
-        if (!asset.base64) {
+        const base64Result = await readPickerAssetBase64(asset);
+        if (!base64Result) {
           missingBase64Names.push(displayName);
-          return;
+          continue;
         }
+        if (base64Result.source === 'picker') pickerBase64Count += 1;
+        else fileBase64FallbackCount += 1;
 
-        const inferredBytes = getApproxBase64Bytes(asset.base64);
-        const fileSizeBytes = typeof asset.fileSize === 'number' && asset.fileSize > 0
-          ? asset.fileSize
-          : inferredBytes;
-        if (fileSizeBytes > MAX_PENDING_IMAGE_FILE_SIZE_BYTES) {
+        const embeddedSourceBytes = getApproxBase64Bytes(base64Result.base64);
+        if (embeddedSourceBytes > MAX_PENDING_IMAGE_FILE_SIZE_BYTES) {
           oversizedImageNames.push(displayName);
-          return;
+          continue;
         }
 
-        const mimeType = inferImageMimeType(asset);
+        const mimeType = inferImageMimeTypeFromBase64(base64Result.base64)
+          || (base64Result.source === 'picker' ? 'image/jpeg' : inferImageMimeType(asset));
         if (!mimeType) {
           unknownMimeNames.push(displayName);
-          return;
+          continue;
         }
 
-        const dataUrl = `data:${mimeType};base64,${asset.base64}`;
-        const embeddedBytes = getApproxDataUrlBytes(dataUrl) || inferredBytes;
+        const dataUrl = `data:${mimeType};base64,${base64Result.base64}`;
+        const embeddedBytes = getApproxDataUrlBytes(dataUrl) || embeddedSourceBytes;
         if (runningEmbeddedBytes + embeddedBytes > MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES) {
           budgetExceededNames.push(displayName);
-          return;
+          continue;
         }
         runningEmbeddedBytes += embeddedBytes;
 
@@ -5149,6 +5225,21 @@ export default function ChatScreen({ route, navigation }: any) {
           previewUri: asset.uri,
           dataUrl,
         });
+      }
+
+      console.info('[DotAgentsImages] processed selected images', {
+        selectedCount: selectedAssets.length,
+        acceptedCount: nextImages.length,
+        pickerBase64Count,
+        fileBase64FallbackCount,
+        missingBase64Count: missingBase64Names.length,
+        oversizedCount: oversizedImageNames.length,
+        unknownMimeCount: unknownMimeNames.length,
+        budgetExceededCount: budgetExceededNames.length,
+        existingEmbeddedBytes,
+        totalEmbeddedBytesAfterAdd: runningEmbeddedBytes,
+        embeddedBudgetBytes: MAX_TOTAL_PENDING_IMAGE_EMBEDDED_BYTES,
+        selectedOriginalFileBytes: selectedAssets.map((asset) => asset.fileSize || null),
       });
 
       if (nextImages.length > 0) {
@@ -5183,6 +5274,7 @@ export default function ChatScreen({ route, navigation }: any) {
         );
       }
     } catch (error: any) {
+      console.warn('[DotAgentsImages] image picker failed', summarizeImageAttachmentError(error));
       Alert.alert('Image picker error', error?.message || 'Unable to select images right now.');
     }
   }, [pendingImages]);
