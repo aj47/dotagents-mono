@@ -1190,7 +1190,12 @@ export function ActiveAgentsSidebar({
   }, [draggingGroupId])
 
   const getSessionDropPosition = useCallback((event: React.DragEvent): SidebarSessionDropPosition => {
-    const rect = event.currentTarget.getBoundingClientRect()
+    // React clears `currentTarget` after the event handler returns, so any deferred
+    // caller (e.g. a setState updater) sees null here. Fall back to "after" rather
+    // than crashing — callers should resolve the position synchronously when possible.
+    const target = event.currentTarget as Element | null
+    if (!target || typeof target.getBoundingClientRect !== "function") return "after"
+    const rect = target.getBoundingClientRect()
     return event.clientY < rect.top + rect.height / 2 ? "before" : "after"
   }, [])
 
@@ -1334,11 +1339,14 @@ export function ActiveAgentsSidebar({
     event.preventDefault()
     event.stopPropagation()
     if (groupId !== targetGroupId) {
+      // Resolve the drop position synchronously — `event.currentTarget` is nulled
+      // out before React invokes the setState updater below.
+      const position = getSessionDropPosition(event)
       setSessionGroups((prev) => reorderSidebarSessionGroups(
         prev,
         groupId,
         targetGroupId,
-        getSessionDropPosition(event),
+        position,
       ))
     }
     clearSessionDragState()
