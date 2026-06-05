@@ -69,6 +69,11 @@ const STT_PROVIDERS = [
   { label: 'Parakeet (Local)', value: 'parakeet' },
 ] as const;
 
+const MOBILE_STT_PROVIDERS = [
+  { label: 'Native', value: 'native' },
+  { label: 'Desktop Provider', value: 'desktop' },
+] as const;
+
 // Chat/Agent Provider Options (for Agent and Transcript Processing)
 const CHAT_PROVIDERS = [
   { label: 'OpenAI', value: 'openai' },
@@ -3961,6 +3966,35 @@ export default function SettingsScreen({ navigation, route }: any) {
             {/* 4c. Speech-to-Text */}
             {remoteSettings && (
               <CollapsibleSection id="speechToText" title="Speech-to-Text">
+                <Text style={styles.label}>Mobile STT Mode</Text>
+                <View style={styles.providerSelector}>
+                  {MOBILE_STT_PROVIDERS.map((provider) => {
+                    const selected = (draft.mobileSttProvider || 'native') === provider.value;
+                    return (
+                      <Pressable
+                        key={provider.value}
+                        style={[
+                          styles.providerOption,
+                          selected && styles.providerOptionActive,
+                        ]}
+                        onPress={() => updateLocalConfig({ mobileSttProvider: provider.value })}
+                        accessibilityRole="button"
+                        accessibilityLabel={createButtonAccessibilityLabel(`Use ${provider.label} for mobile speech-to-text`)}
+                      >
+                        <Text style={[
+                          styles.providerOptionText,
+                          selected && styles.providerOptionTextActive,
+                        ]}>
+                          {provider.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={styles.helperText}>
+                  Desktop Provider uses the selected desktop STT provider for mobile push-to-talk.
+                </Text>
+
                 <Text style={styles.label}>STT Language</Text>
                 <TextInput
                   style={styles.input}

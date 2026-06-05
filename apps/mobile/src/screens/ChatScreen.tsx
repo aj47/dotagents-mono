@@ -1127,6 +1127,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const globalTtsPlayback = useGlobalTtsPlayback();
   const currentSession = sessionStore.getCurrentSession();
   const handsFree = !!config.handsFree;
+  const mobileSttProvider = config.mobileSttProvider || 'native';
+  const desktopSttSelected = mobileSttProvider === 'desktop';
+  const desktopSttAvailable = !!config.baseUrl && !!config.apiKey;
   const settingsClient = useMemo(() => {
     if (!config.baseUrl || !config.apiKey) {
       return null;
@@ -1307,6 +1310,21 @@ export default function ChatScreen({ route, navigation }: any) {
     setConfig(nextCfg);
     void saveConfig(nextCfg).catch(() => {});
   }, [config, setConfig]);
+
+  const toggleMobileSttProvider = useCallback(() => {
+    const nextProvider: 'native' | 'desktop' = desktopSttSelected ? 'native' : 'desktop';
+    if (nextProvider === 'desktop' && !desktopSttAvailable) {
+      Alert.alert(
+        'Pair desktop first',
+        'Desktop speech-to-text needs a paired DotAgents desktop URL and API key.',
+        [{ text: 'OK' }],
+      );
+      return;
+    }
+    const nextCfg = { ...config, mobileSttProvider: nextProvider };
+    setConfig(nextCfg);
+    void saveConfig(nextCfg).catch(() => {});
+  }, [config, desktopSttAvailable, desktopSttSelected, setConfig]);
 
   // TTS toggle
   const ttsEnabled = config.ttsEnabled !== false; // default true
@@ -2865,6 +2883,11 @@ export default function ChatScreen({ route, navigation }: any) {
     enabled: foregroundSpeechRecognizerEnabled,
     handsFree,
     handsFreeDebounceMs: handsFreeMessageDebounceMs,
+    desktopStt: {
+      enabled: desktopSttSelected,
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
+    },
     willCancel,
     audioInputDeviceId: config.audioInputDeviceId,
     onVoiceFinalized: handleVoiceFinalized,
@@ -7695,6 +7718,33 @@ export default function ChatScreen({ route, navigation }: any) {
               </View>
               <View style={[styles.chatMenuSwitchTrack, handsFree && styles.chatMenuSwitchTrackOn]}>
                 <View style={[styles.chatMenuSwitchThumb, handsFree && styles.chatMenuSwitchThumbOn]} />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.chatMenuRow}
+              onPress={toggleMobileSttProvider}
+              accessibilityRole="switch"
+              accessibilityLabel={createSwitchAccessibilityLabel('Desktop speech-to-text')}
+              accessibilityHint="Uses the paired desktop speech-to-text provider for push-to-talk."
+              accessibilityState={{ checked: desktopSttSelected }}
+              aria-checked={desktopSttSelected}
+            >
+              <View style={[styles.chatMenuIcon, desktopSttSelected && styles.chatMenuIconActive]}>
+                <Ionicons
+                  name={desktopSttSelected ? 'cloud' : 'phone-portrait-outline'}
+                  size={16}
+                  color={desktopSttSelected ? theme.colors.primaryForeground : theme.colors.primary}
+                />
+              </View>
+              <View style={styles.chatMenuRowText}>
+                <Text style={styles.chatMenuRowLabel}>Speech-to-text</Text>
+                <Text style={styles.chatMenuRowHelper}>
+                  {desktopSttSelected ? 'Desktop provider for hold-to-talk.' : 'Native recognizer for hold-to-talk.'}
+                </Text>
+              </View>
+              <View style={[styles.chatMenuSwitchTrack, desktopSttSelected && styles.chatMenuSwitchTrackOn]}>
+                <View style={[styles.chatMenuSwitchThumb, desktopSttSelected && styles.chatMenuSwitchThumbOn]} />
               </View>
             </TouchableOpacity>
 

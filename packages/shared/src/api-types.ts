@@ -840,6 +840,19 @@ export interface PushStatusResponse {
   platforms: string[];
 }
 
+export interface RemoteSttTranscriptionRequest {
+  audioBase64: string;
+  mimeType?: string;
+  fileName?: string;
+  durationMs?: number;
+}
+
+export interface RemoteSttTranscriptionResponse {
+  text: string;
+  provider: 'openai' | 'groq' | 'parakeet';
+  model?: string;
+}
+
 // Skills Types
 export interface Skill {
   id: string;

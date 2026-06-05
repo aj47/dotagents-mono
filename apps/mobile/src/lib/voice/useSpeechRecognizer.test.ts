@@ -119,12 +119,32 @@ class FakeNativeSpeechEventEmitter {
   }
 }
 
+class FakeAudioRecorder {
+  prepareToRecordAsync = vi.fn(async () => {});
+  record = vi.fn(() => {
+    this.status = { ...this.status, isRecording: true, canRecord: true, url: null };
+  });
+  stop = vi.fn(async () => {
+    this.status = { ...this.status, isRecording: false, canRecord: false, url: 'file:///tmp/mobile-recording.m4a' };
+  });
+  status = {
+    canRecord: false,
+    isRecording: false,
+    durationMillis: 0,
+    mediaServicesDidReset: false,
+    url: null as string | null,
+  };
+  getStatus = vi.fn(() => this.status);
+}
+
 async function loadUseSpeechRecognizer(
   runtime: ReturnType<typeof createHookRuntime>,
   options: {
     platform?: 'android' | 'ios' | 'web';
     eventEmitterClass?: typeof FakeNativeSpeechEventEmitter;
     speechRecognitionModule?: Record<string, any>;
+    audioRecorder?: FakeAudioRecorder;
+    transcribeRemoteSttRecording?: any;
   } = {},
 ) {
   vi.resetModules();
@@ -148,6 +168,16 @@ async function loadUseSpeechRecognizer(
   vi.doMock('expo-speech-recognition', () => ({
     ExpoSpeechRecognitionModule: options.speechRecognitionModule,
   }));
+  vi.doMock('expo-audio', () => ({
+    RecordingPresets: { HIGH_QUALITY: { extension: '.m4a' } },
+    requestRecordingPermissionsAsync: vi.fn(async () => ({ granted: true })),
+    setAudioModeAsync: vi.fn(async () => {}),
+    useAudioRecorder: vi.fn(() => options.audioRecorder ?? new FakeAudioRecorder()),
+  }));
+  vi.doMock('../remoteStt', () => ({
+    transcribeRemoteSttRecording: options.transcribeRemoteSttRecording ?? vi.fn(async () => ({ text: '', provider: 'openai' })),
+    logRemoteSttFailure: vi.fn(),
+  }));
   vi.doMock('@react-native-async-storage/async-storage', () => ({
     default: {
       getItem: vi.fn(),
@@ -166,6 +196,8 @@ afterEach(() => {
   vi.unmock('react-native');
   vi.unmock('expo-modules-core');
   vi.unmock('expo-speech-recognition');
+  vi.unmock('expo-audio');
+  vi.unmock('../remoteStt');
   vi.unmock('@react-native-async-storage/async-storage');
   FakeSpeechRecognition.instances = [];
   FakeSpeechRecognition.nextStartError = null;
@@ -209,6 +241,51 @@ describe('mergeVoiceText', () => {
 });
 
 describe('useSpeechRecognizer', () => {
+  it('records push-to-talk audio and finalizes desktop provider transcription when enabled', async () => {
+    const runtime = createHookRuntime();
+    const audioRecorder = new FakeAudioRecorder();
+    const transcribeRemoteSttRecording = vi.fn(async () => ({
+      text: 'desktop provider transcript',
+      provider: 'groq',
+      model: 'whisper-large-v3-turbo',
+    }));
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime, {
+      platform: 'android',
+      audioRecorder,
+      transcribeRemoteSttRecording,
+    });
+    const onVoiceFinalized = vi.fn();
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: false,
+      willCancel: false,
+      desktopStt: {
+        enabled: true,
+        baseUrl: 'https://desktop.example/v1',
+        apiKey: 'test-key',
+      },
+      onVoiceFinalized,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording({} as any);
+    expect(audioRecorder.prepareToRecordAsync).toHaveBeenCalled();
+    expect(audioRecorder.record).toHaveBeenCalled();
+
+    await recognizer.stopRecordingAndHandle();
+    expect(audioRecorder.stop).toHaveBeenCalled();
+    expect(transcribeRemoteSttRecording).toHaveBeenCalledWith({
+      baseUrl: 'https://desktop.example/v1',
+      apiKey: 'test-key',
+      uri: 'file:///tmp/mobile-recording.m4a',
+      durationMs: expect.any(Number),
+    });
+    expect(onVoiceFinalized).toHaveBeenCalledWith({
+      text: 'desktop provider transcript',
+      mode: 'send',
+      source: 'native',
+    });
+  });
+
   it('waits for push-to-talk release before finalizing if the recognizer ends mid-hold', async () => {
     vi.useFakeTimers();
     let now = 1_000;

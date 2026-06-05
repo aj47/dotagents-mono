@@ -30,6 +30,7 @@ describe('normalizeStoredConfig', () => {
     expect(normalized.handsFreeWakePhrase).toBe(DEFAULT_HANDS_FREE_WAKE_PHRASE);
     expect(normalized.handsFreeSleepPhrase).toBe(DEFAULT_HANDS_FREE_SLEEP_PHRASE);
     expect(normalized.handsFreeDebug).toBe(false);
+    expect(normalized.mobileSttProvider).toBe('native');
     expect(normalized.baseUrl).toBe('https://api.openai.com/v1');
   });
 
@@ -92,5 +93,27 @@ describe('normalizeStoredConfig', () => {
     });
 
     expect(preserved.edgeTtsVoice).toBe('en-GB-SoniaNeural');
+  });
+
+  it('falls back to native mobile STT when desktop STT is selected without pairing', () => {
+    const normalized = normalizeStoredConfig({
+      ...DEFAULT_APP_CONFIG,
+      baseUrl: '',
+      apiKey: '',
+      mobileSttProvider: 'desktop',
+    });
+
+    expect(normalized.mobileSttProvider).toBe('native');
+  });
+
+  it('preserves desktop mobile STT when a desktop is paired', () => {
+    const normalized = normalizeStoredConfig({
+      ...DEFAULT_APP_CONFIG,
+      baseUrl: 'https://desktop.example/v1',
+      apiKey: 'test-key',
+      mobileSttProvider: 'desktop',
+    });
+
+    expect(normalized.mobileSttProvider).toBe('desktop');
   });
 });

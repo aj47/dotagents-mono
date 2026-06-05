@@ -6,7 +6,14 @@ import {
   View,
 } from 'react-native';
 import { EventEmitter } from 'expo-modules-core';
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from 'expo-audio';
 import { DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS } from '../../store/config';
+import { logRemoteSttFailure, transcribeRemoteSttRecording } from '../remoteStt';
 import type { VoiceDebugLog } from './voiceDebug';
 import { mergeVoiceText, normalizeVoiceText } from './mergeVoiceText';
 
@@ -40,6 +47,11 @@ type UseSpeechRecognizerOptions = {
   enabled?: boolean;
   handsFree: boolean;
   handsFreeDebounceMs?: number;
+  desktopStt?: {
+    enabled?: boolean;
+    baseUrl?: string;
+    apiKey?: string;
+  };
   willCancel: boolean;
   onVoiceFinalized: (payload: VoiceFinalizedPayload) => void;
   onRecognizerError?: (message: string) => void;
@@ -94,6 +106,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     enabled = true,
     handsFree,
     handsFreeDebounceMs = DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+    desktopStt,
     willCancel,
     onVoiceFinalized,
     onRecognizerError,
@@ -109,6 +122,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const [liveTranscript, setLiveTranscript] = useState('');
   const [sttPreview, setSttPreview] = useState('');
   const [handsFreeDebounceEndsAt, setHandsFreeDebounceEndsAt] = useState<number | null>(null);
+  const desktopSttRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const listeningRef = useRef(false);
   const webRecognitionRef = useRef<any>(null);
@@ -134,6 +148,8 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   const voiceGestureIdRef = useRef(0);
   const voiceGestureFinalizedIdRef = useRef(0);
   const pendingPushToTalkFinalRef = useRef<DeferredPushToTalkFinal | null>(null);
+  const desktopSttRecordingRef = useRef(false);
+  const desktopSttStartedAtRef = useRef<number | null>(null);
   const suppressFinalizeRef = useRef(false);
   const shouldSuppressHandsFreeTranscriptRef = useRef(shouldSuppressHandsFreeTranscript);
   const shouldFinalizeHandsFreeTranscriptRef = useRef(shouldFinalizeHandsFreeTranscript);
@@ -145,6 +161,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   shouldImmediatelyFinalizeHandsFreeTranscriptRef.current = shouldImmediatelyFinalizeHandsFreeTranscript;
   onSuppressedHandsFreeTranscriptRef.current = onSuppressedHandsFreeTranscript;
   enabledRef.current = enabled;
+  const desktopSttEnabled = !!desktopStt?.enabled && !handsFree;
 
   const setListeningValue = useCallback((value: boolean) => {
     listeningRef.current = value;
@@ -321,6 +338,145 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     return true;
   }, [emitFinalized, log]);
 
+  const startDesktopSttRecording = useCallback(async () => {
+    if (!desktopSttEnabled) {
+      return false;
+    }
+    if (!desktopStt?.baseUrl || !desktopStt?.apiKey) {
+      const message = 'Desktop speech-to-text requires a paired DotAgents desktop URL and API key.';
+      log?.('recognizer-error', message, { source: getRecognitionSource() });
+      onRecognizerError?.(message);
+      setListeningValue(false);
+      return true;
+    }
+
+    try {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission?.granted) {
+        setListeningValue(false);
+        onPermissionDenied?.();
+        log?.('permission-denied', 'Microphone permission was denied for desktop speech-to-text.');
+        return true;
+      }
+
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        shouldPlayInBackground: false,
+        interruptionMode: 'doNotMix',
+      });
+      await desktopSttRecorder.prepareToRecordAsync();
+      desktopSttRecorder.record();
+      desktopSttRecordingRef.current = true;
+      desktopSttStartedAtRef.current = Date.now();
+      log?.('recognizer-start', 'Desktop provider speech-to-text recording started.', {
+        source: getRecognitionSource(),
+      });
+      return true;
+    } catch (error) {
+      const message = (error as any)?.message || String(error);
+      setListeningValue(false);
+      desktopSttRecordingRef.current = false;
+      desktopSttStartedAtRef.current = null;
+      log?.('recognizer-error', 'Desktop provider speech-to-text recording failed to start.', {
+        source: getRecognitionSource(),
+        message,
+      });
+      onRecognizerError?.(message);
+      return true;
+    }
+  }, [
+    desktopStt?.apiKey,
+    desktopStt?.baseUrl,
+    desktopSttEnabled,
+    desktopSttRecorder,
+    log,
+    onPermissionDenied,
+    onRecognizerError,
+    setListeningValue,
+  ]);
+
+  const stopDesktopSttRecording = useCallback(async (options?: { finalize?: boolean }) => {
+    if (!desktopSttRecordingRef.current) {
+      return false;
+    }
+
+    const shouldFinalize = options?.finalize !== false;
+    const startedAt = desktopSttStartedAtRef.current;
+    const durationMs = startedAt ? Date.now() - startedAt : undefined;
+    desktopSttRecordingRef.current = false;
+    desktopSttStartedAtRef.current = null;
+
+    try {
+      await desktopSttRecorder.stop();
+    } catch (error) {
+      const message = (error as any)?.message || String(error);
+      log?.('recognizer-error', 'Desktop provider speech-to-text recording failed to stop.', {
+        source: getRecognitionSource(),
+        message,
+      });
+      onRecognizerError?.(message);
+    } finally {
+      setListeningValue(false);
+      setLiveTranscriptValue('');
+      void setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+    }
+
+    if (!shouldFinalize) {
+      return true;
+    }
+
+    const status = desktopSttRecorder.getStatus();
+    const uri = status.url;
+    if (!uri) {
+      const message = 'Desktop speech-to-text recording did not produce an audio file.';
+      log?.('transcript-ignored', message, { source: getRecognitionSource() });
+      onRecognizerError?.(message);
+      return true;
+    }
+
+    try {
+      log?.('finalization-scheduled', 'Desktop provider speech-to-text transcription started.', {
+        source: getRecognitionSource(),
+        durationMs,
+      });
+      const result = await transcribeRemoteSttRecording({
+        baseUrl: desktopStt?.baseUrl || '',
+        apiKey: desktopStt?.apiKey || '',
+        uri,
+        durationMs,
+      });
+      log?.('recognizer-result', 'Desktop provider speech-to-text produced a result.', {
+        source: getRecognitionSource(),
+        provider: result.provider,
+        model: result.model,
+        text: truncateDebugText(result.text),
+        textLength: result.text?.length ?? 0,
+      });
+      voiceGestureFinalizedIdRef.current = voiceGestureIdRef.current;
+      emitFinalized(result.text || '', getRecognitionSource());
+    } catch (error) {
+      logRemoteSttFailure(error);
+      const message = (error as any)?.message || String(error);
+      log?.('recognizer-error', 'Desktop provider speech-to-text transcription failed.', {
+        source: getRecognitionSource(),
+        message,
+      });
+      onRecognizerError?.(message);
+    }
+
+    return true;
+  }, [
+    desktopStt?.apiKey,
+    desktopStt?.baseUrl,
+    desktopSttRecorder,
+    emitFinalized,
+    log,
+    onRecognizerError,
+    setListeningValue,
+    setLiveTranscriptValue,
+  ]);
+
   const stopRecognitionOnly = useCallback(async (options?: { preservePendingHandsFreeFinal?: boolean }) => {
     const pendingHandsFreeFinal = normalizeVoiceText(pendingHandsFreeFinalRef.current);
     const shouldPreservePendingHandsFreeFinal = !!options?.preservePendingHandsFreeFinal
@@ -342,6 +498,10 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     });
 
     try {
+      if (await stopDesktopSttRecording({ finalize: false })) {
+        return;
+      }
+
       if (Platform.OS !== 'web') {
         try {
           const SR: any = await import('expo-speech-recognition');
@@ -369,7 +529,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       webPressInSeenRef.current = false;
       log?.('recognizer-stop', 'Speech recognizer stopped.');
     }
-  }, [cleanupNativeSubs, clearHandsFreeDebounce, handsFree, isHandsFreeTranscriptSuppressed, log, setListeningValue, setLiveTranscriptValue]);
+  }, [cleanupNativeSubs, clearHandsFreeDebounce, handsFree, isHandsFreeTranscriptSuppressed, log, setListeningValue, setLiveTranscriptValue, stopDesktopSttRecording]);
 
   useEffect(() => {
     if (enabled || !listeningRef.current) {
@@ -950,6 +1110,11 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     }
 
     try {
+      if (desktopSttEnabled && await startDesktopSttRecording()) {
+        startingRef.current = false;
+        return;
+      }
+
       if (Platform.OS !== 'web') {
         try {
           const SR: any = await import('expo-speech-recognition');
@@ -1240,6 +1405,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     clearHandsFreeDebounce,
     clearSuppressedHandsFreeTranscript,
     deferPushToTalkFinalization,
+    desktopSttEnabled,
     emitFinalized,
     ensureWebRecognizer,
     handsFree,
@@ -1254,6 +1420,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     setListeningValue,
     setLiveTranscriptValue,
     setSttPreviewWithExpiry,
+    startDesktopSttRecording,
     startWebRecognizer,
   ]);
 
@@ -1278,6 +1445,10 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
         return;
       }
 
+      if (desktopSttRecordingRef.current && await stopDesktopSttRecording({ finalize: true })) {
+        return;
+      }
+
       if (Platform.OS !== 'web') {
         try {
           const SR: any = await import('expo-speech-recognition');
@@ -1297,7 +1468,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       stoppingRef.current = false;
       log?.('recognizer-stop', 'Speech recognizer stopped.');
     }
-  }, [flushPendingPushToTalkFinalization, handsFree, log, setListeningValue]);
+  }, [flushPendingPushToTalkFinalization, handsFree, log, setListeningValue, stopDesktopSttRecording]);
 
   stopRecordingAndHandleRef.current = stopRecordingAndHandle;
 
@@ -1393,12 +1564,13 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
   }, [handsFree]);
 
   useEffect(() => () => {
+    void stopDesktopSttRecording({ finalize: false });
     cleanupNativeSubs();
     clearHandsFreeDebounce();
     if (sttPreviewTimeoutRef.current) {
       clearTimeout(sttPreviewTimeoutRef.current);
     }
-  }, [cleanupNativeSubs, clearHandsFreeDebounce]);
+  }, [cleanupNativeSubs, clearHandsFreeDebounce, stopDesktopSttRecording]);
 
   return {
     listening,

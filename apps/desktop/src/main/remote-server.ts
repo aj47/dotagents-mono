@@ -56,6 +56,7 @@ import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } 
 import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { generateTTS } from "./tts-service"
+import { transcribeAudioWithConfiguredProvider } from "./stt-service"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -110,6 +111,8 @@ import type {
   OperatorTunnelStatus,
   OperatorUpdaterStatus,
   OperatorWhatsAppIntegrationSummary,
+  RemoteSttTranscriptionRequest,
+  RemoteSttTranscriptionResponse,
 } from "@dotagents/shared"
 import type { RendererHandlers } from "./renderer-handlers"
 import { INJECTED_RUNTIME_TOOL_TRANSPORT_NAME, RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "../shared/runtime-tool-names"
@@ -5783,6 +5786,54 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const message = error?.message || "TTS generation failed"
       // 400 for known user-facing validation errors, 502 for upstream/provider errors.
       const code = /not enabled|validation failed|Unsupported TTS provider|API key is required/i.test(message) ? 400 : 502
+      return reply.code(code).send({ error: message })
+    }
+  })
+
+  // POST /v1/stt/transcribe - Transcribe mobile-recorded audio with the
+  // desktop's configured STT provider. This keeps provider credentials and
+  // provider-specific request wiring on desktop, matching the remote TTS path.
+  fastify.post("/v1/stt/transcribe", async (req, reply) => {
+    try {
+      const body = (req.body ?? {}) as RemoteSttTranscriptionRequest
+      if (typeof body.audioBase64 !== "string" || !body.audioBase64.trim()) {
+        return reply.code(400).send({ error: "Missing or invalid 'audioBase64'" })
+      }
+
+      const audioBase64 = body.audioBase64.includes(",")
+        ? body.audioBase64.slice(body.audioBase64.indexOf(",") + 1)
+        : body.audioBase64
+      const normalizedBase64 = audioBase64.replace(/\s+/g, "")
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalizedBase64) || normalizedBase64.length % 4 === 1) {
+        return reply.code(400).send({ error: "Invalid base64 audio payload" })
+      }
+
+      const padding = normalizedBase64.endsWith("==") ? 2 : normalizedBase64.endsWith("=") ? 1 : 0
+      const decodedBytes = Math.max(0, Math.floor((normalizedBase64.length * 3) / 4) - padding)
+      if (decodedBytes <= 0) {
+        return reply.code(400).send({ error: "Audio payload is empty" })
+      }
+      if (decodedBytes > 24 * 1024 * 1024) {
+        return reply.code(413).send({ error: "Audio payload too large (max 24 MB)" })
+      }
+
+      const result = await transcribeAudioWithConfiguredProvider(
+        {
+          audio: Buffer.from(normalizedBase64, "base64"),
+          mimeType: typeof body.mimeType === "string" ? body.mimeType : undefined,
+          fileName: typeof body.fileName === "string" ? body.fileName : undefined,
+          durationMs: typeof body.durationMs === "number" ? body.durationMs : undefined,
+        },
+        configStore.get(),
+        { context: "remote-stt" },
+      )
+
+      const response: RemoteSttTranscriptionResponse = result
+      return reply.code(200).send(response)
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "STT request failed", error)
+      const message = error?.message || "Speech-to-text transcription failed"
+      const code = /not available for mobile|API key is required|Audio payload is empty/i.test(message) ? 400 : 502
       return reply.code(code).send({ error: message })
     }
   })

@@ -12,6 +12,7 @@ export type AppConfig = {
   handsFreeSleepPhrase?: string; // sleep phrase for foreground handsfree mode
   handsFreeDebug?: boolean; // show structured handsfree debug state/events in chat
   ttsEnabled?: boolean; // text-to-speech toggle
+  mobileSttProvider?: 'native' | 'desktop'; // native Android/iOS recognizer or paired desktop STT provider
   ttsProvider?: 'native' | 'edge';
   messageQueueEnabled?: boolean; // message queue toggle (allows queuing messages while agent is busy)
   // TTS voice settings
@@ -63,6 +64,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   handsFreeSleepPhrase: DEFAULT_HANDS_FREE_SLEEP_PHRASE,
   handsFreeDebug: false,
   ttsEnabled: true,
+  mobileSttProvider: 'native',
   ttsProvider: 'native',
   messageQueueEnabled: true,
   ttsVoiceId: undefined, // Use system default
@@ -79,6 +81,12 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
   // so if no desktop is paired fall back to native.
   const hasPairing = Boolean(cfg.baseUrl && cfg.apiKey);
   const ttsProvider = cfg.ttsProvider === 'edge' && !hasPairing ? 'native' : cfg.ttsProvider;
+  const configuredMobileSttProvider =
+    cfg.mobileSttProvider === 'desktop' || cfg.mobileSttProvider === 'native'
+      ? cfg.mobileSttProvider
+      : DEFAULT_APP_CONFIG.mobileSttProvider;
+  const mobileSttProvider =
+    configuredMobileSttProvider === 'desktop' && !hasPairing ? 'native' : configuredMobileSttProvider;
   const normalized = {
     ...DEFAULT_APP_CONFIG,
     ...cfg,
@@ -89,6 +97,7 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
     handsFreeDebug: cfg.handsFreeDebug ?? false,
     edgeTtsVoice: migrateEdgeTtsVoice(cfg.edgeTtsVoice),
     ttsProvider,
+    mobileSttProvider,
   };
   delete (normalized as any).handsFreeForegroundOnly;
   delete (normalized as any).handsFreeForegroundOnlyConfigured;
