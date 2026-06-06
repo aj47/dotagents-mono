@@ -56,6 +56,9 @@ describe("emitAgentProgress snoozed propagation", () => {
     mocks.getSession.mockReset()
     mocks.shouldStopSession.mockClear()
     mocks.getSessionRunId.mockClear()
+    mocks.mainWindow.isVisible.mockReturnValue(true)
+    mocks.mainWindow.isFocused.mockReturnValue(false)
+    mocks.panelWindow.isVisible.mockReturnValue(false)
     mocks.appState.isRecording = false
     mocks.appState.isTextInputActive = false
     mocks.appState.isAgentModeActive = false
@@ -106,7 +109,7 @@ describe("emitAgentProgress snoozed propagation", () => {
 
   it("keeps agent progress out of the panel when panel progress is disabled", async () => {
     mocks.config.floatingPanelAgentProgressEnabled = false
-    mocks.appState.isAgentModeActive = true
+    mocks.panelWindow.isVisible.mockReturnValue(true)
     mocks.isSessionSnoozed.mockReturnValue(false)
 
     await emitAgentProgress({ sessionId: "session-panel-disabled", currentIteration: 0, maxIterations: 1, steps: [], isComplete: false })
@@ -120,8 +123,9 @@ describe("emitAgentProgress snoozed propagation", () => {
     expect(mocks.closeAgentModeAndHidePanelWindow).toHaveBeenCalledWith({ preserveAgentStopState: true })
   })
 
-  it("does not repeatedly clear the hidden panel when panel progress is disabled", async () => {
+  it("does not clear the hidden panel when panel progress is disabled", async () => {
     mocks.config.floatingPanelAgentProgressEnabled = false
+    mocks.appState.isAgentModeActive = true
     mocks.isSessionSnoozed.mockReturnValue(false)
 
     await emitAgentProgress({ sessionId: "session-panel-disabled-hidden", currentIteration: 0, maxIterations: 1, steps: [], isComplete: false })

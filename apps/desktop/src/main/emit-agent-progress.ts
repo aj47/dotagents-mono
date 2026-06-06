@@ -97,7 +97,7 @@ function sendToWindows(update: AgentProgressUpdate): void {
       update.sessionId &&
       !appState.isRecording &&
       !appState.isTextInputActive &&
-      (panel.isVisible() || appState.isAgentModeActive)
+      panel.isVisible()
 
     if (shouldClosePanelAgentMode) {
       // Preserve shouldStopAgent: this fires on every progress update, so a
