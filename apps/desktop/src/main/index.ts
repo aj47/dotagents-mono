@@ -12,7 +12,11 @@ import {
   setAppQuitting,
   WINDOWS,
 } from "./window"
-import { listenToKeyboardEvents, stopListeningToKeyboardEvents } from "./keyboard"
+import {
+  getFocusedAppInfo,
+  listenToKeyboardEvents,
+  stopListeningToKeyboardEvents,
+} from "./keyboard"
 import { registerIpcMain } from "@egoist/tipc/main"
 import { router } from "./tipc"
 import { state } from "./state"
@@ -59,6 +63,56 @@ import {
   buildHubBundleInstallUrl,
   resolveStartupMainWindowDecision,
 } from "./startup-routing"
+
+function getBrowserWindowDebugId(window: Electron.BrowserWindow): string {
+  if (WINDOWS.get("main") === window) return "main"
+  if (WINDOWS.get("panel") === window) return "panel"
+  if (WINDOWS.get("setup") === window) return "setup"
+  return "unknown"
+}
+
+function serializeUnknownError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      stack: error.stack,
+    }
+  }
+
+  return { message: String(error) }
+}
+
+function logFrontmostAppSnapshotForBlur(
+  window: Electron.BrowserWindow,
+  delayMs = 0,
+) {
+  const logSnapshot = () => {
+    void getFocusedAppInfo()
+      .then((focusedApp) => {
+        logApp("[app.browser-window-blur] Frontmost app snapshot", {
+          delayMs,
+          windowId: getBrowserWindowDebugId(window),
+          focusedApp,
+          snapshot: getWindowFocusDebugSnapshot(),
+        })
+      })
+      .catch((error) => {
+        logApp("[app.browser-window-blur] Failed to capture frontmost app snapshot", {
+          delayMs,
+          windowId: getBrowserWindowDebugId(window),
+          error: serializeUnknownError(error),
+          snapshot: getWindowFocusDebugSnapshot(),
+        })
+      })
+  }
+
+  if (delayMs > 0) {
+    setTimeout(logSnapshot, delayMs)
+    return
+  }
+
+  logSnapshot()
+}
 
 // Check for --qr flag (headless mode with QR code)
 const isQRMode = process.argv.includes("--qr")
@@ -789,6 +843,22 @@ if (!gotSingleInstanceLock) {
 
     app.on("did-become-active", function () {
       handleAppActivation("app.did-become-active")
+    })
+
+    app.on("browser-window-focus", function (_event, window) {
+      logApp("[app.browser-window-focus] Window focused", {
+        windowId: getBrowserWindowDebugId(window),
+        snapshot: getWindowFocusDebugSnapshot(),
+      })
+    })
+
+    app.on("browser-window-blur", function (_event, window) {
+      logApp("[app.browser-window-blur] Window blurred", {
+        windowId: getBrowserWindowDebugId(window),
+        snapshot: getWindowFocusDebugSnapshot(),
+      })
+      logFrontmostAppSnapshotForBlur(window)
+      logFrontmostAppSnapshotForBlur(window, 75)
     })
 
     // Track if we're already cleaning up to prevent re-entry

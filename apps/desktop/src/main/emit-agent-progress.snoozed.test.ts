@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   shouldStopSession: vi.fn(() => false),
   getSessionRunId: vi.fn(() => undefined),
-  appState: { isRecording: false, isTextInputActive: false },
+  appState: { isRecording: false, isTextInputActive: false, isAgentModeActive: false },
   config: { floatingPanelAutoShow: true, floatingPanelAgentProgressEnabled: true, hidePanelWhenMainFocused: true },
   mainWindow: { isVisible: vi.fn(() => true), isFocused: vi.fn(() => false), webContents: { id: "main" } },
   panelWindow: { isVisible: vi.fn(() => false), webContents: { id: "panel" } },
@@ -58,6 +58,7 @@ describe("emitAgentProgress snoozed propagation", () => {
     mocks.getSessionRunId.mockClear()
     mocks.appState.isRecording = false
     mocks.appState.isTextInputActive = false
+    mocks.appState.isAgentModeActive = false
     mocks.config.floatingPanelAutoShow = true
     mocks.config.floatingPanelAgentProgressEnabled = true
     mocks.config.hidePanelWhenMainFocused = true
@@ -105,6 +106,7 @@ describe("emitAgentProgress snoozed propagation", () => {
 
   it("keeps agent progress out of the panel when panel progress is disabled", async () => {
     mocks.config.floatingPanelAgentProgressEnabled = false
+    mocks.appState.isAgentModeActive = true
     mocks.isSessionSnoozed.mockReturnValue(false)
 
     await emitAgentProgress({ sessionId: "session-panel-disabled", currentIteration: 0, maxIterations: 1, steps: [], isComplete: false })
@@ -116,6 +118,18 @@ describe("emitAgentProgress snoozed propagation", () => {
     expect(mocks.closeAgentModeAndHidePanelWindow).toHaveBeenCalledTimes(1)
     // Must preserve shouldStopAgent so a trailing update can't undo an emergency stop.
     expect(mocks.closeAgentModeAndHidePanelWindow).toHaveBeenCalledWith({ preserveAgentStopState: true })
+  })
+
+  it("does not repeatedly clear the hidden panel when panel progress is disabled", async () => {
+    mocks.config.floatingPanelAgentProgressEnabled = false
+    mocks.isSessionSnoozed.mockReturnValue(false)
+
+    await emitAgentProgress({ sessionId: "session-panel-disabled-hidden", currentIteration: 0, maxIterations: 1, steps: [], isComplete: false })
+
+    expect(mocks.sendSpy).toHaveBeenCalledTimes(1)
+    expect(mocks.resizePanelForAgentMode).not.toHaveBeenCalled()
+    expect(mocks.showPanelWindow).not.toHaveBeenCalled()
+    expect(mocks.closeAgentModeAndHidePanelWindow).not.toHaveBeenCalled()
   })
 
   it("does not close an active waveform recording when panel progress is disabled", async () => {

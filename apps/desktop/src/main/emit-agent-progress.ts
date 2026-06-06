@@ -93,7 +93,13 @@ function sendToWindows(update: AgentProgressUpdate): void {
   const isMainFocused = main?.isFocused() ?? false
 
   if (!floatingPanelAgentProgressEnabled) {
-    if (update.sessionId && !appState.isRecording && !appState.isTextInputActive) {
+    const shouldClosePanelAgentMode =
+      update.sessionId &&
+      !appState.isRecording &&
+      !appState.isTextInputActive &&
+      (panel.isVisible() || appState.isAgentModeActive)
+
+    if (shouldClosePanelAgentMode) {
       // Preserve shouldStopAgent: this fires on every progress update, so a
       // trailing update after an emergency stop must not re-enable the agent.
       closeAgentModeAndHidePanelWindow({ preserveAgentStopState: true })

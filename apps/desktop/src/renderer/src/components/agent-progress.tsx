@@ -722,6 +722,10 @@ function normalizeAssistantResponseForDedupe(content: string | undefined): strin
   return (content ?? "").replace(/\s+/g, " ").trim()
 }
 
+function normalizePromptEchoForDedupe(content: string | undefined): string {
+  return (content ?? "").replace(/\s+/g, " ").trim()
+}
+
 function shouldAutoPlayTTSForVariant(
   _variant: "default" | "overlay" | "tile",
   isSnoozed: boolean,
@@ -3980,10 +3984,46 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         startIndex > 0 ? conversationHistory.slice(startIndex) : conversationHistory
 
       const isCompletionNudge = (content: string) => content.trim() === INTERNAL_COMPLETION_NUDGE_TEXT
+      const shouldHideAssistantPromptEcho = (entry: typeof historyForSession[number], localIndex: number) => {
+        if (entry.role !== "assistant") return false
+        if ((entry.toolCalls?.length ?? 0) > 0 || (entry.toolResults?.length ?? 0) > 0) return false
+
+        const assistantContent = normalizePromptEchoForDedupe(entry.displayContent ?? entry.content)
+        if (!assistantContent) return false
+
+        let previousUserContent: string | undefined
+        for (let i = localIndex - 1; i >= 0; i--) {
+          const previousEntry = historyForSession[i]
+          if (previousEntry.role === "user" && !isCompletionNudge(previousEntry.content)) {
+            previousUserContent = previousEntry.content
+            break
+          }
+        }
+        if (normalizePromptEchoForDedupe(previousUserContent) !== assistantContent) return false
+
+        for (let i = localIndex + 1; i < historyForSession.length; i++) {
+          const nextEntry = historyForSession[i]
+          if (nextEntry.role === "user" && !isCompletionNudge(nextEntry.content)) return false
+          if (
+            nextEntry.role === "tool" ||
+            (nextEntry.role === "assistant" &&
+              (
+                normalizePromptEchoForDedupe(nextEntry.displayContent ?? nextEntry.content).length > 0 ||
+                (nextEntry.toolCalls?.length ?? 0) > 0 ||
+                (nextEntry.toolResults?.length ?? 0) > 0
+              ))
+          ) {
+            return true
+          }
+        }
+
+        return false
+      }
 
       historyForSession
         .forEach((entry, localIndex) => {
           if (entry.role === "user" && isCompletionNudge(entry.content)) return
+          if (shouldHideAssistantPromptEcho(entry, localIndex)) return
           nextMessages.push({
             role: entry.role,
             content: entry.displayContent ?? entry.content,
