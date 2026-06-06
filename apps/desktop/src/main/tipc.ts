@@ -19,6 +19,7 @@ import {
   emergencyStopAgentMode,
   showPanelWindowAndShowTextInput,
   showPanelWindowAndStartMcpRecording,
+  getWindowFocusDebugSnapshot,
   WAVEFORM_MIN_HEIGHT,
   TEXT_INPUT_MIN_WIDTH,
   TEXT_INPUT_MIN_HEIGHT,
@@ -2384,6 +2385,13 @@ export const router = {
         messageLength: input.text.length,
         queueEnabled,
       })
+      logApp("[createMcpTextInput] Submit lifecycle snapshot", {
+        conversationId: input.conversationId ?? null,
+        sessionId: input.sessionId ?? null,
+        fromTile: input.fromTile ?? false,
+        queueEnabled,
+        snapshot: getWindowFocusDebugSnapshot(),
+      })
 
       // Panel suppression is separate from snoozing. Tile-originated sessions
       // can stay foreground/audible while still avoiding floating-panel popups.
@@ -2534,6 +2542,14 @@ export const router = {
       // Fire-and-forget: Start agent processing without blocking
       // This allows multiple sessions to run concurrently
       // Pass existingSessionId to reuse the session if found
+      logApp("[createMcpTextInput] Starting agent processing", {
+        conversationId,
+        existingSessionId: existingSessionId ?? null,
+        sessionId: input.sessionId ?? null,
+        fromTile: input.fromTile ?? false,
+        launchState: serializeAgentLaunchState(launchState),
+        snapshot: getWindowFocusDebugSnapshot(),
+      })
       processWithAgentMode(agentInputText, conversationId, existingSessionId, launchState)
         .then((finalResponse) => {
           // Save to history after completion

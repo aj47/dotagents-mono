@@ -1249,6 +1249,24 @@ export async function processTranscriptWithAgentMode(
 
   // Helper function to add a message to conversation history AND save it incrementally
   // This ensures all messages are both in memory and persisted to disk
+  const normalizePromptEcho = (content: string | undefined) =>
+    (content ?? "").replace(/\s+/g, " ").trim()
+
+  const isAssistantPromptEchoInActiveTurn = (content: string) => {
+    const normalizedContent = normalizePromptEcho(content)
+    if (!normalizedContent) return false
+    if (normalizedContent !== normalizePromptEcho(transcript)) return false
+
+    return conversationHistory
+      .slice(currentPromptIndex + 1)
+      .some((entry) =>
+        entry.role === "assistant" ||
+        entry.role === "tool" ||
+        (entry.toolCalls?.length ?? 0) > 0 ||
+        (entry.toolResults?.length ?? 0) > 0,
+      )
+  }
+
   const addMessage = (
     role: "user" | "assistant" | "tool",
     content: string,
@@ -1257,6 +1275,16 @@ export async function processTranscriptWithAgentMode(
     timestamp?: number,
     options?: { skipModelReplay?: boolean; displayContent?: string },
   ) => {
+    if (role === "assistant" && isAssistantPromptEchoInActiveTurn(content)) {
+      logLLM("[addMessage] Suppressed assistant prompt echo in active turn", {
+        sessionId: currentSessionId,
+        conversationId: currentConversationId,
+        contentLength: content.length,
+        hasToolCalls: (toolCalls?.length ?? 0) > 0,
+      })
+      return
+    }
+
     // Add to in-memory history
     const message: typeof conversationHistory[0] = {
       role,
