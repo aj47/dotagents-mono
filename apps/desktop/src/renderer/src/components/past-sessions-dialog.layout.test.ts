@@ -62,7 +62,7 @@ describe("saved conversations dialog layout", () => {
     )
     const compactSource = pastSessionsDialogSource.replace(/\s+/g, " ")
     expect(compactSource).toContain(
-      'entry.kind === "active" ? "Active conversations" : "Saved conversations"',
+      'entry.kind === "active" ? "Active conversations" : showArchivedOnly ? "Archived conversations" : "Saved conversations"',
     )
     expect(pastSessionsDialogSource).toContain(
       "orderConversationHistoryByPinnedFirst(",
@@ -83,6 +83,16 @@ describe("saved conversations dialog layout", () => {
       "inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-accent/40 px-1.5 py-0.5 text-[10px] font-medium text-foreground",
     )
     expect(pastSessionsDialogSource).not.toContain("CheckCircle2")
+  })
+
+  it("can open directly into an archived-only conversations view", () => {
+    expect(pastSessionsDialogSource).toContain("initialArchivedOnly = false")
+    expect(pastSessionsDialogSource).toContain("const [showArchivedOnly, setShowArchivedOnly] = useState(initialArchivedOnly)")
+    expect(pastSessionsDialogSource).toContain("setShowArchivedOnly(initialArchivedOnly)")
+    expect(pastSessionsDialogSource).toContain("const archivedConversationCount = useMemo(")
+    expect(pastSessionsDialogSource).toContain("showArchivedOnly ? conversation.isArchived : !conversation.isArchived")
+    expect(pastSessionsDialogSource).toContain('title="Show archived conversations"')
+    expect(pastSessionsDialogSource).toContain("No archived conversations found")
   })
 
   it("keeps search matches ordered newest-to-oldest after filtering", () => {

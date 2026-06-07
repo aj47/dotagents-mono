@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Archive,
   Pin,
   Play,
   X,
@@ -46,16 +47,15 @@ import {
   partitionTaskAndUserEntries,
   reorderSidebarSessionGroups,
   reorderSidebarSessionKeys,
-  summarizeSidebarSessionLifecycleStates,
 } from "@renderer/lib/sidebar-sessions"
-import type { SidebarBadgeLifecycleState, SidebarSessionDropPosition, SidebarSessionGroup } from "@renderer/lib/sidebar-sessions"
+import type { SidebarSessionDropPosition, SidebarSessionGroup } from "@renderer/lib/sidebar-sessions"
 import { formatSidebarDuration } from "@renderer/lib/sidebar-duration"
 import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
 import type { AgentProgressUpdate, LoopConfig } from "@shared/types"
-import { deriveLifecycleState, getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
+import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
 
 interface SidebarSessionRecord {
   id: string
@@ -265,29 +265,6 @@ function getNextSidebarSessionGroupName(groups: SidebarSessionGroup[]): string {
   return `New group ${groups.length + 1}`
 }
 
-const GROUP_STATE_BADGE_META = {
-  needs_input: {
-    label: "Need",
-    title: "Needs input",
-    className: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  },
-  blocked: {
-    label: "Err",
-    title: "Blocked",
-    className: "bg-red-500/10 text-red-700 dark:text-red-300",
-  },
-  running: {
-    label: "Live",
-    title: "Running",
-    className: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-  },
-  complete: {
-    label: "Done",
-    title: "Complete",
-    className: "bg-green-500/10 text-green-700 dark:text-green-300",
-  },
-} as const
-
 function ArchiveSessionButton({
   sessionTitle,
   onArchive,
@@ -315,6 +292,7 @@ function ArchiveSessionButton({
 
 export function ActiveAgentsSidebar({
   onOpenSavedConversationsDialog,
+  onOpenArchivedConversationsDialog,
   selectedAgentId = null,
   onSelectAgent,
   onStartTextSession,
@@ -325,6 +303,7 @@ export function ActiveAgentsSidebar({
   className,
 }: {
   onOpenSavedConversationsDialog?: () => void
+  onOpenArchivedConversationsDialog?: () => void
   selectedAgentId?: string | null
   onSelectAgent?: (id: string | null) => void
   onStartTextSession?: () => void | Promise<void>
@@ -902,28 +881,6 @@ export function ActiveAgentsSidebar({
 
   const hasUserSidebarContent = userSidebarSessions.length > 0 || sessionGroups.length > 0
   const hasAnySessions = sidebarSessions.length > 0 || sessionGroups.length > 0
-
-  const getEntryLifecycleState = useCallback((entry: SidebarSessionEntry): SidebarBadgeLifecycleState => {
-    const { session, isSavedConversation } = entry
-    const sessionProgress = agentProgressById.get(session.id)
-    const hasPendingApproval = !isSavedConversation && !!sessionProgress?.pendingToolApproval
-    const hasActiveChildProgress = sessionsWithActiveChildProgress.has(session.id)
-    const hasProgressErrors = !!sessionProgress?.steps?.some(
-      (step) => step.status === "error" || step.toolResult?.error,
-    )
-    const progressLifecycleState =
-      session.status === "active" || hasActiveChildProgress
-        ? "running"
-        : (sessionProgress?.isComplete ? "complete" : "running")
-
-    return deriveLifecycleState({
-      conversationState: sessionProgress?.conversationState ?? progressLifecycleState,
-      isComplete: sessionProgress?.isComplete,
-      pendingToolApproval: hasPendingApproval,
-      hasErrors: hasProgressErrors,
-      sessionStatus: session.status,
-    }) as SidebarBadgeLifecycleState
-  }, [agentProgressById, sessionsWithActiveChildProgress])
 
   useEffect(() => {
     logStateChange("ActiveAgentsSidebar", "isExpanded", !isExpanded, isExpanded)
@@ -1570,6 +1527,19 @@ export function ActiveAgentsSidebar({
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                   </Button>
                 )}
+                {onOpenArchivedConversationsDialog && !hasUserSidebarContent && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 rounded-md px-0 shadow-sm"
+                    onClick={() => onOpenArchivedConversationsDialog()}
+                    title="Archived sessions"
+                    aria-label="Archived sessions"
+                  >
+                    <Archive className="h-3.5 w-3.5 shrink-0" />
+                  </Button>
+                )}
                 {onStartPromptSession && (
                   <PredefinedPromptsMenu
                     onSelectPrompt={onStartPromptSession}
@@ -2047,10 +2017,6 @@ export function ActiveAgentsSidebar({
                   groupDropTarget.position === "before" ? "before:top-0" : "before:bottom-0",
                 )
                 : null
-              const groupStateSummaries = summarizeSidebarSessionLifecycleStates(
-                entries.map(getEntryLifecycleState),
-              )
-
               return (
                 <div
                   key={group.id}
@@ -2149,23 +2115,6 @@ export function ActiveAgentsSidebar({
                     >
                       {entries.length}
                     </span>
-                    <div className="flex shrink-0 items-center gap-1">
-                      {groupStateSummaries.map(({ state, count }) => {
-                        const meta = GROUP_STATE_BADGE_META[state]
-                        return (
-                          <span
-                            key={`${group.id}:${state}`}
-                            className={cn(
-                              "rounded-full px-1.5 py-px text-[9px] font-medium leading-none normal-case tracking-normal",
-                              meta.className,
-                            )}
-                            title={`${count} ${meta.title.toLowerCase()} session${count === 1 ? "" : "s"}`}
-                          >
-                            {meta.label} {count}
-                          </span>
-                        )
-                      })}
-                    </div>
                     <button
                       type="button"
                       onClick={(event) => {
@@ -2295,6 +2244,19 @@ export function ActiveAgentsSidebar({
                         aria-label="Saved conversations"
                       >
                         <Clock className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {onOpenArchivedConversationsDialog && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onOpenArchivedConversationsDialog()
+                        }}
+                        className="text-muted-foreground hover:text-foreground focus:ring-ring flex h-5 w-5 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
+                        title="Archived sessions"
+                        aria-label="Archived sessions"
+                      >
+                        <Archive className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>

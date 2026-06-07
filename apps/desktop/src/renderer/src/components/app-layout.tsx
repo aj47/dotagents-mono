@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 import { cn } from "@renderer/lib/utils"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -21,6 +21,7 @@ import { hasUnreadAgentResponse } from "@renderer/lib/sidebar-sessions"
 import { useAgentStore } from "@renderer/stores"
 import {
   Clock,
+  Archive,
   PanelLeftClose,
   PanelLeft,
   Volume2,
@@ -31,6 +32,7 @@ import {
   Plus,
   Mic,
 } from "lucide-react"
+import { toast } from "sonner"
 
 type NavLinkItem = {
   text: string
@@ -69,9 +71,11 @@ export const Component = () => {
   useTTSPlaybackController()
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
   const [settingsExpanded, setSettingsExpanded] = useState(true)
   const [savedConversationsDialogOpen, setSavedConversationsDialogOpen] = useState(false)
   const [savedConversationsHotkeyOpen, setSavedConversationsHotkeyOpen] = useState(false)
+  const [savedConversationsArchivedOnOpen, setSavedConversationsArchivedOnOpen] = useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const [sessionActionDialog, setSessionActionDialog] = useState<SessionActionDialogState | null>(null)
   const [selectedAgentId, setSelectedAgentId] = useSelectedAgentId()
@@ -168,6 +172,150 @@ export const Component = () => {
     window.dispatchEvent(new Event("sessions:clear-inactive"))
   }, [navigate])
 
+  const openSavedConversationsDialog = useCallback((options?: {
+    archivedOnly?: boolean
+    focusSearch?: boolean
+  }) => {
+    setSavedConversationsArchivedOnOpen(options?.archivedOnly ?? false)
+    setSavedConversationsHotkeyOpen(options?.focusSearch ?? false)
+    setSavedConversationsDialogOpen(true)
+  }, [])
+
+  const handleArchiveFocusedSession = useCallback(async () => {
+    const store = useAgentStore.getState()
+
+    let sessionDataSnapshot =
+      queryClient.getQueryData<SessionListResponse>(["agentSessions"])
+
+    if (!sessionDataSnapshot) {
+      try {
+        sessionDataSnapshot = await tipcClient.getAgentSessions()
+      } catch (error) {
+        console.error("Failed to load sessions before archiving:", error)
+      }
+    }
+
+    const trackedSessions = [
+      ...(sessionDataSnapshot?.activeSessions ?? []),
+      ...(sessionDataSnapshot?.recentCompletedSessions ??
+        sessionDataSnapshot?.recentSessions ??
+        []),
+    ]
+    const sessionById = new Map(
+      trackedSessions.map((session) => [session.id, session] as const),
+    )
+
+    const archiveCandidates: Array<{
+      sessionId?: string
+      conversationId?: string
+    }> = []
+    const seenArchiveCandidateKeys = new Set<string>()
+    const addSessionCandidate = (sessionId: string | null | undefined) => {
+      if (!sessionId) return
+      const key = `session:${sessionId}`
+      if (seenArchiveCandidateKeys.has(key)) return
+      seenArchiveCandidateKeys.add(key)
+      archiveCandidates.push({ sessionId })
+    }
+    const addConversationCandidate = (
+      conversationId: string | null | undefined,
+    ) => {
+      if (!conversationId) return
+      const key = `conversation:${conversationId}`
+      if (seenArchiveCandidateKeys.has(key)) return
+      seenArchiveCandidateKeys.add(key)
+      archiveCandidates.push({ conversationId })
+    }
+
+    addSessionCandidate(store.focusedSessionId)
+    addSessionCandidate(store.expandedSessionId)
+    addConversationCandidate(store.viewedConversationId)
+
+    const getCandidateTimestamp = (
+      progress: ReturnType<typeof store.agentProgressById.get>,
+      trackedSession: AgentSession | undefined,
+    ) => {
+      const history = progress?.conversationHistory
+      const lastHistoryTimestamp = history?.[history.length - 1]?.timestamp
+      return (
+        lastHistoryTimestamp ??
+        trackedSession?.endTime ??
+        trackedSession?.startTime ??
+        0
+      )
+    }
+
+    if (archiveCandidates.length === 0) {
+      const fallbackCandidates = Array.from(new Set([
+        ...trackedSessions.map((session) => session.id),
+        ...store.agentProgressById.keys(),
+      ])).map((sessionId) => {
+        const progress = store.agentProgressById.get(sessionId)
+        const trackedSession = sessionById.get(sessionId)
+        const conversationId =
+          progress?.conversationId ?? trackedSession?.conversationId
+        const isActive =
+          progress
+            ? !progress.isComplete && !progress.isSnoozed
+            : trackedSession?.status === "active"
+        return {
+          sessionId,
+          conversationId,
+          isActive,
+          timestamp: getCandidateTimestamp(progress, trackedSession),
+        }
+      }).filter((candidate) => {
+        return (
+          !!candidate.conversationId &&
+          !store.archivedSessionIds.has(candidate.conversationId)
+        )
+      }).sort((a, b) => {
+        if (a.isActive !== b.isActive) return a.isActive ? -1 : 1
+        return b.timestamp - a.timestamp
+      })
+
+      for (const fallback of fallbackCandidates) {
+        addSessionCandidate(fallback.sessionId)
+      }
+    }
+
+    for (const candidate of archiveCandidates) {
+      const sessionId = candidate.sessionId
+      const progress = sessionId
+        ? store.agentProgressById.get(sessionId)
+        : undefined
+      const trackedSession = sessionId ? sessionById.get(sessionId) : undefined
+      const conversationId =
+        candidate.conversationId ??
+        progress?.conversationId ??
+        trackedSession?.conversationId
+
+      if (!conversationId) continue
+
+      if (!store.archivedSessionIds.has(conversationId)) {
+        store.toggleArchiveSession(conversationId)
+      }
+
+      const canDismiss =
+        progress?.isComplete === true ||
+        (trackedSession?.status !== undefined && trackedSession.status !== "active")
+
+      if (sessionId && canDismiss) {
+        try {
+          await tipcClient.clearAgentSessionProgress({ sessionId })
+          await queryClient.invalidateQueries({ queryKey: ["agentSessions"] })
+        } catch (error) {
+          console.error("Failed to dismiss archived session:", error)
+        }
+      }
+
+      toast.success("Session archived")
+      return
+    }
+
+    toast.message("No session with a saved conversation to archive")
+  }, [queryClient])
+
   const applySelectedAgentToNextSession = useCallback(
     async (options?: { silent?: boolean }) => {
       return applySelectedAgentForNextSession({
@@ -206,13 +354,39 @@ export const Component = () => {
 
       event.preventDefault()
       event.stopPropagation()
-      setSavedConversationsHotkeyOpen(true)
-      setSavedConversationsDialogOpen(true)
+      openSavedConversationsDialog({ focusSearch: true })
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
+  }, [openSavedConversationsDialog])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const tagName = target?.tagName?.toLowerCase()
+      const isEditable =
+        target?.isContentEditable ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select"
+
+      if (isEditable) return
+      if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
+      if (event.key.toLowerCase() !== "w") return
+
+      event.preventDefault()
+      event.stopPropagation()
+      void handleArchiveFocusedSession()
+    }
+
+    window.addEventListener("keydown", handleKeyDown, true)
+    return () => window.removeEventListener("keydown", handleKeyDown, true)
+  }, [handleArchiveFocusedSession])
+
+  const handleOpenArchivedConversationsDialog = useCallback(() => {
+    openSavedConversationsDialog({ archivedOnly: true })
+  }, [openSavedConversationsDialog])
 
   const handleStartTextSession = useCallback(async () => {
     const applied = await applySelectedAgentToNextSession()
@@ -300,8 +474,8 @@ export const Component = () => {
   )
 
   const handleCollapsedSessionsOverviewClick = useCallback(() => {
-    setSavedConversationsDialogOpen(true)
-  }, [])
+    openSavedConversationsDialog()
+  }, [openSavedConversationsDialog])
 
   const handleCollapsedSessionClick = useCallback(
     (sessionId: string) => {
@@ -452,6 +626,7 @@ export const Component = () => {
       <SavedConversationsDialog
         open={savedConversationsDialogOpen}
         autoFocusSearch={savedConversationsHotkeyOpen}
+        initialArchivedOnly={savedConversationsArchivedOnOpen}
         onAutoFocusSearchHandled={() => setSavedConversationsHotkeyOpen(false)}
         onOpenChange={(open) => {
           setSavedConversationsDialogOpen(open)
@@ -599,18 +774,42 @@ export const Component = () => {
 
                 <button
                   type="button"
-                  onClick={() => setSavedConversationsDialogOpen(true)}
+                  onClick={() => openSavedConversationsDialog()}
                   className={cn(
                     "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
-                    savedConversationsDialogOpen
+                    savedConversationsDialogOpen && !savedConversationsArchivedOnOpen
                       ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                   )}
                   title="Saved conversations"
                   aria-label="Saved conversations"
-                  aria-pressed={savedConversationsDialogOpen || undefined}
+                  aria-pressed={
+                    savedConversationsDialogOpen && !savedConversationsArchivedOnOpen
+                      ? true
+                      : undefined
+                  }
                 >
                   <Clock className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenArchivedConversationsDialog}
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    savedConversationsDialogOpen && savedConversationsArchivedOnOpen
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                  title="Archived sessions"
+                  aria-label="Archived sessions"
+                  aria-pressed={
+                    savedConversationsDialogOpen && savedConversationsArchivedOnOpen
+                      ? true
+                      : undefined
+                  }
+                >
+                  <Archive className="h-4 w-4" />
                 </button>
 
                 <button
@@ -803,7 +1002,8 @@ export const Component = () => {
               {/* Sessions Section - shows sessions list */}
               <ActiveAgentsSidebar
                 className="shrink-0"
-                onOpenSavedConversationsDialog={() => setSavedConversationsDialogOpen(true)}
+                onOpenSavedConversationsDialog={() => openSavedConversationsDialog()}
+                onOpenArchivedConversationsDialog={handleOpenArchivedConversationsDialog}
                 selectedAgentId={selectedAgentId}
                 onSelectAgent={setSelectedAgentId}
                 onStartTextSession={handleStartTextSession}
@@ -871,7 +1071,7 @@ export const Component = () => {
           <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
             <Outlet
               context={{
-                onOpenSavedConversationsDialog: () => setSavedConversationsDialogOpen(true),
+                onOpenSavedConversationsDialog: () => openSavedConversationsDialog(),
                 sidebarWidth,
                 selectedAgentId,
                 setSelectedAgentId,

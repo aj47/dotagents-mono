@@ -566,12 +566,14 @@ export function SavedConversationsDialog({
   open,
   onOpenChange,
   autoFocusSearch = false,
+  initialArchivedOnly = false,
   onAutoFocusSearchHandled,
   onStartVoiceConversation,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   autoFocusSearch?: boolean
+  initialArchivedOnly?: boolean
   onAutoFocusSearchHandled?: () => void
   onStartVoiceConversation?: (conversation: {
     id: string
@@ -617,6 +619,7 @@ export function SavedConversationsDialog({
     INITIAL_SAVED_CONVERSATIONS,
   )
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
+  const [showArchivedOnly, setShowArchivedOnly] = useState(initialArchivedOnly)
   const [highlightedConversationId, setHighlightedConversationId] = useState<
     string | null
   >(null)
@@ -644,9 +647,14 @@ export function SavedConversationsDialog({
 
   useEffect(() => {
     if (!open) return
+    setShowArchivedOnly(initialArchivedOnly)
+  }, [initialArchivedOnly, open])
+
+  useEffect(() => {
+    if (!open) return
     // When searching, reset the lazy-load count so results feel predictable.
     setVisibleConversationCount(INITIAL_SAVED_CONVERSATIONS)
-  }, [open, normalizedSearchQuery])
+  }, [open, normalizedSearchQuery, showArchivedOnly])
 
   useEffect(() => {
     if (!open) return undefined
@@ -910,8 +918,20 @@ export function SavedConversationsDialog({
     )
   }, [activeConversationIds, baseSavedConversationEntries])
 
+  const allConversationEntries = useMemo(
+    () => [...activeConversationEntries, ...savedConversationEntries],
+    [activeConversationEntries, savedConversationEntries],
+  )
+
+  const archivedConversationCount = useMemo(
+    () => allConversationEntries.filter((entry) => entry.isArchived).length,
+    [allConversationEntries],
+  )
+
   const filteredConversationEntries = useMemo(() => {
-    const all = [...activeConversationEntries, ...savedConversationEntries]
+    const all = allConversationEntries.filter((conversation) =>
+      showArchivedOnly ? conversation.isArchived : !conversation.isArchived,
+    )
 
     if (!normalizedSearchQuery) {
       return all.slice(0, SEARCH_RESULT_LIMIT)
@@ -965,9 +985,9 @@ export function SavedConversationsDialog({
 
     return rankedConversations.slice(0, SEARCH_RESULT_LIMIT)
   }, [
-    activeConversationEntries,
+    allConversationEntries,
     normalizedSearchQuery,
-    savedConversationEntries,
+    showArchivedOnly,
   ])
 
   const visibleConversationEntries = useMemo(
@@ -1145,6 +1165,22 @@ export function SavedConversationsDialog({
               </span>
             </div>
             <Button
+              variant={showArchivedOnly ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowArchivedOnly((value) => !value)}
+              className="h-8 shrink-0 text-xs"
+              title="Show archived conversations"
+              aria-pressed={showArchivedOnly}
+            >
+              <Archive className="mr-1 h-3 w-3" />
+              Archived
+              {archivedConversationCount > 0 && (
+                <span className="ml-1 rounded-full bg-muted-foreground/15 px-1.5 py-px text-[10px] tabular-nums">
+                  {archivedConversationCount}
+                </span>
+              )}
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={() => setShowDeleteAllConfirm(true)}
@@ -1202,14 +1238,15 @@ export function SavedConversationsDialog({
               </p>
             ) : visibleConversationEntries.length === 0 ? (
               <p className="text-muted-foreground px-2 py-2 text-xs">
-                No conversations found
+                {showArchivedOnly
+                  ? "No archived conversations found"
+                  : "No conversations found"}
               </p>
             ) : (
               <>
                 {visibleConversationEntries.map((entry, index) => {
                   const canPinConversation = !!entry.conversationId
-                  const canArchiveConversation =
-                    entry.kind === "saved" && !!entry.conversationId
+                  const canArchiveConversation = !!entry.conversationId
                   const canDeleteConversation =
                     entry.kind === "saved" && !!entry.conversationId
                   const showSectionTitle =
@@ -1222,7 +1259,9 @@ export function SavedConversationsDialog({
                         <p className="text-muted-foreground px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide">
                           {entry.kind === "active"
                             ? "Active conversations"
-                            : "Saved conversations"}
+                            : showArchivedOnly
+                              ? "Archived conversations"
+                              : "Saved conversations"}
                         </p>
                       )}
                       <div

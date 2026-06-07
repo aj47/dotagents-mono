@@ -41,7 +41,7 @@ export const createAppMenu = () => {
         isMac
           ? {
               label: "Close",
-              accelerator: "CmdOrCtrl+W",
+              accelerator: "Command+W",
               click(_, window) {
                 if (!window) return
 

@@ -44,4 +44,17 @@ describe("app menu", () => {
     expect(buildFromTemplate).toHaveBeenCalledOnce()
     expect(openExternal).toHaveBeenCalledWith(FEEDBACK_URL)
   })
+
+  it("keeps Ctrl+W available for the renderer archive shortcut on macOS", () => {
+    process.env.IS_MAC = "true"
+
+    const menu = createAppMenu() as unknown as Array<{
+      label?: string
+      submenu?: Array<{ label?: string; accelerator?: string }>
+    }>
+    const fileMenu = menu.find((item) => item.label === "File")
+    const closeItem = fileMenu?.submenu?.find((item) => item.label === "Close")
+
+    expect(closeItem?.accelerator).toBe("Command+W")
+  })
 })
