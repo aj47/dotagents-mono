@@ -39,6 +39,16 @@ describe("agent progress scroll behavior", () => {
     )
   })
 
+  it("only disables bottom pinning after recent user scroll intent", () => {
+    expect(agentProgressSource).toContain("const USER_SCROLL_INTENT_GRACE_MS = 1000")
+    expect(agentProgressSource).toContain("const userScrollIntentUntilRef = useRef(0)")
+    expect(agentProgressSource).toContain("const markUserScrollIntent = useCallback(() => {")
+    expect(agentProgressSource).toContain("userScrollIntentUntilRef.current = Date.now() + USER_SCROLL_INTENT_GRACE_MS")
+    expect(agentProgressSource).toContain("const hasRecentUserScrollIntent = Date.now() <= userScrollIntentUntilRef.current")
+    expect(agentProgressSource).toContain("pendingInitialScrollTimeoutsRef.current.length === 0 &&\n      hasRecentUserScrollIntent")
+    expect(agentProgressSource).toContain("onWheel={markUserScrollIntent}")
+  })
+
   it("pins ACP sub-agent conversation updates without smooth-scroll lag while messages stream in", () => {
     expect(agentProgressSource).toContain("Keep ACP sub-agent conversation updates pinned in the same paint")
     expect(agentProgressSource).toContain("if (behavior === \"auto\") {\n      node.scrollTop = node.scrollHeight\n      return\n    }")

@@ -89,6 +89,7 @@ interface AgentProgressProps {
 }
 
 const CONVERSATION_HISTORY_PAGE_SIZE = 120
+const USER_SCROLL_INTENT_GRACE_MS = 1000
 
 // Enhanced conversation message component
 
@@ -3618,6 +3619,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const lastScrollContentHeightRef = useRef(0)
   const lastSessionIdRef = useRef<string | undefined>(undefined)
   const pendingInitialScrollTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const userScrollIntentUntilRef = useRef(0)
   const lastDerivedUserResponseLogKeyRef = useRef<string | null>(null)
   const [showKillConfirmation, setShowKillConfirmation] = useState(false)
   const [isKilling, setIsKilling] = useState(false)
@@ -3628,6 +3630,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     pendingInitialScrollTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId))
     pendingInitialScrollTimeoutsRef.current = []
   }, [])
+
+  const markUserScrollIntent = useCallback(() => {
+    userScrollIntentUntilRef.current = Date.now() + USER_SCROLL_INTENT_GRACE_MS
+    clearPendingInitialScrollAttempts()
+  }, [clearPendingInitialScrollAttempts])
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     const scrollContainer = scrollContainerRef.current
@@ -4732,6 +4739,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       lastContentLengthRef.current = 0
       lastDisplayItemsCountRef.current = 0
       lastScrollContentHeightRef.current = 0
+      userScrollIntentUntilRef.current = 0
       // Also reset auto-scroll state for new sessions. Update the ref
       // synchronously too so the ResizeObserver doesn't race the state-sync
       // effect on the first content commit of the new session (issue #408).
@@ -4867,6 +4875,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
     const { scrollTop, scrollHeight, clientHeight } = scrollContainer
     const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 5 // 5px tolerance
+    const hasRecentUserScrollIntent = Date.now() <= userScrollIntentUntilRef.current
 
     // If user scrolled to bottom, resume auto-scroll
     if (isAtBottom && !shouldAutoScroll) {
@@ -4881,7 +4890,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     else if (
       !isAtBottom &&
       shouldAutoScroll &&
-      pendingInitialScrollTimeoutsRef.current.length === 0
+      pendingInitialScrollTimeoutsRef.current.length === 0 &&
+      hasRecentUserScrollIntent
     ) {
       setShouldAutoScroll(false)
       setIsUserScrolling(true)
@@ -5187,6 +5197,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               <div
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
+                onWheel={markUserScrollIntent}
+                onPointerDown={(event) => {
+                  if (event.target === event.currentTarget) {
+                    markUserScrollIntent()
+                  }
+                }}
                 className="flex-1 min-h-0 overflow-y-auto scrollbar-none"
               >
                 {visibleDisplayItems.length > 0 ? (
@@ -5650,6 +5666,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
+          onWheel={markUserScrollIntent}
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) {
+              markUserScrollIntent()
+            }
+          }}
           className="flex-1 min-h-0 overflow-y-auto"
         >
           {visibleDisplayItems.length > 0 ? (
