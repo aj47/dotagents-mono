@@ -101,6 +101,7 @@ export function SessionActionDialog({
         sessionId,
         fromTile: true,
         startSnoozed: false,
+        preserveMainWindowFocus: true,
       })
 
       if (sessionId && !result?.queued) {
@@ -176,6 +177,7 @@ export function SessionActionDialog({
             sessionId,
             fromTile: true,
             startSnoozed: false,
+            preserveMainWindowFocus: true,
           })
 
           await invalidateConversationQueries(conversationId)
@@ -294,6 +296,7 @@ export function SessionActionDialog({
               selectedAgentId={selectedAgentId}
               onSelectAgent={onSelectAgent}
               onCancel={closeDialog}
+              host="main"
               isProcessing={isSubmitting}
               initialText={initialText}
               continueConversationTitle={continueConversationTitle}

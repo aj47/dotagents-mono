@@ -317,6 +317,25 @@ Do these in order and record the outcome under "Attempts & findings":
   3. Tile follow-up input still auto-shows the hover panel only when you want it (tile flow → `fromTile=true`, but tiles use `tile-follow-up-input.tsx`, not the dialog, so should be unchanged).
   4. Hover panel follow-up input (`overlay-follow-up-input.tsx`) still works — it doesn't pass `fromTile`, so session is non-snoozed and panel stays visible. This is the intended overlay behavior.
 
+### 2026-06-07 — main-window submit still backgrounded after prior fixes
+- **Observed via CDP:** after submitting from the main app, the main renderer emitted `blur` / `visibilitychange:hidden` shortly after submit. The floating panel was not necessarily shown, so the failure was no longer just the old panel auto-show path.
+- **Why the previous fixes were incomplete:**
+  - `2553e8d1` moved the floating text-input focus handoff later, but it still treated the floating panel as the only focus problem.
+  - `7f2dc019` correctly stopped hiding the main window when opening text input from another app, but it did not add any submit-time foreground contract for prompts launched from the main window.
+  - `d5caf6960` suppressed hover-panel auto-show for `SessionActionDialog`, but suppressing the panel is not the same as preserving the already-focused main window. Later code also decoupled `fromTile` from true snooze/background mode, so `fromTile` should not be overloaded as a focus-preservation signal.
+- **New root cause found:** `TextInputPanel` is reused in `SessionActionDialog` inside the main window, but it still ran floating-panel-only focus recovery:
+  - initial focus retry called `tipcClient.setPanelFocusable({ focusable: true, andFocus: true })`;
+  - the root `onMouseDown` did the same on every click.
+  This means a main-window modal could focus the hidden/overlay panel window during ordinary typing/click-submit, causing macOS activation churn and putting the main app in the background.
+- **Fix implemented:**
+  - Added `host?: "panel" | "main"` to `TextInputPanel`; only `host="panel"` runs panel-window focus handoff. `SessionActionDialog` passes `host="main"`.
+  - Added an explicit `preserveMainWindowFocus` launch option for main-window text/voice submits. Main-process TIPC captures whether main was visible at submit time, then runs short delayed restore attempts through `showAndFocusMainWindow` if macOS deactivates the app.
+  - Main-window tile follow-up and `SessionActionDialog` text/voice paths set `preserveMainWindowFocus: true`; floating panel and remote/API origins do not.
+- **Regression coverage added:**
+  - `text-input-panel.submit.test.tsx` asserts `host="main"` never requests floating-panel focus.
+  - `window.main-hide-recovery.test.ts` asserts the preserver restores a visible main window but does not show a main window that was hidden before submit.
+  - `sessions.in-app-actions.test.ts` source-asserts main-window submitters pass `preserveMainWindowFocus: true` and the dialog hosts `TextInputPanel` as `main`.
+
 <!-- Next entries template:
 
 ### YYYY-MM-DD — <short label>
@@ -325,5 +344,4 @@ Do these in order and record the outcome under "Attempts & findings":
 - Decision: <next hypothesis/fix to try>
 
 -->
-
 

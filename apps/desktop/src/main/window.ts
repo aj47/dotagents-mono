@@ -53,6 +53,7 @@ export function getWindowFocusDebugSnapshot() {
   return {
     appHidden: safeWindowFlag(() => app.isHidden(), false),
     focusedWindow: getWindowIdForDebug(BrowserWindow.getFocusedWindow()),
+    appHidden: process.env.IS_MAC ? safeWindowFlag(() => app.isHidden(), false) : false,
     main: getWindowStateForDebug(WINDOWS.get("main")),
     panel: getWindowStateForDebug(WINDOWS.get("panel")),
     setup: getWindowStateForDebug(WINDOWS.get("setup")),
@@ -255,6 +256,81 @@ function broadcastPanelVisibility(visible: boolean) {
 let allowExpectedMainHide = false
 let lastMainBlurWithoutAppFocusAt = 0
 const MAIN_HIDE_RECOVERY_DEACTIVATION_WINDOW_MS = 250
+const MAIN_WINDOW_IN_APP_SUBMIT_RESTORE_DELAYS_MS = [0, 75, 250, 750, 1500]
+
+export function createMainWindowForegroundPreserver(reason: string, options: { enabled?: boolean } = {}) {
+  if (!options.enabled || !process.env.IS_MAC) {
+    return () => {}
+  }
+
+  const mainAtSubmit = WINDOWS.get("main")
+  const mainWasVisible = safeWindowFlag(() => mainAtSubmit?.isVisible() === true, false)
+  const mainWasMinimized = safeWindowFlag(() => mainAtSubmit?.isMinimized() === true, false)
+
+  if (!mainAtSubmit || !mainWasVisible || mainWasMinimized) {
+    logApp(`[${reason}] Main foreground preservation skipped`, {
+      hasMainWindow: Boolean(mainAtSubmit),
+      mainWasVisible,
+      mainWasMinimized,
+      snapshot: getWindowFocusDebugSnapshot(),
+    })
+    return () => {}
+  }
+
+  const armedAt = Date.now()
+  const focusedWindowAtSubmit = getWindowIdForDebug(BrowserWindow.getFocusedWindow())
+  let completed = false
+
+  return (phase = "deferred") => {
+    if (completed) return
+
+    for (const delayMs of MAIN_WINDOW_IN_APP_SUBMIT_RESTORE_DELAYS_MS) {
+      setTimeout(() => {
+        if (completed) return
+
+        const main = WINDOWS.get("main")
+        if (!main) {
+          completed = true
+          return
+        }
+
+        const mainFocused = safeWindowFlag(() => main.isFocused(), false)
+        if (mainFocused) {
+          return
+        }
+
+        const mainVisible = safeWindowFlag(() => main.isVisible(), false)
+        const mainMinimized = safeWindowFlag(() => main.isMinimized(), false)
+        const appHidden = safeWindowFlag(() => app.isHidden(), false)
+
+        if (isAppQuitting || allowExpectedMainHide || mainMinimized) {
+          completed = true
+          return
+        }
+
+        if (!mainVisible && !appHidden) {
+          return
+        }
+
+        logApp(`[${reason}] Restoring main foreground after in-app submit`, {
+          phase,
+          delayMs,
+          elapsedMs: Date.now() - armedAt,
+          focusedWindowAtSubmit,
+          snapshot: getWindowFocusDebugSnapshot(),
+        })
+
+        try {
+          showAndFocusMainWindow(main, reason)
+        } catch (error) {
+          logApp(`[${reason}] Failed to restore main foreground after in-app submit:`, error)
+        }
+
+        completed = safeWindowFlag(() => main.isFocused(), false)
+      }, delayMs)
+    }
+  }
+}
 
 function markIntentionalTextInputPanelHide(source: "hideFloatingPanelWindow" | "stopTextInputAndHidePanelWindow") {
   lastIntentionalTextInputPanelHideAt = Date.now()

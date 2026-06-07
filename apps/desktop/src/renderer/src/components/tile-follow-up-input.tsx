@@ -115,7 +115,12 @@ export function TileFollowUpInput({
         // Start a new conversation if none exists
         // Mark as fromTile to suppress the floating panel while keeping the
         // interactive tile session foreground/audible for TTS autoplay.
-        return await tipcClient.createMcpTextInput({ text: message, fromTile: true, startSnoozed: false })
+        return await tipcClient.createMcpTextInput({
+          text: message,
+          fromTile: true,
+          startSnoozed: false,
+          preserveMainWindowFocus: true,
+        })
       } else {
         // Continue the existing conversation
         // Mark as fromTile to suppress the floating panel while keeping the
@@ -126,6 +131,7 @@ export function TileFollowUpInput({
           sessionId,
           fromTile: true,
           startSnoozed: false,
+          preserveMainWindowFocus: true,
         })
       }
     },

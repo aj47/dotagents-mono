@@ -269,6 +269,32 @@ describe("TextInputPanel submit behavior", () => {
     expect(focusRequestCount()).toBe(3)
   })
 
+  it("does not request floating-panel focus when hosted in the main window", async () => {
+    vi.useFakeTimers()
+    const runtime = createHookRuntime()
+    const { TextInputPanel, ipcInvokeMock, tipcClientMock } = await loadTextInputPanel(runtime)
+    const textareaFocus = vi.fn()
+    const focusRequestCount = () =>
+      tipcClientMock.setPanelFocusable.mock.calls.length + ipcInvokeMock.mock.calls.length
+    const props = {
+      onSubmit: vi.fn(),
+      onCancel: vi.fn(),
+      selectedAgentId: null,
+      onSelectAgent: vi.fn(),
+      initialText: "Main window modal",
+      host: "main",
+    }
+
+    const tree = runtime.render(TextInputPanel, props as any)
+    runtime.refs[0].current = { focus: textareaFocus }
+    runtime.commitEffects()
+    vi.advanceTimersByTime(200)
+
+    expect(focusRequestCount()).toBe(0)
+    expect(textareaFocus).toHaveBeenCalledOnce()
+    expect(tree.props.onMouseDown).toBeUndefined()
+  })
+
   it("keeps the draft when the async submit handler declines the submission", async () => {
     const runtime = createHookRuntime()
     const { TextInputPanel } = await loadTextInputPanel(runtime)

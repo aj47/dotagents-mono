@@ -25,6 +25,7 @@ interface TextInputPanelProps {
   selectedAgentId: string | null
   onSelectAgent: (agentId: string | null) => void
   onCancel: () => void
+  host?: "panel" | "main"
   isProcessing?: boolean
   agentProgress?: AgentProgressUpdate | null
   initialText?: string
@@ -42,6 +43,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   selectedAgentId,
   onSelectAgent,
   onCancel,
+  host = "panel",
   isProcessing = false,
   agentProgress,
   initialText,
@@ -55,6 +57,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   const fileInputRef = useRef<HTMLInputElement>(null)
   const submitInFlightRef = useRef(false)
   const shouldRunInitialFocusRetryRef = useRef(true)
+  const shouldManagePanelFocus = host === "panel"
   const { isDark } = useTheme()
   const isBusy = isProcessing || isSubmitting
   const { isSlashMenuOpen, slashQuery, handleSlashSelect, closeSlashMenu, handleSlashKeyDown, menuRef } = useSlashCommands(text, setText)
@@ -71,6 +74,12 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
   useEffect(() => {
     if (textareaRef.current && !isBusy && shouldRunInitialFocusRetryRef.current) {
       shouldRunInitialFocusRetryRef.current = false
+
+      if (!shouldManagePanelFocus) {
+        textareaRef.current.focus()
+        return undefined
+      }
+
       // Pair textarea focus retries with panel-window focus re-requests.
       // When Ctrl+T is pressed while the main window is the focused window,
       // the initial panel.focus() call from panel.tsx can lose the focus race
@@ -106,7 +115,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
       }
     }
     return undefined
-  }, [isBusy])
+  }, [isBusy, shouldManagePanelFocus])
 
   // Re-establish window focus when the user clicks anywhere in this panel.
   // The panel window can lose keyboard focus on macOS (e.g. after ensurePanelZOrder
@@ -253,7 +262,7 @@ export const TextInputPanel = forwardRef<TextInputPanelRef, TextInputPanelProps>
         "text-input-panel modern-text-strong flex h-full w-full flex-col gap-2.5 rounded-xl p-3",
         isDark ? "dark" : ""
       )}
-      onMouseDown={handleMouseDown}
+      onMouseDown={shouldManagePanelFocus ? handleMouseDown : undefined}
     >
       {/* Show agent progress if available */}
       {isProcessing && agentProgress ? (

@@ -153,10 +153,13 @@ describe("sessions in-app actions", () => {
     expect(textSubmitBlock).toContain("tipcClient.createMcpTextInput")
     expect(textSubmitBlock).toContain("fromTile: true")
     expect(textSubmitBlock).toContain("startSnoozed: false")
+    expect(textSubmitBlock).toContain("preserveMainWindowFocus: true")
 
     const voiceSubmitBlock = sessionActionDialogSource.slice(voiceCreateIndex, voiceCreateIndex + 600)
     expect(voiceSubmitBlock).toContain("fromTile: true")
     expect(voiceSubmitBlock).toContain("startSnoozed: false")
+    expect(voiceSubmitBlock).toContain("preserveMainWindowFocus: true")
+    expect(sessionActionDialogSource).toContain('host="main"')
 
     // The fromTile prop must NOT be destructured into a local variable — the
     // dialog should always preserve the hardcoded panel-suppression hint.
@@ -170,10 +173,13 @@ describe("sessions in-app actions", () => {
     const compactTileFollowUpSource = compactSource(tileFollowUpSource)
     expect(compactTileFollowUpSource).toContain("fromTile: true")
     expect(compactTileFollowUpSource).toContain("startSnoozed: false")
+    expect(compactTileFollowUpSource).toContain("preserveMainWindowFocus: true")
     expect(tipcSource).toContain("fromTile?: boolean // Origin hint")
     expect(tipcSource).toContain("startSnoozed?: boolean // True background mode")
+    expect(tipcSource).toContain("preserveMainWindowFocus?: boolean")
     expect(tipcSource).toContain("startSnoozed || input.suppressPanelAutoShow === true || input.fromTile === true")
     expect(tipcSource).toContain("suppressPanelAutoShow: launchState.shouldSuppressPanelAutoShow")
+    expect(tipcSource).toContain("createMainWindowForegroundPreserver(")
     expect(tipcSource).toContain("processWithAgentMode(agentInputText, conversationId, existingSessionId, launchState)")
   })
 

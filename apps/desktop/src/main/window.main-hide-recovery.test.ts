@@ -13,6 +13,7 @@ const mockApp = {
 }
 
 const mockEnsureAppSwitcherPresence = vi.fn()
+const mockShowAndFocusMainWindow = vi.fn()
 const mockGetFocusedWindow = vi.fn()
 const mockRendererHandlers = {
   hideTextInput: { send: vi.fn() },
@@ -99,7 +100,7 @@ vi.mock("./debug", () => ({
 
 vi.mock("./app-switcher", () => ({
   ensureAppSwitcherPresence: mockEnsureAppSwitcherPresence,
-  showAndFocusMainWindow: vi.fn(),
+  showAndFocusMainWindow: mockShowAndFocusMainWindow,
 }))
 
 vi.mock("./config", () => ({
@@ -138,6 +139,10 @@ describe("main window hide recovery", () => {
       hidePanelWhenMainFocused: true,
     }
     mockGetFocusedWindow.mockReturnValue(null)
+    mockShowAndFocusMainWindow.mockImplementation((win: MockBrowserWindow) => {
+      win.show()
+      win.focus()
+    })
     process.env.IS_MAC = true
   })
 
@@ -333,6 +338,64 @@ describe("main window hide recovery", () => {
       expect(main.isVisible()).toBe(false)
       expect(panel.showInactive).toHaveBeenCalledTimes(1)
       expect(mockRendererHandlers.showTextInput.send).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("restores a visible main window after an in-app submit deactivates the app", async () => {
+    vi.useFakeTimers()
+
+    try {
+      const { createMainWindow, createMainWindowForegroundPreserver } = await import("./window")
+      const win = createMainWindow() as MockBrowserWindow | undefined
+
+      expect(win).toBeDefined()
+      if (!win) return
+
+      win.visible = true
+      win.focused = true
+      mockGetFocusedWindow.mockReturnValue(win)
+
+      const preserveMainForeground = createMainWindowForegroundPreserver("test.submit", {
+        enabled: true,
+      })
+
+      win.focused = false
+      mockGetFocusedWindow.mockReturnValue(null)
+
+      preserveMainForeground("return")
+      await vi.runOnlyPendingTimersAsync()
+
+      expect(mockShowAndFocusMainWindow).toHaveBeenCalledWith(win, "test.submit")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not restore a main window that was hidden before an in-app submit", async () => {
+    vi.useFakeTimers()
+
+    try {
+      const { createMainWindow, createMainWindowForegroundPreserver } = await import("./window")
+      const win = createMainWindow() as MockBrowserWindow | undefined
+
+      expect(win).toBeDefined()
+      if (!win) return
+
+      win.visible = false
+      win.focused = false
+      mockGetFocusedWindow.mockReturnValue(null)
+
+      const preserveMainForeground = createMainWindowForegroundPreserver("test.submit", {
+        enabled: true,
+      })
+
+      preserveMainForeground("return")
+      await vi.runOnlyPendingTimersAsync()
+
+      expect(mockShowAndFocusMainWindow).not.toHaveBeenCalled()
+      expect(win.show).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
     }

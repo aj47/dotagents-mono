@@ -30,6 +30,7 @@ import {
   PANEL_SAVED_SIZE_MAX_WIDTH,
   PANEL_SAVED_SIZE_MAX_HEIGHT,
   clearPanelOpenedWithMain,
+  createMainWindowForegroundPreserver,
   resizePanelForWaveformPreview,
 } from "./window"
 import {
@@ -2369,11 +2370,17 @@ export const router = {
       startSnoozed?: boolean // True background mode: keep hidden/quiet and disable TTS autoplay.
       suppressPanelAutoShow?: boolean
       focusPanelSession?: boolean
+      preserveMainWindowFocus?: boolean
     }>()
     .action(async ({ input }) => {
       const config = configStore.get()
       const queueEnabled = config.mcpMessageQueueEnabled !== false
       const launchState = resolveAgentLaunchState(input)
+      const preserveMainWindowForeground = createMainWindowForegroundPreserver(
+        "createMcpTextInput",
+        { enabled: input.preserveMainWindowFocus === true },
+      )
+      preserveMainWindowForeground("request")
       reconcileAgentSessionsWithRuntime()
 
       logApp("[createMcpTextInput] Request received", {
@@ -2381,6 +2388,7 @@ export const router = {
         sessionId: input.sessionId ?? null,
         sessionKind: describeAgentSessionId(input.sessionId),
         fromTile: input.fromTile ?? false,
+        preserveMainWindowFocus: input.preserveMainWindowFocus === true,
         ...serializeAgentLaunchState(launchState),
         messageLength: input.text.length,
         queueEnabled,
@@ -2434,6 +2442,7 @@ export const router = {
               messageLength: input.text.length,
               queueLength: messageQueueService.getQueue(targetConversationId).length,
             })
+            preserveMainWindowForeground("queued-internal-sub-session")
             return { conversationId: targetConversationId, queued: true, queuedMessageId: queuedMessage.id }
           }
 
@@ -2450,6 +2459,7 @@ export const router = {
             messageLength: input.text.length,
           })
 
+          preserveMainWindowForeground("continued-internal-sub-session")
           return { conversationId: targetConversationId }
         }
 
@@ -2482,6 +2492,7 @@ export const router = {
                 messageLength: input.text.length,
                 queueLength: messageQueueService.getQueue(conversationId).length,
               })
+              preserveMainWindowForeground("queued-active-session")
               return { conversationId, queued: true, queuedMessageId: queuedMessage.id }
             }
 
@@ -2595,6 +2606,7 @@ export const router = {
 
       // Return immediately with conversation ID
       // Progress updates will be sent via emitAgentProgress
+      preserveMainWindowForeground("return")
       return { conversationId }
     }),
 
@@ -2610,9 +2622,15 @@ export const router = {
       startSnoozed?: boolean // True background mode: keep hidden/quiet and disable TTS autoplay.
       suppressPanelAutoShow?: boolean
       focusPanelSession?: boolean
+      preserveMainWindowFocus?: boolean
     }>()
     .action(async ({ input }) => {
       const launchState = resolveAgentLaunchState(input)
+      const preserveMainWindowForeground = createMainWindowForegroundPreserver(
+        "createMcpRecording",
+        { enabled: input.preserveMainWindowFocus === true },
+      )
+      preserveMainWindowForeground("request")
 
       // Panel suppression is separate from snoozing. Tile-originated recordings
       // can stay foreground/audible while still hiding the waveform panel after capture.
@@ -2719,6 +2737,7 @@ export const router = {
             )
             logApp(`[createMcpRecording] Queued voice transcript ${queuedMessage.id} for active session ${activeSessionId}`)
 
+            preserveMainWindowForeground("queued-active-session")
             return { conversationId: input.conversationId, queued: true, queuedMessageId: queuedMessage.id }
           }
         }
@@ -2996,6 +3015,7 @@ export const router = {
 
         // Return immediately with conversation ID
         // Progress updates will be sent via emitAgentProgress
+        preserveMainWindowForeground("return")
         return { conversationId }
       } catch (error) {
         // Handle transcription or conversation creation errors
