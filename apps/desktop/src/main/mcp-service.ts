@@ -43,6 +43,14 @@ import { agentProfileService } from "./agent-profile-service"
 import { app, dialog } from "electron"
 import { runtimeTools, executeRuntimeTool, isRuntimeTool } from "./runtime-tools"
 import { DEFAULT_AGENT_RUNTIME_TOOL_NAMES } from "./runtime-tool-definitions"
+import {
+  ANSWER_DECISION_TOOL,
+  CREATE_DECISION_TOOL,
+  CREATE_GOAL_TOOL,
+  LIST_DECISIONS_TOOL,
+  LIST_GOALS_TOOL,
+  UPDATE_GOAL_TOOL,
+} from "../shared/runtime-tool-names"
 import { randomUUID } from "crypto"
 import {
   createToolSpan,
@@ -81,7 +89,15 @@ const RUNTIME_BUILTIN_TOOL_SOURCE_LABEL = "DotAgents Runtime Tools"
  */
 const DOTAGENTS_USER_AGENT = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 DotAgents/${app.getVersion()}`
 
-const ESSENTIAL_RUNTIME_TOOL_NAMES = new Set<string>(["mark_work_complete"])
+const ESSENTIAL_RUNTIME_TOOL_NAMES = new Set<string>([
+  "mark_work_complete",
+  LIST_GOALS_TOOL,
+  CREATE_GOAL_TOOL,
+  UPDATE_GOAL_TOOL,
+  LIST_DECISIONS_TOOL,
+  CREATE_DECISION_TOOL,
+  ANSWER_DECISION_TOOL,
+])
 
 function isEssentialRuntimeTool(toolName: string): boolean {
   return ESSENTIAL_RUNTIME_TOOL_NAMES.has(toolName)

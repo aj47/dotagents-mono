@@ -40,6 +40,26 @@ function parseNumber(raw: string | undefined, defaultValue: number): number {
   return Number.isFinite(n) ? n : defaultValue
 }
 
+function parseListValue(raw: string | undefined): string[] {
+  const trimmed = (raw ?? "").trim()
+  if (!trimmed) return []
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    try {
+      const parsed: unknown = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.filter((value): value is string => typeof value === "string").map((value) => value.trim()).filter(Boolean)
+      }
+    } catch {
+      // fall through to CSV
+    }
+  }
+  return trimmed.split(",").map((value) => value.trim()).filter(Boolean)
+}
+
+function formatListValue(values: string[] | undefined): string {
+  return Array.isArray(values) ? values.map((value) => value.trim()).filter(Boolean).join(", ") : ""
+}
+
 // ---- Schedule (de)serialization ---------------------------------------------
 
 const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
@@ -136,6 +156,10 @@ export function stringifyTaskMarkdown(task: LoopConfig): string {
   if (task.runContinuously) frontmatter.runContinuously = "true"
   if (task.lastRunAt) frontmatter.lastRunAt = String(task.lastRunAt)
   if (task.schedule) frontmatter.schedule = stringifySchedule(task.schedule)
+  if (task.loopType) frontmatter.loopType = task.loopType
+  if (task.linkedGoalIds?.length) frontmatter.linkedGoalIds = formatListValue(task.linkedGoalIds)
+  if (task.outputType) frontmatter.outputType = task.outputType
+  if (task.tokenBudgetPerRun) frontmatter.tokenBudgetPerRun = String(task.tokenBudgetPerRun)
 
   return stringifyFrontmatterDocument({ frontmatter, body: task.prompt || "" })
 }
@@ -173,6 +197,14 @@ export function parseTaskMarkdown(
     runContinuously: parseBoolean(fm.runContinuously, false) || undefined,
     lastRunAt: fm.lastRunAt ? parseNumber(fm.lastRunAt, 0) || undefined : undefined,
     schedule,
+    loopType: ["daily_planning", "execution", "recap", "custom"].includes(fm.loopType ?? "")
+      ? (fm.loopType as LoopConfig["loopType"])
+      : undefined,
+    linkedGoalIds: parseListValue(fm.linkedGoalIds),
+    outputType: ["goals", "tasks", "decisions", "summary"].includes(fm.outputType ?? "")
+      ? (fm.outputType as LoopConfig["outputType"])
+      : undefined,
+    tokenBudgetPerRun: fm.tokenBudgetPerRun ? parseNumber(fm.tokenBudgetPerRun, 0) || undefined : undefined,
   }
 }
 

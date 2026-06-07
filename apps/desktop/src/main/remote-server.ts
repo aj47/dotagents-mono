@@ -52,6 +52,9 @@ import { emergencyStopAll } from "./emergency-stop"
 import { sendMessageNotification, isPushEnabled, clearBadgeCount } from "./push-notification-service"
 import { skillsService } from "./skills-service"
 import { knowledgeNotesService } from "./knowledge-notes-service"
+import { goalService } from "./goal-service"
+import { decisionService } from "./decision-service"
+import { goalProgressService } from "./goal-progress-service"
 import { sanitizeAgentProfileConnection, VALID_AGENT_PROFILE_CONNECTION_TYPES } from "./agent-profile-connection-sanitize"
 import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
@@ -113,6 +116,11 @@ import type {
   OperatorWhatsAppIntegrationSummary,
   RemoteSttTranscriptionRequest,
   RemoteSttTranscriptionResponse,
+  GoalCreateRequest,
+  GoalUpdateRequest,
+  DecisionCreateRequest,
+  DecisionUpdateRequest,
+  DecisionRespondRequest,
 } from "@dotagents/shared"
 import type { RendererHandlers } from "./renderer-handlers"
 import { INJECTED_RUNTIME_TOOL_TRANSPORT_NAME, RESERVED_RUNTIME_TOOL_SERVER_NAMES } from "../shared/runtime-tool-names"
@@ -7502,8 +7510,177 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       isRunning: status?.isRunning ?? false,
       nextRunAt: status?.nextRunAt,
       schedule: loop.schedule,
+      loopType: loop.loopType,
+      linkedGoalIds: loop.linkedGoalIds,
+      outputType: loop.outputType,
+      tokenBudgetPerRun: loop.tokenBudgetPerRun,
     }
   }
+
+  // GET /v1/goals - List goals
+  fastify.get("/v1/goals", async (_req, reply) => {
+    try {
+      return reply.send({ goals: await goalService.listGoals() })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get goals", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get goals" })
+    }
+  })
+
+  // POST /v1/goals - Create a goal
+  fastify.post("/v1/goals", async (req, reply) => {
+    try {
+      const goal = await goalService.saveGoal(req.body as GoalCreateRequest)
+      return reply.code(201).send({ goal })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to create goal", error)
+      return reply.code(400).send({ error: error?.message || "Failed to create goal" })
+    }
+  })
+
+  // GET /v1/goals/:id - Get a goal
+  fastify.get("/v1/goals/:id", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string }
+      const goal = await goalService.getGoal(id)
+      if (!goal) return reply.code(404).send({ error: "Goal not found" })
+      return reply.send({ goal })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get goal", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get goal" })
+    }
+  })
+
+  // PATCH /v1/goals/:id - Update a goal
+  fastify.patch("/v1/goals/:id", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string }
+      const goal = await goalService.updateGoal(id, req.body as GoalUpdateRequest)
+      if (!goal) return reply.code(404).send({ error: "Goal not found" })
+      return reply.send({ success: true, goal })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to update goal", error)
+      return reply.code(400).send({ error: error?.message || "Failed to update goal" })
+    }
+  })
+
+  // DELETE /v1/goals/:id - Delete a goal
+  fastify.delete("/v1/goals/:id", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string }
+      const success = await goalService.deleteGoal(id)
+      if (!success) return reply.code(404).send({ error: "Goal not found" })
+      return reply.send({ success: true, id })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to delete goal", error)
+      return reply.code(500).send({ error: error?.message || "Failed to delete goal" })
+    }
+  })
+
+  // GET /v1/goal-events - List goal progress events
+  fastify.get("/v1/goal-events", async (req, reply) => {
+    try {
+      const query = req.query as { goalId?: string; parentGoalId?: string; limit?: string }
+      const limit = query.limit ? Number(query.limit) : undefined
+      return reply.send({
+        events: goalProgressService.listEvents({
+          goalId: query.goalId,
+          parentGoalId: query.parentGoalId,
+          limit: Number.isFinite(limit) ? limit : undefined,
+        }),
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get goal progress events", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get goal progress events" })
+    }
+  })
+
+  // GET /v1/decisions - List decisions
+  fastify.get("/v1/decisions", async (req, reply) => {
+    try {
+      const query = req.query as { status?: "pending" | "history" | "all" }
+      const status = ["pending", "history", "all"].includes(query.status ?? "") ? query.status : "all"
+      return reply.send({ decisions: await decisionService.listDecisions(status ?? "all") })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get decisions", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get decisions" })
+    }
+  })
+
+  // POST /v1/decisions - Create a decision
+  fastify.post("/v1/decisions", async (req, reply) => {
+    try {
+      const decision = await decisionService.saveDecision(req.body as DecisionCreateRequest)
+      return reply.code(201).send({ decision })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to create decision", error)
+      return reply.code(400).send({ error: error?.message || "Failed to create decision" })
+    }
+  })
+
+  // GET /v1/decisions/:id - Get a decision
+  fastify.get("/v1/decisions/:id", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string }
+      const decision = await decisionService.getDecision(id)
+      if (!decision) return reply.code(404).send({ error: "Decision not found" })
+      return reply.send({ decision })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to get decision", error)
+      return reply.code(500).send({ error: error?.message || "Failed to get decision" })
+    }
+  })
+
+  // PATCH /v1/decisions/:id - Update a decision
+  fastify.patch("/v1/decisions/:id", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string }
+      const decision = await decisionService.updateDecision(id, req.body as DecisionUpdateRequest)
+      if (!decision) return reply.code(404).send({ error: "Decision not found" })
+      return reply.send({ success: true, decision })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to update decision", error)
+      return reply.code(400).send({ error: error?.message || "Failed to update decision" })
+    }
+  })
+
+  fastify.post("/v1/decisions/:id/respond", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string }
+      const decision = await decisionService.respondToDecision(id, req.body as DecisionRespondRequest)
+      if (!decision) return reply.code(404).send({ error: "Decision not found" })
+      return reply.send({ success: true, decision })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to respond to decision", error)
+      return reply.code(400).send({ error: error?.message || "Failed to respond to decision" })
+    }
+  })
+
+  fastify.post("/v1/decisions/:id/defer", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string }
+      const body = req.body as { note?: string }
+      const decision = await decisionService.setStatus(id, "deferred", body?.note)
+      if (!decision) return reply.code(404).send({ error: "Decision not found" })
+      return reply.send({ success: true, decision })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to defer decision", error)
+      return reply.code(400).send({ error: error?.message || "Failed to defer decision" })
+    }
+  })
+
+  fastify.post("/v1/decisions/:id/cancel", async (req, reply) => {
+    try {
+      const { id } = req.params as { id: string }
+      const body = req.body as { note?: string }
+      const decision = await decisionService.setStatus(id, "canceled", body?.note)
+      if (!decision) return reply.code(404).send({ error: "Decision not found" })
+      return reply.send({ success: true, decision })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Failed to cancel decision", error)
+      return reply.code(400).send({ error: error?.message || "Failed to cancel decision" })
+    }
+  })
 
   // GET /v1/loops - List all repeat tasks
   fastify.get("/v1/loops", async (_req, reply) => {
@@ -7535,6 +7712,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             isRunning: status?.isRunning ?? false,
             nextRunAt: status?.nextRunAt,
             schedule: l.schedule,
+            loopType: l.loopType,
+            linkedGoalIds: l.linkedGoalIds,
+            outputType: l.outputType,
+            tokenBudgetPerRun: l.tokenBudgetPerRun,
           }
         }),
       })

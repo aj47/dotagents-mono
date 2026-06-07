@@ -17,6 +17,9 @@ import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
 import { getRootAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
+import { goalService } from "./goal-service"
+import { decisionService } from "./decision-service"
+import type { DecisionCreateRequest, GoalCreateRequest, GoalUpdateRequest } from "@dotagents/shared"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -419,6 +422,134 @@ type ToolHandler = (
 ) => Promise<MCPToolResult>
 
 const toolHandlers: Record<string, ToolHandler> = {
+  list_goals: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const loopVisibleOnly = args.loopVisibleOnly === true
+    const goals = loopVisibleOnly
+      ? await goalService.listLoopVisibleGoals()
+      : await goalService.listGoals()
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: true, goals }) }],
+      isError: false,
+    }
+  },
+
+  create_goal: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const title = typeof args.title === "string" ? args.title.trim() : ""
+    if (!title) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "title is required" }) }],
+        isError: true,
+      }
+    }
+
+    const goal = await goalService.saveGoal({
+      title,
+      description: typeof args.description === "string" ? args.description : "",
+      level: args.level === "week" || args.level === "today" || args.level === "goal" ? args.level : "today",
+      priority: typeof args.priority === "number" ? args.priority : 3,
+      parentId: typeof args.parentId === "string" && args.parentId.trim() ? args.parentId.trim() : undefined,
+      successCriteria: typeof args.successCriteria === "string" ? args.successCriteria : undefined,
+      signalToWatch: typeof args.signalToWatch === "string" ? args.signalToWatch : undefined,
+      abandonIf: typeof args.abandonIf === "string" ? args.abandonIf : undefined,
+      createdBy: "agent",
+      createdFrom: "loop_daily_planning",
+      provenance: typeof args.provenance === "string" ? args.provenance : undefined,
+      linkedTaskIds: [],
+      body: typeof args.body === "string" ? args.body : "",
+    } satisfies GoalCreateRequest)
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: true, goal }) }],
+      isError: false,
+    }
+  },
+
+  update_goal: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const id = typeof args.id === "string" ? args.id.trim() : ""
+    if (!id) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "id is required" }) }],
+        isError: true,
+      }
+    }
+
+    const updates: GoalUpdateRequest = {}
+    if (typeof args.title === "string") updates.title = args.title
+    if (typeof args.description === "string") updates.description = args.description
+    if (args.level === "goal" || args.level === "week" || args.level === "today") updates.level = args.level
+    if (typeof args.priority === "number") updates.priority = args.priority
+    if (args.status === "active" || args.status === "paused" || args.status === "done" || args.status === "abandoned") updates.status = args.status
+    if (typeof args.parentId === "string") updates.parentId = args.parentId
+    if (typeof args.successCriteria === "string") updates.successCriteria = args.successCriteria
+    if (typeof args.signalToWatch === "string") updates.signalToWatch = args.signalToWatch
+    if (typeof args.abandonIf === "string") updates.abandonIf = args.abandonIf
+    if (typeof args.provenance === "string") updates.provenance = args.provenance
+    if (typeof args.body === "string") updates.body = args.body
+
+    const goal = await goalService.updateGoal(id, updates)
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: Boolean(goal), goal, error: goal ? undefined : "Goal not found" }) }],
+      isError: !goal,
+    }
+  },
+
+  list_decisions: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const status = args.status === "pending" || args.status === "history" || args.status === "all" ? args.status : "all"
+    const decisions = await decisionService.listDecisions(status)
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: true, decisions }) }],
+      isError: false,
+    }
+  },
+
+  create_decision: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const question = typeof args.question === "string" ? args.question.trim() : ""
+    if (!question) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "question is required" }) }],
+        isError: true,
+      }
+    }
+
+    const decision = await decisionService.saveDecision({
+      question,
+      type: args.type === "ab" || args.type === "ranked" || args.type === "edit" || args.type === "defer" || args.type === "yn" ? args.type : "yn",
+      recommendation: typeof args.recommendation === "string" ? args.recommendation : undefined,
+      why: typeof args.why === "string" ? args.why : undefined,
+      risk: typeof args.risk === "string" ? args.risk : undefined,
+      goalId: typeof args.goalId === "string" ? args.goalId : undefined,
+      taskId: typeof args.taskId === "string" ? args.taskId : undefined,
+      expiresAt: typeof args.expiresAt === "number" ? args.expiresAt : undefined,
+      defaultAction: typeof args.defaultAction === "string" ? args.defaultAction : undefined,
+      urgent: args.urgent === true,
+      revertEffortHours: typeof args.revertEffortHours === "number" ? args.revertEffortHours : 0,
+      pathChanging: args.pathChanging === true,
+      irreversible: args.irreversible === true,
+      body: typeof args.body === "string" ? args.body : "",
+    } satisfies DecisionCreateRequest)
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: true, decision }) }],
+      isError: false,
+    }
+  },
+
+  answer_decision: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const id = typeof args.id === "string" ? args.id.trim() : ""
+    const answer = typeof args.answer === "string" ? args.answer.trim() : ""
+    if (!id || !answer) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "id and answer are required" }) }],
+        isError: true,
+      }
+    }
+    const decision = await decisionService.respondToDecision(id, { answer, answerSource: "agent" })
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: Boolean(decision), decision, error: decision ? undefined : "Decision not found" }) }],
+      isError: !decision,
+    }
+  },
+
   respond_to_user: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     if (!context.sessionId) {
       return {
@@ -788,7 +919,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       })
     }
 
-    if (mappedAppSessionId) {
+    if (mappedAppSessionId && session) {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
       const parentSessionId = mappedAppSessionId
       const runId = agentSessionStateManager.getSessionRunId(trackedSessionId)

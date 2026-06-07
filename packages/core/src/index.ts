@@ -207,6 +207,36 @@ export {
 } from './agents-files/tasks';
 export type { TaskOrigin, LoadedTasksLayer } from './agents-files/tasks';
 
+// Agents files — goals
+export {
+  GOAL_CANONICAL_FILENAME,
+  getGoalsDir,
+  getGoalsBackupDir,
+  goalIdToDirPath,
+  goalIdToFilePath,
+  stringifyGoalMarkdown,
+  parseGoalMarkdown,
+  loadGoalsLayer,
+  writeGoalFile,
+  deleteGoalFiles,
+} from './agents-files/goals';
+export type { GoalOrigin, LoadedGoalsLayer } from './agents-files/goals';
+
+// Agents files — decisions
+export {
+  DECISION_CANONICAL_FILENAME,
+  getDecisionsDir,
+  getDecisionsBackupDir,
+  decisionIdToDirPath,
+  decisionIdToFilePath,
+  stringifyDecisionMarkdown,
+  parseDecisionMarkdown,
+  loadDecisionsLayer,
+  writeDecisionFile,
+  deleteDecisionFiles,
+} from './agents-files/decisions';
+export type { DecisionOrigin, LoadedDecisionsLayer } from './agents-files/decisions';
+
 // Agents files — agent-profiles
 export {
   AGENTS_PROFILE_CANONICAL_FILENAME,

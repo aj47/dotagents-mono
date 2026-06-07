@@ -44,6 +44,16 @@ export type {
   VerifyExternalAgentCommandResponse,
   AgentSessionCandidate,
   AgentSessionCandidatesResponse,
+  Goal,
+  GoalLevel,
+  GoalsResponse,
+  GoalCreateRequest,
+  GoalUpdateRequest,
+  Decision,
+  DecisionsResponse,
+  DecisionCreateRequest,
+  DecisionUpdateRequest,
+  DecisionRespondRequest,
   Loop,
   LoopsResponse,
   LoopSchedule,
@@ -132,6 +142,16 @@ import type {
   VerifyExternalAgentCommandResponse,
   AgentSessionCandidate,
   AgentSessionCandidatesResponse,
+  Goal,
+  GoalLevel,
+  GoalsResponse,
+  GoalCreateRequest,
+  GoalUpdateRequest,
+  Decision,
+  DecisionsResponse,
+  DecisionCreateRequest,
+  DecisionUpdateRequest,
+  DecisionRespondRequest,
   Loop,
   LoopSchedule,
   LoopsResponse,
@@ -473,6 +493,10 @@ export interface LoopCreateRequest {
   runContinuously?: boolean;
   maxIterations?: number;
   schedule?: LoopSchedule | null;
+  loopType?: Loop['loopType'];
+  linkedGoalIds?: string[];
+  outputType?: Loop['outputType'];
+  tokenBudgetPerRun?: number;
 }
 
 export interface LoopUpdateRequest {
@@ -488,6 +512,10 @@ export interface LoopUpdateRequest {
   runContinuously?: boolean;
   maxIterations?: number | null;
   schedule?: LoopSchedule | null;
+  loopType?: Loop['loopType'] | null;
+  linkedGoalIds?: string[] | null;
+  outputType?: Loop['outputType'] | null;
+  tokenBudgetPerRun?: number | null;
 }
 
 export interface EmergencyStopResponse {
@@ -1332,6 +1360,81 @@ export class ExtendedSettingsApiClient extends SettingsApiClient {
   async toggleAgentProfile(id: string): Promise<{ success: boolean; id: string; enabled: boolean }> {
     return this.request(`/agent-profiles/${encodeURIComponent(id)}/toggle`, {
       method: 'POST',
+    });
+  }
+
+  // ============================================
+  // Goals + Decisions Management
+  // ============================================
+
+  async getGoals(): Promise<GoalsResponse> {
+    return this.request<GoalsResponse>('/goals');
+  }
+
+  async getGoal(id: string): Promise<{ goal: Goal }> {
+    return this.request<{ goal: Goal }>(`/goals/${encodeURIComponent(id)}`);
+  }
+
+  async createGoal(data: GoalCreateRequest): Promise<{ goal: Goal }> {
+    return this.request<{ goal: Goal }>('/goals', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateGoal(id: string, data: GoalUpdateRequest): Promise<{ success: boolean; goal: Goal }> {
+    return this.request<{ success: boolean; goal: Goal }>(`/goals/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteGoal(id: string): Promise<{ success: boolean; id: string }> {
+    return this.request<{ success: boolean; id: string }>(`/goals/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getDecisions(status: 'pending' | 'history' | 'all' = 'all'): Promise<DecisionsResponse> {
+    return this.request<DecisionsResponse>(`/decisions?status=${encodeURIComponent(status)}`);
+  }
+
+  async getDecision(id: string): Promise<{ decision: Decision }> {
+    return this.request<{ decision: Decision }>(`/decisions/${encodeURIComponent(id)}`);
+  }
+
+  async createDecision(data: DecisionCreateRequest): Promise<{ decision: Decision }> {
+    return this.request<{ decision: Decision }>('/decisions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateDecision(id: string, data: DecisionUpdateRequest): Promise<{ success: boolean; decision: Decision }> {
+    return this.request<{ success: boolean; decision: Decision }>(`/decisions/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async respondToDecision(id: string, data: DecisionRespondRequest): Promise<{ success: boolean; decision: Decision }> {
+    return this.request<{ success: boolean; decision: Decision }>(`/decisions/${encodeURIComponent(id)}/respond`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deferDecision(id: string, note?: string): Promise<{ success: boolean; decision: Decision }> {
+    return this.request<{ success: boolean; decision: Decision }>(`/decisions/${encodeURIComponent(id)}/defer`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  async cancelDecision(id: string, note?: string): Promise<{ success: boolean; decision: Decision }> {
+    return this.request<{ success: boolean; decision: Decision }>(`/decisions/${encodeURIComponent(id)}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
     });
   }
 

@@ -98,9 +98,19 @@ import { getAppSessionForAcpSession } from "./acp-session-state"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
+import { goalService } from "./goal-service"
+import { decisionService } from "./decision-service"
+import { goalProgressService } from "./goal-progress-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
+import type {
+  DecisionCreateRequest,
+  DecisionRespondRequest,
+  DecisionUpdateRequest,
+  GoalCreateRequest,
+  GoalUpdateRequest,
+} from "@dotagents/shared"
 
 function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
   if (!sessionId) return "missing"
@@ -5800,6 +5810,98 @@ export const router = {
         sort: input.sort,
         limit: input.limit,
       })
+    }),
+
+  // Goals handlers
+  getGoals: t.procedure.action(async () => {
+    return goalService.listGoals()
+  }),
+
+  getGoal: t.procedure
+    .input<{ id: string }>()
+    .action(async ({ input }) => {
+      return goalService.getGoal(input.id)
+    }),
+
+  saveGoal: t.procedure
+    .input<{ goal: GoalCreateRequest }>()
+    .action(async ({ input }) => {
+      const goal = await goalService.saveGoal(input.goal)
+      return { success: true, goal }
+    }),
+
+  updateGoal: t.procedure
+    .input<{ id: string; updates: GoalUpdateRequest }>()
+    .action(async ({ input }) => {
+      const goal = await goalService.updateGoal(input.id, input.updates)
+      return { success: Boolean(goal), goal }
+    }),
+
+  deleteGoal: t.procedure
+    .input<{ id: string }>()
+    .action(async ({ input }) => {
+      return { success: await goalService.deleteGoal(input.id), id: input.id }
+    }),
+
+  touchGoal: t.procedure
+    .input<{ id: string }>()
+    .action(async ({ input }) => {
+      const goal = await goalService.touchGoal(input.id)
+      return { success: Boolean(goal), goal }
+    }),
+
+  getGoalProgressEvents: t.procedure
+    .input<{ goalId?: string; parentGoalId?: string; limit?: number } | undefined>()
+    .action(async ({ input }) => {
+      return goalProgressService.listEvents(input ?? {})
+    }),
+
+  // Decisions handlers
+  getDecisions: t.procedure
+    .input<{ status?: "pending" | "history" | "all" }>()
+    .action(async ({ input }) => {
+      return decisionService.listDecisions(input.status ?? "all")
+    }),
+
+  getDecision: t.procedure
+    .input<{ id: string }>()
+    .action(async ({ input }) => {
+      return decisionService.getDecision(input.id)
+    }),
+
+  saveDecision: t.procedure
+    .input<{ decision: DecisionCreateRequest }>()
+    .action(async ({ input }) => {
+      const decision = await decisionService.saveDecision(input.decision)
+      return { success: true, decision }
+    }),
+
+  updateDecision: t.procedure
+    .input<{ id: string; updates: DecisionUpdateRequest }>()
+    .action(async ({ input }) => {
+      const decision = await decisionService.updateDecision(input.id, input.updates)
+      return { success: Boolean(decision), decision }
+    }),
+
+  respondToDecision: t.procedure
+    .input<{ id: string; response: DecisionRespondRequest }>()
+    .action(async ({ input }) => {
+      const decision = await decisionService.respondToDecision(input.id, input.response)
+      return { success: Boolean(decision), decision }
+    }),
+
+  deferDecision: t.procedure
+    .input<{ id: string; note?: string }>()
+    .action(async ({ input }) => {
+      const decision = await decisionService.setStatus(input.id, "deferred", input.note)
+      return { success: Boolean(decision), decision }
+    }),
+
+  cancelDecision: t.procedure
+    .input<{ id: string; note?: string }>()
+    .action(async ({ input }) => {
+      const decision = await decisionService.setStatus(input.id, "canceled", input.note)
+      return { success: Boolean(decision), decision }
     }),
 
   // Summarization service handlers

@@ -18,11 +18,23 @@ export const MARK_WORK_COMPLETE_TOOL = "mark_work_complete"
 export const SET_SESSION_TITLE_TOOL = "set_session_title"
 export const EXECUTE_COMMAND_TOOL = "execute_command"
 export const READ_MORE_CONTEXT_TOOL = "read_more_context"
+export const LIST_GOALS_TOOL = "list_goals"
+export const CREATE_GOAL_TOOL = "create_goal"
+export const UPDATE_GOAL_TOOL = "update_goal"
+export const LIST_DECISIONS_TOOL = "list_decisions"
+export const CREATE_DECISION_TOOL = "create_decision"
+export const ANSWER_DECISION_TOOL = "answer_decision"
 
 export const DEFAULT_AGENT_RUNTIME_TOOL_NAMES = [
   SET_SESSION_TITLE_TOOL,
   EXECUTE_COMMAND_TOOL,
   READ_MORE_CONTEXT_TOOL,
+  LIST_GOALS_TOOL,
+  CREATE_GOAL_TOOL,
+  UPDATE_GOAL_TOOL,
+  LIST_DECISIONS_TOOL,
+  CREATE_DECISION_TOOL,
+  ANSWER_DECISION_TOOL,
   MARK_WORK_COMPLETE_TOOL,
 ] as const
 

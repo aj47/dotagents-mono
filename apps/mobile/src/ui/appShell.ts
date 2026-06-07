@@ -21,7 +21,7 @@ export function resolveAppShellLayout(width: number): AppShellLayout {
   return normalizedWidth >= APP_SHELL_BREAKPOINTS.desktopMinWidth ? 'desktop' : 'compact';
 }
 
-export type AppShellPrimaryNavItemId = 'sessions' | 'agents' | 'knowledge' | 'settings';
+export type AppShellPrimaryNavItemId = 'sessions' | 'agents' | 'knowledge' | 'goals' | 'decisions' | 'settings';
 
 export type AppShellMobileSettingsSectionId =
   | 'providerSelection'
@@ -110,6 +110,8 @@ export const APP_SHELL_PRIMARY_NAV_ITEMS: AppShellPrimaryNavItem[] = [
     mobileRouteName: 'Settings',
     mobileRouteParams: { initialSection: 'knowledgeNotes' },
   },
+  { id: 'goals', label: 'Goals', mobileRouteName: 'Goals' },
+  { id: 'decisions', label: 'Decisions', mobileRouteName: 'Decisions' },
   { id: 'settings', label: 'Settings', mobileRouteName: 'Settings' },
 ];
 
@@ -130,9 +132,12 @@ export const APP_SHELL_MOBILE_ROUTE_TITLES = {
   KnowledgeNoteEdit: 'Note',
   LoopEdit: 'Loop',
   SkillEdit: 'Skill',
+  Goals: 'Goals',
+  GoalEdit: 'Goal',
+  Decisions: 'Decisions',
 } as const;
 
-const APP_SHELL_MOBILE_DESKTOP_SHELL_HEADERLESS_ROUTES = ['Sessions', 'Settings'] as const;
+const APP_SHELL_MOBILE_DESKTOP_SHELL_HEADERLESS_ROUTES = ['Sessions', 'Settings', 'Goals', 'Decisions'] as const;
 
 export function shouldHideMobileStackHeaderForDesktopShell(routeName: string): boolean {
   return APP_SHELL_MOBILE_DESKTOP_SHELL_HEADERLESS_ROUTES.includes(
@@ -142,6 +147,8 @@ export function shouldHideMobileStackHeaderForDesktopShell(routeName: string): b
 
 export function getMobilePrimaryNavItemId(routeName: string): AppShellPrimaryNavItemId {
   if (routeName === 'Sessions' || routeName === 'Chat') return 'sessions';
+  if (routeName === 'Goals' || routeName === 'GoalEdit') return 'goals';
+  if (routeName === 'Decisions') return 'decisions';
   if (routeName === 'Settings') return 'settings';
   return 'sessions';
 }

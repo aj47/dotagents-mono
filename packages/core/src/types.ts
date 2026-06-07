@@ -67,6 +67,9 @@ export type LoopSchedule =
   | { type: "daily"; times: string[] }
   | { type: "weekly"; times: string[]; daysOfWeek: number[] }
 
+export type LoopType = "daily_planning" | "execution" | "recap" | "custom"
+export type LoopOutputType = "goals" | "tasks" | "decisions" | "summary"
+
 export interface LoopConfig {
   id: string
   name: string
@@ -105,6 +108,77 @@ export interface LoopConfig {
   runContinuously?: boolean
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule
+  loopType?: LoopType
+  linkedGoalIds?: string[]
+  outputType?: LoopOutputType
+  tokenBudgetPerRun?: number
+}
+
+// ============================================================================
+// Goals + Decisions
+// ============================================================================
+
+export type GoalLevel = "goal" | "week" | "today"
+export type GoalStatus = "active" | "paused" | "done" | "abandoned"
+export type GoalCreatedBy = "aj" | "agent"
+export type GoalCreatedFrom = "manual" | "loop_daily_planning" | string
+
+export interface Goal {
+  id: string
+  title: string
+  description: string
+  level: GoalLevel
+  priority: number
+  status: GoalStatus
+  body: string
+  parentId?: string
+  successCriteria?: string
+  signalToWatch?: string
+  abandonIf?: string
+  createdAt: number
+  updatedAt: number
+  lastTouchedAt?: number
+  createdBy: GoalCreatedBy
+  createdFrom: GoalCreatedFrom
+  provenance?: string
+  linkedTaskIds: string[]
+  notes?: string
+}
+
+export type DecisionType = "yn" | "ab" | "ranked" | "edit" | "defer"
+export type DecisionStatus = "pending" | "answered" | "deferred" | "auto_resolved" | "canceled"
+export type DecisionAnswerSource = "aj" | "agent" | "timeout" | "system"
+
+export interface DecisionHistoryEntry {
+  at: number
+  type: string
+  by: DecisionAnswerSource
+  note?: string
+}
+
+export interface Decision {
+  id: string
+  type: DecisionType
+  status: DecisionStatus
+  question: string
+  recommendation?: string
+  why?: string
+  risk?: string
+  goalId?: string
+  taskId?: string
+  createdAt: number
+  updatedAt: number
+  answeredAt?: number | null
+  expiresAt?: number | null
+  defaultAction?: string
+  answer?: string | null
+  answerSource?: DecisionAnswerSource | null
+  urgent: boolean
+  revertEffortHours: number
+  pathChanging: boolean
+  irreversible: boolean
+  history: DecisionHistoryEntry[]
+  body: string
 }
 
 // ============================================================================

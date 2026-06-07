@@ -10,6 +10,9 @@ import AgentEditScreen from './src/screens/AgentEditScreen';
 import KnowledgeNoteEditScreen from './src/screens/KnowledgeNoteEditScreen';
 import LoopEditScreen from './src/screens/LoopEditScreen';
 import SkillEditScreen from './src/screens/SkillEditScreen';
+import GoalsScreen from './src/screens/GoalsScreen';
+import GoalEditScreen from './src/screens/GoalEditScreen';
+import DecisionsScreen from './src/screens/DecisionsScreen';
 import { AppConfig, ConfigContext, useConfig, saveConfig } from './src/store/config';
 import { SessionContext, useSessions } from './src/store/sessions';
 import { MessageQueueContext, useMessageQueue } from './src/store/message-queue';
@@ -595,6 +598,16 @@ function Navigation() {
                           component={SessionListScreen}
                           options={{ title: 'Chats' }}
                         />
+                        <Stack.Screen
+                          name="Goals"
+                          component={GoalsScreen}
+                          options={{ title: 'Goals' }}
+                        />
+                        <Stack.Screen
+                          name="Decisions"
+                          component={DecisionsScreen}
+                          options={{ title: 'Decisions' }}
+                        />
                         <Stack.Screen name="Chat" component={ChatScreen} />
                         <Stack.Screen
                           name="AgentEdit"
@@ -605,6 +618,11 @@ function Navigation() {
                           name="KnowledgeNoteEdit"
                           component={KnowledgeNoteEditScreen}
                           options={{ title: 'Note' }}
+                        />
+                        <Stack.Screen
+                          name="GoalEdit"
+                          component={GoalEditScreen}
+                          options={{ title: 'Goal' }}
                         />
                         <Stack.Screen
                           name="LoopEdit"

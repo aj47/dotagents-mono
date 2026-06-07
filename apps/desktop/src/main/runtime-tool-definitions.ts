@@ -35,6 +35,109 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   // runtime tools for execution purposes (see isRuntimeTool in runtime-tools.ts).
   ...acpRouterToolDefinitions,
   {
+    name: "list_goals",
+    description: "List DotAgents goals. Use this before planning repeat-task work so you can choose active goals with success criteria.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        loopVisibleOnly: {
+          type: "boolean",
+          description: "When true, only return active goals that have success criteria and are visible to loops.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "create_goal",
+    description: "Create a structured DotAgents goal. Agent-created non-top-level goals require parentId, successCriteria, abandonIf, and provenance.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        description: { type: "string" },
+        level: { type: "string", enum: ["goal", "week", "today"] },
+        priority: { type: "number" },
+        parentId: { type: "string" },
+        successCriteria: { type: "string" },
+        signalToWatch: { type: "string" },
+        abandonIf: { type: "string" },
+        provenance: { type: "string" },
+        body: { type: "string" },
+      },
+      required: ["title", "successCriteria", "abandonIf", "provenance"],
+    },
+  },
+  {
+    name: "update_goal",
+    description: "Update a structured DotAgents goal by id. Use for status, priority, focus, and context updates.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        title: { type: "string" },
+        description: { type: "string" },
+        level: { type: "string", enum: ["goal", "week", "today"] },
+        priority: { type: "number" },
+        status: { type: "string", enum: ["active", "paused", "done", "abandoned"] },
+        parentId: { type: "string" },
+        successCriteria: { type: "string" },
+        signalToWatch: { type: "string" },
+        abandonIf: { type: "string" },
+        provenance: { type: "string" },
+        body: { type: "string" },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "list_decisions",
+    description: "List DotAgents decisions. Use status='pending' to inspect the in-app decision queue.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        status: { type: "string", enum: ["pending", "history", "all"] },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "create_decision",
+    description: "Create an in-app decision only when the action is irreversible, path-changing, or would take more than 3 effort-hours to revert.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        question: { type: "string" },
+        type: { type: "string", enum: ["yn", "ab", "ranked", "edit", "defer"] },
+        recommendation: { type: "string" },
+        why: { type: "string" },
+        risk: { type: "string" },
+        goalId: { type: "string" },
+        taskId: { type: "string" },
+        expiresAt: { type: "number" },
+        defaultAction: { type: "string" },
+        urgent: { type: "boolean" },
+        revertEffortHours: { type: "number" },
+        pathChanging: { type: "boolean" },
+        irreversible: { type: "boolean" },
+        body: { type: "string" },
+      },
+      required: ["question"],
+    },
+  },
+  {
+    name: "answer_decision",
+    description: "Answer a pending DotAgents decision by id. Use this only when the answer is already known from user input or safe defaults.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        answer: { type: "string" },
+      },
+      required: ["id", "answer"],
+    },
+  },
+  {
     name: "respond_to_user",
     description:
       "Send a response through DotAgents' explicit delivery channel. Normal assistant text is valid for ordinary chat and simple final answers; use this tool when you specifically need voice/TTS or messaging-channel delivery semantics, or when sending images/videos. Provide at least one of: non-empty text, one/more images, or one/more videos.",
