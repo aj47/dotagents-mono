@@ -167,7 +167,7 @@ function findToolRow(tree: any, toolName: string) {
 
 async function loadAgentProgress(
   runtime: ReturnType<typeof createHookRuntime>,
-  options?: { ttsEnabled?: boolean; ttsAutoPlay?: boolean },
+  options?: { ttsEnabled?: boolean; ttsAutoPlay?: boolean; alwaysOnSessions?: any[] },
 ) {
   vi.resetModules()
   const captured = { tileFollowUpInputProps: null as any }
@@ -190,13 +190,22 @@ async function loadAgentProgress(
 
   const Null = () => null
   const icon = (name: string) => (props: any) => ({ type: name, props })
-  const tipcMock = { tipcClient: new Proxy({
-    generateSpeech: vi.fn(),
-    setPanelFocusable: vi.fn(),
-    claimTTSPlaybackKeys: vi.fn().mockResolvedValue({ claimed: true }),
-    releaseTTSPlaybackKeys: vi.fn().mockResolvedValue({ success: true }),
-    controlTTSPlayback: vi.fn().mockResolvedValue({ success: true }),
-  }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
+  const tipcMock = {
+    rendererHandlers: {
+      alwaysOnSessionsChanged: {
+        listen: vi.fn(() => vi.fn()),
+      },
+    },
+    tipcClient: new Proxy({
+      generateSpeech: vi.fn(),
+      getAlwaysOnSessions: vi.fn().mockResolvedValue(options?.alwaysOnSessions ?? []),
+      openAlwaysOnSessionLog: vi.fn().mockResolvedValue({ success: true }),
+      setPanelFocusable: vi.fn(),
+      claimTTSPlaybackKeys: vi.fn().mockResolvedValue({ claimed: true }),
+      releaseTTSPlaybackKeys: vi.fn().mockResolvedValue({ success: true }),
+      controlTTSPlayback: vi.fn().mockResolvedValue({ success: true }),
+    }, { get: (target, key) => (target as any)[key] ?? vi.fn() }),
+  }
   const queriesMock = {
     useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }),
     useAvailableModelsQuery: () => ({ data: [{ id: "gpt-4.1-mini", name: "GPT 4.1 Mini" }], isLoading: false }),
@@ -261,6 +270,15 @@ async function loadAgentProgress(
     Play: icon("Play"),
     Pause: icon("Pause"),
     Pin: icon("Pin"),
+    GitBranch: icon("GitBranch"),
+    ListChecks: icon("ListChecks"),
+  }))
+  vi.doMock("@tanstack/react-query", () => ({
+    useQuery: vi.fn((queryOptions: any) => ({
+      data: queryOptions?.enabled ? options?.alwaysOnSessions ?? [] : undefined,
+      isLoading: false,
+      refetch: vi.fn(),
+    })),
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" ") }))
   vi.doMock("@renderer/components/markdown-renderer", () => ({ MarkdownRenderer: ({ content }: any) => ({ type: "MarkdownRenderer", props: { content, children: content } }) }))
@@ -456,8 +474,58 @@ describe("agent progress response history", () => {
 
   it("hides repeated always-on setup prompts and surfaces a status band", async () => {
     const runtime = createHookRuntime()
-    const { AgentProgress } = await loadAgentProgress(runtime)
+    const now = Date.now()
     const setupPrompt = "Always-on session You are running as an always-on DotAgents session. Continue useful work until the user pauses this session. Operational constraints: everything that has been tried must be logged."
+    const { AgentProgress } = await loadAgentProgress(runtime, {
+      alwaysOnSessions: [
+        {
+          id: "always-1",
+          loopId: "loop-1",
+          name: "Always-on session",
+          status: "running",
+          enabled: true,
+          isRunning: true,
+          createdAt: now - 10_000,
+          updatedAt: now,
+          currentSessionId: "session-always-on-progress",
+          conversationId: "conversation-always-on-progress",
+          logPath: "/tmp/attempts.jsonl",
+          logCount: 2,
+          latestLogEntry: {
+            id: "log-2",
+            alwaysOnSessionId: "always-1",
+            loopId: "loop-1",
+            kind: "blocker",
+            title: "No source artifact found",
+            outcome: "Queued a question and switched branches.",
+            timestamp: now - 1_000,
+          },
+          recentLogEntries: [
+            {
+              id: "log-1",
+              alwaysOnSessionId: "always-1",
+              loopId: "loop-1",
+              kind: "attempt",
+              title: "Inspect workspace artifacts",
+              details: "Searched the expected output directory.",
+              timestamp: now - 2_000,
+            },
+            {
+              id: "log-2",
+              alwaysOnSessionId: "always-1",
+              loopId: "loop-1",
+              kind: "blocker",
+              title: "No source artifact found",
+              outcome: "Queued a question and switched branches.",
+              timestamp: now - 1_000,
+            },
+          ],
+          pendingQuestionCount: 0,
+          answeredQuestionCount: 0,
+          questions: [],
+        },
+      ],
+    })
     const progress = {
       sessionId: "session-always-on-progress",
       conversationId: "conversation-always-on-progress",
@@ -489,6 +557,11 @@ describe("agent progress response history", () => {
     expect(text).toContain("Now")
     expect(text).toContain("Latest")
     expect(text).toContain("Step 20 / 25")
+    expect(text).toContain("Progress log")
+    expect(text).toContain("Inspect workspace artifacts")
+    expect(text).toContain("No source artifact found")
+    expect(text).toContain("Queued a question and switched branches.")
+    expect(text).toContain("Full log")
     expect(text).toContain("2 setup hidden")
     expect(text).toContain("I inspected the log and found the next concrete task.")
     expect(text).not.toContain("You are running as an always-on DotAgents session")

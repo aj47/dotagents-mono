@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { cn } from "@renderer/lib/utils"
-import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config, ModelPreset } from "../../../shared/types"
+import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnSessionSummary, Config, ModelPreset } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch, ListChecks } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
@@ -782,6 +783,70 @@ function isAlwaysOnInstructionPrompt(content: string | undefined): boolean {
 function isAlwaysOnConversationTitle(title: string | undefined): boolean {
   const normalized = normalizePromptEchoForDedupe(title).toLowerCase()
   return normalized.includes("always-on session")
+}
+
+function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
+  switch (kind) {
+    case "run_started":
+      return "START"
+    case "run_completed":
+      return "DONE"
+    case "attempt":
+      return "TRY"
+    case "blocker":
+      return "BLOCKED"
+    case "question":
+      return "QUESTION"
+    case "answer":
+      return "ANSWER"
+    case "branch":
+      return "BRANCH"
+    case "pause":
+      return "PAUSE"
+    case "resume":
+      return "RESUME"
+    case "error":
+      return "ERROR"
+    default:
+      return kind
+  }
+}
+
+function getAlwaysOnLogKindClassName(kind: AlwaysOnLogEntryKind): string {
+  switch (kind) {
+    case "blocker":
+    case "error":
+      return "bg-red-500/10 text-red-700 dark:text-red-300"
+    case "question":
+      return "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+    case "answer":
+      return "bg-blue-500/12 text-blue-700 dark:text-blue-300"
+    case "run_completed":
+      return "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+    case "pause":
+      return "bg-muted text-muted-foreground"
+    case "resume":
+    case "run_started":
+      return "bg-sky-500/12 text-sky-700 dark:text-sky-300"
+    default:
+      return "bg-muted text-muted-foreground"
+  }
+}
+
+function getAlwaysOnLogDetails(entry: AlwaysOnLogEntry): string | undefined {
+  const details = entry.outcome || entry.details
+  if (details && isAlwaysOnInstructionPrompt(details)) return undefined
+  return details
+}
+
+function formatAlwaysOnLogTime(timestamp: number, now: number): string {
+  const diffMs = Math.max(0, now - timestamp)
+  if (diffMs < 60_000) return "now"
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  return `${Math.floor(hours / 24)}d`
 }
 
 function shouldAutoPlayTTSForVariant(
@@ -4029,6 +4094,36 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     (conversationHistory ?? []).some((entry) => isAlwaysOnInstructionPrompt(entry.content))
   ), [conversationHistory, progress.conversationTitle])
 
+  const alwaysOnSessionsQuery = useQuery<AlwaysOnSessionSummary[]>({
+    queryKey: ["always-on-sessions"],
+    queryFn: async () => await tipcClient.getAlwaysOnSessions(),
+    enabled: isAlwaysOnSession,
+    refetchInterval: isAlwaysOnSession && !isComplete ? 2000 : false,
+  })
+
+  useEffect(() => {
+    if (!isAlwaysOnSession) return undefined
+    const unlisten = rendererHandlers.alwaysOnSessionsChanged.listen(() => {
+      void queryClient.invalidateQueries({ queryKey: ["always-on-sessions"] })
+    })
+    return unlisten
+  }, [isAlwaysOnSession])
+
+  const alwaysOnSummary = useMemo(() => {
+    if (!isAlwaysOnSession) return undefined
+    const sessions = alwaysOnSessionsQuery.data ?? []
+    return sessions.find((session) =>
+      (!!progress.conversationId && session.conversationId === progress.conversationId) ||
+      (!!progress.sessionId && session.currentSessionId === progress.sessionId),
+    ) ?? (sessions.length === 1 ? sessions[0] : undefined)
+  }, [alwaysOnSessionsQuery.data, isAlwaysOnSession, progress.conversationId, progress.sessionId])
+
+  const alwaysOnRecentLogEntries = useMemo(() => (
+    (alwaysOnSummary?.recentLogEntries ?? [])
+      .slice(-8)
+      .reverse()
+  ), [alwaysOnSummary?.recentLogEntries])
+
   const hiddenAlwaysOnPromptCount = useMemo(() => (
     isAlwaysOnSession
       ? (conversationHistory ?? []).filter((entry) =>
@@ -5220,6 +5315,92 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     )
   }
 
+  const handleOpenAlwaysOnMainLog = useCallback(async () => {
+    if (!alwaysOnSummary?.id) return
+    try {
+      const result = await tipcClient.openAlwaysOnSessionLog({ alwaysOnSessionId: alwaysOnSummary.id })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to open always-on log")
+      }
+    } catch (error) {
+      console.error("Failed to open always-on log:", error)
+      toast.error("Failed to open always-on log")
+    }
+  }, [alwaysOnSummary?.id])
+
+  const renderAlwaysOnLogPanel = (compact = false) => {
+    if (!isAlwaysOnSession || alwaysOnRecentLogEntries.length === 0) return null
+
+    const entries = compact ? alwaysOnRecentLogEntries.slice(0, 4) : alwaysOnRecentLogEntries
+
+    return (
+      <div className={cn(
+        "border-b border-border/45 bg-background/70",
+        compact ? "px-2.5 py-2" : "px-3 py-2.5",
+      )}>
+        <div className="mb-2 flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
+              Progress log
+            </span>
+            {alwaysOnSummary?.logCount != null && (
+              <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                {alwaysOnSummary.logCount}
+              </span>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 shrink-0 rounded-md px-2 text-[11px]"
+            onClick={(event) => {
+              event.stopPropagation()
+              void handleOpenAlwaysOnMainLog()
+            }}
+            disabled={!alwaysOnSummary?.id}
+            title="Open full append-only log"
+            aria-label="Open full always-on log"
+          >
+            Full log
+          </Button>
+        </div>
+        <div className={cn("space-y-1.5 overflow-y-auto pr-1", compact ? "max-h-36" : "max-h-56")}>
+          {entries.map((entry) => {
+            const details = getAlwaysOnLogDetails(entry)
+            return (
+              <div key={entry.id} className="min-w-0 border-l border-border/60 pl-2">
+                <div className="flex min-w-0 items-center gap-1.5 text-[12px] leading-snug">
+                  <span className={cn(
+                    "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal",
+                    getAlwaysOnLogKindClassName(entry.kind),
+                  )}>
+                    {formatAlwaysOnLogKind(entry.kind)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium text-foreground" title={entry.title}>
+                    {entry.title}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
+                    {formatAlwaysOnLogTime(entry.timestamp, turnNow)}
+                  </span>
+                </div>
+                {details && (
+                  <div className={cn(
+                    "mt-0.5 text-[11px] leading-snug text-muted-foreground",
+                    compact ? "line-clamp-1" : "line-clamp-2",
+                  )} title={details}>
+                    {details}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   // Tile variant rendering
   if (variant === "tile") {
     const hasPendingApproval = !!progress.pendingToolApproval
@@ -5346,6 +5527,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         {!isCollapsed && (
           <>
             {renderAlwaysOnStatusBand(true)}
+            {renderAlwaysOnLogPanel(true)}
 
             {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
             {(progress.stepSummaries?.length ?? 0) > 0 && (
@@ -5817,6 +5999,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       </div>
 
       {renderAlwaysOnStatusBand(false)}
+      {renderAlwaysOnLogPanel(false)}
 
       {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
       {(progress.stepSummaries?.length ?? 0) > 0 && (

@@ -4,11 +4,10 @@ import { describe, expect, it } from "vitest"
 const sidebarSource = readFileSync(new URL("./active-agents-sidebar.tsx", import.meta.url), "utf8")
 
 describe("active agents sidebar always-on strip", () => {
-  it("surfaces recent log progress and queue counters", () => {
+  it("surfaces latest activity details and queue counters", () => {
     expect(sidebarSource).toContain("function AlwaysOnSessionStrip(")
-    expect(sidebarSource).toContain("session.recentLogEntries")
-    expect(sidebarSource).toContain("function getAlwaysOnEntryDetails")
-    expect(sidebarSource).toContain("function getAlwaysOnLogKindClassName")
+    expect(sidebarSource).toContain("const rawLatestDetails = latestEntry?.outcome || latestEntry?.details")
+    expect(sidebarSource).toContain("!isAlwaysOnPromptDerivedTitle(rawLatestDetails)")
     expect(sidebarSource).toContain("session.pendingQuestionCount")
     expect(sidebarSource).toContain("session.answeredQuestionCount")
     expect(sidebarSource).toContain("function formatAlwaysOnStatusLabel")
@@ -20,7 +19,7 @@ describe("active agents sidebar always-on strip", () => {
     expect(sidebarSource).toContain("Needs answer")
     expect(sidebarSource).toContain("Latest work")
     expect(sidebarSource).toContain("function formatAlwaysOnLogKind")
-    expect(sidebarSource).toContain("formatAlwaysOnLogKind(entry.kind)")
+    expect(sidebarSource).toContain("formatAlwaysOnLogKind(latestEntry.kind)")
     expect(sidebarSource).toContain("isAlwaysOnPromptDerivedTitle(entry.session.conversationTitle)")
     expect(sidebarSource).toContain("line-clamp-2")
     expect(sidebarSource).toContain("aria-label={`${session.pendingQuestionCount} pending always-on question")
