@@ -18,7 +18,15 @@ describe("continuous repeat tasks", () => {
     const startLoopSection = getSection(loopServiceSource, "  startLoop(loopId: string): boolean {", "  stopLoop(loopId: string): boolean {")
 
     expect(startLoopSection).toContain("loop.runOnStartup || isContinuousLoop(loop)")
-    expect(startLoopSection).toContain("void this.executeLoop(loopId, { rescheduleAfterRun: true })")
+    expect(startLoopSection).toContain("this.scheduleNextRun(loopId, 0)")
+    expect(startLoopSection).not.toContain("setImmediate(")
+  })
+
+  it("skips stale scheduled executions after a loop is disabled", () => {
+    const executeLoopSection = getSection(loopServiceSource, "  private async executeLoop(", "  private scheduleNextRun(")
+
+    expect(executeLoopSection).toContain("if (options.rescheduleAfterRun && !loop.enabled)")
+    expect(executeLoopSection).toContain("Skip scheduled execution")
   })
 
   it("reschedules continuous tasks without waiting for the interval", () => {

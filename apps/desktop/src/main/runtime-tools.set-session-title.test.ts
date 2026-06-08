@@ -8,6 +8,9 @@ const mockGetRootAppSessionForAcpSession = vi.fn()
 const mockSetAcpSessionTitleOverride = vi.fn()
 const mockEmitAgentProgress = vi.fn()
 const mockGetSessionRunId = vi.fn()
+const mockGetAlwaysOnSummaries = vi.fn()
+const mockGetLoops = vi.fn()
+const mockGetLoopStatuses = vi.fn()
 
 vi.mock("./mcp-service", () => ({
   mcpService: { getAvailableTools: vi.fn(() => []) },
@@ -38,6 +41,19 @@ vi.mock("./acp-session-state", () => ({
   setAcpSessionTitleOverride: mockSetAcpSessionTitleOverride,
 }))
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: mockEmitAgentProgress }))
+vi.mock("./always-on-session-service", () => ({
+  alwaysOnSessionService: {
+    getSummaries: mockGetAlwaysOnSummaries,
+    appendLog: vi.fn(),
+    askQuestion: vi.fn(),
+  },
+}))
+vi.mock("./loop-service", () => ({
+  loopService: {
+    getLoops: mockGetLoops,
+    getLoopStatuses: mockGetLoopStatuses,
+  },
+}))
 
 describe("runtime-tools set_session_title", () => {
   beforeEach(() => {
@@ -45,6 +61,9 @@ describe("runtime-tools set_session_title", () => {
     vi.clearAllMocks()
 
     mockGetRootAppSessionForAcpSession.mockReturnValue(undefined)
+    mockGetAlwaysOnSummaries.mockReturnValue([])
+    mockGetLoops.mockReturnValue([])
+    mockGetLoopStatuses.mockReturnValue([])
     mockEmitAgentProgress.mockResolvedValue(undefined)
     mockGetSessionRunId.mockImplementation((sessionId: string) => {
       if (sessionId === "app-session-1") return 42
@@ -94,10 +113,44 @@ describe("runtime-tools set_session_title", () => {
     const result = await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "conversation-1")
 
     expect(mockFindSessionByConversationId).toHaveBeenCalledWith("conversation-1")
-    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title")
+    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title", "server_generated")
     expect(mockUpdateSession).toHaveBeenCalledWith("app-session-1", { conversationTitle: "Delegated title" })
     expect(result).toEqual({
       content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],
+      isError: false,
+    })
+  })
+
+  it("uses always-on session metadata when tracker linkage is missing", async () => {
+    mockGetSession.mockReturnValue(undefined)
+    mockFindSessionByConversationId.mockReturnValue(undefined)
+    mockRenameConversationTitle.mockResolvedValueOnce({ id: "conversation-1", title: "Always-on title" })
+    mockGetAlwaysOnSummaries.mockReturnValue([
+      {
+        id: "always-1",
+        loopId: "loop-1",
+        name: "Always-on",
+        status: "running",
+        enabled: true,
+        isRunning: true,
+        createdAt: 1,
+        updatedAt: 2,
+        currentSessionId: "session-1",
+        conversationId: "conversation-1",
+        logPath: "/tmp/attempts.jsonl",
+        logCount: 0,
+        pendingQuestionCount: 0,
+        answeredQuestionCount: 0,
+        questions: [],
+      },
+    ])
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("set_session_title", { title: "Always-on title" }, "session-1")
+
+    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Always-on title", "server_generated")
+    expect(result).toEqual({
+      content: [{ type: "text", text: JSON.stringify({ success: true, title: "Always-on title" }, null, 2) }],
       isError: false,
     })
   })

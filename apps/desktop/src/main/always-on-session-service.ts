@@ -121,6 +121,26 @@ function countLogLines(filePath: string): number {
   }
 }
 
+function parseLogEntry(line: string): AlwaysOnLogEntry | null {
+  try {
+    const parsed = JSON.parse(line) as Partial<AlwaysOnLogEntry>
+    if (
+      typeof parsed.id !== "string" ||
+      typeof parsed.alwaysOnSessionId !== "string" ||
+      typeof parsed.loopId !== "string" ||
+      typeof parsed.kind !== "string" ||
+      typeof parsed.title !== "string" ||
+      typeof parsed.timestamp !== "number"
+    ) {
+      return null
+    }
+
+    return parsed as AlwaysOnLogEntry
+  } catch {
+    return null
+  }
+}
+
 function notifyAlwaysOnSessionsChanged(): void {
   for (const win of [WINDOWS.get("main"), WINDOWS.get("panel")]) {
     if (!win) continue
@@ -202,6 +222,24 @@ class AlwaysOnSessionService {
     return this.state.sessions.find((session) => session.loopId === loopId)
   }
 
+  private readRecentLogEntries(record: AlwaysOnSessionRecord, limit: number): AlwaysOnLogEntry[] {
+    try {
+      const logPath = record.logPath || this.getDefaultLogPath(record.id)
+      if (!existsSync(logPath)) return []
+
+      return readFileSync(logPath, "utf8")
+        .trimEnd()
+        .split(/\r?\n/u)
+        .slice(-Math.max(1, limit))
+        .flatMap((line) => {
+          const entry = parseLogEntry(line)
+          return entry ? [entry] : []
+        })
+    } catch {
+      return []
+    }
+  }
+
   private resolveRecord(input: { alwaysOnSessionId?: string; loopId?: string; runtimeSessionId?: string }, loops: LoopConfig[] = []): AlwaysOnSessionRecord | undefined {
     if (input.alwaysOnSessionId) {
       const direct = this.findRecord(input.alwaysOnSessionId)
@@ -268,7 +306,10 @@ class AlwaysOnSessionService {
       "- When you need user input, call ask_always_on_question with 2-3 choices. Keep allowCustom true unless custom answers would be unsafe.",
       "- After asking a question, continue with a different independent action. Do not wait idle for the answer.",
       "- When answered questions appear in the conversation, use them to continue the branch they unlock.",
+      "- Do not loop on status/logging work. If the same attempt class appears twice without new evidence, run a concrete check, make a decision from the result, or switch to another branch.",
+      "- If a path is blocked by approval, missing context, unclear priority, or a destructive choice, queue a question before switching branches.",
       "- Avoid retrying the same failed path unless new information changed the situation.",
+      "- Treat guidance returned by log_always_on_attempt as part of your next-step policy.",
       "",
       `Always-on session id: ${alwaysOnSessionId}`,
     ].join("\n")
@@ -365,6 +406,12 @@ class AlwaysOnSessionService {
         }
       })
       .sort((a, b) => b.updatedAt - a.updatedAt)
+  }
+
+  getRecentLogEntries(alwaysOnSessionId: string, limit: number = 20): AlwaysOnLogEntry[] {
+    const record = this.findRecord(alwaysOnSessionId)
+    if (!record) return []
+    return this.readRecentLogEntries(record, limit)
   }
 
   recordRuntimeSession(loopId: string, runtimeSessionId: string, conversationId: string): void {

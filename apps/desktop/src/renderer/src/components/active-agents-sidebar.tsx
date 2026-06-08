@@ -439,17 +439,27 @@ function AlwaysOnSessionStrip({
       {sessions.map((session) => {
         const pendingQuestion = session.questions.find((question) => question.status === "pending")
         const isPaused = session.status === "paused"
+        const latestEntry = session.latestLogEntry
+        const latestDetails = latestEntry?.outcome || latestEntry?.details
+        const latestTimeLabel = latestEntry ? formatMinutesAgo(latestEntry.timestamp) : null
         const statusLabel = isPaused
           ? "Paused"
           : session.isRunning
             ? "Running"
             : "Idle"
+        const statusTitle = [
+          statusLabel,
+          `${session.logCount} log${session.logCount === 1 ? "" : "s"}`,
+          session.pendingQuestionCount > 0
+            ? `${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`
+            : null,
+        ].filter(Boolean).join(" • ")
 
         return (
           <div
             key={session.id}
             className={cn(
-              "rounded-lg border p-2 text-xs shadow-sm",
+              "rounded-lg border p-2 text-xs shadow-sm transition-colors",
               isPaused
                 ? "border-border/70 bg-muted/30"
                 : "border-emerald-500/25 bg-emerald-500/10",
@@ -475,19 +485,20 @@ function AlwaysOnSessionStrip({
                 <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                   {session.name}
                 </span>
-                <span className="shrink-0 text-[10px] text-muted-foreground">
+                <span className="shrink-0 text-[10px] text-muted-foreground" title={statusTitle}>
                   {statusLabel}
                 </span>
               </button>
-              {session.pendingQuestionCount > 0 && (
-                <span
-                  className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white"
-                  title={`${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`}
-                >
-                  {session.pendingQuestionCount}
-                </span>
-              )}
               <div className="flex shrink-0 items-center gap-1">
+                {session.pendingQuestionCount > 0 && (
+                  <span
+                    className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white"
+                    title={`${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`}
+                    aria-label={`${session.pendingQuestionCount} pending always-on question${session.pendingQuestionCount === 1 ? "" : "s"}`}
+                  >
+                    {session.pendingQuestionCount}
+                  </span>
+                )}
                 <Button
                   type="button"
                   variant="ghost"
@@ -524,10 +535,36 @@ function AlwaysOnSessionStrip({
                 </Button>
               </div>
             </div>
-            {session.latestLogEntry && (
-              <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-                <span className="min-w-0 flex-1 truncate">{session.latestLogEntry.title}</span>
-                <span className="shrink-0 tabular-nums">{formatMinutesAgo(session.latestLogEntry.timestamp)}</span>
+            <div className="mt-1.5 flex min-w-0 items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="inline-flex shrink-0 items-center gap-1" title={`${session.logCount} logged attempt${session.logCount === 1 ? "" : "s"}`}>
+                <ListChecks className="h-3 w-3" />
+                <span className="tabular-nums">{session.logCount}</span>
+              </span>
+              {session.answeredQuestionCount > 0 && (
+                <span className="inline-flex shrink-0 items-center gap-1" title={`${session.answeredQuestionCount} answered question${session.answeredQuestionCount === 1 ? "" : "s"}`}>
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span className="tabular-nums">{session.answeredQuestionCount}</span>
+                </span>
+              )}
+              {latestTimeLabel && (
+                <span className="ml-auto shrink-0 tabular-nums">{latestTimeLabel}</span>
+              )}
+            </div>
+            {latestEntry && (
+              <div className="mt-1.5 min-w-0 rounded-md bg-background/60 px-2 py-1.5">
+                <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-snug">
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal text-muted-foreground">
+                    {latestEntry.kind.replace("_", " ")}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                    {latestEntry.title}
+                  </span>
+                </div>
+                {latestDetails && (
+                  <div className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground" title={latestDetails}>
+                    {latestDetails}
+                  </div>
+                )}
               </div>
             )}
             {pendingQuestion && (

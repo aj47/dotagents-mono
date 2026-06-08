@@ -5993,7 +5993,7 @@ export const router = {
       const saved = loopService.saveLoop(updatedLoop)
       loopService.stopLoop(loop.id)
 
-      const activeSessionId = loop.lastSessionId
+      const activeSessionId = summary.currentSessionId ?? loop.lastSessionId
       if (activeSessionId) {
         const activeSession = agentSessionTracker.getSession(activeSessionId)
         if (activeSession) {

@@ -315,9 +315,7 @@ class LoopService {
     if (loop.runOnStartup || isContinuousLoop(loop)) {
       const reason = isContinuousLoop(loop) ? "continuous" : "runOnStartup"
       logApp(`[LoopService] Loop "${loop.name}" starts immediately (${reason})`)
-      setImmediate(() => {
-        void this.executeLoop(loopId, { rescheduleAfterRun: true })
-      })
+      this.scheduleNextRun(loopId, 0)
     } else {
       this.scheduleNextRun(loopId, this.getNextDelayMs(loop))
     }
@@ -327,14 +325,15 @@ class LoopService {
 
   stopLoop(loopId: string): boolean {
     const hadTimer = this.activeTimers.has(loopId)
+    const wasExecuting = this.executingLoops.has(loopId)
     this.clearScheduledTimer(loopId)
 
-    if (!hadTimer) {
+    if (!hadTimer && !wasExecuting) {
       logApp(`[LoopService] Stop requested for ${loopId}: no scheduled timer`)
       return false
     }
 
-    logApp(`[LoopService] Stopped loop ${loopId}`)
+    logApp(`[LoopService] Stopped loop ${loopId}${wasExecuting ? " (execution still aborts via session stop)" : ""}`)
     return true
   }
 
@@ -395,6 +394,11 @@ class LoopService {
 
     if (!loop) {
       logApp(`[LoopService] Cannot execute loop ${loopId}: not found`)
+      return null
+    }
+
+    if (options.rescheduleAfterRun && !loop.enabled) {
+      logApp(`[LoopService] Skip scheduled execution for "${loop.name}" (${loopId}): disabled`)
       return null
     }
 

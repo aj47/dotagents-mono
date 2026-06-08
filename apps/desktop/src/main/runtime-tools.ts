@@ -183,6 +183,10 @@ function normalizeAlwaysOnLogKind(value: unknown): AlwaysOnRuntimeLogKind | null
   return null
 }
 
+function normalizeAlwaysOnLogTitle(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ")
+}
+
 async function getLatestConversationMessageIndex(conversationId: string): Promise<number | undefined> {
   const conversation = await conversationService.loadConversation(conversationId)
   if (!conversation) return undefined
@@ -793,7 +797,18 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const conversationId = session?.conversationId ?? (context.sessionId.startsWith("conv_") ? context.sessionId : undefined)
+    const alwaysOnSummary = !session
+      ? alwaysOnSessionService
+        .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
+        .find((summary) =>
+          summary.currentSessionId === trackedSessionId ||
+          summary.currentSessionId === context.sessionId ||
+          summary.conversationId === context.sessionId,
+        )
+      : undefined
+    const conversationId = session?.conversationId
+      ?? alwaysOnSummary?.conversationId
+      ?? (context.sessionId.startsWith("conv_") ? context.sessionId : undefined)
     if (!conversationId) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not linked to a conversation" }) }],
@@ -931,8 +946,37 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    const summaries = alwaysOnSessionService.getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
+    const summary = summaries.find((candidate) => candidate.id === entry.alwaysOnSessionId)
+    const normalizedTitle = normalizeAlwaysOnLogTitle(entry.title)
+    const recentSimilarCount = alwaysOnSessionService
+      .getRecentLogEntries(entry.alwaysOnSessionId, 12)
+      .filter((recentEntry) =>
+        recentEntry.id !== entry.id &&
+        recentEntry.kind === entry.kind &&
+        normalizeAlwaysOnLogTitle(recentEntry.title) === normalizedTitle,
+      )
+      .length
+    const guidance: string[] = []
+    if (recentSimilarCount >= 2) {
+      guidance.push("This same log title has appeared repeatedly in recent attempts. Do not retry the same path unless you have new evidence; run a concrete check or switch branches.")
+    }
+    if (kind === "blocker" && (summary?.pendingQuestionCount ?? 0) === 0) {
+      guidance.push("If user input would unblock this path, call ask_always_on_question with 2-3 choices, then continue other independent work.")
+    }
+
     return {
-      content: [{ type: "text", text: JSON.stringify({ success: true, entry }, null, 2) }],
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          success: true,
+          entry,
+          sessionStatus: summary?.status,
+          pendingQuestionCount: summary?.pendingQuestionCount ?? 0,
+          recentSimilarCount,
+          ...(guidance.length > 0 ? { guidance } : {}),
+        }, null, 2),
+      }],
       isError: false,
     }
   },
@@ -1005,10 +1049,10 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const pendingQuestionCount = alwaysOnSessionService
+    const summary = alwaysOnSessionService
       .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
-      .find((summary) => summary.id === question.alwaysOnSessionId)
-      ?.pendingQuestionCount ?? 1
+      .find((candidate) => candidate.id === question.alwaysOnSessionId)
+    const pendingQuestionCount = summary?.pendingQuestionCount ?? 1
 
     return {
       content: [{
@@ -1017,6 +1061,7 @@ const toolHandlers: Record<string, ToolHandler> = {
           success: true,
           questionId: question.id,
           pendingQuestionCount,
+          sessionStatus: summary?.status,
           message: "Question queued for the user. Continue other useful work instead of waiting.",
         }, null, 2),
       }],
