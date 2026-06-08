@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
-import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
+import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw, Route } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { QueuedMessage } from "@shared/types"
 import { useMutation } from "@tanstack/react-query"
@@ -90,6 +90,7 @@ function QueuedMessageItem({
   const isFailed = message.status === "failed"
   const isProcessing = message.status === "processing"
   const isAddedToHistory = message.addedToHistory === true
+  const isSteering = message.kind === "steering"
 
   // Mutation to retry a failed message by resetting its status to pending
   const retryMutation = useMutation({
@@ -107,7 +108,9 @@ function QueuedMessageItem({
       className={cn(
         "px-2.5 py-1.5",
         isFailed ? "bg-destructive/10 hover:bg-destructive/15" :
-        isProcessing ? "bg-amber-100/50 dark:bg-amber-900/20" : "hover:bg-amber-100/30 dark:hover:bg-amber-900/10",
+        isProcessing ? "bg-amber-100/50 dark:bg-amber-900/20" :
+        isSteering ? "bg-sky-50/70 hover:bg-sky-100/70 dark:bg-sky-950/20 dark:hover:bg-sky-950/30" :
+        "hover:bg-amber-100/30 dark:hover:bg-amber-900/10",
         "transition-colors"
       )}
     >
@@ -157,13 +160,22 @@ function QueuedMessageItem({
           {isProcessing && (
             <Loader2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5 animate-spin" />
           )}
+          {isSteering && !isProcessing && !isFailed && (
+            <Route className="h-4 w-4 text-sky-600 flex-shrink-0 mt-0.5 dark:text-sky-300" />
+          )}
           <div className="flex min-w-0 flex-1 items-start gap-1.5">
             <div className="min-w-0 flex-1">
+              {isSteering && (
+                <div className="mb-0.5 inline-flex items-center rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-200">
+                  Steering
+                </div>
+              )}
               <p
                 className={cn(
                   "text-xs leading-snug",
                   isFailed && "text-destructive",
                   isProcessing && "text-primary",
+                  isSteering && !isFailed && !isProcessing && "text-sky-900 dark:text-sky-100",
                   !isExpanded && isLongMessage && "line-clamp-2"
                 )}
               >

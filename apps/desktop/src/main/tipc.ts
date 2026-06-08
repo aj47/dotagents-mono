@@ -62,7 +62,9 @@ import {
   DesktopTTSPlaybackState,
   AgentProgressUpdate,
   SessionProfileSnapshot,
+  ProfileMcpServerConfig,
   LoopConfig,
+  QueuedMessage,
 } from "../shared/types"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
@@ -74,7 +76,7 @@ import {
   processTranscriptWithTools,
   processTranscriptWithAgentMode,
 } from "./llm"
-import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath } from "./mcp-service"
+import { mcpService, MCPToolResult, WHATSAPP_SERVER_NAME, getInternalWhatsAppServerPath, type MCPTool } from "./mcp-service"
 import {
   saveCustomPosition,
   updatePanelPosition,
@@ -91,7 +93,7 @@ import { getDiscordLifecycleAction } from "./discord-config"
 import { discordService } from "./discord-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
-import { messageQueueService } from "./message-queue-service"
+import { formatSteeringMessageForModel, messageQueueService } from "./message-queue-service"
 import { agentProfileService, createSessionSnapshotFromProfile, refreshSessionSnapshotSkillsFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { resolvePreferredTopLevelAcpAgentSelection } from "./main-agent-selection"
 import { processTranscriptWithACPAgent } from "./acp-main-agent"
@@ -100,8 +102,14 @@ import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMat
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
+import { alwaysOnSessionService } from "./always-on-session-service"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
+import {
+  ASK_ALWAYS_ON_QUESTION_TOOL,
+  LOG_ALWAYS_ON_ATTEMPT_TOOL,
+} from "../shared/runtime-tool-names"
+import { runtimeToolDefinitions } from "./runtime-tool-definitions"
 
 function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
   if (!sessionId) return "missing"
@@ -115,6 +123,62 @@ function reconcileAgentSessionsWithRuntime(): void {
   agentSessionTracker.reconcileActiveSessions((session) =>
     agentSessionStateManager.isSessionRegistered(session.id),
   )
+}
+
+const ALWAYS_ON_REQUIRED_RUNTIME_TOOLS = [
+  LOG_ALWAYS_ON_ATTEMPT_TOOL,
+  ASK_ALWAYS_ON_QUESTION_TOOL,
+] as const
+
+function isAlwaysOnBackedAgentSession(sessionId: string, conversationId?: string): boolean {
+  const loops = loopService.getLoops()
+  if (loops.some((loop) => loop.alwaysOnSession === true && loop.lastSessionId === sessionId)) {
+    return true
+  }
+
+  return alwaysOnSessionService
+    .getSummaries(loops)
+    .some((session) =>
+      session.currentSessionId === sessionId ||
+      (conversationId ? session.conversationId === conversationId : false),
+    )
+}
+
+function withRequiredAlwaysOnRuntimeTools(tools: MCPTool[], forceAlwaysOnTools: boolean): MCPTool[] {
+  if (!forceAlwaysOnTools) return tools
+
+  const byName = new Map(tools.map((tool) => [tool.name, tool] as const))
+  for (const requiredToolName of ALWAYS_ON_REQUIRED_RUNTIME_TOOLS) {
+    if (byName.has(requiredToolName)) continue
+    const definition = runtimeToolDefinitions.find((tool) => tool.name === requiredToolName)
+    if (definition) {
+      byName.set(requiredToolName, definition as MCPTool)
+    }
+  }
+
+  return Array.from(byName.values())
+}
+
+function withRequiredAlwaysOnRuntimeToolAllowlist(
+  profileMcpConfig: ProfileMcpServerConfig | undefined,
+  availableTools: MCPTool[],
+  forceAlwaysOnTools: boolean,
+): ProfileMcpServerConfig | undefined {
+  if (!forceAlwaysOnTools) return profileMcpConfig
+
+  const enabledRuntimeTools = new Set(
+    availableTools
+      .filter((tool) => !tool.name.includes(":"))
+      .map((tool) => tool.name),
+  )
+  for (const requiredToolName of ALWAYS_ON_REQUIRED_RUNTIME_TOOLS) {
+    enabledRuntimeTools.add(requiredToolName)
+  }
+
+  return {
+    ...(profileMcpConfig ?? {}),
+    enabledRuntimeTools: Array.from(enabledRuntimeTools).sort(),
+  }
 }
 
 async function withRepeatTaskSessionFlag<T extends {
@@ -520,10 +584,20 @@ async function processWithAgentMode(
     mcpService.registerExistingProcessesWithAgentManager()
 
     // Get available tools filtered by profile snapshot if available (for session isolation)
-    // This ensures revived sessions use the same tool list they started with
-    const availableTools = profileSnapshot?.mcpServerConfig
-      ? mcpService.getAvailableToolsForProfile(profileSnapshot.mcpServerConfig)
+    // This ensures revived sessions use the same tool list they started with.
+    // Always-on sessions require their logging/question tools even when the
+    // captured profile has an older explicit runtime-tool whitelist.
+    const profileMcpConfig = profileSnapshot?.mcpServerConfig
+    const baseAvailableTools = profileMcpConfig
+      ? mcpService.getAvailableToolsForProfile(profileMcpConfig)
       : mcpService.getAvailableTools()
+    const forceAlwaysOnRuntimeTools = isAlwaysOnBackedAgentSession(sessionId, conversationId)
+    const availableTools = withRequiredAlwaysOnRuntimeTools(baseAvailableTools, forceAlwaysOnRuntimeTools)
+    const executionProfileMcpConfig = withRequiredAlwaysOnRuntimeToolAllowlist(
+      profileMcpConfig,
+      availableTools,
+      forceAlwaysOnRuntimeTools,
+    )
 
     // Use agent mode for iterative tool calling
     const executeToolCall = async (toolCall: any, onProgress?: (message: string) => void): Promise<MCPToolResult> => {
@@ -580,7 +654,7 @@ async function processWithAgentMode(
 
       // Execute the tool call (approval either not required or was granted)
       // Pass sessionId for ACP router tools progress, and profileSnapshot.mcpServerConfig for session-aware server availability
-      return await mcpService.executeToolCall(toolCall, onProgress, true, sessionId, profileSnapshot?.mcpServerConfig)
+      return await mcpService.executeToolCall(toolCall, onProgress, true, sessionId, executionProfileMcpConfig)
     }
 
     // Load previous conversation history if continuing a conversation.
@@ -1020,9 +1094,17 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
       }
 
       try {
+        const isSteeringMessage = queuedMessage.kind === "steering"
+        const queuedModelText = isSteeringMessage
+          ? formatSteeringMessageForModel(queuedMessage.text, { deferred: true })
+          : queuedMessage.text
+        const displayContent = isSteeringMessage
+          ? `Steering: ${queuedMessage.text}`
+          : undefined
+
         if (queuedMessage.sessionId?.startsWith("subsession_")) {
           const { continueInternalSubSession } = await import("./acp/internal-agent")
-          const result = await continueInternalSubSession(queuedMessage.sessionId, queuedMessage.text)
+          const result = await continueInternalSubSession(queuedMessage.sessionId, queuedModelText)
           if (!result.success) {
             throw new Error(result.error || `Failed to continue internal sub-session ${queuedMessage.sessionId}`)
           }
@@ -1036,8 +1118,11 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
           // Add the queued message to the conversation
           const addResult = await conversationService.addMessageToConversation(
             conversationId,
-            queuedMessage.text,
+            queuedModelText,
             "user",
+            undefined,
+            undefined,
+            displayContent ? { displayContent } : undefined,
           )
           // If adding to history failed (conversation not found/IO error), treat as failure
           // Don't continue processing since the message wasn't recorded
@@ -1087,7 +1172,7 @@ async function processQueuedMessages(conversationId: string): Promise<void> {
           }
         }
 
-        await processWithAgentMode(queuedMessage.text, conversationId, existingSessionId, queuedLaunchState)
+        await processWithAgentMode(queuedModelText, conversationId, existingSessionId, queuedLaunchState)
 
         // Only remove the message after successful processing
         messageQueueService.markProcessed(conversationId, queuedMessage.id)
@@ -1129,6 +1214,37 @@ function revealFileInFolder(filePath: string): OpenFileResult {
       error: error instanceof Error ? error.message : String(error),
     }
   }
+}
+
+function getAlwaysOnSessionSummaries() {
+  return alwaysOnSessionService.getSummaries(
+    loopService.getLoops(),
+    loopService.getLoopStatuses(),
+  )
+}
+
+async function getLatestRawMessageIndexForConversation(conversationId: string): Promise<number | undefined> {
+  const conversation = await conversationService.loadConversation(conversationId)
+  if (!conversation) return undefined
+  const messages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
+    ? conversation.rawMessages
+    : conversation.messages
+  return messages.length > 0 ? messages.length - 1 : undefined
+}
+
+function getAlwaysOnAnswerText(input: {
+  questionPrompt: string
+  answerText: string
+  answerChoiceLabel?: string
+}): string {
+  return [
+    "Always-on question answered.",
+    `Question: ${input.questionPrompt}`,
+    input.answerChoiceLabel
+      ? `Selected: ${input.answerChoiceLabel}`
+      : null,
+    `Answer: ${input.answerText}`,
+  ].filter(Boolean).join("\n")
 }
 
 function broadcastTTSPlaybackState(state: DesktopTTSPlaybackState): number {
@@ -2371,10 +2487,12 @@ export const router = {
       suppressPanelAutoShow?: boolean
       focusPanelSession?: boolean
       preserveMainWindowFocus?: boolean
+      queueKind?: QueuedMessage["kind"]
     }>()
     .action(async ({ input }) => {
       const config = configStore.get()
       const queueEnabled = config.mcpMessageQueueEnabled !== false
+      const queueKind: QueuedMessage["kind"] = input.queueKind === "steering" ? "steering" : "prompt"
       const launchState = resolveAgentLaunchState(input)
       const preserveMainWindowForeground = createMainWindowForegroundPreserver(
         "createMcpTextInput",
@@ -2389,6 +2507,7 @@ export const router = {
         sessionKind: describeAgentSessionId(input.sessionId),
         fromTile: input.fromTile ?? false,
         preserveMainWindowFocus: input.preserveMainWindowFocus === true,
+        queueKind,
         ...serializeAgentLaunchState(launchState),
         messageLength: input.text.length,
         queueEnabled,
@@ -2432,10 +2551,11 @@ export const router = {
           const targetText = await conversationService.materializeInlineDataImagesInContent(targetConversationId, input.text)
 
           if (queueEnabled && (subSession.status === "running" || subSession.status === "pending")) {
-            const queuedMessage = messageQueueService.enqueue(targetConversationId, targetText, requestedSessionId)
+            const queuedMessage = messageQueueService.enqueue(targetConversationId, targetText, requestedSessionId, undefined, queueKind)
             logApp("[createMcpTextInput] Queued message for running internal sub-session", {
               conversationId: targetConversationId,
               queuedMessageId: queuedMessage.id,
+              queueKind,
               requestedSessionId,
               subSessionStatus: subSession.status,
               fromTile: input.fromTile ?? false,
@@ -2481,10 +2601,12 @@ export const router = {
                 queuedText,
                 activeSessionId,
                 serializeAgentLaunchState(launchState),
+                queueKind,
               )
               logApp("[createMcpTextInput] Queued message for active session", {
                 conversationId,
                 queuedMessageId: queuedMessage.id,
+                queueKind,
                 activeSessionId,
                 activeSessionKind: describeAgentSessionId(activeSessionId),
                 activeSessionStatus: session.status,
@@ -5833,6 +5955,261 @@ export const router = {
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
       return summarizationService.getImportantSummaries(input.sessionId)
+    }),
+
+  // Always-on session handlers
+  getAlwaysOnSessions: t.procedure.action(async () => {
+    return getAlwaysOnSessionSummaries()
+  }),
+
+  createAlwaysOnSession: t.procedure
+    .input<{ name?: string }>()
+    .action(async ({ input }) => {
+      const { loop } = alwaysOnSessionService.createSessionRecord(input.name)
+      const saved = loopService.saveLoop(loop)
+      if (!saved) {
+        return { success: false, error: "Failed to persist always-on session" }
+      }
+
+      loopService.resumeScheduling()
+      loopService.startLoop(loop.id)
+      return { success: true, sessions: getAlwaysOnSessionSummaries() }
+    }),
+
+  pauseAlwaysOnSession: t.procedure
+    .input<{ alwaysOnSessionId: string }>()
+    .action(async ({ input }) => {
+      const summary = getAlwaysOnSessionSummaries().find((session) => session.id === input.alwaysOnSessionId)
+      if (!summary) {
+        return { success: false, error: "Always-on session not found" }
+      }
+
+      const loop = loopService.getLoop(summary.loopId)
+      if (!loop) {
+        return { success: false, error: "Backing repeat task not found" }
+      }
+
+      const updatedLoop: LoopConfig = { ...loop, enabled: false }
+      const saved = loopService.saveLoop(updatedLoop)
+      loopService.stopLoop(loop.id)
+
+      const activeSessionId = loop.lastSessionId
+      if (activeSessionId) {
+        const activeSession = agentSessionTracker.getSession(activeSessionId)
+        if (activeSession) {
+          agentSessionStateManager.stopSession(activeSessionId)
+          toolApprovalManager.cancelSessionApprovals(activeSessionId)
+          if (activeSession.conversationId) {
+            messageQueueService.pauseQueue(activeSession.conversationId)
+          }
+          agentSessionTracker.stopSession(activeSessionId)
+        }
+      }
+
+      alwaysOnSessionService.appendLog({
+        alwaysOnSessionId: summary.id,
+        loopId: summary.loopId,
+        runtimeSessionId: activeSessionId,
+        conversationId: summary.conversationId,
+        kind: "pause",
+        title: "Always-on session paused",
+      })
+
+      return { success: saved, sessions: getAlwaysOnSessionSummaries() }
+    }),
+
+  resumeAlwaysOnSession: t.procedure
+    .input<{ alwaysOnSessionId: string }>()
+    .action(async ({ input }) => {
+      const summary = getAlwaysOnSessionSummaries().find((session) => session.id === input.alwaysOnSessionId)
+      if (!summary) {
+        return { success: false, error: "Always-on session not found" }
+      }
+
+      const loop = loopService.getLoop(summary.loopId)
+      if (!loop) {
+        return { success: false, error: "Backing repeat task not found" }
+      }
+
+      const updatedLoop: LoopConfig = {
+        ...loop,
+        enabled: true,
+        runContinuously: true,
+        continueInSession: true,
+        alwaysOnSession: true,
+      }
+      const saved = loopService.saveLoop(updatedLoop)
+      if (!saved) {
+        return { success: false, error: "Failed to persist always-on session" }
+      }
+
+      if (summary.conversationId) {
+        messageQueueService.resumeQueue(summary.conversationId)
+      }
+      loopService.resumeScheduling()
+      loopService.startLoop(loop.id)
+      alwaysOnSessionService.appendLog({
+        alwaysOnSessionId: summary.id,
+        loopId: summary.loopId,
+        runtimeSessionId: summary.currentSessionId,
+        conversationId: summary.conversationId,
+        kind: "resume",
+        title: "Always-on session resumed",
+      })
+
+      return { success: true, sessions: getAlwaysOnSessionSummaries() }
+    }),
+
+  openAlwaysOnSessionLog: t.procedure
+    .input<{ alwaysOnSessionId: string }>()
+    .action(async ({ input }) => {
+      const summary = getAlwaysOnSessionSummaries().find((session) => session.id === input.alwaysOnSessionId)
+      if (!summary) {
+        return { success: false, error: "Always-on session not found" }
+      }
+      return revealFileInFolder(summary.logPath)
+    }),
+
+  dismissAlwaysOnQuestion: t.procedure
+    .input<{ alwaysOnSessionId: string; questionId: string }>()
+    .action(async ({ input }) => {
+      const question = alwaysOnSessionService.dismissQuestion(input.alwaysOnSessionId, input.questionId)
+      return { success: !!question, sessions: getAlwaysOnSessionSummaries() }
+    }),
+
+  branchAlwaysOnSession: t.procedure
+    .input<{ alwaysOnSessionId: string; questionId?: string }>()
+    .action(async ({ input }) => {
+      const summary = getAlwaysOnSessionSummaries().find((session) => session.id === input.alwaysOnSessionId)
+      if (!summary) {
+        return { success: false, error: "Always-on session not found" }
+      }
+
+      const question = input.questionId
+        ? summary.questions.find((candidate) => candidate.id === input.questionId)
+        : summary.questions.find((candidate) => candidate.status === "pending")
+      const sourceConversationId = question?.conversationId ?? summary.conversationId
+      if (!sourceConversationId) {
+        return { success: false, error: "No conversation available to branch" }
+      }
+
+      const sourceMessageIndex = typeof question?.sourceMessageIndex === "number"
+        ? question.sourceMessageIndex
+        : await getLatestRawMessageIndexForConversation(sourceConversationId)
+      if (typeof sourceMessageIndex !== "number") {
+        return { success: false, error: "No branchable message found" }
+      }
+
+      const branched = await conversationService.branchConversation(sourceConversationId, sourceMessageIndex)
+      if (!branched) {
+        return { success: false, error: "Failed to branch conversation" }
+      }
+
+      if (question) {
+        alwaysOnSessionService.setQuestionBranch(summary.id, question.id, branched.id)
+      }
+      alwaysOnSessionService.appendLog({
+        alwaysOnSessionId: summary.id,
+        loopId: summary.loopId,
+        runtimeSessionId: summary.currentSessionId,
+        conversationId: sourceConversationId,
+        kind: "branch",
+        title: "Always-on branch created",
+        details: question?.prompt,
+        outcome: branched.id,
+      })
+
+      return { success: true, conversation: branched, sessions: getAlwaysOnSessionSummaries() }
+    }),
+
+  answerAlwaysOnQuestion: t.procedure
+    .input<{
+      alwaysOnSessionId: string
+      questionId: string
+      answerText: string
+      answerChoiceId?: string
+    }>()
+    .action(async ({ input }) => {
+      const rawAnswerText = typeof input.answerText === "string" ? input.answerText.trim() : ""
+      if (!rawAnswerText) {
+        return { success: false, error: "Answer text is required" }
+      }
+
+      const answeredQuestion = alwaysOnSessionService.answerQuestion({
+        alwaysOnSessionId: input.alwaysOnSessionId,
+        questionId: input.questionId,
+        answerText: rawAnswerText,
+        answerChoiceId: input.answerChoiceId,
+      })
+      if (!answeredQuestion) {
+        return { success: false, error: "Pending question not found" }
+      }
+
+      const summary = getAlwaysOnSessionSummaries().find((session) => session.id === input.alwaysOnSessionId)
+      const selectedChoice = answeredQuestion.choices.find((choice) => choice.id === input.answerChoiceId)
+      const sourceConversationId = answeredQuestion.branchConversationId
+        ?? answeredQuestion.conversationId
+        ?? summary?.conversationId
+      let targetConversationId = answeredQuestion.branchConversationId
+      let branchedConversation: Conversation | null = null
+
+      if (!targetConversationId && sourceConversationId) {
+        const sourceMessageIndex = typeof answeredQuestion.sourceMessageIndex === "number"
+          ? answeredQuestion.sourceMessageIndex
+          : await getLatestRawMessageIndexForConversation(sourceConversationId)
+        if (typeof sourceMessageIndex === "number") {
+          branchedConversation = await conversationService.branchConversation(sourceConversationId, sourceMessageIndex)
+          if (branchedConversation) {
+            targetConversationId = branchedConversation.id
+            alwaysOnSessionService.setQuestionBranch(input.alwaysOnSessionId, input.questionId, targetConversationId)
+            alwaysOnSessionService.appendLog({
+              alwaysOnSessionId: input.alwaysOnSessionId,
+              loopId: answeredQuestion.loopId,
+              runtimeSessionId: answeredQuestion.runtimeSessionId,
+              conversationId: sourceConversationId,
+              kind: "branch",
+              title: "Question answer branched",
+              details: answeredQuestion.prompt,
+              outcome: targetConversationId,
+            })
+          }
+        }
+      }
+
+      const answerContent = getAlwaysOnAnswerText({
+        questionPrompt: answeredQuestion.prompt,
+        answerText: rawAnswerText,
+        answerChoiceLabel: selectedChoice?.label,
+      })
+
+      if (targetConversationId) {
+        await conversationService.addMessageToConversation(
+          targetConversationId,
+          answerContent,
+          "user",
+        )
+
+        processWithAgentMode(
+          answerContent,
+          targetConversationId,
+          undefined,
+          resolveAgentLaunchState({
+            startSnoozed: true,
+            suppressPanelAutoShow: true,
+            focusPanelSession: false,
+          }),
+        ).catch((error) => {
+          logLLM("[answerAlwaysOnQuestion] Branch continuation error:", error)
+        })
+      }
+
+      return {
+        success: true,
+        question: answeredQuestion,
+        conversationId: targetConversationId,
+        branchedConversation,
+        sessions: getAlwaysOnSessionSummaries(),
+      }
     }),
 
   // Repeat Tasks handlers

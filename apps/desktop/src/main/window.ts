@@ -51,7 +51,6 @@ function getWindowStateForDebug(win: BrowserWindow | undefined) {
 
 export function getWindowFocusDebugSnapshot() {
   return {
-    appHidden: safeWindowFlag(() => app.isHidden(), false),
     focusedWindow: getWindowIdForDebug(BrowserWindow.getFocusedWindow()),
     appHidden: process.env.IS_MAC ? safeWindowFlag(() => app.isHidden(), false) : false,
     main: getWindowStateForDebug(WINDOWS.get("main")),

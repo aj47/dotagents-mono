@@ -28,13 +28,13 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(overlaySource).toContain(
       "pending: sendMutation.isPending || isSubmitting || submitInFlightRef.current",
     )
-    expect(overlaySource).toContain("await sendMutation.mutateAsync(message)")
+    expect(overlaySource).toContain("await sendMutation.mutateAsync({ message, queueKind })")
     expect(submitBlock).toContain('const shouldAppendOptimistically = inputPresentation.mode === "send"')
     expect(submitBlock.indexOf('setText("")')).toBeLessThan(
-      submitBlock.indexOf("await sendMutation.mutateAsync(message)"),
+      submitBlock.indexOf("await sendMutation.mutateAsync({ message, queueKind })"),
     )
     expect(submitBlock.indexOf("appendUserMessageToSession")).toBeLessThan(
-      submitBlock.indexOf("await sendMutation.mutateAsync(message)"),
+      submitBlock.indexOf("await sendMutation.mutateAsync({ message, queueKind })"),
     )
     expect(overlaySource).toContain("console.error(\"Failed to submit overlay follow-up message:\", error)")
     expect(overlaySource).toContain(
@@ -54,13 +54,13 @@ describe("desktop follow-up input submit guardrails", () => {
     expect(tileSource).toContain(
       "pending: sendMutation.isPending || isSubmitting || submitInFlightRef.current",
     )
-    expect(tileSource).toContain("await sendMutation.mutateAsync(message)")
+    expect(tileSource).toContain("await sendMutation.mutateAsync({ message, queueKind })")
     expect(submitBlock).toContain('const shouldAppendOptimistically = inputPresentation.mode === "send"')
     expect(submitBlock.indexOf('setText("")')).toBeLessThan(
-      submitBlock.indexOf("await sendMutation.mutateAsync(message)"),
+      submitBlock.indexOf("await sendMutation.mutateAsync({ message, queueKind })"),
     )
     expect(submitBlock.indexOf("appendUserMessageToSession")).toBeLessThan(
-      submitBlock.indexOf("await sendMutation.mutateAsync(message)"),
+      submitBlock.indexOf("await sendMutation.mutateAsync({ message, queueKind })"),
     )
     expect(tileSource).toContain("console.error(\"Failed to submit tile follow-up message:\", error)")
     expect(tileSource).toContain("const isDisabled =")

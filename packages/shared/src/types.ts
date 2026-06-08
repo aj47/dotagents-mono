@@ -61,6 +61,8 @@ export interface ChatApiResponse {
   queuedMessageId?: string;
 }
 
+export type QueuedMessageKind = 'prompt' | 'steering';
+
 /**
  * Queued message - represents a message waiting to be processed.
  * Used when the agent is busy processing and messages are queued for later.
@@ -68,6 +70,8 @@ export interface ChatApiResponse {
 export interface QueuedMessage {
   id: string;
   conversationId: string;
+  /** Normal prompts run after the current agent turn; steering is injected into the active run. */
+  kind?: QueuedMessageKind;
   /** Session that was active when this message was queued. */
   sessionId?: string;
   /** Launch-state hints captured when the user queued the message. */

@@ -6,6 +6,10 @@ import {
   ChevronDown,
   ChevronRight,
   Archive,
+  GitBranch,
+  HelpCircle,
+  ListChecks,
+  Pause,
   Pin,
   Play,
   X,
@@ -54,7 +58,8 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
-import type { AgentProgressUpdate, LoopConfig } from "@shared/types"
+import { Input } from "./ui/input"
+import type { AgentProgressUpdate, AlwaysOnQuestion, AlwaysOnSessionSummary, LoopConfig } from "@shared/types"
 import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
 
 interface SidebarSessionRecord {
@@ -193,6 +198,18 @@ function getRepeatTaskTitleHints(task: LoopConfig): string[] {
   return Array.from(hints)
 }
 
+function findRepeatTaskLoopForSidebarSession(
+  session: SidebarSessionRecord,
+  loopByTitleHint: Map<string, LoopConfig>,
+): LoopConfig | undefined {
+  const title = session.conversationTitle?.trim()
+  if (!title) return undefined
+  const direct = loopByTitleHint.get(title)
+  if (direct) return direct
+  const stripped = title.startsWith("Repeat: ") ? title.slice("Repeat: ".length).trim() : null
+  return stripped ? loopByTitleHint.get(stripped) : undefined
+}
+
 function getSessionLastMessageTimestamp(
   session: SidebarSessionRecord,
   conversationTimestamp?: number,
@@ -287,6 +304,243 @@ function ArchiveSessionButton({
     >
       <X className="h-3 w-3" />
     </button>
+  )
+}
+
+function AlwaysOnQuestionAnswer({
+  alwaysOnSessionId,
+  question,
+  onAnswered,
+}: {
+  alwaysOnSessionId: string
+  question: AlwaysOnQuestion
+  onAnswered: () => void | Promise<void>
+}) {
+  const [customAnswer, setCustomAnswer] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const submitAnswer = async (answerText: string, answerChoiceId?: string) => {
+    const trimmed = answerText.trim()
+    if (!trimmed || isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const result = await tipcClient.answerAlwaysOnQuestion({
+        alwaysOnSessionId,
+        questionId: question.id,
+        answerText: trimmed,
+        answerChoiceId,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to answer question")
+        return
+      }
+      setCustomAnswer("")
+      await onAnswered()
+      toast.success("Answer queued")
+    } catch (error) {
+      console.error("Failed to answer always-on question:", error)
+      toast.error("Failed to answer question")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded-md border border-amber-500/25 bg-amber-500/10 p-2">
+      <div className="flex min-w-0 items-start gap-1.5 text-[11px] font-medium leading-snug text-foreground">
+        <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-300" />
+        <span className="min-w-0 flex-1">{question.prompt}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {question.choices.map((choice) => (
+          <Button
+            key={choice.id}
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 max-w-full min-w-0 rounded-md px-2 text-[11px]"
+            disabled={isSubmitting}
+            onClick={() => void submitAnswer(choice.label, choice.id)}
+            title={choice.description || choice.label}
+            aria-label={`Answer ${choice.label}`}
+          >
+            <span className="min-w-0 truncate">{choice.label}</span>
+          </Button>
+        ))}
+      </div>
+      {question.allowCustom && (
+        <form
+          className="mt-2 flex min-w-0 items-center gap-1.5"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void submitAnswer(customAnswer)
+          }}
+        >
+          <Input
+            value={customAnswer}
+            onChange={(event) => setCustomAnswer(event.target.value)}
+            className="h-7 min-w-0 flex-1 rounded-md px-2 text-[11px]"
+            placeholder="Custom answer"
+            disabled={isSubmitting}
+          />
+          <Button
+            type="submit"
+            variant="secondary"
+            size="sm"
+            className="h-7 shrink-0 rounded-md px-2 text-[11px]"
+            disabled={isSubmitting || !customAnswer.trim()}
+          >
+            Send
+          </Button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+function AlwaysOnSessionStrip({
+  sessions,
+  onCreate,
+  onOpenSession,
+  onTogglePause,
+  onOpenLog,
+  onBranch,
+  onRefresh,
+}: {
+  sessions: AlwaysOnSessionSummary[]
+  onCreate: () => void | Promise<void>
+  onOpenSession: (session: AlwaysOnSessionSummary) => void
+  onTogglePause: (session: AlwaysOnSessionSummary) => void | Promise<void>
+  onOpenLog: (session: AlwaysOnSessionSummary) => void | Promise<void>
+  onBranch: (session: AlwaysOnSessionSummary, question?: AlwaysOnQuestion) => void | Promise<void>
+  onRefresh: () => void | Promise<void>
+}) {
+  if (sessions.length === 0) {
+    return (
+      <div className="mt-1 px-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 w-full justify-start gap-2 rounded-md text-xs"
+          onClick={() => void onCreate()}
+          title="Start always-on session"
+          aria-label="Start always-on session"
+        >
+          <Play className="h-3.5 w-3.5 shrink-0" />
+          <span className="min-w-0 truncate">Always-on session</span>
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-1 space-y-1 px-2">
+      {sessions.map((session) => {
+        const pendingQuestion = session.questions.find((question) => question.status === "pending")
+        const isPaused = session.status === "paused"
+        const statusLabel = isPaused
+          ? "Paused"
+          : session.isRunning
+            ? "Running"
+            : "Idle"
+
+        return (
+          <div
+            key={session.id}
+            className={cn(
+              "rounded-lg border p-2 text-xs shadow-sm",
+              isPaused
+                ? "border-border/70 bg-muted/30"
+                : "border-emerald-500/25 bg-emerald-500/10",
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                onClick={() => onOpenSession(session)}
+                title={session.name}
+              >
+                <span
+                  className={cn(
+                    "h-2 w-2 shrink-0 rounded-full",
+                    isPaused
+                      ? "bg-muted-foreground/60"
+                      : session.isRunning
+                        ? "bg-emerald-500 animate-pulse"
+                        : "bg-blue-500",
+                  )}
+                />
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                  {session.name}
+                </span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">
+                  {statusLabel}
+                </span>
+              </button>
+              {session.pendingQuestionCount > 0 && (
+                <span
+                  className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white"
+                  title={`${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`}
+                >
+                  {session.pendingQuestionCount}
+                </span>
+              )}
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm-icon"
+                  className="h-6 w-6 rounded-md"
+                  onClick={() => void onTogglePause(session)}
+                  title={isPaused ? "Resume always-on session" : "Pause always-on session"}
+                  aria-label={isPaused ? "Resume always-on session" : "Pause always-on session"}
+                >
+                  {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm-icon"
+                  className="h-6 w-6 rounded-md"
+                  onClick={() => void onBranch(session, pendingQuestion)}
+                  title="Branch always-on session"
+                  aria-label="Branch always-on session"
+                  disabled={!session.conversationId && !pendingQuestion?.conversationId}
+                >
+                  <GitBranch className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm-icon"
+                  className="h-6 w-6 rounded-md"
+                  onClick={() => void onOpenLog(session)}
+                  title={`${session.logCount} logged attempt${session.logCount === 1 ? "" : "s"}`}
+                  aria-label="Open always-on attempt log"
+                >
+                  <ListChecks className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            {session.latestLogEntry && (
+              <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="min-w-0 flex-1 truncate">{session.latestLogEntry.title}</span>
+                <span className="shrink-0 tabular-nums">{formatMinutesAgo(session.latestLogEntry.timestamp)}</span>
+              </div>
+            )}
+            {pendingQuestion && (
+              <AlwaysOnQuestionAnswer
+                alwaysOnSessionId={session.id}
+                question={pendingQuestion}
+                onAnswered={onRefresh}
+              />
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -391,6 +645,11 @@ export function ActiveAgentsSidebar({
     queryKey: ["loops"],
     queryFn: async () => await tipcClient.getLoops(),
   })
+  const alwaysOnSessionsQuery = useQuery<AlwaysOnSessionSummary[]>({
+    queryKey: ["always-on-sessions"],
+    queryFn: async () => await tipcClient.getAlwaysOnSessions(),
+  })
+  const refetchAlwaysOnSessions = alwaysOnSessionsQuery.refetch
   const sidebarSessionStateQuery = useQuery<{
     groups: SidebarSessionGroup[]
     ungroupedSessionOrder: string[]
@@ -408,7 +667,15 @@ export function ActiveAgentsSidebar({
     return unlisten
   }, [refetch])
 
+  useEffect(() => {
+    const unlisten = rendererHandlers.alwaysOnSessionsChanged.listen(() => {
+      void refetchAlwaysOnSessions()
+    })
+    return unlisten
+  }, [refetchAlwaysOnSessions])
+
   const trackedActiveSessions = data?.activeSessions || []
+  const alwaysOnSessions = alwaysOnSessionsQuery.data || []
   const recentCompletedSessions =
     data?.recentCompletedSessions || data?.recentSessions || []
   const conversationHistory =
@@ -803,8 +1070,8 @@ export function ActiveAgentsSidebar({
     () => [
       ...pinnedTaskSidebarSessions,
       ...unpinnedTaskSidebarSessions,
-    ],
-    [pinnedTaskSidebarSessions, unpinnedTaskSidebarSessions],
+    ].filter((entry) => !findRepeatTaskLoopForSidebarSession(entry.session, loopByTitleHint)?.alwaysOnSession),
+    [loopByTitleHint, pinnedTaskSidebarSessions, unpinnedTaskSidebarSessions],
   )
   // Tasks list uses a flat slice so "Show less" can shrink the list past
   // active rows. paginateSidebarEntries pins active rows in place, which
@@ -1001,6 +1268,94 @@ export function ActiveAgentsSidebar({
     focusSidebarSessionComposer()
   }, [focusSidebarSessionComposer, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
 
+  const refreshAlwaysOnSessions = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["always-on-sessions"] }),
+      queryClient.invalidateQueries({ queryKey: ["loops"] }),
+      queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
+      queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
+    ])
+  }, [queryClient])
+
+  const handleCreateAlwaysOnSession = useCallback(async () => {
+    try {
+      const result = await tipcClient.createAlwaysOnSession({ name: "Always-on session" })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to start always-on session")
+        return
+      }
+      await refreshAlwaysOnSessions()
+      toast.success("Always-on session started")
+    } catch (error) {
+      console.error("Failed to create always-on session:", error)
+      toast.error("Failed to start always-on session")
+    }
+  }, [refreshAlwaysOnSessions])
+
+  const handleToggleAlwaysOnPause = useCallback(async (session: AlwaysOnSessionSummary) => {
+    try {
+      const action = session.status === "paused"
+        ? tipcClient.resumeAlwaysOnSession
+        : tipcClient.pauseAlwaysOnSession
+      const result = await action({ alwaysOnSessionId: session.id })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to update always-on session")
+        return
+      }
+      await refreshAlwaysOnSessions()
+    } catch (error) {
+      console.error("Failed to toggle always-on session:", error)
+      toast.error("Failed to update always-on session")
+    }
+  }, [refreshAlwaysOnSessions])
+
+  const handleOpenAlwaysOnSessionLog = useCallback(async (session: AlwaysOnSessionSummary) => {
+    try {
+      const result = await tipcClient.openAlwaysOnSessionLog({ alwaysOnSessionId: session.id })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to open attempt log")
+      }
+    } catch (error) {
+      console.error("Failed to open always-on log:", error)
+      toast.error("Failed to open attempt log")
+    }
+  }, [])
+
+  const handleBranchAlwaysOnSession = useCallback(async (
+    session: AlwaysOnSessionSummary,
+    question?: AlwaysOnQuestion,
+  ) => {
+    try {
+      const result = await tipcClient.branchAlwaysOnSession({
+        alwaysOnSessionId: session.id,
+        questionId: question?.id,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to branch session")
+        return
+      }
+      const conversationId = result?.conversation?.id
+      if (conversationId) {
+        await refreshAlwaysOnSessions()
+        handleSavedConversationOpen(conversationId)
+        toast.success("Always-on branch created")
+      }
+    } catch (error) {
+      console.error("Failed to branch always-on session:", error)
+      toast.error("Failed to branch session")
+    }
+  }, [handleSavedConversationOpen, refreshAlwaysOnSessions])
+
+  const handleOpenAlwaysOnSession = useCallback((session: AlwaysOnSessionSummary) => {
+    if (session.currentSessionId) {
+      handleActiveSessionSelect(session.currentSessionId)
+      return
+    }
+    if (session.conversationId) {
+      handleSavedConversationOpen(session.conversationId)
+    }
+  }, [handleActiveSessionSelect, handleSavedConversationOpen])
+
   // Keyboard shortcuts: Cmd/Ctrl+1..9 to jump to the Nth sidebar session
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1036,12 +1391,7 @@ export function ActiveAgentsSidebar({
 
   const findLoopForSession = useCallback(
     (session: SidebarSessionRecord): LoopConfig | undefined => {
-      const title = session.conversationTitle?.trim()
-      if (!title) return undefined
-      const direct = loopByTitleHint.get(title)
-      if (direct) return direct
-      const stripped = title.startsWith("Repeat: ") ? title.slice("Repeat: ".length).trim() : null
-      return stripped ? loopByTitleHint.get(stripped) : undefined
+      return findRepeatTaskLoopForSidebarSession(session, loopByTitleHint)
     },
     [loopByTitleHint],
   )
@@ -1578,6 +1928,16 @@ export function ActiveAgentsSidebar({
           </div>
         </div>
       )}
+
+      <AlwaysOnSessionStrip
+        sessions={alwaysOnSessions}
+        onCreate={handleCreateAlwaysOnSession}
+        onOpenSession={handleOpenAlwaysOnSession}
+        onTogglePause={handleToggleAlwaysOnPause}
+        onOpenLog={handleOpenAlwaysOnSessionLog}
+        onBranch={handleBranchAlwaysOnSession}
+        onRefresh={refreshAlwaysOnSessions}
+      />
 
       {hasAnySessions && (
         <div className="mt-1 space-y-0.5 overflow-visible pl-2 pr-1">

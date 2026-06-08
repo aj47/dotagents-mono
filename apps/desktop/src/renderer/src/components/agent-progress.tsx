@@ -4515,17 +4515,53 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       const activeStep = [...progress.steps].reverse().find((step) => step.status === "in_progress")
       const isVerificationStep = activeStep?.title?.toLowerCase().includes("verifying")
+      const latestThoughtStep = [...progress.steps].reverse().find((step) =>
+        step.type === "thinking" &&
+        !step.title?.toLowerCase().includes("verifying") &&
+        Boolean(step.llmContent?.trim() || step.description?.trim()),
+      )
+      const latestThoughtText = latestThoughtStep
+        ? (
+          latestThoughtStep.llmContent?.trim()
+            ? stripThinkingPreamble(latestThoughtStep.llmContent).trim()
+            : normalizeThinkingStatusText(latestThoughtStep.description)
+        )
+        : ""
+      const normalizedLatestThoughtText = normalizeAssistantResponseForDedupe(latestThoughtText)
+      const alreadyHasLatestThought =
+        normalizedLatestThoughtText.length > 0 &&
+        items.some((item) => {
+          if (!isCurrentTurnDisplayItem(item)) return false
+          if (item.kind === "message" && item.data.role === "assistant") {
+            return normalizeAssistantResponseForDedupe(item.data.content) === normalizedLatestThoughtText
+          }
+          if (item.kind === "assistant_with_tools") {
+            return normalizeAssistantResponseForDedupe(item.data.thought) === normalizedLatestThoughtText
+          }
+          if (item.kind === "streaming") {
+            return normalizeAssistantResponseForDedupe(item.data.text) === normalizedLatestThoughtText
+          }
+          return false
+        })
 
-      if (!alreadyHasLiveThinkingMessage && !alreadyHasCurrentStateFeedback && !isVerificationStep) {
+      if (!alreadyHasLiveThinkingMessage && !isVerificationStep) {
         const text = activeStep?.type === "tool_call"
           ? activeStep.title || "Running tool..."
-          : normalizeThinkingStatusText(activeStep?.description)
+          : latestThoughtText || normalizeThinkingStatusText(activeStep?.description)
 
-        items.push({
-          kind: "streaming",
-          id: "live-thinking-placeholder",
-          data: { text, isStreaming: true, isPlaceholder: true },
-        })
+        if (!alreadyHasCurrentStateFeedback) {
+          items.push({
+            kind: "streaming",
+            id: "live-thinking-placeholder",
+            data: { text, isStreaming: true, isPlaceholder: true },
+          })
+        } else if (normalizedLatestThoughtText.length > 0 && !alreadyHasLatestThought) {
+          items.push({
+            kind: "streaming",
+            id: "latest-agent-thought",
+            data: { text: latestThoughtText, isStreaming: true, isPlaceholder: true },
+          })
+        }
       }
     }
 

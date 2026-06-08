@@ -48,6 +48,12 @@ vi.mock("./llm-fetch", () => ({
   makeTextCompletionWithFetch: vi.fn(),
 }))
 vi.mock("./mcp-service", () => ({}))
+vi.mock("./message-queue-service", () => ({
+  formatSteeringMessageForModel: (text: string) => `<steering_message>${text}</steering_message>`,
+  messageQueueService: {
+    consumePendingSteeringMessages: vi.fn(() => []),
+  },
+}))
 vi.mock("./system-prompts", () => ({ constructSystemPrompt: vi.fn(() => "system prompt") }))
 vi.mock("./state", () => ({ state: mocks.state, agentSessionStateManager: mocks }))
 vi.mock("./debug", () => ({ isDebugLLM: () => false, isDebugTools: () => false, logLLM: vi.fn(), logTools: vi.fn(), logApp: vi.fn() }))
@@ -156,6 +162,7 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
       "session-forced-final-summary",
       "session-same-run-replay",
       "session-comm-only-verify",
+      "session-immediate-response",
       "session-comm-only-loop",
       "session-comm-only-real-missing-work",
       "session-resume",
@@ -322,8 +329,10 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     )
     expect(materializedResponses).toHaveLength(2)
     expect(toolMessageIndex).toBeGreaterThan(-1)
-    expect(toolMessageIndex).toBeLessThan(firstMaterializedIndex)
-    expect(toolMessageIndex).toBeLessThan(secondMaterializedIndex)
+    expect(firstMaterializedIndex).toBeGreaterThan(-1)
+    expect(secondMaterializedIndex).toBeGreaterThan(-1)
+    expect(firstMaterializedIndex).toBeLessThan(toolMessageIndex)
+    expect(secondMaterializedIndex).toBeLessThan(toolMessageIndex)
     expect(materializedResponses.every((message) => Number.isInteger(message.timestamp))).toBe(true)
     expect((materializedResponses[1]?.timestamp ?? 0)).toBeGreaterThan(materializedResponses[0]?.timestamp ?? 0)
 
@@ -1569,6 +1578,53 @@ describe("processTranscriptWithAgentMode respond_to_user history", () => {
     expect(result.content).toBe("Final answer after more work")
     expect(mocks.makeLLMCallWithStreamingAndTools.mock.calls.length).toBeGreaterThanOrEqual(2)
     expect(mocks.verifyCompletionWithFetch).not.toHaveBeenCalled()
+  })
+
+  it("emits respond_to_user messages before later sequential tool results are appended", async () => {
+    currentConfig.mcpVerifyCompletionEnabled = false
+    currentConfig.mcpParallelToolExecution = false
+    const { processTranscriptWithAgentMode } = await import("./llm")
+    const sessionId = "session-immediate-response"
+
+    mocks.makeLLMCallWithStreamingAndTools
+      .mockResolvedValueOnce({
+        content: "",
+        toolCalls: [
+          { name: "respond_to_user", arguments: { text: "I found the first clue." } },
+          { name: "execute_command", arguments: { command: "echo continuing" } },
+        ],
+      })
+      .mockResolvedValueOnce({ content: "Finished after the command.", toolCalls: [] })
+
+    await processTranscriptWithAgentMode(
+      "Investigate this",
+      availableTools as any,
+      makeExecuteToolCall(sessionId, 1),
+      4,
+      [],
+      "conv-immediate-response",
+      sessionId,
+      undefined,
+      undefined,
+      1,
+    )
+
+    const updates = (mocks.emitAgentProgress.mock.calls as unknown as Array<[any]>).map(([update]) => update)
+    const immediateResponseIndex = updates.findIndex((update) =>
+      update.responseEvents?.some((event: any) => event.text === "I found the first clue.") &&
+      update.conversationHistory?.some((message: any) =>
+        message.role === "assistant" && message.content === "I found the first clue."
+      ) &&
+      !update.conversationHistory?.some((message: any) => message.role === "tool"),
+    )
+    const toolEvidenceIndex = updates.findIndex((update) =>
+      update.conversationHistory?.some((message: any) =>
+        message.role === "tool" && message.content.includes("[execute_command]"),
+      ),
+    )
+
+    expect(immediateResponseIndex).toBeGreaterThanOrEqual(0)
+    expect(toolEvidenceIndex).toBeGreaterThan(immediateResponseIndex)
   })
 
   it("finalizes when verification only complains about the missing internal completion signal", async () => {

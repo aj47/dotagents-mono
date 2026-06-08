@@ -130,6 +130,82 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
     },
   },
   {
+    name: "log_always_on_attempt",
+    description:
+      "Append an entry to the current always-on session's durable attempt log. Use only inside an always-on session. Call this before every concrete attempt, for blockers, and when recording outcomes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        kind: {
+          type: "string",
+          enum: ["attempt", "blocker", "question", "answer", "branch", "error"],
+          description: "Type of entry to append.",
+        },
+        title: {
+          type: "string",
+          description: "Short title for what is being tried or recorded.",
+        },
+        details: {
+          type: "string",
+          description: "Optional details, evidence, command, hypothesis, or blocker context.",
+        },
+        outcome: {
+          type: "string",
+          description: "Optional result or outcome after the attempt.",
+        },
+      },
+      required: ["kind", "title"],
+    },
+  },
+  {
+    name: "ask_always_on_question",
+    description:
+      "Queue a multiple-choice question for the user from an always-on session without stopping the worker. Provide 2-3 choices; the UI also allows a custom answer when allowCustom is true. After calling this, continue other useful work instead of waiting.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description: "Question to show to the user.",
+        },
+        choices: {
+          type: "array",
+          minItems: 2,
+          maxItems: 3,
+          description: "Two or three mutually exclusive choices.",
+          items: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+                description: "Stable short choice id.",
+              },
+              label: {
+                type: "string",
+                description: "Short user-facing choice label.",
+              },
+              description: {
+                type: "string",
+                description: "Optional one-sentence tradeoff or impact.",
+              },
+            },
+            required: ["label"],
+          },
+        },
+        allowCustom: {
+          type: "boolean",
+          description: "Whether the user can provide a custom answer. Defaults to true.",
+        },
+        reason: {
+          type: "string",
+          enum: ["question", "blocker"],
+          description: "Use blocker when the question records a blocked path.",
+        },
+      },
+      required: ["prompt", "choices"],
+    },
+  },
+  {
     name: "execute_command",
     description: "Execute any shell command. This is the primary tool for filesystem operations, running scripts, and automation. Use for: searching files (rg/find), reading files in targeted ranges (wc/sed/head/tail/cat), editing files, listing directories (ls), creating directories (mkdir -p), git operations, package-manager/python/node commands, and any shell command. Respect the repo's lockfile/package-manager conventions: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun. Prefer read-only inspection commands first for planning/context tasks. Only run package-manager install/test/build/lint/typecheck commands when the user explicitly asks for verification/package work, or when validating code changes you already made.",
     inputSchema: {

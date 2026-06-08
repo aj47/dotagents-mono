@@ -668,6 +668,54 @@ describe("agent progress response history", () => {
     expect(text.indexOf("After response")).toBeGreaterThan(text.indexOf("Mid-turn answer"))
   })
 
+  it("keeps the latest agent thought visible while current-turn tool activity is shown", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-live-thought",
+      conversationId: "conversation-live-thought",
+      currentIteration: 1,
+      maxIterations: 3,
+      steps: [
+        {
+          id: "think-1",
+          type: "thinking",
+          title: "Agent response",
+          description: "I need to inspect the logs first.",
+          llmContent: "I need to inspect the logs first.",
+          status: "completed",
+          timestamp: 150,
+        },
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Executing execute_command",
+          description: "Running command",
+          status: "in_progress",
+          timestamp: 220,
+        },
+      ],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Check the logs", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 200,
+          isComplete: false,
+          toolCalls: [{ name: "execute_command", arguments: { cmd: "tail app.log" } }],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("I need to inspect the logs first.")
+    expect(text).toContain("execute_command")
+  })
+
   it("does not double-render the final response when it already exists as an assistant message", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)

@@ -409,6 +409,7 @@ class LoopService {
     logApp(`[LoopService] Executing loop "${loop.name}" (${loopId})`)
     let conversationId: string | undefined
     let sessionId: string | undefined
+    const isAlwaysOnSession = loop.alwaysOnSession === true
 
     try {
       // Update lastRunAt in memory and persist
@@ -507,9 +508,34 @@ class LoopService {
         }
       }
 
+      if (isAlwaysOnSession && sessionId && conversationId) {
+        const { alwaysOnSessionService } = await import("./always-on-session-service")
+        alwaysOnSessionService.recordRuntimeSession(loop.id, sessionId, conversationId)
+        alwaysOnSessionService.appendLog({
+          loopId: loop.id,
+          runtimeSessionId: sessionId,
+          conversationId,
+          kind: "run_started",
+          title: "Continuous run started",
+          details: loop.prompt.slice(0, 500),
+        })
+      }
+
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
+      const finalContent = await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
+
+      if (isAlwaysOnSession && sessionId && conversationId) {
+        const { alwaysOnSessionService } = await import("./always-on-session-service")
+        alwaysOnSessionService.appendLog({
+          loopId: loop.id,
+          runtimeSessionId: sessionId,
+          conversationId,
+          kind: "run_completed",
+          title: "Continuous run completed",
+          outcome: finalContent.slice(0, 1000),
+        })
+      }
 
       // When `speakOnTrigger` is set, unsnooze the now-completed session and
       // show the panel so the renderer's TTS auto-play gate fires for the
@@ -550,6 +576,17 @@ class LoopService {
       return { loopId, conversationId, sessionId }
     } catch (error) {
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
+      if (isAlwaysOnSession) {
+        const { alwaysOnSessionService } = await import("./always-on-session-service")
+        alwaysOnSessionService.appendLog({
+          loopId: loop.id,
+          ...(sessionId ? { runtimeSessionId: sessionId } : {}),
+          ...(conversationId ? { conversationId } : {}),
+          kind: "error",
+          title: "Continuous run failed",
+          details: error instanceof Error ? error.message : String(error),
+        })
+      }
       return { loopId, conversationId, sessionId }
     } finally {
       this.executingLoops.delete(loopId)

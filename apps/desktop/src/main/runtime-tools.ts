@@ -17,6 +17,8 @@ import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
 import { getRootAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
+import { alwaysOnSessionService } from "./always-on-session-service"
+import { loopService } from "./loop-service"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -39,6 +41,8 @@ import { runtimeToolDefinitions } from "./runtime-tool-definitions"
 interface BuiltinToolContext {
   sessionId?: string
 }
+
+type AlwaysOnRuntimeLogKind = "attempt" | "blocker" | "question" | "answer" | "branch" | "error"
 
 type PackageManagerName = "pnpm" | "npm" | "yarn" | "bun"
 
@@ -158,6 +162,34 @@ async function getLatestUserMessageForSession(sessionId?: string): Promise<strin
     .find((message) => message.role === "user" && typeof message.content === "string" && message.content.trim().length > 0)
 
   return latestUserMessage?.content?.trim() ?? null
+}
+
+function getTrackedRuntimeSessionId(sessionId?: string): string | undefined {
+  if (!sessionId) return undefined
+  return getRootAppSessionForAcpSession(sessionId) ?? sessionId
+}
+
+function normalizeAlwaysOnLogKind(value: unknown): AlwaysOnRuntimeLogKind | null {
+  if (
+    value === "attempt" ||
+    value === "blocker" ||
+    value === "question" ||
+    value === "answer" ||
+    value === "branch" ||
+    value === "error"
+  ) {
+    return value
+  }
+  return null
+}
+
+async function getLatestConversationMessageIndex(conversationId: string): Promise<number | undefined> {
+  const conversation = await conversationService.loadConversation(conversationId)
+  if (!conversation) return undefined
+  const messages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
+    ? conversation.rawMessages
+    : conversation.messages
+  return messages.length > 0 ? messages.length - 1 : undefined
 }
 
 function detectContextGatheringCommandBlock(command: string, latestUserMessage: string | null) {
@@ -792,8 +824,9 @@ const toolHandlers: Record<string, ToolHandler> = {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
       const parentSessionId = mappedAppSessionId
       const runId = agentSessionStateManager.getSessionRunId(trackedSessionId)
-      const isSessionComplete = session.status === "completed" || session.status === "error" || session.status === "stopped"
-      const conversationState = session.status === "completed"
+      const sessionStatus = session?.status
+      const isSessionComplete = sessionStatus === "completed" || sessionStatus === "error" || sessionStatus === "stopped"
+      const conversationState = sessionStatus === "completed"
         ? "complete"
         : isSessionComplete
           ? "blocked"
@@ -851,6 +884,142 @@ const toolHandlers: Record<string, ToolHandler> = {
           }, null, 2),
         },
       ],
+      isError: false,
+    }
+  },
+
+  log_always_on_attempt: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
+    const trackedSessionId = getTrackedRuntimeSessionId(context.sessionId)
+    if (!trackedSessionId) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "log_always_on_attempt requires an active agent session" }) }],
+        isError: true,
+      }
+    }
+
+    const kind = normalizeAlwaysOnLogKind(args.kind)
+    if (!kind) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "kind must be one of: attempt, blocker, question, answer, branch, error" }) }],
+        isError: true,
+      }
+    }
+
+    const title = typeof args.title === "string" ? args.title.trim() : ""
+    if (!title) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "title must be a non-empty string" }) }],
+        isError: true,
+      }
+    }
+
+    const activeSession = agentSessionTracker.getSession(trackedSessionId)
+    const entry = alwaysOnSessionService.appendLog({
+      runtimeSessionId: trackedSessionId,
+      conversationId: activeSession?.conversationId,
+      runId: agentSessionStateManager.getSessionRunId(trackedSessionId),
+      kind,
+      title,
+      details: typeof args.details === "string" ? args.details : undefined,
+      outcome: typeof args.outcome === "string" ? args.outcome : undefined,
+    }, loopService.getLoops())
+
+    if (!entry) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not an always-on session" }) }],
+        isError: true,
+      }
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify({ success: true, entry }, null, 2) }],
+      isError: false,
+    }
+  },
+
+  ask_always_on_question: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
+    const trackedSessionId = getTrackedRuntimeSessionId(context.sessionId)
+    if (!trackedSessionId) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "ask_always_on_question requires an active agent session" }) }],
+        isError: true,
+      }
+    }
+
+    const prompt = typeof args.prompt === "string" ? args.prompt.trim() : ""
+    if (!prompt) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "prompt must be a non-empty string" }) }],
+        isError: true,
+      }
+    }
+
+    if (!Array.isArray(args.choices) || args.choices.length < 2 || args.choices.length > 3) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "choices must contain 2 or 3 choice objects" }) }],
+        isError: true,
+      }
+    }
+
+    const choices = args.choices.flatMap((item, index) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return []
+      const raw = item as Record<string, unknown>
+      const label = typeof raw.label === "string" ? raw.label.trim() : ""
+      if (!label) return []
+      return [{
+        id: typeof raw.id === "string" && raw.id.trim() ? raw.id.trim() : `choice-${index + 1}`,
+        label,
+        ...(typeof raw.description === "string" && raw.description.trim()
+          ? { description: raw.description.trim() }
+          : {}),
+      }]
+    })
+
+    if (choices.length < 2) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "at least two choices must include non-empty labels" }) }],
+        isError: true,
+      }
+    }
+
+    const activeSession = agentSessionTracker.getSession(trackedSessionId)
+    const conversationId = activeSession?.conversationId
+    const sourceMessageIndex = conversationId
+      ? await getLatestConversationMessageIndex(conversationId)
+      : undefined
+    const reason = args.reason === "blocker" ? "blocker" : "question"
+    const question = alwaysOnSessionService.askQuestion({
+      runtimeSessionId: trackedSessionId,
+      conversationId,
+      sourceMessageIndex,
+      prompt,
+      choices,
+      allowCustom: args.allowCustom !== false,
+      reason,
+    }, loopService.getLoops())
+
+    if (!question) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not an always-on session or choices were invalid" }) }],
+        isError: true,
+      }
+    }
+
+    const pendingQuestionCount = alwaysOnSessionService
+      .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
+      .find((summary) => summary.id === question.alwaysOnSessionId)
+      ?.pendingQuestionCount ?? 1
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          success: true,
+          questionId: question.id,
+          pendingQuestionCount,
+          message: "Question queued for the user. Continue other useful work instead of waiting.",
+        }, null, 2),
+      }],
       isError: false,
     }
   },

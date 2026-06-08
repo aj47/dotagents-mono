@@ -103,6 +103,10 @@ export interface LoopConfig {
   lastSessionId?: string
   /** Start the next run immediately after the previous run finishes. */
   runContinuously?: boolean
+  /** Marks this repeat task as the backing worker for an always-on session. */
+  alwaysOnSession?: boolean
+  /** Optional per-task override for agent loop iterations. */
+  maxIterations?: number
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule
 }
