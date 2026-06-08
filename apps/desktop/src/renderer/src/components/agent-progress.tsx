@@ -166,6 +166,45 @@ const formatRunningToolLabel = (toolNames: string[]): string => {
   return `${toolNames.length} tools`
 }
 
+function compactOneLine(value: string | undefined, maxLength = 140): string {
+  const compacted = (value ?? "").replace(/\s+/g, " ").trim()
+  if (compacted.length <= maxLength) return compacted
+  return `${compacted.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
+}
+
+function getDisplayItemPreview(item: DisplayItem): string | null {
+  if (item.kind === "message") {
+    const content = compactOneLine(item.data.content)
+    return content || null
+  }
+
+  if (item.kind === "assistant_with_tools") {
+    const thought = compactOneLine(item.data.thought)
+    if (thought) return thought
+    const names = item.data.calls.map((call) => call.name).filter(Boolean)
+    return names.length > 0 ? `Running ${formatRunningToolLabel(names)}` : null
+  }
+
+  if (item.kind === "tool_activity_group") {
+    const preview = compactOneLine(item.data.previewLines.join(", "))
+    if (preview) return preview
+    return `${item.data.callCount} tool call${item.data.callCount === 1 ? "" : "s"}`
+  }
+
+  if (item.kind === "tool_execution") {
+    const names = item.data.calls.map((call) => call.name).filter(Boolean)
+    if (names.length > 0) return `Ran ${formatRunningToolLabel(names)}`
+    const result = item.data.results.find((entry) => entry?.content || entry?.error)
+    return compactOneLine(result?.error || result?.content) || "Tool result"
+  }
+
+  if (item.kind === "streaming") return compactOneLine(item.data.text) || "Thinking…"
+  if (item.kind === "retry_status") return compactOneLine(item.data.reason) || `Retry ${item.data.attempt}`
+  if (item.kind === "tool_approval") return `Waiting for approval: ${item.data.toolName}`
+  if (item.kind === "delegation") return compactOneLine(item.data.task || item.data.agentName)
+  return null
+}
+
 type ChatProviderId = NonNullable<Config["agentProviderId"]>
 
 type SessionModelInfo = NonNullable<AgentProgressUpdate["modelInfo"]>
@@ -725,6 +764,24 @@ function normalizeAssistantResponseForDedupe(content: string | undefined): strin
 
 function normalizePromptEchoForDedupe(content: string | undefined): string {
   return (content ?? "").replace(/\s+/g, " ").trim()
+}
+
+const ALWAYS_ON_INSTRUCTION_MARKERS = [
+  "you are running as an always-on dotagents session",
+  "continue useful work until the user pauses this session",
+  "everything that has been tried must be logged",
+  "operational constraints",
+]
+
+function isAlwaysOnInstructionPrompt(content: string | undefined): boolean {
+  const normalized = normalizePromptEchoForDedupe(content).toLowerCase()
+  if (!normalized) return false
+  return ALWAYS_ON_INSTRUCTION_MARKERS.some((marker) => normalized.includes(marker))
+}
+
+function isAlwaysOnConversationTitle(title: string | undefined): boolean {
+  const normalized = normalizePromptEchoForDedupe(title).toLowerCase()
+  return normalized.includes("always-on session")
 }
 
 function shouldAutoPlayTTSForVariant(
@@ -1982,16 +2039,29 @@ const ToolActivityGroupBubble: React.FC<{
   /** Render a single child DisplayItem when the group is expanded. */
   renderItem: (item: DisplayItem, index: number) => React.ReactNode
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
-  const collapsedPreviewLine = group.previewLines.join(', ')
+  const uniquePreviewLines = Array.from(new Set(
+    group.previewLines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0),
+  ))
+  const visiblePreviewLines = uniquePreviewLines.slice(0, 3)
+  const hiddenPreviewCount = Math.max(0, group.previewLines.length - visiblePreviewLines.length)
+  const collapsedPreviewLine = [
+    visiblePreviewLines.join(", "),
+    hiddenPreviewCount > 0 ? `+${hiddenPreviewCount} more` : "",
+  ].filter(Boolean).join(", ")
   const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
   const callCount = group.callCount
   const runningToolNames = group.items.flatMap(getRunningToolCallNames)
   const hasRunningTools = runningToolNames.length > 0
   const collapsedStatusLine = hasRunningTools
     ? `Running ${formatRunningToolLabel(runningToolNames)}`
-    : collapsedPreviewLine || "Tool activity"
-  const collapsedTitle = hasRunningTools && collapsedPreviewLine
-    ? `${collapsedStatusLine} - ${collapsedPreviewLine}`
+    : callCount > 0 && collapsedPreviewLine
+      ? `${callCount} tools · ${collapsedPreviewLine}`
+      : collapsedPreviewLine || "Tool activity"
+  const fullPreviewLine = group.previewLines.join(", ")
+  const collapsedTitle = hasRunningTools && fullPreviewLine
+    ? `${collapsedStatusLine} - ${fullPreviewLine}`
     : collapsedStatusLine
 
   return (
@@ -3954,6 +4024,19 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
   }, [isComplete, progress.sessionId])
 
+  const isAlwaysOnSession = useMemo(() => (
+    isAlwaysOnConversationTitle(progress.conversationTitle) ||
+    (conversationHistory ?? []).some((entry) => isAlwaysOnInstructionPrompt(entry.content))
+  ), [conversationHistory, progress.conversationTitle])
+
+  const hiddenAlwaysOnPromptCount = useMemo(() => (
+    isAlwaysOnSession
+      ? (conversationHistory ?? []).filter((entry) =>
+        entry.role === "user" && isAlwaysOnInstructionPrompt(entry.content),
+      ).length
+      : 0
+  ), [conversationHistory, isAlwaysOnSession])
+
   const messages = useMemo<Array<{
     role: "user" | "assistant" | "tool"
     content: string
@@ -4030,6 +4113,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       historyForSession
         .forEach((entry, localIndex) => {
           if (entry.role === "user" && isCompletionNudge(entry.content)) return
+          if (isAlwaysOnSession && entry.role === "user" && isAlwaysOnInstructionPrompt(entry.content)) return
           if (shouldHideAssistantPromptEcho(entry, localIndex)) return
           nextMessages.push({
             role: entry.role,
@@ -4162,7 +4246,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
 
     return nextMessages
-  }, [conversationHistory, finalContent, isComplete, progress.streamingContent?.isStreaming, sessionStartIndex, steps])
+  }, [conversationHistory, finalContent, isAlwaysOnSession, isComplete, progress.streamingContent?.isStreaming, sessionStartIndex, steps])
 
   const legacyResponseEvents = useMemo<AgentUserResponseEvent[]>(() => {
     if (!progress.userResponse) return []
@@ -4678,6 +4762,30 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }, [enrichedMessages, effectiveUserResponse, progress.isComplete, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = displayItems
+  const alwaysOnActiveStepText = useMemo(() => {
+    const activeStep = [...progress.steps]
+      .reverse()
+      .find((step) =>
+        step.status === "in_progress" &&
+        !step.title?.toLowerCase().includes("verifying"),
+      )
+
+    if (!activeStep) {
+      if (progress.pendingToolApproval) return `Waiting for approval: ${progress.pendingToolApproval.toolName}`
+      return isComplete ? "Run complete" : "Waiting for next progress update"
+    }
+
+    if (activeStep.type === "tool_call") return compactOneLine(activeStep.title || activeStep.description || "Running tool")
+    if (activeStep.llmContent?.trim()) return compactOneLine(stripThinkingPreamble(activeStep.llmContent), 180)
+    return compactOneLine(activeStep.description || activeStep.title || "Thinking")
+  }, [isComplete, progress.pendingToolApproval, progress.steps])
+  const alwaysOnLatestVisibleWork = useMemo(() => {
+    for (let index = visibleDisplayItems.length - 1; index >= 0; index -= 1) {
+      const preview = getDisplayItemPreview(visibleDisplayItems[index])
+      if (preview) return preview
+    }
+    return "No visible work yet"
+  }, [visibleDisplayItems])
   const loadedConversationHistoryCount = conversationHistory?.length ?? 0
   const conversationHistoryTotalCount = Math.max(
     progress.conversationHistoryTotalCount ?? loadedConversationHistoryCount,
@@ -5061,6 +5169,57 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isDark ? "dark" : ""
   )
 
+  const renderAlwaysOnStatusBand = (compact = false) => {
+    if (!isAlwaysOnSession) return null
+
+    return (
+      <div className={cn(
+        "border-b border-emerald-500/20 bg-emerald-500/[0.07] text-xs",
+        compact ? "px-2.5 py-1.5" : "px-3 py-2",
+      )}>
+        <div className={cn(
+          "grid gap-2",
+          compact ? "grid-cols-1" : "grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_auto]",
+        )}>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-normal text-emerald-700 dark:text-emerald-300">
+              <Bot className="h-3 w-3 shrink-0" />
+              <span>Now</span>
+            </div>
+            <div className="mt-0.5 truncate font-medium text-foreground" title={alwaysOnActiveStepText}>
+              {alwaysOnActiveStepText}
+            </div>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-normal text-muted-foreground">
+              <Wrench className="h-3 w-3 shrink-0" />
+              <span>Latest</span>
+            </div>
+            <div className="mt-0.5 truncate text-muted-foreground" title={alwaysOnLatestVisibleWork}>
+              {alwaysOnLatestVisibleWork}
+            </div>
+          </div>
+          <div className={cn(
+            "flex shrink-0 items-center gap-1.5 rounded-md border border-border/45 bg-background/60 px-2 py-1 text-[10px] text-muted-foreground",
+            compact && "justify-between",
+          )}>
+            <span className="whitespace-nowrap tabular-nums">
+              Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}
+            </span>
+            {hiddenAlwaysOnPromptCount > 0 && (
+              <span
+                className="whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal"
+                title={`${hiddenAlwaysOnPromptCount} always-on setup prompt${hiddenAlwaysOnPromptCount === 1 ? "" : "s"} hidden from the timeline`}
+              >
+                {hiddenAlwaysOnPromptCount} setup hidden
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Tile variant rendering
   if (variant === "tile") {
     const hasPendingApproval = !!progress.pendingToolApproval
@@ -5186,6 +5345,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         {/* Collapsible content */}
         {!isCollapsed && (
           <>
+            {renderAlwaysOnStatusBand(true)}
+
             {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
             {(progress.stepSummaries?.length ?? 0) > 0 && (
               <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
@@ -5654,6 +5815,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           )}
         </div>
       </div>
+
+      {renderAlwaysOnStatusBand(false)}
 
       {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
       {(progress.stepSummaries?.length ?? 0) > 0 && (

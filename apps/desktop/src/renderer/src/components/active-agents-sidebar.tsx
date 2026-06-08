@@ -210,6 +210,11 @@ function findRepeatTaskLoopForSidebarSession(
   return stripped ? loopByTitleHint.get(stripped) : undefined
 }
 
+function isAlwaysOnPromptDerivedTitle(title?: string): boolean {
+  const normalized = title?.replace(/\s+/g, " ").trim().toLowerCase() ?? ""
+  return normalized.includes("always-on session you are running as an always-on dotagents session")
+}
+
 function getSessionLastMessageTimestamp(
   session: SidebarSessionRecord,
   conversationTimestamp?: number,
@@ -425,6 +430,13 @@ function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
   }
 }
 
+function formatAlwaysOnStatusLabel(session: AlwaysOnSessionSummary): string {
+  if (session.status === "paused") return "Paused"
+  if (session.isRunning) return "Running"
+  if (!session.enabled) return "Off"
+  return "Idle"
+}
+
 function AlwaysOnSessionStrip({
   sessions,
   onCreate,
@@ -469,11 +481,7 @@ function AlwaysOnSessionStrip({
         const latestEntry = session.latestLogEntry
         const latestDetails = latestEntry?.outcome || latestEntry?.details
         const latestTimeLabel = latestEntry ? formatMinutesAgo(latestEntry.timestamp) : null
-        const statusLabel = isPaused
-          ? "Paused"
-          : session.isRunning
-            ? "Running"
-            : "Idle"
+        const statusLabel = formatAlwaysOnStatusLabel(session)
         const statusTitle = [
           statusLabel,
           `${session.logCount} log${session.logCount === 1 ? "" : "s"}`,
@@ -486,22 +494,24 @@ function AlwaysOnSessionStrip({
           <div
             key={session.id}
             className={cn(
-              "rounded-lg border p-2 text-xs shadow-sm transition-colors",
+              "rounded-lg border p-2.5 text-xs shadow-sm transition-colors",
               isPaused
                 ? "border-border/70 bg-muted/30"
-                : "border-emerald-500/25 bg-emerald-500/10",
+                : session.pendingQuestionCount > 0
+                  ? "border-amber-500/35 bg-amber-500/10"
+                  : "border-emerald-500/25 bg-emerald-500/10",
             )}
           >
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 items-start gap-2">
               <button
                 type="button"
-                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                className="flex min-w-0 flex-1 items-start gap-2 text-left"
                 onClick={() => onOpenSession(session)}
                 title={session.name}
               >
                 <span
                   className={cn(
-                    "h-2 w-2 shrink-0 rounded-full",
+                    "mt-1 h-2 w-2 shrink-0 rounded-full",
                     isPaused
                       ? "bg-muted-foreground/60"
                       : session.isRunning
@@ -509,11 +519,14 @@ function AlwaysOnSessionStrip({
                         : "bg-blue-500",
                   )}
                 />
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
-                  {session.name}
-                </span>
-                <span className="shrink-0 text-[10px] text-muted-foreground" title={statusTitle}>
-                  {statusLabel}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold leading-snug text-foreground">
+                    {session.name}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[10px] leading-snug text-muted-foreground" title={statusTitle}>
+                    {statusLabel}
+                    {latestTimeLabel ? ` · ${latestTimeLabel}` : ""}
+                  </span>
                 </span>
               </button>
               {session.pendingQuestionCount > 0 && (
@@ -526,21 +539,51 @@ function AlwaysOnSessionStrip({
                 </span>
               )}
             </div>
-            <div className="mt-1.5 flex min-w-0 items-center gap-2 text-[10px] text-muted-foreground">
-              <span className="inline-flex shrink-0 items-center gap-1" title={`${session.logCount} logged attempt${session.logCount === 1 ? "" : "s"}`}>
-                <ListChecks className="h-3 w-3" />
-                <span className="tabular-nums">{session.logCount}</span>
-              </span>
-              {session.answeredQuestionCount > 0 && (
-                <span className="inline-flex shrink-0 items-center gap-1" title={`${session.answeredQuestionCount} answered question${session.answeredQuestionCount === 1 ? "" : "s"}`}>
-                  <CheckCircle2 className="h-3 w-3" />
+            <div className="mt-2 grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                className="min-w-0 rounded-md border border-border/45 bg-background/55 px-1.5 py-1 text-left transition-colors hover:bg-background"
+                onClick={() => void onOpenLog(session)}
+                title={`${session.logCount} logged attempt${session.logCount === 1 ? "" : "s"}`}
+                aria-label="Open always-on attempt log"
+              >
+                <span className="block text-[9px] font-medium uppercase tracking-normal text-muted-foreground">Log</span>
+                <span className="mt-0.5 flex items-center gap-1 text-[12px] font-semibold leading-none text-foreground">
+                  <ListChecks className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span className="tabular-nums">{session.logCount}</span>
+                </span>
+              </button>
+              <div
+                className={cn(
+                  "min-w-0 rounded-md border px-1.5 py-1",
+                  session.pendingQuestionCount > 0
+                    ? "border-amber-500/30 bg-amber-500/10"
+                    : "border-border/45 bg-background/55",
+                )}
+                title={`${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`}
+              >
+                <span className="block text-[9px] font-medium uppercase tracking-normal text-muted-foreground">Queue</span>
+                <span className="mt-0.5 flex items-center gap-1 text-[12px] font-semibold leading-none text-foreground">
+                  <HelpCircle className={cn("h-3 w-3 shrink-0", session.pendingQuestionCount > 0 ? "text-amber-600 dark:text-amber-300" : "text-muted-foreground")} />
+                  <span className="tabular-nums">{session.pendingQuestionCount}</span>
+                </span>
+              </div>
+              <div
+                className="min-w-0 rounded-md border border-border/45 bg-background/55 px-1.5 py-1"
+                title={`${session.answeredQuestionCount} answered question${session.answeredQuestionCount === 1 ? "" : "s"}`}
+              >
+                <span className="block text-[9px] font-medium uppercase tracking-normal text-muted-foreground">Answered</span>
+                <span className="mt-0.5 flex items-center gap-1 text-[12px] font-semibold leading-none text-foreground">
+                  <CheckCircle2 className="h-3 w-3 shrink-0 text-muted-foreground" />
                   <span className="tabular-nums">{session.answeredQuestionCount}</span>
                 </span>
-              )}
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                {latestTimeLabel && (
-                  <span className="mr-1 shrink-0 tabular-nums">{latestTimeLabel}</span>
-                )}
+              </div>
+            </div>
+            <div className="mt-2 flex min-w-0 items-center justify-between gap-1.5">
+              <span className="min-w-0 truncate text-[10px] font-medium uppercase tracking-normal text-muted-foreground">
+                {pendingQuestion ? "Needs answer" : latestEntry ? "Latest work" : "Waiting for first run"}
+              </span>
+              <div className="flex shrink-0 items-center gap-1">
                 <Button
                   type="button"
                   variant="ghost"
@@ -578,7 +621,7 @@ function AlwaysOnSessionStrip({
               </div>
             </div>
             {latestEntry && (
-              <div className="mt-1.5 min-w-0 rounded-md bg-background/60 px-2 py-1.5">
+              <div className="mt-1.5 min-w-0 rounded-md border border-border/40 bg-background/65 px-2 py-1.5">
                 <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-snug">
                   <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal text-muted-foreground">
                     {formatAlwaysOnLogKind(latestEntry.kind)}
@@ -740,6 +783,14 @@ export function ActiveAgentsSidebar({
 
   const trackedActiveSessions = data?.activeSessions || []
   const alwaysOnSessions = alwaysOnSessionsQuery.data || []
+  const alwaysOnSessionIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const session of alwaysOnSessions) {
+      if (session.conversationId) ids.add(session.conversationId)
+      if (session.currentSessionId) ids.add(session.currentSessionId)
+    }
+    return ids
+  }, [alwaysOnSessions])
   const recentCompletedSessions =
     data?.recentCompletedSessions || data?.recentSessions || []
   const conversationHistory =
@@ -1134,8 +1185,14 @@ export function ActiveAgentsSidebar({
     () => [
       ...pinnedTaskSidebarSessions,
       ...unpinnedTaskSidebarSessions,
-    ].filter((entry) => !findRepeatTaskLoopForSidebarSession(entry.session, loopByTitleHint)?.alwaysOnSession),
-    [loopByTitleHint, pinnedTaskSidebarSessions, unpinnedTaskSidebarSessions],
+    ].filter((entry) => {
+      if (findRepeatTaskLoopForSidebarSession(entry.session, loopByTitleHint)?.alwaysOnSession) return false
+      if (entry.session.conversationId && alwaysOnSessionIds.has(entry.session.conversationId)) return false
+      if (alwaysOnSessionIds.has(entry.session.id)) return false
+      if (isAlwaysOnPromptDerivedTitle(entry.session.conversationTitle)) return false
+      return true
+    }),
+    [alwaysOnSessionIds, loopByTitleHint, pinnedTaskSidebarSessions, unpinnedTaskSidebarSessions],
   )
   // Tasks list uses a flat slice so "Show less" can shrink the list past
   // active rows. paginateSidebarEntries pins active rows in place, which

@@ -454,6 +454,47 @@ describe("agent progress response history", () => {
     expect(thinkingBars).toHaveLength(3)
   })
 
+  it("hides repeated always-on setup prompts and surfaces a status band", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const setupPrompt = "Always-on session You are running as an always-on DotAgents session. Continue useful work until the user pauses this session. Operational constraints: everything that has been tried must be logged."
+    const progress = {
+      sessionId: "session-always-on-progress",
+      conversationId: "conversation-always-on-progress",
+      conversationTitle: "[Repeat] Always-on session",
+      currentIteration: 20,
+      maxIterations: 25,
+      steps: [
+        {
+          id: "thinking-1",
+          type: "thinking",
+          title: "Analyzing request",
+          description: "Inspecting current logs and choosing next task",
+          status: "in_progress",
+          timestamp: 300,
+        },
+      ],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: setupPrompt, timestamp: 100 },
+        { role: "assistant", content: "I inspected the log and found the next concrete task.", timestamp: 200 },
+        { role: "user", content: setupPrompt, timestamp: 250 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Now")
+    expect(text).toContain("Latest")
+    expect(text).toContain("Step 20 / 25")
+    expect(text).toContain("2 setup hidden")
+    expect(text).toContain("I inspected the log and found the next concrete task.")
+    expect(text).not.toContain("You are running as an always-on DotAgents session")
+    expect(text).not.toContain("Operational constraints")
+  })
+
   it("treats provider streaming thinking preambles as the same compact status", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
@@ -1064,15 +1105,12 @@ describe("agent progress response history", () => {
     expect(text).not.toMatch(/2 step(?:\s*s)?/)
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
-    // Collapsed groups list every execute_command as
-    // "<command>:<output-preview>" in chronological order, with a call count
-    // next to the wrench icon.
+    // Collapsed groups show the total call count and a compact ordered preview.
     expect(text).toContain("git status --short:M file.ts branch main")
     expect(text).toContain("pnpm test:all suites passed")
     expect(text.indexOf("git status --short:M file.ts branch main")).toBeLessThan(text.indexOf("pnpm test:all suites passed"))
     expect(text.indexOf("pnpm test:all suites passed")).toBeLessThan(text.indexOf("Now here is the answer"))
-    // 2 tool calls in the run (search count badge before previews).
-    expect(text).toMatch(/2\s+git status --short:M file\.ts branch main/)
+    expect(text).toMatch(/2 tools · git status --short:M file\.ts branch main/)
   })
 
   it("surfaces a running label when the current pending tool is inside a collapsed group", async () => {
