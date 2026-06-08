@@ -59,7 +59,7 @@ import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import type { AgentProgressUpdate, AlwaysOnQuestion, AlwaysOnSessionSummary, LoopConfig } from "@shared/types"
+import type { AgentProgressUpdate, AlwaysOnLogEntryKind, AlwaysOnQuestion, AlwaysOnSessionSummary, LoopConfig } from "@shared/types"
 import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
 
 interface SidebarSessionRecord {
@@ -398,6 +398,33 @@ function AlwaysOnQuestionAnswer({
   )
 }
 
+function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
+  switch (kind) {
+    case "run_started":
+      return "START"
+    case "run_completed":
+      return "DONE"
+    case "attempt":
+      return "TRY"
+    case "blocker":
+      return "BLOCKED"
+    case "question":
+      return "QUESTION"
+    case "answer":
+      return "ANSWER"
+    case "branch":
+      return "BRANCH"
+    case "pause":
+      return "PAUSE"
+    case "resume":
+      return "RESUME"
+    case "error":
+      return "ERROR"
+    default:
+      return kind
+  }
+}
+
 function AlwaysOnSessionStrip({
   sessions,
   onCreate,
@@ -489,15 +516,30 @@ function AlwaysOnSessionStrip({
                   {statusLabel}
                 </span>
               </button>
-              <div className="flex shrink-0 items-center gap-1">
-                {session.pendingQuestionCount > 0 && (
-                  <span
-                    className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white"
-                    title={`${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`}
-                    aria-label={`${session.pendingQuestionCount} pending always-on question${session.pendingQuestionCount === 1 ? "" : "s"}`}
-                  >
-                    {session.pendingQuestionCount}
-                  </span>
+              {session.pendingQuestionCount > 0 && (
+                <span
+                  className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white"
+                  title={`${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`}
+                  aria-label={`${session.pendingQuestionCount} pending always-on question${session.pendingQuestionCount === 1 ? "" : "s"}`}
+                >
+                  {session.pendingQuestionCount}
+                </span>
+              )}
+            </div>
+            <div className="mt-1.5 flex min-w-0 items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="inline-flex shrink-0 items-center gap-1" title={`${session.logCount} logged attempt${session.logCount === 1 ? "" : "s"}`}>
+                <ListChecks className="h-3 w-3" />
+                <span className="tabular-nums">{session.logCount}</span>
+              </span>
+              {session.answeredQuestionCount > 0 && (
+                <span className="inline-flex shrink-0 items-center gap-1" title={`${session.answeredQuestionCount} answered question${session.answeredQuestionCount === 1 ? "" : "s"}`}>
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span className="tabular-nums">{session.answeredQuestionCount}</span>
+                </span>
+              )}
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                {latestTimeLabel && (
+                  <span className="mr-1 shrink-0 tabular-nums">{latestTimeLabel}</span>
                 )}
                 <Button
                   type="button"
@@ -535,28 +577,13 @@ function AlwaysOnSessionStrip({
                 </Button>
               </div>
             </div>
-            <div className="mt-1.5 flex min-w-0 items-center gap-2 text-[10px] text-muted-foreground">
-              <span className="inline-flex shrink-0 items-center gap-1" title={`${session.logCount} logged attempt${session.logCount === 1 ? "" : "s"}`}>
-                <ListChecks className="h-3 w-3" />
-                <span className="tabular-nums">{session.logCount}</span>
-              </span>
-              {session.answeredQuestionCount > 0 && (
-                <span className="inline-flex shrink-0 items-center gap-1" title={`${session.answeredQuestionCount} answered question${session.answeredQuestionCount === 1 ? "" : "s"}`}>
-                  <CheckCircle2 className="h-3 w-3" />
-                  <span className="tabular-nums">{session.answeredQuestionCount}</span>
-                </span>
-              )}
-              {latestTimeLabel && (
-                <span className="ml-auto shrink-0 tabular-nums">{latestTimeLabel}</span>
-              )}
-            </div>
             {latestEntry && (
               <div className="mt-1.5 min-w-0 rounded-md bg-background/60 px-2 py-1.5">
                 <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-snug">
                   <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal text-muted-foreground">
-                    {latestEntry.kind.replace("_", " ")}
+                    {formatAlwaysOnLogKind(latestEntry.kind)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                  <span className="min-w-0 flex-1 line-clamp-2 break-words font-medium text-foreground">
                     {latestEntry.title}
                   </span>
                 </div>
