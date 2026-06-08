@@ -59,7 +59,7 @@ import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import type { AgentProgressUpdate, AlwaysOnLogEntryKind, AlwaysOnQuestion, AlwaysOnSessionSummary, LoopConfig } from "@shared/types"
+import type { AgentProgressUpdate, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnQuestion, AlwaysOnSessionSummary, LoopConfig } from "@shared/types"
 import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
 
 interface SidebarSessionRecord {
@@ -430,11 +430,36 @@ function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
   }
 }
 
+function getAlwaysOnLogKindClassName(kind: AlwaysOnLogEntryKind): string {
+  switch (kind) {
+    case "blocker":
+    case "error":
+      return "bg-red-500/10 text-red-700 dark:text-red-300"
+    case "question":
+      return "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+    case "answer":
+      return "bg-blue-500/12 text-blue-700 dark:text-blue-300"
+    case "run_completed":
+      return "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+    case "pause":
+      return "bg-muted text-muted-foreground"
+    case "resume":
+    case "run_started":
+      return "bg-sky-500/12 text-sky-700 dark:text-sky-300"
+    default:
+      return "bg-muted text-muted-foreground"
+  }
+}
+
 function formatAlwaysOnStatusLabel(session: AlwaysOnSessionSummary): string {
   if (session.status === "paused") return "Paused"
   if (session.isRunning) return "Running"
   if (!session.enabled) return "Off"
   return "Idle"
+}
+
+function getAlwaysOnEntryDetails(entry: AlwaysOnLogEntry): string | undefined {
+  return entry.outcome || entry.details
 }
 
 function AlwaysOnSessionStrip({
@@ -479,8 +504,14 @@ function AlwaysOnSessionStrip({
         const pendingQuestion = session.questions.find((question) => question.status === "pending")
         const isPaused = session.status === "paused"
         const latestEntry = session.latestLogEntry
-        const latestDetails = latestEntry?.outcome || latestEntry?.details
         const latestTimeLabel = latestEntry ? formatMinutesAgo(latestEntry.timestamp) : null
+        const recentLogEntries = (
+          session.recentLogEntries && session.recentLogEntries.length > 0
+            ? session.recentLogEntries
+            : latestEntry
+              ? [latestEntry]
+              : []
+        ).slice(-5).reverse()
         const statusLabel = formatAlwaysOnStatusLabel(session)
         const statusTitle = [
           statusLabel,
@@ -620,21 +651,39 @@ function AlwaysOnSessionStrip({
                 </Button>
               </div>
             </div>
-            {latestEntry && (
-              <div className="mt-1.5 min-w-0 rounded-md border border-border/40 bg-background/65 px-2 py-1.5">
-                <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-snug">
-                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal text-muted-foreground">
-                    {formatAlwaysOnLogKind(latestEntry.kind)}
-                  </span>
-                  <span className="min-w-0 flex-1 line-clamp-2 break-words font-medium text-foreground">
-                    {latestEntry.title}
-                  </span>
+            {recentLogEntries.length > 0 && (
+              <div className="mt-1.5 min-w-0 border-l border-border/60 pl-2">
+                <div className="space-y-1.5">
+                  {recentLogEntries.map((entry) => {
+                    const details = getAlwaysOnEntryDetails(entry)
+                    const entryTimeLabel = formatMinutesAgo(entry.timestamp)
+                    return (
+                      <div key={entry.id} className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-snug">
+                          <span className={cn(
+                            "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal",
+                            getAlwaysOnLogKindClassName(entry.kind),
+                          )}>
+                            {formatAlwaysOnLogKind(entry.kind)}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate font-medium text-foreground" title={entry.title}>
+                            {entry.title}
+                          </span>
+                          {entryTimeLabel && (
+                            <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
+                              {entryTimeLabel}
+                            </span>
+                          )}
+                        </div>
+                        {details && (
+                          <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground" title={details}>
+                            {details}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-                {latestDetails && (
-                  <div className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground" title={latestDetails}>
-                    {latestDetails}
-                  </div>
-                )}
               </div>
             )}
             {pendingQuestion && (

@@ -69,6 +69,7 @@ const STATE_PATH = join(dataFolder, "always-on-sessions.json")
 const LOG_DIR = join(dataFolder, "always-on-sessions")
 const DEFAULT_ALWAYS_ON_NAME = "Always-on session"
 const MAX_RECENT_QUESTIONS = 8
+const MAX_RECENT_LOG_ENTRIES = 8
 
 function createId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
@@ -383,6 +384,7 @@ class AlwaysOnSessionService {
           : "paused"
         const pendingQuestions = record.questions.filter((question) => question.status === "pending")
         const answeredQuestions = record.questions.filter((question) => question.status === "answered")
+        const recentLogEntries = this.readRecentLogEntries(record, MAX_RECENT_LOG_ENTRIES)
         return {
           id: record.id,
           loopId: record.loopId,
@@ -396,7 +398,8 @@ class AlwaysOnSessionService {
           conversationId: record.conversationId,
           logPath: record.logPath,
           logCount: record.logCount,
-          latestLogEntry: record.latestLogEntry,
+          latestLogEntry: recentLogEntries[recentLogEntries.length - 1] ?? record.latestLogEntry,
+          recentLogEntries,
           pendingQuestionCount: pendingQuestions.length,
           answeredQuestionCount: answeredQuestions.length,
           questions: [
