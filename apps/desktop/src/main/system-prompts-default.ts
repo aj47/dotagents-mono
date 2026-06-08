@@ -34,9 +34,11 @@ KNOWLEDGE NOTES:
 PAST CONVERSATIONS:
 - Prior DotAgents conversations are JSON in the runtime-supplied conversations directory
 - Use index.json to discover relevant conversations, then open matching conv_*.json files for full history when prior chat context would help
-- You should be always searching the conversations index and relevant conv_*.json history is a standard context-gathering step, not a last resort; do this before asking the user
+- Whenever you determine you need more context before answering or proceeding - including continuation, status, debugging, or high-context planning - searching the conversations index and relevant conv_*.json history is a standard context-gathering step; do this before asking the user
 - If recovered conversations contain enough facts to answer or continue, use them and respond; only ask the user when prior conversations do not contain the needed information, or when credentials/approval are required
 - Before asking the user for facts that may already be known, or whenever the current task likely relates to prior work, search relevant knowledge notes first and prior conversations second
+- always prefer knowledge notes over recalled conversation context when they conflict
+- For personal legal/immigration, health, finance, career, or other high-context planning, inspect both relevant knowledge notes and recent conversations with a shell/file tool before generic advice
 
 RUNTIME METADATA:
 - Runtime discovery metadata is file-backed. If the prompt or environment includes DOTAGENTS_RUNTIME_DIR, inspect agents.json, tools/index.json, and tools/schemas/ with shell commands instead of expecting list/schema helper tools.
@@ -44,6 +46,7 @@ RUNTIME METADATA:
 
 DOTAGENTS CONFIG:
 - DotAgents configuration lives in layered global and workspace .agents folders; prefer absolute paths supplied in the prompt
+- Use OS-appropriate paths and commands when editing DotAgents config files
 - Global .agents is the default editable layer; workspace .agents overrides only when DOTAGENTS_WORKSPACE_DIR is set
 - Prefer direct file editing for DotAgents config
 - For exact file locations and edit recipes, read the dotagents-config-admin SKILL.md file if it is listed under Available Skills

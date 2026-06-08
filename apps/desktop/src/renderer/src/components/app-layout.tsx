@@ -31,6 +31,7 @@ import {
   Plug2,
   Plus,
   Mic,
+  Target,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -619,7 +620,9 @@ export const Component = () => {
       !location.pathname.startsWith("/onboarding") &&
       !location.pathname.startsWith("/setup") &&
       !location.pathname.startsWith("/panel") &&
+      !location.pathname.startsWith("/goal-orchestrator") &&
       !location.pathname.startsWith("/knowledge"))
+  const isGoalOrchestratorActive = location.pathname.startsWith("/goal-orchestrator")
 
   return (
     <>
@@ -882,6 +885,21 @@ export const Component = () => {
                   <span className="i-mingcute-group-line h-4 w-4"></span>
                 </NavLink>
 
+                <NavLink
+                  to="/goal-orchestrator"
+                  className={cn(
+                    "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                    isGoalOrchestratorActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                  title="Goals"
+                  aria-label="Goals"
+                  aria-current={isGoalOrchestratorActive ? "page" : undefined}
+                >
+                  <Target className="h-4 w-4" />
+                </NavLink>
+
                 {collapsedPreviewSessions.map((session) => {
                   const isFocused = focusedSessionId === session.id
                   const sessionProgress = agentProgressById.get(session.id)
@@ -1000,6 +1018,26 @@ export const Component = () => {
               </div>
 
               {/* Sessions Section - shows sessions list */}
+              <div className="mb-1 shrink-0 px-2">
+                <NavLink
+                  to="/goal-orchestrator"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    navigate("/goal-orchestrator")
+                  }}
+                  className={cn(
+                    "flex h-7 items-center gap-1.5 rounded px-1.5 text-[11px] font-medium transition-all duration-200",
+                    isGoalOrchestratorActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                  )}
+                  aria-current={isGoalOrchestratorActive ? "page" : undefined}
+                >
+                  <Target className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Goals</span>
+                </NavLink>
+              </div>
+
               <ActiveAgentsSidebar
                 className="shrink-0"
                 onOpenSavedConversationsDialog={() => openSavedConversationsDialog()}

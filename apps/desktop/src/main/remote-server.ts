@@ -7497,6 +7497,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       continueInSession: loop.continueInSession,
       lastSessionId: loop.lastSessionId,
       runContinuously: loop.runContinuously,
+      goalOrchestrator: loop.goalOrchestrator,
       maxIterations: loop.maxIterations,
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
@@ -7530,6 +7531,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             continueInSession: l.continueInSession,
             lastSessionId: l.lastSessionId,
             runContinuously: l.runContinuously,
+            goalOrchestrator: l.goalOrchestrator,
             maxIterations: l.maxIterations,
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
@@ -7885,14 +7887,19 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
+        goalOrchestrator?: unknown
         maxIterations?: unknown
         schedule?: unknown
       }
 
       const name = typeof body.name === "string" ? body.name.trim() : ""
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : ""
-      if (!name || !prompt) {
-        return reply.code(400).send({ error: "name and prompt are required and must be non-empty strings" })
+      if (body.goalOrchestrator !== undefined && typeof body.goalOrchestrator !== "boolean") {
+        return reply.code(400).send({ error: "goalOrchestrator must be a boolean when provided" })
+      }
+      const goalOrchestrator = body.goalOrchestrator === true
+      if (!name || (!goalOrchestrator && !prompt)) {
+        return reply.code(400).send({ error: "name and prompt are required for normal repeat tasks; orchestrator tasks may omit prompt" })
       }
 
       if (
@@ -7949,7 +7956,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const newLoop: LoopConfig = {
         id,
         name,
-        prompt,
+        prompt: prompt || "Run goal orchestrator",
         intervalMinutes,
         enabled,
         profileId: profileId || undefined,
@@ -7958,6 +7965,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession,
         lastSessionId: continueInSession ? (lastSessionId || undefined) : undefined,
         runContinuously,
+        goalOrchestrator,
         ...(typeof maxIterationsResult.value === "number" ? { maxIterations: maxIterationsResult.value } : {}),
         ...(!runContinuously && scheduleResult.schedule && scheduleResult.schedule !== null
           ? { schedule: scheduleResult.schedule }
@@ -8002,6 +8010,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
+        goalOrchestrator?: unknown
         maxIterations?: unknown
         schedule?: unknown
       }
@@ -8051,6 +8060,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.goalOrchestrator !== undefined && typeof body.goalOrchestrator !== "boolean") {
+        return reply.code(400).send({ error: "goalOrchestrator must be a boolean when provided" })
+      }
       if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
         return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
       }
@@ -8085,6 +8097,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const speakOnTrigger = typeof body.speakOnTrigger === "boolean" ? body.speakOnTrigger : undefined
       const continueInSession = typeof body.continueInSession === "boolean" ? body.continueInSession : undefined
       const lastSessionId = typeof body.lastSessionId === "string" ? body.lastSessionId.trim() : undefined
+      const goalOrchestrator = typeof body.goalOrchestrator === "boolean" ? body.goalOrchestrator : undefined
       const updated: LoopConfig = {
         ...existing,
         ...(name !== undefined && { name }),
@@ -8097,6 +8110,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(continueInSession !== undefined && { continueInSession }),
         ...(body.lastSessionId !== undefined && { lastSessionId: lastSessionId || undefined }),
         ...(runContinuously !== undefined && { runContinuously }),
+        ...(goalOrchestrator !== undefined && { goalOrchestrator }),
         ...(maxIterationsResult.value !== undefined && maxIterationsResult.value !== null && { maxIterations: maxIterationsResult.value }),
       }
       if (maxIterationsResult.value === null) {
@@ -8112,6 +8126,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       } else if (scheduleResult.schedule !== undefined) {
         updated.schedule = scheduleResult.schedule
         updated.runContinuously = false
+      }
+      if (!updated.goalOrchestrator && !updated.prompt.trim()) {
+        return reply.code(400).send({ error: "prompt cannot be empty unless goalOrchestrator is true" })
+      }
+      if (updated.goalOrchestrator && !updated.prompt.trim()) {
+        updated.prompt = "Run goal orchestrator"
       }
 
       if (loopService) {

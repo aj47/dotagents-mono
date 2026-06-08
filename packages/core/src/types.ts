@@ -103,6 +103,10 @@ export interface LoopConfig {
   lastSessionId?: string
   /** Start the next run immediately after the previous run finishes. */
   runContinuously?: boolean
+  /** Optional per-task override for agent loop iterations. */
+  maxIterations?: number
+  /** Wake the goal orchestrator instead of sending this task prompt to an agent session. */
+  goalOrchestrator?: boolean
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule
 }

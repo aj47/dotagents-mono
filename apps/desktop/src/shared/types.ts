@@ -1076,6 +1076,114 @@ export interface LoopConfig {
   runContinuously?: boolean // if true, starts the next run immediately after the previous run finishes
   maxIterations?: number   // optional per-task override for agent loop iterations
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
+  goalOrchestrator?: boolean // if true, this task wakes the goal orchestrator instead of sending prompt text
+}
+
+export type GoalStatus = "active" | "inactive" | "done"
+
+export interface Goal {
+  id: string
+  title: string
+  status: GoalStatus
+  notes?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type WorkItemStatus = "ready" | "running" | "waiting" | "done" | "discarded"
+
+export interface WorkItem {
+  id: string
+  goalId: string
+  title: string
+  status: WorkItemStatus
+  notes?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type DecisionStatus = "pending" | "answered" | "dismissed"
+
+export interface Decision {
+  id: string
+  goalId?: string
+  workItemId?: string
+  question: string
+  status: DecisionStatus
+  answer?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type GoalAgentRunStatus = "running" | "done" | "blocked" | "failed" | "killed"
+
+export interface GoalAgentRun {
+  id: string
+  goalId: string
+  workItemId: string
+  sessionId: string
+  conversationId?: string
+  status: GoalAgentRunStatus
+  summary?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type GoalOrchestratorRunStatus = "running" | "done" | "skipped" | "failed"
+
+export interface GoalOrchestratorRun {
+  id: string
+  status: GoalOrchestratorRunStatus
+  startedAt: number
+  completedAt?: number
+  createdSessionCount: number
+  summary?: string
+}
+
+export type GoalActivityType =
+  | "goal_created"
+  | "goal_updated"
+  | "work_created"
+  | "work_updated"
+  | "session_started"
+  | "session_completed"
+  | "session_blocked"
+  | "session_failed"
+  | "session_killed"
+  | "decision_created"
+  | "decision_answered"
+  | "decision_dismissed"
+  | "orchestrator_ran"
+  | "note_saved"
+
+export interface GoalActivityNote {
+  id: string
+  type: GoalActivityType
+  goalId?: string
+  workItemId?: string
+  decisionId?: string
+  agentRunId?: string
+  sessionId?: string
+  message: string
+  createdAt: number
+}
+
+export interface GoalOrchestratorSettings {
+  maxGlobalRunningSessions: number
+  maxRunningSessionsPerGoal: number
+  maxSessionRuntimeMinutes?: number
+  maxIterationsPerSession?: number
+  maxSessionsPerWakeCycle: number
+}
+
+export interface GoalOrchestratorSnapshot {
+  goals: Goal[]
+  workItems: WorkItem[]
+  decisions: Decision[]
+  agentRuns: GoalAgentRun[]
+  orchestratorRuns: GoalOrchestratorRun[]
+  activityNotes: GoalActivityNote[]
+  settings: GoalOrchestratorSettings
 }
 
 export interface SidebarSessionGroupConfig {

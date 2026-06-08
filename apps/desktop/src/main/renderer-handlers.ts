@@ -73,6 +73,9 @@ export type RendererHandlers = {
   // Repeat tasks folder change notification
   loopsFolderChanged: () => void
 
+  // Goal orchestrator state changed
+  goalOrchestratorChanged: () => void
+
   // Theme sync across windows
   themeChanged: (themeMode: string) => void
 }

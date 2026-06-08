@@ -32,6 +32,7 @@ interface EditingLoop {
   runOnStartup: boolean
   speakOnTrigger: boolean
   continueInSession: boolean
+  goalOrchestrator: boolean
   lastSessionId?: string
   scheduleMode: ScheduleMode
   scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
@@ -55,6 +56,7 @@ const emptyLoop: EditingLoop = {
   runOnStartup: false,
   speakOnTrigger: false,
   continueInSession: false,
+  goalOrchestrator: false,
   scheduleMode: "interval",
   scheduleTimes: ["09:00"],
   scheduleDaysOfWeek: [1, 2, 3, 4, 5],
@@ -278,6 +280,7 @@ export function SettingsLoops() {
       runOnStartup: loop.runOnStartup ?? false,
       speakOnTrigger: loop.speakOnTrigger ?? false,
       continueInSession: loop.continueInSession ?? false,
+      goalOrchestrator: loop.goalOrchestrator ?? false,
       lastSessionId: loop.lastSessionId,
       scheduleMode,
       scheduleTimes,
@@ -298,7 +301,7 @@ export function SettingsLoops() {
   }
 
   const handleSave = async () => {
-    if (!editing || !editing.name.trim() || !editing.prompt.trim()) {
+    if (!editing || !editing.name.trim() || (!editing.goalOrchestrator && !editing.prompt.trim())) {
       toast.error("Name and prompt are required")
       return
     }
@@ -335,12 +338,13 @@ export function SettingsLoops() {
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
       name: editing.name.trim(),
-      prompt: editing.prompt.trim(),
+      prompt: editing.prompt.trim() || "Run goal orchestrator",
       intervalMinutes: savedIntervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
       speakOnTrigger: editing.speakOnTrigger,
       continueInSession: editing.continueInSession,
+      goalOrchestrator: editing.goalOrchestrator,
       runContinuously: editing.scheduleMode === "continuous",
       ...(editing.continueInSession && editing.lastSessionId
         ? { lastSessionId: editing.lastSessionId }
@@ -440,6 +444,10 @@ export function SettingsLoops() {
                     <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
                       Running
                     </Badge>
+                  ) : loop.goalOrchestrator ? (
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                      Orchestrator
+                    </Badge>
                   ) : !loop.enabled ? (
                     <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
                       Disabled
@@ -501,6 +509,7 @@ export function SettingsLoops() {
               {loop.runOnStartup && <div>Runs on startup</div>}
               {loop.speakOnTrigger && <div>Speaks on trigger</div>}
               {loop.continueInSession && <div>Continues in same session</div>}
+              {loop.goalOrchestrator && <div>Wakes goal orchestrator</div>}
               {typeof nextRunAt === "number" && (
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
               )}
@@ -541,9 +550,19 @@ export function SettingsLoops() {
               id="prompt"
               value={editing.prompt}
               onChange={(e) => setEditing({ ...editing, prompt: e.target.value })}
-              placeholder="Enter the prompt to send to the agent..."
+              placeholder={editing.goalOrchestrator ? "Optional task note" : "Enter the prompt to send to the agent..."}
               rows={4}
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="goalOrchestrator"
+                checked={editing.goalOrchestrator}
+                onCheckedChange={(v) => setEditing({ ...editing, goalOrchestrator: v })}
+              />
+              <Label htmlFor="goalOrchestrator">Wake Goal Orchestrator</Label>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Schedule</Label>

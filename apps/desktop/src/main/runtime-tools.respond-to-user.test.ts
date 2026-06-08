@@ -39,6 +39,8 @@ vi.mock("./conversation-service", () => ({
 }))
 vi.mock("./context-budget", () => ({ readMoreContext: vi.fn() }))
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: vi.fn() }))
+vi.mock("./goal-orchestrator-service", () => ({ goalOrchestratorService: {} }))
+vi.mock("./loop-service", () => ({ loopService: {} }))
 vi.mock("./acp-session-state", () => ({
   getAppSessionForAcpSession: mockGetAppSessionForAcpSession,
   getRootAppSessionForAcpSession: mockGetRootAppSessionForAcpSession,

@@ -9,7 +9,24 @@
  * import from services that might also need access to these definitions.
  */
 
-import { DEFAULT_AGENT_RUNTIME_TOOL_NAMES, RUNTIME_TOOLS_SERVER_NAME } from '../shared/runtime-tool-names'
+import {
+  ANSWER_DECISION_TOOL,
+  CREATE_REPEAT_TASK_TOOL,
+  CREATE_DECISION_TOOL,
+  CREATE_GOAL_TOOL,
+  CREATE_WORK_ITEM_TOOL,
+  DEFAULT_AGENT_RUNTIME_TOOL_NAMES,
+  DISMISS_DECISION_TOOL,
+  GET_REPEAT_TASKS_TOOL,
+  GET_GOAL_ORCHESTRATOR_SNAPSHOT_TOOL,
+  RUN_GOAL_ORCHESTRATOR_TOOL,
+  RUN_REPEAT_TASK_TOOL,
+  RUNTIME_TOOLS_SERVER_NAME,
+  START_GOAL_WORK_ITEM_TOOL,
+  UPDATE_REPEAT_TASK_TOOL,
+  UPDATE_GOAL_TOOL,
+  UPDATE_WORK_ITEM_TOOL,
+} from '../shared/runtime-tool-names'
 import { acpRouterToolDefinitions } from './acp/acp-router-tool-definitions'
 
 export { RUNTIME_TOOLS_SERVER_NAME }
@@ -180,6 +197,285 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
         },
       },
       required: ["contextRef"],
+    },
+  },
+  {
+    name: GET_GOAL_ORCHESTRATOR_SNAPSHOT_TOOL,
+    description:
+      "Read the current Goal Orchestrator state: goals, work items, pending decisions, running sessions, recent runs, activity, and limits. Use before creating or updating items when the user refers to an existing goal/work item by title.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        includeHistory: {
+          type: "boolean",
+          description: "When true, include recent done/discarded work and completed agent runs. Defaults to false for a compact snapshot.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: CREATE_GOAL_TOOL,
+    description:
+      "Create a durable Goal Orchestrator goal from the user's spoken or typed request. Goals are persistent outcomes, not one-off tasks.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Goal title." },
+        notes: { type: "string", description: "Optional durable context for the goal." },
+        status: {
+          type: "string",
+          enum: ["active", "inactive", "done"],
+          description: "Goal status. Defaults to active.",
+        },
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: UPDATE_GOAL_TOOL,
+    description:
+      "Update an existing Goal Orchestrator goal. Use goalId when available; otherwise use an exact goalTitle from the current snapshot.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        goalId: { type: "string", description: "Existing goal id." },
+        goalTitle: { type: "string", description: "Existing goal title to resolve when goalId is unknown." },
+        title: { type: "string", description: "New title." },
+        notes: { type: "string", description: "New notes. Replaces existing notes." },
+        status: {
+          type: "string",
+          enum: ["active", "inactive", "done"],
+          description: "New goal status.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: CREATE_WORK_ITEM_TOOL,
+    description:
+      "Create a concrete work item under a Goal Orchestrator goal. Use this when the user says to add a task/work item/action item to a goal.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        goalId: { type: "string", description: "Existing goal id." },
+        goalTitle: { type: "string", description: "Existing goal title to resolve when goalId is unknown." },
+        title: { type: "string", description: "Work item title." },
+        notes: { type: "string", description: "Optional work-item notes." },
+        status: {
+          type: "string",
+          enum: ["ready", "running", "waiting", "done", "discarded"],
+          description: "Initial work item status. Defaults to ready.",
+        },
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: UPDATE_WORK_ITEM_TOOL,
+    description:
+      "Update an existing Goal Orchestrator work item. Use workItemId when available; otherwise resolve by workItemTitle plus goalId or goalTitle.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workItemId: { type: "string", description: "Existing work item id." },
+        workItemTitle: { type: "string", description: "Existing work item title to resolve when workItemId is unknown." },
+        goalId: { type: "string", description: "Goal id to disambiguate workItemTitle." },
+        goalTitle: { type: "string", description: "Goal title to disambiguate workItemTitle." },
+        title: { type: "string", description: "New work item title." },
+        notes: { type: "string", description: "New notes. Replaces existing notes." },
+        status: {
+          type: "string",
+          enum: ["ready", "running", "waiting", "done", "discarded"],
+          description: "New work-item status.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: CREATE_DECISION_TOOL,
+    description:
+      "Create a pending user decision for a goal or work item when progress needs clarification.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        goalId: { type: "string", description: "Optional linked goal id." },
+        goalTitle: { type: "string", description: "Optional linked goal title." },
+        workItemId: { type: "string", description: "Optional linked work item id." },
+        workItemTitle: { type: "string", description: "Optional linked work item title. Use with goalId or goalTitle when possible." },
+        question: { type: "string", description: "The decision question for the user." },
+      },
+      required: ["question"],
+    },
+  },
+  {
+    name: ANSWER_DECISION_TOOL,
+    description:
+      "Record the user's answer to a pending Goal Orchestrator decision. Answering a linked waiting work item makes it ready again.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        decisionId: { type: "string", description: "Existing decision id." },
+        question: { type: "string", description: "Existing decision question to resolve when decisionId is unknown." },
+        answer: { type: "string", description: "User's answer." },
+      },
+      required: ["answer"],
+    },
+  },
+  {
+    name: DISMISS_DECISION_TOOL,
+    description: "Dismiss a pending Goal Orchestrator decision by id or exact question text.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        decisionId: { type: "string", description: "Existing decision id." },
+        question: { type: "string", description: "Existing decision question to resolve when decisionId is unknown." },
+      },
+      required: [],
+    },
+  },
+  {
+    name: RUN_GOAL_ORCHESTRATOR_TOOL,
+    description:
+      "Wake the Goal Orchestrator immediately. It selects ready work from active goals and starts agent sessions within configured limits.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: START_GOAL_WORK_ITEM_TOOL,
+    description:
+      "Start an agent session for a specific Goal Orchestrator work item. Use workItemId when available; otherwise resolve by workItemTitle plus goalId or goalTitle.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workItemId: { type: "string", description: "Existing work item id." },
+        workItemTitle: { type: "string", description: "Existing work item title to resolve when workItemId is unknown." },
+        goalId: { type: "string", description: "Goal id to disambiguate workItemTitle." },
+        goalTitle: { type: "string", description: "Goal title to disambiguate workItemTitle." },
+      },
+      required: [],
+    },
+  },
+  {
+    name: GET_REPEAT_TASKS_TOOL,
+    description:
+      "List configured DotAgents repeat tasks. Use before creating or updating scheduled automation when the user may already have a matching task.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        includeDisabled: {
+          type: "boolean",
+          description: "When true, include disabled repeat tasks. Defaults to true.",
+        },
+        includePrompt: {
+          type: "boolean",
+          description: "When true, include the full task prompt. Defaults to false for compact output.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: CREATE_REPEAT_TASK_TOOL,
+    description:
+      "Create a durable scheduled repeat task. Use this for spoken requests like scheduling a weekly orchestrator wake-up, recurring content planning, or running a task on a fixed cadence. For Goal Orchestrator scheduling, set goalOrchestrator=true; repeat tasks are the scheduler that wakes orchestration.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Display name for the repeat task." },
+        prompt: {
+          type: "string",
+          description: "Prompt to run for normal repeat tasks. Optional when goalOrchestrator=true; then it defaults to 'Run goal orchestrator'.",
+        },
+        intervalMinutes: {
+          type: "number",
+          description: "Fallback interval in minutes when no wall-clock schedule is set. Defaults to 60 and must be >= 1.",
+        },
+        enabled: { type: "boolean", description: "Whether the repeat task is active. Defaults to true." },
+        profileId: { type: "string", description: "Optional agent profile id to run the task as." },
+        runOnStartup: { type: "boolean", description: "Run immediately when the app starts." },
+        speakOnTrigger: { type: "boolean", description: "Speak/show the result when the task completes." },
+        continueInSession: { type: "boolean", description: "Reuse the previous task session for stateful recurring work." },
+        runContinuously: {
+          type: "boolean",
+          description: "Run back-to-back after completion. Do not combine with schedule.",
+        },
+        goalOrchestrator: {
+          type: "boolean",
+          description: "When true, this repeat task wakes the Goal Orchestrator instead of sending a prompt to a normal agent session.",
+        },
+        maxIterations: {
+          type: "number",
+          description: "Optional max agent-loop iterations for this task or orchestrator wake. Must be an integer >= 1.",
+        },
+        schedule: {
+          type: "object",
+          description: "Optional wall-clock schedule. Daily uses times. Weekly uses times plus daysOfWeek where 0=Sunday and 6=Saturday.",
+          properties: {
+            type: { type: "string", enum: ["daily", "weekly"] },
+            times: { type: "array", items: { type: "string" }, description: "HH:MM 24-hour local times." },
+            daysOfWeek: { type: "array", items: { type: "number" }, description: "Weekly days, 0=Sunday through 6=Saturday." },
+          },
+          required: ["type", "times"],
+        },
+        runNow: {
+          type: "boolean",
+          description: "When true, trigger the task immediately after creating it if it is enabled.",
+        },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: UPDATE_REPEAT_TASK_TOOL,
+    description:
+      "Update an existing DotAgents repeat task. Use repeatTaskId when available; otherwise resolve by exact repeatTaskName from get_repeat_tasks.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        repeatTaskId: { type: "string", description: "Existing repeat task id." },
+        repeatTaskName: { type: "string", description: "Existing repeat task name to resolve when id is unknown." },
+        name: { type: "string", description: "New display name." },
+        prompt: { type: "string", description: "New prompt. Replaces existing prompt." },
+        intervalMinutes: { type: "number", description: "New fallback interval in minutes. Must be >= 1." },
+        enabled: { type: "boolean", description: "Enable or disable the task." },
+        profileId: { type: "string", description: "Set or change the agent profile id. Empty string clears it." },
+        runOnStartup: { type: "boolean", description: "Set run-on-startup behavior." },
+        speakOnTrigger: { type: "boolean", description: "Set speak/show-on-completion behavior." },
+        continueInSession: { type: "boolean", description: "Set same-session continuation behavior." },
+        runContinuously: { type: "boolean", description: "Set back-to-back continuous execution. Clears schedule when true." },
+        goalOrchestrator: { type: "boolean", description: "Set whether this task wakes the Goal Orchestrator." },
+        maxIterations: { type: "number", description: "Set max iterations, or pass null to clear." },
+        schedule: {
+          type: "object",
+          description: "Set wall-clock schedule, or pass null to clear. Weekly uses daysOfWeek where 0=Sunday and 6=Saturday.",
+          properties: {
+            type: { type: "string", enum: ["daily", "weekly"] },
+            times: { type: "array", items: { type: "string" } },
+            daysOfWeek: { type: "array", items: { type: "number" } },
+          },
+          required: ["type", "times"],
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: RUN_REPEAT_TASK_TOOL,
+    description:
+      "Trigger an existing repeat task immediately. Use repeatTaskId when available; otherwise resolve by exact repeatTaskName.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        repeatTaskId: { type: "string", description: "Existing repeat task id." },
+        repeatTaskName: { type: "string", description: "Existing repeat task name to resolve when id is unknown." },
+      },
+      required: [],
     },
   },
 ]

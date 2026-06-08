@@ -17,10 +17,29 @@ import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
 import { getRootAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
+import { goalOrchestratorService } from "./goal-orchestrator-service"
+import { loopService } from "./loop-service"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
+import type { Decision, Goal, GoalOrchestratorSnapshot, GoalStatus, LoopConfig, LoopSchedule, WorkItem, WorkItemStatus } from "../shared/types"
+import {
+  ANSWER_DECISION_TOOL,
+  CREATE_DECISION_TOOL,
+  CREATE_GOAL_TOOL,
+  CREATE_REPEAT_TASK_TOOL,
+  CREATE_WORK_ITEM_TOOL,
+  DISMISS_DECISION_TOOL,
+  GET_GOAL_ORCHESTRATOR_SNAPSHOT_TOOL,
+  GET_REPEAT_TASKS_TOOL,
+  RUN_GOAL_ORCHESTRATOR_TOOL,
+  RUN_REPEAT_TASK_TOOL,
+  START_GOAL_WORK_ITEM_TOOL,
+  UPDATE_GOAL_TOOL,
+  UPDATE_REPEAT_TASK_TOOL,
+  UPDATE_WORK_ITEM_TOOL,
+} from "../shared/runtime-tool-names"
 
 const execAsync = promisify(exec)
 
@@ -412,6 +431,368 @@ async function resolveValidVideoPath(rawPath: string): Promise<{ resolvedPath: s
   return { resolvedPath, fileBytes: stat.size }
 }
 
+function toolJson(payload: unknown, isError = false): MCPToolResult {
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    isError,
+  }
+}
+
+function getStringArg(args: Record<string, unknown>, key: string): string | undefined {
+  const value = args[key]
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  return trimmed || undefined
+}
+
+function normalizeLookupText(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase()
+}
+
+function getSnapshotForRuntimeTool(): GoalOrchestratorSnapshot {
+  return goalOrchestratorService.getSnapshot()
+}
+
+function compactGoal(goal: Goal) {
+  return {
+    id: goal.id,
+    title: goal.title,
+    status: goal.status,
+    notes: goal.notes,
+    createdAt: goal.createdAt,
+    updatedAt: goal.updatedAt,
+  }
+}
+
+function compactWorkItem(workItem: WorkItem) {
+  return {
+    id: workItem.id,
+    goalId: workItem.goalId,
+    title: workItem.title,
+    status: workItem.status,
+    notes: workItem.notes,
+    createdAt: workItem.createdAt,
+    updatedAt: workItem.updatedAt,
+  }
+}
+
+function compactDecision(decision: Decision) {
+  return {
+    id: decision.id,
+    goalId: decision.goalId,
+    workItemId: decision.workItemId,
+    question: decision.question,
+    status: decision.status,
+    answer: decision.answer,
+    createdAt: decision.createdAt,
+    updatedAt: decision.updatedAt,
+  }
+}
+
+function buildCompactGoalSnapshot(snapshot: GoalOrchestratorSnapshot, includeHistory: boolean) {
+  const historyStatuses = new Set<WorkItemStatus>(["done", "discarded"])
+  return {
+    goals: snapshot.goals.map(compactGoal),
+    workItems: snapshot.workItems
+      .filter((workItem) => includeHistory || !historyStatuses.has(workItem.status))
+      .map(compactWorkItem),
+    decisions: snapshot.decisions
+      .filter((decision) => includeHistory || decision.status === "pending")
+      .map(compactDecision),
+    agentRuns: snapshot.agentRuns
+      .filter((run) => includeHistory || run.status === "running")
+      .map((run) => ({
+        id: run.id,
+        goalId: run.goalId,
+        workItemId: run.workItemId,
+        sessionId: run.sessionId,
+        conversationId: run.conversationId,
+        status: run.status,
+        summary: run.summary,
+        createdAt: run.createdAt,
+        updatedAt: run.updatedAt,
+      })),
+    settings: snapshot.settings,
+    recentActivity: snapshot.activityNotes.slice(0, includeHistory ? 20 : 8),
+  }
+}
+
+function resolveGoalIdFromArgs(args: Record<string, unknown>, snapshot: GoalOrchestratorSnapshot): string | undefined {
+  const goalId = getStringArg(args, "goalId")
+  if (goalId) return goalId
+
+  const goalTitle = getStringArg(args, "goalTitle")
+  if (!goalTitle) return undefined
+
+  const normalizedTitle = normalizeLookupText(goalTitle)
+  const matches = snapshot.goals.filter((goal) => normalizeLookupText(goal.title) === normalizedTitle)
+  if (matches.length !== 1) {
+    throw new Error(matches.length === 0
+      ? `No goal found with title "${goalTitle}"`
+      : `Multiple goals found with title "${goalTitle}"; use goalId`)
+  }
+  return matches[0].id
+}
+
+function resolveWorkItemIdFromArgs(args: Record<string, unknown>, snapshot: GoalOrchestratorSnapshot): string | undefined {
+  const workItemId = getStringArg(args, "workItemId")
+  if (workItemId) return workItemId
+
+  const workItemTitle = getStringArg(args, "workItemTitle")
+  if (!workItemTitle) return undefined
+
+  const normalizedTitle = normalizeLookupText(workItemTitle)
+  const goalId = resolveGoalIdFromArgs(args, snapshot)
+  const matches = snapshot.workItems.filter((workItem) =>
+    normalizeLookupText(workItem.title) === normalizedTitle &&
+    (!goalId || workItem.goalId === goalId),
+  )
+
+  if (matches.length !== 1) {
+    throw new Error(matches.length === 0
+      ? `No work item found with title "${workItemTitle}"`
+      : `Multiple work items found with title "${workItemTitle}"; use workItemId or disambiguate by goal`)
+  }
+
+  return matches[0].id
+}
+
+function resolveDecisionIdFromArgs(args: Record<string, unknown>, snapshot: GoalOrchestratorSnapshot): string | undefined {
+  const decisionId = getStringArg(args, "decisionId")
+  if (decisionId) return decisionId
+
+  const question = getStringArg(args, "question")
+  if (!question) return undefined
+
+  const normalizedQuestion = normalizeLookupText(question)
+  const matches = snapshot.decisions.filter((decision) =>
+    decision.status === "pending" &&
+    normalizeLookupText(decision.question) === normalizedQuestion,
+  )
+
+  if (matches.length !== 1) {
+    throw new Error(matches.length === 0
+      ? `No pending decision found with question "${question}"`
+      : `Multiple pending decisions found with question "${question}"; use decisionId`)
+  }
+
+  return matches[0].id
+}
+
+function parseGoalStatus(value: unknown): GoalStatus | undefined {
+  if (value === undefined) return undefined
+  if (value === "active" || value === "inactive" || value === "done") return value
+  throw new Error("status must be one of: active, inactive, done")
+}
+
+function parseWorkItemStatus(value: unknown): WorkItemStatus | undefined {
+  if (value === undefined) return undefined
+  if (
+    value === "ready" ||
+    value === "running" ||
+    value === "waiting" ||
+    value === "done" ||
+    value === "discarded"
+  ) {
+    return value
+  }
+  throw new Error("status must be one of: ready, running, waiting, done, discarded")
+}
+
+const LOOP_TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/
+const DAY_NAME_TO_INDEX: Record<string, number> = {
+  sunday: 0,
+  sun: 0,
+  monday: 1,
+  mon: 1,
+  tuesday: 2,
+  tue: 2,
+  tues: 2,
+  wednesday: 3,
+  wed: 3,
+  thursday: 4,
+  thu: 4,
+  thurs: 4,
+  friday: 5,
+  fri: 5,
+  saturday: 6,
+  sat: 6,
+}
+
+function hasOwnArg(args: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(args, key)
+}
+
+function parseBooleanArg(args: Record<string, unknown>, key: string): boolean | undefined {
+  if (!hasOwnArg(args, key)) return undefined
+  const value = args[key]
+  if (typeof value !== "boolean") {
+    throw new Error(`${key} must be a boolean when provided`)
+  }
+  return value
+}
+
+function parsePositiveIntegerArg(value: unknown, fieldName: string): number | undefined {
+  if (value === undefined) return undefined
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
+    value < 1
+  ) {
+    throw new Error(`${fieldName} must be a finite integer >= 1 when provided`)
+  }
+  return value
+}
+
+function parseNullablePositiveIntegerArg(value: unknown, fieldName: string): number | null | undefined {
+  if (value === null) return null
+  return parsePositiveIntegerArg(value, fieldName)
+}
+
+function parseOptionalProfileId(value: unknown): string | undefined {
+  if (value === undefined) return undefined
+  if (value === null) return ""
+  if (typeof value !== "string") {
+    throw new Error("profileId must be a string or null when provided")
+  }
+  return value.trim()
+}
+
+function parseScheduleTimeList(raw: unknown): string[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new Error("schedule.times must be a non-empty array")
+  }
+
+  const times: string[] = []
+  for (const value of raw) {
+    if (typeof value !== "string" || !LOOP_TIME_RE.test(value.trim())) {
+      throw new Error("schedule.times must all be HH:MM 24-hour strings")
+    }
+    const time = value.trim()
+    if (!times.includes(time)) times.push(time)
+  }
+
+  times.sort()
+  return times
+}
+
+function parseScheduleDay(value: unknown): number {
+  if (typeof value === "number") {
+    if (Number.isInteger(value) && value >= 0 && value <= 6) return value
+    throw new Error("schedule.daysOfWeek values must be integers 0..6")
+  }
+
+  if (typeof value === "string") {
+    const normalized = normalizeLookupText(value)
+    const day = DAY_NAME_TO_INDEX[normalized]
+    if (day !== undefined) return day
+  }
+
+  throw new Error("schedule.daysOfWeek values must be integers 0..6 or weekday names")
+}
+
+function parseScheduleDayList(raw: unknown): number[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new Error("schedule.daysOfWeek must be a non-empty array for weekly schedules")
+  }
+
+  const daysOfWeek: number[] = []
+  for (const value of raw) {
+    const day = parseScheduleDay(value)
+    if (!daysOfWeek.includes(day)) daysOfWeek.push(day)
+  }
+
+  daysOfWeek.sort((a, b) => a - b)
+  return daysOfWeek
+}
+
+function parseLoopScheduleInput(raw: unknown): LoopSchedule | null | undefined {
+  if (raw === undefined) return undefined
+  if (raw === null) return null
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("schedule must be an object, null, or omitted")
+  }
+
+  const obj = raw as Record<string, unknown>
+  if (obj.type !== "daily" && obj.type !== "weekly") {
+    throw new Error("schedule.type must be 'daily' or 'weekly'")
+  }
+
+  const times = parseScheduleTimeList(obj.times)
+  if (obj.type === "daily") {
+    return { type: "daily", times }
+  }
+
+  const rawDays = obj.daysOfWeek ?? obj.days ?? obj.dayOfWeek
+  return {
+    type: "weekly",
+    times,
+    daysOfWeek: parseScheduleDayList(Array.isArray(rawDays) || rawDays === undefined ? rawDays : [rawDays]),
+  }
+}
+
+function compactRepeatTask(loop: LoopConfig, includePrompt: boolean) {
+  const status = loopService.getLoopStatus(loop.id)
+  const prompt = loop.prompt || ""
+  return {
+    id: loop.id,
+    name: loop.name,
+    enabled: loop.enabled,
+    goalOrchestrator: loop.goalOrchestrator,
+    intervalMinutes: loop.intervalMinutes,
+    schedule: loop.schedule,
+    runOnStartup: loop.runOnStartup,
+    speakOnTrigger: loop.speakOnTrigger,
+    continueInSession: loop.continueInSession,
+    runContinuously: loop.runContinuously,
+    maxIterations: loop.maxIterations,
+    profileId: loop.profileId,
+    lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
+    isRunning: status?.isRunning ?? false,
+    nextRunAt: status?.nextRunAt,
+    ...(includePrompt
+      ? { prompt }
+      : { promptExcerpt: prompt.length > 240 ? `${prompt.slice(0, 237)}...` : prompt }),
+  }
+}
+
+function resolveRepeatTaskIdFromArgs(args: Record<string, unknown>): string | undefined {
+  const repeatTaskId = getStringArg(args, "repeatTaskId")
+  if (repeatTaskId) return repeatTaskId
+
+  const repeatTaskName = getStringArg(args, "repeatTaskName")
+  if (!repeatTaskName) return undefined
+
+  const normalizedName = normalizeLookupText(repeatTaskName)
+  const matches = loopService.getLoops().filter((loop) => normalizeLookupText(loop.name) === normalizedName)
+  if (matches.length !== 1) {
+    throw new Error(matches.length === 0
+      ? `No repeat task found with name "${repeatTaskName}"`
+      : `Multiple repeat tasks found with name "${repeatTaskName}"; use repeatTaskId`)
+  }
+
+  return matches[0].id
+}
+
+function createRepeatTaskId(): string {
+  return `loop_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+}
+
+function saveAndRestartRepeatTask(loop: LoopConfig): MCPToolResult | null {
+  const saved = loopService.saveLoop(loop)
+  if (!saved) {
+    return toolJson({ success: false, error: "Failed to persist repeat task" }, true)
+  }
+
+  loopService.stopLoop(loop.id)
+  if (loop.enabled) {
+    loopService.startLoop(loop.id)
+  }
+
+  return null
+}
+
 // Tool execution handlers
 type ToolHandler = (
   args: Record<string, unknown>,
@@ -419,6 +800,318 @@ type ToolHandler = (
 ) => Promise<MCPToolResult>
 
 const toolHandlers: Record<string, ToolHandler> = {
+  [GET_GOAL_ORCHESTRATOR_SNAPSHOT_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const snapshot = getSnapshotForRuntimeTool()
+    const includeHistory = args.includeHistory === true
+    return toolJson({
+      success: true,
+      ...buildCompactGoalSnapshot(snapshot, includeHistory),
+    })
+  },
+
+  [CREATE_GOAL_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const title = getStringArg(args, "title")
+    if (!title) {
+      return toolJson({ success: false, error: "title must be a non-empty string" }, true)
+    }
+
+    const goal = goalOrchestratorService.createGoal({
+      title,
+      notes: getStringArg(args, "notes"),
+      status: parseGoalStatus(args.status),
+    })
+
+    return toolJson({ success: true, goal: compactGoal(goal) })
+  },
+
+  [UPDATE_GOAL_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const snapshot = getSnapshotForRuntimeTool()
+    const goalId = resolveGoalIdFromArgs(args, snapshot)
+    if (!goalId) {
+      return toolJson({ success: false, error: "goalId or goalTitle is required" }, true)
+    }
+
+    const goal = goalOrchestratorService.updateGoal({
+      goalId,
+      title: getStringArg(args, "title"),
+      notes: getStringArg(args, "notes"),
+      status: parseGoalStatus(args.status),
+    })
+
+    return toolJson({ success: true, goal: compactGoal(goal) })
+  },
+
+  [CREATE_WORK_ITEM_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const title = getStringArg(args, "title")
+    if (!title) {
+      return toolJson({ success: false, error: "title must be a non-empty string" }, true)
+    }
+
+    const snapshot = getSnapshotForRuntimeTool()
+    const goalId = resolveGoalIdFromArgs(args, snapshot)
+    if (!goalId) {
+      return toolJson({ success: false, error: "goalId or goalTitle is required" }, true)
+    }
+
+    const workItem = goalOrchestratorService.createWorkItem({
+      goalId,
+      title,
+      notes: getStringArg(args, "notes"),
+      status: parseWorkItemStatus(args.status),
+    })
+
+    return toolJson({ success: true, workItem: compactWorkItem(workItem) })
+  },
+
+  [UPDATE_WORK_ITEM_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const snapshot = getSnapshotForRuntimeTool()
+    const workItemId = resolveWorkItemIdFromArgs(args, snapshot)
+    if (!workItemId) {
+      return toolJson({ success: false, error: "workItemId or workItemTitle is required" }, true)
+    }
+
+    const workItem = goalOrchestratorService.updateWorkItem({
+      workItemId,
+      title: getStringArg(args, "title"),
+      notes: getStringArg(args, "notes"),
+      status: parseWorkItemStatus(args.status),
+    })
+
+    return toolJson({ success: true, workItem: compactWorkItem(workItem) })
+  },
+
+  [CREATE_DECISION_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const question = getStringArg(args, "question")
+    if (!question) {
+      return toolJson({ success: false, error: "question must be a non-empty string" }, true)
+    }
+
+    const snapshot = getSnapshotForRuntimeTool()
+    const workItemId = resolveWorkItemIdFromArgs(args, snapshot)
+    const goalId = workItemId
+      ? snapshot.workItems.find((workItem) => workItem.id === workItemId)?.goalId
+      : resolveGoalIdFromArgs(args, snapshot)
+
+    const decision = goalOrchestratorService.createDecision({
+      goalId,
+      workItemId,
+      question,
+    })
+
+    return toolJson({ success: true, decision: compactDecision(decision) })
+  },
+
+  [ANSWER_DECISION_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const answer = getStringArg(args, "answer")
+    if (!answer) {
+      return toolJson({ success: false, error: "answer must be a non-empty string" }, true)
+    }
+
+    const snapshot = getSnapshotForRuntimeTool()
+    const decisionId = resolveDecisionIdFromArgs(args, snapshot)
+    if (!decisionId) {
+      return toolJson({ success: false, error: "decisionId or question is required" }, true)
+    }
+
+    const decision = goalOrchestratorService.answerDecision({ decisionId, answer })
+    return toolJson({ success: true, decision: compactDecision(decision) })
+  },
+
+  [DISMISS_DECISION_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const snapshot = getSnapshotForRuntimeTool()
+    const decisionId = resolveDecisionIdFromArgs(args, snapshot)
+    if (!decisionId) {
+      return toolJson({ success: false, error: "decisionId or question is required" }, true)
+    }
+
+    const decision = goalOrchestratorService.dismissDecision({ decisionId })
+    return toolJson({ success: true, decision: compactDecision(decision) })
+  },
+
+  [RUN_GOAL_ORCHESTRATOR_TOOL]: async (): Promise<MCPToolResult> => {
+    const run = await goalOrchestratorService.runWakeCycle()
+    return toolJson({ success: true, orchestratorRun: run })
+  },
+
+  [START_GOAL_WORK_ITEM_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const snapshot = getSnapshotForRuntimeTool()
+    const workItemId = resolveWorkItemIdFromArgs(args, snapshot)
+    if (!workItemId) {
+      return toolJson({ success: false, error: "workItemId or workItemTitle is required" }, true)
+    }
+
+    const agentRun = await goalOrchestratorService.startWorkItemAgentSession(workItemId, {
+      reason: "manual",
+    })
+    return toolJson({ success: true, agentRun })
+  },
+
+  [GET_REPEAT_TASKS_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const includeDisabled = args.includeDisabled !== false
+    const includePrompt = args.includePrompt === true
+    const repeatTasks = loopService.getLoops()
+      .filter((loop) => includeDisabled || loop.enabled)
+      .map((loop) => compactRepeatTask(loop, includePrompt))
+
+    return toolJson({ success: true, repeatTasks })
+  },
+
+  [CREATE_REPEAT_TASK_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const name = getStringArg(args, "name")
+    if (!name) {
+      return toolJson({ success: false, error: "name must be a non-empty string" }, true)
+    }
+
+    const goalOrchestrator = parseBooleanArg(args, "goalOrchestrator") === true
+    const prompt = typeof args.prompt === "string" ? args.prompt.trim() : undefined
+    if (!goalOrchestrator && !prompt) {
+      return toolJson({ success: false, error: "prompt is required for non-orchestrator repeat tasks" }, true)
+    }
+
+    const intervalMinutes = parsePositiveIntegerArg(args.intervalMinutes, "intervalMinutes") ?? 60
+    const enabled = parseBooleanArg(args, "enabled") ?? true
+    const runOnStartup = parseBooleanArg(args, "runOnStartup") === true
+    const speakOnTrigger = parseBooleanArg(args, "speakOnTrigger") === true
+    const continueInSession = parseBooleanArg(args, "continueInSession") === true
+    const runContinuously = parseBooleanArg(args, "runContinuously") === true
+    const maxIterations = parsePositiveIntegerArg(args.maxIterations, "maxIterations")
+    const schedule = parseLoopScheduleInput(args.schedule)
+    const profileId = parseOptionalProfileId(args.profileId)
+    const requestedRunNow = parseBooleanArg(args, "runNow") === true
+
+    const loop: LoopConfig = {
+      id: createRepeatTaskId(),
+      name,
+      prompt: prompt || "Run goal orchestrator",
+      intervalMinutes,
+      enabled,
+      profileId: profileId || undefined,
+      runOnStartup,
+      speakOnTrigger,
+      continueInSession,
+      runContinuously,
+      goalOrchestrator,
+      ...(typeof maxIterations === "number" ? { maxIterations } : {}),
+      ...(!runContinuously && schedule && schedule !== null ? { schedule } : {}),
+    }
+
+    const saveError = saveAndRestartRepeatTask(loop)
+    if (saveError) return saveError
+
+    let triggered: Awaited<ReturnType<typeof loopService.triggerLoop>> | undefined
+    if (requestedRunNow && loop.enabled && !loop.runContinuously && !loop.runOnStartup) {
+      triggered = await loopService.triggerLoop(loop.id)
+    }
+
+    return toolJson({
+      success: true,
+      repeatTask: compactRepeatTask(loopService.getLoop(loop.id) ?? loop, true),
+      ...(requestedRunNow ? {
+        runNow: triggered
+          ? { success: true, ...triggered }
+          : { success: false, message: loop.runContinuously || loop.runOnStartup ? "Task is already scheduled to run immediately." : "Task could not be triggered immediately." },
+      } : {}),
+    })
+  },
+
+  [UPDATE_REPEAT_TASK_TOOL]: async (args: Record<string, unknown>): Promise<MCPToolResult> => {
+    const repeatTaskId = resolveRepeatTaskIdFromArgs(args)
+    if (!repeatTaskId) {
+      return toolJson({ success: false, error: "repeatTaskId or repeatTaskName is required" }, true)
+    }
+
+    const existing = loopService.getLoop(repeatTaskId)
+    if (!existing) {
+      return toolJson({ success: false, error: `Repeat task not found: ${repeatTaskId}` }, true)
+    }
+
+    const name = hasOwnArg(args, "name") ? getStringArg(args, "name") : undefined
+    if (hasOwnArg(args, "name") && !name) {
+      return toolJson({ success: false, error: "name must be a non-empty string when provided" }, true)
+    }
+    if (hasOwnArg(args, "prompt") && typeof args.prompt !== "string") {
+      return toolJson({ success: false, error: "prompt must be a string when provided" }, true)
+    }
+
+    const prompt = hasOwnArg(args, "prompt") ? (args.prompt as string).trim() : undefined
+    const intervalMinutes = parsePositiveIntegerArg(args.intervalMinutes, "intervalMinutes")
+    const enabled = parseBooleanArg(args, "enabled")
+    const runOnStartup = parseBooleanArg(args, "runOnStartup")
+    const speakOnTrigger = parseBooleanArg(args, "speakOnTrigger")
+    const continueInSession = parseBooleanArg(args, "continueInSession")
+    const runContinuously = parseBooleanArg(args, "runContinuously")
+    const goalOrchestrator = parseBooleanArg(args, "goalOrchestrator")
+    const maxIterations = parseNullablePositiveIntegerArg(args.maxIterations, "maxIterations")
+    const schedule = parseLoopScheduleInput(args.schedule)
+    const profileId = hasOwnArg(args, "profileId") ? parseOptionalProfileId(args.profileId) : undefined
+
+    const updated: LoopConfig = {
+      ...existing,
+      ...(name !== undefined ? { name } : {}),
+      ...(prompt !== undefined ? { prompt } : {}),
+      ...(intervalMinutes !== undefined ? { intervalMinutes } : {}),
+      ...(enabled !== undefined ? { enabled } : {}),
+      ...(hasOwnArg(args, "profileId") ? { profileId: profileId || undefined } : {}),
+      ...(runOnStartup !== undefined ? { runOnStartup } : {}),
+      ...(speakOnTrigger !== undefined ? { speakOnTrigger } : {}),
+      ...(continueInSession !== undefined ? { continueInSession } : {}),
+      ...(runContinuously !== undefined ? { runContinuously } : {}),
+      ...(goalOrchestrator !== undefined ? { goalOrchestrator } : {}),
+      ...(typeof maxIterations === "number" ? { maxIterations } : {}),
+    }
+
+    if (maxIterations === null) {
+      delete updated.maxIterations
+    }
+    if (continueInSession === false || updated.continueInSession === false) {
+      delete updated.lastSessionId
+    }
+    if (updated.runContinuously) {
+      delete updated.schedule
+    } else if (schedule === null) {
+      delete updated.schedule
+    } else if (schedule !== undefined) {
+      updated.schedule = schedule
+      updated.runContinuously = false
+    }
+    if (!updated.goalOrchestrator && !updated.prompt.trim()) {
+      return toolJson({ success: false, error: "prompt cannot be empty unless goalOrchestrator is true" }, true)
+    }
+    if (updated.goalOrchestrator && !updated.prompt.trim()) {
+      updated.prompt = "Run goal orchestrator"
+    }
+
+    const saveError = saveAndRestartRepeatTask(updated)
+    if (saveError) return saveError
+
+    return toolJson({ success: true, repeatTask: compactRepeatTask(loopService.getLoop(repeatTaskId) ?? updated, true) })
+  },
+
+  [RUN_REPEAT_TASK_TOOL]: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
+    const repeatTaskId = resolveRepeatTaskIdFromArgs(args)
+    if (!repeatTaskId) {
+      return toolJson({ success: false, error: "repeatTaskId or repeatTaskName is required" }, true)
+    }
+
+    const loop = loopService.getLoop(repeatTaskId)
+    if (!loop) {
+      return toolJson({ success: false, error: `Repeat task not found: ${repeatTaskId}` }, true)
+    }
+
+    const triggered = await loopService.triggerLoop(repeatTaskId, {
+      clientSessionId: context.sessionId,
+    })
+    if (!triggered) {
+      return toolJson({ success: false, error: "Repeat task is already running or could not be triggered" }, true)
+    }
+
+    return toolJson({
+      success: true,
+      repeatTask: compactRepeatTask(loopService.getLoop(repeatTaskId) ?? loop, false),
+      run: triggered,
+    })
+  },
+
   respond_to_user: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
     if (!context.sessionId) {
       return {
@@ -792,8 +1485,9 @@ const toolHandlers: Record<string, ToolHandler> = {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
       const parentSessionId = mappedAppSessionId
       const runId = agentSessionStateManager.getSessionRunId(trackedSessionId)
-      const isSessionComplete = session.status === "completed" || session.status === "error" || session.status === "stopped"
-      const conversationState = session.status === "completed"
+      const sessionStatus = session?.status
+      const isSessionComplete = sessionStatus === "completed" || sessionStatus === "error" || sessionStatus === "stopped"
+      const conversationState = sessionStatus === "completed"
         ? "complete"
         : isSessionComplete
           ? "blocked"

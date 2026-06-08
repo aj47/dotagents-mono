@@ -415,6 +415,14 @@ class LoopService {
       loop.lastRunAt = Date.now()
       this.saveTask(loop)
 
+      if (loop.goalOrchestrator) {
+        const { goalOrchestratorService } = await import("./goal-orchestrator-service")
+        await goalOrchestratorService.runWakeCycle({
+          maxIterationsOverride: loop.maxIterations,
+        })
+        return { loopId }
+      }
+
       let profileSnapshot: SessionProfileSnapshot | undefined
       if (loop.profileId) {
         const profile = agentProfileService.getById(loop.profileId)
