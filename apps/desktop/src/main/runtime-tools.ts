@@ -1254,6 +1254,14 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    const contextText = typeof args.context === "string" ? args.context.trim() : ""
+    if (!contextText) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "context must summarize the current state, relevant artifacts/evidence, and why user input is needed" }) }],
+        isError: true,
+      }
+    }
+
     if (!Array.isArray(args.choices) || args.choices.length < 2 || args.choices.length > 3) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "choices must contain 2 or 3 choice objects" }) }],
@@ -1266,18 +1274,24 @@ const toolHandlers: Record<string, ToolHandler> = {
       const raw = item as Record<string, unknown>
       const label = typeof raw.label === "string" ? raw.label.trim() : ""
       if (!label) return []
+      const description = typeof raw.description === "string" ? raw.description.trim() : ""
       return [{
         id: typeof raw.id === "string" && raw.id.trim() ? raw.id.trim() : `choice-${index + 1}`,
         label,
-        ...(typeof raw.description === "string" && raw.description.trim()
-          ? { description: raw.description.trim() }
-          : {}),
+        ...(description ? { description } : {}),
       }]
     })
 
     if (choices.length < 2) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "at least two choices must include non-empty labels" }) }],
+        isError: true,
+      }
+    }
+
+    if (choices.some((choice) => !choice.description?.trim())) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "each choice needs a one-sentence description explaining the impact/tradeoff for the user" }) }],
         isError: true,
       }
     }
@@ -1322,6 +1336,9 @@ const toolHandlers: Record<string, ToolHandler> = {
       conversationId,
       sourceMessageIndex,
       prompt,
+      context: contextText,
+      recommendation: typeof args.recommendation === "string" ? args.recommendation.trim() : undefined,
+      customAnswerPlaceholder: typeof args.customAnswerPlaceholder === "string" ? args.customAnswerPlaceholder.trim() : undefined,
       choices,
       allowCustom: args.allowCustom !== false,
       reason,

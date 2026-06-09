@@ -23,4 +23,12 @@ describe("always-on session runtime context resolution", () => {
     expect(serviceSource).toContain("record.logCount = 0")
     expect(serviceSource).toContain("record.questions = []")
   })
+
+  it("stores decision context for queued always-on questions", () => {
+    expect(serviceSource).toContain("context?: string")
+    expect(serviceSource).toContain("recommendation?: string")
+    expect(serviceSource).toContain("customAnswerPlaceholder?: string")
+    expect(serviceSource).toContain("Context: ${question.context}")
+    expect(serviceSource).toContain("Recommendation: ${question.recommendation}")
+  })
 })

@@ -64,6 +64,9 @@ type AskQuestionInput = {
   conversationId?: string
   sourceMessageIndex?: number
   prompt: string
+  context?: string
+  recommendation?: string
+  customAnswerPlaceholder?: string
   choices: AlwaysOnQuestionChoice[]
   allowCustom?: boolean
   reason?: "question" | "blocker"
@@ -717,7 +720,7 @@ class AlwaysOnSessionService {
       "- Do not add a duplicate evidence log after an artifact unless it records a distinct decision, verification result, or next branch.",
       "- When a workstream has an operator-ready, ready-to-record, ready-for-handoff, or ready-for-human-action artifact, stop prepping that workstream. Switch to another workstream, ask the user, or only fix a concrete QC defect.",
       "- Post-ready polish is not useful work: do not keep linking docs, refreshing handoffs, routing pointers, or doing extra QC unless a specific defect was found and named.",
-      "- When you need user input, call ask_always_on_question with 2-3 choices. Keep allowCustom true unless custom answers would be unsafe.",
+      "- When you need user input, call ask_always_on_question with a specific decision prompt, a context summary that includes the relevant artifacts/evidence, 2-3 choices with visible impact descriptions, and a recommendation when one option is safest.",
       "- Do not log questions manually; ask_always_on_question creates the durable question log entry.",
       "- After asking a question, continue with a different independent action. Do not wait idle for the answer.",
       "- When answered questions appear in the conversation, use them to continue the branch they unlock.",
@@ -943,6 +946,9 @@ class AlwaysOnSessionService {
       ...(input.conversationId ? { conversationId: input.conversationId } : {}),
       ...(typeof input.sourceMessageIndex === "number" ? { sourceMessageIndex: input.sourceMessageIndex } : {}),
       prompt: input.prompt.trim(),
+      ...(input.context?.trim() ? { context: input.context.trim() } : {}),
+      ...(input.recommendation?.trim() ? { recommendation: input.recommendation.trim() } : {}),
+      ...(input.customAnswerPlaceholder?.trim() ? { customAnswerPlaceholder: input.customAnswerPlaceholder.trim() } : {}),
       choices,
       allowCustom: input.allowCustom !== false,
       ...(input.reason ? { reason: input.reason } : {}),
@@ -959,7 +965,11 @@ class AlwaysOnSessionService {
       conversationId: input.conversationId,
       kind: "question",
       title: input.reason === "blocker" ? "Blocker question queued" : "Question queued",
-      details: question.prompt,
+      details: [
+        question.prompt,
+        question.context ? `Context: ${question.context}` : null,
+        question.recommendation ? `Recommendation: ${question.recommendation}` : null,
+      ].filter(Boolean).join("\n\n"),
     })
     notifyAlwaysOnSessionsChanged()
     return question

@@ -1162,6 +1162,9 @@ export interface AlwaysOnQuestion {
   branchConversationId?: string
   sourceMessageIndex?: number
   prompt: string
+  context?: string
+  recommendation?: string
+  customAnswerPlaceholder?: string
   choices: AlwaysOnQuestionChoice[]
   allowCustom: boolean
   reason?: "question" | "blocker"

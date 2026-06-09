@@ -69,4 +69,16 @@ describe("tipc always-on lifecycle controls", () => {
     expect(resetSection).toContain("lastSessionId: undefined")
     expect(resetSection).toContain("loopService.startLoop(updatedLoop.id)")
   })
+
+  it("packages always-on question answers with context and choice impact", () => {
+    const answerSection = getSection(
+      tipcSource,
+      "function getAlwaysOnAnswerText(",
+      "function broadcastTTSPlaybackState",
+    )
+
+    expect(answerSection).toContain("questionContext")
+    expect(answerSection).toContain("Agent recommendation")
+    expect(answerSection).toContain("Selected impact")
+  })
 })

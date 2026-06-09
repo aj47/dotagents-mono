@@ -311,9 +311,10 @@ describe("runtime-tools always-on helpers", () => {
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("ask_always_on_question", {
       prompt: "Which branch should continue?",
+      context: "Both branches have partial artifacts and only one should continue.",
       choices: [
-        { id: "a", label: "Branch A" },
-        { id: "b", label: "Branch B" },
+        { id: "a", label: "Branch A", description: "Continue branch A and leave branch B frozen." },
+        { id: "b", label: "Branch B", description: "Continue branch B and leave branch A frozen." },
       ],
     }, "session-1")
 
@@ -327,6 +328,39 @@ describe("runtime-tools always-on helpers", () => {
     expect(mocks.askQuestion).not.toHaveBeenCalled()
   })
 
+  it("rejects always-on questions without decision context", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("ask_always_on_question", {
+      prompt: "What should I do next?",
+      choices: [
+        { id: "a", label: "A", description: "Do A." },
+        { id: "b", label: "B", description: "Do B." },
+      ],
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(true)
+    expect(payload.error).toContain("context")
+    expect(mocks.askQuestion).not.toHaveBeenCalled()
+  })
+
+  it("rejects always-on question choices without visible impacts", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("ask_always_on_question", {
+      prompt: "Which branch should continue?",
+      context: "Two branches are blocked by a prioritization decision.",
+      choices: [
+        { id: "a", label: "A", description: "Continue A." },
+        { id: "b", label: "B" },
+      ],
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(true)
+    expect(payload.error).toContain("each choice")
+    expect(mocks.askQuestion).not.toHaveBeenCalled()
+  })
+
   it("returns queued-question state after asking an always-on question", async () => {
     mocks.askQuestion.mockReturnValue({
       id: "question-1",
@@ -335,9 +369,12 @@ describe("runtime-tools always-on helpers", () => {
       runtimeSessionId: "session-1",
       conversationId: "conv-1",
       prompt: "Pick a direction",
+      context: "A and B are mutually exclusive next branches.",
+      recommendation: "Pick A if the goal is speed.",
+      customAnswerPlaceholder: "Name the branch or constraint",
       choices: [
-        { id: "a", label: "A" },
-        { id: "b", label: "B" },
+        { id: "a", label: "A", description: "Use the faster branch." },
+        { id: "b", label: "B", description: "Use the higher-quality branch." },
       ],
       allowCustom: true,
       status: "pending",
@@ -348,9 +385,12 @@ describe("runtime-tools always-on helpers", () => {
     const { executeRuntimeTool } = await import("./runtime-tools")
     const result = await executeRuntimeTool("ask_always_on_question", {
       prompt: "Pick a direction",
+      context: "A and B are mutually exclusive next branches.",
+      recommendation: "Pick A if the goal is speed.",
+      customAnswerPlaceholder: "Name the branch or constraint",
       choices: [
-        { id: "a", label: "A" },
-        { id: "b", label: "B" },
+        { id: "a", label: "A", description: "Use the faster branch." },
+        { id: "b", label: "B", description: "Use the higher-quality branch." },
       ],
     }, "session-1")
 
@@ -362,6 +402,11 @@ describe("runtime-tools always-on helpers", () => {
       sessionStatus: "running",
     }))
     expect(payload.message).toContain("Continue other useful work")
+    expect(mocks.askQuestion).toHaveBeenCalledWith(expect.objectContaining({
+      context: "A and B are mutually exclusive next branches.",
+      recommendation: "Pick A if the goal is speed.",
+      customAnswerPlaceholder: "Name the branch or constraint",
+    }), expect.any(Array))
   })
 
   it("records command evidence for always-on execute_command calls", async () => {

@@ -1268,14 +1268,26 @@ async function getLatestRawMessageIndexForConversation(conversationId: string): 
 
 function getAlwaysOnAnswerText(input: {
   questionPrompt: string
+  questionContext?: string
   answerText: string
   answerChoiceLabel?: string
+  answerChoiceDescription?: string
+  recommendation?: string
 }): string {
   return [
     "Always-on question answered.",
     `Question: ${input.questionPrompt}`,
+    input.questionContext
+      ? `Context: ${input.questionContext}`
+      : null,
+    input.recommendation
+      ? `Agent recommendation: ${input.recommendation}`
+      : null,
     input.answerChoiceLabel
       ? `Selected: ${input.answerChoiceLabel}`
+      : null,
+    input.answerChoiceDescription
+      ? `Selected impact: ${input.answerChoiceDescription}`
       : null,
     `Answer: ${input.answerText}`,
   ].filter(Boolean).join("\n")
@@ -6320,8 +6332,11 @@ export const router = {
 
       const answerContent = getAlwaysOnAnswerText({
         questionPrompt: answeredQuestion.prompt,
+        questionContext: answeredQuestion.context,
         answerText: rawAnswerText,
         answerChoiceLabel: selectedChoice?.label,
+        answerChoiceDescription: selectedChoice?.description,
+        recommendation: answeredQuestion.recommendation,
       })
 
       if (targetConversationId) {

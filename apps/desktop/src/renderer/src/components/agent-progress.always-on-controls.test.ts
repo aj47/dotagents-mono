@@ -13,4 +13,13 @@ describe("agent progress always-on controls", () => {
     expect(agentProgressSource).toContain("tipcClient.updateAlwaysOnSessionGoal")
     expect(agentProgressSource).toContain("tipcClient.resetAlwaysOnSession")
   })
+
+  it("renders pending always-on questions in the main chat view", () => {
+    expect(agentProgressSource).toContain("const renderAlwaysOnQuestionPanel = (compact = false)")
+    expect(agentProgressSource).toContain("Needs answer")
+    expect(agentProgressSource).toContain("getAlwaysOnQuestionContext(question, alwaysOnRecentLogEntries)")
+    expect(agentProgressSource).toContain("question.recommendation")
+    expect(agentProgressSource).toContain("tipcClient.answerAlwaysOnQuestion")
+    expect(agentProgressSource).toContain("Name the next workstream or exact defect")
+  })
 })

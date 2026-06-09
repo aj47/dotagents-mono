@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { cn } from "@renderer/lib/utils"
-import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnSessionAuditSummary, AlwaysOnSessionSummary, Config, ModelPreset } from "../../../shared/types"
+import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnQuestion, AlwaysOnSessionAuditSummary, AlwaysOnSessionSummary, Config, ModelPreset } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch, ListChecks, Target, Pencil, RotateCcw } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch, ListChecks, Target, Pencil, RotateCcw, HelpCircle } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -856,6 +856,31 @@ function getAlwaysOnLogDetails(entry: AlwaysOnLogEntry): string | undefined {
   const details = entry.outcome || entry.details
   if (details && isAlwaysOnInstructionPrompt(details)) return undefined
   return details
+}
+
+function getAlwaysOnQuestionContext(question: AlwaysOnQuestion, recentWorkEntries: AlwaysOnLogEntry[] = []): string | undefined {
+  const explicitContext = question.context?.trim()
+  if (explicitContext) return explicitContext
+
+  const recentOutputs = recentWorkEntries
+    .filter((entry) => getAlwaysOnDisplayLogKind(entry) === "artifact")
+    .slice(0, 3)
+    .map((entry) => {
+      const detail = getAlwaysOnLogDetails(entry)?.replace(/\s+/g, " ").trim()
+      return detail ? `${entry.title}: ${detail}` : entry.title
+    })
+
+  if (recentOutputs.length === 0) return undefined
+  return `Recent outputs: ${recentOutputs.join(" | ")}`
+}
+
+function getAlwaysOnQuestionCustomPlaceholder(question: AlwaysOnQuestion): string {
+  if (question.customAnswerPlaceholder?.trim()) return question.customAnswerPlaceholder.trim()
+  const labels = question.choices.map((choice) => choice.label.toLowerCase()).join(" ")
+  if (labels.includes("workstream") || labels.includes("defect")) {
+    return "Name the next workstream or exact defect"
+  }
+  return "Custom answer with direction or constraints"
 }
 
 function getAlwaysOnDisplayTitle(entry: AlwaysOnLogEntry): string {
@@ -3866,6 +3891,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const [isAlwaysOnGoalEditing, setIsAlwaysOnGoalEditing] = useState(false)
   const [isUpdatingAlwaysOnGoal, setIsUpdatingAlwaysOnGoal] = useState(false)
   const [isResettingAlwaysOnSession, setIsResettingAlwaysOnSession] = useState(false)
+  const [alwaysOnQuestionDrafts, setAlwaysOnQuestionDrafts] = useState<Record<string, string>>({})
+  const [submittingAlwaysOnQuestionId, setSubmittingAlwaysOnQuestionId] = useState<string | null>(null)
   const [selectedDelegationRunId, setSelectedDelegationRunId] = useState<string | null>(null)
   const [isDelegationSummaryCollapsed, setIsDelegationSummaryCollapsed] = useState(false)
 
@@ -4183,6 +4210,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       .slice(-8)
       .reverse()
   ), [alwaysOnSummary?.recentLogEntries, alwaysOnSummary?.recentWorkEntries])
+  const pendingAlwaysOnQuestions = useMemo(() => (
+    (alwaysOnSummary?.questions ?? []).filter((question) => question.status === "pending")
+  ), [alwaysOnSummary?.questions])
 
   const alwaysOnFullLogQuery = useQuery<{
     success: boolean
@@ -5542,6 +5572,42 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     ])
   }, [])
 
+  const submitAlwaysOnQuestionAnswer = useCallback(async (
+    question: AlwaysOnQuestion,
+    answerText: string,
+    answerChoiceId?: string,
+  ) => {
+    if (!alwaysOnSummary?.id || submittingAlwaysOnQuestionId) return
+    const trimmed = answerText.trim()
+    if (!trimmed) return
+
+    setSubmittingAlwaysOnQuestionId(question.id)
+    try {
+      const result = await tipcClient.answerAlwaysOnQuestion({
+        alwaysOnSessionId: alwaysOnSummary.id,
+        questionId: question.id,
+        answerText: trimmed,
+        answerChoiceId,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to answer question")
+        return
+      }
+      setAlwaysOnQuestionDrafts((drafts) => {
+        const next = { ...drafts }
+        delete next[question.id]
+        return next
+      })
+      await refreshAlwaysOnView()
+      toast.success("Always-on answer queued")
+    } catch (error) {
+      console.error("Failed to answer always-on question:", error)
+      toast.error("Failed to answer question")
+    } finally {
+      setSubmittingAlwaysOnQuestionId(null)
+    }
+  }, [alwaysOnSummary?.id, refreshAlwaysOnView, submittingAlwaysOnQuestionId])
+
   const startAlwaysOnGoalEdit = useCallback((event?: React.MouseEvent) => {
     event?.stopPropagation()
     setAlwaysOnGoalDraft(alwaysOnSummary?.goal ?? "")
@@ -5608,6 +5674,101 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       setIsResettingAlwaysOnSession(false)
     }
   }, [alwaysOnSummary?.id, refreshAlwaysOnView])
+
+  const renderAlwaysOnQuestionPanel = (compact = false) => {
+    if (!isAlwaysOnSession || pendingAlwaysOnQuestions.length === 0) return null
+
+    const question = pendingAlwaysOnQuestions[0]
+    const contextText = getAlwaysOnQuestionContext(question, alwaysOnRecentLogEntries)
+    const customDraft = alwaysOnQuestionDrafts[question.id] ?? ""
+    const isSubmittingQuestion = submittingAlwaysOnQuestionId === question.id
+    const customPlaceholder = getAlwaysOnQuestionCustomPlaceholder(question)
+
+    return (
+      <div className={cn(
+        "border-b border-amber-500/25 bg-amber-500/[0.10]",
+        compact ? "px-2.5 py-2" : "px-3 py-2.5",
+      )}>
+        <div className="flex min-w-0 items-start gap-2">
+          <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-semibold uppercase tracking-normal text-amber-700 dark:text-amber-300">
+              Needs answer
+              {pendingAlwaysOnQuestions.length > 1 ? ` · ${pendingAlwaysOnQuestions.length} queued` : ""}
+            </div>
+            <div className="mt-0.5 text-sm font-medium leading-snug text-foreground">
+              {question.prompt}
+            </div>
+          </div>
+        </div>
+        {contextText && (
+          <div className="mt-2 rounded-md border border-amber-500/20 bg-background/70 px-2.5 py-2 text-xs leading-relaxed text-muted-foreground">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-normal text-amber-700 dark:text-amber-300">Context</div>
+            <div className="break-words">{contextText}</div>
+          </div>
+        )}
+        {question.recommendation && (
+          <div className="mt-2 rounded-md border border-blue-500/20 bg-blue-500/10 px-2.5 py-2 text-xs leading-relaxed text-blue-800 dark:text-blue-200">
+            <span className="font-semibold">Recommendation: </span>
+            {question.recommendation}
+          </div>
+        )}
+        <div className={cn("mt-2 grid gap-1.5", compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-3")}>
+          {question.choices.map((choice) => (
+            <Button
+              key={choice.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-auto min-h-12 justify-start rounded-md px-2.5 py-2 text-left"
+              disabled={!!submittingAlwaysOnQuestionId}
+              onClick={() => void submitAlwaysOnQuestionAnswer(question, choice.label, choice.id)}
+              title={choice.description || choice.label}
+              aria-label={`Answer ${choice.label}`}
+            >
+              <span className="flex min-w-0 flex-col gap-0.5 whitespace-normal leading-snug">
+                <span className="text-xs font-semibold text-foreground">{choice.label}</span>
+                {choice.description && (
+                  <span className="text-[11px] font-normal text-muted-foreground">{choice.description}</span>
+                )}
+              </span>
+            </Button>
+          ))}
+        </div>
+        {question.allowCustom && (
+          <form
+            className="mt-2 flex min-w-0 items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void submitAlwaysOnQuestionAnswer(question, customDraft)
+            }}
+          >
+            <input
+              value={customDraft}
+              onChange={(event) => {
+                const value = event.target.value
+                setAlwaysOnQuestionDrafts((drafts) => ({ ...drafts, [question.id]: value }))
+              }}
+              className="h-8 min-w-0 flex-1 rounded-md border border-border/60 bg-background/85 px-2.5 text-xs text-foreground outline-none focus-visible:border-amber-500/55"
+              placeholder={customPlaceholder}
+              disabled={isSubmittingQuestion}
+              aria-label="Custom always-on question answer"
+            />
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              className="h-8 shrink-0 rounded-md px-3 text-xs"
+              disabled={!!submittingAlwaysOnQuestionId || !customDraft.trim()}
+            >
+              {isSubmittingQuestion ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
+              Send
+            </Button>
+          </form>
+        )}
+      </div>
+    )
+  }
 
   const renderAlwaysOnLogPanel = (compact = false) => {
     if (!isAlwaysOnSession || alwaysOnRecentLogEntries.length === 0) return null
@@ -5981,6 +6142,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         {!isCollapsed && (
           <>
             {renderAlwaysOnStatusBand(true)}
+            {activeTab === "chat" && renderAlwaysOnQuestionPanel(true)}
             {activeTab === "chat" && renderAlwaysOnLogPanel(true)}
             {renderProgressTabs()}
 
@@ -6421,6 +6583,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       </div>
 
       {renderAlwaysOnStatusBand(false)}
+      {activeTab === "chat" && renderAlwaysOnQuestionPanel(false)}
       {activeTab === "chat" && renderAlwaysOnLogPanel(false)}
       {renderProgressTabs()}
 

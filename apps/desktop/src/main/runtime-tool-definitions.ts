@@ -160,19 +160,27 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   {
     name: "ask_always_on_question",
     description:
-      "Queue a multiple-choice question for the user from an always-on session without stopping the worker. Provide 2-3 choices; the UI also allows a custom answer when allowCustom is true. After calling this, continue other useful work instead of waiting.",
+      "Queue a decision-quality multiple-choice question for the user from an always-on session without stopping the worker. Include the concrete context/evidence, 2-3 mutually exclusive choices with impact descriptions, and a recommendation when one answer is safest. The UI also allows a custom answer when allowCustom is true. After calling this, continue other useful work instead of waiting.",
     inputSchema: {
       type: "object",
       properties: {
         prompt: {
           type: "string",
-          description: "Question to show to the user.",
+          description: "Specific decision question to show to the user. Avoid generic prompts like 'What should I do next?' unless the choices and context make the decision obvious.",
+        },
+        context: {
+          type: "string",
+          description: "Required concise context: current state, relevant artifact paths/evidence, why user input is needed, and what has already been tried.",
+        },
+        recommendation: {
+          type: "string",
+          description: "Optional recommended answer with rationale, shown above the choices.",
         },
         choices: {
           type: "array",
           minItems: 2,
           maxItems: 3,
-          description: "Two or three mutually exclusive choices.",
+          description: "Two or three mutually exclusive choices. Each choice must include a visible impact/tradeoff description.",
           items: {
             type: "object",
             properties: {
@@ -186,11 +194,15 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
               },
               description: {
                 type: "string",
-                description: "Optional one-sentence tradeoff or impact.",
+                description: "Required one-sentence tradeoff or impact of picking this choice.",
               },
             },
-            required: ["label"],
+            required: ["label", "description"],
           },
+        },
+        customAnswerPlaceholder: {
+          type: "string",
+          description: "Optional placeholder telling the user what to write in the custom field, for example 'Name the next workstream or exact defect'.",
         },
         allowCustom: {
           type: "boolean",
@@ -202,7 +214,7 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
           description: "Use blocker when the question records a blocked path.",
         },
       },
-      required: ["prompt", "choices"],
+      required: ["prompt", "context", "choices"],
     },
   },
   {
