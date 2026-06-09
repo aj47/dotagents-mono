@@ -16,7 +16,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import type { Config } from "@shared/types"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { QRCodeSVG } from "qrcode.react"
-import { EyeOff, ExternalLink } from "lucide-react"
+import { EyeOff, ExternalLink, RotateCcw } from "lucide-react"
 
 /**
  * Mask a URL for streamer mode - masks all alphanumeric content (including the protocol)
@@ -56,6 +56,12 @@ function formatHostForHttpUrl(host: string): string {
     return `[${normalizedHost}]`
   }
   return normalizedHost
+}
+
+function generateRemoteServerApiKey(): string {
+  const bytes = new Uint8Array(32)
+  window.crypto.getRandomValues(bytes)
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
 }
 
 interface RemoteServerSettingsGroupsProps {
@@ -180,17 +186,20 @@ export function RemoteServerSettingsGroups({
   const hasConfiguredRemoteServerApiKey = (cfg.remoteServerApiKey ?? "").trim().length > 0
   const shouldShowPairingSurface = streamerMode ? hasConfiguredRemoteServerApiKey : hasRemoteServerApiKey
   const configuredBindAddress = cfg.remoteServerBindAddress || "127.0.0.1"
+  const configuredPort = cfg.remoteServerPort ?? 3210
   const isRemoteServerRunning = enabled && (remoteServerStatus?.running ?? false)
 
   const fallbackBaseUrl = !isUnconnectableMobileHost(configuredBindAddress) &&
-    cfg.remoteServerPort
-      ? `http://${formatHostForHttpUrl(configuredBindAddress)}:${cfg.remoteServerPort}/v1`
+    configuredPort
+      ? `http://${formatHostForHttpUrl(configuredBindAddress)}:${configuredPort}/v1`
       : undefined
 
   const liveConnectableUrl = isRemoteServerRunning
     ? remoteServerStatus?.connectableUrl
     : undefined
   const baseUrl = liveConnectableUrl ?? fallbackBaseUrl
+  const localServerBaseUrl =
+    baseUrl ?? `http://${formatHostForHttpUrl(configuredBindAddress)}:${configuredPort}/v1`
   const shouldShowConnectabilityWarning =
     isRemoteServerRunning &&
     isUnconnectableMobileHost(configuredBindAddress) &&
@@ -311,11 +320,7 @@ export function RemoteServerSettingsGroups({
                     variant="secondary"
                     size="sm"
                     onClick={async () => {
-                      // Generate a new 32-byte API key (hex)
-                      const bytes = new Uint8Array(32)
-                      window.crypto.getRandomValues(bytes)
-                      const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("")
-                      await saveConfigAsync({ remoteServerApiKey: hex })
+                      await saveConfigAsync({ remoteServerApiKey: generateRemoteServerApiKey() })
                       await Promise.all([
                         configQuery.refetch(),
                         remoteServerPairingApiKeyQuery.refetch(),
@@ -398,8 +403,8 @@ export function RemoteServerSettingsGroups({
                     )}
                   </Control>
 
-                  {baseUrl && shouldShowPairingSurface && (
-                    <Control label={<ControlLabel label="Mobile App QR Code" tooltip="Scan this QR code with the DotAgents mobile app to connect (local network only)" />} className="px-3">
+                  {shouldShowPairingSurface && (
+                    <Control label={<ControlLabel label="Local Server QR Code" tooltip="Scan this QR code with the DotAgents mobile app to connect to the local remote server" />} className="px-3">
                       <div className="flex flex-col items-start gap-3">
                         {streamerMode ? (
                           <div className="p-3 bg-muted/50 rounded-lg flex flex-col items-center justify-center" style={{ width: 160, height: 160 }}>
@@ -409,7 +414,7 @@ export function RemoteServerSettingsGroups({
                         ) : (
                           <div className="p-3 bg-white rounded-lg">
                             <QRCodeSVG
-                              value={`dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`}
+                              value={`dotagents://config?baseUrl=${encodeURIComponent(localServerBaseUrl)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`}
                               size={160}
                               level="M"
                             />
@@ -423,7 +428,7 @@ export function RemoteServerSettingsGroups({
                             title={streamerMode ? "Disabled in Streamer Mode" : !hasRemoteServerApiKey ? "API key unavailable" : undefined}
                             onClick={() => {
                               if (streamerMode || !remoteServerPairingApiKey) return
-                              const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(baseUrl)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`
+                              const deepLink = `dotagents://config?baseUrl=${encodeURIComponent(localServerBaseUrl)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`
                               void copyTextToClipboard(deepLink).catch((err) => {
                                 console.error("Failed to copy deep link", err)
                               })
@@ -447,7 +452,7 @@ export function RemoteServerSettingsGroups({
                         <div className="text-xs text-muted-foreground">
                           {streamerMode
                             ? "QR code and deep link hidden in Streamer Mode"
-                            : "Scan with the DotAgents mobile app to auto-configure. Works on local network only. Use 'Print to Terminal' for SSH/headless access. For internet access, use Cloudflare Tunnel below."}
+                            : "Scan with the DotAgents mobile app to auto-configure the local server connection."}
                         </div>
                       </div>
                     </Control>
@@ -670,6 +675,44 @@ export function RemoteServerSettingsGroups({
                         Enter Hostname to start
                       </span>
                     )}
+                  </div>
+                </Control>
+
+                <Control label={<ControlLabel label="Reset Pairing" tooltip="Regenerates the remote server API key and clears the current Cloudflare tunnel URL/config. Start the tunnel again to get a fresh URL." />} className="px-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      saveConfigMutation.isPending ||
+                      stopTunnelMutation.isPending ||
+                      startTunnelMutation.isPending ||
+                      startNamedTunnelMutation.isPending
+                    }
+                    onClick={async () => {
+                      if (tunnelStatus?.running || tunnelStatus?.starting) {
+                        await stopTunnelMutation.mutateAsync()
+                      }
+                      await saveConfigAsync({
+                        remoteServerApiKey: generateRemoteServerApiKey(),
+                        cloudflareTunnelAutoStart: false,
+                        cloudflareTunnelId: "",
+                        cloudflareTunnelName: "",
+                        cloudflareTunnelCredentialsPath: "",
+                        cloudflareTunnelHostname: "",
+                      })
+                      await Promise.all([
+                        configQuery.refetch(),
+                        remoteServerPairingApiKeyQuery.refetch(),
+                        queryClient.invalidateQueries({ queryKey: ["cloudflare-tunnel-status"] }),
+                        queryClient.invalidateQueries({ queryKey: ["remote-server-status"] }),
+                      ])
+                    }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                    Reset Key + URL
+                  </Button>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Existing mobile deep links will stop working after reset.
                   </div>
                 </Control>
 
