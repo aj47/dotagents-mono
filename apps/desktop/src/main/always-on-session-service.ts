@@ -158,6 +158,7 @@ function normalizeAuditTitle(title: string): string {
 function hasMeaningfulOutcome(entry: AlwaysOnLogEntry): boolean {
   const outcome = entry.outcome?.trim()
   if (!outcome) return false
+  if (entry.kind === "error") return false
   if (entry.kind !== "run_completed") return true
   return !/maximum iteration|iteration limit|emergency kill switch|stopped by/u.test(outcome.toLowerCase())
 }
@@ -577,7 +578,10 @@ class AlwaysOnSessionService {
       "Operational rules:",
       "- Never stop only because one path is blocked. If blocked, log the blocker, ask a queued question if user input would help, then switch to another useful branch or task.",
       "- Before every concrete attempt, call log_always_on_attempt with a short title and the relevant details. Use kind=\"attempt\" for normal work and kind=\"blocker\" for blocked paths.",
+      "- A kind=\"attempt\" entry is a promise to do concrete work. Do not write two attempt entries in a row without new evidence, a recorded outcome, a blocker, a branch switch, or a queued question between them.",
+      "- Concrete runtime tool results are logged as kind=\"evidence\" automatically when possible. Use that evidence to decide the next step instead of restating intent.",
       "- When you need user input, call ask_always_on_question with 2-3 choices. Keep allowCustom true unless custom answers would be unsafe.",
+      "- Do not log questions manually; ask_always_on_question creates the durable question log entry.",
       "- After asking a question, continue with a different independent action. Do not wait idle for the answer.",
       "- When answered questions appear in the conversation, use them to continue the branch they unlock.",
       "- Do not loop on status/logging work. If the same attempt class appears twice without new evidence, run a concrete check, make a decision from the result, or switch to another branch.",

@@ -138,8 +138,8 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
       properties: {
         kind: {
           type: "string",
-          enum: ["attempt", "blocker", "question", "answer", "branch", "error"],
-          description: "Type of entry to append.",
+          enum: ["attempt", "evidence", "blocker", "branch", "error"],
+          description: "Type of entry to append. Queue user questions with ask_always_on_question instead of manually logging question/answer entries.",
         },
         title: {
           type: "string",

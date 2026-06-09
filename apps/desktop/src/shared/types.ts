@@ -1085,6 +1085,7 @@ export type AlwaysOnLogEntryKind =
   | "run_started"
   | "run_completed"
   | "attempt"
+  | "evidence"
   | "blocker"
   | "question"
   | "answer"

@@ -42,7 +42,7 @@ interface BuiltinToolContext {
   sessionId?: string
 }
 
-type AlwaysOnRuntimeLogKind = "attempt" | "blocker" | "question" | "answer" | "branch" | "error"
+type AlwaysOnRuntimeLogKind = "attempt" | "evidence" | "blocker" | "branch" | "error"
 
 type PackageManagerName = "pnpm" | "npm" | "yarn" | "bun"
 
@@ -173,9 +173,8 @@ function getTrackedRuntimeSessionId(sessionId?: string): string | undefined {
 function normalizeAlwaysOnLogKind(value: unknown): AlwaysOnRuntimeLogKind | null {
   if (
     value === "attempt" ||
+    value === "evidence" ||
     value === "blocker" ||
-    value === "question" ||
-    value === "answer" ||
     value === "branch" ||
     value === "error"
   ) {
@@ -199,6 +198,71 @@ function looksLikeAlwaysOnIntentOnlyAttempt(title: string, details?: string): bo
   const hasAction = /\b(run|execute|inspect|probe|read|write|create|check|verify)\b/u.test(text)
   const hasImmediatePromise = /\b(now|actual|actually|concrete|real|immediate|immediately|execute_command|shell|filesystem|file|disk)\b/u.test(text)
   return hasAction && hasImmediatePromise
+}
+
+function isAttemptWithoutOutcome(entry: { kind: string; outcome?: string }): boolean {
+  return entry.kind === "attempt" && !entry.outcome?.trim()
+}
+
+function getLastAlwaysOnProcessEntry(entries: Array<{ kind: string }>) {
+  return [...entries].reverse().find((entry) =>
+    entry.kind !== "run_started" &&
+    entry.kind !== "run_completed" &&
+    entry.kind !== "pause" &&
+    entry.kind !== "resume",
+  )
+}
+
+function truncateAlwaysOnEvidence(value: string, maxLength: number = 1200): string {
+  const normalized = value.replace(/\s+$/u, "")
+  if (normalized.length <= maxLength) return normalized
+  const half = Math.floor(maxLength / 2)
+  return `${normalized.slice(0, half)}\n... [truncated ${normalized.length - maxLength} chars] ...\n${normalized.slice(-half)}`
+}
+
+function getAlwaysOnSummaryForRuntimeSession(trackedSessionId?: string, conversationId?: string) {
+  if (!trackedSessionId && !conversationId) return undefined
+  return alwaysOnSessionService
+    .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
+    .find((candidate) =>
+      (!!trackedSessionId && candidate.currentSessionId === trackedSessionId) ||
+      (!!conversationId && candidate.conversationId === conversationId),
+    )
+}
+
+function appendAlwaysOnCommandEvidence(params: {
+  sessionId?: string
+  command: string
+  cwd: string
+  success: boolean
+  stdout?: string
+  stderr?: string
+  error?: string
+  exitCode?: unknown
+}): void {
+  const trackedSessionId = getTrackedRuntimeSessionId(params.sessionId)
+  if (!trackedSessionId) return
+
+  const activeSession = agentSessionTracker.getSession(trackedSessionId)
+  const summary = getAlwaysOnSummaryForRuntimeSession(trackedSessionId, activeSession?.conversationId)
+  if (!summary || summary.status === "paused" || summary.enabled === false) return
+
+  const outputParts: string[] = []
+  if (params.stdout?.trim()) outputParts.push(`stdout:\n${params.stdout.trim()}`)
+  if (params.stderr?.trim()) outputParts.push(`stderr:\n${params.stderr.trim()}`)
+  if (params.error?.trim()) outputParts.push(`error:\n${params.error.trim()}`)
+  if (params.exitCode !== undefined) outputParts.push(`exitCode: ${String(params.exitCode)}`)
+
+  alwaysOnSessionService.appendLog({
+    alwaysOnSessionId: summary.id,
+    runtimeSessionId: trackedSessionId,
+    conversationId: activeSession?.conversationId,
+    runId: agentSessionStateManager.getSessionRunId(trackedSessionId),
+    kind: params.success ? "evidence" : "error",
+    title: params.success ? "Command completed" : "Command failed",
+    details: truncateAlwaysOnEvidence(`cwd: ${params.cwd}\ncommand: ${params.command}`, 1200),
+    outcome: truncateAlwaysOnEvidence(outputParts.join("\n\n") || (params.success ? "Command completed with no output." : "Command failed with no output.")),
+  }, loopService.getLoops())
 }
 
 async function getLatestConversationMessageIndex(conversationId: string): Promise<number | undefined> {
@@ -929,7 +993,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     const kind = normalizeAlwaysOnLogKind(args.kind)
     if (!kind) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "kind must be one of: attempt, blocker, question, answer, branch, error" }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "kind must be one of: attempt, evidence, blocker, branch, error. Use ask_always_on_question for queued user questions." }) }],
         isError: true,
       }
     }
@@ -945,11 +1009,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     const activeSession = agentSessionTracker.getSession(trackedSessionId)
     const details = typeof args.details === "string" ? args.details : undefined
     const outcome = typeof args.outcome === "string" ? args.outcome : undefined
-    const summaries = alwaysOnSessionService.getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
-    const summary = summaries.find((candidate) =>
-      candidate.currentSessionId === trackedSessionId ||
-      (!!activeSession?.conversationId && candidate.conversationId === activeSession.conversationId),
-    )
+    const summary = getAlwaysOnSummaryForRuntimeSession(trackedSessionId, activeSession?.conversationId)
 
     if (!summary) {
       return {
@@ -974,6 +1034,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const normalizedTitle = normalizeAlwaysOnLogTitle(title)
     const recentLogEntries = alwaysOnSessionService.getRecentLogEntries(summary.id, 12)
+    const lastProcessEntry = getLastAlwaysOnProcessEntry(recentLogEntries)
     const recentSimilarCount = recentLogEntries
       .filter((recentEntry) =>
         recentEntry.kind === kind &&
@@ -988,6 +1049,22 @@ const toolHandlers: Record<string, ToolHandler> = {
         looksLikeAlwaysOnIntentOnlyAttempt(recentEntry.title, recentEntry.details),
       )
       .length
+
+    if (kind === "attempt" && !outcome?.trim() && lastProcessEntry && isAttemptWithoutOutcome(lastProcessEntry)) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Attempt log rejected because the previous attempt has no evidence or outcome. Run a concrete non-log tool, record an outcome from new evidence, queue a question, mark a blocker, or switch branches before another attempt.",
+            sessionStatus: summary.status,
+            pendingQuestionCount: summary.pendingQuestionCount,
+            previousAttemptTitle: "title" in lastProcessEntry ? lastProcessEntry.title : undefined,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
 
     if (isIntentOnlyAttempt && recentIntentOnlyAttemptCount >= ALWAYS_ON_LOG_ONLY_ATTEMPT_LIMIT) {
       return {
@@ -1243,6 +1320,25 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    const trackedSessionId = getTrackedRuntimeSessionId(context.sessionId)
+    const activeSession = trackedSessionId ? agentSessionTracker.getSession(trackedSessionId) : undefined
+    const alwaysOnSummary = getAlwaysOnSummaryForRuntimeSession(trackedSessionId, activeSession?.conversationId)
+    if (alwaysOnSummary && (alwaysOnSummary.status === "paused" || alwaysOnSummary.enabled === false)) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            command: effectiveCommand,
+            cwd: effectiveCwd,
+            error: "Always-on session is paused; command execution was rejected.",
+            sessionStatus: alwaysOnSummary.status,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
     let runtimeFilesystemEnv: Record<string, string> = {}
     try {
       const {
@@ -1293,6 +1389,15 @@ const toolHandlers: Record<string, ToolHandler> = {
         outputTruncated = true
       }
 
+      appendAlwaysOnCommandEvidence({
+        sessionId: context.sessionId,
+        command: effectiveCommand,
+        cwd: effectiveCwd,
+        success: true,
+        stdout: truncatedStdout,
+        stderr: stderr || "",
+      })
+
       return {
         content: [
           {
@@ -1335,6 +1440,17 @@ const toolHandlers: Record<string, ToolHandler> = {
       const hint = hasShellEscapingIssue
         ? '\n\nHINT: This command likely failed due to shell escaping issues with special characters or long strings. Try writing the content to a file first (e.g., with write_file or echo > file), then reference the file in your command.'
         : '';
+
+      appendAlwaysOnCommandEvidence({
+        sessionId: context.sessionId,
+        command: effectiveCommand,
+        cwd: effectiveCwd,
+        success: false,
+        stdout,
+        stderr,
+        error: errorMessage + hint,
+        exitCode,
+      })
 
       return {
         content: [

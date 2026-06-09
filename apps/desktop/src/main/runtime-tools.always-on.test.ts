@@ -115,7 +115,7 @@ describe("runtime-tools always-on helpers", () => {
     expect(payload.guidance.join("\n")).toContain("ask_always_on_question")
   })
 
-  it("rejects repeated intent-only attempt logs before appending another one", async () => {
+  it("rejects consecutive attempt logs before appending another one", async () => {
     mocks.getRecentLogEntries.mockReturnValue(Array.from({ length: 6 }, (_, index) => ({
       id: `entry-old-${index}`,
       alwaysOnSessionId: "always-1",
@@ -141,9 +141,8 @@ describe("runtime-tools always-on helpers", () => {
     expect(payload).toEqual(expect.objectContaining({
       success: false,
       sessionStatus: "running",
-      recentIntentOnlyAttemptCount: 6,
     }))
-    expect(payload.error).toContain("Repeated intent-only always-on logs")
+    expect(payload.error).toContain("previous attempt has no evidence")
     expect(mocks.appendLog).not.toHaveBeenCalled()
   })
 
@@ -163,6 +162,22 @@ describe("runtime-tools always-on helpers", () => {
       sessionStatus: "paused",
     }))
     expect(payload.error).toContain("paused")
+    expect(mocks.appendLog).not.toHaveBeenCalled()
+  })
+
+  it("rejects manual question logs so questions go through the queue tool", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("log_always_on_attempt", {
+      kind: "question",
+      title: "Pick a direction",
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(true)
+    expect(payload).toEqual(expect.objectContaining({
+      success: false,
+    }))
+    expect(payload.error).toContain("ask_always_on_question")
     expect(mocks.appendLog).not.toHaveBeenCalled()
   })
 
@@ -223,5 +238,28 @@ describe("runtime-tools always-on helpers", () => {
       sessionStatus: "running",
     }))
     expect(payload.message).toContain("Continue other useful work")
+  })
+
+  it("records command evidence for always-on execute_command calls", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("execute_command", {
+      command: "printf always-on-evidence",
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(false)
+    expect(payload).toEqual(expect.objectContaining({
+      success: true,
+      stdout: "always-on-evidence",
+    }))
+    expect(mocks.appendLog).toHaveBeenCalledWith(expect.objectContaining({
+      alwaysOnSessionId: "always-1",
+      runtimeSessionId: "session-1",
+      conversationId: "conv-1",
+      kind: "evidence",
+      title: "Command completed",
+      details: expect.stringContaining("printf always-on-evidence"),
+      outcome: expect.stringContaining("always-on-evidence"),
+    }), expect.any(Array))
   })
 })

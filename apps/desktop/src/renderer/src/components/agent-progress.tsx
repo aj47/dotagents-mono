@@ -793,6 +793,8 @@ function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
       return "DONE"
     case "attempt":
       return "TRY"
+    case "evidence":
+      return "EVIDENCE"
     case "blocker":
       return "BLOCKED"
     case "question":
@@ -821,6 +823,7 @@ function getAlwaysOnLogKindClassName(kind: AlwaysOnLogEntryKind): string {
       return "bg-amber-500/15 text-amber-700 dark:text-amber-300"
     case "answer":
       return "bg-blue-500/12 text-blue-700 dark:text-blue-300"
+    case "evidence":
     case "run_completed":
       return "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
     case "pause":
@@ -882,6 +885,7 @@ function formatAlwaysOnLogTime(timestamp: number, now: number): string {
 const ALWAYS_ON_LOG_KIND_FILTERS: Array<"all" | AlwaysOnLogEntryKind> = [
   "all",
   "attempt",
+  "evidence",
   "blocker",
   "question",
   "answer",
