@@ -23,6 +23,7 @@ type AlwaysOnSessionRecord = {
   id: string
   loopId: string
   name: string
+  goal?: string
   createdAt: number
   updatedAt: number
   currentSessionId?: string
@@ -559,6 +560,10 @@ class AlwaysOnSessionService {
     return join(LOG_DIR, sanitizeLogFileComponent(alwaysOnSessionId), "attempts.jsonl")
   }
 
+  private getResetLogPath(alwaysOnSessionId: string): string {
+    return join(LOG_DIR, sanitizeLogFileComponent(alwaysOnSessionId), `attempts-${Date.now()}.jsonl`)
+  }
+
   private ensureLogPath(record: AlwaysOnSessionRecord): string {
     const logPath = record.logPath || this.getDefaultLogPath(record.id)
     mkdirSync(dirname(logPath), { recursive: true })
@@ -669,11 +674,13 @@ class AlwaysOnSessionService {
     return record
   }
 
-  buildLoopPrompt(alwaysOnSessionId: string, name: string): string {
+  buildLoopPrompt(alwaysOnSessionId: string, name: string, goal?: string): string {
+    const cleanGoal = goal?.trim()
     return [
       `# ${name}`,
       "",
       "You are running as an always-on DotAgents session. Continue useful work until the user pauses this session.",
+      cleanGoal ? `Current goal: ${cleanGoal}` : "Current goal: make concrete useful progress without waiting for more instructions.",
       "",
       "Operational rules:",
       "- Never stop only because one path is blocked. If blocked, log the blocker, ask a queued question if user input would help, then switch to another useful branch or task.",
@@ -700,7 +707,7 @@ class AlwaysOnSessionService {
     ].join("\n")
   }
 
-  createSessionRecord(name: string = DEFAULT_ALWAYS_ON_NAME): {
+  createSessionRecord(name: string = DEFAULT_ALWAYS_ON_NAME, goal?: string): {
     record: AlwaysOnSessionRecord
     loop: LoopConfig
   } {
@@ -711,6 +718,7 @@ class AlwaysOnSessionService {
       id: recordId,
       loopId,
       name: name.trim() || DEFAULT_ALWAYS_ON_NAME,
+      ...(goal?.trim() ? { goal: goal.trim() } : {}),
       createdAt: now,
       updatedAt: now,
       logPath: this.getDefaultLogPath(recordId),
@@ -721,7 +729,7 @@ class AlwaysOnSessionService {
     const loop: LoopConfig = {
       id: loopId,
       name: record.name,
-      prompt: this.buildLoopPrompt(record.id, record.name),
+      prompt: this.buildLoopPrompt(record.id, record.name, record.goal),
       intervalMinutes: 1,
       enabled: true,
       runContinuously: true,
@@ -775,6 +783,7 @@ class AlwaysOnSessionService {
           id: record.id,
           loopId: record.loopId,
           name: loop?.name ?? record.name,
+          goal: record.goal,
           status: summaryStatus,
           enabled,
           isRunning,
@@ -820,6 +829,38 @@ class AlwaysOnSessionService {
 
   getRuntimeLinkedSessionId(input: { runtimeSessionId?: string; conversationId?: string }, loops: LoopConfig[] = []): string | undefined {
     return this.resolveRecord(input, loops)?.id
+  }
+
+  setGoal(alwaysOnSessionId: string, goal: string): AlwaysOnSessionRecord | undefined {
+    const record = this.findRecord(alwaysOnSessionId)
+    if (!record) return undefined
+
+    const cleanGoal = goal.trim()
+    if (cleanGoal) {
+      record.goal = cleanGoal
+    } else {
+      delete record.goal
+    }
+    this.touch(record)
+    this.save()
+    notifyAlwaysOnSessionsChanged()
+    return record
+  }
+
+  resetSession(alwaysOnSessionId: string): AlwaysOnSessionRecord | undefined {
+    const record = this.findRecord(alwaysOnSessionId)
+    if (!record) return undefined
+
+    delete record.currentSessionId
+    delete record.conversationId
+    delete record.latestLogEntry
+    record.questions = []
+    record.logCount = 0
+    record.logPath = this.getResetLogPath(record.id)
+    this.touch(record)
+    this.save()
+    notifyAlwaysOnSessionsChanged()
+    return record
   }
 
   recordRuntimeSession(loopId: string, runtimeSessionId: string, conversationId: string): void {

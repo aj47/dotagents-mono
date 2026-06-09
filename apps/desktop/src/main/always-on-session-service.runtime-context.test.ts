@@ -10,4 +10,14 @@ describe("always-on session runtime context resolution", () => {
     expect(serviceSource).toContain("question.conversationId === input.conversationId")
     expect(serviceSource).toContain("session.conversationId === input.conversationId")
   })
+
+  it("persists explicit goals and resets visible session state without deleting old logs", () => {
+    expect(serviceSource).toContain("goal?: string")
+    expect(serviceSource).toContain("Current goal: ${cleanGoal}")
+    expect(serviceSource).toContain("setGoal(alwaysOnSessionId: string, goal: string)")
+    expect(serviceSource).toContain("resetSession(alwaysOnSessionId: string)")
+    expect(serviceSource).toContain("record.logPath = this.getResetLogPath(record.id)")
+    expect(serviceSource).toContain("record.logCount = 0")
+    expect(serviceSource).toContain("record.questions = []")
+  })
 })

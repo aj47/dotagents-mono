@@ -65,6 +65,7 @@ import {
   ProfileMcpServerConfig,
   LoopConfig,
   QueuedMessage,
+  AlwaysOnSessionSummary,
 } from "../shared/types"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
@@ -1219,6 +1220,41 @@ function getAlwaysOnSessionSummaries() {
     loopService.getLoops(),
     loopService.getLoopStatuses(),
   )
+}
+
+function stopAlwaysOnRuntimeSession(
+  summary: AlwaysOnSessionSummary,
+  loop: LoopConfig,
+  options: { clearQueue?: boolean } = {},
+): string | undefined {
+  loopService.stopLoop(loop.id)
+
+  const activeSessionId = summary.currentSessionId ?? loop.lastSessionId
+  const affectedConversationIds = new Set<string>()
+  if (summary.conversationId) {
+    affectedConversationIds.add(summary.conversationId)
+  }
+
+  if (activeSessionId) {
+    const activeSession = agentSessionTracker.getSession(activeSessionId)
+    if (activeSession) {
+      agentSessionStateManager.stopSession(activeSessionId)
+      toolApprovalManager.cancelSessionApprovals(activeSessionId)
+      if (activeSession.conversationId) {
+        affectedConversationIds.add(activeSession.conversationId)
+      }
+      agentSessionTracker.stopSession(activeSessionId)
+    }
+  }
+
+  for (const conversationId of affectedConversationIds) {
+    messageQueueService.pauseQueue(conversationId)
+    if (options.clearQueue) {
+      messageQueueService.clearQueue(conversationId)
+    }
+  }
+
+  return activeSessionId
 }
 
 async function getLatestRawMessageIndexForConversation(conversationId: string): Promise<number | undefined> {
@@ -5961,9 +5997,9 @@ export const router = {
   }),
 
   createAlwaysOnSession: t.procedure
-    .input<{ name?: string }>()
+    .input<{ name?: string; goal?: string }>()
     .action(async ({ input }) => {
-      const { loop } = alwaysOnSessionService.createSessionRecord(input.name)
+      const { loop } = alwaysOnSessionService.createSessionRecord(input.name, input.goal)
       const saved = loopService.saveLoop(loop)
       if (!saved) {
         return { success: false, error: "Failed to persist always-on session" }
@@ -5989,20 +6025,7 @@ export const router = {
 
       const updatedLoop: LoopConfig = { ...loop, enabled: false }
       const saved = loopService.saveLoop(updatedLoop)
-      loopService.stopLoop(loop.id)
-
-      const activeSessionId = summary.currentSessionId ?? loop.lastSessionId
-      if (activeSessionId) {
-        const activeSession = agentSessionTracker.getSession(activeSessionId)
-        if (activeSession) {
-          agentSessionStateManager.stopSession(activeSessionId)
-          toolApprovalManager.cancelSessionApprovals(activeSessionId)
-          if (activeSession.conversationId) {
-            messageQueueService.pauseQueue(activeSession.conversationId)
-          }
-          agentSessionTracker.stopSession(activeSessionId)
-        }
-      }
+      const activeSessionId = stopAlwaysOnRuntimeSession(summary, loop)
 
       alwaysOnSessionService.appendLog({
         alwaysOnSessionId: summary.id,
@@ -6031,7 +6054,7 @@ export const router = {
 
       const updatedLoop: LoopConfig = {
         ...loop,
-        prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name),
+        prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name, summary.goal),
         enabled: true,
         runContinuously: true,
         continueInSession: true,
@@ -6055,6 +6078,104 @@ export const router = {
         kind: "resume",
         title: "Always-on session resumed",
       })
+
+      return { success: true, sessions: getAlwaysOnSessionSummaries() }
+    }),
+
+  updateAlwaysOnSessionGoal: t.procedure
+    .input<{ alwaysOnSessionId: string; goal: string }>()
+    .action(async ({ input }) => {
+      const summary = getAlwaysOnSessionSummaries().find((session) => session.id === input.alwaysOnSessionId)
+      if (!summary) {
+        return { success: false, error: "Always-on session not found" }
+      }
+
+      const loop = loopService.getLoop(summary.loopId)
+      if (!loop) {
+        return { success: false, error: "Backing repeat task not found" }
+      }
+
+      const goal = input.goal.trim()
+      const updatedLoop: LoopConfig = {
+        ...loop,
+        prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name, goal),
+        runContinuously: true,
+        continueInSession: true,
+        alwaysOnSession: true,
+      }
+      const saved = loopService.saveLoop(updatedLoop)
+      if (!saved) {
+        return { success: false, error: "Failed to persist always-on goal" }
+      }
+
+      const updatedRecord = alwaysOnSessionService.setGoal(summary.id, goal)
+      if (!updatedRecord) {
+        return { success: false, error: "Always-on session not found" }
+      }
+
+      alwaysOnSessionService.appendLog({
+        alwaysOnSessionId: summary.id,
+        loopId: summary.loopId,
+        runtimeSessionId: summary.currentSessionId,
+        conversationId: summary.conversationId,
+        kind: "evidence",
+        title: goal ? "Goal updated" : "Goal cleared",
+        details: goal || "No explicit goal set",
+      })
+
+      if (summary.conversationId && summary.status !== "paused") {
+        messageQueueService.enqueue(
+          summary.conversationId,
+          goal
+            ? `Always-on session goal updated: ${goal}`
+            : "Always-on session goal cleared. Continue making concrete useful progress.",
+          summary.currentSessionId,
+          undefined,
+          "steering",
+        )
+      }
+
+      return { success: true, sessions: getAlwaysOnSessionSummaries() }
+    }),
+
+  resetAlwaysOnSession: t.procedure
+    .input<{ alwaysOnSessionId: string; restart?: boolean }>()
+    .action(async ({ input }) => {
+      const summary = getAlwaysOnSessionSummaries().find((session) => session.id === input.alwaysOnSessionId)
+      if (!summary) {
+        return { success: false, error: "Always-on session not found" }
+      }
+
+      const loop = loopService.getLoop(summary.loopId)
+      if (!loop) {
+        return { success: false, error: "Backing repeat task not found" }
+      }
+
+      stopAlwaysOnRuntimeSession(summary, loop, { clearQueue: true })
+      const resetRecord = alwaysOnSessionService.resetSession(summary.id)
+      if (!resetRecord) {
+        return { success: false, error: "Always-on session not found" }
+      }
+
+      const restart = input.restart !== false
+      const updatedLoop: LoopConfig = {
+        ...loop,
+        prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name, resetRecord.goal),
+        enabled: restart,
+        runContinuously: true,
+        continueInSession: true,
+        alwaysOnSession: true,
+        lastSessionId: undefined,
+      }
+      const saved = loopService.saveLoop(updatedLoop)
+      if (!saved) {
+        return { success: false, error: "Failed to persist always-on reset" }
+      }
+
+      if (restart) {
+        loopService.resumeScheduling()
+        loopService.startLoop(updatedLoop.id)
+      }
 
       return { success: true, sessions: getAlwaysOnSessionSummaries() }
     }),

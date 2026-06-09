@@ -15,28 +15,55 @@ function getSection(source: string, startMarker: string, endMarker: string): str
 
 describe("tipc always-on lifecycle controls", () => {
   it("pauses the current always-on runtime session before falling back to loop metadata", () => {
-    const pauseSection = getSection(
+    const stopHelperSection = getSection(
       tipcSource,
-      "  pauseAlwaysOnSession: t.procedure",
-      "  resumeAlwaysOnSession: t.procedure",
+      "function stopAlwaysOnRuntimeSession(",
+      "async function getLatestRawMessageIndexForConversation",
     )
 
-    expect(pauseSection).toContain("const activeSessionId = summary.currentSessionId ?? loop.lastSessionId")
-    expect(pauseSection).toContain("loopService.stopLoop(loop.id)")
-    expect(pauseSection).toContain("agentSessionStateManager.stopSession(activeSessionId)")
-    expect(pauseSection).toContain("toolApprovalManager.cancelSessionApprovals(activeSessionId)")
-    expect(pauseSection).toContain("messageQueueService.pauseQueue(activeSession.conversationId)")
+    expect(stopHelperSection).toContain("const activeSessionId = summary.currentSessionId ?? loop.lastSessionId")
+    expect(stopHelperSection).toContain("loopService.stopLoop(loop.id)")
+    expect(stopHelperSection).toContain("agentSessionStateManager.stopSession(activeSessionId)")
+    expect(stopHelperSection).toContain("toolApprovalManager.cancelSessionApprovals(activeSessionId)")
+    expect(stopHelperSection).toContain("messageQueueService.pauseQueue(conversationId)")
   })
 
   it("refreshes the always-on prompt when resuming", () => {
     const resumeSection = getSection(
       tipcSource,
       "  resumeAlwaysOnSession: t.procedure",
+      "  updateAlwaysOnSessionGoal: t.procedure",
+    )
+
+    expect(resumeSection).toContain("prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name, summary.goal)")
+    expect(resumeSection).toContain("enabled: true")
+    expect(resumeSection).toContain("loopService.startLoop(loop.id)")
+  })
+
+  it("can update the always-on goal and steer the active conversation", () => {
+    const goalSection = getSection(
+      tipcSource,
+      "  updateAlwaysOnSessionGoal: t.procedure",
+      "  resetAlwaysOnSession: t.procedure",
+    )
+
+    expect(goalSection).toContain("alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name, goal)")
+    expect(goalSection).toContain("alwaysOnSessionService.setGoal(summary.id, goal)")
+    expect(goalSection).toContain("title: goal ? \"Goal updated\" : \"Goal cleared\"")
+    expect(goalSection).toContain("messageQueueService.enqueue(")
+    expect(goalSection).toContain("\"steering\"")
+  })
+
+  it("resets the session, clears stale runtime linkage, and restarts from a fresh run", () => {
+    const resetSection = getSection(
+      tipcSource,
+      "  resetAlwaysOnSession: t.procedure",
       "  openAlwaysOnSessionLog: t.procedure",
     )
 
-    expect(resumeSection).toContain("prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name)")
-    expect(resumeSection).toContain("enabled: true")
-    expect(resumeSection).toContain("loopService.startLoop(loop.id)")
+    expect(resetSection).toContain("stopAlwaysOnRuntimeSession(summary, loop, { clearQueue: true })")
+    expect(resetSection).toContain("alwaysOnSessionService.resetSession(summary.id)")
+    expect(resetSection).toContain("lastSessionId: undefined")
+    expect(resetSection).toContain("loopService.startLoop(updatedLoop.id)")
   })
 })

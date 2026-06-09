@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { cn } from "@renderer/lib/utils"
 import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnSessionAuditSummary, AlwaysOnSessionSummary, Config, ModelPreset } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch, ListChecks } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch, ListChecks, Target, Pencil, RotateCcw } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -3862,6 +3862,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const [activeTab, setActiveTab] = useState<"chat" | "log" | "summary">("chat")
   const [alwaysOnLogSearch, setAlwaysOnLogSearch] = useState("")
   const [alwaysOnLogKindFilter, setAlwaysOnLogKindFilter] = useState<"all" | AlwaysOnLogEntryKind>("all")
+  const [alwaysOnGoalDraft, setAlwaysOnGoalDraft] = useState("")
+  const [isAlwaysOnGoalEditing, setIsAlwaysOnGoalEditing] = useState(false)
+  const [isUpdatingAlwaysOnGoal, setIsUpdatingAlwaysOnGoal] = useState(false)
+  const [isResettingAlwaysOnSession, setIsResettingAlwaysOnSession] = useState(false)
   const [selectedDelegationRunId, setSelectedDelegationRunId] = useState<string | null>(null)
   const [isDelegationSummaryCollapsed, setIsDelegationSummaryCollapsed] = useState(false)
 
@@ -4162,6 +4166,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       (!!progress.sessionId && session.currentSessionId === progress.sessionId),
     ) ?? (sessions.length === 1 ? sessions[0] : undefined)
   }, [alwaysOnSessionsQuery.data, isAlwaysOnSession, progress.conversationId, progress.sessionId])
+
+  useEffect(() => {
+    if (isAlwaysOnGoalEditing) return
+    setAlwaysOnGoalDraft(alwaysOnSummary?.goal ?? "")
+  }, [alwaysOnSummary?.goal, isAlwaysOnGoalEditing])
 
   useEffect(() => {
     if (!isAlwaysOnSession && activeTab === "log") {
@@ -5356,6 +5365,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   const renderAlwaysOnStatusBand = (compact = false) => {
     if (!isAlwaysOnSession) return null
 
+    const goalText = alwaysOnSummary?.goal?.trim() || "No goal set"
+
     return (
       <div className={cn(
         "border-b border-emerald-500/20 bg-emerald-500/[0.07] text-xs",
@@ -5400,6 +5411,110 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             )}
           </div>
         </div>
+        <div className={cn(
+          "mt-2 border-t border-emerald-500/15 pt-2",
+          compact && "mt-1.5 pt-1.5",
+        )}>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <Target className="h-3.5 w-3.5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+              <span className="shrink-0 text-[10px] font-medium uppercase tracking-normal text-emerald-700 dark:text-emerald-300">
+                Goal
+              </span>
+              {!isAlwaysOnGoalEditing && (
+                <span className="min-w-0 flex-1 truncate text-muted-foreground" title={goalText}>
+                  {goalText}
+                </span>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-1 app-no-drag-region">
+              {isAlwaysOnGoalEditing ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 rounded-md px-2 text-[11px]"
+                    onClick={cancelAlwaysOnGoalEdit}
+                    disabled={isUpdatingAlwaysOnGoal}
+                    title="Cancel goal edit"
+                    aria-label="Cancel always-on goal edit"
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    className="h-6 rounded-md px-2 text-[11px]"
+                    onClick={saveAlwaysOnGoal}
+                    disabled={!alwaysOnSummary?.id || isUpdatingAlwaysOnGoal}
+                    title="Save goal"
+                    aria-label="Save always-on goal"
+                  >
+                    {isUpdatingAlwaysOnGoal ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Check className="mr-1 h-3 w-3" />
+                    )}
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 rounded-md px-2 text-[11px]"
+                    onClick={startAlwaysOnGoalEdit}
+                    disabled={!alwaysOnSummary?.id}
+                    title="Set always-on goal"
+                    aria-label="Set always-on goal"
+                  >
+                    <Pencil className="mr-1 h-3 w-3" />
+                    Set
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 rounded-md px-2 text-[11px] text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
+                    onClick={resetAlwaysOnSession}
+                    disabled={!alwaysOnSummary?.id || isResettingAlwaysOnSession}
+                    title="Clear and restart always-on session"
+                    aria-label="Clear and restart always-on session"
+                  >
+                    {isResettingAlwaysOnSession ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <RotateCcw className="mr-1 h-3 w-3" />
+                    )}
+                    Reset
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+          {isAlwaysOnGoalEditing && (
+            <textarea
+              value={alwaysOnGoalDraft}
+              onChange={(event) => setAlwaysOnGoalDraft(event.target.value)}
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => {
+                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                  event.preventDefault()
+                  void saveAlwaysOnGoal()
+                }
+              }}
+              rows={compact ? 2 : 3}
+              className="mt-1.5 min-h-14 w-full resize-y rounded-md border border-emerald-500/20 bg-background/85 px-2 py-1.5 text-xs leading-relaxed text-foreground outline-none focus-visible:border-emerald-500/50"
+              placeholder="Set the always-on session goal"
+              aria-label="Always-on session goal"
+            />
+          )}
+        </div>
       </div>
     )
   }
@@ -5416,6 +5531,83 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       toast.error("Failed to open always-on log")
     }
   }, [alwaysOnSummary?.id])
+
+  const refreshAlwaysOnView = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["always-on-sessions"] }),
+      queryClient.invalidateQueries({ queryKey: ["always-on-session-log"] }),
+      queryClient.invalidateQueries({ queryKey: ["loops"] }),
+      queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
+      queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
+    ])
+  }, [])
+
+  const startAlwaysOnGoalEdit = useCallback((event?: React.MouseEvent) => {
+    event?.stopPropagation()
+    setAlwaysOnGoalDraft(alwaysOnSummary?.goal ?? "")
+    setIsAlwaysOnGoalEditing(true)
+  }, [alwaysOnSummary?.goal])
+
+  const cancelAlwaysOnGoalEdit = useCallback((event?: React.MouseEvent) => {
+    event?.stopPropagation()
+    setAlwaysOnGoalDraft(alwaysOnSummary?.goal ?? "")
+    setIsAlwaysOnGoalEditing(false)
+  }, [alwaysOnSummary?.goal])
+
+  const saveAlwaysOnGoal = useCallback(async (event?: React.MouseEvent) => {
+    event?.stopPropagation()
+    if (!alwaysOnSummary?.id) return
+
+    setIsUpdatingAlwaysOnGoal(true)
+    try {
+      const result = await tipcClient.updateAlwaysOnSessionGoal({
+        alwaysOnSessionId: alwaysOnSummary.id,
+        goal: alwaysOnGoalDraft,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to update always-on goal")
+        return
+      }
+      setIsAlwaysOnGoalEditing(false)
+      await refreshAlwaysOnView()
+      toast.success("Always-on goal updated")
+    } catch (error) {
+      console.error("Failed to update always-on goal:", error)
+      toast.error("Failed to update always-on goal")
+    } finally {
+      setIsUpdatingAlwaysOnGoal(false)
+    }
+  }, [alwaysOnGoalDraft, alwaysOnSummary?.id, refreshAlwaysOnView])
+
+  const resetAlwaysOnSession = useCallback(async (event?: React.MouseEvent) => {
+    event?.stopPropagation()
+    if (!alwaysOnSummary?.id) return
+
+    const confirmed = window.confirm("Reset this always-on session? This clears the visible log, queued questions, and current run, then starts fresh.")
+    if (!confirmed) return
+
+    setIsResettingAlwaysOnSession(true)
+    try {
+      const result = await tipcClient.resetAlwaysOnSession({
+        alwaysOnSessionId: alwaysOnSummary.id,
+        restart: true,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to reset always-on session")
+        return
+      }
+      setActiveTab("chat")
+      setAlwaysOnLogSearch("")
+      setAlwaysOnLogKindFilter("all")
+      await refreshAlwaysOnView()
+      toast.success("Always-on session reset")
+    } catch (error) {
+      console.error("Failed to reset always-on session:", error)
+      toast.error("Failed to reset always-on session")
+    } finally {
+      setIsResettingAlwaysOnSession(false)
+    }
+  }, [alwaysOnSummary?.id, refreshAlwaysOnView])
 
   const renderAlwaysOnLogPanel = (compact = false) => {
     if (!isAlwaysOnSession || alwaysOnRecentLogEntries.length === 0) return null

@@ -1176,6 +1176,7 @@ export interface AlwaysOnSessionSummary {
   id: string
   loopId: string
   name: string
+  goal?: string
   status: AlwaysOnSessionStatus
   enabled: boolean
   isRunning: boolean
