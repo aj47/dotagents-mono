@@ -1074,8 +1074,129 @@ export interface LoopConfig {
   continueInSession?: boolean // if true, reuses the prior session across iterations
   lastSessionId?: string   // session id to resume on next run when continueInSession is on
   runContinuously?: boolean // if true, starts the next run immediately after the previous run finishes
+  alwaysOnSession?: boolean // if true, this task backs a top-level always-on session
   maxIterations?: number   // optional per-task override for agent loop iterations
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
+}
+
+export type AlwaysOnSessionStatus = "running" | "idle" | "paused"
+
+export type AlwaysOnLogEntryKind =
+  | "run_started"
+  | "run_completed"
+  | "attempt"
+  | "artifact"
+  | "evidence"
+  | "blocker"
+  | "question"
+  | "answer"
+  | "branch"
+  | "pause"
+  | "resume"
+  | "error"
+
+export interface AlwaysOnLogEntry {
+  id: string
+  alwaysOnSessionId: string
+  loopId: string
+  runtimeSessionId?: string
+  conversationId?: string
+  runId?: number
+  kind: AlwaysOnLogEntryKind
+  title: string
+  details?: string
+  outcome?: string
+  timestamp: number
+}
+
+export type AlwaysOnAuditVerdict = "productive" | "mixed" | "wasteful" | "unknown"
+
+export interface AlwaysOnAuditFinding {
+  severity: "info" | "warning" | "critical"
+  title: string
+  detail: string
+}
+
+export interface AlwaysOnRepeatedLogTitle {
+  title: string
+  count: number
+}
+
+export interface AlwaysOnSessionAuditSummary {
+  verdict: AlwaysOnAuditVerdict
+  headline: string
+  totalLogEntries: number
+  analyzedLogEntries: number
+  attemptCount: number
+  blockerCount: number
+  questionCount: number
+  answerCount: number
+  artifactCount: number
+  runStartedCount: number
+  runCompletedCount: number
+  maxIterationCompletionCount: number
+  outcomeCount: number
+  verifiedOutcomeCount: number
+  repeatedAttemptCount: number
+  longestIntentOnlyStreak: number
+  currentIntentOnlyStreak: number
+  pauseLeakCount: number
+  logOnlyScore: number
+  topRepeatedTitles: AlwaysOnRepeatedLogTitle[]
+  recentArtifacts: AlwaysOnLogEntry[]
+  findings: AlwaysOnAuditFinding[]
+}
+
+export interface AlwaysOnQuestionChoice {
+  id: string
+  label: string
+  description?: string
+}
+
+export interface AlwaysOnQuestion {
+  id: string
+  alwaysOnSessionId: string
+  loopId: string
+  runtimeSessionId?: string
+  conversationId?: string
+  branchConversationId?: string
+  sourceMessageIndex?: number
+  prompt: string
+  context?: string
+  recommendation?: string
+  customAnswerPlaceholder?: string
+  choices: AlwaysOnQuestionChoice[]
+  allowCustom: boolean
+  reason?: "question" | "blocker"
+  status: "pending" | "answered" | "dismissed"
+  createdAt: number
+  answeredAt?: number
+  answerText?: string
+  answerChoiceId?: string
+}
+
+export interface AlwaysOnSessionSummary {
+  id: string
+  loopId: string
+  name: string
+  goal?: string
+  status: AlwaysOnSessionStatus
+  enabled: boolean
+  isRunning: boolean
+  createdAt: number
+  updatedAt: number
+  currentSessionId?: string
+  conversationId?: string
+  logPath: string
+  logCount: number
+  latestLogEntry?: AlwaysOnLogEntry
+  latestWorkEntry?: AlwaysOnLogEntry
+  recentLogEntries?: AlwaysOnLogEntry[]
+  recentWorkEntries?: AlwaysOnLogEntry[]
+  auditSummary?: AlwaysOnSessionAuditSummary
+  pendingQuestionCount: number
+  answeredQuestionCount: number
+  questions: AlwaysOnQuestion[]
 }
 
 export interface SidebarSessionGroupConfig {

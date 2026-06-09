@@ -84,6 +84,8 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   const hasExecuteCommand = hasPromptTool(availableTools, 'execute_command')
   const hasReadMoreContext = hasPromptTool(availableTools, 'read_more_context')
   const hasSetSessionTitle = hasPromptTool(availableTools, 'set_session_title')
+  const hasAlwaysOnAttemptLog = hasPromptTool(availableTools, 'log_always_on_attempt')
+  const hasAlwaysOnQuestion = hasPromptTool(availableTools, 'ask_always_on_question')
 
   const sections = [
     'AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.',
@@ -147,6 +149,14 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - When the task becomes clear, set a concise useful title with set_session_title early enough to improve the UI
 - Keep titles short and specific; do not call set_session_title again with the same title
 - Update later only if the conversation topic materially shifts and the title should change`)
+  }
+
+  if (hasAlwaysOnAttemptLog || hasAlwaysOnQuestion) {
+    sections.push(`ALWAYS-ON SESSIONS:
+- Use log_always_on_attempt and ask_always_on_question only when the current user/task prompt explicitly says this is an always-on session
+- In an always-on session, log every concrete attempt, blocker, branch, and meaningful outcome to the append-only attempt list before continuing
+- If one path is blocked, ask a queued multiple-choice question when user input would help, then keep working on another branch instead of waiting idle
+- Do not use always-on question/log tools for ordinary one-off chat or normal task sessions`)
   }
 
   if (hasReadMoreContext) {

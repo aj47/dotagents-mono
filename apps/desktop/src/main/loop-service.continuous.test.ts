@@ -18,7 +18,38 @@ describe("continuous repeat tasks", () => {
     const startLoopSection = getSection(loopServiceSource, "  startLoop(loopId: string): boolean {", "  stopLoop(loopId: string): boolean {")
 
     expect(startLoopSection).toContain("loop.runOnStartup || isContinuousLoop(loop)")
-    expect(startLoopSection).toContain("void this.executeLoop(loopId, { rescheduleAfterRun: true })")
+    expect(startLoopSection).toContain("this.scheduleNextRun(loopId, 0)")
+    expect(startLoopSection).not.toContain("setImmediate(")
+  })
+
+  it("skips stale scheduled executions after a loop is disabled", () => {
+    const executeLoopSection = getSection(loopServiceSource, "  private async executeLoop(", "  private scheduleNextRun(")
+
+    expect(executeLoopSection).toContain("if (options.rescheduleAfterRun && !loop.enabled)")
+    expect(executeLoopSection).toContain("Skip scheduled execution")
+  })
+
+  it("queues continuous restarts when the previous execution is still unwinding", () => {
+    const executeLoopSection = getSection(loopServiceSource, "  private async executeLoop(", "  private scheduleNextRun(")
+
+    expect(executeLoopSection).toContain("this.pendingRescheduleAfterActive.add(loopId)")
+    expect(executeLoopSection).toContain("Queued continuous loop")
+    expect(executeLoopSection).toContain("options.rescheduleAfterRun && loop.enabled && isContinuousLoop(loop) && !this.isStopping")
+    expect(executeLoopSection).toContain("options.rescheduleAfterRun || this.pendingRescheduleAfterActive.has(loopId)")
+    expect(executeLoopSection).toContain("this.pendingRescheduleAfterActive.delete(loopId)")
+  })
+
+  it("does not manually trigger paused always-on sessions", () => {
+    const triggerLoopSection = getSection(loopServiceSource, "  async triggerLoop(", "  getLoopStatuses():")
+
+    expect(triggerLoopSection).toContain("loop.alwaysOnSession === true && !loop.enabled")
+    expect(triggerLoopSection).toContain("Skip manual trigger for paused always-on session")
+    expect(triggerLoopSection.indexOf("already executing")).toBeLessThan(
+      triggerLoopSection.indexOf("paused always-on session"),
+    )
+    expect(triggerLoopSection.indexOf("paused always-on session")).toBeLessThan(
+      triggerLoopSection.indexOf("Manually triggering loop"),
+    )
   })
 
   it("reschedules continuous tasks without waiting for the interval", () => {

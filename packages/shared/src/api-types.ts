@@ -1027,6 +1027,7 @@ export interface Loop {
   continueInSession?: boolean;
   lastSessionId?: string;
   runContinuously?: boolean;
+  alwaysOnSession?: boolean;
   maxIterations?: number;
   lastRunAt?: number;
   isRunning: boolean;

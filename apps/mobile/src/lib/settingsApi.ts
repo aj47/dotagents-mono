@@ -471,6 +471,7 @@ export interface LoopCreateRequest {
   continueInSession?: boolean;
   lastSessionId?: string;
   runContinuously?: boolean;
+  alwaysOnSession?: boolean;
   maxIterations?: number;
   schedule?: LoopSchedule | null;
 }
@@ -486,6 +487,7 @@ export interface LoopUpdateRequest {
   continueInSession?: boolean;
   lastSessionId?: string | null;
   runContinuously?: boolean;
+  alwaysOnSession?: boolean;
   maxIterations?: number | null;
   schedule?: LoopSchedule | null;
 }

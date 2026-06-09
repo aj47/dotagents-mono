@@ -130,6 +130,94 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
     },
   },
   {
+    name: "log_always_on_attempt",
+    description:
+      "Append an entry to the current always-on session's durable attempt log. Use only inside an always-on session. Call this before every concrete attempt, for blockers, and when recording outcomes. Use kind=\"artifact\" when a durable file, document, or other user-facing output was created or updated.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        kind: {
+          type: "string",
+          enum: ["attempt", "artifact", "evidence", "blocker", "branch", "error"],
+          description: "Type of entry to append. Use artifact for created or updated durable outputs. Queue user questions with ask_always_on_question instead of manually logging question/answer entries.",
+        },
+        title: {
+          type: "string",
+          description: "Short title for what is being tried or recorded.",
+        },
+        details: {
+          type: "string",
+          description: "Optional details, evidence, command, hypothesis, or blocker context.",
+        },
+        outcome: {
+          type: "string",
+          description: "Optional result or outcome after the attempt.",
+        },
+      },
+      required: ["kind", "title"],
+    },
+  },
+  {
+    name: "ask_always_on_question",
+    description:
+      "Queue a decision-quality multiple-choice question for the user from an always-on session without stopping the worker. Include the concrete context/evidence, 2-3 mutually exclusive choices with impact descriptions, and a recommendation when one answer is safest. The UI also allows a custom answer when allowCustom is true. After calling this, continue other useful work instead of waiting.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description: "Specific decision question to show to the user. Avoid generic prompts like 'What should I do next?' unless the choices and context make the decision obvious.",
+        },
+        context: {
+          type: "string",
+          description: "Required concise context: current state, relevant artifact paths/evidence, why user input is needed, and what has already been tried.",
+        },
+        recommendation: {
+          type: "string",
+          description: "Optional recommended answer with rationale, shown above the choices.",
+        },
+        choices: {
+          type: "array",
+          minItems: 2,
+          maxItems: 3,
+          description: "Two or three mutually exclusive choices. Each choice must include a visible impact/tradeoff description.",
+          items: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+                description: "Stable short choice id.",
+              },
+              label: {
+                type: "string",
+                description: "Short user-facing choice label.",
+              },
+              description: {
+                type: "string",
+                description: "Required one-sentence tradeoff or impact of picking this choice.",
+              },
+            },
+            required: ["label", "description"],
+          },
+        },
+        customAnswerPlaceholder: {
+          type: "string",
+          description: "Optional placeholder telling the user what to write in the custom field, for example 'Name the next workstream or exact defect'.",
+        },
+        allowCustom: {
+          type: "boolean",
+          description: "Whether the user can provide a custom answer. Defaults to true.",
+        },
+        reason: {
+          type: "string",
+          enum: ["question", "blocker"],
+          description: "Use blocker when the question records a blocked path.",
+        },
+      },
+      required: ["prompt", "context", "choices"],
+    },
+  },
+  {
     name: "execute_command",
     description: "Execute any shell command. This is the primary tool for filesystem operations, running scripts, and automation. Use for: searching files (rg/find), reading files in targeted ranges (wc/sed/head/tail/cat), editing files, listing directories (ls), creating directories (mkdir -p), git operations, package-manager/python/node commands, and any shell command. Respect the repo's lockfile/package-manager conventions: pnpm-lock.yaml => pnpm, package-lock.json => npm, yarn.lock => yarn, bun.lock/bun.lockb => bun. Prefer read-only inspection commands first for planning/context tasks. Only run package-manager install/test/build/lint/typecheck commands when the user explicitly asks for verification/package work, or when validating code changes you already made.",
     inputSchema: {

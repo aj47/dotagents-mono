@@ -102,12 +102,14 @@ describe('QueuedMessage', () => {
       id: 'msg-2',
       conversationId: 'conv-1',
       sessionId: 'sess-42',
+      kind: 'steering',
       text: 'A queued message',
       createdAt: Date.now(),
       status: 'processing',
     }
     assertType<QueuedMessage>(msg)
     expect(msg.sessionId).toBe('sess-42')
+    expect(msg.kind).toBe('steering')
   })
 
   it('accepts all optional fields (errorMessage, addedToHistory)', () => {

@@ -4,6 +4,23 @@ import { getRendererHandlers } from "@egoist/tipc/main"
 import { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
 
+export function formatSteeringMessageForModel(text: string, options: { deferred?: boolean } = {}): string {
+  const trimmed = text.trim()
+  const timing = options.deferred
+    ? "The user sent this as steering while a previous agent run was active. Apply it now if it is still relevant."
+    : "The user sent this while you were already working. Treat it as live steering for the current run."
+
+  return [
+    "<steering_message>",
+    timing,
+    "Do not restart the task. Adjust your next tool call, plan, or final answer to account for this guidance. Mention the steering only if it materially changes the result.",
+    "",
+    "User steering:",
+    trimmed,
+    "</steering_message>",
+  ].join("\n")
+}
+
 /**
  * Service for managing message queues per conversation.
  * When message queuing is enabled, users can submit messages while an agent session is active.
@@ -98,11 +115,13 @@ class MessageQueueService {
     text: string,
     sessionId?: string,
     launchState?: QueuedMessage["launchState"],
+    kind: QueuedMessage["kind"] = "prompt",
   ): QueuedMessage {
     const message: QueuedMessage = {
       id: this.generateMessageId(),
       conversationId,
       sessionId,
+      kind,
       ...(launchState ? { launchState } : {}),
       text,
       createdAt: Date.now(),
@@ -113,7 +132,7 @@ class MessageQueueService {
     queue.push(message)
     this.queues.set(conversationId, queue)
 
-    logApp(`[MessageQueueService] Enqueued message for ${conversationId}: ${message.id}`)
+    logApp(`[MessageQueueService] Enqueued ${kind} message for ${conversationId}: ${message.id}`)
     this.emitQueueUpdate(conversationId)
     
     return message
@@ -322,6 +341,51 @@ class MessageQueueService {
   }
 
   /**
+   * Remove and return pending steering messages for the active run.
+   * Steering is intentionally not FIFO-blocked by normal prompt messages because
+   * it is live guidance for the currently running agent turn.
+   */
+  consumePendingSteeringMessages(conversationId: string, sessionId?: string): QueuedMessage[] {
+    const queue = this.queues.get(conversationId)
+    if (!queue || queue.length === 0) return []
+    if (this.pausedConversations.has(conversationId)) {
+      logApp(`[MessageQueueService] Queue is paused for ${conversationId}, skipping steering consumption`)
+      return []
+    }
+
+    const consumed: QueuedMessage[] = []
+    const remaining: QueuedMessage[] = []
+
+    for (const message of queue) {
+      const isMatchingSteering =
+        message.status === "pending" &&
+        message.kind === "steering" &&
+        (!sessionId || !message.sessionId || message.sessionId === sessionId)
+
+      if (isMatchingSteering) {
+        consumed.push({
+          ...message,
+          status: "processing",
+        })
+      } else {
+        remaining.push(message)
+      }
+    }
+
+    if (consumed.length === 0) return []
+
+    if (remaining.length === 0) {
+      this.queues.delete(conversationId)
+    } else {
+      this.queues.set(conversationId, remaining)
+    }
+
+    logApp(`[MessageQueueService] Consumed ${consumed.length} steering message(s) for ${conversationId}`)
+    this.emitQueueUpdate(conversationId)
+    return consumed
+  }
+
+  /**
    * Reset a failed message to pending status for retry.
    * Unlike updateMessageText, this only changes status and works for addedToHistory messages.
    */
@@ -414,4 +478,3 @@ class MessageQueueService {
 }
 
 export const messageQueueService = MessageQueueService.getInstance()
-

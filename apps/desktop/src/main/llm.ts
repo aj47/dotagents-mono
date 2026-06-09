@@ -56,6 +56,7 @@ import {
   appendAgentStopNote,
   resolveAgentIterationLimits,
 } from "./agent-run-utils"
+import { formatSteeringMessageForModel, messageQueueService } from "./message-queue-service"
 import { filterEphemeralMessages, isInternalNudgeContent } from "./conversation-history-utils"
 import {
   filterNamedItemsToAllowedTools,
@@ -1330,6 +1331,35 @@ export async function processTranscriptWithAgentMode(
     conversationHistory.push(message)
   }
 
+  const applyPendingSteeringMessages = (): number => {
+    if (!currentConversationId) return 0
+
+    const steeringMessages = messageQueueService.consumePendingSteeringMessages(
+      currentConversationId,
+      currentSessionId,
+    )
+    if (steeringMessages.length === 0) return 0
+
+    for (const steeringMessage of steeringMessages) {
+      const modelContent = formatSteeringMessageForModel(steeringMessage.text)
+      addMessage(
+        "user",
+        modelContent,
+        undefined,
+        undefined,
+        steeringMessage.createdAt,
+        { displayContent: `Steering: ${steeringMessage.text}` },
+      )
+    }
+
+    logLLM("[processTranscriptWithAgentMode] Applied queued steering message(s)", {
+      sessionId: currentSessionId,
+      conversationId: currentConversationId,
+      count: steeringMessages.length,
+    })
+    return steeringMessages.length
+  }
+
   const executeToolWithRunCache = async (
     toolCall: MCPToolCall,
     onToolProgress: (message: string) => void,
@@ -1482,14 +1512,16 @@ export async function processTranscriptWithAgentMode(
     return baseTimestamp
   }
 
-  const materializePendingUserResponses = (): string | undefined => {
+  const materializePendingUserResponses = (): { latestUserResponse?: string; materializedCount: number } => {
     const responseEvents = getSessionRunUserResponseEvents(currentSessionId, effectiveRunId)
+    let materializedCount = 0
 
     for (const responseEvent of getUnmaterializedUserResponseEvents(
       responseEvents,
       materializedUserResponseEventIds,
     )) {
       const responseText = normalizeUserFacingResponseContent(responseEvent.text)
+      materializedCount += 1
 
       if (responseText && !hasAssistantMessageInCurrentTurn(responseText)) {
         addMessage(
@@ -1505,7 +1537,10 @@ export async function processTranscriptWithAgentMode(
       materializedUserResponseEventIds.add(responseEvent.id)
     }
 
-    return resolveLatestUserFacingResponse({ responseEvents })
+    return {
+      latestUserResponse: resolveLatestUserFacingResponse({ responseEvents }),
+      materializedCount,
+    }
   }
 
   // Track current iteration for retry progress callback
@@ -1545,6 +1580,21 @@ export async function processTranscriptWithAgentMode(
   // Update initial step with tool count
   initialStep.status = "completed"
   initialStep.description = `Found ${availableTools.length} available tools.`
+
+  const withLatestVisibleThoughtStep = (recentSteps: AgentProgressStep[]): AgentProgressStep[] => {
+    const latestThoughtStep = [...progressSteps].reverse().find((step) =>
+      step.type === "thinking" &&
+      !step.title?.toLowerCase().includes("verifying") &&
+      Boolean(step.llmContent?.trim() || step.description?.trim()),
+    )
+    if (!latestThoughtStep) return recentSteps
+
+    const alreadyIncluded = recentSteps.some((step) =>
+      step === latestThoughtStep ||
+      (step.id && latestThoughtStep.id && step.id === latestThoughtStep.id),
+    )
+    return alreadyIncluded ? recentSteps : [latestThoughtStep, ...recentSteps]
+  }
 
   // Remove duplicates from available tools to prevent confusion
   const uniqueAvailableTools = availableTools.filter(
@@ -2359,6 +2409,25 @@ export async function processTranscriptWithAgentMode(
       ...getConversationWindowForProgress(),
     })
 
+    const appliedSteeringCount = applyPendingSteeringMessages()
+    if (appliedSteeringCount > 0) {
+      const steeringStep = createProgressStep(
+        "thinking",
+        appliedSteeringCount === 1 ? "Applied steering message" : `Applied ${appliedSteeringCount} steering messages`,
+        "Using queued user steering before the next model step",
+        "completed",
+      )
+      progressSteps.push(steeringStep)
+      thinkingStep.description = "Generating response with latest steering"
+      emit({
+        currentIteration: iteration,
+        maxIterations,
+        steps: withLatestVisibleThoughtStep(progressSteps.slice(-3)),
+        isComplete: false,
+        ...getConversationWindowForProgress(),
+      })
+    }
+
     const checkpointContextMessage = isInternalResumeTranscript
       ? null
       : buildCompactionCheckpointContextMessage(conversationCompaction)
@@ -2450,7 +2519,7 @@ export async function processTranscriptWithAgentMode(
       emit({
         currentIteration: iteration,
         maxIterations,
-        steps: progressSteps.slice(-3),
+        steps: withLatestVisibleThoughtStep(progressSteps.slice(-3)),
         isComplete: false,
         ...getConversationWindowForProgress(),
       })
@@ -3083,6 +3152,23 @@ export async function processTranscriptWithAgentMode(
     // Execute tool calls with enhanced error handling
     const toolResults: MCPToolResult[] = []
     const failedTools: string[] = []
+    let latestMaterializedUserResponse: string | undefined
+    const materializeAndEmitUserResponses = (stepsForProgress: AgentProgressStep[]) => {
+      const materializedResponse = materializePendingUserResponses()
+      if (materializedResponse.latestUserResponse) {
+        latestMaterializedUserResponse = materializedResponse.latestUserResponse
+      }
+      if (materializedResponse.materializedCount > 0) {
+        emit({
+          currentIteration: iteration,
+          maxIterations,
+          steps: withLatestVisibleThoughtStep(stepsForProgress),
+          isComplete: false,
+          ...getConversationWindowForProgress(),
+        })
+      }
+      return materializedResponse
+    }
 
     // Add assistant response with tool calls to conversation history BEFORE executing tools
     // This ensures the tool call request is visible immediately in the UI
@@ -3092,7 +3178,7 @@ export async function processTranscriptWithAgentMode(
     emit({
       currentIteration: iteration,
       maxIterations,
-      steps: progressSteps.slice(-3),
+      steps: withLatestVisibleThoughtStep(progressSteps.slice(-3)),
       isComplete: false,
       ...getConversationWindowForProgress(),
     })
@@ -3140,7 +3226,7 @@ export async function processTranscriptWithAgentMode(
       emit({
         currentIteration: iteration,
         maxIterations,
-        steps: progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)),
+        steps: withLatestVisibleThoughtStep(progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6))),
         isComplete: false,
         ...getConversationWindowForProgress(),
       })
@@ -3154,7 +3240,7 @@ export async function processTranscriptWithAgentMode(
           emit({
             currentIteration: iteration,
             maxIterations,
-            steps: progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)),
+            steps: withLatestVisibleThoughtStep(progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6))),
             isComplete: false,
             ...getConversationWindowForProgress(),
           })
@@ -3187,6 +3273,8 @@ export async function processTranscriptWithAgentMode(
         toolResultStep.toolResult = toolCallStep.toolResult
         progressSteps.push(toolResultStep)
 
+        materializeAndEmitUserResponses(progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)))
+
         return execResult
       })
 
@@ -3218,7 +3306,7 @@ export async function processTranscriptWithAgentMode(
       emit({
         currentIteration: iteration,
         maxIterations,
-        steps: progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6)),
+        steps: withLatestVisibleThoughtStep(progressSteps.slice(-Math.min(toolCallsArray.length * 2, 6))),
         isComplete: false,
         ...getConversationWindowForProgress(),
       })
@@ -3258,7 +3346,7 @@ export async function processTranscriptWithAgentMode(
         emit({
           currentIteration: iteration,
           maxIterations,
-          steps: progressSteps.slice(-3),
+          steps: withLatestVisibleThoughtStep(progressSteps.slice(-3)),
           isComplete: false,
           ...getConversationWindowForProgress(),
         })
@@ -3269,7 +3357,7 @@ export async function processTranscriptWithAgentMode(
           emit({
             currentIteration: iteration,
             maxIterations,
-            steps: progressSteps.slice(-3),
+            steps: withLatestVisibleThoughtStep(progressSteps.slice(-3)),
             isComplete: false,
             ...getConversationWindowForProgress(),
           })
@@ -3334,10 +3422,12 @@ export async function processTranscriptWithAgentMode(
         emit({
           currentIteration: iteration,
           maxIterations,
-          steps: progressSteps.slice(-3),
+          steps: withLatestVisibleThoughtStep(progressSteps.slice(-3)),
           isComplete: false,
           ...getConversationWindowForProgress(),
         })
+
+        materializeAndEmitUserResponses(progressSteps.slice(-3))
       }
     }
 
@@ -3354,7 +3444,6 @@ export async function processTranscriptWithAgentMode(
     // Keep tool results intact for full visibility in UI
     // The UI will handle display and truncation as needed
     const processedToolResults = toolResults
-    let latestMaterializedUserResponse: string | undefined
 
     // Always add a tool message if any tools were executed, even if results are empty
     // This ensures the verifier sees tool execution evidence in conversationHistory
@@ -3385,9 +3474,12 @@ export async function processTranscriptWithAgentMode(
       addMessage("tool", toolResultsText, undefined, resultsWithPlaceholders)
     }
 
-    latestMaterializedUserResponse = materializePendingUserResponses()
+    const materializedResponseAfterToolEvidence = materializePendingUserResponses()
+    if (materializedResponseAfterToolEvidence.latestUserResponse) {
+      latestMaterializedUserResponse = materializedResponseAfterToolEvidence.latestUserResponse
+    }
 
-    if (processedToolResults.length > 0 || latestMaterializedUserResponse) {
+    if (processedToolResults.length > 0 || materializedResponseAfterToolEvidence.materializedCount > 0) {
       // Emit progress update after tool evidence and any materialized respond_to_user
       // content have both been appended, preserving sequential transcript order.
       emit({

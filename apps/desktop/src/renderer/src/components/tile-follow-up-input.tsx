@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
-import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot } from "lucide-react"
+import { Send, Mic, OctagonX, ImagePlus, Loader2, X, Bot, Route } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
@@ -110,7 +110,7 @@ export function TileFollowUpInput({
   })
 
   const sendMutation = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, queueKind }: { message: string; queueKind?: "prompt" | "steering" }) => {
       if (!conversationId) {
         // Start a new conversation if none exists
         // Mark as fromTile to suppress the floating panel while keeping the
@@ -132,12 +132,14 @@ export function TileFollowUpInput({
           fromTile: true,
           startSnoozed: false,
           preserveMainWindowFocus: true,
+          queueKind,
         })
       }
     },
     onSuccess: (_data, variables) => {
       logUI("[TileFollowUpInput] message sent", {
-        messageLength: variables.length,
+        messageLength: variables.message.length,
+        queueKind: variables.queueKind ?? "prompt",
         attachmentCount: imageAttachments.length,
         conversationId: conversationId ?? null,
         sessionId: sessionId ?? null,
@@ -152,7 +154,7 @@ export function TileFollowUpInput({
     },
   })
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent, queueKind: "prompt" | "steering" = "prompt") => {
     e?.preventDefault()
     const message = buildMessageWithImages(text, imageAttachments)
     logUI("[TileFollowUpInput] submit requested", {
@@ -162,6 +164,7 @@ export function TileFollowUpInput({
       isSessionActive,
       isInitializingSession,
       isQueueEnabled,
+      queueKind,
       inputMode: inputPresentation.mode,
       pending: sendMutation.isPending || isSubmitting || submitInFlightRef.current,
     })
@@ -187,7 +190,7 @@ export function TileFollowUpInput({
     setImageAttachments([])
 
     try {
-      const data = await sendMutation.mutateAsync(message)
+      const data = await sendMutation.mutateAsync({ message, queueKind })
       if (data?.queued) {
         rollbackOptimisticAppend?.()
       } else if (sessionId && !rollbackOptimisticAppend) {
@@ -263,7 +266,7 @@ export function TileFollowUpInput({
     if (handleSlashKeyDown(e)) return
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit()
+      handleSubmit(undefined, "prompt")
     }
   }
 
@@ -344,6 +347,7 @@ export function TileFollowUpInput({
     isSubmitting ||
     sendMutation.isPending
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
+  const canSendSteering = Boolean(conversationId && isSessionActive && isQueueEnabled)
 
   return (
     <form
@@ -447,6 +451,23 @@ export function TileFollowUpInput({
             )} aria-hidden="true" />
           )}
         </Button>
+        {canSendSteering && (
+          <Button
+            type="button"
+            size="sm-icon"
+            variant="ghost"
+            className="flex-shrink-0 text-sky-600 hover:bg-sky-100 hover:text-sky-700 dark:text-sky-300 dark:hover:bg-sky-950/40 dark:hover:text-sky-200"
+            disabled={!hasMessageContent || isDisabled}
+            onClick={() => void handleSubmit(undefined, "steering")}
+            title="Steer current run"
+            aria-label="Send steering message"
+          >
+            <Route className={cn(
+              "h-3.5 w-3.5",
+              sendMutation.isPending && "animate-pulse",
+            )} aria-hidden="true" />
+          </Button>
+        )}
         <Button
           type="button"
           size="sm-icon"

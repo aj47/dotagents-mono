@@ -17,6 +17,8 @@ import { conversationService } from "./conversation-service"
 import { readMoreContext } from "./context-budget"
 import { getRootAppSessionForAcpSession, setAcpSessionTitleOverride } from "./acp-session-state"
 import { emitAgentProgress } from "./emit-agent-progress"
+import { alwaysOnSessionService } from "./always-on-session-service"
+import { loopService } from "./loop-service"
 import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -39,6 +41,8 @@ import { runtimeToolDefinitions } from "./runtime-tool-definitions"
 interface BuiltinToolContext {
   sessionId?: string
 }
+
+type AlwaysOnRuntimeLogKind = "attempt" | "artifact" | "evidence" | "blocker" | "branch" | "error"
 
 type PackageManagerName = "pnpm" | "npm" | "yarn" | "bun"
 
@@ -72,6 +76,15 @@ const HIGH_IMPACT_PACKAGE_MANAGER_COMMAND_REGEX = /(^|&&|\|\||;)\s*(npm|npx|pnpm
 const VALIDATION_OR_DEPENDENCY_COMMAND_REGEX = /\b(test|tests|vitest|jest|playwright(?:\s+test)?|cypress|lint|eslint|typecheck|tsc\b|build|compile|install|add|remove|uninstall|update|upgrade)\b/i
 const POSIX_WORKSPACE_PATH_REGEX = /(?:\/Users|\/home)\/[^/\s'"`;|&()]+(?:\/[A-Za-z0-9._-]+)+/g
 const POSIX_HOME_PREFIX_REGEX = /^(\/Users\/[^/]+|\/home\/[^/]+)/
+const ALWAYS_ON_LOG_ONLY_ATTEMPT_LIMIT = 6
+const ALWAYS_ON_READY_GATE_LOG_LIMIT = 500
+const ALWAYS_ON_ARTIFACT_PATH_REGEX = /\b(created|wrote|saved|updated)\s*:?\s+[`"']?((?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm)))[`"']?/iu
+const ALWAYS_ON_READY_STATE_REGEX = /\b(?:operator[- ]ready|ready[- ]to[- ]record|ready for (?:recording|human action|operator|handoff)|status:\s*\*{0,2}ready|prep is complete|package is ready|record-now source of truth)\b/iu
+const ALWAYS_ON_PREP_ATTEMPT_REGEX = /\b(?:prep|prepare|polish|link|route|routing|pointer|discoverability|handoff|refresh|snapshot|checklist|packet|recording|filming|script|thumbnail|metadata|package|qc|audit|inspect|review|improve|patch|update|create|draft)\b/iu
+const ALWAYS_ON_DEFECT_FIX_ACTION_REGEX = /\b(?:fix|repair|correct|resolve)\b/iu
+const ALWAYS_ON_DEFECT_SIGNAL_REGEX = /\b(?:bug|error|failed|failure|broken|defect|issue|mismatch|duplicate|missing|invalid|awkward|formatting|unsafe|stale|regression|qc found|verified defect|marker not found)\b/iu
+const ALWAYS_ON_EXPLICIT_DEFECT_REGEX = /\b(?:bug|error|failed|failure|broken|regression|qc found|verified defect|concrete defect|specific defect|marker not found)\b/iu
+const ALWAYS_ON_BRANCH_SWITCH_REGEX = /\b(?:switch(?:ing)? (?:away|branches?|to a different)|different (?:branch|project|workstream)|new (?:branch|project|workstream)|other independent work|move to another)\b/iu
 
 async function detectPreferredPackageManager(startDir: string): Promise<PreferredPackageManager | null> {
   let currentDir = path.resolve(startDir)
@@ -158,6 +171,189 @@ async function getLatestUserMessageForSession(sessionId?: string): Promise<strin
     .find((message) => message.role === "user" && typeof message.content === "string" && message.content.trim().length > 0)
 
   return latestUserMessage?.content?.trim() ?? null
+}
+
+function getTrackedRuntimeSessionId(sessionId?: string): string | undefined {
+  if (!sessionId) return undefined
+  return getRootAppSessionForAcpSession(sessionId) ?? sessionId
+}
+
+function normalizeAlwaysOnLogKind(value: unknown): AlwaysOnRuntimeLogKind | null {
+  if (
+    value === "attempt" ||
+    value === "artifact" ||
+    value === "evidence" ||
+    value === "blocker" ||
+    value === "branch" ||
+    value === "error"
+  ) {
+    return value
+  }
+  return null
+}
+
+function normalizeAlwaysOnLogTitle(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, " ")
+    .replace(/\b(actual|actually|again|concrete|immediate|immediately|now|promised|real|the|with|for|and|to|a|an)\b/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim()
+}
+
+function looksLikeAlwaysOnIntentOnlyAttempt(title: string, details?: string): boolean {
+  const text = `${title} ${details ?? ""}`.toLowerCase()
+  const hasAction = /\b(run|execute|inspect|probe|read|write|create|check|verify)\b/u.test(text)
+  const hasImmediatePromise = /\b(now|actual|actually|concrete|real|immediate|immediately|execute_command|shell|filesystem|file|disk)\b/u.test(text)
+  return hasAction && hasImmediatePromise
+}
+
+function isAttemptWithoutOutcome(entry: { kind: string; outcome?: string }): boolean {
+  return entry.kind === "attempt" && !entry.outcome?.trim()
+}
+
+function getLastAlwaysOnProcessEntry(entries: Array<{ kind: string }>) {
+  return [...entries].reverse().find((entry) =>
+    entry.kind !== "run_started" &&
+    entry.kind !== "run_completed" &&
+    entry.kind !== "pause" &&
+    entry.kind !== "resume",
+  )
+}
+
+function truncateAlwaysOnEvidence(value: string, maxLength: number = 1200): string {
+  const normalized = value.replace(/\s+$/u, "")
+  if (normalized.length <= maxLength) return normalized
+  const half = Math.floor(maxLength / 2)
+  return `${normalized.slice(0, half)}\n... [truncated ${normalized.length - maxLength} chars] ...\n${normalized.slice(-half)}`
+}
+
+function extractAlwaysOnArtifact(...values: Array<string | undefined>): { verb: "created" | "updated"; path: string } | undefined {
+  for (const value of values) {
+    if (!value) continue
+    const match = value.match(ALWAYS_ON_ARTIFACT_PATH_REGEX)
+    if (match?.[1] && match[2]) {
+      const normalizedVerb = match[1].toLowerCase() === "updated" ? "updated" : "created"
+      return { verb: normalizedVerb, path: match[2] }
+    }
+  }
+  return undefined
+}
+
+function looksLikeAlwaysOnArtifactLog(title: string, details?: string, outcome?: string): boolean {
+  return ALWAYS_ON_ARTIFACT_PATH_REGEX.test(`${title}\n${details ?? ""}\n${outcome ?? ""}`)
+}
+
+function getAlwaysOnEntryText(entry: { title?: string; details?: string; outcome?: string }): string {
+  return `${entry.title ?? ""}\n${entry.details ?? ""}\n${entry.outcome ?? ""}`
+}
+
+function getAlwaysOnWorkstreamKeyFromText(value: string): string | undefined {
+  const contentCalendarMatch = value.match(/content-calendar\/([^/\s"'`]+)/iu)
+  if (contentCalendarMatch?.[1]) return `content-calendar:${contentCalendarMatch[1].toLowerCase()}`
+
+  const projectSlugMatch = value.match(/\b(\d{2}-[a-z0-9][a-z0-9._-]+(?:-[a-z0-9._-]+)*)\b/iu)
+  if (projectSlugMatch?.[1]) return `content-calendar:${projectSlugMatch[1].toLowerCase()}`
+
+  const normalized = value.toLowerCase()
+  if (/\bno xp waste\b/u.test(normalized)) return "content-calendar:02-247-agent-no-xp-waste"
+  if (/\b(?:0 to ironman|0-to-ironman|ironman episode|episode 1)\b/u.test(normalized)) return "content-calendar:01-0-to-ironman"
+
+  return undefined
+}
+
+function getAlwaysOnWorkstreamKey(entry: { title?: string; details?: string; outcome?: string }): string | undefined {
+  return getAlwaysOnWorkstreamKeyFromText(getAlwaysOnEntryText(entry))
+}
+
+function getAlwaysOnReadyWorkstream(entries: Array<{ title?: string; details?: string; outcome?: string }>, currentEntry: { title?: string; details?: string; outcome?: string }): { key: string; title?: string } | undefined {
+  const currentKey = getAlwaysOnWorkstreamKey(currentEntry)
+  if (!currentKey) return undefined
+
+  for (const entry of [...entries].reverse()) {
+    const text = getAlwaysOnEntryText(entry)
+    if (!ALWAYS_ON_READY_STATE_REGEX.test(text)) continue
+    const entryKey = getAlwaysOnWorkstreamKey(entry)
+    if (entryKey === currentKey) {
+      return { key: currentKey, title: entry.title }
+    }
+  }
+
+  return undefined
+}
+
+function isAlwaysOnPostReadyPrepAttempt(title: string, details?: string, outcome?: string): boolean {
+  const text = `${title}\n${details ?? ""}\n${outcome ?? ""}`
+  if (ALWAYS_ON_BRANCH_SWITCH_REGEX.test(text)) return false
+  if (
+    ALWAYS_ON_EXPLICIT_DEFECT_REGEX.test(text) ||
+    (ALWAYS_ON_DEFECT_FIX_ACTION_REGEX.test(text) && ALWAYS_ON_DEFECT_SIGNAL_REGEX.test(text))
+  ) {
+    return false
+  }
+  return ALWAYS_ON_PREP_ATTEMPT_REGEX.test(text)
+}
+
+function getAlwaysOnSummaryForRuntimeSession(trackedSessionId?: string, conversationId?: string) {
+  if (!trackedSessionId && !conversationId) return undefined
+  const loops = loopService.getLoops()
+  const linkedSessionId = alwaysOnSessionService.getRuntimeLinkedSessionId({
+    runtimeSessionId: trackedSessionId,
+    conversationId,
+  }, loops)
+  return alwaysOnSessionService
+    .getSummaries(loops, loopService.getLoopStatuses())
+    .find((candidate) => candidate.id === linkedSessionId)
+}
+
+function appendAlwaysOnCommandEvidence(params: {
+  sessionId?: string
+  command: string
+  cwd: string
+  success: boolean
+  stdout?: string
+  stderr?: string
+  error?: string
+  exitCode?: unknown
+}): void {
+  const trackedSessionId = getTrackedRuntimeSessionId(params.sessionId)
+  if (!trackedSessionId) return
+
+  const activeSession = agentSessionTracker.getSession(trackedSessionId)
+  const summary = getAlwaysOnSummaryForRuntimeSession(trackedSessionId, activeSession?.conversationId)
+  if (!summary || summary.status === "paused" || summary.enabled === false) return
+
+  const outputParts: string[] = []
+  if (params.stdout?.trim()) outputParts.push(`stdout:\n${params.stdout.trim()}`)
+  if (params.stderr?.trim()) outputParts.push(`stderr:\n${params.stderr.trim()}`)
+  if (params.error?.trim()) outputParts.push(`error:\n${params.error.trim()}`)
+  if (params.exitCode !== undefined) outputParts.push(`exitCode: ${String(params.exitCode)}`)
+  const output = outputParts.join("\n\n") || (params.success ? "Command completed with no output." : "Command failed with no output.")
+  const artifact = params.success
+    ? extractAlwaysOnArtifact(params.stdout, params.stderr)
+    : undefined
+  const artifactTitleVerb = artifact?.verb === "updated" ? "Updated" : "Created"
+
+  alwaysOnSessionService.appendLog({
+    alwaysOnSessionId: summary.id,
+    runtimeSessionId: trackedSessionId,
+    conversationId: activeSession?.conversationId,
+    runId: agentSessionStateManager.getSessionRunId(trackedSessionId),
+    kind: artifact ? "artifact" : params.success ? "evidence" : "error",
+    title: artifact ? `${artifactTitleVerb} ${path.basename(artifact.path)}` : params.success ? "Command completed" : "Command failed",
+    details: truncateAlwaysOnEvidence(`${artifact ? `path: ${artifact.path}\n` : ""}cwd: ${params.cwd}\ncommand: ${params.command}`, 1200),
+    outcome: truncateAlwaysOnEvidence(output),
+  }, loopService.getLoops())
+}
+
+async function getLatestConversationMessageIndex(conversationId: string): Promise<number | undefined> {
+  const conversation = await conversationService.loadConversation(conversationId)
+  if (!conversation) return undefined
+  const messages = Array.isArray(conversation.rawMessages) && conversation.rawMessages.length > 0
+    ? conversation.rawMessages
+    : conversation.messages
+  return messages.length > 0 ? messages.length - 1 : undefined
 }
 
 function detectContextGatheringCommandBlock(command: string, latestUserMessage: string | null) {
@@ -761,7 +957,18 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const conversationId = session?.conversationId ?? (context.sessionId.startsWith("conv_") ? context.sessionId : undefined)
+    const alwaysOnSummary = !session
+      ? alwaysOnSessionService
+        .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
+        .find((summary) =>
+          summary.currentSessionId === trackedSessionId ||
+          summary.currentSessionId === context.sessionId ||
+          summary.conversationId === context.sessionId,
+        )
+      : undefined
+    const conversationId = session?.conversationId
+      ?? alwaysOnSummary?.conversationId
+      ?? (context.sessionId.startsWith("conv_") ? context.sessionId : undefined)
     if (!conversationId) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not linked to a conversation" }) }],
@@ -792,8 +999,9 @@ const toolHandlers: Record<string, ToolHandler> = {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
       const parentSessionId = mappedAppSessionId
       const runId = agentSessionStateManager.getSessionRunId(trackedSessionId)
-      const isSessionComplete = session.status === "completed" || session.status === "error" || session.status === "stopped"
-      const conversationState = session.status === "completed"
+      const sessionStatus = session?.status
+      const isSessionComplete = sessionStatus === "completed" || sessionStatus === "error" || sessionStatus === "stopped"
+      const conversationState = sessionStatus === "completed"
         ? "complete"
         : isSessionComplete
           ? "blocked"
@@ -851,6 +1059,314 @@ const toolHandlers: Record<string, ToolHandler> = {
           }, null, 2),
         },
       ],
+      isError: false,
+    }
+  },
+
+  log_always_on_attempt: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
+    const trackedSessionId = getTrackedRuntimeSessionId(context.sessionId)
+    if (!trackedSessionId) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "log_always_on_attempt requires an active agent session" }) }],
+        isError: true,
+      }
+    }
+
+    const requestedKind = normalizeAlwaysOnLogKind(args.kind)
+    if (!requestedKind) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "kind must be one of: attempt, artifact, evidence, blocker, branch, error. Use ask_always_on_question for queued user questions." }) }],
+        isError: true,
+      }
+    }
+
+    const title = typeof args.title === "string" ? args.title.trim() : ""
+    if (!title) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "title must be a non-empty string" }) }],
+        isError: true,
+      }
+    }
+
+    const activeSession = agentSessionTracker.getSession(trackedSessionId)
+    const details = typeof args.details === "string" ? args.details : undefined
+    const outcome = typeof args.outcome === "string" ? args.outcome : undefined
+    const kind = requestedKind === "evidence" && looksLikeAlwaysOnArtifactLog(title, details, outcome)
+      ? "artifact"
+      : requestedKind
+    const summary = getAlwaysOnSummaryForRuntimeSession(trackedSessionId, activeSession?.conversationId)
+
+    if (!summary) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not an always-on session" }) }],
+        isError: true,
+      }
+    }
+
+    if (summary.status === "paused" || summary.enabled === false) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Always-on session is paused; log rejected. Resume the session before recording more always-on work.",
+            sessionStatus: summary.status,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
+    const normalizedTitle = normalizeAlwaysOnLogTitle(title)
+    const recentLogEntries = alwaysOnSessionService.getRecentLogEntries(summary.id, 12)
+    const readyGateLogEntries = alwaysOnSessionService.getRecentLogEntries(summary.id, ALWAYS_ON_READY_GATE_LOG_LIMIT)
+    const lastProcessEntry = getLastAlwaysOnProcessEntry(recentLogEntries)
+    const recentSimilarCount = recentLogEntries
+      .filter((recentEntry) =>
+        recentEntry.kind === kind &&
+        normalizeAlwaysOnLogTitle(recentEntry.title) === normalizedTitle,
+      )
+      .length
+    const isIntentOnlyAttempt = kind === "attempt" && !outcome?.trim() && looksLikeAlwaysOnIntentOnlyAttempt(title, details)
+    const recentIntentOnlyAttemptCount = recentLogEntries
+      .filter((recentEntry) =>
+        recentEntry.kind === "attempt" &&
+        !recentEntry.outcome?.trim() &&
+        looksLikeAlwaysOnIntentOnlyAttempt(recentEntry.title, recentEntry.details),
+      )
+      .length
+
+    const readyWorkstream = kind === "attempt"
+      ? getAlwaysOnReadyWorkstream(readyGateLogEntries, { title, details, outcome })
+      : undefined
+    if (readyWorkstream && isAlwaysOnPostReadyPrepAttempt(title, details, outcome)) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Attempt log rejected because this workstream is already ready for human action. Do not continue prep, routing, linking, handoff refreshes, or polish for this workstream unless you are fixing a concrete verified defect.",
+            sessionStatus: summary.status,
+            pendingQuestionCount: summary.pendingQuestionCount,
+            readyWorkstream: readyWorkstream.key,
+            readyEntryTitle: readyWorkstream.title,
+            allowedNextActions: [
+              "Switch to a different project/workstream.",
+              "Ask the user whether to continue polishing this ready workstream.",
+              "Log a blocker if human action is now required.",
+              "Fix a specific QC defect and name that defect in the attempt title/details.",
+            ],
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
+    if (kind === "attempt" && !outcome?.trim() && lastProcessEntry && isAttemptWithoutOutcome(lastProcessEntry)) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Attempt log rejected because the previous attempt has no evidence or outcome. Run a concrete non-log tool, record an outcome from new evidence, queue a question, mark a blocker, or switch branches before another attempt.",
+            sessionStatus: summary.status,
+            pendingQuestionCount: summary.pendingQuestionCount,
+            previousAttemptTitle: "title" in lastProcessEntry ? lastProcessEntry.title : undefined,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
+    if (isIntentOnlyAttempt && recentIntentOnlyAttemptCount >= ALWAYS_ON_LOG_ONLY_ATTEMPT_LIMIT) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Repeated intent-only always-on logs were rejected. Run a concrete non-log tool, record an outcome from new evidence, ask a queued question, or switch to a genuinely different branch before logging another attempt.",
+            sessionStatus: summary.status,
+            pendingQuestionCount: summary.pendingQuestionCount,
+            recentSimilarCount,
+            recentIntentOnlyAttemptCount,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
+    const entry = alwaysOnSessionService.appendLog({
+      alwaysOnSessionId: summary.id,
+      runtimeSessionId: trackedSessionId,
+      conversationId: activeSession?.conversationId,
+      runId: agentSessionStateManager.getSessionRunId(trackedSessionId),
+      kind,
+      title,
+      details,
+      outcome,
+    }, loopService.getLoops())
+
+    if (!entry) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not an always-on session" }) }],
+        isError: true,
+      }
+    }
+
+    const guidance: string[] = []
+    if (recentSimilarCount >= 2) {
+      guidance.push("This same log title has appeared repeatedly in recent attempts. Do not retry the same path unless you have new evidence; run a concrete check or switch branches.")
+    }
+    if (kind === "blocker" && (summary?.pendingQuestionCount ?? 0) === 0) {
+      guidance.push("If user input would unblock this path, call ask_always_on_question with 2-3 choices, then continue other independent work.")
+    }
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          success: true,
+          entry,
+          sessionStatus: summary?.status,
+          pendingQuestionCount: summary?.pendingQuestionCount ?? 0,
+          recentSimilarCount,
+          ...(guidance.length > 0 ? { guidance } : {}),
+        }, null, 2),
+      }],
+      isError: false,
+    }
+  },
+
+  ask_always_on_question: async (args: Record<string, unknown>, context: BuiltinToolContext): Promise<MCPToolResult> => {
+    const trackedSessionId = getTrackedRuntimeSessionId(context.sessionId)
+    if (!trackedSessionId) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "ask_always_on_question requires an active agent session" }) }],
+        isError: true,
+      }
+    }
+
+    const prompt = typeof args.prompt === "string" ? args.prompt.trim() : ""
+    if (!prompt) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "prompt must be a non-empty string" }) }],
+        isError: true,
+      }
+    }
+
+    const contextText = typeof args.context === "string" ? args.context.trim() : ""
+    if (!contextText) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "context must summarize the current state, relevant artifacts/evidence, and why user input is needed" }) }],
+        isError: true,
+      }
+    }
+
+    if (!Array.isArray(args.choices) || args.choices.length < 2 || args.choices.length > 3) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "choices must contain 2 or 3 choice objects" }) }],
+        isError: true,
+      }
+    }
+
+    const choices = args.choices.flatMap((item, index) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return []
+      const raw = item as Record<string, unknown>
+      const label = typeof raw.label === "string" ? raw.label.trim() : ""
+      if (!label) return []
+      const description = typeof raw.description === "string" ? raw.description.trim() : ""
+      return [{
+        id: typeof raw.id === "string" && raw.id.trim() ? raw.id.trim() : `choice-${index + 1}`,
+        label,
+        ...(description ? { description } : {}),
+      }]
+    })
+
+    if (choices.length < 2) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "at least two choices must include non-empty labels" }) }],
+        isError: true,
+      }
+    }
+
+    if (choices.some((choice) => !choice.description?.trim())) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "each choice needs a one-sentence description explaining the impact/tradeoff for the user" }) }],
+        isError: true,
+      }
+    }
+
+    const activeSession = agentSessionTracker.getSession(trackedSessionId)
+    const conversationId = activeSession?.conversationId
+    const summary = alwaysOnSessionService
+      .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
+      .find((candidate) =>
+        candidate.currentSessionId === trackedSessionId ||
+        (!!conversationId && candidate.conversationId === conversationId),
+      )
+
+    if (!summary) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not an always-on session" }) }],
+        isError: true,
+      }
+    }
+
+    if (summary.status === "paused" || summary.enabled === false) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Always-on session is paused; question was not queued. Resume the session before recording more always-on work.",
+            sessionStatus: summary.status,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
+    const sourceMessageIndex = conversationId
+      ? await getLatestConversationMessageIndex(conversationId)
+      : undefined
+    const reason = args.reason === "blocker" ? "blocker" : "question"
+    const question = alwaysOnSessionService.askQuestion({
+      alwaysOnSessionId: summary.id,
+      runtimeSessionId: trackedSessionId,
+      conversationId,
+      sourceMessageIndex,
+      prompt,
+      context: contextText,
+      recommendation: typeof args.recommendation === "string" ? args.recommendation.trim() : undefined,
+      customAnswerPlaceholder: typeof args.customAnswerPlaceholder === "string" ? args.customAnswerPlaceholder.trim() : undefined,
+      choices,
+      allowCustom: args.allowCustom !== false,
+      reason,
+    }, loopService.getLoops())
+
+    if (!question) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not an always-on session or choices were invalid" }) }],
+        isError: true,
+      }
+    }
+
+    const updatedSummary = alwaysOnSessionService
+      .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
+      .find((candidate) => candidate.id === question.alwaysOnSessionId)
+    const pendingQuestionCount = updatedSummary?.pendingQuestionCount ?? 1
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          success: true,
+          questionId: question.id,
+          pendingQuestionCount,
+          sessionStatus: updatedSummary?.status,
+          message: "Question queued for the user. Continue other useful work instead of waiting.",
+        }, null, 2),
+      }],
       isError: false,
     }
   },
@@ -933,6 +1449,25 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
+    const trackedSessionId = getTrackedRuntimeSessionId(context.sessionId)
+    const activeSession = trackedSessionId ? agentSessionTracker.getSession(trackedSessionId) : undefined
+    const alwaysOnSummary = getAlwaysOnSummaryForRuntimeSession(trackedSessionId, activeSession?.conversationId)
+    if (alwaysOnSummary && (alwaysOnSummary.status === "paused" || alwaysOnSummary.enabled === false)) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            command: effectiveCommand,
+            cwd: effectiveCwd,
+            error: "Always-on session is paused; command execution was rejected.",
+            sessionStatus: alwaysOnSummary.status,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
     let runtimeFilesystemEnv: Record<string, string> = {}
     try {
       const {
@@ -983,6 +1518,15 @@ const toolHandlers: Record<string, ToolHandler> = {
         outputTruncated = true
       }
 
+      appendAlwaysOnCommandEvidence({
+        sessionId: context.sessionId,
+        command: effectiveCommand,
+        cwd: effectiveCwd,
+        success: true,
+        stdout: truncatedStdout,
+        stderr: stderr || "",
+      })
+
       return {
         content: [
           {
@@ -1025,6 +1569,17 @@ const toolHandlers: Record<string, ToolHandler> = {
       const hint = hasShellEscapingIssue
         ? '\n\nHINT: This command likely failed due to shell escaping issues with special characters or long strings. Try writing the content to a file first (e.g., with write_file or echo > file), then reference the file in your command.'
         : '';
+
+      appendAlwaysOnCommandEvidence({
+        sessionId: context.sessionId,
+        command: effectiveCommand,
+        cwd: effectiveCwd,
+        success: false,
+        stdout,
+        stderr,
+        error: errorMessage + hint,
+        exitCode,
+      })
 
       return {
         content: [

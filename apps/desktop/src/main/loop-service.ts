@@ -58,6 +58,7 @@ class LoopService {
   private activeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
   private loopNextRunAt: Map<string, number> = new Map()
   private executingLoops: Set<string> = new Set()
+  private pendingRescheduleAfterActive: Set<string> = new Set()
   private isStopping: boolean = false
   /** In-memory cache of all tasks (merged from global + workspace layers). */
   private loops: LoopConfig[] = []
@@ -315,9 +316,7 @@ class LoopService {
     if (loop.runOnStartup || isContinuousLoop(loop)) {
       const reason = isContinuousLoop(loop) ? "continuous" : "runOnStartup"
       logApp(`[LoopService] Loop "${loop.name}" starts immediately (${reason})`)
-      setImmediate(() => {
-        void this.executeLoop(loopId, { rescheduleAfterRun: true })
-      })
+      this.scheduleNextRun(loopId, 0)
     } else {
       this.scheduleNextRun(loopId, this.getNextDelayMs(loop))
     }
@@ -327,14 +326,15 @@ class LoopService {
 
   stopLoop(loopId: string): boolean {
     const hadTimer = this.activeTimers.has(loopId)
+    const wasExecuting = this.executingLoops.has(loopId)
     this.clearScheduledTimer(loopId)
 
-    if (!hadTimer) {
+    if (!hadTimer && !wasExecuting) {
       logApp(`[LoopService] Stop requested for ${loopId}: no scheduled timer`)
       return false
     }
 
-    logApp(`[LoopService] Stopped loop ${loopId}`)
+    logApp(`[LoopService] Stopped loop ${loopId}${wasExecuting ? " (execution still aborts via session stop)" : ""}`)
     return true
   }
 
@@ -347,6 +347,11 @@ class LoopService {
 
     if (this.executingLoops.has(loopId)) {
       logApp(`[LoopService] Skip manual trigger for "${loop.name}" (${loopId}): already executing`)
+      return null
+    }
+
+    if (loop.alwaysOnSession === true && !loop.enabled) {
+      logApp(`[LoopService] Skip manual trigger for paused always-on session "${loop.name}" (${loopId})`)
       return null
     }
 
@@ -398,8 +403,17 @@ class LoopService {
       return null
     }
 
+    if (options.rescheduleAfterRun && !loop.enabled) {
+      logApp(`[LoopService] Skip scheduled execution for "${loop.name}" (${loopId}): disabled`)
+      return null
+    }
+
     if (this.executingLoops.has(loopId)) {
       logApp(`[LoopService] Skip execution for "${loop.name}" (${loopId}): already executing`)
+      if (options.rescheduleAfterRun && loop.enabled && isContinuousLoop(loop) && !this.isStopping) {
+        this.pendingRescheduleAfterActive.add(loopId)
+        logApp(`[LoopService] Queued continuous loop "${loop.name}" (${loopId}) to restart after active execution finishes`)
+      }
       return null
     }
 
@@ -409,6 +423,7 @@ class LoopService {
     logApp(`[LoopService] Executing loop "${loop.name}" (${loopId})`)
     let conversationId: string | undefined
     let sessionId: string | undefined
+    const isAlwaysOnSession = loop.alwaysOnSession === true
 
     try {
       // Update lastRunAt in memory and persist
@@ -507,9 +522,34 @@ class LoopService {
         }
       }
 
+      if (isAlwaysOnSession && sessionId && conversationId) {
+        const { alwaysOnSessionService } = await import("./always-on-session-service")
+        alwaysOnSessionService.recordRuntimeSession(loop.id, sessionId, conversationId)
+        alwaysOnSessionService.appendLog({
+          loopId: loop.id,
+          runtimeSessionId: sessionId,
+          conversationId,
+          kind: "run_started",
+          title: "Continuous run started",
+          details: loop.prompt.slice(0, 500),
+        })
+      }
+
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
+      const finalContent = await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
+
+      if (isAlwaysOnSession && sessionId && conversationId) {
+        const { alwaysOnSessionService } = await import("./always-on-session-service")
+        alwaysOnSessionService.appendLog({
+          loopId: loop.id,
+          runtimeSessionId: sessionId,
+          conversationId,
+          kind: "run_completed",
+          title: "Continuous run completed",
+          outcome: finalContent.slice(0, 1000),
+        })
+      }
 
       // When `speakOnTrigger` is set, unsnooze the now-completed session and
       // show the panel so the renderer's TTS auto-play gate fires for the
@@ -550,11 +590,25 @@ class LoopService {
       return { loopId, conversationId, sessionId }
     } catch (error) {
       logApp(`[LoopService] Error executing loop "${loop.name}":`, error)
+      if (isAlwaysOnSession) {
+        const { alwaysOnSessionService } = await import("./always-on-session-service")
+        alwaysOnSessionService.appendLog({
+          loopId: loop.id,
+          ...(sessionId ? { runtimeSessionId: sessionId } : {}),
+          ...(conversationId ? { conversationId } : {}),
+          kind: "error",
+          title: "Continuous run failed",
+          details: error instanceof Error ? error.message : String(error),
+        })
+      }
       return { loopId, conversationId, sessionId }
     } finally {
       this.executingLoops.delete(loopId)
+      const shouldRescheduleAfterRun =
+        options.rescheduleAfterRun || this.pendingRescheduleAfterActive.has(loopId)
+      this.pendingRescheduleAfterActive.delete(loopId)
 
-      if (options.rescheduleAfterRun && !this.isStopping) {
+      if (shouldRescheduleAfterRun && !this.isStopping) {
         const latestLoop = this.getLoop(loopId)
         if (latestLoop?.enabled) {
           this.scheduleNextRun(loopId, this.getNextDelayMs(latestLoop))

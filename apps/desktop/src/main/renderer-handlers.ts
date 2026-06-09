@@ -73,6 +73,9 @@ export type RendererHandlers = {
   // Repeat tasks folder change notification
   loopsFolderChanged: () => void
 
+  // Always-on session state changed
+  alwaysOnSessionsChanged: () => void
+
   // Theme sync across windows
   themeChanged: (themeMode: string) => void
 }

@@ -6,6 +6,10 @@ import {
   ChevronDown,
   ChevronRight,
   Archive,
+  GitBranch,
+  HelpCircle,
+  ListChecks,
+  Pause,
   Pin,
   Play,
   X,
@@ -54,7 +58,8 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
-import type { AgentProgressUpdate, LoopConfig } from "@shared/types"
+import { Input } from "./ui/input"
+import type { AgentProgressUpdate, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnQuestion, AlwaysOnSessionSummary, LoopConfig } from "@shared/types"
 import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
 
 interface SidebarSessionRecord {
@@ -193,6 +198,23 @@ function getRepeatTaskTitleHints(task: LoopConfig): string[] {
   return Array.from(hints)
 }
 
+function findRepeatTaskLoopForSidebarSession(
+  session: SidebarSessionRecord,
+  loopByTitleHint: Map<string, LoopConfig>,
+): LoopConfig | undefined {
+  const title = session.conversationTitle?.trim()
+  if (!title) return undefined
+  const direct = loopByTitleHint.get(title)
+  if (direct) return direct
+  const stripped = title.startsWith("Repeat: ") ? title.slice("Repeat: ".length).trim() : null
+  return stripped ? loopByTitleHint.get(stripped) : undefined
+}
+
+function isAlwaysOnPromptDerivedTitle(title?: string): boolean {
+  const normalized = title?.replace(/\s+/g, " ").trim().toLowerCase() ?? ""
+  return normalized.includes("always-on session you are running as an always-on dotagents session")
+}
+
 function getSessionLastMessageTimestamp(
   session: SidebarSessionRecord,
   conversationTimestamp?: number,
@@ -287,6 +309,432 @@ function ArchiveSessionButton({
     >
       <X className="h-3 w-3" />
     </button>
+  )
+}
+
+function AlwaysOnQuestionAnswer({
+  alwaysOnSessionId,
+  question,
+  recentWorkEntries = [],
+  onAnswered,
+}: {
+  alwaysOnSessionId: string
+  question: AlwaysOnQuestion
+  recentWorkEntries?: AlwaysOnLogEntry[]
+  onAnswered: () => void | Promise<void>
+}) {
+  const [customAnswer, setCustomAnswer] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const contextText = getAlwaysOnQuestionContext(question, recentWorkEntries)
+  const customPlaceholder = getAlwaysOnQuestionCustomPlaceholder(question)
+
+  const submitAnswer = async (answerText: string, answerChoiceId?: string) => {
+    const trimmed = answerText.trim()
+    if (!trimmed || isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const result = await tipcClient.answerAlwaysOnQuestion({
+        alwaysOnSessionId,
+        questionId: question.id,
+        answerText: trimmed,
+        answerChoiceId,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to answer question")
+        return
+      }
+      setCustomAnswer("")
+      await onAnswered()
+      toast.success("Answer queued")
+    } catch (error) {
+      console.error("Failed to answer always-on question:", error)
+      toast.error("Failed to answer question")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded-md border border-amber-500/25 bg-amber-500/10 p-2">
+      <button
+        type="button"
+        className="flex w-full min-w-0 items-start gap-1.5 text-left text-[11px] font-medium leading-snug text-foreground"
+        onClick={() => setIsExpanded((value) => !value)}
+        aria-expanded={isExpanded}
+        title={isExpanded ? "Collapse question" : "Expand question"}
+      >
+        <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-300" />
+        <span className="min-w-0 flex-1 line-clamp-2">{question.prompt}</span>
+        {isExpanded ? (
+          <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        )}
+      </button>
+      {isExpanded && (
+        <>
+          {contextText && (
+            <div className="mt-1.5 rounded border border-amber-500/15 bg-background/60 px-2 py-1.5 text-[10px] leading-snug text-muted-foreground">
+              <div className="mb-0.5 font-medium uppercase tracking-normal text-amber-700 dark:text-amber-300">Context</div>
+              <div className="line-clamp-4 break-words">{contextText}</div>
+            </div>
+          )}
+          {question.recommendation && (
+            <div className="mt-1.5 rounded border border-blue-500/15 bg-blue-500/10 px-2 py-1.5 text-[10px] leading-snug text-blue-800 dark:text-blue-200">
+              <span className="font-medium">Recommendation: </span>
+              {question.recommendation}
+            </div>
+          )}
+          <div className="mt-2 flex flex-col gap-1.5">
+            {question.choices.map((choice) => (
+              <Button
+                key={choice.id}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-auto min-h-9 max-w-full justify-start rounded-md px-2 py-1.5 text-left text-[11px]"
+                disabled={isSubmitting}
+                onClick={() => void submitAnswer(choice.label, choice.id)}
+                title={choice.description || choice.label}
+                aria-label={`Answer ${choice.label}`}
+              >
+                <span className="flex min-w-0 flex-col gap-0.5 whitespace-normal leading-snug">
+                  <span className="font-medium text-foreground">{choice.label}</span>
+                  {choice.description && (
+                    <span className="text-[10px] font-normal text-muted-foreground">{choice.description}</span>
+                  )}
+                </span>
+              </Button>
+            ))}
+          </div>
+          {question.allowCustom && (
+            <form
+              className="mt-2 flex min-w-0 items-center gap-1.5"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void submitAnswer(customAnswer)
+              }}
+            >
+              <Input
+                value={customAnswer}
+                onChange={(event) => setCustomAnswer(event.target.value)}
+                className="h-7 min-w-0 flex-1 rounded-md px-2 text-[11px]"
+                placeholder={customPlaceholder}
+                disabled={isSubmitting}
+              />
+              <Button
+                type="submit"
+                variant="secondary"
+                size="sm"
+                className="h-7 shrink-0 rounded-md px-2 text-[11px]"
+                disabled={isSubmitting || !customAnswer.trim()}
+              >
+                Send
+              </Button>
+            </form>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function getAlwaysOnQuestionContext(question: AlwaysOnQuestion, recentWorkEntries: AlwaysOnLogEntry[] = []): string | undefined {
+  const explicitContext = question.context?.trim()
+  if (explicitContext) return explicitContext
+
+  const recentOutputs = recentWorkEntries
+    .filter((entry) => getAlwaysOnDisplayLogKind(entry) === "artifact")
+    .slice(0, 2)
+    .map((entry) => {
+      const detail = (entry.outcome || entry.details || "").replace(/\s+/g, " ").trim()
+      return detail ? `${entry.title}: ${detail}` : entry.title
+    })
+
+  if (recentOutputs.length === 0) return undefined
+  return `Recent outputs: ${recentOutputs.join(" | ")}`
+}
+
+function getAlwaysOnQuestionCustomPlaceholder(question: AlwaysOnQuestion): string {
+  if (question.customAnswerPlaceholder?.trim()) return question.customAnswerPlaceholder.trim()
+  const labels = question.choices.map((choice) => choice.label.toLowerCase()).join(" ")
+  if (labels.includes("workstream") || labels.includes("defect")) {
+    return "Name the next workstream or exact defect"
+  }
+  return "Custom answer with direction or constraints"
+}
+
+function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
+  switch (kind) {
+    case "run_started":
+      return "START"
+    case "run_completed":
+      return "DONE"
+    case "attempt":
+      return "TRY"
+    case "artifact":
+      return "OUTPUT"
+    case "evidence":
+      return "EVIDENCE"
+    case "blocker":
+      return "BLOCKED"
+    case "question":
+      return "QUESTION"
+    case "answer":
+      return "ANSWER"
+    case "branch":
+      return "BRANCH"
+    case "pause":
+      return "PAUSE"
+    case "resume":
+      return "RESUME"
+    case "error":
+      return "ERROR"
+    default:
+      return kind
+  }
+}
+
+const ALWAYS_ON_ARTIFACT_TEXT_REGEX = /\b(?:created|wrote|saved|updated)\s+[`"']?(?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm))[`"']?/iu
+
+function getAlwaysOnDisplayLogKind(entry: AlwaysOnLogEntry): AlwaysOnLogEntryKind {
+  if (entry.kind === "artifact") return "artifact"
+  const text = `${entry.title}\n${entry.details ?? ""}\n${entry.outcome ?? ""}`
+  return ALWAYS_ON_ARTIFACT_TEXT_REGEX.test(text) ? "artifact" : entry.kind
+}
+
+function getAlwaysOnDisplayTitle(entry: AlwaysOnLogEntry): string {
+  if (entry.kind === "run_completed" && entry.outcome?.trim().toLowerCase().startsWith("known:")) {
+    return "Run summary"
+  }
+  return entry.title
+}
+
+function formatAlwaysOnStatusLabel(session: AlwaysOnSessionSummary): string {
+  if (session.status === "paused") return "Paused"
+  if (session.isRunning) return "Running"
+  if (!session.enabled) return "Off"
+  return "Idle"
+}
+
+function AlwaysOnSessionStrip({
+  sessions,
+  onCreate,
+  onOpenSession,
+  onTogglePause,
+  onOpenLog,
+  onBranch,
+  onRefresh,
+}: {
+  sessions: AlwaysOnSessionSummary[]
+  onCreate: () => void | Promise<void>
+  onOpenSession: (session: AlwaysOnSessionSummary) => void
+  onTogglePause: (session: AlwaysOnSessionSummary) => void | Promise<void>
+  onOpenLog: (session: AlwaysOnSessionSummary) => void | Promise<void>
+  onBranch: (session: AlwaysOnSessionSummary, question?: AlwaysOnQuestion) => void | Promise<void>
+  onRefresh: () => void | Promise<void>
+}) {
+  if (sessions.length === 0) {
+    return (
+      <div className="mt-1 px-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 w-full justify-start gap-2 rounded-md text-xs"
+          onClick={() => void onCreate()}
+          title="Start always-on session"
+          aria-label="Start always-on session"
+        >
+          <Play className="h-3.5 w-3.5 shrink-0" />
+          <span className="min-w-0 truncate">Always-on session</span>
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-1 space-y-1 px-2">
+      {sessions.map((session) => {
+        const pendingQuestion = session.questions.find((question) => question.status === "pending")
+        const isPaused = session.status === "paused"
+        const latestEntry = session.latestWorkEntry ?? session.latestLogEntry
+        const latestDisplayKind = latestEntry ? getAlwaysOnDisplayLogKind(latestEntry) : undefined
+        const latestDisplayTitle = latestEntry ? getAlwaysOnDisplayTitle(latestEntry) : undefined
+        const rawLatestDetails = latestEntry?.outcome || latestEntry?.details
+        const latestDetails = rawLatestDetails && !isAlwaysOnPromptDerivedTitle(rawLatestDetails)
+          ? rawLatestDetails
+          : undefined
+        const latestTimeLabel = latestEntry ? formatMinutesAgo(latestEntry.timestamp) : null
+        const statusLabel = formatAlwaysOnStatusLabel(session)
+        const statusTitle = [
+          statusLabel,
+          `${session.logCount} log${session.logCount === 1 ? "" : "s"}`,
+          session.pendingQuestionCount > 0
+            ? `${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`
+            : null,
+        ].filter(Boolean).join(" • ")
+
+        return (
+          <div
+            key={session.id}
+            className={cn(
+              "rounded-lg border p-2.5 text-xs shadow-sm transition-colors",
+              isPaused
+                ? "border-border/70 bg-muted/30"
+                : session.pendingQuestionCount > 0
+                  ? "border-amber-500/35 bg-amber-500/10"
+                  : "border-emerald-500/25 bg-emerald-500/10",
+            )}
+          >
+            <div className="flex min-w-0 items-start gap-2">
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                onClick={() => onOpenSession(session)}
+                title={session.name}
+              >
+                <span
+                  className={cn(
+                    "mt-1 h-2 w-2 shrink-0 rounded-full",
+                    isPaused
+                      ? "bg-muted-foreground/60"
+                      : session.isRunning
+                        ? "bg-emerald-500 animate-pulse"
+                        : "bg-blue-500",
+                  )}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold leading-snug text-foreground">
+                    {session.name}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[10px] leading-snug text-muted-foreground" title={statusTitle}>
+                    {statusLabel}
+                    {latestTimeLabel ? ` · ${latestTimeLabel}` : ""}
+                  </span>
+                </span>
+              </button>
+              {session.pendingQuestionCount > 0 && (
+                <span
+                  className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold text-white"
+                  title={`${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`}
+                  aria-label={`${session.pendingQuestionCount} pending always-on question${session.pendingQuestionCount === 1 ? "" : "s"}`}
+                >
+                  {session.pendingQuestionCount}
+                </span>
+              )}
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                className="min-w-0 rounded-md border border-border/45 bg-background/55 px-1.5 py-1 text-left transition-colors hover:bg-background"
+                onClick={() => void onOpenLog(session)}
+                title={`${session.logCount} logged attempt${session.logCount === 1 ? "" : "s"}`}
+                aria-label="Open always-on attempt log"
+              >
+                <span className="block text-[9px] font-medium uppercase tracking-normal text-muted-foreground">Log</span>
+                <span className="mt-0.5 flex items-center gap-1 text-[12px] font-semibold leading-none text-foreground">
+                  <ListChecks className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span className="tabular-nums">{session.logCount}</span>
+                </span>
+              </button>
+              <div
+                className={cn(
+                  "min-w-0 rounded-md border px-1.5 py-1",
+                  session.pendingQuestionCount > 0
+                    ? "border-amber-500/30 bg-amber-500/10"
+                    : "border-border/45 bg-background/55",
+                )}
+                title={`${session.pendingQuestionCount} pending question${session.pendingQuestionCount === 1 ? "" : "s"}`}
+              >
+                <span className="block text-[9px] font-medium uppercase tracking-normal text-muted-foreground">Queue</span>
+                <span className="mt-0.5 flex items-center gap-1 text-[12px] font-semibold leading-none text-foreground">
+                  <HelpCircle className={cn("h-3 w-3 shrink-0", session.pendingQuestionCount > 0 ? "text-amber-600 dark:text-amber-300" : "text-muted-foreground")} />
+                  <span className="tabular-nums">{session.pendingQuestionCount}</span>
+                </span>
+              </div>
+              <div
+                className="min-w-0 rounded-md border border-border/45 bg-background/55 px-1.5 py-1"
+                title={`${session.answeredQuestionCount} answered question${session.answeredQuestionCount === 1 ? "" : "s"}`}
+              >
+                <span className="block text-[9px] font-medium uppercase tracking-normal text-muted-foreground">Answered</span>
+                <span className="mt-0.5 flex items-center gap-1 text-[12px] font-semibold leading-none text-foreground">
+                  <CheckCircle2 className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span className="tabular-nums">{session.answeredQuestionCount}</span>
+                </span>
+              </div>
+            </div>
+            <div className="mt-2 flex min-w-0 items-center justify-between gap-1.5">
+              <span className="min-w-0 truncate text-[10px] font-medium uppercase tracking-normal text-muted-foreground">
+                {pendingQuestion ? "Needs answer" : latestEntry ? "Latest work" : "Waiting for first run"}
+              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm-icon"
+                  className="h-6 w-6 rounded-md"
+                  onClick={() => void onTogglePause(session)}
+                  title={isPaused ? "Resume always-on session" : "Pause always-on session"}
+                  aria-label={isPaused ? "Resume always-on session" : "Pause always-on session"}
+                >
+                  {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm-icon"
+                  className="h-6 w-6 rounded-md"
+                  onClick={() => void onBranch(session, pendingQuestion)}
+                  title="Branch always-on session"
+                  aria-label="Branch always-on session"
+                  disabled={!session.conversationId && !pendingQuestion?.conversationId}
+                >
+                  <GitBranch className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm-icon"
+                  className="h-6 w-6 rounded-md"
+                  onClick={() => void onOpenLog(session)}
+                  title={`${session.logCount} logged attempt${session.logCount === 1 ? "" : "s"}`}
+                  aria-label="Open always-on attempt log"
+                >
+                  <ListChecks className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            {latestEntry && (
+              <div className="mt-1.5 min-w-0 rounded-md border border-border/40 bg-background/65 px-2 py-1.5">
+                <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-snug">
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal text-muted-foreground">
+                    {formatAlwaysOnLogKind(latestDisplayKind ?? latestEntry.kind)}
+                  </span>
+                  <span className="min-w-0 flex-1 line-clamp-2 break-words font-medium text-foreground">
+                    {latestDisplayTitle ?? latestEntry.title}
+                  </span>
+                </div>
+                {latestDetails && (
+                  <div className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground" title={latestDetails}>
+                    {latestDetails}
+                  </div>
+                )}
+              </div>
+            )}
+            {pendingQuestion && (
+              <AlwaysOnQuestionAnswer
+                alwaysOnSessionId={session.id}
+                question={pendingQuestion}
+                recentWorkEntries={session.recentWorkEntries ?? session.recentLogEntries}
+                onAnswered={onRefresh}
+              />
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -391,6 +839,11 @@ export function ActiveAgentsSidebar({
     queryKey: ["loops"],
     queryFn: async () => await tipcClient.getLoops(),
   })
+  const alwaysOnSessionsQuery = useQuery<AlwaysOnSessionSummary[]>({
+    queryKey: ["always-on-sessions"],
+    queryFn: async () => await tipcClient.getAlwaysOnSessions(),
+  })
+  const refetchAlwaysOnSessions = alwaysOnSessionsQuery.refetch
   const sidebarSessionStateQuery = useQuery<{
     groups: SidebarSessionGroup[]
     ungroupedSessionOrder: string[]
@@ -408,7 +861,23 @@ export function ActiveAgentsSidebar({
     return unlisten
   }, [refetch])
 
+  useEffect(() => {
+    const unlisten = rendererHandlers.alwaysOnSessionsChanged.listen(() => {
+      void refetchAlwaysOnSessions()
+    })
+    return unlisten
+  }, [refetchAlwaysOnSessions])
+
   const trackedActiveSessions = data?.activeSessions || []
+  const alwaysOnSessions = alwaysOnSessionsQuery.data || []
+  const alwaysOnSessionIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const session of alwaysOnSessions) {
+      if (session.conversationId) ids.add(session.conversationId)
+      if (session.currentSessionId) ids.add(session.currentSessionId)
+    }
+    return ids
+  }, [alwaysOnSessions])
   const recentCompletedSessions =
     data?.recentCompletedSessions || data?.recentSessions || []
   const conversationHistory =
@@ -803,8 +1272,14 @@ export function ActiveAgentsSidebar({
     () => [
       ...pinnedTaskSidebarSessions,
       ...unpinnedTaskSidebarSessions,
-    ],
-    [pinnedTaskSidebarSessions, unpinnedTaskSidebarSessions],
+    ].filter((entry) => {
+      if (findRepeatTaskLoopForSidebarSession(entry.session, loopByTitleHint)?.alwaysOnSession) return false
+      if (entry.session.conversationId && alwaysOnSessionIds.has(entry.session.conversationId)) return false
+      if (alwaysOnSessionIds.has(entry.session.id)) return false
+      if (isAlwaysOnPromptDerivedTitle(entry.session.conversationTitle)) return false
+      return true
+    }),
+    [alwaysOnSessionIds, loopByTitleHint, pinnedTaskSidebarSessions, unpinnedTaskSidebarSessions],
   )
   // Tasks list uses a flat slice so "Show less" can shrink the list past
   // active rows. paginateSidebarEntries pins active rows in place, which
@@ -1001,6 +1476,94 @@ export function ActiveAgentsSidebar({
     focusSidebarSessionComposer()
   }, [focusSidebarSessionComposer, navigate, setFocusedSessionId, setExpandedSessionId, setViewedConversationId])
 
+  const refreshAlwaysOnSessions = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["always-on-sessions"] }),
+      queryClient.invalidateQueries({ queryKey: ["loops"] }),
+      queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
+      queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
+    ])
+  }, [queryClient])
+
+  const handleCreateAlwaysOnSession = useCallback(async () => {
+    try {
+      const result = await tipcClient.createAlwaysOnSession({ name: "Always-on session" })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to start always-on session")
+        return
+      }
+      await refreshAlwaysOnSessions()
+      toast.success("Always-on session started")
+    } catch (error) {
+      console.error("Failed to create always-on session:", error)
+      toast.error("Failed to start always-on session")
+    }
+  }, [refreshAlwaysOnSessions])
+
+  const handleToggleAlwaysOnPause = useCallback(async (session: AlwaysOnSessionSummary) => {
+    try {
+      const action = session.status === "paused"
+        ? tipcClient.resumeAlwaysOnSession
+        : tipcClient.pauseAlwaysOnSession
+      const result = await action({ alwaysOnSessionId: session.id })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to update always-on session")
+        return
+      }
+      await refreshAlwaysOnSessions()
+    } catch (error) {
+      console.error("Failed to toggle always-on session:", error)
+      toast.error("Failed to update always-on session")
+    }
+  }, [refreshAlwaysOnSessions])
+
+  const handleOpenAlwaysOnSessionLog = useCallback(async (session: AlwaysOnSessionSummary) => {
+    try {
+      const result = await tipcClient.openAlwaysOnSessionLog({ alwaysOnSessionId: session.id })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to open attempt log")
+      }
+    } catch (error) {
+      console.error("Failed to open always-on log:", error)
+      toast.error("Failed to open attempt log")
+    }
+  }, [])
+
+  const handleBranchAlwaysOnSession = useCallback(async (
+    session: AlwaysOnSessionSummary,
+    question?: AlwaysOnQuestion,
+  ) => {
+    try {
+      const result = await tipcClient.branchAlwaysOnSession({
+        alwaysOnSessionId: session.id,
+        questionId: question?.id,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to branch session")
+        return
+      }
+      const conversationId = result?.conversation?.id
+      if (conversationId) {
+        await refreshAlwaysOnSessions()
+        handleSavedConversationOpen(conversationId)
+        toast.success("Always-on branch created")
+      }
+    } catch (error) {
+      console.error("Failed to branch always-on session:", error)
+      toast.error("Failed to branch session")
+    }
+  }, [handleSavedConversationOpen, refreshAlwaysOnSessions])
+
+  const handleOpenAlwaysOnSession = useCallback((session: AlwaysOnSessionSummary) => {
+    if (session.currentSessionId) {
+      handleActiveSessionSelect(session.currentSessionId)
+      return
+    }
+    if (session.conversationId) {
+      handleSavedConversationOpen(session.conversationId)
+    }
+  }, [handleActiveSessionSelect, handleSavedConversationOpen])
+
   // Keyboard shortcuts: Cmd/Ctrl+1..9 to jump to the Nth sidebar session
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1036,12 +1599,7 @@ export function ActiveAgentsSidebar({
 
   const findLoopForSession = useCallback(
     (session: SidebarSessionRecord): LoopConfig | undefined => {
-      const title = session.conversationTitle?.trim()
-      if (!title) return undefined
-      const direct = loopByTitleHint.get(title)
-      if (direct) return direct
-      const stripped = title.startsWith("Repeat: ") ? title.slice("Repeat: ".length).trim() : null
-      return stripped ? loopByTitleHint.get(stripped) : undefined
+      return findRepeatTaskLoopForSidebarSession(session, loopByTitleHint)
     },
     [loopByTitleHint],
   )
@@ -1578,6 +2136,16 @@ export function ActiveAgentsSidebar({
           </div>
         </div>
       )}
+
+      <AlwaysOnSessionStrip
+        sessions={alwaysOnSessions}
+        onCreate={handleCreateAlwaysOnSession}
+        onOpenSession={handleOpenAlwaysOnSession}
+        onTogglePause={handleToggleAlwaysOnPause}
+        onOpenLog={handleOpenAlwaysOnSessionLog}
+        onBranch={handleBranchAlwaysOnSession}
+        onRefresh={refreshAlwaysOnSessions}
+      />
 
       {hasAnySessions && (
         <div className="mt-1 space-y-0.5 overflow-visible pl-2 pr-1">

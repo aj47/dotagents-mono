@@ -33,4 +33,26 @@ describe("agents-files/tasks", () => {
     expect(markdown).not.toContain("runContinuously")
     expect(parseTaskMarkdown(markdown)?.runContinuously).toBeUndefined()
   })
+
+  it("roundtrips always-on session metadata", () => {
+    const task: LoopConfig = {
+      id: "always-on-task",
+      name: "Always on",
+      prompt: "Keep moving useful work forward.",
+      intervalMinutes: 1,
+      enabled: true,
+      runContinuously: true,
+      continueInSession: true,
+      alwaysOnSession: true,
+      maxIterations: 25,
+    }
+
+    const markdown = stringifyTaskMarkdown(task)
+    expect(markdown).toContain("alwaysOnSession: true")
+    expect(markdown).toContain("maxIterations: 25")
+
+    const parsed = parseTaskMarkdown(markdown)
+    expect(parsed?.alwaysOnSession).toBe(true)
+    expect(parsed?.maxIterations).toBe(25)
+  })
 })

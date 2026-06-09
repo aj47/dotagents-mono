@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react"
 import { cn } from "@renderer/lib/utils"
 import { Button } from "@renderer/components/ui/button"
-import { Send, Mic, OctagonX, ImagePlus, X, Bot } from "lucide-react"
+import { Send, Mic, OctagonX, ImagePlus, X, Bot, Route } from "lucide-react"
 import { useMutation } from "@tanstack/react-query"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { queryClient, useConfigQuery } from "@renderer/lib/queries"
@@ -92,7 +92,7 @@ export function OverlayFollowUpInput({
   }
 
   const sendMutation = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, queueKind }: { message: string; queueKind?: "prompt" | "steering" }) => {
       if (!conversationId) {
         // Start a new conversation if none exists
         return await tipcClient.createMcpTextInput({ text: message })
@@ -102,12 +102,14 @@ export function OverlayFollowUpInput({
           text: message,
           conversationId,
           sessionId,
+          queueKind,
         })
       }
     },
     onSuccess: (_data, variables) => {
       logUI("[OverlayFollowUpInput] message sent", {
-        messageLength: variables.length,
+        messageLength: variables.message.length,
+        queueKind: variables.queueKind ?? "prompt",
         attachmentCount: imageAttachments.length,
         conversationId: conversationId ?? null,
         sessionId: sessionId ?? null,
@@ -122,7 +124,7 @@ export function OverlayFollowUpInput({
     },
   })
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent, queueKind: "prompt" | "steering" = "prompt") => {
     e?.preventDefault()
     const message = buildMessageWithImages(text, imageAttachments)
     logUI("[OverlayFollowUpInput] submit requested", {
@@ -132,6 +134,7 @@ export function OverlayFollowUpInput({
       isSessionActive,
       isInitializingSession,
       isQueueEnabled,
+      queueKind,
       inputMode: inputPresentation.mode,
       pending: sendMutation.isPending || isSubmitting || submitInFlightRef.current,
     })
@@ -154,7 +157,7 @@ export function OverlayFollowUpInput({
     setImageAttachments([])
 
     try {
-      const data = await sendMutation.mutateAsync(message)
+      const data = await sendMutation.mutateAsync({ message, queueKind })
       if (data?.queued) {
         rollbackOptimisticAppend?.()
       } else if (sessionId && !rollbackOptimisticAppend) {
@@ -235,7 +238,7 @@ export function OverlayFollowUpInput({
     if (handleSlashKeyDown(e)) return
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit()
+      handleSubmit(undefined, "prompt")
     }
   }
 
@@ -306,6 +309,7 @@ export function OverlayFollowUpInput({
   // When queue is disabled, don't allow voice input while session is active
   const isVoiceDisabled = inputPresentation.isDisabled || isSubmitting || sendMutation.isPending
   const hasMessageContent = text.trim().length > 0 || imageAttachments.length > 0
+  const canSendSteering = Boolean(conversationId && isSessionActive && isQueueEnabled)
 
   return (
     <form
@@ -414,6 +418,24 @@ export function OverlayFollowUpInput({
               sendMutation.isPending && "animate-pulse"
             )} />
           </Button>
+          {canSendSteering && (
+            <Button
+              type="button"
+              size="md-icon"
+              variant="ghost"
+              className="flex-shrink-0 text-sky-600 hover:bg-sky-100 hover:text-sky-700 dark:text-sky-300 dark:hover:bg-sky-950/40 dark:hover:text-sky-200"
+              disabled={!hasMessageContent || isDisabled}
+              onMouseDown={handleInputInteraction}
+              onClick={() => void handleSubmit(undefined, "steering")}
+              title="Steer current run"
+              aria-label="Send steering message"
+            >
+              <Route className={cn(
+                "h-3.5 w-3.5",
+                sendMutation.isPending && "animate-pulse",
+              )} />
+            </Button>
+          )}
           <Button
             type="button"
             size="md-icon"

@@ -18,11 +18,15 @@ export const MARK_WORK_COMPLETE_TOOL = "mark_work_complete"
 export const SET_SESSION_TITLE_TOOL = "set_session_title"
 export const EXECUTE_COMMAND_TOOL = "execute_command"
 export const READ_MORE_CONTEXT_TOOL = "read_more_context"
+export const LOG_ALWAYS_ON_ATTEMPT_TOOL = "log_always_on_attempt"
+export const ASK_ALWAYS_ON_QUESTION_TOOL = "ask_always_on_question"
 
 export const DEFAULT_AGENT_RUNTIME_TOOL_NAMES = [
   SET_SESSION_TITLE_TOOL,
   EXECUTE_COMMAND_TOOL,
   READ_MORE_CONTEXT_TOOL,
+  LOG_ALWAYS_ON_ATTEMPT_TOOL,
+  ASK_ALWAYS_ON_QUESTION_TOOL,
   MARK_WORK_COMPLETE_TOOL,
 ] as const
 

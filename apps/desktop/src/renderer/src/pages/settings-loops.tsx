@@ -328,9 +328,10 @@ export function SettingsLoops() {
     }
 
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || crypto.randomUUID()
-    const existingIntervalMinutes = editing.id
-      ? loops.find((loop) => loop.id === editing.id)?.intervalMinutes
+    const existingLoop = editing.id
+      ? loops.find((loop) => loop.id === editing.id)
       : undefined
+    const existingIntervalMinutes = existingLoop?.intervalMinutes
     const savedIntervalMinutes = parsedIntervalMinutes ?? existingIntervalMinutes ?? 15
     const loopData: LoopConfig = {
       id: editing.id || slugify(editing.name),
@@ -338,10 +339,13 @@ export function SettingsLoops() {
       prompt: editing.prompt.trim(),
       intervalMinutes: savedIntervalMinutes,
       enabled: editing.enabled,
+      ...(existingLoop?.profileId ? { profileId: existingLoop.profileId } : {}),
       runOnStartup: editing.runOnStartup,
       speakOnTrigger: editing.speakOnTrigger,
       continueInSession: editing.continueInSession,
       runContinuously: editing.scheduleMode === "continuous",
+      ...(existingLoop?.alwaysOnSession ? { alwaysOnSession: true } : {}),
+      ...(existingLoop?.maxIterations ? { maxIterations: existingLoop.maxIterations } : {}),
       ...(editing.continueInSession && editing.lastSessionId
         ? { lastSessionId: editing.lastSessionId }
         : {}),

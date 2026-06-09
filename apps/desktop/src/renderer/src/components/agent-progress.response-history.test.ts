@@ -167,7 +167,7 @@ function findToolRow(tree: any, toolName: string) {
 
 async function loadAgentProgress(
   runtime: ReturnType<typeof createHookRuntime>,
-  options?: { ttsEnabled?: boolean; ttsAutoPlay?: boolean },
+  options?: { ttsEnabled?: boolean; ttsAutoPlay?: boolean; alwaysOnSessions?: any[]; alwaysOnLog?: any },
 ) {
   vi.resetModules()
   const captured = { tileFollowUpInputProps: null as any }
@@ -190,13 +190,23 @@ async function loadAgentProgress(
 
   const Null = () => null
   const icon = (name: string) => (props: any) => ({ type: name, props })
-  const tipcMock = { tipcClient: new Proxy({
-    generateSpeech: vi.fn(),
-    setPanelFocusable: vi.fn(),
-    claimTTSPlaybackKeys: vi.fn().mockResolvedValue({ claimed: true }),
-    releaseTTSPlaybackKeys: vi.fn().mockResolvedValue({ success: true }),
-    controlTTSPlayback: vi.fn().mockResolvedValue({ success: true }),
-  }, { get: (target, key) => (target as any)[key] ?? vi.fn() }) }
+  const tipcMock = {
+    rendererHandlers: {
+      alwaysOnSessionsChanged: {
+        listen: vi.fn(() => vi.fn()),
+      },
+    },
+    tipcClient: new Proxy({
+      generateSpeech: vi.fn(),
+      getAlwaysOnSessions: vi.fn().mockResolvedValue(options?.alwaysOnSessions ?? []),
+      getAlwaysOnSessionLog: vi.fn().mockResolvedValue(options?.alwaysOnLog ?? { success: true, entries: [], logCount: 0 }),
+      openAlwaysOnSessionLog: vi.fn().mockResolvedValue({ success: true }),
+      setPanelFocusable: vi.fn(),
+      claimTTSPlaybackKeys: vi.fn().mockResolvedValue({ claimed: true }),
+      releaseTTSPlaybackKeys: vi.fn().mockResolvedValue({ success: true }),
+      controlTTSPlayback: vi.fn().mockResolvedValue({ success: true }),
+    }, { get: (target, key) => (target as any)[key] ?? vi.fn() }),
+  }
   const queriesMock = {
     useConfigQuery: () => ({ data: { ttsEnabled: options?.ttsEnabled ?? false, ttsAutoPlay: options?.ttsAutoPlay ?? false, dualModelEnabled: false } }),
     useAvailableModelsQuery: () => ({ data: [{ id: "gpt-4.1-mini", name: "GPT 4.1 Mini" }], isLoading: false }),
@@ -261,6 +271,19 @@ async function loadAgentProgress(
     Play: icon("Play"),
     Pause: icon("Pause"),
     Pin: icon("Pin"),
+    GitBranch: icon("GitBranch"),
+    ListChecks: icon("ListChecks"),
+  }))
+  vi.doMock("@tanstack/react-query", () => ({
+    useQuery: vi.fn((queryOptions: any) => ({
+      data: queryOptions?.enabled
+        ? queryOptions?.queryKey?.[0] === "always-on-session-log"
+          ? options?.alwaysOnLog ?? { success: true, entries: [], logCount: 0 }
+          : options?.alwaysOnSessions ?? []
+        : undefined,
+      isLoading: false,
+      refetch: vi.fn(),
+    })),
   }))
   vi.doMock("@renderer/lib/utils", () => ({ cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" ") }))
   vi.doMock("@renderer/components/markdown-renderer", () => ({ MarkdownRenderer: ({ content }: any) => ({ type: "MarkdownRenderer", props: { content, children: content } }) }))
@@ -452,6 +475,188 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Analyzing request")
     expect(text).not.toContain("Generating response...")
     expect(thinkingBars).toHaveLength(3)
+  })
+
+  it("hides repeated always-on setup prompts and surfaces a status band", async () => {
+    const runtime = createHookRuntime()
+    const now = Date.now()
+    const setupPrompt = "Always-on session You are running as an always-on DotAgents session. Continue useful work until the user pauses this session. Operational constraints: everything that has been tried must be logged."
+    const { AgentProgress } = await loadAgentProgress(runtime, {
+      alwaysOnSessions: [
+        {
+          id: "always-1",
+          loopId: "loop-1",
+          name: "Always-on session",
+          status: "running",
+          enabled: true,
+          isRunning: true,
+          createdAt: now - 10_000,
+          updatedAt: now,
+          currentSessionId: "session-always-on-progress",
+          conversationId: "conversation-always-on-progress",
+          logPath: "/tmp/attempts.jsonl",
+          logCount: 2,
+          latestLogEntry: {
+            id: "log-2",
+            alwaysOnSessionId: "always-1",
+            loopId: "loop-1",
+            kind: "blocker",
+            title: "No source artifact found",
+            outcome: "Queued a question and switched branches.",
+            timestamp: now - 1_000,
+          },
+          recentLogEntries: [
+            {
+              id: "log-1",
+              alwaysOnSessionId: "always-1",
+              loopId: "loop-1",
+              kind: "attempt",
+              title: "Inspect workspace artifacts",
+              details: "Searched the expected output directory.",
+              timestamp: now - 2_000,
+            },
+            {
+              id: "log-2",
+              alwaysOnSessionId: "always-1",
+              loopId: "loop-1",
+              kind: "blocker",
+              title: "No source artifact found",
+              outcome: "Queued a question and switched branches.",
+              timestamp: now - 1_000,
+            },
+          ],
+          auditSummary: {
+            verdict: "wasteful",
+            headline: "High log-only risk",
+            totalLogEntries: 12,
+            analyzedLogEntries: 12,
+            attemptCount: 10,
+            blockerCount: 0,
+            questionCount: 0,
+            answerCount: 0,
+            artifactCount: 1,
+            runStartedCount: 1,
+            runCompletedCount: 1,
+            maxIterationCompletionCount: 1,
+            outcomeCount: 1,
+            verifiedOutcomeCount: 0,
+            repeatedAttemptCount: 7,
+            longestIntentOnlyStreak: 7,
+            currentIntentOnlyStreak: 0,
+            pauseLeakCount: 0,
+            logOnlyScore: 82,
+            topRepeatedTitles: [{ title: "Inspect workspace artifacts", count: 7 }],
+            recentArtifacts: [
+              {
+                id: "log-output-1",
+                alwaysOnSessionId: "always-1",
+                loopId: "loop-1",
+                kind: "artifact",
+                title: "Created checklist.md",
+                details: "path: /tmp/checklist.md",
+                outcome: "created /tmp/checklist.md",
+                timestamp: now - 500,
+              },
+            ],
+            findings: [
+              {
+                severity: "critical",
+                title: "No verified outcomes in log",
+                detail: "The durable log records intent, but it does not record a completed artifact or command result.",
+              },
+            ],
+          },
+          pendingQuestionCount: 0,
+          answeredQuestionCount: 0,
+          questions: [],
+        },
+      ],
+      alwaysOnLog: {
+        success: true,
+        logPath: "/tmp/attempts.jsonl",
+        logCount: 2,
+        entries: [
+          {
+            id: "log-1",
+            alwaysOnSessionId: "always-1",
+            loopId: "loop-1",
+            kind: "attempt",
+            title: "Inspect workspace artifacts",
+            details: "Searched the expected output directory.",
+            timestamp: now - 2_000,
+          },
+          {
+            id: "log-2",
+            alwaysOnSessionId: "always-1",
+            loopId: "loop-1",
+            kind: "blocker",
+            title: "No source artifact found",
+            outcome: "Queued a question and switched branches.",
+            timestamp: now - 1_000,
+          },
+        ],
+      },
+    })
+    const progress = {
+      sessionId: "session-always-on-progress",
+      conversationId: "conversation-always-on-progress",
+      conversationTitle: "[Repeat] Always-on session",
+      currentIteration: 20,
+      maxIterations: 25,
+      steps: [
+        {
+          id: "thinking-1",
+          type: "thinking",
+          title: "Analyzing request",
+          description: "Inspecting current logs and choosing next task",
+          status: "in_progress",
+          timestamp: 300,
+        },
+      ],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: setupPrompt, timestamp: 100 },
+        { role: "assistant", content: "I inspected the log and found the next concrete task.", timestamp: 200 },
+        { role: "user", content: setupPrompt, timestamp: 250 },
+      ],
+    }
+
+    let tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Now")
+    expect(text).toContain("Latest")
+    expect(text).toContain("Step 20 / 25")
+    expect(text).not.toContain("Work audit")
+    expect(text).not.toContain("Log-only risk")
+    expect(text).not.toContain("Repeated attempts")
+    expect(text).toContain("Action log")
+    expect(text).toContain("Log")
+    expect(text).toContain("Inspect workspace artifacts")
+    expect(text).toContain("No source artifact found")
+    expect(text).toContain("Queued a question and switched branches.")
+    expect(text).toContain("Full log")
+    expect(text).toContain("2 setup hidden")
+    expect(text).toContain("I inspected the log and found the next concrete task.")
+    expect(text).not.toContain("You are running as an always-on DotAgents session")
+    expect(text).not.toContain("Operational constraints")
+
+    const logTab = findAll(
+      tree,
+      (value) => value?.type === "button" && getTextContent(value).includes("Log"),
+    )[0]
+    expect(logTab).toBeTruthy()
+    logTab.props.onClick({ preventDefault: vi.fn(), stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress })
+    const logText = getTextContent(tree)
+
+    expect(logText).toContain("Full progress log")
+    expect(logText).toContain("Raw file")
+    expect(logText).toContain("All kinds")
+    expect(logText).toContain("No source artifact found")
+    expect(logText).toContain("Inspect workspace artifacts")
+    expect(findAll(tree, (value) => value?.type === "input" && value.props?.placeholder === "Search log")).toHaveLength(1)
   })
 
   it("treats provider streaming thinking preambles as the same compact status", async () => {
@@ -666,6 +871,54 @@ describe("agent progress response history", () => {
     expect(text.indexOf("Before response")).toBeGreaterThanOrEqual(0)
     expect(text.indexOf("Mid-turn answer")).toBeGreaterThan(text.indexOf("Before response"))
     expect(text.indexOf("After response")).toBeGreaterThan(text.indexOf("Mid-turn answer"))
+  })
+
+  it("keeps the latest agent thought visible while current-turn tool activity is shown", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-live-thought",
+      conversationId: "conversation-live-thought",
+      currentIteration: 1,
+      maxIterations: 3,
+      steps: [
+        {
+          id: "think-1",
+          type: "thinking",
+          title: "Agent response",
+          description: "I need to inspect the logs first.",
+          llmContent: "I need to inspect the logs first.",
+          status: "completed",
+          timestamp: 150,
+        },
+        {
+          id: "tool-1",
+          type: "tool_call",
+          title: "Executing execute_command",
+          description: "Running command",
+          status: "in_progress",
+          timestamp: 220,
+        },
+      ],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Check the logs", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 200,
+          isComplete: false,
+          toolCalls: [{ name: "execute_command", arguments: { cmd: "tail app.log" } }],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("I need to inspect the logs first.")
+    expect(text).toContain("execute_command")
   })
 
   it("does not double-render the final response when it already exists as an assistant message", async () => {
@@ -1016,15 +1269,12 @@ describe("agent progress response history", () => {
     expect(text).not.toMatch(/2 step(?:\s*s)?/)
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
-    // Collapsed groups list every execute_command as
-    // "<command>:<output-preview>" in chronological order, with a call count
-    // next to the wrench icon.
+    // Collapsed groups show the total call count and a compact ordered preview.
     expect(text).toContain("git status --short:M file.ts branch main")
     expect(text).toContain("pnpm test:all suites passed")
     expect(text.indexOf("git status --short:M file.ts branch main")).toBeLessThan(text.indexOf("pnpm test:all suites passed"))
     expect(text.indexOf("pnpm test:all suites passed")).toBeLessThan(text.indexOf("Now here is the answer"))
-    // 2 tool calls in the run (search count badge before previews).
-    expect(text).toMatch(/2\s+git status --short:M file\.ts branch main/)
+    expect(text).toMatch(/2 tools · git status --short:M file\.ts branch main/)
   })
 
   it("surfaces a running label when the current pending tool is inside a collapsed group", async () => {

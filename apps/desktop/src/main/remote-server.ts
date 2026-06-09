@@ -7497,6 +7497,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       continueInSession: loop.continueInSession,
       lastSessionId: loop.lastSessionId,
       runContinuously: loop.runContinuously,
+      alwaysOnSession: loop.alwaysOnSession,
       maxIterations: loop.maxIterations,
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
@@ -7530,6 +7531,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             continueInSession: l.continueInSession,
             lastSessionId: l.lastSessionId,
             runContinuously: l.runContinuously,
+            alwaysOnSession: l.alwaysOnSession,
             maxIterations: l.maxIterations,
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
@@ -7729,6 +7731,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         })
 
         if (!triggered) {
+          const latestLoop = loopService.getLoop(params.id)
+          if (latestLoop?.alwaysOnSession === true && !latestLoop.enabled) {
+            return reply.code(409).send({ error: "Always-on session is paused; resume it before running." })
+          }
           return reply.code(409).send({ error: "Task is already running" })
         }
 
@@ -7885,6 +7891,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
+        alwaysOnSession?: unknown
         maxIterations?: unknown
         schedule?: unknown
       }
@@ -7916,6 +7923,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.alwaysOnSession !== undefined && typeof body.alwaysOnSession !== "boolean") {
+        return reply.code(400).send({ error: "alwaysOnSession must be a boolean when provided" })
+      }
       if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
         return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
       }
@@ -7939,6 +7949,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
       const runContinuously = body.runContinuously === true
+      const alwaysOnSession = body.alwaysOnSession === true
       const runOnStartup = body.runOnStartup === true
       const speakOnTrigger = body.speakOnTrigger === true
       const continueInSession = body.continueInSession === true
@@ -7958,6 +7969,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession,
         lastSessionId: continueInSession ? (lastSessionId || undefined) : undefined,
         runContinuously,
+        alwaysOnSession,
         ...(typeof maxIterationsResult.value === "number" ? { maxIterations: maxIterationsResult.value } : {}),
         ...(!runContinuously && scheduleResult.schedule && scheduleResult.schedule !== null
           ? { schedule: scheduleResult.schedule }
@@ -8002,6 +8014,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
+        alwaysOnSession?: unknown
         maxIterations?: unknown
         schedule?: unknown
       }
@@ -8051,6 +8064,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.alwaysOnSession !== undefined && typeof body.alwaysOnSession !== "boolean") {
+        return reply.code(400).send({ error: "alwaysOnSession must be a boolean when provided" })
+      }
       if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
         return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
       }
@@ -8081,6 +8097,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const runContinuously = typeof body.runContinuously === "boolean" ? body.runContinuously : undefined
+      const alwaysOnSession = typeof body.alwaysOnSession === "boolean" ? body.alwaysOnSession : undefined
       const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : undefined
       const speakOnTrigger = typeof body.speakOnTrigger === "boolean" ? body.speakOnTrigger : undefined
       const continueInSession = typeof body.continueInSession === "boolean" ? body.continueInSession : undefined
@@ -8097,6 +8114,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(continueInSession !== undefined && { continueInSession }),
         ...(body.lastSessionId !== undefined && { lastSessionId: lastSessionId || undefined }),
         ...(runContinuously !== undefined && { runContinuously }),
+        ...(alwaysOnSession !== undefined && { alwaysOnSession }),
         ...(maxIterationsResult.value !== undefined && maxIterationsResult.value !== null && { maxIterations: maxIterationsResult.value }),
       }
       if (maxIterationsResult.value === null) {

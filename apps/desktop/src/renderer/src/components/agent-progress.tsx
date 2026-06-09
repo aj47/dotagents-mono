@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { cn } from "@renderer/lib/utils"
-import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config, ModelPreset } from "../../../shared/types"
+import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnQuestion, AlwaysOnSessionAuditSummary, AlwaysOnSessionSummary, Config, ModelPreset } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch, ListChecks, Target, Pencil, RotateCcw, HelpCircle } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog"
-import { tipcClient } from "@renderer/lib/tipc-client"
+import { rendererHandlers, tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
@@ -164,6 +165,45 @@ const formatRunningToolLabel = (toolNames: string[]): string => {
   if (toolNames.length === 0) return "tool"
   if (toolNames.length === 1) return toolNames[0]
   return `${toolNames.length} tools`
+}
+
+function compactOneLine(value: string | undefined, maxLength = 140): string {
+  const compacted = (value ?? "").replace(/\s+/g, " ").trim()
+  if (compacted.length <= maxLength) return compacted
+  return `${compacted.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
+}
+
+function getDisplayItemPreview(item: DisplayItem): string | null {
+  if (item.kind === "message") {
+    const content = compactOneLine(item.data.content)
+    return content || null
+  }
+
+  if (item.kind === "assistant_with_tools") {
+    const thought = compactOneLine(item.data.thought)
+    if (thought) return thought
+    const names = item.data.calls.map((call) => call.name).filter(Boolean)
+    return names.length > 0 ? `Running ${formatRunningToolLabel(names)}` : null
+  }
+
+  if (item.kind === "tool_activity_group") {
+    const preview = compactOneLine(item.data.previewLines.join(", "))
+    if (preview) return preview
+    return `${item.data.callCount} tool call${item.data.callCount === 1 ? "" : "s"}`
+  }
+
+  if (item.kind === "tool_execution") {
+    const names = item.data.calls.map((call) => call.name).filter(Boolean)
+    if (names.length > 0) return `Ran ${formatRunningToolLabel(names)}`
+    const result = item.data.results.find((entry) => entry?.content || entry?.error)
+    return compactOneLine(result?.error || result?.content) || "Tool result"
+  }
+
+  if (item.kind === "streaming") return compactOneLine(item.data.text) || "Thinking…"
+  if (item.kind === "retry_status") return compactOneLine(item.data.reason) || `Retry ${item.data.attempt}`
+  if (item.kind === "tool_approval") return `Waiting for approval: ${item.data.toolName}`
+  if (item.kind === "delegation") return compactOneLine(item.data.task || item.data.agentName)
+  return null
 }
 
 type ChatProviderId = NonNullable<Config["agentProviderId"]>
@@ -726,6 +766,155 @@ function normalizeAssistantResponseForDedupe(content: string | undefined): strin
 function normalizePromptEchoForDedupe(content: string | undefined): string {
   return (content ?? "").replace(/\s+/g, " ").trim()
 }
+
+const ALWAYS_ON_INSTRUCTION_MARKERS = [
+  "you are running as an always-on dotagents session",
+  "continue useful work until the user pauses this session",
+  "everything that has been tried must be logged",
+  "operational constraints",
+]
+
+function isAlwaysOnInstructionPrompt(content: string | undefined): boolean {
+  const normalized = normalizePromptEchoForDedupe(content).toLowerCase()
+  if (!normalized) return false
+  return ALWAYS_ON_INSTRUCTION_MARKERS.some((marker) => normalized.includes(marker))
+}
+
+function isAlwaysOnConversationTitle(title: string | undefined): boolean {
+  const normalized = normalizePromptEchoForDedupe(title).toLowerCase()
+  return normalized.includes("always-on session")
+}
+
+const ALWAYS_ON_ARTIFACT_TEXT_REGEX = /\b(?:created|wrote|saved|updated)\s+[`"']?((?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm)))[`"']?/iu
+
+function isAlwaysOnArtifactLike(entry: AlwaysOnLogEntry): boolean {
+  if (entry.kind === "artifact") return true
+  const text = `${entry.title}\n${entry.details ?? ""}\n${entry.outcome ?? ""}`
+  return ALWAYS_ON_ARTIFACT_TEXT_REGEX.test(text)
+}
+
+function getAlwaysOnDisplayLogKind(entry: AlwaysOnLogEntry): AlwaysOnLogEntryKind {
+  return isAlwaysOnArtifactLike(entry) ? "artifact" : entry.kind
+}
+
+function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
+  switch (kind) {
+    case "run_started":
+      return "START"
+    case "run_completed":
+      return "DONE"
+    case "attempt":
+      return "TRY"
+    case "artifact":
+      return "OUTPUT"
+    case "evidence":
+      return "EVIDENCE"
+    case "blocker":
+      return "BLOCKED"
+    case "question":
+      return "QUESTION"
+    case "answer":
+      return "ANSWER"
+    case "branch":
+      return "BRANCH"
+    case "pause":
+      return "PAUSE"
+    case "resume":
+      return "RESUME"
+    case "error":
+      return "ERROR"
+    default:
+      return kind
+  }
+}
+
+function getAlwaysOnLogKindClassName(kind: AlwaysOnLogEntryKind): string {
+  switch (kind) {
+    case "blocker":
+    case "error":
+      return "bg-red-500/10 text-red-700 dark:text-red-300"
+    case "question":
+      return "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+    case "answer":
+      return "bg-blue-500/12 text-blue-700 dark:text-blue-300"
+    case "artifact":
+      return "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
+    case "evidence":
+    case "run_completed":
+      return "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+    case "pause":
+      return "bg-muted text-muted-foreground"
+    case "resume":
+    case "run_started":
+      return "bg-sky-500/12 text-sky-700 dark:text-sky-300"
+    default:
+      return "bg-muted text-muted-foreground"
+  }
+}
+
+function getAlwaysOnLogDetails(entry: AlwaysOnLogEntry): string | undefined {
+  const details = entry.outcome || entry.details
+  if (details && isAlwaysOnInstructionPrompt(details)) return undefined
+  return details
+}
+
+function getAlwaysOnQuestionContext(question: AlwaysOnQuestion, recentWorkEntries: AlwaysOnLogEntry[] = []): string | undefined {
+  const explicitContext = question.context?.trim()
+  if (explicitContext) return explicitContext
+
+  const recentOutputs = recentWorkEntries
+    .filter((entry) => getAlwaysOnDisplayLogKind(entry) === "artifact")
+    .slice(0, 3)
+    .map((entry) => {
+      const detail = getAlwaysOnLogDetails(entry)?.replace(/\s+/g, " ").trim()
+      return detail ? `${entry.title}: ${detail}` : entry.title
+    })
+
+  if (recentOutputs.length === 0) return undefined
+  return `Recent outputs: ${recentOutputs.join(" | ")}`
+}
+
+function getAlwaysOnQuestionCustomPlaceholder(question: AlwaysOnQuestion): string {
+  if (question.customAnswerPlaceholder?.trim()) return question.customAnswerPlaceholder.trim()
+  const labels = question.choices.map((choice) => choice.label.toLowerCase()).join(" ")
+  if (labels.includes("workstream") || labels.includes("defect")) {
+    return "Name the next workstream or exact defect"
+  }
+  return "Custom answer with direction or constraints"
+}
+
+function getAlwaysOnDisplayTitle(entry: AlwaysOnLogEntry): string {
+  if (entry.kind === "run_completed" && entry.outcome?.trim().toLowerCase().startsWith("known:")) {
+    return "Run summary"
+  }
+  return entry.title
+}
+
+function formatAlwaysOnLogTime(timestamp: number, now: number): string {
+  const diffMs = Math.max(0, now - timestamp)
+  if (diffMs < 60_000) return "now"
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  return `${Math.floor(hours / 24)}d`
+}
+
+const ALWAYS_ON_LOG_KIND_FILTERS: Array<"all" | AlwaysOnLogEntryKind> = [
+  "all",
+  "attempt",
+  "artifact",
+  "evidence",
+  "blocker",
+  "question",
+  "answer",
+  "branch",
+  "run_started",
+  "run_completed",
+  "pause",
+  "resume",
+  "error",
+]
 
 function shouldAutoPlayTTSForVariant(
   _variant: "default" | "overlay" | "tile",
@@ -1982,16 +2171,29 @@ const ToolActivityGroupBubble: React.FC<{
   /** Render a single child DisplayItem when the group is expanded. */
   renderItem: (item: DisplayItem, index: number) => React.ReactNode
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
-  const collapsedPreviewLine = group.previewLines.join(', ')
+  const uniquePreviewLines = Array.from(new Set(
+    group.previewLines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0),
+  ))
+  const visiblePreviewLines = uniquePreviewLines.slice(0, 3)
+  const hiddenPreviewCount = Math.max(0, group.previewLines.length - visiblePreviewLines.length)
+  const collapsedPreviewLine = [
+    visiblePreviewLines.join(", "),
+    hiddenPreviewCount > 0 ? `+${hiddenPreviewCount} more` : "",
+  ].filter(Boolean).join(", ")
   const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
   const callCount = group.callCount
   const runningToolNames = group.items.flatMap(getRunningToolCallNames)
   const hasRunningTools = runningToolNames.length > 0
   const collapsedStatusLine = hasRunningTools
     ? `Running ${formatRunningToolLabel(runningToolNames)}`
-    : collapsedPreviewLine || "Tool activity"
-  const collapsedTitle = hasRunningTools && collapsedPreviewLine
-    ? `${collapsedStatusLine} - ${collapsedPreviewLine}`
+    : callCount > 0 && collapsedPreviewLine
+      ? `${callCount} tools · ${collapsedPreviewLine}`
+      : collapsedPreviewLine || "Tool activity"
+  const fullPreviewLine = group.previewLines.join(", ")
+  const collapsedTitle = hasRunningTools && fullPreviewLine
+    ? `${collapsedStatusLine} - ${fullPreviewLine}`
     : collapsedStatusLine
 
   return (
@@ -3681,8 +3883,21 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Expansion state management - preserve across re-renders
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
 
-  // Tab state for Chat/Summary view toggle (only relevant when dual-model is enabled)
-  const [activeTab, setActiveTab] = useState<"chat" | "summary">("chat")
+  // Tab state for Chat/Log/Summary view toggle.
+  const [activeTab, setActiveTab] = useState<"chat" | "log" | "summary">("chat")
+  const [alwaysOnLogSearch, setAlwaysOnLogSearch] = useState("")
+  const [alwaysOnLogKindFilter, setAlwaysOnLogKindFilter] = useState<"all" | AlwaysOnLogEntryKind>("all")
+  const [alwaysOnGoalDraft, setAlwaysOnGoalDraft] = useState("")
+  const [isAlwaysOnGoalEditing, setIsAlwaysOnGoalEditing] = useState(false)
+  const [isUpdatingAlwaysOnGoal, setIsUpdatingAlwaysOnGoal] = useState(false)
+  const [isResettingAlwaysOnSession, setIsResettingAlwaysOnSession] = useState(false)
+  const [alwaysOnQuestionDrafts, setAlwaysOnQuestionDrafts] = useState<Record<string, string>>({})
+  const [submittingAlwaysOnQuestionId, setSubmittingAlwaysOnQuestionId] = useState<string | null>(null)
+  const [alwaysOnSectionCollapsed, setAlwaysOnSectionCollapsed] = useState({
+    status: true,
+    question: true,
+    log: false,
+  })
   const [selectedDelegationRunId, setSelectedDelegationRunId] = useState<string | null>(null)
   const [isDelegationSummaryCollapsed, setIsDelegationSummaryCollapsed] = useState(false)
 
@@ -3954,6 +4169,102 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
   }, [isComplete, progress.sessionId])
 
+  const isAlwaysOnSession = useMemo(() => (
+    isAlwaysOnConversationTitle(progress.conversationTitle) ||
+    (conversationHistory ?? []).some((entry) => isAlwaysOnInstructionPrompt(entry.content))
+  ), [conversationHistory, progress.conversationTitle])
+
+  const alwaysOnSessionsQuery = useQuery<AlwaysOnSessionSummary[]>({
+    queryKey: ["always-on-sessions"],
+    queryFn: async () => await tipcClient.getAlwaysOnSessions(),
+    enabled: isAlwaysOnSession,
+    refetchInterval: isAlwaysOnSession && !isComplete ? 2000 : false,
+  })
+
+  useEffect(() => {
+    if (!isAlwaysOnSession) return undefined
+    const unlisten = rendererHandlers.alwaysOnSessionsChanged.listen(() => {
+      void queryClient.invalidateQueries({ queryKey: ["always-on-sessions"] })
+      void queryClient.invalidateQueries({ queryKey: ["always-on-session-log"] })
+    })
+    return unlisten
+  }, [isAlwaysOnSession])
+
+  const alwaysOnSummary = useMemo(() => {
+    if (!isAlwaysOnSession) return undefined
+    const sessions = alwaysOnSessionsQuery.data ?? []
+    return sessions.find((session) =>
+      (!!progress.conversationId && session.conversationId === progress.conversationId) ||
+      (!!progress.sessionId && session.currentSessionId === progress.sessionId),
+    ) ?? (sessions.length === 1 ? sessions[0] : undefined)
+  }, [alwaysOnSessionsQuery.data, isAlwaysOnSession, progress.conversationId, progress.sessionId])
+
+  useEffect(() => {
+    if (isAlwaysOnGoalEditing) return
+    setAlwaysOnGoalDraft(alwaysOnSummary?.goal ?? "")
+  }, [alwaysOnSummary?.goal, isAlwaysOnGoalEditing])
+
+  useEffect(() => {
+    if (!isAlwaysOnSession && activeTab === "log") {
+      setActiveTab("chat")
+    }
+  }, [activeTab, isAlwaysOnSession])
+
+  const alwaysOnRecentLogEntries = useMemo(() => (
+    (alwaysOnSummary?.recentWorkEntries ?? alwaysOnSummary?.recentLogEntries ?? [])
+      .slice(-8)
+      .reverse()
+  ), [alwaysOnSummary?.recentLogEntries, alwaysOnSummary?.recentWorkEntries])
+  const pendingAlwaysOnQuestions = useMemo(() => (
+    (alwaysOnSummary?.questions ?? []).filter((question) => question.status === "pending")
+  ), [alwaysOnSummary?.questions])
+
+  const alwaysOnFullLogQuery = useQuery<{
+    success: boolean
+    entries: AlwaysOnLogEntry[]
+    logPath?: string
+    logCount: number
+    auditSummary?: AlwaysOnSessionAuditSummary
+    error?: string
+  }>({
+    queryKey: ["always-on-session-log", alwaysOnSummary?.id],
+    queryFn: async () => await tipcClient.getAlwaysOnSessionLog({ alwaysOnSessionId: alwaysOnSummary!.id }),
+    enabled: isAlwaysOnSession && activeTab === "log" && !!alwaysOnSummary?.id,
+    refetchInterval: isAlwaysOnSession && activeTab === "log" && !isComplete ? 2000 : false,
+  })
+
+  const alwaysOnFullLogEntries = useMemo(() => {
+    const entries = alwaysOnFullLogQuery.data?.success === false
+      ? []
+      : alwaysOnFullLogQuery.data?.entries ?? []
+    const search = alwaysOnLogSearch.trim().toLowerCase()
+
+    return entries
+      .filter((entry) => alwaysOnLogKindFilter === "all" || getAlwaysOnDisplayLogKind(entry) === alwaysOnLogKindFilter)
+      .filter((entry) => {
+        if (!search) return true
+        return [
+          entry.title,
+          entry.details,
+          entry.outcome,
+          entry.kind,
+          getAlwaysOnDisplayLogKind(entry),
+          entry.runtimeSessionId,
+          entry.conversationId,
+        ].some((value) => value?.toLowerCase().includes(search))
+      })
+      .slice()
+      .reverse()
+  }, [alwaysOnFullLogQuery.data, alwaysOnLogKindFilter, alwaysOnLogSearch])
+
+  const hiddenAlwaysOnPromptCount = useMemo(() => (
+    isAlwaysOnSession
+      ? (conversationHistory ?? []).filter((entry) =>
+        entry.role === "user" && isAlwaysOnInstructionPrompt(entry.content),
+      ).length
+      : 0
+  ), [conversationHistory, isAlwaysOnSession])
+
   const messages = useMemo<Array<{
     role: "user" | "assistant" | "tool"
     content: string
@@ -4030,6 +4341,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       historyForSession
         .forEach((entry, localIndex) => {
           if (entry.role === "user" && isCompletionNudge(entry.content)) return
+          if (isAlwaysOnSession && entry.role === "user" && isAlwaysOnInstructionPrompt(entry.content)) return
           if (shouldHideAssistantPromptEcho(entry, localIndex)) return
           nextMessages.push({
             role: entry.role,
@@ -4162,7 +4474,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
 
     return nextMessages
-  }, [conversationHistory, finalContent, isComplete, progress.streamingContent?.isStreaming, sessionStartIndex, steps])
+  }, [conversationHistory, finalContent, isAlwaysOnSession, isComplete, progress.streamingContent?.isStreaming, sessionStartIndex, steps])
 
   const legacyResponseEvents = useMemo<AgentUserResponseEvent[]>(() => {
     if (!progress.userResponse) return []
@@ -4515,17 +4827,53 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
 
       const activeStep = [...progress.steps].reverse().find((step) => step.status === "in_progress")
       const isVerificationStep = activeStep?.title?.toLowerCase().includes("verifying")
+      const latestThoughtStep = [...progress.steps].reverse().find((step) =>
+        step.type === "thinking" &&
+        !step.title?.toLowerCase().includes("verifying") &&
+        Boolean(step.llmContent?.trim() || step.description?.trim()),
+      )
+      const latestThoughtText = latestThoughtStep
+        ? (
+          latestThoughtStep.llmContent?.trim()
+            ? stripThinkingPreamble(latestThoughtStep.llmContent).trim()
+            : normalizeThinkingStatusText(latestThoughtStep.description)
+        )
+        : ""
+      const normalizedLatestThoughtText = normalizeAssistantResponseForDedupe(latestThoughtText)
+      const alreadyHasLatestThought =
+        normalizedLatestThoughtText.length > 0 &&
+        items.some((item) => {
+          if (!isCurrentTurnDisplayItem(item)) return false
+          if (item.kind === "message" && item.data.role === "assistant") {
+            return normalizeAssistantResponseForDedupe(item.data.content) === normalizedLatestThoughtText
+          }
+          if (item.kind === "assistant_with_tools") {
+            return normalizeAssistantResponseForDedupe(item.data.thought) === normalizedLatestThoughtText
+          }
+          if (item.kind === "streaming") {
+            return normalizeAssistantResponseForDedupe(item.data.text) === normalizedLatestThoughtText
+          }
+          return false
+        })
 
-      if (!alreadyHasLiveThinkingMessage && !alreadyHasCurrentStateFeedback && !isVerificationStep) {
+      if (!alreadyHasLiveThinkingMessage && !isVerificationStep) {
         const text = activeStep?.type === "tool_call"
           ? activeStep.title || "Running tool..."
-          : normalizeThinkingStatusText(activeStep?.description)
+          : latestThoughtText || normalizeThinkingStatusText(activeStep?.description)
 
-        items.push({
-          kind: "streaming",
-          id: "live-thinking-placeholder",
-          data: { text, isStreaming: true, isPlaceholder: true },
-        })
+        if (!alreadyHasCurrentStateFeedback) {
+          items.push({
+            kind: "streaming",
+            id: "live-thinking-placeholder",
+            data: { text, isStreaming: true, isPlaceholder: true },
+          })
+        } else if (normalizedLatestThoughtText.length > 0 && !alreadyHasLatestThought) {
+          items.push({
+            kind: "streaming",
+            id: "latest-agent-thought",
+            data: { text: latestThoughtText, isStreaming: true, isPlaceholder: true },
+          })
+        }
       }
     }
 
@@ -4642,6 +4990,30 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }, [enrichedMessages, effectiveUserResponse, progress.isComplete, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = displayItems
+  const alwaysOnActiveStepText = useMemo(() => {
+    const activeStep = [...progress.steps]
+      .reverse()
+      .find((step) =>
+        step.status === "in_progress" &&
+        !step.title?.toLowerCase().includes("verifying"),
+      )
+
+    if (!activeStep) {
+      if (progress.pendingToolApproval) return `Waiting for approval: ${progress.pendingToolApproval.toolName}`
+      return isComplete ? "Run complete" : "Waiting for next progress update"
+    }
+
+    if (activeStep.type === "tool_call") return compactOneLine(activeStep.title || activeStep.description || "Running tool")
+    if (activeStep.llmContent?.trim()) return compactOneLine(stripThinkingPreamble(activeStep.llmContent), 180)
+    return compactOneLine(activeStep.description || activeStep.title || "Thinking")
+  }, [isComplete, progress.pendingToolApproval, progress.steps])
+  const alwaysOnLatestVisibleWork = useMemo(() => {
+    for (let index = visibleDisplayItems.length - 1; index >= 0; index -= 1) {
+      const preview = getDisplayItemPreview(visibleDisplayItems[index])
+      if (preview) return preview
+    }
+    return "No visible work yet"
+  }, [visibleDisplayItems])
   const loadedConversationHistoryCount = conversationHistory?.length ?? 0
   const conversationHistoryTotalCount = Math.max(
     progress.conversationHistoryTotalCount ?? loadedConversationHistoryCount,
@@ -5025,6 +5397,698 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isDark ? "dark" : ""
   )
 
+  const renderAlwaysOnStatusBand = (compact = false) => {
+    if (!isAlwaysOnSession) return null
+
+    const goalText = alwaysOnSummary?.goal?.trim() || "No goal set"
+    const isCollapsed = alwaysOnSectionCollapsed.status
+
+    return (
+      <div className={cn(
+        "border-b border-emerald-500/20 bg-emerald-500/[0.07] text-xs",
+        compact ? "px-2.5 py-1.5" : "px-3 py-2",
+      )}>
+        <button
+          type="button"
+          className="flex w-full min-w-0 items-center gap-2 text-left"
+          onClick={() => toggleAlwaysOnSection("status")}
+          aria-expanded={!isCollapsed}
+          title={isCollapsed ? "Expand always-on status" : "Collapse always-on status"}
+        >
+          <Bot className="h-3.5 w-3.5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+          <span className="shrink-0 text-[10px] font-medium uppercase tracking-normal text-emerald-700 dark:text-emerald-300">
+            Now
+          </span>
+          <span className="min-w-0 flex-1 truncate font-medium text-foreground" title={alwaysOnActiveStepText}>
+            {alwaysOnActiveStepText}
+          </span>
+          <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
+            Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}
+          </span>
+          {isCollapsed ? (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
+        </button>
+        {!isCollapsed && (
+          <>
+            <div className={cn(
+              "mt-2 grid gap-2",
+              compact ? "grid-cols-1" : "grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)_auto]",
+            )}>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-normal text-emerald-700 dark:text-emerald-300">
+              <Bot className="h-3 w-3 shrink-0" />
+              <span>Now</span>
+            </div>
+            <div className="mt-0.5 truncate font-medium text-foreground" title={alwaysOnActiveStepText}>
+              {alwaysOnActiveStepText}
+            </div>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-normal text-muted-foreground">
+              <Wrench className="h-3 w-3 shrink-0" />
+              <span>Latest</span>
+            </div>
+            <div className="mt-0.5 truncate text-muted-foreground" title={alwaysOnLatestVisibleWork}>
+              {alwaysOnLatestVisibleWork}
+            </div>
+          </div>
+          <div className={cn(
+            "flex shrink-0 items-center gap-1.5 rounded-md border border-border/45 bg-background/60 px-2 py-1 text-[10px] text-muted-foreground",
+            compact && "justify-between",
+          )}>
+            <span className="whitespace-nowrap tabular-nums">
+              Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}
+            </span>
+            {hiddenAlwaysOnPromptCount > 0 && (
+              <span
+                className="whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal"
+                title={`${hiddenAlwaysOnPromptCount} always-on setup prompt${hiddenAlwaysOnPromptCount === 1 ? "" : "s"} hidden from the timeline`}
+              >
+                {hiddenAlwaysOnPromptCount} setup hidden
+              </span>
+            )}
+          </div>
+        </div>
+        <div className={cn(
+          "mt-2 border-t border-emerald-500/15 pt-2",
+          compact && "mt-1.5 pt-1.5",
+        )}>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <Target className="h-3.5 w-3.5 shrink-0 text-emerald-700 dark:text-emerald-300" />
+              <span className="shrink-0 text-[10px] font-medium uppercase tracking-normal text-emerald-700 dark:text-emerald-300">
+                Goal
+              </span>
+              {!isAlwaysOnGoalEditing && (
+                <span className="min-w-0 flex-1 truncate text-muted-foreground" title={goalText}>
+                  {goalText}
+                </span>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-1 app-no-drag-region">
+              {isAlwaysOnGoalEditing ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 rounded-md px-2 text-[11px]"
+                    onClick={cancelAlwaysOnGoalEdit}
+                    disabled={isUpdatingAlwaysOnGoal}
+                    title="Cancel goal edit"
+                    aria-label="Cancel always-on goal edit"
+                  >
+                    <X className="mr-1 h-3 w-3" />
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    className="h-6 rounded-md px-2 text-[11px]"
+                    onClick={saveAlwaysOnGoal}
+                    disabled={!alwaysOnSummary?.id || isUpdatingAlwaysOnGoal}
+                    title="Save goal"
+                    aria-label="Save always-on goal"
+                  >
+                    {isUpdatingAlwaysOnGoal ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Check className="mr-1 h-3 w-3" />
+                    )}
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 rounded-md px-2 text-[11px]"
+                    onClick={startAlwaysOnGoalEdit}
+                    disabled={!alwaysOnSummary?.id}
+                    title="Set always-on goal"
+                    aria-label="Set always-on goal"
+                  >
+                    <Pencil className="mr-1 h-3 w-3" />
+                    Set
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 rounded-md px-2 text-[11px] text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
+                    onClick={resetAlwaysOnSession}
+                    disabled={!alwaysOnSummary?.id || isResettingAlwaysOnSession}
+                    title="Clear and restart always-on session"
+                    aria-label="Clear and restart always-on session"
+                  >
+                    {isResettingAlwaysOnSession ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <RotateCcw className="mr-1 h-3 w-3" />
+                    )}
+                    Reset
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+          {isAlwaysOnGoalEditing && (
+            <textarea
+              value={alwaysOnGoalDraft}
+              onChange={(event) => setAlwaysOnGoalDraft(event.target.value)}
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => {
+                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                  event.preventDefault()
+                  void saveAlwaysOnGoal()
+                }
+              }}
+              rows={compact ? 2 : 3}
+              className="mt-1.5 min-h-14 w-full resize-y rounded-md border border-emerald-500/20 bg-background/85 px-2 py-1.5 text-xs leading-relaxed text-foreground outline-none focus-visible:border-emerald-500/50"
+              placeholder="Set the always-on session goal"
+              aria-label="Always-on session goal"
+            />
+          )}
+        </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  const handleOpenAlwaysOnMainLog = useCallback(async () => {
+    if (!alwaysOnSummary?.id) return
+    try {
+      const result = await tipcClient.openAlwaysOnSessionLog({ alwaysOnSessionId: alwaysOnSummary.id })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to open always-on log")
+      }
+    } catch (error) {
+      console.error("Failed to open always-on log:", error)
+      toast.error("Failed to open always-on log")
+    }
+  }, [alwaysOnSummary?.id])
+
+  const refreshAlwaysOnView = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["always-on-sessions"] }),
+      queryClient.invalidateQueries({ queryKey: ["always-on-session-log"] }),
+      queryClient.invalidateQueries({ queryKey: ["loops"] }),
+      queryClient.invalidateQueries({ queryKey: ["agentSessions"] }),
+      queryClient.invalidateQueries({ queryKey: ["conversation-history"] }),
+    ])
+  }, [])
+
+  const toggleAlwaysOnSection = useCallback((section: "status" | "question" | "log") => {
+    setAlwaysOnSectionCollapsed((current) => ({
+      ...current,
+      [section]: !current[section],
+    }))
+  }, [])
+
+  const submitAlwaysOnQuestionAnswer = useCallback(async (
+    question: AlwaysOnQuestion,
+    answerText: string,
+    answerChoiceId?: string,
+  ) => {
+    if (!alwaysOnSummary?.id || submittingAlwaysOnQuestionId) return
+    const trimmed = answerText.trim()
+    if (!trimmed) return
+
+    setSubmittingAlwaysOnQuestionId(question.id)
+    try {
+      const result = await tipcClient.answerAlwaysOnQuestion({
+        alwaysOnSessionId: alwaysOnSummary.id,
+        questionId: question.id,
+        answerText: trimmed,
+        answerChoiceId,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to answer question")
+        return
+      }
+      setAlwaysOnQuestionDrafts((drafts) => {
+        const next = { ...drafts }
+        delete next[question.id]
+        return next
+      })
+      await refreshAlwaysOnView()
+      toast.success("Always-on answer queued")
+    } catch (error) {
+      console.error("Failed to answer always-on question:", error)
+      toast.error("Failed to answer question")
+    } finally {
+      setSubmittingAlwaysOnQuestionId(null)
+    }
+  }, [alwaysOnSummary?.id, refreshAlwaysOnView, submittingAlwaysOnQuestionId])
+
+  const startAlwaysOnGoalEdit = useCallback((event?: React.MouseEvent) => {
+    event?.stopPropagation()
+    setAlwaysOnGoalDraft(alwaysOnSummary?.goal ?? "")
+    setIsAlwaysOnGoalEditing(true)
+  }, [alwaysOnSummary?.goal])
+
+  const cancelAlwaysOnGoalEdit = useCallback((event?: React.MouseEvent) => {
+    event?.stopPropagation()
+    setAlwaysOnGoalDraft(alwaysOnSummary?.goal ?? "")
+    setIsAlwaysOnGoalEditing(false)
+  }, [alwaysOnSummary?.goal])
+
+  const saveAlwaysOnGoal = useCallback(async (event?: React.MouseEvent) => {
+    event?.stopPropagation()
+    if (!alwaysOnSummary?.id) return
+
+    setIsUpdatingAlwaysOnGoal(true)
+    try {
+      const result = await tipcClient.updateAlwaysOnSessionGoal({
+        alwaysOnSessionId: alwaysOnSummary.id,
+        goal: alwaysOnGoalDraft,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to update always-on goal")
+        return
+      }
+      setIsAlwaysOnGoalEditing(false)
+      await refreshAlwaysOnView()
+      toast.success("Always-on goal updated")
+    } catch (error) {
+      console.error("Failed to update always-on goal:", error)
+      toast.error("Failed to update always-on goal")
+    } finally {
+      setIsUpdatingAlwaysOnGoal(false)
+    }
+  }, [alwaysOnGoalDraft, alwaysOnSummary?.id, refreshAlwaysOnView])
+
+  const resetAlwaysOnSession = useCallback(async (event?: React.MouseEvent) => {
+    event?.stopPropagation()
+    if (!alwaysOnSummary?.id) return
+
+    const confirmed = window.confirm("Reset this always-on session? This clears the visible log, queued questions, and current run, then starts fresh.")
+    if (!confirmed) return
+
+    setIsResettingAlwaysOnSession(true)
+    try {
+      const result = await tipcClient.resetAlwaysOnSession({
+        alwaysOnSessionId: alwaysOnSummary.id,
+        restart: true,
+      })
+      if (result && result.success === false) {
+        toast.error(result.error || "Failed to reset always-on session")
+        return
+      }
+      setActiveTab("chat")
+      setAlwaysOnLogSearch("")
+      setAlwaysOnLogKindFilter("all")
+      await refreshAlwaysOnView()
+      toast.success("Always-on session reset")
+    } catch (error) {
+      console.error("Failed to reset always-on session:", error)
+      toast.error("Failed to reset always-on session")
+    } finally {
+      setIsResettingAlwaysOnSession(false)
+    }
+  }, [alwaysOnSummary?.id, refreshAlwaysOnView])
+
+  const renderAlwaysOnQuestionPanel = (compact = false) => {
+    if (!isAlwaysOnSession || pendingAlwaysOnQuestions.length === 0) return null
+
+    const question = pendingAlwaysOnQuestions[0]
+    const contextText = getAlwaysOnQuestionContext(question, alwaysOnRecentLogEntries)
+    const customDraft = alwaysOnQuestionDrafts[question.id] ?? ""
+    const isSubmittingQuestion = submittingAlwaysOnQuestionId === question.id
+    const customPlaceholder = getAlwaysOnQuestionCustomPlaceholder(question)
+    const isCollapsed = alwaysOnSectionCollapsed.question
+
+    return (
+      <div className={cn(
+        "border-b border-amber-500/25 bg-amber-500/[0.10]",
+        compact ? "px-2.5 py-2" : "px-3 py-2.5",
+      )}>
+        <button
+          type="button"
+          className="flex w-full min-w-0 items-start gap-2 text-left"
+          onClick={() => toggleAlwaysOnSection("question")}
+          aria-expanded={!isCollapsed}
+          title={isCollapsed ? "Expand queued question" : "Collapse queued question"}
+        >
+          <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-semibold uppercase tracking-normal text-amber-700 dark:text-amber-300">
+              Needs answer
+              {pendingAlwaysOnQuestions.length > 1 ? ` · ${pendingAlwaysOnQuestions.length} queued` : ""}
+            </div>
+            <div className="mt-0.5 line-clamp-2 text-sm font-medium leading-snug text-foreground">
+              {question.prompt}
+            </div>
+          </div>
+          {isCollapsed ? (
+            <ChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
+        </button>
+        {!isCollapsed && (
+          <>
+            {contextText && (
+              <div className="mt-2 rounded-md border border-amber-500/20 bg-background/70 px-2.5 py-2 text-xs leading-relaxed text-muted-foreground">
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-normal text-amber-700 dark:text-amber-300">Context</div>
+                <div className="break-words">{contextText}</div>
+              </div>
+            )}
+            {question.recommendation && (
+              <div className="mt-2 rounded-md border border-blue-500/20 bg-blue-500/10 px-2.5 py-2 text-xs leading-relaxed text-blue-800 dark:text-blue-200">
+                <span className="font-semibold">Recommendation: </span>
+                {question.recommendation}
+              </div>
+            )}
+            <div className={cn("mt-2 grid gap-1.5", compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-3")}>
+              {question.choices.map((choice) => (
+                <Button
+                  key={choice.id}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-auto min-h-12 justify-start rounded-md px-2.5 py-2 text-left"
+                  disabled={!!submittingAlwaysOnQuestionId}
+                  onClick={() => void submitAlwaysOnQuestionAnswer(question, choice.label, choice.id)}
+                  title={choice.description || choice.label}
+                  aria-label={`Answer ${choice.label}`}
+                >
+                  <span className="flex min-w-0 flex-col gap-0.5 whitespace-normal leading-snug">
+                    <span className="text-xs font-semibold text-foreground">{choice.label}</span>
+                    {choice.description && (
+                      <span className="text-[11px] font-normal text-muted-foreground">{choice.description}</span>
+                    )}
+                  </span>
+                </Button>
+              ))}
+            </div>
+            {question.allowCustom && (
+              <form
+                className="mt-2 flex min-w-0 items-center gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void submitAlwaysOnQuestionAnswer(question, customDraft)
+                }}
+              >
+                <input
+                  value={customDraft}
+                  onChange={(event) => {
+                    const value = event.target.value
+                    setAlwaysOnQuestionDrafts((drafts) => ({ ...drafts, [question.id]: value }))
+                  }}
+                  className="h-8 min-w-0 flex-1 rounded-md border border-border/60 bg-background/85 px-2.5 text-xs text-foreground outline-none focus-visible:border-amber-500/55"
+                  placeholder={customPlaceholder}
+                  disabled={isSubmittingQuestion}
+                  aria-label="Custom always-on question answer"
+                />
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 shrink-0 rounded-md px-3 text-xs"
+                  disabled={!!submittingAlwaysOnQuestionId || !customDraft.trim()}
+                >
+                  {isSubmittingQuestion ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
+                  Send
+                </Button>
+              </form>
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
+
+  const renderAlwaysOnLogPanel = (compact = false) => {
+    if (!isAlwaysOnSession || alwaysOnRecentLogEntries.length === 0) return null
+
+    const entries = compact ? alwaysOnRecentLogEntries.slice(0, 4) : alwaysOnRecentLogEntries
+    const isCollapsed = alwaysOnSectionCollapsed.log
+
+    return (
+      <div className={cn(
+        "border-b border-border/45 bg-background/70",
+        compact ? "px-2.5 py-2" : "px-3 py-2.5",
+      )}>
+        <div className={cn("flex min-w-0 items-center gap-2", !isCollapsed && "mb-2")}>
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+            onClick={() => toggleAlwaysOnSection("log")}
+            aria-expanded={!isCollapsed}
+            title={isCollapsed ? "Expand action log" : "Collapse action log"}
+          >
+            <ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
+              Action log
+            </span>
+            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+              {alwaysOnSummary?.logCount ?? entries.length}
+            </span>
+            {isCollapsed ? (
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            )}
+          </button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 shrink-0 rounded-md px-2 text-[11px]"
+            onClick={(event) => {
+              event.stopPropagation()
+              setActiveTab("log")
+            }}
+            disabled={!alwaysOnSummary?.id}
+            title="View full append-only log"
+            aria-label="View full always-on log"
+          >
+            Full log
+          </Button>
+        </div>
+        {!isCollapsed && (
+          <div className={cn("space-y-1.5 overflow-y-auto pr-1", compact ? "max-h-36" : "max-h-56")}>
+            {entries.map((entry) => {
+              const details = getAlwaysOnLogDetails(entry)
+              const displayKind = getAlwaysOnDisplayLogKind(entry)
+              const displayTitle = getAlwaysOnDisplayTitle(entry)
+              return (
+                <div key={entry.id} className="min-w-0 border-l border-border/60 pl-2">
+                  <div className="flex min-w-0 items-center gap-1.5 text-[12px] leading-snug">
+                    <span className={cn(
+                      "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal",
+                      getAlwaysOnLogKindClassName(displayKind),
+                    )}>
+                      {formatAlwaysOnLogKind(displayKind)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-medium text-foreground" title={displayTitle}>
+                      {displayTitle}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
+                      {formatAlwaysOnLogTime(entry.timestamp, turnNow)}
+                    </span>
+                  </div>
+                  {details && (
+                    <div className={cn(
+                      "mt-0.5 text-[11px] leading-snug text-muted-foreground",
+                      compact ? "line-clamp-1" : "line-clamp-2",
+                    )} title={details}>
+                      {details}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderAlwaysOnFullLogView = (compact = false) => {
+    if (!isAlwaysOnSession) return null
+
+    const totalCount = alwaysOnFullLogQuery.data?.logCount ?? alwaysOnSummary?.logCount ?? alwaysOnFullLogEntries.length
+    const hasEntries = alwaysOnFullLogEntries.length > 0
+    const errorMessage = alwaysOnFullLogQuery.data?.success === false ? alwaysOnFullLogQuery.data.error : undefined
+
+    return (
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
+        <div className={cn(
+          "flex flex-wrap items-center gap-2 border-b border-border/45 bg-muted/10",
+          compact ? "px-2.5 py-2" : "px-3 py-2.5",
+        )}>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate text-sm font-semibold text-foreground">Full progress log</span>
+            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+              {alwaysOnFullLogEntries.length}/{totalCount}
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 shrink-0 rounded-md px-2 text-xs"
+            onClick={(event) => {
+              event.stopPropagation()
+              void handleOpenAlwaysOnMainLog()
+            }}
+            disabled={!alwaysOnSummary?.id}
+            title="Open raw append-only JSONL file"
+            aria-label="Open raw always-on log file"
+          >
+            Raw file
+          </Button>
+        </div>
+        <div className={cn(
+          "grid gap-2 border-b border-border/45 bg-background/95",
+          compact ? "grid-cols-1 px-2.5 py-2" : "grid-cols-[minmax(0,1fr)_180px] px-3 py-2.5",
+        )}>
+          <input
+            value={alwaysOnLogSearch}
+            onChange={(event) => setAlwaysOnLogSearch(event.target.value)}
+            className="h-8 min-w-0 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:border-ring"
+            placeholder="Search log"
+            aria-label="Search always-on log"
+          />
+          <select
+            value={alwaysOnLogKindFilter}
+            onChange={(event) => setAlwaysOnLogKindFilter(event.target.value as "all" | AlwaysOnLogEntryKind)}
+            className="h-8 min-w-0 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:border-ring"
+            aria-label="Filter always-on log by kind"
+          >
+            {ALWAYS_ON_LOG_KIND_FILTERS.map((kind) => (
+              <option key={kind} value={kind}>
+                {kind === "all" ? "All kinds" : formatAlwaysOnLogKind(kind)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={cn("min-h-0 flex-1 overflow-y-auto", compact ? "p-2.5" : "p-3")}>
+          {alwaysOnFullLogQuery.isLoading ? (
+            <div className="flex h-full min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading log
+            </div>
+          ) : errorMessage ? (
+            <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              {errorMessage}
+            </div>
+          ) : hasEntries ? (
+            <div className="space-y-2">
+              {alwaysOnFullLogEntries.map((entry) => {
+                const details = getAlwaysOnLogDetails(entry)
+                const displayKind = getAlwaysOnDisplayLogKind(entry)
+                return (
+                  <div key={entry.id} className="min-w-0 rounded-md border border-border/55 bg-muted/10 px-2.5 py-2">
+                    <div className="flex min-w-0 items-center gap-2 text-sm leading-snug">
+                      <span className={cn(
+                        "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal",
+                        getAlwaysOnLogKindClassName(displayKind),
+                      )}>
+                        {formatAlwaysOnLogKind(displayKind)}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate font-semibold text-foreground" title={entry.title}>
+                        {entry.title}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-[11px] text-muted-foreground">
+                        {formatAlwaysOnLogTime(entry.timestamp, turnNow)}
+                      </span>
+                    </div>
+                    {details && (
+                      <div className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+                        {details}
+                      </div>
+                    )}
+                    {(entry.runtimeSessionId || entry.conversationId || typeof entry.runId === "number") && (
+                      <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
+                        {typeof entry.runId === "number" && <span className="rounded bg-muted px-1.5 py-0.5">run {entry.runId}</span>}
+                        {entry.runtimeSessionId && <span className="rounded bg-muted px-1.5 py-0.5">{entry.runtimeSessionId}</span>}
+                        {entry.conversationId && <span className="rounded bg-muted px-1.5 py-0.5">{entry.conversationId}</span>}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="flex h-full min-h-32 items-center justify-center text-sm text-muted-foreground">
+              No log entries match
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const renderProgressTabs = () => {
+    const showSummaryTab = (progress.stepSummaries?.length ?? 0) > 0
+    if (!isAlwaysOnSession && !showSummaryTab) return null
+
+    return (
+      <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
+          className={cn(
+            "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+            activeTab === "chat"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          <MessageSquare className="h-3 w-3" />
+          <span className="truncate">Chat</span>
+        </button>
+        {isAlwaysOnSession && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("log"); }}
+            className={cn(
+              "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+              activeTab === "log"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <ListChecks className="h-3 w-3" />
+            <span className="truncate">Log</span>
+            <Badge variant="secondary" className="ml-1 h-4 shrink-0 px-1 py-0 text-[10px]">
+              {alwaysOnSummary?.logCount ?? alwaysOnRecentLogEntries.length}
+            </Badge>
+          </button>
+        )}
+        {showSummaryTab && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("summary"); }}
+            className={cn(
+              "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+              activeTab === "summary"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <Brain className="h-3 w-3" />
+            <span className="truncate">Summary</span>
+            <Badge variant="secondary" className="ml-1 h-4 shrink-0 px-1 py-0 text-[10px]">
+              {progress.stepSummaries?.length ?? 0}
+            </Badge>
+          </button>
+        )}
+      </div>
+    )
+  }
+
   // Tile variant rendering
   if (variant === "tile") {
     const hasPendingApproval = !!progress.pendingToolApproval
@@ -5150,43 +6214,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         {/* Collapsible content */}
         {!isCollapsed && (
           <>
-            {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
-            {(progress.stepSummaries?.length ?? 0) > 0 && (
-              <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
-                  className={cn(
-                    "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-                    activeTab === "chat"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <MessageSquare className="h-3 w-3" />
-                  <span className="truncate">Chat</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("summary"); }}
-                  className={cn(
-                    "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-                    activeTab === "summary"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Brain className="h-3 w-3" />
-                  <span className="truncate">Summary</span>
-                  <Badge variant="secondary" className="ml-1 h-4 shrink-0 px-1 py-0 text-[10px]">
-                    {progress.stepSummaries?.length ?? 0}
-                  </Badge>
-                </button>
-              </div>
-            )}
+            {renderAlwaysOnStatusBand(true)}
+            {activeTab === "chat" && renderAlwaysOnQuestionPanel(true)}
+            {activeTab === "chat" && renderAlwaysOnLogPanel(true)}
+            {renderProgressTabs()}
+
+            {activeTab === "log" && renderAlwaysOnFullLogView(true)}
 
             {/* Message Stream (Chat Tab) */}
-            <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+            <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && "hidden")} onClick={(e) => e.stopPropagation()}>
               <DelegationSummaryStrip
                 entries={delegationSummaryEntries}
                 maxItems={delegationSummaryMaxItems}
@@ -5619,43 +6655,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         </div>
       </div>
 
-      {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
-      {(progress.stepSummaries?.length ?? 0) > 0 && (
-        <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
-            className={cn(
-              "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-              activeTab === "chat"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <MessageSquare className="h-3 w-3" />
-            <span className="truncate">Chat</span>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("summary"); }}
-            className={cn(
-              "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-              activeTab === "summary"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Brain className="h-3 w-3" />
-            <span className="truncate">Summary</span>
-            <Badge variant="secondary" className="ml-1 h-4 shrink-0 px-1 py-0 text-[10px]">
-              {progress.stepSummaries?.length ?? 0}
-            </Badge>
-          </button>
-        </div>
-      )}
+      {renderAlwaysOnStatusBand(false)}
+      {activeTab === "chat" && renderAlwaysOnQuestionPanel(false)}
+      {activeTab === "chat" && renderAlwaysOnLogPanel(false)}
+      {renderProgressTabs()}
+
+      {activeTab === "log" && renderAlwaysOnFullLogView(false)}
 
       {/* Message Stream - Left-aligned content (Chat Tab) */}
-      <div className={cn("relative flex min-h-0 flex-1 flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")}>
+      <div className={cn("relative flex min-h-0 flex-1 flex-col", activeTab !== "chat" && "hidden")}>
         <DelegationSummaryStrip
           entries={delegationSummaryEntries}
           maxItems={delegationSummaryMaxItems}

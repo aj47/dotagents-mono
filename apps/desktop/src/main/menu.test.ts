@@ -46,7 +46,7 @@ describe("app menu", () => {
   })
 
   it("keeps Ctrl+W available for the renderer archive shortcut on macOS", () => {
-    process.env.IS_MAC = "true"
+    process.env.IS_MAC = true
 
     const menu = createAppMenu() as unknown as Array<{
       label?: string
