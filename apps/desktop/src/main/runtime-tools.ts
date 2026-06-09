@@ -76,6 +76,7 @@ const HIGH_IMPACT_PACKAGE_MANAGER_COMMAND_REGEX = /(^|&&|\|\||;)\s*(npm|npx|pnpm
 const VALIDATION_OR_DEPENDENCY_COMMAND_REGEX = /\b(test|tests|vitest|jest|playwright(?:\s+test)?|cypress|lint|eslint|typecheck|tsc\b|build|compile|install|add|remove|uninstall|update|upgrade)\b/i
 const POSIX_WORKSPACE_PATH_REGEX = /(?:\/Users|\/home)\/[^/\s'"`;|&()]+(?:\/[A-Za-z0-9._-]+)+/g
 const POSIX_HOME_PREFIX_REGEX = /^(\/Users\/[^/]+|\/home\/[^/]+)/
+const ALWAYS_ON_LOG_ONLY_ATTEMPT_LIMIT = 6
 
 async function detectPreferredPackageManager(startDir: string): Promise<PreferredPackageManager | null> {
   let currentDir = path.resolve(startDir)
@@ -184,7 +185,20 @@ function normalizeAlwaysOnLogKind(value: unknown): AlwaysOnRuntimeLogKind | null
 }
 
 function normalizeAlwaysOnLogTitle(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ")
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, " ")
+    .replace(/\b(actual|actually|again|concrete|immediate|immediately|now|promised|real|the|with|for|and|to|a|an)\b/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim()
+}
+
+function looksLikeAlwaysOnIntentOnlyAttempt(title: string, details?: string): boolean {
+  const text = `${title} ${details ?? ""}`.toLowerCase()
+  const hasAction = /\b(run|execute|inspect|probe|read|write|create|check|verify)\b/u.test(text)
+  const hasImmediatePromise = /\b(now|actual|actually|concrete|real|immediate|immediately|execute_command|shell|filesystem|file|disk)\b/u.test(text)
+  return hasAction && hasImmediatePromise
 }
 
 async function getLatestConversationMessageIndex(conversationId: string): Promise<number | undefined> {
@@ -929,14 +943,78 @@ const toolHandlers: Record<string, ToolHandler> = {
     }
 
     const activeSession = agentSessionTracker.getSession(trackedSessionId)
+    const details = typeof args.details === "string" ? args.details : undefined
+    const outcome = typeof args.outcome === "string" ? args.outcome : undefined
+    const summaries = alwaysOnSessionService.getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
+    const summary = summaries.find((candidate) =>
+      candidate.currentSessionId === trackedSessionId ||
+      (!!activeSession?.conversationId && candidate.conversationId === activeSession.conversationId),
+    )
+
+    if (!summary) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not an always-on session" }) }],
+        isError: true,
+      }
+    }
+
+    if (summary.status === "paused" || summary.enabled === false) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Always-on session is paused; log rejected. Resume the session before recording more always-on work.",
+            sessionStatus: summary.status,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
+    const normalizedTitle = normalizeAlwaysOnLogTitle(title)
+    const recentLogEntries = alwaysOnSessionService.getRecentLogEntries(summary.id, 12)
+    const recentSimilarCount = recentLogEntries
+      .filter((recentEntry) =>
+        recentEntry.kind === kind &&
+        normalizeAlwaysOnLogTitle(recentEntry.title) === normalizedTitle,
+      )
+      .length
+    const isIntentOnlyAttempt = kind === "attempt" && !outcome?.trim() && looksLikeAlwaysOnIntentOnlyAttempt(title, details)
+    const recentIntentOnlyAttemptCount = recentLogEntries
+      .filter((recentEntry) =>
+        recentEntry.kind === "attempt" &&
+        !recentEntry.outcome?.trim() &&
+        looksLikeAlwaysOnIntentOnlyAttempt(recentEntry.title, recentEntry.details),
+      )
+      .length
+
+    if (isIntentOnlyAttempt && recentIntentOnlyAttemptCount >= ALWAYS_ON_LOG_ONLY_ATTEMPT_LIMIT) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Repeated intent-only always-on logs were rejected. Run a concrete non-log tool, record an outcome from new evidence, ask a queued question, or switch to a genuinely different branch before logging another attempt.",
+            sessionStatus: summary.status,
+            pendingQuestionCount: summary.pendingQuestionCount,
+            recentSimilarCount,
+            recentIntentOnlyAttemptCount,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
     const entry = alwaysOnSessionService.appendLog({
+      alwaysOnSessionId: summary.id,
       runtimeSessionId: trackedSessionId,
       conversationId: activeSession?.conversationId,
       runId: agentSessionStateManager.getSessionRunId(trackedSessionId),
       kind,
       title,
-      details: typeof args.details === "string" ? args.details : undefined,
-      outcome: typeof args.outcome === "string" ? args.outcome : undefined,
+      details,
+      outcome,
     }, loopService.getLoops())
 
     if (!entry) {
@@ -946,17 +1024,6 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const summaries = alwaysOnSessionService.getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
-    const summary = summaries.find((candidate) => candidate.id === entry.alwaysOnSessionId)
-    const normalizedTitle = normalizeAlwaysOnLogTitle(entry.title)
-    const recentSimilarCount = alwaysOnSessionService
-      .getRecentLogEntries(entry.alwaysOnSessionId, 12)
-      .filter((recentEntry) =>
-        recentEntry.id !== entry.id &&
-        recentEntry.kind === entry.kind &&
-        normalizeAlwaysOnLogTitle(recentEntry.title) === normalizedTitle,
-      )
-      .length
     const guidance: string[] = []
     if (recentSimilarCount >= 2) {
       guidance.push("This same log title has appeared repeatedly in recent attempts. Do not retry the same path unless you have new evidence; run a concrete check or switch branches.")
@@ -1028,11 +1095,40 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const activeSession = agentSessionTracker.getSession(trackedSessionId)
     const conversationId = activeSession?.conversationId
+    const summary = alwaysOnSessionService
+      .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
+      .find((candidate) =>
+        candidate.currentSessionId === trackedSessionId ||
+        (!!conversationId && candidate.conversationId === conversationId),
+      )
+
+    if (!summary) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not an always-on session" }) }],
+        isError: true,
+      }
+    }
+
+    if (summary.status === "paused" || summary.enabled === false) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Always-on session is paused; question was not queued. Resume the session before recording more always-on work.",
+            sessionStatus: summary.status,
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
+
     const sourceMessageIndex = conversationId
       ? await getLatestConversationMessageIndex(conversationId)
       : undefined
     const reason = args.reason === "blocker" ? "blocker" : "question"
     const question = alwaysOnSessionService.askQuestion({
+      alwaysOnSessionId: summary.id,
       runtimeSessionId: trackedSessionId,
       conversationId,
       sourceMessageIndex,
@@ -1049,10 +1145,10 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const summary = alwaysOnSessionService
+    const updatedSummary = alwaysOnSessionService
       .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
       .find((candidate) => candidate.id === question.alwaysOnSessionId)
-    const pendingQuestionCount = summary?.pendingQuestionCount ?? 1
+    const pendingQuestionCount = updatedSummary?.pendingQuestionCount ?? 1
 
     return {
       content: [{
@@ -1061,7 +1157,7 @@ const toolHandlers: Record<string, ToolHandler> = {
           success: true,
           questionId: question.id,
           pendingQuestionCount,
-          sessionStatus: summary?.status,
+          sessionStatus: updatedSummary?.status,
           message: "Question queued for the user. Continue other useful work instead of waiting.",
         }, null, 2),
       }],

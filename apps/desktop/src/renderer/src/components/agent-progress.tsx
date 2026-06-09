@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { cn } from "@renderer/lib/utils"
-import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnSessionSummary, Config, ModelPreset } from "../../../shared/types"
+import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnSessionAuditSummary, AlwaysOnSessionSummary, Config, ModelPreset } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
 import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch, ListChecks } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
@@ -837,6 +837,36 @@ function getAlwaysOnLogDetails(entry: AlwaysOnLogEntry): string | undefined {
   const details = entry.outcome || entry.details
   if (details && isAlwaysOnInstructionPrompt(details)) return undefined
   return details
+}
+
+function getAlwaysOnAuditClassName(verdict: AlwaysOnSessionAuditSummary["verdict"]): string {
+  switch (verdict) {
+    case "wasteful":
+      return "border-red-500/25 bg-red-500/[0.07] text-red-700 dark:text-red-300"
+    case "mixed":
+      return "border-amber-500/25 bg-amber-500/[0.08] text-amber-700 dark:text-amber-300"
+    case "productive":
+      return "border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-700 dark:text-emerald-300"
+    default:
+      return "border-border/50 bg-muted/20 text-muted-foreground"
+  }
+}
+
+function formatAlwaysOnAuditVerdict(verdict: AlwaysOnSessionAuditSummary["verdict"]): string {
+  switch (verdict) {
+    case "wasteful":
+      return "Wasteful"
+    case "mixed":
+      return "Mixed"
+    case "productive":
+      return "Productive"
+    default:
+      return "Unknown"
+  }
+}
+
+function formatAlwaysOnAuditPercent(value: number): string {
+  return `${Math.max(0, Math.min(100, Math.round(value)))}%`
 }
 
 function formatAlwaysOnLogTime(timestamp: number, now: number): string {
@@ -4152,6 +4182,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     entries: AlwaysOnLogEntry[]
     logPath?: string
     logCount: number
+    auditSummary?: AlwaysOnSessionAuditSummary
     error?: string
   }>({
     queryKey: ["always-on-session-log", alwaysOnSummary?.id],
@@ -5387,6 +5418,91 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     }
   }, [alwaysOnSummary?.id])
 
+  const renderAlwaysOnAuditPanel = (compact = false) => {
+    if (!isAlwaysOnSession || !alwaysOnSummary?.auditSummary) return null
+
+    const audit = alwaysOnSummary.auditSummary
+    const AuditIcon = audit.verdict === "productive" ? Check : audit.verdict === "wasteful" ? AlertTriangle : Shield
+    const findingLimit = compact ? 2 : 3
+    const findings = audit.findings.slice(0, findingLimit)
+    const metricClassName = "min-w-0 rounded-md border border-border/45 bg-background/70 px-2 py-1.5"
+
+    return (
+      <div className={cn(
+        "border-b border-border/45 bg-background/85",
+        compact ? "px-2.5 py-2" : "px-3 py-2.5",
+      )}>
+        <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
+              Work audit
+            </span>
+          </div>
+          <div className={cn(
+            "inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium",
+            getAlwaysOnAuditClassName(audit.verdict),
+          )}>
+            <AuditIcon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{formatAlwaysOnAuditVerdict(audit.verdict)}</span>
+            <span className="shrink-0 text-muted-foreground">·</span>
+            <span className="truncate">{audit.headline}</span>
+          </div>
+        </div>
+        <div className={cn(
+          "grid gap-1.5",
+          compact ? "grid-cols-2" : "grid-cols-4",
+        )}>
+          <div className={metricClassName}>
+            <div className="truncate text-[10px] font-medium uppercase tracking-normal text-muted-foreground">Log-only risk</div>
+            <div className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{formatAlwaysOnAuditPercent(audit.logOnlyScore)}</div>
+          </div>
+          <div className={metricClassName}>
+            <div className="truncate text-[10px] font-medium uppercase tracking-normal text-muted-foreground">Verified outcomes</div>
+            <div className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{audit.verifiedOutcomeCount}</div>
+          </div>
+          <div className={metricClassName}>
+            <div className="truncate text-[10px] font-medium uppercase tracking-normal text-muted-foreground">Repeated attempts</div>
+            <div className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{audit.repeatedAttemptCount}</div>
+          </div>
+          <div className={metricClassName}>
+            <div className="truncate text-[10px] font-medium uppercase tracking-normal text-muted-foreground">Iteration caps</div>
+            <div className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{audit.maxIterationCompletionCount}</div>
+          </div>
+        </div>
+        {findings.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {findings.map((finding) => (
+              <div key={`${finding.title}-${finding.detail}`} className="flex min-w-0 items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
+                <span className={cn(
+                  "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
+                  finding.severity === "critical"
+                    ? "bg-red-500"
+                    : finding.severity === "warning"
+                    ? "bg-amber-500"
+                    : "bg-muted-foreground/45",
+                )} />
+                <div className="min-w-0">
+                  <span className="font-medium text-foreground">{finding.title}: </span>
+                  <span>{finding.detail}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {!compact && audit.topRepeatedTitles.length > 0 && (
+          <div className="mt-2 flex min-w-0 flex-wrap gap-1.5 text-[10px] text-muted-foreground">
+            {audit.topRepeatedTitles.slice(0, 3).map((item) => (
+              <span key={item.title} className="max-w-full truncate rounded bg-muted px-1.5 py-0.5" title={`${item.title}: ${item.count}`}>
+                {item.count}x {item.title}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const renderAlwaysOnLogPanel = (compact = false) => {
     if (!isAlwaysOnSession || alwaysOnRecentLogEntries.length === 0) return null
 
@@ -5761,6 +5877,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         {!isCollapsed && (
           <>
             {renderAlwaysOnStatusBand(true)}
+            {activeTab === "chat" && renderAlwaysOnAuditPanel(true)}
             {activeTab === "chat" && renderAlwaysOnLogPanel(true)}
             {renderProgressTabs()}
 
@@ -6201,6 +6318,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       </div>
 
       {renderAlwaysOnStatusBand(false)}
+      {activeTab === "chat" && renderAlwaysOnAuditPanel(false)}
       {activeTab === "chat" && renderAlwaysOnLogPanel(false)}
       {renderProgressTabs()}
 

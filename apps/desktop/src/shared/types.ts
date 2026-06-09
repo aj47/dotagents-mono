@@ -1107,6 +1107,42 @@ export interface AlwaysOnLogEntry {
   timestamp: number
 }
 
+export type AlwaysOnAuditVerdict = "productive" | "mixed" | "wasteful" | "unknown"
+
+export interface AlwaysOnAuditFinding {
+  severity: "info" | "warning" | "critical"
+  title: string
+  detail: string
+}
+
+export interface AlwaysOnRepeatedLogTitle {
+  title: string
+  count: number
+}
+
+export interface AlwaysOnSessionAuditSummary {
+  verdict: AlwaysOnAuditVerdict
+  headline: string
+  totalLogEntries: number
+  analyzedLogEntries: number
+  attemptCount: number
+  blockerCount: number
+  questionCount: number
+  answerCount: number
+  runStartedCount: number
+  runCompletedCount: number
+  maxIterationCompletionCount: number
+  outcomeCount: number
+  verifiedOutcomeCount: number
+  repeatedAttemptCount: number
+  longestIntentOnlyStreak: number
+  currentIntentOnlyStreak: number
+  pauseLeakCount: number
+  logOnlyScore: number
+  topRepeatedTitles: AlwaysOnRepeatedLogTitle[]
+  findings: AlwaysOnAuditFinding[]
+}
+
 export interface AlwaysOnQuestionChoice {
   id: string
   label: string
@@ -1147,6 +1183,7 @@ export interface AlwaysOnSessionSummary {
   logCount: number
   latestLogEntry?: AlwaysOnLogEntry
   recentLogEntries?: AlwaysOnLogEntry[]
+  auditSummary?: AlwaysOnSessionAuditSummary
   pendingQuestionCount: number
   answeredQuestionCount: number
   questions: AlwaysOnQuestion[]

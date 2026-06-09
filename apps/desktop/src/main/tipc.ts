@@ -6083,6 +6083,7 @@ export const router = {
         entries,
         logPath: summary.logPath,
         logCount: summary.logCount,
+        auditSummary: alwaysOnSessionService.getAuditSummary(input.alwaysOnSessionId),
       }
     }),
 

@@ -525,6 +525,34 @@ describe("agent progress response history", () => {
               timestamp: now - 1_000,
             },
           ],
+          auditSummary: {
+            verdict: "wasteful",
+            headline: "High log-only risk",
+            totalLogEntries: 12,
+            analyzedLogEntries: 12,
+            attemptCount: 10,
+            blockerCount: 0,
+            questionCount: 0,
+            answerCount: 0,
+            runStartedCount: 1,
+            runCompletedCount: 1,
+            maxIterationCompletionCount: 1,
+            outcomeCount: 1,
+            verifiedOutcomeCount: 0,
+            repeatedAttemptCount: 7,
+            longestIntentOnlyStreak: 7,
+            currentIntentOnlyStreak: 0,
+            pauseLeakCount: 0,
+            logOnlyScore: 82,
+            topRepeatedTitles: [{ title: "Inspect workspace artifacts", count: 7 }],
+            findings: [
+              {
+                severity: "critical",
+                title: "No verified outcomes in log",
+                detail: "The durable log records intent, but it does not record a completed artifact or command result.",
+              },
+            ],
+          },
           pendingQuestionCount: 0,
           answeredQuestionCount: 0,
           questions: [],
@@ -587,6 +615,12 @@ describe("agent progress response history", () => {
     expect(text).toContain("Now")
     expect(text).toContain("Latest")
     expect(text).toContain("Step 20 / 25")
+    expect(text).toContain("Work audit")
+    expect(text).toContain("Wasteful")
+    expect(text).toContain("High log-only risk")
+    expect(text).toContain("Log-only risk")
+    expect(text).toContain("Verified outcomes")
+    expect(text).toContain("No verified outcomes in log")
     expect(text).toContain("Progress log")
     expect(text).toContain("Log")
     expect(text).toContain("Inspect workspace artifacts")

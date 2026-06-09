@@ -96,7 +96,6 @@ describe("runtime-tools always-on helpers", () => {
     mocks.getRecentLogEntries.mockReturnValue([
       { ...entry, id: "entry-old-1", timestamp: 1 },
       { ...entry, id: "entry-old-2", timestamp: 2 },
-      entry,
     ])
 
     const { executeRuntimeTool } = await import("./runtime-tools")
@@ -114,6 +113,79 @@ describe("runtime-tools always-on helpers", () => {
     }))
     expect(payload.guidance.join("\n")).toContain("same log title")
     expect(payload.guidance.join("\n")).toContain("ask_always_on_question")
+  })
+
+  it("rejects repeated intent-only attempt logs before appending another one", async () => {
+    mocks.getRecentLogEntries.mockReturnValue(Array.from({ length: 6 }, (_, index) => ({
+      id: `entry-old-${index}`,
+      alwaysOnSessionId: "always-1",
+      loopId: "loop-1",
+      runtimeSessionId: "session-1",
+      conversationId: "conv-1",
+      runId: 4,
+      kind: "attempt",
+      title: "Run actual filesystem probe",
+      details: "Use execute_command immediately to inspect the filesystem.",
+      timestamp: index + 1,
+    })))
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("log_always_on_attempt", {
+      kind: "attempt",
+      title: "Run concrete filesystem probe now",
+      details: "Use execute_command now to inspect files.",
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(true)
+    expect(payload).toEqual(expect.objectContaining({
+      success: false,
+      sessionStatus: "running",
+      recentIntentOnlyAttemptCount: 6,
+    }))
+    expect(payload.error).toContain("Repeated intent-only always-on logs")
+    expect(mocks.appendLog).not.toHaveBeenCalled()
+  })
+
+  it("rejects always-on logs while the session is paused", async () => {
+    mocks.getSummaries.mockReturnValue([makeSummary({ status: "paused", enabled: false })])
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("log_always_on_attempt", {
+      kind: "attempt",
+      title: "Inspect artifacts",
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(true)
+    expect(payload).toEqual(expect.objectContaining({
+      success: false,
+      sessionStatus: "paused",
+    }))
+    expect(payload.error).toContain("paused")
+    expect(mocks.appendLog).not.toHaveBeenCalled()
+  })
+
+  it("rejects always-on questions while the session is paused", async () => {
+    mocks.getSummaries.mockReturnValue([makeSummary({ status: "paused", enabled: false })])
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("ask_always_on_question", {
+      prompt: "Which branch should continue?",
+      choices: [
+        { id: "a", label: "Branch A" },
+        { id: "b", label: "Branch B" },
+      ],
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(true)
+    expect(payload).toEqual(expect.objectContaining({
+      success: false,
+      sessionStatus: "paused",
+    }))
+    expect(payload.error).toContain("paused")
+    expect(mocks.askQuestion).not.toHaveBeenCalled()
   })
 
   it("returns queued-question state after asking an always-on question", async () => {

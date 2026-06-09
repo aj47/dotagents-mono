@@ -7,10 +7,13 @@ import { loadPersistedJson, savePersistedJson } from "./session-persistence"
 import { WINDOWS } from "./window"
 import type { RendererHandlers } from "./renderer-handlers"
 import type {
+  AlwaysOnAuditFinding,
   AlwaysOnLogEntry,
   AlwaysOnLogEntryKind,
   AlwaysOnQuestion,
   AlwaysOnQuestionChoice,
+  AlwaysOnRepeatedLogTitle,
+  AlwaysOnSessionAuditSummary,
   AlwaysOnSessionStatus,
   AlwaysOnSessionSummary,
   LoopConfig,
@@ -70,6 +73,7 @@ const LOG_DIR = join(dataFolder, "always-on-sessions")
 const DEFAULT_ALWAYS_ON_NAME = "Always-on session"
 const MAX_RECENT_QUESTIONS = 8
 const MAX_RECENT_LOG_ENTRIES = 8
+const MAX_AUDIT_LOG_ENTRIES = 1000
 
 function createId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
@@ -139,6 +143,275 @@ function parseLogEntry(line: string): AlwaysOnLogEntry | null {
     return parsed as AlwaysOnLogEntry
   } catch {
     return null
+  }
+}
+
+function normalizeAuditTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, " ")
+    .replace(/\b(actual|actually|again|concrete|immediate|immediately|now|promised|real|the|with|for|and|to|a|an)\b/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim()
+}
+
+function hasMeaningfulOutcome(entry: AlwaysOnLogEntry): boolean {
+  const outcome = entry.outcome?.trim()
+  if (!outcome) return false
+  if (entry.kind !== "run_completed") return true
+  return !/maximum iteration|iteration limit|emergency kill switch|stopped by/u.test(outcome.toLowerCase())
+}
+
+function isMaxIterationCompletion(entry: AlwaysOnLogEntry): boolean {
+  if (entry.kind !== "run_completed") return false
+  const text = `${entry.details ?? ""}\n${entry.outcome ?? ""}`.toLowerCase()
+  return /maximum iteration|iteration limit/u.test(text)
+}
+
+function isIntentOnlyAttempt(entry: AlwaysOnLogEntry): boolean {
+  if (entry.kind !== "attempt" || entry.outcome?.trim()) return false
+  const text = `${entry.title} ${entry.details ?? ""}`.toLowerCase()
+  return /\b(run|execute|inspect|probe|read|write|create|check|verify)\b/u.test(text)
+}
+
+function calculateLogOnlyScore(params: {
+  analyzedLogEntries: number
+  attemptCount: number
+  repeatedAttemptCount: number
+  verifiedOutcomeCount: number
+  maxIterationCompletionCount: number
+  longestIntentOnlyStreak: number
+}): number {
+  if (params.analyzedLogEntries === 0) return 0
+  const attemptRatio = params.attemptCount / params.analyzedLogEntries
+  const repeatedRatio = params.attemptCount > 0 ? params.repeatedAttemptCount / params.attemptCount : 0
+  const streakPressure = Math.min(1, params.longestIntentOnlyStreak / 25)
+  const maxIterationPressure = Math.min(1, params.maxIterationCompletionCount / 5)
+  const noVerifiedOutcomePressure = params.verifiedOutcomeCount === 0 && params.attemptCount >= 10 ? 1 : 0
+
+  return Math.round(Math.min(100, (
+    attemptRatio * 35 +
+    repeatedRatio * 25 +
+    streakPressure * 15 +
+    maxIterationPressure * 15 +
+    noVerifiedOutcomePressure * 10
+  )))
+}
+
+function buildAuditFindings(params: {
+  verdict: AlwaysOnSessionAuditSummary["verdict"]
+  verifiedOutcomeCount: number
+  repeatedAttemptCount: number
+  maxIterationCompletionCount: number
+  questionCount: number
+  blockerCount: number
+  pauseLeakCount: number
+  longestIntentOnlyStreak: number
+  analyzedLogEntries: number
+  totalLogEntries: number
+}): AlwaysOnAuditFinding[] {
+  const findings: AlwaysOnAuditFinding[] = []
+
+  if (params.verifiedOutcomeCount === 0 && params.analyzedLogEntries > 0) {
+    findings.push({
+      severity: params.verdict === "wasteful" ? "critical" : "warning",
+      title: "No verified outcomes in log",
+      detail: "The durable log records intent, but it does not record a completed artifact or command result.",
+    })
+  }
+
+  if (params.repeatedAttemptCount > 0) {
+    findings.push({
+      severity: params.repeatedAttemptCount >= 20 ? "critical" : "warning",
+      title: "Repeated attempt loop",
+      detail: `${params.repeatedAttemptCount} attempt logs repeat the same work class without durable new evidence.`,
+    })
+  }
+
+  if (params.maxIterationCompletionCount > 0) {
+    findings.push({
+      severity: params.maxIterationCompletionCount >= 3 ? "critical" : "warning",
+      title: "Runs hit the iteration cap",
+      detail: `${params.maxIterationCompletionCount} continuous runs ended at the iteration limit instead of a clean outcome.`,
+    })
+  }
+
+  if (params.questionCount === 0 && params.blockerCount === 0 && params.repeatedAttemptCount >= 10) {
+    findings.push({
+      severity: "warning",
+      title: "No blocker or question trail",
+      detail: "The agent kept retrying work instead of queueing a decision or marking a blocked branch.",
+    })
+  }
+
+  if (params.pauseLeakCount > 0) {
+    findings.push({
+      severity: "critical",
+      title: "Activity after pause",
+      detail: `${params.pauseLeakCount} log entr${params.pauseLeakCount === 1 ? "y" : "ies"} appeared after a pause without a resume entry.`,
+    })
+  }
+
+  if (params.longestIntentOnlyStreak >= 10) {
+    findings.push({
+      severity: params.longestIntentOnlyStreak >= 25 ? "critical" : "warning",
+      title: "Long intent-only streak",
+      detail: `The longest run of attempt logs without an outcome was ${params.longestIntentOnlyStreak}.`,
+    })
+  }
+
+  if (params.totalLogEntries > params.analyzedLogEntries) {
+    findings.push({
+      severity: "info",
+      title: "Audit window capped",
+      detail: `Showing the latest ${params.analyzedLogEntries} of ${params.totalLogEntries} log entries.`,
+    })
+  }
+
+  return findings.slice(0, 5)
+}
+
+function buildAuditSummary(totalLogEntries: number, entries: AlwaysOnLogEntry[]): AlwaysOnSessionAuditSummary {
+  const analyzedLogEntries = entries.length
+  if (analyzedLogEntries === 0) {
+    return {
+      verdict: "unknown",
+      headline: "No log evidence yet",
+      totalLogEntries,
+      analyzedLogEntries,
+      attemptCount: 0,
+      blockerCount: 0,
+      questionCount: 0,
+      answerCount: 0,
+      runStartedCount: 0,
+      runCompletedCount: 0,
+      maxIterationCompletionCount: 0,
+      outcomeCount: 0,
+      verifiedOutcomeCount: 0,
+      repeatedAttemptCount: 0,
+      longestIntentOnlyStreak: 0,
+      currentIntentOnlyStreak: 0,
+      pauseLeakCount: 0,
+      logOnlyScore: 0,
+      topRepeatedTitles: [],
+      findings: [],
+    }
+  }
+
+  const titleStats = new Map<string, { title: string; count: number }>()
+  let attemptCount = 0
+  let blockerCount = 0
+  let questionCount = 0
+  let answerCount = 0
+  let runStartedCount = 0
+  let runCompletedCount = 0
+  let maxIterationCompletionCount = 0
+  let outcomeCount = 0
+  let verifiedOutcomeCount = 0
+  let longestIntentOnlyStreak = 0
+  let currentIntentOnlyStreak = 0
+  let pauseLeakCount = 0
+  let paused = false
+
+  for (const entry of entries) {
+    if (paused && entry.kind !== "pause" && entry.kind !== "resume") {
+      pauseLeakCount += 1
+    }
+    if (entry.kind === "pause") paused = true
+    if (entry.kind === "resume") paused = false
+
+    if (entry.kind === "attempt") {
+      attemptCount += 1
+      const normalizedTitle = normalizeAuditTitle(entry.title)
+      if (normalizedTitle) {
+        const existing = titleStats.get(normalizedTitle)
+        if (existing) {
+          existing.count += 1
+        } else {
+          titleStats.set(normalizedTitle, { title: entry.title, count: 1 })
+        }
+      }
+    }
+    if (entry.kind === "blocker") blockerCount += 1
+    if (entry.kind === "question") questionCount += 1
+    if (entry.kind === "answer") answerCount += 1
+    if (entry.kind === "run_started") runStartedCount += 1
+    if (entry.kind === "run_completed") runCompletedCount += 1
+    if (isMaxIterationCompletion(entry)) maxIterationCompletionCount += 1
+    if (entry.outcome?.trim()) outcomeCount += 1
+    if (hasMeaningfulOutcome(entry)) verifiedOutcomeCount += 1
+
+    if (isIntentOnlyAttempt(entry)) {
+      currentIntentOnlyStreak += 1
+      longestIntentOnlyStreak = Math.max(longestIntentOnlyStreak, currentIntentOnlyStreak)
+    } else {
+      currentIntentOnlyStreak = 0
+    }
+  }
+
+  const topRepeatedTitles: AlwaysOnRepeatedLogTitle[] = [...titleStats.values()]
+    .filter((item) => item.count >= 3)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+  const repeatedAttemptCount = [...titleStats.values()]
+    .filter((item) => item.count >= 3)
+    .reduce((total, item) => total + item.count, 0)
+  const logOnlyScore = calculateLogOnlyScore({
+    analyzedLogEntries,
+    attemptCount,
+    repeatedAttemptCount,
+    verifiedOutcomeCount,
+    maxIterationCompletionCount,
+    longestIntentOnlyStreak,
+  })
+  const verdict: AlwaysOnSessionAuditSummary["verdict"] = logOnlyScore >= 70
+    ? "wasteful"
+    : logOnlyScore >= 35 || maxIterationCompletionCount > 0 || repeatedAttemptCount > 0
+    ? "mixed"
+    : verifiedOutcomeCount > 0
+    ? "productive"
+    : "unknown"
+  const headline = verdict === "wasteful"
+    ? "High log-only risk"
+    : verdict === "mixed"
+    ? "Some progress, needs review"
+    : verdict === "productive"
+    ? "Verified progress in log"
+    : "Insufficient evidence"
+  const findings = buildAuditFindings({
+    verdict,
+    verifiedOutcomeCount,
+    repeatedAttemptCount,
+    maxIterationCompletionCount,
+    questionCount,
+    blockerCount,
+    pauseLeakCount,
+    longestIntentOnlyStreak,
+    analyzedLogEntries,
+    totalLogEntries,
+  })
+
+  return {
+    verdict,
+    headline,
+    totalLogEntries,
+    analyzedLogEntries,
+    attemptCount,
+    blockerCount,
+    questionCount,
+    answerCount,
+    runStartedCount,
+    runCompletedCount,
+    maxIterationCompletionCount,
+    outcomeCount,
+    verifiedOutcomeCount,
+    repeatedAttemptCount,
+    longestIntentOnlyStreak,
+    currentIntentOnlyStreak,
+    pauseLeakCount,
+    logOnlyScore,
+    topRepeatedTitles,
+    findings,
   }
 }
 
@@ -385,6 +658,7 @@ class AlwaysOnSessionService {
         const pendingQuestions = record.questions.filter((question) => question.status === "pending")
         const answeredQuestions = record.questions.filter((question) => question.status === "answered")
         const recentLogEntries = this.readRecentLogEntries(record, MAX_RECENT_LOG_ENTRIES)
+        const auditEntries = this.readRecentLogEntries(record, MAX_AUDIT_LOG_ENTRIES)
         return {
           id: record.id,
           loopId: record.loopId,
@@ -400,6 +674,7 @@ class AlwaysOnSessionService {
           logCount: record.logCount,
           latestLogEntry: recentLogEntries[recentLogEntries.length - 1] ?? record.latestLogEntry,
           recentLogEntries,
+          auditSummary: buildAuditSummary(record.logCount, auditEntries),
           pendingQuestionCount: pendingQuestions.length,
           answeredQuestionCount: answeredQuestions.length,
           questions: [
@@ -421,6 +696,12 @@ class AlwaysOnSessionService {
     const record = this.findRecord(alwaysOnSessionId)
     if (!record) return []
     return this.readRecentLogEntries(record, Number.MAX_SAFE_INTEGER)
+  }
+
+  getAuditSummary(alwaysOnSessionId: string, limit: number = MAX_AUDIT_LOG_ENTRIES): AlwaysOnSessionAuditSummary | undefined {
+    const record = this.findRecord(alwaysOnSessionId)
+    if (!record) return undefined
+    return buildAuditSummary(record.logCount, this.readRecentLogEntries(record, limit))
   }
 
   recordRuntimeSession(loopId: string, runtimeSessionId: string, conversationId: string): void {
