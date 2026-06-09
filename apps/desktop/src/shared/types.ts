@@ -1186,7 +1186,9 @@ export interface AlwaysOnSessionSummary {
   logPath: string
   logCount: number
   latestLogEntry?: AlwaysOnLogEntry
+  latestWorkEntry?: AlwaysOnLogEntry
   recentLogEntries?: AlwaysOnLogEntry[]
+  recentWorkEntries?: AlwaysOnLogEntry[]
   auditSummary?: AlwaysOnSessionAuditSummary
   pendingQuestionCount: number
   answeredQuestionCount: number

@@ -188,6 +188,15 @@ function markSeenArtifact(keys: string[], seen: Set<string>): void {
   }
 }
 
+function hasUsefulRunCompletionSummary(entry: AlwaysOnLogEntry): boolean {
+  if (entry.kind !== "run_completed") return false
+  const outcome = entry.outcome?.trim()
+  if (!outcome) return false
+  const normalized = outcome.toLowerCase()
+  if (/maximum iteration|iteration limit|emergency kill switch|stopped by/u.test(normalized)) return false
+  return /\bknown:|\bsucceeded\b|\bcompleted\b|\bcreated\b|\bupdated\b/u.test(normalized)
+}
+
 function getDistinctRecentArtifacts(entries: AlwaysOnLogEntry[], limit: number = 5): AlwaysOnLogEntry[] {
   const seen = new Set<string>()
   const recentArtifacts: AlwaysOnLogEntry[] = []
@@ -200,6 +209,26 @@ function getDistinctRecentArtifacts(entries: AlwaysOnLogEntry[], limit: number =
     if (recentArtifacts.length >= limit) break
   }
   return recentArtifacts
+}
+
+function isMechanicalLogEntry(entry: AlwaysOnLogEntry): boolean {
+  if (entry.kind === "run_started" || entry.kind === "resume") return true
+  if (entry.kind === "run_completed") return !hasUsefulRunCompletionSummary(entry)
+  if (entry.kind === "evidence" && normalizeAuditTitle(entry.title) === "command completed") return true
+  return false
+}
+
+function isReadableWorkEntry(entry: AlwaysOnLogEntry): boolean {
+  if (isMechanicalLogEntry(entry)) return false
+  if (entry.kind === "pause") return false
+  if (entry.kind === "evidence" && !entry.title.trim()) return false
+  return true
+}
+
+function getRecentWorkEntries(entries: AlwaysOnLogEntry[], limit: number = 8): AlwaysOnLogEntry[] {
+  return entries
+    .filter(isReadableWorkEntry)
+    .slice(-limit)
 }
 
 function isMaxIterationCompletion(entry: AlwaysOnLogEntry): boolean {
@@ -636,6 +665,8 @@ class AlwaysOnSessionService {
       "- Actual progress means a durable user-facing artifact, a verified change, a concrete decision, or a queued question that unblocks work. Treat status reports, planning notes, and log audits as support work, not the deliverable.",
       "- Prefer one short inspection step followed by a durable user-facing artifact or a queued question. Avoid long chains of audit/discovery/status updates.",
       "- When you create or update a durable file, document, checklist, script, plan, code change, or other output, log it with kind=\"artifact\" and include the path or exact output location.",
+      "- If you create or update files with shell commands, make the command print `created /absolute/path` or `updated /absolute/path` for each durable output so the UI can surface the work directly.",
+      "- Do not add a duplicate evidence log after an artifact unless it records a distinct decision, verification result, or next branch.",
       "- When you need user input, call ask_always_on_question with 2-3 choices. Keep allowCustom true unless custom answers would be unsafe.",
       "- Do not log questions manually; ask_always_on_question creates the durable question log entry.",
       "- After asking a question, continue with a different independent action. Do not wait idle for the answer.",
@@ -719,6 +750,7 @@ class AlwaysOnSessionService {
         const answeredQuestions = record.questions.filter((question) => question.status === "answered")
         const recentLogEntries = this.readRecentLogEntries(record, MAX_RECENT_LOG_ENTRIES)
         const auditEntries = this.readRecentLogEntries(record, MAX_AUDIT_LOG_ENTRIES)
+        const recentWorkEntries = getRecentWorkEntries(auditEntries, MAX_RECENT_LOG_ENTRIES)
         return {
           id: record.id,
           loopId: record.loopId,
@@ -733,7 +765,9 @@ class AlwaysOnSessionService {
           logPath: record.logPath,
           logCount: record.logCount,
           latestLogEntry: recentLogEntries[recentLogEntries.length - 1] ?? record.latestLogEntry,
+          latestWorkEntry: recentWorkEntries[recentWorkEntries.length - 1],
           recentLogEntries,
+          recentWorkEntries,
           auditSummary: buildAuditSummary(record.logCount, auditEntries),
           pendingQuestionCount: pendingQuestions.length,
           answeredQuestionCount: answeredQuestions.length,

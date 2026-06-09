@@ -77,6 +77,7 @@ const VALIDATION_OR_DEPENDENCY_COMMAND_REGEX = /\b(test|tests|vitest|jest|playwr
 const POSIX_WORKSPACE_PATH_REGEX = /(?:\/Users|\/home)\/[^/\s'"`;|&()]+(?:\/[A-Za-z0-9._-]+)+/g
 const POSIX_HOME_PREFIX_REGEX = /^(\/Users\/[^/]+|\/home\/[^/]+)/
 const ALWAYS_ON_LOG_ONLY_ATTEMPT_LIMIT = 6
+const ALWAYS_ON_ARTIFACT_PATH_REGEX = /\b(created|wrote|saved|updated)\s*:?\s+[`"']?((?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm)))[`"']?/iu
 
 async function detectPreferredPackageManager(startDir: string): Promise<PreferredPackageManager | null> {
   let currentDir = path.resolve(startDir)
@@ -224,13 +225,17 @@ function truncateAlwaysOnEvidence(value: string, maxLength: number = 1200): stri
 function extractAlwaysOnArtifact(...values: Array<string | undefined>): { verb: "created" | "updated"; path: string } | undefined {
   for (const value of values) {
     if (!value) continue
-    const match = value.match(/\b(created|wrote|saved|updated)\s*:?\s+(\/[^\s"'`]+)\b/iu)
+    const match = value.match(ALWAYS_ON_ARTIFACT_PATH_REGEX)
     if (match?.[1] && match[2]) {
       const normalizedVerb = match[1].toLowerCase() === "updated" ? "updated" : "created"
       return { verb: normalizedVerb, path: match[2] }
     }
   }
   return undefined
+}
+
+function looksLikeAlwaysOnArtifactLog(title: string, details?: string, outcome?: string): boolean {
+  return ALWAYS_ON_ARTIFACT_PATH_REGEX.test(`${title}\n${details ?? ""}\n${outcome ?? ""}`)
 }
 
 function getAlwaysOnSummaryForRuntimeSession(trackedSessionId?: string, conversationId?: string) {
@@ -1008,8 +1013,8 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const kind = normalizeAlwaysOnLogKind(args.kind)
-    if (!kind) {
+    const requestedKind = normalizeAlwaysOnLogKind(args.kind)
+    if (!requestedKind) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "kind must be one of: attempt, artifact, evidence, blocker, branch, error. Use ask_always_on_question for queued user questions." }) }],
         isError: true,
@@ -1027,6 +1032,9 @@ const toolHandlers: Record<string, ToolHandler> = {
     const activeSession = agentSessionTracker.getSession(trackedSessionId)
     const details = typeof args.details === "string" ? args.details : undefined
     const outcome = typeof args.outcome === "string" ? args.outcome : undefined
+    const kind = requestedKind === "evidence" && looksLikeAlwaysOnArtifactLog(title, details, outcome)
+      ? "artifact"
+      : requestedKind
     const summary = getAlwaysOnSummaryForRuntimeSession(trackedSessionId, activeSession?.conversationId)
 
     if (!summary) {

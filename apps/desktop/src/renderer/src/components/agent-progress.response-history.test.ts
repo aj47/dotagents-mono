@@ -636,7 +636,7 @@ describe("agent progress response history", () => {
     expect(text).toContain("Recent outputs")
     expect(text).toContain("Created checklist.md")
     expect(text).toContain("No verified outcomes in log")
-    expect(text).toContain("Progress log")
+    expect(text).toContain("Work trail")
     expect(text).toContain("Log")
     expect(text).toContain("Inspect workspace artifacts")
     expect(text).toContain("No source artifact found")

@@ -59,7 +59,7 @@ import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import type { AgentProgressUpdate, AlwaysOnLogEntryKind, AlwaysOnQuestion, AlwaysOnSessionSummary, LoopConfig } from "@shared/types"
+import type { AgentProgressUpdate, AlwaysOnLogEntry, AlwaysOnLogEntryKind, AlwaysOnQuestion, AlwaysOnSessionSummary, LoopConfig } from "@shared/types"
 import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
 
 interface SidebarSessionRecord {
@@ -434,6 +434,21 @@ function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
   }
 }
 
+const ALWAYS_ON_ARTIFACT_TEXT_REGEX = /\b(?:created|wrote|saved|updated)\s+[`"']?(?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm))[`"']?/iu
+
+function getAlwaysOnDisplayLogKind(entry: AlwaysOnLogEntry): AlwaysOnLogEntryKind {
+  if (entry.kind === "artifact") return "artifact"
+  const text = `${entry.title}\n${entry.details ?? ""}\n${entry.outcome ?? ""}`
+  return ALWAYS_ON_ARTIFACT_TEXT_REGEX.test(text) ? "artifact" : entry.kind
+}
+
+function getAlwaysOnDisplayTitle(entry: AlwaysOnLogEntry): string {
+  if (entry.kind === "run_completed" && entry.outcome?.trim().toLowerCase().startsWith("known:")) {
+    return "Run summary"
+  }
+  return entry.title
+}
+
 function formatAlwaysOnStatusLabel(session: AlwaysOnSessionSummary): string {
   if (session.status === "paused") return "Paused"
   if (session.isRunning) return "Running"
@@ -482,7 +497,9 @@ function AlwaysOnSessionStrip({
       {sessions.map((session) => {
         const pendingQuestion = session.questions.find((question) => question.status === "pending")
         const isPaused = session.status === "paused"
-        const latestEntry = session.latestLogEntry
+        const latestEntry = session.latestWorkEntry ?? session.latestLogEntry
+        const latestDisplayKind = latestEntry ? getAlwaysOnDisplayLogKind(latestEntry) : undefined
+        const latestDisplayTitle = latestEntry ? getAlwaysOnDisplayTitle(latestEntry) : undefined
         const rawLatestDetails = latestEntry?.outcome || latestEntry?.details
         const latestDetails = rawLatestDetails && !isAlwaysOnPromptDerivedTitle(rawLatestDetails)
           ? rawLatestDetails
@@ -631,10 +648,10 @@ function AlwaysOnSessionStrip({
               <div className="mt-1.5 min-w-0 rounded-md border border-border/40 bg-background/65 px-2 py-1.5">
                 <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-snug">
                   <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal text-muted-foreground">
-                    {formatAlwaysOnLogKind(latestEntry.kind)}
+                    {formatAlwaysOnLogKind(latestDisplayKind ?? latestEntry.kind)}
                   </span>
                   <span className="min-w-0 flex-1 line-clamp-2 break-words font-medium text-foreground">
-                    {latestEntry.title}
+                    {latestDisplayTitle ?? latestEntry.title}
                   </span>
                 </div>
                 {latestDetails && (

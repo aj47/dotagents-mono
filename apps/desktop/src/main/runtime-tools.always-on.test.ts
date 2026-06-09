@@ -115,6 +115,37 @@ describe("runtime-tools always-on helpers", () => {
     expect(payload.guidance.join("\n")).toContain("ask_always_on_question")
   })
 
+  it("promotes manual created-file evidence logs into artifacts", async () => {
+    const entry = {
+      id: "entry-artifact",
+      alwaysOnSessionId: "always-1",
+      loopId: "loop-1",
+      runtimeSessionId: "session-1",
+      conversationId: "conv-1",
+      runId: 4,
+      kind: "artifact",
+      title: "Safe opening variant created",
+      timestamp: 10,
+    }
+    mocks.appendLog.mockReturnValue(entry)
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("log_always_on_attempt", {
+      kind: "evidence",
+      title: "Safe opening variant created",
+      details: "Created `script/first-90-recording-safe-variant-2026-06-08.md` for recording.",
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(false)
+    expect(payload).toEqual(expect.objectContaining({ success: true }))
+    expect(mocks.appendLog).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "artifact",
+      title: "Safe opening variant created",
+      details: "Created `script/first-90-recording-safe-variant-2026-06-08.md` for recording.",
+    }), expect.any(Array))
+  })
+
   it("rejects consecutive attempt logs before appending another one", async () => {
     mocks.getRecentLogEntries.mockReturnValue(Array.from({ length: 6 }, (_, index) => ({
       id: `entry-old-${index}`,

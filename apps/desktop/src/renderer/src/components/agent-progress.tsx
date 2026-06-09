@@ -785,7 +785,7 @@ function isAlwaysOnConversationTitle(title: string | undefined): boolean {
   return normalized.includes("always-on session")
 }
 
-const ALWAYS_ON_ARTIFACT_TEXT_REGEX = /\b(?:created|wrote|saved|updated)\s+[`"']?(?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm))[`"']?/iu
+const ALWAYS_ON_ARTIFACT_TEXT_REGEX = /\b(?:created|wrote|saved|updated)\s+[`"']?((?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm)))[`"']?/iu
 
 function isAlwaysOnArtifactLike(entry: AlwaysOnLogEntry): boolean {
   if (entry.kind === "artifact") return true
@@ -795,6 +795,13 @@ function isAlwaysOnArtifactLike(entry: AlwaysOnLogEntry): boolean {
 
 function getAlwaysOnDisplayLogKind(entry: AlwaysOnLogEntry): AlwaysOnLogEntryKind {
   return isAlwaysOnArtifactLike(entry) ? "artifact" : entry.kind
+}
+
+function getAlwaysOnArtifactLocation(entry: AlwaysOnLogEntry): string | undefined {
+  const text = `${entry.details ?? ""}\n${entry.outcome ?? ""}\n${entry.title}`
+  const explicitPath = text.match(/(?:^|\n)path:\s*([^\n]+)/iu)?.[1]?.trim()
+  if (explicitPath) return explicitPath
+  return text.match(ALWAYS_ON_ARTIFACT_TEXT_REGEX)?.[1]?.trim()
 }
 
 function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
@@ -856,6 +863,17 @@ function getAlwaysOnLogDetails(entry: AlwaysOnLogEntry): string | undefined {
   const details = entry.outcome || entry.details
   if (details && isAlwaysOnInstructionPrompt(details)) return undefined
   return details
+}
+
+function getAlwaysOnOutputDetails(entry: AlwaysOnLogEntry): string | undefined {
+  return getAlwaysOnArtifactLocation(entry) ?? getAlwaysOnLogDetails(entry)
+}
+
+function getAlwaysOnDisplayTitle(entry: AlwaysOnLogEntry): string {
+  if (entry.kind === "run_completed" && entry.outcome?.trim().toLowerCase().startsWith("known:")) {
+    return "Run summary"
+  }
+  return entry.title
 }
 
 function getAlwaysOnAuditClassName(verdict: AlwaysOnSessionAuditSummary["verdict"]): string {
@@ -4193,10 +4211,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }, [activeTab, isAlwaysOnSession])
 
   const alwaysOnRecentLogEntries = useMemo(() => (
-    (alwaysOnSummary?.recentLogEntries ?? [])
+    (alwaysOnSummary?.recentWorkEntries ?? alwaysOnSummary?.recentLogEntries ?? [])
       .slice(-8)
       .reverse()
-  ), [alwaysOnSummary?.recentLogEntries])
+  ), [alwaysOnSummary?.recentLogEntries, alwaysOnSummary?.recentWorkEntries])
 
   const alwaysOnFullLogQuery = useQuery<{
     success: boolean
@@ -5498,7 +5516,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               Recent outputs
             </div>
             {audit.recentArtifacts.slice(0, compact ? 2 : 3).map((entry) => {
-              const details = getAlwaysOnLogDetails(entry)
+              const details = getAlwaysOnOutputDetails(entry)
               return (
                 <div key={entry.id} className="min-w-0 rounded-md border border-emerald-500/20 bg-emerald-500/[0.06] px-2 py-1.5">
                   <div className="flex min-w-0 items-center gap-1.5 text-[12px] leading-snug">
@@ -5569,7 +5587,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
-              Progress log
+              Work trail
             </span>
             {alwaysOnSummary?.logCount != null && (
               <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
@@ -5597,6 +5615,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           {entries.map((entry) => {
             const details = getAlwaysOnLogDetails(entry)
             const displayKind = getAlwaysOnDisplayLogKind(entry)
+            const displayTitle = getAlwaysOnDisplayTitle(entry)
             return (
               <div key={entry.id} className="min-w-0 border-l border-border/60 pl-2">
                 <div className="flex min-w-0 items-center gap-1.5 text-[12px] leading-snug">
@@ -5606,8 +5625,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   )}>
                     {formatAlwaysOnLogKind(displayKind)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-medium text-foreground" title={entry.title}>
-                    {entry.title}
+                  <span className="min-w-0 flex-1 truncate font-medium text-foreground" title={displayTitle}>
+                    {displayTitle}
                   </span>
                   <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
                     {formatAlwaysOnLogTime(entry.timestamp, turnNow)}
