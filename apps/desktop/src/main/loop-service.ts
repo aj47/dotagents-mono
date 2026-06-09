@@ -349,6 +349,11 @@ class LoopService {
       return null
     }
 
+    if (loop.alwaysOnSession === true && !loop.enabled) {
+      logApp(`[LoopService] Skip manual trigger for paused always-on session "${loop.name}" (${loopId})`)
+      return null
+    }
+
     logApp(`[LoopService] Manually triggering loop "${loop.name}" (${loopId})`)
     // Reschedule after manual run if the loop is enabled so we don't lose the timer
     const shouldReschedule = loop.enabled && this.activeTimers.has(loopId)

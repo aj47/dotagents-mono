@@ -6033,6 +6033,7 @@ export const router = {
 
       const updatedLoop: LoopConfig = {
         ...loop,
+        prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name),
         enabled: true,
         runContinuously: true,
         continueInSession: true,

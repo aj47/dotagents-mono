@@ -27,4 +27,16 @@ describe("tipc always-on lifecycle controls", () => {
     expect(pauseSection).toContain("toolApprovalManager.cancelSessionApprovals(activeSessionId)")
     expect(pauseSection).toContain("messageQueueService.pauseQueue(activeSession.conversationId)")
   })
+
+  it("refreshes the always-on prompt when resuming", () => {
+    const resumeSection = getSection(
+      tipcSource,
+      "  resumeAlwaysOnSession: t.procedure",
+      "  openAlwaysOnSessionLog: t.procedure",
+    )
+
+    expect(resumeSection).toContain("prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name)")
+    expect(resumeSection).toContain("enabled: true")
+    expect(resumeSection).toContain("loopService.startLoop(loop.id)")
+  })
 })

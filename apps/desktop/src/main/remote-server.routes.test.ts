@@ -308,6 +308,8 @@ describe("remote-server route registration", () => {
 
     expect(runLoopSection).toContain("normalizeClientSessionIdInput(body.clientSessionId)")
     expect(runLoopSection).toContain("loopService.triggerLoop(params.id,")
+    expect(runLoopSection).toContain('latestLoop?.alwaysOnSession === true && !latestLoop.enabled')
+    expect(runLoopSection).toContain('Always-on session is paused; resume it before running.')
     expect(runLoopSection).toContain("conversationId: triggered.conversationId")
     expect(runLoopSection).toContain("sessionId: triggered.sessionId")
   })

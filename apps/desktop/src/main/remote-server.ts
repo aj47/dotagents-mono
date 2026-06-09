@@ -7731,6 +7731,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         })
 
         if (!triggered) {
+          const latestLoop = loopService.getLoop(params.id)
+          if (latestLoop?.alwaysOnSession === true && !latestLoop.enabled) {
+            return reply.code(409).send({ error: "Always-on session is paused; resume it before running." })
+          }
           return reply.code(409).send({ error: "Task is already running" })
         }
 

@@ -29,6 +29,19 @@ describe("continuous repeat tasks", () => {
     expect(executeLoopSection).toContain("Skip scheduled execution")
   })
 
+  it("does not manually trigger paused always-on sessions", () => {
+    const triggerLoopSection = getSection(loopServiceSource, "  async triggerLoop(", "  getLoopStatuses():")
+
+    expect(triggerLoopSection).toContain("loop.alwaysOnSession === true && !loop.enabled")
+    expect(triggerLoopSection).toContain("Skip manual trigger for paused always-on session")
+    expect(triggerLoopSection.indexOf("already executing")).toBeLessThan(
+      triggerLoopSection.indexOf("paused always-on session"),
+    )
+    expect(triggerLoopSection.indexOf("paused always-on session")).toBeLessThan(
+      triggerLoopSection.indexOf("Manually triggering loop"),
+    )
+  })
+
   it("reschedules continuous tasks without waiting for the interval", () => {
     const getNextDelaySection = getSection(loopServiceSource, "  private getNextDelayMs(", "  private getIntervalMs(")
 
