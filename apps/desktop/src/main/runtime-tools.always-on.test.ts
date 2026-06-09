@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   appendLog: vi.fn(),
   askQuestion: vi.fn(),
   getRecentLogEntries: vi.fn(),
+  getRuntimeLinkedSessionId: vi.fn(),
   getSession: vi.fn(),
   getSessionRunId: vi.fn(),
   getSummaries: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("./always-on-session-service", () => ({
     appendLog: mocks.appendLog,
     askQuestion: mocks.askQuestion,
     getRecentLogEntries: mocks.getRecentLogEntries,
+    getRuntimeLinkedSessionId: mocks.getRuntimeLinkedSessionId,
     getSummaries: mocks.getSummaries,
   },
 }))
@@ -78,6 +80,7 @@ describe("runtime-tools always-on helpers", () => {
     mocks.getSessionRunId.mockReturnValue(4)
     mocks.getSummaries.mockReturnValue([makeSummary()])
     mocks.getRecentLogEntries.mockReturnValue([])
+    mocks.getRuntimeLinkedSessionId.mockReturnValue("always-1")
   })
 
   it("returns repeat-attempt and question guidance for blocker logs", async () => {

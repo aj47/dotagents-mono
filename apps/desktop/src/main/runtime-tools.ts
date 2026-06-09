@@ -297,12 +297,14 @@ function isAlwaysOnPostReadyPrepAttempt(title: string, details?: string, outcome
 
 function getAlwaysOnSummaryForRuntimeSession(trackedSessionId?: string, conversationId?: string) {
   if (!trackedSessionId && !conversationId) return undefined
+  const loops = loopService.getLoops()
+  const linkedSessionId = alwaysOnSessionService.getRuntimeLinkedSessionId({
+    runtimeSessionId: trackedSessionId,
+    conversationId,
+  }, loops)
   return alwaysOnSessionService
-    .getSummaries(loopService.getLoops(), loopService.getLoopStatuses())
-    .find((candidate) =>
-      (!!trackedSessionId && candidate.currentSessionId === trackedSessionId) ||
-      (!!conversationId && candidate.conversationId === conversationId),
-    )
+    .getSummaries(loops, loopService.getLoopStatuses())
+    .find((candidate) => candidate.id === linkedSessionId)
 }
 
 function appendAlwaysOnCommandEvidence(params: {

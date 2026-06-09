@@ -10,6 +10,7 @@ describe("tipc always-on runtime tool availability", () => {
     expect(tipcSource).toContain("ASK_ALWAYS_ON_QUESTION_TOOL")
     expect(tipcSource).toContain("function withRequiredAlwaysOnRuntimeTools(")
     expect(tipcSource).toContain("function withRequiredAlwaysOnRuntimeToolAllowlist(")
+    expect(tipcSource).toContain("alwaysOnSessionService.getRuntimeLinkedSessionId({")
     expect(tipcSource).toContain("const forceAlwaysOnRuntimeTools = isAlwaysOnBackedAgentSession(sessionId, conversationId)")
     expect(tipcSource).toContain("const availableTools = withRequiredAlwaysOnRuntimeTools(baseAvailableTools, forceAlwaysOnRuntimeTools)")
     expect(tipcSource).toContain("const executionProfileMcpConfig = withRequiredAlwaysOnRuntimeToolAllowlist(")

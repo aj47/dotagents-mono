@@ -596,7 +596,7 @@ class AlwaysOnSessionService {
     }
   }
 
-  private resolveRecord(input: { alwaysOnSessionId?: string; loopId?: string; runtimeSessionId?: string }, loops: LoopConfig[] = []): AlwaysOnSessionRecord | undefined {
+  private resolveRecord(input: { alwaysOnSessionId?: string; loopId?: string; runtimeSessionId?: string; conversationId?: string }, loops: LoopConfig[] = []): AlwaysOnSessionRecord | undefined {
     if (input.alwaysOnSessionId) {
       const direct = this.findRecord(input.alwaysOnSessionId)
       if (direct) return direct
@@ -608,12 +608,31 @@ class AlwaysOnSessionService {
     }
 
     if (input.runtimeSessionId) {
+      const byCurrentSession = this.state.sessions.find((session) => session.currentSessionId === input.runtimeSessionId)
+      if (byCurrentSession) return byCurrentSession
+
       const matchingLoop = loops.find((loop) =>
         loop.alwaysOnSession === true && loop.lastSessionId === input.runtimeSessionId,
       )
       if (matchingLoop) {
         return this.findRecordByLoopId(matchingLoop.id)
       }
+
+      const byQuestionSession = this.state.sessions.find((session) =>
+        session.questions.some((question) => question.runtimeSessionId === input.runtimeSessionId),
+      )
+      if (byQuestionSession) return byQuestionSession
+    }
+
+    if (input.conversationId) {
+      const byConversation = this.state.sessions.find((session) =>
+        session.conversationId === input.conversationId ||
+        session.questions.some((question) =>
+          question.conversationId === input.conversationId ||
+          question.branchConversationId === input.conversationId,
+        ),
+      )
+      if (byConversation) return byConversation
     }
 
     return undefined
@@ -797,6 +816,10 @@ class AlwaysOnSessionService {
     const record = this.findRecord(alwaysOnSessionId)
     if (!record) return undefined
     return buildAuditSummary(record.logCount, this.readRecentLogEntries(record, limit))
+  }
+
+  getRuntimeLinkedSessionId(input: { runtimeSessionId?: string; conversationId?: string }, loops: LoopConfig[] = []): string | undefined {
+    return this.resolveRecord(input, loops)?.id
   }
 
   recordRuntimeSession(loopId: string, runtimeSessionId: string, conversationId: string): void {

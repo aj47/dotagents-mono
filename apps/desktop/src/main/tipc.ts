@@ -136,12 +136,10 @@ function isAlwaysOnBackedAgentSession(sessionId: string, conversationId?: string
     return true
   }
 
-  return alwaysOnSessionService
-    .getSummaries(loops)
-    .some((session) =>
-      session.currentSessionId === sessionId ||
-      (conversationId ? session.conversationId === conversationId : false),
-    )
+  return !!alwaysOnSessionService.getRuntimeLinkedSessionId({
+    runtimeSessionId: sessionId,
+    conversationId,
+  }, loops)
 }
 
 function withRequiredAlwaysOnRuntimeTools(tools: MCPTool[], forceAlwaysOnTools: boolean): MCPTool[] {
