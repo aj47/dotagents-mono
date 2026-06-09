@@ -220,7 +220,6 @@ function isMechanicalLogEntry(entry: AlwaysOnLogEntry): boolean {
 
 function isReadableWorkEntry(entry: AlwaysOnLogEntry): boolean {
   if (isMechanicalLogEntry(entry)) return false
-  if (entry.kind === "pause") return false
   if (entry.kind === "evidence" && !entry.title.trim()) return false
   return true
 }
