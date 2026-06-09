@@ -132,14 +132,14 @@ export const runtimeToolDefinitions: RuntimeToolDefinition[] = [
   {
     name: "log_always_on_attempt",
     description:
-      "Append an entry to the current always-on session's durable attempt log. Use only inside an always-on session. Call this before every concrete attempt, for blockers, and when recording outcomes.",
+      "Append an entry to the current always-on session's durable attempt log. Use only inside an always-on session. Call this before every concrete attempt, for blockers, and when recording outcomes. Use kind=\"artifact\" when a durable file, document, or other user-facing output was created or updated.",
     inputSchema: {
       type: "object",
       properties: {
         kind: {
           type: "string",
-          enum: ["attempt", "evidence", "blocker", "branch", "error"],
-          description: "Type of entry to append. Queue user questions with ask_always_on_question instead of manually logging question/answer entries.",
+          enum: ["attempt", "artifact", "evidence", "blocker", "branch", "error"],
+          description: "Type of entry to append. Use artifact for created or updated durable outputs. Queue user questions with ask_always_on_question instead of manually logging question/answer entries.",
         },
         title: {
           type: "string",

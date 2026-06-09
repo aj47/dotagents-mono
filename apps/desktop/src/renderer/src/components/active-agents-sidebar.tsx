@@ -411,6 +411,10 @@ function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
       return "DONE"
     case "attempt":
       return "TRY"
+    case "artifact":
+      return "OUTPUT"
+    case "evidence":
+      return "EVIDENCE"
     case "blocker":
       return "BLOCKED"
     case "question":

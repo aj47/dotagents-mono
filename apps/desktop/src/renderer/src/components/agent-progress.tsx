@@ -785,6 +785,18 @@ function isAlwaysOnConversationTitle(title: string | undefined): boolean {
   return normalized.includes("always-on session")
 }
 
+const ALWAYS_ON_ARTIFACT_TEXT_REGEX = /\b(?:created|wrote|saved|updated)\s+[`"']?(?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm))[`"']?/iu
+
+function isAlwaysOnArtifactLike(entry: AlwaysOnLogEntry): boolean {
+  if (entry.kind === "artifact") return true
+  const text = `${entry.title}\n${entry.details ?? ""}\n${entry.outcome ?? ""}`
+  return ALWAYS_ON_ARTIFACT_TEXT_REGEX.test(text)
+}
+
+function getAlwaysOnDisplayLogKind(entry: AlwaysOnLogEntry): AlwaysOnLogEntryKind {
+  return isAlwaysOnArtifactLike(entry) ? "artifact" : entry.kind
+}
+
 function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
   switch (kind) {
     case "run_started":
@@ -793,6 +805,8 @@ function formatAlwaysOnLogKind(kind: AlwaysOnLogEntryKind): string {
       return "DONE"
     case "attempt":
       return "TRY"
+    case "artifact":
+      return "OUTPUT"
     case "evidence":
       return "EVIDENCE"
     case "blocker":
@@ -823,6 +837,8 @@ function getAlwaysOnLogKindClassName(kind: AlwaysOnLogEntryKind): string {
       return "bg-amber-500/15 text-amber-700 dark:text-amber-300"
     case "answer":
       return "bg-blue-500/12 text-blue-700 dark:text-blue-300"
+    case "artifact":
+      return "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
     case "evidence":
     case "run_completed":
       return "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
@@ -885,6 +901,7 @@ function formatAlwaysOnLogTime(timestamp: number, now: number): string {
 const ALWAYS_ON_LOG_KIND_FILTERS: Array<"all" | AlwaysOnLogEntryKind> = [
   "all",
   "attempt",
+  "artifact",
   "evidence",
   "blocker",
   "question",
@@ -4202,7 +4219,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const search = alwaysOnLogSearch.trim().toLowerCase()
 
     return entries
-      .filter((entry) => alwaysOnLogKindFilter === "all" || entry.kind === alwaysOnLogKindFilter)
+      .filter((entry) => alwaysOnLogKindFilter === "all" || getAlwaysOnDisplayLogKind(entry) === alwaysOnLogKindFilter)
       .filter((entry) => {
         if (!search) return true
         return [
@@ -4210,6 +4227,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           entry.details,
           entry.outcome,
           entry.kind,
+          getAlwaysOnDisplayLogKind(entry),
           entry.runtimeSessionId,
           entry.conversationId,
         ].some((value) => value?.toLowerCase().includes(search))
@@ -5462,8 +5480,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <div className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{formatAlwaysOnAuditPercent(audit.logOnlyScore)}</div>
           </div>
           <div className={metricClassName}>
-            <div className="truncate text-[10px] font-medium uppercase tracking-normal text-muted-foreground">Verified outcomes</div>
-            <div className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{audit.verifiedOutcomeCount}</div>
+            <div className="truncate text-[10px] font-medium uppercase tracking-normal text-muted-foreground">Outputs</div>
+            <div className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{audit.artifactCount}</div>
           </div>
           <div className={metricClassName}>
             <div className="truncate text-[10px] font-medium uppercase tracking-normal text-muted-foreground">Repeated attempts</div>
@@ -5474,6 +5492,36 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <div className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{audit.maxIterationCompletionCount}</div>
           </div>
         </div>
+        {audit.recentArtifacts.length > 0 && (
+          <div className="mt-2 space-y-1.5">
+            <div className="text-[10px] font-semibold uppercase tracking-normal text-muted-foreground">
+              Recent outputs
+            </div>
+            {audit.recentArtifacts.slice(0, compact ? 2 : 3).map((entry) => {
+              const details = getAlwaysOnLogDetails(entry)
+              return (
+                <div key={entry.id} className="min-w-0 rounded-md border border-emerald-500/20 bg-emerald-500/[0.06] px-2 py-1.5">
+                  <div className="flex min-w-0 items-center gap-1.5 text-[12px] leading-snug">
+                    <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-normal text-emerald-700 dark:text-emerald-300">
+                      OUTPUT
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-medium text-foreground" title={entry.title}>
+                      {entry.title}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
+                      {formatAlwaysOnLogTime(entry.timestamp, turnNow)}
+                    </span>
+                  </div>
+                  {details && (
+                    <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground" title={details}>
+                      {details}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
         {findings.length > 0 && (
           <div className="mt-2 space-y-1">
             {findings.map((finding) => (
@@ -5548,14 +5596,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         <div className={cn("space-y-1.5 overflow-y-auto pr-1", compact ? "max-h-36" : "max-h-56")}>
           {entries.map((entry) => {
             const details = getAlwaysOnLogDetails(entry)
+            const displayKind = getAlwaysOnDisplayLogKind(entry)
             return (
               <div key={entry.id} className="min-w-0 border-l border-border/60 pl-2">
                 <div className="flex min-w-0 items-center gap-1.5 text-[12px] leading-snug">
                   <span className={cn(
                     "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-normal",
-                    getAlwaysOnLogKindClassName(entry.kind),
+                    getAlwaysOnLogKindClassName(displayKind),
                   )}>
-                    {formatAlwaysOnLogKind(entry.kind)}
+                    {formatAlwaysOnLogKind(displayKind)}
                   </span>
                   <span className="min-w-0 flex-1 truncate font-medium text-foreground" title={entry.title}>
                     {entry.title}
@@ -5654,14 +5703,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             <div className="space-y-2">
               {alwaysOnFullLogEntries.map((entry) => {
                 const details = getAlwaysOnLogDetails(entry)
+                const displayKind = getAlwaysOnDisplayLogKind(entry)
                 return (
                   <div key={entry.id} className="min-w-0 rounded-md border border-border/55 bg-muted/10 px-2.5 py-2">
                     <div className="flex min-w-0 items-center gap-2 text-sm leading-snug">
                       <span className={cn(
                         "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal",
-                        getAlwaysOnLogKindClassName(entry.kind),
+                        getAlwaysOnLogKindClassName(displayKind),
                       )}>
-                        {formatAlwaysOnLogKind(entry.kind)}
+                        {formatAlwaysOnLogKind(displayKind)}
                       </span>
                       <span className="min-w-0 flex-1 truncate font-semibold text-foreground" title={entry.title}>
                         {entry.title}

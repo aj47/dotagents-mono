@@ -1085,6 +1085,7 @@ export type AlwaysOnLogEntryKind =
   | "run_started"
   | "run_completed"
   | "attempt"
+  | "artifact"
   | "evidence"
   | "blocker"
   | "question"
@@ -1130,6 +1131,7 @@ export interface AlwaysOnSessionAuditSummary {
   blockerCount: number
   questionCount: number
   answerCount: number
+  artifactCount: number
   runStartedCount: number
   runCompletedCount: number
   maxIterationCompletionCount: number
@@ -1141,6 +1143,7 @@ export interface AlwaysOnSessionAuditSummary {
   pauseLeakCount: number
   logOnlyScore: number
   topRepeatedTitles: AlwaysOnRepeatedLogTitle[]
+  recentArtifacts: AlwaysOnLogEntry[]
   findings: AlwaysOnAuditFinding[]
 }
 

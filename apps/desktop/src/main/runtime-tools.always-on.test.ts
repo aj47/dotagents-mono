@@ -262,4 +262,27 @@ describe("runtime-tools always-on helpers", () => {
       outcome: expect.stringContaining("always-on-evidence"),
     }), expect.any(Array))
   })
+
+  it("promotes created files from command output into always-on artifacts", async () => {
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("execute_command", {
+      command: "printf 'created /tmp/output.md\\n'",
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(false)
+    expect(payload).toEqual(expect.objectContaining({
+      success: true,
+      stdout: "created /tmp/output.md\n",
+    }))
+    expect(mocks.appendLog).toHaveBeenCalledWith(expect.objectContaining({
+      alwaysOnSessionId: "always-1",
+      runtimeSessionId: "session-1",
+      conversationId: "conv-1",
+      kind: "artifact",
+      title: "Created output.md",
+      details: expect.stringContaining("path: /tmp/output.md"),
+      outcome: expect.stringContaining("created /tmp/output.md"),
+    }), expect.any(Array))
+  })
 })

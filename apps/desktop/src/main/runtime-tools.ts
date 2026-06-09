@@ -42,7 +42,7 @@ interface BuiltinToolContext {
   sessionId?: string
 }
 
-type AlwaysOnRuntimeLogKind = "attempt" | "evidence" | "blocker" | "branch" | "error"
+type AlwaysOnRuntimeLogKind = "attempt" | "artifact" | "evidence" | "blocker" | "branch" | "error"
 
 type PackageManagerName = "pnpm" | "npm" | "yarn" | "bun"
 
@@ -173,6 +173,7 @@ function getTrackedRuntimeSessionId(sessionId?: string): string | undefined {
 function normalizeAlwaysOnLogKind(value: unknown): AlwaysOnRuntimeLogKind | null {
   if (
     value === "attempt" ||
+    value === "artifact" ||
     value === "evidence" ||
     value === "blocker" ||
     value === "branch" ||
@@ -220,6 +221,18 @@ function truncateAlwaysOnEvidence(value: string, maxLength: number = 1200): stri
   return `${normalized.slice(0, half)}\n... [truncated ${normalized.length - maxLength} chars] ...\n${normalized.slice(-half)}`
 }
 
+function extractAlwaysOnArtifact(...values: Array<string | undefined>): { verb: "created" | "updated"; path: string } | undefined {
+  for (const value of values) {
+    if (!value) continue
+    const match = value.match(/\b(created|wrote|saved|updated)\s*:?\s+(\/[^\s"'`]+)\b/iu)
+    if (match?.[1] && match[2]) {
+      const normalizedVerb = match[1].toLowerCase() === "updated" ? "updated" : "created"
+      return { verb: normalizedVerb, path: match[2] }
+    }
+  }
+  return undefined
+}
+
 function getAlwaysOnSummaryForRuntimeSession(trackedSessionId?: string, conversationId?: string) {
   if (!trackedSessionId && !conversationId) return undefined
   return alwaysOnSessionService
@@ -252,16 +265,21 @@ function appendAlwaysOnCommandEvidence(params: {
   if (params.stderr?.trim()) outputParts.push(`stderr:\n${params.stderr.trim()}`)
   if (params.error?.trim()) outputParts.push(`error:\n${params.error.trim()}`)
   if (params.exitCode !== undefined) outputParts.push(`exitCode: ${String(params.exitCode)}`)
+  const output = outputParts.join("\n\n") || (params.success ? "Command completed with no output." : "Command failed with no output.")
+  const artifact = params.success
+    ? extractAlwaysOnArtifact(params.stdout, params.stderr)
+    : undefined
+  const artifactTitleVerb = artifact?.verb === "updated" ? "Updated" : "Created"
 
   alwaysOnSessionService.appendLog({
     alwaysOnSessionId: summary.id,
     runtimeSessionId: trackedSessionId,
     conversationId: activeSession?.conversationId,
     runId: agentSessionStateManager.getSessionRunId(trackedSessionId),
-    kind: params.success ? "evidence" : "error",
-    title: params.success ? "Command completed" : "Command failed",
-    details: truncateAlwaysOnEvidence(`cwd: ${params.cwd}\ncommand: ${params.command}`, 1200),
-    outcome: truncateAlwaysOnEvidence(outputParts.join("\n\n") || (params.success ? "Command completed with no output." : "Command failed with no output.")),
+    kind: artifact ? "artifact" : params.success ? "evidence" : "error",
+    title: artifact ? `${artifactTitleVerb} ${path.basename(artifact.path)}` : params.success ? "Command completed" : "Command failed",
+    details: truncateAlwaysOnEvidence(`${artifact ? `path: ${artifact.path}\n` : ""}cwd: ${params.cwd}\ncommand: ${params.command}`, 1200),
+    outcome: truncateAlwaysOnEvidence(output),
   }, loopService.getLoops())
 }
 
@@ -993,7 +1011,7 @@ const toolHandlers: Record<string, ToolHandler> = {
     const kind = normalizeAlwaysOnLogKind(args.kind)
     if (!kind) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ success: false, error: "kind must be one of: attempt, evidence, blocker, branch, error. Use ask_always_on_question for queued user questions." }) }],
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: "kind must be one of: attempt, artifact, evidence, blocker, branch, error. Use ask_always_on_question for queued user questions." }) }],
         isError: true,
       }
     }

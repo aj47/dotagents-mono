@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "fs"
-import { dirname, join } from "path"
+import { basename, dirname, join } from "path"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { dataFolder } from "./config"
 import { logApp } from "./debug"
@@ -74,6 +74,7 @@ const DEFAULT_ALWAYS_ON_NAME = "Always-on session"
 const MAX_RECENT_QUESTIONS = 8
 const MAX_RECENT_LOG_ENTRIES = 8
 const MAX_AUDIT_LOG_ENTRIES = 1000
+const ARTIFACT_TEXT_REGEX = /\b(?:created|wrote|saved|updated)\s+[`"']?((?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm)))[`"']?/iu
 
 function createId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
@@ -161,6 +162,44 @@ function hasMeaningfulOutcome(entry: AlwaysOnLogEntry): boolean {
   if (entry.kind === "error") return false
   if (entry.kind !== "run_completed") return true
   return !/maximum iteration|iteration limit|emergency kill switch|stopped by/u.test(outcome.toLowerCase())
+}
+
+function isArtifactEntry(entry: AlwaysOnLogEntry): boolean {
+  if (entry.kind === "artifact") return true
+  const text = `${entry.title}\n${entry.details ?? ""}\n${entry.outcome ?? ""}`
+  return ARTIFACT_TEXT_REGEX.test(text)
+}
+
+function getArtifactKeys(entry: AlwaysOnLogEntry): string[] {
+  const text = `${entry.details ?? ""}\n${entry.outcome ?? ""}\n${entry.title}`
+  const match = text.match(ARTIFACT_TEXT_REGEX)
+  const primary = (match?.[1] ?? entry.title).trim().toLowerCase()
+  const leaf = basename(primary)
+  return leaf && leaf !== primary ? [primary, leaf] : [primary]
+}
+
+function hasSeenArtifact(keys: string[], seen: Set<string>): boolean {
+  return keys.some((key) => seen.has(key))
+}
+
+function markSeenArtifact(keys: string[], seen: Set<string>): void {
+  for (const key of keys) {
+    seen.add(key)
+  }
+}
+
+function getDistinctRecentArtifacts(entries: AlwaysOnLogEntry[], limit: number = 5): AlwaysOnLogEntry[] {
+  const seen = new Set<string>()
+  const recentArtifacts: AlwaysOnLogEntry[] = []
+  for (const entry of [...entries].reverse()) {
+    if (!isArtifactEntry(entry)) continue
+    const keys = getArtifactKeys(entry)
+    if (hasSeenArtifact(keys, seen)) continue
+    markSeenArtifact(keys, seen)
+    recentArtifacts.push(entry)
+    if (recentArtifacts.length >= limit) break
+  }
+  return recentArtifacts
 }
 
 function isMaxIterationCompletion(entry: AlwaysOnLogEntry): boolean {
@@ -284,6 +323,7 @@ function buildAuditSummary(totalLogEntries: number, entries: AlwaysOnLogEntry[])
       blockerCount: 0,
       questionCount: 0,
       answerCount: 0,
+      artifactCount: 0,
       runStartedCount: 0,
       runCompletedCount: 0,
       maxIterationCompletionCount: 0,
@@ -295,6 +335,7 @@ function buildAuditSummary(totalLogEntries: number, entries: AlwaysOnLogEntry[])
       pauseLeakCount: 0,
       logOnlyScore: 0,
       topRepeatedTitles: [],
+      recentArtifacts: [],
       findings: [],
     }
   }
@@ -304,6 +345,8 @@ function buildAuditSummary(totalLogEntries: number, entries: AlwaysOnLogEntry[])
   let blockerCount = 0
   let questionCount = 0
   let answerCount = 0
+  const artifactKeys = new Set<string>()
+  let artifactCount = 0
   let runStartedCount = 0
   let runCompletedCount = 0
   let maxIterationCompletionCount = 0
@@ -336,6 +379,13 @@ function buildAuditSummary(totalLogEntries: number, entries: AlwaysOnLogEntry[])
     if (entry.kind === "blocker") blockerCount += 1
     if (entry.kind === "question") questionCount += 1
     if (entry.kind === "answer") answerCount += 1
+    if (isArtifactEntry(entry)) {
+      const keys = getArtifactKeys(entry)
+      if (!hasSeenArtifact(keys, artifactKeys)) {
+        artifactCount += 1
+        markSeenArtifact(keys, artifactKeys)
+      }
+    }
     if (entry.kind === "run_started") runStartedCount += 1
     if (entry.kind === "run_completed") runCompletedCount += 1
     if (isMaxIterationCompletion(entry)) maxIterationCompletionCount += 1
@@ -354,6 +404,7 @@ function buildAuditSummary(totalLogEntries: number, entries: AlwaysOnLogEntry[])
     .filter((item) => item.count >= 3)
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
+  const recentArtifacts = getDistinctRecentArtifacts(entries, 5)
   const repeatedAttemptCount = [...titleStats.values()]
     .filter((item) => item.count >= 3)
     .reduce((total, item) => total + item.count, 0)
@@ -401,6 +452,7 @@ function buildAuditSummary(totalLogEntries: number, entries: AlwaysOnLogEntry[])
     blockerCount,
     questionCount,
     answerCount,
+    artifactCount,
     runStartedCount,
     runCompletedCount,
     maxIterationCompletionCount,
@@ -412,6 +464,7 @@ function buildAuditSummary(totalLogEntries: number, entries: AlwaysOnLogEntry[])
     pauseLeakCount,
     logOnlyScore,
     topRepeatedTitles,
+    recentArtifacts,
     findings,
   }
 }
@@ -579,7 +632,10 @@ class AlwaysOnSessionService {
       "- Never stop only because one path is blocked. If blocked, log the blocker, ask a queued question if user input would help, then switch to another useful branch or task.",
       "- Before every concrete attempt, call log_always_on_attempt with a short title and the relevant details. Use kind=\"attempt\" for normal work and kind=\"blocker\" for blocked paths.",
       "- A kind=\"attempt\" entry is a promise to do concrete work. Do not write two attempt entries in a row without new evidence, a recorded outcome, a blocker, a branch switch, or a queued question between them.",
-      "- Concrete runtime tool results are logged as kind=\"evidence\" automatically when possible. Use that evidence to decide the next step instead of restating intent.",
+      "- Concrete runtime tool results are logged as kind=\"evidence\" automatically when possible. Created or updated files are logged as kind=\"artifact\". Use that evidence to decide the next step instead of restating intent.",
+      "- Actual progress means a durable user-facing artifact, a verified change, a concrete decision, or a queued question that unblocks work. Treat status reports, planning notes, and log audits as support work, not the deliverable.",
+      "- Prefer one short inspection step followed by a durable user-facing artifact or a queued question. Avoid long chains of audit/discovery/status updates.",
+      "- When you create or update a durable file, document, checklist, script, plan, code change, or other output, log it with kind=\"artifact\" and include the path or exact output location.",
       "- When you need user input, call ask_always_on_question with 2-3 choices. Keep allowCustom true unless custom answers would be unsafe.",
       "- Do not log questions manually; ask_always_on_question creates the durable question log entry.",
       "- After asking a question, continue with a different independent action. Do not wait idle for the answer.",

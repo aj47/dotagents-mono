@@ -534,6 +534,7 @@ describe("agent progress response history", () => {
             blockerCount: 0,
             questionCount: 0,
             answerCount: 0,
+            artifactCount: 1,
             runStartedCount: 1,
             runCompletedCount: 1,
             maxIterationCompletionCount: 1,
@@ -545,6 +546,18 @@ describe("agent progress response history", () => {
             pauseLeakCount: 0,
             logOnlyScore: 82,
             topRepeatedTitles: [{ title: "Inspect workspace artifacts", count: 7 }],
+            recentArtifacts: [
+              {
+                id: "log-output-1",
+                alwaysOnSessionId: "always-1",
+                loopId: "loop-1",
+                kind: "artifact",
+                title: "Created checklist.md",
+                details: "path: /tmp/checklist.md",
+                outcome: "created /tmp/checklist.md",
+                timestamp: now - 500,
+              },
+            ],
             findings: [
               {
                 severity: "critical",
@@ -619,7 +632,9 @@ describe("agent progress response history", () => {
     expect(text).toContain("Wasteful")
     expect(text).toContain("High log-only risk")
     expect(text).toContain("Log-only risk")
-    expect(text).toContain("Verified outcomes")
+    expect(text).toContain("Outputs")
+    expect(text).toContain("Recent outputs")
+    expect(text).toContain("Created checklist.md")
     expect(text).toContain("No verified outcomes in log")
     expect(text).toContain("Progress log")
     expect(text).toContain("Log")
