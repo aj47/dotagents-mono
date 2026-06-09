@@ -167,7 +167,7 @@ function findToolRow(tree: any, toolName: string) {
 
 async function loadAgentProgress(
   runtime: ReturnType<typeof createHookRuntime>,
-  options?: { ttsEnabled?: boolean; ttsAutoPlay?: boolean; alwaysOnSessions?: any[] },
+  options?: { ttsEnabled?: boolean; ttsAutoPlay?: boolean; alwaysOnSessions?: any[]; alwaysOnLog?: any },
 ) {
   vi.resetModules()
   const captured = { tileFollowUpInputProps: null as any }
@@ -199,6 +199,7 @@ async function loadAgentProgress(
     tipcClient: new Proxy({
       generateSpeech: vi.fn(),
       getAlwaysOnSessions: vi.fn().mockResolvedValue(options?.alwaysOnSessions ?? []),
+      getAlwaysOnSessionLog: vi.fn().mockResolvedValue(options?.alwaysOnLog ?? { success: true, entries: [], logCount: 0 }),
       openAlwaysOnSessionLog: vi.fn().mockResolvedValue({ success: true }),
       setPanelFocusable: vi.fn(),
       claimTTSPlaybackKeys: vi.fn().mockResolvedValue({ claimed: true }),
@@ -275,7 +276,11 @@ async function loadAgentProgress(
   }))
   vi.doMock("@tanstack/react-query", () => ({
     useQuery: vi.fn((queryOptions: any) => ({
-      data: queryOptions?.enabled ? options?.alwaysOnSessions ?? [] : undefined,
+      data: queryOptions?.enabled
+        ? queryOptions?.queryKey?.[0] === "always-on-session-log"
+          ? options?.alwaysOnLog ?? { success: true, entries: [], logCount: 0 }
+          : options?.alwaysOnSessions ?? []
+        : undefined,
       isLoading: false,
       refetch: vi.fn(),
     })),
@@ -525,6 +530,31 @@ describe("agent progress response history", () => {
           questions: [],
         },
       ],
+      alwaysOnLog: {
+        success: true,
+        logPath: "/tmp/attempts.jsonl",
+        logCount: 2,
+        entries: [
+          {
+            id: "log-1",
+            alwaysOnSessionId: "always-1",
+            loopId: "loop-1",
+            kind: "attempt",
+            title: "Inspect workspace artifacts",
+            details: "Searched the expected output directory.",
+            timestamp: now - 2_000,
+          },
+          {
+            id: "log-2",
+            alwaysOnSessionId: "always-1",
+            loopId: "loop-1",
+            kind: "blocker",
+            title: "No source artifact found",
+            outcome: "Queued a question and switched branches.",
+            timestamp: now - 1_000,
+          },
+        ],
+      },
     })
     const progress = {
       sessionId: "session-always-on-progress",
@@ -551,13 +581,14 @@ describe("agent progress response history", () => {
       ],
     }
 
-    const tree = runtime.render(AgentProgress, { progress })
+    let tree = runtime.render(AgentProgress, { progress })
     const text = getTextContent(tree)
 
     expect(text).toContain("Now")
     expect(text).toContain("Latest")
     expect(text).toContain("Step 20 / 25")
     expect(text).toContain("Progress log")
+    expect(text).toContain("Log")
     expect(text).toContain("Inspect workspace artifacts")
     expect(text).toContain("No source artifact found")
     expect(text).toContain("Queued a question and switched branches.")
@@ -566,6 +597,22 @@ describe("agent progress response history", () => {
     expect(text).toContain("I inspected the log and found the next concrete task.")
     expect(text).not.toContain("You are running as an always-on DotAgents session")
     expect(text).not.toContain("Operational constraints")
+
+    const logTab = findAll(
+      tree,
+      (value) => value?.type === "button" && getTextContent(value).includes("Log"),
+    )[0]
+    expect(logTab).toBeTruthy()
+    logTab.props.onClick({ preventDefault: vi.fn(), stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress })
+    const logText = getTextContent(tree)
+
+    expect(logText).toContain("Full progress log")
+    expect(logText).toContain("Raw file")
+    expect(logText).toContain("All kinds")
+    expect(logText).toContain("No source artifact found")
+    expect(logText).toContain("Inspect workspace artifacts")
+    expect(findAll(tree, (value) => value?.type === "input" && value.props?.placeholder === "Search log")).toHaveLength(1)
   })
 
   it("treats provider streaming thinking preambles as the same compact status", async () => {

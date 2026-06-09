@@ -417,6 +417,12 @@ class AlwaysOnSessionService {
     return this.readRecentLogEntries(record, limit)
   }
 
+  getLogEntries(alwaysOnSessionId: string): AlwaysOnLogEntry[] {
+    const record = this.findRecord(alwaysOnSessionId)
+    if (!record) return []
+    return this.readRecentLogEntries(record, Number.MAX_SAFE_INTEGER)
+  }
+
   recordRuntimeSession(loopId: string, runtimeSessionId: string, conversationId: string): void {
     const record = this.findRecordByLoopId(loopId)
     if (!record) return

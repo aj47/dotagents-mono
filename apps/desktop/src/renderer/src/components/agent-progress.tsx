@@ -849,6 +849,20 @@ function formatAlwaysOnLogTime(timestamp: number, now: number): string {
   return `${Math.floor(hours / 24)}d`
 }
 
+const ALWAYS_ON_LOG_KIND_FILTERS: Array<"all" | AlwaysOnLogEntryKind> = [
+  "all",
+  "attempt",
+  "blocker",
+  "question",
+  "answer",
+  "branch",
+  "run_started",
+  "run_completed",
+  "pause",
+  "resume",
+  "error",
+]
+
 function shouldAutoPlayTTSForVariant(
   _variant: "default" | "overlay" | "tile",
   isSnoozed: boolean,
@@ -3816,8 +3830,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   // Expansion state management - preserve across re-renders
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
 
-  // Tab state for Chat/Summary view toggle (only relevant when dual-model is enabled)
-  const [activeTab, setActiveTab] = useState<"chat" | "summary">("chat")
+  // Tab state for Chat/Log/Summary view toggle.
+  const [activeTab, setActiveTab] = useState<"chat" | "log" | "summary">("chat")
+  const [alwaysOnLogSearch, setAlwaysOnLogSearch] = useState("")
+  const [alwaysOnLogKindFilter, setAlwaysOnLogKindFilter] = useState<"all" | AlwaysOnLogEntryKind>("all")
   const [selectedDelegationRunId, setSelectedDelegationRunId] = useState<string | null>(null)
   const [isDelegationSummaryCollapsed, setIsDelegationSummaryCollapsed] = useState(false)
 
@@ -4105,6 +4121,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     if (!isAlwaysOnSession) return undefined
     const unlisten = rendererHandlers.alwaysOnSessionsChanged.listen(() => {
       void queryClient.invalidateQueries({ queryKey: ["always-on-sessions"] })
+      void queryClient.invalidateQueries({ queryKey: ["always-on-session-log"] })
     })
     return unlisten
   }, [isAlwaysOnSession])
@@ -4118,11 +4135,53 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     ) ?? (sessions.length === 1 ? sessions[0] : undefined)
   }, [alwaysOnSessionsQuery.data, isAlwaysOnSession, progress.conversationId, progress.sessionId])
 
+  useEffect(() => {
+    if (!isAlwaysOnSession && activeTab === "log") {
+      setActiveTab("chat")
+    }
+  }, [activeTab, isAlwaysOnSession])
+
   const alwaysOnRecentLogEntries = useMemo(() => (
     (alwaysOnSummary?.recentLogEntries ?? [])
       .slice(-8)
       .reverse()
   ), [alwaysOnSummary?.recentLogEntries])
+
+  const alwaysOnFullLogQuery = useQuery<{
+    success: boolean
+    entries: AlwaysOnLogEntry[]
+    logPath?: string
+    logCount: number
+    error?: string
+  }>({
+    queryKey: ["always-on-session-log", alwaysOnSummary?.id],
+    queryFn: async () => await tipcClient.getAlwaysOnSessionLog({ alwaysOnSessionId: alwaysOnSummary!.id }),
+    enabled: isAlwaysOnSession && activeTab === "log" && !!alwaysOnSummary?.id,
+    refetchInterval: isAlwaysOnSession && activeTab === "log" && !isComplete ? 2000 : false,
+  })
+
+  const alwaysOnFullLogEntries = useMemo(() => {
+    const entries = alwaysOnFullLogQuery.data?.success === false
+      ? []
+      : alwaysOnFullLogQuery.data?.entries ?? []
+    const search = alwaysOnLogSearch.trim().toLowerCase()
+
+    return entries
+      .filter((entry) => alwaysOnLogKindFilter === "all" || entry.kind === alwaysOnLogKindFilter)
+      .filter((entry) => {
+        if (!search) return true
+        return [
+          entry.title,
+          entry.details,
+          entry.outcome,
+          entry.kind,
+          entry.runtimeSessionId,
+          entry.conversationId,
+        ].some((value) => value?.toLowerCase().includes(search))
+      })
+      .slice()
+      .reverse()
+  }, [alwaysOnFullLogQuery.data, alwaysOnLogKindFilter, alwaysOnLogSearch])
 
   const hiddenAlwaysOnPromptCount = useMemo(() => (
     isAlwaysOnSession
@@ -5357,11 +5416,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             className="h-6 shrink-0 rounded-md px-2 text-[11px]"
             onClick={(event) => {
               event.stopPropagation()
-              void handleOpenAlwaysOnMainLog()
+              setActiveTab("log")
             }}
             disabled={!alwaysOnSummary?.id}
-            title="Open full append-only log"
-            aria-label="Open full always-on log"
+            title="View full append-only log"
+            aria-label="View full always-on log"
           >
             Full log
           </Button>
@@ -5397,6 +5456,181 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             )
           })}
         </div>
+      </div>
+    )
+  }
+
+  const renderAlwaysOnFullLogView = (compact = false) => {
+    if (!isAlwaysOnSession) return null
+
+    const totalCount = alwaysOnFullLogQuery.data?.logCount ?? alwaysOnSummary?.logCount ?? alwaysOnFullLogEntries.length
+    const hasEntries = alwaysOnFullLogEntries.length > 0
+    const errorMessage = alwaysOnFullLogQuery.data?.success === false ? alwaysOnFullLogQuery.data.error : undefined
+
+    return (
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
+        <div className={cn(
+          "flex flex-wrap items-center gap-2 border-b border-border/45 bg-muted/10",
+          compact ? "px-2.5 py-2" : "px-3 py-2.5",
+        )}>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate text-sm font-semibold text-foreground">Full progress log</span>
+            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+              {alwaysOnFullLogEntries.length}/{totalCount}
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 shrink-0 rounded-md px-2 text-xs"
+            onClick={(event) => {
+              event.stopPropagation()
+              void handleOpenAlwaysOnMainLog()
+            }}
+            disabled={!alwaysOnSummary?.id}
+            title="Open raw append-only JSONL file"
+            aria-label="Open raw always-on log file"
+          >
+            Raw file
+          </Button>
+        </div>
+        <div className={cn(
+          "grid gap-2 border-b border-border/45 bg-background/95",
+          compact ? "grid-cols-1 px-2.5 py-2" : "grid-cols-[minmax(0,1fr)_180px] px-3 py-2.5",
+        )}>
+          <input
+            value={alwaysOnLogSearch}
+            onChange={(event) => setAlwaysOnLogSearch(event.target.value)}
+            className="h-8 min-w-0 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:border-ring"
+            placeholder="Search log"
+            aria-label="Search always-on log"
+          />
+          <select
+            value={alwaysOnLogKindFilter}
+            onChange={(event) => setAlwaysOnLogKindFilter(event.target.value as "all" | AlwaysOnLogEntryKind)}
+            className="h-8 min-w-0 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus-visible:border-ring"
+            aria-label="Filter always-on log by kind"
+          >
+            {ALWAYS_ON_LOG_KIND_FILTERS.map((kind) => (
+              <option key={kind} value={kind}>
+                {kind === "all" ? "All kinds" : formatAlwaysOnLogKind(kind)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={cn("min-h-0 flex-1 overflow-y-auto", compact ? "p-2.5" : "p-3")}>
+          {alwaysOnFullLogQuery.isLoading ? (
+            <div className="flex h-full min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading log
+            </div>
+          ) : errorMessage ? (
+            <div className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+              {errorMessage}
+            </div>
+          ) : hasEntries ? (
+            <div className="space-y-2">
+              {alwaysOnFullLogEntries.map((entry) => {
+                const details = getAlwaysOnLogDetails(entry)
+                return (
+                  <div key={entry.id} className="min-w-0 rounded-md border border-border/55 bg-muted/10 px-2.5 py-2">
+                    <div className="flex min-w-0 items-center gap-2 text-sm leading-snug">
+                      <span className={cn(
+                        "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal",
+                        getAlwaysOnLogKindClassName(entry.kind),
+                      )}>
+                        {formatAlwaysOnLogKind(entry.kind)}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate font-semibold text-foreground" title={entry.title}>
+                        {entry.title}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-[11px] text-muted-foreground">
+                        {formatAlwaysOnLogTime(entry.timestamp, turnNow)}
+                      </span>
+                    </div>
+                    {details && (
+                      <div className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+                        {details}
+                      </div>
+                    )}
+                    {(entry.runtimeSessionId || entry.conversationId || typeof entry.runId === "number") && (
+                      <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
+                        {typeof entry.runId === "number" && <span className="rounded bg-muted px-1.5 py-0.5">run {entry.runId}</span>}
+                        {entry.runtimeSessionId && <span className="rounded bg-muted px-1.5 py-0.5">{entry.runtimeSessionId}</span>}
+                        {entry.conversationId && <span className="rounded bg-muted px-1.5 py-0.5">{entry.conversationId}</span>}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="flex h-full min-h-32 items-center justify-center text-sm text-muted-foreground">
+              No log entries match
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const renderProgressTabs = () => {
+    const showSummaryTab = (progress.stepSummaries?.length ?? 0) > 0
+    if (!isAlwaysOnSession && !showSummaryTab) return null
+
+    return (
+      <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
+          className={cn(
+            "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+            activeTab === "chat"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          <MessageSquare className="h-3 w-3" />
+          <span className="truncate">Chat</span>
+        </button>
+        {isAlwaysOnSession && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("log"); }}
+            className={cn(
+              "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+              activeTab === "log"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <ListChecks className="h-3 w-3" />
+            <span className="truncate">Log</span>
+            <Badge variant="secondary" className="ml-1 h-4 shrink-0 px-1 py-0 text-[10px]">
+              {alwaysOnSummary?.logCount ?? alwaysOnRecentLogEntries.length}
+            </Badge>
+          </button>
+        )}
+        {showSummaryTab && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("summary"); }}
+            className={cn(
+              "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+              activeTab === "summary"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            <Brain className="h-3 w-3" />
+            <span className="truncate">Summary</span>
+            <Badge variant="secondary" className="ml-1 h-4 shrink-0 px-1 py-0 text-[10px]">
+              {progress.stepSummaries?.length ?? 0}
+            </Badge>
+          </button>
+        )}
       </div>
     )
   }
@@ -5527,45 +5761,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         {!isCollapsed && (
           <>
             {renderAlwaysOnStatusBand(true)}
-            {renderAlwaysOnLogPanel(true)}
+            {activeTab === "chat" && renderAlwaysOnLogPanel(true)}
+            {renderProgressTabs()}
 
-            {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
-            {(progress.stepSummaries?.length ?? 0) > 0 && (
-              <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
-                  className={cn(
-                    "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-                    activeTab === "chat"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <MessageSquare className="h-3 w-3" />
-                  <span className="truncate">Chat</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("summary"); }}
-                  className={cn(
-                    "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-                    activeTab === "summary"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Brain className="h-3 w-3" />
-                  <span className="truncate">Summary</span>
-                  <Badge variant="secondary" className="ml-1 h-4 shrink-0 px-1 py-0 text-[10px]">
-                    {progress.stepSummaries?.length ?? 0}
-                  </Badge>
-                </button>
-              </div>
-            )}
+            {activeTab === "log" && renderAlwaysOnFullLogView(true)}
 
             {/* Message Stream (Chat Tab) */}
-            <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")} onClick={(e) => e.stopPropagation()}>
+            <div className={cn("relative flex-1 min-h-0 flex flex-col", activeTab !== "chat" && "hidden")} onClick={(e) => e.stopPropagation()}>
               <DelegationSummaryStrip
                 entries={delegationSummaryEntries}
                 maxItems={delegationSummaryMaxItems}
@@ -5999,45 +6201,13 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       </div>
 
       {renderAlwaysOnStatusBand(false)}
-      {renderAlwaysOnLogPanel(false)}
+      {activeTab === "chat" && renderAlwaysOnLogPanel(false)}
+      {renderProgressTabs()}
 
-      {/* Tab toggle for Chat/Summary view - only show when summaries exist */}
-      {(progress.stepSummaries?.length ?? 0) > 0 && (
-        <div className="flex flex-wrap items-center gap-1 border-b border-border/30 bg-muted/5 px-2.5 py-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("chat"); }}
-            className={cn(
-              "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-              activeTab === "chat"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <MessageSquare className="h-3 w-3" />
-            <span className="truncate">Chat</span>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab("summary"); }}
-            className={cn(
-              "inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-              activeTab === "summary"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Brain className="h-3 w-3" />
-            <span className="truncate">Summary</span>
-            <Badge variant="secondary" className="ml-1 h-4 shrink-0 px-1 py-0 text-[10px]">
-              {progress.stepSummaries?.length ?? 0}
-            </Badge>
-          </button>
-        </div>
-      )}
+      {activeTab === "log" && renderAlwaysOnFullLogView(false)}
 
       {/* Message Stream - Left-aligned content (Chat Tab) */}
-      <div className={cn("relative flex min-h-0 flex-1 flex-col", activeTab !== "chat" && (progress.stepSummaries?.length ?? 0) > 0 && "hidden")}>
+      <div className={cn("relative flex min-h-0 flex-1 flex-col", activeTab !== "chat" && "hidden")}>
         <DelegationSummaryStrip
           entries={delegationSummaryEntries}
           maxItems={delegationSummaryMaxItems}

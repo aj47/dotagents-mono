@@ -6070,6 +6070,22 @@ export const router = {
       return revealFileInFolder(summary.logPath)
     }),
 
+  getAlwaysOnSessionLog: t.procedure
+    .input<{ alwaysOnSessionId: string }>()
+    .action(async ({ input }) => {
+      const summary = getAlwaysOnSessionSummaries().find((session) => session.id === input.alwaysOnSessionId)
+      if (!summary) {
+        return { success: false, error: "Always-on session not found", entries: [], logPath: undefined, logCount: 0 }
+      }
+      const entries = alwaysOnSessionService.getLogEntries(input.alwaysOnSessionId)
+      return {
+        success: true,
+        entries,
+        logPath: summary.logPath,
+        logCount: summary.logCount,
+      }
+    }),
+
   dismissAlwaysOnQuestion: t.procedure
     .input<{ alwaysOnSessionId: string; questionId: string }>()
     .action(async ({ input }) => {
