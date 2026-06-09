@@ -325,6 +325,7 @@ function AlwaysOnQuestionAnswer({
 }) {
   const [customAnswer, setCustomAnswer] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const contextText = getAlwaysOnQuestionContext(question, recentWorkEntries)
   const customPlaceholder = getAlwaysOnQuestionCustomPlaceholder(question)
 
@@ -356,69 +357,84 @@ function AlwaysOnQuestionAnswer({
 
   return (
     <div className="mt-2 rounded-md border border-amber-500/25 bg-amber-500/10 p-2">
-      <div className="flex min-w-0 items-start gap-1.5 text-[11px] font-medium leading-snug text-foreground">
+      <button
+        type="button"
+        className="flex w-full min-w-0 items-start gap-1.5 text-left text-[11px] font-medium leading-snug text-foreground"
+        onClick={() => setIsExpanded((value) => !value)}
+        aria-expanded={isExpanded}
+        title={isExpanded ? "Collapse question" : "Expand question"}
+      >
         <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-300" />
-        <span className="min-w-0 flex-1">{question.prompt}</span>
-      </div>
-      {contextText && (
-        <div className="mt-1.5 rounded border border-amber-500/15 bg-background/60 px-2 py-1.5 text-[10px] leading-snug text-muted-foreground">
-          <div className="mb-0.5 font-medium uppercase tracking-normal text-amber-700 dark:text-amber-300">Context</div>
-          <div className="line-clamp-4 break-words">{contextText}</div>
-        </div>
-      )}
-      {question.recommendation && (
-        <div className="mt-1.5 rounded border border-blue-500/15 bg-blue-500/10 px-2 py-1.5 text-[10px] leading-snug text-blue-800 dark:text-blue-200">
-          <span className="font-medium">Recommendation: </span>
-          {question.recommendation}
-        </div>
-      )}
-      <div className="mt-2 flex flex-col gap-1.5">
-        {question.choices.map((choice) => (
-          <Button
-            key={choice.id}
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-auto min-h-9 max-w-full justify-start rounded-md px-2 py-1.5 text-left text-[11px]"
-            disabled={isSubmitting}
-            onClick={() => void submitAnswer(choice.label, choice.id)}
-            title={choice.description || choice.label}
-            aria-label={`Answer ${choice.label}`}
-          >
-            <span className="flex min-w-0 flex-col gap-0.5 whitespace-normal leading-snug">
-              <span className="font-medium text-foreground">{choice.label}</span>
-              {choice.description && (
-                <span className="text-[10px] font-normal text-muted-foreground">{choice.description}</span>
-              )}
-            </span>
-          </Button>
-        ))}
-      </div>
-      {question.allowCustom && (
-        <form
-          className="mt-2 flex min-w-0 items-center gap-1.5"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void submitAnswer(customAnswer)
-          }}
-        >
-          <Input
-            value={customAnswer}
-            onChange={(event) => setCustomAnswer(event.target.value)}
-            className="h-7 min-w-0 flex-1 rounded-md px-2 text-[11px]"
-            placeholder={customPlaceholder}
-            disabled={isSubmitting}
-          />
-          <Button
-            type="submit"
-            variant="secondary"
-            size="sm"
-            className="h-7 shrink-0 rounded-md px-2 text-[11px]"
-            disabled={isSubmitting || !customAnswer.trim()}
-          >
-            Send
-          </Button>
-        </form>
+        <span className="min-w-0 flex-1 line-clamp-2">{question.prompt}</span>
+        {isExpanded ? (
+          <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        )}
+      </button>
+      {isExpanded && (
+        <>
+          {contextText && (
+            <div className="mt-1.5 rounded border border-amber-500/15 bg-background/60 px-2 py-1.5 text-[10px] leading-snug text-muted-foreground">
+              <div className="mb-0.5 font-medium uppercase tracking-normal text-amber-700 dark:text-amber-300">Context</div>
+              <div className="line-clamp-4 break-words">{contextText}</div>
+            </div>
+          )}
+          {question.recommendation && (
+            <div className="mt-1.5 rounded border border-blue-500/15 bg-blue-500/10 px-2 py-1.5 text-[10px] leading-snug text-blue-800 dark:text-blue-200">
+              <span className="font-medium">Recommendation: </span>
+              {question.recommendation}
+            </div>
+          )}
+          <div className="mt-2 flex flex-col gap-1.5">
+            {question.choices.map((choice) => (
+              <Button
+                key={choice.id}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-auto min-h-9 max-w-full justify-start rounded-md px-2 py-1.5 text-left text-[11px]"
+                disabled={isSubmitting}
+                onClick={() => void submitAnswer(choice.label, choice.id)}
+                title={choice.description || choice.label}
+                aria-label={`Answer ${choice.label}`}
+              >
+                <span className="flex min-w-0 flex-col gap-0.5 whitespace-normal leading-snug">
+                  <span className="font-medium text-foreground">{choice.label}</span>
+                  {choice.description && (
+                    <span className="text-[10px] font-normal text-muted-foreground">{choice.description}</span>
+                  )}
+                </span>
+              </Button>
+            ))}
+          </div>
+          {question.allowCustom && (
+            <form
+              className="mt-2 flex min-w-0 items-center gap-1.5"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void submitAnswer(customAnswer)
+              }}
+            >
+              <Input
+                value={customAnswer}
+                onChange={(event) => setCustomAnswer(event.target.value)}
+                className="h-7 min-w-0 flex-1 rounded-md px-2 text-[11px]"
+                placeholder={customPlaceholder}
+                disabled={isSubmitting}
+              />
+              <Button
+                type="submit"
+                variant="secondary"
+                size="sm"
+                className="h-7 shrink-0 rounded-md px-2 text-[11px]"
+                disabled={isSubmitting || !customAnswer.trim()}
+              >
+                Send
+              </Button>
+            </form>
+          )}
+        </>
       )}
     </div>
   )

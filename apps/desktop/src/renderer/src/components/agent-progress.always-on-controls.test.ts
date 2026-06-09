@@ -22,4 +22,14 @@ describe("agent progress always-on controls", () => {
     expect(agentProgressSource).toContain("tipcClient.answerAlwaysOnQuestion")
     expect(agentProgressSource).toContain("Name the next workstream or exact defect")
   })
+
+  it("keeps always-on sections collapsible with logs expanded by default", () => {
+    expect(agentProgressSource).toContain("const [alwaysOnSectionCollapsed, setAlwaysOnSectionCollapsed] = useState")
+    expect(agentProgressSource).toContain("status: true")
+    expect(agentProgressSource).toContain("question: true")
+    expect(agentProgressSource).toContain("log: false")
+    expect(agentProgressSource).toContain("toggleAlwaysOnSection(\"question\")")
+    expect(agentProgressSource).toContain("toggleAlwaysOnSection(\"log\")")
+    expect(agentProgressSource).toContain("Collapse action log")
+  })
 })
