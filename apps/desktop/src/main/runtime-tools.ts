@@ -77,7 +77,14 @@ const VALIDATION_OR_DEPENDENCY_COMMAND_REGEX = /\b(test|tests|vitest|jest|playwr
 const POSIX_WORKSPACE_PATH_REGEX = /(?:\/Users|\/home)\/[^/\s'"`;|&()]+(?:\/[A-Za-z0-9._-]+)+/g
 const POSIX_HOME_PREFIX_REGEX = /^(\/Users\/[^/]+|\/home\/[^/]+)/
 const ALWAYS_ON_LOG_ONLY_ATTEMPT_LIMIT = 6
+const ALWAYS_ON_READY_GATE_LOG_LIMIT = 500
 const ALWAYS_ON_ARTIFACT_PATH_REGEX = /\b(created|wrote|saved|updated)\s*:?\s+[`"']?((?:\/[^\s"'`]+|[A-Za-z0-9._/-]+\.(?:md|txt|json|tsx?|jsx?|py|sh|ya?ml|html|css|mp4|mov|png|jpe?g|webm)))[`"']?/iu
+const ALWAYS_ON_READY_STATE_REGEX = /\b(?:operator[- ]ready|ready[- ]to[- ]record|ready for (?:recording|human action|operator|handoff)|status:\s*\*{0,2}ready|prep is complete|package is ready|record-now source of truth)\b/iu
+const ALWAYS_ON_PREP_ATTEMPT_REGEX = /\b(?:prep|prepare|polish|link|route|routing|pointer|discoverability|handoff|refresh|snapshot|checklist|packet|recording|filming|script|thumbnail|metadata|package|qc|audit|inspect|review|improve|patch|update|create|draft)\b/iu
+const ALWAYS_ON_DEFECT_FIX_ACTION_REGEX = /\b(?:fix|repair|correct|resolve)\b/iu
+const ALWAYS_ON_DEFECT_SIGNAL_REGEX = /\b(?:bug|error|failed|failure|broken|defect|issue|mismatch|duplicate|missing|invalid|awkward|formatting|unsafe|stale|regression|qc found|verified defect|marker not found)\b/iu
+const ALWAYS_ON_EXPLICIT_DEFECT_REGEX = /\b(?:bug|error|failed|failure|broken|regression|qc found|verified defect|concrete defect|specific defect|marker not found)\b/iu
+const ALWAYS_ON_BRANCH_SWITCH_REGEX = /\b(?:switch(?:ing)? (?:away|branches?|to a different)|different (?:branch|project|workstream)|new (?:branch|project|workstream)|other independent work|move to another)\b/iu
 
 async function detectPreferredPackageManager(startDir: string): Promise<PreferredPackageManager | null> {
   let currentDir = path.resolve(startDir)
@@ -236,6 +243,56 @@ function extractAlwaysOnArtifact(...values: Array<string | undefined>): { verb: 
 
 function looksLikeAlwaysOnArtifactLog(title: string, details?: string, outcome?: string): boolean {
   return ALWAYS_ON_ARTIFACT_PATH_REGEX.test(`${title}\n${details ?? ""}\n${outcome ?? ""}`)
+}
+
+function getAlwaysOnEntryText(entry: { title?: string; details?: string; outcome?: string }): string {
+  return `${entry.title ?? ""}\n${entry.details ?? ""}\n${entry.outcome ?? ""}`
+}
+
+function getAlwaysOnWorkstreamKeyFromText(value: string): string | undefined {
+  const contentCalendarMatch = value.match(/content-calendar\/([^/\s"'`]+)/iu)
+  if (contentCalendarMatch?.[1]) return `content-calendar:${contentCalendarMatch[1].toLowerCase()}`
+
+  const projectSlugMatch = value.match(/\b(\d{2}-[a-z0-9][a-z0-9._-]+(?:-[a-z0-9._-]+)*)\b/iu)
+  if (projectSlugMatch?.[1]) return `content-calendar:${projectSlugMatch[1].toLowerCase()}`
+
+  const normalized = value.toLowerCase()
+  if (/\bno xp waste\b/u.test(normalized)) return "content-calendar:02-247-agent-no-xp-waste"
+  if (/\b(?:0 to ironman|0-to-ironman|ironman episode|episode 1)\b/u.test(normalized)) return "content-calendar:01-0-to-ironman"
+
+  return undefined
+}
+
+function getAlwaysOnWorkstreamKey(entry: { title?: string; details?: string; outcome?: string }): string | undefined {
+  return getAlwaysOnWorkstreamKeyFromText(getAlwaysOnEntryText(entry))
+}
+
+function getAlwaysOnReadyWorkstream(entries: Array<{ title?: string; details?: string; outcome?: string }>, currentEntry: { title?: string; details?: string; outcome?: string }): { key: string; title?: string } | undefined {
+  const currentKey = getAlwaysOnWorkstreamKey(currentEntry)
+  if (!currentKey) return undefined
+
+  for (const entry of [...entries].reverse()) {
+    const text = getAlwaysOnEntryText(entry)
+    if (!ALWAYS_ON_READY_STATE_REGEX.test(text)) continue
+    const entryKey = getAlwaysOnWorkstreamKey(entry)
+    if (entryKey === currentKey) {
+      return { key: currentKey, title: entry.title }
+    }
+  }
+
+  return undefined
+}
+
+function isAlwaysOnPostReadyPrepAttempt(title: string, details?: string, outcome?: string): boolean {
+  const text = `${title}\n${details ?? ""}\n${outcome ?? ""}`
+  if (ALWAYS_ON_BRANCH_SWITCH_REGEX.test(text)) return false
+  if (
+    ALWAYS_ON_EXPLICIT_DEFECT_REGEX.test(text) ||
+    (ALWAYS_ON_DEFECT_FIX_ACTION_REGEX.test(text) && ALWAYS_ON_DEFECT_SIGNAL_REGEX.test(text))
+  ) {
+    return false
+  }
+  return ALWAYS_ON_PREP_ATTEMPT_REGEX.test(text)
 }
 
 function getAlwaysOnSummaryForRuntimeSession(trackedSessionId?: string, conversationId?: string) {
@@ -1060,6 +1117,7 @@ const toolHandlers: Record<string, ToolHandler> = {
 
     const normalizedTitle = normalizeAlwaysOnLogTitle(title)
     const recentLogEntries = alwaysOnSessionService.getRecentLogEntries(summary.id, 12)
+    const readyGateLogEntries = alwaysOnSessionService.getRecentLogEntries(summary.id, ALWAYS_ON_READY_GATE_LOG_LIMIT)
     const lastProcessEntry = getLastAlwaysOnProcessEntry(recentLogEntries)
     const recentSimilarCount = recentLogEntries
       .filter((recentEntry) =>
@@ -1075,6 +1133,32 @@ const toolHandlers: Record<string, ToolHandler> = {
         looksLikeAlwaysOnIntentOnlyAttempt(recentEntry.title, recentEntry.details),
       )
       .length
+
+    const readyWorkstream = kind === "attempt"
+      ? getAlwaysOnReadyWorkstream(readyGateLogEntries, { title, details, outcome })
+      : undefined
+    if (readyWorkstream && isAlwaysOnPostReadyPrepAttempt(title, details, outcome)) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            error: "Attempt log rejected because this workstream is already ready for human action. Do not continue prep, routing, linking, handoff refreshes, or polish for this workstream unless you are fixing a concrete verified defect.",
+            sessionStatus: summary.status,
+            pendingQuestionCount: summary.pendingQuestionCount,
+            readyWorkstream: readyWorkstream.key,
+            readyEntryTitle: readyWorkstream.title,
+            allowedNextActions: [
+              "Switch to a different project/workstream.",
+              "Ask the user whether to continue polishing this ready workstream.",
+              "Log a blocker if human action is now required.",
+              "Fix a specific QC defect and name that defect in the attempt title/details.",
+            ],
+          }, null, 2),
+        }],
+        isError: true,
+      }
+    }
 
     if (kind === "attempt" && !outcome?.trim() && lastProcessEntry && isAttemptWithoutOutcome(lastProcessEntry)) {
       return {

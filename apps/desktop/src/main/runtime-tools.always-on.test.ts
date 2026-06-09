@@ -146,6 +146,96 @@ describe("runtime-tools always-on helpers", () => {
     }), expect.any(Array))
   })
 
+  it("rejects post-ready prep attempts for the same workstream", async () => {
+    mocks.getRecentLogEntries.mockImplementation((_alwaysOnSessionId, limit) => {
+      if (limit > 12) {
+        return [{
+          id: "entry-ready",
+          alwaysOnSessionId: "always-1",
+          loopId: "loop-1",
+          runtimeSessionId: "session-1",
+          conversationId: "conv-1",
+          runId: 4,
+          kind: "artifact",
+          title: "Operator-ready marker created",
+          details: "Created `/Users/ajjoobandi/Documents/content-calendar/02-247-agent-no-xp-waste/OPERATOR-READY-TO-RECORD.md` with Status: ready for recording.",
+          timestamp: 10,
+        }]
+      }
+      return []
+    })
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("log_always_on_attempt", {
+      kind: "attempt",
+      title: "Refresh No XP Waste handoff pointers",
+      details: "Patch routing links in /Users/ajjoobandi/Documents/content-calendar/02-247-agent-no-xp-waste after the operator-ready package.",
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(true)
+    expect(payload).toEqual(expect.objectContaining({
+      success: false,
+      sessionStatus: "running",
+      readyWorkstream: "content-calendar:02-247-agent-no-xp-waste",
+      readyEntryTitle: "Operator-ready marker created",
+    }))
+    expect(payload.error).toContain("already ready")
+    expect(payload.allowedNextActions.join("\n")).toContain("Switch to a different project/workstream")
+    expect(mocks.appendLog).not.toHaveBeenCalled()
+  })
+
+  it("allows concrete defect fixes after a workstream is ready", async () => {
+    const entry = {
+      id: "entry-fix",
+      alwaysOnSessionId: "always-1",
+      loopId: "loop-1",
+      runtimeSessionId: "session-1",
+      conversationId: "conv-1",
+      runId: 4,
+      kind: "attempt",
+      title: "Fix No XP Waste duplicate links",
+      details: "QC found duplicate READY-TO-RECORD links in /Users/ajjoobandi/Documents/content-calendar/02-247-agent-no-xp-waste/README-NEXT.md.",
+      timestamp: 11,
+    }
+    mocks.appendLog.mockReturnValue(entry)
+    mocks.getRecentLogEntries.mockImplementation((_alwaysOnSessionId, limit) => {
+      if (limit > 12) {
+        return [{
+          id: "entry-ready",
+          alwaysOnSessionId: "always-1",
+          loopId: "loop-1",
+          runtimeSessionId: "session-1",
+          conversationId: "conv-1",
+          runId: 4,
+          kind: "artifact",
+          title: "Operator-ready marker created",
+          details: "Created `/Users/ajjoobandi/Documents/content-calendar/02-247-agent-no-xp-waste/OPERATOR-READY-TO-RECORD.md` with Status: ready for recording.",
+          timestamp: 10,
+        }]
+      }
+      return []
+    })
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("log_always_on_attempt", {
+      kind: "attempt",
+      title: "Fix No XP Waste duplicate links",
+      details: "QC found duplicate READY-TO-RECORD links in /Users/ajjoobandi/Documents/content-calendar/02-247-agent-no-xp-waste/README-NEXT.md.",
+    }, "session-1")
+
+    const payload = JSON.parse(String(result?.content[0]?.text))
+    expect(result?.isError).toBe(false)
+    expect(payload).toEqual(expect.objectContaining({
+      success: true,
+      sessionStatus: "running",
+    }))
+    expect(mocks.appendLog).toHaveBeenCalledWith(expect.objectContaining({
+      kind: "attempt",
+      title: "Fix No XP Waste duplicate links",
+    }), expect.any(Array))
+  })
+
   it("rejects consecutive attempt logs before appending another one", async () => {
     mocks.getRecentLogEntries.mockReturnValue(Array.from({ length: 6 }, (_, index) => ({
       id: `entry-old-${index}`,

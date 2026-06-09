@@ -666,6 +666,8 @@ class AlwaysOnSessionService {
       "- When you create or update a durable file, document, checklist, script, plan, code change, or other output, log it with kind=\"artifact\" and include the path or exact output location.",
       "- If you create or update files with shell commands, make the command print `created /absolute/path` or `updated /absolute/path` for each durable output so the UI can surface the work directly.",
       "- Do not add a duplicate evidence log after an artifact unless it records a distinct decision, verification result, or next branch.",
+      "- When a workstream has an operator-ready, ready-to-record, ready-for-handoff, or ready-for-human-action artifact, stop prepping that workstream. Switch to another workstream, ask the user, or only fix a concrete QC defect.",
+      "- Post-ready polish is not useful work: do not keep linking docs, refreshing handoffs, routing pointers, or doing extra QC unless a specific defect was found and named.",
       "- When you need user input, call ask_always_on_question with 2-3 choices. Keep allowCustom true unless custom answers would be unsafe.",
       "- Do not log questions manually; ask_always_on_question creates the durable question log entry.",
       "- After asking a question, continue with a different independent action. Do not wait idle for the answer.",
