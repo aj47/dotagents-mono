@@ -58,6 +58,7 @@ class LoopService {
   private activeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
   private loopNextRunAt: Map<string, number> = new Map()
   private executingLoops: Set<string> = new Set()
+  private pendingRescheduleAfterActive: Set<string> = new Set()
   private isStopping: boolean = false
   /** In-memory cache of all tasks (merged from global + workspace layers). */
   private loops: LoopConfig[] = []
@@ -409,6 +410,10 @@ class LoopService {
 
     if (this.executingLoops.has(loopId)) {
       logApp(`[LoopService] Skip execution for "${loop.name}" (${loopId}): already executing`)
+      if (options.rescheduleAfterRun && loop.enabled && isContinuousLoop(loop) && !this.isStopping) {
+        this.pendingRescheduleAfterActive.add(loopId)
+        logApp(`[LoopService] Queued continuous loop "${loop.name}" (${loopId}) to restart after active execution finishes`)
+      }
       return null
     }
 
@@ -599,8 +604,11 @@ class LoopService {
       return { loopId, conversationId, sessionId }
     } finally {
       this.executingLoops.delete(loopId)
+      const shouldRescheduleAfterRun =
+        options.rescheduleAfterRun || this.pendingRescheduleAfterActive.has(loopId)
+      this.pendingRescheduleAfterActive.delete(loopId)
 
-      if (options.rescheduleAfterRun && !this.isStopping) {
+      if (shouldRescheduleAfterRun && !this.isStopping) {
         const latestLoop = this.getLoop(loopId)
         if (latestLoop?.enabled) {
           this.scheduleNextRun(loopId, this.getNextDelayMs(latestLoop))

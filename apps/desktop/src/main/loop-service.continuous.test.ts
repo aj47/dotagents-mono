@@ -29,6 +29,16 @@ describe("continuous repeat tasks", () => {
     expect(executeLoopSection).toContain("Skip scheduled execution")
   })
 
+  it("queues continuous restarts when the previous execution is still unwinding", () => {
+    const executeLoopSection = getSection(loopServiceSource, "  private async executeLoop(", "  private scheduleNextRun(")
+
+    expect(executeLoopSection).toContain("this.pendingRescheduleAfterActive.add(loopId)")
+    expect(executeLoopSection).toContain("Queued continuous loop")
+    expect(executeLoopSection).toContain("options.rescheduleAfterRun && loop.enabled && isContinuousLoop(loop) && !this.isStopping")
+    expect(executeLoopSection).toContain("options.rescheduleAfterRun || this.pendingRescheduleAfterActive.has(loopId)")
+    expect(executeLoopSection).toContain("this.pendingRescheduleAfterActive.delete(loopId)")
+  })
+
   it("does not manually trigger paused always-on sessions", () => {
     const triggerLoopSection = getSection(loopServiceSource, "  async triggerLoop(", "  getLoopStatuses():")
 

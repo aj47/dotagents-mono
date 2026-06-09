@@ -6152,15 +6152,20 @@ export const router = {
       }
 
       stopAlwaysOnRuntimeSession(summary, loop, { clearQueue: true })
+      const preservedGoal = summary.goal
       const resetRecord = alwaysOnSessionService.resetSession(summary.id)
       if (!resetRecord) {
         return { success: false, error: "Always-on session not found" }
       }
 
       const restart = input.restart !== false
+      const resetGoal = resetRecord.goal ?? preservedGoal
+      if (resetGoal && !resetRecord.goal) {
+        alwaysOnSessionService.setGoal(summary.id, resetGoal)
+      }
       const updatedLoop: LoopConfig = {
         ...loop,
-        prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name, resetRecord.goal),
+        prompt: alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name, resetGoal),
         enabled: restart,
         runContinuously: true,
         continueInSession: true,

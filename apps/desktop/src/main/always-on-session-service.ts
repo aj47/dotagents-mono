@@ -72,6 +72,7 @@ type AskQuestionInput = {
 const STATE_PATH = join(dataFolder, "always-on-sessions.json")
 const LOG_DIR = join(dataFolder, "always-on-sessions")
 const DEFAULT_ALWAYS_ON_NAME = "Always-on session"
+const DEFAULT_ALWAYS_ON_GOAL = "make concrete useful progress without waiting for more instructions."
 const MAX_RECENT_QUESTIONS = 8
 const MAX_RECENT_LOG_ENTRIES = 8
 const MAX_AUDIT_LOG_ENTRIES = 1000
@@ -83,6 +84,13 @@ function createId(prefix: string): string {
 
 function sanitizeLogFileComponent(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]/g, "_")
+}
+
+function extractLoopPromptGoal(prompt?: string): string | undefined {
+  const match = prompt?.match(/^Current goal:\s*(.+)$/imu)
+  const goal = match?.[1]?.trim()
+  if (!goal || goal === DEFAULT_ALWAYS_ON_GOAL) return undefined
+  return goal
 }
 
 function normalizeChoiceId(value: string, index: number): string {
@@ -648,8 +656,21 @@ class AlwaysOnSessionService {
 
     const existing = this.findRecordByLoopId(loop.id)
     if (existing) {
+      let changed = false
       if (existing.name !== loop.name) {
         existing.name = loop.name
+        changed = true
+      }
+      const promptGoal = extractLoopPromptGoal(loop.prompt)
+      const promptHasGoalLine = /^Current goal:/imu.test(loop.prompt)
+      if (promptGoal && existing.goal !== promptGoal) {
+        existing.goal = promptGoal
+        changed = true
+      } else if (!promptGoal && promptHasGoalLine && existing.goal) {
+        delete existing.goal
+        changed = true
+      }
+      if (changed) {
         this.touch(existing)
         this.save()
       }
@@ -658,10 +679,12 @@ class AlwaysOnSessionService {
 
     const now = Date.now()
     const id = createId("always")
+    const promptGoal = extractLoopPromptGoal(loop.prompt)
     const record: AlwaysOnSessionRecord = {
       id,
       loopId: loop.id,
       name: loop.name || DEFAULT_ALWAYS_ON_NAME,
+      ...(promptGoal ? { goal: promptGoal } : {}),
       createdAt: now,
       updatedAt: now,
       currentSessionId: loop.lastSessionId,
@@ -680,7 +703,7 @@ class AlwaysOnSessionService {
       `# ${name}`,
       "",
       "You are running as an always-on DotAgents session. Continue useful work until the user pauses this session.",
-      cleanGoal ? `Current goal: ${cleanGoal}` : "Current goal: make concrete useful progress without waiting for more instructions.",
+      cleanGoal ? `Current goal: ${cleanGoal}` : `Current goal: ${DEFAULT_ALWAYS_ON_GOAL}`,
       "",
       "Operational rules:",
       "- Never stop only because one path is blocked. If blocked, log the blocker, ask a queued question if user input would help, then switch to another useful branch or task.",
@@ -750,15 +773,10 @@ class AlwaysOnSessionService {
   }
 
   getSummaries(loops: LoopConfig[], statuses: LoopStatusLike[] = []): AlwaysOnSessionSummary[] {
-    let createdMissingRecord = false
     for (const loop of loops) {
-      if (loop.alwaysOnSession && !this.findRecordByLoopId(loop.id)) {
+      if (loop.alwaysOnSession) {
         this.registerLoopIfMissing(loop)
-        createdMissingRecord = true
       }
-    }
-    if (createdMissingRecord) {
-      this.save()
     }
 
     const loopById = new Map(loops.map((loop) => [loop.id, loop] as const))
@@ -783,7 +801,7 @@ class AlwaysOnSessionService {
           id: record.id,
           loopId: record.loopId,
           name: loop?.name ?? record.name,
-          goal: record.goal,
+          goal: record.goal ?? extractLoopPromptGoal(loop?.prompt),
           status: summaryStatus,
           enabled,
           isRunning,

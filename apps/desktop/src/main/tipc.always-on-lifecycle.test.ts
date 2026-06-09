@@ -62,7 +62,10 @@ describe("tipc always-on lifecycle controls", () => {
     )
 
     expect(resetSection).toContain("stopAlwaysOnRuntimeSession(summary, loop, { clearQueue: true })")
+    expect(resetSection).toContain("const preservedGoal = summary.goal")
     expect(resetSection).toContain("alwaysOnSessionService.resetSession(summary.id)")
+    expect(resetSection).toContain("const resetGoal = resetRecord.goal ?? preservedGoal")
+    expect(resetSection).toContain("alwaysOnSessionService.buildLoopPrompt(summary.id, loop.name || summary.name, resetGoal)")
     expect(resetSection).toContain("lastSessionId: undefined")
     expect(resetSection).toContain("loopService.startLoop(updatedLoop.id)")
   })
