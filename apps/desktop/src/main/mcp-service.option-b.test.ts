@@ -8,6 +8,12 @@ const mockSaveCurrentMcpStateToProfile = vi.fn()
 const mockExecuteRuntimeTool = vi.fn(async (name: string) => ({ content: [{ type: "text", text: `ran ${name}` }], isError: false }))
 
 const runtimeTools = [
+  { name: "list_goals", description: "goals", inputSchema: {} },
+  { name: "create_goal", description: "goals", inputSchema: {} },
+  { name: "update_goal", description: "goals", inputSchema: {} },
+  { name: "list_decisions", description: "decisions", inputSchema: {} },
+  { name: "create_decision", description: "decisions", inputSchema: {} },
+  { name: "answer_decision", description: "decisions", inputSchema: {} },
   { name: "mark_work_complete", description: "essential", inputSchema: {} },
   { name: "execute_command", description: "command", inputSchema: {} },
   { name: "read_more_context", description: "context", inputSchema: {} },
@@ -26,7 +32,19 @@ vi.mock("./mcp-sampling", () => ({ requestSampling: vi.fn(), cancelAllSamplingRe
 vi.mock("./langfuse-service", () => ({ isTracingEnabled: vi.fn(() => false), createToolSpan: vi.fn(), endToolSpan: vi.fn(), getAgentTrace: vi.fn(() => null) }))
 vi.mock("./agent-profile-service", () => ({ agentProfileService: { getCurrentProfile: () => ({ id: "profile_1", toolConfig: { enabledRuntimeTools: currentProfileEnabledRuntimeTools } }), saveCurrentMcpStateToProfile: mockSaveCurrentMcpStateToProfile } }))
 vi.mock("./runtime-tools", () => ({ runtimeTools, isRuntimeTool: (n: string) => runtimeTools.some((tool) => tool.name === n), executeRuntimeTool: mockExecuteRuntimeTool }))
-vi.mock("./runtime-tool-definitions", () => ({ DEFAULT_AGENT_RUNTIME_TOOL_NAMES: ["execute_command", "read_more_context", "mark_work_complete"] }))
+vi.mock("./runtime-tool-definitions", () => ({
+  DEFAULT_AGENT_RUNTIME_TOOL_NAMES: [
+    "execute_command",
+    "read_more_context",
+    "mark_work_complete",
+    "list_goals",
+    "create_goal",
+    "update_goal",
+    "list_decisions",
+    "create_decision",
+    "answer_decision",
+  ],
+}))
 
 const flushPromises = async (): Promise<void> => {
   await Promise.resolve(); await Promise.resolve()
@@ -76,11 +94,18 @@ describe("MCPService Option B (runtime tool allowlist)", () => {
     mcpService.applyProfileMcpConfig(undefined, undefined, false, undefined, ["execute_command"])
 
     expect(mcpService.getAvailableTools().map((t) => t.name)).toEqual([
+      "list_goals",
+      "create_goal",
+      "update_goal",
+      "list_decisions",
+      "create_decision",
+      "answer_decision",
       "mark_work_complete",
       "execute_command",
     ])
 
     const detailed = mcpService.getDetailedToolList()
+    expect(detailed.find((t) => t.name === "create_goal")?.enabled).toBe(true)
     expect(detailed.find((t) => t.name === "mark_work_complete")?.enabled).toBe(true)
     expect(detailed.find((t) => t.name === "execute_command")?.enabled).toBe(true)
     expect(detailed.find((t) => t.name === "respond_to_user")?.enabled).toBe(false)
@@ -101,10 +126,16 @@ describe("MCPService Option B (runtime tool allowlist)", () => {
     expect(mockSaveCurrentMcpStateToProfile).toHaveBeenCalledTimes(1)
     const enabledRuntimeTools = mockSaveCurrentMcpStateToProfile.mock.calls[0][4] as string[]
     expect(enabledRuntimeTools.slice().sort()).toEqual([
+      "answer_decision",
+      "create_decision",
+      "create_goal",
       "execute_command",
+      "list_decisions",
+      "list_goals",
       "mark_work_complete",
       "read_more_context",
       "respond_to_user",
+      "update_goal",
     ])
   })
 

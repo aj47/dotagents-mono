@@ -30,6 +30,8 @@ Use `~/.agents/` by default. When `DOTAGENTS_WORKSPACE_DIR` is explicitly set, t
 - `~/.agents/agents/<id>/config.json` — nested per-agent config
 - `~/.agents/skills/<id>/skill.md` — skill definition and instructions
 - `~/.agents/tasks/<id>/task.md` — repeat task definition
+- `~/.agents/goals/<id>/goal.md` — structured goal definition
+- `~/.agents/decisions/<id>/decision.md` — structured decision queue item
 - `~/.agents/knowledge/<slug>/<slug>.md` — durable knowledge note
 
 ## Layering rules
@@ -37,7 +39,7 @@ Use `~/.agents/` by default. When `DOTAGENTS_WORKSPACE_DIR` is explicitly set, t
 - `~/.agents/` is the default layer for user-wide defaults
 - Use `${DOTAGENTS_WORKSPACE_DIR}/.agents/` for workspace-specific behavior only when `DOTAGENTS_WORKSPACE_DIR` is explicitly set
 - Config merge is shallow by key
-- Agents, skills, tasks, and knowledge notes merge by ID
+- Agents, skills, tasks, goals, decisions, and knowledge notes merge by ID
 - When a workspace file intentionally overrides a global file, edit the workspace copy
 
 ## Edit workflow
@@ -79,6 +81,14 @@ Edit `skills/<id>/skill.md`. Keep the frontmatter valid and update the markdown 
 ### Change a repeat task
 
 Edit `tasks/<id>/task.md`. Frontmatter defines the task metadata; the markdown body is the task prompt.
+
+### Change or create a goal
+
+Prefer the structured runtime tools `create_goal`, `update_goal`, and `list_goals` when available. If editing files directly, use `goals/<id>/goal.md`, not `knowledge/`. Goal frontmatter uses `kind: goal`, `id`, `title`, `description`, `level`, `priority`, `status`, `successCriteria`, `abandonIf`, timestamps, and provenance fields; the markdown body is long-form goal context.
+
+### Change or create a decision
+
+Prefer the structured runtime tools `create_decision`, `answer_decision`, and `list_decisions` when available. If editing files directly, use `decisions/<id>/decision.md`, not `knowledge/`. Create decisions only for irreversible, path-changing, or >3 effort-hour revert choices.
 
 ### Change durable knowledge
 

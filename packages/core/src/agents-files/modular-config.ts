@@ -34,10 +34,14 @@ export type AgentsLayerPaths = {
   agentsMdPath: string
   agentProfilesDir: string
   tasksDir: string
+  goalsDir: string
+  decisionsDir: string
 }
 
 export const AGENTS_AGENT_PROFILES_DIR = "agents"
 export const AGENTS_TASKS_DIR = "tasks"
+export const AGENTS_GOALS_DIR = "goals"
+export const AGENTS_DECISIONS_DIR = "decisions"
 
 export function getAgentsLayerPaths(agentsDir: string): AgentsLayerPaths {
   return {
@@ -52,6 +56,8 @@ export function getAgentsLayerPaths(agentsDir: string): AgentsLayerPaths {
     agentsMdPath: path.join(agentsDir, AGENTS_AGENTS_MD),
     agentProfilesDir: path.join(agentsDir, AGENTS_AGENT_PROFILES_DIR),
     tasksDir: path.join(agentsDir, AGENTS_TASKS_DIR),
+    goalsDir: path.join(agentsDir, AGENTS_GOALS_DIR),
+    decisionsDir: path.join(agentsDir, AGENTS_DECISIONS_DIR),
   }
 }
 

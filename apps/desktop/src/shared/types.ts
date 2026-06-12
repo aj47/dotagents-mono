@@ -1061,6 +1061,9 @@ export type LoopSchedule =
   | { type: "daily"; times: string[] }
   | { type: "weekly"; times: string[]; daysOfWeek: number[] }
 
+export type LoopType = "daily_planning" | "execution" | "recap" | "custom"
+export type LoopOutputType = "goals" | "tasks" | "decisions" | "summary"
+
 export interface LoopConfig {
   id: string               // unique identifier (uuid)
   name: string             // display name
@@ -1076,6 +1079,10 @@ export interface LoopConfig {
   runContinuously?: boolean // if true, starts the next run immediately after the previous run finishes
   maxIterations?: number   // optional per-task override for agent loop iterations
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
+  loopType?: LoopType
+  linkedGoalIds?: string[]
+  outputType?: LoopOutputType
+  tokenBudgetPerRun?: number
 }
 
 export interface SidebarSessionGroupConfig {

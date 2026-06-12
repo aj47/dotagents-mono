@@ -503,11 +503,6 @@ export const Component = () => {
       icon: Plug2,
     },
     {
-      text: "Knowledge",
-      href: "/knowledge",
-      icon: "i-mingcute-book-2-line",
-    },
-    {
       text: "Agents",
       href: "/settings/agents",
       icon: "i-mingcute-group-line",
@@ -540,6 +535,24 @@ export const Component = () => {
       text: "Repeat Tasks",
       href: "/settings/repeat-tasks",
       icon: "i-mingcute-refresh-3-line",
+    },
+  ]
+
+  const productNavLinks: NavLinkItem[] = [
+    {
+      text: "Goals",
+      href: "/goals",
+      icon: "i-mingcute-target-line",
+    },
+    {
+      text: "Decisions",
+      href: "/decisions",
+      icon: "i-mingcute-question-line",
+    },
+    {
+      text: "Knowledge",
+      href: "/knowledge",
+      icon: "i-mingcute-book-2-line",
     },
   ]
 
@@ -961,7 +974,7 @@ export const Component = () => {
 
               {/* Settings Section - collapsed quick navigation */}
               <div className="mt-2 grid gap-1">
-                {settingsNavLinks.map((link) => {
+                {[...productNavLinks, ...settingsNavLinks].map((link) => {
                   const isActive = isNavLinkActive(link.href)
                   const icon = typeof link.icon === "string"
                     ? <span className={cn(link.icon, "h-4 w-4")}></span>
@@ -1012,6 +1025,16 @@ export const Component = () => {
                 onClearInactiveSessions={isSessionsActive ? clearInactiveSessions : undefined}
                 inactiveSessionCount={0}
               />
+
+              <div className="shrink-0 px-2">
+                <div className="flex w-full items-center gap-1 rounded px-1.5 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="i-mingcute-compass-line h-3 w-3 shrink-0"></span>
+                  <span className="select-none">Workspace</span>
+                </div>
+                <div className="mt-1 grid gap-0.5 text-xs">
+                  {productNavLinks.map(renderNavLink)}
+                </div>
+              </div>
 
               {/* Settings Section - Collapsible, collapsed by default */}
               <div className="shrink-0 px-2">

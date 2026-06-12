@@ -1009,10 +1009,179 @@ export interface VerifyExternalAgentCommandResponse {
   warnings?: string[];
 }
 
+// Goals + Decisions
+export type GoalLevel = "goal" | "week" | "today";
+export type GoalStatus = "active" | "paused" | "done" | "abandoned";
+export type GoalCreatedBy = "aj" | "agent";
+export type GoalCreatedFrom = "manual" | "loop_daily_planning" | string;
+
+export interface Goal {
+  id: string;
+  title: string;
+  description: string;
+  level: GoalLevel;
+  priority: number;
+  status: GoalStatus;
+  body: string;
+  parentId?: string;
+  successCriteria?: string;
+  signalToWatch?: string;
+  abandonIf?: string;
+  createdAt: number;
+  updatedAt: number;
+  lastTouchedAt?: number;
+  createdBy: GoalCreatedBy;
+  createdFrom: GoalCreatedFrom;
+  provenance?: string;
+  linkedTaskIds: string[];
+  notes?: string;
+}
+
+export interface GoalsResponse {
+  goals: Goal[];
+}
+
+export interface GoalCreateRequest {
+  id?: string;
+  title: string;
+  description?: string;
+  level?: GoalLevel;
+  priority?: number;
+  status?: GoalStatus;
+  parentId?: string;
+  successCriteria?: string;
+  signalToWatch?: string;
+  abandonIf?: string;
+  createdBy?: GoalCreatedBy;
+  createdFrom?: GoalCreatedFrom;
+  provenance?: string;
+  linkedTaskIds?: string[];
+  notes?: string;
+  body?: string;
+}
+
+export interface GoalUpdateRequest extends Partial<Omit<GoalCreateRequest, "id">> {
+  id?: string;
+  lastTouchedAt?: number;
+}
+
+export type DecisionType = "yn" | "ab" | "ranked" | "edit" | "defer";
+export type DecisionStatus = "pending" | "answered" | "deferred" | "auto_resolved" | "canceled";
+export type DecisionAnswerSource = "aj" | "agent" | "timeout" | "system";
+
+export interface DecisionHistoryEntry {
+  at: number;
+  type: string;
+  by: DecisionAnswerSource;
+  note?: string;
+}
+
+export interface Decision {
+  id: string;
+  type: DecisionType;
+  status: DecisionStatus;
+  question: string;
+  recommendation?: string;
+  why?: string;
+  risk?: string;
+  goalId?: string;
+  taskId?: string;
+  createdAt: number;
+  updatedAt: number;
+  answeredAt?: number | null;
+  expiresAt?: number | null;
+  defaultAction?: string;
+  answer?: string | null;
+  answerSource?: DecisionAnswerSource | null;
+  urgent: boolean;
+  revertEffortHours: number;
+  pathChanging: boolean;
+  irreversible: boolean;
+  history: DecisionHistoryEntry[];
+  body: string;
+}
+
+export interface DecisionsResponse {
+  decisions: Decision[];
+}
+
+export interface DecisionCreateRequest {
+  id?: string;
+  type?: DecisionType;
+  status?: DecisionStatus;
+  question: string;
+  recommendation?: string;
+  why?: string;
+  risk?: string;
+  goalId?: string;
+  taskId?: string;
+  expiresAt?: number | null;
+  defaultAction?: string;
+  urgent?: boolean;
+  revertEffortHours?: number;
+  pathChanging?: boolean;
+  irreversible?: boolean;
+  body?: string;
+}
+
+export interface DecisionUpdateRequest extends Partial<Omit<DecisionCreateRequest, "id">> {
+  id?: string;
+  answer?: string | null;
+  answerSource?: DecisionAnswerSource | null;
+}
+
+export interface DecisionRespondRequest {
+  answer: string;
+  answerSource?: DecisionAnswerSource;
+}
+
+export type GoalProgressEventType =
+  | "goal_created"
+  | "goal_updated"
+  | "goal_status_changed"
+  | "goal_deleted"
+  | "goal_touched"
+  | "focus_selected"
+  | "decision_created"
+  | "decision_answered"
+  | "decision_deferred"
+  | "decision_canceled"
+  | "planner_run_started"
+  | "planner_run_completed"
+  | "planner_run_noop"
+  | "evidence_added"
+  | "criterion_completed";
+
+export type GoalProgressActor = "aj" | "agent" | "system";
+
+export interface GoalProgressEvent {
+  id: string;
+  type: GoalProgressEventType;
+  at: number;
+  actor: GoalProgressActor;
+  goalId?: string;
+  parentGoalId?: string;
+  decisionId?: string;
+  loopId?: string;
+  sessionId?: string;
+  conversationId?: string;
+  title: string;
+  summary?: string;
+  source?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GoalProgressEventsResponse {
+  events: GoalProgressEvent[];
+}
+
 // Agent Loops Types
 export type LoopSchedule =
   | { type: "daily"; times: string[] }
   | { type: "weekly"; times: string[]; daysOfWeek: number[] };
+
+export type LoopType = "daily_planning" | "execution" | "recap" | "custom";
+export type LoopOutputType = "goals" | "tasks" | "decisions" | "summary";
 
 export interface Loop {
   id: string;
@@ -1032,6 +1201,10 @@ export interface Loop {
   isRunning: boolean;
   nextRunAt?: number;
   schedule?: LoopSchedule;
+  loopType?: LoopType;
+  linkedGoalIds?: string[];
+  outputType?: LoopOutputType;
+  tokenBudgetPerRun?: number;
 }
 
 export interface LoopsResponse {

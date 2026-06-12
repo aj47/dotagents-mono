@@ -23,10 +23,12 @@ import { getAgentsLayerPaths } from "./agents-files/modular-config"
 import {
   getTasksDir,
   loadTasksLayer,
+  taskIdToFilePath,
   writeTaskFile,
   writeAllTaskFiles,
   deleteTaskFiles,
 } from "./agents-files/tasks"
+import { goalProgressService } from "./goal-progress-service"
 
 export interface LoopStatus {
   id: string
@@ -51,6 +53,49 @@ export interface LoopExecutionResult {
 
 export function isContinuousLoop(loop: Pick<LoopConfig, "runContinuously">): boolean {
   return loop.runContinuously === true
+}
+
+function isGoalSupervisorLoop(loop: Pick<LoopConfig, "loopType" | "outputType" | "runContinuously">): boolean {
+  return isContinuousLoop(loop) && (loop.loopType === "daily_planning" || loop.outputType === "goals")
+}
+
+const DAILY_GOAL_PLANNING_LOOP_ID = "daily-goal-planning"
+const GOAL_SUPERVISOR_DEFAULT_INTERVAL_MINUTES = 15
+
+const DAILY_GOAL_PLANNING_PROMPT = `# 24/7 Goal Agent
+
+You are running the DotAgents 24/7 goal supervisor.
+
+Use the structured runtime tools when available:
+
+1. Call list_goals with loopVisibleOnly=true.
+2. Call list_decisions with status="pending".
+3. Select 1-3 active goals that should become today's focus.
+4. If a concrete today-level focus goal is missing, call create_goal with:
+   - level: "today"
+   - createdBy is handled by the tool as agent
+   - parentId pointing at the parent goal/week goal
+   - successCriteria, abandonIf, and provenance
+5. Create at most one pending decision with create_decision only if blocked by a call that is irreversible, path-changing, or would take more than 3 effort-hours to revert.
+6. If the next action is reversible, act or record context instead of asking.
+
+Do not create vague goals. Do not change user-set priorities. End with a concise summary of the current focus, progress observed, and any decision created.`
+
+function buildDailyGoalPlanningLoop(): LoopConfig {
+  return {
+    id: DAILY_GOAL_PLANNING_LOOP_ID,
+    name: "24/7 Goal Agent",
+    prompt: DAILY_GOAL_PLANNING_PROMPT,
+    intervalMinutes: GOAL_SUPERVISOR_DEFAULT_INTERVAL_MINUTES,
+    enabled: false,
+    runOnStartup: false,
+    runContinuously: true,
+    continueInSession: true,
+    loopType: "daily_planning",
+    linkedGoalIds: [],
+    outputType: "goals",
+    tokenBudgetPerRun: 4000,
+  }
 }
 
 class LoopService {
@@ -95,6 +140,7 @@ class LoopService {
       for (const t of globalResult.tasks) mergedById.set(t.id, t)
       for (const t of workspaceTasks) mergedById.set(t.id, t) // workspace wins
       this.loops = Array.from(mergedById.values())
+      this.ensureDailyGoalPlanningTemplate()
       logApp(`[LoopService] Loaded ${this.loops.length} task(s) from .agents/tasks/`)
       return
     }
@@ -105,6 +151,7 @@ class LoopService {
       this.loops = [...legacyLoops]
       try {
         writeAllTaskFiles(globalLayer, legacyLoops, { onlyIfMissing: true, maxBackups: 10 })
+        this.ensureDailyGoalPlanningTemplate()
         logApp(`[LoopService] Migrated ${legacyLoops.length} task(s) from config.json to .agents/tasks/`)
       } catch (error) {
         logApp("[LoopService] Error migrating tasks to modular files:", error)
@@ -113,6 +160,26 @@ class LoopService {
     }
 
     this.loops = []
+    this.ensureDailyGoalPlanningTemplate()
+  }
+
+  private ensureDailyGoalPlanningTemplate(): void {
+    if (this.loops.some((loop) => loop.id === DAILY_GOAL_PLANNING_LOOP_ID)) return
+
+    const globalLayer = getAgentsLayerPaths(globalAgentsFolder)
+    const template = buildDailyGoalPlanningLoop()
+
+    try {
+      const filePath = taskIdToFilePath(globalLayer, DAILY_GOAL_PLANNING_LOOP_ID)
+      if (!fs.existsSync(filePath)) {
+        writeTaskFile(globalLayer, template, { maxBackups: 10 })
+      }
+      this.loops.push(template)
+      this.syncToConfigJson()
+      logApp("[LoopService] Seeded 24/7 Goal Agent repeat-task template")
+    } catch (error) {
+      logApp("[LoopService] Failed to seed 24/7 Goal Agent template:", error)
+    }
   }
 
   /** Persist a single task to the global .agents/tasks/ layer. */
@@ -407,6 +474,7 @@ class LoopService {
     this.clearScheduledTimer(loopId)
 
     logApp(`[LoopService] Executing loop "${loop.name}" (${loopId})`)
+    const goalEventCountBeforeRun = goalProgressService.countEvents()
     let conversationId: string | undefined
     let sessionId: string | undefined
 
@@ -500,6 +568,18 @@ class LoopService {
         logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
       }
 
+      if (loop.loopType === "daily_planning" || loop.outputType === "goals") {
+        goalProgressService.appendEvent({
+          type: "planner_run_started",
+          actor: "agent",
+          loopId,
+          sessionId,
+          conversationId,
+          title: `Started goal agent check: ${loop.name}`,
+          source: loop.id,
+        })
+      }
+
       if (loop.continueInSession) {
         const latest = this.getLoop(loopId)
         if (latest && latest.lastSessionId !== sessionId) {
@@ -510,6 +590,22 @@ class LoopService {
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
       await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
+      if (loop.loopType === "daily_planning" || loop.outputType === "goals") {
+        const eventCountAfterRun = goalProgressService.countEvents()
+        const madeGoalProgress = eventCountAfterRun > goalEventCountBeforeRun + 1
+        goalProgressService.appendEvent({
+          type: madeGoalProgress ? "planner_run_completed" : "planner_run_noop",
+          actor: "agent",
+          loopId,
+          sessionId,
+          conversationId,
+          title: madeGoalProgress ? `Goal agent recorded progress: ${loop.name}` : `Goal agent checked goals: ${loop.name}`,
+          summary: madeGoalProgress
+            ? "The goal agent recorded goal progress during this check."
+            : "No new goal, decision, or status change was needed.",
+          source: loop.id,
+        })
+      }
 
       // When `speakOnTrigger` is set, unsnooze the now-completed session and
       // show the panel so the renderer's TTS auto-play gate fires for the
@@ -586,6 +682,13 @@ class LoopService {
   }
 
   private getNextDelayMs(loop: LoopConfig, now: number = Date.now()): number {
+    if (isGoalSupervisorLoop(loop)) {
+      const intervalMinutes = Number.isFinite(loop.intervalMinutes) && loop.intervalMinutes > 0
+        ? loop.intervalMinutes
+        : GOAL_SUPERVISOR_DEFAULT_INTERVAL_MINUTES
+      return Math.max(60_000, intervalMinutes * 60_000)
+    }
+
     if (isContinuousLoop(loop)) {
       return 0
     }
