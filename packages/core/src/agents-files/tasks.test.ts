@@ -33,4 +33,38 @@ describe("agents-files/tasks", () => {
     expect(markdown).not.toContain("runContinuously")
     expect(parseTaskMarkdown(markdown)?.runContinuously).toBeUndefined()
   })
+
+  it("roundtrips goalOrchestrator in task frontmatter", () => {
+    const task: LoopConfig = {
+      id: "goal-orchestrator-task",
+      name: "Goal orchestrator",
+      prompt: "Run goal orchestrator",
+      intervalMinutes: 30,
+      enabled: true,
+      goalOrchestrator: true,
+    }
+
+    const markdown = stringifyTaskMarkdown(task)
+    expect(markdown).toContain("goalOrchestrator: true")
+
+    const parsed = parseTaskMarkdown(markdown)
+    expect(parsed?.goalOrchestrator).toBe(true)
+  })
+
+  it("roundtrips maxIterations in task frontmatter", () => {
+    const task: LoopConfig = {
+      id: "bounded-task",
+      name: "Bounded task",
+      prompt: "Run within a small iteration budget.",
+      intervalMinutes: 30,
+      enabled: true,
+      maxIterations: 4,
+    }
+
+    const markdown = stringifyTaskMarkdown(task)
+    expect(markdown).toContain("maxIterations: 4")
+
+    const parsed = parseTaskMarkdown(markdown)
+    expect(parsed?.maxIterations).toBe(4)
+  })
 })

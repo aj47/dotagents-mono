@@ -99,6 +99,7 @@ import { getAppSessionForAcpSession } from "./acp-session-state"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId, findBestModelMatch, refreshModelsDevCache } from "./models-dev-service"
 import * as parakeetStt from "./parakeet-stt"
 import { loopService } from "./loop-service"
+import { goalOrchestratorService } from "./goal-orchestrator-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
@@ -5833,6 +5834,83 @@ export const router = {
     .input<{ sessionId: string }>()
     .action(async ({ input }) => {
       return summarizationService.getImportantSummaries(input.sessionId)
+    }),
+
+  // Goal Orchestrator handlers
+  getGoalOrchestratorSnapshot: t.procedure.action(async () => {
+    return goalOrchestratorService.getSnapshot()
+  }),
+
+  createGoal: t.procedure
+    .input<{ title: string; notes?: string; status?: "active" | "inactive" | "done" }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.createGoal(input)
+    }),
+
+  updateGoalOrchestratorSettings: t.procedure
+    .input<{
+      maxGlobalRunningSessions?: number
+      maxRunningSessionsPerGoal?: number
+      maxSessionRuntimeMinutes?: number | null
+      maxIterationsPerSession?: number | null
+      maxSessionsPerWakeCycle?: number
+    }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.updateSettings(input)
+    }),
+
+  updateGoal: t.procedure
+    .input<{ goalId: string; title?: string; notes?: string; status?: "active" | "inactive" | "done" }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.updateGoal(input)
+    }),
+
+  createWorkItem: t.procedure
+    .input<{ goalId: string; title: string; notes?: string; status?: "ready" | "running" | "waiting" | "done" | "discarded" }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.createWorkItem(input)
+    }),
+
+  updateWorkItem: t.procedure
+    .input<{ workItemId: string; title?: string; notes?: string; status?: "ready" | "running" | "waiting" | "done" | "discarded" }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.updateWorkItem(input)
+    }),
+
+  createDecision: t.procedure
+    .input<{ goalId?: string; workItemId?: string; question: string }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.createDecision(input)
+    }),
+
+  answerDecision: t.procedure
+    .input<{ decisionId: string; answer: string }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.answerDecision(input)
+    }),
+
+  dismissDecision: t.procedure
+    .input<{ decisionId: string }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.dismissDecision(input)
+    }),
+
+  runGoalOrchestratorNow: t.procedure.action(async () => {
+    return goalOrchestratorService.runWakeCycle()
+  }),
+
+  startGoalWorkItem: t.procedure
+    .input<{ workItemId: string }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.startWorkItemAgentSession(input.workItemId, {
+        reason: "manual",
+      })
+    }),
+
+  killGoalAgentRun: t.procedure
+    .input<{ agentRunId: string; decisionQuestion?: string }>()
+    .action(async ({ input }) => {
+      return goalOrchestratorService.killAgentRun(input)
     }),
 
   // Repeat Tasks handlers

@@ -84,6 +84,12 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   const hasExecuteCommand = hasPromptTool(availableTools, 'execute_command')
   const hasReadMoreContext = hasPromptTool(availableTools, 'read_more_context')
   const hasSetSessionTitle = hasPromptTool(availableTools, 'set_session_title')
+  const hasGoalOrchestratorTools = hasPromptTool(availableTools, 'create_goal')
+    || hasPromptTool(availableTools, 'create_work_item')
+    || hasPromptTool(availableTools, 'run_goal_orchestrator')
+  const hasRepeatTaskTools = hasPromptTool(availableTools, 'create_repeat_task')
+    || hasPromptTool(availableTools, 'update_repeat_task')
+    || hasPromptTool(availableTools, 'run_repeat_task')
 
   const sections = [
     'AGENT MODE: You can see tool results and make follow-up tool calls. Continue calling tools until the task is completely resolved.',
@@ -154,6 +160,15 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - If a prior message says it was truncated or summarized and shows a "Context ref: ctx_...", use read_more_context to inspect the original source
 - If the needed detail or exact query is already known, call read_more_context(mode: "search") directly; use mode: "overview" first only when you need orientation before choosing a query/window
 - Avoid pulling large heads/tails unless a narrower search or window is insufficient`)
+  }
+
+  if (hasGoalOrchestratorTools || hasRepeatTaskTools) {
+    sections.push(`GOALS, WORK ITEMS & REPEAT TASKS:
+- When the user asks to create, update, schedule, run, or answer goal/work/decision/repeat-task items, use the available runtime tools directly instead of only describing a next safe action
+- For status-only questions, report the known state and next safe action without mutating state unless the user also asks you to do it
+- Use Goal Orchestrator tools for durable goals, work items, decisions, and immediate orchestrator wake-ups
+- Use repeat-task tools for scheduling automation; for Goal Orchestrator scheduling, create a repeat task with goalOrchestrator=true so the task wakes the orchestrator
+- Before updating an existing goal, work item, decision, or repeat task by title/name, read the corresponding snapshot/list when needed and resolve exact matches`)
   }
 
   sections.push(`LOCAL MEMORY & CONFIG:

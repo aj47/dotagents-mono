@@ -38,6 +38,8 @@ vi.mock("./acp-session-state", () => ({
   setAcpSessionTitleOverride: mockSetAcpSessionTitleOverride,
 }))
 vi.mock("./emit-agent-progress", () => ({ emitAgentProgress: mockEmitAgentProgress }))
+vi.mock("./goal-orchestrator-service", () => ({ goalOrchestratorService: {} }))
+vi.mock("./loop-service", () => ({ loopService: {} }))
 
 describe("runtime-tools set_session_title", () => {
   beforeEach(() => {
@@ -94,7 +96,7 @@ describe("runtime-tools set_session_title", () => {
     const result = await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "conversation-1")
 
     expect(mockFindSessionByConversationId).toHaveBeenCalledWith("conversation-1")
-    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title")
+    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title", "server_generated")
     expect(mockUpdateSession).toHaveBeenCalledWith("app-session-1", { conversationTitle: "Delegated title" })
     expect(result).toEqual({
       content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],

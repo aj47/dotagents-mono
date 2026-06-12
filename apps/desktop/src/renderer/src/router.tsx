@@ -30,6 +30,10 @@ export const router: ReturnType<typeof createBrowserRouter> =
           lazy: () => import("./pages/sessions"),
         },
         {
+          path: "goal-orchestrator",
+          lazy: () => import("./pages/goal-orchestrator"),
+        },
+        {
           path: "settings",
           lazy: () => import("./pages/settings-general"),
         },
