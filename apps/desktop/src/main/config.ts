@@ -24,6 +24,10 @@ function resolveDesktopAppId(): string {
   return process.env.APP_ID?.trim() || DEFAULT_APP_ID
 }
 
+function resolveDesktopAppDataRoot(): string {
+  return process.env.DOTAGENTS_APP_DATA_DIR?.trim() || app.getPath("appData")
+}
+
 function copyMissingRecursive(sourcePath: string, destinationPath: string): void {
   if (!fs.existsSync(sourcePath)) return
 
@@ -43,7 +47,7 @@ function copyMissingRecursive(sourcePath: string, destinationPath: string): void
 }
 
 function migrateLegacyDesktopAppData(activeAppId: string): void {
-  const appDataRoot = app.getPath("appData")
+  const appDataRoot = resolveDesktopAppDataRoot()
   const targetDataFolder = path.join(appDataRoot, activeAppId)
   const knownAppIds = Array.from(new Set([DEFAULT_APP_ID, "dotagents", activeAppId]))
 
@@ -72,8 +76,8 @@ if (!container.has(ServiceTokens.PathResolver)) {
 }
 
 // Backward-compatible module-level constants for existing desktop callers.
-// These use Electron's app.getPath() directly to be available at module load time.
-export const dataFolder = path.join(app.getPath("appData"), appId)
+// Keep these available at module load time; opt-in E2E can override the app-data root.
+export const dataFolder = path.join(resolveDesktopAppDataRoot(), appId)
 export const recordingsFolder = path.join(dataFolder, "recordings")
 export const conversationsFolder = path.join(dataFolder, "conversations")
 export const configPath = path.join(dataFolder, "config.json")
