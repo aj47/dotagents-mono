@@ -68,25 +68,19 @@ describe('shouldCollapseMessage', () => {
 })
 
 describe('getToolActivityLabel', () => {
-  it('maps file inspection shell commands to a human-readable label', () => {
-    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: "sed -n '1,120p' apps/desktop/src/main/llm.ts" } }).title).toBe('Reading llm.ts')
-    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'rg -n "agentProgress" packages/shared/src' } })).toEqual({
-      title: 'Searching code',
-      detail: 'agentProgress in src',
+  it('uses generic command status with command target detail', () => {
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: "sed -n '1,120p' apps/desktop/src/main/llm.ts" } })).toEqual({
+      title: 'Running command',
+      detail: 'llm.ts',
     })
-  })
-
-  it('maps project checks to specific labels', () => {
-    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'pnpm test --filter agent-progress' } }).title).toBe('Running tests')
-    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'pnpm typecheck' } }).title).toBe('Checking types')
-    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'pnpm lint' } }).title).toBe('Linting code')
-  })
-
-  it('maps git inspection commands to repository state checks', () => {
-    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'git status --short' } }).title).toBe('Checking git status')
-    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'git diff -- apps/desktop' } })).toEqual({
-      title: 'Reviewing git diff',
-      detail: 'desktop',
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: 'rg -n "agentProgress" packages/shared/src' } },
+        { success: true, content: 'packages/shared/src/chat-utils.ts:1:agentProgress' },
+      ),
+    ).toEqual({
+      title: 'Command completed',
+      detail: 'packages/shared/src/chat-utils.ts:1:agentProgress',
     })
   })
 
@@ -96,50 +90,77 @@ describe('getToolActivityLabel', () => {
         { name: 'execute_command', arguments: { command: 'pnpm test' } },
         { success: false, content: '', error: 'failed' },
       ).title,
-    ).toBe('Running tests failed')
+    ).toBe('Command failed')
   })
 
-  it('does not treat heredoc script syntax as a script name', () => {
+  it('does not derive labels from heredoc script syntax', () => {
     expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: "python3 - <<'PY'" } })).toEqual({
-      title: 'Running a script',
+      title: 'Running command',
+      detail: 'inline python3',
     })
   })
 
-  it('summarizes pwd results as a folder instead of raw success metadata', () => {
+  it('summarizes structured command cwd instead of raw success metadata', () => {
     expect(
       getToolActivityLabel(
         { name: 'execute_command', arguments: { command: 'pwd' } },
         { success: true, content: '{"success":true,"cwd":"/tmp/dotagents-mono"}' },
       ),
     ).toEqual({
-      title: 'Checking current folder',
+      title: 'Command completed',
       detail: 'dotagents-mono',
+    })
+  })
+
+  it('summarizes JSON command output instead of bracket syntax', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: "python3 - <<'PY'" } },
+        { success: true, content: '[\n  { "title": "Publish YouTube Draft Unlisted" }\n]' },
+      ),
+    ).toEqual({
+      title: 'Command completed',
+      detail: 'Publish YouTube Draft Unlisted',
+    })
+  })
+
+  it('skips generic markdown headings in tool result previews', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'browser:network_requests', arguments: {} },
+        { success: true, content: '### Result\nBrowser network requests completed' },
+      ),
+    ).toEqual({
+      title: 'Network requests completed',
+      detail: 'Browser network requests completed',
+    })
+  })
+
+  it('keeps web search result text as the useful detail', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'exa:web_search_exa', arguments: { query: 'Hermes Agent' } },
+        { success: true, content: 'Learned that Hermes Agent has a newly added native desktop surface.' },
+      ),
+    ).toEqual({
+      title: 'Web search exa completed',
+      detail: 'Learned that Hermes Agent has a newly added native desktop surface.',
     })
   })
 })
 
 describe('getToolActivitySummary', () => {
-  it('collapses homogeneous tool batches to one label with a count detail', () => {
+  it('summarizes pending tool batches with the latest tool detail', () => {
     expect(getToolActivitySummary([
       { name: 'execute_command', arguments: { command: 'rg AgentProgress' } },
       { name: 'execute_command', arguments: { command: 'sed -n 1,20p file.ts' } },
     ])).toEqual({
-      title: 'Using 2 tool actions',
-      detail: 'Searching code (AgentProgress); Reading file.ts',
+      title: 'file.ts',
+      detail: 'Running command',
     })
   })
 
-  it('uses a generic multiple-tools label for mixed tool batches', () => {
-    expect(getToolActivitySummary([
-      { name: 'execute_command', arguments: { command: 'git status --short' } },
-      { name: 'execute_command', arguments: { command: 'pnpm test' } },
-    ])).toEqual({
-      title: 'Using 2 tool actions',
-      detail: 'Checking git status; Running tests',
-    })
-  })
-
-  it('adds compact result outcomes when available', () => {
+  it('uses the latest completed tool result for finished batches', () => {
     expect(getToolActivitySummary(
       [
         { name: 'execute_command', arguments: { command: 'git status --short' } },
@@ -150,8 +171,38 @@ describe('getToolActivitySummary', () => {
         { success: true, content: 'all suites passed' },
       ],
     )).toEqual({
-      title: 'Completed 2 tool actions',
-      detail: 'Checking git status (2 changed files); Running tests (Passed)',
+      title: 'all suites passed',
+    })
+  })
+
+  it('uses the latest failure for failed batches', () => {
+    expect(getToolActivitySummary(
+      [
+        { name: 'execute_command', arguments: { command: 'git status --short' } },
+        { name: 'execute_command', arguments: { command: 'pnpm test' } },
+      ],
+      [
+        { success: true, content: 'M file.ts' },
+        { success: false, content: '', error: 'failed' },
+      ],
+    )).toEqual({
+      title: 'Failed: failed',
+      detail: 'Command failed',
+    })
+  })
+
+  it('ignores metadata tools when choosing the latest group headline', () => {
+    expect(getToolActivitySummary(
+      [
+        { name: 'execute_command', arguments: { command: 'python3 research.py' } },
+        { name: 'set_session_title', arguments: { title: 'Research' } },
+      ],
+      [
+        { success: true, content: 'research complete' },
+        { success: true, content: '{"success":true,"title":"Research"}' },
+      ],
+    )).toEqual({
+      title: 'research complete',
     })
   })
 })

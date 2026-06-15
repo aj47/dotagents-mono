@@ -1659,9 +1659,14 @@ const CompactToolExecutionList: React.FC<{
             { name: call.name, arguments: call.arguments ?? {} },
             result ?? null,
           )
-          const activityText = activityLabel.detail
-            ? `${activityLabel.title} - ${activityLabel.detail}`
-            : activityLabel.title
+          const primaryActivityText = activityLabel.detail || activityLabel.title
+          const secondaryActivityText = activityLabel.detail && activityLabel.detail !== activityLabel.title
+            && !/\bcompleted$/i.test(activityLabel.title)
+            ? activityLabel.title
+            : undefined
+          const activityText = secondaryActivityText
+            ? `${primaryActivityText} - ${secondaryActivityText}`
+            : primaryActivityText
 
           return (
             <div key={idx}>
@@ -1680,8 +1685,13 @@ const CompactToolExecutionList: React.FC<{
                 onClick={onToggleDetails}
               >
                 <span className="min-w-0 flex-1 truncate whitespace-nowrap font-medium" title={activityText}>
-                  {activityText}
+                  {primaryActivityText}
                 </span>
+                {secondaryActivityText && (
+                  <span className="min-w-0 flex-[0.9] truncate whitespace-nowrap text-[10px] opacity-70">
+                    {secondaryActivityText}
+                  </span>
+                )}
                 <span className="shrink-0 text-[10px] opacity-60">
                   {callIsPending ? (
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -1705,6 +1715,20 @@ const CompactToolExecutionList: React.FC<{
 
       {detailsExpanded && (
         <div className={detailsClassName}>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleDetails()
+              }}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              aria-label="Hide tool details"
+              title="Hide tool details"
+            >
+              Hide details
+            </button>
+          </div>
           {toolCallEntries.map(({ call, result }, idx) => {
             const callIsMissingResult = !result
             const callIsPending = callIsMissingResult && !isHistoricalComplete
@@ -4656,26 +4680,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   )
 
   const getToolActivityGroupDefaultExpanded = useCallback((item: Extract<DisplayItem, { kind: "tool_activity_group" }>) => {
-    if (item.data.items.some((child) => getRunningToolCallNames(child).length > 0)) {
-      return true
-    }
-    const firstChildId = item.data.items[0]?.id
-    return !!firstChildId && expandedItems[firstChildId] === true
-  }, [expandedItems])
-
-  useEffect(() => {
-    setExpandedItems(prev => {
-      let next = prev
-      for (const item of displayItems) {
-        if (item.kind !== "tool_activity_group" || item.id in prev) continue
-        const firstChildId = item.data.items[0]?.id
-        if (!firstChildId || prev[firstChildId] !== true) continue
-        if (next === prev) next = { ...prev }
-        next[item.id] = true
-      }
-      return next
-    })
-  }, [displayItems])
+    return item.data.items.some((child) => getRunningToolCallNames(child).length > 0)
+  }, [])
 
   const delegationSummaryEntries = useMemo<DelegationSummaryEntry[]>(() => {
     const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()

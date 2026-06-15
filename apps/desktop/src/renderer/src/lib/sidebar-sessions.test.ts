@@ -468,7 +468,7 @@ describe("getSidebarActivityPresentation", () => {
         {
           id: "tool-1",
           type: "tool_call",
-          title: "Reading file",
+          title: "Running command",
           description: "Inspecting active-agents-sidebar.tsx",
           status: "in_progress",
           timestamp: 2,
@@ -492,7 +492,7 @@ describe("getSidebarActivityPresentation", () => {
         {
           id: "tool-1",
           type: "tool_call",
-          title: "Reading file",
+          title: "Running command",
           description: "Inspecting source",
           status: "in_progress",
           timestamp: 2,

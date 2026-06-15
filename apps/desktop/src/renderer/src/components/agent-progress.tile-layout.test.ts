@@ -120,9 +120,10 @@ describe("agent progress tile layout", () => {
   })
 
   it("renders collapsed tool previews inline as the single-line summary", () => {
-    expect(agentProgressSource).toContain('const collapsedPreviewLine = group.previewLines.join')
-    expect(agentProgressSource).toContain(': collapsedPreviewLine || "Tool activity"')
-    expect(agentProgressSource).toContain('const collapsedToolPreviewLine = data.calls')
+    expect(agentProgressSource).toContain('const collapsedStatusLine = group.activitySummary.title')
+    expect(agentProgressSource).toContain('const collapsedToolStatusLine = activitySummary.title')
+    expect(agentProgressSource).toContain('const primaryActivityText = activityLabel.detail || activityLabel.title')
+    expect(agentProgressSource).toContain('const secondaryActivityText = activityLabel.detail && activityLabel.detail !== activityLabel.title')
     expect(agentProgressSource).toContain('const toolStatusTextClass = isPending')
     expect(agentProgressSource).toContain('className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}')
     expect(agentProgressSource).toContain('flex-1 truncate whitespace-nowrap font-mono')
@@ -138,7 +139,8 @@ describe("agent progress tile layout", () => {
   it("keeps tool group expansion state separate from child rows", () => {
     expect(agentProgressSource).toContain('const groupId = `tool-activity-group:${runItems[0]?.id ?? runStart}`')
     expect(agentProgressSource).toContain('getToolActivityGroupDefaultExpanded')
-    expect(agentProgressSource).toContain('next[item.id] = true')
+    expect(agentProgressSource).toContain('return item.data.items.some((child) => getRunningToolCallNames(child).length > 0)')
+    expect(agentProgressSource).not.toContain('next[item.id] = true')
   })
 
   it("stops delegated tool rows from showing a loading spinner after terminal completion", () => {
