@@ -25,9 +25,9 @@ import {
   formatArgumentsPreview,
   formatToolArguments,
   getToolArgumentEntries,
-  getCompactToolExecutionPreview,
   getExecuteCommandResultPreview,
-  getToolResultsSummary,
+  getToolActivityLabel,
+  getToolActivitySummary,
   TOOL_GROUP_MIN_SIZE,
   getToolCallPreview,
   getBuiltInModelPresets,
@@ -151,6 +151,11 @@ type DisplayItem =
       previewLines: string[]
       /** Total number of underlying tool calls across all collapsed items. */
       callCount: number
+      /** Human-readable summary for the collapsed group. */
+      activitySummary: {
+        title: string
+        detail?: string
+      }
     } }
 
 const getRunningToolCallNames = (item: DisplayItem): string[] => {
@@ -158,12 +163,6 @@ const getRunningToolCallNames = (item: DisplayItem): string[] => {
   return item.data.calls
     .filter((_, index) => !item.data.results[index])
     .map((call) => call.name)
-}
-
-const formatRunningToolLabel = (toolNames: string[]): string => {
-  if (toolNames.length === 0) return "tool"
-  if (toolNames.length === 1) return toolNames[0]
-  return `${toolNames.length} tools`
 }
 
 type ChatProviderId = NonNullable<Config["agentProviderId"]>
@@ -1656,10 +1655,13 @@ const CompactToolExecutionList: React.FC<{
           const callIsPending = callIsMissingResult && !isHistoricalComplete
           const callIsUnrecorded = callIsMissingResult && isHistoricalComplete
           const callSuccess = result?.success
-          const toolPreview = getCompactToolExecutionPreview(
+          const activityLabel = getToolActivityLabel(
             { name: call.name, arguments: call.arguments ?? {} },
             result ?? null,
           )
+          const activityText = activityLabel.detail
+            ? `${activityLabel.title} - ${activityLabel.detail}`
+            : activityLabel.title
 
           return (
             <div key={idx}>
@@ -1677,8 +1679,8 @@ const CompactToolExecutionList: React.FC<{
                 )}
                 onClick={onToggleDetails}
               >
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium" title={toolPreview}>
-                  {toolPreview}
+                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-medium" title={activityText}>
+                  {activityText}
                 </span>
                 <span className="shrink-0 text-[10px] opacity-60">
                   {callIsPending ? (
@@ -1710,6 +1712,12 @@ const CompactToolExecutionList: React.FC<{
             const formattedArguments = formatToolArguments(call.arguments)
             return (
               <div key={idx} className="text-[10px] space-y-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="shrink-0 font-medium opacity-70">Tool</span>
+                  <code className="min-w-0 truncate rounded bg-muted/50 px-1 py-0.5 font-mono text-[10px] text-foreground">
+                    {call.name}
+                  </code>
+                </div>
                 {formattedArguments && (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -1828,11 +1836,11 @@ const AssistantWithToolsBubble: React.FC<{
   }
   isExpanded: boolean
   onToggleExpand: () => void
-}> = ({ data, isExpanded, onToggleExpand }) => {
-  const [showToolDetails, setShowToolDetails] = useState(false)
+  toolDetailsExpanded: boolean
+  onToggleToolDetails: () => void
+}> = ({ data, isExpanded, onToggleExpand, toolDetailsExpanded, onToggleToolDetails }) => {
 
   const toolCallEntries = data.calls.map((call, idx) => ({ call, result: data.results[idx] }))
-  const resolvedResults = data.results.filter((result): result is NonNullable<typeof result> => Boolean(result))
   const hasMissingResults = toolCallEntries.some(({ result }) => !result)
   const isPending = hasMissingResults && !data.isComplete
   const hasUnrecordedResults = hasMissingResults && data.isComplete
@@ -1840,11 +1848,6 @@ const AssistantWithToolsBubble: React.FC<{
   const allToolsSucceeded = toolCallEntries.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
-  const runningToolNames = isPending
-    ? toolCallEntries
-      .filter(({ result }) => !result)
-      .map(({ call }) => call.name)
-    : []
   const toolStatusTextClass = isPending
     ? "text-blue-600 dark:text-blue-400"
     : hasUnrecordedResults
@@ -1854,33 +1857,15 @@ const AssistantWithToolsBubble: React.FC<{
         : allToolsSucceeded
           ? "text-green-600 dark:text-green-400"
           : "text-sky-700 dark:text-sky-300"
-  const collapsedToolPreviewLine = data.calls
-    .map((call, idx) => {
-      const result = data.results[idx]
-      return getCompactToolExecutionPreview(
-        { name: call.name, arguments: call.arguments ?? {} },
-        result ?? null,
-      )
-    })
-    .join(", ")
-  const collapsedToolStatusLine = isPending
-    ? `Running ${formatRunningToolLabel(runningToolNames)}`
-    : collapsedToolPreviewLine
-  const collapsedToolTitle = isPending && collapsedToolPreviewLine
-    ? `${collapsedToolStatusLine} - ${collapsedToolPreviewLine}`
+  const activitySummary = getToolActivitySummary(
+    data.calls.map((call) => ({ name: call.name, arguments: call.arguments ?? {} })),
+    data.results,
+  )
+  const collapsedToolStatusLine = activitySummary.title
+  const collapsedToolDetail = activitySummary.detail
+  const collapsedToolTitle = collapsedToolDetail
+    ? `${collapsedToolStatusLine} - ${collapsedToolDetail}`
     : collapsedToolStatusLine
-
-  // Generate result summary for collapsed state
-  const collapsedResultSummary = (() => {
-    if (isExpanded || isPending) return null
-    if (resolvedResults.length === 0) return null
-    const toolResults = resolvedResults.map(r => ({
-      success: r.success,
-      content: r.content,
-      error: r.error,
-    }))
-    return getToolResultsSummary(toolResults)
-  })()
 
   const handleToggleExpand = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!shouldCollapse || hasActiveTextSelection(event.currentTarget)) {
@@ -1897,7 +1882,7 @@ const AssistantWithToolsBubble: React.FC<{
 
   const handleToggleToolDetails = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setShowToolDetails(!showToolDetails)
+    onToggleToolDetails()
   }
 
   const longThought = (data.thought?.length ?? 0) > 100
@@ -1929,7 +1914,7 @@ const AssistantWithToolsBubble: React.FC<{
             <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           )}
           <div className="min-w-0 flex-1">
-            {!showToolDetails ? (
+            {!toolDetailsExpanded ? (
               <button
                 type="button"
                 className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}
@@ -1942,16 +1927,21 @@ const AssistantWithToolsBubble: React.FC<{
                 <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium">
                   {collapsedToolStatusLine}
                 </span>
+                {collapsedToolDetail && (
+                  <span className="min-w-0 flex-[1.4] truncate whitespace-nowrap text-[10px] opacity-75">
+                    {collapsedToolDetail}
+                  </span>
+                )}
                 <ChevronRight className="h-2.5 w-2.5 shrink-0 opacity-40" aria-hidden="true" />
               </button>
             ) : (
               <CompactToolExecutionList
                 calls={data.calls}
                 results={data.results}
-                detailsExpanded={showToolDetails}
+                detailsExpanded={toolDetailsExpanded}
                 onToggleDetails={handleToggleToolDetails}
                 rowClassName="px-1 py-0.5"
-                detailsClassName="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"
+                detailsClassName="mt-1 ml-3 max-h-[min(68vh,42rem)] space-y-1 overflow-y-auto border-l border-border/50 pl-2 pr-1 scrollbar-thin"
                 isHistoricalComplete={data.isComplete}
                 executionStats={data.executionStats}
               />
@@ -1969,29 +1959,31 @@ const AssistantWithToolsBubble: React.FC<{
 }
 
 // Collapsed group of consecutive tool-call activity.
-// Each collapsed group shows compact tool preview lines so historical session
-// views still communicate which tools were called without expansion.
+// The collapsed row stays human-readable; raw command details live inside
+// the expanded child rows.
 const ToolActivityGroupBubble: React.FC<{
   group: {
     items: DisplayItem[]
     previewLines: string[]
     callCount: number
+    activitySummary: {
+      title: string
+      detail?: string
+    }
   }
   isExpanded: boolean
   onToggleExpand: () => void
   /** Render a single child DisplayItem when the group is expanded. */
   renderItem: (item: DisplayItem, index: number) => React.ReactNode
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
-  const collapsedPreviewLine = group.previewLines.join(', ')
   const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
   const callCount = group.callCount
   const runningToolNames = group.items.flatMap(getRunningToolCallNames)
   const hasRunningTools = runningToolNames.length > 0
-  const collapsedStatusLine = hasRunningTools
-    ? `Running ${formatRunningToolLabel(runningToolNames)}`
-    : collapsedPreviewLine || "Tool activity"
-  const collapsedTitle = hasRunningTools && collapsedPreviewLine
-    ? `${collapsedStatusLine} - ${collapsedPreviewLine}`
+  const collapsedStatusLine = group.activitySummary.title
+  const collapsedDetail = group.activitySummary.detail
+  const collapsedTitle = collapsedDetail
+    ? `${collapsedStatusLine} - ${collapsedDetail}`
     : collapsedStatusLine
 
   return (
@@ -2027,6 +2019,11 @@ const ToolActivityGroupBubble: React.FC<{
         )}>
           {collapsedStatusLine}
         </span>
+        {collapsedDetail && (
+          <span className="min-w-0 flex-[1.6] truncate whitespace-nowrap text-[10px] text-sky-900/60 dark:text-sky-100/60">
+            {collapsedDetail}
+          </span>
+        )}
         {thinkingCount > 0 && (
           <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         )}
@@ -2045,7 +2042,7 @@ const ToolActivityGroupBubble: React.FC<{
 
       {/* Expanded: render all child items */}
       {isExpanded && (
-        <div className="space-y-1 px-1.5 pb-1.5">
+        <div className="max-h-[min(72vh,46rem)] space-y-1 overflow-y-auto px-1.5 pb-1.5 pr-1 scrollbar-thin">
           <div className="space-y-1">
             {group.items.map((item, idx) => renderItem(item, idx))}
           </div>
@@ -4579,12 +4576,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         return
       }
       const runItems = sortedItems.slice(runStart, runEnd + 1)
-      // Collapsed preview surfaces every tool call in the run as a compact
-      // token, in chronological order. execute_command renders as a balanced
-      // `<command>:<output-preview>` label; other tools fall back to the tool
-      // name. The CSS truncate handles overflow on narrow tiles, so we emit the
-      // full list and let the layout shrink it.
+      // Preserve raw preview data for expanded details, but compute a separate
+      // human-readable summary for the collapsed row.
       const previewLines: string[] = []
+      const activityCalls: Array<{ name: string; arguments: any }> = []
+      const activityResults: Array<{ success: boolean; content: string; error?: string } | undefined | null> = []
       let callCount = 0
       for (let j = 0; j < runItems.length; j++) {
         const it = runItems[j]
@@ -4605,6 +4601,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           if (!call) continue
           callCount += 1
           const result = results[k] ?? null
+          activityCalls.push({ name: call.name, arguments: call.arguments ?? {} })
+          activityResults.push(result)
           const execPreview = getExecuteCommandResultPreview(
             { name: call.name, arguments: call.arguments ?? {} },
             result,
@@ -4623,7 +4621,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       grouped.push({
         kind: "tool_activity_group",
         id: groupId,
-        data: { items: runItems, previewLines, callCount },
+        data: {
+          items: runItems,
+          previewLines,
+          callCount,
+          activitySummary: getToolActivitySummary(activityCalls, activityResults),
+        },
       })
       runStart = null
     }
@@ -5269,12 +5272,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                           />
                         )
                       } else if (item.kind === "assistant_with_tools") {
+                        const toolDetailsKey = `${itemKey}:tool-details`
                         return (
                           <AssistantWithToolsBubble
                             key={itemKey}
                             data={item.data}
                             isExpanded={isExpanded}
                             onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                            toolDetailsExpanded={expandedItems[toolDetailsKey] ?? false}
+                            onToggleToolDetails={() => toggleItemExpansion(toolDetailsKey, false)}
                           />
                         )
                       } else if (item.kind === "tool_approval") {
@@ -5315,12 +5321,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                               const childKey = child.id || `group-child-${childIdx}`
                               const childExpanded = expandedItems[childKey] ?? false
                               if (child.kind === "assistant_with_tools") {
+                                const childToolDetailsKey = `${childKey}:tool-details`
                                 return (
                                   <AssistantWithToolsBubble
                                     key={childKey}
                                     data={child.data}
                                     isExpanded={childExpanded}
                                     onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                                    toolDetailsExpanded={expandedItems[childToolDetailsKey] ?? false}
+                                    onToggleToolDetails={() => toggleItemExpansion(childToolDetailsKey, false)}
                                   />
                                 )
                               }
@@ -5743,12 +5752,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "assistant_with_tools") {
+                  const toolDetailsKey = `${itemKey}:tool-details`
                   return (
                     <AssistantWithToolsBubble
                       key={itemKey}
                       data={item.data}
                       isExpanded={isExpanded}
                       onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                      toolDetailsExpanded={expandedItems[toolDetailsKey] ?? false}
+                      onToggleToolDetails={() => toggleItemExpansion(toolDetailsKey, false)}
                     />
                   )
                 } else if (item.kind === "tool_approval") {
@@ -5800,12 +5812,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         const childKey = child.id || `group-child-${childIdx}`
                         const childExpanded = expandedItems[childKey] ?? false
                         if (child.kind === "assistant_with_tools") {
+                          const childToolDetailsKey = `${childKey}:tool-details`
                           return (
                             <AssistantWithToolsBubble
                               key={childKey}
                               data={child.data}
                               isExpanded={childExpanded}
                               onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                              toolDetailsExpanded={expandedItems[childToolDetailsKey] ?? false}
+                              onToggleToolDetails={() => toggleItemExpansion(childToolDetailsKey, false)}
                             />
                           )
                         }

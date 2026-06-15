@@ -87,6 +87,7 @@ export function getIndividualToolCallPreview(toolCall: ToolCall): string {
 type StructuredCommandOutput = {
   found: boolean;
   output: string;
+  cwd?: string;
 };
 
 function extractStringFields(obj: Record<string, unknown>, keys: string[]): string[] {
@@ -125,6 +126,7 @@ function extractStructuredCommandOutput(raw: string): StructuredCommandOutput | 
       return {
         found: true,
         output: (streamOutput.length > 0 ? streamOutput : fallbackOutput).join('\n'),
+        cwd: typeof obj.cwd === 'string' ? obj.cwd : undefined,
       };
     } catch {
       // Try the next candidate. Plain-text tool results are handled by the caller.
@@ -265,6 +267,344 @@ export function getCompactToolExecutionPreview(
   }
 
   return getIndividualToolCallPreview(toolCall);
+}
+
+export type ToolActivityLabel = {
+  title: string;
+  detail?: string;
+};
+
+const FILE_INSPECTION_COMMANDS = new Set([
+  'rg',
+  'grep',
+  'sed',
+  'cat',
+  'less',
+  'head',
+  'tail',
+  'find',
+  'fd',
+  'ls',
+  'pwd',
+  'wc',
+  'nl',
+]);
+
+const REPOSITORY_READ_COMMANDS = new Set([
+  'status',
+  'diff',
+  'log',
+  'show',
+  'branch',
+  'rev-parse',
+  'ls-files',
+]);
+
+function commandWords(command: string): string[] {
+  return command
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .filter(Boolean);
+}
+
+function cleanCommandToken(token: string | undefined): string {
+  return (token ?? '').replace(/^['"]|['"]$/g, '').trim();
+}
+
+function basenameForActivity(path: string | undefined): string {
+  const cleaned = cleanCommandToken(path);
+  if (!cleaned || cleaned === '-' || cleaned.startsWith('<') || cleaned.includes('<<')) return '';
+  const parts = cleaned.split('/').filter(Boolean);
+  return parts[parts.length - 1] || cleaned;
+}
+
+function commandTarget(words: string[], startIndex = 1): string {
+  const candidates = words
+    .slice(startIndex)
+    .map(cleanCommandToken)
+    .filter((word) => (
+      !!word &&
+      !word.startsWith('-') &&
+      word !== '|' &&
+      word !== '>' &&
+      word !== '2>' &&
+      !/^\d+(?:,\d+)?p?$/.test(word)
+    ));
+  return basenameForActivity(candidates[candidates.length - 1]);
+}
+
+function commandOutput(toolResult?: ToolResult | null): string {
+  if (!toolResult) return '';
+
+  const outputParts: string[] = [];
+  for (const rawPart of [toolResult.content, toolResult.error]) {
+    if (!rawPart?.trim()) continue;
+    const structured = extractStructuredCommandOutput(rawPart);
+    outputParts.push(structured?.found ? structured.output : rawPart);
+  }
+
+  return Array.from(new Set(outputParts.map(part => part.trim()).filter(Boolean))).join('\n');
+}
+
+function commandCwd(toolResult?: ToolResult | null): string {
+  if (!toolResult) return '';
+  for (const rawPart of [toolResult.content, toolResult.error]) {
+    if (!rawPart?.trim()) continue;
+    const structured = extractStructuredCommandOutput(rawPart);
+    if (structured?.cwd) return structured.cwd;
+  }
+  return '';
+}
+
+function countNonEmptyLines(text: string): number {
+  return text.split('\n').filter(line => line.trim()).length;
+}
+
+function commandResultDetail(
+  executable: string,
+  subcommand: string,
+  baseDetail: string | undefined,
+  toolResult?: ToolResult | null,
+): string | undefined {
+  if (!toolResult) return baseDetail;
+  const output = commandOutput(toolResult);
+  const lineCount = countNonEmptyLines(output);
+
+  if (!toolResult.success) {
+    const preview = generateToolResultPreview(toolResult);
+    return preview ? `Failed: ${preview}` : baseDetail ? `${baseDetail}; failed` : 'Failed';
+  }
+
+  if (executable === 'sed' || executable === 'cat' || executable === 'head' || executable === 'tail' || executable === 'nl' || executable === 'less') {
+    const suffix = `${lineCount.toLocaleString()} line${lineCount === 1 ? '' : 's'}`;
+    return baseDetail ? `${baseDetail}; ${suffix}` : suffix;
+  }
+
+  if (executable === 'rg' || executable === 'grep' || executable === 'find' || executable === 'fd') {
+    if (!output.trim()) return baseDetail ? `${baseDetail}; no matches` : 'No matches';
+    const suffix = `${lineCount.toLocaleString()} match${lineCount === 1 ? '' : 'es'}`;
+    return baseDetail ? `${baseDetail}; ${suffix}` : suffix;
+  }
+
+  if (executable === 'ls') {
+    const suffix = `${lineCount.toLocaleString()} entr${lineCount === 1 ? 'y' : 'ies'}`;
+    return baseDetail ? `${baseDetail}; ${suffix}` : suffix;
+  }
+
+  if (executable === 'pwd') {
+    const folder = basenameForActivity(output) || basenameForActivity(commandCwd(toolResult));
+    return folder || baseDetail;
+  }
+
+  if (executable === 'git' && subcommand === 'status') {
+    if (!output.trim()) return 'Working tree clean';
+    return `${lineCount.toLocaleString()} changed file${lineCount === 1 ? '' : 's'}`;
+  }
+
+  if (/\b(pass|passed|success|succeeded)\b/i.test(output) && !/\b(fail|failed|error)\b/i.test(output)) {
+    return 'Passed';
+  }
+
+  const preview = generateToolResultPreview(toolResult);
+  return preview || baseDetail;
+}
+
+function getExecuteCommandActivityLabel(command: string, toolResult?: ToolResult | null): ToolActivityLabel {
+  const words = commandWords(command);
+  const executable = words[0]?.toLowerCase() ?? '';
+  const subcommand = words[1]?.toLowerCase() ?? '';
+  const normalized = words.join(' ').toLowerCase();
+
+  if (!executable) return { title: 'Running a command' };
+
+  let label: ToolActivityLabel;
+
+  if (executable === 'git') {
+    if (subcommand === 'status') {
+      label = { title: 'Checking git status' };
+    } else if (subcommand === 'diff') {
+      label = { title: 'Reviewing git diff', detail: commandTarget(words, 2) || undefined };
+    } else if (subcommand === 'log') {
+      label = { title: 'Reviewing git history' };
+    } else if (REPOSITORY_READ_COMMANDS.has(subcommand)) {
+      label = { title: 'Checking repository state' };
+    } else {
+      label = { title: 'Updating the repository' };
+    }
+    return {
+      ...label,
+      detail: commandResultDetail(executable, subcommand, label.detail, toolResult),
+    };
+  }
+
+  if (
+    executable === 'pnpm' ||
+    executable === 'npm' ||
+    executable === 'yarn' ||
+    executable === 'bun'
+  ) {
+    if (/\b(test|typecheck|lint|check)\b/.test(normalized)) {
+      if (/\btypecheck\b/.test(normalized)) label = { title: 'Checking types' };
+      else if (/\blint\b/.test(normalized)) label = { title: 'Linting code' };
+      else if (/\btest\b/.test(normalized)) label = { title: 'Running tests' };
+      else label = { title: 'Running checks' };
+      return {
+        ...label,
+        detail: commandResultDetail(executable, subcommand, label.detail, toolResult),
+      };
+    }
+    if (/\b(build|compile)\b/.test(normalized)) {
+      label = { title: 'Building the project' };
+      return {
+        ...label,
+        detail: commandResultDetail(executable, subcommand, label.detail, toolResult),
+      };
+    }
+    label = { title: 'Running project tooling' };
+    return {
+      ...label,
+      detail: commandResultDetail(executable, subcommand, label.detail, toolResult),
+    };
+  }
+
+  if (FILE_INSPECTION_COMMANDS.has(executable)) {
+    if (executable === 'rg' || executable === 'grep') {
+      const searchTerm = cleanCommandToken(words.slice(1).find(word => !word.startsWith('-')));
+      const target = commandTarget(words, 2);
+      label = {
+        title: 'Searching code',
+        detail: [searchTerm, target ? `in ${target}` : ''].filter(Boolean).join(' '),
+      };
+    } else if (executable === 'find' || executable === 'fd') {
+      label = { title: 'Finding files', detail: commandTarget(words) || undefined };
+    } else if (executable === 'ls') {
+      label = { title: 'Listing files', detail: commandTarget(words) || undefined };
+    } else if (executable === 'pwd') {
+      label = { title: 'Checking current folder' };
+    } else {
+      const target = commandTarget(words);
+      label = { title: target ? `Reading ${target}` : 'Reading files' };
+    }
+    return {
+      ...label,
+      detail: commandResultDetail(executable, subcommand, label.detail, toolResult),
+    };
+  }
+
+  if (
+    executable === 'python' ||
+    executable === 'python3' ||
+    executable === 'node' ||
+    executable === 'tsx' ||
+    executable === 'ts-node'
+  ) {
+    if (/\b(test|pytest|vitest|jest)\b/.test(normalized)) {
+      label = { title: 'Running tests' };
+      return {
+        ...label,
+        detail: commandResultDetail(executable, subcommand, label.detail, toolResult),
+      };
+    }
+    label = { title: 'Running a script', detail: basenameForActivity(words[1]) || undefined };
+    return {
+      ...label,
+      detail: commandResultDetail(executable, subcommand, label.detail, toolResult),
+    };
+  }
+
+  label = { title: 'Running a command' };
+  return {
+    ...label,
+    detail: commandResultDetail(executable, subcommand, label.detail, toolResult),
+  };
+}
+
+function titleFromToolName(name: string): string {
+  const cleaned = name
+    .replace(/^[^:]+:/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return 'Using a tool';
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+/**
+ * Produce a human-readable activity label for a tool call.
+ *
+ * This intentionally avoids raw command strings and long argument previews.
+ * Those remain available in expanded tool details.
+ */
+export function getToolActivityLabel(
+  toolCall: Pick<ToolCall, 'name' | 'arguments'>,
+  toolResult?: ToolResult | null,
+): ToolActivityLabel {
+  const toolName = toolCall.name?.trim() || '';
+  const normalizedName = toolName.toLowerCase();
+  const failed = toolResult?.success === false;
+
+  if (normalizedName === 'execute_command' || normalizedName.endsWith(':execute_command')) {
+    const args = normalizeToolArguments(toolCall.arguments);
+    const command = typeof args?.command === 'string' ? args.command.trim() : '';
+    const base = getExecuteCommandActivityLabel(command, toolResult);
+    return failed ? { ...base, title: `${base.title} failed` } : base;
+  }
+
+  if (normalizedName === 'set_session_title' || normalizedName.endsWith(':set_session_title')) {
+    return { title: failed ? 'Updating the session title failed' : 'Updating the session title' };
+  }
+
+  if (normalizedName.includes('read') || normalizedName.includes('search') || normalizedName.includes('find')) {
+    return { title: failed ? 'Inspecting context failed' : 'Inspecting context' };
+  }
+
+  const title = titleFromToolName(toolName);
+  return { title: failed ? `${title} failed` : title };
+}
+
+export function getToolActivitySummary(
+  toolCalls: Array<Pick<ToolCall, 'name' | 'arguments'>>,
+  toolResults?: Array<ToolResult | undefined | null>,
+): ToolActivityLabel {
+  if (toolCalls.length === 0) return { title: 'Using tools' };
+
+  const labels = toolCalls.map((toolCall, index) => (
+    getToolActivityLabel(toolCall, toolResults?.[index] ?? null)
+  ));
+  const uniqueTitles = Array.from(new Set(labels.map(label => label.title)));
+  const hasFailure = toolResults?.some((result) => result?.success === false) ?? false;
+  const hasPending = !toolResults || toolResults.length < toolCalls.length || toolResults.some((result) => !result);
+
+  if (toolCalls.length === 1) {
+    return labels[0];
+  }
+
+  if (uniqueTitles.length === 1) {
+    const details = labels
+      .map(label => label.detail)
+      .filter((detail): detail is string => Boolean(detail));
+    return {
+      title: uniqueTitles[0],
+      detail: details.length > 0
+        ? `${details.slice(0, 2).join('; ')}${details.length > 2 ? `; +${details.length - 2} more` : ''}`
+        : `${toolCalls.length} tool calls`,
+    };
+  }
+
+  const detail = labels
+    .map(label => label.detail ? `${label.title} (${label.detail})` : label.title)
+    .slice(0, 3)
+    .join('; ');
+
+  return {
+    title: hasFailure
+      ? `Finished ${toolCalls.length} tool actions with errors`
+      : hasPending
+        ? `Using ${toolCalls.length} tool actions`
+        : `Completed ${toolCalls.length} tool actions`,
+    detail: `${detail}${labels.length > 3 ? `; +${labels.length - 3} more` : ''}`,
+  };
 }
 
 /**

@@ -6,6 +6,8 @@ import {
   getIndividualToolCallPreview,
   getCompactToolExecutionPreview,
   getExecuteCommandResultPreview,
+  getToolActivityLabel,
+  getToolActivitySummary,
   getToolResultsSummary,
   getToolArgumentEntries,
   formatToolArguments,
@@ -62,6 +64,95 @@ describe('shouldCollapseMessage', () => {
 
   it('returns false for undefined content with no extras', () => {
     expect(shouldCollapseMessage(undefined)).toBe(false)
+  })
+})
+
+describe('getToolActivityLabel', () => {
+  it('maps file inspection shell commands to a human-readable label', () => {
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: "sed -n '1,120p' apps/desktop/src/main/llm.ts" } }).title).toBe('Reading llm.ts')
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'rg -n "agentProgress" packages/shared/src' } })).toEqual({
+      title: 'Searching code',
+      detail: 'agentProgress in src',
+    })
+  })
+
+  it('maps project checks to specific labels', () => {
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'pnpm test --filter agent-progress' } }).title).toBe('Running tests')
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'pnpm typecheck' } }).title).toBe('Checking types')
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'pnpm lint' } }).title).toBe('Linting code')
+  })
+
+  it('maps git inspection commands to repository state checks', () => {
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'git status --short' } }).title).toBe('Checking git status')
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'git diff -- apps/desktop' } })).toEqual({
+      title: 'Reviewing git diff',
+      detail: 'desktop',
+    })
+  })
+
+  it('marks failed command labels without leaking the raw command', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: 'pnpm test' } },
+        { success: false, content: '', error: 'failed' },
+      ).title,
+    ).toBe('Running tests failed')
+  })
+
+  it('does not treat heredoc script syntax as a script name', () => {
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: "python3 - <<'PY'" } })).toEqual({
+      title: 'Running a script',
+    })
+  })
+
+  it('summarizes pwd results as a folder instead of raw success metadata', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: 'pwd' } },
+        { success: true, content: '{"success":true,"cwd":"/tmp/dotagents-mono"}' },
+      ),
+    ).toEqual({
+      title: 'Checking current folder',
+      detail: 'dotagents-mono',
+    })
+  })
+})
+
+describe('getToolActivitySummary', () => {
+  it('collapses homogeneous tool batches to one label with a count detail', () => {
+    expect(getToolActivitySummary([
+      { name: 'execute_command', arguments: { command: 'rg AgentProgress' } },
+      { name: 'execute_command', arguments: { command: 'sed -n 1,20p file.ts' } },
+    ])).toEqual({
+      title: 'Using 2 tool actions',
+      detail: 'Searching code (AgentProgress); Reading file.ts',
+    })
+  })
+
+  it('uses a generic multiple-tools label for mixed tool batches', () => {
+    expect(getToolActivitySummary([
+      { name: 'execute_command', arguments: { command: 'git status --short' } },
+      { name: 'execute_command', arguments: { command: 'pnpm test' } },
+    ])).toEqual({
+      title: 'Using 2 tool actions',
+      detail: 'Checking git status; Running tests',
+    })
+  })
+
+  it('adds compact result outcomes when available', () => {
+    expect(getToolActivitySummary(
+      [
+        { name: 'execute_command', arguments: { command: 'git status --short' } },
+        { name: 'execute_command', arguments: { command: 'pnpm test' } },
+      ],
+      [
+        { success: true, content: 'M file.ts\nM other.ts' },
+        { success: true, content: 'all suites passed' },
+      ],
+    )).toEqual({
+      title: 'Completed 2 tool actions',
+      detail: 'Checking git status (2 changed files); Running tests (Passed)',
+    })
   })
 })
 // ── Tool Preview ─────────────────────────────────────────────────────────────
