@@ -61,7 +61,7 @@ import {
   preprocessTextForTTS,
   shouldCollapseMessage,
   formatToolArguments,
-  getCompactToolExecutionPreview,
+  getToolActivityLabel,
   getToolResultsSummary,
   extractRespondToUserContentFromArgs,
   RESPOND_TO_USER_TOOL,
@@ -7176,7 +7176,20 @@ export default function ChatScreen({ route, navigation }: any) {
                               const tcPending = !tcResult;
                               const tcSuccess = tcResult?.success === true;
                               const tcError = tcResult?.success === false;
-                              const toolPreview = label ?? getCompactToolExecutionPreview(toolCall, tcResult ?? null);
+                              const activityLabel = label
+                                ? { title: label }
+                                : getToolActivityLabel(
+                                    { name: toolCall.name, arguments: toolCall.arguments ?? {} },
+                                    tcResult ?? null,
+                                  );
+                              const primaryActivityText = activityLabel.detail || activityLabel.title;
+                              const secondaryActivityText = activityLabel.detail && activityLabel.detail !== activityLabel.title
+                                && !/\bcompleted$/i.test(activityLabel.title)
+                                ? activityLabel.title
+                                : undefined;
+                              const toolPreview = secondaryActivityText
+                                ? `${primaryActivityText} - ${secondaryActivityText}`
+                                : primaryActivityText;
                               return (
                                 <View key={tcIdx} style={styles.toolCallCompactLine}>
                                   <Text style={[
