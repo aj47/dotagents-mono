@@ -29,4 +29,13 @@ describe("getLegacySettingsRedirectPath", () => {
       )
     ).toBe("/settings/repeat-tasks#scheduled")
   })
+
+  it("can preserve context when moving knowledge under settings", () => {
+    expect(
+      getLegacySettingsRedirectPath(
+        "/settings/knowledge",
+        "http://localhost/knowledge?context=auto#notes"
+      )
+    ).toBe("/settings/knowledge?context=auto#notes")
+  })
 })

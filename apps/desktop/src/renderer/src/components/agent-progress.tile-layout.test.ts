@@ -25,9 +25,10 @@ describe("agent progress tile layout", () => {
   it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
     expect(agentProgressSource).toContain('className="flex items-center justify-between gap-2"')
     expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-x-2"')
-    expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} compact />')
-    expect(agentProgressSource).toContain('<SessionThinkingPicker compact />')
-    expect(agentProgressSource).toContain('<SessionVerbosityPicker compact />')
+    expect(agentProgressSource).toContain("Footer with session status metadata.")
+    expect(agentProgressSource).not.toContain("SessionModelPicker")
+    expect(agentProgressSource).not.toContain("SessionThinkingPicker")
+    expect(agentProgressSource).not.toContain("SessionVerbosityPicker")
     expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap">Step')
   })
 
@@ -194,15 +195,13 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).not.toContain('{value.expandedText}\n        </pre>')
   })
 
-  it("keeps the session model visible and clickable as a picker", () => {
-    expect(agentProgressSource).toContain('const SessionModelPicker: React.FC')
-    expect(agentProgressSource).toContain('aria-label="Change agent model"')
-    expect(agentProgressSource).toContain('buildAgentModelConfigUpdates(config, providerId, modelId)')
-    expect(agentProgressSource).toContain('Model/provider controls stay available even before live session metadata arrives')
-    expect(agentProgressSource).toContain('<SessionModelPicker modelInfo={modelInfo} />')
-    // Tile footer renders unconditionally so the model/thinking/verbosity controls
-    // stay reachable for inactive (completed) sessions too.
-    expect(agentProgressSource).toContain('always render so model picker, thinking,')
+  it("keeps model configuration controls out of the session view", () => {
+    expect(agentProgressSource).not.toContain('aria-label="Change agent model"')
+    expect(agentProgressSource).not.toContain('aria-label="Change thinking level"')
+    expect(agentProgressSource).not.toContain('aria-label="Change verbosity"')
+    expect(agentProgressSource).not.toContain("buildAgentModelConfigUpdates")
+    expect(agentProgressSource).not.toContain("Model/provider controls stay available")
+    expect(agentProgressSource).not.toContain("always render so model picker, thinking,")
   })
 
   it("keeps inline tool approval cards readable in narrow tiles and under zoom", () => {

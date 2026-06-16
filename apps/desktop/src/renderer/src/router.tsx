@@ -38,6 +38,10 @@ export const router: ReturnType<typeof createBrowserRouter> =
           lazy: () => import("./pages/settings-general"),
         },
         {
+          path: "settings/knowledge",
+          lazy: () => import("./pages/knowledge"),
+        },
+        {
           path: "settings/providers",
           lazy: () => import("./pages/settings-providers"),
         },
@@ -100,7 +104,7 @@ export const router: ReturnType<typeof createBrowserRouter> =
         },
         {
           path: "knowledge",
-          lazy: () => import("./pages/knowledge"),
+          loader: legacySettingsRedirect("/settings/knowledge"),
         },
       ],
     },

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@renderer/lib/utils"
-import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage, Config, ModelPreset } from "../../../shared/types"
+import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
 import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
@@ -11,7 +11,7 @@ import { tipcClient } from "@renderer/lib/tipc-client"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
 import { useAgentStore, useMessageQueue, useIsQueuePaused } from "@renderer/stores"
 import { AudioPlayer } from "@renderer/components/audio-player"
-import { useAvailableModelsQuery, useConfigQuery, queryClient } from "@renderer/lib/queries"
+import { useConfigQuery, queryClient } from "@renderer/lib/queries"
 import { useTheme } from "@renderer/contexts/theme-context"
 import { logUI, logExpand } from "@renderer/lib/debug"
 import { useNavigate } from "react-router-dom"
@@ -30,8 +30,6 @@ import {
   getToolActivitySummary,
   TOOL_GROUP_MIN_SIZE,
   getToolCallPreview,
-  getBuiltInModelPresets,
-  DEFAULT_MODEL_PRESET_ID,
 } from "@dotagents/shared"
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
@@ -163,280 +161,6 @@ const getRunningToolCallNames = (item: DisplayItem): string[] => {
   return item.data.calls
     .filter((_, index) => !item.data.results[index])
     .map((call) => call.name)
-}
-
-type ChatProviderId = NonNullable<Config["agentProviderId"]>
-
-type SessionModelInfo = NonNullable<AgentProgressUpdate["modelInfo"]>
-
-const AGENT_MODEL_FALLBACKS: Record<ChatProviderId, string> = {
-  openai: "gpt-4.1-mini",
-  groq: "openai/gpt-oss-120b",
-  gemini: "gemini-2.5-flash",
-  "chatgpt-web": "gpt-5.4-mini",
-}
-
-const getAgentProviderId = (config: Config | undefined): ChatProviderId => (
-  config?.agentProviderId || config?.mcpToolsProviderId || "openai"
-)
-
-const getMergedModelPresets = (config: Config | undefined): ModelPreset[] => {
-  const builtIn = getBuiltInModelPresets()
-  const saved = config?.modelPresets || []
-  const mergedBuiltIn = builtIn.map((preset) => {
-    const savedPreset = saved.find((candidate) => candidate.id === preset.id)
-    if (!savedPreset) {
-      if (preset.id === DEFAULT_MODEL_PRESET_ID && config?.openaiApiKey) {
-        return { ...preset, apiKey: config.openaiApiKey }
-      }
-      return preset
-    }
-    const merged = { ...preset, ...savedPreset }
-    if (preset.id === DEFAULT_MODEL_PRESET_ID && !merged.apiKey && config?.openaiApiKey) {
-      merged.apiKey = config.openaiApiKey
-    }
-    return merged
-  })
-  return [...mergedBuiltIn, ...saved.filter((preset) => !preset.isBuiltIn)]
-}
-
-const getActiveModelPreset = (config: Config | undefined): ModelPreset | undefined => {
-  const currentPresetId = config?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-  return getMergedModelPresets(config).find((preset) => preset.id === currentPresetId)
-}
-
-const getConfiguredAgentModel = (config: Config | undefined, providerId: ChatProviderId): string => {
-  if (providerId === "openai") {
-    const activePreset = getActiveModelPreset(config)
-    return config?.agentOpenaiModel || config?.mcpToolsOpenaiModel || activePreset?.agentModel || activePreset?.mcpToolsModel || AGENT_MODEL_FALLBACKS.openai
-  }
-  if (providerId === "groq") return config?.agentGroqModel || config?.mcpToolsGroqModel || AGENT_MODEL_FALLBACKS.groq
-  if (providerId === "gemini") return config?.agentGeminiModel || config?.mcpToolsGeminiModel || AGENT_MODEL_FALLBACKS.gemini
-  return config?.agentChatgptWebModel || config?.mcpToolsChatgptWebModel || AGENT_MODEL_FALLBACKS["chatgpt-web"]
-}
-
-const getModelDisplayName = (model: string): string => model.split("/").pop() || model
-
-const SESSION_CONTROL_SELECT_CLASS =
-  "h-[18px] min-w-0 max-w-full cursor-pointer rounded border-0 bg-transparent py-0 pl-0 pr-4 text-[10px] text-muted-foreground/80 shadow-none outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60"
-
-const buildAgentModelConfigUpdates = (config: Config, providerId: ChatProviderId, modelId: string): Partial<Config> => {
-  if (providerId === "openai") {
-    const currentPresetId = config.currentModelPresetId || DEFAULT_MODEL_PRESET_ID
-    const existingPresets = config.modelPresets || []
-    const existingPreset = existingPresets.find((preset) => preset.id === currentPresetId)
-    const builtInPreset = getBuiltInModelPresets().find((preset) => preset.id === currentPresetId)
-    const presetBase = existingPreset || builtInPreset
-    const updatedPreset: ModelPreset | undefined = presetBase
-      ? {
-          ...presetBase,
-          apiKey: presetBase.apiKey || (currentPresetId === DEFAULT_MODEL_PRESET_ID ? config.openaiApiKey || "" : ""),
-          agentModel: modelId,
-          mcpToolsModel: modelId,
-          updatedAt: Date.now(),
-        }
-      : undefined
-
-    return {
-      agentOpenaiModel: modelId,
-      mcpToolsOpenaiModel: modelId,
-      ...(updatedPreset
-        ? {
-            modelPresets: existingPreset
-              ? existingPresets.map((preset) => preset.id === currentPresetId ? updatedPreset : preset)
-              : [...existingPresets, updatedPreset],
-          }
-        : {}),
-    }
-  }
-
-  if (providerId === "groq") return { agentGroqModel: modelId, mcpToolsGroqModel: modelId }
-  if (providerId === "gemini") return { agentGeminiModel: modelId, mcpToolsGeminiModel: modelId }
-  return { agentChatgptWebModel: modelId, mcpToolsChatgptWebModel: modelId }
-}
-
-const SessionModelPicker: React.FC<{
-  modelInfo?: SessionModelInfo
-  compact?: boolean
-}> = ({ modelInfo, compact = false }) => {
-  const configQuery = useConfigQuery()
-  const config = configQuery.data
-  const providerId = getAgentProviderId(config)
-  const configuredModel = getConfiguredAgentModel(config, providerId)
-  const sessionModel = modelInfo?.model
-  const currentValue = configuredModel || sessionModel || AGENT_MODEL_FALLBACKS[providerId]
-  const providerLabel = modelInfo?.provider || getActiveModelPreset(config)?.name || providerId
-  const modelsQuery = useAvailableModelsQuery(providerId, !!providerId, providerId === "openai" ? config?.currentModelPresetId || DEFAULT_MODEL_PRESET_ID : undefined)
-  const modelOptions = useMemo(() => {
-    const options = [...(modelsQuery.data || [])]
-    if (currentValue && !options.some((model) => model.id === currentValue)) {
-      options.unshift({ id: currentValue, name: getModelDisplayName(currentValue) })
-    }
-    return options
-  }, [currentValue, modelsQuery.data])
-
-  const handleModelChange = useCallback(async (modelId: string) => {
-    if (!config || modelId === currentValue) return
-    try {
-      await tipcClient.saveConfig({
-        config: {
-          ...config,
-          ...buildAgentModelConfigUpdates(config, providerId, modelId),
-        },
-      })
-      await queryClient.invalidateQueries({ queryKey: ["config"] })
-      await queryClient.invalidateQueries({ queryKey: ["available-models"] })
-      toast.success("Agent model updated")
-    } catch (error) {
-      console.error("Failed to update agent model:", error)
-      toast.error("Failed to update model")
-    }
-  }, [config, currentValue, providerId])
-
-  if (!currentValue) return null
-
-  return (
-    <select
-      value={currentValue}
-      onChange={(event) => void handleModelChange(event.currentTarget.value)}
-      disabled={!config}
-      className={cn(SESSION_CONTROL_SELECT_CLASS, compact ? "max-w-[150px]" : "max-w-[170px]")}
-      title={`Change agent model (${providerLabel}/${currentValue})`}
-      aria-label="Change agent model"
-      onClick={(event) => event.stopPropagation()}
-    >
-      {modelOptions.map((model) => (
-        <option key={model.id} value={model.id}>
-          {providerLabel}/{model.name || getModelDisplayName(model.id)}
-        </option>
-      ))}
-      {modelsQuery.isLoading && modelOptions.length === 0 && (
-        <option value={currentValue}>Loading models...</option>
-      )}
-      {modelOptions.length === 0 && !modelsQuery.isLoading && (
-        <option value={currentValue}>No models available</option>
-      )}
-    </select>
-  )
-}
-
-type ReasoningEffort = NonNullable<Config["openaiReasoningEffort"]>
-type CodexVerbosity = NonNullable<Config["codexTextVerbosity"]>
-
-const REASONING_EFFORT_OPTIONS: Array<{ value: ReasoningEffort; label: string }> = [
-  { value: "none", label: "None" },
-  { value: "minimal", label: "Minimal" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "xhigh", label: "Extra high" },
-]
-
-const VERBOSITY_OPTIONS: Array<{ value: CodexVerbosity; label: string }> = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-]
-
-const providerSupportsThinking = (providerId: ChatProviderId): boolean =>
-  providerId === "openai" || providerId === "chatgpt-web"
-
-const providerSupportsVerbosity = (providerId: ChatProviderId): boolean =>
-  providerId === "chatgpt-web"
-
-const SessionThinkingPicker: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
-  const configQuery = useConfigQuery()
-  const config = configQuery.data
-  const providerId = getAgentProviderId(config)
-
-  const currentValue: ReasoningEffort = (config?.openaiReasoningEffort as ReasoningEffort | undefined) ||
-    (providerId === "chatgpt-web" ? "low" : "medium")
-
-  const handleChange = useCallback(async (value: string) => {
-    if (!config || value === currentValue) return
-    try {
-      await tipcClient.saveConfig({
-        config: { ...config, openaiReasoningEffort: value as ReasoningEffort },
-      })
-      await queryClient.invalidateQueries({ queryKey: ["config"] })
-      toast.success("Thinking level updated")
-    } catch (error) {
-      console.error("Failed to update thinking level:", error)
-      toast.error("Failed to update thinking level")
-    }
-  }, [config, currentValue])
-
-  if (!providerSupportsThinking(providerId)) return null
-
-  const currentLabel = REASONING_EFFORT_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
-
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1">
-      <Brain className="h-3 w-3 shrink-0 opacity-70" />
-      <select
-        value={currentValue}
-        onChange={(event) => void handleChange(event.currentTarget.value)}
-        disabled={!config}
-        className={cn(SESSION_CONTROL_SELECT_CLASS, compact ? "max-w-[82px]" : "max-w-[105px]")}
-        title={`Thinking level (${currentLabel})`}
-        aria-label="Change thinking level"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {REASONING_EFFORT_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </span>
-  )
-}
-
-const SessionVerbosityPicker: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
-  const configQuery = useConfigQuery()
-  const config = configQuery.data
-  const providerId = getAgentProviderId(config)
-
-  const currentValue: CodexVerbosity = (config?.codexTextVerbosity as CodexVerbosity | undefined) || "medium"
-
-  const handleChange = useCallback(async (value: string) => {
-    if (!config || value === currentValue) return
-    try {
-      await tipcClient.saveConfig({
-        config: { ...config, codexTextVerbosity: value as CodexVerbosity },
-      })
-      await queryClient.invalidateQueries({ queryKey: ["config"] })
-      toast.success("Verbosity updated")
-    } catch (error) {
-      console.error("Failed to update verbosity:", error)
-      toast.error("Failed to update verbosity")
-    }
-  }, [config, currentValue])
-
-  if (!providerSupportsVerbosity(providerId)) return null
-
-  const currentLabel = VERBOSITY_OPTIONS.find((o) => o.value === currentValue)?.label || currentValue
-
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1">
-      <Volume2 className="h-3 w-3 shrink-0 opacity-70" />
-      <select
-        value={currentValue}
-        onChange={(event) => void handleChange(event.currentTarget.value)}
-        disabled={!config}
-        className={cn(SESSION_CONTROL_SELECT_CLASS, compact ? "max-w-[70px]" : "max-w-[90px]")}
-        title={`Verbosity (${currentLabel})`}
-        aria-label="Change verbosity"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {VERBOSITY_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </span>
-  )
 }
 
 const COLLAPSIBLE_PAYLOAD_LINE_THRESHOLD = 2
@@ -3951,7 +3675,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     conversationHistory,
     sessionStartIndex,
     contextInfo,
-    modelInfo,
     profileName,
     acpSessionInfo,
   } = progress
@@ -5405,8 +5128,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </div>
             )}
 
-            {/* Footer with status/model controls — always render so model picker, thinking,
-                and verbosity stay reachable on inactive sessions too. */}
+            {/* Footer with session status metadata. */}
             <div
               className={cn(
                 "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
@@ -5422,9 +5144,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     </span>
                   )}
                   {profileName && <span className="text-muted-foreground/50">•</span>}
-                  <SessionModelPicker modelInfo={modelInfo} compact />
-                  <SessionThinkingPicker compact />
-                  <SessionVerbosityPicker compact />
                   {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
                     <div className="flex shrink-0 items-center gap-1">
                       <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
@@ -5549,13 +5268,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               {profileName}
             </span>
           )}
-          {/* Model/provider controls stay available even before live session metadata arrives */}
-          <>
-            {profileName && <span className="text-muted-foreground/50">•</span>}
-            <SessionModelPicker modelInfo={modelInfo} />
-            <SessionThinkingPicker />
-            <SessionVerbosityPicker />
-          </>
           {/* Context fill indicator */}
           {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
             <div className="flex items-center gap-1.5">

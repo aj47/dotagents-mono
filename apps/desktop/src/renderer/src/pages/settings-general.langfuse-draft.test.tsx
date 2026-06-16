@@ -16,13 +16,25 @@ function createHookRuntime() {
   let refIndex = 0
   let effectIndex = 0
 
-  const depsChanged = (prev?: any[], next?: any[]) => !prev || !next || prev.length !== next.length || prev.some((value, index) => !Object.is(value, next[index]))
+  const depsChanged = (prev?: any[], next?: any[]) =>
+    !prev ||
+    !next ||
+    prev.length !== next.length ||
+    prev.some((value, index) => !Object.is(value, next[index]))
   const useState = <T,>(initial: T | (() => T)) => {
     const idx = stateIndex++
-    if (states[idx] === undefined) states[idx] = typeof initial === "function" ? (initial as () => T)() : initial
-    return [states[idx] as T, (update: T | ((prev: T) => T)) => {
-      states[idx] = typeof update === "function" ? (update as (prev: T) => T)(states[idx]) : update
-    }] as const
+    if (states[idx] === undefined)
+      states[idx] =
+        typeof initial === "function" ? (initial as () => T)() : initial
+    return [
+      states[idx] as T,
+      (update: T | ((prev: T) => T)) => {
+        states[idx] =
+          typeof update === "function"
+            ? (update as (prev: T) => T)(states[idx])
+            : update
+      },
+    ] as const
   }
   const useRef = <T,>(initial: T) => {
     const idx = refIndex++
@@ -46,7 +58,8 @@ function createHookRuntime() {
     useCallback: (fn: any) => fn,
     forwardRef: (render: any) => {
       const ForwardRefComponent = (props: any) => render(props, null)
-      ForwardRefComponent.displayName = render.displayName || render.name || "ForwardRef"
+      ForwardRefComponent.displayName =
+        render.displayName || render.name || "ForwardRef"
       return ForwardRefComponent
     },
   }
@@ -55,11 +68,13 @@ function createHookRuntime() {
   const Fragment = Symbol.for("react.fragment")
   const invoke = (type: any, props: any) => {
     if (type === Fragment) return props?.children ?? null
-    return typeof type === "function" ? type(props ?? {}) : { type, props: props ?? {} }
+    return typeof type === "function"
+      ? type(props ?? {})
+      : { type, props: props ?? {} }
   }
 
   return {
-    render<P,>(Component: (props: P) => any, props: P) {
+    render<P>(Component: (props: P) => any, props: P) {
       stateIndex = 0
       refIndex = 0
       effectIndex = 0
@@ -68,7 +83,8 @@ function createHookRuntime() {
     commitEffects() {
       for (const record of effects) {
         if (!record?.callback) continue
-        const shouldRun = !record.hasRun || depsChanged(record.deps, record.nextDeps)
+        const shouldRun =
+          !record.hasRun || depsChanged(record.deps, record.nextDeps)
         if (!shouldRun) continue
         if (typeof record.cleanup === "function") record.cleanup()
         record.cleanup = record.callback()
@@ -77,7 +93,13 @@ function createHookRuntime() {
       }
     },
     reactMock,
-    jsxRuntimeMock: { __esModule: true, Fragment, jsx: invoke, jsxs: invoke, jsxDEV: invoke },
+    jsxRuntimeMock: {
+      __esModule: true,
+      Fragment,
+      jsx: invoke,
+      jsxs: invoke,
+      jsxDEV: invoke,
+    },
   }
 }
 
@@ -100,7 +122,7 @@ function findNode(node: any, predicate: (node: any) => boolean): any {
 function findInputByPlaceholder(node: any, placeholder: string) {
   return findNode(
     node,
-    candidate =>
+    (candidate) =>
       (candidate.type === "Input" || candidate.type === "input") &&
       candidate.props?.placeholder === placeholder,
   )
@@ -109,7 +131,7 @@ function findInputByPlaceholder(node: any, placeholder: string) {
 function findTextareaByPlaceholder(node: any, placeholder: string) {
   return findNode(
     node,
-    candidate =>
+    (candidate) =>
       (candidate.type === "Textarea" || candidate.type === "textarea") &&
       candidate.props?.placeholder === placeholder,
   )
@@ -118,7 +140,7 @@ function findTextareaByPlaceholder(node: any, placeholder: string) {
 function findMaxIterationsInput(node: any) {
   return findNode(
     node,
-    candidate =>
+    (candidate) =>
       (candidate.type === "Input" || candidate.type === "input") &&
       candidate.props?.type === "number" &&
       candidate.props?.placeholder === "10",
@@ -128,18 +150,22 @@ function findMaxIterationsInput(node: any) {
 function findControlByLabel(node: any, label: string) {
   return findNode(
     node,
-    candidate => candidate.type === "Control" && candidate.props?.label === label,
+    (candidate) =>
+      candidate.type === "Control" && candidate.props?.label === label,
   )
 }
 
-const GROQ_STT_PROMPT_PLACEHOLDER = "Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
+const GROQ_STT_PROMPT_PLACEHOLDER =
+  "Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
 
 async function flushPromises() {
   await Promise.resolve()
   await Promise.resolve()
 }
 
-async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>) {
+async function loadSettingsGeneral(
+  runtime: ReturnType<typeof createHookRuntime>,
+) {
   vi.resetModules()
 
   const Null = () => null
@@ -169,14 +195,37 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
     ControlLabel: (props: any) => props.label,
     SettingsSearchContext: { Provider: PassThrough },
   }
+  const settingsNavigationMock = {
+    SettingsPageShell: PassThrough,
+    SettingsNavigation: Null,
+  }
   const inputMock = { Input: (props: any) => ({ type: "Input", props }) }
   const switchMock = { Switch: (props: any) => ({ type: "Switch", props }) }
   const buttonMock = { Button: (props: any) => ({ type: "Button", props }) }
-  const selectMock = { Select: Null, SelectContent: Null, SelectItem: Null, SelectTrigger: Null, SelectValue: Null }
-  const textareaMock = { Textarea: (props: any) => ({ type: "Textarea", props }) }
-  const dialogMock = { Dialog: PassThrough, DialogContent: PassThrough, DialogHeader: PassThrough, DialogTitle: PassThrough, DialogTrigger: PassThrough }
+  const selectMock = {
+    Select: Null,
+    SelectContent: Null,
+    SelectItem: Null,
+    SelectTrigger: Null,
+    SelectValue: Null,
+  }
+  const textareaMock = {
+    Textarea: (props: any) => ({ type: "Textarea", props }),
+  }
+  const dialogMock = {
+    Dialog: PassThrough,
+    DialogContent: PassThrough,
+    DialogHeader: PassThrough,
+    DialogTitle: PassThrough,
+    DialogTrigger: PassThrough,
+  }
   const ttsManagerMock = { ttsManager: { stopAll: vi.fn() } }
-  const tipcClientMock = { tipcClient: { getAgentsFolders: vi.fn(async () => ({})), getExternalAgents: vi.fn(async () => []) } }
+  const tipcClientMock = {
+    tipcClient: {
+      getAgentsFolders: vi.fn(async () => ({})),
+      getExternalAgents: vi.fn(async () => []),
+    },
+  }
 
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
@@ -190,7 +239,14 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
     useQuery: ({ queryKey }: any) => {
       const key = Array.isArray(queryKey) ? queryKey[0] : queryKey
       if (key === "langfuseInstalled") return { data: true, isLoading: false }
-      if (key === "agentsFolders") return { data: { global: { agentsDir: "/tmp/global/.agents" }, workspace: null }, isLoading: false }
+      if (key === "agentsFolders")
+        return {
+          data: {
+            global: { agentsDir: "/tmp/global/.agents" },
+            workspace: null,
+          },
+          isLoading: false,
+        }
       if (key === "externalAgents") return { data: [], isLoading: false }
       return { data: undefined, isLoading: false }
     },
@@ -199,24 +255,58 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   }))
   vi.doMock("@renderer/lib/query-client", () => queryClientMock)
   vi.doMock("../lib/query-client", () => queryClientMock)
-  vi.doMock("./settings-general-main-agent-options", () => ({ getSelectableMainAcpAgents: () => [] }))
+  vi.doMock("./settings-general-main-agent-options", () => ({
+    getSelectableMainAcpAgents: () => [],
+  }))
   vi.doMock("@renderer/lib/tts-manager", () => ttsManagerMock)
   vi.doMock("../lib/tts-manager", () => ttsManagerMock)
   vi.doMock("@renderer/lib/tipc-client", () => tipcClientMock)
   vi.doMock("../lib/tipc-client", () => tipcClientMock)
   vi.doMock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-  vi.doMock("lucide-react", () => ({ ExternalLink: Null, AlertCircle: Null, FolderOpen: Null, FolderUp: Null, FileText: Null, Search: Null }))
-  vi.doMock("@dotagents/shared", () => ({ __esModule: true, STT_PROVIDER_ID: {}, SUPPORTED_LANGUAGES: [] }))
-  vi.doMock("@shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
-  vi.doMock("../shared/key-utils", () => ({ getEffectiveShortcut: () => "", formatKeyComboForDisplay: () => "" }))
+  vi.doMock("lucide-react", () => ({
+    ExternalLink: Null,
+    AlertCircle: Null,
+    FolderOpen: Null,
+    FolderUp: Null,
+    FileText: Null,
+    Search: Null,
+  }))
+  vi.doMock("@dotagents/shared", () => ({
+    __esModule: true,
+    STT_PROVIDER_ID: {},
+    SUPPORTED_LANGUAGES: [],
+  }))
+  vi.doMock("@shared/key-utils", () => ({
+    getEffectiveShortcut: () => "",
+    formatKeyComboForDisplay: () => "",
+  }))
+  vi.doMock("../shared/key-utils", () => ({
+    getEffectiveShortcut: () => "",
+    formatKeyComboForDisplay: () => "",
+  }))
   vi.doMock("@renderer/hooks/use-audio-devices", () => ({
-    useAudioDevices: () => ({ inputDevices: [], outputDevices: [], error: null, refresh: vi.fn() }),
+    useAudioDevices: () => ({
+      inputDevices: [],
+      outputDevices: [],
+      error: null,
+      refresh: vi.fn(),
+    }),
   }))
   vi.doMock("../hooks/use-audio-devices", () => ({
-    useAudioDevices: () => ({ inputDevices: [], outputDevices: [], error: null, refresh: vi.fn() }),
+    useAudioDevices: () => ({
+      inputDevices: [],
+      outputDevices: [],
+      error: null,
+      refresh: vi.fn(),
+    }),
   }))
   vi.doMock("@renderer/components/ui/control", () => controlMock)
   vi.doMock("../components/ui/control", () => controlMock)
+  vi.doMock(
+    "@renderer/components/settings-navigation",
+    () => settingsNavigationMock,
+  )
+  vi.doMock("../components/settings-navigation", () => settingsNavigationMock)
   vi.doMock("@renderer/components/ui/input", () => inputMock)
   vi.doMock("../components/ui/input", () => inputMock)
   vi.doMock("@renderer/components/ui/switch", () => switchMock)
@@ -225,16 +315,25 @@ async function loadSettingsGeneral(runtime: ReturnType<typeof createHookRuntime>
   vi.doMock("../components/ui/button", () => buttonMock)
   vi.doMock("@renderer/components/ui/select", () => selectMock)
   vi.doMock("../components/ui/select", () => selectMock)
-  vi.doMock("@renderer/components/ui/tooltip", () => ({ Tooltip: Null, TooltipContent: Null, TooltipProvider: Null, TooltipTrigger: Null }))
+  vi.doMock("@renderer/components/ui/tooltip", () => ({
+    Tooltip: Null,
+    TooltipContent: Null,
+    TooltipProvider: Null,
+    TooltipTrigger: Null,
+  }))
   vi.doMock("@renderer/components/ui/textarea", () => textareaMock)
   vi.doMock("../components/ui/textarea", () => textareaMock)
   vi.doMock("@renderer/components/ui/dialog", () => dialogMock)
   vi.doMock("../components/ui/dialog", () => dialogMock)
-  vi.doMock("@renderer/components/model-selector", () => ({ ModelSelector: Null }))
+  vi.doMock("@renderer/components/model-selector", () => ({
+    ModelSelector: Null,
+  }))
   vi.doMock("../components/model-selector", () => ({ ModelSelector: Null }))
   vi.doMock("@renderer/components/key-recorder", () => ({ KeyRecorder: Null }))
   vi.doMock("../components/key-recorder", () => ({ KeyRecorder: Null }))
-  vi.doMock("./settings-remote-server", () => ({ RemoteServerSettingsGroups: Null }))
+  vi.doMock("./settings-remote-server", () => ({
+    RemoteServerSettingsGroups: Null,
+  }))
 
   const mod = await import("./settings-general")
   return {
@@ -275,15 +374,22 @@ afterEach(() => {
 describe("desktop general settings draft behavior", () => {
   it("saves the local trace logging toggle from general settings", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+    const { Component, mutate, getCurrentConfig } =
+      await loadSettingsGeneral(runtime)
 
     const tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
     await flushPromises()
 
-    const localTraceLoggingControl = findControlByLabel(tree, "Local trace logging")
+    const localTraceLoggingControl = findControlByLabel(
+      tree,
+      "Local trace logging",
+    )
     expect(localTraceLoggingControl).toBeTruthy()
-    const toggle = findNode(localTraceLoggingControl, candidate => candidate.type === "Switch")
+    const toggle = findNode(
+      localTraceLoggingControl,
+      (candidate) => candidate.type === "Switch",
+    )
     expect(toggle.props.checked).toBe(false)
 
     toggle.props.onCheckedChange(true)
@@ -298,7 +404,8 @@ describe("desktop general settings draft behavior", () => {
 
   it("keeps the public key draft local, debounces saves, and merges with the latest config", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+    const { Component, mutate, setConfig, getCurrentConfig } =
+      await loadSettingsGeneral(runtime)
 
     let tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
@@ -333,7 +440,8 @@ describe("desktop general settings draft behavior", () => {
 
   it("flushes the latest secret key on blur without waiting for a rerender", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+    const { Component, mutate, getCurrentConfig } =
+      await loadSettingsGeneral(runtime)
 
     const tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
@@ -354,7 +462,8 @@ describe("desktop general settings draft behavior", () => {
 
   it("resyncs the displayed drafts from saved config updates", async () => {
     const runtime = createHookRuntime()
-    const { Component, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+    const { Component, setConfig, getCurrentConfig } =
+      await loadSettingsGeneral(runtime)
 
     let tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
@@ -370,13 +479,19 @@ describe("desktop general settings draft behavior", () => {
     runtime.commitEffects()
     tree = runtime.render(Component, {} as any)
 
-    expect(findInputByPlaceholder(tree, "pk-lf-...").props.value).toBe("pk-lf-synced")
-    expect(findInputByPlaceholder(tree, "https://cloud.langfuse.com (default)").props.value).toBe("https://langfuse.example")
+    expect(findInputByPlaceholder(tree, "pk-lf-...").props.value).toBe(
+      "pk-lf-synced",
+    )
+    expect(
+      findInputByPlaceholder(tree, "https://cloud.langfuse.com (default)").props
+        .value,
+    ).toBe("https://langfuse.example")
   })
 
   it("keeps the max-iterations draft local, allows temporary empty input, and debounces valid saves", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+    const { Component, mutate, setConfig, getCurrentConfig } =
+      await loadSettingsGeneral(runtime)
 
     let tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
@@ -419,7 +534,8 @@ describe("desktop general settings draft behavior", () => {
 
   it("flushes the latest valid max-iterations draft on blur without waiting for a rerender", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+    const { Component, mutate, getCurrentConfig } =
+      await loadSettingsGeneral(runtime)
 
     const tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
@@ -486,20 +602,29 @@ describe("desktop general settings draft behavior", () => {
 
   it("keeps the Groq STT prompt draft local, debounces saves, and merges with the latest config", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+    const { Component, mutate, setConfig, getCurrentConfig } =
+      await loadSettingsGeneral(runtime)
 
     let tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
     await flushPromises()
 
-    let groqPromptTextarea = findTextareaByPlaceholder(tree, GROQ_STT_PROMPT_PLACEHOLDER)
+    let groqPromptTextarea = findTextareaByPlaceholder(
+      tree,
+      GROQ_STT_PROMPT_PLACEHOLDER,
+    )
     expect(groqPromptTextarea.props.value).toBe("Spell DotAgents correctly")
 
-    groqPromptTextarea.props.onChange({ currentTarget: { value: "Spell DotAgents as two words" } })
+    groqPromptTextarea.props.onChange({
+      currentTarget: { value: "Spell DotAgents as two words" },
+    })
 
     tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
-    groqPromptTextarea = findTextareaByPlaceholder(tree, GROQ_STT_PROMPT_PLACEHOLDER)
+    groqPromptTextarea = findTextareaByPlaceholder(
+      tree,
+      GROQ_STT_PROMPT_PLACEHOLDER,
+    )
     expect(groqPromptTextarea.props.value).toBe("Spell DotAgents as two words")
     expect(mutate).not.toHaveBeenCalled()
 
@@ -521,15 +646,23 @@ describe("desktop general settings draft behavior", () => {
 
   it("flushes the latest Groq STT prompt on blur without waiting for a rerender", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, getCurrentConfig } = await loadSettingsGeneral(runtime)
+    const { Component, mutate, getCurrentConfig } =
+      await loadSettingsGeneral(runtime)
 
     const tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
     await flushPromises()
 
-    const groqPromptTextarea = findTextareaByPlaceholder(tree, GROQ_STT_PROMPT_PLACEHOLDER)
-    groqPromptTextarea.props.onChange({ currentTarget: { value: "Prefer agent names verbatim" } })
-    groqPromptTextarea.props.onBlur({ currentTarget: { value: "Prefer agent names verbatim" } })
+    const groqPromptTextarea = findTextareaByPlaceholder(
+      tree,
+      GROQ_STT_PROMPT_PLACEHOLDER,
+    )
+    groqPromptTextarea.props.onChange({
+      currentTarget: { value: "Prefer agent names verbatim" },
+    })
+    groqPromptTextarea.props.onBlur({
+      currentTarget: { value: "Prefer agent names verbatim" },
+    })
 
     expect(mutate).toHaveBeenCalledTimes(1)
     expect(mutate).toHaveBeenCalledWith({
@@ -542,7 +675,8 @@ describe("desktop general settings draft behavior", () => {
 
   it("resyncs the Groq STT prompt draft from saved config updates", async () => {
     const runtime = createHookRuntime()
-    const { Component, setConfig, getCurrentConfig } = await loadSettingsGeneral(runtime)
+    const { Component, setConfig, getCurrentConfig } =
+      await loadSettingsGeneral(runtime)
 
     let tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
@@ -557,9 +691,8 @@ describe("desktop general settings draft behavior", () => {
     runtime.commitEffects()
     tree = runtime.render(Component, {} as any)
 
-    expect(findTextareaByPlaceholder(tree, GROQ_STT_PROMPT_PLACEHOLDER).props.value).toBe(
-      "Use product names exactly as written",
-    )
+    expect(
+      findTextareaByPlaceholder(tree, GROQ_STT_PROMPT_PLACEHOLDER).props.value,
+    ).toBe("Use product names exactly as written")
   })
-
 })
