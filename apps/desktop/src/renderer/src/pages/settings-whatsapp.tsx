@@ -1,11 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Control, ControlGroup, ControlLabel } from "@renderer/components/ui/control"
+import {
+  Control,
+  ControlGroup,
+  ControlLabel,
+} from "@renderer/components/ui/control"
 import { Switch } from "@renderer/components/ui/switch"
 import { Input } from "@renderer/components/ui/input"
 import { Button } from "@renderer/components/ui/button"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import { SettingsPageShell } from "@renderer/components/settings-navigation"
+import {
+  useConfigQuery,
+  useSaveConfigMutation,
+} from "@renderer/lib/query-client"
 import type { Config } from "@shared/types"
-import { AlertTriangle, Loader2, CheckCircle2, XCircle, RefreshCw, LogOut, QrCode as QrCodeIcon, EyeOff } from "lucide-react"
+import {
+  AlertTriangle,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  LogOut,
+  QrCode as QrCodeIcon,
+  EyeOff,
+} from "lucide-react"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { QRCodeSVG } from "qrcode.react"
 
@@ -29,7 +46,7 @@ function formatWhatsappAllowFrom(values: string[] | undefined): string {
 function parseWhatsappAllowFromDraft(value: string): string[] {
   return value
     .split(",")
-    .map(entry => entry.trim())
+    .map((entry) => entry.trim())
     .filter(Boolean)
 }
 
@@ -57,8 +74,12 @@ export function Component() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [qrCodeData, setQrCodeData] = useState<string | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
-  const [allowFromDraft, setAllowFromDraft] = useState(() => formatWhatsappAllowFrom(cfg?.whatsappAllowFrom))
-  const allowFromSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [allowFromDraft, setAllowFromDraft] = useState(() =>
+    formatWhatsappAllowFrom(cfg?.whatsappAllowFrom),
+  )
+  const allowFromSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  )
 
   useEffect(() => {
     cfgRef.current = cfg
@@ -73,25 +94,31 @@ export function Component() {
     [saveConfigMutation],
   )
 
-  const flushAllowFromSave = useCallback((draft: string) => {
-    if (allowFromSaveTimeoutRef.current) {
-      clearTimeout(allowFromSaveTimeoutRef.current)
-      allowFromSaveTimeoutRef.current = null
-    }
+  const flushAllowFromSave = useCallback(
+    (draft: string) => {
+      if (allowFromSaveTimeoutRef.current) {
+        clearTimeout(allowFromSaveTimeoutRef.current)
+        allowFromSaveTimeoutRef.current = null
+      }
 
-    saveConfig({ whatsappAllowFrom: parseWhatsappAllowFromDraft(draft) })
-  }, [saveConfig])
-
-  const scheduleAllowFromSave = useCallback((draft: string) => {
-    if (allowFromSaveTimeoutRef.current) {
-      clearTimeout(allowFromSaveTimeoutRef.current)
-    }
-
-    allowFromSaveTimeoutRef.current = setTimeout(() => {
-      allowFromSaveTimeoutRef.current = null
       saveConfig({ whatsappAllowFrom: parseWhatsappAllowFromDraft(draft) })
-    }, WHATSAPP_ALLOWLIST_SAVE_DEBOUNCE_MS)
-  }, [saveConfig])
+    },
+    [saveConfig],
+  )
+
+  const scheduleAllowFromSave = useCallback(
+    (draft: string) => {
+      if (allowFromSaveTimeoutRef.current) {
+        clearTimeout(allowFromSaveTimeoutRef.current)
+      }
+
+      allowFromSaveTimeoutRef.current = setTimeout(() => {
+        allowFromSaveTimeoutRef.current = null
+        saveConfig({ whatsappAllowFrom: parseWhatsappAllowFromDraft(draft) })
+      }, WHATSAPP_ALLOWLIST_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
 
   useEffect(() => {
     setAllowFromDraft(formatWhatsappAllowFrom(cfg?.whatsappAllowFrom))
@@ -187,34 +214,43 @@ export function Component() {
   const streamerMode = cfg.streamerModeEnabled ?? false
 
   return (
-    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
+    <SettingsPageShell>
       <div className="grid gap-4">
         <ControlGroup
           title="WhatsApp Integration"
-          endDescription={(
-            <div className="break-words whitespace-normal">
-              Connect your WhatsApp account to send and receive messages through DotAgents.
-              Messages from allowed phone numbers can trigger the AI agent and receive automatic replies.
+          endDescription={
+            <div className="whitespace-normal break-words">
+              Connect your WhatsApp account to send and receive messages through
+              DotAgents. Messages from allowed phone numbers can trigger the AI
+              agent and receive automatic replies.
             </div>
-          )}
+          }
         >
           {/* Warning if remote server is not enabled */}
           {!remoteServerEnabled && (
             <div className="mx-3 mb-2 flex items-start gap-2 rounded-md bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
-                <strong>Remote Server Required:</strong> WhatsApp auto-reply requires the Remote Server to be enabled.
-                <a href="/settings/remote-server" className="underline ml-1">Enable it here</a>.
+                <strong>Remote Server Required:</strong> WhatsApp auto-reply
+                requires the Remote Server to be enabled.
+                <a href="/settings/remote-server" className="ml-1 underline">
+                  Enable it here
+                </a>
+                .
               </div>
             </div>
           )}
 
           {remoteServerEnabled && !hasApiKey && (
             <div className="mx-3 mb-2 flex items-start gap-2 rounded-md bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
-                <strong>API Key Required:</strong> Generate an API key in Remote Server settings for WhatsApp to work.
-                <a href="/settings/remote-server" className="underline ml-1">Configure it here</a>.
+                <strong>API Key Required:</strong> Generate an API key in Remote
+                Server settings for WhatsApp to work.
+                <a href="/settings/remote-server" className="ml-1 underline">
+                  Configure it here
+                </a>
+                .
               </div>
             </div>
           )}
@@ -237,23 +273,32 @@ export function Component() {
               {streamerMode && (
                 <div className="mb-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
                   <EyeOff className="h-3.5 w-3.5" />
-                  <span>Streamer Mode: Phone numbers and QR codes are hidden</span>
+                  <span>
+                    Streamer Mode: Phone numbers and QR codes are hidden
+                  </span>
                 </div>
               )}
 
               {/* Status display */}
-              <div className="flex items-center gap-2 mb-4">
+              <div className="mb-4 flex items-center gap-2">
                 {status?.connected ? (
                   <>
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
                     <span className="text-sm text-green-600 dark:text-green-400">
-                      Connected as {streamerMode ? "****" : (status.userName || "Unknown")} ({streamerMode ? maskPhoneNumber(status.phoneNumber) : status.phoneNumber})
+                      Connected as{" "}
+                      {streamerMode ? "****" : status.userName || "Unknown"} (
+                      {streamerMode
+                        ? maskPhoneNumber(status.phoneNumber)
+                        : status.phoneNumber}
+                      )
                     </span>
                   </>
                 ) : status?.available ? (
                   <>
-                    <XCircle className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Not connected</span>
+                    <XCircle className="text-muted-foreground h-5 w-5" />
+                    <span className="text-muted-foreground text-sm">
+                      Not connected
+                    </span>
                   </>
                 ) : (
                   <>
@@ -267,7 +312,7 @@ export function Component() {
 
               {/* Error display */}
               {statusError && (
-                <div className="mb-4 p-2 rounded bg-red-500/10 text-sm text-red-600 dark:text-red-400">
+                <div className="mb-4 rounded bg-red-500/10 p-2 text-sm text-red-600 dark:text-red-400">
                   {statusError}
                 </div>
               )}
@@ -276,23 +321,31 @@ export function Component() {
               {qrCodeData && !status?.connected && (
                 <div className="mb-4 flex flex-col items-center">
                   {streamerMode ? (
-                    <div className="bg-muted/50 p-4 rounded-lg shadow-md flex flex-col items-center justify-center" style={{ width: 256, height: 256 }}>
-                      <EyeOff className="h-12 w-12 text-muted-foreground mb-2" />
-                      <span className="text-sm text-muted-foreground text-center">QR Code hidden<br />Streamer Mode is active</span>
+                    <div
+                      className="bg-muted/50 flex flex-col items-center justify-center rounded-lg p-4 shadow-md"
+                      style={{ width: 256, height: 256 }}
+                    >
+                      <EyeOff className="text-muted-foreground mb-2 h-12 w-12" />
+                      <span className="text-muted-foreground text-center text-sm">
+                        QR Code hidden
+                        <br />
+                        Streamer Mode is active
+                      </span>
                     </div>
                   ) : (
-                    <div className="bg-white p-4 rounded-lg shadow-md">
+                    <div className="rounded-lg bg-white p-4 shadow-md">
                       <QRCodeSVG value={qrCodeData} size={256} />
                     </div>
                   )}
-                  <p className="mt-2 text-sm text-muted-foreground text-center">
-                    Open WhatsApp on your phone → Settings → Linked Devices → Scan this QR code
+                  <p className="text-muted-foreground mt-2 text-center text-sm">
+                    Open WhatsApp on your phone → Settings → Linked Devices →
+                    Scan this QR code
                   </p>
                 </div>
               )}
 
               {/* Action buttons */}
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex flex-wrap gap-2">
                 {!status?.connected ? (
                   <Button
                     onClick={handleConnect}
@@ -302,31 +355,42 @@ export function Component() {
                   >
                     {isConnecting ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Connecting...
                       </>
                     ) : (
                       <>
-                        <QrCodeIcon className="h-4 w-4 mr-2" />
-                        {status?.hasCredentials ? "Reconnect" : "Connect with QR Code"}
+                        <QrCodeIcon className="mr-2 h-4 w-4" />
+                        {status?.hasCredentials
+                          ? "Reconnect"
+                          : "Connect with QR Code"}
                       </>
                     )}
                   </Button>
                 ) : (
-                  <Button onClick={handleDisconnect} variant="outline" size="sm">
-                    <XCircle className="h-4 w-4 mr-2" />
+                  <Button
+                    onClick={handleDisconnect}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
                     Disconnect
                   </Button>
                 )}
 
                 <Button onClick={fetchStatus} variant="ghost" size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="mr-2 h-4 w-4" />
                   Refresh
                 </Button>
 
                 {(status?.connected || status?.hasCredentials) && (
-                  <Button onClick={handleLogout} variant="ghost" size="sm" className="text-red-600">
-                    <LogOut className="h-4 w-4 mr-2" />
+                  <Button
+                    onClick={handleLogout}
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
                     Logout
                   </Button>
                 )}
@@ -339,7 +403,12 @@ export function Component() {
         {enabled && (
           <ControlGroup title="Settings">
             <Control
-              label={<ControlLabel label="Allowed Senders" tooltip="Only messages from these senders will be processed. Accepts phone numbers (E.164) or WhatsApp LIDs. Leave empty to allow all (not recommended)." />}
+              label={
+                <ControlLabel
+                  label="Allowed Senders"
+                  tooltip="Only messages from these senders will be processed. Accepts phone numbers (E.164) or WhatsApp LIDs. Leave empty to allow all (not recommended)."
+                />
+              }
               className="px-3"
             >
               <Input
@@ -351,35 +420,47 @@ export function Component() {
                   scheduleAllowFromSave(nextDraft)
                 }}
                 onBlur={(e) => flushAllowFromSave(e.currentTarget.value)}
-                placeholder={streamerMode ? "••••••••••" : "+14155551234, 98389177934034"}
+                placeholder={
+                  streamerMode ? "••••••••••" : "+14155551234, 98389177934034"
+                }
                 className="w-full"
               />
-              <div className="mt-2 text-xs text-muted-foreground space-y-1">
-                <p>Enter phone numbers or LIDs separated by commas. Phone numbers can include formatting like +, spaces, or punctuation.</p>
+              <div className="text-muted-foreground mt-2 space-y-1 text-xs">
+                <p>
+                  Enter phone numbers or LIDs separated by commas. Phone numbers
+                  can include formatting like +, spaces, or punctuation.
+                </p>
                 <details className="cursor-pointer">
-                  <summary className="text-blue-600 dark:text-blue-400 hover:underline">
+                  <summary className="text-blue-600 hover:underline dark:text-blue-400">
                     What are LIDs and how do I find them?
                   </summary>
-                  <div className="mt-2 p-2 bg-muted/50 rounded-md space-y-2">
+                  <div className="bg-muted/50 mt-2 space-y-2 rounded-md p-2">
                     <p>
-                      <strong>LIDs (Linked IDs)</strong> are WhatsApp's privacy-focused identifiers that replace phone numbers in some cases.
+                      <strong>LIDs (Linked IDs)</strong> are WhatsApp's
+                      privacy-focused identifiers that replace phone numbers in
+                      some cases.
                     </p>
                     <p>
                       <strong>To find a sender's LID:</strong>
                     </p>
-                    <ol className="list-decimal list-inside space-y-1 ml-2">
+                    <ol className="ml-2 list-inside list-decimal space-y-1">
                       <li>Enable "Log Message Content" below</li>
                       <li>Have the person send you a message</li>
-                      <li>Check the logs - blocked messages show the LID to add</li>
+                      <li>
+                        Check the logs - blocked messages show the LID to add
+                      </li>
                       <li>Copy the LID number and add it here</li>
                     </ol>
                     <p className="text-amber-600 dark:text-amber-400">
-                      Tip: Phone numbers still work for many contacts. Try the phone number first, then use a LID if messages are blocked.
+                      Tip: Phone numbers still work for many contacts. Try the
+                      phone number first, then use a LID if messages are
+                      blocked.
                     </p>
                   </div>
                 </details>
               </div>
-              {(!cfg.whatsappAllowFrom || cfg.whatsappAllowFrom.length === 0) && (
+              {(!cfg.whatsappAllowFrom ||
+                cfg.whatsappAllowFrom.length === 0) && (
                 <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
                   No allowlist set - all incoming messages will be accepted
                 </div>
@@ -387,7 +468,12 @@ export function Component() {
             </Control>
 
             <Control
-              label={<ControlLabel label="Auto-Reply" tooltip="Automatically send agent responses back to WhatsApp. Requires Remote Server to be enabled." />}
+              label={
+                <ControlLabel
+                  label="Auto-Reply"
+                  tooltip="Automatically send agent responses back to WhatsApp. Requires Remote Server to be enabled."
+                />
+              }
               className="px-3"
             >
               <Switch
@@ -398,23 +484,32 @@ export function Component() {
                 disabled={
                   // Only disable when trying to enable without prerequisites
                   // Always allow turning OFF (unchecking) so users can opt out
-                  !(cfg.whatsappAutoReply ?? false) && (!remoteServerEnabled || !hasApiKey)
+                  !(cfg.whatsappAutoReply ?? false) &&
+                  (!remoteServerEnabled || !hasApiKey)
                 }
               />
               {cfg.whatsappAutoReply && remoteServerEnabled && hasApiKey && (
                 <div className="mt-1 text-xs text-green-600 dark:text-green-400">
-                  Auto-reply enabled - incoming messages will be processed and replied to
+                  Auto-reply enabled - incoming messages will be processed and
+                  replied to
                 </div>
               )}
-              {cfg.whatsappAutoReply && (!remoteServerEnabled || !hasApiKey) && (
-                <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                  Auto-reply is enabled but Remote Server or API key is missing
-                </div>
-              )}
+              {cfg.whatsappAutoReply &&
+                (!remoteServerEnabled || !hasApiKey) && (
+                  <div className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    Auto-reply is enabled but Remote Server or API key is
+                    missing
+                  </div>
+                )}
             </Control>
 
             <Control
-              label={<ControlLabel label="Log Message Content" tooltip="Log the content of WhatsApp messages. Disable for privacy." />}
+              label={
+                <ControlLabel
+                  label="Log Message Content"
+                  tooltip="Log the content of WhatsApp messages. Disable for privacy."
+                />
+              }
               className="px-3"
             >
               <Switch
@@ -423,14 +518,14 @@ export function Component() {
                   saveConfig({ whatsappLogMessages: value })
                 }}
               />
-              <div className="mt-1 text-xs text-muted-foreground">
-                When enabled, message content will appear in logs. Disable for privacy.
+              <div className="text-muted-foreground mt-1 text-xs">
+                When enabled, message content will appear in logs. Disable for
+                privacy.
               </div>
             </Control>
           </ControlGroup>
         )}
       </div>
-    </div>
+    </SettingsPageShell>
   )
 }
-

@@ -16,14 +16,26 @@ function createHookRuntime() {
   let refIndex = 0
   let effectIndex = 0
 
-  const depsChanged = (prev?: any[], next?: any[]) => !prev || !next || prev.length !== next.length || prev.some((value, index) => !Object.is(value, next[index]))
+  const depsChanged = (prev?: any[], next?: any[]) =>
+    !prev ||
+    !next ||
+    prev.length !== next.length ||
+    prev.some((value, index) => !Object.is(value, next[index]))
 
   const useState = <T,>(initial: T | (() => T)) => {
     const idx = stateIndex++
-    if (states[idx] === undefined) states[idx] = typeof initial === "function" ? (initial as () => T)() : initial
-    return [states[idx] as T, (update: T | ((prev: T) => T)) => {
-      states[idx] = typeof update === "function" ? (update as (prev: T) => T)(states[idx]) : update
-    }] as const
+    if (states[idx] === undefined)
+      states[idx] =
+        typeof initial === "function" ? (initial as () => T)() : initial
+    return [
+      states[idx] as T,
+      (update: T | ((prev: T) => T)) => {
+        states[idx] =
+          typeof update === "function"
+            ? (update as (prev: T) => T)(states[idx])
+            : update
+      },
+    ] as const
   }
 
   const useRef = <T,>(initial: T) => {
@@ -47,18 +59,21 @@ function createHookRuntime() {
     useRef,
     useEffect,
     useCallback: (fn: any) => fn,
-    forwardRef: (render: (props: any, ref: any) => any) => (props: any) => render(props, null),
+    forwardRef: (render: (props: any, ref: any) => any) => (props: any) =>
+      render(props, null),
   }
   reactMock.default = reactMock
 
   const Fragment = Symbol.for("react.fragment")
   const invoke = (type: any, props: any) => {
     if (type === Fragment) return props?.children ?? null
-    return typeof type === "function" ? type(props ?? {}) : { type, props: props ?? {} }
+    return typeof type === "function"
+      ? type(props ?? {})
+      : { type, props: props ?? {} }
   }
 
   return {
-    render<P,>(Component: (props: P) => any, props: P) {
+    render<P>(Component: (props: P) => any, props: P) {
       stateIndex = 0
       refIndex = 0
       effectIndex = 0
@@ -67,7 +82,8 @@ function createHookRuntime() {
     commitEffects() {
       for (const record of effects) {
         if (!record?.callback) continue
-        const shouldRun = !record.hasRun || depsChanged(record.deps, record.nextDeps)
+        const shouldRun =
+          !record.hasRun || depsChanged(record.deps, record.nextDeps)
         if (!shouldRun) continue
         if (typeof record.cleanup === "function") record.cleanup()
         const cleanup = record.callback()
@@ -77,7 +93,13 @@ function createHookRuntime() {
       }
     },
     reactMock,
-    jsxRuntimeMock: { __esModule: true, Fragment, jsx: invoke, jsxs: invoke, jsxDEV: invoke },
+    jsxRuntimeMock: {
+      __esModule: true,
+      Fragment,
+      jsx: invoke,
+      jsxs: invoke,
+      jsxDEV: invoke,
+    },
   }
 }
 
@@ -102,7 +124,11 @@ function findInput(node: any) {
 }
 
 function findControlGroup(node: any, title: string) {
-  return findNode(node, (candidate) => candidate.type === "ControlGroup" && candidate.props?.title === title)
+  return findNode(
+    node,
+    (candidate) =>
+      candidate.type === "ControlGroup" && candidate.props?.title === title,
+  )
 }
 
 function collectText(node: any, results: string[] = []): string[] {
@@ -125,7 +151,10 @@ async function flushPromises() {
   await Promise.resolve()
 }
 
-async function renderSettled(runtime: ReturnType<typeof createHookRuntime>, Component: (props: any) => any) {
+async function renderSettled(
+  runtime: ReturnType<typeof createHookRuntime>,
+  Component: (props: any) => any,
+) {
   let tree = runtime.render(Component, {} as any)
   runtime.commitEffects()
   await flushPromises()
@@ -133,7 +162,9 @@ async function renderSettled(runtime: ReturnType<typeof createHookRuntime>, Comp
   return tree
 }
 
-async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime>) {
+async function loadSettingsWhatsApp(
+  runtime: ReturnType<typeof createHookRuntime>,
+) {
   vi.resetModules()
 
   const Null = () => null
@@ -153,6 +184,14 @@ async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime
   vi.doMock("react", () => runtime.reactMock)
   vi.doMock("react/jsx-runtime", () => runtime.jsxRuntimeMock)
   vi.doMock("react/jsx-dev-runtime", () => runtime.jsxRuntimeMock)
+  vi.doMock("@renderer/components/settings-navigation", () => ({
+    SettingsPageShell: (props: any) => props?.children ?? null,
+    SettingsNavigation: Null,
+  }))
+  vi.doMock("../components/settings-navigation", () => ({
+    SettingsPageShell: (props: any) => props?.children ?? null,
+    SettingsNavigation: Null,
+  }))
   vi.doMock("@renderer/components/ui/control", () => ({
     Control: (props: any) => ({ type: "Control", props }),
     ControlGroup: (props: any) => ({ type: "ControlGroup", props }),
@@ -163,12 +202,24 @@ async function loadSettingsWhatsApp(runtime: ReturnType<typeof createHookRuntime
     ControlGroup: (props: any) => ({ type: "ControlGroup", props }),
     ControlLabel: (props: any) => ({ type: "ControlLabel", props }),
   }))
-  vi.doMock("@renderer/components/ui/switch", () => ({ Switch: (props: any) => ({ type: "Switch", props }) }))
-  vi.doMock("../components/ui/switch", () => ({ Switch: (props: any) => ({ type: "Switch", props }) }))
-  vi.doMock("@renderer/components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
-  vi.doMock("../components/ui/input", () => ({ Input: (props: any) => ({ type: "Input", props }) }))
-  vi.doMock("@renderer/components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
-  vi.doMock("../components/ui/button", () => ({ Button: (props: any) => ({ type: "Button", props }) }))
+  vi.doMock("@renderer/components/ui/switch", () => ({
+    Switch: (props: any) => ({ type: "Switch", props }),
+  }))
+  vi.doMock("../components/ui/switch", () => ({
+    Switch: (props: any) => ({ type: "Switch", props }),
+  }))
+  vi.doMock("@renderer/components/ui/input", () => ({
+    Input: (props: any) => ({ type: "Input", props }),
+  }))
+  vi.doMock("../components/ui/input", () => ({
+    Input: (props: any) => ({ type: "Input", props }),
+  }))
+  vi.doMock("@renderer/components/ui/button", () => ({
+    Button: (props: any) => ({ type: "Button", props }),
+  }))
+  vi.doMock("../components/ui/button", () => ({
+    Button: (props: any) => ({ type: "Button", props }),
+  }))
   vi.doMock("@renderer/lib/query-client", () => ({
     useConfigQuery: () => ({ data: currentConfig }),
     useSaveConfigMutation: () => ({ mutate }),
@@ -252,19 +303,24 @@ describe("desktop WhatsApp settings allowlist", () => {
 
     const input = findInput(tree)
     expect(input.props.placeholder).toBe("+14155551234, 98389177934034")
-    expect(collectText(tree)).toContain("Enter phone numbers or LIDs separated by commas. Phone numbers can include formatting like +, spaces, or punctuation.")
+    expect(collectText(tree)).toContain(
+      "Enter phone numbers or LIDs separated by commas. Phone numbers can include formatting like +, spaces, or punctuation.",
+    )
   })
 
   it("keeps a local draft and debounces config saves while editing", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
+    const { Component, mutate, getCurrentConfig } =
+      await loadSettingsWhatsApp(runtime)
 
     let tree = await renderSettled(runtime, Component)
 
     let input = findInput(tree)
     expect(input.props.value).toBe("14155551234")
 
-    input.props.onChange({ currentTarget: { value: "14155551234, +442071838750" } })
+    input.props.onChange({
+      currentTarget: { value: "14155551234, +442071838750" },
+    })
 
     tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
@@ -286,17 +342,22 @@ describe("desktop WhatsApp settings allowlist", () => {
 
   it("flushes pending edits on blur and resyncs from updated config", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, setConfig, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
+    const { Component, mutate, setConfig, getCurrentConfig } =
+      await loadSettingsWhatsApp(runtime)
 
     let tree = await renderSettled(runtime, Component)
 
     let input = findInput(tree)
-    input.props.onChange({ currentTarget: { value: "14155551234, 98389177934034" } })
+    input.props.onChange({
+      currentTarget: { value: "14155551234, 98389177934034" },
+    })
 
     tree = runtime.render(Component, {} as any)
     runtime.commitEffects()
     input = findInput(tree)
-    input.props.onBlur({ currentTarget: { value: "14155551234, 98389177934034" } })
+    input.props.onBlur({
+      currentTarget: { value: "14155551234, 98389177934034" },
+    })
 
     expect(mutate).toHaveBeenCalledTimes(1)
     expect(mutate).toHaveBeenCalledWith({
@@ -320,13 +381,18 @@ describe("desktop WhatsApp settings allowlist", () => {
 
   it("flushes the latest draft on blur even without an intervening rerender", async () => {
     const runtime = createHookRuntime()
-    const { Component, mutate, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
+    const { Component, mutate, getCurrentConfig } =
+      await loadSettingsWhatsApp(runtime)
 
     const tree = await renderSettled(runtime, Component)
 
     const input = findInput(tree)
-    input.props.onChange({ currentTarget: { value: "14155551234, +442071838750" } })
-    input.props.onBlur({ currentTarget: { value: "14155551234, +442071838750" } })
+    input.props.onChange({
+      currentTarget: { value: "14155551234, +442071838750" },
+    })
+    input.props.onBlur({
+      currentTarget: { value: "14155551234, +442071838750" },
+    })
 
     expect(mutate).toHaveBeenCalledTimes(1)
     expect(mutate).toHaveBeenCalledWith({
@@ -351,19 +417,28 @@ describe("desktop WhatsApp settings allowlist", () => {
     const tree = await renderSettled(runtime, Component)
     const connectionGroup = findControlGroup(tree, "Connection")
     const connectionText = collectText(connectionGroup).join(" ")
-    const connectionEndDescriptionText = collectText(connectionGroup?.props?.endDescription).join(" ")
+    const connectionEndDescriptionText = collectText(
+      connectionGroup?.props?.endDescription,
+    ).join(" ")
 
     expect(connectionText).toContain("Connect with QR Code")
-    expect(connectionText).toContain("Open WhatsApp on your phone → Settings → Linked Devices → Scan this QR code")
+    expect(connectionText).toContain(
+      "Open WhatsApp on your phone → Settings → Linked Devices → Scan this QR code",
+    )
     expect(connectionGroup?.props?.endDescription).toBeUndefined()
     expect(connectionEndDescriptionText).toBe("")
-    expect(connectionText).not.toContain("Connect your WhatsApp account by scanning the QR code")
-    expect(connectionEndDescriptionText).not.toContain("Connect your WhatsApp account by scanning the QR code")
+    expect(connectionText).not.toContain(
+      "Connect your WhatsApp account by scanning the QR code",
+    )
+    expect(connectionEndDescriptionText).not.toContain(
+      "Connect your WhatsApp account by scanning the QR code",
+    )
   })
 
   it("renders allowlist guidance and empty-state warning as plain text in Settings", async () => {
     const runtime = createHookRuntime()
-    const { Component, setConfig, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
+    const { Component, setConfig, getCurrentConfig } =
+      await loadSettingsWhatsApp(runtime)
 
     setConfig({
       ...getCurrentConfig(),
@@ -375,13 +450,16 @@ describe("desktop WhatsApp settings allowlist", () => {
     const settingsText = collectText(settingsGroup).join(" ")
 
     expect(settingsText).toContain("What are LIDs and how do I find them?")
-    expect(settingsText).toContain("No allowlist set - all incoming messages will be accepted")
+    expect(settingsText).toContain(
+      "No allowlist set - all incoming messages will be accepted",
+    )
     expect(settingsText).not.toMatch(/[ℹ️💡⚠️]/)
   })
 
   it("renders auto-reply success and prerequisite-warning copy as text-first state messages", async () => {
     const runtime = createHookRuntime()
-    const { Component, setConfig, getCurrentConfig } = await loadSettingsWhatsApp(runtime)
+    const { Component, setConfig, getCurrentConfig } =
+      await loadSettingsWhatsApp(runtime)
 
     setConfig({
       ...getCurrentConfig(),
@@ -393,7 +471,9 @@ describe("desktop WhatsApp settings allowlist", () => {
     let tree = await renderSettled(runtime, Component)
     let settingsText = collectText(findControlGroup(tree, "Settings")).join(" ")
 
-    expect(settingsText).toContain("Auto-reply enabled - incoming messages will be processed and replied to")
+    expect(settingsText).toContain(
+      "Auto-reply enabled - incoming messages will be processed and replied to",
+    )
     expect(settingsText).not.toMatch(/[✓⚠️]/)
 
     setConfig({
@@ -406,7 +486,9 @@ describe("desktop WhatsApp settings allowlist", () => {
     tree = await renderSettled(runtime, Component)
     settingsText = collectText(findControlGroup(tree, "Settings")).join(" ")
 
-    expect(settingsText).toContain("Auto-reply is enabled but Remote Server or API key is missing")
+    expect(settingsText).toContain(
+      "Auto-reply is enabled but Remote Server or API key is missing",
+    )
     expect(settingsText).not.toMatch(/[✓⚠️]/)
   })
 })

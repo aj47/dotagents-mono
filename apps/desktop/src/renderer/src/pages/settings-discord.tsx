@@ -1,12 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AlertTriangle, CheckCircle2, RefreshCw, Trash2, XCircle } from "lucide-react"
+import {
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCw,
+  Trash2,
+  XCircle,
+} from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { Control, ControlGroup } from "@renderer/components/ui/control"
 import { Input } from "@renderer/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@renderer/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@renderer/components/ui/select"
+import { SettingsPageShell } from "@renderer/components/settings-navigation"
 import { Switch } from "@renderer/components/ui/switch"
 import { Textarea } from "@renderer/components/ui/textarea"
-import { useConfigQuery, useSaveConfigMutation } from "@renderer/lib/query-client"
+import {
+  useConfigQuery,
+  useSaveConfigMutation,
+} from "@renderer/lib/query-client"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import type { AgentProfile, Config } from "@shared/types"
 
@@ -62,7 +78,12 @@ export function Component() {
     setUserAllowlistDraft(formatIdList(cfg?.discordAllowUserIds))
     setGuildAllowlistDraft(formatIdList(cfg?.discordAllowGuildIds))
     setChannelAllowlistDraft(formatIdList(cfg?.discordAllowChannelIds))
-  }, [cfg?.discordBotToken, cfg?.discordAllowUserIds, cfg?.discordAllowGuildIds, cfg?.discordAllowChannelIds])
+  }, [
+    cfg?.discordBotToken,
+    cfg?.discordAllowUserIds,
+    cfg?.discordAllowGuildIds,
+    cfg?.discordAllowChannelIds,
+  ])
 
   // Pure: returns the merged config without touching `cfgRef.current`. The
   // ref is only advanced AFTER the save mutation actually succeeds, so an
@@ -76,27 +97,33 @@ export function Component() {
     return { ...cfgRef.current, ...partial }
   }, [])
 
-  const saveConfig = useCallback((partial: Partial<Config>) => {
-    const nextConfig = mergeConfig(partial)
-    if (!nextConfig) return
-    saveConfigMutation.mutate(
-      { config: nextConfig },
-      {
-        onSuccess: () => {
-          cfgRef.current = nextConfig
+  const saveConfig = useCallback(
+    (partial: Partial<Config>) => {
+      const nextConfig = mergeConfig(partial)
+      if (!nextConfig) return
+      saveConfigMutation.mutate(
+        { config: nextConfig },
+        {
+          onSuccess: () => {
+            cfgRef.current = nextConfig
+          },
         },
-      },
-    )
-  }, [mergeConfig, saveConfigMutation])
+      )
+    },
+    [mergeConfig, saveConfigMutation],
+  )
 
-  const saveConfigAsync = useCallback(async (partial: Partial<Config>) => {
-    const nextConfig = mergeConfig(partial)
-    if (!nextConfig) return
-    await saveConfigMutation.mutateAsync({ config: nextConfig })
-    // Only advance the ref after the mutation resolves successfully. If the
-    // mutation throws, the await above re-throws and we never reach here.
-    cfgRef.current = nextConfig
-  }, [mergeConfig, saveConfigMutation])
+  const saveConfigAsync = useCallback(
+    async (partial: Partial<Config>) => {
+      const nextConfig = mergeConfig(partial)
+      if (!nextConfig) return
+      await saveConfigMutation.mutateAsync({ config: nextConfig })
+      // Only advance the ref after the mutation resolves successfully. If the
+      // mutation throws, the await above re-throws and we never reach here.
+      cfgRef.current = nextConfig
+    },
+    [mergeConfig, saveConfigMutation],
+  )
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -107,7 +134,15 @@ export function Component() {
       ])
       setStatus(nextStatus as DiscordStatus)
       setLogs((nextLogs as DiscordLogEntry[]).slice().reverse())
-      setProfiles((nextProfiles as AgentProfile[]).filter((profile) => profile.enabled !== false && (profile.role === "chat-agent" || profile.role === "user-profile" || profile.isUserProfile)))
+      setProfiles(
+        (nextProfiles as AgentProfile[]).filter(
+          (profile) =>
+            profile.enabled !== false &&
+            (profile.role === "chat-agent" ||
+              profile.role === "user-profile" ||
+              profile.isUserProfile),
+        ),
+      )
       setStatusError(null)
     } catch (error) {
       setStatusError(error instanceof Error ? error.message : String(error))
@@ -159,15 +194,16 @@ export function Component() {
   const statusMessage = statusError || status?.lastError
 
   return (
-    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-6 py-4">
+    <SettingsPageShell>
       <div className="grid gap-4">
         <ControlGroup
           title="Discord Integration"
-          endDescription={(
-            <div className="break-words whitespace-normal">
-              Connect a Discord bot so DMs, mentions, and threads can talk to a selected DotAgents profile.
+          endDescription={
+            <div className="whitespace-normal break-words">
+              Connect a Discord bot so DMs, mentions, and threads can talk to a
+              selected DotAgents profile.
             </div>
-          )}
+          }
         >
           <Control label="Enable Discord" className="px-3">
             <Switch
@@ -184,12 +220,15 @@ export function Component() {
               value={botTokenDraft}
               placeholder="Paste your Discord bot token"
               onChange={(event) => setBotTokenDraft(event.target.value)}
-              onBlur={() => saveConfig({ discordBotToken: botTokenDraft.trim() })}
+              onBlur={() =>
+                saveConfig({ discordBotToken: botTokenDraft.trim() })
+              }
             />
           </Control>
 
-          <div className="px-3 py-1 text-sm text-muted-foreground">
-            Discord needs the bot token plus the Message Content intent enabled in the Discord developer portal.
+          <div className="text-muted-foreground px-3 py-1 text-sm">
+            Discord needs the bot token plus the Message Content intent enabled
+            in the Discord developer portal.
           </div>
 
           <div className="px-3 pb-3">
@@ -197,23 +236,26 @@ export function Component() {
               {unavailable ? (
                 <>
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <span className="text-amber-600 dark:text-amber-400">Discord support unavailable</span>
+                  <span className="text-amber-600 dark:text-amber-400">
+                    Discord support unavailable
+                  </span>
                 </>
               ) : status?.connected ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                   <span className="text-green-600 dark:text-green-400">
-                    Connected as {status.botUsername || "unknown bot"}{status.botId ? ` (${status.botId})` : ""}
+                    Connected as {status.botUsername || "unknown bot"}
+                    {status.botId ? ` (${status.botId})` : ""}
                   </span>
                 </>
               ) : status?.connecting ? (
                 <>
-                  <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <RefreshCw className="text-muted-foreground h-4 w-4 animate-spin" />
                   <span>Connecting…</span>
                 </>
               ) : (
                 <>
-                  <XCircle className="h-4 w-4 text-muted-foreground" />
+                  <XCircle className="text-muted-foreground h-4 w-4" />
                   <span className="text-muted-foreground">Not connected</span>
                 </>
               )}
@@ -227,9 +269,25 @@ export function Component() {
             )}
 
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => void handleConnect()} disabled={!enabled || unavailable}>Connect</Button>
-              <Button variant="outline" onClick={() => void handleDisconnect()} disabled={!enabled || unavailable}>Disconnect</Button>
-              <Button variant="ghost" size="icon" onClick={() => void fetchStatus()} aria-label="Refresh Discord status">
+              <Button
+                onClick={() => void handleConnect()}
+                disabled={!enabled || unavailable}
+              >
+                Connect
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void handleDisconnect()}
+                disabled={!enabled || unavailable}
+              >
+                Disconnect
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => void fetchStatus()}
+                aria-label="Refresh Discord status"
+              >
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
@@ -240,7 +298,12 @@ export function Component() {
           <Control label="Default profile" className="px-3">
             <Select
               value={cfg.discordDefaultProfileId || "__none__"}
-              onValueChange={(value) => saveConfig({ discordDefaultProfileId: value === "__none__" ? undefined : value })}
+              onValueChange={(value) =>
+                saveConfig({
+                  discordDefaultProfileId:
+                    value === "__none__" ? undefined : value,
+                })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a profile" />
@@ -248,7 +311,9 @@ export function Component() {
               <SelectContent>
                 <SelectItem value="__none__">No profile selected</SelectItem>
                 {profiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>{profile.displayName}</SelectItem>
+                  <SelectItem key={profile.id} value={profile.id}>
+                    {profile.displayName}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -257,27 +322,37 @@ export function Component() {
           <Control label="Allow direct messages" className="px-3">
             <Switch
               checked={cfg.discordDmEnabled ?? true}
-              onCheckedChange={(value) => saveConfig({ discordDmEnabled: value })}
+              onCheckedChange={(value) =>
+                saveConfig({ discordDmEnabled: value })
+              }
             />
           </Control>
 
           <Control label="Require mention in servers" className="px-3">
             <Switch
               checked={cfg.discordRequireMention ?? true}
-              onCheckedChange={(value) => saveConfig({ discordRequireMention: value })}
+              onCheckedChange={(value) =>
+                saveConfig({ discordRequireMention: value })
+              }
             />
           </Control>
 
-          <div className="mx-3 rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-xs text-muted-foreground">
-            💡 <span className="font-medium">You usually don't need to fill these in.</span> The Discord
-            bot's <span className="font-medium">application owner</span> (or Team members, for
-            Team‑owned apps) is automatically trusted — no IDs required. To grant a friend read‑only
-            access, DM the bot <code className="rounded bg-muted px-1">/dm allow @user</code> — it uses
-            Discord's native user picker. Any user can also run{" "}
-            <code className="rounded bg-muted px-1">/whoami</code> in Discord to see their own ID if
-            you prefer to paste it here manually. Mutating commands like{" "}
-            <code className="rounded bg-muted px-1">/dm allow</code> remain restricted to the
-            application owner.
+          <div className="text-muted-foreground mx-3 rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-xs">
+            💡{" "}
+            <span className="font-medium">
+              You usually don't need to fill these in.
+            </span>{" "}
+            The Discord bot's{" "}
+            <span className="font-medium">application owner</span> (or Team
+            members, for Team‑owned apps) is automatically trusted — no IDs
+            required. To grant a friend read‑only access, DM the bot{" "}
+            <code className="bg-muted rounded px-1">/dm allow @user</code> — it
+            uses Discord's native user picker. Any user can also run{" "}
+            <code className="bg-muted rounded px-1">/whoami</code> in Discord to
+            see their own ID if you prefer to paste it here manually. Mutating
+            commands like{" "}
+            <code className="bg-muted rounded px-1">/dm allow</code> remain
+            restricted to the application owner.
           </div>
 
           <Control label="Allowed user IDs" className="px-3">
@@ -286,7 +361,11 @@ export function Component() {
               value={userAllowlistDraft}
               placeholder="One Discord user ID per line"
               onChange={(event) => setUserAllowlistDraft(event.target.value)}
-              onBlur={() => saveConfig({ discordAllowUserIds: parseIdList(userAllowlistDraft) })}
+              onBlur={() =>
+                saveConfig({
+                  discordAllowUserIds: parseIdList(userAllowlistDraft),
+                })
+              }
             />
           </Control>
 
@@ -296,7 +375,11 @@ export function Component() {
               value={guildAllowlistDraft}
               placeholder="One Discord server ID per line"
               onChange={(event) => setGuildAllowlistDraft(event.target.value)}
-              onBlur={() => saveConfig({ discordAllowGuildIds: parseIdList(guildAllowlistDraft) })}
+              onBlur={() =>
+                saveConfig({
+                  discordAllowGuildIds: parseIdList(guildAllowlistDraft),
+                })
+              }
             />
           </Control>
 
@@ -306,22 +389,36 @@ export function Component() {
               value={channelAllowlistDraft}
               placeholder="One Discord channel or thread ID per line"
               onChange={(event) => setChannelAllowlistDraft(event.target.value)}
-              onBlur={() => saveConfig({ discordAllowChannelIds: parseIdList(channelAllowlistDraft) })}
+              onBlur={() =>
+                saveConfig({
+                  discordAllowChannelIds: parseIdList(channelAllowlistDraft),
+                })
+              }
             />
           </Control>
 
           <Control label="Log message content" className="px-3">
             <Switch
               checked={cfg.discordLogMessages ?? false}
-              onCheckedChange={(value) => saveConfig({ discordLogMessages: value })}
+              onCheckedChange={(value) =>
+                saveConfig({ discordLogMessages: value })
+              }
             />
           </Control>
         </ControlGroup>
 
         <ControlGroup title="Recent Logs">
           <div className="flex items-center justify-between px-3 pt-2">
-            <div className="text-sm text-muted-foreground">Most recent Discord events and errors.</div>
-            <Button variant="ghost" size="sm" onClick={() => void tipcClient.discordClearLogs().then(() => fetchStatus())}>
+            <div className="text-muted-foreground text-sm">
+              Most recent Discord events and errors.
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                void tipcClient.discordClearLogs().then(() => fetchStatus())
+              }
+            >
               <Trash2 className="mr-2 h-4 w-4" />
               Clear logs
             </Button>
@@ -329,19 +426,29 @@ export function Component() {
 
           <div className="space-y-2 px-3 pb-3">
             {logs.length === 0 ? (
-              <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">No Discord logs yet.</div>
-            ) : logs.map((entry) => (
-              <div key={entry.id} className="rounded-md border p-3 text-sm">
-                <div className="mb-1 flex items-center justify-between gap-3">
-                  <span className="font-medium uppercase text-muted-foreground">{entry.level}</span>
-                  <span className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</span>
-                </div>
-                <div className="break-words whitespace-pre-wrap">{entry.message}</div>
+              <div className="text-muted-foreground rounded-md border border-dashed p-3 text-sm">
+                No Discord logs yet.
               </div>
-            ))}
+            ) : (
+              logs.map((entry) => (
+                <div key={entry.id} className="rounded-md border p-3 text-sm">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground font-medium uppercase">
+                      {entry.level}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {new Date(entry.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="whitespace-pre-wrap break-words">
+                    {entry.message}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </ControlGroup>
       </div>
-    </div>
+    </SettingsPageShell>
   )
 }

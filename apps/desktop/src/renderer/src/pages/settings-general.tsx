@@ -1,4 +1,9 @@
-import { Control, ControlGroup, ControlLabel, SettingsSearchContext } from "@renderer/components/ui/control"
+import {
+  Control,
+  ControlGroup,
+  ControlLabel,
+  SettingsSearchContext,
+} from "@renderer/components/ui/control"
 import {
   Select,
   SelectContent,
@@ -18,13 +23,22 @@ import {
 } from "@renderer/lib/query-client"
 import { getSelectableMainAcpAgents } from "./settings-general-main-agent-options"
 import { tipcClient } from "@renderer/lib/tipc-client"
-import { AlertTriangle, ExternalLink, FolderOpen, FolderUp, FileText, Search, X } from "lucide-react"
+import {
+  AlertTriangle,
+  ExternalLink,
+  FolderOpen,
+  FolderUp,
+  FileText,
+  Search,
+  X,
+} from "lucide-react"
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
+import { SettingsPageShell } from "@renderer/components/settings-navigation"
 import {
   getEffectiveShortcut,
   formatKeyComboForDisplay,
@@ -38,7 +52,10 @@ const MCP_MAX_ITERATIONS_MIN = 1
 const MCP_MAX_ITERATIONS_MAX = 50
 const MCP_MAX_ITERATIONS_DEFAULT = 10
 
-type LangfuseDraftKey = "langfusePublicKey" | "langfuseSecretKey" | "langfuseBaseUrl"
+type LangfuseDraftKey =
+  | "langfusePublicKey"
+  | "langfuseSecretKey"
+  | "langfuseBaseUrl"
 
 function getLangfuseDrafts(config: Config | undefined) {
   return {
@@ -51,7 +68,11 @@ function getLangfuseDrafts(config: Config | undefined) {
 function parseMcpMaxIterationsDraft(value: string) {
   const parsedValue = Number.parseInt(value, 10)
   if (Number.isNaN(parsedValue)) return null
-  if (parsedValue < MCP_MAX_ITERATIONS_MIN || parsedValue > MCP_MAX_ITERATIONS_MAX) return null
+  if (
+    parsedValue < MCP_MAX_ITERATIONS_MIN ||
+    parsedValue > MCP_MAX_ITERATIONS_MAX
+  )
+    return null
   return parsedValue
 }
 
@@ -63,14 +84,24 @@ export function Component() {
 
   const saveConfigMutation = useSaveConfigMutation()
   const cfgRef = useRef<Config | undefined>(cfg)
-  const [langfuseDrafts, setLangfuseDrafts] = useState(() => getLangfuseDrafts(cfg))
-  const langfuseSaveTimeoutsRef = useRef<Partial<Record<LangfuseDraftKey, ReturnType<typeof setTimeout>>>>({})
-  const [groqSttPromptDraft, setGroqSttPromptDraft] = useState(() => cfg?.groqSttPrompt ?? "")
-  const groqSttPromptSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [mcpMaxIterationsDraft, setMcpMaxIterationsDraft] = useState(
-    () => String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
+  const [langfuseDrafts, setLangfuseDrafts] = useState(() =>
+    getLangfuseDrafts(cfg),
   )
-  const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const langfuseSaveTimeoutsRef = useRef<
+    Partial<Record<LangfuseDraftKey, ReturnType<typeof setTimeout>>>
+  >({})
+  const [groqSttPromptDraft, setGroqSttPromptDraft] = useState(
+    () => cfg?.groqSttPrompt ?? "",
+  )
+  const groqSttPromptSaveTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+  const [mcpMaxIterationsDraft, setMcpMaxIterationsDraft] = useState(() =>
+    String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
+  )
+  const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
 
   // Settings search
   const [searchQuery, setSearchQuery] = useState("")
@@ -78,7 +109,8 @@ export function Component() {
 
   // Defer audio device enumeration until the user expands the Audio Devices section
   const [audioSectionOpen, setAudioSectionOpen] = useState(false)
-  const { inputDevices: audioInputDevices, outputDevices: audioOutputDevices } = useAudioDevices(audioSectionOpen || searchQuery.length > 0)
+  const { inputDevices: audioInputDevices, outputDevices: audioOutputDevices } =
+    useAudioDevices(audioSectionOpen || searchQuery.length > 0)
 
   // Check if langfuse package is installed
   const langfuseInstalledQuery = useQuery({
@@ -105,7 +137,8 @@ export function Component() {
   })
 
   const isLangfuseInstalled = langfuseInstalledQuery.data ?? true // Default to true while loading
-  const systemPromptOverrideScope = agentsFoldersQuery.data?.workspace?.systemPromptExists
+  const systemPromptOverrideScope = agentsFoldersQuery.data?.workspace
+    ?.systemPromptExists
     ? "Workspace"
     : agentsFoldersQuery.data?.global?.systemPromptExists
       ? "Global"
@@ -115,7 +148,7 @@ export function Component() {
   const systemPromptOverrideActive = Boolean(systemPromptOverrideScope)
   const selectableMainAcpAgents = getSelectableMainAcpAgents(
     externalAgentsQuery.data,
-    []
+    [],
   )
 
   const openGlobalAgentsFolder = useCallback(async () => {
@@ -221,12 +254,16 @@ export function Component() {
   }, [cfg?.groqSttPrompt])
 
   useEffect(() => {
-    setMcpMaxIterationsDraft(String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT))
+    setMcpMaxIterationsDraft(
+      String(cfg?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT),
+    )
   }, [cfg?.mcpMaxIterations])
 
   useEffect(() => {
     return () => {
-      for (const timeout of Object.values(langfuseSaveTimeoutsRef.current) as Array<ReturnType<typeof setTimeout> | undefined>) {
+      for (const timeout of Object.values(
+        langfuseSaveTimeoutsRef.current,
+      ) as Array<ReturnType<typeof setTimeout> | undefined>) {
         if (timeout) clearTimeout(timeout)
       }
 
@@ -240,100 +277,134 @@ export function Component() {
     }
   }, [])
 
-  const flushLangfuseSave = useCallback((key: LangfuseDraftKey, value: string) => {
-    const pendingSave = langfuseSaveTimeoutsRef.current[key]
-    if (pendingSave) {
-      clearTimeout(pendingSave)
-      delete langfuseSaveTimeoutsRef.current[key]
-    }
+  const flushLangfuseSave = useCallback(
+    (key: LangfuseDraftKey, value: string) => {
+      const pendingSave = langfuseSaveTimeoutsRef.current[key]
+      if (pendingSave) {
+        clearTimeout(pendingSave)
+        delete langfuseSaveTimeoutsRef.current[key]
+      }
 
-    saveConfig({ [key]: value || undefined } as Partial<Config>)
-  }, [saveConfig])
-
-  const scheduleLangfuseSave = useCallback((key: LangfuseDraftKey, value: string) => {
-    const pendingSave = langfuseSaveTimeoutsRef.current[key]
-    if (pendingSave) {
-      clearTimeout(pendingSave)
-    }
-
-    langfuseSaveTimeoutsRef.current[key] = setTimeout(() => {
-      delete langfuseSaveTimeoutsRef.current[key]
       saveConfig({ [key]: value || undefined } as Partial<Config>)
-    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
-  }, [saveConfig])
+    },
+    [saveConfig],
+  )
 
-  const updateLangfuseDraft = useCallback((key: LangfuseDraftKey, value: string) => {
-    setLangfuseDrafts((currentDrafts) => ({
-      ...currentDrafts,
-      [key]: value,
-    }))
-    scheduleLangfuseSave(key, value)
-  }, [scheduleLangfuseSave])
+  const scheduleLangfuseSave = useCallback(
+    (key: LangfuseDraftKey, value: string) => {
+      const pendingSave = langfuseSaveTimeoutsRef.current[key]
+      if (pendingSave) {
+        clearTimeout(pendingSave)
+      }
 
-  const flushGroqSttPromptSave = useCallback((value: string) => {
-    if (groqSttPromptSaveTimeoutRef.current) {
-      clearTimeout(groqSttPromptSaveTimeoutRef.current)
-      groqSttPromptSaveTimeoutRef.current = null
-    }
+      langfuseSaveTimeoutsRef.current[key] = setTimeout(() => {
+        delete langfuseSaveTimeoutsRef.current[key]
+        saveConfig({ [key]: value || undefined } as Partial<Config>)
+      }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
 
-    saveConfig({ groqSttPrompt: value || undefined })
-  }, [saveConfig])
+  const updateLangfuseDraft = useCallback(
+    (key: LangfuseDraftKey, value: string) => {
+      setLangfuseDrafts((currentDrafts) => ({
+        ...currentDrafts,
+        [key]: value,
+      }))
+      scheduleLangfuseSave(key, value)
+    },
+    [scheduleLangfuseSave],
+  )
 
-  const scheduleGroqSttPromptSave = useCallback((value: string) => {
-    if (groqSttPromptSaveTimeoutRef.current) {
-      clearTimeout(groqSttPromptSaveTimeoutRef.current)
-    }
+  const flushGroqSttPromptSave = useCallback(
+    (value: string) => {
+      if (groqSttPromptSaveTimeoutRef.current) {
+        clearTimeout(groqSttPromptSaveTimeoutRef.current)
+        groqSttPromptSaveTimeoutRef.current = null
+      }
 
-    groqSttPromptSaveTimeoutRef.current = setTimeout(() => {
-      groqSttPromptSaveTimeoutRef.current = null
       saveConfig({ groqSttPrompt: value || undefined })
-    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
-  }, [saveConfig])
+    },
+    [saveConfig],
+  )
 
-  const updateGroqSttPromptDraft = useCallback((value: string) => {
-    setGroqSttPromptDraft(value)
-    scheduleGroqSttPromptSave(value)
-  }, [scheduleGroqSttPromptSave])
+  const scheduleGroqSttPromptSave = useCallback(
+    (value: string) => {
+      if (groqSttPromptSaveTimeoutRef.current) {
+        clearTimeout(groqSttPromptSaveTimeoutRef.current)
+      }
 
-  const flushMcpMaxIterationsSave = useCallback((value: string) => {
-    if (mcpMaxIterationsSaveTimeoutRef.current) {
-      clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
-      mcpMaxIterationsSaveTimeoutRef.current = null
-    }
+      groqSttPromptSaveTimeoutRef.current = setTimeout(() => {
+        groqSttPromptSaveTimeoutRef.current = null
+        saveConfig({ groqSttPrompt: value || undefined })
+      }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
 
-    const parsedValue = parseMcpMaxIterationsDraft(value)
-    if (parsedValue === null) {
-      setMcpMaxIterationsDraft(String(cfgRef.current?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT))
-      return
-    }
+  const updateGroqSttPromptDraft = useCallback(
+    (value: string) => {
+      setGroqSttPromptDraft(value)
+      scheduleGroqSttPromptSave(value)
+    },
+    [scheduleGroqSttPromptSave],
+  )
 
-    saveConfig({ mcpMaxIterations: parsedValue })
-  }, [saveConfig])
+  const flushMcpMaxIterationsSave = useCallback(
+    (value: string) => {
+      if (mcpMaxIterationsSaveTimeoutRef.current) {
+        clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+        mcpMaxIterationsSaveTimeoutRef.current = null
+      }
 
-  const scheduleMcpMaxIterationsSave = useCallback((value: string) => {
-    if (mcpMaxIterationsSaveTimeoutRef.current) {
-      clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
-      mcpMaxIterationsSaveTimeoutRef.current = null
-    }
+      const parsedValue = parseMcpMaxIterationsDraft(value)
+      if (parsedValue === null) {
+        setMcpMaxIterationsDraft(
+          String(
+            cfgRef.current?.mcpMaxIterations ?? MCP_MAX_ITERATIONS_DEFAULT,
+          ),
+        )
+        return
+      }
 
-    const parsedValue = parseMcpMaxIterationsDraft(value)
-    if (parsedValue === null) return
-
-    mcpMaxIterationsSaveTimeoutRef.current = setTimeout(() => {
-      mcpMaxIterationsSaveTimeoutRef.current = null
       saveConfig({ mcpMaxIterations: parsedValue })
-    }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
-  }, [saveConfig])
+    },
+    [saveConfig],
+  )
 
-  const updateMcpMaxIterationsDraft = useCallback((value: string) => {
-    setMcpMaxIterationsDraft(value)
-    scheduleMcpMaxIterationsSave(value)
-  }, [scheduleMcpMaxIterationsSave])
+  const scheduleMcpMaxIterationsSave = useCallback(
+    (value: string) => {
+      if (mcpMaxIterationsSaveTimeoutRef.current) {
+        clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+        mcpMaxIterationsSaveTimeoutRef.current = null
+      }
+
+      const parsedValue = parseMcpMaxIterationsDraft(value)
+      if (parsedValue === null) return
+
+      mcpMaxIterationsSaveTimeoutRef.current = setTimeout(() => {
+        mcpMaxIterationsSaveTimeoutRef.current = null
+        saveConfig({ mcpMaxIterations: parsedValue })
+      }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  const updateMcpMaxIterationsDraft = useCallback(
+    (value: string) => {
+      setMcpMaxIterationsDraft(value)
+      scheduleMcpMaxIterationsSave(value)
+    },
+    [scheduleMcpMaxIterationsSave],
+  )
 
   // Sync theme preference from config to localStorage when config loads
   useEffect(() => {
     if ((configQuery.data as any)?.themePreference) {
-      localStorage.setItem("theme-preference", (configQuery.data as any).themePreference)
+      localStorage.setItem(
+        "theme-preference",
+        (configQuery.data as any).themePreference,
+      )
       window.dispatchEvent(
         new CustomEvent("theme-preference-changed", {
           detail: (configQuery.data as any).themePreference,
@@ -345,19 +416,24 @@ export function Component() {
   const sttProviderId: STT_PROVIDER_ID =
     (configQuery.data as any)?.sttProviderId || "openai"
   const shortcut = (configQuery.data as any)?.shortcut || "hold-ctrl"
-  const textInputShortcut = (configQuery.data as any)?.textInputShortcut || "ctrl-t"
+  const textInputShortcut =
+    (configQuery.data as any)?.textInputShortcut || "ctrl-t"
   const recordingShortcutMode = cfg?.customShortcutMode || "hold"
-  const effectiveRecordingShortcut = getEffectiveShortcut(shortcut, cfg?.customShortcut)
+  const effectiveRecordingShortcut = getEffectiveShortcut(
+    shortcut,
+    cfg?.customShortcut,
+  )
   const customRecordingShortcutDisplay = effectiveRecordingShortcut
     ? formatKeyComboForDisplay(effectiveRecordingShortcut)
     : "your custom shortcut"
-  const recordingShortcutHelperText = shortcut === "hold-ctrl"
-    ? "Hold Ctrl to record, release it to finish, and press any other key to cancel."
-    : shortcut === "custom"
-      ? recordingShortcutMode === "toggle"
-        ? `Press ${customRecordingShortcutDisplay} to start and finish recording. Press Esc to cancel.`
-        : `Hold ${customRecordingShortcutDisplay} to record, release it to finish, and press any other key to cancel.`
-      : "Press Ctrl+/ to start and finish recording. Press Esc to cancel."
+  const recordingShortcutHelperText =
+    shortcut === "hold-ctrl"
+      ? "Hold Ctrl to record, release it to finish, and press any other key to cancel."
+      : shortcut === "custom"
+        ? recordingShortcutMode === "toggle"
+          ? `Press ${customRecordingShortcutDisplay} to start and finish recording. Press Esc to cancel.`
+          : `Hold ${customRecordingShortcutDisplay} to record, release it to finish, and press any other key to cancel.`
+        : "Press Ctrl+/ to start and finish recording. Press Esc to cancel."
 
   const agentShortcut = cfg?.agentShortcut || cfg?.mcpToolsShortcut
   const customAgentShortcutMode = cfg?.customAgentShortcutMode || "hold"
@@ -368,15 +444,16 @@ export function Component() {
   const customAgentShortcutDisplay = effectiveAgentShortcut
     ? formatKeyComboForDisplay(effectiveAgentShortcut)
     : "your custom shortcut"
-  const agentShortcutHelperText = agentShortcut === "toggle-ctrl-alt"
-    ? "Press Ctrl+Alt to start agent mode, press again to send. Press Esc to cancel."
-    : agentShortcut === "ctrl-alt-slash"
-      ? "Press Ctrl+Alt+/ to start agent mode, press again to send. Press Esc to cancel."
-      : agentShortcut === "custom"
-        ? customAgentShortcutMode === "toggle"
-          ? `Press ${customAgentShortcutDisplay} to start agent mode, press again to send. Press Esc to cancel.`
-          : `Hold ${customAgentShortcutDisplay} to record an agent prompt, release to send.`
-        : "Hold Ctrl+Alt to record an agent prompt, release to send."
+  const agentShortcutHelperText =
+    agentShortcut === "toggle-ctrl-alt"
+      ? "Press Ctrl+Alt to start agent mode, press again to send. Press Esc to cancel."
+      : agentShortcut === "ctrl-alt-slash"
+        ? "Press Ctrl+Alt+/ to start agent mode, press again to send. Press Esc to cancel."
+        : agentShortcut === "custom"
+          ? customAgentShortcutMode === "toggle"
+            ? `Press ${customAgentShortcutDisplay} to start agent mode, press again to send. Press Esc to cancel.`
+            : `Hold ${customAgentShortcutDisplay} to record an agent prompt, release to send.`
+          : "Hold Ctrl+Alt to record an agent prompt, release to send."
 
   const toggleVoiceDictationHotkey = cfg?.toggleVoiceDictationHotkey || "fn"
   const effectiveToggleVoiceDictationShortcut = getEffectiveShortcut(
@@ -386,20 +463,17 @@ export function Component() {
   const toggleVoiceDictationDisplay = effectiveToggleVoiceDictationShortcut
     ? formatKeyComboForDisplay(effectiveToggleVoiceDictationShortcut)
     : "your custom shortcut"
-  const toggleVoiceDictationHelperText =
-    `Press ${toggleVoiceDictationDisplay} to start dictation, press again to stop. Press Esc to cancel.`
-
+  const toggleVoiceDictationHelperText = `Press ${toggleVoiceDictationDisplay} to start dictation, press again to stop. Press Esc to cancel.`
 
   const isSearching = searchQuery.length > 0
 
   if (!configQuery.data) return null
 
   return (
-    <div className="modern-panel h-full overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6">
-
+    <SettingsPageShell>
       {/* Search input */}
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
         <Input
           ref={searchInputRef}
           type="text"
@@ -415,1194 +489,1744 @@ export function Component() {
               setSearchQuery("")
               searchInputRef.current?.focus()
             }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-sm hover:bg-muted transition-colors cursor-pointer"
+            className="hover:bg-muted absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-sm p-0.5 transition-colors"
           >
-            <X className="h-4 w-4 text-muted-foreground" />
+            <X className="text-muted-foreground h-4 w-4" />
           </button>
         )}
       </div>
 
       <SettingsSearchContext.Provider value={searchQuery}>
-      <div className="grid gap-4">
-        {/* Agent Settings */}
-        <ControlGroup collapsible defaultCollapsed title="Agent Settings" forceOpen={isSearching}>
-          {/* Main Agent Mode Selection */}
-          <Control label={<ControlLabel label="Main Agent Mode" tooltip="Choose how the main agent processes your requests. API mode uses external LLM APIs (OpenAI, Groq, Gemini). acpx mode routes prompts to a configured acpx agent profile like Codex or Claude." />} className="px-3">
-            <Select
-              value={configQuery.data?.mainAgentMode || "api"}
-              onValueChange={(value: "api" | "acpx") => {
-                saveConfig({ mainAgentMode: value })
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="api">API (OpenAI, Groq, Gemini)</SelectItem>
-                <SelectItem value="acpx">acpx Agent</SelectItem>
-              </SelectContent>
-            </Select>
-          </Control>
-
-          {configQuery.data?.mainAgentMode === "acpx" && (
-            <>
-              <Control label={<ControlLabel label="acpx Agent" tooltip="Select which configured acpx agent profile to use as the main agent. The agent must be configured in the Agents settings page." />} className="px-3">
-                <Select
-                  value={configQuery.data?.mainAgentName || ""}
-                  onValueChange={(value: string) => {
-                    saveConfig({ mainAgentName: value })
-                  }}
-                >
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Select an agent..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectableMainAcpAgents.map(agent => (
-                      <SelectItem key={agent.name} value={agent.name}>
-                        {agent.displayName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Control>
-
-              {configQuery.data?.mainAgentName && (
-                <div className="px-3 py-2 text-sm text-muted-foreground bg-muted/30 rounded-md mx-3 mb-2">
-                  <span className="font-medium">Note:</span> When using acpx mode, the agent will use its own runtime/tooling stack via acpx instead of DotAgents directly speaking ACP.
-                </div>
-              )}
-            </>
-          )}
-
-          <Control label={<ControlLabel label="Message Queuing" tooltip="Allow queueing messages while the agent is processing. Messages will be processed in order after the current task completes." />} className="px-3">
-            <Switch
-              checked={configQuery.data?.mcpMessageQueueEnabled ?? true}
-              onCheckedChange={(value) => saveConfig({ mcpMessageQueueEnabled: value })}
-            />
-          </Control>
-          <Control label={<ControlLabel label="Require Tool Approval" tooltip="Adds a confirmation dialog before any tool executes. Recommended for safety." />} className="px-3">
-            <Switch
-              checked={configQuery.data?.mcpRequireApprovalBeforeToolCall ?? false}
-              onCheckedChange={(value) => saveConfig({ mcpRequireApprovalBeforeToolCall: value })}
-            />
-          </Control>
-
-          <Control label={<ControlLabel label="Verify Task Completion" tooltip="When enabled, the agent will verify whether the user's task has been completed before finishing. Disable for faster responses without verification." />} className="px-3">
-            <Switch
-              checked={configQuery.data?.mcpVerifyCompletionEnabled ?? true}
-              onCheckedChange={(value) => saveConfig({ mcpVerifyCompletionEnabled: value })}
-            />
-          </Control>
-
-          <Control label={<ControlLabel label="Final Summary" tooltip="When enabled, the agent will generate a concise final summary after completing a task. Disable for faster responses without the summary step." />} className="px-3">
-            <Switch
-              checked={configQuery.data?.mcpFinalSummaryEnabled ?? false}
-              onCheckedChange={(value) => saveConfig({ mcpFinalSummaryEnabled: value })}
-            />
-          </Control>
-
-          <Control label={<ControlLabel label="Unlimited Iterations" tooltip="Allow the agent to run indefinitely without an iteration limit. Use with caution as it may run for a long time." />} className="px-3">
-            <Switch
-              checked={configQuery.data?.mcpUnlimitedIterations ?? true}
-              onCheckedChange={(checked) => saveConfig({ mcpUnlimitedIterations: checked })}
-            />
-          </Control>
-
-          {!(configQuery.data?.mcpUnlimitedIterations ?? true) && (
-            <Control label={<ControlLabel label="Max Iterations" tooltip="Maximum number of iterations the agent can perform before stopping. Higher values allow more complex tasks but may take longer." />} className="px-3">
-              <Input
-                type="number"
-                min={String(MCP_MAX_ITERATIONS_MIN)}
-                max={String(MCP_MAX_ITERATIONS_MAX)}
-                step="1"
-                value={mcpMaxIterationsDraft}
-                onChange={(e) => updateMcpMaxIterationsDraft(e.currentTarget.value)}
-                onBlur={(e) => flushMcpMaxIterationsSave(e.currentTarget.value)}
-                placeholder={String(MCP_MAX_ITERATIONS_DEFAULT)}
-                className="w-32"
-              />
-            </Control>
-          )}
-
-          <Control label={<ControlLabel label="Emergency Kill Switch" tooltip="Provides a global hotkey to immediately stop agent mode and kill all agent-created processes" />} className="px-3">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={configQuery.data?.agentKillSwitchEnabled !== false}
-                  onCheckedChange={(checked) => saveConfig({ agentKillSwitchEnabled: checked })}
-                />
-                <span className="text-sm text-muted-foreground">Enable kill switch</span>
-              </div>
-
-              {configQuery.data?.agentKillSwitchEnabled !== false && (
-                <>
-                  <Select
-                    value={configQuery.data?.agentKillSwitchHotkey || "ctrl-shift-escape"}
-                    onValueChange={(value: "ctrl-shift-escape" | "ctrl-alt-q" | "ctrl-shift-q" | "custom") => {
-                      saveConfig({ agentKillSwitchHotkey: value })
-                    }}
-                  >
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ctrl-shift-escape">Ctrl + Shift + Escape</SelectItem>
-                      <SelectItem value="ctrl-alt-q">Ctrl + Alt + Q</SelectItem>
-                      <SelectItem value="ctrl-shift-q">Ctrl + Shift + Q</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {configQuery.data?.agentKillSwitchHotkey === "custom" && (
-                    <KeyRecorder
-                      value={configQuery.data?.customAgentKillSwitchHotkey || ""}
-                      onChange={(keyCombo) => saveConfig({ customAgentKillSwitchHotkey: keyCombo })}
-                      placeholder="Click to record custom kill switch hotkey"
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          </Control>
-        </ControlGroup>
-
-        <ControlGroup collapsible defaultCollapsed title="General" forceOpen={isSearching}>
-          {process.env.IS_MAC && (
-            <Control label="Hide Dock Icon" className="px-3">
-              <Switch
-                defaultChecked={configQuery.data.hideDockIcon}
-                onCheckedChange={(value) => {
-                  saveConfig({
-                    hideDockIcon: value,
-                  })
-                }}
-              />
-            </Control>
-          )}
-          <Control label="Launch at Login" className="px-3">
-            <Switch
-              defaultChecked={configQuery.data.launchAtLogin ?? false}
-              onCheckedChange={(value) => {
-                saveConfig({
-                  launchAtLogin: value,
-                })
-              }}
-            />
-          </Control>
-
-          <Control label={<ControlLabel label="Streamer Mode" tooltip="Hide sensitive information (phone numbers, QR codes, API keys) when streaming or sharing your screen" />} className="px-3">
-            <Switch
-              defaultChecked={configQuery.data.streamerModeEnabled ?? false}
-              onCheckedChange={(value) => {
-                saveConfig({
-                  streamerModeEnabled: value,
-                })
-              }}
-            />
-          </Control>
-          {configQuery.data.streamerModeEnabled && (
-            <div className="px-3 py-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
-              <span className="i-mingcute-eye-off-line h-4 w-4" />
-              <span>Streamer Mode is active - sensitive information is hidden</span>
-            </div>
-          )}
-          <Control label="Theme" className="px-3">
-            <Select
-              value={configQuery.data.themePreference || "system"}
-              onValueChange={(value: "system" | "light" | "dark") => {
-                saveConfig({
-                  themePreference: value,
-                })
-                // Update localStorage immediately to sync with ThemeProvider
-                localStorage.setItem("theme-preference", value)
-                // Apply theme immediately
-                window.dispatchEvent(
-                  new CustomEvent("theme-preference-changed", {
-                    detail: value,
-                  }),
-                )
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="system">System</SelectItem>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="dark">Dark</SelectItem>
-              </SelectContent>
-            </Select>
-          </Control>
-        </ControlGroup>
-
-        <RemoteServerSettingsGroups collapsible defaultCollapsed forceOpen={isSearching} />
-
-        <ControlGroup
-          collapsible
-          defaultCollapsed
-          title={
-            <span className="flex flex-wrap items-center gap-2">
-              <span>Modular config (.agents)</span>
-              {systemPromptOverrideActive && (
-                <Badge variant="outline" className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                  System prompt override active
-                </Badge>
-              )}
-            </span>
-          }
-          forceOpen={isSearching}
-        >
-          {systemPromptOverrideActive && (
-            <div className="mx-3 mt-2 flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <div className="min-w-0 space-y-1">
-                <p className="font-medium text-amber-700 dark:text-amber-300">{systemPromptOverrideScope} system prompt override active</p>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  A saved system prompt replaces the DotAgents default prompt, so this install will not receive default system prompt updates until the override is removed or reset.
-                </p>
-              </div>
-            </div>
-          )}
-          <div className="px-3 py-2 text-sm leading-5 text-muted-foreground">
-            Advanced configuration can live in <span className="font-mono">.agents</span>. Global{" "}
-            <span className="font-mono">~/.agents</span> is the default layer. Workspace{" "}
-            <span className="font-mono">.agents</span> is only used when{" "}
-            <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span> is set, and then it overrides the global layer. Skills live in{" "}
-            <span className="font-mono">skills/&lt;id&gt;/skill.md</span> and knowledge notes live in configured knowledge roots as{" "}
-            <span className="font-mono">&lt;slug&gt;/&lt;slug&gt;.md</span>. Frontmatter uses simple{" "}
-            <span className="font-mono">key: value</span> lines (not YAML).
-          </div>
-          <Control label="Global folder" className="px-3">
-            <div className="text-right font-mono text-xs text-muted-foreground break-all">
-              {agentsFoldersQuery.data?.global?.agentsDir ?? "Loading..."}
-            </div>
-          </Control>
-          <Control
-            label={
-              <ControlLabel
-                label="Workspace folder"
-                tooltip="Optional overlay layer enabled by DOTAGENTS_WORKSPACE_DIR. When configured, it overrides the global .agents layer."
-              />
-            }
-            className="px-3"
+        <div className="grid gap-4">
+          {/* Agent Settings */}
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="Agent Settings"
+            forceOpen={isSearching}
           >
-            <div className="text-right font-mono text-xs text-muted-foreground break-all">
-              {agentsFoldersQuery.isLoading
-                ? "Loading..."
-                : agentsFoldersQuery.data?.workspace?.agentsDir ?? "Not configured"}
-              {agentsFoldersQuery.data?.workspace?.agentsDir && agentsFoldersQuery.data?.workspaceSource
-                ? ` (${agentsFoldersQuery.data.workspaceSource})`
-                : ""}
-            </div>
-          </Control>
-          <Control label="Open folders & files" className="px-3">
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={openGlobalAgentsFolder}>
-                <FolderOpen className="h-3 w-3" />
-                Global Folder
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={openWorkspaceAgentsFolder}
-                disabled={!agentsFoldersQuery.data?.workspace?.agentsDir}
-              >
-                <FolderUp className="h-3 w-3" />
-                Workspace Folder
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={openSystemPromptFile}>
-                <FileText className="h-3 w-3" />
-                System Prompt
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={openAgentsGuidelinesFile}>
-                <FileText className="h-3 w-3" />
-                Guidelines
-              </Button>
-            </div>
-          </Control>
-        </ControlGroup>
-
-        <ControlGroup
-          collapsible
-          defaultCollapsed
-          title="Shortcuts"
-          forceOpen={isSearching}
-        >
-          <Control label="Recording" className="px-3">
-            <div className="space-y-2">
+            {/* Main Agent Mode Selection */}
+            <Control
+              label={
+                <ControlLabel
+                  label="Main Agent Mode"
+                  tooltip="Choose how the main agent processes your requests. API mode uses external LLM APIs (OpenAI, Groq, Gemini). acpx mode routes prompts to a configured acpx agent profile like Codex or Claude."
+                />
+              }
+              className="px-3"
+            >
               <Select
-                defaultValue={shortcut}
-                onValueChange={(value) => {
-                  saveConfig({
-                    shortcut: value as typeof configQuery.data.shortcut,
-                  })
+                value={configQuery.data?.mainAgentMode || "api"}
+                onValueChange={(value: "api" | "acpx") => {
+                  saveConfig({ mainAgentMode: value })
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="hold-ctrl">Hold Ctrl</SelectItem>
-                  <SelectItem value="ctrl-slash">Ctrl+{"/"}</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
+                  <SelectItem value="api">
+                    API (OpenAI, Groq, Gemini)
+                  </SelectItem>
+                  <SelectItem value="acpx">acpx Agent</SelectItem>
                 </SelectContent>
               </Select>
+            </Control>
 
-              {shortcut === "custom" && (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Mode</label>
+            {configQuery.data?.mainAgentMode === "acpx" && (
+              <>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="acpx Agent"
+                      tooltip="Select which configured acpx agent profile to use as the main agent. The agent must be configured in the Agents settings page."
+                    />
+                  }
+                  className="px-3"
+                >
+                  <Select
+                    value={configQuery.data?.mainAgentName || ""}
+                    onValueChange={(value: string) => {
+                      saveConfig({ mainAgentName: value })
+                    }}
+                  >
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue placeholder="Select an agent..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectableMainAcpAgents.map((agent) => (
+                        <SelectItem key={agent.name} value={agent.name}>
+                          {agent.displayName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Control>
+
+                {configQuery.data?.mainAgentName && (
+                  <div className="text-muted-foreground bg-muted/30 mx-3 mb-2 rounded-md px-3 py-2 text-sm">
+                    <span className="font-medium">Note:</span> When using acpx
+                    mode, the agent will use its own runtime/tooling stack via
+                    acpx instead of DotAgents directly speaking ACP.
+                  </div>
+                )}
+              </>
+            )}
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Message Queuing"
+                  tooltip="Allow queueing messages while the agent is processing. Messages will be processed in order after the current task completes."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={configQuery.data?.mcpMessageQueueEnabled ?? true}
+                onCheckedChange={(value) =>
+                  saveConfig({ mcpMessageQueueEnabled: value })
+                }
+              />
+            </Control>
+            <Control
+              label={
+                <ControlLabel
+                  label="Require Tool Approval"
+                  tooltip="Adds a confirmation dialog before any tool executes. Recommended for safety."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={
+                  configQuery.data?.mcpRequireApprovalBeforeToolCall ?? false
+                }
+                onCheckedChange={(value) =>
+                  saveConfig({ mcpRequireApprovalBeforeToolCall: value })
+                }
+              />
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Verify Task Completion"
+                  tooltip="When enabled, the agent will verify whether the user's task has been completed before finishing. Disable for faster responses without verification."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={configQuery.data?.mcpVerifyCompletionEnabled ?? true}
+                onCheckedChange={(value) =>
+                  saveConfig({ mcpVerifyCompletionEnabled: value })
+                }
+              />
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Final Summary"
+                  tooltip="When enabled, the agent will generate a concise final summary after completing a task. Disable for faster responses without the summary step."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={configQuery.data?.mcpFinalSummaryEnabled ?? false}
+                onCheckedChange={(value) =>
+                  saveConfig({ mcpFinalSummaryEnabled: value })
+                }
+              />
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Unlimited Iterations"
+                  tooltip="Allow the agent to run indefinitely without an iteration limit. Use with caution as it may run for a long time."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={configQuery.data?.mcpUnlimitedIterations ?? true}
+                onCheckedChange={(checked) =>
+                  saveConfig({ mcpUnlimitedIterations: checked })
+                }
+              />
+            </Control>
+
+            {!(configQuery.data?.mcpUnlimitedIterations ?? true) && (
+              <Control
+                label={
+                  <ControlLabel
+                    label="Max Iterations"
+                    tooltip="Maximum number of iterations the agent can perform before stopping. Higher values allow more complex tasks but may take longer."
+                  />
+                }
+                className="px-3"
+              >
+                <Input
+                  type="number"
+                  min={String(MCP_MAX_ITERATIONS_MIN)}
+                  max={String(MCP_MAX_ITERATIONS_MAX)}
+                  step="1"
+                  value={mcpMaxIterationsDraft}
+                  onChange={(e) =>
+                    updateMcpMaxIterationsDraft(e.currentTarget.value)
+                  }
+                  onBlur={(e) =>
+                    flushMcpMaxIterationsSave(e.currentTarget.value)
+                  }
+                  placeholder={String(MCP_MAX_ITERATIONS_DEFAULT)}
+                  className="w-32"
+                />
+              </Control>
+            )}
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Emergency Kill Switch"
+                  tooltip="Provides a global hotkey to immediately stop agent mode and kill all agent-created processes"
+                />
+              }
+              className="px-3"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={configQuery.data?.agentKillSwitchEnabled !== false}
+                    onCheckedChange={(checked) =>
+                      saveConfig({ agentKillSwitchEnabled: checked })
+                    }
+                  />
+                  <span className="text-muted-foreground text-sm">
+                    Enable kill switch
+                  </span>
+                </div>
+
+                {configQuery.data?.agentKillSwitchEnabled !== false && (
+                  <>
                     <Select
-                      value={configQuery.data?.customShortcutMode || "hold"}
-                      onValueChange={(value: "hold" | "toggle") => {
-                        saveConfig({
-                          customShortcutMode: value,
-                        })
+                      value={
+                        configQuery.data?.agentKillSwitchHotkey ||
+                        "ctrl-shift-escape"
+                      }
+                      onValueChange={(
+                        value:
+                          | "ctrl-shift-escape"
+                          | "ctrl-alt-q"
+                          | "ctrl-shift-q"
+                          | "custom",
+                      ) => {
+                        saveConfig({ agentKillSwitchHotkey: value })
                       }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-48">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="hold">Hold (Press and hold to record)</SelectItem>
-                        <SelectItem value="toggle">Toggle (Press once to start, again to stop)</SelectItem>
+                        <SelectItem value="ctrl-shift-escape">
+                          Ctrl + Shift + Escape
+                        </SelectItem>
+                        <SelectItem value="ctrl-alt-q">
+                          Ctrl + Alt + Q
+                        </SelectItem>
+                        <SelectItem value="ctrl-shift-q">
+                          Ctrl + Shift + Q
+                        </SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <KeyRecorder
-                    value={configQuery.data?.customShortcut || ""}
-                    onChange={(keyCombo) => {
-                      saveConfig({
-                        customShortcut: keyCombo,
-                      })
-                    }}
-                    placeholder="Click to record custom shortcut"
-                  />
-                </>
-              )}
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {recordingShortcutHelperText}
-              </p>
-            </div>
-          </Control>
 
-          <Control label="Toggle Voice Dictation" className="px-3">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
+                    {configQuery.data?.agentKillSwitchHotkey === "custom" && (
+                      <KeyRecorder
+                        value={
+                          configQuery.data?.customAgentKillSwitchHotkey || ""
+                        }
+                        onChange={(keyCombo) =>
+                          saveConfig({ customAgentKillSwitchHotkey: keyCombo })
+                        }
+                        placeholder="Click to record custom kill switch hotkey"
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+            </Control>
+          </ControlGroup>
+
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="General"
+            forceOpen={isSearching}
+          >
+            {process.env.IS_MAC && (
+              <Control label="Hide Dock Icon" className="px-3">
                 <Switch
-                  checked={configQuery.data?.toggleVoiceDictationEnabled || false}
-                  onCheckedChange={(checked) => {
+                  defaultChecked={configQuery.data.hideDockIcon}
+                  onCheckedChange={(value) => {
                     saveConfig({
-                      toggleVoiceDictationEnabled: checked,
+                      hideDockIcon: value,
                     })
                   }}
                 />
-                <span className="text-sm text-muted-foreground">
-                  Enable toggle mode (press once to start, press again to stop)
+              </Control>
+            )}
+            <Control label="Launch at Login" className="px-3">
+              <Switch
+                defaultChecked={configQuery.data.launchAtLogin ?? false}
+                onCheckedChange={(value) => {
+                  saveConfig({
+                    launchAtLogin: value,
+                  })
+                }}
+              />
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Streamer Mode"
+                  tooltip="Hide sensitive information (phone numbers, QR codes, API keys) when streaming or sharing your screen"
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                defaultChecked={configQuery.data.streamerModeEnabled ?? false}
+                onCheckedChange={(value) => {
+                  saveConfig({
+                    streamerModeEnabled: value,
+                  })
+                }}
+              />
+            </Control>
+            {configQuery.data.streamerModeEnabled && (
+              <div className="flex items-center gap-2 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+                <span className="i-mingcute-eye-off-line h-4 w-4" />
+                <span>
+                  Streamer Mode is active - sensitive information is hidden
                 </span>
               </div>
+            )}
+            <Control label="Theme" className="px-3">
+              <Select
+                value={configQuery.data.themePreference || "system"}
+                onValueChange={(value: "system" | "light" | "dark") => {
+                  saveConfig({
+                    themePreference: value,
+                  })
+                  // Update localStorage immediately to sync with ThemeProvider
+                  localStorage.setItem("theme-preference", value)
+                  // Apply theme immediately
+                  window.dispatchEvent(
+                    new CustomEvent("theme-preference-changed", {
+                      detail: value,
+                    }),
+                  )
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="system">System</SelectItem>
+                  <SelectItem value="light">Light</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </Control>
+          </ControlGroup>
 
-              {configQuery.data?.toggleVoiceDictationEnabled && (
-                <>
-                  <Select
-                    defaultValue={configQuery.data?.toggleVoiceDictationHotkey || "fn"}
-                    onValueChange={(value) => {
+          <RemoteServerSettingsGroups
+            collapsible
+            defaultCollapsed
+            forceOpen={isSearching}
+          />
+
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title={
+              <span className="flex flex-wrap items-center gap-2">
+                <span>Modular config (.agents)</span>
+                {systemPromptOverrideActive && (
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                  >
+                    System prompt override active
+                  </Badge>
+                )}
+              </span>
+            }
+            forceOpen={isSearching}
+          >
+            {systemPromptOverrideActive && (
+              <div className="mx-3 mt-2 flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div className="min-w-0 space-y-1">
+                  <p className="font-medium text-amber-700 dark:text-amber-300">
+                    {systemPromptOverrideScope} system prompt override active
+                  </p>
+                  <p className="text-muted-foreground text-xs leading-5">
+                    A saved system prompt replaces the DotAgents default prompt,
+                    so this install will not receive default system prompt
+                    updates until the override is removed or reset.
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className="text-muted-foreground px-3 py-2 text-sm leading-5">
+              Advanced configuration can live in{" "}
+              <span className="font-mono">.agents</span>. Global{" "}
+              <span className="font-mono">~/.agents</span> is the default layer.
+              Workspace <span className="font-mono">.agents</span> is only used
+              when <span className="font-mono">DOTAGENTS_WORKSPACE_DIR</span> is
+              set, and then it overrides the global layer. Skills live in{" "}
+              <span className="font-mono">skills/&lt;id&gt;/skill.md</span> and
+              knowledge notes live in configured knowledge roots as{" "}
+              <span className="font-mono">&lt;slug&gt;/&lt;slug&gt;.md</span>.
+              Frontmatter uses simple{" "}
+              <span className="font-mono">key: value</span> lines (not YAML).
+            </div>
+            <Control label="Global folder" className="px-3">
+              <div className="text-muted-foreground break-all text-right font-mono text-xs">
+                {agentsFoldersQuery.data?.global?.agentsDir ?? "Loading..."}
+              </div>
+            </Control>
+            <Control
+              label={
+                <ControlLabel
+                  label="Workspace folder"
+                  tooltip="Optional overlay layer enabled by DOTAGENTS_WORKSPACE_DIR. When configured, it overrides the global .agents layer."
+                />
+              }
+              className="px-3"
+            >
+              <div className="text-muted-foreground break-all text-right font-mono text-xs">
+                {agentsFoldersQuery.isLoading
+                  ? "Loading..."
+                  : (agentsFoldersQuery.data?.workspace?.agentsDir ??
+                    "Not configured")}
+                {agentsFoldersQuery.data?.workspace?.agentsDir &&
+                agentsFoldersQuery.data?.workspaceSource
+                  ? ` (${agentsFoldersQuery.data.workspaceSource})`
+                  : ""}
+              </div>
+            </Control>
+            <Control label="Open folders & files" className="px-3">
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={openGlobalAgentsFolder}
+                >
+                  <FolderOpen className="h-3 w-3" />
+                  Global Folder
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={openWorkspaceAgentsFolder}
+                  disabled={!agentsFoldersQuery.data?.workspace?.agentsDir}
+                >
+                  <FolderUp className="h-3 w-3" />
+                  Workspace Folder
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={openSystemPromptFile}
+                >
+                  <FileText className="h-3 w-3" />
+                  System Prompt
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={openAgentsGuidelinesFile}
+                >
+                  <FileText className="h-3 w-3" />
+                  Guidelines
+                </Button>
+              </div>
+            </Control>
+          </ControlGroup>
+
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="Shortcuts"
+            forceOpen={isSearching}
+          >
+            <Control label="Recording" className="px-3">
+              <div className="space-y-2">
+                <Select
+                  defaultValue={shortcut}
+                  onValueChange={(value) => {
+                    saveConfig({
+                      shortcut: value as typeof configQuery.data.shortcut,
+                    })
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hold-ctrl">Hold Ctrl</SelectItem>
+                    <SelectItem value="ctrl-slash">Ctrl+{"/"}</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {shortcut === "custom" && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Mode</label>
+                      <Select
+                        value={configQuery.data?.customShortcutMode || "hold"}
+                        onValueChange={(value: "hold" | "toggle") => {
+                          saveConfig({
+                            customShortcutMode: value,
+                          })
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hold">
+                            Hold (Press and hold to record)
+                          </SelectItem>
+                          <SelectItem value="toggle">
+                            Toggle (Press once to start, again to stop)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <KeyRecorder
+                      value={configQuery.data?.customShortcut || ""}
+                      onChange={(keyCombo) => {
+                        saveConfig({
+                          customShortcut: keyCombo,
+                        })
+                      }}
+                      placeholder="Click to record custom shortcut"
+                    />
+                  </>
+                )}
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  {recordingShortcutHelperText}
+                </p>
+              </div>
+            </Control>
+
+            <Control label="Toggle Voice Dictation" className="px-3">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={
+                      configQuery.data?.toggleVoiceDictationEnabled || false
+                    }
+                    onCheckedChange={(checked) => {
                       saveConfig({
-                        toggleVoiceDictationHotkey: value as typeof configQuery.data.toggleVoiceDictationHotkey,
+                        toggleVoiceDictationEnabled: checked,
                       })
                     }}
+                  />
+                  <span className="text-muted-foreground text-sm">
+                    Enable toggle mode (press once to start, press again to
+                    stop)
+                  </span>
+                </div>
+
+                {configQuery.data?.toggleVoiceDictationEnabled && (
+                  <>
+                    <Select
+                      defaultValue={
+                        configQuery.data?.toggleVoiceDictationHotkey || "fn"
+                      }
+                      onValueChange={(value) => {
+                        saveConfig({
+                          toggleVoiceDictationHotkey:
+                            value as typeof configQuery.data.toggleVoiceDictationHotkey,
+                        })
+                      }}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fn">Fn</SelectItem>
+                        <SelectItem value="f1">F1</SelectItem>
+                        <SelectItem value="f2">F2</SelectItem>
+                        <SelectItem value="f3">F3</SelectItem>
+                        <SelectItem value="f4">F4</SelectItem>
+                        <SelectItem value="f5">F5</SelectItem>
+                        <SelectItem value="f6">F6</SelectItem>
+                        <SelectItem value="f7">F7</SelectItem>
+                        <SelectItem value="f8">F8</SelectItem>
+                        <SelectItem value="f9">F9</SelectItem>
+                        <SelectItem value="f10">F10</SelectItem>
+                        <SelectItem value="f11">F11</SelectItem>
+                        <SelectItem value="f12">F12</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {configQuery.data?.toggleVoiceDictationHotkey ===
+                      "custom" && (
+                      <KeyRecorder
+                        value={
+                          configQuery.data?.customToggleVoiceDictationHotkey ||
+                          ""
+                        }
+                        onChange={(keyCombo) => {
+                          saveConfig({
+                            customToggleVoiceDictationHotkey: keyCombo,
+                          })
+                        }}
+                        placeholder="Click to record custom toggle shortcut"
+                      />
+                    )}
+                    <p className="text-muted-foreground text-xs leading-relaxed">
+                      {toggleVoiceDictationHelperText}
+                    </p>
+                  </>
+                )}
+              </div>
+            </Control>
+
+            <Control label="Text Input" className="px-3">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={configQuery.data?.textInputEnabled ?? true}
+                    onCheckedChange={(checked) => {
+                      saveConfig({
+                        textInputEnabled: checked,
+                      })
+                    }}
+                  />
+                  <Select
+                    value={textInputShortcut}
+                    onValueChange={(value) => {
+                      saveConfig({
+                        textInputShortcut:
+                          value as typeof configQuery.data.textInputShortcut,
+                      })
+                    }}
+                    disabled={!configQuery.data?.textInputEnabled}
                   >
                     <SelectTrigger className="w-40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fn">Fn</SelectItem>
-                      <SelectItem value="f1">F1</SelectItem>
-                      <SelectItem value="f2">F2</SelectItem>
-                      <SelectItem value="f3">F3</SelectItem>
-                      <SelectItem value="f4">F4</SelectItem>
-                      <SelectItem value="f5">F5</SelectItem>
-                      <SelectItem value="f6">F6</SelectItem>
-                      <SelectItem value="f7">F7</SelectItem>
-                      <SelectItem value="f8">F8</SelectItem>
-                      <SelectItem value="f9">F9</SelectItem>
-                      <SelectItem value="f10">F10</SelectItem>
-                      <SelectItem value="f11">F11</SelectItem>
-                      <SelectItem value="f12">F12</SelectItem>
+                      <SelectItem value="ctrl-t">Ctrl+T</SelectItem>
+                      <SelectItem value="ctrl-shift-t">Ctrl+Shift+T</SelectItem>
+                      <SelectItem value="alt-t">Alt+T</SelectItem>
                       <SelectItem value="custom">Custom</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
 
-                  {configQuery.data?.toggleVoiceDictationHotkey === "custom" && (
+                {textInputShortcut === "custom" &&
+                  configQuery.data?.textInputEnabled && (
                     <KeyRecorder
-                      value={configQuery.data?.customToggleVoiceDictationHotkey || ""}
+                      value={configQuery.data?.customTextInputShortcut || ""}
                       onChange={(keyCombo) => {
                         saveConfig({
-                          customToggleVoiceDictationHotkey: keyCombo,
+                          customTextInputShortcut: keyCombo,
                         })
                       }}
-                      placeholder="Click to record custom toggle shortcut"
+                      placeholder="Click to record custom text input shortcut"
                     />
                   )}
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    {toggleVoiceDictationHelperText}
-                  </p>
-                </>
-              )}
-            </div>
-          </Control>
-
-          <Control label="Text Input" className="px-3">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={configQuery.data?.textInputEnabled ?? true}
-                  onCheckedChange={(checked) => {
-                    saveConfig({
-                      textInputEnabled: checked,
-                    })
-                  }}
-                />
-                <Select
-                  value={textInputShortcut}
-                  onValueChange={(value) => {
-                    saveConfig({
-                      textInputShortcut:
-                        value as typeof configQuery.data.textInputShortcut,
-                    })
-                  }}
-                  disabled={!configQuery.data?.textInputEnabled}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ctrl-t">Ctrl+T</SelectItem>
-                    <SelectItem value="ctrl-shift-t">Ctrl+Shift+T</SelectItem>
-                    <SelectItem value="alt-t">Alt+T</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
+            </Control>
 
-              {textInputShortcut === "custom" &&
-                configQuery.data?.textInputEnabled && (
-                  <KeyRecorder
-                    value={configQuery.data?.customTextInputShortcut || ""}
-                    onChange={(keyCombo) => {
+            <Control label="Show Main Window" className="px-3">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={configQuery.data?.settingsHotkeyEnabled ?? true}
+                    onCheckedChange={(checked) => {
                       saveConfig({
-                        customTextInputShortcut: keyCombo,
+                        settingsHotkeyEnabled: checked,
                       })
                     }}
-                    placeholder="Click to record custom text input shortcut"
                   />
-                )}
-            </div>
-          </Control>
-
-          <Control label="Show Main Window" className="px-3">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={configQuery.data?.settingsHotkeyEnabled ?? true}
-                  onCheckedChange={(checked) => {
-                    saveConfig({
-                      settingsHotkeyEnabled: checked,
-                    })
-                  }}
-                />
-                <Select
-                  value={configQuery.data?.settingsHotkey || "ctrl-shift-s"}
-                  onValueChange={(value) => {
-                    saveConfig({
-                      settingsHotkey:
-                        value as typeof configQuery.data.settingsHotkey,
-                    })
-                  }}
-                  disabled={!configQuery.data?.settingsHotkeyEnabled}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ctrl-shift-s">Ctrl+Shift+S</SelectItem>
-                    <SelectItem value="ctrl-comma">Ctrl+,</SelectItem>
-                    <SelectItem value="ctrl-shift-comma">Ctrl+Shift+,</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {configQuery.data?.settingsHotkey === "custom" &&
-                configQuery.data?.settingsHotkeyEnabled && (
-                  <KeyRecorder
-                    value={configQuery.data?.customSettingsHotkey || ""}
-                    onChange={(keyCombo) => {
+                  <Select
+                    value={configQuery.data?.settingsHotkey || "ctrl-shift-s"}
+                    onValueChange={(value) => {
                       saveConfig({
-                        customSettingsHotkey: keyCombo,
+                        settingsHotkey:
+                          value as typeof configQuery.data.settingsHotkey,
                       })
                     }}
-                    placeholder="Click to record custom hotkey"
-                  />
-                )}
-            </div>
-          </Control>
+                    disabled={!configQuery.data?.settingsHotkeyEnabled}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ctrl-shift-s">Ctrl+Shift+S</SelectItem>
+                      <SelectItem value="ctrl-comma">Ctrl+,</SelectItem>
+                      <SelectItem value="ctrl-shift-comma">
+                        Ctrl+Shift+,
+                      </SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <Control label={<ControlLabel label="Agent Mode" tooltip="Choose how to activate agent mode for skills, tools, and delegation" />} className="px-3">
-            <div className="space-y-2">
-              <Select
-                value={configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut || "hold-ctrl-alt"}
-                onValueChange={(value: "hold-ctrl-alt" | "toggle-ctrl-alt" | "ctrl-alt-slash" | "custom") => {
-                  saveConfig({ agentShortcut: value })
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hold-ctrl-alt">Hold Ctrl+Alt</SelectItem>
-                  <SelectItem value="toggle-ctrl-alt">Toggle Ctrl+Alt</SelectItem>
-                  <SelectItem value="ctrl-alt-slash">Ctrl+Alt+/</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {(configQuery.data?.agentShortcut || configQuery.data?.mcpToolsShortcut) === "custom" && (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Mode</label>
-                    <Select
-                      value={configQuery.data?.customAgentShortcutMode || configQuery.data?.customMcpToolsShortcutMode || "hold"}
-                      onValueChange={(value: "hold" | "toggle") => {
-                        saveConfig({ customAgentShortcutMode: value })
+                {configQuery.data?.settingsHotkey === "custom" &&
+                  configQuery.data?.settingsHotkeyEnabled && (
+                    <KeyRecorder
+                      value={configQuery.data?.customSettingsHotkey || ""}
+                      onChange={(keyCombo) => {
+                        saveConfig({
+                          customSettingsHotkey: keyCombo,
+                        })
                       }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hold">Hold (Press and hold to record)</SelectItem>
-                        <SelectItem value="toggle">Toggle (Press once to start, again to send)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <KeyRecorder
-                    value={configQuery.data?.customAgentShortcut || configQuery.data?.customMcpToolsShortcut || ""}
-                    onChange={(keyCombo) => {
-                      saveConfig({ customAgentShortcut: keyCombo })
-                    }}
-                    placeholder="Click to record custom agent mode shortcut"
-                  />
-                </>
-              )}
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {agentShortcutHelperText}
-              </p>
-            </div>
-          </Control>
-        </ControlGroup>
-
-        <ControlGroup collapsible defaultCollapsed title="Audio Devices" forceOpen={isSearching} onOpenChange={setAudioSectionOpen}>
-          <Control label={<ControlLabel label="Microphone" tooltip="Select which microphone to use for speech recognition. 'System Default' uses your OS default input device." />} className="px-3">
-            <Select
-              value={configQuery.data.audioInputDeviceId || "default"}
-              onValueChange={(value) => {
-                const selectedInputDevice = audioInputDevices.find((device) => device.deviceId === value)
-                const selectedInputDeviceLabel = hasResolvedAudioInputDeviceLabel(selectedInputDevice?.label)
-                  ? selectedInputDevice?.label
-                  : undefined
-
-                saveConfig({
-                  audioInputDeviceId: value === "default" ? undefined : value,
-                  audioInputDeviceLabel: value === "default" ? undefined : selectedInputDeviceLabel,
-                })
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="System Default" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">System Default</SelectItem>
-                {audioInputDevices.map((device) => (
-                  device.deviceId !== "default" && (
-                    <SelectItem key={device.deviceId} value={device.deviceId}>
-                      {device.label}
-                    </SelectItem>
-                  )
-                ))}
-              </SelectContent>
-            </Select>
-          </Control>
-
-          <Control label={<ControlLabel label="Speaker" tooltip="Select which speaker/output device to use for text-to-speech audio playback. 'System Default' uses your OS default output device." />} className="px-3">
-            <Select
-              value={configQuery.data.audioOutputDeviceId || "default"}
-              onValueChange={(value) => {
-                saveConfig({
-                  audioOutputDeviceId: value === "default" ? undefined : value,
-                })
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="System Default" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">System Default</SelectItem>
-                {audioOutputDevices.map((device) => (
-                  device.deviceId !== "default" && (
-                    <SelectItem key={device.deviceId} value={device.deviceId}>
-                      {device.label}
-                    </SelectItem>
-                  )
-                ))}
-              </SelectContent>
-            </Select>
-          </Control>
-        </ControlGroup>
-
-        <ControlGroup collapsible defaultCollapsed title="Speech-to-Text" forceOpen={isSearching}>
-          <Control label={<ControlLabel label="Model Selection" tooltip="Manage STT models from the Models page so speech-to-text choices stay with the rest of your provider model settings." />} className="px-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigate("/settings/models")}>
-                Open Models page
-              </Button>
-              <p className="text-sm text-muted-foreground">
-                {sttProviderId === "parakeet"
-                  ? "Parakeet uses its local downloaded model bundle."
-                  : `Choose your ${sttProviderId === "openai" ? "OpenAI" : "Groq"} STT model from the Models page.`}
-              </p>
-            </div>
-          </Control>
-
-          <Control label={<ControlLabel label="Transcript Processing" tooltip="Clean up punctuation, capitalization, or obvious speech-to-text mistakes after dictation." />} className="px-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Switch
-                checked={configQuery.data.transcriptPostProcessingEnabled ?? false}
-                onCheckedChange={(value) => {
-                  saveConfig({ transcriptPostProcessingEnabled: value })
-                }}
-              />
-              <Button variant="outline" size="sm" onClick={() => navigate("/settings/models")}>
-                Configure
-              </Button>
-              <p className="text-sm text-muted-foreground">
-                Prompt, provider, and model live on the Models page.
-              </p>
-            </div>
-          </Control>
-
-          <Control label={<ControlLabel label="Language" tooltip="Select the language for speech transcription. 'Auto-detect' lets the model determine the language automatically based on your speech." />} className="px-3">
-            <Select
-              value={configQuery.data.sttLanguage || "auto"}
-              onValueChange={(value) => {
-                saveConfig({
-                  sttLanguage: value,
-                })
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SUPPORTED_LANGUAGES.map((language) => (
-                  <SelectItem key={language.code} value={language.code}>
-                    {language.nativeName} ({language.name})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Control>
-
-          {sttProviderId === "openai" && configQuery.data.openaiSttLanguage && configQuery.data.openaiSttLanguage !== configQuery.data.sttLanguage && (
-            <Control label={<ControlLabel label="OpenAI Language Override" tooltip="Override the global language setting specifically for OpenAI's Whisper transcription service." />} className="px-3">
-              <Select
-                value={configQuery.data.openaiSttLanguage || "auto"}
-                onValueChange={(value) => {
-                  saveConfig({
-                    openaiSttLanguage: value,
-                  })
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_LANGUAGES.map((language) => (
-                    <SelectItem key={language.code} value={language.code}>
-                      {language.nativeName} ({language.name})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                      placeholder="Click to record custom hotkey"
+                    />
+                  )}
+              </div>
             </Control>
-          )}
 
-          {sttProviderId === "groq" && configQuery.data.groqSttLanguage && configQuery.data.groqSttLanguage !== configQuery.data.sttLanguage && (
-            <Control label={<ControlLabel label="Groq Language Override" tooltip="Override the global language setting specifically for Groq's Whisper transcription service." />} className="px-3">
-              <Select
-                value={configQuery.data.groqSttLanguage || "auto"}
-                onValueChange={(value) => {
-                  saveConfig({
-                    groqSttLanguage: value,
-                  })
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_LANGUAGES.map((language) => (
-                    <SelectItem key={language.code} value={language.code}>
-                      {language.nativeName} ({language.name})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Control>
-          )}
-
-          {sttProviderId === "groq" && (
-            <Control label={<ControlLabel label="Prompt" tooltip="Optional prompt to guide the model's style or specify how to spell unfamiliar words. Limited to 224 tokens." />} className="px-3">
-              <Textarea
-                placeholder="Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
-                value={groqSttPromptDraft}
-                onChange={(e) => {
-                  updateGroqSttPromptDraft(e.currentTarget.value)
-                }}
-                onBlur={(e) => {
-                  flushGroqSttPromptSave(e.currentTarget.value)
-                }}
-                className="min-h-[80px]"
-              />
-            </Control>
-          )}
-
-          <Control label={<ControlLabel label="Transcription Preview" tooltip="Show a live transcription preview while recording. Audio is sent to your STT provider every ~10 seconds to display partial results. Note: this increases API usage — each chunk is billed separately (Groq has a 10-second minimum billing per request)." />} className="px-3">
-            <Switch
-              defaultChecked={configQuery.data.transcriptionPreviewEnabled}
-              onCheckedChange={(value) => {
-                saveConfig({
-                  transcriptionPreviewEnabled: value,
-                })
-              }}
-            />
-          </Control>
-
-        </ControlGroup>
-
-        <ControlGroup collapsible defaultCollapsed title="Text to Speech" forceOpen={isSearching}>
-          <Control label="Enabled" className="px-3">
-            <Switch
-              defaultChecked={configQuery.data.ttsEnabled ?? false}
-              onCheckedChange={async (value) => {
-                if (!value) {
-                  try {
-                    await tipcClient.controlTTSPlayback({ type: "stop", reason: "settings-global-tts-disabled" })
-                    await tipcClient.stopAllTts()
-                  } catch (error) {
-                    console.error("Failed to stop TTS in all windows:", error)
+            <Control
+              label={
+                <ControlLabel
+                  label="Agent Mode"
+                  tooltip="Choose how to activate agent mode for skills, tools, and delegation"
+                />
+              }
+              className="px-3"
+            >
+              <div className="space-y-2">
+                <Select
+                  value={
+                    configQuery.data?.agentShortcut ||
+                    configQuery.data?.mcpToolsShortcut ||
+                    "hold-ctrl-alt"
                   }
-                }
+                  onValueChange={(
+                    value:
+                      | "hold-ctrl-alt"
+                      | "toggle-ctrl-alt"
+                      | "ctrl-alt-slash"
+                      | "custom",
+                  ) => {
+                    saveConfig({ agentShortcut: value })
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hold-ctrl-alt">Hold Ctrl+Alt</SelectItem>
+                    <SelectItem value="toggle-ctrl-alt">
+                      Toggle Ctrl+Alt
+                    </SelectItem>
+                    <SelectItem value="ctrl-alt-slash">Ctrl+Alt+/</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                saveConfig({
-                  ttsEnabled: value,
-                })
-              }}
-            />
-          </Control>
+                {(configQuery.data?.agentShortcut ||
+                  configQuery.data?.mcpToolsShortcut) === "custom" && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Mode</label>
+                      <Select
+                        value={
+                          configQuery.data?.customAgentShortcutMode ||
+                          configQuery.data?.customMcpToolsShortcutMode ||
+                          "hold"
+                        }
+                        onValueChange={(value: "hold" | "toggle") => {
+                          saveConfig({ customAgentShortcutMode: value })
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hold">
+                            Hold (Press and hold to record)
+                          </SelectItem>
+                          <SelectItem value="toggle">
+                            Toggle (Press once to start, again to send)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <KeyRecorder
+                      value={
+                        configQuery.data?.customAgentShortcut ||
+                        configQuery.data?.customMcpToolsShortcut ||
+                        ""
+                      }
+                      onChange={(keyCombo) => {
+                        saveConfig({ customAgentShortcut: keyCombo })
+                      }}
+                      placeholder="Click to record custom agent mode shortcut"
+                    />
+                  </>
+                )}
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  {agentShortcutHelperText}
+                </p>
+              </div>
+            </Control>
+          </ControlGroup>
 
-          {configQuery.data.ttsEnabled && (
-            <Control label={<ControlLabel label="Auto-play" tooltip="Automatically play TTS audio when assistant responses complete" />} className="px-3">
-              <Switch
-                defaultChecked={configQuery.data.ttsAutoPlay ?? true}
-                onCheckedChange={(value) => {
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="Audio Devices"
+            forceOpen={isSearching}
+            onOpenChange={setAudioSectionOpen}
+          >
+            <Control
+              label={
+                <ControlLabel
+                  label="Microphone"
+                  tooltip="Select which microphone to use for speech recognition. 'System Default' uses your OS default input device."
+                />
+              }
+              className="px-3"
+            >
+              <Select
+                value={configQuery.data.audioInputDeviceId || "default"}
+                onValueChange={(value) => {
+                  const selectedInputDevice = audioInputDevices.find(
+                    (device) => device.deviceId === value,
+                  )
+                  const selectedInputDeviceLabel =
+                    hasResolvedAudioInputDeviceLabel(selectedInputDevice?.label)
+                      ? selectedInputDevice?.label
+                      : undefined
+
                   saveConfig({
-                    ttsAutoPlay: value,
+                    audioInputDeviceId: value === "default" ? undefined : value,
+                    audioInputDeviceLabel:
+                      value === "default"
+                        ? undefined
+                        : selectedInputDeviceLabel,
                   })
                 }}
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="System Default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">System Default</SelectItem>
+                  {audioInputDevices.map(
+                    (device) =>
+                      device.deviceId !== "default" && (
+                        <SelectItem
+                          key={device.deviceId}
+                          value={device.deviceId}
+                        >
+                          {device.label}
+                        </SelectItem>
+                      ),
+                  )}
+                </SelectContent>
+              </Select>
             </Control>
-          )}
 
-          {configQuery.data.ttsEnabled && (
-            <div className="px-3 py-1.5">
-              <button
-                type="button"
-                onClick={() => navigate("/settings/models")}
-                className="text-xs text-primary hover:underline"
-              >
-                Configure TTS voice &amp; model →
-              </button>
-            </div>
-          )}
-
-          {configQuery.data.ttsEnabled && (
-            <>
-              <Control label={<ControlLabel label="Text Preprocessing" tooltip="Enable preprocessing to make text more speech-friendly by removing code blocks, URLs, and converting markdown" />} className="px-3">
-                <Switch
-                  defaultChecked={configQuery.data.ttsPreprocessingEnabled ?? true}
-                  onCheckedChange={(value) => {
-                    saveConfig({
-                      ttsPreprocessingEnabled: value,
-                    })
-                  }}
+            <Control
+              label={
+                <ControlLabel
+                  label="Speaker"
+                  tooltip="Select which speaker/output device to use for text-to-speech audio playback. 'System Default' uses your OS default output device."
                 />
-              </Control>
-
-              {configQuery.data.ttsPreprocessingEnabled !== false && (
-                <>
-                  <Control label={<ControlLabel label="Remove Code Blocks" tooltip="Remove code blocks and replace with descriptive text" />} className="px-3">
-                    <Switch
-                      defaultChecked={configQuery.data.ttsRemoveCodeBlocks ?? true}
-                      onCheckedChange={(value) => {
-                        saveConfig({
-                          ttsRemoveCodeBlocks: value,
-                        })
-                      }}
-                    />
-                  </Control>
-
-                  <Control label={<ControlLabel label="Remove URLs" tooltip="Remove URLs and replace with descriptive text" />} className="px-3">
-                    <Switch
-                      defaultChecked={configQuery.data.ttsRemoveUrls ?? true}
-                      onCheckedChange={(value) => {
-                        saveConfig({
-                          ttsRemoveUrls: value,
-                        })
-                      }}
-                    />
-                  </Control>
-
-                  <Control label={<ControlLabel label="Convert Markdown" tooltip="Convert markdown formatting to speech-friendly text" />} className="px-3">
-                    <Switch
-                      defaultChecked={configQuery.data.ttsConvertMarkdown ?? true}
-                      onCheckedChange={(value) => {
-                        saveConfig({
-                          ttsConvertMarkdown: value,
-                        })
-                      }}
-                    />
-                  </Control>
-
-                  <Control label={<ControlLabel label="Use AI for TTS Preprocessing" tooltip="Use an LLM to intelligently convert text to natural speech. More robust handling of abbreviations, acronyms, and context-dependent pronunciation. Adds ~1-2 seconds latency. Falls back to regex if disabled or unavailable." />} className="px-3">
-                    <Switch
-                      defaultChecked={configQuery.data.ttsUseLLMPreprocessing ?? false}
-                      onCheckedChange={(value) => {
-                        saveConfig({
-                          ttsUseLLMPreprocessing: value,
-                        })
-                      }}
-                    />
-                  </Control>
-                </>
-              )}
-            </>
-          )}
-        </ControlGroup>
-
-        {/* Panel Position Settings */}
-        <ControlGroup collapsible defaultCollapsed title="Panel Position" forceOpen={isSearching}>
-          <Control label={<ControlLabel label="Default Position" tooltip="Choose where the floating panel appears on your screen. Custom position: Panel can be dragged to any location and will remember its position." />} className="px-3">
-            <Select
-              value={configQuery.data?.panelPosition || "top-right"}
-              onValueChange={(
-                value:
-                  | "top-left"
-                  | "top-center"
-                  | "top-right"
-                  | "bottom-left"
-                  | "bottom-center"
-                  | "bottom-right"
-                  | "custom",
-              ) => {
-                saveConfig({
-                  panelPosition: value,
-                })
-                // Update panel position immediately if it's visible
-                tipcClient.setPanelPosition({ position: value })
-              }}
+              }
+              className="px-3"
             >
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="top-left">Top Left</SelectItem>
-                <SelectItem value="top-center">Top Center</SelectItem>
-                <SelectItem value="top-right">Top Right</SelectItem>
-                <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                <SelectItem value="bottom-center">Bottom Center</SelectItem>
-                <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                <SelectItem value="custom">Custom (Draggable)</SelectItem>
-              </SelectContent>
-            </Select>
-          </Control>
-
-          <Control label={<ControlLabel label="Enable Dragging" tooltip="Enable dragging to move the panel by holding the top bar." />} className="px-3">
-            <Switch
-              defaultChecked={configQuery.data?.panelDragEnabled ?? true}
-              onCheckedChange={(value) => {
-                saveConfig({
-                  panelDragEnabled: value,
-                })
-              }}
-            />
-          </Control>
-
-          <Control label={<ControlLabel label="Auto-Show Floating Panel" tooltip="When enabled, the floating panel automatically appears during agent sessions. When disabled, the panel only appears when manually triggered via hotkeys or menu. You can still access agent progress in the main window." />} className="px-3">
-            <div className="space-y-2">
-              <div className="flex justify-start sm:justify-end">
-                <Switch
-                  checked={configQuery.data?.floatingPanelAutoShow !== false}
-                  onCheckedChange={(value) => {
-                    saveConfig({
-                      floatingPanelAutoShow: value,
-                    })
-                  }}
-                />
-              </div>
-              {configQuery.data?.floatingPanelAutoShow === false && (
-                <div className="text-xs text-muted-foreground sm:text-right">
-                  Auto-show is off. Use the quick actions below or the tray menu to bring the floating panel back anytime.
-                </div>
-              )}
-            </div>
-          </Control>
-
-          <Control label={<ControlLabel label="Agent Progress in Floating Panel" tooltip="When enabled, agent progress can appear in the floating panel. When disabled, agent progress stays in the main app; the voice waveform still uses the floating panel." />} className="px-3">
-            <div className="space-y-2">
-              <div className="flex justify-start sm:justify-end">
-                <Switch
-                  checked={configQuery.data?.floatingPanelAgentProgressEnabled !== false}
-                  onCheckedChange={(value) => {
-                    saveConfig({
-                      floatingPanelAgentProgressEnabled: value,
-                    })
-                  }}
-                />
-              </div>
-              {configQuery.data?.floatingPanelAgentProgressEnabled === false && (
-                <div className="text-xs text-muted-foreground sm:text-right">
-                  Agent progress stays in the main app. Voice waveform recording still uses the floating panel.
-                </div>
-              )}
-            </div>
-          </Control>
-
-          <Control label={<ControlLabel label="Hide Panel When Main App Focused" tooltip="When enabled, the floating panel automatically hides when the main DotAgents window is focused. The panel reappears when the main window loses focus." />} className="px-3">
-            <Switch
-              checked={configQuery.data?.hidePanelWhenMainFocused !== false}
-              onCheckedChange={(value) => {
-                saveConfig({
-                  hidePanelWhenMainFocused: value,
-                })
-              }}
-            />
-          </Control>
-
-          <Control label={<ControlLabel label="Quick Actions" tooltip="Useful recovery actions if the floating panel is hidden, off-screen, or just hard to find." />} className="px-3">
-            <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
-              <Button variant="outline" size="sm" onClick={() => void showFloatingPanelNow()}>
-                Show Now
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => void resetFloatingPanel()}>
-                Reset Position & Size
-              </Button>
-            </div>
-          </Control>
-
-        </ControlGroup>
-
-        {/* WhatsApp Integration */}
-        <ControlGroup
-          collapsible
-          defaultCollapsed
-          title="WhatsApp Integration"
-          forceOpen={isSearching}
-          endDescription={(
-            <div className="break-words whitespace-normal">
-              Enable WhatsApp messaging through DotAgents.{" "}
-              <a href="/settings/whatsapp" className="underline">Configure WhatsApp settings</a>.
-            </div>
-          )}
-        >
-          <Control label={<ControlLabel label="Enable WhatsApp" tooltip="When enabled, allows sending and receiving WhatsApp messages through DotAgents" />} className="px-3">
-            <Switch
-              checked={configQuery.data?.whatsappEnabled ?? false}
-              onCheckedChange={(value) => saveConfig({ whatsappEnabled: value })}
-            />
-          </Control>
-        </ControlGroup>
-
-        {/* Discord Integration */}
-        <ControlGroup
-          collapsible
-          defaultCollapsed
-          title="Discord Integration"
-          // Auto-open when the user is searching or when Discord is currently
-          // disabled. The Discord settings page is hidden from the sidebar
-          // while disabled, so this section is the only place to turn it on
-          // — surface it by default until the user enables it.
-          forceOpen={isSearching || !(configQuery.data?.discordEnabled ?? false)}
-          endDescription={(
-            <div className="break-words whitespace-normal">
-              Enable a Discord bot for DMs, mentions, and threads. {" "}
-              <a href="/settings/discord" className="underline">Configure Discord settings</a>.
-            </div>
-          )}
-        >
-          <Control label={<ControlLabel label="Enable Discord" tooltip="When enabled, DotAgents can receive Discord DMs and server mentions using your configured bot token. The Discord settings page only appears in the sidebar while this is on." />} className="px-3">
-            <Switch
-              checked={configQuery.data?.discordEnabled ?? false}
-              onCheckedChange={(value) => saveConfig({ discordEnabled: value })}
-            />
-          </Control>
-        </ControlGroup>
-
-        {/* Observability */}
-        <ControlGroup
-          collapsible
-          defaultCollapsed
-          title="Observability"
-          forceOpen={isSearching}
-          endDescription={(
-            <div className="break-words whitespace-normal">
-              Optional tracing for LLM calls, agent sessions, and tools. Send traces to Langfuse or keep them local as JSONL logs.{" "}
-              <a
-                href="https://langfuse.com"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="underline inline-flex items-center gap-1"
+              <Select
+                value={configQuery.data.audioOutputDeviceId || "default"}
+                onValueChange={(value) => {
+                  saveConfig({
+                    audioOutputDeviceId:
+                      value === "default" ? undefined : value,
+                  })
+                }}
               >
-                Docs
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          )}
-        >
-          <Control
-            label={(
-              <ControlLabel
-                label="Local trace logging"
-                tooltip="Write each agent session trace to its own local JSONL file on this device. Independent of Langfuse Cloud."
-              />
-            )}
-            className="px-3"
+                <SelectTrigger>
+                  <SelectValue placeholder="System Default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">System Default</SelectItem>
+                  {audioOutputDevices.map(
+                    (device) =>
+                      device.deviceId !== "default" && (
+                        <SelectItem
+                          key={device.deviceId}
+                          value={device.deviceId}
+                        >
+                          {device.label}
+                        </SelectItem>
+                      ),
+                  )}
+                </SelectContent>
+              </Select>
+            </Control>
+          </ControlGroup>
+
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="Speech-to-Text"
+            forceOpen={isSearching}
           >
-            <Switch
-              checked={configQuery.data?.localTraceLoggingEnabled ?? false}
-              onCheckedChange={(value) => {
-                saveConfig({ localTraceLoggingEnabled: value })
-              }}
-            />
-          </Control>
-
-          <Control
-            label={(
-              <ControlLabel
-                label="Langfuse tracing"
-                tooltip="Send traces to Langfuse Cloud or a self-hosted Langfuse instance."
-              />
-            )}
-            className="px-3"
-          >
-            <Switch
-              checked={configQuery.data?.langfuseEnabled ?? false}
-              disabled={!isLangfuseInstalled}
-              onCheckedChange={(value) => {
-                saveConfig({ langfuseEnabled: value })
-              }}
-            />
-          </Control>
-
-          {!isLangfuseInstalled && (
-            <div className="mx-3 mb-3 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
-              Install the optional <span className="font-mono">langfuse</span> package with <span className="font-mono">pnpm add langfuse</span>, then restart DotAgents to enable tracing.
-            </div>
-          )}
-
-          {configQuery.data?.langfuseEnabled && (
-            <>
-              <Control label={<ControlLabel label="Public Key" tooltip="Your Langfuse project's public key" />} className="px-3">
-                <Input
-                  type="text"
-                  value={langfuseDrafts.langfusePublicKey}
-                  onChange={(e) => updateLangfuseDraft("langfusePublicKey", e.currentTarget.value)}
-                  onBlur={(e) => flushLangfuseSave("langfusePublicKey", e.currentTarget.value)}
-                  placeholder="pk-lf-..."
-                  className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
+            <Control
+              label={
+                <ControlLabel
+                  label="Model Selection"
+                  tooltip="Manage STT models in Models so speech-to-text choices stay with the rest of your provider model settings."
                 />
-              </Control>
+              }
+              className="px-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/settings/models")}
+                >
+                  Open Models
+                </Button>
+                <p className="text-muted-foreground text-sm">
+                  {sttProviderId === "parakeet"
+                    ? "Parakeet uses its local downloaded model bundle."
+                    : `Choose your ${sttProviderId === "openai" ? "OpenAI" : "Groq"} STT model in Models.`}
+                </p>
+              </div>
+            </Control>
 
-              <Control label={<ControlLabel label="Secret Key" tooltip="Your Langfuse project's secret key" />} className="px-3">
-                <Input
-                  type="password"
-                  value={langfuseDrafts.langfuseSecretKey}
-                  onChange={(e) => updateLangfuseDraft("langfuseSecretKey", e.currentTarget.value)}
-                  onBlur={(e) => flushLangfuseSave("langfuseSecretKey", e.currentTarget.value)}
-                  placeholder="sk-lf-..."
-                  className="w-full sm:w-[360px] max-w-full min-w-0 font-mono text-xs"
+            <Control
+              label={
+                <ControlLabel
+                  label="Transcript Processing"
+                  tooltip="Clean up punctuation, capitalization, or obvious speech-to-text mistakes after dictation."
                 />
-              </Control>
-
-              <Control label={<ControlLabel label="Base URL" tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)" />} className="px-3">
-                <Input
-                  type="text"
-                  value={langfuseDrafts.langfuseBaseUrl}
-                  onChange={(e) => updateLangfuseDraft("langfuseBaseUrl", e.currentTarget.value)}
-                  onBlur={(e) => flushLangfuseSave("langfuseBaseUrl", e.currentTarget.value)}
-                  placeholder="https://cloud.langfuse.com (default)"
-                  className="w-full sm:w-[360px] max-w-full min-w-0"
+              }
+              className="px-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Switch
+                  checked={
+                    configQuery.data.transcriptPostProcessingEnabled ?? false
+                  }
+                  onCheckedChange={(value) => {
+                    saveConfig({ transcriptPostProcessingEnabled: value })
+                  }}
                 />
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Use this for self-hosted Langfuse instances. Leave empty for Langfuse Cloud.
-                </div>
-              </Control>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/settings/models")}
+                >
+                  Configure
+                </Button>
+                <p className="text-muted-foreground text-sm">
+                  Prompt, provider, and model live in Models.
+                </p>
+              </div>
+            </Control>
 
-              {/* Status indicator */}
-              {configQuery.data?.langfusePublicKey && configQuery.data?.langfuseSecretKey && (
-                <Control label="Status" className="px-3">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-                    <span className="text-sm text-green-600 dark:text-green-400">Configured</span>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Traces will be sent to Langfuse for each agent session.
-                  </div>
+            <Control
+              label={
+                <ControlLabel
+                  label="Language"
+                  tooltip="Select the language for speech transcription. 'Auto-detect' lets the model determine the language automatically based on your speech."
+                />
+              }
+              className="px-3"
+            >
+              <Select
+                value={configQuery.data.sttLanguage || "auto"}
+                onValueChange={(value) => {
+                  saveConfig({
+                    sttLanguage: value,
+                  })
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_LANGUAGES.map((language) => (
+                    <SelectItem key={language.code} value={language.code}>
+                      {language.nativeName} ({language.name})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Control>
+
+            {sttProviderId === "openai" &&
+              configQuery.data.openaiSttLanguage &&
+              configQuery.data.openaiSttLanguage !==
+                configQuery.data.sttLanguage && (
+                <Control
+                  label={
+                    <ControlLabel
+                      label="OpenAI Language Override"
+                      tooltip="Override the global language setting specifically for OpenAI's Whisper transcription service."
+                    />
+                  }
+                  className="px-3"
+                >
+                  <Select
+                    value={configQuery.data.openaiSttLanguage || "auto"}
+                    onValueChange={(value) => {
+                      saveConfig({
+                        openaiSttLanguage: value,
+                      })
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORTED_LANGUAGES.map((language) => (
+                        <SelectItem key={language.code} value={language.code}>
+                          {language.nativeName} ({language.name})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </Control>
               )}
 
-              {(!configQuery.data?.langfusePublicKey || !configQuery.data?.langfuseSecretKey) && (
-                <div className="px-3 py-2">
-                  <div className="text-sm text-amber-600 dark:text-amber-400">
-                    Enter both Public Key and Secret Key to enable tracing.
-                  </div>
-                </div>
+            {sttProviderId === "groq" &&
+              configQuery.data.groqSttLanguage &&
+              configQuery.data.groqSttLanguage !==
+                configQuery.data.sttLanguage && (
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Groq Language Override"
+                      tooltip="Override the global language setting specifically for Groq's Whisper transcription service."
+                    />
+                  }
+                  className="px-3"
+                >
+                  <Select
+                    value={configQuery.data.groqSttLanguage || "auto"}
+                    onValueChange={(value) => {
+                      saveConfig({
+                        groqSttLanguage: value,
+                      })
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORTED_LANGUAGES.map((language) => (
+                        <SelectItem key={language.code} value={language.code}>
+                          {language.nativeName} ({language.name})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Control>
               )}
-            </>
-          )}
-        </ControlGroup>
 
-        {/* About Section */}
-        <ControlGroup title="About">
-          <Control label="Version" className="px-3">
-            <div className="text-sm">{process.env.APP_VERSION}</div>
-          </Control>
-          <Control label="Onboarding" className="px-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                saveConfig({ onboardingCompleted: false })
-                navigate("/onboarding")
-              }}
+            {sttProviderId === "groq" && (
+              <Control
+                label={
+                  <ControlLabel
+                    label="Prompt"
+                    tooltip="Optional prompt to guide the model's style or specify how to spell unfamiliar words. Limited to 224 tokens."
+                  />
+                }
+                className="px-3"
+              >
+                <Textarea
+                  placeholder="Optional prompt to guide the model's style or specify how to spell unfamiliar words (limited to 224 tokens)"
+                  value={groqSttPromptDraft}
+                  onChange={(e) => {
+                    updateGroqSttPromptDraft(e.currentTarget.value)
+                  }}
+                  onBlur={(e) => {
+                    flushGroqSttPromptSave(e.currentTarget.value)
+                  }}
+                  className="min-h-[80px]"
+                />
+              </Control>
+            )}
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Transcription Preview"
+                  tooltip="Show a live transcription preview while recording. Audio is sent to your STT provider every ~10 seconds to display partial results. Note: this increases API usage — each chunk is billed separately (Groq has a 10-second minimum billing per request)."
+                />
+              }
+              className="px-3"
             >
-              Re-run Onboarding
-            </Button>
-          </Control>
-        </ControlGroup>
-      </div>
+              <Switch
+                defaultChecked={configQuery.data.transcriptionPreviewEnabled}
+                onCheckedChange={(value) => {
+                  saveConfig({
+                    transcriptionPreviewEnabled: value,
+                  })
+                }}
+              />
+            </Control>
+          </ControlGroup>
+
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="Text to Speech"
+            forceOpen={isSearching}
+          >
+            <Control label="Enabled" className="px-3">
+              <Switch
+                defaultChecked={configQuery.data.ttsEnabled ?? false}
+                onCheckedChange={async (value) => {
+                  if (!value) {
+                    try {
+                      await tipcClient.controlTTSPlayback({
+                        type: "stop",
+                        reason: "settings-global-tts-disabled",
+                      })
+                      await tipcClient.stopAllTts()
+                    } catch (error) {
+                      console.error("Failed to stop TTS in all windows:", error)
+                    }
+                  }
+
+                  saveConfig({
+                    ttsEnabled: value,
+                  })
+                }}
+              />
+            </Control>
+
+            {configQuery.data.ttsEnabled && (
+              <Control
+                label={
+                  <ControlLabel
+                    label="Auto-play"
+                    tooltip="Automatically play TTS audio when assistant responses complete"
+                  />
+                }
+                className="px-3"
+              >
+                <Switch
+                  defaultChecked={configQuery.data.ttsAutoPlay ?? true}
+                  onCheckedChange={(value) => {
+                    saveConfig({
+                      ttsAutoPlay: value,
+                    })
+                  }}
+                />
+              </Control>
+            )}
+
+            {configQuery.data.ttsEnabled && (
+              <div className="px-3 py-1.5">
+                <button
+                  type="button"
+                  onClick={() => navigate("/settings/models")}
+                  className="text-primary text-xs hover:underline"
+                >
+                  Configure TTS voice &amp; model →
+                </button>
+              </div>
+            )}
+
+            {configQuery.data.ttsEnabled && (
+              <>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Text Preprocessing"
+                      tooltip="Enable preprocessing to make text more speech-friendly by removing code blocks, URLs, and converting markdown"
+                    />
+                  }
+                  className="px-3"
+                >
+                  <Switch
+                    defaultChecked={
+                      configQuery.data.ttsPreprocessingEnabled ?? true
+                    }
+                    onCheckedChange={(value) => {
+                      saveConfig({
+                        ttsPreprocessingEnabled: value,
+                      })
+                    }}
+                  />
+                </Control>
+
+                {configQuery.data.ttsPreprocessingEnabled !== false && (
+                  <>
+                    <Control
+                      label={
+                        <ControlLabel
+                          label="Remove Code Blocks"
+                          tooltip="Remove code blocks and replace with descriptive text"
+                        />
+                      }
+                      className="px-3"
+                    >
+                      <Switch
+                        defaultChecked={
+                          configQuery.data.ttsRemoveCodeBlocks ?? true
+                        }
+                        onCheckedChange={(value) => {
+                          saveConfig({
+                            ttsRemoveCodeBlocks: value,
+                          })
+                        }}
+                      />
+                    </Control>
+
+                    <Control
+                      label={
+                        <ControlLabel
+                          label="Remove URLs"
+                          tooltip="Remove URLs and replace with descriptive text"
+                        />
+                      }
+                      className="px-3"
+                    >
+                      <Switch
+                        defaultChecked={configQuery.data.ttsRemoveUrls ?? true}
+                        onCheckedChange={(value) => {
+                          saveConfig({
+                            ttsRemoveUrls: value,
+                          })
+                        }}
+                      />
+                    </Control>
+
+                    <Control
+                      label={
+                        <ControlLabel
+                          label="Convert Markdown"
+                          tooltip="Convert markdown formatting to speech-friendly text"
+                        />
+                      }
+                      className="px-3"
+                    >
+                      <Switch
+                        defaultChecked={
+                          configQuery.data.ttsConvertMarkdown ?? true
+                        }
+                        onCheckedChange={(value) => {
+                          saveConfig({
+                            ttsConvertMarkdown: value,
+                          })
+                        }}
+                      />
+                    </Control>
+
+                    <Control
+                      label={
+                        <ControlLabel
+                          label="Use AI for TTS Preprocessing"
+                          tooltip="Use an LLM to intelligently convert text to natural speech. More robust handling of abbreviations, acronyms, and context-dependent pronunciation. Adds ~1-2 seconds latency. Falls back to regex if disabled or unavailable."
+                        />
+                      }
+                      className="px-3"
+                    >
+                      <Switch
+                        defaultChecked={
+                          configQuery.data.ttsUseLLMPreprocessing ?? false
+                        }
+                        onCheckedChange={(value) => {
+                          saveConfig({
+                            ttsUseLLMPreprocessing: value,
+                          })
+                        }}
+                      />
+                    </Control>
+                  </>
+                )}
+              </>
+            )}
+          </ControlGroup>
+
+          {/* Panel Position Settings */}
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="Panel Position"
+            forceOpen={isSearching}
+          >
+            <Control
+              label={
+                <ControlLabel
+                  label="Default Position"
+                  tooltip="Choose where the floating panel appears on your screen. Custom position: Panel can be dragged to any location and will remember its position."
+                />
+              }
+              className="px-3"
+            >
+              <Select
+                value={configQuery.data?.panelPosition || "top-right"}
+                onValueChange={(
+                  value:
+                    | "top-left"
+                    | "top-center"
+                    | "top-right"
+                    | "bottom-left"
+                    | "bottom-center"
+                    | "bottom-right"
+                    | "custom",
+                ) => {
+                  saveConfig({
+                    panelPosition: value,
+                  })
+                  // Update panel position immediately if it's visible
+                  tipcClient.setPanelPosition({ position: value })
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="top-left">Top Left</SelectItem>
+                  <SelectItem value="top-center">Top Center</SelectItem>
+                  <SelectItem value="top-right">Top Right</SelectItem>
+                  <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                  <SelectItem value="bottom-center">Bottom Center</SelectItem>
+                  <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                  <SelectItem value="custom">Custom (Draggable)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Enable Dragging"
+                  tooltip="Enable dragging to move the panel by holding the top bar."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                defaultChecked={configQuery.data?.panelDragEnabled ?? true}
+                onCheckedChange={(value) => {
+                  saveConfig({
+                    panelDragEnabled: value,
+                  })
+                }}
+              />
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Auto-Show Floating Panel"
+                  tooltip="When enabled, the floating panel automatically appears during agent sessions. When disabled, the panel only appears when manually triggered via hotkeys or menu. You can still access agent progress in the main window."
+                />
+              }
+              className="px-3"
+            >
+              <div className="space-y-2">
+                <div className="flex justify-start sm:justify-end">
+                  <Switch
+                    checked={configQuery.data?.floatingPanelAutoShow !== false}
+                    onCheckedChange={(value) => {
+                      saveConfig({
+                        floatingPanelAutoShow: value,
+                      })
+                    }}
+                  />
+                </div>
+                {configQuery.data?.floatingPanelAutoShow === false && (
+                  <div className="text-muted-foreground text-xs sm:text-right">
+                    Auto-show is off. Use the quick actions below or the tray
+                    menu to bring the floating panel back anytime.
+                  </div>
+                )}
+              </div>
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Agent Progress in Floating Panel"
+                  tooltip="When enabled, agent progress can appear in the floating panel. When disabled, agent progress stays in the main app; the voice waveform still uses the floating panel."
+                />
+              }
+              className="px-3"
+            >
+              <div className="space-y-2">
+                <div className="flex justify-start sm:justify-end">
+                  <Switch
+                    checked={
+                      configQuery.data?.floatingPanelAgentProgressEnabled !==
+                      false
+                    }
+                    onCheckedChange={(value) => {
+                      saveConfig({
+                        floatingPanelAgentProgressEnabled: value,
+                      })
+                    }}
+                  />
+                </div>
+                {configQuery.data?.floatingPanelAgentProgressEnabled ===
+                  false && (
+                  <div className="text-muted-foreground text-xs sm:text-right">
+                    Agent progress stays in the main app. Voice waveform
+                    recording still uses the floating panel.
+                  </div>
+                )}
+              </div>
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Hide Panel When Main App Focused"
+                  tooltip="When enabled, the floating panel automatically hides when the main DotAgents window is focused. The panel reappears when the main window loses focus."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={configQuery.data?.hidePanelWhenMainFocused !== false}
+                onCheckedChange={(value) => {
+                  saveConfig({
+                    hidePanelWhenMainFocused: value,
+                  })
+                }}
+              />
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Quick Actions"
+                  tooltip="Useful recovery actions if the floating panel is hidden, off-screen, or just hard to find."
+                />
+              }
+              className="px-3"
+            >
+              <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void showFloatingPanelNow()}
+                >
+                  Show Now
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void resetFloatingPanel()}
+                >
+                  Reset Position & Size
+                </Button>
+              </div>
+            </Control>
+          </ControlGroup>
+
+          {/* WhatsApp Integration */}
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="WhatsApp Integration"
+            forceOpen={isSearching}
+            endDescription={
+              <div className="whitespace-normal break-words">
+                Enable WhatsApp messaging through DotAgents.{" "}
+                <a href="/settings/whatsapp" className="underline">
+                  Configure WhatsApp settings
+                </a>
+                .
+              </div>
+            }
+          >
+            <Control
+              label={
+                <ControlLabel
+                  label="Enable WhatsApp"
+                  tooltip="When enabled, allows sending and receiving WhatsApp messages through DotAgents"
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={configQuery.data?.whatsappEnabled ?? false}
+                onCheckedChange={(value) =>
+                  saveConfig({ whatsappEnabled: value })
+                }
+              />
+            </Control>
+          </ControlGroup>
+
+          {/* Discord Integration */}
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="Discord Integration"
+            // Auto-open when the user is searching or when Discord is currently
+            // disabled. The Discord settings page is hidden from the sidebar
+            // while disabled, so this section is the only place to turn it on
+            // — surface it by default until the user enables it.
+            forceOpen={
+              isSearching || !(configQuery.data?.discordEnabled ?? false)
+            }
+            endDescription={
+              <div className="whitespace-normal break-words">
+                Enable a Discord bot for DMs, mentions, and threads.{" "}
+                <a href="/settings/discord" className="underline">
+                  Configure Discord settings
+                </a>
+                .
+              </div>
+            }
+          >
+            <Control
+              label={
+                <ControlLabel
+                  label="Enable Discord"
+                  tooltip="When enabled, DotAgents can receive Discord DMs and server mentions using your configured bot token. The Discord settings page only appears in the sidebar while this is on."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={configQuery.data?.discordEnabled ?? false}
+                onCheckedChange={(value) =>
+                  saveConfig({ discordEnabled: value })
+                }
+              />
+            </Control>
+          </ControlGroup>
+
+          {/* Observability */}
+          <ControlGroup
+            collapsible
+            defaultCollapsed
+            title="Observability"
+            forceOpen={isSearching}
+            endDescription={
+              <div className="whitespace-normal break-words">
+                Optional tracing for LLM calls, agent sessions, and tools. Send
+                traces to Langfuse or keep them local as JSONL logs.{" "}
+                <a
+                  href="https://langfuse.com"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-1 underline"
+                >
+                  Docs
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            }
+          >
+            <Control
+              label={
+                <ControlLabel
+                  label="Local trace logging"
+                  tooltip="Write each agent session trace to its own local JSONL file on this device. Independent of Langfuse Cloud."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={configQuery.data?.localTraceLoggingEnabled ?? false}
+                onCheckedChange={(value) => {
+                  saveConfig({ localTraceLoggingEnabled: value })
+                }}
+              />
+            </Control>
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Langfuse tracing"
+                  tooltip="Send traces to Langfuse Cloud or a self-hosted Langfuse instance."
+                />
+              }
+              className="px-3"
+            >
+              <Switch
+                checked={configQuery.data?.langfuseEnabled ?? false}
+                disabled={!isLangfuseInstalled}
+                onCheckedChange={(value) => {
+                  saveConfig({ langfuseEnabled: value })
+                }}
+              />
+            </Control>
+
+            {!isLangfuseInstalled && (
+              <div className="mx-3 mb-3 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
+                Install the optional <span className="font-mono">langfuse</span>{" "}
+                package with{" "}
+                <span className="font-mono">pnpm add langfuse</span>, then
+                restart DotAgents to enable tracing.
+              </div>
+            )}
+
+            {configQuery.data?.langfuseEnabled && (
+              <>
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Public Key"
+                      tooltip="Your Langfuse project's public key"
+                    />
+                  }
+                  className="px-3"
+                >
+                  <Input
+                    type="text"
+                    value={langfuseDrafts.langfusePublicKey}
+                    onChange={(e) =>
+                      updateLangfuseDraft(
+                        "langfusePublicKey",
+                        e.currentTarget.value,
+                      )
+                    }
+                    onBlur={(e) =>
+                      flushLangfuseSave(
+                        "langfusePublicKey",
+                        e.currentTarget.value,
+                      )
+                    }
+                    placeholder="pk-lf-..."
+                    className="w-full min-w-0 max-w-full font-mono text-xs sm:w-[360px]"
+                  />
+                </Control>
+
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Secret Key"
+                      tooltip="Your Langfuse project's secret key"
+                    />
+                  }
+                  className="px-3"
+                >
+                  <Input
+                    type="password"
+                    value={langfuseDrafts.langfuseSecretKey}
+                    onChange={(e) =>
+                      updateLangfuseDraft(
+                        "langfuseSecretKey",
+                        e.currentTarget.value,
+                      )
+                    }
+                    onBlur={(e) =>
+                      flushLangfuseSave(
+                        "langfuseSecretKey",
+                        e.currentTarget.value,
+                      )
+                    }
+                    placeholder="sk-lf-..."
+                    className="w-full min-w-0 max-w-full font-mono text-xs sm:w-[360px]"
+                  />
+                </Control>
+
+                <Control
+                  label={
+                    <ControlLabel
+                      label="Base URL"
+                      tooltip="Langfuse API endpoint. Leave empty for Langfuse Cloud (cloud.langfuse.com)"
+                    />
+                  }
+                  className="px-3"
+                >
+                  <Input
+                    type="text"
+                    value={langfuseDrafts.langfuseBaseUrl}
+                    onChange={(e) =>
+                      updateLangfuseDraft(
+                        "langfuseBaseUrl",
+                        e.currentTarget.value,
+                      )
+                    }
+                    onBlur={(e) =>
+                      flushLangfuseSave(
+                        "langfuseBaseUrl",
+                        e.currentTarget.value,
+                      )
+                    }
+                    placeholder="https://cloud.langfuse.com (default)"
+                    className="w-full min-w-0 max-w-full sm:w-[360px]"
+                  />
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    Use this for self-hosted Langfuse instances. Leave empty for
+                    Langfuse Cloud.
+                  </div>
+                </Control>
+
+                {/* Status indicator */}
+                {configQuery.data?.langfusePublicKey &&
+                  configQuery.data?.langfuseSecretKey && (
+                    <Control label="Status" className="px-3">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                        <span className="text-sm text-green-600 dark:text-green-400">
+                          Configured
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground mt-1 text-xs">
+                        Traces will be sent to Langfuse for each agent session.
+                      </div>
+                    </Control>
+                  )}
+
+                {(!configQuery.data?.langfusePublicKey ||
+                  !configQuery.data?.langfuseSecretKey) && (
+                  <div className="px-3 py-2">
+                    <div className="text-sm text-amber-600 dark:text-amber-400">
+                      Enter both Public Key and Secret Key to enable tracing.
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </ControlGroup>
+
+          {/* About Section */}
+          <ControlGroup title="About">
+            <Control label="Version" className="px-3">
+              <div className="text-sm">{process.env.APP_VERSION}</div>
+            </Control>
+            <Control label="Onboarding" className="px-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  saveConfig({ onboardingCompleted: false })
+                  navigate("/onboarding")
+                }}
+              >
+                Re-run Onboarding
+              </Button>
+            </Control>
+          </ControlGroup>
+        </div>
       </SettingsSearchContext.Provider>
-    </div>
+    </SettingsPageShell>
   )
 }
