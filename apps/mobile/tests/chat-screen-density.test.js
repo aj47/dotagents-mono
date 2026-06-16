@@ -145,7 +145,8 @@ test('keeps Codex thinking blocks display-only on mobile', () => {
 
 test('labels result-only tool entries without showing raw tool_call text', () => {
   assert.match(screenSource, /label: 'Tool result'/);
-  assert.match(screenSource, /const toolPreview = label \?\? getCompactToolExecutionPreview\(toolCall, tcResult \?\? null\);/);
+  assert.match(screenSource, /const activityLabel = label\s+\?\s+\{ title: label \}\s+: getToolActivityLabel\(/);
+  assert.match(screenSource, /const primaryActivityText = activityLabel\.detail \|\| activityLabel\.title;/);
   assert.match(screenSource, /const toolNameLabel = label \?\? toolCall\.name;/);
   assert.match(screenSource, /\{toolNameLabel\}/);
 });

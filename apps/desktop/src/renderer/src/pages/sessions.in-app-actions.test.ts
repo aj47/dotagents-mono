@@ -124,6 +124,11 @@ describe("sessions in-app actions", () => {
     expect(agentProgressSource).toContain("togglePinSession(conversationId)")
   })
 
+  it("keeps the home recent conversations splash ordered by recent activity, not pin state", () => {
+    expect(sessionsSource).toContain("orderConversationHistoryByRecentActivity(")
+    expect(sessionsSource).not.toContain("orderConversationHistoryByPinnedFirst(")
+  })
+
   it("lets tile voice continuation use the in-app dialog path while keeping the IPC fallback", () => {
     expect(tileFollowUpSource).toContain("if (onVoiceContinue) {")
     expect(tileFollowUpSource).toContain("continueConversationTitle: conversationTitle")

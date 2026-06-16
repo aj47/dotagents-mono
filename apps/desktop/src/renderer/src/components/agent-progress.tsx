@@ -25,9 +25,9 @@ import {
   formatArgumentsPreview,
   formatToolArguments,
   getToolArgumentEntries,
-  getCompactToolExecutionPreview,
   getExecuteCommandResultPreview,
-  getToolResultsSummary,
+  getToolActivityLabel,
+  getToolActivitySummary,
   TOOL_GROUP_MIN_SIZE,
   getToolCallPreview,
   getBuiltInModelPresets,
@@ -151,6 +151,11 @@ type DisplayItem =
       previewLines: string[]
       /** Total number of underlying tool calls across all collapsed items. */
       callCount: number
+      /** Human-readable summary for the collapsed group. */
+      activitySummary: {
+        title: string
+        detail?: string
+      }
     } }
 
 const getRunningToolCallNames = (item: DisplayItem): string[] => {
@@ -158,12 +163,6 @@ const getRunningToolCallNames = (item: DisplayItem): string[] => {
   return item.data.calls
     .filter((_, index) => !item.data.results[index])
     .map((call) => call.name)
-}
-
-const formatRunningToolLabel = (toolNames: string[]): string => {
-  if (toolNames.length === 0) return "tool"
-  if (toolNames.length === 1) return toolNames[0]
-  return `${toolNames.length} tools`
 }
 
 type ChatProviderId = NonNullable<Config["agentProviderId"]>
@@ -771,6 +770,7 @@ const normalizeThinkingStatusText = (text?: string): string => {
   const normalized = trimmed.replace(/\.+$/, "").toLowerCase()
   if (
     normalized === "agent is thinking" ||
+    normalized === "thinking" ||
     normalized === "analyzing request" ||
     normalized === "analyzing requests" ||
     normalized === "generating response" ||
@@ -784,7 +784,67 @@ const normalizeThinkingStatusText = (text?: string): string => {
 }
 
 const stripThinkingPreamble = (text: string): string =>
-  text.replace(/^Thinking\.\.\.(?:\s*\n\s*\n)?/i, "")
+  text
+    .replace(/&lt;\/?think&gt;|<\/?think>/gi, "")
+    .replace(/^Thinking(?:\.\.\.)?(?=$|\s)(?:\s*\n\s*\n|\s+)?/i, "")
+
+type WhitespaceContext = {
+  title: string
+  text: string
+  tone: "thinking" | "response"
+}
+
+const getWhitespaceContextText = (text: string | undefined): string => {
+  const stripped = stripThinkingPreamble(text ?? "").trim()
+  if (!stripped) return ""
+  return normalizeThinkingStatusText(stripped) === "Thinking..." ? "" : stripped
+}
+
+const getWhitespaceContextFromItem = (item: DisplayItem): WhitespaceContext | null => {
+  if (item.kind === "tool_activity_group") {
+    for (let i = item.data.items.length - 1; i >= 0; i--) {
+      const context = getWhitespaceContextFromItem(item.data.items[i])
+      if (context) return context
+    }
+    return null
+  }
+
+  if (item.kind === "assistant_with_tools") {
+    const text = getWhitespaceContextText(item.data.thought)
+    return text ? { title: "Latest thinking", text, tone: "thinking" } : null
+  }
+
+  if (item.kind === "streaming") {
+    const text = getWhitespaceContextText(item.data.text)
+    if (!text) return null
+    const tone = item.data.isPlaceholder ? "thinking" : "response"
+    return { title: tone === "thinking" ? "Latest thinking" : "Latest response", text, tone }
+  }
+
+  if (item.kind === "message" && item.data.role === "assistant" && !item.data.isThinking) {
+    const text = getWhitespaceContextText(item.data.responseEvent?.text ?? item.data.content)
+    if (!text) return null
+    return item.data.isAssistantThought
+      ? { title: "Latest thinking", text, tone: "thinking" }
+      : { title: "Latest response", text, tone: "response" }
+  }
+
+  return null
+}
+
+const isVisibleContextSurface = (item: DisplayItem | undefined): boolean => {
+  if (!item) return false
+  if (item.kind === "message" && item.data.role === "assistant" && !item.data.isThinking) {
+    return getWhitespaceContextText(item.data.responseEvent?.text ?? item.data.content).length > 0
+  }
+  if (item.kind === "streaming" && !item.data.isPlaceholder) {
+    return getWhitespaceContextText(item.data.text).length > 0
+  }
+  if (item.kind === "assistant_with_tools") {
+    return getWhitespaceContextText(item.data.thought).length > 0
+  }
+  return false
+}
 
 const CompactThinkingIndicator: React.FC<{ text?: string }> = ({ text }) => (
   <div
@@ -1656,10 +1716,18 @@ const CompactToolExecutionList: React.FC<{
           const callIsPending = callIsMissingResult && !isHistoricalComplete
           const callIsUnrecorded = callIsMissingResult && isHistoricalComplete
           const callSuccess = result?.success
-          const toolPreview = getCompactToolExecutionPreview(
+          const activityLabel = getToolActivityLabel(
             { name: call.name, arguments: call.arguments ?? {} },
             result ?? null,
           )
+          const primaryActivityText = activityLabel.detail || activityLabel.title
+          const secondaryActivityText = activityLabel.detail && activityLabel.detail !== activityLabel.title
+            && !/\bcompleted$/i.test(activityLabel.title)
+            ? activityLabel.title
+            : undefined
+          const activityText = secondaryActivityText
+            ? `${primaryActivityText} - ${secondaryActivityText}`
+            : primaryActivityText
 
           return (
             <div key={idx}>
@@ -1677,9 +1745,14 @@ const CompactToolExecutionList: React.FC<{
                 )}
                 onClick={onToggleDetails}
               >
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium" title={toolPreview}>
-                  {toolPreview}
+                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-medium" title={activityText}>
+                  {primaryActivityText}
                 </span>
+                {secondaryActivityText && (
+                  <span className="min-w-0 flex-[0.9] truncate whitespace-nowrap text-[10px] opacity-70">
+                    {secondaryActivityText}
+                  </span>
+                )}
                 <span className="shrink-0 text-[10px] opacity-60">
                   {callIsPending ? (
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -1703,6 +1776,20 @@ const CompactToolExecutionList: React.FC<{
 
       {detailsExpanded && (
         <div className={detailsClassName}>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleDetails()
+              }}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              aria-label="Hide tool details"
+              title="Hide tool details"
+            >
+              Hide details
+            </button>
+          </div>
           {toolCallEntries.map(({ call, result }, idx) => {
             const callIsMissingResult = !result
             const callIsPending = callIsMissingResult && !isHistoricalComplete
@@ -1710,6 +1797,12 @@ const CompactToolExecutionList: React.FC<{
             const formattedArguments = formatToolArguments(call.arguments)
             return (
               <div key={idx} className="text-[10px] space-y-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="shrink-0 font-medium opacity-70">Tool</span>
+                  <code className="min-w-0 truncate rounded bg-muted/50 px-1 py-0.5 font-mono text-[10px] text-foreground">
+                    {call.name}
+                  </code>
+                </div>
                 {formattedArguments && (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -1828,11 +1921,11 @@ const AssistantWithToolsBubble: React.FC<{
   }
   isExpanded: boolean
   onToggleExpand: () => void
-}> = ({ data, isExpanded, onToggleExpand }) => {
-  const [showToolDetails, setShowToolDetails] = useState(false)
+  toolDetailsExpanded: boolean
+  onToggleToolDetails: () => void
+}> = ({ data, isExpanded, onToggleExpand, toolDetailsExpanded, onToggleToolDetails }) => {
 
   const toolCallEntries = data.calls.map((call, idx) => ({ call, result: data.results[idx] }))
-  const resolvedResults = data.results.filter((result): result is NonNullable<typeof result> => Boolean(result))
   const hasMissingResults = toolCallEntries.some(({ result }) => !result)
   const isPending = hasMissingResults && !data.isComplete
   const hasUnrecordedResults = hasMissingResults && data.isComplete
@@ -1840,11 +1933,6 @@ const AssistantWithToolsBubble: React.FC<{
   const allToolsSucceeded = toolCallEntries.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
   const hasThought = data.thought && data.thought.trim().length > 0
   const shouldCollapse = (data.thought?.length ?? 0) > 100 || toolCallEntries.length > 0
-  const runningToolNames = isPending
-    ? toolCallEntries
-      .filter(({ result }) => !result)
-      .map(({ call }) => call.name)
-    : []
   const toolStatusTextClass = isPending
     ? "text-blue-600 dark:text-blue-400"
     : hasUnrecordedResults
@@ -1854,33 +1942,15 @@ const AssistantWithToolsBubble: React.FC<{
         : allToolsSucceeded
           ? "text-green-600 dark:text-green-400"
           : "text-sky-700 dark:text-sky-300"
-  const collapsedToolPreviewLine = data.calls
-    .map((call, idx) => {
-      const result = data.results[idx]
-      return getCompactToolExecutionPreview(
-        { name: call.name, arguments: call.arguments ?? {} },
-        result ?? null,
-      )
-    })
-    .join(", ")
-  const collapsedToolStatusLine = isPending
-    ? `Running ${formatRunningToolLabel(runningToolNames)}`
-    : collapsedToolPreviewLine
-  const collapsedToolTitle = isPending && collapsedToolPreviewLine
-    ? `${collapsedToolStatusLine} - ${collapsedToolPreviewLine}`
+  const activitySummary = getToolActivitySummary(
+    data.calls.map((call) => ({ name: call.name, arguments: call.arguments ?? {} })),
+    data.results,
+  )
+  const collapsedToolStatusLine = activitySummary.title
+  const collapsedToolDetail = activitySummary.detail
+  const collapsedToolTitle = collapsedToolDetail
+    ? `${collapsedToolStatusLine} - ${collapsedToolDetail}`
     : collapsedToolStatusLine
-
-  // Generate result summary for collapsed state
-  const collapsedResultSummary = (() => {
-    if (isExpanded || isPending) return null
-    if (resolvedResults.length === 0) return null
-    const toolResults = resolvedResults.map(r => ({
-      success: r.success,
-      content: r.content,
-      error: r.error,
-    }))
-    return getToolResultsSummary(toolResults)
-  })()
 
   const handleToggleExpand = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!shouldCollapse || hasActiveTextSelection(event.currentTarget)) {
@@ -1897,7 +1967,7 @@ const AssistantWithToolsBubble: React.FC<{
 
   const handleToggleToolDetails = (e: React.MouseEvent) => {
     e.stopPropagation()
-    setShowToolDetails(!showToolDetails)
+    onToggleToolDetails()
   }
 
   const longThought = (data.thought?.length ?? 0) > 100
@@ -1929,7 +1999,7 @@ const AssistantWithToolsBubble: React.FC<{
             <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           )}
           <div className="min-w-0 flex-1">
-            {!showToolDetails ? (
+            {!toolDetailsExpanded ? (
               <button
                 type="button"
                 className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}
@@ -1942,16 +2012,21 @@ const AssistantWithToolsBubble: React.FC<{
                 <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium">
                   {collapsedToolStatusLine}
                 </span>
+                {collapsedToolDetail && (
+                  <span className="min-w-0 flex-[1.4] truncate whitespace-nowrap text-[10px] opacity-75">
+                    {collapsedToolDetail}
+                  </span>
+                )}
                 <ChevronRight className="h-2.5 w-2.5 shrink-0 opacity-40" aria-hidden="true" />
               </button>
             ) : (
               <CompactToolExecutionList
                 calls={data.calls}
                 results={data.results}
-                detailsExpanded={showToolDetails}
+                detailsExpanded={toolDetailsExpanded}
                 onToggleDetails={handleToggleToolDetails}
                 rowClassName="px-1 py-0.5"
-                detailsClassName="mt-1 ml-3 space-y-1 border-l border-border/50 pl-2"
+                detailsClassName="mt-1 ml-3 max-h-[min(68vh,42rem)] space-y-1 overflow-y-auto border-l border-border/50 pl-2 pr-1 scrollbar-thin"
                 isHistoricalComplete={data.isComplete}
                 executionStats={data.executionStats}
               />
@@ -1969,29 +2044,31 @@ const AssistantWithToolsBubble: React.FC<{
 }
 
 // Collapsed group of consecutive tool-call activity.
-// Each collapsed group shows compact tool preview lines so historical session
-// views still communicate which tools were called without expansion.
+// The collapsed row stays human-readable; raw command details live inside
+// the expanded child rows.
 const ToolActivityGroupBubble: React.FC<{
   group: {
     items: DisplayItem[]
     previewLines: string[]
     callCount: number
+    activitySummary: {
+      title: string
+      detail?: string
+    }
   }
   isExpanded: boolean
   onToggleExpand: () => void
   /** Render a single child DisplayItem when the group is expanded. */
   renderItem: (item: DisplayItem, index: number) => React.ReactNode
 }> = ({ group, isExpanded, onToggleExpand, renderItem }) => {
-  const collapsedPreviewLine = group.previewLines.join(', ')
   const thinkingCount = group.items.filter((item) => item.kind === "assistant_with_tools" && item.data.thought.trim().length > 0).length
   const callCount = group.callCount
   const runningToolNames = group.items.flatMap(getRunningToolCallNames)
   const hasRunningTools = runningToolNames.length > 0
-  const collapsedStatusLine = hasRunningTools
-    ? `Running ${formatRunningToolLabel(runningToolNames)}`
-    : collapsedPreviewLine || "Tool activity"
-  const collapsedTitle = hasRunningTools && collapsedPreviewLine
-    ? `${collapsedStatusLine} - ${collapsedPreviewLine}`
+  const collapsedStatusLine = group.activitySummary.title
+  const collapsedDetail = group.activitySummary.detail
+  const collapsedTitle = collapsedDetail
+    ? `${collapsedStatusLine} - ${collapsedDetail}`
     : collapsedStatusLine
 
   return (
@@ -2027,6 +2104,11 @@ const ToolActivityGroupBubble: React.FC<{
         )}>
           {collapsedStatusLine}
         </span>
+        {collapsedDetail && (
+          <span className="min-w-0 flex-[1.6] truncate whitespace-nowrap text-[10px] text-sky-900/60 dark:text-sky-100/60">
+            {collapsedDetail}
+          </span>
+        )}
         {thinkingCount > 0 && (
           <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         )}
@@ -2045,7 +2127,7 @@ const ToolActivityGroupBubble: React.FC<{
 
       {/* Expanded: render all child items */}
       {isExpanded && (
-        <div className="space-y-1 px-1.5 pb-1.5">
+        <div className="max-h-[min(72vh,46rem)] space-y-1 overflow-y-auto px-1.5 pb-1.5 pr-1 scrollbar-thin">
           <div className="space-y-1">
             {group.items.map((item, idx) => renderItem(item, idx))}
           </div>
@@ -3587,6 +3669,43 @@ const StreamingContentBubble: React.FC<{
   )
 }
 
+const WhitespaceContextFiller: React.FC<{ context: WhitespaceContext | null }> = ({ context }) => {
+  if (!context) return null
+
+  const isThinking = context.tone === "thinking"
+  const displayText = isThinking ? getWhitespaceContextText(context.text) : context.text.trim()
+  if (!displayText) return null
+
+  return (
+    <div
+      className="agent-progress-whitespace-context flex min-h-0 flex-1 overflow-hidden pt-1"
+      aria-label={context.title}
+    >
+      <div className={cn(
+        "flex min-h-0 w-full flex-col overflow-hidden rounded-md border px-2.5 py-2 text-xs",
+        isThinking
+          ? "border-amber-200/70 bg-amber-50/25 text-amber-950/90 dark:border-amber-900/45 dark:bg-amber-950/15 dark:text-amber-50/90"
+          : "border-blue-200/70 bg-blue-50/25 text-blue-950/90 dark:border-blue-900/45 dark:bg-blue-950/15 dark:text-blue-50/90",
+      )}>
+        <div className="mb-1.5 flex shrink-0 items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide opacity-65">
+          {isThinking ? (
+            <Brain className="h-3 w-3" aria-hidden="true" />
+          ) : (
+            <MessageSquare className="h-3 w-3" aria-hidden="true" />
+          )}
+          <span>{context.title}</span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,black_78%,transparent_100%)]">
+          <MarkdownRenderer
+            content={displayText}
+            className="markdown-selectable whitespace-pre-wrap break-words text-[12px] leading-relaxed [overflow-wrap:anywhere]"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 
 export const AgentProgress: React.FC<AgentProgressProps> = ({
@@ -4579,12 +4698,11 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         return
       }
       const runItems = sortedItems.slice(runStart, runEnd + 1)
-      // Collapsed preview surfaces every tool call in the run as a compact
-      // token, in chronological order. execute_command renders as a balanced
-      // `<command>:<output-preview>` label; other tools fall back to the tool
-      // name. The CSS truncate handles overflow on narrow tiles, so we emit the
-      // full list and let the layout shrink it.
+      // Preserve raw preview data for expanded details, but compute a separate
+      // human-readable summary for the collapsed row.
       const previewLines: string[] = []
+      const activityCalls: Array<{ name: string; arguments: any }> = []
+      const activityResults: Array<{ success: boolean; content: string; error?: string } | undefined | null> = []
       let callCount = 0
       for (let j = 0; j < runItems.length; j++) {
         const it = runItems[j]
@@ -4605,6 +4723,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           if (!call) continue
           callCount += 1
           const result = results[k] ?? null
+          activityCalls.push({ name: call.name, arguments: call.arguments ?? {} })
+          activityResults.push(result)
           const execPreview = getExecuteCommandResultPreview(
             { name: call.name, arguments: call.arguments ?? {} },
             result,
@@ -4623,7 +4743,12 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       grouped.push({
         kind: "tool_activity_group",
         id: groupId,
-        data: { items: runItems, previewLines, callCount },
+        data: {
+          items: runItems,
+          previewLines,
+          callCount,
+          activitySummary: getToolActivitySummary(activityCalls, activityResults),
+        },
       })
       runStart = null
     }
@@ -4642,6 +4767,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }, [enrichedMessages, effectiveUserResponse, progress.isComplete, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = displayItems
+  const whitespaceContext = useMemo<WhitespaceContext | null>(() => {
+    if (isComplete || visibleDisplayItems.length === 0) return null
+    if (isVisibleContextSurface(visibleDisplayItems[visibleDisplayItems.length - 1])) return null
+
+    for (let i = visibleDisplayItems.length - 1; i >= 0; i--) {
+      const context = getWhitespaceContextFromItem(visibleDisplayItems[i])
+      if (context) return context
+    }
+    return null
+  }, [isComplete, visibleDisplayItems])
   const loadedConversationHistoryCount = conversationHistory?.length ?? 0
   const conversationHistoryTotalCount = Math.max(
     progress.conversationHistoryTotalCount ?? loadedConversationHistoryCount,
@@ -4653,26 +4788,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   )
 
   const getToolActivityGroupDefaultExpanded = useCallback((item: Extract<DisplayItem, { kind: "tool_activity_group" }>) => {
-    if (item.data.items.some((child) => getRunningToolCallNames(child).length > 0)) {
-      return true
-    }
-    const firstChildId = item.data.items[0]?.id
-    return !!firstChildId && expandedItems[firstChildId] === true
-  }, [expandedItems])
-
-  useEffect(() => {
-    setExpandedItems(prev => {
-      let next = prev
-      for (const item of displayItems) {
-        if (item.kind !== "tool_activity_group" || item.id in prev) continue
-        const firstChildId = item.data.items[0]?.id
-        if (!firstChildId || prev[firstChildId] !== true) continue
-        if (next === prev) next = { ...prev }
-        next[item.id] = true
-      }
-      return next
-    })
-  }, [displayItems])
+    return item.data.items.some((child) => getRunningToolCallNames(child).length > 0)
+  }, [])
 
   const delegationSummaryEntries = useMemo<DelegationSummaryEntry[]>(() => {
     const latestByRunId = new Map<string, { delegation: ACPDelegationProgress; timestamp: number }>()
@@ -5206,7 +5323,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 className="flex-1 min-h-0 overflow-y-auto scrollbar-none"
               >
                 {visibleDisplayItems.length > 0 ? (
-                  <div ref={scrollContentRef} className="space-y-1 p-2">
+                  <div ref={scrollContentRef} className="flex min-h-full flex-col gap-1 p-2">
                     {displayItems.length > visibleDisplayItems.length && (
                       <div className="px-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
                         Showing latest {visibleDisplayItems.length} updates
@@ -5269,12 +5386,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                           />
                         )
                       } else if (item.kind === "assistant_with_tools") {
+                        const toolDetailsKey = `${itemKey}:tool-details`
                         return (
                           <AssistantWithToolsBubble
                             key={itemKey}
                             data={item.data}
                             isExpanded={isExpanded}
                             onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                            toolDetailsExpanded={expandedItems[toolDetailsKey] ?? false}
+                            onToggleToolDetails={() => toggleItemExpansion(toolDetailsKey, false)}
                           />
                         )
                       } else if (item.kind === "tool_approval") {
@@ -5315,12 +5435,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                               const childKey = child.id || `group-child-${childIdx}`
                               const childExpanded = expandedItems[childKey] ?? false
                               if (child.kind === "assistant_with_tools") {
+                                const childToolDetailsKey = `${childKey}:tool-details`
                                 return (
                                   <AssistantWithToolsBubble
                                     key={childKey}
                                     data={child.data}
                                     isExpanded={childExpanded}
                                     onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                                    toolDetailsExpanded={expandedItems[childToolDetailsKey] ?? false}
+                                    onToggleToolDetails={() => toggleItemExpansion(childToolDetailsKey, false)}
                                   />
                                 )
                               }
@@ -5346,6 +5469,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         )
                       }
                     })}
+                    <WhitespaceContextFiller context={whitespaceContext} />
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center">
@@ -5675,7 +5799,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           className="flex-1 min-h-0 overflow-y-auto"
         >
           {visibleDisplayItems.length > 0 ? (
-            <div ref={scrollContentRef} className="space-y-1 p-2">
+            <div ref={scrollContentRef} className="flex min-h-full flex-col gap-1 p-2">
               {displayItems.length > visibleDisplayItems.length && (
                 <div className="px-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
                   Showing latest {visibleDisplayItems.length} updates
@@ -5743,12 +5867,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                     />
                   )
                 } else if (item.kind === "assistant_with_tools") {
+                  const toolDetailsKey = `${itemKey}:tool-details`
                   return (
                     <AssistantWithToolsBubble
                       key={itemKey}
                       data={item.data}
                       isExpanded={isExpanded}
                       onToggleExpand={() => toggleItemExpansion(itemKey, isExpanded)}
+                      toolDetailsExpanded={expandedItems[toolDetailsKey] ?? false}
+                      onToggleToolDetails={() => toggleItemExpansion(toolDetailsKey, false)}
                     />
                   )
                 } else if (item.kind === "tool_approval") {
@@ -5800,12 +5927,15 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         const childKey = child.id || `group-child-${childIdx}`
                         const childExpanded = expandedItems[childKey] ?? false
                         if (child.kind === "assistant_with_tools") {
+                          const childToolDetailsKey = `${childKey}:tool-details`
                           return (
                             <AssistantWithToolsBubble
                               key={childKey}
                               data={child.data}
                               isExpanded={childExpanded}
                               onToggleExpand={() => toggleItemExpansion(childKey, childExpanded)}
+                              toolDetailsExpanded={expandedItems[childToolDetailsKey] ?? false}
+                              onToggleToolDetails={() => toggleItemExpansion(childToolDetailsKey, false)}
                             />
                           )
                         }
@@ -5831,6 +5961,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   )
                 }
               })}
+              <WhitespaceContextFiller context={whitespaceContext} />
             </div>
           ) : (
             <div className="flex h-full items-center justify-center">

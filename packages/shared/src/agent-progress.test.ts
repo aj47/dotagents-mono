@@ -33,7 +33,7 @@ describe('AgentProgressStep', () => {
     const step: AgentProgressStep = {
       id: 'step-1',
       type: 'tool_call',
-      title: 'Reading file',
+      title: 'Command completed',
       status: 'completed',
       timestamp: Date.now(),
     }

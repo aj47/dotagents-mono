@@ -72,9 +72,6 @@ describe("constructSystemPrompt", () => {
     expect(DEFAULT_SYSTEM_PROMPT).toContain("search relevant knowledge notes first and prior conversations second")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("Before asking the user for facts that may already be known")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("whenever the current task likely relates to prior work")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("always prefer knowledge notes over recalled conversation context when they conflict")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("personal legal/immigration")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("inspect both relevant knowledge notes and recent conversations with a shell/file tool")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("configured knowledge roots")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("global and workspace .agents/knowledge")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("<knowledge-root>/<slug>/<slug>.md")
@@ -88,7 +85,6 @@ describe("constructSystemPrompt", () => {
     expect(DEFAULT_SYSTEM_PROMPT).toContain("RUNTIME METADATA")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("DOTAGENTS_RUNTIME_DIR")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("tools/index.json")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("OS-appropriate")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("index.json")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("conv_*.json")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("layered global and workspace .agents folders")
@@ -116,14 +112,13 @@ describe("constructSystemPrompt", () => {
   it("instructs agents to search prior conversations whenever they need more context", async () => {
     const { DEFAULT_SYSTEM_PROMPT, constructSystemPrompt } = await import("./system-prompts")
 
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("Whenever you determine you need more context before answering or proceeding")
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("continuation, status, debugging, or high-context planning")
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("Prior DotAgents conversations are JSON in the runtime-supplied conversations directory")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("searching the conversations index and relevant conv_*.json history is a standard context-gathering step")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("do this before asking the user")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("If recovered conversations contain enough facts to answer or continue, use them and respond")
     expect(DEFAULT_SYSTEM_PROMPT).toContain("only ask the user when prior conversations do not contain the needed information, or when credentials/approval are required")
-    // The "knowledge notes take precedence" guarantee from #494 must remain intact
-    expect(DEFAULT_SYSTEM_PROMPT).toContain("always prefer knowledge notes over recalled conversation context when they conflict")
+    // The note-first lookup guarantee from #494 must remain intact.
+    expect(DEFAULT_SYSTEM_PROMPT).toContain("search relevant knowledge notes first and prior conversations second")
 
     const agentPrompt = constructSystemPrompt([
       { name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } },

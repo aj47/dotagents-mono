@@ -152,19 +152,6 @@ function countTextOccurrences(text: string, needle: string) {
   return text.match(new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"))?.length ?? 0
 }
 
-function findToolRow(tree: any, toolName: string) {
-  const match = findAll(
-    tree,
-    (value) => value?.type === "div"
-      && typeof value?.props?.className === "string"
-      && value.props.className.includes("text-[11px]")
-      && value.props.className.includes("cursor-pointer")
-      && getTextContent(value).includes(toolName),
-  )[0]
-  if (!match) throw new Error(`Tool row for \"${toolName}\" not found`)
-  return match
-}
-
 async function loadAgentProgress(
   runtime: ReturnType<typeof createHookRuntime>,
   options?: { ttsEnabled?: boolean; ttsAutoPlay?: boolean },
@@ -247,7 +234,6 @@ async function loadAgentProgress(
     Copy: icon("Copy"),
     CheckCheck: icon("CheckCheck"),
     GripHorizontal: icon("GripHorizontal"),
-    Activity: icon("Activity"),
     Moon: icon("Moon"),
     Maximize2: icon("Maximize2"),
     LayoutGrid: icon("LayoutGrid"),
@@ -349,6 +335,124 @@ async function loadAgentProgress(
         return `${call.name}:${firstLine}`
       }
       return call.name
+    },
+    getToolActivityLabel: (
+      call: { name: string; arguments?: Record<string, unknown> },
+      result?: { success: boolean; content: string; error?: string } | null,
+    ) => {
+      const commandHint = () => {
+        const command = typeof call.arguments?.command === "string" ? call.arguments.command : ""
+        const header = command.match(/['"][-=]{3,}\s*([^'"]*?)\s*[-=]{3,}['"]/)?.[1]?.trim()
+        if (header) return header
+        const pathToken = command.split(/\s+/).reverse().find((token) => token.includes("/") || /\.[A-Za-z0-9]{1,8}$/.test(token))
+        if (pathToken) {
+          const cleaned = pathToken.replace(/^['"]|['"],?;?$/g, "").replace(/[),;]+$/g, "")
+          const parts = cleaned.split("/").filter(Boolean)
+          return parts.at(-1)
+        }
+        if (command.includes("<<")) return `inline ${command.trim().split(/\s+/)[0]}`
+        return undefined
+      }
+      const preview = (text: string) => {
+        for (const line of text.split("\n")) {
+          const trimmed = line.trim()
+          if (!trimmed || /^[-=*_]{3,}$/.test(trimmed) || /^[\s[\]{}(),:;'"`-]+$/.test(trimmed)) continue
+          const markdownHeading = trimmed.match(/^#{1,6}\s+(.+)$/)?.[1]?.trim()
+          if (markdownHeading) {
+            if (/^(result|results|page|ran playwright code|error)$/i.test(markdownHeading)) continue
+            return markdownHeading
+          }
+          const header = trimmed.match(/^[-=]{3,}\s*(.*?)\s*[-=]{3,}$/)?.[1]?.trim()
+          return header || trimmed
+        }
+        return undefined
+      }
+      const toolName = call.name === "execute_command"
+        ? "Command"
+        : (() => {
+          const cleaned = call.name.replace(/^[^:]+:/, "").replace(/[_-]+/g, " ").trim()
+          return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : "Using a tool"
+        })()
+      const output = (result?.error || result?.content || "").trim()
+      const detailPreview = preview(output) || (call.name === "execute_command" ? commandHint() : undefined)
+      const detail = result
+        ? !result.success
+          ? output ? `Failed: ${output}` : "Failed"
+          : detailPreview
+        : call.name === "execute_command" ? commandHint() : undefined
+      if (!result) return { title: call.name === "execute_command" ? "Running command" : toolName, ...(detail ? { detail } : {}) }
+      return {
+        title: result.success ? `${toolName} completed` : `${toolName} failed`,
+        ...(detail ? { detail } : {}),
+      }
+    },
+    getToolActivitySummary: (
+      calls: Array<{ name: string; arguments?: Record<string, unknown> }>,
+      results?: Array<{ success: boolean; content: string; error?: string } | undefined | null>,
+    ) => {
+      const labelFor = (call: { name: string; arguments?: Record<string, unknown> }, result?: { success: boolean; content: string; error?: string } | null) => {
+        const commandHint = () => {
+          const command = typeof call.arguments?.command === "string" ? call.arguments.command : ""
+          const header = command.match(/['"][-=]{3,}\s*([^'"]*?)\s*[-=]{3,}['"]/)?.[1]?.trim()
+          if (header) return header
+          const pathToken = command.split(/\s+/).reverse().find((token) => token.includes("/") || /\.[A-Za-z0-9]{1,8}$/.test(token))
+          if (pathToken) {
+            const cleaned = pathToken.replace(/^['"]|['"],?;?$/g, "").replace(/[),;]+$/g, "")
+            const parts = cleaned.split("/").filter(Boolean)
+            return parts.at(-1)
+          }
+          if (command.includes("<<")) return `inline ${command.trim().split(/\s+/)[0]}`
+          return undefined
+        }
+        const preview = (text: string) => {
+          for (const line of text.split("\n")) {
+            const trimmed = line.trim()
+            if (!trimmed || /^[-=*_]{3,}$/.test(trimmed) || /^[\s[\]{}(),:;'"`-]+$/.test(trimmed)) continue
+            const markdownHeading = trimmed.match(/^#{1,6}\s+(.+)$/)?.[1]?.trim()
+            if (markdownHeading) {
+              if (/^(result|results|page|ran playwright code|error)$/i.test(markdownHeading)) continue
+              return markdownHeading
+            }
+            const header = trimmed.match(/^[-=]{3,}\s*(.*?)\s*[-=]{3,}$/)?.[1]?.trim()
+            return header || trimmed
+          }
+          return undefined
+        }
+        const toolName = call.name === "execute_command"
+          ? "Command"
+          : (() => {
+            const cleaned = call.name.replace(/^[^:]+:/, "").replace(/[_-]+/g, " ").trim()
+            return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : "Using a tool"
+          })()
+        const output = (result?.error || result?.content || "").trim()
+        const detailPreview = preview(output) || (call.name === "execute_command" ? commandHint() : undefined)
+        const detail = result
+          ? !result.success
+            ? output ? `Failed: ${output}` : "Failed"
+            : detailPreview
+          : call.name === "execute_command" ? commandHint() : undefined
+        if (!result) return { title: call.name === "execute_command" ? "Running command" : toolName, ...(detail ? { detail } : {}) }
+        return {
+          title: result.success ? `${toolName} completed` : `${toolName} failed`,
+          ...(detail ? { detail } : {}),
+        }
+      }
+      const promote = (label: { title: string; detail?: string }) => {
+        if (label.detail && /\bcompleted$/i.test(label.title)) return { title: label.detail }
+        return label
+      }
+      if (calls.length === 1) return promote(labelFor(calls[0], results?.[0] ?? null))
+      const visible = calls
+        .map((call, index) => ({ call, index }))
+        .filter(({ call }) => call.name !== "set_session_title")
+      const candidates = visible.length > 0 ? visible : calls.map((call, index) => ({ call, index }))
+      const latest = [...candidates].reverse().find(({ index }) => !results?.[index]) ?? [...candidates].reverse().find(({ index }) => !!results?.[index])
+      const label = latest ? labelFor(latest.call, results?.[latest.index] ?? null) : { title: "Using tools" }
+      const promoted = promote(label)
+      return {
+        title: promoted.detail || promoted.title,
+        ...(promoted.detail ? { detail: promoted.title } : {}),
+      }
     },
     normalizeAgentConversationState: (state: string | null | undefined, fallback: string) => state ?? fallback,
     getBuiltInModelPresets: () => [{ id: "default", name: "OpenAI", baseUrl: "https://api.openai.com/v1", agentModel: "gpt-4.1-mini", isBuiltIn: true }],
@@ -552,9 +656,56 @@ describe("agent progress response history", () => {
     const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
     const text = getTextContent(tree)
 
-    expect(text).toContain("inspect_workspace")
-    expect(text).toContain("Running inspect_workspace")
+    expect(text).toContain("Inspect workspace")
+    expect(text).not.toContain("inspect_workspace")
     expect(text).not.toContain("Thinking...")
+  })
+
+  it("uses empty timeline space to persist the latest substantive thinking while tools are active", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-whitespace-thinking-context",
+      conversationId: "conversation-whitespace-thinking-context",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Gather context", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "I'm locating the transcript and clip folders before deciding the edit path.",
+          timestamp: 150,
+          toolCalls: [
+            { name: "execute_command", arguments: { command: "rg -n transcript /tmp/project" } },
+          ],
+        },
+        {
+          role: "assistant",
+          content: "<think>\nNext I'm checking the exported audio details so the clip timing stays aligned.\n</think>",
+          timestamp: 160,
+          toolCalls: [
+            { name: "execute_command", arguments: { command: "ffprobe video.mp4" } },
+          ],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+    const fillers = findAll(
+      tree,
+      (value) => typeof value?.props?.className === "string"
+        && value.props.className.includes("agent-progress-whitespace-context"),
+    )
+
+    expect(fillers).toHaveLength(1)
+    expect(text).toContain("Latest thinking")
+    expect(text).toContain("Next I'm checking the exported audio details")
+    expect(text).not.toContain("<think>")
+    expect(text).not.toContain("</think>")
   })
 
   it("shows a live thinking placeholder when only previous turns have tool activity", async () => {
@@ -905,9 +1056,11 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Processing with tools")
     expect(text).not.toContain("Thinking first")
     expect(text).not.toContain("Tool activity")
-    expect(text).toContain("search_repo")
+    expect(text).toContain("match")
+    expect(text).not.toContain("Search repo completed")
+    expect(text).not.toContain("search_repo")
     expect(text).not.toContain("1 tool")
-    expect(text.indexOf("search_repo")).toBeLessThan(text.indexOf("Found the issue"))
+    expect(text.indexOf("match")).toBeLessThan(text.indexOf("Found the issue"))
   })
 
   it("does not show completed historical tool calls with missing results as still running", async () => {
@@ -940,7 +1093,8 @@ describe("agent progress response history", () => {
     const spinners = findAll(tree, (value) => value?.type === "Loader2")
     const clocks = findAll(tree, (value) => value?.type === "Clock")
 
-    expect(text).toContain("python3 make_slides.py")
+    expect(text).toContain("Running command")
+    expect(text).not.toContain("python3 make_slides.py")
     expect(text).toContain("It is no longer running.")
     expect(text).not.toContain("Waiting for response")
     expect(spinners).toHaveLength(0)
@@ -948,7 +1102,9 @@ describe("agent progress response history", () => {
 
     const detailsButton = findAll(
       tree,
-      (value) => value?.type === "button" && value.props?.title === "python3 make_slides.py",
+      (value) => value?.type === "button"
+        && typeof value?.props?.title === "string"
+        && value.props.title.includes("Running command"),
     )[0]
     expect(detailsButton).toBeTruthy()
 
@@ -956,6 +1112,7 @@ describe("agent progress response history", () => {
     tree = runtime.render(AgentProgress, { progress })
     text = getTextContent(tree)
 
+    expect(text).toContain("python3 make_slides.py")
     expect(text).toContain("No result recorded")
     expect(text).not.toContain("Waiting for response")
   })
@@ -1016,15 +1173,67 @@ describe("agent progress response history", () => {
     expect(text).not.toMatch(/2 step(?:\s*s)?/)
     expect(text).not.toContain("First tool thought")
     expect(text).not.toContain("Second tool thought")
-    // Collapsed groups list every execute_command as
-    // "<command>:<output-preview>" in chronological order, with a call count
-    // next to the wrench icon.
-    expect(text).toContain("git status --short:M file.ts branch main")
-    expect(text).toContain("pnpm test:all suites passed")
-    expect(text.indexOf("git status --short:M file.ts branch main")).toBeLessThan(text.indexOf("pnpm test:all suites passed"))
-    expect(text.indexOf("pnpm test:all suites passed")).toBeLessThan(text.indexOf("Now here is the answer"))
-    // 2 tool calls in the run (search count badge before previews).
-    expect(text).toMatch(/2\s+git status --short:M file\.ts branch main/)
+    expect(text).toContain("all suites passed")
+    expect(text).not.toContain("Command completed")
+    expect(text).not.toContain("git status --short:M file.ts branch main")
+    expect(text).not.toContain("pnpm test:all suites passed")
+    expect(text.indexOf("all suites passed")).toBeLessThan(text.indexOf("Now here is the answer"))
+    // 2 tool calls in the run (count badge before the latest-tool summary).
+    expect(text).toMatch(/2\s+all suites passed/)
+  })
+
+  it("keeps opened assistant tool details expanded when the tool result arrives", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const baseProgress = {
+      sessionId: "session-persistent-tool-details",
+      conversationId: "conversation-persistent-tool-details",
+      currentIteration: 1,
+      maxIterations: 2,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        {
+          role: "assistant",
+          content: "",
+          timestamp: 200,
+          toolCalls: [
+            { name: "execute_command", arguments: { command: "python3 job.py" } },
+          ],
+        },
+      ],
+    }
+
+    let tree = runtime.render(AgentProgress, { progress: baseProgress })
+    const detailsButton = findAll(
+      tree,
+      (value) => value?.type === "button"
+        && typeof value?.props?.title === "string"
+        && value.props.title.includes("Running command"),
+    )[0]
+    expect(detailsButton).toBeTruthy()
+    detailsButton.props.onClick({ stopPropagation: vi.fn() })
+
+    const completedProgress = {
+      ...baseProgress,
+      conversationHistory: [
+        baseProgress.conversationHistory[0],
+        {
+          role: "tool",
+          content: "",
+          timestamp: 210,
+          toolResults: [
+            { success: true, content: "done" },
+          ],
+        },
+      ],
+    }
+    tree = runtime.render(AgentProgress, { progress: completedProgress })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("python3 job.py")
+    expect(text).toContain("done")
   })
 
   it("surfaces a running label when the current pending tool is inside a collapsed group", async () => {
@@ -1071,7 +1280,8 @@ describe("agent progress response history", () => {
     const text = getTextContent(tree)
     const spinners = findAll(tree, (value) => value?.type === "Loader2")
 
-    expect(text).toContain("Running execute_command")
+    expect(text).toContain("generate_slide.py")
+    expect(text).toContain("Running command")
     expect(text).not.toContain("Thinking...")
     expect(spinners.length).toBeGreaterThan(0)
   })
@@ -1227,18 +1437,33 @@ describe("agent progress response history", () => {
       tree,
       (value) => value?.type === "button"
         && typeof value?.props?.title === "string"
-        && value.props.title.includes("visible_pending_tool")
-        && value.props.title.includes("visible_success_tool"),
+        && value.props.title.includes("Visible pending tool"),
     )[0]
     expect(compactToolSummary).toBeTruthy()
+    expect(getTextContent(tree)).not.toContain("visible_pending_tool")
+    expect(getTextContent(tree)).not.toContain("visible_success_tool")
+
     compactToolSummary.props.onClick({ stopPropagation: vi.fn() })
     tree = runtime.render(AgentProgress, { progress })
 
-    const pendingRow = findToolRow(tree, "visible_pending_tool")
-    const successRow = findToolRow(tree, "visible_success_tool")
+    const toolRows = findAll(
+      tree,
+      (value) => value?.type === "div"
+        && typeof value?.props?.className === "string"
+        && value.props.className.includes("text-[11px]")
+        && value.props.className.includes("cursor-pointer")
+        && (
+          getTextContent(value).includes("Visible pending tool") ||
+          getTextContent(value).includes("visible success")
+        ),
+    )
+    const pendingRow = toolRows[0]
+    const successRow = toolRows[1]
 
     expect(pendingRow.props.className).toContain("text-blue-600")
     expect(successRow.props.className).toContain("text-green-600")
+    expect(getTextContent(tree)).toContain("visible_pending_tool")
+    expect(getTextContent(tree)).toContain("visible_success_tool")
     expect(getTextContent(tree)).not.toContain("respond_to_user")
     expect(getTextContent(tree)).not.toContain("No result recorded")
     expect(getTextContent(tree)).toContain("Waiting for response")

@@ -10,6 +10,14 @@ function getConversationHistoryActivityTimestamp(session: ConversationHistoryIte
   return Math.max(updatedAt, lastMessageAt)
 }
 
+export function orderConversationHistoryByRecentActivity(
+  sessions: ConversationHistoryItem[],
+): ConversationHistoryItem[] {
+  return [...sessions].sort((a, b) =>
+    getConversationHistoryActivityTimestamp(b) - getConversationHistoryActivityTimestamp(a)
+  )
+}
+
 export function orderConversationHistoryByPinnedFirst(
   sessions: ConversationHistoryItem[],
   pinnedSessionIds: ReadonlySet<string>,

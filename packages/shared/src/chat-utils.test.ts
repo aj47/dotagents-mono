@@ -6,6 +6,8 @@ import {
   getIndividualToolCallPreview,
   getCompactToolExecutionPreview,
   getExecuteCommandResultPreview,
+  getToolActivityLabel,
+  getToolActivitySummary,
   getToolResultsSummary,
   getToolArgumentEntries,
   formatToolArguments,
@@ -62,6 +64,199 @@ describe('shouldCollapseMessage', () => {
 
   it('returns false for undefined content with no extras', () => {
     expect(shouldCollapseMessage(undefined)).toBe(false)
+  })
+})
+
+describe('getToolActivityLabel', () => {
+  it('uses generic command status with command target detail', () => {
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: "sed -n '1,120p' apps/desktop/src/main/llm.ts" } })).toEqual({
+      title: 'Running command',
+      detail: 'llm.ts',
+    })
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: 'rg -n "agentProgress" packages/shared/src' } },
+        { success: true, content: 'packages/shared/src/chat-utils.ts:1:agentProgress' },
+      ),
+    ).toEqual({
+      title: 'Command completed',
+      detail: 'packages/shared/src/chat-utils.ts:1:agentProgress',
+    })
+  })
+
+  it('marks failed command labels without leaking the raw command', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: 'pnpm test' } },
+        { success: false, content: '', error: 'failed' },
+      ).title,
+    ).toBe('Command failed')
+  })
+
+  it('uses structured command stderr for failed activity details', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: "sed 's#^#/## '" } },
+        {
+          success: false,
+          content: JSON.stringify({
+            success: false,
+            command: "sed 's#^#/## '",
+            cwd: '/repo',
+            stdout: '',
+            stderr: 'sed: bad flag in substitute command',
+            error: 'Command failed',
+          }, null, 2),
+        },
+      ),
+    ).toEqual({
+      title: 'Command failed',
+      detail: 'Failed: sed: bad flag in substitute command',
+    })
+  })
+
+  it('does not leak structured failed command JSON when only error is present', () => {
+    const payload = JSON.stringify({
+      success: false,
+      command: 'find . -badflag',
+      cwd: '/repo',
+      stdout: '',
+      stderr: '',
+      error: 'Command failed',
+    }, null, 2)
+
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: 'find . -badflag' } },
+        {
+          success: false,
+          content: payload,
+          error: payload,
+        },
+      ),
+    ).toEqual({
+      title: 'Command failed',
+      detail: 'Failed: Command failed',
+    })
+  })
+
+  it('does not derive labels from heredoc script syntax', () => {
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: "python3 - <<'PY'" } })).toEqual({
+      title: 'Running command',
+      detail: 'inline python3',
+    })
+  })
+
+  it('does not use command flags as activity detail', () => {
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'rg -n foo' } })).toEqual({
+      title: 'Running command',
+    })
+  })
+
+  it('summarizes structured command cwd instead of raw success metadata', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: 'pwd' } },
+        { success: true, content: '{"success":true,"cwd":"/tmp/dotagents-mono"}' },
+      ),
+    ).toEqual({
+      title: 'Command completed',
+      detail: 'dotagents-mono',
+    })
+  })
+
+  it('summarizes JSON command output instead of bracket syntax', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: "python3 - <<'PY'" } },
+        { success: true, content: '[\n  { "title": "Publish YouTube Draft Unlisted" }\n]' },
+      ),
+    ).toEqual({
+      title: 'Command completed',
+      detail: 'Publish YouTube Draft Unlisted',
+    })
+  })
+
+  it('skips generic markdown headings in tool result previews', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'browser:network_requests', arguments: {} },
+        { success: true, content: '### Result\nBrowser network requests completed' },
+      ),
+    ).toEqual({
+      title: 'Network requests completed',
+      detail: 'Browser network requests completed',
+    })
+  })
+
+  it('keeps web search result text as the useful detail', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'exa:web_search_exa', arguments: { query: 'Hermes Agent' } },
+        { success: true, content: 'Learned that Hermes Agent has a newly added native desktop surface.' },
+      ),
+    ).toEqual({
+      title: 'Web search exa completed',
+      detail: 'Learned that Hermes Agent has a newly added native desktop surface.',
+    })
+  })
+})
+
+describe('getToolActivitySummary', () => {
+  it('summarizes pending tool batches with the latest tool detail', () => {
+    expect(getToolActivitySummary([
+      { name: 'execute_command', arguments: { command: 'rg AgentProgress' } },
+      { name: 'execute_command', arguments: { command: 'sed -n 1,20p file.ts' } },
+    ])).toEqual({
+      title: 'file.ts',
+      detail: 'Running command',
+    })
+  })
+
+  it('uses the latest completed tool result for finished batches', () => {
+    expect(getToolActivitySummary(
+      [
+        { name: 'execute_command', arguments: { command: 'git status --short' } },
+        { name: 'execute_command', arguments: { command: 'pnpm test' } },
+      ],
+      [
+        { success: true, content: 'M file.ts\nM other.ts' },
+        { success: true, content: 'all suites passed' },
+      ],
+    )).toEqual({
+      title: 'all suites passed',
+    })
+  })
+
+  it('uses the latest failure for failed batches', () => {
+    expect(getToolActivitySummary(
+      [
+        { name: 'execute_command', arguments: { command: 'git status --short' } },
+        { name: 'execute_command', arguments: { command: 'pnpm test' } },
+      ],
+      [
+        { success: true, content: 'M file.ts' },
+        { success: false, content: '', error: 'failed' },
+      ],
+    )).toEqual({
+      title: 'Failed: failed',
+      detail: 'Command failed',
+    })
+  })
+
+  it('ignores metadata tools when choosing the latest group headline', () => {
+    expect(getToolActivitySummary(
+      [
+        { name: 'execute_command', arguments: { command: 'python3 research.py' } },
+        { name: 'set_session_title', arguments: { title: 'Research' } },
+      ],
+      [
+        { success: true, content: 'research complete' },
+        { success: true, content: '{"success":true,"title":"Research"}' },
+      ],
+    )).toEqual({
+      title: 'research complete',
+    })
   })
 })
 // ── Tool Preview ─────────────────────────────────────────────────────────────

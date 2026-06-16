@@ -87,6 +87,9 @@ export function getIndividualToolCallPreview(toolCall: ToolCall): string {
 type StructuredCommandOutput = {
   found: boolean;
   output: string;
+  stdout?: string;
+  stderr?: string;
+  cwd?: string;
 };
 
 function extractStringFields(obj: Record<string, unknown>, keys: string[]): string[] {
@@ -121,10 +124,15 @@ function extractStructuredCommandOutput(raw: string): StructuredCommandOutput | 
 
       const streamOutput = extractStringFields(obj, ['stdout', 'stderr']);
       const fallbackOutput = extractStringFields(obj, ['output', 'result', 'message', 'error']);
+      const stdout = extractStringFields(obj, ['stdout']).join('\n');
+      const stderr = extractStringFields(obj, ['stderr']).join('\n');
 
       return {
         found: true,
         output: (streamOutput.length > 0 ? streamOutput : fallbackOutput).join('\n'),
+        stdout: stdout || undefined,
+        stderr: stderr || undefined,
+        cwd: typeof obj.cwd === 'string' ? obj.cwd : undefined,
       };
     } catch {
       // Try the next candidate. Plain-text tool results are handled by the caller.
@@ -267,6 +275,281 @@ export function getCompactToolExecutionPreview(
   return getIndividualToolCallPreview(toolCall);
 }
 
+export type ToolActivityLabel = {
+  title: string;
+  detail?: string;
+};
+
+function cleanCommandToken(token: string | undefined): string {
+  return (token ?? '').replace(/^['"]|['"]$/g, '').trim();
+}
+
+function basenameForActivity(path: string | undefined): string {
+  const cleaned = cleanCommandToken(path);
+  if (!cleaned || cleaned === '-' || cleaned.startsWith('<') || cleaned.includes('<<')) return '';
+  const parts = cleaned.split('/').filter(Boolean);
+  return parts[parts.length - 1] || cleaned;
+}
+
+function commandOutput(toolResult?: ToolResult | null): string {
+  if (!toolResult) return '';
+
+  const outputParts: string[] = [];
+  for (const rawPart of [toolResult.content, toolResult.error]) {
+    if (!rawPart?.trim()) continue;
+    const structured = extractStructuredCommandOutput(rawPart);
+    outputParts.push(structured?.found ? structured.output : rawPart);
+  }
+
+  return Array.from(new Set(outputParts.map(part => part.trim()).filter(Boolean))).join('\n');
+}
+
+function commandStderr(toolResult?: ToolResult | null): string {
+  if (!toolResult) return '';
+
+  const outputParts: string[] = [];
+  for (const rawPart of [toolResult.content, toolResult.error]) {
+    if (!rawPart?.trim()) continue;
+    const structured = extractStructuredCommandOutput(rawPart);
+    if (structured?.found) {
+      if (structured.stderr) outputParts.push(structured.stderr);
+      continue;
+    }
+    if (rawPart === toolResult.error) outputParts.push(rawPart);
+  }
+
+  return Array.from(new Set(outputParts.map(part => part.trim()).filter(Boolean))).join('\n');
+}
+
+function commandCwd(toolResult?: ToolResult | null): string {
+  if (!toolResult) return '';
+  for (const rawPart of [toolResult.content, toolResult.error]) {
+    if (!rawPart?.trim()) continue;
+    const structured = extractStructuredCommandOutput(rawPart);
+    if (structured?.cwd) return structured.cwd;
+  }
+  return '';
+}
+
+function countNonEmptyLines(text: string): number {
+  return text.split('\n').filter(line => line.trim()).length;
+}
+
+function titleFromToolName(name: string): string {
+  const cleaned = name
+    .replace(/^[^:]+:/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return 'Using a tool';
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count.toLocaleString()} ${count === 1 ? singular : plural}`;
+}
+
+function isExecuteCommandName(name: string): boolean {
+  const normalizedName = name.toLowerCase();
+  return normalizedName === 'execute_command' || normalizedName.endsWith(':execute_command');
+}
+
+function isMetadataActivityTool(name: string): boolean {
+  const normalizedName = name.toLowerCase().replace(/^[^:]+:/, '');
+  return normalizedName === 'set_session_title' ||
+    normalizedName === RESPOND_TO_USER_TOOL ||
+    normalizedName === MARK_WORK_COMPLETE_TOOL;
+}
+
+function shortPathForActivity(path: string | undefined): string {
+  const cleaned = cleanCommandToken(path)
+    .replace(/[),;]+$/g, '')
+    .trim();
+  if (!cleaned || cleaned.startsWith('-') || cleaned.startsWith('<') || cleaned.includes('<<')) return '';
+
+  const parts = cleaned.split('/').filter(Boolean);
+  if (parts.length === 0) return cleaned;
+  if (parts.length >= 2 && parts[parts.length - 1].toLowerCase() === 'skill.md') {
+    return `${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
+  }
+  return parts[parts.length - 1] || cleaned;
+}
+
+function commandActivityHint(command: string | undefined): string | undefined {
+  const normalized = (command ?? '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return undefined;
+
+  const headerMatch = normalized.match(/['"][-=]{3,}\s*([^'"]*?)\s*[-=]{3,}['"]/);
+  if (headerMatch?.[1]?.trim()) return truncatePreview(headerMatch[1].trim(), 80);
+
+  const tokens = normalized
+    .split(/\s+/)
+    .map(cleanCommandToken)
+    .filter(Boolean);
+  const pathToken = [...tokens].reverse().find((token) => (
+    !token.startsWith('-') &&
+    token !== '|' &&
+    token !== '>' &&
+    token !== '2>' &&
+    (token.includes('/') || /\.[A-Za-z0-9]{1,8}$/.test(token))
+  ));
+  const pathHint = shortPathForActivity(pathToken);
+  if (pathHint) return truncatePreview(pathHint, 80);
+
+  const executable = tokens[0];
+  const script = shortPathForActivity(tokens[1]);
+  if (script) return truncatePreview(script, 80);
+  if (executable && normalized.includes('<<')) return `inline ${executable}`;
+
+  return undefined;
+}
+
+function normalizeOutputPreviewLine(line: string): string {
+  const trimmed = line.trim();
+  if (!trimmed) return '';
+
+  const markdownHeadingMatch = trimmed.match(/^#{1,6}\s+(.+)$/);
+  if (markdownHeadingMatch) {
+    const heading = markdownHeadingMatch[1].trim();
+    if (/^(result|results|page|ran playwright code|error)$/i.test(heading)) return '';
+    return heading;
+  }
+
+  const headerMatch = trimmed.match(/^[-=]{3,}\s*(.*?)\s*[-=]{3,}$/);
+  if (headerMatch) return headerMatch[1].trim();
+  if (/^[-=*_]{3,}$/.test(trimmed)) return '';
+  if (/^[\s[\]{}(),:;'"`-]+$/.test(trimmed)) return '';
+
+  return trimmed;
+}
+
+function meaningfulTextPreview(text: string): string {
+  const lines = text.split('\n').filter(line => line.trim());
+  for (const line of lines) {
+    const preview = normalizeOutputPreviewLine(line);
+    if (preview) return truncatePreview(preview, 80);
+  }
+  return '';
+}
+
+function jsonTextPreview(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) return '';
+
+  try {
+    return extractJsonPreview(JSON.parse(trimmed));
+  } catch {
+    return '';
+  }
+}
+
+function failedToolResultPreview(result: ToolResult, maxLength: number): string {
+  const stderr = meaningfulTextPreview(commandStderr(result));
+  if (stderr) return truncatePreview(stderr, maxLength);
+
+  const output = commandOutput(result);
+  const outputPreview = jsonTextPreview(output) || meaningfulTextPreview(output);
+  if (outputPreview) return truncatePreview(outputPreview, maxLength);
+
+  return truncatePreview(result.error || result.content || 'Error', maxLength);
+}
+
+function resultOutcome(result?: ToolResult | null, fallbackDetail?: string): string | undefined {
+  if (!result) return undefined;
+
+  if (!result.success) {
+    const preview = failedToolResultPreview(result, 80);
+    return preview ? `Failed: ${preview}` : fallbackDetail ? `Failed: ${fallbackDetail}` : 'Failed';
+  }
+
+  const stderr = meaningfulTextPreview(commandStderr(result));
+  if (stderr) return `Warning: ${stderr}`;
+
+  const output = commandOutput(result);
+  if (!output.trim()) {
+    const folder = basenameForActivity(commandCwd(result));
+    return folder || fallbackDetail;
+  }
+
+  return jsonTextPreview(output) ||
+    meaningfulTextPreview(output) ||
+    fallbackDetail ||
+    `${pluralize(countNonEmptyLines(output), 'line')} returned`;
+}
+
+function isGenericCompletedActivityTitle(title: string | undefined): boolean {
+  return /\bcompleted$/i.test(title ?? '');
+}
+
+function promoteActivityDetail(label: ToolActivityLabel): ToolActivityLabel {
+  if (!label.detail) return label;
+  return {
+    title: label.detail,
+    detail: isGenericCompletedActivityTitle(label.title) ? undefined : label.title,
+  };
+}
+
+/**
+ * Produce a human-readable activity label for a tool call.
+ *
+ * This intentionally avoids command-specific intent labels. Raw commands and
+ * payloads remain available in expanded tool details.
+ */
+export function getToolActivityLabel(
+  toolCall: Pick<ToolCall, 'name' | 'arguments'>,
+  toolResult?: ToolResult | null,
+): ToolActivityLabel {
+  const toolName = toolCall.name?.trim() || '';
+  const isCommand = isExecuteCommandName(toolName);
+  const baseTitle = isCommand ? 'Command' : titleFromToolName(toolName);
+  const args = isCommand ? normalizeToolArguments(toolCall.arguments) : null;
+  const commandHint = isCommand && typeof args?.command === 'string'
+    ? commandActivityHint(args.command)
+    : undefined;
+  const detail = resultOutcome(toolResult, commandHint);
+
+  if (!toolResult) {
+    return {
+      title: isCommand ? 'Running command' : baseTitle,
+      ...(commandHint ? { detail: commandHint } : {}),
+    };
+  }
+
+  if (!toolResult.success) {
+    return { title: `${baseTitle} failed`, ...(detail ? { detail } : {}) };
+  }
+
+  return { title: `${baseTitle} completed`, ...(detail ? { detail } : {}) };
+}
+
+export function getToolActivitySummary(
+  toolCalls: Array<Pick<ToolCall, 'name' | 'arguments'>>,
+  toolResults?: Array<ToolResult | undefined | null>,
+): ToolActivityLabel {
+  if (toolCalls.length === 0) return { title: 'Using tools' };
+
+  const results = Array.from({ length: toolCalls.length }, (_, index) => toolResults?.[index] ?? null);
+
+  if (toolCalls.length === 1) {
+    return promoteActivityDetail(getToolActivityLabel(toolCalls[0], results[0]));
+  }
+
+  const visibleIndexes = toolCalls
+    .map((toolCall, index) => ({ toolCall, index }))
+    .filter(({ toolCall }) => !isMetadataActivityTool(toolCall.name));
+  const candidateIndexes = visibleIndexes.length > 0
+    ? visibleIndexes
+    : toolCalls.map((toolCall, index) => ({ toolCall, index }));
+  const latestPending = [...candidateIndexes].reverse().find(({ index }) => !results[index]);
+  const latestCompleted = [...candidateIndexes].reverse().find(({ index }) => !!results[index]);
+  const latest = latestPending ?? latestCompleted ?? candidateIndexes[candidateIndexes.length - 1];
+  const latestLabel = latest
+    ? getToolActivityLabel(latest.toolCall, results[latest.index])
+    : { title: 'Using tools' };
+
+  return promoteActivityDetail(latestLabel);
+}
+
 /**
  * Generate a preview string for a single tool result.
  * @param result Tool result to preview
@@ -276,8 +559,7 @@ function generateToolResultPreview(result: ToolResult): string {
   if (!result) return '';
 
   if (!result.success) {
-    const errorText = result.error || result.content || 'Error';
-    return truncatePreview(errorText, 40);
+    return failedToolResultPreview(result, 40);
   }
 
   const content = result.content || '';
