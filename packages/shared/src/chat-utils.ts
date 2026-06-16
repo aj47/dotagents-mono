@@ -311,8 +311,11 @@ function commandStderr(toolResult?: ToolResult | null): string {
   for (const rawPart of [toolResult.content, toolResult.error]) {
     if (!rawPart?.trim()) continue;
     const structured = extractStructuredCommandOutput(rawPart);
-    if (structured?.stderr) outputParts.push(structured.stderr);
-    else if (rawPart === toolResult.error) outputParts.push(rawPart);
+    if (structured?.found) {
+      if (structured.stderr) outputParts.push(structured.stderr);
+      continue;
+    }
+    if (rawPart === toolResult.error) outputParts.push(rawPart);
   }
 
   return Array.from(new Set(outputParts.map(part => part.trim()).filter(Boolean))).join('\n');
@@ -440,11 +443,22 @@ function jsonTextPreview(text: string): string {
   }
 }
 
+function failedToolResultPreview(result: ToolResult, maxLength: number): string {
+  const stderr = meaningfulTextPreview(commandStderr(result));
+  if (stderr) return truncatePreview(stderr, maxLength);
+
+  const output = commandOutput(result);
+  const outputPreview = jsonTextPreview(output) || meaningfulTextPreview(output);
+  if (outputPreview) return truncatePreview(outputPreview, maxLength);
+
+  return truncatePreview(result.error || result.content || 'Error', maxLength);
+}
+
 function resultOutcome(result?: ToolResult | null, fallbackDetail?: string): string | undefined {
   if (!result) return undefined;
 
   if (!result.success) {
-    const preview = generateToolResultPreview(result);
+    const preview = failedToolResultPreview(result, 80);
     return preview ? `Failed: ${preview}` : fallbackDetail ? `Failed: ${fallbackDetail}` : 'Failed';
   }
 
@@ -545,8 +559,7 @@ function generateToolResultPreview(result: ToolResult): string {
   if (!result) return '';
 
   if (!result.success) {
-    const errorText = result.error || result.content || 'Error';
-    return truncatePreview(errorText, 40);
+    return failedToolResultPreview(result, 40);
   }
 
   const content = result.content || '';

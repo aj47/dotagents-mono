@@ -93,6 +93,53 @@ describe('getToolActivityLabel', () => {
     ).toBe('Command failed')
   })
 
+  it('uses structured command stderr for failed activity details', () => {
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: "sed 's#^#/## '" } },
+        {
+          success: false,
+          content: JSON.stringify({
+            success: false,
+            command: "sed 's#^#/## '",
+            cwd: '/repo',
+            stdout: '',
+            stderr: 'sed: bad flag in substitute command',
+            error: 'Command failed',
+          }, null, 2),
+        },
+      ),
+    ).toEqual({
+      title: 'Command failed',
+      detail: 'Failed: sed: bad flag in substitute command',
+    })
+  })
+
+  it('does not leak structured failed command JSON when only error is present', () => {
+    const payload = JSON.stringify({
+      success: false,
+      command: 'find . -badflag',
+      cwd: '/repo',
+      stdout: '',
+      stderr: '',
+      error: 'Command failed',
+    }, null, 2)
+
+    expect(
+      getToolActivityLabel(
+        { name: 'execute_command', arguments: { command: 'find . -badflag' } },
+        {
+          success: false,
+          content: payload,
+          error: payload,
+        },
+      ),
+    ).toEqual({
+      title: 'Command failed',
+      detail: 'Failed: Command failed',
+    })
+  })
+
   it('does not derive labels from heredoc script syntax', () => {
     expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: "python3 - <<'PY'" } })).toEqual({
       title: 'Running command',
