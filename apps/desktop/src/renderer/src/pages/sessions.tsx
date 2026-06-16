@@ -82,15 +82,45 @@ type VisibleSessionEntry = {
   sortTimestamp: number
 }
 
+function getSessionErrorMessage(session?: AgentSession | null): string | null {
+  if (session?.status !== "error") return null
+  const message = session.errorMessage?.trim()
+  return message ? message : null
+}
+
+function buildSessionErrorStep(
+  session: AgentSession,
+  errorMessage: string,
+): AgentProgressUpdate["steps"][number] {
+  return {
+    id: `${session.id}-error`,
+    type: "error",
+    title: "Error",
+    description: errorMessage,
+    status: "error",
+    timestamp: session.endTime ?? session.startTime ?? Date.now(),
+  }
+}
+
 function buildTrackedSessionPlaceholderProgress(session: AgentSession): AgentProgressUpdate {
+  const errorMessage = getSessionErrorMessage(session)
+
   return {
     sessionId: session.id,
     conversationId: session.conversationId,
     conversationTitle: session.conversationTitle,
     currentIteration: session.currentIteration ?? 0,
     maxIterations: session.maxIterations ?? 10,
-    steps: [],
-    isComplete: false,
+    steps: errorMessage ? [buildSessionErrorStep(session, errorMessage)] : [],
+    isComplete: session.status !== "active",
+    conversationState: errorMessage
+      ? "blocked"
+      : session.status === "completed"
+        ? "complete"
+        : session.status === "stopped"
+          ? "blocked"
+          : "running",
+    ...(errorMessage ? { finalContent: `Error: ${errorMessage}` } : {}),
     isSnoozed: session.isSnoozed ?? false,
   }
 }
@@ -504,6 +534,7 @@ export function Component() {
   }, [refetchSessionData])
 
   const trackedActiveSessions = sessionData?.activeSessions || []
+  const trackedRecentSessions = sessionData?.recentCompletedSessions ?? sessionData?.recentSessions ?? []
 
   const [sessionOrder, setSessionOrder] = useState<string[]>([])
   const expandedSessionId = useAgentStore((s) => s.expandedSessionId)
@@ -752,6 +783,10 @@ export function Component() {
     if (!pendingResumeConversationId || !pendingResumeConversationQuery.data) return null
     const conv = pendingResumeConversationQuery.data
     const isInitializing = pendingContinuationStartedAt !== null
+    const trackedSession = trackedRecentSessions.find(
+      (session) => session.conversationId === pendingResumeConversationId,
+    )
+    const errorMessage = !isInitializing ? getSessionErrorMessage(trackedSession) : null
 
     const branchMessageIndexMap = getBranchMessageIndexMap(conv.messages)
     const branchMessageIndexOffset = conv.branchMessageIndexOffset ?? 0
@@ -770,8 +805,16 @@ export function Component() {
             status: "in_progress",
             timestamp: pendingContinuationStartedAt,
           }]
-        : [],
+        : errorMessage && trackedSession
+          ? [buildSessionErrorStep(trackedSession, errorMessage)]
+          : [],
       isComplete: !isInitializing,
+      conversationState: isInitializing
+        ? "running"
+        : errorMessage
+          ? "blocked"
+          : "complete",
+      ...(errorMessage ? { finalContent: `Error: ${errorMessage}` } : {}),
       conversationHistoryStartIndex: getLoadedConversationHistoryStartIndex(conv),
       conversationHistoryTotalCount: conv.totalMessageCount ?? conv.messages.length,
       conversationHistory: conv.messages.map((m, index) => ({
@@ -784,7 +827,12 @@ export function Component() {
         branchMessageIndex: branchMessageIndexOffset + branchMessageIndexMap[index],
       })),
     }
-  }, [pendingResumeConversationId, pendingResumeConversationQuery.data, pendingContinuationStartedAt])
+  }, [
+    pendingResumeConversationId,
+    pendingResumeConversationQuery.data,
+    pendingContinuationStartedAt,
+    trackedRecentSessions,
+  ])
 
   const handleLoadEarlierPendingHistory = useCallback(() => {
     setPendingResumeHistoryMessageLimit((limit) => limit + PENDING_RESUME_HISTORY_PAGE_SIZE)

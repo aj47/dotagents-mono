@@ -788,64 +788,6 @@ const stripThinkingPreamble = (text: string): string =>
     .replace(/&lt;\/?think&gt;|<\/?think>/gi, "")
     .replace(/^Thinking(?:\.\.\.)?(?=$|\s)(?:\s*\n\s*\n|\s+)?/i, "")
 
-type WhitespaceContext = {
-  title: string
-  text: string
-  tone: "thinking" | "response"
-}
-
-const getWhitespaceContextText = (text: string | undefined): string => {
-  const stripped = stripThinkingPreamble(text ?? "").trim()
-  if (!stripped) return ""
-  return normalizeThinkingStatusText(stripped) === "Thinking..." ? "" : stripped
-}
-
-const getWhitespaceContextFromItem = (item: DisplayItem): WhitespaceContext | null => {
-  if (item.kind === "tool_activity_group") {
-    for (let i = item.data.items.length - 1; i >= 0; i--) {
-      const context = getWhitespaceContextFromItem(item.data.items[i])
-      if (context) return context
-    }
-    return null
-  }
-
-  if (item.kind === "assistant_with_tools") {
-    const text = getWhitespaceContextText(item.data.thought)
-    return text ? { title: "Latest thinking", text, tone: "thinking" } : null
-  }
-
-  if (item.kind === "streaming") {
-    const text = getWhitespaceContextText(item.data.text)
-    if (!text) return null
-    const tone = item.data.isPlaceholder ? "thinking" : "response"
-    return { title: tone === "thinking" ? "Latest thinking" : "Latest response", text, tone }
-  }
-
-  if (item.kind === "message" && item.data.role === "assistant" && !item.data.isThinking) {
-    const text = getWhitespaceContextText(item.data.responseEvent?.text ?? item.data.content)
-    if (!text) return null
-    return item.data.isAssistantThought
-      ? { title: "Latest thinking", text, tone: "thinking" }
-      : { title: "Latest response", text, tone: "response" }
-  }
-
-  return null
-}
-
-const isVisibleContextSurface = (item: DisplayItem | undefined): boolean => {
-  if (!item) return false
-  if (item.kind === "message" && item.data.role === "assistant" && !item.data.isThinking) {
-    return getWhitespaceContextText(item.data.responseEvent?.text ?? item.data.content).length > 0
-  }
-  if (item.kind === "streaming" && !item.data.isPlaceholder) {
-    return getWhitespaceContextText(item.data.text).length > 0
-  }
-  if (item.kind === "assistant_with_tools") {
-    return getWhitespaceContextText(item.data.thought).length > 0
-  }
-  return false
-}
-
 const CompactThinkingIndicator: React.FC<{ text?: string }> = ({ text }) => (
   <div
     className="inline-flex max-w-full items-center gap-2 rounded-md border border-blue-500/25 bg-blue-50/55 px-2.5 py-1.5 text-[11px] text-blue-900 shadow-sm dark:border-blue-500/30 dark:bg-blue-950/25 dark:text-blue-100"
@@ -3669,45 +3611,6 @@ const StreamingContentBubble: React.FC<{
   )
 }
 
-const WhitespaceContextFiller: React.FC<{ context: WhitespaceContext | null }> = ({ context }) => {
-  if (!context) return null
-
-  const isThinking = context.tone === "thinking"
-  const displayText = isThinking ? getWhitespaceContextText(context.text) : context.text.trim()
-  if (!displayText) return null
-
-  return (
-    <div
-      className="agent-progress-whitespace-context flex min-h-0 flex-1 overflow-hidden pt-1"
-      aria-label={context.title}
-    >
-      <div className={cn(
-        "flex min-h-0 w-full flex-col overflow-hidden rounded-md border px-2.5 py-2 text-xs",
-        isThinking
-          ? "border-amber-200/70 bg-amber-50/25 text-amber-950/90 dark:border-amber-900/45 dark:bg-amber-950/15 dark:text-amber-50/90"
-          : "border-blue-200/70 bg-blue-50/25 text-blue-950/90 dark:border-blue-900/45 dark:bg-blue-950/15 dark:text-blue-50/90",
-      )}>
-        <div className="mb-1.5 flex shrink-0 items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide opacity-65">
-          {isThinking ? (
-            <Brain className="h-3 w-3" aria-hidden="true" />
-          ) : (
-            <MessageSquare className="h-3 w-3" aria-hidden="true" />
-          )}
-          <span>{context.title}</span>
-        </div>
-        <div className="min-h-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,black_78%,transparent_100%)]">
-          <MarkdownRenderer
-            content={displayText}
-            className="markdown-selectable whitespace-pre-wrap break-words text-[12px] leading-relaxed [overflow-wrap:anywhere]"
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-
-
 export const AgentProgress: React.FC<AgentProgressProps> = ({
   progress,
   className,
@@ -4100,6 +4003,27 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
       conversationHistory?.[conversationHistory.length - 1]?.timestamp ??
       steps[steps.length - 1]?.timestamp ??
       0
+    const appendFinalContentIfNeeded = () => {
+      const normalizedFinalContent = normalizeAssistantResponseForDedupe(finalContent)
+      if (normalizedFinalContent.length === 0) return
+
+      const finalContentAlreadyInHistory = nextMessages.some((candidate) =>
+        candidate.role === "assistant" &&
+        !candidate.toolCalls?.length &&
+        !candidate.toolResults?.length &&
+        normalizeAssistantResponseForDedupe(candidate.content) === normalizedFinalContent
+      )
+      const lastMessage = nextMessages[nextMessages.length - 1]
+      if (!finalContentAlreadyInHistory) {
+        nextMessages.push({
+          role: "assistant",
+          content: finalContent,
+          isComplete: true,
+          timestamp: lastMessage?.timestamp ?? fallbackBaseTimestamp,
+          isThinking: false,
+        })
+      }
+    }
 
     if (conversationHistory && conversationHistory.length > 0) {
       const startIndex =
@@ -4245,36 +4169,9 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             }
           }
         })
-
-      const normalizedFinalContent = normalizeAssistantResponseForDedupe(finalContent)
-      if (normalizedFinalContent.length > 0) {
-        let lastEligibleAssistantMessage: (typeof nextMessages)[number] | undefined
-        for (let i = nextMessages.length - 1; i >= 0; i--) {
-          const candidate = nextMessages[i]
-          if (
-            candidate.role === "assistant" &&
-            !candidate.toolCalls?.length &&
-            !candidate.toolResults?.length
-          ) {
-            lastEligibleAssistantMessage = candidate
-            break
-          }
-        }
-        const finalContentAlreadyInHistory =
-          !!lastEligibleAssistantMessage &&
-          normalizeAssistantResponseForDedupe(lastEligibleAssistantMessage.content) === normalizedFinalContent
-        const lastMessage = nextMessages[nextMessages.length - 1]
-        if (!finalContentAlreadyInHistory) {
-          nextMessages.push({
-            role: "assistant",
-            content: finalContent,
-            isComplete: true,
-            timestamp: lastMessage?.timestamp ?? fallbackBaseTimestamp,
-            isThinking: false,
-          })
-        }
-      }
     }
+
+    appendFinalContentIfNeeded()
 
     if (nextMessages.length > 1) {
       nextMessages.sort((a, b) => a.timestamp - b.timestamp)
@@ -4767,16 +4664,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }, [enrichedMessages, effectiveUserResponse, progress.isComplete, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = displayItems
-  const whitespaceContext = useMemo<WhitespaceContext | null>(() => {
-    if (isComplete || visibleDisplayItems.length === 0) return null
-    if (isVisibleContextSurface(visibleDisplayItems[visibleDisplayItems.length - 1])) return null
-
-    for (let i = visibleDisplayItems.length - 1; i >= 0; i--) {
-      const context = getWhitespaceContextFromItem(visibleDisplayItems[i])
-      if (context) return context
-    }
-    return null
-  }, [isComplete, visibleDisplayItems])
   const loadedConversationHistoryCount = conversationHistory?.length ?? 0
   const conversationHistoryTotalCount = Math.max(
     progress.conversationHistoryTotalCount ?? loadedConversationHistoryCount,
@@ -5469,7 +5356,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         )
                       }
                     })}
-                    <WhitespaceContextFiller context={whitespaceContext} />
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center">
@@ -5961,7 +5847,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   )
                 }
               })}
-              <WhitespaceContextFiller context={whitespaceContext} />
             </div>
           ) : (
             <div className="flex h-full items-center justify-center">

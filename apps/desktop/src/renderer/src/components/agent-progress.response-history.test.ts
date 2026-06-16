@@ -661,7 +661,7 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Thinking...")
   })
 
-  it("uses empty timeline space to persist the latest substantive thinking while tools are active", async () => {
+  it("does not duplicate previous thinking into empty timeline space while tools are active", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
     const progress = {
@@ -701,9 +701,8 @@ describe("agent progress response history", () => {
         && value.props.className.includes("agent-progress-whitespace-context"),
     )
 
-    expect(fillers).toHaveLength(1)
-    expect(text).toContain("Latest thinking")
-    expect(text).toContain("Next I'm checking the exported audio details")
+    expect(fillers).toHaveLength(0)
+    expect(text).not.toContain("Latest thinking")
     expect(text).not.toContain("<think>")
     expect(text).not.toContain("</think>")
   })
@@ -848,6 +847,29 @@ describe("agent progress response history", () => {
     const text = getTextContent(tree)
 
     expect(countTextOccurrences(text, "Final answer")).toBe(1)
+  })
+
+  it("renders final error content when saved history only has the user message", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-final-error",
+      conversationId: "conversation-final-error",
+      currentIteration: 1,
+      maxIterations: 1,
+      steps: [],
+      isComplete: true,
+      finalContent: "Error: ChatGPT Codex response failed (401): token_invalidated",
+      conversationHistory: [
+        { role: "user", content: "Make a plan first", timestamp: 100 },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress })
+    const text = getTextContent(tree)
+
+    expect(text).toContain("Make a plan first")
+    expect(text).toContain("Error: ChatGPT Codex response failed (401): token_invalidated")
   })
 
   it("does not double-render the final response when completion timestamps arrive out of order", async () => {
