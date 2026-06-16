@@ -11,7 +11,7 @@ import { getBranchMessageIndexMap } from "@shared/conversation-progress"
 import { toast } from "sonner"
 
 import { logUI } from "@renderer/lib/debug"
-import { orderConversationHistoryByPinnedFirst } from "@renderer/lib/pinned-session-history"
+import { orderConversationHistoryByRecentActivity } from "@renderer/lib/pinned-session-history"
 import { PredefinedPromptsMenu } from "@renderer/components/predefined-prompts-menu"
 import { AgentSelector } from "@renderer/components/agent-selector"
 import { useConfigQuery } from "@renderer/lib/query-client"
@@ -318,13 +318,13 @@ function EmptyState({ onTextClick, onVoiceClick, onSelectPrompt, onSavedConversa
   const savedConversationsQuery = useSavedConversationsQuery()
   const pinnedSessionIds = useAgentStore((state) => state.pinnedSessionIds)
   const togglePinSession = useAgentStore((state) => state.togglePinSession)
-  const sortedSavedConversations = useMemo(
-    () => orderConversationHistoryByPinnedFirst(savedConversationsQuery.data ?? [], pinnedSessionIds),
-    [savedConversationsQuery.data, pinnedSessionIds],
+  const recentOrderedSavedConversations = useMemo(
+    () => orderConversationHistoryByRecentActivity(savedConversationsQuery.data ?? []),
+    [savedConversationsQuery.data],
   )
   const recentSavedConversations = useMemo(
-    () => sortedSavedConversations.slice(0, RECENT_SESSIONS_LIMIT),
-    [sortedSavedConversations],
+    () => recentOrderedSavedConversations.slice(0, RECENT_SESSIONS_LIMIT),
+    [recentOrderedSavedConversations],
   )
   const totalCount = savedConversationsQuery.data?.length ?? 0
 

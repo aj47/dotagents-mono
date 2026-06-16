@@ -770,6 +770,7 @@ const normalizeThinkingStatusText = (text?: string): string => {
   const normalized = trimmed.replace(/\.+$/, "").toLowerCase()
   if (
     normalized === "agent is thinking" ||
+    normalized === "thinking" ||
     normalized === "analyzing request" ||
     normalized === "analyzing requests" ||
     normalized === "generating response" ||
@@ -783,7 +784,67 @@ const normalizeThinkingStatusText = (text?: string): string => {
 }
 
 const stripThinkingPreamble = (text: string): string =>
-  text.replace(/^Thinking\.\.\.(?:\s*\n\s*\n)?/i, "")
+  text
+    .replace(/&lt;\/?think&gt;|<\/?think>/gi, "")
+    .replace(/^Thinking(?:\.\.\.)?(?=$|\s)(?:\s*\n\s*\n|\s+)?/i, "")
+
+type WhitespaceContext = {
+  title: string
+  text: string
+  tone: "thinking" | "response"
+}
+
+const getWhitespaceContextText = (text: string | undefined): string => {
+  const stripped = stripThinkingPreamble(text ?? "").trim()
+  if (!stripped) return ""
+  return normalizeThinkingStatusText(stripped) === "Thinking..." ? "" : stripped
+}
+
+const getWhitespaceContextFromItem = (item: DisplayItem): WhitespaceContext | null => {
+  if (item.kind === "tool_activity_group") {
+    for (let i = item.data.items.length - 1; i >= 0; i--) {
+      const context = getWhitespaceContextFromItem(item.data.items[i])
+      if (context) return context
+    }
+    return null
+  }
+
+  if (item.kind === "assistant_with_tools") {
+    const text = getWhitespaceContextText(item.data.thought)
+    return text ? { title: "Latest thinking", text, tone: "thinking" } : null
+  }
+
+  if (item.kind === "streaming") {
+    const text = getWhitespaceContextText(item.data.text)
+    if (!text) return null
+    const tone = item.data.isPlaceholder ? "thinking" : "response"
+    return { title: tone === "thinking" ? "Latest thinking" : "Latest response", text, tone }
+  }
+
+  if (item.kind === "message" && item.data.role === "assistant" && !item.data.isThinking) {
+    const text = getWhitespaceContextText(item.data.responseEvent?.text ?? item.data.content)
+    if (!text) return null
+    return item.data.isAssistantThought
+      ? { title: "Latest thinking", text, tone: "thinking" }
+      : { title: "Latest response", text, tone: "response" }
+  }
+
+  return null
+}
+
+const isVisibleContextSurface = (item: DisplayItem | undefined): boolean => {
+  if (!item) return false
+  if (item.kind === "message" && item.data.role === "assistant" && !item.data.isThinking) {
+    return getWhitespaceContextText(item.data.responseEvent?.text ?? item.data.content).length > 0
+  }
+  if (item.kind === "streaming" && !item.data.isPlaceholder) {
+    return getWhitespaceContextText(item.data.text).length > 0
+  }
+  if (item.kind === "assistant_with_tools") {
+    return getWhitespaceContextText(item.data.thought).length > 0
+  }
+  return false
+}
 
 const CompactThinkingIndicator: React.FC<{ text?: string }> = ({ text }) => (
   <div
@@ -3608,6 +3669,43 @@ const StreamingContentBubble: React.FC<{
   )
 }
 
+const WhitespaceContextFiller: React.FC<{ context: WhitespaceContext | null }> = ({ context }) => {
+  if (!context) return null
+
+  const isThinking = context.tone === "thinking"
+  const displayText = isThinking ? getWhitespaceContextText(context.text) : context.text.trim()
+  if (!displayText) return null
+
+  return (
+    <div
+      className="agent-progress-whitespace-context flex min-h-0 flex-1 overflow-hidden pt-1"
+      aria-label={context.title}
+    >
+      <div className={cn(
+        "flex min-h-0 w-full flex-col overflow-hidden rounded-md border px-2.5 py-2 text-xs",
+        isThinking
+          ? "border-amber-200/70 bg-amber-50/25 text-amber-950/90 dark:border-amber-900/45 dark:bg-amber-950/15 dark:text-amber-50/90"
+          : "border-blue-200/70 bg-blue-50/25 text-blue-950/90 dark:border-blue-900/45 dark:bg-blue-950/15 dark:text-blue-50/90",
+      )}>
+        <div className="mb-1.5 flex shrink-0 items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide opacity-65">
+          {isThinking ? (
+            <Brain className="h-3 w-3" aria-hidden="true" />
+          ) : (
+            <MessageSquare className="h-3 w-3" aria-hidden="true" />
+          )}
+          <span>{context.title}</span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,black_78%,transparent_100%)]">
+          <MarkdownRenderer
+            content={displayText}
+            className="markdown-selectable whitespace-pre-wrap break-words text-[12px] leading-relaxed [overflow-wrap:anywhere]"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 
 export const AgentProgress: React.FC<AgentProgressProps> = ({
@@ -4669,6 +4767,16 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }, [enrichedMessages, effectiveUserResponse, progress.isComplete, progress.retryInfo, progress.steps, progress.streamingContent, toolCallSteps])
 
   const visibleDisplayItems = displayItems
+  const whitespaceContext = useMemo<WhitespaceContext | null>(() => {
+    if (isComplete || visibleDisplayItems.length === 0) return null
+    if (isVisibleContextSurface(visibleDisplayItems[visibleDisplayItems.length - 1])) return null
+
+    for (let i = visibleDisplayItems.length - 1; i >= 0; i--) {
+      const context = getWhitespaceContextFromItem(visibleDisplayItems[i])
+      if (context) return context
+    }
+    return null
+  }, [isComplete, visibleDisplayItems])
   const loadedConversationHistoryCount = conversationHistory?.length ?? 0
   const conversationHistoryTotalCount = Math.max(
     progress.conversationHistoryTotalCount ?? loadedConversationHistoryCount,
@@ -5215,7 +5323,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 className="flex-1 min-h-0 overflow-y-auto scrollbar-none"
               >
                 {visibleDisplayItems.length > 0 ? (
-                  <div ref={scrollContentRef} className="space-y-1 p-2">
+                  <div ref={scrollContentRef} className="flex min-h-full flex-col gap-1 p-2">
                     {displayItems.length > visibleDisplayItems.length && (
                       <div className="px-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
                         Showing latest {visibleDisplayItems.length} updates
@@ -5361,6 +5469,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                         )
                       }
                     })}
+                    <WhitespaceContextFiller context={whitespaceContext} />
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center">
@@ -5690,7 +5799,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           className="flex-1 min-h-0 overflow-y-auto"
         >
           {visibleDisplayItems.length > 0 ? (
-            <div ref={scrollContentRef} className="space-y-1 p-2">
+            <div ref={scrollContentRef} className="flex min-h-full flex-col gap-1 p-2">
               {displayItems.length > visibleDisplayItems.length && (
                 <div className="px-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground/70">
                   Showing latest {visibleDisplayItems.length} updates
@@ -5852,6 +5961,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                   )
                 }
               })}
+              <WhitespaceContextFiller context={whitespaceContext} />
             </div>
           ) : (
             <div className="flex h-full items-center justify-center">

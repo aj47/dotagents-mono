@@ -661,6 +661,53 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Thinking...")
   })
 
+  it("uses empty timeline space to persist the latest substantive thinking while tools are active", async () => {
+    const runtime = createHookRuntime()
+    const { AgentProgress } = await loadAgentProgress(runtime)
+    const progress = {
+      sessionId: "session-whitespace-thinking-context",
+      conversationId: "conversation-whitespace-thinking-context",
+      currentIteration: 1,
+      maxIterations: 10,
+      steps: [],
+      isComplete: false,
+      finalContent: "",
+      conversationHistory: [
+        { role: "user", content: "Gather context", timestamp: 100 },
+        {
+          role: "assistant",
+          content: "I'm locating the transcript and clip folders before deciding the edit path.",
+          timestamp: 150,
+          toolCalls: [
+            { name: "execute_command", arguments: { command: "rg -n transcript /tmp/project" } },
+          ],
+        },
+        {
+          role: "assistant",
+          content: "<think>\nNext I'm checking the exported audio details so the clip timing stays aligned.\n</think>",
+          timestamp: 160,
+          toolCalls: [
+            { name: "execute_command", arguments: { command: "ffprobe video.mp4" } },
+          ],
+        },
+      ],
+    }
+
+    const tree = runtime.render(AgentProgress, { progress, variant: "tile" })
+    const text = getTextContent(tree)
+    const fillers = findAll(
+      tree,
+      (value) => typeof value?.props?.className === "string"
+        && value.props.className.includes("agent-progress-whitespace-context"),
+    )
+
+    expect(fillers).toHaveLength(1)
+    expect(text).toContain("Latest thinking")
+    expect(text).toContain("Next I'm checking the exported audio details")
+    expect(text).not.toContain("<think>")
+    expect(text).not.toContain("</think>")
+  })
+
   it("shows a live thinking placeholder when only previous turns have tool activity", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)

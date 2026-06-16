@@ -365,7 +365,7 @@ function shortPathForActivity(path: string | undefined): string {
   const cleaned = cleanCommandToken(path)
     .replace(/[),;]+$/g, '')
     .trim();
-  if (!cleaned || cleaned === '-' || cleaned.startsWith('<') || cleaned.includes('<<')) return '';
+  if (!cleaned || cleaned.startsWith('-') || cleaned.startsWith('<') || cleaned.includes('<<')) return '';
 
   const parts = cleaned.split('/').filter(Boolean);
   if (parts.length === 0) return cleaned;

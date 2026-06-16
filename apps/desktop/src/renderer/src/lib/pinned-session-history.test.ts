@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest"
 
 import type { ConversationHistoryItem } from "@shared/types"
 
-import { orderConversationHistoryByPinnedFirst } from "./pinned-session-history"
+import {
+  orderConversationHistoryByPinnedFirst,
+  orderConversationHistoryByRecentActivity,
+} from "./pinned-session-history"
 
 const createSession = (id: string, updatedAt: number): ConversationHistoryItem => ({
   id,
@@ -69,6 +72,29 @@ describe("orderConversationHistoryByPinnedFirst", () => {
     expect(ordered.map((session) => session.id)).toEqual([
       "session-message-newer",
       "session-updated-newer",
+    ])
+  })
+})
+
+describe("orderConversationHistoryByRecentActivity", () => {
+  it("keeps the home recent list ordered by actual activity instead of pin state", () => {
+    const pinnedOld = createSession("pinned-old", 10)
+    const latest = createSession("latest", 50)
+    const recentlyMessaged = {
+      ...createSession("recent-message", 20),
+      lastMessageAt: 60,
+    }
+
+    const ordered = orderConversationHistoryByRecentActivity([
+      pinnedOld,
+      latest,
+      recentlyMessaged,
+    ])
+
+    expect(ordered.map((session) => session.id)).toEqual([
+      "recent-message",
+      "latest",
+      "pinned-old",
     ])
   })
 })

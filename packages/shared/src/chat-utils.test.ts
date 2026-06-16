@@ -147,6 +147,12 @@ describe('getToolActivityLabel', () => {
     })
   })
 
+  it('does not use command flags as activity detail', () => {
+    expect(getToolActivityLabel({ name: 'execute_command', arguments: { command: 'rg -n foo' } })).toEqual({
+      title: 'Running command',
+    })
+  })
+
   it('summarizes structured command cwd instead of raw success metadata', () => {
     expect(
       getToolActivityLabel(
