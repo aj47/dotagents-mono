@@ -904,6 +904,12 @@ export function ActiveAgentsSidebar({
   const hasAnySessions = sidebarSessions.length > 0 || sessionGroups.length > 0
 
   useEffect(() => {
+    setAutoVisibleSavedConversationCount((previousCount) =>
+      Math.min(previousCount, totalPageableSavedConversationCount),
+    )
+  }, [totalPageableSavedConversationCount])
+
+  useEffect(() => {
     const element = sessionListRef.current
     const contentElement = sessionListContentRef.current
     if (!element || !contentElement || !hasAnySessions) return undefined
@@ -926,21 +932,21 @@ export function ActiveAgentsSidebar({
 
         const contentHeight = contentElement.getBoundingClientRect().height
         const heightDelta = availableHeight - contentHeight
-        const rowDelta = heightDelta >= 0
-          ? Math.floor(heightDelta / SIDEBAR_SESSION_ROW_ESTIMATE_PX)
-          : Math.ceil(heightDelta / SIDEBAR_SESSION_ROW_ESTIMATE_PX)
-        const nextAutoVisibleCount = Math.min(
-          totalPageableSavedConversationCount,
-          Math.max(
-            defaultSavedConversationRows,
-            visiblePageableSavedConversationCount + rowDelta,
-          ),
+        if (heightDelta < SIDEBAR_SESSION_ROW_ESTIMATE_PX) return
+
+        const additionalRows = Math.floor(
+          heightDelta / SIDEBAR_SESSION_ROW_ESTIMATE_PX,
         )
 
         setAutoVisibleSavedConversationCount((previousCount) =>
-          previousCount === nextAutoVisibleCount
-            ? previousCount
-            : nextAutoVisibleCount,
+          Math.min(
+            totalPageableSavedConversationCount,
+            Math.max(
+              previousCount,
+              defaultSavedConversationRows,
+              visiblePageableSavedConversationCount + additionalRows,
+            ),
+          ),
         )
       }
 
