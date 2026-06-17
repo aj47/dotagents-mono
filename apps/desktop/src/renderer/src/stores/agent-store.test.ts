@@ -217,6 +217,44 @@ describe('agent-store delegation merge', () => {
     ])
   })
 
+  it('preserves same-run response events when a later update omits them', () => {
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      runId: 1,
+      isComplete: false,
+      userResponse: 'Here they are again:\n\n![Thumbnail](assets://conversation-image/conv_1/thumb.png)',
+      responseEvents: [
+        {
+          id: 'response-image',
+          sessionId: 'session-1',
+          runId: 1,
+          ordinal: 1,
+          text: 'Here they are again:\n\n![Thumbnail](assets://conversation-image/conv_1/thumb.png)',
+          timestamp: 2,
+        },
+      ],
+      conversationHistory: [
+        { role: 'user', content: 'again', timestamp: 1 },
+        { role: 'assistant', content: 'Here they are again:', timestamp: 2 },
+      ],
+    })
+
+    useAgentStore.getState().updateSessionProgress({
+      ...createBaseUpdate(),
+      runId: 1,
+      isComplete: true,
+      finalContent: 'Done',
+      conversationHistory: [
+        { role: 'user', content: 'again', timestamp: 1 },
+        { role: 'assistant', content: 'Here they are again:', timestamp: 2 },
+      ],
+    })
+
+    const stored = useAgentStore.getState().agentProgressById.get('session-1')
+    expect(stored?.responseEvents?.[0]?.text).toContain('assets://conversation-image/conv_1/thumb.png')
+    expect(stored?.userResponse).toContain('assets://conversation-image/conv_1/thumb.png')
+  })
+
   it('rolls back an optimistic follow-up append when submission is rejected', () => {
     useAgentStore.getState().updateSessionProgress({
       ...createBaseUpdate(),

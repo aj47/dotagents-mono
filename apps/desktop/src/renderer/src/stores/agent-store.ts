@@ -335,6 +335,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               ...existingProgress,
               ...update,
               ...(isRevival ? { userResponse: undefined, userResponseHistory: undefined, responseEvents: undefined } : {}),
+              ...(!isRevival && !('responseEvents' in update) ? { responseEvents: existingProgress.responseEvents } : {}),
+              ...(!isRevival && update.responseEvents === undefined ? { responseEvents: existingProgress.responseEvents } : {}),
+              ...(!isRevival && !('userResponse' in update) ? { userResponse: existingProgress.userResponse } : {}),
+              ...(!isRevival && !('userResponseHistory' in update) ? { userResponseHistory: existingProgress.userResponseHistory } : {}),
               // Explicitly handle pendingToolApproval: if update has the key (even if undefined),
               // use the update value; otherwise preserve existing. This ensures clearing works.
               pendingToolApproval: 'pendingToolApproval' in update
@@ -353,6 +357,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               ...existingProgress,
               ...update,
               ...(isRevival ? { userResponse: undefined, userResponseHistory: undefined, responseEvents: undefined } : {}),
+              ...(!isRevival && !('responseEvents' in update) ? { responseEvents: existingProgress.responseEvents } : {}),
+              ...(!isRevival && update.responseEvents === undefined ? { responseEvents: existingProgress.responseEvents } : {}),
+              ...(!isRevival && !('userResponse' in update) ? { userResponse: existingProgress.userResponse } : {}),
+              ...(!isRevival && !('userResponseHistory' in update) ? { userResponseHistory: existingProgress.userResponseHistory } : {}),
               // Explicitly handle pendingToolApproval: if update has the key (even if undefined),
               // use the update value; otherwise preserve existing. This ensures clearing works.
               pendingToolApproval: 'pendingToolApproval' in update

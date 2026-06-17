@@ -4199,6 +4199,12 @@ export const router = {
       await artifactService.openArtifact(input.id)
     }),
 
+  openArtifactPath: t.procedure
+    .input<{ path: string }>()
+    .action(async ({ input }) => {
+      await artifactService.openArtifactPath(input.path)
+    }),
+
   showArtifactInFolder: t.procedure
     .input<{ id: string }>()
     .action(async ({ input }) => {

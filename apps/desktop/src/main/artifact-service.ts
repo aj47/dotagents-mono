@@ -598,6 +598,14 @@ class ArtifactService {
     throw new Error("Artifact cannot be opened")
   }
 
+  async openArtifactPath(filePath: string): Promise<void> {
+    const normalizedPath = filePath.startsWith("~/")
+      ? path.join(os.homedir(), filePath.slice(2))
+      : filePath
+    const error = await shell.openPath(normalizedPath)
+    if (error) throw new Error(error)
+  }
+
   async showArtifactInFolder(id: string): Promise<void> {
     const artifact = await this.getArtifact(id)
     if (!artifact?.localPath) throw new Error("Artifact has no local file")
