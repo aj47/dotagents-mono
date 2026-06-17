@@ -27,7 +27,9 @@ export function SettingsSidebarNavigation({
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
   const configQuery = useConfigQuery()
-  const activeState = getSettingsNavigationState(location.pathname)
+  const activeState = getSettingsNavigationState(
+    `${location.pathname}${location.hash}`,
+  )
   const groups = getVisibleSettingsNavGroups({
     discordEnabled: configQuery.data?.discordEnabled ?? false,
     activeItemHref: activeState.itemHref,

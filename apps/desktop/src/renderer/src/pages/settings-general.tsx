@@ -35,7 +35,7 @@ import {
 import { toast } from "sonner"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { Config } from "@shared/types"
 import { KeyRecorder } from "@renderer/components/key-recorder"
 import { SettingsPageShell } from "@renderer/components/settings-navigation"
@@ -80,6 +80,7 @@ export function Component() {
   const configQuery = useConfigQuery()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
   const cfg = configQuery.data as Config | undefined
 
   const saveConfigMutation = useSaveConfigMutation()
@@ -466,6 +467,17 @@ export function Component() {
   const toggleVoiceDictationHelperText = `Press ${toggleVoiceDictationDisplay} to start dictation, press again to stop. Press Esc to cancel.`
 
   const isSearching = searchQuery.length > 0
+  const activeSectionId = location.hash.replace(/^#/, "")
+
+  useEffect(() => {
+    if (!activeSectionId) return
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById(activeSectionId)
+        ?.scrollIntoView({ block: "start", behavior: "smooth" })
+    })
+  }, [activeSectionId])
 
   if (!configQuery.data) return null
 
@@ -500,8 +512,8 @@ export function Component() {
         <div className="grid gap-4">
           {/* Agent Settings */}
           <ControlGroup
+            id="agent-settings"
             collapsible
-            defaultCollapsed
             title="Agent Settings"
             forceOpen={isSearching}
           >
@@ -761,8 +773,8 @@ export function Component() {
           </ControlGroup>
 
           <ControlGroup
+            id="general"
             collapsible
-            defaultCollapsed
             title="General"
             forceOpen={isSearching}
           >
@@ -846,11 +858,15 @@ export function Component() {
 
           <RemoteServerSettingsGroups
             collapsible
-            defaultCollapsed
-            forceOpen={isSearching}
+            forceOpen={
+              isSearching ||
+              activeSectionId === "remote-server" ||
+              activeSectionId === "cloudflare-tunnel"
+            }
           />
 
           <ControlGroup
+            id="modular-config"
             collapsible
             defaultCollapsed
             title={
@@ -866,7 +882,7 @@ export function Component() {
                 )}
               </span>
             }
-            forceOpen={isSearching}
+            forceOpen={isSearching || activeSectionId === "modular-config"}
           >
             {systemPromptOverrideActive && (
               <div className="mx-3 mt-2 flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
@@ -965,8 +981,8 @@ export function Component() {
           </ControlGroup>
 
           <ControlGroup
+            id="shortcuts"
             collapsible
-            defaultCollapsed
             title="Shortcuts"
             forceOpen={isSearching}
           >
@@ -1294,8 +1310,8 @@ export function Component() {
           </ControlGroup>
 
           <ControlGroup
+            id="audio-devices"
             collapsible
-            defaultCollapsed
             title="Audio Devices"
             forceOpen={isSearching}
             onOpenChange={setAudioSectionOpen}
@@ -1389,8 +1405,8 @@ export function Component() {
           </ControlGroup>
 
           <ControlGroup
+            id="speech-to-text"
             collapsible
-            defaultCollapsed
             title="Speech-to-Text"
             forceOpen={isSearching}
           >
@@ -1595,8 +1611,8 @@ export function Component() {
           </ControlGroup>
 
           <ControlGroup
+            id="text-to-speech"
             collapsible
-            defaultCollapsed
             title="Text to Speech"
             forceOpen={isSearching}
           >
@@ -1770,8 +1786,8 @@ export function Component() {
 
           {/* Panel Position Settings */}
           <ControlGroup
+            id="panel-position"
             collapsible
-            defaultCollapsed
             title="Panel Position"
             forceOpen={isSearching}
           >
@@ -1948,10 +1964,13 @@ export function Component() {
 
           {/* WhatsApp Integration */}
           <ControlGroup
+            id="whatsapp-integration"
             collapsible
             defaultCollapsed
             title="WhatsApp Integration"
-            forceOpen={isSearching}
+            forceOpen={
+              isSearching || activeSectionId === "whatsapp-integration"
+            }
             endDescription={
               <div className="whitespace-normal break-words">
                 Enable WhatsApp messaging through DotAgents.{" "}
@@ -1982,6 +2001,7 @@ export function Component() {
 
           {/* Discord Integration */}
           <ControlGroup
+            id="discord-integration"
             collapsible
             defaultCollapsed
             title="Discord Integration"
@@ -1990,7 +2010,9 @@ export function Component() {
             // while disabled, so this section is the only place to turn it on
             // — surface it by default until the user enables it.
             forceOpen={
-              isSearching || !(configQuery.data?.discordEnabled ?? false)
+              isSearching ||
+              !(configQuery.data?.discordEnabled ?? false) ||
+              activeSectionId === "discord-integration"
             }
             endDescription={
               <div className="whitespace-normal break-words">
@@ -2022,10 +2044,11 @@ export function Component() {
 
           {/* Observability */}
           <ControlGroup
+            id="observability"
             collapsible
             defaultCollapsed
             title="Observability"
-            forceOpen={isSearching}
+            forceOpen={isSearching || activeSectionId === "observability"}
             endDescription={
               <div className="whitespace-normal break-words">
                 Optional tracing for LLM calls, agent sessions, and tools. Send
@@ -2208,7 +2231,7 @@ export function Component() {
           </ControlGroup>
 
           {/* About Section */}
-          <ControlGroup title="About">
+          <ControlGroup id="about" title="About">
             <Control label="Version" className="px-3">
               <div className="text-sm">{process.env.APP_VERSION}</div>
             </Control>
