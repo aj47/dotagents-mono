@@ -37,6 +37,7 @@ import {
   Loader2,
   Plus,
   Mic,
+  Files,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -560,6 +561,7 @@ export const Component = () => {
       !location.pathname.startsWith("/onboarding") &&
       !location.pathname.startsWith("/setup") &&
       !location.pathname.startsWith("/panel") &&
+      !location.pathname.startsWith("/artifacts") &&
       !location.pathname.startsWith("/knowledge"))
 
   return (
@@ -815,6 +817,22 @@ export const Component = () => {
                         </span>
                       )}
                     </div>
+                  </NavLink>
+
+                  <NavLink
+                    to="/artifacts"
+                    className={({ isActive }) =>
+                      cn(
+                        "flex h-8 w-full items-center justify-center rounded-md transition-all duration-200",
+                        isActive
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                      )
+                    }
+                    title="Artifacts"
+                    aria-label="Artifacts"
+                  >
+                    <Files className="h-4 w-4" />
                   </NavLink>
 
                   {collapsedPreviewSessions.map((session) => {

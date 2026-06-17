@@ -63,6 +63,7 @@ import {
   AgentProgressUpdate,
   SessionProfileSnapshot,
   LoopConfig,
+  ArtifactKind,
 } from "../shared/types"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
@@ -84,6 +85,7 @@ import {
 import { state, agentProcessManager, suppressPanelAutoShow, toolApprovalManager, agentSessionStateManager } from "./state"
 import { generateTTS } from "./tts-service"
 import { desktopTTSPlaybackCoordinator } from "./tts-playback-coordinator"
+import { artifactService } from "./artifact-service"
 
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus, getRemoteServerPairingApiKey } from "./remote-server"
@@ -4171,6 +4173,44 @@ export const router = {
   openConversationsFolder: t.procedure.action(async () => {
     await shell.openPath(conversationsFolder)
   }),
+
+  listArtifacts: t.procedure
+    .input<{
+      query?: string
+      kind?: ArtifactKind | "all"
+      conversationId?: string
+      maxConversations?: number
+      limit?: number
+      offset?: number
+      forceRefresh?: boolean
+    }>()
+    .action(async ({ input }) => {
+      return artifactService.listArtifacts(input)
+    }),
+
+  readArtifactText: t.procedure
+    .input<{ id: string; maxBytes?: number }>()
+    .action(async ({ input }) => {
+      return artifactService.readArtifactText(input)
+    }),
+
+  openArtifact: t.procedure
+    .input<{ id: string }>()
+    .action(async ({ input }) => {
+      await artifactService.openArtifact(input.id)
+    }),
+
+  openArtifactPath: t.procedure
+    .input<{ path: string }>()
+    .action(async ({ input }) => {
+      await artifactService.openArtifactPath(input.path)
+    }),
+
+  showArtifactInFolder: t.procedure
+    .input<{ id: string }>()
+    .action(async ({ input }) => {
+      await artifactService.showArtifactInFolder(input.id)
+    }),
 
   // Panel resize endpoints
   getPanelSize: t.procedure.action(async () => {

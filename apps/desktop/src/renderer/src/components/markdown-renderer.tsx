@@ -19,6 +19,7 @@ import {
 import { getVideoAssetLabel, isRenderableVideoUrl } from "@dotagents/shared"
 import { cn } from "@renderer/lib/utils"
 import { copyTextToClipboard } from "@renderer/lib/clipboard"
+import { toast } from "sonner"
 import "highlight.js/styles/github.css"
 
 import { logExpand, logUI } from "@renderer/lib/debug"
@@ -57,6 +58,12 @@ const ALLOWED_CONVERSATION_IMAGE_ASSET_URL_REGEX =
 const ALLOWED_CONVERSATION_VIDEO_ASSET_URL_REGEX =
   /^assets:\/\/conversation-video\//
 const ALLOWED_RECORDING_ASSET_URL_REGEX = /^assets:\/\/recording\//
+const LOCAL_ARTIFACT_URL_PREFIX = "artifact://local-file?path="
+const LOCAL_ARTIFACT_URL_REGEX = /^artifact:\/\/local-file\?path=/
+const LOCAL_ARTIFACT_PATH_TEXT_REGEX =
+  /^((?:~|\/(?!\/))[^\s"'`<>),\]}]+\.(?:html?|md|markdown|mdx|txt|log|json|jsonl|csv|tsv|xml|ya?ml|pdf|png|apng|gif|jpe?g|webp|bmp|avif|svg|mp4|m4v|webm|mov|ogv|mp3|wav|m4a|aac|flac|ogg|oga|opus))$/i
+const LOCAL_ARTIFACT_PATH_REGEX =
+  /(^|[\s([{])((?:~|\/(?!\/))[^\s"'`<>),\]}]+\.(?:html?|md|markdown|mdx|txt|log|json|jsonl|csv|tsv|xml|ya?ml|pdf|png|apng|gif|jpe?g|webp|bmp|avif|svg|mp4|m4v|webm|mov|ogv|mp3|wav|m4a|aac|flac|ogg|oga|opus))(?:([,.;:!?])(?=$|\s)|(?=$|\s|[)\]}]))/gi
 
 export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
   if (!rawUrl) return false
@@ -68,6 +75,7 @@ export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
     url.startsWith("#") ||
     url.startsWith("http://") ||
     url.startsWith("https://") ||
+    LOCAL_ARTIFACT_URL_REGEX.test(url) ||
     ALLOWED_CONVERSATION_VIDEO_ASSET_URL_REGEX.test(url) ||
     ALLOWED_RECORDING_ASSET_URL_REGEX.test(url) ||
     url.startsWith("mailto:")
@@ -84,6 +92,100 @@ const isDesktopRenderableVideoUrl = (rawUrl?: string) => {
   return isRenderableVideoUrl(rawUrl) || ALLOWED_RECORDING_ASSET_URL_REGEX.test(url)
 }
 
+const encodeLocalArtifactUrl = (filePath: string) =>
+  LOCAL_ARTIFACT_URL_PREFIX + encodeURIComponent(filePath)
+
+const decodeLocalArtifactUrl = (href: string) => {
+  if (!LOCAL_ARTIFACT_URL_REGEX.test(href)) return null
+  const pathParam = href.slice(LOCAL_ARTIFACT_URL_PREFIX.length)
+  try {
+    return decodeURIComponent(pathParam)
+  } catch {
+    return null
+  }
+}
+
+const escapeMarkdownLinkText = (text: string) =>
+  text.replace(/([\\[\]])/g, "\\$1")
+
+export const getLocalArtifactPathFromInlineText = (text: string) => {
+  const match = text.trim().match(LOCAL_ARTIFACT_PATH_TEXT_REGEX)
+  return match?.[1] ?? null
+}
+
+export const linkifyLocalArtifactPaths = (content: string) => {
+  const fenceParts = content.split(/(```[\s\S]*?```)/g)
+
+  return fenceParts
+    .map((fencePart) => {
+      if (fencePart.startsWith("```")) return fencePart
+
+      return fencePart
+        .split(/(`[^`\n]+`)/g)
+        .map((part) => {
+          if (part.startsWith("`")) return part
+          return part.replace(
+            LOCAL_ARTIFACT_PATH_REGEX,
+            (
+              match,
+              prefix: string,
+              filePath: string,
+              trailing = "",
+              offset: number,
+              fullText: string,
+            ) => {
+              if (prefix.endsWith("(") && fullText[offset - 1] === "]") {
+                return match
+              }
+              return (
+                prefix +
+                "[" +
+                escapeMarkdownLinkText(filePath) +
+                "](" +
+                encodeLocalArtifactUrl(filePath) +
+                ")" +
+                trailing
+              )
+            },
+          )
+        })
+        .join("")
+    })
+    .join("")
+}
+
+const LocalArtifactLink = ({
+  path,
+  children,
+  className,
+}: {
+  path: string
+  children?: React.ReactNode
+  className?: string
+}) => (
+  <a
+    href={encodeLocalArtifactUrl(path)}
+    className={cn(
+      "break-words text-primary underline underline-offset-2 hover:text-primary/80 [overflow-wrap:anywhere]",
+      className,
+    )}
+    title={"Open " + path}
+    onClick={(event) => {
+      event.preventDefault()
+      void import("@renderer/lib/tipc-client")
+        .then(({ tipcClient }) =>
+          tipcClient.openArtifactPath({ path }),
+        )
+        .catch((error: unknown) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to open artifact",
+          )
+        })
+    }}
+  >
+    {children}
+  </a>
+)
 const VideoAttachmentCard = ({
   src,
   label,
@@ -143,10 +245,12 @@ export const isAllowedMarkdownImageUrl = (rawUrl?: string) => {
 }
 
 export const markdownUrlTransform = (url: string, key?: string) => {
-  const isImageSrc = key === "src"
-  const isAllowed = isImageSrc
-    ? isAllowedMarkdownImageUrl(url)
-    : isAllowedMarkdownLinkUrl(url)
+  const isAllowed =
+    key === "src"
+      ? isAllowedMarkdownImageUrl(url)
+      : key === "href"
+        ? isAllowedMarkdownLinkUrl(url)
+        : isAllowedMarkdownImageUrl(url) || isAllowedMarkdownLinkUrl(url)
   return isAllowed ? url : ""
 }
 
@@ -326,6 +430,15 @@ const markdownLinkComponent = ({
   children?: React.ReactNode
   href?: string
 }) => {
+  const localArtifactPath = href ? decodeLocalArtifactUrl(href) : null
+  if (localArtifactPath) {
+    return (
+      <LocalArtifactLink path={localArtifactPath}>
+        {children}
+      </LocalArtifactLink>
+    )
+  }
+
   if (href && isDesktopRenderableVideoUrl(href)) {
     return <VideoAttachmentCard src={href} label={extractTextContent(children)} />
   }
@@ -780,13 +893,29 @@ const sharedMarkdownComponents = {
   code: ({ children, ...props }: any) => {
     const inline = !props.className
     if (inline) {
-      return (
+      const localArtifactPath = getLocalArtifactPathFromInlineText(
+        extractTextContent(children),
+      )
+      const inlineCode = (
         <code
           className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[0.8125rem] text-current dark:bg-white/10 [overflow-wrap:anywhere]"
           {...props}
         >
           {children}
         </code>
+      )
+      if (localArtifactPath) {
+        return (
+          <LocalArtifactLink
+            path={localArtifactPath}
+            className="font-mono text-[0.8125rem]"
+          >
+            {inlineCode}
+          </LocalArtifactLink>
+        )
+      }
+      return (
+        inlineCode
       )
     }
     return (
@@ -895,7 +1024,7 @@ const ThinkSection: React.FC<ThinkSectionProps> = ({
               urlTransform={markdownUrlTransform}
               components={sharedMarkdownComponents}
             >
-              {content}
+              {linkifyLocalArtifactPaths(content)}
             </ReactMarkdown>
           </div>
         </div>
@@ -1055,7 +1184,7 @@ const MarkdownRendererBase: React.FC<MarkdownRendererProps> = ({
                   ),
                 }}
               >
-                {part.content}
+                {linkifyLocalArtifactPaths(part.content)}
               </ReactMarkdown>
             </div>
           )

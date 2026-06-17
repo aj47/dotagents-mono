@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useNavigate } from "react-router-dom"
-import { Keyboard } from "lucide-react"
+import { useLocation, useNavigate } from "react-router-dom"
+import { Files, Keyboard } from "lucide-react"
 import {
   CHAT_PROVIDERS,
   DEFAULT_MODEL_PRESET_ID,
@@ -212,6 +212,7 @@ interface AppBottomBarProps {
 
 export function AppBottomBar({ onOpenShortcutReference }: AppBottomBarProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
   const config = configQuery.data
@@ -434,6 +435,20 @@ export function AppBottomBar({ onOpenShortcutReference }: AppBottomBarProps) {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
+        <button
+          type="button"
+          onClick={() => navigate("/artifacts")}
+          className={cn(
+            "hover:bg-accent hover:text-foreground flex h-5 items-center gap-1 rounded px-1.5 transition-colors",
+            location.pathname.startsWith("/artifacts") &&
+              "bg-accent text-accent-foreground",
+          )}
+          title="Open artifacts"
+          aria-label="Open artifacts"
+        >
+          <Files className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Artifacts</span>
+        </button>
         {onOpenShortcutReference && (
           <button
             type="button"

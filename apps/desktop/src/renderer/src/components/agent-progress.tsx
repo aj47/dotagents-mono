@@ -427,6 +427,21 @@ function hasMarkdownMediaPayload(content: string): boolean {
     /(^|[^!])\[[^\]]*\]\((?:https?:\/\/[^)]+\.(?:mp4|m4v|webm|mov|ogv)(?:[?#][^)]*)?|assets:\/\/(?:conversation-video|recording)\/[^)]+)\)/i.test(content)
 }
 
+function getRenderableConversationContent(entry: {
+  content: string
+  displayContent?: string
+}): string {
+  if (
+    entry.displayContent &&
+    hasMarkdownMediaPayload(entry.content) &&
+    !hasMarkdownMediaPayload(entry.displayContent)
+  ) {
+    return entry.content
+  }
+
+  return entry.displayContent ?? entry.content
+}
+
 function extractRespondToUserResponsesFromMessages(
   messages: Array<{
     role: "user" | "assistant" | "tool"
@@ -610,8 +625,12 @@ const CompactMessageBase: React.FC<CompactMessageProps> = ({ message, ttsText, i
   }, [])
 
   // Effective rendered content: prefer the attached respond_to_user event text
-  // (which carries image markdown) over the assistant prose stored on the message.
-  const effectiveContent = message.responseEvent?.text ?? message.content ?? ""
+  // when it carries media markdown, but do not let an older text-only event hide
+  // a materialized assistant message that already has renderable asset markdown.
+  const effectiveContent = message.responseEvent?.text &&
+    !(hasMarkdownMediaPayload(message.content ?? "") && !hasMarkdownMediaPayload(message.responseEvent.text))
+    ? message.responseEvent.text
+    : message.content ?? ""
 
   // Copy to clipboard handler
   const handleCopyResponse = async (e: React.MouseEvent) => {
@@ -3760,7 +3779,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
         if (entry.role !== "assistant") return false
         if ((entry.toolCalls?.length ?? 0) > 0 || (entry.toolResults?.length ?? 0) > 0) return false
 
-        const assistantContent = normalizePromptEchoForDedupe(entry.displayContent ?? entry.content)
+        const assistantContent = normalizePromptEchoForDedupe(getRenderableConversationContent(entry))
         if (!assistantContent) return false
 
         let previousUserContent: string | undefined
@@ -3780,7 +3799,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
             nextEntry.role === "tool" ||
             (nextEntry.role === "assistant" &&
               (
-                normalizePromptEchoForDedupe(nextEntry.displayContent ?? nextEntry.content).length > 0 ||
+                normalizePromptEchoForDedupe(getRenderableConversationContent(nextEntry)).length > 0 ||
                 (nextEntry.toolCalls?.length ?? 0) > 0 ||
                 (nextEntry.toolResults?.length ?? 0) > 0
               ))
@@ -3798,7 +3817,7 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           if (shouldHideAssistantPromptEcho(entry, localIndex)) return
           nextMessages.push({
             role: entry.role,
-            content: entry.displayContent ?? entry.content,
+            content: getRenderableConversationContent(entry),
             isComplete: true,
             timestamp: entry.timestamp ?? fallbackBaseTimestamp + localIndex,
             isThinking: false,

@@ -15,6 +15,7 @@ describe("markdown renderer URL guardrails", () => {
     expect(markdownRenderer.isAllowedMarkdownLinkUrl("https://dotagents.app/docs")).toBe(true)
     expect(markdownRenderer.isAllowedMarkdownLinkUrl("mailto:hello@dotagents.app")).toBe(true)
     expect(markdownRenderer.isAllowedMarkdownLinkUrl("#usage")).toBe(true)
+    expect(markdownRenderer.isAllowedMarkdownLinkUrl("artifact://local-file?path=%2Ftmp%2Fout.html")).toBe(true)
     expect(markdownRenderer.isAllowedMarkdownLinkUrl("javascript:alert(1)")).toBe(false)
     expect(markdownRenderer.isAllowedMarkdownLinkUrl("data:text/html,<script>alert(1)</script>")).toBe(false)
   })
@@ -35,6 +36,44 @@ describe("markdown renderer URL guardrails", () => {
     expect(markdownRenderer.markdownUrlTransform("data:image/webp;base64,UklGRg==", "src")).toBe(
       "data:image/webp;base64,UklGRg==",
     )
+  })
+
+  it("links local artifact paths without touching code spans", () => {
+    const linked = markdownRenderer.linkifyLocalArtifactPaths(
+      [
+        "Created /Users/ajjoobandi/.agents/tasks/overnight-agent-harness-lab/next-video-decision.html.",
+        "`/Users/ajjoobandi/.agents/tasks/overnight-agent-harness-lab/task.md`",
+        "[already linked](/Users/ajjoobandi/.agents/tasks/overnight-agent-harness-lab/already.html)",
+      ].join("\n"),
+    )
+
+    expect(linked).toContain(
+      "[/Users/ajjoobandi/.agents/tasks/overnight-agent-harness-lab/next-video-decision.html](artifact://local-file?path=%2FUsers%2Fajjoobandi%2F.agents%2Ftasks%2Fovernight-agent-harness-lab%2Fnext-video-decision.html).",
+    )
+    expect(linked).toContain("`/Users/ajjoobandi/.agents/tasks/overnight-agent-harness-lab/task.md`")
+    expect(linked).toContain(
+      "[already linked](/Users/ajjoobandi/.agents/tasks/overnight-agent-harness-lab/already.html)",
+    )
+  })
+
+  it("does not rewrite conversation image asset URLs as local artifact paths", () => {
+    const content =
+      "![Thumbnail concept](assets://conversation-image/conv_1/fbc477c4ab9c445230f6f350761419e19bf5635ded24e27a666ba43d5863b428.png)"
+
+    expect(markdownRenderer.linkifyLocalArtifactPaths(content)).toBe(content)
+  })
+
+  it("recognizes inline code spans that are exactly local artifact paths", () => {
+    expect(
+      markdownRenderer.getLocalArtifactPathFromInlineText(
+        "/Users/ajjoobandi/.agents/tasks/overnight-agent-harness-lab/task.md",
+      ),
+    ).toBe("/Users/ajjoobandi/.agents/tasks/overnight-agent-harness-lab/task.md")
+    expect(
+      markdownRenderer.getLocalArtifactPathFromInlineText(
+        "see /Users/ajjoobandi/.agents/tasks/overnight-agent-harness-lab/task.md",
+      ),
+    ).toBeNull()
   })
 
   describe("deriveImageDownloadFileName", () => {
