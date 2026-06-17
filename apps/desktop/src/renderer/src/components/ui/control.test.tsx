@@ -25,11 +25,10 @@ describe("Control", () => {
     const sections = React.Children.toArray(tree.props.children) as React.ReactElement[]
 
     expect(tree.props.className).toContain("flex-col")
-    expect(tree.props.className).toContain("lg:flex-row")
-    expect(sections[0].props.className).toContain("lg:max-w-[52%]")
+    expect(tree.props.className).toContain("sm:flex-row")
+    expect(sections[0].props.className).toContain("sm:max-w-[52%]")
     expect(sections[1].props.className).toContain("w-full")
-    expect(sections[1].props.className).toContain("max-w-full")
-    expect(sections[1].props.className).toContain("lg:max-w-[48%]")
+    expect(sections[1].props.className).toContain("sm:max-w-[48%]")
   })
 })
 
@@ -53,9 +52,8 @@ describe("ControlLabel", () => {
     const labelColumn = sections[0] as React.ReactElement
     const controlColumn = sections[1] as React.ReactElement
 
-    expect(labelColumn.props.className).toContain("lg:max-w-[52%]")
-    expect(controlColumn.props.className).toContain("max-w-full")
-    expect(controlColumn.props.className).toContain("lg:max-w-[48%]")
+    expect(labelColumn.props.className).toContain("sm:max-w-[52%]")
+    expect(controlColumn.props.className).toContain("sm:max-w-[48%]")
 
     const labelWrapper = labelColumn.props.children as React.ReactElement
     const unresolvedControlLabel = labelWrapper.props.children as React.ReactElement
