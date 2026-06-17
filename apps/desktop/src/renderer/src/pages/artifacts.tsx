@@ -197,6 +197,7 @@ function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
       <iframe
         src={artifact.previewUrl}
         title={artifact.name}
+        sandbox={artifact.kind === "html" ? "" : undefined}
         className="bg-background min-h-0 flex-1 border-0"
       />
     )

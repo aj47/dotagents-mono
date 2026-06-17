@@ -53,4 +53,10 @@ describe("artifacts navigation", () => {
     expect(artifactsPageSource).toContain("xl:hidden")
     expect(artifactsPageSource).toContain("xl:flex xl:border-t-0")
   })
+
+  it("sandboxes html artifact previews", () => {
+    expect(artifactsPageSource).toContain(
+      'sandbox={artifact.kind === "html" ? "" : undefined}',
+    )
+  })
 })

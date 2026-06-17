@@ -190,6 +190,47 @@ describe("artifact service", () => {
     expect(preview.truncated).toBe(true)
   })
 
+  it("does not split utf8 characters in capped text previews", async () => {
+    const textPath = path.join(tempDir, "emoji.txt")
+    await writeFile(textPath, "hi \u{1F642} there")
+
+    mocks.getConversationHistory.mockResolvedValue([
+      {
+        id: "conv_utf8",
+        title: "UTF8",
+        createdAt: 1,
+        updatedAt: 2,
+        messageCount: 1,
+        lastMessage: "",
+        preview: "",
+      },
+    ])
+    mocks.loadConversationForDisplay.mockResolvedValue({
+      id: "conv_utf8",
+      title: "UTF8",
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        { id: "msg_1", role: "assistant", content: textPath, timestamp: 10 },
+      ],
+    })
+
+    const { artifactService } = await import("./artifact-service")
+    const listed = await artifactService.listArtifacts({ forceRefresh: true })
+    const textArtifact = listed.artifacts.find(
+      (artifact) => artifact.localPath === textPath,
+    )
+    expect(textArtifact).toBeTruthy()
+
+    const preview = await artifactService.readArtifactText({
+      id: textArtifact!.id,
+      maxBytes: Buffer.byteLength("hi ") + 2,
+    })
+    expect(preview.content).toBe("hi ")
+    expect(preview.content).not.toContain("\uFFFD")
+    expect(preview.truncated).toBe(true)
+  })
+
   it("uses useful URL titles instead of weak markdown labels", async () => {
     mocks.getConversationHistory.mockResolvedValue([
       {

@@ -116,6 +116,51 @@ function statNumber(value: number | bigint | undefined): number | undefined {
   return value
 }
 
+function trimIncompleteUtf8Suffix(buffer: Buffer): Buffer {
+  if (buffer.length === 0) return buffer
+
+  let continuationBytes = 0
+  for (
+    let index = buffer.length - 1;
+    index >= 0 && (buffer[index] & 0xc0) === 0x80;
+    index -= 1
+  ) {
+    continuationBytes += 1
+  }
+
+  if (continuationBytes === 0) {
+    const lastByte = buffer[buffer.length - 1]
+    if (lastByte >= 0xc2 && lastByte <= 0xf4) {
+      return buffer.subarray(0, buffer.length - 1)
+    }
+    return buffer
+  }
+
+  const leadIndex = buffer.length - continuationBytes - 1
+  if (leadIndex < 0) {
+    return buffer.subarray(0, buffer.length - continuationBytes)
+  }
+
+  const leadByte = buffer[leadIndex]
+  let expectedContinuationBytes = 0
+  if (leadByte >= 0xc2 && leadByte <= 0xdf) {
+    expectedContinuationBytes = 1
+  } else if (leadByte >= 0xe0 && leadByte <= 0xef) {
+    expectedContinuationBytes = 2
+  } else if (leadByte >= 0xf0 && leadByte <= 0xf4) {
+    expectedContinuationBytes = 3
+  }
+
+  if (
+    expectedContinuationBytes > 0 &&
+    continuationBytes < expectedContinuationBytes
+  ) {
+    return buffer.subarray(0, leadIndex)
+  }
+
+  return buffer
+}
+
 function classifyPath(filePath: string): ArtifactKind {
   const ext = path.extname(filePath).toLowerCase()
   if (MARKDOWN_EXTENSIONS.has(ext)) return "markdown"
@@ -701,10 +746,12 @@ class ArtifactService {
       const buffer = Buffer.alloc(maxBytes + 1)
       const { bytesRead } = await file.read(buffer, 0, maxBytes + 1, 0)
       const truncated = bytesRead > maxBytes
+      const previewBuffer = buffer.subarray(0, Math.min(bytesRead, maxBytes))
       return {
-        content: buffer
-          .subarray(0, Math.min(bytesRead, maxBytes))
-          .toString("utf8"),
+        content: (truncated
+          ? trimIncompleteUtf8Suffix(previewBuffer)
+          : previewBuffer
+        ).toString("utf8"),
         truncated,
         artifact,
       }
