@@ -306,7 +306,11 @@ export function isConsolidatedSettingsRoute(pathname: string): boolean {
 
 export function normalizeSettingsPath(pathname: string): string {
   const { path, hash } = splitSettingsLocation(pathname)
-  return `${SETTINGS_ROUTE_ALIASES[path] ?? path}${hash}`
+  const aliasTarget = SETTINGS_ROUTE_ALIASES[path]
+  if (!aliasTarget) return `${path}${hash}`
+
+  const aliasLocation = splitSettingsLocation(aliasTarget)
+  return `${aliasLocation.path}${hash || aliasLocation.hash}`
 }
 
 export function getSettingsNavigationState(

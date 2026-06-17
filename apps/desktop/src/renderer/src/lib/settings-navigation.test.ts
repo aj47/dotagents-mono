@@ -64,6 +64,12 @@ describe("settings navigation", () => {
     expect(normalizeSettingsPath("/settings/providers")).toBe(
       "/settings/models#provider-setup",
     )
+    expect(normalizeSettingsPath("/settings/providers#groq")).toBe(
+      "/settings/models#groq",
+    )
+    expect(
+      normalizeSettingsPath("/settings/remote-server#cloudflare-tunnel"),
+    ).toBe("/settings#cloudflare-tunnel")
     expect(normalizeSettingsPath("/settings/mcp-tools")).toBe(
       "/settings/capabilities",
     )
@@ -73,6 +79,12 @@ describe("settings navigation", () => {
     expect(normalizeSettingsPath("/settings/agent-personas")).toBe(
       "/settings/agents",
     )
+    expect(
+      getSettingsNavigationState("/settings/remote-server#cloudflare-tunnel"),
+    ).toEqual({
+      groupId: "connect",
+      itemHref: "/settings#cloudflare-tunnel",
+    })
   })
 
   it("excludes repeat tasks from the consolidated settings sidebar target", () => {
