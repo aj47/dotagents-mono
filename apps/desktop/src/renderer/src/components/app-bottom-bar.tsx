@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { Files, Keyboard } from "lucide-react"
 import {
   CHAT_PROVIDERS,
@@ -212,6 +212,7 @@ interface AppBottomBarProps {
 
 export function AppBottomBar({ onOpenShortcutReference }: AppBottomBarProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
   const config = configQuery.data
