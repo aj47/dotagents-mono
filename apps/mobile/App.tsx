@@ -36,6 +36,7 @@ import * as Font from 'expo-font';
 import { ThemeProvider, useTheme } from './src/ui/ThemeProvider';
 import type { Theme } from './src/ui/theme';
 import { ConnectionStatusIndicator } from './src/ui/ConnectionStatusIndicator';
+import { parseConnectionQrCode } from './src/screens/connection-settings-qr';
 import {
   APP_SHELL_DIMENSIONS,
   APP_SHELL_PRIMARY_NAV_ITEMS,
@@ -71,18 +72,7 @@ function parseDeepLink(url: string | null) {
       }
     }
 
-    const parsed = Linking.parse(url);
-    // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
-    if (parsed.path === 'config' || parsed.hostname === 'config') {
-      const { baseUrl, apiKey, model } = parsed.queryParams || {};
-      if (baseUrl || apiKey || model) {
-        return {
-          baseUrl: typeof baseUrl === 'string' ? baseUrl : undefined,
-          apiKey: typeof apiKey === 'string' ? apiKey : undefined,
-          model: typeof model === 'string' ? model : undefined,
-        };
-      }
-    }
+    return parseConnectionQrCode(url);
   } catch (e) {
     console.warn('Failed to parse deep link:', e);
   }
@@ -183,6 +173,11 @@ function Navigation() {
         };
         cfg.setConfig(newConfig);
         await saveConfig(newConfig);
+        if (newConfig.baseUrl && newConfig.apiKey) {
+          void tunnelConnection.connect(newConfig.baseUrl, newConfig.apiKey);
+        } else {
+          void tunnelConnection.disconnect();
+        }
         if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history?.replaceState) {
           window.history.replaceState({}, '', window.location.pathname);
         }

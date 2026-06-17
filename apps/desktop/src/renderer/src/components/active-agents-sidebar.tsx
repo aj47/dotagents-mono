@@ -1603,9 +1603,9 @@ export function ActiveAgentsSidebar({
       {hasLaunchControls && (
         <div className="sticky top-0 z-40 -mx-2 bg-background/95 px-2 pb-2 pt-2">
           <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
-            <div className="flex w-full flex-wrap items-center gap-2">
+            <div className="flex w-full flex-nowrap items-center gap-1.5">
               {onSelectAgent && (
-                <div className="min-w-0 flex-1">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center">
                   <AgentSelector
                     selectedAgentId={selectedAgentId}
                     onSelectAgent={onSelectAgent}
@@ -1613,7 +1613,7 @@ export function ActiveAgentsSidebar({
                   />
                 </div>
               )}
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex min-w-0 items-center gap-1.5">
                 {onClearInactiveSessions && inactiveSessionCount > 0 && (
                   <Button
                     type="button"
@@ -2325,44 +2325,46 @@ export function ActiveAgentsSidebar({
                     <span className="ml-1 rounded-full bg-muted-foreground/20 px-1.5 py-px text-[9px] font-medium leading-none text-muted-foreground">
                       {userSidebarSessions.length}
                     </span>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        createSessionGroup()
-                      }}
-                      className="text-muted-foreground hover:text-foreground focus:ring-ring ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
-                      title="New session group"
-                      aria-label="New session group"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                    {onOpenSavedConversationsDialog && (
+                    <div className="ml-auto flex shrink-0 items-center gap-0.5">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onOpenSavedConversationsDialog()
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          createSessionGroup()
                         }}
-                        className="text-muted-foreground hover:text-foreground focus:ring-ring flex h-5 w-5 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
-                        title="Saved conversations"
-                        aria-label="Saved conversations"
+                        className="text-muted-foreground hover:text-foreground focus:ring-ring flex h-4 w-4 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
+                        title="New session group"
+                        aria-label="New session group"
                       >
-                        <Clock className="h-3.5 w-3.5" />
+                        <Plus className="h-3 w-3" />
                       </button>
-                    )}
-                    {onOpenArchivedConversationsDialog && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onOpenArchivedConversationsDialog()
-                        }}
-                        className="text-muted-foreground hover:text-foreground focus:ring-ring flex h-5 w-5 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
-                        title="Archived sessions"
-                        aria-label="Archived sessions"
-                      >
-                        <Archive className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                      {onOpenSavedConversationsDialog && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onOpenSavedConversationsDialog()
+                          }}
+                          className="text-muted-foreground hover:text-foreground focus:ring-ring flex h-4 w-4 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
+                          title="Saved conversations"
+                          aria-label="Saved conversations"
+                        >
+                          <Clock className="h-3 w-3" />
+                        </button>
+                      )}
+                      {onOpenArchivedConversationsDialog && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onOpenArchivedConversationsDialog()
+                          }}
+                          className="text-muted-foreground hover:text-foreground focus:ring-ring flex h-4 w-4 shrink-0 items-center justify-center rounded focus:outline-none focus:ring-1 transition-colors"
+                          title="Archived sessions"
+                          aria-label="Archived sessions"
+                        >
+                          <Archive className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
                 {isExpanded && userSidebarGroupSections.map(renderSessionGroupSection)}

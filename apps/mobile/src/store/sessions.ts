@@ -8,13 +8,13 @@ import { syncConversations, SyncResult, fetchFullConversation } from '../lib/syn
 const SESSIONS_KEY = 'chat_sessions_v1';
 const CURRENT_SESSION_KEY = 'current_session_id_v1';
 
-function isStorageQuotaExceededError(error: unknown): boolean {
+export function isStorageQuotaExceededError(error: unknown): boolean {
   const err = error as { name?: string; code?: number; message?: string };
   return err?.name === 'QuotaExceededError'
     || err?.name === 'NS_ERROR_DOM_QUOTA_REACHED'
     || err?.code === 22
     || err?.code === 1014
-    || /exceeded the quota|quota/i.test(err?.message || '');
+    || /exceeded the quota|quota|SQLITE_FULL|database or disk is full/i.test(err?.message || '');
 }
 
 function createQuotaCompactedSession(session: Session): Session {
@@ -146,7 +146,7 @@ async function saveSessions(sessions: Session[]): Promise<void> {
   }
 
   await AsyncStorage.setItem(SESSIONS_KEY, compactedSerialized);
-  console.warn('[sessions] Storage quota exceeded; compacted server-linked session messages for local web storage.');
+  console.warn('[sessions] Storage quota exceeded; compacted server-linked session messages for local storage.');
 }
 
 async function loadCurrentSessionId(): Promise<string | null> {

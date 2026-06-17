@@ -34,6 +34,7 @@ import {
 import { PresetModelSelector } from "@renderer/components/preset-model-selector"
 import { SettingsPageShell } from "@renderer/components/settings-navigation"
 import { Config, ModelPreset } from "@shared/types"
+import { useLocation } from "react-router-dom"
 import {
   STT_PROVIDERS,
   CHAT_PROVIDERS,
@@ -58,6 +59,7 @@ import {
 } from "@dotagents/shared"
 import { getDefaultSttModel } from "@dotagents/shared/stt-models"
 import { Mic, FileText, Volume2, Bot } from "lucide-react"
+import { ProviderSettingsContent } from "./settings-providers"
 
 const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 
@@ -109,6 +111,7 @@ function RoleProviderSelector({
 
 export function Component() {
   const configQuery = useConfigQuery()
+  const location = useLocation()
   const saveConfigMutation = useSaveConfigMutation()
   const transcriptProcessingPromptSaveTimeoutRef = useRef<ReturnType<
     typeof setTimeout
@@ -199,6 +202,18 @@ export function Component() {
     [allPresets],
   )
 
+  const activeSectionId = location.hash.replace(/^#/, "")
+
+  useEffect(() => {
+    if (!activeSectionId) return
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById(activeSectionId)
+        ?.scrollIntoView({ block: "start", behavior: "smooth" })
+    })
+  }, [activeSectionId])
+
   if (!configQuery.data) return null
 
   const config = configQuery.data
@@ -233,7 +248,7 @@ export function Component() {
           </p>
         </div>
 
-        <ControlGroup title="Agent Models">
+        <ControlGroup id="agent-models" title="Agent Models">
           <div className="border-muted bg-muted/30 text-muted-foreground mx-3 my-2 rounded-md border px-3 py-2 text-xs">
             Choose which model powers the main agent. OpenAI-compatible presets
             can carry both an agent model and a transcript processing model.
@@ -390,7 +405,11 @@ export function Component() {
           )}
         </ControlGroup>
 
-        <ControlGroup title="Choose a Provider for Each Job" collapsible>
+        <ControlGroup
+          id="job-providers"
+          title="Choose a Provider for Each Job"
+          collapsible
+        >
           <RoleProviderSelector
             label="Speech-to-Text"
             tooltip="Choose which provider listens to your audio and turns it into text."
@@ -425,7 +444,11 @@ export function Component() {
           />
         </ControlGroup>
 
-        <ControlGroup title="Transcript Processing" collapsible>
+        <ControlGroup
+          id="transcript-processing"
+          title="Transcript Processing"
+          collapsible
+        >
           <Control
             label={
               <ControlLabel
@@ -532,7 +555,11 @@ export function Component() {
           )}
         </ControlGroup>
 
-        <ControlGroup title="Speech & Voice Models" collapsible>
+        <ControlGroup
+          id="speech-voice-models"
+          title="Speech & Voice Models"
+          collapsible
+        >
           <div className="px-3 py-2">
             {sttProviderId === "parakeet" ? (
               <Control
@@ -1050,6 +1077,10 @@ export function Component() {
             )}
           </div>
         </ControlGroup>
+
+        <div id="provider-setup">
+          <ProviderSettingsContent />
+        </div>
       </div>
     </SettingsPageShell>
   )

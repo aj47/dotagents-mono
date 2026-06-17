@@ -7,8 +7,8 @@ describe("getLegacySettingsRedirectPath", () => {
     expect(
       getLegacySettingsRedirectPath(
         "/settings/agents",
-        "http://localhost/settings/agent-personas?tab=custom#install-bundle"
-      )
+        "http://localhost/settings/agent-personas?tab=custom#install-bundle",
+      ),
     ).toBe("/settings/agents?tab=custom#install-bundle")
   })
 
@@ -16,8 +16,8 @@ describe("getLegacySettingsRedirectPath", () => {
     expect(
       getLegacySettingsRedirectPath(
         "/settings/capabilities",
-        "http://localhost/settings/mcp-tools"
-      )
+        "http://localhost/settings/mcp-tools",
+      ),
     ).toBe("/settings/capabilities")
   })
 
@@ -25,8 +25,8 @@ describe("getLegacySettingsRedirectPath", () => {
     expect(
       getLegacySettingsRedirectPath(
         "/settings/repeat-tasks",
-        "http://localhost/settings/loops#scheduled"
-      )
+        "http://localhost/settings/loops#scheduled",
+      ),
     ).toBe("/settings/repeat-tasks#scheduled")
   })
 
@@ -34,8 +34,26 @@ describe("getLegacySettingsRedirectPath", () => {
     expect(
       getLegacySettingsRedirectPath(
         "/settings/knowledge",
-        "http://localhost/knowledge?context=auto#notes"
-      )
+        "http://localhost/knowledge?context=auto#notes",
+      ),
     ).toBe("/settings/knowledge?context=auto#notes")
+  })
+
+  it("places preserved query params before target hashes", () => {
+    expect(
+      getLegacySettingsRedirectPath(
+        "/settings/models#provider-setup",
+        "http://localhost/settings/providers?provider=groq",
+      ),
+    ).toBe("/settings/models?provider=groq#provider-setup")
+  })
+
+  it("lets source hashes override target hashes", () => {
+    expect(
+      getLegacySettingsRedirectPath(
+        "/settings/models#provider-setup",
+        "http://localhost/settings/providers#groq",
+      ),
+    ).toBe("/settings/models#groq")
   })
 })
