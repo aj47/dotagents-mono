@@ -4,6 +4,7 @@ import {
   canRefreshServerGeneratedSessionTitle,
   compactSessionsForStorageQuota,
   discardLocalEmptyDraftSessions,
+  isStorageQuotaExceededError,
   shouldApplyServerGeneratedSessionTitle,
 } from './sessions';
 
@@ -55,6 +56,12 @@ describe('compactSessionsForStorageQuota', () => {
     }];
 
     expect(compactSessionsForStorageQuota(sessions)).toEqual(sessions);
+  });
+});
+
+describe('isStorageQuotaExceededError', () => {
+  it('detects Android AsyncStorage SQLite full errors', () => {
+    expect(isStorageQuotaExceededError(new Error('database or disk is full (code 13 SQLITE_FULL[13])'))).toBe(true);
   });
 });
 

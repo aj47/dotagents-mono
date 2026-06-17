@@ -1,6 +1,6 @@
 {
   "name": "@dotagents/mobile",
-  "version": "1.5.1",
+  "version": "1.5.3",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
