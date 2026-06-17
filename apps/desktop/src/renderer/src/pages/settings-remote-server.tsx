@@ -299,21 +299,11 @@ export function RemoteServerSettingsGroups({
         collapsible={collapsible}
         defaultCollapsed={defaultCollapsed}
         forceOpen={forceOpen}
-        title="Remote Server"
-        endDescription={
-          <div className="whitespace-normal break-words">
-            Expose DotAgents as an OpenAI-compatible{" "}
-            <span className="font-mono">/v1</span> endpoint for the{" "}
-            <a
-              href="https://github.com/aj47/DotAgentsMobile"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline"
-            >
-              DotAgents Mobile app
-            </a>{" "}
-            and other clients.
-          </div>
+        title={
+          <ControlLabel
+            label="Remote Server"
+            tooltip="Expose DotAgents as an OpenAI-compatible /v1 endpoint for the DotAgents Mobile app and other clients."
+          />
         }
       >
         <Control label="Enable Remote Server" className="px-3">
@@ -327,63 +317,55 @@ export function RemoteServerSettingsGroups({
 
         {enabled && (
           <>
-            <Control
-              label={
+            <div className="px-3 py-3">
+              <div className="mb-2">
                 <ControlLabel
                   label="Easy Mobile Pairing"
-                  tooltip="Scan one QR code with the DotAgents mobile app to connect"
+                  tooltip="Scan one QR code with the DotAgents mobile app to connect."
                 />
-              }
-              className="px-3"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                {streamerMode ? (
-                  <div
-                    className="bg-muted/50 flex shrink-0 flex-col items-center justify-center rounded-lg p-3"
-                    style={{ width: 196, height: 196 }}
-                  >
-                    <EyeOff className="text-muted-foreground mb-2 h-8 w-8" />
-                    <span className="text-muted-foreground text-center text-xs">
-                      QR hidden
-                      <br />
-                      Streamer Mode
-                    </span>
-                  </div>
-                ) : easyPairingDeepLink ? (
-                  <div className="shrink-0 rounded-lg bg-white p-3">
-                    <QRCodeSVG
-                      value={easyPairingDeepLink}
-                      size={196}
-                      level="M"
-                    />
-                  </div>
-                ) : (
-                  <div
-                    className="bg-muted/50 text-muted-foreground flex shrink-0 items-center justify-center rounded-lg p-3 text-center text-xs"
-                    style={{ width: 196, height: 196 }}
-                  >
-                    Pairing URL unavailable
-                  </div>
-                )}
-                <div className="min-w-0 flex-1 space-y-3">
-                  <div>
-                    <div className="text-sm font-medium">
-                      {easyPairingSource
-                        ? `${easyPairingSource} pairing`
-                        : "Mobile pairing"}
+              </div>
+              <div className="grid min-w-0 gap-3 sm:grid-cols-[144px_minmax(0,1fr)]">
+                <div className="flex min-w-0 justify-start">
+                  {streamerMode ? (
+                    <div className="bg-muted/50 flex h-36 w-36 shrink-0 flex-col items-center justify-center rounded-lg p-3">
+                      <EyeOff className="text-muted-foreground mb-2 h-7 w-7" />
+                      <span className="text-muted-foreground text-center text-xs">
+                        QR hidden
+                        <br />
+                        Streamer Mode
+                      </span>
                     </div>
-                    <div className="text-muted-foreground mt-1 break-words text-xs">
-                      {streamerMode && easyPairingBaseUrl
-                        ? maskUrl(easyPairingBaseUrl)
-                        : (easyPairingBaseUrl ?? "No pairing URL available")}
+                  ) : easyPairingDeepLink ? (
+                    <div className="shrink-0 rounded-lg bg-white p-2">
+                      <QRCodeSVG
+                        value={easyPairingDeepLink}
+                        size={128}
+                        level="M"
+                      />
                     </div>
-                    <div className="text-muted-foreground mt-1 break-words text-xs">
-                      {streamerMode
-                        ? "QR code and link hidden in Streamer Mode"
-                        : easyPairingStatusText}
+                  ) : (
+                    <div className="bg-muted/50 text-muted-foreground flex h-36 w-36 shrink-0 items-center justify-center rounded-lg p-3 text-center text-xs">
+                      Pairing URL unavailable
                     </div>
+                  )}
+                </div>
+                <div className="min-w-0 space-y-2">
+                  <div className="text-sm font-medium">
+                    {easyPairingSource
+                      ? `${easyPairingSource} pairing`
+                      : "Mobile pairing"}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-muted-foreground break-all text-xs">
+                    {streamerMode && easyPairingBaseUrl
+                      ? maskUrl(easyPairingBaseUrl)
+                      : (easyPairingBaseUrl ?? "No pairing URL available")}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {streamerMode
+                      ? "QR code and link hidden in Streamer Mode"
+                      : easyPairingStatusText}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
                     <Button
                       variant="secondary"
                       size="sm"
@@ -461,7 +443,7 @@ export function RemoteServerSettingsGroups({
                   </div>
                 </div>
               </div>
-            </Control>
+            </div>
 
             <Control
               label={
@@ -677,10 +659,6 @@ export function RemoteServerSettingsGroups({
                 placeholder="* or http://localhost:8081, http://example.com"
                 className="w-full"
               />
-              <div className="text-muted-foreground mt-1 text-xs">
-                Use * for development or specify allowed origins separated by
-                commas
-              </div>
             </Control>
 
             {(baseUrl ||
@@ -821,21 +799,11 @@ export function RemoteServerSettingsGroups({
           collapsible={collapsible}
           defaultCollapsed={defaultCollapsed}
           forceOpen={forceOpen}
-          title="Cloudflare Tunnel"
-          endDescription={
-            <div className="whitespace-normal break-words">
-              Optional internet access for the remote server. Quick tunnels use
-              random URLs; named tunnels keep a{" "}
-              <a
-                href="https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="underline"
-              >
-                persistent URL
-              </a>
-              .
-            </div>
+          title={
+            <ControlLabel
+              label="Cloudflare Tunnel"
+              tooltip="Optional internet access for the remote server. Quick tunnels use random URLs; named tunnels keep a persistent URL."
+            />
           }
         >
           {!isCloudflaredInstalled ? (

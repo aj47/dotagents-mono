@@ -107,7 +107,7 @@ export const Control = ({
           {displayLabel}
         </div>
       </div>
-      <div className="flex w-full min-w-0 max-w-full items-center justify-start overflow-hidden sm:max-w-[48%] sm:justify-end">
+      <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-start gap-2 sm:max-w-[48%] sm:justify-end">
         {children}
       </div>
     </div>
@@ -188,14 +188,14 @@ export const ControlGroup = ({
             }}
             aria-expanded={!isCollapsed}
           >
-            <span className="flex items-center gap-2 text-sm font-semibold">
+            <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
               {isCollapsed ? (
                 <ChevronRight className="text-muted-foreground h-4 w-4" />
               ) : (
                 <ChevronDown className="text-muted-foreground h-4 w-4" />
               )}
-              <span>{title}</span>
-            </span>
+              <div className="min-w-0">{title}</div>
+            </div>
           </button>
 
           {!isCollapsed && (
