@@ -314,6 +314,59 @@ export interface ConversationHistoryItem {
   searchText?: string
 }
 
+export type ArtifactKind =
+  | "markdown"
+  | "text"
+  | "html"
+  | "image"
+  | "video"
+  | "audio"
+  | "pdf"
+  | "url"
+  | "file"
+  | "unknown"
+
+export type ArtifactReferenceSource =
+  | "content"
+  | "displayContent"
+  | "toolCall"
+  | "toolResult"
+
+export interface ArtifactRecord {
+  id: string
+  kind: ArtifactKind
+  name: string
+  title?: string
+  originalReference: string
+  normalizedReference: string
+  localPath?: string
+  url?: string
+  previewUrl?: string
+  sizeBytes?: number
+  modifiedAt?: number
+  createdAt?: number
+  updatedAt?: number
+  conversationId: string
+  conversationTitle: string
+  messageId: string
+  messageRole: ConversationMessage["role"]
+  messageTimestamp?: number
+  source: ArtifactReferenceSource
+  excerpt?: string
+  canPreview: boolean
+  canReadText: boolean
+  canOpen: boolean
+  canReveal: boolean
+}
+
+export interface ArtifactListResponse {
+  artifacts: ArtifactRecord[]
+  total: number
+  scannedConversationCount: number
+  totalConversationCount: number
+  countsByKind: Partial<Record<ArtifactKind, number>>
+}
+
 export type ProfileMcpServerConfig = {
   disabledServers?: string[]
   disabledTools?: string[]

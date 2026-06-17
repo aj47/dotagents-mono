@@ -10,6 +10,7 @@ import {
   CONVERSATION_VIDEO_ASSET_HOST,
   getConversationVideoAssetPath,
 } from "./conversation-video-assets"
+import { artifactService } from "./artifact-service"
 
 const rendererDir = path.join(__dirname, "../renderer")
 
@@ -91,6 +92,27 @@ export function registerServeProtocol() {
 
     if (host === "app") {
       return handleApp(request, callback)
+    }
+
+    if (host === "artifact") {
+      let id = ""
+      try {
+        id = decodeURIComponent(pathname.slice(1))
+      } catch {
+        return callback({ error: FILE_NOT_FOUND })
+      }
+
+      void artifactService
+        .resolvePreviewPath(id)
+        .then((artifactPath) => {
+          if (artifactPath) {
+            callback({ path: artifactPath })
+          } else {
+            callback({ error: FILE_NOT_FOUND })
+          }
+        })
+        .catch(() => callback({ error: FILE_NOT_FOUND }))
+      return
     }
 
     if (host === CONVERSATION_IMAGE_ASSET_HOST || host === CONVERSATION_VIDEO_ASSET_HOST) {

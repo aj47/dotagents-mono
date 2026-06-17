@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getConversationVideoAssetPath: vi.fn(
     (conversationId: string, fileName: string) => `/videos/${conversationId}/${fileName}`,
   ),
+  resolvePreviewPath: vi.fn(),
   registerFileProtocol: vi.fn(),
   registerSchemesAsPrivileged: vi.fn(),
 }))
@@ -30,6 +31,12 @@ vi.mock("./conversation-image-assets", () => ({
 vi.mock("./conversation-video-assets", () => ({
   CONVERSATION_VIDEO_ASSET_HOST: "conversation-video",
   getConversationVideoAssetPath: mocks.getConversationVideoAssetPath,
+}))
+
+vi.mock("./artifact-service", () => ({
+  artifactService: {
+    resolvePreviewPath: mocks.resolvePreviewPath,
+  },
 }))
 
 describe("serve protocol", () => {
@@ -60,5 +67,20 @@ describe("serve protocol", () => {
     handler({ url: "assets://conversation-video/conv_1/abcdef1234567890.mp4" }, callback)
 
     expect(callback).toHaveBeenCalledWith({ path: "/videos/conv_1/abcdef1234567890.mp4" })
+  })
+
+  it("resolves artifact preview paths", async () => {
+    mocks.resolvePreviewPath.mockResolvedValue("/tmp/report.pdf")
+    const { registerServeProtocol } = await import("./serve")
+    registerServeProtocol()
+
+    const handler = mocks.registerFileProtocol.mock.calls[0][1]
+    const callback = vi.fn()
+
+    handler({ url: "assets://artifact/artifact-id" }, callback)
+    await vi.waitFor(() => {
+      expect(callback).toHaveBeenCalledWith({ path: "/tmp/report.pdf" })
+    })
+    expect(mocks.resolvePreviewPath).toHaveBeenCalledWith("artifact-id")
   })
 })
