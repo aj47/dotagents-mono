@@ -165,11 +165,13 @@ export function SettingsPageShell({
     <div className="modern-panel flex h-full min-w-0 flex-col overflow-hidden">
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6",
+          "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 pr-6 sm:px-6 sm:pr-8",
           contentClassName,
         )}
       >
-        <div className={cn("mx-auto w-full max-w-5xl", innerClassName)}>
+        <div
+          className={cn("mx-auto w-full min-w-0 max-w-full", innerClassName)}
+        >
           {children}
         </div>
       </div>

@@ -98,16 +98,16 @@ export const Control = ({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5",
+        "flex min-w-0 max-w-full flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5",
         className,
       )}
     >
-      <div className="min-w-0 sm:max-w-[52%]">
+      <div className="min-w-0 max-w-full sm:max-w-[52%]">
         <div className="break-words text-sm font-medium leading-5">
           {displayLabel}
         </div>
       </div>
-      <div className="flex w-full min-w-0 items-center justify-start sm:max-w-[48%] sm:justify-end">
+      <div className="flex w-full min-w-0 max-w-full items-center justify-start overflow-hidden sm:max-w-[48%] sm:justify-end">
         {children}
       </div>
     </div>
