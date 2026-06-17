@@ -114,6 +114,17 @@ function getArtifactSummary(artifact: ArtifactRecord): string {
   return artifact.localPath ?? artifact.excerpt ?? artifact.url ?? ""
 }
 
+function getArtifactMeta(artifact: ArtifactRecord): string {
+  return [
+    kindLabel[artifact.kind],
+    artifact.conversationTitle || "Untitled session",
+    artifact.sizeBytes !== undefined ? formatBytes(artifact.sizeBytes) : "",
+    formatTimestamp(artifact.updatedAt),
+  ]
+    .filter(Boolean)
+    .join(" / ")
+}
+
 function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
   const textQuery = useQuery({
     queryKey: ["artifact-text", artifact.id],
@@ -436,7 +447,7 @@ export const Component = () => {
                     type="button"
                     onClick={() => setSelectedId(artifact.id)}
                     className={cn(
-                      "flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors",
+                      "flex h-9 w-full items-center gap-2 border-b px-4 text-left transition-colors",
                       active
                         ? "bg-muted text-foreground"
                         : "hover:bg-accent/50",
@@ -444,30 +455,18 @@ export const Component = () => {
                   >
                     <KindIcon
                       kind={artifact.kind}
-                      className="text-muted-foreground mt-0.5 shrink-0"
+                      className="text-muted-foreground shrink-0"
                     />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">
+                    <span className="grid min-w-0 flex-1 grid-cols-[minmax(9rem,0.9fr)_minmax(8rem,0.75fr)_minmax(0,1.35fr)] items-center gap-3">
+                      <span className="truncate text-sm font-semibold">
                         {artifact.name}
                       </span>
-                      <span className="text-muted-foreground mt-1 flex items-center gap-2 text-[11px]">
-                        <span className="min-w-0 truncate">
-                          {artifact.conversationTitle || "Untitled session"}
-                        </span>
-                        {artifact.sizeBytes !== undefined && (
-                          <span className="shrink-0">
-                            {formatBytes(artifact.sizeBytes)}
-                          </span>
-                        )}
-                        <span className="shrink-0">
-                          {formatTimestamp(artifact.updatedAt)}
-                        </span>
+                      <span className="text-muted-foreground truncate text-[11px]">
+                        {getArtifactMeta(artifact)}
                       </span>
-                      {summary && (
-                        <span className="text-muted-foreground mt-1.5 line-clamp-1 text-xs">
-                          {summary}
-                        </span>
-                      )}
+                      <span className="text-muted-foreground truncate text-xs">
+                        {summary}
+                      </span>
                     </span>
                   </button>
                 )

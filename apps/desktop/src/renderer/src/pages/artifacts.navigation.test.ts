@@ -13,6 +13,10 @@ const bottomBarSource = readFileSync(
   new URL("../components/app-bottom-bar.tsx", import.meta.url),
   "utf8",
 )
+const artifactsPageSource = readFileSync(
+  new URL("./artifacts.tsx", import.meta.url),
+  "utf8",
+)
 
 describe("artifacts navigation", () => {
   it("registers the artifacts route", () => {
@@ -26,5 +30,13 @@ describe("artifacts navigation", () => {
     )
     expect(appLayoutSource).toContain('to="/artifacts"')
     expect(bottomBarSource).toContain('navigate("/artifacts")')
+  })
+
+  it("keeps artifact list rows compact by default", () => {
+    expect(artifactsPageSource).toContain("flex h-9 w-full items-center")
+    expect(artifactsPageSource).toContain(
+      "grid-cols-[minmax(9rem,0.9fr)_minmax(8rem,0.75fr)_minmax(0,1.35fr)]",
+    )
+    expect(artifactsPageSource).not.toContain("line-clamp-1 text-xs")
   })
 })
