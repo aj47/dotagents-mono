@@ -237,6 +237,22 @@ describe("remote-server route registration", () => {
     expect(source).toContain("remoteServerApiKey: getMaskedRemoteServerApiKey(cfg.remoteServerApiKey)")
   })
 
+  it("exposes Tailscale-backed easy pairing status for mobile QR setup", () => {
+    const source = getRemoteServerSource()
+    const operatorRemoteServerStatusSection = getSection(source, "function buildOperatorRemoteServerStatus", "function buildOperatorTunnelStatus")
+    const statusSection = getSection(source, "export function getRemoteServerStatus()", "export function getRemoteServerPairingApiKey")
+
+    expect(source).toContain('from "./tailscale-status"')
+    expect(source).toContain("function isAllowedRemoteServerBindAddress")
+    expect(source).toContain("getTailscalePairingStatus(port).ipv4 === normalizedHost")
+    expect(statusSection).toContain("const tailscale = getTailscalePairingStatus(port)")
+    expect(statusSection).toContain("const canUseTailscaleUrlForCurrentBind")
+    expect(statusSection).toContain('const easyPairingSource: "tailscale" | "lan" | undefined = canUseTailscaleUrlForCurrentBind ? "tailscale" : connectableUrl ? "lan" : undefined')
+    expect(operatorRemoteServerStatusSection).toContain("easyPairingUrl")
+    expect(operatorRemoteServerStatusSection).toContain("easyPairingSource")
+    expect(operatorRemoteServerStatusSection).toContain("tailscale: status.tailscale")
+  })
+
   it("applies session-aware ACP MCP filtering for injected tool routes", () => {
     const source = getRemoteServerSource()
     const listInjectedMcpToolsSection = getSection(source, "const listInjectedMcpTools = async", "const callInjectedMcpTool = async")

@@ -107,7 +107,7 @@ export function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const LOCAL_API_ADDRESS_PATTERN = /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|\[(::1|f[cd][0-9a-f]{1,4}:|fe[89ab][0-9a-f]:)[^\]]*\])/i;
+const LOCAL_API_ADDRESS_PATTERN = /^(localhost|127\.|192\.168\.|10\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|172\.(1[6-9]|2[0-9]|3[01])\.|\[(::1|f[cd][0-9a-f]{1,4}:|fe[89ab][0-9a-f]:)[^\]]*\])/i;
 
 export function normalizeApiBaseUrl(baseUrl: string): string {
   let normalizedUrl = baseUrl.trim();
@@ -317,4 +317,3 @@ export async function checkServerConnection(
     };
   }
 }
-

@@ -167,12 +167,19 @@ export function RemoteServerSettingsGroups({
   const tunnelList: Array<{ id: string; name: string; created_at: string }> = tunnelListQuery.data?.tunnels ?? []
   const tunnelMode = cfg?.cloudflareTunnelMode ?? "quick"
 
-  const bindOptions: Array<{ label: string; value: "127.0.0.1" | "0.0.0.0" }> = useMemo(
-    () => [
+  const bindOptions: Array<{ label: string; value: string }> = useMemo(
+    () => {
+      const options = [
       { label: "Localhost (127.0.0.1)", value: "127.0.0.1" },
       { label: "All Interfaces (0.0.0.0)", value: "0.0.0.0" },
-    ],
-    [],
+      ]
+      const tailscaleIpv4 = remoteServerStatus?.tailscale?.ipv4
+      if (tailscaleIpv4) {
+        options.push({ label: `Tailscale (${tailscaleIpv4})`, value: tailscaleIpv4 })
+      }
+      return options
+    },
+    [remoteServerStatus?.tailscale?.ipv4],
   )
 
   if (!cfg) return null
@@ -200,6 +207,36 @@ export function RemoteServerSettingsGroups({
   const baseUrl = liveConnectableUrl ?? fallbackBaseUrl
   const localServerBaseUrl =
     baseUrl ?? `http://${formatHostForHttpUrl(configuredBindAddress)}:${configuredPort}/v1`
+  const tailscaleStatus = remoteServerStatus?.tailscale
+  const easyPairingUrl = isRemoteServerRunning
+    ? remoteServerStatus?.easyPairingUrl
+    : undefined
+  const easyPairingSource = remoteServerStatus?.easyPairingSource === "tailscale"
+    ? "Tailscale"
+    : remoteServerStatus?.easyPairingSource === "lan"
+      ? "LAN"
+      : tunnelStatus?.running && tunnelStatus.url
+        ? "Cloudflare"
+        : undefined
+  const easyPairingBaseUrl = easyPairingUrl ?? (
+    tunnelStatus?.running && tunnelStatus.url ? `${tunnelStatus.url}/v1` : undefined
+  )
+  const easyPairingDeepLink = easyPairingBaseUrl && remoteServerPairingApiKey
+    ? `dotagents://config?baseUrl=${encodeURIComponent(easyPairingBaseUrl)}&apiKey=${encodeURIComponent(remoteServerPairingApiKey)}`
+    : undefined
+  const isUsingTailscaleBind = !!tailscaleStatus?.ipv4 && configuredBindAddress === tailscaleStatus.ipv4
+  const canUseTailscale = enabled && !!tailscaleStatus?.running && !!tailscaleStatus.ipv4
+  const easyPairingStatusText = !enabled
+    ? "Enable the remote server to pair mobile."
+    : tailscaleStatus?.baseUrl
+      ? isUsingTailscaleBind
+        ? "Tailscale is active and the server is bound to your tailnet address."
+        : "Tailscale is active. Bind to the Tailscale address for private mobile access."
+      : tailscaleStatus?.error
+        ? tailscaleStatus.error
+        : easyPairingBaseUrl
+          ? "Using the LAN-reachable URL for mobile pairing."
+          : "No mobile-reachable URL is available yet."
   const shouldShowConnectabilityWarning =
     isRemoteServerRunning &&
     isUnconnectableMobileHost(configuredBindAddress) &&
@@ -243,6 +280,84 @@ export function RemoteServerSettingsGroups({
 
           {enabled && (
             <>
+              <Control label={<ControlLabel label="Easy Mobile Pairing" tooltip="Scan one QR code with the DotAgents mobile app to connect" />} className="px-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  {streamerMode ? (
+                    <div className="p-3 bg-muted/50 rounded-lg flex flex-col items-center justify-center shrink-0" style={{ width: 196, height: 196 }}>
+                      <EyeOff className="h-8 w-8 text-muted-foreground mb-2" />
+                      <span className="text-xs text-muted-foreground text-center">QR hidden<br />Streamer Mode</span>
+                    </div>
+                  ) : easyPairingDeepLink ? (
+                    <div className="p-3 bg-white rounded-lg shrink-0">
+                      <QRCodeSVG
+                        value={easyPairingDeepLink}
+                        size={196}
+                        level="M"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-muted/50 rounded-lg flex items-center justify-center shrink-0 text-xs text-muted-foreground text-center" style={{ width: 196, height: 196 }}>
+                      Pairing URL unavailable
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div>
+                      <div className="text-sm font-medium">
+                        {easyPairingSource ? `${easyPairingSource} pairing` : "Mobile pairing"}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground break-words">
+                        {streamerMode && easyPairingBaseUrl ? maskUrl(easyPairingBaseUrl) : easyPairingBaseUrl ?? "No pairing URL available"}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground break-words">
+                        {streamerMode
+                          ? "QR code and link hidden in Streamer Mode"
+                          : easyPairingStatusText}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={!canUseTailscale || isUsingTailscaleBind}
+                        title={!canUseTailscale ? "Tailscale is unavailable" : isUsingTailscaleBind ? "Already using Tailscale" : undefined}
+                        onClick={() => {
+                          if (!tailscaleStatus?.ipv4) return
+                          saveConfig({ remoteServerBindAddress: tailscaleStatus.ipv4 })
+                        }}
+                      >
+                        {isUsingTailscaleBind ? "Using Tailscale" : "Use Tailscale"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={streamerMode || !easyPairingDeepLink}
+                        title={streamerMode ? "Disabled in Streamer Mode" : !easyPairingDeepLink ? "Pairing link unavailable" : undefined}
+                        onClick={() => {
+                          if (streamerMode || !easyPairingDeepLink) return
+                          void copyTextToClipboard(easyPairingDeepLink).catch((err) => {
+                            console.error("Failed to copy easy pairing deep link", err)
+                          })
+                        }}
+                      >
+                        {streamerMode ? <><EyeOff className="h-3.5 w-3.5 mr-1" />Hidden</> : "Copy Link"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={streamerMode || !easyPairingBaseUrl}
+                        title={streamerMode ? "Disabled in Streamer Mode" : !easyPairingBaseUrl ? "Pairing URL unavailable" : "Print QR code to terminal"}
+                        onClick={() => {
+                          if (streamerMode || !easyPairingBaseUrl) return
+                          tipcClient.printRemoteServerQRCode({ url: easyPairingBaseUrl })
+                        }}
+                      >
+                        Print QR
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Control>
+
               <Control label={<ControlLabel label="Auto-Show Panel" tooltip="Automatically show the floating panel when receiving messages from remote clients" />} className="px-3">
                 <Switch
                   checked={cfg.remoteServerAutoShowPanel ?? false}

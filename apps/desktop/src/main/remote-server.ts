@@ -73,6 +73,7 @@ import {
   openDownloadedReleaseAsset,
   revealDownloadedReleaseAsset,
 } from "./updater"
+import { getTailscalePairingStatus } from "./tailscale-status"
 import {
   WINDOWS,
   getWindowRendererHandlers,
@@ -924,6 +925,14 @@ function buildRemoteServerBaseUrl(host: string, port: number): string {
   return `http://${formatHostForHttpUrl(host)}:${port}/v1`
 }
 
+function isAllowedRemoteServerBindAddress(host: string, port: number): boolean {
+  const normalizedHost = normalizeHostForComparison(host)
+  if (normalizedHost === "127.0.0.1" || normalizedHost === "0.0.0.0") {
+    return true
+  }
+  return getTailscalePairingStatus(port).ipv4 === normalizedHost
+}
+
 function getConnectableIp(bind: string, options: ConnectableIpOptions = {}): string {
   const { warn = true } = options
   const normalizedBind = normalizeHostForComparison(bind)
@@ -1554,6 +1563,9 @@ function buildOperatorRemoteServerStatus(): OperatorRemoteServerStatus {
     port: status.port,
     ...(status.url ? { url: status.url } : {}),
     ...(status.connectableUrl ? { connectableUrl: status.connectableUrl } : {}),
+    ...(status.easyPairingUrl ? { easyPairingUrl: status.easyPairingUrl } : {}),
+    ...(status.easyPairingSource ? { easyPairingSource: status.easyPairingSource } : {}),
+    tailscale: status.tailscale,
     ...(status.lastError ? { lastError: status.lastError } : {}),
   }
 }
@@ -5205,8 +5217,11 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (typeof body.remoteServerPort === "number" && Number.isInteger(body.remoteServerPort) && body.remoteServerPort >= 1 && body.remoteServerPort <= 65535) {
         updates.remoteServerPort = body.remoteServerPort
       }
-      if (typeof body.remoteServerBindAddress === "string" && ["127.0.0.1", "0.0.0.0"].includes(body.remoteServerBindAddress)) {
-        updates.remoteServerBindAddress = body.remoteServerBindAddress as "127.0.0.1" | "0.0.0.0"
+      if (
+        typeof body.remoteServerBindAddress === "string"
+        && isAllowedRemoteServerBindAddress(body.remoteServerBindAddress, body.remoteServerPort ?? cfg.remoteServerPort ?? 3210)
+      ) {
+        updates.remoteServerBindAddress = normalizeHostForComparison(body.remoteServerBindAddress)
       }
       if (typeof body.remoteServerApiKey === "string" && body.remoteServerApiKey !== REMOTE_SERVER_SECRET_MASK) {
         // Reject blank/whitespace-only keys: saving an empty string here would make
@@ -8246,7 +8261,14 @@ export function getRemoteServerStatus() {
   const running = !!server
   const url = running ? buildRemoteServerBaseUrl(bind, port) : undefined
   const connectableUrl = running ? getConnectableBaseUrlForMobilePairing(bind, port, { warn: false }) : undefined
-  return { running, url, connectableUrl, bind, port, lastError }
+  const tailscale = getTailscalePairingStatus(port)
+  const normalizedBind = normalizeHostForComparison(bind)
+  const canUseTailscaleUrlForCurrentBind = !!tailscale.baseUrl
+    && !!tailscale.ipv4
+    && (normalizedBind === tailscale.ipv4 || isWildcardBindHost(normalizedBind))
+  const easyPairingUrl = canUseTailscaleUrlForCurrentBind ? tailscale.baseUrl : connectableUrl
+  const easyPairingSource: "tailscale" | "lan" | undefined = canUseTailscaleUrlForCurrentBind ? "tailscale" : connectableUrl ? "lan" : undefined
+  return { running, url, connectableUrl, bind, port, lastError, tailscale, easyPairingUrl, easyPairingSource }
 }
 
 export function getRemoteServerPairingApiKey(): string {

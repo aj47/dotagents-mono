@@ -4664,9 +4664,11 @@ export const router = {
   }),
 
   // Remote Server QR Code handler
-  printRemoteServerQRCode: t.procedure.action(async () => {
-    return printQRCodeToTerminal()
-  }),
+  printRemoteServerQRCode: t.procedure
+    .input<{ url?: string } | undefined>()
+    .action(async ({ input }) => {
+      return printQRCodeToTerminal(input?.url)
+    }),
 
   // MCP Elicitation handlers (Protocol 2025-11-25)
   resolveElicitation: t.procedure

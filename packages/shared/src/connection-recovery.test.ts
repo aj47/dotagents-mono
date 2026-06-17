@@ -118,6 +118,11 @@ describe('normalizeApiBaseUrl', () => {
     expect(result).toBe('http://192.168.1.100:3210/v1')
   })
 
+  it('handles Tailscale 100.64.0.0/10 addresses as local', () => {
+    const result = normalizeApiBaseUrl('100.122.255.96:3210/v1')
+    expect(result).toBe('http://100.122.255.96:3210/v1')
+  })
+
   it('preserves custom paths', () => {
     const result = normalizeApiBaseUrl('https://api.example.com/custom/path')
     expect(result).toBe('https://api.example.com/custom/path')

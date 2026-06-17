@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { resolveQrScannerActivation } from './connection-settings-qr';
+import { parseConnectionQrCode, resolveQrScannerActivation } from './connection-settings-qr';
 
 describe('resolveQrScannerActivation', () => {
   it('returns a visible browser guidance error when camera permission is denied', async () => {
@@ -33,5 +33,29 @@ describe('resolveQrScannerActivation', () => {
       requestPermission,
     })).resolves.toBeNull();
     expect(requestPermission).not.toHaveBeenCalled();
+  });
+});
+
+describe('parseConnectionQrCode', () => {
+  it('preserves an explicit HTTP Tailscale IP base URL', () => {
+    const qrValue = `dotagents://config?baseUrl=${encodeURIComponent('http://100.122.255.96:3210/v1')}&apiKey=secret`;
+
+    expect(parseConnectionQrCode(qrValue)).toEqual({
+      baseUrl: 'http://100.122.255.96:3210/v1',
+      apiKey: 'secret',
+      model: undefined,
+    });
+  });
+
+  it('parses config as a path target', () => {
+    expect(parseConnectionQrCode('dotagents:/config?baseUrl=http%3A%2F%2F100.122.255.96%3A3210%2Fv1&apiKey=secret')).toEqual({
+      baseUrl: 'http://100.122.255.96:3210/v1',
+      apiKey: 'secret',
+      model: undefined,
+    });
+  });
+
+  it('rejects unrelated QR codes', () => {
+    expect(parseConnectionQrCode('https://example.com')).toBeNull();
   });
 });

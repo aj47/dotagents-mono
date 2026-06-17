@@ -61,6 +61,16 @@ const Stack = createNativeStackNavigator();
 function parseDeepLink(url: string | null) {
   if (!url) return null;
   try {
+    if (Platform.OS === 'web') {
+      const parsedWebUrl = new URL(url);
+      const baseUrl = parsedWebUrl.searchParams.get('baseUrl') || undefined;
+      const apiKey = parsedWebUrl.searchParams.get('apiKey') || undefined;
+      const model = parsedWebUrl.searchParams.get('model') || undefined;
+      if (baseUrl || apiKey || model) {
+        return { baseUrl, apiKey, model };
+      }
+    }
+
     const parsed = Linking.parse(url);
     // Handle dotagents://config?baseUrl=...&apiKey=...&model=...
     if (parsed.path === 'config' || parsed.hostname === 'config') {
@@ -173,6 +183,9 @@ function Navigation() {
         };
         cfg.setConfig(newConfig);
         await saveConfig(newConfig);
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history?.replaceState) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
       }
     };
 

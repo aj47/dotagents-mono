@@ -788,7 +788,7 @@ const toolHandlers: Record<string, ToolHandler> = {
       })
     }
 
-    if (mappedAppSessionId) {
+    if (mappedAppSessionId && session) {
       setAcpSessionTitleOverride(context.sessionId, updatedConversation.title)
       const parentSessionId = mappedAppSessionId
       const runId = agentSessionStateManager.getSessionRunId(trackedSessionId)

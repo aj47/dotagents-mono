@@ -3,6 +3,42 @@ export type QrCameraPermissionResult = {
   canAskAgain?: boolean;
 };
 
+export type ParsedConnectionQrCode = {
+  baseUrl?: string;
+  apiKey?: string;
+  model?: string;
+};
+
+export function parseConnectionQrCode(data: string): ParsedConnectionQrCode | null {
+  try {
+    const parsed = new URL(data);
+    if (parsed.protocol !== 'dotagents:') {
+      return null;
+    }
+
+    const isConfigTarget =
+      parsed.hostname === 'config' ||
+      parsed.pathname === '/config' ||
+      parsed.pathname === 'config';
+
+    if (!isConfigTarget) {
+      return null;
+    }
+
+    const baseUrl = parsed.searchParams.get('baseUrl') || undefined;
+    const apiKey = parsed.searchParams.get('apiKey') || undefined;
+    const model = parsed.searchParams.get('model') || undefined;
+
+    if (!baseUrl && !apiKey && !model) {
+      return null;
+    }
+
+    return { baseUrl, apiKey, model };
+  } catch {
+    return null;
+  }
+}
+
 type ResolveQrScannerActivationOptions = {
   hasPermission: boolean;
   isWeb: boolean;

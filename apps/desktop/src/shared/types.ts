@@ -1393,7 +1393,7 @@ export type Config = {
 	  // Remote Server Configuration
 	  remoteServerEnabled?: boolean
 	  remoteServerPort?: number
-	  remoteServerBindAddress?: "127.0.0.1" | "0.0.0.0"
+	  remoteServerBindAddress?: string
 	  remoteServerApiKey?: string
 	  remoteServerLogLevel?: "error" | "info" | "debug"
 	  remoteServerCorsOrigins?: string[]
