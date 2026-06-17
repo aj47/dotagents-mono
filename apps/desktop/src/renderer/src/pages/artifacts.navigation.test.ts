@@ -35,8 +35,22 @@ describe("artifacts navigation", () => {
   it("keeps artifact list rows compact by default", () => {
     expect(artifactsPageSource).toContain("flex h-9 w-full items-center")
     expect(artifactsPageSource).toContain(
-      "grid-cols-[minmax(9rem,0.9fr)_minmax(8rem,0.75fr)_minmax(0,1.35fr)]",
+      "grid-cols-[minmax(8rem,1fr)_minmax(7rem,0.8fr)]",
+    )
+    expect(artifactsPageSource).toContain(
+      "md:grid-cols-[minmax(9rem,0.9fr)_minmax(8rem,0.75fr)_minmax(0,1.35fr)]",
     )
     expect(artifactsPageSource).not.toContain("line-clamp-1 text-xs")
+  })
+
+  it("keeps preview split behind a wider breakpoint", () => {
+    expect(artifactsPageSource).toContain(
+      "xl:grid-cols-[minmax(18rem,30rem)_minmax(0,1fr)]",
+    )
+    expect(artifactsPageSource).toContain(
+      "grid-rows-[minmax(9rem,32%)_minmax(0,1fr)]",
+    )
+    expect(artifactsPageSource).toContain("xl:hidden")
+    expect(artifactsPageSource).toContain("xl:flex xl:border-t-0")
   })
 })

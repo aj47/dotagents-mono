@@ -363,15 +363,15 @@ export const Component = () => {
 
       <div
         className={cn(
-          "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(22rem,1fr)_minmax(18rem,24rem)] lg:grid-rows-1",
+          "grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(18rem,30rem)_minmax(0,1fr)] xl:grid-rows-1",
           showCompactPreview
-            ? "grid-rows-[minmax(0,1fr)_minmax(14rem,45%)]"
+            ? "grid-rows-[minmax(9rem,32%)_minmax(0,1fr)]"
             : "grid-rows-1",
         )}
       >
         <div className="flex min-h-0 flex-col border-r">
           {selectedArtifact && (
-            <div className="bg-muted/20 flex shrink-0 items-center gap-2 border-b px-4 py-2 lg:hidden">
+            <div className="bg-muted/20 flex shrink-0 items-center gap-2 border-b px-4 py-2 xl:hidden">
               <KindIcon
                 kind={selectedArtifact.kind}
                 className="text-muted-foreground shrink-0"
@@ -457,14 +457,14 @@ export const Component = () => {
                       kind={artifact.kind}
                       className="text-muted-foreground shrink-0"
                     />
-                    <span className="grid min-w-0 flex-1 grid-cols-[minmax(9rem,0.9fr)_minmax(8rem,0.75fr)_minmax(0,1.35fr)] items-center gap-3">
+                    <span className="grid min-w-0 flex-1 grid-cols-[minmax(8rem,1fr)_minmax(7rem,0.8fr)] items-center gap-3 md:grid-cols-[minmax(9rem,0.9fr)_minmax(8rem,0.75fr)_minmax(0,1.35fr)]">
                       <span className="truncate text-sm font-semibold">
                         {artifact.name}
                       </span>
                       <span className="text-muted-foreground truncate text-[11px]">
                         {getArtifactMeta(artifact)}
                       </span>
-                      <span className="text-muted-foreground truncate text-xs">
+                      <span className="text-muted-foreground hidden truncate text-xs md:block">
                         {summary}
                       </span>
                     </span>
@@ -477,7 +477,7 @@ export const Component = () => {
 
         <div
           className={cn(
-            "bg-muted/10 min-h-0 min-w-0 flex-col border-t lg:flex lg:border-t-0",
+            "bg-muted/10 min-h-0 min-w-0 flex-col border-t xl:flex xl:border-t-0",
             showCompactPreview ? "flex" : "hidden",
           )}
         >
