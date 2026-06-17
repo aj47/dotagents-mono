@@ -696,15 +696,15 @@ export function Component() {
               }
               className="px-3"
             >
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
+              <div className="w-full min-w-0 space-y-3 lg:max-w-56">
+                <div className="flex min-w-0 items-center gap-2">
                   <Switch
                     checked={configQuery.data?.agentKillSwitchEnabled !== false}
                     onCheckedChange={(checked) =>
                       saveConfig({ agentKillSwitchEnabled: checked })
                     }
                   />
-                  <span className="text-muted-foreground text-sm">
+                  <span className="text-muted-foreground min-w-0 text-sm">
                     Enable kill switch
                   </span>
                 </div>
@@ -726,7 +726,7 @@ export function Component() {
                         saveConfig({ agentKillSwitchHotkey: value })
                       }}
                     >
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-full min-w-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
