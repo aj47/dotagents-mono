@@ -167,6 +167,7 @@ export function getCodexReasoningOptions(model: string): { effort: CodexReasonin
 }
 
 type CodexTextVerbosity = "low" | "medium" | "high"
+type CodexServiceTier = "priority"
 
 export function getCodexTextVerbosity(): CodexTextVerbosity {
   const override = configStore.get().codexTextVerbosity
@@ -174,6 +175,10 @@ export function getCodexTextVerbosity(): CodexTextVerbosity {
     return override
   }
   return "medium"
+}
+
+export function getCodexServiceTier(): CodexServiceTier | undefined {
+  return configStore.get().codexServiceTier === "priority" ? "priority" : undefined
 }
 
 function normalizeChatGptWebBaseUrl(baseUrl: string | undefined): string {
@@ -795,6 +800,11 @@ export async function makeChatGptWebResponse(
     text: { verbosity: getCodexTextVerbosity() },
     include: ["reasoning.encrypted_content"],
     parallel_tool_calls: true,
+  }
+
+  const serviceTier = getCodexServiceTier()
+  if (serviceTier) {
+    payload.service_tier = serviceTier
   }
 
   const preparedTools = buildCodexTools(options.tools)

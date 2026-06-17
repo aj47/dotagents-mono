@@ -167,6 +167,17 @@ describe("chatgpt-web Codex options", () => {
     const { getCodexTextVerbosity } = await import("./chatgpt-web-provider")
     expect(getCodexTextVerbosity()).toBe("medium")
   })
+
+  it("returns the configured Codex Fast service tier only for priority", async () => {
+    await setupCodexOptionsTest({ codexServiceTier: "priority" })
+    let provider = await import("./chatgpt-web-provider")
+    expect(provider.getCodexServiceTier()).toBe("priority")
+
+    vi.resetModules()
+    await setupCodexOptionsTest({ codexServiceTier: "standard" })
+    provider = await import("./chatgpt-web-provider")
+    expect(provider.getCodexServiceTier()).toBeUndefined()
+  })
 })
 
 describe("chatgpt-web response streaming", () => {
@@ -232,6 +243,27 @@ describe("chatgpt-web response streaming", () => {
     const payload = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)
     expect(payload.instructions).toContain("System \uFFFD")
     expect(payload.input[0].content).toBe("LinkedIn resource \uFFFD\nContext ref")
+  })
+
+  it("passes the Codex Fast service tier in the responses payload", async () => {
+    await setupChatGptWebProviderTest({
+      chatgptWebAccessToken: "test-access-token",
+      codexServiceTier: "priority",
+    })
+    const encoder = new TextEncoder()
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "response.completed", response: { output: [] } })}\n\n`))
+        controller.close()
+      },
+    })
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(body, { status: 200 }) as any)
+
+    const { makeChatGptWebResponse } = await import("./chatgpt-web-provider")
+    await makeChatGptWebResponse([{ role: "user", content: "Hello" }])
+
+    const payload = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)
+    expect(payload.service_tier).toBe("priority")
   })
 })
 

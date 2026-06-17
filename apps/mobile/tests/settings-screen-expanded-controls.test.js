@@ -36,6 +36,7 @@ test('keeps expanded desktop provider setup controls local to mobile settings', 
 test('restores Codex, speech, auto-paste, and Discord mobile settings without shared presentation imports', () => {
   assert.match(settingsSource, /OPENAI_REASONING_EFFORT_OPTIONS/);
   assert.match(settingsSource, /CODEX_TEXT_VERBOSITY_OPTIONS/);
+  assert.match(settingsSource, /CODEX_SERVICE_TIER_OPTIONS/);
   assert.match(settingsSource, /openaiSttLanguage/);
   assert.match(settingsSource, /groqSttPrompt/);
   assert.match(settingsSource, /PARAKEET_NUM_THREAD_OPTIONS/);
@@ -53,13 +54,16 @@ test('restores Codex, speech, auto-paste, and Discord mobile settings without sh
 test('mobile settings API types and desktop remote server expose the restored settings surface', () => {
   assert.match(settingsApiSource, /OpenAiReasoningEffort/);
   assert.match(settingsApiSource, /CodexTextVerbosity/);
+  assert.match(settingsApiSource, /CodexServiceTier/);
   assert.match(apiTypesSource, /openaiApiKey\?: string;/);
   assert.match(apiTypesSource, /openaiReasoningEffort\?: OpenAiReasoningEffort;/);
   assert.match(apiTypesSource, /codexTextVerbosity\?: CodexTextVerbosity;/);
+  assert.match(apiTypesSource, /codexServiceTier\?: CodexServiceTier;/);
   assert.match(apiTypesSource, /parakeetNumThreads\?: number;/);
   assert.match(apiTypesSource, /supertonicSteps\?: number;/);
   assert.match(remoteServerSource, /openaiApiKey: cfg\.openaiApiKey \? REMOTE_SERVER_SECRET_MASK : ""/);
   assert.match(remoteServerSource, /updates\.openaiReasoningEffort/);
+  assert.match(remoteServerSource, /updates\.codexServiceTier/);
   assert.match(remoteServerSource, /updates\.mcpAutoPasteDelay/);
   assert.match(remoteServerSource, /localTraceLoggingEnabled: cfg\.localTraceLoggingEnabled \?\? false/);
   assert.match(remoteServerSource, /updates\.localTraceLogPath/);

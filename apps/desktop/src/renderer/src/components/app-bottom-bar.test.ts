@@ -34,6 +34,7 @@ describe("app bottom bar", () => {
     expect(bottomBarSource).not.toContain(">Model<")
     expect(bottomBarSource).toContain('aria-label="Change thinking level"')
     expect(bottomBarSource).toContain('aria-label="Change verbosity"')
+    expect(bottomBarSource).toContain('aria-label="Change Codex service tier"')
   })
 
   it("updates the same config fields as settings model controls", () => {
@@ -43,5 +44,6 @@ describe("app bottom bar", () => {
     expect(bottomBarSource).toContain("useAvailableModelsQuery")
     expect(bottomBarSource).toContain("openaiReasoningEffort")
     expect(bottomBarSource).toContain("codexTextVerbosity")
+    expect(bottomBarSource).toContain("codexServiceTier")
   })
 })

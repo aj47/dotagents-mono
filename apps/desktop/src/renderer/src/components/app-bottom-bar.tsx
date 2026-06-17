@@ -19,6 +19,7 @@ import { cn } from "@renderer/lib/utils"
 
 type ReasoningEffort = NonNullable<Config["openaiReasoningEffort"]>
 type CodexVerbosity = NonNullable<Config["codexTextVerbosity"]>
+type CodexServiceTier = NonNullable<Config["codexServiceTier"]>
 
 const BAR_SELECT_CLASS =
   "h-5 min-w-0 cursor-pointer rounded border-0 bg-transparent py-0 pl-0 pr-5 text-[11px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60"
@@ -46,6 +47,14 @@ const VERBOSITY_OPTIONS: Array<{ value: CodexVerbosity; label: string }> = [
   { value: "low", label: "Low" },
   { value: "medium", label: "Medium" },
   { value: "high", label: "High" },
+]
+
+const CODEX_SERVICE_TIER_OPTIONS: Array<{
+  value: CodexServiceTier
+  label: string
+}> = [
+  { value: "standard", label: "Standard" },
+  { value: "priority", label: "Fast" },
 ]
 
 const getAgentProviderId = (config: Config | undefined): CHAT_PROVIDER_ID => {
@@ -184,6 +193,9 @@ const providerSupportsThinking = (providerId: CHAT_PROVIDER_ID): boolean =>
 const providerSupportsVerbosity = (providerId: CHAT_PROVIDER_ID): boolean =>
   providerId === "chatgpt-web"
 
+const providerSupportsServiceTier = (providerId: CHAT_PROVIDER_ID): boolean =>
+  providerId === "chatgpt-web"
+
 export function AppBottomBar() {
   const navigate = useNavigate()
   const configQuery = useConfigQuery()
@@ -233,6 +245,8 @@ export function AppBottomBar() {
     (providerId === "chatgpt-web" ? "low" : "medium")
   const verbosityValue: CodexVerbosity =
     (config?.codexTextVerbosity as CodexVerbosity | undefined) || "medium"
+  const serviceTierValue: CodexServiceTier =
+    (config?.codexServiceTier as CodexServiceTier | undefined) || "standard"
 
   const saveConfig = (updates: Partial<Config>) => {
     if (!config) return
@@ -361,6 +375,31 @@ export function AppBottomBar() {
               aria-label="Change verbosity"
             >
               {VERBOSITY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {providerSupportsServiceTier(providerId) && (
+          <label className="flex shrink-0 items-center gap-1">
+            <span className="i-mingcute-flash-line h-3.5 w-3.5" />
+            <select
+              value={serviceTierValue}
+              onChange={(event) =>
+                saveConfig({
+                  codexServiceTier: event.currentTarget
+                    .value as CodexServiceTier,
+                })
+              }
+              disabled={!config || saveConfigMutation.isPending}
+              className={cn(BAR_SELECT_CLASS, "max-w-[92px]")}
+              title="Change Codex service tier"
+              aria-label="Change Codex service tier"
+            >
+              {CODEX_SERVICE_TIER_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

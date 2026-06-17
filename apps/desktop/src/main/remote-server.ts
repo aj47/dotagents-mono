@@ -4855,6 +4855,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         mcpToolsChatgptWebModel: cfg.mcpToolsChatgptWebModel,
         openaiReasoningEffort: cfg.openaiReasoningEffort,
         codexTextVerbosity: cfg.codexTextVerbosity,
+        codexServiceTier: cfg.codexServiceTier,
         openaiApiKey: cfg.openaiApiKey ? REMOTE_SERVER_SECRET_MASK : "",
         openaiBaseUrl: cfg.openaiBaseUrl ?? "",
         groqApiKey: cfg.groqApiKey ? REMOTE_SERVER_SECRET_MASK : "",
@@ -5108,6 +5109,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.codexTextVerbosity === "string" && ["low", "medium", "high"].includes(body.codexTextVerbosity)) {
         updates.codexTextVerbosity = body.codexTextVerbosity as "low" | "medium" | "high"
+      }
+      if (typeof body.codexServiceTier === "string" && ["standard", "priority"].includes(body.codexServiceTier)) {
+        updates.codexServiceTier = body.codexServiceTier as "standard" | "priority"
       }
       // OpenAI compatible preset - validate against known preset IDs
       if (typeof body.currentModelPresetId === "string") {

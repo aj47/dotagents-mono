@@ -354,6 +354,31 @@ export function Component() {
                   </SelectContent>
                 </Select>
               </Control>
+              <Control
+                label={
+                  <ControlLabel
+                    label="Service tier"
+                    tooltip="Use Standard for normal Codex usage, or Fast to request the priority service tier."
+                  />
+                }
+              >
+                <Select
+                  value={config.codexServiceTier || "standard"}
+                  onValueChange={(value) =>
+                    saveConfig({
+                      codexServiceTier: value as Config["codexServiceTier"],
+                    })
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[220px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard (default)</SelectItem>
+                    <SelectItem value="priority">Fast</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Control>
             </div>
           )}
 

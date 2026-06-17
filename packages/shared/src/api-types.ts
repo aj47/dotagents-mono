@@ -9,6 +9,7 @@ import type { QueuedMessage } from './types';
 
 export type OpenAiReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
 export type CodexTextVerbosity = 'low' | 'medium' | 'high';
+export type CodexServiceTier = 'standard' | 'priority';
 
 export interface Profile {
   id: string;
@@ -430,6 +431,7 @@ export interface Settings {
   mcpToolsChatgptWebModel?: string;
   openaiReasoningEffort?: OpenAiReasoningEffort;
   codexTextVerbosity?: CodexTextVerbosity;
+  codexServiceTier?: CodexServiceTier;
   currentModelPresetId?: string;
   availablePresets?: ModelPresetSummary[];
   predefinedPrompts?: PredefinedPromptSummary[];
@@ -609,6 +611,7 @@ export interface SettingsUpdate {
   mcpToolsChatgptWebModel?: string;
   openaiReasoningEffort?: OpenAiReasoningEffort;
   codexTextVerbosity?: CodexTextVerbosity;
+  codexServiceTier?: CodexServiceTier;
   currentModelPresetId?: string;
 
   // Provider credentials and base URLs.

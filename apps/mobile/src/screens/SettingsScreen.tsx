@@ -45,6 +45,7 @@ import {
   SettingsUpdate,
   OpenAiReasoningEffort,
   CodexTextVerbosity,
+  CodexServiceTier,
   Skill,
   KnowledgeNote,
   KnowledgeNoteContext,
@@ -131,6 +132,7 @@ const DEFAULT_DISCORD_LOG_MESSAGES = false;
 const DEFAULT_LOCAL_TRACE_LOGGING_ENABLED = false;
 const DEFAULT_CODEX_REASONING_EFFORT: OpenAiReasoningEffort = 'low';
 const DEFAULT_CODEX_TEXT_VERBOSITY: CodexTextVerbosity = 'medium';
+const DEFAULT_CODEX_SERVICE_TIER: CodexServiceTier = 'standard';
 
 const MAIN_AGENT_MODE_OPTIONS = [
   { value: 'api', compactLabel: 'API' },
@@ -156,6 +158,11 @@ const CODEX_TEXT_VERBOSITY_OPTIONS: readonly { value: CodexTextVerbosity; label:
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
   { value: 'high', label: 'High' },
+];
+
+const CODEX_SERVICE_TIER_OPTIONS: readonly { value: CodexServiceTier; label: string }[] = [
+  { value: 'standard', label: 'Standard' },
+  { value: 'priority', label: 'Fast' },
 ];
 
 const SUPERTONIC_TTS_LANGUAGES = [
@@ -3712,6 +3719,30 @@ export default function SettingsScreen({ navigation, route }: any) {
                             </Text>
                           </Pressable>
                         ))}
+                      </View>
+                      <Text style={[styles.label, { marginTop: spacing.sm }]}>Service Tier</Text>
+                      <View style={styles.providerSelector}>
+                        {CODEX_SERVICE_TIER_OPTIONS.map((option) => {
+                          const selected =
+                            (remoteSettings.codexServiceTier || DEFAULT_CODEX_SERVICE_TIER) === option.value;
+                          return (
+                            <Pressable
+                              key={option.value}
+                              style={[
+                                styles.providerOption,
+                                selected && styles.providerOptionActive,
+                              ]}
+                              onPress={() => handleRemoteSettingUpdate('codexServiceTier', option.value)}
+                            >
+                              <Text style={[
+                                styles.providerOptionText,
+                                selected && styles.providerOptionTextActive,
+                              ]}>
+                                {option.label}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
                       </View>
                     </View>
                   </View>

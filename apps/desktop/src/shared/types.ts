@@ -1271,6 +1271,11 @@ export type Config = {
    * when unset.
    */
   codexTextVerbosity?: "low" | "medium" | "high"
+  /**
+   * Service tier for Codex (ChatGPT Web) responses. "priority" requests the
+   * Fast tier; "standard" or unset sends no explicit service tier.
+   */
+  codexServiceTier?: "standard" | "priority"
   /** @deprecated Use agentSystemPrompt instead; legacy field is ignored. */
   mcpToolsSystemPrompt?: string
   /** @deprecated Kept for backward compatibility but ignored */
