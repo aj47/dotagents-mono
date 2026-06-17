@@ -16,7 +16,8 @@ describe("app bottom bar", () => {
       'import { AppBottomBar } from "@renderer/components/app-bottom-bar"',
     )
     expect(appLayoutSource).toContain('className="flex h-dvh flex-col"')
-    expect(appLayoutSource).toContain("<AppBottomBar />")
+    expect(appLayoutSource).toContain("<AppBottomBar")
+    expect(appLayoutSource).toContain("onOpenShortcutReference")
     expect(appLayoutSource).not.toContain("process.env.APP_VERSION")
     expect(bottomBarSource).toContain("process.env.APP_VERSION")
   })
@@ -35,6 +36,22 @@ describe("app bottom bar", () => {
     expect(bottomBarSource).toContain('aria-label="Change thinking level"')
     expect(bottomBarSource).toContain('aria-label="Change verbosity"')
     expect(bottomBarSource).toContain('aria-label="Change Codex service tier"')
+  })
+
+  it("gives provider and model readable room while keeping Codex controls compact", () => {
+    expect(bottomBarSource).toContain("COMPACT_BAR_SELECT_CLASS")
+    expect(bottomBarSource).toContain("min-w-[8.75rem] max-w-[13rem] flex-[1_1_10rem]")
+    expect(bottomBarSource).toContain("min-w-[7rem] max-w-[17rem] flex-[1.4_1_12rem]")
+    expect(bottomBarSource).toContain('className={cn(BAR_SELECT_CLASS, "w-full")}')
+    expect(bottomBarSource).toContain('className={cn(COMPACT_BAR_SELECT_CLASS, "w-full")}')
+    expect(bottomBarSource).toContain("w-[5.2rem]")
+    expect(bottomBarSource).toContain("w-[4.8rem]")
+    expect(bottomBarSource).toContain("w-[5.6rem]")
+    expect(bottomBarSource).toContain('label: "Med", title: "Medium"')
+    expect(bottomBarSource).toContain('label: "Std", title: "Standard"')
+    expect(bottomBarSource).toContain("ml-auto flex shrink-0")
+    expect(bottomBarSource).not.toContain("flex min-w-0 flex-1 items-center justify-center")
+    expect(bottomBarSource).not.toContain("max-w-[125px]")
   })
 
   it("updates the same config fields as settings model controls", () => {

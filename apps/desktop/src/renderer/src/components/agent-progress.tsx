@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { cn } from "@renderer/lib/utils"
 import type { AgentProgressUpdate, ACPDelegationProgress, ACPSubAgentMessage } from "../../../shared/types"
 import { INTERNAL_COMPLETION_NUDGE_TEXT, RESPOND_TO_USER_TOOL, MARK_WORK_COMPLETE_TOOL } from "../../../shared/runtime-tool-names"
-import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Moon, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
+import { ChevronDown, ChevronUp, ChevronRight, X, AlertTriangle, Shield, Check, XCircle, Loader2, Clock, Copy, CheckCheck, GripHorizontal, Maximize2, Bot, OctagonX, MessageSquare, Brain, Volume2, Wrench, Play, Pause, Pin, GitBranch } from "lucide-react"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
@@ -34,7 +34,6 @@ import {
 import { ToolExecutionStats } from "./tool-execution-stats"
 import { ACPSessionBadge } from "./acp-session-badge"
 import { AgentSummaryView } from "./agent-summary-view"
-import { LoadingSpinner } from "./ui/loading-spinner"
 import { extractSubAgentToolDisplayContent } from "@shared/delegation-tool-display"
 import { buildContentTTSKey, buildResponseEventTTSKey, consumeSessionForcedAutoPlay, hasTTSPlayed, markTTSPlayed, removeTTSKey } from "@renderer/lib/tts-tracking"
 import { sanitizeMessageContentForDisplay, sanitizeMessageContentForSpeech } from "@dotagents/shared/message-display-utils"
@@ -4647,23 +4646,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     isQueueEnabled,
   })
 
-  // Get status indicator for tile variant
-  const getStatusIndicator = () => {
-    if (conversationState === "needs_input") {
-      return <Shield className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
-    }
-    if (conversationState === "blocked") {
-      return <XCircle className="h-3.5 w-3.5 text-red-500" />
-    }
-    if (conversationState === "running" && sessionPresentation.attentionState === "background") {
-      return <Moon className="h-3.5 w-3.5 text-muted-foreground" />
-    }
-    if (conversationState === "running") {
-      return <LoadingSpinner size="sm" className="[&>div]:gap-0 [&_.dotagents-loading-spinner]:h-3.5 [&_.dotagents-loading-spinner]:w-3.5" />
-    }
-    return <Check className="h-3.5 w-3.5 text-green-500" />
-  }
-
   // Get title for tile variant
   const getTitle = () => {
     const firstUserMsg = conversationHistory?.find(m => m.role === "user")
@@ -4735,10 +4717,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
   }
 
   const containerClasses = cn(
-    "progress-panel flex flex-col w-full rounded-xl overflow-hidden",
+    "progress-panel flex flex-col w-full overflow-hidden",
     variant === "tile"
       ? cn(
-          "transition-all duration-200 cursor-pointer",
+          "rounded-none transition-all duration-200 cursor-pointer",
           progress.pendingToolApproval
             ? "border-amber-500 bg-amber-50/30 dark:bg-amber-950/20 ring-1 ring-amber-500/30"
             : isFocused
@@ -4747,8 +4729,8 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           isResizing && "select-none"
         )
       : variant === "overlay"
-      ? "bg-background/80 border border-border/50 h-full"
-      : "bg-muted/20 border border-border/40 h-full",
+      ? "rounded-xl bg-background/80 border border-border/50 h-full"
+      : "rounded-xl bg-muted/20 border border-border/40 h-full",
     isDark ? "dark" : ""
   )
 
@@ -4757,6 +4739,10 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
     const hasPendingApproval = !!progress.pendingToolApproval
     const canCollapseTile = typeof onCollapsedChange === "function"
     const tileTitle = getTitle()
+    const sessionDurationLabel =
+      turnDurations.totalMs > 0 ? formatTurnDuration(turnDurations.totalMs) : null
+    const sessionCostLabel =
+      progress.sessionCost ? formatUsdCost(progress.sessionCost.usd) : null
     return (
       <div
         onClick={onFocus}
@@ -4781,9 +4767,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
           }}
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-              {getStatusIndicator()}
-            </div>
             {isTitleEditing && conversationId ? (
               <input
                 value={editingTitle}
@@ -4818,24 +4801,53 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
                 aria-label="Rename conversation title"
               />
             ) : (
-              <span
-                role={conversationId ? "button" : undefined}
-                tabIndex={conversationId ? 0 : undefined}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  startTitleEditing(tileTitle)
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter" && event.key !== " ") return
-                  event.preventDefault()
-                  event.stopPropagation()
-                  startTitleEditing(tileTitle)
-                }}
-                className={cn("truncate font-medium min-w-0 cursor-text", isCollapsed ? "text-xs" : "text-sm")}
-                title={conversationId ? "Rename conversation title" : tileTitle}
-              >
-                {tileTitle}
-              </span>
+              <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span
+                  role={conversationId ? "button" : undefined}
+                  tabIndex={conversationId ? 0 : undefined}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    startTitleEditing(tileTitle)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return
+                    event.preventDefault()
+                    event.stopPropagation()
+                    startTitleEditing(tileTitle)
+                  }}
+                  className={cn("min-w-[9rem] max-w-full flex-1 truncate font-medium cursor-text", isCollapsed ? "text-xs" : "text-sm")}
+                  title={conversationId ? "Rename conversation title" : tileTitle}
+                >
+                  {tileTitle}
+                </span>
+                <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
+                  {primaryAgentLabel && (
+                    <span className="max-w-[8rem] truncate text-primary/75" title={primaryAgentLabel}>
+                      {primaryAgentLabel}
+                    </span>
+                  )}
+                  {sessionDurationLabel && (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-0.5 whitespace-nowrap tabular-nums",
+                        turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
+                      )}
+                      title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
+                    >
+                      <Clock className="h-2.5 w-2.5" aria-hidden="true" />
+                      {sessionDurationLabel}
+                    </span>
+                  )}
+                  {sessionCostLabel && (
+                    <span
+                      className="whitespace-nowrap tabular-nums"
+                      title={`Session cost · ${progress.sessionCost?.inputTokens.toLocaleString()} in / ${progress.sessionCost?.outputTokens.toLocaleString()} out tokens`}
+                    >
+                      {sessionCostLabel}
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 app-no-drag-region">
@@ -5128,67 +5140,6 @@ export const AgentProgress: React.FC<AgentProgressProps> = ({
               </div>
             )}
 
-            {/* Footer with session status metadata. */}
-            <div
-              className={cn(
-                "border-t bg-muted/20 text-muted-foreground flex-shrink-0",
-                "px-3 py-1.5 text-xs",
-              )}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 items-center gap-x-2">
-                  {profileName && (
-                    <span className="text-[10px] text-primary/70 truncate max-w-[60px]">
-                      {profileName}
-                    </span>
-                  )}
-                  {profileName && <span className="text-muted-foreground/50">•</span>}
-                  {!isComplete && contextInfo && contextInfo.maxTokens > 0 && (
-                    <div className="flex shrink-0 items-center gap-1">
-                      <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full transition-all duration-300 ease-out rounded-full",
-                            contextInfo.estTokens / contextInfo.maxTokens > 0.9
-                              ? "bg-red-500"
-                              : contextInfo.estTokens / contextInfo.maxTokens > 0.7
-                              ? "bg-amber-500"
-                              : "bg-emerald-500"
-                          )}
-                          style={{
-                            width: `${Math.min(100, (contextInfo.estTokens / contextInfo.maxTokens) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {turnDurations.totalMs > 0 && (
-                  <span
-                    className={cn(
-                      "shrink-0 inline-flex items-center gap-0.5 whitespace-nowrap tabular-nums",
-                      turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400",
-                    )}
-                    title={turnDurations.hasLive ? "Total agent time (running)" : "Total agent time"}
-                  >
-                    <Clock className="h-2.5 w-2.5" aria-hidden="true" />
-                    {formatTurnDuration(turnDurations.totalMs)}
-                  </span>
-                )}
-                {progress.sessionCost && formatUsdCost(progress.sessionCost.usd) && (
-                  <span
-                    className="shrink-0 inline-flex items-center whitespace-nowrap tabular-nums"
-                    title={`Session cost · ${progress.sessionCost.inputTokens.toLocaleString()} in / ${progress.sessionCost.outputTokens.toLocaleString()} out tokens`}
-                  >
-                    {formatUsdCost(progress.sessionCost.usd)}
-                  </span>
-                )}
-                {!isComplete && (
-                  <span className="shrink-0 whitespace-nowrap">Step {currentIteration}/{isFinite(maxIterations) ? maxIterations : "∞"}</span>
-                )}
-              </div>
-            </div>
           </>
         )}
 

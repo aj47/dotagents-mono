@@ -123,19 +123,29 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain('window.removeEventListener("keydown", handleKeyDown, true)')
   })
 
-  it("lets the session list size naturally instead of keeping a collapsed gap", () => {
+  it("lets the session list flex into available sidebar height", () => {
     expect(sidebarSource).not.toContain("max-h-[45vh]")
-    expect(sidebarSource).toContain("mt-1 space-y-0.5 overflow-visible")
+    expect(sidebarSource).toContain("sessionListRef")
+    expect(sidebarSource).toContain("sessionListContentRef")
+    expect(sidebarSource).toContain("flex h-full min-h-full flex-col")
+    expect(sidebarSource).toContain("mt-1 min-h-0 flex-1 overflow-visible")
+    expect(sidebarSource).toContain('className="space-y-0.5"')
   })
 
-  it("defaults regular sessions to five rows and supports shrinking below the default", () => {
+  it("uses five regular session rows as the floor and auto-fills empty sidebar space", () => {
     expect(sidebarSource).toContain("const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5")
     expect(sidebarSource).toContain("const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5")
     expect(sidebarSource).toContain("const MIN_VISIBLE_SIDEBAR_ITEMS = 1")
+    expect(sidebarSource).toContain("const SIDEBAR_SESSION_ROW_ESTIMATE_PX = 28")
     expect(sidebarSource).toContain("DEFAULT_VISIBLE_SIDEBAR_SESSIONS - activeUserSidebarSessionCount")
     expect(sidebarSource).toContain("useState<number | null>(null)")
-    expect(sidebarSource).toContain("visibleSavedConversationCount ?? defaultSavedConversationRows")
-    expect(sidebarSource).toContain("Math.max(next, minimumVisibleSavedConversationRows)")
+    expect(sidebarSource).toContain("const [autoVisibleSavedConversationCount, setAutoVisibleSavedConversationCount]")
+    expect(sidebarSource).toContain("requestedSavedConversationCount")
+    expect(sidebarSource).toContain("autoVisibleSavedConversationCount")
+    expect(sidebarSource).toContain("displayedSavedConversationCount")
+    expect(sidebarSource).toContain("const contentHeight = contentElement.getBoundingClientRect().height")
+    expect(sidebarSource).toContain("availableHeight - contentHeight")
+    expect(sidebarSource).toContain("new ResizeObserver(updateAutoVisibleRows)")
     expect(sidebarSource).not.toContain("handleSidebarSessionsScroll")
     expect(sidebarSource).not.toContain("onScroll=")
   })
@@ -145,7 +155,9 @@ describe("active agents sidebar task section", () => {
     const showLessIndex = sidebarSource.lastIndexOf("Show less")
 
     expect(sidebarSource).toContain("const canShowLessSavedConversations =")
-    expect(sidebarSource).toContain("visiblePageableSavedConversationCount > minimumVisibleSavedConversationRows")
+    expect(sidebarSource).toContain("const minimumRequestedSavedConversationRows = Math.max")
+    expect(sidebarSource).toContain("requestedSavedConversationCount > minimumRequestedSavedConversationRows")
+    expect(sidebarSource).toContain("displayedSavedConversationCount")
     expect(sidebarSource).toContain("const showLessSavedConversations = useCallback")
     expect(sidebarSource).toContain("hasMoreSavedConversations || canShowLessSavedConversations")
     expect(showMoreIndex).toBeGreaterThan(-1)

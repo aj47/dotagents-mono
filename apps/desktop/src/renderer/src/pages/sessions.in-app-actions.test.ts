@@ -5,6 +5,10 @@ const appLayoutSource = readFileSync(
   new URL("../components/app-layout.tsx", import.meta.url),
   "utf8",
 )
+const appBottomBarSource = readFileSync(
+  new URL("../components/app-bottom-bar.tsx", import.meta.url),
+  "utf8",
+)
 const sidebarSource = readFileSync(
   new URL("../components/active-agents-sidebar.tsx", import.meta.url),
   "utf8",
@@ -23,6 +27,10 @@ const tileFollowUpSource = readFileSync(
 )
 const sessionActionDialogSource = readFileSync(
   new URL("../components/session-action-dialog.tsx", import.meta.url),
+  "utf8",
+)
+const shortcutReferenceDialogSource = readFileSync(
+  new URL("../components/shortcut-reference-dialog.tsx", import.meta.url),
   "utf8",
 )
 const tipcSource = readFileSync(
@@ -53,6 +61,43 @@ describe("sessions in-app actions", () => {
     )
     expect(appLayoutSource).not.toContain(
       "await tipcClient.triggerMcpRecording({})",
+    )
+  })
+
+  it("opens a new main-window text session from Cmd/Ctrl+N without stealing editable input", () => {
+    expect(appLayoutSource).toContain(
+      "const handleMainWindowNewChatKeyDown = (event: KeyboardEvent) => {",
+    )
+    expect(appLayoutSource).toContain('tagName === "input"')
+    expect(appLayoutSource).toContain('tagName === "textarea"')
+    expect(appLayoutSource).toContain('tagName === "select"')
+    expect(appLayoutSource).toContain(
+      "if (isEditable || sessionActionDialog || shortcutReferenceDialogOpen)",
+    )
+    expect(appLayoutSource).toContain("const hasNewChatModifier = isMac")
+    expect(appLayoutSource).toContain(
+      'if (event.key.toLowerCase() !== "n") return',
+    )
+    expect(appLayoutSource).toContain("void handleStartTextSession()")
+    expect(appLayoutSource).toContain(
+      'window.addEventListener("keydown", handleMainWindowNewChatKeyDown, true)',
+    )
+  })
+
+  it("wires a visible shortcut reference button to a compact shortcut dialog", () => {
+    expect(appLayoutSource).toContain("<ShortcutReferenceDialog")
+    expect(appLayoutSource).toContain("shortcutReferenceDialogOpen")
+    expect(appLayoutSource).toContain(
+      "onOpenShortcutReference={() => setShortcutReferenceDialogOpen(true)}",
+    )
+    expect(appBottomBarSource).toContain("onOpenShortcutReference")
+    expect(appBottomBarSource).toContain('aria-label="Keyboard shortcuts"')
+    expect(shortcutReferenceDialogSource).toContain(
+      "getMainWindowNewChatShortcutDisplay",
+    )
+    expect(shortcutReferenceDialogSource).toContain("getSettingsHotkeyDisplay")
+    expect(shortcutReferenceDialogSource).toContain(
+      "getToggleVoiceDictationShortcutDisplay",
     )
   })
 

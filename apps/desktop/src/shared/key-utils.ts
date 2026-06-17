@@ -264,6 +264,65 @@ export function getDictationShortcutDisplay(
   }
 }
 
+export function getMainWindowNewChatShortcutDisplay(
+  isMac: boolean = process.platform === "darwin",
+): string {
+  return isMac ? "Cmd+N" : "Ctrl+N"
+}
+
+/**
+ * Get the display string for the global "show main window" shortcut.
+ */
+export function getSettingsHotkeyDisplay(
+  shortcut: "ctrl-shift-s" | "ctrl-comma" | "ctrl-shift-comma" | "custom" | undefined,
+  customShortcut?: string,
+): string {
+  switch (shortcut) {
+    case "ctrl-shift-s":
+      return "Ctrl+Shift+S"
+    case "ctrl-comma":
+      return "Ctrl+,"
+    case "ctrl-shift-comma":
+      return "Ctrl+Shift+,"
+    case "custom":
+      if (customShortcut) {
+        return formatKeyComboForDisplay(customShortcut)
+      }
+      return "Ctrl+Shift+S"
+    default:
+      return "Ctrl+Shift+S"
+  }
+}
+
+/**
+ * Get the display string for toggle voice dictation.
+ */
+export function getToggleVoiceDictationShortcutDisplay(
+  shortcut:
+    | "fn"
+    | "f1"
+    | "f2"
+    | "f3"
+    | "f4"
+    | "f5"
+    | "f6"
+    | "f7"
+    | "f8"
+    | "f9"
+    | "f10"
+    | "f11"
+    | "f12"
+    | "custom"
+    | undefined,
+  customShortcut?: string,
+): string {
+  if (shortcut === "custom") {
+    return customShortcut ? formatKeyComboForDisplay(customShortcut) : "Fn"
+  }
+
+  return formatKeyComboForDisplay(shortcut || "fn")
+}
+
 /**
  * Get the display string for the voice screenshot shortcut.
  * Used by both Settings UI and the empty session screen hint.

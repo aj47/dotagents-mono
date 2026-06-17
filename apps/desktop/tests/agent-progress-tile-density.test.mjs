@@ -8,28 +8,28 @@ const agentProgressSource = fs.readFileSync(
   'utf8',
 )
 
-test('desktop agent-progress tile keeps agent identity in the header without repeating it in the footer', () => {
+test('desktop agent-progress tile keeps session metadata in the header without repeating it in the footer', () => {
   assert.match(
     agentProgressSource,
-    /\{\/\* Agent name indicator in header \*\/\}[\s\S]*<Bot className="h-2\.5 w-2\.5 shrink-0" \/>[\s\S]*<span className="truncate">\{profileName\}<\/span>/,
-    'expected the tile header to keep the compact agent identity row near the session title',
+    /className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0\.5"[\s\S]*title=\{primaryAgentLabel\}[\s\S]*\{sessionDurationLabel\}[\s\S]*\{sessionCostLabel\}/,
+    'expected the tile header to keep agent, duration, and cost metadata near the session title',
   )
   assert.doesNotMatch(
     agentProgressSource,
-    /title=\{`Profile: \$\{profileName\}`\}/,
-    'expected the tile footer to stop repeating the same profile label already shown in the header',
+    /Footer with session status metadata\./,
+    'expected the tile footer metadata strip to be removed after moving metadata into the header',
   )
 })
 
-test('desktop agent-progress tile footer still prioritizes live status metadata after the density cleanup', () => {
+test('desktop agent-progress tile removes inner rounded shell against square app chrome', () => {
   assert.match(
     agentProgressSource,
-    /className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"/,
-    'expected the tile footer metadata row to remain wrap-safe after removing duplicate profile chrome',
+    /"progress-panel flex flex-col w-full overflow-hidden"/,
+    'expected the base progress panel shell to avoid an always-rounded inner surface',
   )
   assert.match(
     agentProgressSource,
-    /<ACPSessionBadge info=\{acpSessionInfo\} className="min-w-0 max-w-full" \/>/,
-    'expected ACP session metadata to remain available in the tile footer',
+    /"rounded-none transition-all duration-200 cursor-pointer"/,
+    'expected tile sessions to render square inside the main app frame',
   )
 })

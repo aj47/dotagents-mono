@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest"
 
 import {
   formatKeyComboForDisplay,
+  getMainWindowNewChatShortcutDisplay,
+  getSettingsHotkeyDisplay,
+  getToggleVoiceDictationShortcutDisplay,
   getVoiceScreenshotShortcutDisplay,
   matchesKeyCombo,
 } from "./key-utils"
@@ -52,5 +55,37 @@ describe("getVoiceScreenshotShortcutDisplay", () => {
 
   it("falls back to the built-in label when custom mode has no shortcut yet", () => {
     expect(getVoiceScreenshotShortcutDisplay("custom")).toBe("Ctrl+Shift+X")
+  })
+})
+
+describe("main-window shortcut displays", () => {
+  it("uses platform-specific new chat labels", () => {
+    expect(getMainWindowNewChatShortcutDisplay(true)).toBe("Cmd+N")
+    expect(getMainWindowNewChatShortcutDisplay(false)).toBe("Ctrl+N")
+  })
+})
+
+describe("getSettingsHotkeyDisplay", () => {
+  it("returns built-in show-main-window shortcut labels", () => {
+    expect(getSettingsHotkeyDisplay(undefined)).toBe("Ctrl+Shift+S")
+    expect(getSettingsHotkeyDisplay("ctrl-comma")).toBe("Ctrl+,")
+    expect(getSettingsHotkeyDisplay("ctrl-shift-comma")).toBe("Ctrl+Shift+,")
+  })
+
+  it("formats a custom show-main-window shortcut", () => {
+    expect(getSettingsHotkeyDisplay("custom", "alt-space")).toBe("Alt + Space")
+  })
+})
+
+describe("getToggleVoiceDictationShortcutDisplay", () => {
+  it("returns function-key labels for built-in toggle dictation shortcuts", () => {
+    expect(getToggleVoiceDictationShortcutDisplay(undefined)).toBe("Fn")
+    expect(getToggleVoiceDictationShortcutDisplay("f8")).toBe("F8")
+  })
+
+  it("formats a custom toggle dictation shortcut", () => {
+    expect(getToggleVoiceDictationShortcutDisplay("custom", "ctrl-shift-f")).toBe(
+      "Ctrl + Shift + F",
+    )
   })
 })

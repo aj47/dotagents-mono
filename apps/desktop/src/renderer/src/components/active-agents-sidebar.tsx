@@ -212,6 +212,7 @@ const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5
 const MIN_VISIBLE_SIDEBAR_ITEMS = 1
 const SIDEBAR_TASKS_MIN_VISIBLE = 3
+const SIDEBAR_SESSION_ROW_ESTIMATE_PX = 28
 const FINAL_RESPONSE_RETENTION_MS = 10_000
 
 const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
@@ -344,6 +345,7 @@ export function ActiveAgentsSidebar({
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const toggleArchiveSession = useAgentStore((s) => s.toggleArchiveSession)
   const [visibleSavedConversationCount, setVisibleSavedConversationCount] = useState<number | null>(null)
+  const [autoVisibleSavedConversationCount, setAutoVisibleSavedConversationCount] = useState(0)
   const [visibleTaskConversationCount, setVisibleTaskConversationCount] = useState(
     SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
   )
@@ -368,6 +370,8 @@ export function ActiveAgentsSidebar({
   const [isUngroupDropTargetActive, setIsUngroupDropTargetActive] = useState(false)
   const skipTitleSaveOnBlurRef = useRef(false)
   const sidebarSessionStateHydratedRef = useRef(false)
+  const sessionListRef = useRef<HTMLDivElement | null>(null)
+  const sessionListContentRef = useRef<HTMLDivElement | null>(null)
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -715,8 +719,6 @@ export function ActiveAgentsSidebar({
     [activeUserSidebarSessionCount],
   )
 
-  const displayedSavedConversationCount =
-    visibleSavedConversationCount ?? defaultSavedConversationRows
   const groupedSessionKeys = useMemo(
     () => new Set(sessionGroups.flatMap((group) => group.sessionKeys)),
     [sessionGroups],
@@ -741,6 +743,21 @@ export function ActiveAgentsSidebar({
   const minimumVisibleSavedConversationRows = hasAlwaysVisibleUserSidebarAnchor
     ? 0
     : MIN_VISIBLE_SIDEBAR_ITEMS
+  const totalPageableSavedConversationCount = useMemo(
+    () => allUserSidebarSessions.filter((entry) => {
+      if (!entry.isSavedConversation) return false
+      const conversationId = entry.session.conversationId
+      if (conversationId && pinnedSessionIds.has(conversationId)) return false
+      return !hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
+    }).length,
+    [allUserSidebarSessions, alwaysVisibleSessionKeys, pinnedSessionIds],
+  )
+  const requestedSavedConversationCount =
+    visibleSavedConversationCount ?? defaultSavedConversationRows
+  const displayedSavedConversationCount = Math.max(
+    requestedSavedConversationCount,
+    autoVisibleSavedConversationCount,
+  )
 
   const {
     visibleEntries: userSidebarSessions,
@@ -772,8 +789,12 @@ export function ActiveAgentsSidebar({
     }).length,
     [alwaysVisibleSessionKeys, pinnedSessionIds, userSidebarSessions],
   )
+  const minimumRequestedSavedConversationRows = Math.max(
+    minimumVisibleSavedConversationRows,
+    autoVisibleSavedConversationCount,
+  )
   const canShowLessSavedConversations =
-    visiblePageableSavedConversationCount > minimumVisibleSavedConversationRows
+    requestedSavedConversationCount > minimumRequestedSavedConversationRows
 
   const orderedUngroupedUserSidebarSessions = useMemo(
     () => orderSidebarSessionEntriesByKeys(
@@ -881,6 +902,76 @@ export function ActiveAgentsSidebar({
 
   const hasUserSidebarContent = userSidebarSessions.length > 0 || sessionGroups.length > 0
   const hasAnySessions = sidebarSessions.length > 0 || sessionGroups.length > 0
+
+  useEffect(() => {
+    const element = sessionListRef.current
+    const contentElement = sessionListContentRef.current
+    if (!element || !contentElement || !hasAnySessions) return undefined
+
+    let frameId: number | null = null
+    const cancelFrame = () => {
+      if (frameId === null) return
+      if (typeof globalThis.cancelAnimationFrame === "function") {
+        globalThis.cancelAnimationFrame(frameId)
+      }
+      frameId = null
+    }
+
+    const updateAutoVisibleRows = () => {
+      cancelFrame()
+      const run = () => {
+        frameId = null
+        const availableHeight = element.clientHeight
+        if (availableHeight <= 0) return
+
+        const contentHeight = contentElement.getBoundingClientRect().height
+        const heightDelta = availableHeight - contentHeight
+        const rowDelta = heightDelta >= 0
+          ? Math.floor(heightDelta / SIDEBAR_SESSION_ROW_ESTIMATE_PX)
+          : Math.ceil(heightDelta / SIDEBAR_SESSION_ROW_ESTIMATE_PX)
+        const nextAutoVisibleCount = Math.min(
+          totalPageableSavedConversationCount,
+          Math.max(
+            defaultSavedConversationRows,
+            visiblePageableSavedConversationCount + rowDelta,
+          ),
+        )
+
+        setAutoVisibleSavedConversationCount((previousCount) =>
+          previousCount === nextAutoVisibleCount
+            ? previousCount
+            : nextAutoVisibleCount,
+        )
+      }
+
+      if (typeof globalThis.requestAnimationFrame === "function") {
+        frameId = globalThis.requestAnimationFrame(run)
+      } else {
+        run()
+      }
+    }
+
+    updateAutoVisibleRows()
+
+    if (typeof ResizeObserver === "undefined") {
+      return () => cancelFrame()
+    }
+
+    const observer = new ResizeObserver(updateAutoVisibleRows)
+    observer.observe(element)
+    observer.observe(contentElement)
+
+    return () => {
+      observer.disconnect()
+      cancelFrame()
+    }
+  }, [
+    defaultSavedConversationRows,
+    hasAnySessions,
+    totalPageableSavedConversationCount,
+    visiblePageableSavedConversationCount,
+    visibleTaskSidebarSessions.length,
+  ])
 
   useEffect(() => {
     logStateChange("ActiveAgentsSidebar", "isExpanded", !isExpanded, isExpanded)
@@ -1469,18 +1560,21 @@ export function ActiveAgentsSidebar({
 
   const loadMoreSavedConversations = useCallback(() => {
     setVisibleSavedConversationCount((prev) =>
-      (prev ?? defaultSavedConversationRows) +
+      Math.max(
+        prev ?? defaultSavedConversationRows,
+        displayedSavedConversationCount,
+      ) +
         SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
     )
-  }, [defaultSavedConversationRows])
+  }, [defaultSavedConversationRows, displayedSavedConversationCount])
 
   const showLessSavedConversations = useCallback(() => {
     setVisibleSavedConversationCount((prev) => {
       const current = prev ?? defaultSavedConversationRows
       const next = current - SIDEBAR_PAST_SESSIONS_PAGE_SIZE
-      return Math.max(next, minimumVisibleSavedConversationRows)
+      return Math.max(next, minimumRequestedSavedConversationRows)
     })
-  }, [defaultSavedConversationRows, minimumVisibleSavedConversationRows])
+  }, [defaultSavedConversationRows, minimumRequestedSavedConversationRows])
 
   const loadMoreTaskConversations = useCallback(() => {
     setVisibleTaskConversationCount((prev) =>
@@ -1499,7 +1593,7 @@ export function ActiveAgentsSidebar({
     !!onStartTextSession || !!onStartVoiceSession || !!onStartPromptSession
 
   return (
-    <div className={cn("flex min-h-0 flex-col px-2", className)}>
+    <div className={cn("flex h-full min-h-full flex-col px-2", className)}>
       {hasLaunchControls && (
         <div className="sticky top-0 z-40 -mx-2 bg-background/95 px-2 pb-2 pt-2">
           <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
@@ -1580,8 +1674,12 @@ export function ActiveAgentsSidebar({
       )}
 
       {hasAnySessions && (
-        <div className="mt-1 space-y-0.5 overflow-visible pl-2 pr-1">
-          {(() => {
+        <div
+          ref={sessionListRef}
+          className="mt-1 min-h-0 flex-1 overflow-visible pl-2 pr-1"
+        >
+          <div ref={sessionListContentRef} className="space-y-0.5">
+            {(() => {
             const renderSessionRow = (
               {
                 session,
@@ -2270,34 +2368,35 @@ export function ActiveAgentsSidebar({
                 )}
               </>
             )
-          })()}
+            })()}
 
-          {isExpanded &&
-            (hasMoreSavedConversations || canShowLessSavedConversations) && (
-            <div className="mt-1 flex items-center gap-1">
-              {hasMoreSavedConversations && (
-                <button
-                  type="button"
-                  onClick={loadMoreSavedConversations}
-                  className="text-muted-foreground hover:bg-accent/50 hover:text-foreground flex-1 rounded px-1.5 py-1 text-left text-[11px] transition-colors"
-                >
-                  Show more
-                </button>
-              )}
-              {canShowLessSavedConversations && (
-                <button
-                  type="button"
-                  onClick={showLessSavedConversations}
-                  className={cn(
-                    "text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded px-1.5 py-1 text-right text-[11px] transition-colors",
-                    !hasMoreSavedConversations && "ml-auto",
-                  )}
-                >
-                  Show less
-                </button>
-              )}
-            </div>
-          )}
+            {isExpanded &&
+              (hasMoreSavedConversations || canShowLessSavedConversations) && (
+              <div className="mt-1 flex items-center gap-1">
+                {hasMoreSavedConversations && (
+                  <button
+                    type="button"
+                    onClick={loadMoreSavedConversations}
+                    className="text-muted-foreground hover:bg-accent/50 hover:text-foreground flex-1 rounded px-1.5 py-1 text-left text-[11px] transition-colors"
+                  >
+                    Show more
+                  </button>
+                )}
+                {canShowLessSavedConversations && (
+                  <button
+                    type="button"
+                    onClick={showLessSavedConversations}
+                    className={cn(
+                      "text-muted-foreground hover:bg-accent/50 hover:text-foreground shrink-0 rounded px-1.5 py-1 text-right text-[11px] transition-colors",
+                      !hasMoreSavedConversations && "ml-auto",
+                    )}
+                  >
+                    Show less
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

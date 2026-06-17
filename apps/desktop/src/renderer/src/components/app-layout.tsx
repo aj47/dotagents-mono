@@ -11,6 +11,7 @@ import {
   SessionActionDialog,
   type SessionActionDialogMode,
 } from "@renderer/components/session-action-dialog"
+import { ShortcutReferenceDialog } from "@renderer/components/shortcut-reference-dialog"
 import { SettingsSidebarNavigation } from "@renderer/components/settings-navigation"
 import { useSelectedAgentId } from "@renderer/components/agent-selector"
 
@@ -79,6 +80,8 @@ export const Component = () => {
     savedConversationsArchivedOnOpen,
     setSavedConversationsArchivedOnOpen,
   ] = useState(false)
+  const [shortcutReferenceDialogOpen, setShortcutReferenceDialogOpen] =
+    useState(false)
   const [isEmergencyStopping, setIsEmergencyStopping] = useState(false)
   const [sessionActionDialog, setSessionActionDialog] =
     useState<SessionActionDialogState | null>(null)
@@ -432,6 +435,39 @@ export const Component = () => {
     },
     [applySelectedAgentToNextSession, openSessionActionDialog],
   )
+
+  useEffect(() => {
+    const handleMainWindowNewChatKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const tagName = target?.tagName?.toLowerCase()
+      const isEditable =
+        target?.isContentEditable ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select"
+
+      if (isEditable || sessionActionDialog || shortcutReferenceDialogOpen)
+        return
+
+      const isMac =
+        typeof navigator !== "undefined" &&
+        navigator.platform.toLowerCase().includes("mac")
+      const hasNewChatModifier = isMac
+        ? event.metaKey && !event.ctrlKey
+        : event.ctrlKey && !event.metaKey
+
+      if (!hasNewChatModifier || event.altKey || event.shiftKey) return
+      if (event.key.toLowerCase() !== "n") return
+
+      event.preventDefault()
+      event.stopPropagation()
+      void handleStartTextSession()
+    }
+
+    window.addEventListener("keydown", handleMainWindowNewChatKeyDown, true)
+    return () =>
+      window.removeEventListener("keydown", handleMainWindowNewChatKeyDown, true)
+  }, [handleStartTextSession, sessionActionDialog, shortcutReferenceDialogOpen])
 
   const saveConfig = useCallback(
     (partial: Record<string, unknown>) => {
@@ -934,8 +970,15 @@ export const Component = () => {
           </div>
         </div>
 
-        <AppBottomBar />
+        <AppBottomBar
+          onOpenShortcutReference={() => setShortcutReferenceDialogOpen(true)}
+        />
       </div>
+
+      <ShortcutReferenceDialog
+        open={shortcutReferenceDialogOpen}
+        onOpenChange={setShortcutReferenceDialogOpen}
+      />
 
       {sessionActionDialog && (
         <SessionActionDialog

@@ -18,18 +18,24 @@ describe("agent progress tile layout", () => {
     expect(agentProgressSource).toContain('const tileTitle = getTitle()')
     expect(agentProgressSource).toContain('aria-label="Rename conversation title"')
     expect(agentProgressSource).toContain('tipcClient.renameConversationTitle({')
-    expect(agentProgressSource).toContain('"truncate font-medium min-w-0 cursor-text"')
+    expect(agentProgressSource).toContain('"min-w-[9rem] max-w-full flex-1 truncate font-medium cursor-text"')
     expect(agentProgressSource).toContain('"app-no-drag-region h-6 min-w-0 flex-1 rounded border border-input bg-background px-1.5 font-medium text-foreground shadow-sm outline-none ring-0 focus-visible:border-ring"')
+    expect(agentProgressSource).toContain("const sessionDurationLabel =")
+    expect(agentProgressSource).toContain("const sessionCostLabel =")
+    expect(agentProgressSource).toContain("title={primaryAgentLabel}")
+    expect(agentProgressSource).not.toContain("{getStatusIndicator()}")
   })
 
-  it("wraps the tile footer metadata row and preserves trailing status visibility", () => {
-    expect(agentProgressSource).toContain('className="flex items-center justify-between gap-2"')
-    expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 items-center gap-x-2"')
-    expect(agentProgressSource).toContain("Footer with session status metadata.")
+  it("keeps tile metadata in the header and removes the old duplicate footer strip", () => {
+    expect(agentProgressSource).toContain('className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5"')
+    expect(agentProgressSource).toContain('className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground"')
+    expect(agentProgressSource).toContain('turnDurations.hasLive && "animate-pulse text-amber-600 dark:text-amber-400"')
+    expect(agentProgressSource).toContain('title={`Session cost · ${progress.sessionCost?.inputTokens.toLocaleString()} in / ${progress.sessionCost?.outputTokens.toLocaleString()} out tokens`}')
+    expect(agentProgressSource).not.toContain("Footer with session status metadata.")
     expect(agentProgressSource).not.toContain("SessionModelPicker")
     expect(agentProgressSource).not.toContain("SessionThinkingPicker")
     expect(agentProgressSource).not.toContain("SessionVerbosityPicker")
-    expect(agentProgressSource).toContain('className="shrink-0 whitespace-nowrap">Step')
+    expect(agentProgressSource).not.toContain('className="shrink-0 whitespace-nowrap">Step')
   })
 
   it("lets the tile chat-summary switcher and delegation preview adapt to narrow widths", () => {
@@ -312,8 +318,9 @@ describe("agent progress tile layout", () => {
   it("uses shared conversation-state normalization without duplicating header badges", () => {
     expect(agentProgressSource).toContain('getSessionPresentation')
     expect(agentProgressSource).toContain('const sessionPresentation = getSessionPresentation({')
-    expect(agentProgressSource).toContain('conversationState === "needs_input"')
-    expect(agentProgressSource).toContain('conversationState === "blocked"')
+    expect(agentProgressSource).toContain('const conversationState = sessionPresentation.lifecycleState')
+    expect(agentProgressSource).toContain('const isSessionActiveForInput = conversationState === "running" || conversationState === "needs_input"')
+    expect(agentProgressSource).not.toContain('getStatusIndicator')
     expect(agentProgressSource).not.toContain('conversationStateBadgeClass')
     expect(agentProgressSource).not.toContain('conversationStateLabel')
   })

@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
+import { Keyboard } from "lucide-react"
 import {
   CHAT_PROVIDERS,
   DEFAULT_MODEL_PRESET_ID,
@@ -24,6 +25,9 @@ type CodexServiceTier = NonNullable<Config["codexServiceTier"]>
 const BAR_SELECT_CLASS =
   "h-5 min-w-0 cursor-pointer rounded border-0 bg-transparent py-0 pl-0 pr-5 text-[11px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60"
 
+const COMPACT_BAR_SELECT_CLASS =
+  "h-5 min-w-0 cursor-pointer rounded border-0 bg-transparent py-0 pl-0 pr-3 text-[11px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default disabled:opacity-60"
+
 const AGENT_MODEL_FALLBACKS: Record<CHAT_PROVIDER_ID, string> = {
   openai: "gpt-5.5",
   groq: "llama-3.3-70b-versatile",
@@ -34,27 +38,33 @@ const AGENT_MODEL_FALLBACKS: Record<CHAT_PROVIDER_ID, string> = {
 const REASONING_EFFORT_OPTIONS: Array<{
   value: ReasoningEffort
   label: string
+  title: string
 }> = [
-  { value: "none", label: "None" },
-  { value: "minimal", label: "Minimal" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "xhigh", label: "Extra high" },
+  { value: "none", label: "Off", title: "None" },
+  { value: "minimal", label: "Min", title: "Minimal" },
+  { value: "low", label: "Low", title: "Low" },
+  { value: "medium", label: "Med", title: "Medium" },
+  { value: "high", label: "High", title: "High" },
+  { value: "xhigh", label: "XHigh", title: "Extra high" },
 ]
 
-const VERBOSITY_OPTIONS: Array<{ value: CodexVerbosity; label: string }> = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
+const VERBOSITY_OPTIONS: Array<{
+  value: CodexVerbosity
+  label: string
+  title: string
+}> = [
+  { value: "low", label: "Low", title: "Low" },
+  { value: "medium", label: "Med", title: "Medium" },
+  { value: "high", label: "High", title: "High" },
 ]
 
 const CODEX_SERVICE_TIER_OPTIONS: Array<{
   value: CodexServiceTier
   label: string
+  title: string
 }> = [
-  { value: "standard", label: "Standard" },
-  { value: "priority", label: "Fast" },
+  { value: "standard", label: "Std", title: "Standard" },
+  { value: "priority", label: "Fast", title: "Fast" },
 ]
 
 const getAgentProviderId = (config: Config | undefined): CHAT_PROVIDER_ID => {
@@ -196,7 +206,11 @@ const providerSupportsVerbosity = (providerId: CHAT_PROVIDER_ID): boolean =>
 const providerSupportsServiceTier = (providerId: CHAT_PROVIDER_ID): boolean =>
   providerId === "chatgpt-web"
 
-export function AppBottomBar() {
+interface AppBottomBarProps {
+  onOpenShortcutReference?: () => void
+}
+
+export function AppBottomBar({ onOpenShortcutReference }: AppBottomBarProps) {
   const navigate = useNavigate()
   const configQuery = useConfigQuery()
   const saveConfigMutation = useSaveConfigMutation()
@@ -247,6 +261,16 @@ export function AppBottomBar() {
     (config?.codexTextVerbosity as CodexVerbosity | undefined) || "medium"
   const serviceTierValue: CodexServiceTier =
     (config?.codexServiceTier as CodexServiceTier | undefined) || "standard"
+  const reasoningLabel =
+    REASONING_EFFORT_OPTIONS.find((option) => option.value === reasoningValue)
+      ?.title || reasoningValue
+  const verbosityLabel =
+    VERBOSITY_OPTIONS.find((option) => option.value === verbosityValue)?.title ||
+    verbosityValue
+  const serviceTierLabel =
+    CODEX_SERVICE_TIER_OPTIONS.find(
+      (option) => option.value === serviceTierValue,
+    )?.title || serviceTierValue
 
   const saveConfig = (updates: Partial<Config>) => {
     if (!config) return
@@ -265,10 +289,10 @@ export function AppBottomBar() {
 
   return (
     <footer
-      className="app-bottom-bar bg-background/95 text-muted-foreground flex h-7 shrink-0 items-center justify-between gap-3 border-t px-2 text-[11px] backdrop-blur"
+      className="app-bottom-bar bg-background/95 text-muted-foreground flex h-7 shrink-0 items-center gap-1.5 border-t px-2 text-[11px] backdrop-blur"
       aria-label="Application status and controls"
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 shrink-0 items-center gap-1">
         <button
           type="button"
           onClick={() => navigate("/settings/repeat-tasks")}
@@ -276,7 +300,7 @@ export function AppBottomBar() {
           title="Open and edit repeat tasks"
         >
           <span className="i-mingcute-refresh-3-line h-3.5 w-3.5 shrink-0" />
-          <span className="hidden sm:inline">Repeat Tasks</span>
+          <span className="hidden sm:inline">Tasks</span>
           <span className="tabular-nums">{loopSummary}</span>
         </button>
         <button
@@ -290,15 +314,15 @@ export function AppBottomBar() {
         </button>
       </div>
 
-      <div className="flex min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden">
-        <label className="flex min-w-0 items-center gap-1">
+      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+        <label className="flex min-w-[8.75rem] max-w-[13rem] flex-[1_1_10rem] items-center gap-1 overflow-hidden">
           <select
             value={providerId}
             onChange={(event) =>
               handleProviderChange(event.currentTarget.value)
             }
             disabled={!config || saveConfigMutation.isPending}
-            className={cn(BAR_SELECT_CLASS, "max-w-[125px]")}
+            className={cn(BAR_SELECT_CLASS, "w-full")}
             title={`Agent provider (${providerLabel})`}
             aria-label="Change agent provider"
           >
@@ -310,12 +334,12 @@ export function AppBottomBar() {
           </select>
         </label>
 
-        <label className="flex min-w-0 items-center gap-1">
+        <label className="flex min-w-[7rem] max-w-[17rem] flex-[1.4_1_12rem] items-center gap-1 overflow-hidden">
           <select
             value={currentModel}
             onChange={(event) => handleModelChange(event.currentTarget.value)}
             disabled={!config || saveConfigMutation.isPending}
-            className={cn(BAR_SELECT_CLASS, "max-w-[180px]")}
+            className={cn(BAR_SELECT_CLASS, "w-full")}
             title={`Agent model (${activePreset?.name || providerLabel}/${currentModel})`}
             aria-label="Change agent model"
           >
@@ -334,7 +358,7 @@ export function AppBottomBar() {
         </label>
 
         {providerSupportsThinking(providerId) && (
-          <label className="flex shrink-0 items-center gap-1">
+          <label className="flex w-[5.2rem] shrink-0 items-center gap-1">
             <span className="i-mingcute-brain-line h-3.5 w-3.5" />
             <select
               value={reasoningValue}
@@ -345,8 +369,8 @@ export function AppBottomBar() {
                 })
               }
               disabled={!config || saveConfigMutation.isPending}
-              className={cn(BAR_SELECT_CLASS, "max-w-[92px]")}
-              title="Change thinking level"
+              className={cn(COMPACT_BAR_SELECT_CLASS, "w-full")}
+              title={`Thinking: ${reasoningLabel}`}
               aria-label="Change thinking level"
             >
               {REASONING_EFFORT_OPTIONS.map((option) => (
@@ -359,7 +383,7 @@ export function AppBottomBar() {
         )}
 
         {providerSupportsVerbosity(providerId) && (
-          <label className="flex shrink-0 items-center gap-1">
+          <label className="flex w-[4.8rem] shrink-0 items-center gap-1">
             <span className="i-mingcute-chat-3-line h-3.5 w-3.5" />
             <select
               value={verbosityValue}
@@ -370,8 +394,8 @@ export function AppBottomBar() {
                 })
               }
               disabled={!config || saveConfigMutation.isPending}
-              className={cn(BAR_SELECT_CLASS, "max-w-[82px]")}
-              title="Change verbosity"
+              className={cn(COMPACT_BAR_SELECT_CLASS, "w-full")}
+              title={`Verbosity: ${verbosityLabel}`}
               aria-label="Change verbosity"
             >
               {VERBOSITY_OPTIONS.map((option) => (
@@ -384,7 +408,7 @@ export function AppBottomBar() {
         )}
 
         {providerSupportsServiceTier(providerId) && (
-          <label className="flex shrink-0 items-center gap-1">
+          <label className="flex w-[5.6rem] shrink-0 items-center gap-1">
             <span className="i-mingcute-flash-line h-3.5 w-3.5" />
             <select
               value={serviceTierValue}
@@ -395,8 +419,8 @@ export function AppBottomBar() {
                 })
               }
               disabled={!config || saveConfigMutation.isPending}
-              className={cn(BAR_SELECT_CLASS, "max-w-[92px]")}
-              title="Change Codex service tier"
+              className={cn(COMPACT_BAR_SELECT_CLASS, "w-full")}
+              title={`Speed: ${serviceTierLabel}`}
               aria-label="Change Codex service tier"
             >
               {CODEX_SERVICE_TIER_OPTIONS.map((option) => (
@@ -409,15 +433,28 @@ export function AppBottomBar() {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => navigate("/settings")}
-        className="hover:bg-accent hover:text-foreground flex h-5 shrink-0 items-center gap-1 rounded px-1.5 tabular-nums transition-colors"
-        title="Open settings"
-      >
-        <span className="i-mingcute-settings-3-line h-3.5 w-3.5" />
-        <span>v{process.env.APP_VERSION}</span>
-      </button>
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        {onOpenShortcutReference && (
+          <button
+            type="button"
+            onClick={onOpenShortcutReference}
+            className="hover:bg-accent hover:text-foreground flex h-5 w-5 items-center justify-center rounded transition-colors"
+            title="Keyboard shortcuts"
+            aria-label="Keyboard shortcuts"
+          >
+            <Keyboard className="h-3.5 w-3.5" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => navigate("/settings")}
+          className="hover:bg-accent hover:text-foreground flex h-5 shrink-0 items-center gap-1 rounded px-1.5 tabular-nums transition-colors"
+          title="Open settings"
+        >
+          <span className="i-mingcute-settings-3-line h-3.5 w-3.5" />
+          <span>v{process.env.APP_VERSION}</span>
+        </button>
+      </div>
     </footer>
   )
 }
