@@ -189,4 +189,70 @@ describe("artifact service", () => {
     expect(preview.content).toBe("abc")
     expect(preview.truncated).toBe(true)
   })
+
+  it("uses useful URL titles instead of numeric markdown labels", async () => {
+    mocks.getConversationHistory.mockResolvedValue([
+      {
+        id: "conv_title",
+        title: "Create Thumbnail Skill",
+        createdAt: 1,
+        updatedAt: 2,
+        messageCount: 1,
+        lastMessage: "",
+        preview: "",
+      },
+    ])
+    mocks.loadConversationForDisplay.mockResolvedValue({
+      id: "conv_title",
+      title: "Create Thumbnail Skill",
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        {
+          id: "msg_1",
+          role: "assistant",
+          content:
+            "[12340300](https://example.com/thumbnails) Title: Thumbnails | YouTube Data API",
+          timestamp: 10,
+        },
+      ],
+    })
+
+    const { artifactService } = await import("./artifact-service")
+    const result = await artifactService.listArtifacts({ forceRefresh: true })
+
+    expect(result.artifacts[0]?.name).toBe("Thumbnails")
+  })
+
+  it("reuses the expensive conversation scan for search and kind filters", async () => {
+    const textPath = path.join(tempDir, "cache.txt")
+    await writeFile(textPath, "hello")
+
+    mocks.getConversationHistory.mockResolvedValue([
+      {
+        id: "conv_cache",
+        title: "Cache",
+        createdAt: 1,
+        updatedAt: 2,
+        messageCount: 1,
+        lastMessage: "",
+        preview: "",
+      },
+    ])
+    mocks.loadConversationForDisplay.mockResolvedValue({
+      id: "conv_cache",
+      title: "Cache",
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        { id: "msg_1", role: "assistant", content: textPath, timestamp: 10 },
+      ],
+    })
+
+    const { artifactService } = await import("./artifact-service")
+    await artifactService.listArtifacts({ forceRefresh: true })
+    await artifactService.listArtifacts({ query: "cache", kind: "text" })
+
+    expect(mocks.loadConversationForDisplay).toHaveBeenCalledTimes(1)
+  })
 })

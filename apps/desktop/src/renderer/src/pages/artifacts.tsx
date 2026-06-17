@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import {
@@ -62,6 +62,17 @@ const kindLabel: Record<ArtifactKind, string> = {
   unknown: "Unknown",
 }
 
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setDebouncedValue(value), delayMs)
+    return () => window.clearTimeout(timeoutId)
+  }, [delayMs, value])
+
+  return debouncedValue
+}
+
 function KindIcon({
   kind,
   className,
@@ -107,8 +118,8 @@ function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
 
   if (artifact.kind === "url") {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-        <div className="bg-muted/20 w-full max-w-xl rounded-lg border p-4">
+      <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto p-4">
+        <div className="bg-muted/20 w-full rounded-md border p-3">
           <div className="flex items-start gap-3">
             <ExternalLink className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
             <div className="min-w-0">
@@ -117,7 +128,7 @@ function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
                 {artifact.url}
               </p>
               {artifact.excerpt && (
-                <p className="text-muted-foreground mt-3 text-sm">
+                <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
                   {artifact.excerpt}
                 </p>
               )}
@@ -196,7 +207,7 @@ function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
     const content = textQuery.data?.content ?? ""
     if (artifact.kind === "markdown") {
       return (
-        <div className="min-h-0 flex-1 overflow-auto p-4">
+        <div className="artifact-preview min-h-0 flex-1 overflow-auto p-4 [&_.prose]:text-xs [&_.prose_h1]:text-lg [&_.prose_h2]:text-base [&_.prose_h3]:text-sm [&_.prose_p]:leading-relaxed [&_.prose_pre]:text-[11px]">
           <MarkdownRenderer content={content} />
           {textQuery.data?.truncated && (
             <div className="text-muted-foreground mt-3 text-xs">
@@ -233,16 +244,23 @@ export const Component = () => {
   const [query, setQuery] = useState("")
   const [kind, setKind] = useState<ArtifactKind | "all">("all")
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [refreshNonce, setRefreshNonce] = useState(0)
+  const consumedRefreshNonce = useRef(0)
+  const debouncedQuery = useDebouncedValue(query.trim(), 200)
 
   const artifactsQuery = useQuery<ArtifactListResponse>({
-    queryKey: ["artifacts", query, kind],
-    queryFn: async () =>
-      tipcClient.listArtifacts({
-        query,
+    queryKey: ["artifacts", debouncedQuery, kind, refreshNonce],
+    queryFn: async () => {
+      const forceRefresh = refreshNonce > consumedRefreshNonce.current
+      consumedRefreshNonce.current = refreshNonce
+      return tipcClient.listArtifacts({
+        query: debouncedQuery,
         kind,
         limit: 500,
         maxConversations: 200,
-      }),
+        forceRefresh,
+      })
+    },
     refetchOnWindowFocus: false,
   })
 
@@ -274,21 +292,21 @@ export const Component = () => {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="bg-background flex h-full min-h-0 flex-col">
+      <div className="shrink-0 border-b px-5 py-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="text-base font-semibold">Artifacts</h1>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              Files and links referenced by agent conversations and tool
-              results. {scanSummary}.
+            <h1 className="text-lg font-semibold leading-none">Artifacts</h1>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Conversation files and links. {scanSummary}.
             </p>
           </div>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            onClick={() => artifactsQuery.refetch()}
+            onClick={() => setRefreshNonce((value) => value + 1)}
             disabled={artifactsQuery.isFetching}
+            className="border"
           >
             {artifactsQuery.isFetching ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -298,21 +316,21 @@ export const Component = () => {
             Refresh
           </Button>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <label className="relative min-w-[16rem] flex-1">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="relative min-w-[18rem] flex-1">
             <Search className="text-muted-foreground pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search artifacts..."
-              className="h-8 pl-8"
+              className="h-8 rounded-md pl-8"
             />
           </label>
           <Select
             value={kind}
             onValueChange={(value) => setKind(value as ArtifactKind | "all")}
           >
-            <SelectTrigger className="h-8 w-[10rem]">
+            <SelectTrigger className="h-8 w-[9rem] rounded-md">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -326,7 +344,7 @@ export const Component = () => {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(20rem,1fr)_minmax(18rem,24rem)]">
         <div className="min-h-0 border-r">
           {artifactsQuery.isLoading ? (
             <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
@@ -347,9 +365,9 @@ export const Component = () => {
                     type="button"
                     onClick={() => setSelectedId(artifact.id)}
                     className={cn(
-                      "flex w-full items-start gap-2 border-b px-3 py-2 text-left transition-colors",
+                      "flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors",
                       active
-                        ? "bg-accent text-accent-foreground"
+                        ? "bg-muted text-foreground"
                         : "hover:bg-accent/50",
                     )}
                   >
@@ -358,20 +376,24 @@ export const Component = () => {
                       className="text-muted-foreground mt-0.5 shrink-0"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
+                      <span className="block truncate text-sm font-semibold">
                         {artifact.name}
                       </span>
-                      <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
-                        <span className="truncate">
-                          {artifact.conversationTitle}
+                      <span className="text-muted-foreground mt-1 flex items-center gap-2 text-[11px]">
+                        <span className="min-w-0 truncate">
+                          {artifact.conversationTitle || "Untitled session"}
                         </span>
                         {artifact.sizeBytes !== undefined && (
-                          <span>{formatBytes(artifact.sizeBytes)}</span>
+                          <span className="shrink-0">
+                            {formatBytes(artifact.sizeBytes)}
+                          </span>
                         )}
-                        <span>{formatTimestamp(artifact.updatedAt)}</span>
+                        <span className="shrink-0">
+                          {formatTimestamp(artifact.updatedAt)}
+                        </span>
                       </span>
                       {artifact.excerpt && (
-                        <span className="text-muted-foreground mt-1 line-clamp-1 text-xs">
+                        <span className="text-muted-foreground mt-1.5 line-clamp-1 text-xs">
                           {artifact.excerpt}
                         </span>
                       )}
@@ -383,25 +405,41 @@ export const Component = () => {
           )}
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-col">
+        <div className="bg-muted/10 flex min-h-0 min-w-0 flex-col">
           {selectedArtifact ? (
             <>
-              <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2">
+              <div className="bg-background flex shrink-0 items-start gap-2 border-b px-3 py-2">
                 <KindIcon
                   kind={selectedArtifact.kind}
-                  className="text-muted-foreground"
+                  className="text-muted-foreground mt-0.5 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <h2 className="truncate text-sm font-semibold">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
                       {selectedArtifact.name}
                     </h2>
-                    <Badge variant="secondary" className="shrink-0">
+                    <Badge
+                      variant="outline"
+                      className="shrink-0 rounded-md px-1.5 py-0 text-[10px]"
+                    >
                       {kindLabel[selectedArtifact.kind]}
                     </Badge>
                   </div>
-                  <div className="text-muted-foreground mt-0.5 truncate text-xs">
+                  <div className="text-muted-foreground mt-1 line-clamp-2 break-all text-[11px]">
                     {selectedArtifact.normalizedReference}
+                  </div>
+                  <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[11px]">
+                    <button
+                      className="hover:text-foreground min-w-0 truncate"
+                      onClick={() =>
+                        navigate(`/${selectedArtifact.conversationId}`)
+                      }
+                    >
+                      {selectedArtifact.conversationTitle || "Untitled session"}
+                    </button>
+                    <span className="shrink-0">
+                      / {selectedArtifact.source}
+                    </span>
                   </div>
                 </div>
                 <Button
@@ -434,22 +472,6 @@ export const Component = () => {
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Button>
-                )}
-              </div>
-              <div className="text-muted-foreground flex shrink-0 items-center gap-2 border-b px-4 py-1.5 text-xs">
-                <button
-                  className="hover:text-foreground truncate"
-                  onClick={() =>
-                    navigate(`/${selectedArtifact.conversationId}`)
-                  }
-                >
-                  {selectedArtifact.conversationTitle}
-                </button>
-                <span>/{selectedArtifact.source}</span>
-                {selectedArtifact.messageTimestamp && (
-                  <span>
-                    {formatTimestamp(selectedArtifact.messageTimestamp)}
-                  </span>
                 )}
               </div>
               <ArtifactPreview artifact={selectedArtifact} />

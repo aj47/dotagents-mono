@@ -23,6 +23,7 @@ import {
 
 const TEXT_PREVIEW_DEFAULT_MAX_BYTES = 256 * 1024
 const TEXT_PREVIEW_MAX_BYTES = 1024 * 1024
+const ARTIFACT_SCAN_CONCURRENCY = 16
 const MARKDOWN_LINK_OR_IMAGE_REGEX =
   /!?\[([^\]]*)\]\(([^)\s]+(?:\s+"[^"]*")?)\)/g
 const URL_REGEX = /\b(?:https?|file|assets):\/\/[^\s<>"'`)\]]+/gi
@@ -83,6 +84,13 @@ type ListArtifactsInput = {
   maxConversations?: number
   limit?: number
   offset?: number
+  forceRefresh?: boolean
+}
+
+type ArtifactCollection = {
+  artifacts: ArtifactRecord[]
+  scannedConversationCount: number
+  totalConversationCount: number
 }
 
 function trimReference(raw: string): string {
@@ -174,6 +182,44 @@ function getExcerpt(text: string, raw: string): string {
       ? Math.min(text.length, index + raw.length + 90)
       : Math.min(text.length, 180)
   return text.slice(start, end).replace(/\s+/g, " ").trim()
+}
+
+function isWeakArtifactLabel(label?: string): boolean {
+  const trimmed = label?.trim()
+  if (!trimmed) return true
+  if (/^\d+$/.test(trimmed)) return true
+  if (/^https?:\/\//i.test(trimmed)) return true
+  if (/^(?:title|url|source|file|path)$/i.test(trimmed)) return true
+  return trimmed.length > 80
+}
+
+function titleFromReferenceText(text: string, raw: string): string | null {
+  const rawIndex = text.indexOf(raw)
+  const searchStart = rawIndex >= 0 ? Math.max(0, rawIndex - 240) : 0
+  const searchEnd =
+    rawIndex >= 0 ? Math.min(text.length, rawIndex + raw.length + 240) : 360
+  const nearby = text.slice(searchStart, searchEnd)
+  const titleMatch = nearby.match(
+    /(?:^|\s)(?:Title|title):\s*([^"\n\r|{}[\]]{4,90})/u,
+  )
+  const title = titleMatch?.[1]?.replace(/\s+/g, " ").trim()
+  return title && !isWeakArtifactLabel(title) ? title : null
+}
+
+function titleFromUrlOrPath(
+  raw: string,
+  localPath?: string,
+  url?: string,
+): string {
+  if (localPath) return path.basename(localPath)
+  try {
+    const parsed = new URL(url ?? raw)
+    const lastPathSegment = parsed.pathname.split("/").filter(Boolean).pop()
+    const decoded = decodeURIComponent(lastPathSegment || parsed.hostname)
+    return decoded || parsed.hostname || raw
+  } catch {
+    return raw
+  }
 }
 
 function collectStringValues(value: unknown, depth = 0): string[] {
@@ -398,19 +444,12 @@ async function resolveReference(
     previewUrl = `assets://artifact/${id}`
   }
 
-  const name =
-    reference.label?.trim() ||
-    (localPath ? path.basename(localPath) : undefined) ||
-    (() => {
-      try {
-        const parsed = new URL(url ?? raw)
-        return decodeURIComponent(
-          parsed.pathname.split("/").filter(Boolean).pop() || parsed.hostname,
-        )
-      } catch {
-        return raw
-      }
-    })()
+  const referenceTitle = titleFromUrlOrPath(raw, localPath, url)
+  const nearbyTitle = titleFromReferenceText(reference.text, raw)
+  const labelTitle = isWeakArtifactLabel(reference.label)
+    ? null
+    : reference.label!.trim()
+  const name = labelTitle || nearbyTitle || referenceTitle
 
   const sizeBytes = statNumber(stat?.size)
   const modifiedAt = statNumber(stat?.mtimeMs)
@@ -457,50 +496,93 @@ function matchesQuery(artifact: ArtifactRecord, query?: string): boolean {
 
 class ArtifactService {
   private cachedArtifacts: ArtifactRecord[] = []
+  private cachedCollection:
+    | (ArtifactCollection & {
+        cacheKey: string
+      })
+    | null = null
+
+  private getCollectionCacheKey(input: {
+    conversationId?: string
+    maxConversations?: number
+  }): string {
+    return `${input.conversationId ?? "recent"}:${input.maxConversations ?? 200}`
+  }
+
+  private getHistoryCacheSignature(
+    conversations: Awaited<
+      ReturnType<typeof conversationService.getConversationHistory>
+    >,
+  ): string {
+    return conversations
+      .map((item) => `${item.id}:${item.updatedAt}:${item.messageCount}`)
+      .join("|")
+  }
 
   private async collectArtifacts(
     input: {
       conversationId?: string
       maxConversations?: number
+      forceRefresh?: boolean
     } = {},
-  ): Promise<{
-    artifacts: ArtifactRecord[]
-    scannedConversationCount: number
-    totalConversationCount: number
-  }> {
+  ): Promise<ArtifactCollection> {
     const history = await conversationService.getConversationHistory()
     const conversationsToScan = input.conversationId
       ? history.filter((item) => item.id === input.conversationId)
       : history.slice(0, Math.max(1, input.maxConversations ?? 200))
+    const cacheKey = `${this.getCollectionCacheKey(input)}:${this.getHistoryCacheSignature(conversationsToScan)}`
+    if (!input.forceRefresh && this.cachedCollection?.cacheKey === cacheKey) {
+      return this.cachedCollection
+    }
+
     const records = new Map<string, ArtifactRecord>()
+    let nextIndex = 0
+    const scanWorker = async () => {
+      while (nextIndex < conversationsToScan.length) {
+        const item = conversationsToScan[nextIndex++]
+        const conversation =
+          await conversationService.loadConversationForDisplay(item.id)
+        if (!conversation) continue
 
-    for (const item of conversationsToScan) {
-      const conversation = await conversationService.loadConversationForDisplay(
-        item.id,
-      )
-      if (!conversation) continue
+        for (const reference of extractReferences(conversation)) {
+          const artifact = await resolveReference(reference)
+          if (!artifact) continue
 
-      for (const reference of extractReferences(conversation)) {
-        const artifact = await resolveReference(reference)
-        if (!artifact) continue
-
-        const existing = records.get(artifact.id)
-        if (
-          !existing ||
-          (artifact.updatedAt ?? 0) > (existing.updatedAt ?? 0)
-        ) {
-          records.set(artifact.id, artifact)
+          const existing = records.get(artifact.id)
+          if (
+            !existing ||
+            (artifact.updatedAt ?? 0) > (existing.updatedAt ?? 0)
+          ) {
+            records.set(artifact.id, artifact)
+          }
         }
       }
     }
 
-    return {
+    await Promise.all(
+      Array.from(
+        {
+          length: Math.min(
+            ARTIFACT_SCAN_CONCURRENCY,
+            conversationsToScan.length,
+          ),
+        },
+        scanWorker,
+      ),
+    )
+
+    const collection = {
       artifacts: Array.from(records.values()).sort(
         (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0),
       ),
       scannedConversationCount: conversationsToScan.length,
       totalConversationCount: history.length,
     }
+    this.cachedCollection = {
+      ...collection,
+      cacheKey,
+    }
+    return collection
   }
 
   async listArtifacts(
@@ -509,6 +591,7 @@ class ArtifactService {
     const collected = await this.collectArtifacts({
       conversationId: input.conversationId,
       maxConversations: input.maxConversations,
+      forceRefresh: input.forceRefresh,
     })
     this.cachedArtifacts = collected.artifacts
     const filtered = collected.artifacts.filter((artifact) => {

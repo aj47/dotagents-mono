@@ -4182,6 +4182,7 @@ export const router = {
       maxConversations?: number
       limit?: number
       offset?: number
+      forceRefresh?: boolean
     }>()
     .action(async ({ input }) => {
       return artifactService.listArtifacts(input)
