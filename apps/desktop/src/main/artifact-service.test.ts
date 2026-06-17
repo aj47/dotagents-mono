@@ -236,6 +236,46 @@ describe("artifact service", () => {
     ).toBe("Use 1280x720.")
   })
 
+  it("does not assign remote http media as artifact preview URLs", async () => {
+    const imageUrl = "https://example.com/photo.png"
+    mocks.getConversationHistory.mockResolvedValue([
+      {
+        id: "conv_remote_media",
+        title: "Remote media",
+        createdAt: 1,
+        updatedAt: 2,
+        messageCount: 1,
+        lastMessage: "",
+        preview: "",
+      },
+    ])
+    mocks.loadConversationForDisplay.mockResolvedValue({
+      id: "conv_remote_media",
+      title: "Remote media",
+      createdAt: 1,
+      updatedAt: 2,
+      messages: [
+        {
+          id: "msg_1",
+          role: "assistant",
+          content: imageUrl,
+          timestamp: 10,
+        },
+      ],
+    })
+
+    const { artifactService } = await import("./artifact-service")
+    const result = await artifactService.listArtifacts({ forceRefresh: true })
+    const artifact = result.artifacts.find(
+      (entry) => entry.normalizedReference === imageUrl,
+    )
+
+    expect(artifact?.kind).toBe("image")
+    expect(artifact?.url).toBe(imageUrl)
+    expect(artifact?.previewUrl).toBeUndefined()
+    expect(artifact?.canOpen).toBe(true)
+  })
+
   it("reuses the expensive conversation scan for search and kind filters", async () => {
     const textPath = path.join(tempDir, "cache.txt")
     await writeFile(textPath, "hello")

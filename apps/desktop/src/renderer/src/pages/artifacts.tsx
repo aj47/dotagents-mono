@@ -132,7 +132,7 @@ function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
     enabled: artifact.canReadText,
   })
 
-  if (artifact.kind === "url") {
+  if (artifact.kind === "url" || (artifact.url && !artifact.previewUrl)) {
     return (
       <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto p-4">
         <div className="bg-muted/20 w-full rounded-md border p-3">

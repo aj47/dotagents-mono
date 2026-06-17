@@ -455,7 +455,6 @@ async function resolveReference(
     url = raw
     normalizedReference = raw
     kind = classifyUrl(raw)
-    previewUrl = kind === "url" ? undefined : raw
   } else if (/^file:\/\//i.test(raw)) {
     try {
       localPath = decodeURIComponent(new URL(raw).pathname)
