@@ -1,7 +1,12 @@
 import { cn } from "@renderer/lib/utils"
 import React, { createContext, useContext, useState } from "react"
 import { ChevronDown, ChevronRight, Info } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./tooltip"
 
 /**
  * Context for settings search filtering.
@@ -15,13 +20,20 @@ function extractLabelText(label: React.ReactNode): string {
   if (label && typeof label === "object" && "props" in label) {
     const props = (label as React.ReactElement).props as Record<string, unknown>
     if (typeof props.label === "string") return props.label
-    if (typeof props.tooltip === "string") return `${props.label ?? ""} ${props.tooltip}`
+    if (typeof props.tooltip === "string")
+      return `${props.label ?? ""} ${props.tooltip}`
   }
   return ""
 }
 
 /** Highlight matching substring in text */
-export function HighlightMatch({ text, query }: { text: string; query: string }) {
+export function HighlightMatch({
+  text,
+  query,
+}: {
+  text: string
+  query: string
+}) {
   if (!query) return <>{text}</>
   const lowerText = text.toLowerCase()
   const lowerQuery = query.toLowerCase()
@@ -30,22 +42,33 @@ export function HighlightMatch({ text, query }: { text: string; query: string })
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-yellow-200 dark:bg-yellow-700/60 text-inherit rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      <mark className="rounded-sm bg-yellow-200 px-0.5 text-inherit dark:bg-yellow-700/60">
+        {text.slice(idx, idx + query.length)}
+      </mark>
       {text.slice(idx + query.length)}
     </>
   )
 }
 
 /** Apply search highlighting to a Control label */
-function highlightLabel(label: React.ReactNode, query: string): React.ReactNode {
+function highlightLabel(
+  label: React.ReactNode,
+  query: string,
+): React.ReactNode {
   if (!query) return label
-  if (typeof label === "string") return <HighlightMatch text={label} query={query} />
+  if (typeof label === "string")
+    return <HighlightMatch text={label} query={query} />
   if (label && typeof label === "object" && "props" in label) {
     const el = label as React.ReactElement
     const props = el.props as Record<string, unknown>
     if (typeof props.label === "string") {
       const { label: origLabel, ...rest } = props
-      return <ControlLabel label={<HighlightMatch text={origLabel as string} query={query} />} {...rest} />
+      return (
+        <ControlLabel
+          label={<HighlightMatch text={origLabel as string} query={query} />}
+          {...rest}
+        />
+      )
     }
   }
   return label
@@ -63,7 +86,11 @@ export const Control = ({
   const searchQuery = useContext(SettingsSearchContext)
   const text = extractLabelText(label)
   // When searching, hide controls that don't match
-  if (searchQuery && text && !text.toLowerCase().includes(searchQuery.toLowerCase())) {
+  if (
+    searchQuery &&
+    text &&
+    !text.toLowerCase().includes(searchQuery.toLowerCase())
+  ) {
     return null
   }
   const displayLabel = highlightLabel(label, searchQuery)
@@ -71,14 +98,16 @@ export const Control = ({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5",
+        "flex min-w-0 max-w-full flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5",
         className,
       )}
     >
-      <div className="min-w-0 sm:max-w-[52%]">
-        <div className="text-sm font-medium leading-5 break-words">{displayLabel}</div>
+      <div className="min-w-0 max-w-full sm:max-w-[52%]">
+        <div className="break-words text-sm font-medium leading-5">
+          {displayLabel}
+        </div>
       </div>
-      <div className="flex w-full min-w-0 items-center justify-start sm:max-w-[48%] sm:justify-end">
+      <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-start gap-2 sm:max-w-[48%] sm:justify-end">
         {children}
       </div>
     </div>
@@ -98,11 +127,11 @@ export const ControlLabel = ({
 
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-      <span className="text-sm font-medium break-words">{label}</span>
+      <span className="break-words text-sm font-medium">{label}</span>
       <TooltipProvider delayDuration={0} disableHoverableContent>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground cursor-help transition-colors hover:text-foreground" />
+            <Info className="text-muted-foreground hover:text-foreground h-3.5 w-3.5 shrink-0 cursor-help transition-colors" />
           </TooltipTrigger>
           <TooltipContent
             side="top"
@@ -123,6 +152,7 @@ export const ControlLabel = ({
 export const ControlGroup = ({
   children,
   className,
+  id,
   title,
   endDescription,
   collapsible = false,
@@ -132,6 +162,7 @@ export const ControlGroup = ({
 }: {
   children: React.ReactNode
   className?: string
+  id?: string
   title?: React.ReactNode
   endDescription?: React.ReactNode
   collapsible?: boolean
@@ -144,12 +175,12 @@ export const ControlGroup = ({
   const isCollapsed = forceOpen ? false : collapsed
 
   return (
-    <div className={className}>
+    <div id={id} className={className}>
       {title && collapsible ? (
         <div className="rounded-lg border">
           <button
             type="button"
-            className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted/30 transition-colors cursor-pointer"
+            className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 text-left transition-colors"
             onClick={() => {
               const newCollapsed = !collapsed
               setCollapsed(newCollapsed)
@@ -157,22 +188,22 @@ export const ControlGroup = ({
             }}
             aria-expanded={!isCollapsed}
           >
-            <span className="flex items-center gap-2 text-sm font-semibold">
+            <div className="flex min-w-0 items-center gap-2 text-sm font-semibold">
               {isCollapsed ? (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="text-muted-foreground h-4 w-4" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="text-muted-foreground h-4 w-4" />
               )}
-              <span>{title}</span>
-            </span>
+              <div className="min-w-0">{title}</div>
+            </div>
           </button>
 
           {!isCollapsed && (
             <>
               <div className="divide-y border-t">{children}</div>
               {endDescription && (
-                <div className="border-t px-3 py-2 text-xs text-muted-foreground sm:flex sm:justify-end sm:text-right">
-                  <div className="w-full break-words whitespace-normal sm:max-w-[70%]">
+                <div className="text-muted-foreground border-t px-3 py-2 text-xs sm:flex sm:justify-end sm:text-right">
+                  <div className="w-full whitespace-normal break-words sm:max-w-[70%]">
                     {endDescription}
                   </div>
                 </div>
@@ -191,8 +222,8 @@ export const ControlGroup = ({
             <>
               <div className="divide-y rounded-lg border">{children}</div>
               {endDescription && (
-                <div className="mt-2 text-xs text-muted-foreground sm:flex sm:justify-end sm:text-right">
-                  <div className="w-full break-words whitespace-normal sm:max-w-[70%]">
+                <div className="text-muted-foreground mt-2 text-xs sm:flex sm:justify-end sm:text-right">
+                  <div className="w-full whitespace-normal break-words sm:max-w-[70%]">
                     {endDescription}
                   </div>
                 </div>

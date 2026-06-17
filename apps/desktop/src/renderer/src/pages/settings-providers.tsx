@@ -709,7 +709,7 @@ function SupertonicProviderSection({
   )
 }
 
-export function Component() {
+export function ProviderSettingsContent() {
   const configQuery = useConfigQuery()
   const chatgptWebAuthQuery = useQuery({
     queryKey: ["chatgpt-web-auth-status"],
@@ -973,639 +973,635 @@ export function Component() {
   )
 
   return (
-    <SettingsPageShell>
-      <div className="grid gap-4">
-        <div className="bg-muted/20 rounded-lg border px-4 py-3">
-          <h2 className="text-sm font-semibold">Provider Setup</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Manage API keys, base URLs, local engine downloads, and quick
-            provider diagnostics for the Intelligence area.
-          </p>
-          {isMainAgentAcpMode && (
-            <div className="border-primary/30 bg-primary/5 mt-3 rounded-md border px-3 py-2 text-xs">
-              <div className="text-primary flex items-center gap-1.5 font-medium">
-                <Bot className="h-3.5 w-3.5" />
-                ACP Main Agent:{" "}
-                <span className="text-foreground">
-                  {selectedMainAcpAgentDisplayName || "Not selected"}
-                </span>
-              </div>
-              <p className="text-muted-foreground mt-1">
-                ACP mode handles chat submissions through the selected agent.
-                Provider setup below still applies to API-backed tools, voice,
-                and local engines.
-              </p>
+    <div className="grid gap-4">
+      <div className="bg-muted/20 rounded-lg border px-4 py-3">
+        <h2 className="text-sm font-semibold">Provider Setup</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Manage API keys, base URLs, local engine downloads, and quick provider
+          diagnostics for the Intelligence area.
+        </p>
+        {isMainAgentAcpMode && (
+          <div className="border-primary/30 bg-primary/5 mt-3 rounded-md border px-3 py-2 text-xs">
+            <div className="text-primary flex items-center gap-1.5 font-medium">
+              <Bot className="h-3.5 w-3.5" />
+              ACP Main Agent:{" "}
+              <span className="text-foreground">
+                {selectedMainAcpAgentDisplayName || "Not selected"}
+              </span>
+            </div>
+            <p className="text-muted-foreground mt-1">
+              ACP mode handles chat submissions through the selected agent.
+              Provider setup below still applies to API-backed tools, voice, and
+              local engines.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* OpenAI Compatible Provider Section */}
+      <div
+        className={`rounded-lg border ${activeProviders.openai.length > 0 ? "border-primary/30 bg-primary/5" : ""}`}
+      >
+        <button
+          type="button"
+          className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+          onClick={() =>
+            saveConfig({
+              providerSectionCollapsedOpenai:
+                !configQuery.data.providerSectionCollapsedOpenai,
+            })
+          }
+          aria-expanded={!configQuery.data.providerSectionCollapsedOpenai}
+          aria-controls="openai-provider-content"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            {configQuery.data.providerSectionCollapsedOpenai ? (
+              <ChevronRight className="text-muted-foreground h-4 w-4" />
+            ) : (
+              <ChevronDown className="text-muted-foreground h-4 w-4" />
+            )}
+            OpenAI Compatible
+            {activeProviders.openai.length > 0 && (
+              <CheckCircle2 className="text-primary h-4 w-4" />
+            )}
+          </span>
+          {activeProviders.openai.length > 0 && (
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {activeProviders.openai.map((badge) => (
+                <ActiveProviderBadge
+                  key={badge.label}
+                  label={badge.label}
+                  icon={badge.icon}
+                />
+              ))}
             </div>
           )}
-        </div>
+        </button>
+        {!configQuery.data.providerSectionCollapsedOpenai && (
+          <div id="openai-provider-content" className="divide-y border-t">
+            {activeProviders.openai.length === 0 && (
+              <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
+                OpenAI-compatible presets are selected from the Models section.
+              </p>
+            )}
 
-        {/* OpenAI Compatible Provider Section */}
-        <div
-          className={`rounded-lg border ${activeProviders.openai.length > 0 ? "border-primary/30 bg-primary/5" : ""}`}
-        >
+            <div className="px-3 py-2">
+              <p className="text-muted-foreground text-sm">
+                OpenAI-compatible presets, agent models, and transcript cleanup
+                models are managed in Models.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Groq Provider Section - rendered in order based on active status */}
+      {isGroqActive && (
+        <div className="border-primary/30 bg-primary/5 rounded-lg border">
           <button
             type="button"
             className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
             onClick={() =>
               saveConfig({
-                providerSectionCollapsedOpenai:
-                  !configQuery.data.providerSectionCollapsedOpenai,
+                providerSectionCollapsedGroq:
+                  !configQuery.data.providerSectionCollapsedGroq,
               })
             }
-            aria-expanded={!configQuery.data.providerSectionCollapsedOpenai}
-            aria-controls="openai-provider-content"
+            aria-expanded={!configQuery.data.providerSectionCollapsedGroq}
+            aria-controls="groq-provider-content"
           >
             <span className="flex items-center gap-2 text-sm font-semibold">
-              {configQuery.data.providerSectionCollapsedOpenai ? (
+              {configQuery.data.providerSectionCollapsedGroq ? (
                 <ChevronRight className="text-muted-foreground h-4 w-4" />
               ) : (
                 <ChevronDown className="text-muted-foreground h-4 w-4" />
               )}
-              OpenAI Compatible
-              {activeProviders.openai.length > 0 && (
-                <CheckCircle2 className="text-primary h-4 w-4" />
-              )}
+              Groq
+              <CheckCircle2 className="text-primary h-4 w-4" />
             </span>
-            {activeProviders.openai.length > 0 && (
-              <div className="flex flex-wrap justify-end gap-1.5">
-                {activeProviders.openai.map((badge) => (
-                  <ActiveProviderBadge
-                    key={badge.label}
-                    label={badge.label}
-                    icon={badge.icon}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {activeProviders.groq.map((badge) => (
+                <ActiveProviderBadge
+                  key={badge.label}
+                  label={badge.label}
+                  icon={badge.icon}
+                />
+              ))}
+            </div>
           </button>
-          {!configQuery.data.providerSectionCollapsedOpenai && (
-            <div id="openai-provider-content" className="divide-y border-t">
-              {activeProviders.openai.length === 0 && (
-                <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
-                  OpenAI-compatible presets are selected from the Models
-                  section.
-                </p>
-              )}
+          {!configQuery.data.providerSectionCollapsedGroq && (
+            <div id="groq-provider-content" className="divide-y border-t">
+              {renderProviderDraftInput("groqApiKey", {
+                label: "API Key",
+                type: "password",
+              })}
 
-              <div className="px-3 py-2">
-                <p className="text-muted-foreground text-sm">
-                  OpenAI-compatible presets, agent models, and transcript
-                  cleanup models are managed in Models.
-                </p>
-              </div>
+              {renderProviderDraftInput("groqBaseUrl", {
+                label: "API Base URL",
+                type: "url",
+                placeholder: "https://api.groq.com/openai/v1",
+              })}
+
+              <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
+                Groq model selection is managed in Models.
+              </p>
             </div>
           )}
         </div>
+      )}
 
-        {/* Groq Provider Section - rendered in order based on active status */}
-        {isGroqActive && (
-          <div className="border-primary/30 bg-primary/5 rounded-lg border">
-            <button
-              type="button"
-              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
-              onClick={() =>
-                saveConfig({
-                  providerSectionCollapsedGroq:
-                    !configQuery.data.providerSectionCollapsedGroq,
-                })
-              }
-              aria-expanded={!configQuery.data.providerSectionCollapsedGroq}
-              aria-controls="groq-provider-content"
+      {/* Gemini Provider Section - rendered in order based on active status */}
+      {isGeminiActive && (
+        <div className="border-primary/30 bg-primary/5 rounded-lg border">
+          <button
+            type="button"
+            className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+            onClick={() =>
+              saveConfig({
+                providerSectionCollapsedGemini:
+                  !configQuery.data.providerSectionCollapsedGemini,
+              })
+            }
+            aria-expanded={!configQuery.data.providerSectionCollapsedGemini}
+            aria-controls="gemini-provider-content"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              {configQuery.data.providerSectionCollapsedGemini ? (
+                <ChevronRight className="text-muted-foreground h-4 w-4" />
+              ) : (
+                <ChevronDown className="text-muted-foreground h-4 w-4" />
+              )}
+              Gemini
+              <CheckCircle2 className="text-primary h-4 w-4" />
+            </span>
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {activeProviders.gemini.map((badge) => (
+                <ActiveProviderBadge
+                  key={badge.label}
+                  label={badge.label}
+                  icon={badge.icon}
+                />
+              ))}
+            </div>
+          </button>
+          {!configQuery.data.providerSectionCollapsedGemini && (
+            <div id="gemini-provider-content" className="divide-y border-t">
+              {renderProviderDraftInput("geminiApiKey", {
+                label: "API Key",
+                type: "password",
+              })}
+
+              {renderProviderDraftInput("geminiBaseUrl", {
+                label: "API Base URL",
+                type: "url",
+                placeholder: "https://generativelanguage.googleapis.com",
+              })}
+
+              <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
+                Gemini model selection is managed in Models.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ChatGPT Web Provider Section - rendered in order based on active status */}
+      {isChatgptWebActive && (
+        <div className="border-primary/30 bg-primary/5 rounded-lg border">
+          <button
+            type="button"
+            className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+            onClick={() =>
+              saveConfig({
+                providerSectionCollapsedChatgptWeb:
+                  !configQuery.data.providerSectionCollapsedChatgptWeb,
+              })
+            }
+            aria-expanded={!configQuery.data.providerSectionCollapsedChatgptWeb}
+            aria-controls="chatgpt-web-provider-content"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              {configQuery.data.providerSectionCollapsedChatgptWeb ? (
+                <ChevronRight className="text-muted-foreground h-4 w-4" />
+              ) : (
+                <ChevronDown className="text-muted-foreground h-4 w-4" />
+              )}
+              OpenAI Codex
+              <CheckCircle2 className="text-primary h-4 w-4" />
+            </span>
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {activeProviders.chatgptWeb.map((badge) => (
+                <ActiveProviderBadge
+                  key={badge.label}
+                  label={badge.label}
+                  icon={badge.icon}
+                />
+              ))}
+            </div>
+          </button>
+          {!configQuery.data.providerSectionCollapsedChatgptWeb && (
+            <div
+              id="chatgpt-web-provider-content"
+              className="divide-y border-t"
             >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                {configQuery.data.providerSectionCollapsedGroq ? (
-                  <ChevronRight className="text-muted-foreground h-4 w-4" />
-                ) : (
-                  <ChevronDown className="text-muted-foreground h-4 w-4" />
-                )}
-                Groq
-                <CheckCircle2 className="text-primary h-4 w-4" />
-              </span>
-              <div className="flex flex-wrap justify-end gap-1.5">
-                {activeProviders.groq.map((badge) => (
-                  <ActiveProviderBadge
-                    key={badge.label}
-                    label={badge.label}
-                    icon={badge.icon}
-                  />
-                ))}
-              </div>
-            </button>
-            {!configQuery.data.providerSectionCollapsedGroq && (
-              <div id="groq-provider-content" className="divide-y border-t">
-                {renderProviderDraftInput("groqApiKey", {
-                  label: "API Key",
-                  type: "password",
-                })}
-
-                {renderProviderDraftInput("groqBaseUrl", {
-                  label: "API Base URL",
-                  type: "url",
-                  placeholder: "https://api.groq.com/openai/v1",
-                })}
-
-                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
-                  Groq model selection is managed in Models.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Gemini Provider Section - rendered in order based on active status */}
-        {isGeminiActive && (
-          <div className="border-primary/30 bg-primary/5 rounded-lg border">
-            <button
-              type="button"
-              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
-              onClick={() =>
-                saveConfig({
-                  providerSectionCollapsedGemini:
-                    !configQuery.data.providerSectionCollapsedGemini,
-                })
-              }
-              aria-expanded={!configQuery.data.providerSectionCollapsedGemini}
-              aria-controls="gemini-provider-content"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                {configQuery.data.providerSectionCollapsedGemini ? (
-                  <ChevronRight className="text-muted-foreground h-4 w-4" />
-                ) : (
-                  <ChevronDown className="text-muted-foreground h-4 w-4" />
-                )}
-                Gemini
-                <CheckCircle2 className="text-primary h-4 w-4" />
-              </span>
-              <div className="flex flex-wrap justify-end gap-1.5">
-                {activeProviders.gemini.map((badge) => (
-                  <ActiveProviderBadge
-                    key={badge.label}
-                    label={badge.label}
-                    icon={badge.icon}
-                  />
-                ))}
-              </div>
-            </button>
-            {!configQuery.data.providerSectionCollapsedGemini && (
-              <div id="gemini-provider-content" className="divide-y border-t">
-                {renderProviderDraftInput("geminiApiKey", {
-                  label: "API Key",
-                  type: "password",
-                })}
-
-                {renderProviderDraftInput("geminiBaseUrl", {
-                  label: "API Base URL",
-                  type: "url",
-                  placeholder: "https://generativelanguage.googleapis.com",
-                })}
-
-                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
-                  Gemini model selection is managed in Models.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ChatGPT Web Provider Section - rendered in order based on active status */}
-        {isChatgptWebActive && (
-          <div className="border-primary/30 bg-primary/5 rounded-lg border">
-            <button
-              type="button"
-              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
-              onClick={() =>
-                saveConfig({
-                  providerSectionCollapsedChatgptWeb:
-                    !configQuery.data.providerSectionCollapsedChatgptWeb,
-                })
-              }
-              aria-expanded={
-                !configQuery.data.providerSectionCollapsedChatgptWeb
-              }
-              aria-controls="chatgpt-web-provider-content"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                {configQuery.data.providerSectionCollapsedChatgptWeb ? (
-                  <ChevronRight className="text-muted-foreground h-4 w-4" />
-                ) : (
-                  <ChevronDown className="text-muted-foreground h-4 w-4" />
-                )}
-                OpenAI Codex
-                <CheckCircle2 className="text-primary h-4 w-4" />
-              </span>
-              <div className="flex flex-wrap justify-end gap-1.5">
-                {activeProviders.chatgptWeb.map((badge) => (
-                  <ActiveProviderBadge
-                    key={badge.label}
-                    label={badge.label}
-                    icon={badge.icon}
-                  />
-                ))}
-              </div>
-            </button>
-            {!configQuery.data.providerSectionCollapsedChatgptWeb && (
-              <div
-                id="chatgpt-web-provider-content"
-                className="divide-y border-t"
-              >
-                <div className="space-y-3 px-3 py-3">
-                  <div className="text-sm">
-                    <div className="font-medium">
-                      {(chatgptWebAuthQuery.data as any)?.authenticated
-                        ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
-                        : "Not connected"}
-                    </div>
+              <div className="space-y-3 px-3 py-3">
+                <div className="text-sm">
+                  <div className="font-medium">
+                    {(chatgptWebAuthQuery.data as any)?.authenticated
+                      ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
+                      : "Not connected"}
+                  </div>
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    {(chatgptWebAuthQuery.data as any)?.planType
+                      ? `Plan: ${(chatgptWebAuthQuery.data as any).planType}`
+                      : "Uses your ChatGPT Codex subscription via OAuth."}
+                  </div>
+                  {(chatgptWebAuthQuery.data as any)?.accountId && (
                     <div className="text-muted-foreground mt-1 text-xs">
-                      {(chatgptWebAuthQuery.data as any)?.planType
-                        ? `Plan: ${(chatgptWebAuthQuery.data as any).planType}`
-                        : "Uses your ChatGPT Codex subscription via OAuth."}
+                      Account ID: {(chatgptWebAuthQuery.data as any).accountId}
                     </div>
-                    {(chatgptWebAuthQuery.data as any)?.accountId && (
-                      <div className="text-muted-foreground mt-1 text-xs">
-                        Account ID:{" "}
-                        {(chatgptWebAuthQuery.data as any).accountId}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleChatgptWebAuth}
-                      disabled={chatgptWebAuthBusy}
-                    >
-                      {chatgptWebAuthBusy
-                        ? "Working..."
-                        : (chatgptWebAuthQuery.data as any)?.authenticated
-                          ? "Re-auth"
-                          : "Connect"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleCopyChatgptCallbackUrl}
-                      disabled={chatgptWebAuthBusy}
-                    >
-                      Copy Callback URL
-                    </Button>
-                    {(chatgptWebAuthQuery.data as any)?.authenticated && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleChatgptWebLogout}
-                        disabled={chatgptWebAuthBusy}
-                      >
-                        Disconnect
-                      </Button>
-                    )}
-                  </div>
-
-                  {chatgptWebAuthError && (
-                    <p className="text-destructive text-xs">
-                      {chatgptWebAuthError}
-                    </p>
                   )}
                 </div>
 
-                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
-                  Browser sign-in should return to
-                  `http://localhost:1455/auth/callback`. Use Copy Callback URL
-                  if you need to inspect or paste the callback target.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Parakeet (Local) Provider Section */}
-        {isParakeetActive && (
-          <ParakeetProviderSection
-            isActive={true}
-            isCollapsed={
-              configQuery.data.providerSectionCollapsedParakeet ?? true
-            }
-            onToggleCollapse={() =>
-              saveConfig({
-                providerSectionCollapsedParakeet: !(
-                  configQuery.data.providerSectionCollapsedParakeet ?? true
-                ),
-              })
-            }
-            usageBadges={activeProviders.parakeet}
-            numThreads={configQuery.data.parakeetNumThreads || 2}
-            onNumThreadsChange={(value) =>
-              saveConfig({ parakeetNumThreads: value })
-            }
-          />
-        )}
-
-        {/* Kitten (Local) TTS Provider Section */}
-        {isKittenActive && (
-          <KittenProviderSection
-            isActive={true}
-            isCollapsed={
-              configQuery.data.providerSectionCollapsedKitten ?? true
-            }
-            onToggleCollapse={() =>
-              saveConfig({
-                providerSectionCollapsedKitten: !(
-                  configQuery.data.providerSectionCollapsedKitten ?? true
-                ),
-              })
-            }
-            usageBadges={activeProviders.kitten}
-            voiceId={configQuery.data.kittenVoiceId ?? 0}
-          />
-        )}
-
-        {/* Supertonic (Local) TTS Provider Section */}
-        {isSupertonicActive && (
-          <SupertonicProviderSection
-            isActive={true}
-            isCollapsed={
-              configQuery.data.providerSectionCollapsedSupertonic ?? true
-            }
-            onToggleCollapse={() =>
-              saveConfig({
-                providerSectionCollapsedSupertonic: !(
-                  configQuery.data.providerSectionCollapsedSupertonic ?? true
-                ),
-              } as Partial<Config>)
-            }
-            usageBadges={activeProviders.supertonic}
-            voice={configQuery.data.supertonicVoice ?? "M1"}
-            language={configQuery.data.supertonicLanguage ?? "en"}
-            speed={configQuery.data.supertonicSpeed ?? 1.05}
-            steps={configQuery.data.supertonicSteps ?? 5}
-          />
-        )}
-
-        {/* Inactive Groq Provider Section - shown at bottom when not selected */}
-        {!isGroqActive && (
-          <div className="rounded-lg border">
-            <button
-              type="button"
-              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
-              onClick={() =>
-                saveConfig({
-                  providerSectionCollapsedGroq:
-                    !configQuery.data.providerSectionCollapsedGroq,
-                })
-              }
-              aria-expanded={!configQuery.data.providerSectionCollapsedGroq}
-              aria-controls="groq-provider-content-inactive"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                {configQuery.data.providerSectionCollapsedGroq ? (
-                  <ChevronRight className="text-muted-foreground h-4 w-4" />
-                ) : (
-                  <ChevronDown className="text-muted-foreground h-4 w-4" />
-                )}
-                Groq
-              </span>
-            </button>
-            {!configQuery.data.providerSectionCollapsedGroq && (
-              <div
-                id="groq-provider-content-inactive"
-                className="divide-y border-t"
-              >
-                <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
-                  Not selected above. You can still configure it here.
-                </p>
-
-                {renderProviderDraftInput("groqApiKey", {
-                  label: "API Key",
-                  type: "password",
-                })}
-
-                {renderProviderDraftInput("groqBaseUrl", {
-                  label: "API Base URL",
-                  type: "url",
-                  placeholder: "https://api.groq.com/openai/v1",
-                })}
-
-                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
-                  Groq model selection is managed in Models.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Inactive Gemini Provider Section - shown at bottom when not selected */}
-        {!isGeminiActive && (
-          <div className="rounded-lg border">
-            <button
-              type="button"
-              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
-              onClick={() =>
-                saveConfig({
-                  providerSectionCollapsedGemini:
-                    !configQuery.data.providerSectionCollapsedGemini,
-                })
-              }
-              aria-expanded={!configQuery.data.providerSectionCollapsedGemini}
-              aria-controls="gemini-provider-content-inactive"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                {configQuery.data.providerSectionCollapsedGemini ? (
-                  <ChevronRight className="text-muted-foreground h-4 w-4" />
-                ) : (
-                  <ChevronDown className="text-muted-foreground h-4 w-4" />
-                )}
-                Gemini
-              </span>
-            </button>
-            {!configQuery.data.providerSectionCollapsedGemini && (
-              <div
-                id="gemini-provider-content-inactive"
-                className="divide-y border-t"
-              >
-                <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
-                  Not selected above. You can still configure it here.
-                </p>
-
-                {renderProviderDraftInput("geminiApiKey", {
-                  label: "API Key",
-                  type: "password",
-                })}
-
-                {renderProviderDraftInput("geminiBaseUrl", {
-                  label: "API Base URL",
-                  type: "url",
-                  placeholder: "https://generativelanguage.googleapis.com",
-                })}
-
-                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
-                  Gemini model selection is managed in Models.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Inactive ChatGPT Web Provider Section - shown at bottom when not selected */}
-        {!isChatgptWebActive && (
-          <div className="rounded-lg border">
-            <button
-              type="button"
-              className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
-              onClick={() =>
-                saveConfig({
-                  providerSectionCollapsedChatgptWeb:
-                    !configQuery.data.providerSectionCollapsedChatgptWeb,
-                })
-              }
-              aria-expanded={
-                !configQuery.data.providerSectionCollapsedChatgptWeb
-              }
-              aria-controls="chatgpt-web-provider-content-inactive"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                {configQuery.data.providerSectionCollapsedChatgptWeb ? (
-                  <ChevronRight className="text-muted-foreground h-4 w-4" />
-                ) : (
-                  <ChevronDown className="text-muted-foreground h-4 w-4" />
-                )}
-                OpenAI Codex
-              </span>
-            </button>
-            {!configQuery.data.providerSectionCollapsedChatgptWeb && (
-              <div
-                id="chatgpt-web-provider-content-inactive"
-                className="divide-y border-t"
-              >
-                <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
-                  Not selected above. You can still configure it here.
-                </p>
-
-                <div className="space-y-3 px-3 py-3">
-                  <div className="text-sm">
-                    <div className="font-medium">
-                      {(chatgptWebAuthQuery.data as any)?.authenticated
-                        ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
-                        : "Not connected"}
-                    </div>
-                    <div className="text-muted-foreground mt-1 text-xs">
-                      Uses your ChatGPT Codex subscription via OAuth.
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleChatgptWebAuth}
+                    disabled={chatgptWebAuthBusy}
+                  >
+                    {chatgptWebAuthBusy
+                      ? "Working..."
+                      : (chatgptWebAuthQuery.data as any)?.authenticated
+                        ? "Re-auth"
+                        : "Connect"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyChatgptCallbackUrl}
+                    disabled={chatgptWebAuthBusy}
+                  >
+                    Copy Callback URL
+                  </Button>
+                  {(chatgptWebAuthQuery.data as any)?.authenticated && (
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={handleChatgptWebAuth}
+                      onClick={handleChatgptWebLogout}
                       disabled={chatgptWebAuthBusy}
                     >
-                      {chatgptWebAuthBusy
-                        ? "Working..."
-                        : (chatgptWebAuthQuery.data as any)?.authenticated
-                          ? "Re-auth"
-                          : "Connect"}
+                      Disconnect
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleCopyChatgptCallbackUrl}
-                      disabled={chatgptWebAuthBusy}
-                    >
-                      Copy Callback URL
-                    </Button>
-                    {(chatgptWebAuthQuery.data as any)?.authenticated && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleChatgptWebLogout}
-                        disabled={chatgptWebAuthBusy}
-                      >
-                        Disconnect
-                      </Button>
-                    )}
-                  </div>
-
-                  {chatgptWebAuthError && (
-                    <p className="text-destructive text-xs">
-                      {chatgptWebAuthError}
-                    </p>
                   )}
                 </div>
 
-                <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
-                  Browser sign-in should return to
-                  `http://localhost:1455/auth/callback`. This provider now talks
-                  to the Codex responses transport, not the legacy conversation
-                  endpoint.
-                </p>
+                {chatgptWebAuthError && (
+                  <p className="text-destructive text-xs">
+                    {chatgptWebAuthError}
+                  </p>
+                )}
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Inactive Parakeet Provider Section - shown at bottom when not selected */}
-        {!isParakeetActive && (
-          <ParakeetProviderSection
-            isActive={false}
-            isCollapsed={
-              configQuery.data.providerSectionCollapsedParakeet ?? true
-            }
-            onToggleCollapse={() =>
+              <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
+                Browser sign-in should return to
+                `http://localhost:1455/auth/callback`. Use Copy Callback URL if
+                you need to inspect or paste the callback target.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Parakeet (Local) Provider Section */}
+      {isParakeetActive && (
+        <ParakeetProviderSection
+          isActive={true}
+          isCollapsed={
+            configQuery.data.providerSectionCollapsedParakeet ?? true
+          }
+          onToggleCollapse={() =>
+            saveConfig({
+              providerSectionCollapsedParakeet: !(
+                configQuery.data.providerSectionCollapsedParakeet ?? true
+              ),
+            })
+          }
+          usageBadges={activeProviders.parakeet}
+          numThreads={configQuery.data.parakeetNumThreads || 2}
+          onNumThreadsChange={(value) =>
+            saveConfig({ parakeetNumThreads: value })
+          }
+        />
+      )}
+
+      {/* Kitten (Local) TTS Provider Section */}
+      {isKittenActive && (
+        <KittenProviderSection
+          isActive={true}
+          isCollapsed={configQuery.data.providerSectionCollapsedKitten ?? true}
+          onToggleCollapse={() =>
+            saveConfig({
+              providerSectionCollapsedKitten: !(
+                configQuery.data.providerSectionCollapsedKitten ?? true
+              ),
+            })
+          }
+          usageBadges={activeProviders.kitten}
+          voiceId={configQuery.data.kittenVoiceId ?? 0}
+        />
+      )}
+
+      {/* Supertonic (Local) TTS Provider Section */}
+      {isSupertonicActive && (
+        <SupertonicProviderSection
+          isActive={true}
+          isCollapsed={
+            configQuery.data.providerSectionCollapsedSupertonic ?? true
+          }
+          onToggleCollapse={() =>
+            saveConfig({
+              providerSectionCollapsedSupertonic: !(
+                configQuery.data.providerSectionCollapsedSupertonic ?? true
+              ),
+            } as Partial<Config>)
+          }
+          usageBadges={activeProviders.supertonic}
+          voice={configQuery.data.supertonicVoice ?? "M1"}
+          language={configQuery.data.supertonicLanguage ?? "en"}
+          speed={configQuery.data.supertonicSpeed ?? 1.05}
+          steps={configQuery.data.supertonicSteps ?? 5}
+        />
+      )}
+
+      {/* Inactive Groq Provider Section - shown at bottom when not selected */}
+      {!isGroqActive && (
+        <div className="rounded-lg border">
+          <button
+            type="button"
+            className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+            onClick={() =>
               saveConfig({
-                providerSectionCollapsedParakeet: !(
-                  configQuery.data.providerSectionCollapsedParakeet ?? true
-                ),
+                providerSectionCollapsedGroq:
+                  !configQuery.data.providerSectionCollapsedGroq,
               })
             }
-            usageBadges={activeProviders.parakeet}
-            numThreads={configQuery.data.parakeetNumThreads || 2}
-            onNumThreadsChange={(value) =>
-              saveConfig({ parakeetNumThreads: value })
-            }
-          />
-        )}
+            aria-expanded={!configQuery.data.providerSectionCollapsedGroq}
+            aria-controls="groq-provider-content-inactive"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              {configQuery.data.providerSectionCollapsedGroq ? (
+                <ChevronRight className="text-muted-foreground h-4 w-4" />
+              ) : (
+                <ChevronDown className="text-muted-foreground h-4 w-4" />
+              )}
+              Groq
+            </span>
+          </button>
+          {!configQuery.data.providerSectionCollapsedGroq && (
+            <div
+              id="groq-provider-content-inactive"
+              className="divide-y border-t"
+            >
+              <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
+                Not selected above. You can still configure it here.
+              </p>
 
-        {/* Inactive Kitten Provider Section - shown at bottom when not selected */}
-        {!isKittenActive && (
-          <KittenProviderSection
-            isActive={false}
-            isCollapsed={
-              configQuery.data.providerSectionCollapsedKitten ?? true
-            }
-            onToggleCollapse={() =>
+              {renderProviderDraftInput("groqApiKey", {
+                label: "API Key",
+                type: "password",
+              })}
+
+              {renderProviderDraftInput("groqBaseUrl", {
+                label: "API Base URL",
+                type: "url",
+                placeholder: "https://api.groq.com/openai/v1",
+              })}
+
+              <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
+                Groq model selection is managed in Models.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Inactive Gemini Provider Section - shown at bottom when not selected */}
+      {!isGeminiActive && (
+        <div className="rounded-lg border">
+          <button
+            type="button"
+            className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+            onClick={() =>
               saveConfig({
-                providerSectionCollapsedKitten: !(
-                  configQuery.data.providerSectionCollapsedKitten ?? true
-                ),
+                providerSectionCollapsedGemini:
+                  !configQuery.data.providerSectionCollapsedGemini,
               })
             }
-            usageBadges={activeProviders.kitten}
-            voiceId={configQuery.data.kittenVoiceId ?? 0}
-          />
-        )}
+            aria-expanded={!configQuery.data.providerSectionCollapsedGemini}
+            aria-controls="gemini-provider-content-inactive"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              {configQuery.data.providerSectionCollapsedGemini ? (
+                <ChevronRight className="text-muted-foreground h-4 w-4" />
+              ) : (
+                <ChevronDown className="text-muted-foreground h-4 w-4" />
+              )}
+              Gemini
+            </span>
+          </button>
+          {!configQuery.data.providerSectionCollapsedGemini && (
+            <div
+              id="gemini-provider-content-inactive"
+              className="divide-y border-t"
+            >
+              <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
+                Not selected above. You can still configure it here.
+              </p>
 
-        {/* Inactive Supertonic Provider Section - shown at bottom when not selected */}
-        {!isSupertonicActive && (
-          <SupertonicProviderSection
-            isActive={false}
-            isCollapsed={
-              configQuery.data.providerSectionCollapsedSupertonic ?? true
-            }
-            onToggleCollapse={() =>
+              {renderProviderDraftInput("geminiApiKey", {
+                label: "API Key",
+                type: "password",
+              })}
+
+              {renderProviderDraftInput("geminiBaseUrl", {
+                label: "API Base URL",
+                type: "url",
+                placeholder: "https://generativelanguage.googleapis.com",
+              })}
+
+              <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
+                Gemini model selection is managed in Models.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Inactive ChatGPT Web Provider Section - shown at bottom when not selected */}
+      {!isChatgptWebActive && (
+        <div className="rounded-lg border">
+          <button
+            type="button"
+            className="hover:bg-muted/30 flex w-full cursor-pointer items-center justify-between px-3 py-2 transition-colors"
+            onClick={() =>
               saveConfig({
-                providerSectionCollapsedSupertonic: !(
-                  configQuery.data.providerSectionCollapsedSupertonic ?? true
-                ),
-              } as Partial<Config>)
+                providerSectionCollapsedChatgptWeb:
+                  !configQuery.data.providerSectionCollapsedChatgptWeb,
+              })
             }
-            usageBadges={activeProviders.supertonic}
-            voice={configQuery.data.supertonicVoice ?? "M1"}
-            language={configQuery.data.supertonicLanguage ?? "en"}
-            speed={configQuery.data.supertonicSpeed ?? 1.05}
-            steps={configQuery.data.supertonicSteps ?? 5}
-          />
-        )}
-      </div>
+            aria-expanded={!configQuery.data.providerSectionCollapsedChatgptWeb}
+            aria-controls="chatgpt-web-provider-content-inactive"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              {configQuery.data.providerSectionCollapsedChatgptWeb ? (
+                <ChevronRight className="text-muted-foreground h-4 w-4" />
+              ) : (
+                <ChevronDown className="text-muted-foreground h-4 w-4" />
+              )}
+              OpenAI Codex
+            </span>
+          </button>
+          {!configQuery.data.providerSectionCollapsedChatgptWeb && (
+            <div
+              id="chatgpt-web-provider-content-inactive"
+              className="divide-y border-t"
+            >
+              <p className="text-muted-foreground px-3 py-1.5 text-[11px]">
+                Not selected above. You can still configure it here.
+              </p>
+
+              <div className="space-y-3 px-3 py-3">
+                <div className="text-sm">
+                  <div className="font-medium">
+                    {(chatgptWebAuthQuery.data as any)?.authenticated
+                      ? `Connected${(chatgptWebAuthQuery.data as any)?.email ? ` as ${(chatgptWebAuthQuery.data as any).email}` : ""}`
+                      : "Not connected"}
+                  </div>
+                  <div className="text-muted-foreground mt-1 text-xs">
+                    Uses your ChatGPT Codex subscription via OAuth.
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleChatgptWebAuth}
+                    disabled={chatgptWebAuthBusy}
+                  >
+                    {chatgptWebAuthBusy
+                      ? "Working..."
+                      : (chatgptWebAuthQuery.data as any)?.authenticated
+                        ? "Re-auth"
+                        : "Connect"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyChatgptCallbackUrl}
+                    disabled={chatgptWebAuthBusy}
+                  >
+                    Copy Callback URL
+                  </Button>
+                  {(chatgptWebAuthQuery.data as any)?.authenticated && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleChatgptWebLogout}
+                      disabled={chatgptWebAuthBusy}
+                    >
+                      Disconnect
+                    </Button>
+                  )}
+                </div>
+
+                {chatgptWebAuthError && (
+                  <p className="text-destructive text-xs">
+                    {chatgptWebAuthError}
+                  </p>
+                )}
+              </div>
+
+              <p className="text-muted-foreground border-t px-3 py-1.5 text-[11px]">
+                Browser sign-in should return to
+                `http://localhost:1455/auth/callback`. This provider now talks
+                to the Codex responses transport, not the legacy conversation
+                endpoint.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Inactive Parakeet Provider Section - shown at bottom when not selected */}
+      {!isParakeetActive && (
+        <ParakeetProviderSection
+          isActive={false}
+          isCollapsed={
+            configQuery.data.providerSectionCollapsedParakeet ?? true
+          }
+          onToggleCollapse={() =>
+            saveConfig({
+              providerSectionCollapsedParakeet: !(
+                configQuery.data.providerSectionCollapsedParakeet ?? true
+              ),
+            })
+          }
+          usageBadges={activeProviders.parakeet}
+          numThreads={configQuery.data.parakeetNumThreads || 2}
+          onNumThreadsChange={(value) =>
+            saveConfig({ parakeetNumThreads: value })
+          }
+        />
+      )}
+
+      {/* Inactive Kitten Provider Section - shown at bottom when not selected */}
+      {!isKittenActive && (
+        <KittenProviderSection
+          isActive={false}
+          isCollapsed={configQuery.data.providerSectionCollapsedKitten ?? true}
+          onToggleCollapse={() =>
+            saveConfig({
+              providerSectionCollapsedKitten: !(
+                configQuery.data.providerSectionCollapsedKitten ?? true
+              ),
+            })
+          }
+          usageBadges={activeProviders.kitten}
+          voiceId={configQuery.data.kittenVoiceId ?? 0}
+        />
+      )}
+
+      {/* Inactive Supertonic Provider Section - shown at bottom when not selected */}
+      {!isSupertonicActive && (
+        <SupertonicProviderSection
+          isActive={false}
+          isCollapsed={
+            configQuery.data.providerSectionCollapsedSupertonic ?? true
+          }
+          onToggleCollapse={() =>
+            saveConfig({
+              providerSectionCollapsedSupertonic: !(
+                configQuery.data.providerSectionCollapsedSupertonic ?? true
+              ),
+            } as Partial<Config>)
+          }
+          usageBadges={activeProviders.supertonic}
+          voice={configQuery.data.supertonicVoice ?? "M1"}
+          language={configQuery.data.supertonicLanguage ?? "en"}
+          speed={configQuery.data.supertonicSpeed ?? 1.05}
+          steps={configQuery.data.supertonicSteps ?? 5}
+        />
+      )}
+    </div>
+  )
+}
+
+export function Component() {
+  return (
+    <SettingsPageShell>
+      <ProviderSettingsContent />
     </SettingsPageShell>
   )
 }
