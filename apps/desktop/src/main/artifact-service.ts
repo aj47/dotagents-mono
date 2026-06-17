@@ -179,9 +179,22 @@ function getExcerpt(text: string, raw: string): string {
   const start = index >= 0 ? Math.max(0, index - 90) : 0
   const end =
     index >= 0
-      ? Math.min(text.length, index + raw.length + 90)
-      : Math.min(text.length, 180)
-  return text.slice(start, end).replace(/\s+/g, " ").trim()
+      ? Math.min(text.length, index + raw.length + 360)
+      : Math.min(text.length, 360)
+  const nearby = text.slice(start, end).replace(/\s+/g, " ").trim()
+  const highlights = nearby
+    .match(/\bHighlights:\s*(.+)$/iu)?.[1]
+    ?.replace(/\s*\[[^\]]+\]\([^)]+\).*$/u, "")
+    .trim()
+  if (highlights) return highlights
+
+  return nearby
+    .replace(/\{?"stderr":\s*""\s*\}?\s*/iu, "")
+    .replace(/\[[^\]]+:[^\]]+\]\s*/u, "")
+    .replace(/\bURL:\s*\S+\s*/iu, "")
+    .replace(/\bPublished:\s*[^.]+?\s+(?=Author:|Highlights:|$)/iu, "")
+    .replace(/\bAuthor:\s*[^.]+?\s+(?=Highlights:|$)/iu, "")
+    .trim()
 }
 
 function isWeakArtifactLabel(label?: string): boolean {
@@ -190,20 +203,42 @@ function isWeakArtifactLabel(label?: string): boolean {
   if (/^\d+$/.test(trimmed)) return true
   if (/^https?:\/\//i.test(trimmed)) return true
   if (/^(?:title|url|source|file|path)$/i.test(trimmed)) return true
+  if (/^[a-z0-9]+(?:-[a-z0-9]+){3,}$/u.test(trimmed)) return true
   return trimmed.length > 80
 }
 
 function titleFromReferenceText(text: string, raw: string): string | null {
   const rawIndex = text.indexOf(raw)
-  const searchStart = rawIndex >= 0 ? Math.max(0, rawIndex - 240) : 0
-  const searchEnd =
-    rawIndex >= 0 ? Math.min(text.length, rawIndex + raw.length + 240) : 360
-  const nearby = text.slice(searchStart, searchEnd)
-  const titleMatch = nearby.match(
-    /(?:^|\s)(?:Title|title):\s*([^"\n\r|{}[\]]{4,90})/u,
-  )
-  const title = titleMatch?.[1]?.replace(/\s+/g, " ").trim()
-  return title && !isWeakArtifactLabel(title) ? title : null
+  const normalizeTitle = (title?: string) => {
+    const normalized = title
+      ?.replace(/\s+\b(?:URL|Published|Author|Highlights):.*$/iu, "")
+      .replace(/\s+/g, " ")
+      .trim()
+    return normalized && !isWeakArtifactLabel(normalized) ? normalized : null
+  }
+  const matchTitle = (value: string, pick: "first" | "last") => {
+    const matches = Array.from(
+      value.matchAll(/(?:^|[\s)])(?:Title|title):\s*([^"\n\r|{}[\]]{4,90})/gu),
+    )
+    return normalizeTitle(
+      (pick === "first" ? matches.at(0) : matches.at(-1))?.[1],
+    )
+  }
+
+  if (rawIndex >= 0) {
+    const after = text.slice(rawIndex + raw.length, rawIndex + raw.length + 240)
+    const afterTitle = matchTitle(after, "first")
+    if (afterTitle) return afterTitle
+
+    const before = text.slice(Math.max(0, rawIndex - 320), rawIndex)
+    if (/\bURL:\s*$/iu.test(before)) {
+      const beforeTitle = matchTitle(before, "last")
+      if (beforeTitle) return beforeTitle
+    }
+    return null
+  }
+
+  return matchTitle(text.slice(0, 360), "first")
 }
 
 function titleFromUrlOrPath(
@@ -216,6 +251,19 @@ function titleFromUrlOrPath(
     const parsed = new URL(url ?? raw)
     const lastPathSegment = parsed.pathname.split("/").filter(Boolean).pop()
     const decoded = decodeURIComponent(lastPathSegment || parsed.hostname)
+    if (/^\d+$/.test(decoded)) return parsed.hostname || decoded || raw
+    if (/^[a-z0-9]+(?:-[a-z0-9]+){2,}$/u.test(decoded)) {
+      return decoded
+        .split("-")
+        .filter(Boolean)
+        .map((part) => {
+          if (part === "youtube") return "YouTube"
+          return part.length <= 3
+            ? part.toUpperCase()
+            : part[0].toUpperCase() + part.slice(1)
+        })
+        .join(" ")
+    }
     return decoded || parsed.hostname || raw
   } catch {
     return raw

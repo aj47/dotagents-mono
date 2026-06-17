@@ -190,7 +190,7 @@ describe("artifact service", () => {
     expect(preview.truncated).toBe(true)
   })
 
-  it("uses useful URL titles instead of numeric markdown labels", async () => {
+  it("uses useful URL titles instead of weak markdown labels", async () => {
     mocks.getConversationHistory.mockResolvedValue([
       {
         id: "conv_title",
@@ -212,7 +212,7 @@ describe("artifact service", () => {
           id: "msg_1",
           role: "assistant",
           content:
-            "[12340300](https://example.com/thumbnails) Title: Thumbnails | YouTube Data API",
+            "[12340300](https://example.com/thumbnails) Title: Thumbnails | YouTube Data API\n[youtube-thumbnail-size-design-guide-2026](https://example.com/guide) Title: Guide (2026): Dimensions, Safe Zones, and Best Practices | Hooksnap Blog Highlights: Use 1280x720.\n[youtube-creator-academy-thumbnail-best-practices-high-contrast-text-faces](https://example.com/youtube-creator-academy-thumbnail-best-practices-high-contrast-text-faces/)",
           timestamp: 10,
         },
       ],
@@ -220,8 +220,20 @@ describe("artifact service", () => {
 
     const { artifactService } = await import("./artifact-service")
     const result = await artifactService.listArtifacts({ forceRefresh: true })
+    const names = result.artifacts.map((artifact) => artifact.name)
 
-    expect(result.artifacts[0]?.name).toBe("Thumbnails")
+    expect(names).toContain("Thumbnails")
+    expect(names).toContain(
+      "Guide (2026): Dimensions, Safe Zones, and Best Practices",
+    )
+    expect(names).toContain(
+      "YouTube Creator Academy Thumbnail Best Practices High Contrast Text Faces",
+    )
+    expect(
+      result.artifacts.find((artifact) =>
+        artifact.name.startsWith("Guide (2026)"),
+      )?.excerpt,
+    ).toBe("Use 1280x720.")
   })
 
   it("reuses the expensive conversation scan for search and kind filters", async () => {

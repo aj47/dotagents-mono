@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import {
   Copy,
   ExternalLink,
+  Eye,
   File,
   FileCode2,
   FileImage,
@@ -109,6 +110,10 @@ function formatTimestamp(timestamp?: number): string {
   })
 }
 
+function getArtifactSummary(artifact: ArtifactRecord): string {
+  return artifact.localPath ?? artifact.excerpt ?? artifact.url ?? ""
+}
+
 function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
   const textQuery = useQuery({
     queryKey: ["artifact-text", artifact.id],
@@ -207,7 +212,7 @@ function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
     const content = textQuery.data?.content ?? ""
     if (artifact.kind === "markdown") {
       return (
-        <div className="artifact-preview min-h-0 flex-1 overflow-auto p-4 [&_.prose]:text-xs [&_.prose_h1]:text-lg [&_.prose_h2]:text-base [&_.prose_h3]:text-sm [&_.prose_p]:leading-relaxed [&_.prose_pre]:text-[11px]">
+        <div className="artifact-preview min-h-0 flex-1 overflow-auto p-4 [&_.prose]:!text-xs [&_.prose_h1]:!text-base [&_.prose_h2]:!text-sm [&_.prose_h3]:!text-xs [&_.prose_p]:!leading-relaxed [&_.prose_pre]:!text-[11px]">
           <MarkdownRenderer content={content} />
           {textQuery.data?.truncated && (
             <div className="text-muted-foreground mt-3 text-xs">
@@ -244,6 +249,7 @@ export const Component = () => {
   const [query, setQuery] = useState("")
   const [kind, setKind] = useState<ArtifactKind | "all">("all")
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [showCompactPreview, setShowCompactPreview] = useState(false)
   const [refreshNonce, setRefreshNonce] = useState(0)
   const consumedRefreshNonce = useRef(0)
   const debouncedQuery = useDebouncedValue(query.trim(), 200)
@@ -344,8 +350,72 @@ export const Component = () => {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(20rem,1fr)_minmax(18rem,24rem)]">
-        <div className="min-h-0 border-r">
+      <div
+        className={cn(
+          "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(22rem,1fr)_minmax(18rem,24rem)] lg:grid-rows-1",
+          showCompactPreview
+            ? "grid-rows-[minmax(0,1fr)_minmax(14rem,45%)]"
+            : "grid-rows-1",
+        )}
+      >
+        <div className="flex min-h-0 flex-col border-r">
+          {selectedArtifact && (
+            <div className="bg-muted/20 flex shrink-0 items-center gap-2 border-b px-4 py-2 lg:hidden">
+              <KindIcon
+                kind={selectedArtifact.kind}
+                className="text-muted-foreground shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-xs font-medium">
+                  {selectedArtifact.name}
+                </div>
+                <div className="text-muted-foreground truncate text-[11px]">
+                  {kindLabel[selectedArtifact.kind]} /{" "}
+                  {selectedArtifact.conversationTitle || "Untitled session"}
+                </div>
+              </div>
+              <Button
+                variant={showCompactPreview ? "secondary" : "ghost"}
+                size="sm-icon"
+                title="Toggle preview"
+                aria-label="Toggle preview"
+                onClick={() => setShowCompactPreview((value) => !value)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm-icon"
+                title="Copy reference"
+                aria-label="Copy reference"
+                onClick={() => void handleCopy(selectedArtifact)}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+              {selectedArtifact.canReveal && (
+                <Button
+                  variant="ghost"
+                  size="sm-icon"
+                  title="Reveal in folder"
+                  aria-label="Reveal in folder"
+                  onClick={() => void handleReveal(selectedArtifact)}
+                >
+                  <FolderOpen className="h-4 w-4" />
+                </Button>
+              )}
+              {selectedArtifact.canOpen && (
+                <Button
+                  variant="ghost"
+                  size="sm-icon"
+                  title="Open artifact"
+                  aria-label="Open artifact"
+                  onClick={() => void handleOpen(selectedArtifact)}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )}
           {artifactsQuery.isLoading ? (
             <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -356,9 +426,10 @@ export const Component = () => {
               No artifacts found.
             </div>
           ) : (
-            <div className="h-full overflow-auto">
+            <div className="min-h-0 flex-1 overflow-auto">
               {artifacts.map((artifact) => {
                 const active = selectedArtifact?.id === artifact.id
+                const summary = getArtifactSummary(artifact)
                 return (
                   <button
                     key={artifact.id}
@@ -392,9 +463,9 @@ export const Component = () => {
                           {formatTimestamp(artifact.updatedAt)}
                         </span>
                       </span>
-                      {artifact.excerpt && (
+                      {summary && (
                         <span className="text-muted-foreground mt-1.5 line-clamp-1 text-xs">
-                          {artifact.excerpt}
+                          {summary}
                         </span>
                       )}
                     </span>
@@ -405,7 +476,12 @@ export const Component = () => {
           )}
         </div>
 
-        <div className="bg-muted/10 flex min-h-0 min-w-0 flex-col">
+        <div
+          className={cn(
+            "bg-muted/10 min-h-0 min-w-0 flex-col border-t lg:flex lg:border-t-0",
+            showCompactPreview ? "flex" : "hidden",
+          )}
+        >
           {selectedArtifact ? (
             <>
               <div className="bg-background flex shrink-0 items-start gap-2 border-b px-3 py-2">
