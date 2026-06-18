@@ -8,7 +8,7 @@ import { join } from "path"
 import { logApp } from "./debug"
 import { WINDOWS } from "./window"
 import { getRendererHandlers } from "@egoist/tipc/main"
-import type { SessionProfileSnapshot } from "../shared/types"
+import type { ConversationRepeatTaskSource, SessionProfileSnapshot } from "../shared/types"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { dataFolder } from "./config"
 import { loadPersistedJson, savePersistedJson } from "./session-persistence"
@@ -27,6 +27,7 @@ export interface AgentSession {
   isSnoozed?: boolean // When true, session runs in background without stealing focus
   suppressPanelAutoShow?: boolean // When true, foreground/audible session still should not auto-open the floating panel
   isRepeatTask?: boolean // True for sessions created by repeat-task/loop execution
+  repeatTask?: ConversationRepeatTaskSource
   /**
    * Profile snapshot captured at session creation time.
    * This ensures session isolation - changes to the global profile don't affect running sessions.
@@ -235,7 +236,7 @@ class AgentSessionTracker {
     conversationTitle?: string,
     startSnoozed: boolean = true,
     profileSnapshot?: SessionProfileSnapshot,
-    sessionMetadata: Pick<AgentSession, "isRepeatTask"> = {},
+    sessionMetadata: Pick<AgentSession, "isRepeatTask" | "repeatTask"> = {},
   ): string {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
@@ -249,6 +250,7 @@ class AgentSessionTracker {
       maxIterations: 10,
       isSnoozed: startSnoozed, // Start snoozed by default - no floating panel auto-show
       isRepeatTask: sessionMetadata.isRepeatTask,
+      repeatTask: sessionMetadata.repeatTask,
       profileSnapshot, // Capture profile settings at session creation for isolation
     }
 

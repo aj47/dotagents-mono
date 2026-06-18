@@ -54,7 +54,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { AgentSelector } from "./agent-selector"
 import { PredefinedPromptsMenu } from "./predefined-prompts-menu"
 import { Button } from "./ui/button"
-import type { AgentProgressUpdate, LoopConfig } from "@shared/types"
+import type { AgentProgressUpdate, ConversationRepeatTaskSource, LoopConfig } from "@shared/types"
 import { getSidebarStatusPresentation } from "@renderer/lib/session-presentation"
 
 interface SidebarSessionRecord {
@@ -71,6 +71,7 @@ interface SidebarSessionRecord {
   errorMessage?: string
   isSnoozed?: boolean
   isRepeatTask?: boolean
+  repeatTask?: ConversationRepeatTaskSource
 }
 
 interface SidebarSessionsResponse {
@@ -83,6 +84,7 @@ interface ConversationHistoryItem {
   id: string
   title: string
   updatedAt: number
+  repeatTask?: ConversationRepeatTaskSource
 }
 
 interface SidebarSessionEntry {
@@ -494,6 +496,7 @@ export function ActiveAgentsSidebar({
         errorMessage: existingSession?.errorMessage,
         isSnoozed: progress.isSnoozed ?? existingSession?.isSnoozed,
         isRepeatTask: existingSession?.isRepeatTask,
+        repeatTask: existingSession?.repeatTask,
       })
     }
 
@@ -570,6 +573,8 @@ export function ActiveAgentsSidebar({
         status: "completed",
         startTime: historyItem.updatedAt,
         endTime: historyItem.updatedAt,
+        isRepeatTask: historyItem.repeatTask?.type === "repeat_task_run" ? true : undefined,
+        repeatTask: historyItem.repeatTask,
       }
       addSavedConversationEntry(mappedSession, "history")
     }
@@ -643,6 +648,10 @@ export function ActiveAgentsSidebar({
     }
     return map
   }, [repeatTasksQuery.data])
+  const loopById = useMemo(
+    () => new Map((repeatTasksQuery.data ?? []).map((loop) => [loop.id, loop] as const)),
+    [repeatTasksQuery.data],
+  )
   const [sidebarRetentionNow, setSidebarRetentionNow] = useState(() => Date.now())
   const recentFinalResponseState = useMemo(() => {
     const sessionIds = new Set<string>()
@@ -682,13 +691,20 @@ export function ActiveAgentsSidebar({
     pinnedTaskSidebarSessions,
     unpinnedTaskSidebarSessions,
   } = useMemo(() => {
-    const repeatTaskTitleHints = new Set<string>(
-      (repeatTasksQuery.data ?? []).flatMap(getRepeatTaskTitleHints),
-    )
+    const repeatTaskTitleHints = new Map<string, string>()
+    for (const task of repeatTasksQuery.data ?? []) {
+      for (const titleHint of getRepeatTaskTitleHints(task)) {
+        if (!repeatTaskTitleHints.has(titleHint)) {
+          repeatTaskTitleHints.set(titleHint, task.id)
+        }
+      }
+    }
     const { userEntries, taskEntries } = partitionTaskAndUserEntries(
       sidebarSessions,
       repeatTaskTitleHints,
     )
+    // Collapse is presentation-only. It must not imply `continueInSession` or
+    // merge run histories; repeat tasks can still start fresh conversations.
     // Re-derive nesting after dedup: when two task entries share a
     // conversationId (e.g. an active running session + its saved-conversation
     // counterpart), nestSubagentSessionEntries flags the active one as a
@@ -698,7 +714,7 @@ export function ActiveAgentsSidebar({
     // deduped set promotes orphaned children back to top level while still
     // preserving real parent/child relationships across surviving entries.
     const dedupedTaskEntries = nestSubagentSessionEntries(
-      dedupeTaskEntriesByTitle(taskEntries),
+      dedupeTaskEntriesByTitle(taskEntries, repeatTaskTitleHints),
     )
     const { pinnedTaskEntries, unpinnedTaskEntries } =
       partitionPinnedAndUnpinnedTaskEntries(dedupedTaskEntries, pinnedSessionIds)
@@ -1133,6 +1149,12 @@ export function ActiveAgentsSidebar({
 
   const findLoopForSession = useCallback(
     (session: SidebarSessionRecord): LoopConfig | undefined => {
+      const repeatTaskId = session.repeatTask?.taskId
+      if (repeatTaskId) {
+        const loop = loopById.get(repeatTaskId)
+        if (loop) return loop
+      }
+
       const title = session.conversationTitle?.trim()
       if (!title) return undefined
       const direct = loopByTitleHint.get(title)
@@ -1140,7 +1162,7 @@ export function ActiveAgentsSidebar({
       const stripped = title.startsWith("Repeat: ") ? title.slice("Repeat: ".length).trim() : null
       return stripped ? loopByTitleHint.get(stripped) : undefined
     },
-    [loopByTitleHint],
+    [loopById, loopByTitleHint],
   )
 
   const handleRunRepeatTask = useCallback(

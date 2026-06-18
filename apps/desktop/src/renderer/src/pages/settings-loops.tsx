@@ -33,6 +33,8 @@ interface EditingLoop {
   speakOnTrigger: boolean
   continueInSession: boolean
   lastSessionId?: string
+  adversarialCritique: boolean
+  criticProfileId?: string
   scheduleMode: ScheduleMode
   scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
   scheduleDaysOfWeek: number[]  // 0-6 Sun..Sat (used by weekly)
@@ -55,6 +57,7 @@ const emptyLoop: EditingLoop = {
   runOnStartup: false,
   speakOnTrigger: false,
   continueInSession: false,
+  adversarialCritique: false,
   scheduleMode: "interval",
   scheduleTimes: ["09:00"],
   scheduleDaysOfWeek: [1, 2, 3, 4, 5],
@@ -137,6 +140,13 @@ function parseLoopIntervalDraft(draft: string): number | null {
 // Sentinel used by the session picker to represent "no pinned session";
 // Radix Select does not accept an empty string as an item value.
 const AUTO_SESSION_VALUE = "__auto__"
+const DEFAULT_CRITIC_VALUE = "__default__"
+
+type AgentProfileOption = {
+  id: string
+  displayName?: string
+  name?: string
+}
 
 type SessionCandidate = {
   id: string
@@ -237,6 +247,11 @@ export function SettingsLoops() {
     refetchOnWindowFocus: true,
   })
 
+  const agentProfilesQuery = useQuery({
+    queryKey: ["loop-agent-profiles"],
+    queryFn: async () => tipcClient.getAgentProfiles() as Promise<AgentProfileOption[]>,
+  })
+
   useEffect(() => {
     return rendererHandlers.loopsFolderChanged.listen(() => {
       queryClient.invalidateQueries({ queryKey: ["loops"] })
@@ -279,6 +294,8 @@ export function SettingsLoops() {
       speakOnTrigger: loop.speakOnTrigger ?? false,
       continueInSession: loop.continueInSession ?? false,
       lastSessionId: loop.lastSessionId,
+      adversarialCritique: loop.adversarialCritique ?? false,
+      criticProfileId: loop.criticProfileId,
       scheduleMode,
       scheduleTimes,
       scheduleDaysOfWeek,
@@ -342,6 +359,10 @@ export function SettingsLoops() {
       speakOnTrigger: editing.speakOnTrigger,
       continueInSession: editing.continueInSession,
       runContinuously: editing.scheduleMode === "continuous",
+      adversarialCritique: editing.adversarialCritique,
+      ...(editing.adversarialCritique && editing.criticProfileId
+        ? { criticProfileId: editing.criticProfileId }
+        : {}),
       ...(editing.continueInSession && editing.lastSessionId
         ? { lastSessionId: editing.lastSessionId }
         : {}),
@@ -501,6 +522,7 @@ export function SettingsLoops() {
               {loop.runOnStartup && <div>Runs on startup</div>}
               {loop.speakOnTrigger && <div>Speaks on trigger</div>}
               {loop.continueInSession && <div>Continues in same session</div>}
+              {loop.adversarialCritique && <div>Critique pass</div>}
               {typeof nextRunAt === "number" && (
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
               )}
@@ -703,7 +725,46 @@ export function SettingsLoops() {
               />
               <Label htmlFor="continueInSession">Continue in Same Session</Label>
             </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="adversarialCritique"
+                checked={editing.adversarialCritique}
+                onCheckedChange={(v) => setEditing({
+                  ...editing,
+                  adversarialCritique: v,
+                  criticProfileId: v ? editing.criticProfileId : undefined,
+                })}
+              />
+              <Label htmlFor="adversarialCritique">Adversarial Critique</Label>
+            </div>
           </div>
+          {editing.adversarialCritique && (
+            <div className="space-y-2">
+              <Label htmlFor="criticProfileId">Critic Agent</Label>
+              <Select
+                value={editing.criticProfileId ?? DEFAULT_CRITIC_VALUE}
+                onValueChange={(value) => setEditing({
+                  ...editing,
+                  criticProfileId: value === DEFAULT_CRITIC_VALUE ? undefined : value,
+                })}
+              >
+                <SelectTrigger id="criticProfileId" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_CRITIC_VALUE}>Default agent</SelectItem>
+                  {(agentProfilesQuery.data ?? []).map((profile) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      {profile.displayName || profile.name || profile.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Runs a separate critic session, then asks the worker to revise using that critique.
+              </p>
+            </div>
+          )}
           {editing.continueInSession && (
             <SessionPicker
               value={editing.lastSessionId}

@@ -1042,6 +1042,9 @@ export interface Loop {
   continueInSession?: boolean;
   lastSessionId?: string;
   runContinuously?: boolean;
+  adversarialCritique?: boolean;
+  criticProfileId?: string;
+  criticProfileName?: string;
   maxIterations?: number;
   lastRunAt?: number;
   isRunning: boolean;

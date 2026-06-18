@@ -139,7 +139,11 @@ See [WhatsApp Integration](/tools/whatsapp) for MCP setup and environment variab
 | **Prompt** | Message to send on each interval |
 | **Interval** | Time between executions |
 | **Agent** | Which agent handles the loop |
+| **Adversarial Critique** | Runs a separate critic agent after the worker answer, then feeds the critique back to the worker for a final revision |
+| **Critic Agent** | Optional agent profile for the critique pass; defaults to the active/default agent |
 | **Enabled** | Whether the loop is active |
+
+When adversarial critique is enabled, each run uses three steps: the worker agent answers the repeat-task prompt, a critic agent reviews that answer against the original prompt, and the worker agent receives the critique as a follow-up instruction before producing the final result.
 
 ## UI Settings
 

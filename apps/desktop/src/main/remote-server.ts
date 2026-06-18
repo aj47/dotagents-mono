@@ -7529,6 +7529,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       continueInSession: loop.continueInSession,
       lastSessionId: loop.lastSessionId,
       runContinuously: loop.runContinuously,
+      adversarialCritique: loop.adversarialCritique,
+      criticProfileId: loop.criticProfileId,
+      criticProfileName: getLoopProfileName(loop.criticProfileId),
       maxIterations: loop.maxIterations,
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
@@ -7917,6 +7920,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
+        adversarialCritique?: unknown
+        criticProfileId?: unknown
         maxIterations?: unknown
         schedule?: unknown
       }
@@ -7948,6 +7953,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.adversarialCritique !== undefined && typeof body.adversarialCritique !== "boolean") {
+        return reply.code(400).send({ error: "adversarialCritique must be a boolean when provided" })
+      }
+      if (body.criticProfileId !== undefined && body.criticProfileId !== null && typeof body.criticProfileId !== "string") {
+        return reply.code(400).send({ error: "criticProfileId must be a string when provided" })
+      }
       if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
         return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
       }
@@ -7969,8 +7980,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: scheduleResult.error })
       }
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
+      const criticProfileId = typeof body.criticProfileId === "string" ? body.criticProfileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
       const runContinuously = body.runContinuously === true
+      const adversarialCritique = body.adversarialCritique === true
       const runOnStartup = body.runOnStartup === true
       const speakOnTrigger = body.speakOnTrigger === true
       const continueInSession = body.continueInSession === true
@@ -7990,6 +8003,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession,
         lastSessionId: continueInSession ? (lastSessionId || undefined) : undefined,
         runContinuously,
+        adversarialCritique,
+        criticProfileId: adversarialCritique ? (criticProfileId || undefined) : undefined,
         ...(typeof maxIterationsResult.value === "number" ? { maxIterations: maxIterationsResult.value } : {}),
         ...(!runContinuously && scheduleResult.schedule && scheduleResult.schedule !== null
           ? { schedule: scheduleResult.schedule }
@@ -8034,6 +8049,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
+        adversarialCritique?: unknown
+        criticProfileId?: unknown
         maxIterations?: unknown
         schedule?: unknown
       }
@@ -8083,6 +8100,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.adversarialCritique !== undefined && typeof body.adversarialCritique !== "boolean") {
+        return reply.code(400).send({ error: "adversarialCritique must be a boolean when provided" })
+      }
+      if (body.criticProfileId !== undefined && body.criticProfileId !== null && typeof body.criticProfileId !== "string") {
+        return reply.code(400).send({ error: "criticProfileId must be a string or null when provided" })
+      }
       if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
         return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
       }
@@ -8112,7 +8135,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
+      const criticProfileId = typeof body.criticProfileId === "string" ? body.criticProfileId.trim() : undefined
       const runContinuously = typeof body.runContinuously === "boolean" ? body.runContinuously : undefined
+      const adversarialCritique = typeof body.adversarialCritique === "boolean" ? body.adversarialCritique : undefined
       const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : undefined
       const speakOnTrigger = typeof body.speakOnTrigger === "boolean" ? body.speakOnTrigger : undefined
       const continueInSession = typeof body.continueInSession === "boolean" ? body.continueInSession : undefined
@@ -8129,6 +8154,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(continueInSession !== undefined && { continueInSession }),
         ...(body.lastSessionId !== undefined && { lastSessionId: lastSessionId || undefined }),
         ...(runContinuously !== undefined && { runContinuously }),
+        ...(adversarialCritique !== undefined && { adversarialCritique }),
+        ...(body.criticProfileId !== undefined && { criticProfileId: criticProfileId || undefined }),
         ...(maxIterationsResult.value !== undefined && maxIterationsResult.value !== null && { maxIterations: maxIterationsResult.value }),
       }
       if (maxIterationsResult.value === null) {
@@ -8136,6 +8163,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (continueInSession === false || updated.continueInSession === false) {
         delete updated.lastSessionId
+      }
+      if (updated.adversarialCritique === false) {
+        delete updated.criticProfileId
       }
       if (updated.runContinuously) {
         delete updated.schedule

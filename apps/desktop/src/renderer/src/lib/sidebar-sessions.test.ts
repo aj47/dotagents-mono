@@ -1035,10 +1035,54 @@ describe("partitionTaskAndUserEntries", () => {
     expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
   })
 
+  it("uses configured repeat-task title tokens for shortened retitled task history", () => {
+    const entries = [
+      { session: { id: "t1", conversationTitle: "TechFren Reel Critique" } },
+      { session: { id: "t2", conversationTitle: "Overnight Video Evidence" } },
+      { session: { id: "u1", conversationTitle: "Create Overnight Critic Task" } },
+    ]
+
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(
+      entries,
+      new Set([
+        "TechFren Instagram Reel Critic",
+        "Overnight Video Evidence Accumulator",
+        "Overnight Video Decision Critic",
+      ]),
+    )
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual(["t1", "t2"])
+  })
+
   it("uses the backend repeat-task flag when title matching is unavailable", () => {
     const entries = [
       { session: { id: "t1", conversationTitle: "Generated Title", isRepeatTask: true } },
       { session: { id: "u1", conversationTitle: "Generated Title" } },
+    ]
+
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(entries)
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
+  })
+
+  it("uses repeat-task provenance over setup-looking titles", () => {
+    const entries = [
+      {
+        session: {
+          id: "t1",
+          conversationTitle: "Create Critic Repeat Task",
+          repeatTask: {
+            type: "repeat_task_run" as const,
+            taskId: "overnight-critic",
+            taskName: "Overnight Critic",
+            runId: "overnight-critic:100",
+            role: "worker" as const,
+          },
+        },
+      },
+      { session: { id: "u1", conversationTitle: "Create Critic Repeat Task" } },
     ]
 
     const { userEntries, taskEntries } = partitionTaskAndUserEntries(entries)
@@ -1134,6 +1178,82 @@ describe("dedupeTaskEntriesByTitle", () => {
     ]
 
     expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["top"])
+  })
+
+  it("dedupes repeat-task history by task id even when run titles differ", () => {
+    const repeatTask = {
+      type: "repeat_task_run" as const,
+      taskId: "techfren-reel",
+      taskName: "TechFren Reel",
+      runId: "techfren-reel:100",
+      role: "worker" as const,
+    }
+    const entries = [
+      {
+        session: {
+          id: "older",
+          conversationTitle: "I Built an AI Agent That Stops Wasting Tokens",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+          repeatTask,
+        },
+      },
+      {
+        session: {
+          id: "newer",
+          conversationTitle: "I Made a $90 MacBook Into a Safe Overnight AI Agent",
+          status: "completed",
+          startTime: 200,
+          endTime: 250,
+          repeatTask: { ...repeatTask, runId: "techfren-reel:200" },
+        },
+      },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["newer"])
+  })
+
+  it("dedupes legacy title-only task rows by configured task title hints", () => {
+    const entries = [
+      {
+        session: {
+          id: "older",
+          conversationTitle: "TechFren Reel Maker Task",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+        },
+      },
+      {
+        session: {
+          id: "newer",
+          conversationTitle: "TechFren Reel Maker",
+          status: "completed",
+          startTime: 200,
+          endTime: 250,
+        },
+      },
+      {
+        session: {
+          id: "critic",
+          conversationTitle: "TechFren Reel Critique",
+          status: "completed",
+          startTime: 300,
+          endTime: 350,
+        },
+      },
+    ]
+    const titleHints = new Map([
+      ["TechFren Instagram Reel Maker", "instagram-reel-maker"],
+      ["TechFren Reel Maker", "instagram-reel-maker"],
+      ["TechFren Instagram Reel Critic", "instagram-reel-critic"],
+    ])
+
+    expect(dedupeTaskEntriesByTitle(entries, titleHints).map((e) => e.session.id)).toEqual([
+      "newer",
+      "critic",
+    ])
   })
 })
 

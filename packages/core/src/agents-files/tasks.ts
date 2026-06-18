@@ -134,6 +134,8 @@ export function stringifyTaskMarkdown(task: LoopConfig): string {
   if (task.continueInSession) frontmatter.continueInSession = "true"
   if (task.lastSessionId) frontmatter.lastSessionId = task.lastSessionId
   if (task.runContinuously) frontmatter.runContinuously = "true"
+  if (task.adversarialCritique) frontmatter.adversarialCritique = "true"
+  if (task.criticProfileId) frontmatter.criticProfileId = task.criticProfileId
   if (task.lastRunAt) frontmatter.lastRunAt = String(task.lastRunAt)
   if (task.schedule) frontmatter.schedule = stringifySchedule(task.schedule)
 
@@ -171,6 +173,8 @@ export function parseTaskMarkdown(
     continueInSession: parseBoolean(fm.continueInSession, false) || undefined,
     lastSessionId: (fm.lastSessionId ?? "").trim() || undefined,
     runContinuously: parseBoolean(fm.runContinuously, false) || undefined,
+    adversarialCritique: parseBoolean(fm.adversarialCritique, false) || undefined,
+    criticProfileId: (fm.criticProfileId ?? "").trim() || undefined,
     lastRunAt: fm.lastRunAt ? parseNumber(fm.lastRunAt, 0) || undefined : undefined,
     schedule,
   }

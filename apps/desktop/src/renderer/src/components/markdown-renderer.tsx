@@ -64,6 +64,7 @@ const LOCAL_ARTIFACT_PATH_TEXT_REGEX =
   /^((?:~|\/(?!\/))[^\s"'`<>),\]}]+\.(?:html?|md|markdown|mdx|txt|log|json|jsonl|csv|tsv|xml|ya?ml|pdf|png|apng|gif|jpe?g|webp|bmp|avif|svg|mp4|m4v|webm|mov|ogv|mp3|wav|m4a|aac|flac|ogg|oga|opus))$/i
 const LOCAL_ARTIFACT_PATH_REGEX =
   /(^|[\s([{])((?:~|\/(?!\/))[^\s"'`<>),\]}]+\.(?:html?|md|markdown|mdx|txt|log|json|jsonl|csv|tsv|xml|ya?ml|pdf|png|apng|gif|jpe?g|webp|bmp|avif|svg|mp4|m4v|webm|mov|ogv|mp3|wav|m4a|aac|flac|ogg|oga|opus))(?:([,.;:!?])(?=$|\s)|(?=$|\s|[)\]}]))/gi
+const LOCAL_VIDEO_ARTIFACT_PATH_REGEX = /\.(?:mp4|m4v|webm|mov|ogv)$/i
 
 export const isAllowedMarkdownLinkUrl = (rawUrl?: string) => {
   if (!rawUrl) return false
@@ -94,6 +95,12 @@ const isDesktopRenderableVideoUrl = (rawUrl?: string) => {
 
 const encodeLocalArtifactUrl = (filePath: string) =>
   LOCAL_ARTIFACT_URL_PREFIX + encodeURIComponent(filePath)
+
+const encodeLocalArtifactAssetUrl = (filePath: string) =>
+  "assets://file?path=" + encodeURIComponent(filePath)
+
+const isLocalVideoArtifactPath = (filePath: string) =>
+  LOCAL_VIDEO_ARTIFACT_PATH_REGEX.test(filePath)
 
 const decodeLocalArtifactUrl = (href: string) => {
   if (!LOCAL_ARTIFACT_URL_REGEX.test(href)) return null
@@ -432,6 +439,15 @@ const markdownLinkComponent = ({
 }) => {
   const localArtifactPath = href ? decodeLocalArtifactUrl(href) : null
   if (localArtifactPath) {
+    if (isLocalVideoArtifactPath(localArtifactPath)) {
+      return (
+        <VideoAttachmentCard
+          src={encodeLocalArtifactAssetUrl(localArtifactPath)}
+          label={extractTextContent(children) || localArtifactPath}
+        />
+      )
+    }
+
     return (
       <LocalArtifactLink path={localArtifactPath}>
         {children}

@@ -103,6 +103,14 @@ export interface LoopConfig {
   lastSessionId?: string
   /** Start the next run immediately after the previous run finishes. */
   runContinuously?: boolean
+  /**
+   * If true, each run performs an additional adversarial critique pass in a
+   * separate critic agent session, then feeds that critique back to the worker
+   * for a final revision.
+   */
+  adversarialCritique?: boolean
+  /** Optional agent profile used for the adversarial critique pass. */
+  criticProfileId?: string
   /** Wall-clock schedule. When present, supersedes `intervalMinutes`. */
   schedule?: LoopSchedule
 }

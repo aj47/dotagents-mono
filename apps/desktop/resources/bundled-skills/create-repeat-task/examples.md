@@ -139,7 +139,26 @@ profileId: code-reviewer
 Review any PR opened on this repo in the last 30 minutes and post inline comments for obvious issues.
 ```
 
-## 9. Disable without deleting
+## 9. Adversarial critique
+
+Runs the worker once, has a separate critic agent review the answer, then asks the worker to revise using that critique. Omit `criticProfileId` to use the default active agent for critique.
+
+```markdown
+---
+kind: task
+id: reviewed-daily-plan
+name: Reviewed Daily Plan
+enabled: true
+intervalMinutes: 1440
+profileId: planner
+adversarialCritique: true
+criticProfileId: critical-reviewer
+---
+
+Draft today's execution plan from my goals, calendar, and open work. Prioritize what most improves leverage and identify any risky assumptions.
+```
+
+## 10. Disable without deleting
 
 To pause a task without losing its config or history, set `enabled: false`. Do not delete the directory.
 

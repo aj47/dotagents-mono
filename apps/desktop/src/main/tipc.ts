@@ -57,6 +57,7 @@ import {
   Conversation,
   ConversationCompactionMetadata,
   ConversationHistoryItem,
+  ConversationRepeatTaskSource,
   DesktopTTSPlaybackCommand,
   DesktopTTSPlaybackRequest,
   DesktopTTSPlaybackState,
@@ -143,7 +144,12 @@ function sendAgentCompletionPushNotification(input: {
 async function withRepeatTaskSessionFlag<T extends {
   conversationId?: string
   conversationTitle?: string
+  repeatTask?: ConversationRepeatTaskSource
 }>(session: T): Promise<T & { isRepeatTask?: boolean }> {
+  if (session.repeatTask?.type === "repeat_task_run") {
+    return { ...session, isRepeatTask: true }
+  }
+
   if (hasRepeatTaskTitlePrefix(session.conversationTitle)) {
     return { ...session, isRepeatTask: true }
   }
@@ -154,18 +160,16 @@ async function withRepeatTaskSessionFlag<T extends {
     return { ...session, isRepeatTask: true }
   }
 
+  let firstUserMessage: string | undefined
   if (session.conversationId) {
     try {
       const conversation = await conversationService.loadConversation(session.conversationId)
-      const firstUserMessage = conversation?.messages
+      if (conversation?.repeatTask?.type === "repeat_task_run") {
+        return { ...session, isRepeatTask: true, repeatTask: conversation.repeatTask }
+      }
+      firstUserMessage = conversation?.messages
         ?.find((message) => message.role === "user" && message.content.trim())
         ?.content.trim()
-      if (
-        firstUserMessage &&
-        loops.some((loop) => loop.prompt.trim() === firstUserMessage)
-      ) {
-        return { ...session, isRepeatTask: true }
-      }
     } catch (error) {
       logApp("[tipc] Failed to inspect session conversation for repeat-task grouping", {
         conversationId: session.conversationId,
@@ -174,7 +178,21 @@ async function withRepeatTaskSessionFlag<T extends {
     }
   }
 
+  if (
+    firstUserMessage &&
+    !isLikelyRepeatTaskCreationSessionTitle(session.conversationTitle) &&
+    loops.some((loop) => loop.prompt.trim() === firstUserMessage)
+  ) {
+    return { ...session, isRepeatTask: true }
+  }
+
   return session
+}
+
+function isLikelyRepeatTaskCreationSessionTitle(title: string | undefined): boolean {
+  const normalized = title?.trim().toLowerCase()
+  if (!normalized) return false
+  return normalized.startsWith("create ") && /\btask\b/.test(normalized)
 }
 
 const isFinitePanelSize = (value: unknown): value is { width: number; height: number } =>

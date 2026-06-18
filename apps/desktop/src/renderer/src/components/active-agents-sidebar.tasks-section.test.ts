@@ -42,7 +42,8 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("toTitleCaseTaskName(task.name, { dropConnectorWords: true })")
     expect(sidebarSource).toContain("function getFirstMarkdownHeading")
     expect(sidebarSource).toContain("firstHeading ? `${firstHeading} Run` : null")
-    expect(sidebarSource).toContain("flatMap(getRepeatTaskTitleHints)")
+    expect(sidebarSource).toContain("repeatTaskTitleHints.set(titleHint, task.id)")
+    expect(sidebarSource).toContain("dedupeTaskEntriesByTitle(taskEntries, repeatTaskTitleHints)")
   })
 
   it("forces task rows to remain one line", () => {
@@ -81,7 +82,7 @@ describe("active agents sidebar task section", () => {
     expect(sessionsHeaderIndex).toBeLessThan(savedConversationsIndex)
     expect(sidebarSource).toContain('-ml-2 mt-1 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px]')
     expect(sidebarSource).toContain('"-ml-2 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px]')
-    expect(sidebarSource).toContain('<Clock className="h-3.5 w-3.5" />')
+    expect(sidebarSource).toContain('<Clock className="h-3 w-3" />')
     expect(sidebarSource).not.toContain("i-mingcute-grid-line")
     expect(sidebarSource).not.toContain("text-sm font-medium transition-all duration-200")
   })

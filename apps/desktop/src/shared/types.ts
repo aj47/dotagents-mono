@@ -271,6 +271,16 @@ export interface ConversationBranchSource {
   branchedAt: number
 }
 
+export type ConversationRepeatTaskRole = "worker" | "critic"
+
+export interface ConversationRepeatTaskSource {
+  type: "repeat_task_run"
+  taskId: string
+  taskName: string
+  runId: string
+  role: ConversationRepeatTaskRole
+}
+
 export interface Conversation {
   id: string
   clientSessionId?: string
@@ -289,6 +299,8 @@ export interface Conversation {
   }
   /** Branch provenance: set when this conversation was created by branching from another */
   branchSource?: ConversationBranchSource
+  /** Repeat-task provenance: set when this conversation was created by a scheduled task run */
+  repeatTask?: ConversationRepeatTaskSource
 }
 
 export interface LoadedConversation extends Conversation {
@@ -305,6 +317,7 @@ export interface ConversationHistoryItem {
   clientSessionId?: string
   title: string
   titleSource?: TitleSource
+  repeatTask?: ConversationRepeatTaskSource
   createdAt: number
   updatedAt: number
   lastMessageAt?: number | null
@@ -1127,6 +1140,8 @@ export interface LoopConfig {
   continueInSession?: boolean // if true, reuses the prior session across iterations
   lastSessionId?: string   // session id to resume on next run when continueInSession is on
   runContinuously?: boolean // if true, starts the next run immediately after the previous run finishes
+  adversarialCritique?: boolean // if true, runs a critic pass and feeds it back to the worker
+  criticProfileId?: string // optional profile to use for the critic pass
   maxIterations?: number   // optional per-task override for agent loop iterations
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present
 }

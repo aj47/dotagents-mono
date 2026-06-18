@@ -1,4 +1,4 @@
-import type { AgentProgressUpdate } from "@shared/types"
+import type { AgentProgressUpdate, ConversationRepeatTaskSource } from "@shared/types"
 import { TASK_SESSION_TITLE_PREFIX, hasRepeatTaskTitlePrefix } from "@shared/repeat-tasks"
 import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
 export type SessionLike = {
@@ -44,6 +44,7 @@ type TitledSessionLike = SessionLike & {
   parentSessionId?: string | null
   conversationTitle?: string
   isRepeatTask?: boolean
+  repeatTask?: ConversationRepeatTaskSource | null
 }
 
 type ProgressTitleLike = Pick<
@@ -98,7 +99,92 @@ export interface SidebarActivityPresentation {
   isForegroundActivity: boolean
 }
 
-type RepeatTaskTitleHints = ReadonlySet<string>
+type RepeatTaskTitleHints = ReadonlySet<string> | ReadonlyMap<string, string>
+
+const REPEAT_TASK_TITLE_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "agent",
+  "for",
+  "from",
+  "in",
+  "of",
+  "on",
+  "or",
+  "repeat",
+  "run",
+  "task",
+  "the",
+  "to",
+  "with",
+])
+
+const REPEAT_TASK_TITLE_TOKEN_ALIASES: Record<string, string> = {
+  critical: "critic",
+  critique: "critic",
+  critiques: "critic",
+  reviewer: "critic",
+  reviews: "critic",
+}
+
+function normalizeRepeatTaskTitleToken(token: string): string {
+  const normalized = token.toLowerCase()
+  return REPEAT_TASK_TITLE_TOKEN_ALIASES[normalized] ?? normalized
+}
+
+function getRepeatTaskTitleTokens(title: string): string[] {
+  const tokens = title
+    .toLowerCase()
+    .split(/[^a-z0-9]+/u)
+    .map((token) => normalizeRepeatTaskTitleToken(token.trim()))
+    .filter((token) => token.length > 0 && !REPEAT_TASK_TITLE_STOP_WORDS.has(token))
+
+  return Array.from(new Set(tokens))
+}
+
+function isLikelyTaskCreationConversationTitle(title: string): boolean {
+  const tokens = new Set(getRepeatTaskTitleTokens(title))
+  return tokens.has("create") && /(?:^|[^a-z0-9])task(?:[^a-z0-9]|$)/iu.test(title)
+}
+
+function isRepeatTaskTitleHintMap(value: RepeatTaskTitleHints): value is ReadonlyMap<string, string> {
+  return typeof (value as ReadonlyMap<string, string>).get === "function"
+}
+
+function getRepeatTaskTitleHintEntries(repeatTaskTitleHints?: RepeatTaskTitleHints): Array<[string, string]> {
+  if (!repeatTaskTitleHints || repeatTaskTitleHints.size === 0) return []
+  if (isRepeatTaskTitleHintMap(repeatTaskTitleHints)) {
+    return Array.from(repeatTaskTitleHints.entries())
+  }
+  return Array.from(repeatTaskTitleHints).map((hint) => [hint, hint])
+}
+
+function resolveRepeatTaskTitleHintKey(title: string, repeatTaskTitleHints?: RepeatTaskTitleHints): string | null {
+  const hintEntries = getRepeatTaskTitleHintEntries(repeatTaskTitleHints)
+  if (hintEntries.length === 0) return null
+  const exact = hintEntries.find(([hint]) => hint === title)
+  if (exact) return exact[1]
+  if (isLikelyTaskCreationConversationTitle(title)) return null
+
+  const titleTokens = getRepeatTaskTitleTokens(title)
+  if (titleTokens.length < 3) return null
+
+  const fuzzy = hintEntries.find(([hint]) => {
+    const hintTokens = new Set(getRepeatTaskTitleTokens(hint))
+    if (hintTokens.size < 3) return false
+    return titleTokens.every((token) => hintTokens.has(token))
+  })
+  return fuzzy?.[1] ?? null
+}
+
+function matchesRepeatTaskTitleHint(title: string, repeatTaskTitleHints?: RepeatTaskTitleHints): boolean {
+  return resolveRepeatTaskTitleHintKey(title, repeatTaskTitleHints) !== null
+}
+
+function normalizeTaskDedupeKey(value: string): string {
+  return value.trim().toLowerCase()
+}
 
 export function getSidebarSessionGroupKey(session: SessionLike): string {
   return getSidebarSessionGroupKeys(session)[0]
@@ -390,10 +476,11 @@ function isTaskSessionWithHints(
   session: TitledSessionLike,
   repeatTaskTitleHints?: RepeatTaskTitleHints,
 ): boolean {
+  if (session.repeatTask?.type === "repeat_task_run") return true
   if (session.isRepeatTask) return true
   if (hasRepeatTaskTitlePrefix(session.conversationTitle)) return true
   const title = session.conversationTitle?.trim()
-  return !!title && !!repeatTaskTitleHints?.has(title)
+  return !!title && matchesRepeatTaskTitleHint(title, repeatTaskTitleHints)
 }
 
 export function partitionTaskAndUserEntries<
@@ -423,12 +510,23 @@ export function partitionTaskAndUserEntries<
   return { userEntries, taskEntries }
 }
 
-function getTaskEntryDedupeKey(session: TitledSessionLike): string | null {
+function getTaskEntryDedupeKey(
+  session: TitledSessionLike,
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): string | null {
+  if (session.repeatTask?.type === "repeat_task_run" && session.repeatTask.taskId) {
+    return `repeat-task:${session.repeatTask.taskId}`
+  }
+
   const title = session.conversationTitle?.trim()
   if (!title) return null
+  const repeatTaskTitleHintKey = resolveRepeatTaskTitleHintKey(title, repeatTaskTitleHints)
+  if (repeatTaskTitleHintKey) {
+    return `repeat-task-title:${normalizeTaskDedupeKey(repeatTaskTitleHintKey)}`
+  }
   return title.startsWith(TASK_SESSION_TITLE_PREFIX)
-    ? title.slice(TASK_SESSION_TITLE_PREFIX.length).trim().toLowerCase()
-    : title.toLowerCase()
+    ? normalizeTaskDedupeKey(title.slice(TASK_SESSION_TITLE_PREFIX.length))
+    : normalizeTaskDedupeKey(title)
 }
 
 function getTaskEntryTimestamp(session: TitledSessionLike & { startTime?: number; endTime?: number }): number {
@@ -461,12 +559,15 @@ function isBetterTaskEntry<T extends { session: TitledSessionLike & { status?: s
 
 export function dedupeTaskEntriesByTitle<
   T extends { session: TitledSessionLike & { status?: string; startTime?: number; endTime?: number } },
->(taskEntries: T[]): T[] {
+>(
+  taskEntries: T[],
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): T[] {
   if (taskEntries.length <= 1) return taskEntries
 
   const selectedByTitle = new Map<string, T>()
   for (const entry of taskEntries) {
-    const key = getTaskEntryDedupeKey(entry.session)
+    const key = getTaskEntryDedupeKey(entry.session, repeatTaskTitleHints)
     if (!key) continue
     const current = selectedByTitle.get(key)
     if (!current || isBetterTaskEntry(entry, current)) {
@@ -475,7 +576,7 @@ export function dedupeTaskEntriesByTitle<
   }
 
   return taskEntries.filter((entry) => {
-    const key = getTaskEntryDedupeKey(entry.session)
+    const key = getTaskEntryDedupeKey(entry.session, repeatTaskTitleHints)
     return !key || selectedByTitle.get(key) === entry
   })
 }

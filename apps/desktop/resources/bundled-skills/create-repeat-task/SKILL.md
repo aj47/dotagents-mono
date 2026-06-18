@@ -1,6 +1,6 @@
 ---
 name: create-repeat-task
-description: "Use this skill when the user asks to create, edit, or reason about a repeat task — including phrases like 'create repeat task', 'recurring task', 'scheduled task', 'continuous task', 'same session continue', 'speak the result', or 'TTS for a task'. It teaches the canonical task.md frontmatter, the full set of scheduler/runtime options (intervalMinutes, schedule, runContinuously, continueInSession, speakOnTrigger, runOnStartup, profileId), and the safe edit workflow."
+description: "Use this skill when the user asks to create, edit, or reason about a repeat task — including phrases like 'create repeat task', 'recurring task', 'scheduled task', 'continuous task', 'same session continue', 'speak the result', 'TTS for a task', or 'adversarial critique'. It teaches the canonical task.md frontmatter, the full set of scheduler/runtime options (intervalMinutes, schedule, runContinuously, continueInSession, speakOnTrigger, runOnStartup, profileId, adversarialCritique, criticProfileId), and the safe edit workflow."
 ---
 
 # Create Repeat Task
@@ -25,6 +25,7 @@ Trigger on any of:
 - "continuous task", "run continuously", "run back-to-back"
 - "same session continue", "keep the conversation context across runs"
 - "speak the result", "TTS for the task", "read it out when it's done"
+- "adversarial critique", "critic agent", "feed critique back to the worker"
 - "edit task `<id>`", "disable task `<id>`", "change the schedule of task `<id>`"
 
 ## Discovery first
@@ -52,6 +53,8 @@ If you find an existing task with the requested ID, prefer editing it in place o
 | `continueInSession` | boolean               | `false`     | Reuse the prior session/conversation so the agent retains context across runs.                  |
 | `lastSessionId`     | string                | unset       | Session ID resumed on the next run. Auto-populated; user may pin manually.                      |
 | `runContinuously`   | boolean               | `false`     | Start the next run immediately after the previous one finishes (zero-delay loop).               |
+| `adversarialCritique` | boolean             | `false`     | Run a separate critic agent after the worker answer, then feed critique back to the worker.      |
+| `criticProfileId`   | string                | unset       | Optional profile ID for the critic pass. Omit to use the default active agent.                  |
 | `schedule`          | JSON object as string | unset       | Wall-clock schedule. When present, supersedes `intervalMinutes`. See "Schedules" below.         |
 | `lastRunAt`         | number (ms epoch)     | unset       | Auto-managed timestamp. Do not hand-set unless the user explicitly asks.                        |
 
@@ -94,13 +97,19 @@ Set `speakOnTrigger: true` when the user wants the task to "speak" or "read out"
 
 This is independent of any user-level TTS settings — those still control voice, language, and quality.
 
+## Adversarial critique
+
+Set `adversarialCritique: true` when the user wants the task to produce a first answer, have a separate critic agent challenge it, then feed that critique back to the worker for the final revised answer. Set `criticProfileId` only when the user names a specific critic profile; otherwise omit it and the critique pass uses the default active agent.
+
+This increases runtime and token use because each scheduled run performs a worker pass, a critic pass, and a final worker revision pass.
+
 ## Workflow
 
 1. Confirm what the user wants the task to do (the prompt body) and how often it should run.
 2. Pick the cadence model: schedule, continuous, or interval.
 3. Pick an `id`. Prefer short, kebab-case, descriptive — e.g. `daily-standup`, `queue-processor`, `morning-summary`.
 4. Choose `profileId` if a specific agent should own the task; otherwise omit it.
-5. Decide `continueInSession` (state across runs?) and `speakOnTrigger` (TTS on completion?).
+5. Decide `continueInSession` (state across runs?), `speakOnTrigger` (TTS on completion?), and `adversarialCritique` (critic feedback loop?).
 6. Decide `runOnStartup` (fire immediately when the app boots?).
 7. Write `~/.agents/tasks/<id>/task.md` (or the workspace equivalent) using direct file editing, not app-specific config tools.
 8. Confirm with the user, then check it appears in Settings > Loops / Repeat Tasks and that `enabled` is correct.
