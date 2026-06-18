@@ -14,6 +14,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getDeviceIdentity } from './deviceIdentity';
 
 const PUSH_TOKEN_KEY = 'push_token_v2';
 const SERVER_REGISTERED_KEY = 'push_server_registered_v2';
@@ -94,13 +95,10 @@ async function getPushToken(): Promise<string | null> {
   const projectId = Constants.expoConfig?.extra?.eas?.projectId
     ?? Constants.easConfig?.projectId;
 
-  if (!projectId) {
-    console.error('[Push] No EAS projectId configured');
-    return null;
-  }
-
   try {
-    const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+    const { data } = projectId
+      ? await Notifications.getExpoPushTokenAsync({ projectId })
+      : await Notifications.getExpoPushTokenAsync();
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, data);
     return data;
   } catch (error) {
@@ -127,6 +125,7 @@ export async function registerWithServer(baseUrl: string, apiKey: string): Promi
   if (!token) return false;
 
   try {
+    const identity = await getDeviceIdentity();
     const response = await fetch(`${normalizeBaseUrl(baseUrl)}/v1/push/register`, {
       method: 'POST',
       headers: {
@@ -137,6 +136,7 @@ export async function registerWithServer(baseUrl: string, apiKey: string): Promi
         token,
         type: 'expo',
         platform: Platform.OS as 'ios' | 'android',
+        deviceId: identity.deviceId,
       }),
     });
 
@@ -350,4 +350,3 @@ export function usePushNotifications(): UsePushNotificationsResult {
     clear,
   };
 }
-

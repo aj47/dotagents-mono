@@ -2462,8 +2462,8 @@ export default function SettingsScreen({ navigation, route }: any) {
       const success = await registerPush(config.baseUrl, config.apiKey);
       if (!success) {
         Alert.alert(
-          'Permission Required',
-          'Push notifications require permission. Please enable notifications in your device settings.',
+          'Push Registration Failed',
+          'DotAgents could not register this device for push notifications. Check the app logs for the Expo or Firebase setup error.',
           [{ text: 'OK' }]
         );
       }

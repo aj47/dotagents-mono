@@ -104,6 +104,7 @@ import { loopService } from "./loop-service"
 import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
+import { isPushEnabled, sendMessageNotification } from "./push-notification-service"
 
 function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
   if (!sessionId) return "missing"
@@ -117,6 +118,26 @@ function reconcileAgentSessionsWithRuntime(): void {
   agentSessionTracker.reconcileActiveSessions((session) =>
     agentSessionStateManager.isSessionRegistered(session.id),
   )
+}
+
+function sendAgentCompletionPushNotification(input: {
+  conversationId?: string
+  sessionId: string
+  conversationTitle: string
+  content: string
+}) {
+  if (!input.conversationId || !isPushEnabled()) {
+    return
+  }
+
+  sendMessageNotification(
+    input.conversationId,
+    input.conversationTitle,
+    input.content,
+    input.sessionId,
+  ).catch((error) => {
+    logApp("[tipc] Failed to send completion push notification:", error)
+  })
 }
 
 async function withRepeatTaskSessionFlag<T extends {
@@ -475,6 +496,12 @@ async function processWithAgentMode(
       if (result.success) {
         logLLM(`[processWithAgentMode] ACP mode completed successfully for session ${sessionId}, conversation ${conversationId}`)
         agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
+        sendAgentCompletionPushNotification({
+          conversationId,
+          sessionId,
+          conversationTitle,
+          content: result.response || "Agent completed.",
+        })
       } else {
         logLLM(`[processWithAgentMode] ACP mode failed for session ${sessionId}: ${result.error}`)
         agentSessionTracker.errorSession(sessionId, result.error || "Unknown error")
@@ -672,6 +699,12 @@ async function processWithAgentMode(
 
     // Mark session as completed
     agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
+    sendAgentCompletionPushNotification({
+      conversationId,
+      sessionId,
+      conversationTitle,
+      content: agentResult.content,
+    })
 
     return agentResult.content
   } catch (error) {

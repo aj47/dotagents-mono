@@ -8,6 +8,7 @@ import { diagnosticsService } from "./diagnostics"
 import { PushNotificationToken } from "../shared/types"
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+const MAX_PUSH_CONVERSATION_TITLE_CHARS = 30
 
 export interface PushNotificationPayload {
   title: string
@@ -145,19 +146,26 @@ export async function sendPushNotification(payload: PushNotificationPayload): Pr
 export async function sendMessageNotification(
   conversationId: string,
   conversationTitle: string,
-  messagePreview: string
+  messagePreview: string,
+  sessionId?: string,
 ): Promise<void> {
-  const truncatedPreview = messagePreview.length > 100
-    ? messagePreview.substring(0, 100) + "..."
-    : messagePreview
+  const trimmedPreview = messagePreview.replace(/\s+/g, " ").trim()
+  const truncatedPreview = trimmedPreview.length > 100
+    ? trimmedPreview.substring(0, 100) + "..."
+    : trimmedPreview
+  const trimmedConversationTitle = conversationTitle.replace(/\s+/g, " ").trim()
+  const truncatedConversationTitle = trimmedConversationTitle.length > MAX_PUSH_CONVERSATION_TITLE_CHARS
+    ? trimmedConversationTitle.substring(0, MAX_PUSH_CONVERSATION_TITLE_CHARS) + "..."
+    : trimmedConversationTitle
 
   await sendPushNotification({
     title: "DotAgents",
-    body: truncatedPreview,
+    body: truncatedPreview || "Agent completed.",
     data: {
       type: "message",
       conversationId,
-      conversationTitle,
+      conversationTitle: truncatedConversationTitle,
+      ...(sessionId ? { sessionId } : {}),
     },
     // badge is now handled per-token in sendPushNotification
     sound: "default",
@@ -190,4 +198,3 @@ export function clearBadgeCount(tokenValue: string): void {
   configStore.save({ ...cfg, pushNotificationTokens: updatedTokens })
   diagnosticsService.logInfo("push-service", `Badge count cleared for token: ${tokenValue.substring(0, 20)}...`)
 }
-

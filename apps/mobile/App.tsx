@@ -56,6 +56,7 @@ const dotagentsIcon = require('./assets/dotagents-icon.png');
 const darkSpinner = require('./assets/loading-spinner.gif');
 const lightSpinner = require('./assets/light-spinner.gif');
 const SESSION_SYNC_POLL_INTERVAL_MS = 15000;
+const NOTIFICATION_SYNC_RETRY_DELAY_MS = 500;
 
 const Stack = createNativeStackNavigator();
 
@@ -249,8 +250,19 @@ function Navigation() {
     };
   }, [cfg.ready, cfg.config.ttsVoiceId, cfg.setConfig]);
 
+  const syncSessionsForNotificationTap = useCallback(async () => {
+    if (!cfg.config.baseUrl || !cfg.config.apiKey) return;
+
+    const client = new SettingsApiClient(cfg.config.baseUrl, cfg.config.apiKey);
+    const result = await sessionStore.syncWithServer(client);
+    if (result.errors.includes('Sync already in progress')) {
+      await new Promise(resolve => setTimeout(resolve, NOTIFICATION_SYNC_RETRY_DELAY_MS));
+      await sessionStore.syncWithServer(client);
+    }
+  }, [cfg.config.baseUrl, cfg.config.apiKey, sessionStore]);
+
   // Handle notification taps for deep linking to conversations
-  const handleNotificationTap = useCallback((data: NotificationData) => {
+  const handleNotificationTap = useCallback(async (data: NotificationData) => {
     console.log('[App] Notification tapped:', data);
     if (!isNavigationReady.current) {
       console.log('[App] Navigation not ready, skipping notification navigation');
@@ -258,22 +270,28 @@ function Navigation() {
     }
 
     if (data.type === 'message' && (data.sessionId || data.conversationId)) {
-      // Navigate to the specific chat session
-      // Try to find session by local sessionId first, then by server conversationId
-      let targetSessionId: string | null = null;
-
-      if (data.sessionId) {
-        // sessionId from notification is already a local session ID
-        targetSessionId = data.sessionId;
-      } else if (data.conversationId) {
-        // conversationId is a server-side ID - need to find the matching local session
-        const session = sessionStore.findSessionByServerConversationId(data.conversationId);
-        if (session) {
-          targetSessionId = session.id;
-          console.log('[App] Found session by serverConversationId:', session.id);
-        } else {
-          console.log('[App] No session found for conversationId:', data.conversationId);
+      const findTargetSessionId = (): string | null => {
+        if (
+          typeof data.sessionId === 'string' &&
+          sessionStore.sessions.some(session => session.id === data.sessionId)
+        ) {
+          return data.sessionId;
         }
+
+        if (typeof data.conversationId === 'string') {
+          const session = sessionStore.findSessionByServerConversationId(data.conversationId);
+          return session?.id ?? null;
+        }
+
+        return null;
+      };
+
+      let targetSessionId = findTargetSessionId();
+      if (!targetSessionId && data.conversationId) {
+        await syncSessionsForNotificationTap().catch((error) => {
+          console.warn('[App] Notification session sync failed:', error);
+        });
+        targetSessionId = findTargetSessionId();
       }
 
       if (targetSessionId) {
@@ -287,7 +305,7 @@ function Navigation() {
       // Navigate to sessions list if no specific session
       navigationRef.navigate('Sessions' as never);
     }
-  }, [sessionStore, navigationRef]);
+  }, [navigationRef, sessionStore, syncSessionsForNotificationTap]);
 
   const refreshCurrentRouteName = useCallback(() => {
     const routeName = navigationRef.getCurrentRoute()?.name;
@@ -410,6 +428,23 @@ function Navigation() {
     pushNotifications.setOnNotificationTap(handleNotificationTap);
     return () => pushNotifications.setOnNotificationTap(null);
   }, [handleNotificationTap, pushNotifications]);
+
+  // Keep the desktop-side token registration fresh when the paired desktop URL changes.
+  useEffect(() => {
+    if (!cfg.ready || !pushNotifications.isSupported || !pushNotifications.isRegistered) return;
+    if (!cfg.config.baseUrl || !cfg.config.apiKey) return;
+
+    pushNotifications.register(cfg.config.baseUrl, cfg.config.apiKey).catch((error) => {
+      console.warn('[App] Failed to refresh push registration:', error);
+    });
+  }, [
+    cfg.ready,
+    cfg.config.baseUrl,
+    cfg.config.apiKey,
+    pushNotifications.isSupported,
+    pushNotifications.isRegistered,
+    pushNotifications.register,
+  ]);
 
   // Clear notifications when app becomes active (including from background)
   useEffect(() => {

@@ -200,6 +200,8 @@ pnpm --filter @dotagents/mobile android
 
 Native iOS/Android builds require a development build because the app uses `expo-speech-recognition`, which Expo Go does not include.
 
+Android push notifications also require local Firebase Android app config in `apps/mobile/android/app/google-services.json` and an Expo/EAS Android FCM V1 credential for `com.aj47.dotagents`. Keep Firebase config files and service-account private keys out of the repo; see `apps/mobile/README.md` for setup and rotation steps.
+
 The root release script has mobile package paths for IPA/APK builds, but mobile release signing requires platform-specific Apple/Android credentials and native tooling.
 
 ## Docs Site

@@ -1136,6 +1136,7 @@ function formatConversationHistoryForApi(
 export async function runAgent(options: RunAgentOptions): Promise<{
   content: string
   conversationId: string
+  sessionId: string
   conversationHistory: Array<{
     role: "user" | "assistant" | "tool"
     content: string
@@ -1298,6 +1299,7 @@ export async function runAgent(options: RunAgentOptions): Promise<{
         return {
           content: mainAgentSelection.error,
           conversationId,
+          sessionId,
           conversationHistory: await loadFormattedConversationHistory(),
         }
       }
@@ -1335,6 +1337,7 @@ export async function runAgent(options: RunAgentOptions): Promise<{
         return {
           content: result.response || result.error || "No response from agent",
           conversationId,
+          sessionId,
           conversationHistory: formattedHistory,
         }
       } finally {
@@ -1378,7 +1381,7 @@ export async function runAgent(options: RunAgentOptions): Promise<{
     // Notify renderer that conversation history has changed (for sidebar refresh)
     notifyConversationHistoryChanged()
 
-    return { content: agentResult.content, conversationId, conversationHistory: formattedHistory }
+    return { content: agentResult.content, conversationId, sessionId, conversationHistory: formattedHistory }
   } catch (error) {
     // Mark session as errored
     const errorMessage = getErrorMessage(error)
@@ -3372,6 +3375,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         success: true,
         action: "run-agent",
         conversationId: result.conversationId,
+        sessionId: result.sessionId,
         content: result.content,
         messageCount: result.conversationHistory.length,
       })
@@ -3500,7 +3504,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           if (shouldSendPush) {
             const conversationTitle = prompt.length > 30 ? prompt.substring(0, 30) + "..." : prompt
             // Fire and forget - don't block the response
-            sendMessageNotification(result.conversationId, conversationTitle, result.content).catch((err) => {
+            sendMessageNotification(result.conversationId, conversationTitle, result.content, result.sessionId).catch((err) => {
               diagnosticsService.logWarning("remote-server", "Failed to send push notification", err)
             })
           }
@@ -3537,7 +3541,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (shouldSendPush) {
         const conversationTitle = prompt.length > 30 ? prompt.substring(0, 30) + "..." : prompt
         // Fire and forget - don't block the response
-        sendMessageNotification(result.conversationId, conversationTitle, result.content).catch((err) => {
+        sendMessageNotification(result.conversationId, conversationTitle, result.content, result.sessionId).catch((err) => {
           diagnosticsService.logWarning("remote-server", "Failed to send push notification", err)
         })
       }
@@ -5870,6 +5874,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: "Missing or invalid token" })
       }
 
+      if (body.type !== undefined && body.type !== "expo") {
+        return reply.code(400).send({ error: "Invalid token type. Must be 'expo'" })
+      }
+
       if (!body.platform || !["ios", "android"].includes(body.platform)) {
         return reply.code(400).send({ error: "Invalid platform. Must be 'ios' or 'android'" })
       }
@@ -5879,12 +5887,17 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
       // Check if token already exists
       const existingIndex = existingTokens.findIndex(t => t.token === body.token)
+      const existingToken = existingIndex >= 0 ? existingTokens[existingIndex] : undefined
+      const deviceId = typeof body.deviceId === "string" && body.deviceId.trim()
+        ? body.deviceId.trim()
+        : undefined
       const newToken = {
         token: body.token,
         type: "expo" as const,
         platform: body.platform as "ios" | "android",
         registeredAt: Date.now(),
-        deviceId: body.deviceId,
+        deviceId,
+        badgeCount: existingToken?.badgeCount ?? 0,
       }
 
       let updatedTokens: typeof existingTokens
@@ -5952,7 +5965,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       return reply.send({
         enabled: tokens.length > 0,
         tokenCount: tokens.length,
-        platforms: [...new Set(tokens.map(t => t.platform))],
+        platforms: [...new Set(tokens.map(t => t.platform))].sort(),
       })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to get push status", error)

@@ -65,6 +65,25 @@ Open the app and configure Settings:
 
 For the desktop flow, enable **Settings > Remote Server** in DotAgents desktop and scan the QR code from the mobile **Connection Settings** screen.
 
+## Android push notifications
+
+Android push notifications require a native development or release build. They do not work in Expo Go or the web build.
+
+The Android Firebase file is local app configuration and must stay out of git:
+
+- `android/app/google-services.json` must match the Firebase Android app package name `com.aj47.dotagents`
+- `app.json` must point `expo.android.googleServicesFile` at `./android/app/google-services.json`
+- `android/build.gradle` and `android/app/build.gradle` must apply the Google Services Gradle plugin
+
+Expo also needs an Android FCM V1 credential for the EAS project. To set it up or rotate it:
+
+1. In Firebase, create or open the Android app for `com.aj47.dotagents`.
+2. Download `google-services.json` and place it at `android/app/google-services.json` locally. Do not commit it.
+3. In Firebase service account settings, generate a new private service-account JSON key.
+4. Upload that JSON key to Expo/EAS as the Android FCM V1 credential for the DotAgents Mobile project and application identifier `com.aj47.dotagents`.
+5. Delete the downloaded private key after upload. Never commit service-account keys.
+6. Build and install a native Android app, register push notifications from Settings, then verify delivery with an Expo push ticket/receipt and `adb shell dumpsys notification --noredact`.
+
 ## Voice UX
 
 - Press‑and‑hold mic (when hands‑free is off):
