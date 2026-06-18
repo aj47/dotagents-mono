@@ -237,6 +237,25 @@ describe("remote-server route registration", () => {
     expect(source).toContain("remoteServerApiKey: getMaskedRemoteServerApiKey(cfg.remoteServerApiKey)")
   })
 
+  it("registers authenticated mobile push endpoints with token hygiene", () => {
+    const source = getRemoteServerSource()
+    const pushSection = getSection(
+      source,
+      "// Push Notification Endpoints (for mobile app)",
+      "// Helper function to validate message objects",
+    )
+
+    expect(pushSection).toContain('fastify.post("/v1/push/register"')
+    expect(pushSection).toContain('fastify.post("/v1/push/unregister"')
+    expect(pushSection).toContain('fastify.get("/v1/push/status"')
+    expect(pushSection).toContain('fastify.post("/v1/push/clear-badge"')
+    expect(pushSection).toContain('body.type !== undefined && body.type !== "expo"')
+    expect(pushSection).toContain("badgeCount: existingToken?.badgeCount ?? 0")
+    expect(pushSection).toContain("deviceId.trim()")
+    expect(pushSection).toContain("platforms: [...new Set(tokens.map(t => t.platform))].sort()")
+    expect(source).toContain("const currentApiKey = getResolvedRemoteServerApiKey(current)")
+  })
+
   it("exposes Tailscale-backed easy pairing status for mobile QR setup", () => {
     const source = getRemoteServerSource()
     const operatorRemoteServerStatusSection = getSection(source, "function buildOperatorRemoteServerStatus", "function buildOperatorTunnelStatus")

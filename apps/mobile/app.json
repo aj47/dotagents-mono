@@ -29,6 +29,7 @@
     },
     "android": {
       "versionCode": 10,
+      "googleServicesFile": "./android/app/google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/dotagents-icon.png",
         "backgroundColor": "#ffffff"
@@ -46,6 +47,11 @@
     },
     "web": {
       "favicon": "./assets/dotagents-icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "442b8947-8eae-4ba1-aed1-efd8ca48a2cd"
+      }
     },
     "plugins": [
       "expo-speech-recognition",

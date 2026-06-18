@@ -388,6 +388,7 @@ export interface OperatorRunAgentResponse {
   success: boolean;
   action: 'run-agent';
   conversationId: string;
+  sessionId?: string;
   content: string;
   messageCount: number;
   error?: string;

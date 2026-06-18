@@ -35,6 +35,10 @@ augment.mjs
 
 # Mobile specific
 .expo/
+apps/mobile/android/app/google-services.json
+google-services.json
+*-firebase-adminsdk-*.json
+*service-account*.json
 *.jks
 *.p8
 *.p12
