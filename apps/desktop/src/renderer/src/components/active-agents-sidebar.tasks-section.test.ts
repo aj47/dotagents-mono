@@ -33,9 +33,13 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("Show more")
   })
 
-  it("preserves backend repeat-task markers when merging live progress", () => {
+  it("preserves and hydrates repeat-task markers when merging live progress", () => {
     expect(sidebarSource).toContain("isRepeatTask?: boolean")
-    expect(sidebarSource).toContain("isRepeatTask: existingSession?.isRepeatTask")
+    expect(sidebarSource).toContain("const repeatTaskByConversationId = useMemo(")
+    expect(sidebarSource).toContain("repeatTasks.set(item.id, item.repeatTask)")
+    expect(sidebarSource).toContain("const historyRepeatTask = resolvedSessionMetadata.conversationId")
+    expect(sidebarSource).toContain("const repeatTask = existingSession?.repeatTask ?? historyRepeatTask")
+    expect(sidebarSource).toContain('repeatTask?.type === "repeat_task_run" ? true : undefined')
   })
 
   it("recognizes saved task conversations whose titles are humanized from task slugs or headings", () => {

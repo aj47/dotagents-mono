@@ -421,6 +421,18 @@ export function ActiveAgentsSidebar({
     () => new Map(recentCompletedSessions.map((session) => [session.id, session] as const)),
     [recentCompletedSessions],
   )
+  const repeatTaskByConversationId = useMemo(
+    () => {
+      const repeatTasks = new Map<string, ConversationRepeatTaskSource>()
+      for (const item of conversationHistory) {
+        if (item.repeatTask?.type === "repeat_task_run") {
+          repeatTasks.set(item.id, item.repeatTask)
+        }
+      }
+      return repeatTasks
+    },
+    [conversationHistory],
+  )
   const trackedActiveSessionIds = useMemo(
     () => new Set(trackedActiveSessions.map((session) => session.id)),
     [trackedActiveSessions],
@@ -467,6 +479,10 @@ export function ActiveAgentsSidebar({
         subagentTitleBySessionId,
         existingSession,
       )
+      const historyRepeatTask = resolvedSessionMetadata.conversationId
+        ? repeatTaskByConversationId.get(resolvedSessionMetadata.conversationId)
+        : undefined
+      const repeatTask = existingSession?.repeatTask ?? historyRepeatTask
 
       mergedSessions.set(sessionId, {
         id: sessionId,
@@ -492,8 +508,10 @@ export function ActiveAgentsSidebar({
         lastActivity: existingSession?.lastActivity,
         errorMessage: existingSession?.errorMessage,
         isSnoozed: progress.isSnoozed ?? existingSession?.isSnoozed,
-        isRepeatTask: existingSession?.isRepeatTask,
-        repeatTask: existingSession?.repeatTask,
+        isRepeatTask: existingSession?.isRepeatTask ?? (
+          repeatTask?.type === "repeat_task_run" ? true : undefined
+        ),
+        repeatTask,
       })
     }
 
@@ -521,7 +539,7 @@ export function ActiveAgentsSidebar({
       )
       return bTimestamp - aTimestamp
     })
-  }, [trackedActiveSessions, agentProgressById, recentCompletedSessionById])
+  }, [trackedActiveSessions, agentProgressById, recentCompletedSessionById, repeatTaskByConversationId])
 
   const sessionsWithActiveChildProgress = useMemo(
     () => getSessionIdsWithActiveChildProgress(agentProgressById.entries()),
