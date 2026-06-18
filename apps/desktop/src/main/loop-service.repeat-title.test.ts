@@ -19,7 +19,7 @@ describe("loop-service repeat task session titles", () => {
   })
 
   it("tracks repeat-task conversation backfill per task signature", () => {
-    expect(loopServiceSource).toContain('const REPEAT_TASK_PROVENANCE_BACKFILL_MARKER = "repeat-task-conversation-provenance-v2.json"')
+    expect(loopServiceSource).toContain('const REPEAT_TASK_PROVENANCE_BACKFILL_MARKER = "repeat-task-conversation-provenance-v3.json"')
     expect(loopServiceSource).toContain('createHash("sha256")')
     expect(loopServiceSource).toContain("private repeatTaskBackfillTimer")
     expect(loopServiceSource).toContain("taskSignatures: Record<string, string>")

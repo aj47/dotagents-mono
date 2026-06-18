@@ -60,10 +60,11 @@ export function isContinuousLoop(loop: Pick<LoopConfig, "runContinuously">): boo
   return loop.runContinuously === true
 }
 
-const REPEAT_TASK_PROVENANCE_BACKFILL_MARKER = "repeat-task-conversation-provenance-v2.json"
+const REPEAT_TASK_PROVENANCE_BACKFILL_MARKER = "repeat-task-conversation-provenance-v3.json"
+const REPEAT_TASK_PROVENANCE_BACKFILL_VERSION = 3
 
 interface RepeatTaskProvenanceBackfillMarker {
-  version: 2
+  version: typeof REPEAT_TASK_PROVENANCE_BACKFILL_VERSION
   backfilledAt: number
   updatedCount: number
   taskSignatures: Record<string, string>
@@ -224,7 +225,7 @@ class LoopService {
       fs.writeFileSync(
         markerPath,
         JSON.stringify({
-          version: 2,
+          version: REPEAT_TASK_PROVENANCE_BACKFILL_VERSION,
           backfilledAt: Date.now(),
           updatedCount: marker.updatedCount + updatedCount,
           taskSignatures: nextTaskSignatures,
@@ -237,7 +238,7 @@ class LoopService {
 
   private readRepeatTaskProvenanceBackfillMarker(markerPath: string): RepeatTaskProvenanceBackfillMarker {
     const fallback: RepeatTaskProvenanceBackfillMarker = {
-      version: 2,
+      version: REPEAT_TASK_PROVENANCE_BACKFILL_VERSION,
       backfilledAt: 0,
       updatedCount: 0,
       taskSignatures: {},
@@ -248,14 +249,14 @@ class LoopService {
     try {
       const marker = JSON.parse(fs.readFileSync(markerPath, "utf8")) as Partial<RepeatTaskProvenanceBackfillMarker>
       if (
-        marker.version === 2 &&
+        marker.version === REPEAT_TASK_PROVENANCE_BACKFILL_VERSION &&
         typeof marker.updatedCount === "number" &&
         marker.taskSignatures &&
         typeof marker.taskSignatures === "object" &&
         !Array.isArray(marker.taskSignatures)
       ) {
         return {
-          version: 2,
+          version: REPEAT_TASK_PROVENANCE_BACKFILL_VERSION,
           backfilledAt: typeof marker.backfilledAt === "number" ? marker.backfilledAt : 0,
           updatedCount: marker.updatedCount,
           taskSignatures: marker.taskSignatures,

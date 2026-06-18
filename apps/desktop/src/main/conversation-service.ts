@@ -1323,11 +1323,6 @@ export class ConversationService {
     return (value ?? "").replace(/\r\n/g, "\n").trim()
   }
 
-  private isLikelyRepeatTaskCreationConversationTitle(title: string | undefined): boolean {
-    const normalizedTitle = (title ?? "").trim()
-    return /\bcreate\b/iu.test(normalizedTitle) && /\btask\b/iu.test(normalizedTitle)
-  }
-
   async markConversationRepeatTaskSource(
     conversationId: string,
     repeatTask: ConversationRepeatTaskSource,
@@ -1394,10 +1389,6 @@ export class ConversationService {
         if (!conversation || conversation.repeatTask) {
           return false
         }
-        if (this.isLikelyRepeatTaskCreationConversationTitle(conversation.title)) {
-          return false
-        }
-
         const firstUserMessage = this.getStoredRawMessages(conversation)
           .find((message) => message.role === "user" && message.content.trim().length > 0)
         const source = sourceByPrompt.get(
