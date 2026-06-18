@@ -574,11 +574,23 @@ function getTaskEntryDedupeKey(
   if (!title) return null
   const repeatTaskTitleHintKey = resolveRepeatTaskTitleHintKey(title, repeatTaskTitleHints)
   if (repeatTaskTitleHintKey) {
-    return `repeat-task-title:${normalizeTaskDedupeKey(repeatTaskTitleHintKey)}`
+    return `repeat-task:${repeatTaskTitleHintKey}:worker`
   }
   return title.startsWith(TASK_SESSION_TITLE_PREFIX)
     ? normalizeTaskDedupeKey(title.slice(TASK_SESSION_TITLE_PREFIX.length))
     : normalizeTaskDedupeKey(title)
+}
+
+export function getRepeatTaskEntryTaskId(
+  session: TitledSessionLike,
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): string | null {
+  if (session.repeatTask?.type === "repeat_task_run" && session.repeatTask.taskId) {
+    return session.repeatTask.taskId
+  }
+
+  const title = session.conversationTitle?.trim()
+  return title ? resolveRepeatTaskTitleHintKey(title, repeatTaskTitleHints) : null
 }
 
 function getTaskEntryTimestamp(session: TitledSessionLike & { startTime?: number; endTime?: number }): number {

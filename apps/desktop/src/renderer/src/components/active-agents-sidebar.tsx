@@ -28,6 +28,7 @@ import {
   getSidebarActivityPresentation,
   getSidebarSessionGroupKey,
   getLatestAgentResponseTimestamp,
+  getRepeatTaskEntryTaskId,
   resolveSidebarSessionMetadata,
   hasSidebarSessionGroupKey,
   getSessionIdsWithActiveChildProgress,
@@ -214,7 +215,6 @@ const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5
 const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5
 const MIN_VISIBLE_SIDEBAR_ITEMS = 1
 const SIDEBAR_TASKS_MIN_VISIBLE = 3
-const SIDEBAR_SESSION_ROW_ESTIMATE_PX = 28
 const FINAL_RESPONSE_RETENTION_MS = 10_000
 
 const IS_MAC = typeof navigator !== "undefined" && navigator.platform.toLowerCase().includes("mac")
@@ -347,7 +347,6 @@ export function ActiveAgentsSidebar({
   const archivedSessionIds = useAgentStore((s) => s.archivedSessionIds)
   const toggleArchiveSession = useAgentStore((s) => s.toggleArchiveSession)
   const [visibleSavedConversationCount, setVisibleSavedConversationCount] = useState<number | null>(null)
-  const [autoVisibleSavedConversationCount, setAutoVisibleSavedConversationCount] = useState(0)
   const [visibleTaskConversationCount, setVisibleTaskConversationCount] = useState(
     SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
   )
@@ -372,8 +371,6 @@ export function ActiveAgentsSidebar({
   const [isUngroupDropTargetActive, setIsUngroupDropTargetActive] = useState(false)
   const skipTitleSaveOnBlurRef = useRef(false)
   const sidebarSessionStateHydratedRef = useRef(false)
-  const sessionListRef = useRef<HTMLDivElement | null>(null)
-  const sessionListContentRef = useRef<HTMLDivElement | null>(null)
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -590,7 +587,7 @@ export function ActiveAgentsSidebar({
     return items
   }, [activeSessions, conversationHistory, recentCompletedSessions])
 
-  const sidebarSessions = useMemo(() => {
+  const sidebarSessions = useMemo<SidebarSessionEntry[]>(() => {
     const orderedActiveSessions = orderActiveSessionsByPinnedFirst<SidebarSessionRecord>(
       activeSessions,
       pinnedSessionIds,
@@ -692,17 +689,28 @@ export function ActiveAgentsSidebar({
     unpinnedTaskSidebarSessions,
   } = useMemo(() => {
     const repeatTaskTitleHints = new Map<string, string>()
+    const currentRepeatTaskIds = new Set<string>()
     for (const task of repeatTasksQuery.data ?? []) {
+      if (task.enabled !== false) {
+        currentRepeatTaskIds.add(task.id)
+      }
       for (const titleHint of getRepeatTaskTitleHints(task)) {
         if (!repeatTaskTitleHints.has(titleHint)) {
           repeatTaskTitleHints.set(titleHint, task.id)
         }
       }
     }
-    const { userEntries, taskEntries } = partitionTaskAndUserEntries(
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries<SidebarSessionEntry>(
       sidebarSessions,
       repeatTaskTitleHints,
     )
+    const currentTaskEntries = taskEntries.filter((entry) => {
+      if (!entry.isSavedConversation) return true
+      const conversationId = entry.session.conversationId
+      if (conversationId && pinnedSessionIds.has(conversationId)) return true
+      const taskId = getRepeatTaskEntryTaskId(entry.session, repeatTaskTitleHints)
+      return !!taskId && currentRepeatTaskIds.has(taskId)
+    })
     // Collapse is presentation-only. It must not imply `continueInSession` or
     // merge run histories; repeat tasks can still start fresh conversations.
     // Re-derive nesting after dedup: when two task entries share a
@@ -714,7 +722,7 @@ export function ActiveAgentsSidebar({
     // deduped set promotes orphaned children back to top level while still
     // preserving real parent/child relationships across surviving entries.
     const dedupedTaskEntries = nestSubagentSessionEntries(
-      dedupeTaskEntriesByTitle(taskEntries, repeatTaskTitleHints),
+      dedupeTaskEntriesByTitle(currentTaskEntries, repeatTaskTitleHints),
     )
     const { pinnedTaskEntries, unpinnedTaskEntries } =
       partitionPinnedAndUnpinnedTaskEntries(dedupedTaskEntries, pinnedSessionIds)
@@ -759,21 +767,8 @@ export function ActiveAgentsSidebar({
   const minimumVisibleSavedConversationRows = hasAlwaysVisibleUserSidebarAnchor
     ? 0
     : MIN_VISIBLE_SIDEBAR_ITEMS
-  const totalPageableSavedConversationCount = useMemo(
-    () => allUserSidebarSessions.filter((entry) => {
-      if (!entry.isSavedConversation) return false
-      const conversationId = entry.session.conversationId
-      if (conversationId && pinnedSessionIds.has(conversationId)) return false
-      return !hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
-    }).length,
-    [allUserSidebarSessions, alwaysVisibleSessionKeys, pinnedSessionIds],
-  )
   const requestedSavedConversationCount =
     visibleSavedConversationCount ?? defaultSavedConversationRows
-  const displayedSavedConversationCount = Math.max(
-    requestedSavedConversationCount,
-    autoVisibleSavedConversationCount,
-  )
 
   const {
     visibleEntries: userSidebarSessions,
@@ -782,10 +777,10 @@ export function ActiveAgentsSidebar({
     () => paginateSidebarEntries(
       allUserSidebarSessions,
       pinnedSessionIds,
-      displayedSavedConversationCount,
+      requestedSavedConversationCount,
       alwaysVisibleSessionKeys,
     ),
-    [allUserSidebarSessions, alwaysVisibleSessionKeys, displayedSavedConversationCount, pinnedSessionIds],
+    [allUserSidebarSessions, alwaysVisibleSessionKeys, pinnedSessionIds, requestedSavedConversationCount],
   )
 
   const {
@@ -796,19 +791,7 @@ export function ActiveAgentsSidebar({
     [userSidebarSessions, sessionGroups],
   )
 
-  const visiblePageableSavedConversationCount = useMemo(
-    () => userSidebarSessions.filter((entry) => {
-      if (!entry.isSavedConversation) return false
-      const conversationId = entry.session.conversationId
-      if (conversationId && pinnedSessionIds.has(conversationId)) return false
-      return !hasSidebarSessionGroupKey(entry.session, alwaysVisibleSessionKeys)
-    }).length,
-    [alwaysVisibleSessionKeys, pinnedSessionIds, userSidebarSessions],
-  )
-  const minimumRequestedSavedConversationRows = Math.max(
-    minimumVisibleSavedConversationRows,
-    autoVisibleSavedConversationCount,
-  )
+  const minimumRequestedSavedConversationRows = minimumVisibleSavedConversationRows
   const canShowLessSavedConversations =
     requestedSavedConversationCount > minimumRequestedSavedConversationRows
 
@@ -918,82 +901,6 @@ export function ActiveAgentsSidebar({
 
   const hasUserSidebarContent = userSidebarSessions.length > 0 || sessionGroups.length > 0
   const hasAnySessions = sidebarSessions.length > 0 || sessionGroups.length > 0
-
-  useEffect(() => {
-    setAutoVisibleSavedConversationCount((previousCount) =>
-      Math.min(previousCount, totalPageableSavedConversationCount),
-    )
-  }, [totalPageableSavedConversationCount])
-
-  useEffect(() => {
-    const element = sessionListRef.current
-    const contentElement = sessionListContentRef.current
-    if (!element || !contentElement || !hasAnySessions) return undefined
-
-    let frameId: number | null = null
-    const cancelFrame = () => {
-      if (frameId === null) return
-      if (typeof globalThis.cancelAnimationFrame === "function") {
-        globalThis.cancelAnimationFrame(frameId)
-      }
-      frameId = null
-    }
-
-    const updateAutoVisibleRows = () => {
-      cancelFrame()
-      const run = () => {
-        frameId = null
-        const availableHeight = element.clientHeight
-        if (availableHeight <= 0) return
-
-        const contentHeight = contentElement.getBoundingClientRect().height
-        const heightDelta = availableHeight - contentHeight
-        if (heightDelta < SIDEBAR_SESSION_ROW_ESTIMATE_PX) return
-
-        const additionalRows = Math.floor(
-          heightDelta / SIDEBAR_SESSION_ROW_ESTIMATE_PX,
-        )
-
-        setAutoVisibleSavedConversationCount((previousCount) =>
-          Math.min(
-            totalPageableSavedConversationCount,
-            Math.max(
-              previousCount,
-              defaultSavedConversationRows,
-              visiblePageableSavedConversationCount + additionalRows,
-            ),
-          ),
-        )
-      }
-
-      if (typeof globalThis.requestAnimationFrame === "function") {
-        frameId = globalThis.requestAnimationFrame(run)
-      } else {
-        run()
-      }
-    }
-
-    updateAutoVisibleRows()
-
-    if (typeof ResizeObserver === "undefined") {
-      return () => cancelFrame()
-    }
-
-    const observer = new ResizeObserver(updateAutoVisibleRows)
-    observer.observe(element)
-    observer.observe(contentElement)
-
-    return () => {
-      observer.disconnect()
-      cancelFrame()
-    }
-  }, [
-    defaultSavedConversationRows,
-    hasAnySessions,
-    totalPageableSavedConversationCount,
-    visiblePageableSavedConversationCount,
-    visibleTaskSidebarSessions.length,
-  ])
 
   useEffect(() => {
     logStateChange("ActiveAgentsSidebar", "isExpanded", !isExpanded, isExpanded)
@@ -1590,11 +1497,11 @@ export function ActiveAgentsSidebar({
     setVisibleSavedConversationCount((prev) =>
       Math.max(
         prev ?? defaultSavedConversationRows,
-        displayedSavedConversationCount,
+        requestedSavedConversationCount,
       ) +
         SIDEBAR_PAST_SESSIONS_PAGE_SIZE,
     )
-  }, [defaultSavedConversationRows, displayedSavedConversationCount])
+  }, [defaultSavedConversationRows, requestedSavedConversationCount])
 
   const showLessSavedConversations = useCallback(() => {
     setVisibleSavedConversationCount((prev) => {
@@ -1702,11 +1609,8 @@ export function ActiveAgentsSidebar({
       )}
 
       {hasAnySessions && (
-        <div
-          ref={sessionListRef}
-          className="mt-1 min-h-0 flex-1 overflow-visible pl-2 pr-1"
-        >
-          <div ref={sessionListContentRef} className="space-y-0.5">
+        <div className="mt-1 min-h-0 flex-1 overflow-visible pl-2 pr-1">
+          <div className="space-y-0.5">
             {(() => {
             const renderSessionRow = (
               {

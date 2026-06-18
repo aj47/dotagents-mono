@@ -4,6 +4,7 @@ import {
   assignSidebarSessionToGroup,
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
+  getRepeatTaskEntryTaskId,
   getSidebarSessionGroupKey,
   getSidebarSessionGroupKeys,
   getSidebarActivityPresentation,
@@ -1092,6 +1093,36 @@ describe("partitionTaskAndUserEntries", () => {
   })
 })
 
+describe("getRepeatTaskEntryTaskId", () => {
+  it("resolves task identity from provenance before title hints", () => {
+    expect(
+      getRepeatTaskEntryTaskId(
+        {
+          id: "run",
+          conversationTitle: "Generic title",
+          repeatTask: {
+            type: "repeat_task_run",
+            taskId: "daily-brief",
+            taskName: "Daily Brief",
+            runId: "daily-brief:1",
+            role: "worker",
+          },
+        },
+        new Map([["Generic title", "wrong-task"]]),
+      ),
+    ).toBe("daily-brief")
+  })
+
+  it("falls back to current task title hints for legacy rows", () => {
+    expect(
+      getRepeatTaskEntryTaskId(
+        { id: "legacy", conversationTitle: "TechFren Reel Critique" },
+        new Map([["TechFren Instagram Reel Critic", "instagram-reel-critic"]]),
+      ),
+    ).toBe("instagram-reel-critic")
+  })
+})
+
 describe("partitionPinnedAndUnpinnedTaskEntries", () => {
   it("returns all entries as unpinned when no pins are set", () => {
     const entries = [
@@ -1296,6 +1327,43 @@ describe("dedupeTaskEntriesByTitle", () => {
     expect(dedupeTaskEntriesByTitle(entries, titleHints).map((e) => e.session.id)).toEqual([
       "newer",
       "critic",
+    ])
+  })
+
+  it("dedupes legacy title-only rows with provenance-tagged worker rows for the same task", () => {
+    const entries = [
+      {
+        session: {
+          id: "legacy",
+          conversationTitle: "[Repeat] Overnight Video Decision Critic",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+        },
+      },
+      {
+        session: {
+          id: "tagged",
+          conversationTitle: "Overnight Decision Critique",
+          status: "completed",
+          startTime: 200,
+          endTime: 250,
+          repeatTask: {
+            type: "repeat_task_run" as const,
+            taskId: "overnight-agent-harness-critique",
+            taskName: "Overnight Video Decision Critic",
+            runId: "overnight-agent-harness-critique:worker:200",
+            role: "worker" as const,
+          },
+        },
+      },
+    ]
+    const titleHints = new Map([
+      ["[Repeat] Overnight Video Decision Critic", "overnight-agent-harness-critique"],
+    ])
+
+    expect(dedupeTaskEntriesByTitle(entries, titleHints).map((e) => e.session.id)).toEqual([
+      "tagged",
     ])
   })
 })

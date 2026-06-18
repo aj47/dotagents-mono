@@ -40,6 +40,7 @@ import {
   getConversationVideoAssetDir,
   getConversationVideoAssetPath,
 } from "./conversation-video-assets"
+import { scheduleConversationHistoryChanged } from "./conversation-history-events"
 
 // Threshold for compacting conversations on load
 // When a conversation exceeds this many messages, older ones are summarized
@@ -804,6 +805,7 @@ export class ConversationService {
     try {
       const indexPath = this.getConversationIndexPath()
       await fsPromises.writeFile(indexPath, JSON.stringify(this.indexCache, null, 2))
+      scheduleConversationHistoryChanged()
     } catch (error) {
       logApp("[ConversationService] Error writing index to disk:", error)
     }
