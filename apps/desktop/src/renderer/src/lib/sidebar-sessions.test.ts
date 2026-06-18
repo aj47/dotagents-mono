@@ -1245,7 +1245,7 @@ describe("dedupeTaskEntriesByTitle", () => {
     expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["newer"])
   })
 
-  it("keeps worker and critic history for the same repeat task separate", () => {
+  it("collapses worker and critic phases for the same repeat task", () => {
     const baseRepeatTask = {
       type: "repeat_task_run" as const,
       taskId: "techfren-reel",
@@ -1282,10 +1282,7 @@ describe("dedupeTaskEntriesByTitle", () => {
       },
     ]
 
-    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual([
-      "worker",
-      "critic",
-    ])
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["critic"])
   })
 
   it("dedupes legacy title-only task rows by configured task title hints", () => {

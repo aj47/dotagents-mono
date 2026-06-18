@@ -1435,7 +1435,9 @@ export function ActiveAgentsSidebar({
   const renderEditableTitle = useCallback(
     (session: SidebarSessionRecord, className: string, prefix?: string) => {
       const conversationId = session.conversationId
-      const title = session.conversationTitle || "Untitled conversation"
+      const title = session.repeatTask?.type === "repeat_task_run"
+        ? session.repeatTask.taskName
+        : session.conversationTitle || "Untitled conversation"
 
       if (conversationId && editingConversationId === conversationId) {
         return (

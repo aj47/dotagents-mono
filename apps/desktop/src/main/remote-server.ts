@@ -7529,7 +7529,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       continueInSession: loop.continueInSession,
       lastSessionId: loop.lastSessionId,
       runContinuously: loop.runContinuously,
-      adversarialCritique: loop.adversarialCritique,
+      critiquePass: loop.critiquePass,
       criticProfileId: loop.criticProfileId,
       criticProfileName: getLoopProfileName(loop.criticProfileId),
       maxIterations: loop.maxIterations,
@@ -7565,6 +7565,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             continueInSession: l.continueInSession,
             lastSessionId: l.lastSessionId,
             runContinuously: l.runContinuously,
+            critiquePass: l.critiquePass,
+            criticProfileId: l.criticProfileId,
+            criticProfileName: getLoopProfileName(l.criticProfileId),
             maxIterations: l.maxIterations,
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
@@ -7920,7 +7923,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
-        adversarialCritique?: unknown
+        critiquePass?: unknown
         criticProfileId?: unknown
         maxIterations?: unknown
         schedule?: unknown
@@ -7953,8 +7956,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
-      if (body.adversarialCritique !== undefined && typeof body.adversarialCritique !== "boolean") {
-        return reply.code(400).send({ error: "adversarialCritique must be a boolean when provided" })
+      if (body.critiquePass !== undefined && typeof body.critiquePass !== "boolean") {
+        return reply.code(400).send({ error: "critiquePass must be a boolean when provided" })
       }
       if (body.criticProfileId !== undefined && body.criticProfileId !== null && typeof body.criticProfileId !== "string") {
         return reply.code(400).send({ error: "criticProfileId must be a string when provided" })
@@ -7983,7 +7986,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const criticProfileId = typeof body.criticProfileId === "string" ? body.criticProfileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
       const runContinuously = body.runContinuously === true
-      const adversarialCritique = body.adversarialCritique === true
+      const critiquePass = body.critiquePass === true
       const runOnStartup = body.runOnStartup === true
       const speakOnTrigger = body.speakOnTrigger === true
       const continueInSession = body.continueInSession === true
@@ -8003,8 +8006,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession,
         lastSessionId: continueInSession ? (lastSessionId || undefined) : undefined,
         runContinuously,
-        adversarialCritique,
-        criticProfileId: adversarialCritique ? (criticProfileId || undefined) : undefined,
+        critiquePass,
+        criticProfileId: critiquePass ? (criticProfileId || undefined) : undefined,
         ...(typeof maxIterationsResult.value === "number" ? { maxIterations: maxIterationsResult.value } : {}),
         ...(!runContinuously && scheduleResult.schedule && scheduleResult.schedule !== null
           ? { schedule: scheduleResult.schedule }
@@ -8049,7 +8052,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
-        adversarialCritique?: unknown
+        critiquePass?: unknown
         criticProfileId?: unknown
         maxIterations?: unknown
         schedule?: unknown
@@ -8100,8 +8103,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
-      if (body.adversarialCritique !== undefined && typeof body.adversarialCritique !== "boolean") {
-        return reply.code(400).send({ error: "adversarialCritique must be a boolean when provided" })
+      if (body.critiquePass !== undefined && typeof body.critiquePass !== "boolean") {
+        return reply.code(400).send({ error: "critiquePass must be a boolean when provided" })
       }
       if (body.criticProfileId !== undefined && body.criticProfileId !== null && typeof body.criticProfileId !== "string") {
         return reply.code(400).send({ error: "criticProfileId must be a string or null when provided" })
@@ -8137,7 +8140,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
       const criticProfileId = typeof body.criticProfileId === "string" ? body.criticProfileId.trim() : undefined
       const runContinuously = typeof body.runContinuously === "boolean" ? body.runContinuously : undefined
-      const adversarialCritique = typeof body.adversarialCritique === "boolean" ? body.adversarialCritique : undefined
+      const critiquePass = typeof body.critiquePass === "boolean" ? body.critiquePass : undefined
       const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : undefined
       const speakOnTrigger = typeof body.speakOnTrigger === "boolean" ? body.speakOnTrigger : undefined
       const continueInSession = typeof body.continueInSession === "boolean" ? body.continueInSession : undefined
@@ -8154,7 +8157,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(continueInSession !== undefined && { continueInSession }),
         ...(body.lastSessionId !== undefined && { lastSessionId: lastSessionId || undefined }),
         ...(runContinuously !== undefined && { runContinuously }),
-        ...(adversarialCritique !== undefined && { adversarialCritique }),
+        ...(critiquePass !== undefined && { critiquePass }),
         ...(body.criticProfileId !== undefined && { criticProfileId: criticProfileId || undefined }),
         ...(maxIterationsResult.value !== undefined && maxIterationsResult.value !== null && { maxIterations: maxIterationsResult.value }),
       }
@@ -8164,7 +8167,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (continueInSession === false || updated.continueInSession === false) {
         delete updated.lastSessionId
       }
-      if (updated.adversarialCritique === false) {
+      if (updated.critiquePass === false) {
         delete updated.criticProfileId
       }
       if (updated.runContinuously) {

@@ -70,25 +70,27 @@ interface RepeatTaskProvenanceBackfillMarker {
   taskSignatures: Record<string, string>
 }
 
-const DEFAULT_ADVERSARIAL_CRITIQUE_PROMPT = [
-  "You are the adversarial critic for this repeat-task run.",
+const DEFAULT_CRITIQUE_PASS_PROMPT = [
+  "You are the built-in critic for this repeat-task run.",
   "Review the worker agent's latest answer against the original task prompt.",
-  "Be concrete and skeptical: identify factual gaps, unsupported assumptions, missed requirements, weak reasoning, and risky actions.",
+  "Inspect any local files, artifact paths, or URLs explicitly referenced in the original prompt or worker answer when they are available and material to the review.",
+  "Judge the produced artifacts and decisions, not just the worker's summary.",
+  "Be concrete and skeptical: identify factual gaps, unsupported assumptions, missed requirements, weak reasoning, artifact defects, and risky actions.",
   "Return concise critique only. Do not rewrite the full answer.",
 ].join("\n")
 
-function buildAdversarialCritiquePrompt(loop: LoopConfig, workerResult: string): string {
-  return `${DEFAULT_ADVERSARIAL_CRITIQUE_PROMPT}\n\nOriginal repeat-task prompt:\n${loop.prompt}\n\nWorker agent's latest answer:\n${workerResult}`
+function buildCritiquePassPrompt(loop: LoopConfig, workerResult: string): string {
+  return `${DEFAULT_CRITIQUE_PASS_PROMPT}\n\nOriginal repeat-task prompt:\n${loop.prompt}\n\nWorker agent's latest answer:\n${workerResult}`
 }
 
 function buildWorkerRevisionPrompt(critique: string): string {
   return [
-    "An adversarial critic reviewed your previous answer for this repeat-task run.",
+    "The built-in critic reviewed your previous answer for this repeat-task run.",
     "Use the critique below to produce the final revised answer.",
     "Address valid issues, correct mistakes, fill important gaps, and keep the final answer focused on the original task.",
     "Do not mention the critique process unless it is necessary for the result.",
     "",
-    "Adversarial critique:",
+    "Critique:",
     critique,
   ].join("\n")
 }
@@ -723,8 +725,8 @@ class LoopService {
       const { runAgentLoopSession } = await import("./tipc")
       const workerResult = await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
 
-      if (loop.adversarialCritique) {
-        const critiquePrompt = buildAdversarialCritiquePrompt(loop, workerResult)
+      if (loop.critiquePass) {
+        const critiquePrompt = buildCritiquePassPrompt(loop, workerResult)
         const criticConversation = await conversationService.createConversation(critiquePrompt, "user")
         const criticTitle = formatRepeatTaskTitle(`${loop.name} critique`)
         await conversationService.renameConversationTitle(
@@ -787,13 +789,13 @@ class LoopService {
                 startSnoozed,
                 loop.maxIterations,
               )
-              logApp(`[LoopService] Fed adversarial critique back into worker session ${sessionId} for loop "${loop.name}"`)
+              logApp(`[LoopService] Fed critique pass back into worker session ${sessionId} for loop "${loop.name}"`)
             } else {
               agentSessionTracker.completeSession(sessionId)
-              logApp(`[LoopService] Failed to append adversarial critique revision prompt for loop "${loop.name}"`)
+              logApp(`[LoopService] Failed to append critique pass revision prompt for loop "${loop.name}"`)
             }
           } else {
-            logApp(`[LoopService] Worker session ${sessionId} was not revivable for loop "${loop.name}"; skipping adversarial critique revision`)
+            logApp(`[LoopService] Worker session ${sessionId} was not revivable for loop "${loop.name}"; skipping critique pass revision`)
           }
         } else {
           logApp(`[LoopService] Critic produced no critique for loop "${loop.name}"`)

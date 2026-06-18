@@ -40,4 +40,12 @@ describe("desktop repeat-task list layout", () => {
     expect(listSection).toContain("{describeLoopCadence(loop)}")
     expect(settingsLoopsSource).toContain('{ mode: "continuous", label: "Continuous" }')
   })
+
+  it("presents critique as a mode instead of a standalone task-pair checkbox", () => {
+    expect(settingsLoopsSource).toContain("Critique mode")
+    expect(settingsLoopsSource).toContain("Built-in pass")
+    expect(settingsLoopsSource).toContain("critiquePass: editing.critiquePass")
+    expect(settingsLoopsSource).not.toContain("Adversarial Critique")
+    expect(settingsLoopsSource).not.toContain('id="adversarialCritique"')
+  })
 })

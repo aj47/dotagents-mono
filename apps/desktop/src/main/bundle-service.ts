@@ -112,7 +112,7 @@ export interface BundleRepeatTask {
   speakOnTrigger?: boolean
   continueInSession?: boolean
   runContinuously?: boolean
-  adversarialCritique?: boolean
+  critiquePass?: boolean
   schedule?: LoopConfig["schedule"]
   // profileId omitted — the profile may not exist in the target environment
   // criticProfileId omitted — the profile may not exist in the target environment
@@ -687,7 +687,7 @@ function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemS
         speakOnTrigger: task.speakOnTrigger,
         continueInSession: task.continueInSession,
         runContinuously: task.runContinuously,
-        adversarialCritique: task.adversarialCritique,
+        critiquePass: task.critiquePass,
         schedule: task.schedule,
         // profileId intentionally omitted — may not exist in target environment
       })
@@ -1171,7 +1171,7 @@ function isBundleRepeatTask(value: unknown): value is BundleRepeatTask {
   if (value.speakOnTrigger !== undefined && typeof value.speakOnTrigger !== "boolean") return false
   if (value.continueInSession !== undefined && typeof value.continueInSession !== "boolean") return false
   if (value.runContinuously !== undefined && typeof value.runContinuously !== "boolean") return false
-  if (value.adversarialCritique !== undefined && typeof value.adversarialCritique !== "boolean") return false
+  if (value.critiquePass !== undefined && typeof value.critiquePass !== "boolean") return false
   return isBundleRepeatTaskSchedule(value.schedule)
 }
 
@@ -1673,7 +1673,7 @@ export async function importBundle(
           speakOnTrigger: bundleTask.speakOnTrigger,
           continueInSession: bundleTask.continueInSession,
           runContinuously: bundleTask.runContinuously,
-          adversarialCritique: bundleTask.adversarialCritique,
+          critiquePass: bundleTask.critiquePass,
           ...(bundleTask.runContinuously === true || !bundleTask.schedule
             ? {}
             : { schedule: bundleTask.schedule }),

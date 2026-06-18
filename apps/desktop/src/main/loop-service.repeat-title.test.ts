@@ -29,7 +29,7 @@ describe("loop-service repeat task session titles", () => {
     expect(loopServiceSource).toContain("nextTaskSignatures[source.taskId] = source.signature")
   })
 
-  it("revives the worker session before appending adversarial critique revisions", () => {
+  it("revives the worker session before appending critique pass revisions", () => {
     const revisionStart = loopServiceSource.indexOf("const revisionPrompt = buildWorkerRevisionPrompt(critique)")
     const revisionSource = loopServiceSource.slice(
       revisionStart,

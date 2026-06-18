@@ -380,7 +380,8 @@ function copyDirRecursive(src: string, dest: string): void {
 /**
  * Initialize bundled skills by copying them to the App Data skills folder.
  * This is called on app startup to ensure bundled skills are available.
- * Skills are only copied if they don't already exist (preserves user modifications).
+ * Bundled skills are managed by the app, so existing bundled skill directories
+ * are refreshed on startup instead of staying stale forever after first install.
  */
 export function initializeBundledSkills(): { copied: string[]; skipped: string[]; errors: string[] } {
   const bundledPath = getBundledSkillsPath()
@@ -419,24 +420,22 @@ export function initializeBundledSkills(): { copied: string[]; skipped: string[]
             : null
 
         if (skillMdPath) {
-          // This is a skill directory - copy it if it doesn't exist in .agents/skills/
+          // This is a bundled skill directory. Refresh it on every startup so
+          // agents get current app-supported task/config behavior.
           const destPath = path.join(destSkillsDir, entryRelativePath)
 
-          if (fs.existsSync(destPath)) {
-            result.skipped.push(entryRelativePath)
-            logApp(`Bundled skill already exists, skipping: ${entryRelativePath}`)
-          } else {
-            try {
-              // Ensure parent directory exists
-              fs.mkdirSync(path.dirname(destPath), { recursive: true })
-              copyDirRecursive(entryPath, destPath)
-              result.copied.push(entryRelativePath)
-              logApp(`Copied bundled skill: ${entryRelativePath}`)
-            } catch (error) {
-              const errorMsg = `Failed to copy ${entryRelativePath}: ${error instanceof Error ? error.message : String(error)}`
-              result.errors.push(errorMsg)
-              logApp(errorMsg)
+          try {
+            if (fs.existsSync(destPath)) {
+              fs.rmSync(destPath, { recursive: true, force: true })
             }
+            fs.mkdirSync(path.dirname(destPath), { recursive: true })
+            copyDirRecursive(entryPath, destPath)
+            result.copied.push(entryRelativePath)
+            logApp(`Refreshed bundled skill: ${entryRelativePath}`)
+          } catch (error) {
+            const errorMsg = `Failed to copy ${entryRelativePath}: ${error instanceof Error ? error.message : String(error)}`
+            result.errors.push(errorMsg)
+            logApp(errorMsg)
           }
         } else {
           // Not a skill directory, recurse into it to find nested skills

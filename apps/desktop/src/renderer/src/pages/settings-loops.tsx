@@ -33,7 +33,7 @@ interface EditingLoop {
   speakOnTrigger: boolean
   continueInSession: boolean
   lastSessionId?: string
-  adversarialCritique: boolean
+  critiquePass: boolean
   criticProfileId?: string
   scheduleMode: ScheduleMode
   scheduleTimes: string[]       // HH:MM entries (used by daily + weekly)
@@ -57,7 +57,7 @@ const emptyLoop: EditingLoop = {
   runOnStartup: false,
   speakOnTrigger: false,
   continueInSession: false,
-  adversarialCritique: false,
+  critiquePass: false,
   scheduleMode: "interval",
   scheduleTimes: ["09:00"],
   scheduleDaysOfWeek: [1, 2, 3, 4, 5],
@@ -294,7 +294,7 @@ export function SettingsLoops() {
       speakOnTrigger: loop.speakOnTrigger ?? false,
       continueInSession: loop.continueInSession ?? false,
       lastSessionId: loop.lastSessionId,
-      adversarialCritique: loop.adversarialCritique ?? false,
+      critiquePass: loop.critiquePass ?? false,
       criticProfileId: loop.criticProfileId,
       scheduleMode,
       scheduleTimes,
@@ -359,8 +359,8 @@ export function SettingsLoops() {
       speakOnTrigger: editing.speakOnTrigger,
       continueInSession: editing.continueInSession,
       runContinuously: editing.scheduleMode === "continuous",
-      adversarialCritique: editing.adversarialCritique,
-      ...(editing.adversarialCritique && editing.criticProfileId
+      critiquePass: editing.critiquePass,
+      ...(editing.critiquePass && editing.criticProfileId
         ? { criticProfileId: editing.criticProfileId }
         : {}),
       ...(editing.continueInSession && editing.lastSessionId
@@ -522,7 +522,7 @@ export function SettingsLoops() {
               {loop.runOnStartup && <div>Runs on startup</div>}
               {loop.speakOnTrigger && <div>Speaks on trigger</div>}
               {loop.continueInSession && <div>Continues in same session</div>}
-              {loop.adversarialCritique && <div>Critique pass</div>}
+              {loop.critiquePass && <div>Built-in critique</div>}
               {typeof nextRunAt === "number" && (
                 <div>Next run: {formatLastRun(nextRunAt)}</div>
               )}
@@ -725,46 +725,79 @@ export function SettingsLoops() {
               />
               <Label htmlFor="continueInSession">Continue in Same Session</Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="adversarialCritique"
-                checked={editing.adversarialCritique}
-                onCheckedChange={(v) => setEditing({
-                  ...editing,
-                  adversarialCritique: v,
-                  criticProfileId: v ? editing.criticProfileId : undefined,
-                })}
-              />
-              <Label htmlFor="adversarialCritique">Adversarial Critique</Label>
-            </div>
           </div>
-          {editing.adversarialCritique && (
-            <div className="space-y-2">
-              <Label htmlFor="criticProfileId">Critic Agent</Label>
-              <Select
-                value={editing.criticProfileId ?? DEFAULT_CRITIC_VALUE}
-                onValueChange={(value) => setEditing({
+
+          <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="space-y-1">
+                <Label>Critique mode</Label>
+                <p className="text-xs text-muted-foreground">
+                  Built-in critique keeps one configured task: worker run, critic pass, then worker revision.
+                </p>
+              </div>
+              <Badge variant={editing.critiquePass ? "default" : "secondary"}>
+                {editing.critiquePass ? "Built-in pass" : "Off"}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={!editing.critiquePass ? "default" : "outline"}
+                className="h-auto justify-start px-3 py-2 text-left"
+                onClick={() => setEditing({
                   ...editing,
-                  criticProfileId: value === DEFAULT_CRITIC_VALUE ? undefined : value,
+                  critiquePass: false,
+                  criticProfileId: undefined,
                 })}
               >
-                <SelectTrigger id="criticProfileId" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={DEFAULT_CRITIC_VALUE}>Default agent</SelectItem>
-                  {(agentProfilesQuery.data ?? []).map((profile) => (
-                    <SelectItem key={profile.id} value={profile.id}>
-                      {profile.displayName || profile.name || profile.id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Runs a separate critic session, then asks the worker to revise using that critique.
-              </p>
+                <div className="min-w-0">
+                  <div className="text-xs font-medium">Off</div>
+                  <div className="text-[11px] font-normal leading-4 opacity-75">Worker only</div>
+                </div>
+              </Button>
+              <Button
+                type="button"
+                variant={editing.critiquePass ? "default" : "outline"}
+                className="h-auto justify-start px-3 py-2 text-left"
+                onClick={() => setEditing({
+                  ...editing,
+                  critiquePass: true,
+                })}
+              >
+                <div className="min-w-0">
+                  <div className="text-xs font-medium">Built-in pass</div>
+                  <div className="text-[11px] font-normal leading-4 opacity-75">Critic feeds revision</div>
+                </div>
+              </Button>
             </div>
-          )}
+            {editing.critiquePass && (
+              <div className="space-y-2">
+                <Label htmlFor="criticProfileId">Critic agent</Label>
+                <Select
+                  value={editing.criticProfileId ?? DEFAULT_CRITIC_VALUE}
+                  onValueChange={(value) => setEditing({
+                    ...editing,
+                    criticProfileId: value === DEFAULT_CRITIC_VALUE ? undefined : value,
+                  })}
+                >
+                  <SelectTrigger id="criticProfileId" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={DEFAULT_CRITIC_VALUE}>Default agent</SelectItem>
+                    {(agentProfilesQuery.data ?? []).map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.displayName || profile.name || profile.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  The critic inspects referenced artifacts when available, then the worker revises in the same task run.
+                </p>
+              </div>
+            )}
+          </div>
           {editing.continueInSession && (
             <SessionPicker
               value={editing.lastSessionId}

@@ -567,14 +567,14 @@ function getTaskEntryDedupeKey(
   repeatTaskTitleHints?: RepeatTaskTitleHints,
 ): string | null {
   if (session.repeatTask?.type === "repeat_task_run" && session.repeatTask.taskId) {
-    return `repeat-task:${session.repeatTask.taskId}:${session.repeatTask.role ?? "worker"}`
+    return `repeat-task:${session.repeatTask.taskId}`
   }
 
   const title = session.conversationTitle?.trim()
   if (!title) return null
   const repeatTaskTitleHintKey = resolveRepeatTaskTitleHintKey(title, repeatTaskTitleHints)
   if (repeatTaskTitleHintKey) {
-    return `repeat-task:${repeatTaskTitleHintKey}:worker`
+    return `repeat-task:${repeatTaskTitleHintKey}`
   }
   return title.startsWith(TASK_SESSION_TITLE_PREFIX)
     ? normalizeTaskDedupeKey(title.slice(TASK_SESSION_TITLE_PREFIX.length))

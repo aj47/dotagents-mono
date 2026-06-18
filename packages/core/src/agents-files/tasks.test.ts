@@ -34,23 +34,23 @@ describe("agents-files/tasks", () => {
     expect(parseTaskMarkdown(markdown)?.runContinuously).toBeUndefined()
   })
 
-  it("roundtrips adversarial critique settings in task frontmatter", () => {
+  it("roundtrips critique pass settings in task frontmatter", () => {
     const task: LoopConfig = {
       id: "critic-task",
       name: "Critic task",
       prompt: "Draft and improve the report.",
       intervalMinutes: 60,
       enabled: true,
-      adversarialCritique: true,
+      critiquePass: true,
       criticProfileId: "critic-agent",
     }
 
     const markdown = stringifyTaskMarkdown(task)
-    expect(markdown).toContain("adversarialCritique: true")
+    expect(markdown).toContain("critiquePass: true")
     expect(markdown).toContain("criticProfileId: critic-agent")
 
     const parsed = parseTaskMarkdown(markdown)
-    expect(parsed?.adversarialCritique).toBe(true)
+    expect(parsed?.critiquePass).toBe(true)
     expect(parsed?.criticProfileId).toBe("critic-agent")
   })
 })

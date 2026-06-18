@@ -37,7 +37,7 @@ type LoopFormData = {
   speakOnTrigger: boolean;
   continueInSession: boolean;
   lastSessionId: string;
-  adversarialCritique: boolean;
+  critiquePass: boolean;
   criticProfileId: string;
   maxIterations: string;
   scheduleMode: ScheduleMode;
@@ -63,7 +63,7 @@ const defaultFormData: LoopFormData = {
   speakOnTrigger: false,
   continueInSession: false,
   lastSessionId: '',
-  adversarialCritique: false,
+  critiquePass: false,
   criticProfileId: '',
   maxIterations: '',
   scheduleMode: 'interval',
@@ -152,7 +152,7 @@ function loopToFormData(loop: Loop): LoopFormData {
     speakOnTrigger: !!loop.speakOnTrigger,
     continueInSession: !!loop.continueInSession,
     lastSessionId: loop.lastSessionId || '',
-    adversarialCritique: !!loop.adversarialCritique,
+    critiquePass: !!loop.critiquePass,
     criticProfileId: loop.criticProfileId || '',
     maxIterations: loop.maxIterations ? String(loop.maxIterations) : '',
     scheduleMode,
@@ -350,8 +350,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
           speakOnTrigger: formData.speakOnTrigger,
           continueInSession: formData.continueInSession,
           lastSessionId: formData.continueInSession ? (formData.lastSessionId.trim() || null) : null,
-          adversarialCritique: formData.adversarialCritique,
-          criticProfileId: formData.adversarialCritique ? (formData.criticProfileId.trim() || null) : null,
+          critiquePass: formData.critiquePass,
+          criticProfileId: formData.critiquePass ? (formData.criticProfileId.trim() || null) : null,
           maxIterations,
           runContinuously: formData.scheduleMode === 'continuous',
           schedule,
@@ -368,8 +368,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
           speakOnTrigger: formData.speakOnTrigger,
           continueInSession: formData.continueInSession,
           ...(formData.continueInSession && formData.lastSessionId.trim() ? { lastSessionId: formData.lastSessionId.trim() } : {}),
-          adversarialCritique: formData.adversarialCritique,
-          ...(formData.adversarialCritique && formData.criticProfileId.trim() ? { criticProfileId: formData.criticProfileId.trim() } : {}),
+          critiquePass: formData.critiquePass,
+          ...(formData.critiquePass && formData.criticProfileId.trim() ? { criticProfileId: formData.criticProfileId.trim() } : {}),
           ...(maxIterations ? { maxIterations } : {}),
           runContinuously: formData.scheduleMode === 'continuous',
           schedule,
@@ -629,22 +629,22 @@ export default function LoopEditScreen({ navigation, route }: any) {
 
       <View style={styles.switchRow}>
         <View style={styles.switchInfo}>
-          <Text style={styles.switchLabel}>Adversarial critique</Text>
-          <Text style={styles.switchHelperText}>Run a separate critic session, then ask the worker to revise with the critique.</Text>
+          <Text style={styles.switchLabel}>Built-in critique pass</Text>
+          <Text style={styles.switchHelperText}>Run worker, critic, then worker revision inside one task run.</Text>
         </View>
         <Switch
-          value={formData.adversarialCritique}
+          value={formData.critiquePass}
           onValueChange={value => {
-            updateField('adversarialCritique', value);
+            updateField('critiquePass', value);
             if (!value) updateField('criticProfileId', '');
           }}
           trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
-          thumbColor={formData.adversarialCritique ? theme.colors.primaryForeground : theme.colors.background}
+          thumbColor={formData.critiquePass ? theme.colors.primaryForeground : theme.colors.background}
         />
       </View>
-      {formData.adversarialCritique && (
+      {formData.critiquePass && (
         <>
-          <Text style={styles.label}>Critic Agent (optional)</Text>
+          <Text style={styles.label}>Critic agent (optional)</Text>
           <Text style={styles.sectionHelperText}>Choose a dedicated critic agent, or leave it on the default agent.</Text>
           <View style={styles.profileOptions}>
             <TouchableOpacity
@@ -658,7 +658,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
             >
               <View style={styles.profileOptionInfo}>
                 <Text style={[styles.profileOptionText, !formData.criticProfileId && styles.profileOptionTextActive]}>Default critic</Text>
-                <Text style={[styles.profileOptionHelperText, !formData.criticProfileId && styles.profileOptionHelperTextActive]}>Uses the default active agent for critique.</Text>
+                <Text style={[styles.profileOptionHelperText, !formData.criticProfileId && styles.profileOptionHelperTextActive]}>Uses the default active agent for the built-in pass.</Text>
               </View>
               {!formData.criticProfileId && <Text style={styles.profileOptionCheckmark}>✓</Text>}
             </TouchableOpacity>

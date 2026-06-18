@@ -1140,7 +1140,7 @@ export interface LoopConfig {
   continueInSession?: boolean // if true, reuses the prior session across iterations
   lastSessionId?: string   // session id to resume on next run when continueInSession is on
   runContinuously?: boolean // if true, starts the next run immediately after the previous run finishes
-  adversarialCritique?: boolean // if true, runs a critic pass and feeds it back to the worker
+  critiquePass?: boolean // if true, runs a built-in critic pass and feeds it back to the worker
   criticProfileId?: string // optional profile to use for the critic pass
   maxIterations?: number   // optional per-task override for agent loop iterations
   schedule?: LoopSchedule  // wall-clock schedule; supersedes intervalMinutes when present

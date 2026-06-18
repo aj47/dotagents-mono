@@ -72,6 +72,7 @@ describe("bundled create-repeat-task skill", () => {
     expect(parsed?.instructions).toContain("runOnStartup")
     expect(parsed?.instructions).toContain("schedule")
     expect(parsed?.instructions).toContain("profileId")
+    expect(parsed?.instructions).toContain("critiquePass")
   })
 
   it("ships an examples.md whose task frontmatter blocks all parse as valid LoopConfigs", () => {
@@ -105,6 +106,18 @@ describe("bundled create-repeat-task skill", () => {
     expect(parsedTasks.some((t) => t.runOnStartup === true)).toBe(true)
     expect(parsedTasks.some((t) => t.schedule?.type === "daily")).toBe(true)
     expect(parsedTasks.some((t) => t.schedule?.type === "weekly")).toBe(true)
+    expect(parsedTasks.some((t) => t.critiquePass === true)).toBe(true)
     expect(parsedTasks.some((t) => t.enabled === false)).toBe(true)
+  })
+})
+
+describe("bundled skill initialization", () => {
+  it("refreshes existing bundled skills so task creation guidance does not stay stale", () => {
+    const sourcePath = path.resolve(process.cwd(), "src/main/skills-service.ts")
+    const source = fs.readFileSync(sourcePath, "utf8")
+
+    expect(source).toContain("fs.rmSync(destPath, { recursive: true, force: true })")
+    expect(source).toContain("Refreshed bundled skill")
+    expect(source).not.toContain("Bundled skill already exists, skipping")
   })
 })
