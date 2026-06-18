@@ -54,10 +54,13 @@ describe("discord dependency helpers", () => {
     expect(discordServiceSource).toContain("GatewayIntentBits.GuildVoiceStates")
     expect(discordServiceSource).toContain("joinVoiceChannel")
     expect(discordServiceSource).toContain("voiceSessions")
+    expect(discordServiceSource).toContain("getDiscordVoiceRejectionReason(session, userId)")
+    expect(discordServiceSource).toContain("Skipped Discord voice playback because TTS is disabled")
+    expect(discordServiceSource).not.toContain('"new",\n    "voice",')
     expect(discordServiceSource).toContain('connection.receiver.speaking.on("start"')
     expect(discordServiceSource).toContain("transcribeAudioWithConfiguredProvider")
     expect(discordServiceSource).toContain("playDiscordVoiceReply(message, responseText)")
-    expect(discordServiceSource).toContain("generateTTS({ text: responseText }, cfg)")
+    expect(discordServiceSource).toContain("generateDiscordVoiceTTS(responseText)")
   })
 
   it("awaits in-flight startPromise in stop() to close the enable→disable race", () => {

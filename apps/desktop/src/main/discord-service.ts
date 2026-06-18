@@ -958,11 +958,21 @@ class DiscordService {
     return true
   }
 
+  private async generateDiscordVoiceTTS(responseText: string): Promise<Awaited<ReturnType<typeof generateTTS>> | null> {
+    const cfg = configStore.get()
+    if (!cfg.ttsEnabled) {
+      this.addLog("info", "Skipped Discord voice playback because TTS is disabled")
+      return null
+    }
+
+    return generateTTS({ text: responseText }, cfg)
+  }
+
   private async playDiscordVoiceSessionReply(session: DiscordVoiceSession, responseText: string): Promise<void> {
     try {
       const voice = await this.loadDiscordVoiceModules()
-      const cfg = configStore.get()
-      const tts = await generateTTS({ text: responseText }, cfg)
+      const tts = await this.generateDiscordVoiceTTS(responseText)
+      if (!tts) return
       const audioBuffer = Buffer.from(tts.audio)
       const resource = voice.createAudioResource(Readable.from([audioBuffer]), {
         inputType: voice.StreamType.Arbitrary,
@@ -1004,6 +1014,40 @@ class DiscordService {
     const session = this.getVoiceSessionForTextChannel(message)
     if (!session) return
     await this.playDiscordVoiceSessionReply(session, responseText)
+  }
+
+  private async getDiscordVoiceRejectionReason(session: DiscordVoiceSession, userId: string): Promise<string | null> {
+    const cfg = configStore.get()
+    let authorRoleIds: string[] | undefined
+
+    try {
+      const guild = this.client?.guilds.cache.get(session.guildId)
+        ?? await this.client?.guilds.fetch(session.guildId).catch(() => null)
+      const member = await guild?.members.fetch(userId).catch(() => null)
+      authorRoleIds = member ? Array.from(member.roles.cache.keys()) : undefined
+    } catch {
+      authorRoleIds = undefined
+    }
+
+    return getDiscordMessageRejectionReason({
+      authorId: userId,
+      channelId: session.textChannelId,
+      guildId: session.guildId,
+      isDirectMessage: false,
+      // A linked voice channel is an explicit conversation surface; do not
+      // require users to speak the bot's name, but keep the normal allowlists.
+      mentioned: true,
+      nameMentioned: false,
+      requireMention: cfg.discordRequireMention ?? true,
+      dmEnabled: cfg.discordDmEnabled ?? true,
+      allowUserIds: cfg.discordAllowUserIds,
+      allowGuildIds: cfg.discordAllowGuildIds,
+      allowChannelIds: cfg.discordAllowChannelIds,
+      allowRoleIds: cfg.discordAllowRoleIds,
+      dmAllowUserIds: cfg.discordDmAllowUserIds,
+      authorRoleIds,
+      applicationOwnerIds: this.applicationOwnerIds,
+    })
   }
 
   private async collectDiscordVoicePcm(opusStream: NodeJS.ReadableStream): Promise<Buffer> {
@@ -1159,6 +1203,12 @@ class DiscordService {
 
     this.voiceCaptureKeys.add(captureKey)
     try {
+      const rejectionReason = await this.getDiscordVoiceRejectionReason(session, userId)
+      if (rejectionReason) {
+        this.addLog("info", `Dropped Discord voice input from ${userId}: ${rejectionReason}`)
+        return
+      }
+
       const voice = await this.loadDiscordVoiceModules()
       const opusStream = session.connection.receiver.subscribe(userId, {
         end: {
@@ -1841,6 +1891,7 @@ class DiscordService {
       new SlashCommandBuilder()
         .setName("voice")
         .setDescription("Manage Discord voice-channel replies")
+        .setDefaultMemberPermissions(adminOnly)
         .addSubcommand((sub) =>
           sub.setName("join").setDescription("Join your current voice channel and speak replies from this text channel"),
         )
@@ -2015,7 +2066,6 @@ class DiscordService {
     "logs",
     "whoami",
     "new",
-    "voice",
   ])
 
   /**

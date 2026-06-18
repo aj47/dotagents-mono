@@ -50,7 +50,7 @@ export interface DiscordAttachmentSummary {
 }
 
 function escapeDiscordAttachmentText(value: string): string {
-  return value.replace(/[<>\n\r]/g, " ").trim()
+  return value.replace(/["<>\n\r]/g, " ").trim()
 }
 
 function getDiscordAttachmentExtension(name: string): string {

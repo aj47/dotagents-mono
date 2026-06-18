@@ -215,7 +215,7 @@ describe("discord utils", () => {
       },
       {
         id: "a2",
-        name: "notes.txt",
+        name: "notes\"injection.txt",
         url: "https://cdn.discordapp.com/notes.txt",
         contentType: "text/plain",
         size: 50,
@@ -224,6 +224,8 @@ describe("discord utils", () => {
 
     expect(block).toContain("<discord_attachments>")
     expect(block).toContain('name="screen shot.png"')
+    expect(block).toContain('name="notes injection.txt"')
+    expect(block).not.toContain('notes"injection')
     expect(block).toContain('type="image/png"')
     expect(block).toContain('url="https://cdn.discordapp.com/notes.txt"')
     expect(block).toContain("![screen shot.png](assets://conversation-image/conv/screenshot.png)")
