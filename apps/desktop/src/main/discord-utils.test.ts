@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildDiscordAttachmentPromptBlock,
   canUseMutatingSlashCommand,
   canUseReadOnlySlashCommand,
   getDiscordConversationId,
   getDiscordConversationKey,
   getDiscordMessageRejectionReason,
+  getSupportedDiscordAttachmentImageMimeType,
   splitDiscordMessageContent,
+  summarizeDiscordAttachments,
 } from "./discord-utils"
 
 describe("discord utils", () => {
@@ -153,6 +156,77 @@ describe("discord utils", () => {
     const chunks = splitDiscordMessageContent(`${"a".repeat(1200)}\n${"b".repeat(1200)}`, 1900)
     expect(chunks.length).toBe(2)
     expect(chunks.every((chunk) => chunk.length <= 1900)).toBe(true)
+  })
+
+  it("detects Discord image attachment mime types from content type or filename", () => {
+    expect(getSupportedDiscordAttachmentImageMimeType({
+      name: "screenshot.bin",
+      contentType: "image/png; charset=binary",
+    })).toBe("image/png")
+    expect(getSupportedDiscordAttachmentImageMimeType({
+      name: "photo.JPG",
+      contentType: null,
+    })).toBe("image/jpeg")
+    expect(getSupportedDiscordAttachmentImageMimeType({
+      name: "notes.txt",
+      contentType: "text/plain",
+    })).toBeUndefined()
+  })
+
+  it("summarizes Discord attachments and skips entries without URLs", () => {
+    const attachments = summarizeDiscordAttachments([
+      {
+        id: "a1",
+        name: "diagram.png",
+        url: "https://cdn.discordapp.com/diagram.png",
+        contentType: "image/png",
+        size: 123,
+      },
+      {
+        id: "a2",
+        name: "missing-url.txt",
+        url: "",
+        contentType: "text/plain",
+        size: 10,
+      },
+    ])
+
+    expect(attachments).toEqual([
+      {
+        id: "a1",
+        name: "diagram.png",
+        url: "https://cdn.discordapp.com/diagram.png",
+        contentType: "image/png",
+        size: 123,
+        imageMimeType: "image/png",
+      },
+    ])
+  })
+
+  it("builds compact Discord attachment prompt blocks with optional image markdown", () => {
+    const block = buildDiscordAttachmentPromptBlock([
+      {
+        id: "a1",
+        name: "screen\nshot.png",
+        url: "https://cdn.discordapp.com/screenshot.png",
+        contentType: "image/png",
+        size: 200,
+        imageMimeType: "image/png",
+      },
+      {
+        id: "a2",
+        name: "notes.txt",
+        url: "https://cdn.discordapp.com/notes.txt",
+        contentType: "text/plain",
+        size: 50,
+      },
+    ], new Map([["a1", "assets://conversation-image/conv/screenshot.png"]]))
+
+    expect(block).toContain("<discord_attachments>")
+    expect(block).toContain('name="screen shot.png"')
+    expect(block).toContain('type="image/png"')
+    expect(block).toContain('url="https://cdn.discordapp.com/notes.txt"')
+    expect(block).toContain("![screen shot.png](assets://conversation-image/conv/screenshot.png)")
   })
 
   it("restricts slash command mutations to Discord application owners only", () => {

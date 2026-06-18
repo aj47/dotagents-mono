@@ -197,6 +197,14 @@ export class ConversationService {
     return this.storeConversationImageBuffer(conversationId, buffer, mimeType)
   }
 
+  async storeImageBufferAsConversationAsset(
+    conversationId: string,
+    buffer: Buffer,
+    mimeType: string,
+  ): Promise<string> {
+    return this.storeConversationImageBuffer(conversationId, buffer, mimeType)
+  }
+
   async storeDataImageUrlAsConversationAsset(conversationId: string, dataUrl: string): Promise<string> {
     const match = dataUrl.match(DATA_IMAGE_URL_REGEX)
     if (!match) {

@@ -29,6 +29,116 @@ export interface DiscordMessageGateInput {
   applicationOwnerIds?: ReadonlySet<string>
 }
 
+const DISCORD_IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  png: "image/png",
+  apng: "image/apng",
+  gif: "image/gif",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  avif: "image/avif",
+}
+
+export interface DiscordAttachmentSummary {
+  id: string
+  name: string
+  url: string
+  contentType?: string | null
+  size?: number | null
+  imageMimeType?: string
+}
+
+function escapeDiscordAttachmentText(value: string): string {
+  return value.replace(/[<>\n\r]/g, " ").trim()
+}
+
+function getDiscordAttachmentExtension(name: string): string {
+  const cleanName = name.split("?")[0] || name
+  const index = cleanName.lastIndexOf(".")
+  return index >= 0 ? cleanName.slice(index + 1).toLowerCase() : ""
+}
+
+export function getSupportedDiscordAttachmentImageMimeType(input: {
+  name?: string | null
+  contentType?: string | null
+}): string | undefined {
+  const contentType = input.contentType?.split(";")[0]?.trim().toLowerCase()
+  if (contentType && Object.values(DISCORD_IMAGE_MIME_BY_EXTENSION).includes(contentType)) {
+    return contentType
+  }
+
+  const extension = getDiscordAttachmentExtension(input.name || "")
+  return DISCORD_IMAGE_MIME_BY_EXTENSION[extension]
+}
+
+export function summarizeDiscordAttachments(
+  attachments: Iterable<{
+    id?: string
+    name?: string | null
+    url?: string | null
+    contentType?: string | null
+    size?: number | null
+  }>,
+): DiscordAttachmentSummary[] {
+  const summaries: DiscordAttachmentSummary[] = []
+  Array.from(attachments).forEach((attachment, index) => {
+    const name = typeof attachment.name === "string" && attachment.name.trim()
+      ? attachment.name.trim()
+      : `attachment-${index + 1}`
+    const url = typeof attachment.url === "string" ? attachment.url.trim() : ""
+    if (!url) return
+    summaries.push({
+      id: attachment.id || `attachment-${index + 1}`,
+      name,
+      url,
+      contentType: attachment.contentType,
+      size: typeof attachment.size === "number" && Number.isFinite(attachment.size)
+        ? attachment.size
+        : null,
+      imageMimeType: getSupportedDiscordAttachmentImageMimeType({
+        name,
+        contentType: attachment.contentType,
+      }),
+    })
+  })
+  return summaries
+}
+
+export function buildDiscordAttachmentPromptBlock(
+  attachments: DiscordAttachmentSummary[],
+  imageAssetUrls: Map<string, string>,
+): string {
+  if (attachments.length === 0) return ""
+
+  const lines = ["", "<discord_attachments>"]
+  for (const attachment of attachments) {
+    const parts = [
+      `name="${escapeDiscordAttachmentText(attachment.name)}"`,
+      attachment.contentType ? `type="${escapeDiscordAttachmentText(attachment.contentType)}"` : null,
+      typeof attachment.size === "number" ? `size=${attachment.size}` : null,
+      `url="${escapeDiscordAttachmentText(attachment.url)}"`,
+    ].filter(Boolean)
+    lines.push(`- ${parts.join(" ")}`)
+  }
+  lines.push("</discord_attachments>")
+
+  const imageMarkdown = attachments
+    .map((attachment) => {
+      const assetUrl = imageAssetUrls.get(attachment.id)
+      if (!assetUrl) return null
+      const alt = escapeDiscordAttachmentText(attachment.name) || "Discord image"
+      return `![${alt}](${assetUrl})`
+    })
+    .filter((entry): entry is string => typeof entry === "string")
+
+  if (imageMarkdown.length > 0) {
+    lines.push("", ...imageMarkdown)
+  }
+
+  return lines.join("\n")
+}
+
 /**
  * Check if the bot's name (or aliases) is mentioned in the message text,
  * without requiring a Discord @tag.

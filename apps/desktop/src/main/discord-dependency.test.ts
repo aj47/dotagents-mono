@@ -39,6 +39,27 @@ describe("discord dependency helpers", () => {
     expect(discordServiceSource).toContain("void this.handleMessage(message).catch(")
   })
 
+  it("enriches Discord runs with attachments, image assets, reactions, and reply references", () => {
+    expect(discordServiceSource).toContain("buildDiscordAttachmentContext(message, conversationId)")
+    expect(discordServiceSource).toContain("conversationService.storeImageBufferAsConversationAsset")
+    expect(discordServiceSource).toContain("Please review the attached Discord media.")
+    expect(discordServiceSource).toContain('await this.reactToMessage(message, "👀")')
+    expect(discordServiceSource).toContain('await this.reactToMessage(message, "✅")')
+    expect(discordServiceSource).toContain('await this.reactToMessage(message, "❌")')
+    expect(discordServiceSource).toContain("await message.reply({ content: chunk })")
+  })
+
+  it("supports Hermes-style Discord voice-channel reply playback", () => {
+    expect(discordServiceSource).toContain('setName("voice")')
+    expect(discordServiceSource).toContain("GatewayIntentBits.GuildVoiceStates")
+    expect(discordServiceSource).toContain("joinVoiceChannel")
+    expect(discordServiceSource).toContain("voiceSessions")
+    expect(discordServiceSource).toContain('connection.receiver.speaking.on("start"')
+    expect(discordServiceSource).toContain("transcribeAudioWithConfiguredProvider")
+    expect(discordServiceSource).toContain("playDiscordVoiceReply(message, responseText)")
+    expect(discordServiceSource).toContain("generateTTS({ text: responseText }, cfg)")
+  })
+
   it("awaits in-flight startPromise in stop() to close the enable→disable race", () => {
     // Regression guard for the race described in PR #305 review:
     // startInternal() assigns `this.client` only after `client.login()`
