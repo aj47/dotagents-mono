@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import os from "os"
+import path from "path"
 
 const mocks = vi.hoisted(() => ({
   getConversationImageAssetPath: vi.fn(
@@ -67,6 +69,18 @@ describe("serve protocol", () => {
     handler({ url: "assets://conversation-video/conv_1/abcdef1234567890.mp4" }, callback)
 
     expect(callback).toHaveBeenCalledWith({ path: "/videos/conv_1/abcdef1234567890.mp4" })
+  })
+
+  it("expands home-relative file asset paths", async () => {
+    const { registerServeProtocol } = await import("./serve")
+    registerServeProtocol()
+
+    const handler = mocks.registerFileProtocol.mock.calls[0][1]
+    const callback = vi.fn()
+
+    handler({ url: "assets://file?path=~%2Fvideos%2Fdemo.mp4" }, callback)
+
+    expect(callback).toHaveBeenCalledWith({ path: path.join(os.homedir(), "videos/demo.mp4") })
   })
 
   it("resolves artifact preview paths", async () => {

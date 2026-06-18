@@ -1214,6 +1214,49 @@ describe("dedupeTaskEntriesByTitle", () => {
     expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["newer"])
   })
 
+  it("keeps worker and critic history for the same repeat task separate", () => {
+    const baseRepeatTask = {
+      type: "repeat_task_run" as const,
+      taskId: "techfren-reel",
+      taskName: "TechFren Reel",
+    }
+    const entries = [
+      {
+        session: {
+          id: "worker",
+          conversationTitle: "TechFren Reel Maker",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+          repeatTask: {
+            ...baseRepeatTask,
+            runId: "techfren-reel:worker",
+            role: "worker" as const,
+          },
+        },
+      },
+      {
+        session: {
+          id: "critic",
+          conversationTitle: "TechFren Reel Critique",
+          status: "completed",
+          startTime: 200,
+          endTime: 250,
+          repeatTask: {
+            ...baseRepeatTask,
+            runId: "techfren-reel:critic",
+            role: "critic" as const,
+          },
+        },
+      },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual([
+      "worker",
+      "critic",
+    ])
+  })
+
   it("dedupes legacy title-only task rows by configured task title hints", () => {
     const entries = [
       {

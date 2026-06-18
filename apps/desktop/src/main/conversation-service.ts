@@ -1357,9 +1357,15 @@ export class ConversationService {
 
   async backfillRepeatTaskSourcesByPrompt(sources: RepeatTaskConversationBackfillSource[]): Promise<number> {
     const sourceByPrompt = new Map<string, RepeatTaskConversationBackfillSource>()
+    const ambiguousPrompts = new Set<string>()
     for (const source of sources) {
       const prompt = this.normalizeRepeatTaskPromptForBackfill(source.prompt)
-      if (!prompt || sourceByPrompt.has(prompt)) continue
+      if (!prompt || ambiguousPrompts.has(prompt)) continue
+      if (sourceByPrompt.has(prompt)) {
+        sourceByPrompt.delete(prompt)
+        ambiguousPrompts.add(prompt)
+        continue
+      }
       sourceByPrompt.set(prompt, source)
     }
     if (sourceByPrompt.size === 0) {

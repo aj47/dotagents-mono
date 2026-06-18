@@ -126,6 +126,10 @@ function getRepeatTaskBackfillSignature(loop: Pick<LoopConfig, "name" | "prompt"
     .digest("hex")
 }
 
+function normalizeRepeatTaskBackfillPrompt(prompt: string): string {
+  return prompt.replace(/\r\n/g, "\n").trim()
+}
+
 class LoopService {
   private static instance: LoopService | null = null
   private activeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
@@ -180,6 +184,23 @@ class LoopService {
 
     if (pendingSources.length === 0) return
 
+    const promptCounts = new Map<string, number>()
+    for (const loop of this.loops) {
+      const prompt = normalizeRepeatTaskBackfillPrompt(loop.prompt)
+      if (!prompt) continue
+      promptCounts.set(prompt, (promptCounts.get(prompt) ?? 0) + 1)
+    }
+
+    const safePendingSources = pendingSources.filter((source) => {
+      const prompt = normalizeRepeatTaskBackfillPrompt(source.prompt)
+      return prompt && promptCounts.get(prompt) === 1
+    })
+    const skippedAmbiguousCount = pendingSources.length - safePendingSources.length
+    if (skippedAmbiguousCount > 0) {
+      logApp(`[LoopService] Skipped repeat-task provenance backfill for ${skippedAmbiguousCount} task(s) with ambiguous prompts`)
+    }
+    if (safePendingSources.length === 0) return
+
     const backfillRepeatTaskSourcesByPrompt = (conversationService as {
       backfillRepeatTaskSourcesByPrompt?: typeof conversationService.backfillRepeatTaskSourcesByPrompt
     }).backfillRepeatTaskSourcesByPrompt
@@ -188,7 +209,7 @@ class LoopService {
     try {
       const updatedCount = await backfillRepeatTaskSourcesByPrompt.call(
         conversationService,
-        pendingSources.map((source) => ({
+        safePendingSources.map((source) => ({
           taskId: source.taskId,
           taskName: source.taskName,
           prompt: source.prompt,
@@ -196,7 +217,7 @@ class LoopService {
         })),
       )
       const nextTaskSignatures = { ...marker.taskSignatures }
-      for (const source of pendingSources) {
+      for (const source of safePendingSources) {
         nextTaskSignatures[source.taskId] = source.signature
       }
       fs.mkdirSync(dataFolder, { recursive: true })

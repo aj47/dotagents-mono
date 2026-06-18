@@ -1,6 +1,7 @@
 import { protocol, ProtocolRequest, ProtocolResponse } from "electron"
 import path from "path"
 import fs from "fs"
+import os from "os"
 import { recordingsFolder } from "./config"
 import {
   CONVERSATION_IMAGE_ASSET_HOST,
@@ -15,6 +16,14 @@ import { artifactService } from "./artifact-service"
 const rendererDir = path.join(__dirname, "../renderer")
 
 const FILE_NOT_FOUND = -6
+
+const expandHomePath = (filePath: string): string => {
+  if (filePath === "~") return os.homedir()
+  if (filePath.startsWith("~/")) {
+    return path.join(os.homedir(), filePath.slice(2))
+  }
+  return filePath
+}
 
 const getPath = async (path_: string) => {
   try {
@@ -86,7 +95,7 @@ export function registerServeProtocol() {
     if (host === "file") {
       const filepath = searchParams.get("path")
       if (filepath) {
-        return callback({ path: filepath })
+        return callback({ path: expandHomePath(filepath) })
       }
     }
 

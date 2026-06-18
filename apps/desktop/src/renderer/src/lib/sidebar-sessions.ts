@@ -567,7 +567,7 @@ function getTaskEntryDedupeKey(
   repeatTaskTitleHints?: RepeatTaskTitleHints,
 ): string | null {
   if (session.repeatTask?.type === "repeat_task_run" && session.repeatTask.taskId) {
-    return `repeat-task:${session.repeatTask.taskId}`
+    return `repeat-task:${session.repeatTask.taskId}:${session.repeatTask.role ?? "worker"}`
   }
 
   const title = session.conversationTitle?.trim()

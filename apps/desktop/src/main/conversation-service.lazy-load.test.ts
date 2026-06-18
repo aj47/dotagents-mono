@@ -105,6 +105,39 @@ describe("conversation lazy loading", () => {
     expect(setupConversation?.repeatTask).toBeUndefined()
   })
 
+  it("skips repeat-task provenance backfill for duplicate prompts", async () => {
+    const service = await setupConversationServiceTest()
+    const repeatTaskPrompt = "# Shared Prompt\n\nRun this."
+
+    await service.saveConversation({
+      id: "conv_shared_prompt",
+      title: "Shared Prompt Run",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [
+        { id: "m1", role: "user", content: repeatTaskPrompt, timestamp: 150 },
+      ],
+    }, true)
+
+    const updatedCount = await service.backfillRepeatTaskSourcesByPrompt([
+      {
+        taskId: "task-a",
+        taskName: "Task A",
+        prompt: repeatTaskPrompt,
+      },
+      {
+        taskId: "task-b",
+        taskName: "Task B",
+        prompt: repeatTaskPrompt,
+      },
+    ])
+
+    const conversation = await service.loadConversation("conv_shared_prompt")
+
+    expect(updatedCount).toBe(0)
+    expect(conversation?.repeatTask).toBeUndefined()
+  })
+
   it("keeps saved conversation history index snippets bounded", async () => {
     const service = await setupConversationServiceTest()
     const longMessage = "Huge tool output " + "A".repeat(2000)

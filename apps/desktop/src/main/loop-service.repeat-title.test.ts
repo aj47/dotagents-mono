@@ -25,6 +25,7 @@ describe("loop-service repeat task session titles", () => {
     expect(loopServiceSource).toContain("taskSignatures: Record<string, string>")
     expect(loopServiceSource).toContain("marker.taskSignatures[loop.id] === signature")
     expect(loopServiceSource).toContain("getRepeatTaskBackfillSignature(existingLoop) !== getRepeatTaskBackfillSignature(loop)")
+    expect(loopServiceSource).toContain("safePendingSources.map((source) => ({")
     expect(loopServiceSource).toContain("nextTaskSignatures[source.taskId] = source.signature")
   })
 
