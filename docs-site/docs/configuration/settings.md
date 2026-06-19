@@ -132,7 +132,9 @@ See [WhatsApp Integration](/tools/whatsapp) for MCP setup and environment variab
 | **Auto Reply** | Automatically route incoming messages to an agent reply flow | `false` |
 | **Log Messages** | Store WhatsApp message content in integration logs | `false` |
 
-## Loop Settings
+## Repeat Task Settings
+
+See [Repeat Tasks](/agents/repeat-tasks) for the `task.md` file format, cadence models, same-session continuation, and built-in critique pass.
 
 | Setting | Description |
 |---------|-------------|

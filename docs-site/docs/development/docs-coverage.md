@@ -49,6 +49,7 @@ These files are the user-facing desktop page surfaces that must stay covered by 
 
 | Page file | Route or surface | Documentation owner |
 |-----------|------------------|---------------------|
+| `artifacts.tsx` | `/artifacts` artifact browser | [Desktop App](/desktop/overview) |
 | `knowledge.tsx` | `/knowledge` knowledge notes | [Desktop App](/desktop/overview), [Knowledge & Notes](/agents/knowledge-notes) |
 | `onboarding.tsx` | `/onboarding` first-run flow | [Quick Start](/getting-started/quickstart), [Desktop App](/desktop/overview) |
 | `panel.tsx` | `/panel` floating panel | [Desktop App](/desktop/overview), [Voice Interface](/voice/overview) |
@@ -57,7 +58,7 @@ These files are the user-facing desktop page surfaces that must stay covered by 
 | `settings-capabilities.tsx` | `/settings/capabilities` | [MCP Tools](/tools/mcp), [MCP Server Configuration](/configuration/mcp-servers) |
 | `settings-discord.tsx` | `/settings/discord` | [Remote API Reference](/reference/api), [Settings Reference](/configuration/settings) |
 | `settings-general.tsx` | `/settings`, `/settings/general` | [Settings Reference](/configuration/settings) |
-| `settings-loops.tsx` | `/settings/repeat-tasks` | [Desktop App](/desktop/overview), [Settings Reference](/configuration/settings) |
+| `settings-loops.tsx` | `/settings/repeat-tasks` | [Repeat Tasks](/agents/repeat-tasks), [Settings Reference](/configuration/settings) |
 | `settings-mcp-tools.tsx` | legacy MCP tools settings surface | [MCP Tools](/tools/mcp) |
 | `settings-models.tsx` | `/settings/models` | [AI Providers](/tools/providers) |
 | `settings-providers.tsx` | `/settings/providers` | [AI Providers](/tools/providers) |
@@ -76,10 +77,11 @@ These mobile screens must stay covered by [Mobile App](/mobile/overview), [Remot
 | `ChatScreen.tsx` | Text, voice, streaming chat, TTS, hands-free mode | [Mobile App](/mobile/overview), [Voice Interface](/voice/overview) |
 | `ConnectionSettingsScreen.tsx` | QR pairing, manual API setup, connection tests | [Remote Server & Mobile Pairing](/desktop/remote-server), [Mobile App](/mobile/overview) |
 | `KnowledgeNoteEditScreen.tsx` | Create/edit knowledge notes | [Knowledge & Notes](/agents/knowledge-notes), [Mobile App](/mobile/overview) |
-| `LoopEditScreen.tsx` | Create/edit recurring loops | [Mobile App](/mobile/overview), [Settings Reference](/configuration/settings) |
+| `LoopEditScreen.tsx` | Create/edit recurring loops | [Mobile App](/mobile/overview), [Repeat Tasks](/agents/repeat-tasks), [Settings Reference](/configuration/settings) |
 | `OperationsScreen.tsx` | Operator dashboard for health, logs, tunnels, integrations, updater, actions | [Remote API Reference](/reference/api), [Mobile App](/mobile/overview) |
 | `SessionListScreen.tsx` | Conversation list, search, deletion, resume | [Mobile App](/mobile/overview) |
 | `SettingsScreen.tsx` | API/model/voice/theme settings | [Mobile App](/mobile/overview), [Settings Reference](/configuration/settings) |
+| `SkillEditScreen.tsx` | Create/edit skills | [Skills](/agents/skills), [Mobile App](/mobile/overview) |
 | `SplitChatScreen.tsx` | Multi-agent comparison chat | [Mobile App](/mobile/overview), [Agent Delegation](/agents/delegation) |
 
 ## Remote Server Route Coverage
