@@ -77,6 +77,7 @@ Prompt body owns:
 - current objective and scope
 - input sources or search paths
 - durable output files or artifact directories
+- user-facing progress report location
 - per-run quota or done condition
 - blocked/no-change fallback
 - final response shape
@@ -105,9 +106,25 @@ For non-trivial loops, include these pieces in the prompt body:
 4. **Per-run quota** — the smallest concrete unit of progress: add one artifact, process one queue item, inspect one source family, update one report, or return no-change.
 5. **Fallback ladder** — what to do when the preferred source is blocked or empty.
 6. **Stop condition** — what counts as done for this run; then the agent should stop.
-7. **Final response shape** — compact status for the loop transcript or TTS.
+7. **Progress report** — for long-running or artifact-heavy loops, prefer a nice task-local HTML status page that summarizes current progress, outputs, rankings, blockers, and next steps.
+8. **Final response shape** — compact status for the loop transcript or TTS.
 
 Good loop prompts are usually short but specific. They should make repeated runs additive instead of re-opening strategy from scratch.
+
+## User-facing progress reports
+
+For loops that produce artifacts over multiple runs, the preferred way to report progress to the user is a polished HTML page in the task folder, for example `~/.agents/tasks/<id>/status.html` or `~/.agents/tasks/<id>/progress.html`.
+
+Use the HTML page for:
+
+- current status and last updated time
+- ranked outputs or decisions
+- artifact links and local file paths
+- source ledger summaries
+- blockers, risks, and next lane
+- a compact run history
+
+Keep the final assistant response short and point to the page. The response is for the loop transcript or TTS; the HTML page is the durable, skimmable progress surface.
 
 ## Companion skills
 

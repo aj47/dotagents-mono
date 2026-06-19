@@ -81,6 +81,9 @@ describe("bundled create-repeat-task skill", () => {
     expect(parsed?.instructions).toContain("durable state")
     expect(parsed?.instructions).toContain("companion skill")
     expect(parsed?.instructions).toContain("per-run quota")
+    expect(parsed?.instructions).toContain("User-facing progress reports")
+    expect(parsed?.instructions).toContain("status.html")
+    expect(parsed?.instructions).toContain("polished HTML page")
   })
 
   it("ships an examples.md whose task frontmatter blocks all parse as valid LoopConfigs", () => {
@@ -123,6 +126,8 @@ describe("bundled create-repeat-task skill", () => {
     expect(inventoryBuilder?.critiquePass).toBe(true)
     expect(inventoryBuilder?.prompt).toContain("On each run")
     expect(inventoryBuilder?.prompt).toContain("source-ledger.md")
+    expect(inventoryBuilder?.prompt).toContain("status.html")
+    expect(inventoryBuilder?.prompt).toContain("inspect progress visually")
     expect(inventoryBuilder?.prompt).toContain("Per-run contract")
     expect(inventoryBuilder?.prompt).not.toMatch(/Every 20 minutes/i)
   })

@@ -183,13 +183,15 @@ Canonical files:
 - `~/.agents/tasks/video-packaging/title-bank.md` — append and organize title ideas by angle.
 - `~/.agents/tasks/video-packaging/thumbnail-board.md` — prompt log, image paths, rankings, and critique notes.
 - `~/.agents/tasks/video-packaging/source-ledger.md` — checked, exhausted, and next sources.
+- `~/.agents/tasks/video-packaging/status.html` — polished progress page with current ranking, artifact links, blockers, and next lane.
 - `~/.agents/tasks/video-packaging/assets/` — generated or downloaded media.
 
 Per-run contract:
 - Add or improve at least one concrete artifact, source, title cluster, thumbnail draft, or ranked decision.
+- Update `status.html` so AJ can inspect progress visually in a browser.
 - If a source is blocked or exhausted, update `source-ledger.md` and switch lanes instead of retrying.
 - The critic should judge artifact usefulness, evidence quality, clickability, and recordability against the files above.
-- Return only 3 bullets: new inventory added, best current direction, and next lane.
+- Return only 3 bullets: new inventory added, best current direction, and the `status.html` path.
 ```
 
 ## 11. Disable without deleting
