@@ -143,6 +143,7 @@ async function loadSettingsDiscord(runtime: ReturnType<typeof createHookRuntime>
     currentConfig = config
   })
   const discordConnect = vi.fn(async () => ({ success: true }))
+  const discordInstallDependency = vi.fn(async () => ({ success: true }))
   let currentStatus: any = {
     available: true,
     enabled: true,
@@ -194,6 +195,12 @@ async function loadSettingsDiscord(runtime: ReturnType<typeof createHookRuntime>
   vi.doMock("../components/ui/switch", () => ({ Switch: (props: any) => ({ type: "Switch", props }) }))
   vi.doMock("@renderer/components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
   vi.doMock("../components/ui/textarea", () => ({ Textarea: (props: any) => ({ type: "Textarea", props }) }))
+  vi.doMock("@renderer/components/settings-navigation", () => ({
+    SettingsPageShell: (props: any) => ({ type: "SettingsPageShell", props }),
+  }))
+  vi.doMock("../components/settings-navigation", () => ({
+    SettingsPageShell: (props: any) => ({ type: "SettingsPageShell", props }),
+  }))
   vi.doMock("@renderer/lib/query-client", () => ({
     useConfigQuery: () => ({ data: currentConfig }),
     useSaveConfigMutation: () => ({ mutate, mutateAsync }),
@@ -218,6 +225,7 @@ async function loadSettingsDiscord(runtime: ReturnType<typeof createHookRuntime>
       discordConnect,
       discordDisconnect: vi.fn(async () => ({ success: true })),
       discordClearLogs: vi.fn(),
+      discordInstallDependency,
     },
   }))
   vi.doMock("../lib/tipc-client", () => ({
@@ -228,11 +236,14 @@ async function loadSettingsDiscord(runtime: ReturnType<typeof createHookRuntime>
       discordConnect,
       discordDisconnect: vi.fn(async () => ({ success: true })),
       discordClearLogs: vi.fn(),
+      discordInstallDependency,
     },
   }))
   vi.doMock("lucide-react", () => ({
     AlertTriangle: Icon,
     CheckCircle2: Icon,
+    Download: Icon,
+    Loader2: Icon,
     RefreshCw: Icon,
     Trash2: Icon,
     XCircle: Icon,
@@ -244,6 +255,7 @@ async function loadSettingsDiscord(runtime: ReturnType<typeof createHookRuntime>
     mutate,
     mutateAsync,
     discordConnect,
+    discordInstallDependency,
     setStatus(nextStatus: any) {
       currentStatus = nextStatus
     },
@@ -261,7 +273,7 @@ afterEach(() => {
 })
 
 describe("desktop Discord settings review comment fixes", () => {
-  it("shows Discord as unavailable and disables connect actions when the dependency is missing", async () => {
+  it("shows a setup action and disables connect actions when the dependency is missing", async () => {
     const runtime = createHookRuntime()
     const { Component, setStatus } = await loadSettingsDiscord(runtime)
     setStatus({
@@ -269,18 +281,41 @@ describe("desktop Discord settings review comment fixes", () => {
       enabled: true,
       connected: false,
       connecting: false,
-      lastError: "Discord support is unavailable because the optional discord.js package is not installed in this build.",
+      lastError: "Discord support needs discord.js. Install Discord support from Settings, then connect again.",
     })
 
     const tree = await renderSettled(runtime, Component)
     const connectButton = findButton(tree, "Connect")
     const disconnectButton = findButton(tree, "Disconnect")
+    const installButton = findButton(tree, "Install Discord support")
     const treeText = collectText(tree).join(" ")
 
-    expect(treeText).toContain("Discord support unavailable")
-    expect(treeText).toContain("optional discord.js package is not installed")
+    expect(treeText).toContain("Discord support needs setup")
+    expect(treeText).toContain("Install Discord support from Settings")
+    expect(installButton.props.disabled).toBe(false)
     expect(connectButton.props.disabled).toBe(true)
     expect(disconnectButton.props.disabled).toBe(true)
+  })
+
+  it("installs Discord support from the missing-dependency state", async () => {
+    const runtime = createHookRuntime()
+    const { Component, setStatus, discordInstallDependency } = await loadSettingsDiscord(runtime)
+    setStatus({
+      available: false,
+      enabled: true,
+      connected: false,
+      connecting: false,
+      lastError: "Discord support needs discord.js. Install Discord support from Settings, then connect again.",
+    })
+
+    const tree = await renderSettled(runtime, Component)
+    const installButton = findButton(tree, "Install Discord support")
+    installButton.props.onClick()
+
+    await flushPromises()
+    await flushPromises()
+
+    expect(discordInstallDependency).toHaveBeenCalledTimes(1)
   })
 
   it("flushes the token draft before connecting", async () => {

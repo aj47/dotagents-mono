@@ -91,6 +91,7 @@ import { artifactService } from "./artifact-service"
 
 import { startRemoteServer, stopRemoteServer, restartRemoteServer, printQRCodeToTerminal, getRemoteServerStatus, getRemoteServerPairingApiKey } from "./remote-server"
 import { getDiscordLifecycleAction } from "./discord-config"
+import { installDiscordDependency } from "./discord-dependency-installer"
 import { discordService } from "./discord-service"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
@@ -4118,6 +4119,10 @@ export const router = {
   discordClearLogs: t.procedure.action(async () => {
     discordService.clearLogs()
     return { success: true }
+  }),
+
+  discordInstallDependency: t.procedure.action(async () => {
+    return installDiscordDependency()
   }),
 
   // Text-to-Speech

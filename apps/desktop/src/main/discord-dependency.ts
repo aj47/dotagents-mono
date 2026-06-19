@@ -1,13 +1,48 @@
 import { createRequire } from "module"
+import path from "path"
 
 const discordRequire = createRequire(import.meta.url)
+const DISCORD_PACKAGE = "discord.js"
 
 export const DISCORD_UNAVAILABLE_ERROR =
-  "Discord support is unavailable because the optional discord.js package is not installed in this build."
+  "Discord support needs discord.js. Install Discord support from Settings, then connect again."
 
 export type DiscordDependencyStatus = {
   available: boolean
   error?: string
+}
+
+export function getDiscordRuntimeDependencyPath(): string {
+  const electron = discordRequire("electron") as typeof import("electron")
+  return path.join(electron.app.getPath("userData"), "discord-runtime")
+}
+
+function getDiscordRuntimeRequire() {
+  return createRequire(path.join(getDiscordRuntimeDependencyPath(), "package.json"))
+}
+
+function resolveDiscordDependencyFromRuntime(): string {
+  return getDiscordRuntimeRequire().resolve(DISCORD_PACKAGE)
+}
+
+export function resolveDiscordDependency(): string {
+  try {
+    return discordRequire.resolve(DISCORD_PACKAGE)
+  } catch (error) {
+    if (!isDiscordDependencyMissingError(error)) throw error
+  }
+
+  return resolveDiscordDependencyFromRuntime()
+}
+
+export function requireDiscordDependency(): typeof import("discord.js") {
+  try {
+    return discordRequire(DISCORD_PACKAGE) as typeof import("discord.js")
+  } catch (error) {
+    if (!isDiscordDependencyMissingError(error)) throw error
+  }
+
+  return getDiscordRuntimeRequire()(DISCORD_PACKAGE) as typeof import("discord.js")
 }
 
 export function isDiscordDependencyMissingError(error: unknown): boolean {
@@ -23,10 +58,10 @@ export function isDiscordDependencyMissingError(error: unknown): boolean {
 }
 
 export function getDiscordDependencyStatus(
-  resolveDependency: (specifier: string) => string = discordRequire.resolve,
+  resolveDependency: (specifier: string) => string = () => resolveDiscordDependency(),
 ): DiscordDependencyStatus {
   try {
-    resolveDependency("discord.js")
+    resolveDependency(DISCORD_PACKAGE)
     return { available: true }
   } catch (error) {
     if (isDiscordDependencyMissingError(error)) {

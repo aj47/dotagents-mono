@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
+  Loader2,
   RefreshCw,
   Trash2,
   XCircle,
@@ -68,6 +70,7 @@ export function Component() {
   const [userAllowlistDraft, setUserAllowlistDraft] = useState("")
   const [guildAllowlistDraft, setGuildAllowlistDraft] = useState("")
   const [channelAllowlistDraft, setChannelAllowlistDraft] = useState("")
+  const [installingDependency, setInstallingDependency] = useState(false)
 
   useEffect(() => {
     cfgRef.current = cfg
@@ -187,6 +190,24 @@ export function Component() {
     await fetchStatus()
   }, [fetchStatus])
 
+  const handleInstallDependency = useCallback(async () => {
+    setStatusError(null)
+    setInstallingDependency(true)
+    let installError: string | null = null
+    try {
+      const result = await tipcClient.discordInstallDependency()
+      if (!result.success) {
+        installError = result.error || "Failed to install Discord support"
+      }
+    } catch (error) {
+      installError = error instanceof Error ? error.message : String(error)
+    } finally {
+      setInstallingDependency(false)
+      await fetchStatus()
+      if (installError) setStatusError(installError)
+    }
+  }, [fetchStatus])
+
   if (!cfg) return null
 
   const enabled = cfg.discordEnabled ?? false
@@ -237,7 +258,7 @@ export function Component() {
                 <>
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                   <span className="text-amber-600 dark:text-amber-400">
-                    Discord support unavailable
+                    Discord support needs setup
                   </span>
                 </>
               ) : status?.connected ? (
@@ -269,9 +290,25 @@ export function Component() {
             )}
 
             <div className="flex flex-wrap gap-2">
+              {unavailable && (
+                <Button
+                  variant="outline"
+                  onClick={() => void handleInstallDependency()}
+                  disabled={installingDependency}
+                >
+                  {installingDependency ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {installingDependency
+                    ? "Installing..."
+                    : "Install Discord support"}
+                </Button>
+              )}
               <Button
                 onClick={() => void handleConnect()}
-                disabled={!enabled || unavailable}
+                disabled={!enabled || unavailable || installingDependency}
               >
                 Connect
               </Button>
