@@ -278,6 +278,7 @@ const MAX_RESPOND_TO_USER_VIDEO_FILE_BYTES = 250 * 1024 * 1024
 const MAX_RESPOND_TO_USER_TOTAL_VIDEO_BYTES = 500 * 1024 * 1024
 const MAX_RESPOND_TO_USER_RESPONSE_CONTENT_BYTES = 12 * 1024 * 1024
 const DATA_IMAGE_BASE64_PREFIX_REGEX = /^data:image\/[a-z0-9.+-]+;base64,/i
+const DATA_IMAGE_URL_PREFIX_REGEX = /^data:image\/[a-z0-9.+-]+(?:;[^,]*)?,/i
 
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   ".png": "image/png",
@@ -309,7 +310,7 @@ const isAllowedRespondToUserImageUrl = (url: string): boolean => {
   return (
     normalized.startsWith("https://") ||
     normalized.startsWith("http://") ||
-    DATA_IMAGE_BASE64_PREFIX_REGEX.test(normalized)
+    DATA_IMAGE_URL_PREFIX_REGEX.test(normalized)
   )
 }
 
@@ -344,15 +345,22 @@ const getDecodedBase64ByteLength = (rawBase64: string): number => {
 
 const getDataImageBytesFromUrl = (url: string): number | null => {
   const trimmed = url.trim()
-  if (!DATA_IMAGE_BASE64_PREFIX_REGEX.test(trimmed)) {
+  if (!DATA_IMAGE_URL_PREFIX_REGEX.test(trimmed)) {
     return null
   }
   const commaIndex = trimmed.indexOf(",")
   if (commaIndex < 0 || commaIndex === trimmed.length - 1) {
     return 0
   }
-  const base64Payload = trimmed.slice(commaIndex + 1)
-  return getDecodedBase64ByteLength(base64Payload)
+  const payload = trimmed.slice(commaIndex + 1)
+  if (DATA_IMAGE_BASE64_PREFIX_REGEX.test(trimmed)) {
+    return getDecodedBase64ByteLength(payload)
+  }
+  try {
+    return Buffer.byteLength(decodeURIComponent(payload), "utf8")
+  } catch {
+    return 0
+  }
 }
 
 const getUtf8ByteLength = (value: string): number =>
@@ -565,18 +573,12 @@ const toolHandlers: Record<string, ToolHandler> = {
             const assetUrl = await conversationService.storeDataImageUrlAsConversationAsset(conversationId!, url)
             imageMarkdownBlocks.push(`![${safeAlt}](${assetUrl})`)
           } catch (error) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({
-                  success: false,
-                  error: error instanceof Error
-                    ? `Failed to store images[${index}].url: ${error.message}`
-                    : `Failed to store images[${index}].url`,
-                }),
-              }],
-              isError: true,
-            }
+            // Some valid data:image forms are intentionally not persisted as
+            // conversation assets (for example SVG). Keep the validated data
+            // URL in the user response so downstream delivery surfaces like
+            // Discord can still upload it as an attachment instead of failing
+            // the whole response.
+            imageMarkdownBlocks.push(`![${safeAlt}](${url})`)
           }
           continue
         }

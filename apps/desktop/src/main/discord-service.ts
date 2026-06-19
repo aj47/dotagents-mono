@@ -1,3 +1,5 @@
+import fs from "node:fs/promises"
+import path from "node:path"
 import { Readable } from "node:stream"
 import type { Client, Message } from "discord.js"
 import type { AudioPlayer, VoiceConnection } from "@discordjs/voice"
@@ -20,14 +22,18 @@ import {
   getDiscordConversationKey,
   getDiscordMessageRejectionReason,
   buildDiscordAttachmentPromptBlock,
+  extractDiscordMarkdownImages,
   summarizeDiscordAttachments,
+  summarizeDiscordEmbedImages,
   isBotNameMentioned,
   markDiscordBotReply,
   shouldAllowDiscordNoReply,
   shouldProcessDiscordMessageType,
   splitDiscordMessageContent,
+  stripDiscordMarkdownImages,
   type DiscordAttachmentSummary,
   type DiscordConversationLocation,
+  type DiscordMarkdownImage,
 } from "./discord-utils"
 import {
   DISCORD_UNAVAILABLE_ERROR,
@@ -35,11 +41,17 @@ import {
   isDiscordDependencyMissingError,
   requireDiscordDependency,
 } from "./discord-dependency"
+import {
+  CONVERSATION_IMAGE_ASSET_HOST,
+  getConversationImageAssetPath,
+} from "./conversation-image-assets"
 
 type DiscordLogLevel = "info" | "warn" | "error"
 
 const DISCORD_ATTACHMENT_IMAGE_MAX_BYTES = 8 * 1024 * 1024
 const DISCORD_ATTACHMENT_DOWNLOAD_TIMEOUT_MS = 15_000
+const DISCORD_OUTBOUND_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+const DISCORD_OUTBOUND_IMAGE_MAX_COUNT = 4
 const DISCORD_VOICE_PLAYBACK_TIMEOUT_MS = 120_000
 const DISCORD_VOICE_SILENCE_DURATION_MS = 1_500
 const DISCORD_VOICE_MIN_PCM_BYTES = 96_000
@@ -120,7 +132,23 @@ interface DiscordVoiceSession {
   joinedAt: number
 }
 
+interface DiscordOutboundImageFile {
+  attachment: Buffer
+  name: string
+}
+
 const OPERATOR_DETAIL_REDACTION_PATTERN = /(api.?key|token|secret|qr)/i
+const DISCORD_IMAGE_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+  "image/png": "png",
+  "image/apng": "apng",
+  "image/gif": "gif",
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/webp": "webp",
+  "image/bmp": "bmp",
+  "image/avif": "avif",
+  "image/svg+xml": "svg",
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
@@ -161,6 +189,61 @@ function getOperatorString(value: unknown): string | undefined {
 
 function getOperatorNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+function sanitizeDiscordFileName(value: string, fallback: string): string {
+  const clean = value
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80)
+  return clean || fallback
+}
+
+function ensureDiscordImageExtension(fileName: string, mimeType: string, fallbackBase: string): string {
+  const extension = DISCORD_IMAGE_EXTENSION_BY_MIME_TYPE[mimeType.toLowerCase()] || "png"
+  if (path.extname(fileName)) return fileName
+  return `${sanitizeDiscordFileName(fileName, fallbackBase)}.${extension}`
+}
+
+function parseDiscordDataImageUrl(url: string): { buffer: Buffer; mimeType: string } | null {
+  const base64Match = /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(url)
+  if (base64Match) {
+    return {
+      mimeType: base64Match[1].toLowerCase(),
+      buffer: Buffer.from(base64Match[2].replace(/\s+/g, ""), "base64"),
+    }
+  }
+
+  const utf8Match = /^data:(image\/[a-z0-9.+-]+);(?:charset=[^;,]+;)?utf8,([\s\S]+)$/i.exec(url)
+  if (utf8Match) {
+    return {
+      mimeType: utf8Match[1].toLowerCase(),
+      buffer: Buffer.from(decodeURIComponent(utf8Match[2]), "utf8"),
+    }
+  }
+
+  return null
+}
+
+async function resolveConversationImageAssetBuffer(url: string): Promise<{ buffer: Buffer; fileName: string; mimeType: string } | null> {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== "assets:" || parsed.hostname !== CONVERSATION_IMAGE_ASSET_HOST) return null
+    const [, encodedConversationId, encodedFileName] = parsed.pathname.split("/")
+    if (!encodedConversationId || !encodedFileName) return null
+
+    const conversationId = decodeURIComponent(encodedConversationId)
+    const fileName = decodeURIComponent(encodedFileName)
+    const buffer = await fs.readFile(getConversationImageAssetPath(conversationId, fileName))
+    const extension = path.extname(fileName).toLowerCase().slice(1)
+    const mimeType = Object.entries(DISCORD_IMAGE_EXTENSION_BY_MIME_TYPE)
+      .find(([, ext]) => ext === extension)?.[0] || "image/png"
+    return { buffer, fileName, mimeType }
+  } catch {
+    return null
+  }
 }
 
 function formatOperatorDetailLines(details: unknown, options: { skipKeys?: string[] } = {}): string[] {
@@ -1320,11 +1403,39 @@ class DiscordService {
     }
   }
 
+  private async fetchCompleteDiscordMessage(message: Message<boolean>): Promise<Message<boolean>> {
+    try {
+      const fetched = await message.fetch()
+      const attachmentCount = fetched.attachments?.size ?? 0
+      const embedImageCount = fetched.embeds?.filter((embed) => embed.image || embed.thumbnail).length ?? 0
+      if (attachmentCount > 0 || embedImageCount > 0) {
+        this.addLog("info", `Fetched Discord message media: ${attachmentCount} attachments, ${embedImageCount} embed images`)
+      }
+      return fetched
+    } catch (error) {
+      this.addLog("warn", `Failed to fetch complete Discord message: ${error instanceof Error ? error.message : String(error)}`)
+      return message
+    }
+  }
+
+  private collectDiscordAttachmentSummaries(message: Message<boolean>): DiscordAttachmentSummary[] {
+    const byUrl = new Map<string, DiscordAttachmentSummary>()
+    for (const attachment of summarizeDiscordAttachments(message.attachments.values())) {
+      byUrl.set(attachment.url, attachment)
+    }
+    for (const attachment of summarizeDiscordEmbedImages(message.embeds)) {
+      if (!byUrl.has(attachment.url)) {
+        byUrl.set(attachment.url, attachment)
+      }
+    }
+    return Array.from(byUrl.values())
+  }
+
   private async buildDiscordAttachmentContext(
     message: Message<boolean>,
     conversationId: string,
   ): Promise<{ promptBlock: string; attachmentCount: number; imageCount: number }> {
-    const attachments = summarizeDiscordAttachments(message.attachments.values())
+    const attachments = this.collectDiscordAttachmentSummaries(message)
     if (attachments.length === 0) {
       return { promptBlock: "", attachmentCount: 0, imageCount: 0 }
     }
@@ -1350,6 +1461,70 @@ class DiscordService {
       attachmentCount: attachments.length,
       imageCount: imageAssetUrls.size,
     }
+  }
+
+  private async resolveOutboundDiscordImage(image: DiscordMarkdownImage, index: number): Promise<DiscordOutboundImageFile | null> {
+    const fallbackBase = `image-${index + 1}`
+    const safeAlt = sanitizeDiscordFileName(image.alt, fallbackBase)
+
+    try {
+      if (image.url.startsWith("assets://")) {
+        const asset = await resolveConversationImageAssetBuffer(image.url)
+        if (!asset || asset.buffer.length === 0 || asset.buffer.length > DISCORD_OUTBOUND_IMAGE_MAX_BYTES) return null
+        return {
+          attachment: asset.buffer,
+          name: ensureDiscordImageExtension(sanitizeDiscordFileName(asset.fileName || safeAlt, fallbackBase), asset.mimeType, fallbackBase),
+        }
+      }
+
+      if (image.url.startsWith("data:image/")) {
+        const parsed = parseDiscordDataImageUrl(image.url)
+        if (!parsed || parsed.buffer.length === 0 || parsed.buffer.length > DISCORD_OUTBOUND_IMAGE_MAX_BYTES) return null
+        return {
+          attachment: parsed.buffer,
+          name: ensureDiscordImageExtension(safeAlt, parsed.mimeType, fallbackBase),
+        }
+      }
+
+      if (/^https?:\/\//i.test(image.url)) {
+        const response = await fetch(image.url, {
+          signal: AbortSignal.timeout(DISCORD_ATTACHMENT_DOWNLOAD_TIMEOUT_MS),
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const contentLength = Number(response.headers.get("content-length") || 0)
+        if (contentLength > DISCORD_OUTBOUND_IMAGE_MAX_BYTES) return null
+        const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() || "image/png"
+        if (!contentType.startsWith("image/")) return null
+        const buffer = Buffer.from(await response.arrayBuffer())
+        if (buffer.length === 0 || buffer.length > DISCORD_OUTBOUND_IMAGE_MAX_BYTES) return null
+        let fileName = safeAlt
+        try {
+          const parsedUrl = new URL(image.url)
+          const pathName = decodeURIComponent(parsedUrl.pathname.split("/").filter(Boolean).pop() || "")
+          if (pathName) fileName = pathName
+        } catch {
+          // Keep alt-derived fallback.
+        }
+        return {
+          attachment: buffer,
+          name: ensureDiscordImageExtension(sanitizeDiscordFileName(fileName, fallbackBase), contentType, fallbackBase),
+        }
+      }
+    } catch (error) {
+      this.addLog("warn", `Failed to prepare Discord image attachment ${safeAlt}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    return null
+  }
+
+  private async collectOutboundDiscordImages(content: string): Promise<DiscordOutboundImageFile[]> {
+    const images = extractDiscordMarkdownImages(content).slice(0, DISCORD_OUTBOUND_IMAGE_MAX_COUNT)
+    const files: DiscordOutboundImageFile[] = []
+    for (const [index, image] of images.entries()) {
+      const file = await this.resolveOutboundDiscordImage(image, index)
+      if (file) files.push(file)
+    }
+    return files
   }
 
   private addLog(level: DiscordLogLevel, message: string) {
@@ -1606,6 +1781,7 @@ class DiscordService {
       this.addLog("info", `Dropped Discord message: unsupported message type ${message.type ?? "unknown"}`)
       return
     }
+    message = await this.fetchCompleteDiscordMessage(message)
 
     const isDirectMessage = !inGuild
 
@@ -1686,7 +1862,7 @@ class DiscordService {
       return
     }
 
-    const hasAttachments = message.attachments.size > 0
+    const hasAttachments = this.collectDiscordAttachmentSummaries(message).length > 0
     if (!prompt && !hasAttachments) {
       this.addLog("info", `Ignored Discord message from ${message.author.id}: empty prompt after mention stripping`)
       return
@@ -1855,19 +2031,26 @@ class DiscordService {
   }
 
   private async sendChunks(message: Message<boolean>, content: string) {
-    const chunks = splitDiscordMessageContent(content)
-    if (chunks.length === 0) return
+    const files = await this.collectOutboundDiscordImages(content)
+    const textContent = files.length > 0 ? stripDiscordMarkdownImages(content) : content
+    const chunks = splitDiscordMessageContent(textContent)
+    if (chunks.length === 0 && files.length === 0) return
     if (!("send" in message.channel) || typeof message.channel.send !== "function") return
-    for (const [index, chunk] of chunks.entries()) {
+    const replyChunks = chunks.length > 0 ? chunks : [""]
+    for (const [index, chunk] of replyChunks.entries()) {
+      const payload = {
+        ...(chunk ? { content: chunk } : {}),
+        ...(index === 0 && files.length > 0 ? { files } : {}),
+      }
       if (index === 0) {
         try {
-          await message.reply({ content: chunk })
+          await message.reply(payload)
           continue
         } catch (error) {
           this.addLog("info", `Discord reply reference failed; sending plain channel message: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
-      await message.channel.send({ content: chunk })
+      await message.channel.send(payload)
     }
   }
 

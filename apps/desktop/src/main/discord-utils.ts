@@ -49,6 +49,11 @@ export interface DiscordAttachmentSummary {
   imageMimeType?: string
 }
 
+export interface DiscordMarkdownImage {
+  alt: string
+  url: string
+}
+
 const ACTIVE_DISCORD_EXCHANGE_WINDOW_MS = 2 * 60 * 1000
 const PROCESSABLE_DISCORD_MESSAGE_TYPES = new Set([
   0, // Default user message
@@ -56,6 +61,7 @@ const PROCESSABLE_DISCORD_MESSAGE_TYPES = new Set([
   20, // Chat input command
   23, // Context menu command
 ])
+const DISCORD_MARKDOWN_IMAGE_REGEX = /!\[([^\]]*)\]\((data:image\/[^)\s]+|assets:\/\/conversation-image\/[^)\s]+|https?:\/\/[^)\s]+)\)/gi
 
 export interface DiscordReplyPolicyInput {
   isDirectMessage: boolean
@@ -121,6 +127,43 @@ export function summarizeDiscordAttachments(
   return summaries
 }
 
+export function summarizeDiscordEmbedImages(
+  embeds: Iterable<{
+    image?: { url?: string | null; proxyURL?: string | null } | null
+    thumbnail?: { url?: string | null; proxyURL?: string | null } | null
+    url?: string | null
+    title?: string | null
+  }>,
+): DiscordAttachmentSummary[] {
+  const summaries: DiscordAttachmentSummary[] = []
+  Array.from(embeds).forEach((embed, index) => {
+    const imageUrl = embed.image?.url || embed.image?.proxyURL || embed.thumbnail?.url || embed.thumbnail?.proxyURL || ""
+    const url = typeof imageUrl === "string" ? imageUrl.trim() : ""
+    if (!url) return
+
+    let name = typeof embed.title === "string" && embed.title.trim()
+      ? embed.title.trim()
+      : `embed-image-${index + 1}`
+    try {
+      const parsed = new URL(url)
+      const pathnameName = decodeURIComponent(parsed.pathname.split("/").filter(Boolean).pop() || "")
+      if (pathnameName) name = pathnameName
+    } catch {
+      // Keep fallback name.
+    }
+
+    summaries.push({
+      id: `embed-${index + 1}-${url}`,
+      name,
+      url,
+      contentType: null,
+      size: null,
+      imageMimeType: getSupportedDiscordAttachmentImageMimeType({ name, contentType: null }),
+    })
+  })
+  return summaries
+}
+
 export function buildDiscordAttachmentPromptBlock(
   attachments: DiscordAttachmentSummary[],
   imageAssetUrls: Map<string, string>,
@@ -153,6 +196,23 @@ export function buildDiscordAttachmentPromptBlock(
   }
 
   return lines.join("\n")
+}
+
+export function extractDiscordMarkdownImages(content: string): DiscordMarkdownImage[] {
+  const images: DiscordMarkdownImage[] = []
+  DISCORD_MARKDOWN_IMAGE_REGEX.lastIndex = 0
+  for (let match = DISCORD_MARKDOWN_IMAGE_REGEX.exec(content); match; match = DISCORD_MARKDOWN_IMAGE_REGEX.exec(content)) {
+    images.push({
+      alt: match[1].trim(),
+      url: match[2].trim(),
+    })
+  }
+  return images
+}
+
+export function stripDiscordMarkdownImages(content: string): string {
+  DISCORD_MARKDOWN_IMAGE_REGEX.lastIndex = 0
+  return content.replace(DISCORD_MARKDOWN_IMAGE_REGEX, "").replace(/\n{3,}/g, "\n\n").trim()
 }
 
 /**

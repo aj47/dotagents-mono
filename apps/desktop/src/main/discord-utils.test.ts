@@ -3,6 +3,7 @@ import {
   buildDiscordAttachmentPromptBlock,
   canUseMutatingSlashCommand,
   canUseReadOnlySlashCommand,
+  extractDiscordMarkdownImages,
   getDiscordConversationId,
   getDiscordConversationKey,
   getDiscordMessageRejectionReason,
@@ -12,6 +13,8 @@ import {
   shouldAllowDiscordNoReply,
   shouldProcessDiscordMessageType,
   splitDiscordMessageContent,
+  stripDiscordMarkdownImages,
+  summarizeDiscordEmbedImages,
   summarizeDiscordAttachments,
 } from "./discord-utils"
 
@@ -246,6 +249,47 @@ describe("discord utils", () => {
         imageMimeType: "image/png",
       },
     ])
+  })
+
+  it("summarizes image embeds as attachment fallbacks", () => {
+    const summaries = summarizeDiscordEmbedImages([
+      {
+        title: "Preview",
+        image: { url: "https://cdn.discordapp.com/attachments/1/screenshot.png?ex=1" },
+      },
+      {
+        thumbnail: { proxyURL: "https://media.discordapp.net/attachments/1/thumb.webp" },
+      },
+      {
+        url: "https://example.com/no-image",
+      },
+    ])
+
+    expect(summaries).toHaveLength(2)
+    expect(summaries[0]).toMatchObject({
+      name: "screenshot.png",
+      url: "https://cdn.discordapp.com/attachments/1/screenshot.png?ex=1",
+      imageMimeType: "image/png",
+    })
+    expect(summaries[1]).toMatchObject({
+      name: "thumb.webp",
+      imageMimeType: "image/webp",
+    })
+  })
+
+  it("extracts and strips outbound Discord markdown images", () => {
+    const content = [
+      "Here are previews.",
+      "![One](assets://conversation-image/conv/file.png)",
+      "![Two](data:image/png;base64,AAAA)",
+      "Done.",
+    ].join("\n\n")
+
+    expect(extractDiscordMarkdownImages(content)).toEqual([
+      { alt: "One", url: "assets://conversation-image/conv/file.png" },
+      { alt: "Two", url: "data:image/png;base64,AAAA" },
+    ])
+    expect(stripDiscordMarkdownImages(content)).toBe("Here are previews.\n\nDone.")
   })
 
   it("builds compact Discord attachment prompt blocks with optional image markdown", () => {

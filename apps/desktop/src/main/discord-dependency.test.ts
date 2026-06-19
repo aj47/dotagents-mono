@@ -46,7 +46,9 @@ describe("discord dependency helpers", () => {
     expect(discordServiceSource).toContain('await this.reactToMessage(message, "👀")')
     expect(discordServiceSource).toContain('await this.reactToMessage(message, "✅")')
     expect(discordServiceSource).toContain('await this.reactToMessage(message, "❌")')
-    expect(discordServiceSource).toContain("await message.reply({ content: chunk })")
+    expect(discordServiceSource).toContain("collectOutboundDiscordImages(content)")
+    expect(discordServiceSource).toContain("stripDiscordMarkdownImages(content)")
+    expect(discordServiceSource).toContain("await message.reply(payload)")
   })
 
   it("supports Hermes-style Discord voice-channel reply playback", () => {

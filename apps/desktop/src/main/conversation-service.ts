@@ -71,8 +71,8 @@ export interface RepeatTaskConversationBackfillSource {
 }
 
 const createInlineDataImageMarkdownRegex = () =>
-  /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
-const DATA_IMAGE_URL_REGEX = /^data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/i
+  /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);(?:base64,([A-Za-z0-9+/=\r\n]+)|(?:charset=[^;,]+;)?utf8,([^)]*)))\)/g
+const DATA_IMAGE_URL_REGEX = /^data:image\/([a-zA-Z0-9.+-]+);(?:base64,([A-Za-z0-9+/=\r\n]+)|(?:charset=[^;,]+;)?utf8,([\s\S]+))$/i
 const IMAGE_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
   png: "png",
   apng: "apng",
@@ -82,6 +82,7 @@ const IMAGE_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
   webp: "webp",
   bmp: "bmp",
   avif: "avif",
+  "svg+xml": "svg",
 }
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   ".png": "image/png",
@@ -222,8 +223,10 @@ export class ConversationService {
       throw new Error("Invalid data:image URL")
     }
 
-    const [, subtype, rawBase64] = match
-    const buffer = Buffer.from(rawBase64.replace(/\s+/g, ""), "base64")
+    const [, subtype, rawBase64, rawUtf8] = match
+    const buffer = rawBase64
+      ? Buffer.from(rawBase64.replace(/\s+/g, ""), "base64")
+      : Buffer.from(decodeURIComponent(rawUtf8), "utf8")
     return this.storeConversationImageBuffer(conversationId, buffer, `image/${subtype.toLowerCase()}`)
   }
 
