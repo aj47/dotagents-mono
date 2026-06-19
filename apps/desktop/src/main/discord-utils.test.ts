@@ -7,6 +7,10 @@ import {
   getDiscordConversationKey,
   getDiscordMessageRejectionReason,
   getSupportedDiscordAttachmentImageMimeType,
+  isBotNameMentioned,
+  markDiscordBotReply,
+  shouldAllowDiscordNoReply,
+  shouldProcessDiscordMessageType,
   splitDiscordMessageContent,
   summarizeDiscordAttachments,
 } from "./discord-utils"
@@ -91,6 +95,47 @@ describe("discord utils", () => {
       dmEnabled: true,
       allowGuildIds: ["guild-2"],
     })).toBe("guild not allowlisted")
+  })
+
+  it("treats plain-text bot name callouts as direct address", () => {
+    expect(isBotNameMentioned("jinx can u see this", "Jinx", "Jinx")).toBe(true)
+    expect(isBotNameMentioned("im talking to u jinx", "Jinx", "Jinx")).toBe(true)
+    expect(isBotNameMentioned("that jinxed the deploy", "Jinx", "Jinx")).toBe(false)
+
+    expect(shouldAllowDiscordNoReply({
+      isDirectMessage: false,
+      atMentioned: false,
+      nameMentioned: true,
+    })).toBe(false)
+  })
+
+  it("keeps short follow-ups after a bot reply out of no-reply mode", () => {
+    const replies = new Map<string, number>()
+    markDiscordBotReply(replies, "discord_g1_c2", 1_000)
+
+    expect(shouldAllowDiscordNoReply({
+      isDirectMessage: false,
+      atMentioned: false,
+      nameMentioned: false,
+      lastBotReplyAt: replies.get("discord_g1_c2"),
+      now: 1_000 + 30_000,
+    })).toBe(false)
+
+    expect(shouldAllowDiscordNoReply({
+      isDirectMessage: false,
+      atMentioned: false,
+      nameMentioned: false,
+      lastBotReplyAt: replies.get("discord_g1_c2"),
+      now: 1_000 + 3 * 60_000,
+    })).toBe(true)
+  })
+
+  it("filters Discord system thread events before message processing", () => {
+    expect(shouldProcessDiscordMessageType(0)).toBe(true)
+    expect(shouldProcessDiscordMessageType(19)).toBe(true)
+    expect(shouldProcessDiscordMessageType(18)).toBe(false)
+    expect(shouldProcessDiscordMessageType(21)).toBe(false)
+    expect(shouldProcessDiscordMessageType("0")).toBe(false)
   })
 
   it("exempts Discord application owners from the DM allowlist (bootstrap path)", () => {

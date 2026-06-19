@@ -49,6 +49,22 @@ export interface DiscordAttachmentSummary {
   imageMimeType?: string
 }
 
+const ACTIVE_DISCORD_EXCHANGE_WINDOW_MS = 2 * 60 * 1000
+const PROCESSABLE_DISCORD_MESSAGE_TYPES = new Set([
+  0, // Default user message
+  19, // Reply
+  20, // Chat input command
+  23, // Context menu command
+])
+
+export interface DiscordReplyPolicyInput {
+  isDirectMessage: boolean
+  atMentioned: boolean
+  nameMentioned: boolean
+  lastBotReplyAt?: number
+  now?: number
+}
+
 function escapeDiscordAttachmentText(value: string): string {
   return value.replace(/["<>\n\r]/g, " ").trim()
 }
@@ -165,6 +181,30 @@ export function isBotNameMentioned(
     if (re.test(lower)) return true
   }
   return false
+}
+
+export function shouldAllowDiscordNoReply(input: DiscordReplyPolicyInput): boolean {
+  if (input.isDirectMessage || input.atMentioned || input.nameMentioned) return false
+
+  const lastBotReplyAt = input.lastBotReplyAt
+  if (typeof lastBotReplyAt === "number" && Number.isFinite(lastBotReplyAt)) {
+    const now = input.now ?? Date.now()
+    if (now - lastBotReplyAt <= ACTIVE_DISCORD_EXCHANGE_WINDOW_MS) return false
+  }
+
+  return true
+}
+
+export function shouldProcessDiscordMessageType(type: unknown): boolean {
+  return typeof type === "number" && PROCESSABLE_DISCORD_MESSAGE_TYPES.has(type)
+}
+
+export function markDiscordBotReply(
+  replies: Map<string, number>,
+  conversationId: string,
+  now: number = Date.now(),
+): void {
+  replies.set(conversationId, now)
 }
 
 function normalizeIds(values: string[] | undefined): string[] {

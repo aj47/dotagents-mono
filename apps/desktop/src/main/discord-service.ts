@@ -22,6 +22,9 @@ import {
   buildDiscordAttachmentPromptBlock,
   summarizeDiscordAttachments,
   isBotNameMentioned,
+  markDiscordBotReply,
+  shouldAllowDiscordNoReply,
+  shouldProcessDiscordMessageType,
   splitDiscordMessageContent,
   type DiscordAttachmentSummary,
   type DiscordConversationLocation,
@@ -916,6 +919,7 @@ class DiscordService {
   private readonly voicePlaybackGuilds = new Set<string>()
   /** Buffered non-mentioned messages per channel, injected as context when bot IS mentioned */
   private readonly pendingHistory = new Map<string, PendingMessage[]>()
+  private readonly lastBotReplyAtByConversation = new Map<string, number>()
   /**
    * IDs of the Discord application owner (or, if the application is owned by a
    * Team, every team member). Populated on `ready` via `client.application.fetch()`.
@@ -1584,7 +1588,7 @@ class DiscordService {
     const inGuild = message.inGuild()
     this.addLog(
       "info",
-      `messageCreate received: ${inGuild ? `guild=${message.guildId} channel=${message.channelId}` : "DM"} author=${message.author.id} isBot=${message.author.bot} contentLen=${message.content.length}`,
+      `messageCreate received: ${inGuild ? `guild=${message.guildId} channel=${message.channelId}` : "DM"} author=${message.author.id} isBot=${message.author.bot} type=${message.type ?? "unknown"} contentLen=${message.content.length}`,
     )
 
     if (!this.client?.user) {
@@ -1596,6 +1600,10 @@ class DiscordService {
     const cfg = configStore.get()
     if (!cfg.discordEnabled) {
       this.addLog("info", "Dropped messageCreate: discordEnabled=false")
+      return
+    }
+    if (!shouldProcessDiscordMessageType(message.type)) {
+      this.addLog("info", `Dropped Discord message: unsupported message type ${message.type ?? "unknown"}`)
       return
     }
 
@@ -1721,7 +1729,12 @@ class DiscordService {
     // Direct @mentions and DMs always get a reply. Name mentions and
     // non-mention mode get the smart reply instruction so the LLM can
     // decide whether it has something useful to say.
-    const allowNoReply = !isDirectMessage && !atMentioned
+    const allowNoReply = shouldAllowDiscordNoReply({
+      isDirectMessage,
+      atMentioned,
+      nameMentioned,
+      lastBotReplyAt: this.lastBotReplyAtByConversation.get(conversationId),
+    })
     const smartReplyInstruction = allowNoReply ? DISCORD_SMART_REPLY_INSTRUCTION : ""
 
     const basePrompt = prompt || "Please review the attached Discord media."
@@ -1772,6 +1785,7 @@ class DiscordService {
 
           await this.sendChunks(message, responseText)
           await this.playDiscordVoiceReply(message, responseText)
+          markDiscordBotReply(this.lastBotReplyAtByConversation, conversationId)
           await this.removeOwnReaction(message, "👀")
           await this.reactToMessage(message, "✅")
           this.addLog("info", `Replied to Discord conversation ${conversationId}`)
