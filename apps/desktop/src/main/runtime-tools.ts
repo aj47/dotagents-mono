@@ -761,7 +761,9 @@ const toolHandlers: Record<string, ToolHandler> = {
       }
     }
 
-    const conversationId = session?.conversationId ?? (context.sessionId.startsWith("conv_") ? context.sessionId : undefined)
+    const conversationId = session?.conversationId
+      ?? (context.sessionId.startsWith("conv_") ? context.sessionId : undefined)
+      ?? agentSessionTracker.getConversationIdForSession(trackedSessionId)
     if (!conversationId) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: "Current session is not linked to a conversation" }) }],
