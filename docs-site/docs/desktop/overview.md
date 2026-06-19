@@ -19,6 +19,7 @@ Built with Electron, React, and Rust, the desktop app provides:
 - **Real-time progress** — Watch agents think and act step by step
 - **Cross-platform** — macOS (full support), Windows, and Linux
 - **Remote server** — Optional local HTTP API for mobile pairing, operator dashboards, and automation
+- **Artifacts browser** — Find files, media, PDFs, HTML reports, and URLs produced by recent conversations
 
 ## Platform Support
 
@@ -43,10 +44,24 @@ The main interface displays your conversation sessions in a grid or kanban layou
 - Tool execution steps with real-time progress
 - Token usage and performance metrics
 - Agent identification (which agent handled the request)
+- Compact tool activity summaries that group calls, show counts, and keep large payloads collapsed
+- Per-session model, thinking, verbosity, and service-tier controls when the selected provider supports them
 
 ### Panel Mode
 
 DotAgents can run as a compact **floating panel** — a small window that stays on top of other applications. This mode provides quick access to voice recording and agent interaction without switching windows.
+
+### Artifacts
+
+The **Artifacts** view scans conversation history for user-facing outputs and links them back to their source sessions:
+
+- Local files mentioned by agents, including markdown, text, PDFs, images, audio, video, and HTML
+- URL references from conversation output
+- Search and kind filters
+- Inline previews for supported local artifacts
+- Open, copy path or URL, and reveal-in-folder actions
+
+HTML previews are sandboxed, and remote HTTP media is treated as an external URL rather than silently loading it as a trusted local preview.
 
 ### Settings
 
@@ -93,6 +108,9 @@ All conversations are persisted locally and searchable:
 - Session metadata (agent used, duration, token count)
 - Export and review past interactions
 - Continue previous conversations
+- Search across session prompts and final responses
+- Archive sessions to keep the active sidebar focused without deleting history
+- Group, reorder, rename, pin, and collapse sidebar sessions
 
 ### Tool Approval
 

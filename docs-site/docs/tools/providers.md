@@ -42,6 +42,24 @@ Best for: Fast inference, real-time voice interactions.
 
 Best for: Multimodal tasks, large context windows, and agentic reasoning. Prefer Gemini 3.1 Pro/Flash previews for the newest capabilities; use Gemini 2.5 stable models when you need stable model IDs.
 
+### ChatGPT Web / OpenAI Codex
+
+| Setting | Value |
+|---------|-------|
+| **Auth** | ChatGPT OAuth imported from Codex CLI or connected in Settings > Providers |
+| **Base URL** | `https://chatgpt.com` by default |
+| **Models** | Codex/ChatGPT model IDs exposed by the local provider fallback or account |
+
+Best for: Using your existing ChatGPT/Codex login for agent runs without copying API keys into project files.
+
+When ChatGPT Web is selected, the bottom bar exposes Codex-specific controls:
+
+| Control | Effect |
+|---------|--------|
+| **Thinking** | Sends reasoning effort for reasoning-capable OpenAI/Codex models. |
+| **Verbosity** | Sends Codex response verbosity (`low`, `medium`, or `high`). |
+| **Speed** | `Fast` requests the Codex priority service tier; `Standard` sends no explicit service tier. |
+
 ### Claude via OpenAI-compatible gateways
 
 DotAgents does not require a dedicated provider integration for every model family. If your gateway exposes an OpenAI-compatible API, configure it as a custom provider and use current Claude model IDs such as `claude-opus-4-6`, `claude-sonnet-4-6`, or `claude-haiku-4-5`.
@@ -74,6 +92,10 @@ Best for: Privacy-first, offline use, no API costs.
 - Significantly faster than OpenAI's endpoint
 - Requires Groq API key
 
+### Desktop Provider For Mobile
+
+When the mobile app is paired with desktop, press-and-hold transcription can be routed through the desktop-configured STT provider. Use this when mobile should inherit desktop OpenAI, Groq, or local STT settings instead of relying on platform speech recognition.
+
 ### Parakeet (Local)
 
 - Runs locally using ONNX runtime
@@ -100,6 +122,12 @@ Best for: Privacy-first, offline use, no API costs.
 - Multiple voices
 - Natural prosody
 - Supports multiple languages
+
+### Microsoft Edge TTS
+
+- Uses Edge neural voices through the desktop runtime
+- Available to desktop and paired mobile TTS requests
+- Useful as a cloud voice fallback when provider API keys are not configured
 
 ### Kitten TTS
 

@@ -13,8 +13,11 @@ All configurable options in DotAgents, organized by category.
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| **AI Provider** | Primary LLM provider (OpenAI, Groq, Gemini) | — |
+| **AI Provider** | Primary LLM provider (OpenAI, Groq, Gemini, ChatGPT Web/OpenAI Codex) | — |
 | **Model** | Chat model to use | Provider default |
+| **Thinking** | Reasoning effort for reasoning-capable OpenAI/Codex models | Provider default |
+| **Verbosity** | Codex response verbosity for ChatGPT Web/OpenAI Codex | `medium` |
+| **Codex Service Tier** | `Fast` requests Codex priority service tier; `Standard` sends no explicit tier | `standard` |
 | **STT Provider** | Speech-to-text engine | OpenAI Whisper |
 | **STT Language** | Language for speech recognition | English |
 | **TTS Provider** | Text-to-speech engine | OpenAI |
@@ -25,6 +28,7 @@ All configurable options in DotAgents, organized by category.
 | **Langfuse Public Key** | Langfuse public API key | — |
 | **Langfuse Secret Key** | Langfuse secret API key | — |
 | **Langfuse Base URL** | Self-hosted Langfuse URL | Cloud default |
+| **Local Trace Logging** | Write Langfuse-shaped JSONL traces to disk for offline inspection | Off |
 
 ## Provider Settings
 
@@ -55,6 +59,16 @@ All configurable options in DotAgents, organized by category.
 |---------|-------------|
 | **Base URL** | Any OpenAI-compatible endpoint |
 | **API Key** | Authentication key |
+
+### ChatGPT Web / OpenAI Codex
+
+| Setting | Description |
+|---------|-------------|
+| **Connect / Disconnect ChatGPT Web** | OAuth flow for the ChatGPT Web provider, including Codex CLI auth import when available |
+| **Base URL** | ChatGPT Web base URL, normally `https://chatgpt.com` |
+| **Thinking** | Reasoning effort passed to Codex/OpenAI reasoning models |
+| **Verbosity** | Text verbosity passed to Codex responses |
+| **Codex Service Tier** | Optional priority service tier for faster Codex responses |
 
 ## MCP Server Settings
 
@@ -98,6 +112,8 @@ See [Remote Server & Mobile Pairing](/desktop/remote-server) for setup and secur
 | **Cloudflare Tunnel Enabled** | Expose the local server through a tunnel | `false` |
 | **Cloudflare Tunnel Mode** | Quick tunnel or named tunnel | Quick tunnel |
 | **Terminal QR** | Print QR payloads for headless pairing | Auto for QR/headless flows |
+| **Easy Mobile Pairing** | Shows a QR/deep-link payload using a reachable LAN or Tailscale URL when available | Auto |
+| **Rotate API Key** | Invalidates older mobile/operator bearer tokens and requires clients to pair again | Manual |
 
 ## Messaging Integration Settings
 
@@ -154,6 +170,8 @@ When the built-in critique pass is enabled, each run uses three steps: the worke
 | **Theme** | `dark` or `light` | `dark` |
 | **Layout** | Session view layout preference | Grid |
 | **Panel Mode** | Floating panel vs full window | Full window |
+| **Archive Sessions** | Hide sessions from the active sidebar without deleting history | Manual |
+| **Artifacts View** | Search and preview conversation-linked files, media, HTML, PDFs, and URLs | Available from the bottom bar |
 
 ## Storage Locations
 
