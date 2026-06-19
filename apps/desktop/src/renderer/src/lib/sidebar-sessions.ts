@@ -222,7 +222,7 @@ function resolveRepeatTaskTitleHintKey(title: string, repeatTaskTitleHints?: Rep
   if (titleTokens.length < 3) return null
 
   for (const hint of hintIndex.fuzzyEntries) {
-    if (titleTokens.every((token) => hint.tokens.has(token))) {
+    if (titleTokens.length === hint.tokens.size && titleTokens.every((token) => hint.tokens.has(token))) {
       return hint.key
     }
   }

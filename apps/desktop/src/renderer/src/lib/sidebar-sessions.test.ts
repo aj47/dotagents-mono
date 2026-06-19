@@ -1036,11 +1036,12 @@ describe("partitionTaskAndUserEntries", () => {
     expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
   })
 
-  it("uses configured repeat-task title tokens for shortened retitled task history", () => {
+  it("uses configured repeat-task title tokens only for equivalent retitled task history", () => {
     const entries = [
-      { session: { id: "t1", conversationTitle: "TechFren Reel Critique" } },
-      { session: { id: "t2", conversationTitle: "Overnight Video Evidence" } },
-      { session: { id: "u1", conversationTitle: "Create Overnight Critic Task" } },
+      { session: { id: "t1", conversationTitle: "TechFren Instagram Reel Critique" } },
+      { session: { id: "t2", conversationTitle: "Overnight Video Evidence Accumulator" } },
+      { session: { id: "u1", conversationTitle: "Overnight Video Evidence" } },
+      { session: { id: "u2", conversationTitle: "Create Overnight Critic Task" } },
     ]
 
     const { userEntries, taskEntries } = partitionTaskAndUserEntries(
@@ -1052,7 +1053,7 @@ describe("partitionTaskAndUserEntries", () => {
       ]),
     )
 
-    expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1", "u2"])
     expect(taskEntries.map((e) => e.session.id)).toEqual(["t1", "t2"])
   })
 
@@ -1113,13 +1114,22 @@ describe("getRepeatTaskEntryTaskId", () => {
     ).toBe("daily-brief")
   })
 
-  it("falls back to current task title hints for legacy rows", () => {
+  it("falls back to current task title hints for equivalent legacy rows", () => {
     expect(
       getRepeatTaskEntryTaskId(
-        { id: "legacy", conversationTitle: "TechFren Reel Critique" },
+        { id: "legacy", conversationTitle: "TechFren Instagram Reel Critique" },
         new Map([["TechFren Instagram Reel Critic", "instagram-reel-critic"]]),
       ),
     ).toBe("instagram-reel-critic")
+  })
+
+  it("does not map shortened ordinary titles to longer repeat-task hints", () => {
+    expect(
+      getRepeatTaskEntryTaskId(
+        { id: "legacy", conversationTitle: "Overnight Video Evidence" },
+        new Map([["Overnight Video Evidence Accumulator", "overnight-evidence"]]),
+      ),
+    ).toBeNull()
   })
 })
 

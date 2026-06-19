@@ -431,6 +431,7 @@ async function processWithAgentMode(
   existingSessionId?: string, // Optional: reuse existing session instead of creating new one
   launchStateOrStartSnoozed: boolean | AgentLaunchState = false, // Defaults to foreground/panel-focused work.
   maxIterationsOverride?: number,
+  options: AgentLoopSessionOptions = {},
 ): Promise<string> {
   const launchState = normalizeAgentLaunchState(launchStateOrStartSnoozed)
   const { startSnoozed } = launchState
@@ -487,7 +488,7 @@ async function processWithAgentMode(
     logLLM(`[processWithAgentMode] ACP routing via ${topLevelAcpSelection.source}, agent: ${resolvedMainAgentName}`)
 
     // Create conversation title for session tracking
-    const conversationTitle = text
+    const conversationTitle = resolveAgentRunConversationTitle(text, options)
     const profileSnapshot = existingProfileSnapshot
       ?? (currentProfile ? createSessionSnapshotFromProfile(currentProfile) : undefined)
 
@@ -548,7 +549,7 @@ async function processWithAgentMode(
   }
 
   // Start tracking this agent session (or reuse existing one)
-  let conversationTitle = text
+  let conversationTitle = resolveAgentRunConversationTitle(text, options)
   // When creating a new session from keybind/UI, start unsnoozed unless the
   // caller explicitly requested true background/snoozed work.
   const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
@@ -766,8 +767,9 @@ export async function runAgentLoopSession(
   existingSessionId: string,
   startSnoozed: boolean = true,
   maxIterationsOverride?: number,
+  options: AgentLoopSessionOptions = {},
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed, maxIterationsOverride)
+  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed, maxIterationsOverride, options)
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"
@@ -791,6 +793,17 @@ type AgentLaunchState = {
   startSnoozed: boolean
   shouldSuppressPanelAutoShow: boolean
   shouldFocusPanelSession: boolean
+}
+
+type AgentLoopSessionOptions = {
+  conversationTitle?: string
+}
+
+function resolveAgentRunConversationTitle(
+  text: string,
+  options?: AgentLoopSessionOptions,
+): string {
+  return options?.conversationTitle?.trim() || text
 }
 
 function resolveAgentLaunchState(input: AgentLaunchStateInput = {}): AgentLaunchState {

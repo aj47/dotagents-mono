@@ -44,4 +44,9 @@ describe("loop-service repeat task session titles", () => {
     expect(appendIndex).toBeGreaterThan(reviveIndex)
     expect(revisionSource).toContain("agentSessionTracker.completeSession(sessionId)")
   })
+
+  it("passes compact repeat-task titles into worker and critic agent runs", () => {
+    expect(loopServiceSource).toContain("{ conversationTitle },")
+    expect(loopServiceSource).toContain("{ conversationTitle: criticTitle },")
+  })
 })

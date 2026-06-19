@@ -723,7 +723,14 @@ class LoopService {
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      const workerResult = await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
+      const workerResult = await runAgentLoopSession(
+        loop.prompt,
+        conversationId,
+        sessionId,
+        startSnoozed,
+        loop.maxIterations,
+        { conversationTitle },
+      )
 
       if (loop.critiquePass) {
         const critiquePrompt = buildCritiquePassPrompt(loop, workerResult)
@@ -762,6 +769,7 @@ class LoopService {
           criticSessionId,
           startSnoozed,
           loop.maxIterations,
+          { conversationTitle: criticTitle },
         )
         const critiqueConversation = await conversationService.loadConversation(criticConversation.id)
         const critique = getLatestAssistantMessageContent(critiqueConversation) || critiqueResult.trim()
@@ -788,6 +796,7 @@ class LoopService {
                 sessionId,
                 startSnoozed,
                 loop.maxIterations,
+                { conversationTitle },
               )
               logApp(`[LoopService] Fed critique pass back into worker session ${sessionId} for loop "${loop.name}"`)
             } else {
