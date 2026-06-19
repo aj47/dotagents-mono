@@ -207,6 +207,52 @@ function ensureDiscordImageExtension(fileName: string, mimeType: string, fallbac
   return `${sanitizeDiscordFileName(fileName, fallbackBase)}.${extension}`
 }
 
+function isDiscordHostedMediaUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== "https:") return false
+    const host = parsed.hostname.toLowerCase()
+    return host === "cdn.discordapp.com"
+      || host === "media.discordapp.net"
+      || /^images-ext-\d+\.discordapp\.net$/u.test(host)
+  } catch {
+    return false
+  }
+}
+
+async function readLimitedDiscordResponseBuffer(response: Response, maxBytes: number): Promise<Buffer | null> {
+  const contentLengthHeader = response.headers.get("content-length")
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) return null
+
+  const body = response.body
+  if (!body) {
+    const buffer = Buffer.from(await response.arrayBuffer())
+    return buffer.length > 0 && buffer.length <= maxBytes ? buffer : null
+  }
+
+  const reader = body.getReader()
+  const chunks: Buffer[] = []
+  let total = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      total += value.byteLength
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined)
+        return null
+      }
+      chunks.push(Buffer.from(value))
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  return total > 0 ? Buffer.concat(chunks, total) : null
+}
+
 function parseDiscordDataImageUrl(url: string): { buffer: Buffer; mimeType: string } | null {
   const base64Match = /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(url)
   if (base64Match) {
@@ -1390,6 +1436,7 @@ class DiscordService {
 
   private async downloadDiscordAttachmentImage(attachment: DiscordAttachmentSummary): Promise<Buffer | null> {
     if (!attachment.imageMimeType) return null
+    if (!isDiscordHostedMediaUrl(attachment.url)) return null
     if (typeof attachment.size === "number" && attachment.size > DISCORD_ATTACHMENT_IMAGE_MAX_BYTES) {
       return null
     }
@@ -1402,17 +1449,7 @@ class DiscordService {
         throw new Error(`HTTP ${response.status}`)
       }
 
-      const contentLength = Number(response.headers.get("content-length") || 0)
-      if (contentLength > DISCORD_ATTACHMENT_IMAGE_MAX_BYTES) {
-        return null
-      }
-
-      const arrayBuffer = await response.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
-      if (buffer.length === 0 || buffer.length > DISCORD_ATTACHMENT_IMAGE_MAX_BYTES) {
-        return null
-      }
-      return buffer
+      return readLimitedDiscordResponseBuffer(response, DISCORD_ATTACHMENT_IMAGE_MAX_BYTES)
     } catch (error) {
       this.addLog("warn", `Failed to download Discord image attachment ${attachment.name}: ${error instanceof Error ? error.message : String(error)}`)
       return null
@@ -1499,31 +1536,6 @@ class DiscordService {
         return {
           attachment: parsed.buffer,
           name: ensureDiscordImageExtension(safeAlt, parsed.mimeType, fallbackBase),
-        }
-      }
-
-      if (/^https?:\/\//i.test(image.url)) {
-        const response = await fetch(image.url, {
-          signal: AbortSignal.timeout(DISCORD_ATTACHMENT_DOWNLOAD_TIMEOUT_MS),
-        })
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        const contentLength = Number(response.headers.get("content-length") || 0)
-        if (contentLength > DISCORD_OUTBOUND_IMAGE_MAX_BYTES) return null
-        const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() || "image/png"
-        if (!contentType.startsWith("image/")) return null
-        const buffer = Buffer.from(await response.arrayBuffer())
-        if (buffer.length === 0 || buffer.length > DISCORD_OUTBOUND_IMAGE_MAX_BYTES) return null
-        let fileName = safeAlt
-        try {
-          const parsedUrl = new URL(image.url)
-          const pathName = decodeURIComponent(parsedUrl.pathname.split("/").filter(Boolean).pop() || "")
-          if (pathName) fileName = pathName
-        } catch {
-          // Keep alt-derived fallback.
-        }
-        return {
-          attachment: buffer,
-          name: ensureDiscordImageExtension(sanitizeDiscordFileName(fileName, fallbackBase), contentType, fallbackBase),
         }
       }
     } catch (error) {

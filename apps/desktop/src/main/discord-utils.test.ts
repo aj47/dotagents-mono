@@ -292,6 +292,13 @@ describe("discord utils", () => {
     expect(stripDiscordMarkdownImages(content)).toBe("Here are previews.\n\nDone.")
   })
 
+  it("does not treat remote URLs in model output as outbound Discord image attachments", () => {
+    const content = "Remote preview: ![leak](https://example.com/private.png)"
+
+    expect(extractDiscordMarkdownImages(content)).toEqual([])
+    expect(stripDiscordMarkdownImages(content)).toBe(content)
+  })
+
   it("builds compact Discord attachment prompt blocks with optional image markdown", () => {
     const block = buildDiscordAttachmentPromptBlock([
       {

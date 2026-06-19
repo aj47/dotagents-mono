@@ -82,7 +82,6 @@ const IMAGE_EXTENSION_BY_MIME_SUBTYPE: Record<string, string> = {
   webp: "webp",
   bmp: "bmp",
   avif: "avif",
-  "svg+xml": "svg",
 }
 const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
   ".png": "image/png",

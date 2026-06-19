@@ -61,7 +61,7 @@ const PROCESSABLE_DISCORD_MESSAGE_TYPES = new Set([
   20, // Chat input command
   23, // Context menu command
 ])
-const DISCORD_MARKDOWN_IMAGE_REGEX = /!\[([^\]]*)\]\((data:image\/[^)\s]+|assets:\/\/conversation-image\/[^)\s]+|https?:\/\/[^)\s]+)\)/gi
+const DISCORD_MARKDOWN_IMAGE_REGEX = /!\[([^\]]*)\]\((data:image\/[^)\s]+|assets:\/\/conversation-image\/[^)\s]+)\)/gi
 
 export interface DiscordReplyPolicyInput {
   isDirectMessage: boolean
