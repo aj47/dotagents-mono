@@ -12,6 +12,8 @@ import {
   ConversationCompactionMetadata,
   ConversationMessage,
   ConversationHistoryItem,
+  ConversationRepeatTaskRole,
+  ConversationRepeatTaskSource,
   LoadedConversation,
   TitleSource,
 } from "../shared/types"
@@ -38,6 +40,7 @@ import {
   getConversationVideoAssetDir,
   getConversationVideoAssetPath,
 } from "./conversation-video-assets"
+import { scheduleConversationHistoryChanged } from "./conversation-history-events"
 
 // Threshold for compacting conversations on load
 // When a conversation exceeds this many messages, older ones are summarized
@@ -59,6 +62,14 @@ const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
 const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
 const MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS = 8000
 const COMPACTION_EXTRACTED_FACT_LIMIT = 8
+
+export interface RepeatTaskConversationBackfillSource {
+  taskId: string
+  taskName: string
+  prompt: string
+  role?: ConversationRepeatTaskRole
+}
+
 const createInlineDataImageMarkdownRegex = () =>
   /!\[([^\]]*)\]\((data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+))\)/g
 const DATA_IMAGE_URL_REGEX = /^data:image\/([a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\r\n]+)$/i
@@ -547,6 +558,7 @@ export class ConversationService {
       ...(conversation.clientSessionId ? { clientSessionId: conversation.clientSessionId } : {}),
       title: conversation.title,
       ...(conversation.titleSource ? { titleSource: conversation.titleSource } : {}),
+      ...(conversation.repeatTask ? { repeatTask: conversation.repeatTask } : {}),
       createdAt: conversation.createdAt,
       updatedAt: this.getConversationActivityTimestamp(conversation),
       lastMessageAt,
@@ -801,6 +813,7 @@ export class ConversationService {
     try {
       const indexPath = this.getConversationIndexPath()
       await fsPromises.writeFile(indexPath, JSON.stringify(this.indexCache, null, 2))
+      scheduleConversationHistoryChanged()
     } catch (error) {
       logApp("[ConversationService] Error writing index to disk:", error)
     }
@@ -1312,6 +1325,107 @@ export class ConversationService {
     await this.enqueueConversationMutation(conversation.id, async () => {
       await this.saveConversationUnlocked(conversation, preserveTimestamp)
     })
+  }
+
+  private normalizeRepeatTaskPromptForBackfill(value: string | undefined): string {
+    return (value ?? "").replace(/\r\n/g, "\n").trim()
+  }
+
+  async markConversationRepeatTaskSource(
+    conversationId: string,
+    repeatTask: ConversationRepeatTaskSource,
+    options: { preserveTimestamp?: boolean } = {},
+  ): Promise<Conversation | null> {
+    const preserveTimestamp = options.preserveTimestamp !== false
+    return this.enqueueConversationMutation(conversationId, async () => {
+      const conversation = await this.loadConversationFromDisk(conversationId)
+      if (!conversation) {
+        return null
+      }
+
+      const existing = conversation.repeatTask
+      if (
+        existing?.type === repeatTask.type &&
+        existing.taskId === repeatTask.taskId &&
+        existing.taskName === repeatTask.taskName &&
+        existing.runId === repeatTask.runId &&
+        existing.role === repeatTask.role
+      ) {
+        return conversation
+      }
+
+      conversation.repeatTask = repeatTask
+      await this.saveConversationUnlocked(conversation, preserveTimestamp)
+      return conversation
+    })
+  }
+
+  async backfillRepeatTaskSourcesByPrompt(sources: RepeatTaskConversationBackfillSource[]): Promise<number> {
+    const sourceByPrompt = new Map<string, RepeatTaskConversationBackfillSource>()
+    const ambiguousPrompts = new Set<string>()
+    for (const source of sources) {
+      const prompt = this.normalizeRepeatTaskPromptForBackfill(source.prompt)
+      if (!prompt || ambiguousPrompts.has(prompt)) continue
+      if (sourceByPrompt.has(prompt)) {
+        sourceByPrompt.delete(prompt)
+        ambiguousPrompts.add(prompt)
+        continue
+      }
+      sourceByPrompt.set(prompt, source)
+    }
+    if (sourceByPrompt.size === 0) {
+      return 0
+    }
+
+    this.ensureConversationsFolder()
+    let entries: string[]
+    try {
+      entries = await fsPromises.readdir(conversationsFolder)
+    } catch (error) {
+      logApp("[ConversationService] Failed to read conversations for repeat-task provenance backfill:", error)
+      return 0
+    }
+
+    let updatedCount = 0
+    const conversationIds = entries
+      .filter((entry) => entry.endsWith(".json") && entry !== "index.json")
+      .map((entry) => entry.replace(/\.json$/u, ""))
+
+    for (const conversationId of conversationIds) {
+      const updated = await this.enqueueConversationMutation(conversationId, async () => {
+        const conversation = await this.loadConversationFromDisk(conversationId)
+        if (!conversation || conversation.repeatTask) {
+          return false
+        }
+        const firstUserMessage = this.getStoredRawMessages(conversation)
+          .find((message) => message.role === "user" && message.content.trim().length > 0)
+        const source = sourceByPrompt.get(
+          this.normalizeRepeatTaskPromptForBackfill(firstUserMessage?.content),
+        )
+        if (!source) {
+          return false
+        }
+
+        conversation.repeatTask = {
+          type: "repeat_task_run",
+          taskId: source.taskId,
+          taskName: source.taskName,
+          runId: conversation.id,
+          role: source.role ?? "worker",
+        }
+        await this.saveConversationUnlocked(conversation, true)
+        return true
+      })
+
+      if (updated) {
+        updatedCount += 1
+      }
+    }
+
+    if (updatedCount > 0) {
+      logApp(`[ConversationService] Backfilled repeat-task provenance for ${updatedCount} conversation(s)`)
+    }
+    return updatedCount
   }
 
   async loadConversation(

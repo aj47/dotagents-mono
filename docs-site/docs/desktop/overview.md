@@ -19,6 +19,7 @@ Built with Electron, React, and Rust, the desktop app provides:
 - **Real-time progress** — Watch agents think and act step by step
 - **Cross-platform** — macOS (full support), Windows, and Linux
 - **Remote server** — Optional local HTTP API for mobile pairing, operator dashboards, and automation
+- **Artifacts browser** — Find files, media, PDFs, HTML reports, and URLs produced by recent conversations
 
 ## Platform Support
 
@@ -43,10 +44,24 @@ The main interface displays your conversation sessions in a grid or kanban layou
 - Tool execution steps with real-time progress
 - Token usage and performance metrics
 - Agent identification (which agent handled the request)
+- Compact tool activity summaries that group calls, show counts, and keep large payloads collapsed
+- Per-session model, thinking, verbosity, and service-tier controls when the selected provider supports them
 
 ### Panel Mode
 
 DotAgents can run as a compact **floating panel** — a small window that stays on top of other applications. This mode provides quick access to voice recording and agent interaction without switching windows.
+
+### Artifacts
+
+The **Artifacts** view scans conversation history for user-facing outputs and links them back to their source sessions:
+
+- Local files mentioned by agents, including markdown, text, PDFs, images, audio, video, and HTML
+- URL references from conversation output
+- Search and kind filters
+- Inline previews for supported local artifacts
+- Open, copy path or URL, and reveal-in-folder actions
+
+HTML previews are sandboxed, and remote HTTP media is treated as an external URL rather than silently loading it as a trusted local preview.
 
 ### Settings
 
@@ -59,7 +74,7 @@ The settings interface has dedicated sections:
 | **Models** | Model selection and custom base URLs |
 | **Capabilities** | MCP server management, tool enable/disable |
 | **Agents** | Agent profile creation and management |
-| **Loops** | Recurring automated task scheduling |
+| **Repeat Tasks** | Recurring automated task scheduling and critique passes |
 | **Discord** | Discord bot integration, access lists, and default agent routing |
 | **WhatsApp** | WhatsApp integration settings |
 | **Remote Server** | Mobile QR pairing, API key, port/bind address, and tunnel controls |
@@ -93,6 +108,9 @@ All conversations are persisted locally and searchable:
 - Session metadata (agent used, duration, token count)
 - Export and review past interactions
 - Continue previous conversations
+- Search across session prompts and final responses
+- Archive sessions to keep the active sidebar focused without deleting history
+- Group, reorder, rename, pin, and collapse sidebar sessions
 
 ### Tool Approval
 
@@ -121,12 +139,13 @@ Discord and WhatsApp let trusted messages reach the desktop agent runtime:
 - **Discord** — DMs, mentions, and configured guild/channel traffic can run a selected agent profile. Operator slash commands are separately allowlisted.
 - **WhatsApp** — MCP-backed messaging tools can send, read, and auto-reply to WhatsApp messages through the WhatsApp package.
 
-### Loops (Recurring Tasks)
+### Repeat Tasks
 
-Set up tasks that run on a schedule:
+Set up tasks that run on a schedule. See [Repeat Tasks](/agents/repeat-tasks) for the file format, cadence options, same-session behavior, and built-in critique pass.
 
-- Define a prompt and interval (e.g., "Check my email every 10 minutes")
+- Define a prompt and interval (for example, "Check my email every 10 minutes")
 - Select which agent handles the loop
+- Enable a built-in worker -> critic -> worker revision pass
 - Monitor loop execution history
 - Pause and resume loops
 

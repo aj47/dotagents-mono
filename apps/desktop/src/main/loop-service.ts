@@ -8,13 +8,20 @@
  */
 
 import fs from "fs"
-import { configStore, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
+import path from "path"
+import { createHash } from "crypto"
+import { configStore, dataFolder, globalAgentsFolder, resolveWorkspaceAgentsFolder } from "./config"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import { logApp } from "./debug"
 import { conversationService } from "./conversation-service"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { agentProfileService, createSessionSnapshotFromProfile } from "./agent-profile-service"
-import type { LoopConfig, SessionProfileSnapshot } from "../shared/types"
+import type {
+  ConversationRepeatTaskRole,
+  ConversationRepeatTaskSource,
+  LoopConfig,
+  SessionProfileSnapshot,
+} from "../shared/types"
 import { formatRepeatTaskTitle } from "../shared/repeat-tasks"
 import type { RendererHandlers } from "./renderer-handlers"
 import { WINDOWS } from "./window"
@@ -53,11 +60,85 @@ export function isContinuousLoop(loop: Pick<LoopConfig, "runContinuously">): boo
   return loop.runContinuously === true
 }
 
+const REPEAT_TASK_PROVENANCE_BACKFILL_MARKER = "repeat-task-conversation-provenance-v3.json"
+const REPEAT_TASK_PROVENANCE_BACKFILL_VERSION = 3
+
+interface RepeatTaskProvenanceBackfillMarker {
+  version: typeof REPEAT_TASK_PROVENANCE_BACKFILL_VERSION
+  backfilledAt: number
+  updatedCount: number
+  taskSignatures: Record<string, string>
+}
+
+const DEFAULT_CRITIQUE_PASS_PROMPT = [
+  "You are the built-in critic for this repeat-task run.",
+  "Review the worker agent's latest answer against the original task prompt.",
+  "Inspect any local files, artifact paths, or URLs explicitly referenced in the original prompt or worker answer when they are available and material to the review.",
+  "Judge the produced artifacts and decisions, not just the worker's summary.",
+  "Be concrete and skeptical: identify factual gaps, unsupported assumptions, missed requirements, weak reasoning, artifact defects, and risky actions.",
+  "Return concise critique only. Do not rewrite the full answer.",
+].join("\n")
+
+function buildCritiquePassPrompt(loop: LoopConfig, workerResult: string): string {
+  return `${DEFAULT_CRITIQUE_PASS_PROMPT}\n\nOriginal repeat-task prompt:\n${loop.prompt}\n\nWorker agent's latest answer:\n${workerResult}`
+}
+
+function buildWorkerRevisionPrompt(critique: string): string {
+  return [
+    "The built-in critic reviewed your previous answer for this repeat-task run.",
+    "Use the critique below to produce the final revised answer.",
+    "Address valid issues, correct mistakes, fill important gaps, and keep the final answer focused on the original task.",
+    "Do not mention the critique process unless it is necessary for the result.",
+    "",
+    "Critique:",
+    critique,
+  ].join("\n")
+}
+
+function getLatestAssistantMessageContent(conversation: { messages: Array<{ role: string; content?: string }> } | null | undefined): string {
+  const messages = conversation?.messages ?? []
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i]
+    if (message.role === "assistant" && typeof message.content === "string" && message.content.trim()) {
+      return message.content.trim()
+    }
+  }
+  return ""
+}
+
+function buildRepeatTaskConversationSource(
+  loop: Pick<LoopConfig, "id" | "name">,
+  runId: string,
+  role: ConversationRepeatTaskRole,
+): ConversationRepeatTaskSource {
+  return {
+    type: "repeat_task_run",
+    taskId: loop.id,
+    taskName: loop.name,
+    runId,
+    role,
+  }
+}
+
+function getRepeatTaskBackfillSignature(loop: Pick<LoopConfig, "name" | "prompt">): string {
+  return createHash("sha256")
+    .update(JSON.stringify({
+      name: loop.name.trim(),
+      prompt: loop.prompt.trim(),
+    }))
+    .digest("hex")
+}
+
+function normalizeRepeatTaskBackfillPrompt(prompt: string): string {
+  return prompt.replace(/\r\n/g, "\n").trim()
+}
+
 class LoopService {
   private static instance: LoopService | null = null
   private activeTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
   private loopNextRunAt: Map<string, number> = new Map()
   private executingLoops: Set<string> = new Set()
+  private repeatTaskBackfillTimer: ReturnType<typeof setTimeout> | null = null
   private isStopping: boolean = false
   /** In-memory cache of all tasks (merged from global + workspace layers). */
   private loops: LoopConfig[] = []
@@ -71,6 +152,123 @@ class LoopService {
 
   private constructor() {
     this.loadFromDisk()
+    this.scheduleRepeatTaskConversationBackfill()
+  }
+
+  private scheduleRepeatTaskConversationBackfill(): void {
+    if (this.repeatTaskBackfillTimer) {
+      clearTimeout(this.repeatTaskBackfillTimer)
+    }
+
+    this.repeatTaskBackfillTimer = setTimeout(() => {
+      this.repeatTaskBackfillTimer = null
+      void this.backfillRepeatTaskConversationSources()
+    }, 250)
+  }
+
+  private async backfillRepeatTaskConversationSources(): Promise<void> {
+    if (this.loops.length === 0) return
+    const markerPath = path.join(dataFolder, REPEAT_TASK_PROVENANCE_BACKFILL_MARKER)
+    const marker = this.readRepeatTaskProvenanceBackfillMarker(markerPath)
+
+    const pendingSources = this.loops.flatMap((loop) => {
+      const signature = getRepeatTaskBackfillSignature(loop)
+      if (marker.taskSignatures[loop.id] === signature) {
+        return []
+      }
+      return [{
+        taskId: loop.id,
+        taskName: loop.name,
+        prompt: loop.prompt,
+        role: "worker" as const,
+        signature,
+      }]
+    })
+
+    if (pendingSources.length === 0) return
+
+    const promptCounts = new Map<string, number>()
+    for (const loop of this.loops) {
+      const prompt = normalizeRepeatTaskBackfillPrompt(loop.prompt)
+      if (!prompt) continue
+      promptCounts.set(prompt, (promptCounts.get(prompt) ?? 0) + 1)
+    }
+
+    const safePendingSources = pendingSources.filter((source) => {
+      const prompt = normalizeRepeatTaskBackfillPrompt(source.prompt)
+      return prompt && promptCounts.get(prompt) === 1
+    })
+    const skippedAmbiguousCount = pendingSources.length - safePendingSources.length
+    if (skippedAmbiguousCount > 0) {
+      logApp(`[LoopService] Skipped repeat-task provenance backfill for ${skippedAmbiguousCount} task(s) with ambiguous prompts`)
+    }
+    if (safePendingSources.length === 0) return
+
+    const backfillRepeatTaskSourcesByPrompt = (conversationService as {
+      backfillRepeatTaskSourcesByPrompt?: typeof conversationService.backfillRepeatTaskSourcesByPrompt
+    }).backfillRepeatTaskSourcesByPrompt
+    if (typeof backfillRepeatTaskSourcesByPrompt !== "function") return
+
+    try {
+      const updatedCount = await backfillRepeatTaskSourcesByPrompt.call(
+        conversationService,
+        safePendingSources.map((source) => ({
+          taskId: source.taskId,
+          taskName: source.taskName,
+          prompt: source.prompt,
+          role: source.role,
+        })),
+      )
+      const nextTaskSignatures = { ...marker.taskSignatures }
+      for (const source of safePendingSources) {
+        nextTaskSignatures[source.taskId] = source.signature
+      }
+      fs.mkdirSync(dataFolder, { recursive: true })
+      fs.writeFileSync(
+        markerPath,
+        JSON.stringify({
+          version: REPEAT_TASK_PROVENANCE_BACKFILL_VERSION,
+          backfilledAt: Date.now(),
+          updatedCount: marker.updatedCount + updatedCount,
+          taskSignatures: nextTaskSignatures,
+        } satisfies RepeatTaskProvenanceBackfillMarker, null, 2),
+      )
+    } catch (error) {
+      logApp("[LoopService] Failed to backfill repeat-task conversation provenance:", error)
+    }
+  }
+
+  private readRepeatTaskProvenanceBackfillMarker(markerPath: string): RepeatTaskProvenanceBackfillMarker {
+    const fallback: RepeatTaskProvenanceBackfillMarker = {
+      version: REPEAT_TASK_PROVENANCE_BACKFILL_VERSION,
+      backfilledAt: 0,
+      updatedCount: 0,
+      taskSignatures: {},
+    }
+
+    if (!fs.existsSync(markerPath)) return fallback
+
+    try {
+      const marker = JSON.parse(fs.readFileSync(markerPath, "utf8")) as Partial<RepeatTaskProvenanceBackfillMarker>
+      if (
+        marker.version === REPEAT_TASK_PROVENANCE_BACKFILL_VERSION &&
+        typeof marker.updatedCount === "number" &&
+        marker.taskSignatures &&
+        typeof marker.taskSignatures === "object" &&
+        !Array.isArray(marker.taskSignatures)
+      ) {
+        return {
+          version: REPEAT_TASK_PROVENANCE_BACKFILL_VERSION,
+          backfilledAt: typeof marker.backfilledAt === "number" ? marker.backfilledAt : 0,
+          updatedCount: marker.updatedCount,
+          taskSignatures: marker.taskSignatures,
+        }
+      }
+    } catch (error) {
+      logApp("[LoopService] Failed to read repeat-task conversation provenance backfill marker:", error)
+    }
+
+    return fallback
   }
 
   // ============================================================================
@@ -172,6 +370,10 @@ class LoopService {
   /** Save (create or update) a loop. */
   saveLoop(loop: LoopConfig): boolean {
     const idx = this.loops.findIndex((l) => l.id === loop.id)
+    const existingLoop = idx >= 0 ? this.loops[idx] : undefined
+    const shouldBackfillAfterSave =
+      !existingLoop ||
+      getRepeatTaskBackfillSignature(existingLoop) !== getRepeatTaskBackfillSignature(loop)
     const nextLoops = idx >= 0
       ? this.loops.map((existingLoop, existingIdx) => existingIdx === idx ? loop : existingLoop)
       : [...this.loops, loop]
@@ -182,6 +384,9 @@ class LoopService {
     }
 
     this.loops = nextLoops
+    if (shouldBackfillAfterSave) {
+      this.scheduleRepeatTaskConversationBackfill()
+    }
     return true
   }
 
@@ -198,6 +403,7 @@ class LoopService {
   /** Reload tasks from disk (for external changes). */
   reload(): void {
     this.loadFromDisk()
+    this.scheduleRepeatTaskConversationBackfill()
   }
 
   /** Reload tasks from disk and rebuild scheduling state for external file changes. */
@@ -414,6 +620,8 @@ class LoopService {
       // Update lastRunAt in memory and persist
       loop.lastRunAt = Date.now()
       this.saveTask(loop)
+      const repeatTaskRunId = `${loop.id}:${loop.lastRunAt}`
+      const workerRepeatTaskSource = buildRepeatTaskConversationSource(loop, repeatTaskRunId, "worker")
 
       let profileSnapshot: SessionProfileSnapshot | undefined
       if (loop.profileId) {
@@ -461,7 +669,12 @@ class LoopService {
                 conversationTitle,
                 "system",
               )
-              agentSessionTracker.updateSession(sessionId, { conversationTitle, isRepeatTask: true })
+              await conversationService.markConversationRepeatTaskSource(conversationId, workerRepeatTaskSource)
+              agentSessionTracker.updateSession(sessionId, {
+                conversationTitle,
+                isRepeatTask: true,
+                repeatTask: workerRepeatTaskSource,
+              })
               logApp(`[LoopService] Resumed session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
             } else {
               // Append failed after we'd already revived the session; put it
@@ -490,12 +703,13 @@ class LoopService {
           conversationTitle,
           "system",
         )
+        await conversationService.markConversationRepeatTaskSource(conversationId, workerRepeatTaskSource)
         sessionId = agentSessionTracker.startSession(
           conversationId,
           conversationTitle,
           startSnoozed,
           profileSnapshot,
-            { isRepeatTask: true },
+          { isRepeatTask: true, repeatTask: workerRepeatTaskSource },
         )
         logApp(`[LoopService] Created session ${sessionId} for loop "${loop.name}" (snoozed=${startSnoozed})`)
       }
@@ -509,7 +723,93 @@ class LoopService {
 
       // Reuse the main agent execution flow.
       const { runAgentLoopSession } = await import("./tipc")
-      await runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)
+      const workerResult = await runAgentLoopSession(
+        loop.prompt,
+        conversationId,
+        sessionId,
+        startSnoozed,
+        loop.maxIterations,
+        { conversationTitle },
+      )
+
+      if (loop.critiquePass) {
+        const critiquePrompt = buildCritiquePassPrompt(loop, workerResult)
+        const criticConversation = await conversationService.createConversation(critiquePrompt, "user")
+        const criticTitle = formatRepeatTaskTitle(`${loop.name} critique`)
+        await conversationService.renameConversationTitle(
+          criticConversation.id,
+          criticTitle,
+          "system",
+        )
+        const criticRepeatTaskSource = buildRepeatTaskConversationSource(loop, `${repeatTaskRunId}:critic`, "critic")
+        await conversationService.markConversationRepeatTaskSource(criticConversation.id, criticRepeatTaskSource)
+
+        let criticProfileSnapshot: SessionProfileSnapshot | undefined
+        if (loop.criticProfileId) {
+          const criticProfile = agentProfileService.getById(loop.criticProfileId)
+          if (criticProfile) {
+            criticProfileSnapshot = createSessionSnapshotFromProfile(criticProfile)
+          } else {
+            logApp(`[LoopService] Critic profile "${loop.criticProfileId}" not found for loop "${loop.name}"; using default agent`)
+          }
+        }
+
+        const criticSessionId = agentSessionTracker.startSession(
+          criticConversation.id,
+          criticTitle,
+          startSnoozed,
+          criticProfileSnapshot,
+          { isRepeatTask: true, repeatTask: criticRepeatTaskSource },
+        )
+        logApp(`[LoopService] Created critic session ${criticSessionId} for loop "${loop.name}"`)
+
+        const critiqueResult = await runAgentLoopSession(
+          critiquePrompt,
+          criticConversation.id,
+          criticSessionId,
+          startSnoozed,
+          loop.maxIterations,
+          { conversationTitle: criticTitle },
+        )
+        const critiqueConversation = await conversationService.loadConversation(criticConversation.id)
+        const critique = getLatestAssistantMessageContent(critiqueConversation) || critiqueResult.trim()
+
+        if (critique) {
+          const revisionPrompt = buildWorkerRevisionPrompt(critique)
+          if (agentSessionTracker.reviveSession(sessionId, startSnoozed)) {
+            agentSessionTracker.updateSession(sessionId, {
+              conversationTitle,
+              isRepeatTask: true,
+              repeatTask: workerRepeatTaskSource,
+            })
+
+            const appendedRevision = await conversationService.addMessageToConversation(
+              conversationId,
+              revisionPrompt,
+              "user",
+            )
+
+            if (appendedRevision) {
+              await runAgentLoopSession(
+                revisionPrompt,
+                conversationId,
+                sessionId,
+                startSnoozed,
+                loop.maxIterations,
+                { conversationTitle },
+              )
+              logApp(`[LoopService] Fed critique pass back into worker session ${sessionId} for loop "${loop.name}"`)
+            } else {
+              agentSessionTracker.completeSession(sessionId)
+              logApp(`[LoopService] Failed to append critique pass revision prompt for loop "${loop.name}"`)
+            }
+          } else {
+            logApp(`[LoopService] Worker session ${sessionId} was not revivable for loop "${loop.name}"; skipping critique pass revision`)
+          }
+        } else {
+          logApp(`[LoopService] Critic produced no critique for loop "${loop.name}"`)
+        }
+      }
 
       // When `speakOnTrigger` is set, unsnooze the now-completed session and
       // show the panel so the renderer's TTS auto-play gate fires for the

@@ -17,6 +17,7 @@ Key terms and definitions used throughout DotAgents.
 | **Agent Profile** | The complete definition of an agent: identity, system prompt, tool access, skills, and connection. |
 | **.agents/** | The open standard directory for agent configuration. Works across DotAgents, Claude Code, Cursor, and others. |
 | **Context Budgeting** | Automatic management of the LLM's context window, shrinking messages when limits approach. |
+| **Critique Pass** | Optional repeat-task mode that runs worker -> critic -> worker revision inside one scheduled run. |
 | **Delegation** | When one agent assigns a subtask to another agent, typically through an `acpx`-managed external runtime. |
 | **Dictation Mode** | Voice mode that transcribes speech and inserts text into the active application. |
 | **Elicitation** | MCP 2025 protocol feature where a server requests additional input from the user during tool execution. |
@@ -29,7 +30,8 @@ Key terms and definitions used throughout DotAgents.
 | **Kill Switch** | Emergency stop mechanism. Same as Emergency Stop. |
 | **Langfuse** | Open-source LLM observability platform. Optional integration for tracing and debugging. |
 | **LLM** | Large Language Model — the AI model that powers agent reasoning (e.g., GPT-5.4 Mini, Claude Sonnet 4.6, Gemini 3.1 Pro). |
-| **Loop** | A recurring task that runs on a schedule (e.g., "check email every 10 minutes"). |
+| **Loop** | Legacy term for a repeat task: a recurring prompt that runs on a schedule or continuous cadence. |
+| **Repeat Task** | File-backed `.agents/tasks/<task-id>/task.md` automation run by the desktop scheduler. |
 | **MCP** | Model Context Protocol — Anthropic's open standard for connecting AI models to tools and resources. |
 | **MCP Client** | The side that calls tools. DotAgents is an MCP client. |
 | **MCP Server** | An external process or endpoint that exposes tools. Connects via stdio, WebSocket, or HTTP. |

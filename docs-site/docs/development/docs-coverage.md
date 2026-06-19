@@ -24,6 +24,22 @@ Documentation is considered covered only when all of the following are true:
 pnpm docs:coverage
 ```
 
+## Six-Month Feature Audit
+
+Last audited: 2026-06-19. Scope: `main` commits and merged GitHub PRs since 2025-12-19. The audit reviewed 242 merged PRs plus first-parent direct commits; fixes, release chores, tests, and internal refactors are covered by the owning feature docs instead of a public changelog entry for each commit.
+
+| Feature area reviewed | Representative PRs / commits | Documentation owner |
+|-----------------------|-------------------------------|---------------------|
+| Desktop sessions, sidebar, progress, settings, artifacts | #552, #551, #550, #549, #521, #481, #480, #240; direct commits for archived sessions, shortcut chrome, session grouping, and artifact navigation | [Desktop App](/desktop/overview), [Settings Reference](/configuration/settings), this page |
+| Mobile voice, hands-free, push, pairing, sessions | #553, #543, #542, #540, #533, #526, #503, #495; direct commits for Android locked-screen hands-free, desktop-provider STT, image/video attachments, and pairing deep links | [Mobile App](/mobile/overview), [Voice Interface](/voice/overview), [Remote Server & Mobile Pairing](/desktop/remote-server), [Remote API Reference](/reference/api) |
+| Repeat tasks, continuous runs, critique, provenance | #556, #555, #492, #484, #396, #358, #352; direct commit `c28a54a9f` for HTML loop progress reports | [Repeat Tasks](/agents/repeat-tasks), [Settings Reference](/configuration/settings), [Remote API Reference](/reference/api) |
+| Remote server, operator API, headless and pairing flows | #307, #145, #35, #1; direct commits for pairing reset controls and Tailscale mobile pairing | [Remote Server & Mobile Pairing](/desktop/remote-server), [Remote API Reference](/reference/api), [Headless CLI](/reference/cli) |
+| Providers, model controls, STT/TTS | #422, #367, #309, #304, #298, #132; direct commit `c90ccc1bc` for Codex fast service tier | [AI Providers](/tools/providers), [Settings Reference](/configuration/settings), [Voice Interface](/voice/overview) |
+| Agents, skills, knowledge notes, bundles, runtime tools | #531, #489, #405, #346, #340, #299, #158, #142, #38, #29 | [Agent Profiles](/agents/profiles), [Skills](/agents/skills), [Knowledge & Notes](/agents/knowledge-notes), [.agents Protocol](/concepts/dot-agents-protocol), [MCP Tools](/tools/mcp) |
+| Messaging integrations | #504, #463, #305 | [WhatsApp Integration](/tools/whatsapp), [Discord Integration](/tools/discord), [Settings Reference](/configuration/settings) |
+| Observability, diagnostics, debug surfaces | #537, #425, #478, #386 | [Observability](/tools/observability), [Debug Reference](/reference/debug), [Remote API Reference](/reference/api) |
+| Release, platform support, docs site, installers | #402, #201, #143, #77, #50, #44; direct docs deploy and installer commits from 2026-05-08 through 2026-05-09 | [Installation](/getting-started/installation), [Build, Release, Deploy](build-release-deploy), [Apps & Packages](apps-and-packages) |
+
 ## Source Coverage Matrix
 
 | Source area | What it owns | Primary docs | Notes |
@@ -49,6 +65,7 @@ These files are the user-facing desktop page surfaces that must stay covered by 
 
 | Page file | Route or surface | Documentation owner |
 |-----------|------------------|---------------------|
+| `artifacts.tsx` | `/artifacts` artifact browser | [Desktop App](/desktop/overview) |
 | `knowledge.tsx` | `/knowledge` knowledge notes | [Desktop App](/desktop/overview), [Knowledge & Notes](/agents/knowledge-notes) |
 | `onboarding.tsx` | `/onboarding` first-run flow | [Quick Start](/getting-started/quickstart), [Desktop App](/desktop/overview) |
 | `panel.tsx` | `/panel` floating panel | [Desktop App](/desktop/overview), [Voice Interface](/voice/overview) |
@@ -57,7 +74,7 @@ These files are the user-facing desktop page surfaces that must stay covered by 
 | `settings-capabilities.tsx` | `/settings/capabilities` | [MCP Tools](/tools/mcp), [MCP Server Configuration](/configuration/mcp-servers) |
 | `settings-discord.tsx` | `/settings/discord` | [Remote API Reference](/reference/api), [Settings Reference](/configuration/settings) |
 | `settings-general.tsx` | `/settings`, `/settings/general` | [Settings Reference](/configuration/settings) |
-| `settings-loops.tsx` | `/settings/repeat-tasks` | [Desktop App](/desktop/overview), [Settings Reference](/configuration/settings) |
+| `settings-loops.tsx` | `/settings/repeat-tasks` | [Repeat Tasks](/agents/repeat-tasks), [Settings Reference](/configuration/settings) |
 | `settings-mcp-tools.tsx` | legacy MCP tools settings surface | [MCP Tools](/tools/mcp) |
 | `settings-models.tsx` | `/settings/models` | [AI Providers](/tools/providers) |
 | `settings-providers.tsx` | `/settings/providers` | [AI Providers](/tools/providers) |
@@ -76,10 +93,11 @@ These mobile screens must stay covered by [Mobile App](/mobile/overview), [Remot
 | `ChatScreen.tsx` | Text, voice, streaming chat, TTS, hands-free mode | [Mobile App](/mobile/overview), [Voice Interface](/voice/overview) |
 | `ConnectionSettingsScreen.tsx` | QR pairing, manual API setup, connection tests | [Remote Server & Mobile Pairing](/desktop/remote-server), [Mobile App](/mobile/overview) |
 | `KnowledgeNoteEditScreen.tsx` | Create/edit knowledge notes | [Knowledge & Notes](/agents/knowledge-notes), [Mobile App](/mobile/overview) |
-| `LoopEditScreen.tsx` | Create/edit recurring loops | [Mobile App](/mobile/overview), [Settings Reference](/configuration/settings) |
+| `LoopEditScreen.tsx` | Create/edit recurring loops | [Mobile App](/mobile/overview), [Repeat Tasks](/agents/repeat-tasks), [Settings Reference](/configuration/settings) |
 | `OperationsScreen.tsx` | Operator dashboard for health, logs, tunnels, integrations, updater, actions | [Remote API Reference](/reference/api), [Mobile App](/mobile/overview) |
 | `SessionListScreen.tsx` | Conversation list, search, deletion, resume | [Mobile App](/mobile/overview) |
 | `SettingsScreen.tsx` | API/model/voice/theme settings | [Mobile App](/mobile/overview), [Settings Reference](/configuration/settings) |
+| `SkillEditScreen.tsx` | Create/edit skills | [Skills](/agents/skills), [Mobile App](/mobile/overview) |
 | `SplitChatScreen.tsx` | Multi-agent comparison chat | [Mobile App](/mobile/overview), [Agent Delegation](/agents/delegation) |
 
 ## Remote Server Route Coverage

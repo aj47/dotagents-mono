@@ -37,6 +37,8 @@ type LoopFormData = {
   speakOnTrigger: boolean;
   continueInSession: boolean;
   lastSessionId: string;
+  critiquePass: boolean;
+  criticProfileId: string;
   maxIterations: string;
   scheduleMode: ScheduleMode;
   scheduleTimes: string[];
@@ -61,6 +63,8 @@ const defaultFormData: LoopFormData = {
   speakOnTrigger: false,
   continueInSession: false,
   lastSessionId: '',
+  critiquePass: false,
+  criticProfileId: '',
   maxIterations: '',
   scheduleMode: 'interval',
   scheduleTimes: ['09:00'],
@@ -148,6 +152,8 @@ function loopToFormData(loop: Loop): LoopFormData {
     speakOnTrigger: !!loop.speakOnTrigger,
     continueInSession: !!loop.continueInSession,
     lastSessionId: loop.lastSessionId || '',
+    critiquePass: !!loop.critiquePass,
+    criticProfileId: loop.criticProfileId || '',
     maxIterations: loop.maxIterations ? String(loop.maxIterations) : '',
     scheduleMode,
     scheduleTimes,
@@ -344,6 +350,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
           speakOnTrigger: formData.speakOnTrigger,
           continueInSession: formData.continueInSession,
           lastSessionId: formData.continueInSession ? (formData.lastSessionId.trim() || null) : null,
+          critiquePass: formData.critiquePass,
+          criticProfileId: formData.critiquePass ? (formData.criticProfileId.trim() || null) : null,
           maxIterations,
           runContinuously: formData.scheduleMode === 'continuous',
           schedule,
@@ -360,6 +368,8 @@ export default function LoopEditScreen({ navigation, route }: any) {
           speakOnTrigger: formData.speakOnTrigger,
           continueInSession: formData.continueInSession,
           ...(formData.continueInSession && formData.lastSessionId.trim() ? { lastSessionId: formData.lastSessionId.trim() } : {}),
+          critiquePass: formData.critiquePass,
+          ...(formData.critiquePass && formData.criticProfileId.trim() ? { criticProfileId: formData.criticProfileId.trim() } : {}),
           ...(maxIterations ? { maxIterations } : {}),
           runContinuously: formData.scheduleMode === 'continuous',
           schedule,
@@ -614,6 +624,70 @@ export default function LoopEditScreen({ navigation, route }: any) {
           {!isLoadingSessionCandidates && !sessionCandidateError && sessionCandidateOptions.length === 0 && (
             <Text style={styles.helperText}>No recent sessions available yet.</Text>
           )}
+        </>
+      )}
+
+      <View style={styles.switchRow}>
+        <View style={styles.switchInfo}>
+          <Text style={styles.switchLabel}>Built-in critique pass</Text>
+          <Text style={styles.switchHelperText}>Run worker, critic, then worker revision inside one task run.</Text>
+        </View>
+        <Switch
+          value={formData.critiquePass}
+          onValueChange={value => {
+            updateField('critiquePass', value);
+            if (!value) updateField('criticProfileId', '');
+          }}
+          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+          thumbColor={formData.critiquePass ? theme.colors.primaryForeground : theme.colors.background}
+        />
+      </View>
+      {formData.critiquePass && (
+        <>
+          <Text style={styles.label}>Critic agent (optional)</Text>
+          <Text style={styles.sectionHelperText}>Choose a dedicated critic agent, or leave it on the default agent.</Text>
+          <View style={styles.profileOptions}>
+            <TouchableOpacity
+              style={[styles.profileOption, !formData.criticProfileId && styles.profileOptionActive]}
+              onPress={() => updateField('criticProfileId', '')}
+              accessibilityRole="button"
+              accessibilityLabel={createButtonAccessibilityLabel('Use the default agent as critic')}
+              accessibilityHint={!formData.criticProfileId ? 'Currently selected for this loop.' : 'Uses the default agent for the critique pass.'}
+              accessibilityState={{ selected: !formData.criticProfileId, disabled: isSaveDisabled }}
+              disabled={isSaveDisabled}
+            >
+              <View style={styles.profileOptionInfo}>
+                <Text style={[styles.profileOptionText, !formData.criticProfileId && styles.profileOptionTextActive]}>Default critic</Text>
+                <Text style={[styles.profileOptionHelperText, !formData.criticProfileId && styles.profileOptionHelperTextActive]}>Uses the default active agent for the built-in pass.</Text>
+              </View>
+              {!formData.criticProfileId && <Text style={styles.profileOptionCheckmark}>✓</Text>}
+            </TouchableOpacity>
+            {profiles.map(profile => (
+              <TouchableOpacity
+                key={profile.id}
+                style={[styles.profileOption, formData.criticProfileId === profile.id && styles.profileOptionActive]}
+                onPress={() => updateField('criticProfileId', profile.id)}
+                accessibilityRole="button"
+                accessibilityLabel={createButtonAccessibilityLabel(`Use ${profile.displayName || profile.name} as critic`)}
+                accessibilityHint={formData.criticProfileId === profile.id ? 'Currently selected as critic.' : 'Assigns this profile to the critique pass.'}
+                accessibilityState={{ selected: formData.criticProfileId === profile.id, disabled: isSaveDisabled }}
+                disabled={isSaveDisabled}
+              >
+                <View style={styles.profileOptionInfo}>
+                  <Text style={[styles.profileOptionText, formData.criticProfileId === profile.id && styles.profileOptionTextActive]}>{profile.displayName || profile.name}</Text>
+                  {!!(profile.description || profile.guidelines || profile.name) && (
+                    <Text
+                      style={[styles.profileOptionHelperText, formData.criticProfileId === profile.id && styles.profileOptionHelperTextActive]}
+                      numberOfLines={2}
+                    >
+                      {profile.description || profile.guidelines || profile.name}
+                    </Text>
+                  )}
+                </View>
+                {formData.criticProfileId === profile.id && <Text style={styles.profileOptionCheckmark}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
         </>
       )}
 

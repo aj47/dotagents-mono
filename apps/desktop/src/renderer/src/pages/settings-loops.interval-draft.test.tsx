@@ -249,6 +249,31 @@ describe("desktop repeat-task interval editing", () => {
     expect(success).toHaveBeenCalledWith("Task created")
   })
 
+  it("saves the built-in critique pass mode on a repeat task", async () => {
+    const runtime = createHookRuntime()
+    const { Component, saveLoop } = await loadSettingsLoops(runtime)
+
+    let tree = runtime.render(Component, {} as any)
+    findButtonWithText(tree, "Add Task").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    findInputById(tree, "name").props.onChange({ target: { value: "Reviewed Plan" } })
+    tree = runtime.render(Component, {} as any)
+    findTextareaById(tree, "prompt").props.onChange({ target: { value: "Draft and revise the plan" } })
+    tree = runtime.render(Component, {} as any)
+    findButtonWithText(tree, "Built-in pass").props.onClick()
+
+    tree = runtime.render(Component, {} as any)
+    await findButtonWithText(tree, "Save").props.onClick()
+
+    expect(saveLoop).toHaveBeenCalledWith({
+      loop: expect.objectContaining({
+        name: "Reviewed Plan",
+        critiquePass: true,
+      }),
+    })
+  })
+
   it.each([
     { label: "Continuous", expectedSchedule: undefined, expectedRunContinuously: true },
     { label: "Daily", expectedSchedule: { type: "daily", times: ["09:00"] }, expectedRunContinuously: false },

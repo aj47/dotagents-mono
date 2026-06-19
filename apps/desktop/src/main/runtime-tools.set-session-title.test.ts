@@ -4,6 +4,7 @@ const mockRenameConversationTitle = vi.fn()
 const mockGetSession = vi.fn()
 const mockUpdateSession = vi.fn()
 const mockFindSessionByConversationId = vi.fn()
+const mockGetConversationIdForSession = vi.fn()
 const mockGetRootAppSessionForAcpSession = vi.fn()
 const mockSetAcpSessionTitleOverride = vi.fn()
 const mockEmitAgentProgress = vi.fn()
@@ -18,6 +19,7 @@ vi.mock("./agent-session-tracker", () => ({
     getSession: mockGetSession,
     updateSession: mockUpdateSession,
     findSessionByConversationId: mockFindSessionByConversationId,
+    getConversationIdForSession: mockGetConversationIdForSession,
     getActiveSessions: vi.fn(() => []),
   },
 }))
@@ -58,6 +60,7 @@ describe("runtime-tools set_session_title", () => {
     mockFindSessionByConversationId.mockImplementation((conversationId: string) =>
       conversationId === "conversation-1" ? "app-session-1" : undefined,
     )
+    mockGetConversationIdForSession.mockReturnValue(undefined)
     mockRenameConversationTitle.mockResolvedValue({ id: "conversation-1", title: "Delegated title" })
   })
 
@@ -94,8 +97,28 @@ describe("runtime-tools set_session_title", () => {
     const result = await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "conversation-1")
 
     expect(mockFindSessionByConversationId).toHaveBeenCalledWith("conversation-1")
-    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title")
+    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title", "server_generated")
     expect(mockUpdateSession).toHaveBeenCalledWith("app-session-1", { conversationTitle: "Delegated title" })
+    expect(result).toEqual({
+      content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],
+      isError: false,
+    })
+  })
+
+  it("renames the conversation when invoked with a reused session that is no longer active", async () => {
+    mockGetSession.mockReturnValue(undefined)
+    mockGetConversationIdForSession.mockImplementation((sessionId: string) =>
+      sessionId === "reused-session-1" ? "conversation-1" : undefined,
+    )
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool("set_session_title", { title: "Delegated title" }, "reused-session-1")
+
+    expect(mockFindSessionByConversationId).toHaveBeenCalledWith("reused-session-1")
+    expect(mockGetConversationIdForSession).toHaveBeenCalledWith("reused-session-1")
+    expect(mockRenameConversationTitle).toHaveBeenCalledWith("conversation-1", "Delegated title", "server_generated")
+    expect(mockUpdateSession).not.toHaveBeenCalled()
+    expect(mockEmitAgentProgress).not.toHaveBeenCalled()
     expect(result).toEqual({
       content: [{ type: "text", text: JSON.stringify({ success: true, title: "Delegated title" }, null, 2) }],
       isError: false,

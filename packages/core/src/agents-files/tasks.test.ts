@@ -33,4 +33,24 @@ describe("agents-files/tasks", () => {
     expect(markdown).not.toContain("runContinuously")
     expect(parseTaskMarkdown(markdown)?.runContinuously).toBeUndefined()
   })
+
+  it("roundtrips critique pass settings in task frontmatter", () => {
+    const task: LoopConfig = {
+      id: "critic-task",
+      name: "Critic task",
+      prompt: "Draft and improve the report.",
+      intervalMinutes: 60,
+      enabled: true,
+      critiquePass: true,
+      criticProfileId: "critic-agent",
+    }
+
+    const markdown = stringifyTaskMarkdown(task)
+    expect(markdown).toContain("critiquePass: true")
+    expect(markdown).toContain("criticProfileId: critic-agent")
+
+    const parsed = parseTaskMarkdown(markdown)
+    expect(parsed?.critiquePass).toBe(true)
+    expect(parsed?.criticProfileId).toBe("critic-agent")
+  })
 })

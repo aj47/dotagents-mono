@@ -4,6 +4,7 @@ import {
   assignSidebarSessionToGroup,
   dedupeTaskEntriesByTitle,
   filterPastSessionsAgainstActiveSessions,
+  getRepeatTaskEntryTaskId,
   getSidebarSessionGroupKey,
   getSidebarSessionGroupKeys,
   getSidebarActivityPresentation,
@@ -1035,6 +1036,27 @@ describe("partitionTaskAndUserEntries", () => {
     expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
   })
 
+  it("uses configured repeat-task title tokens only for equivalent retitled task history", () => {
+    const entries = [
+      { session: { id: "t1", conversationTitle: "TechFren Instagram Reel Critique" } },
+      { session: { id: "t2", conversationTitle: "Overnight Video Evidence Accumulator" } },
+      { session: { id: "u1", conversationTitle: "Overnight Video Evidence" } },
+      { session: { id: "u2", conversationTitle: "Create Overnight Critic Task" } },
+    ]
+
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(
+      entries,
+      new Set([
+        "TechFren Instagram Reel Critic",
+        "Overnight Video Evidence Accumulator",
+        "Overnight Video Decision Critic",
+      ]),
+    )
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1", "u2"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual(["t1", "t2"])
+  })
+
   it("uses the backend repeat-task flag when title matching is unavailable", () => {
     const entries = [
       { session: { id: "t1", conversationTitle: "Generated Title", isRepeatTask: true } },
@@ -1045,6 +1067,69 @@ describe("partitionTaskAndUserEntries", () => {
 
     expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
     expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
+  })
+
+  it("uses repeat-task provenance over setup-looking titles", () => {
+    const entries = [
+      {
+        session: {
+          id: "t1",
+          conversationTitle: "Create Critic Repeat Task",
+          repeatTask: {
+            type: "repeat_task_run" as const,
+            taskId: "overnight-critic",
+            taskName: "Overnight Critic",
+            runId: "overnight-critic:100",
+            role: "worker" as const,
+          },
+        },
+      },
+      { session: { id: "u1", conversationTitle: "Create Critic Repeat Task" } },
+    ]
+
+    const { userEntries, taskEntries } = partitionTaskAndUserEntries(entries)
+
+    expect(userEntries.map((e) => e.session.id)).toEqual(["u1"])
+    expect(taskEntries.map((e) => e.session.id)).toEqual(["t1"])
+  })
+})
+
+describe("getRepeatTaskEntryTaskId", () => {
+  it("resolves task identity from provenance before title hints", () => {
+    expect(
+      getRepeatTaskEntryTaskId(
+        {
+          id: "run",
+          conversationTitle: "Generic title",
+          repeatTask: {
+            type: "repeat_task_run",
+            taskId: "daily-brief",
+            taskName: "Daily Brief",
+            runId: "daily-brief:1",
+            role: "worker",
+          },
+        },
+        new Map([["Generic title", "wrong-task"]]),
+      ),
+    ).toBe("daily-brief")
+  })
+
+  it("falls back to current task title hints for equivalent legacy rows", () => {
+    expect(
+      getRepeatTaskEntryTaskId(
+        { id: "legacy", conversationTitle: "TechFren Instagram Reel Critique" },
+        new Map([["TechFren Instagram Reel Critic", "instagram-reel-critic"]]),
+      ),
+    ).toBe("instagram-reel-critic")
+  })
+
+  it("does not map shortened ordinary titles to longer repeat-task hints", () => {
+    expect(
+      getRepeatTaskEntryTaskId(
+        { id: "legacy", conversationTitle: "Overnight Video Evidence" },
+        new Map([["Overnight Video Evidence Accumulator", "overnight-evidence"]]),
+      ),
+    ).toBeNull()
   })
 })
 
@@ -1134,6 +1219,198 @@ describe("dedupeTaskEntriesByTitle", () => {
     ]
 
     expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["top"])
+  })
+
+  it("dedupes repeat-task history by task id even when run titles differ", () => {
+    const repeatTask = {
+      type: "repeat_task_run" as const,
+      taskId: "techfren-reel",
+      taskName: "TechFren Reel",
+      runId: "techfren-reel:100",
+      role: "worker" as const,
+    }
+    const entries = [
+      {
+        session: {
+          id: "older",
+          conversationTitle: "I Built an AI Agent That Stops Wasting Tokens",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+          repeatTask,
+        },
+      },
+      {
+        session: {
+          id: "newer",
+          conversationTitle: "I Made a $90 MacBook Into a Safe Overnight AI Agent",
+          status: "completed",
+          startTime: 200,
+          endTime: 250,
+          repeatTask: { ...repeatTask, runId: "techfren-reel:200" },
+        },
+      },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["newer"])
+  })
+
+  it("uses the worker phase as the completed representative for a repeat task with critique", () => {
+    const baseRepeatTask = {
+      type: "repeat_task_run" as const,
+      taskId: "techfren-reel",
+      taskName: "TechFren Reel",
+    }
+    const entries = [
+      {
+        session: {
+          id: "worker",
+          conversationTitle: "TechFren Reel Maker",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+          repeatTask: {
+            ...baseRepeatTask,
+            runId: "techfren-reel:worker",
+            role: "worker" as const,
+          },
+        },
+      },
+      {
+        session: {
+          id: "critic",
+          conversationTitle: "TechFren Reel Critique",
+          status: "completed",
+          startTime: 200,
+          endTime: 250,
+          repeatTask: {
+            ...baseRepeatTask,
+            runId: "techfren-reel:critic",
+            role: "critic" as const,
+          },
+        },
+      },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["worker"])
+  })
+
+  it("still surfaces an active critic phase while the critique pass is running", () => {
+    const baseRepeatTask = {
+      type: "repeat_task_run" as const,
+      taskId: "techfren-reel",
+      taskName: "TechFren Reel",
+    }
+    const entries = [
+      {
+        session: {
+          id: "worker",
+          conversationTitle: "TechFren Reel Maker",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+          repeatTask: {
+            ...baseRepeatTask,
+            runId: "techfren-reel:worker",
+            role: "worker" as const,
+          },
+        },
+      },
+      {
+        session: {
+          id: "critic",
+          conversationTitle: "TechFren Reel Critique",
+          status: "active",
+          startTime: 200,
+          repeatTask: {
+            ...baseRepeatTask,
+            runId: "techfren-reel:critic",
+            role: "critic" as const,
+          },
+        },
+      },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["critic"])
+  })
+
+  it("dedupes legacy title-only task rows by configured task title hints", () => {
+    const entries = [
+      {
+        session: {
+          id: "older",
+          conversationTitle: "TechFren Reel Maker Task",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+        },
+      },
+      {
+        session: {
+          id: "newer",
+          conversationTitle: "TechFren Reel Maker",
+          status: "completed",
+          startTime: 200,
+          endTime: 250,
+        },
+      },
+      {
+        session: {
+          id: "critic",
+          conversationTitle: "TechFren Reel Critique",
+          status: "completed",
+          startTime: 300,
+          endTime: 350,
+        },
+      },
+    ]
+    const titleHints = new Map([
+      ["TechFren Instagram Reel Maker", "instagram-reel-maker"],
+      ["TechFren Reel Maker", "instagram-reel-maker"],
+      ["TechFren Instagram Reel Critic", "instagram-reel-critic"],
+    ])
+
+    expect(dedupeTaskEntriesByTitle(entries, titleHints).map((e) => e.session.id)).toEqual([
+      "newer",
+      "critic",
+    ])
+  })
+
+  it("dedupes legacy title-only rows with provenance-tagged worker rows for the same task", () => {
+    const entries = [
+      {
+        session: {
+          id: "legacy",
+          conversationTitle: "[Repeat] Overnight Video Decision Critic",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+        },
+      },
+      {
+        session: {
+          id: "tagged",
+          conversationTitle: "Overnight Decision Critique",
+          status: "completed",
+          startTime: 200,
+          endTime: 250,
+          repeatTask: {
+            type: "repeat_task_run" as const,
+            taskId: "overnight-agent-harness-critique",
+            taskName: "Overnight Video Decision Critic",
+            runId: "overnight-agent-harness-critique:worker:200",
+            role: "worker" as const,
+          },
+        },
+      },
+    ]
+    const titleHints = new Map([
+      ["[Repeat] Overnight Video Decision Critic", "overnight-agent-harness-critique"],
+    ])
+
+    expect(dedupeTaskEntriesByTitle(entries, titleHints).map((e) => e.session.id)).toEqual([
+      "tagged",
+    ])
   })
 })
 

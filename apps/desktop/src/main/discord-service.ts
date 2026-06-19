@@ -30,6 +30,7 @@ import {
   DISCORD_UNAVAILABLE_ERROR,
   getDiscordDependencyStatus,
   isDiscordDependencyMissingError,
+  requireDiscordDependency,
 } from "./discord-dependency"
 
 type DiscordLogLevel = "info" | "warn" | "error"
@@ -1434,7 +1435,7 @@ class DiscordService {
     this.setStatus({ available: true, enabled: true, connecting: true, connected: false, lastError: undefined })
 
     try {
-      const discord = await import("discord.js")
+      const discord = requireDiscordDependency()
       const client = new discord.Client({
         intents: [
           discord.GatewayIntentBits.Guilds,

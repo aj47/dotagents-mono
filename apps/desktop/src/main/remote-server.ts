@@ -7515,6 +7515,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
 
   const formatLoopResponse = async (loop: LoopConfig) => {
     const status = (await loadLoopService())?.getLoopStatus(loop.id)
+    const criticProfileId = loop.critiquePass ? loop.criticProfileId : undefined
 
     return {
       id: loop.id,
@@ -7529,6 +7530,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       continueInSession: loop.continueInSession,
       lastSessionId: loop.lastSessionId,
       runContinuously: loop.runContinuously,
+      critiquePass: loop.critiquePass,
+      criticProfileId,
+      criticProfileName: getLoopProfileName(criticProfileId),
       maxIterations: loop.maxIterations,
       lastRunAt: status?.lastRunAt ?? loop.lastRunAt,
       isRunning: status?.isRunning ?? false,
@@ -7549,6 +7553,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       return reply.send({
         loops: loops.map(l => {
           const status = statusById.get(l.id)
+          const criticProfileId = l.critiquePass ? l.criticProfileId : undefined
           return {
             id: l.id,
             name: l.name,
@@ -7562,6 +7567,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             continueInSession: l.continueInSession,
             lastSessionId: l.lastSessionId,
             runContinuously: l.runContinuously,
+            critiquePass: l.critiquePass,
+            criticProfileId,
+            criticProfileName: getLoopProfileName(criticProfileId),
             maxIterations: l.maxIterations,
             lastRunAt: status?.lastRunAt ?? l.lastRunAt,
             isRunning: status?.isRunning ?? false,
@@ -7917,6 +7925,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
+        critiquePass?: unknown
+        criticProfileId?: unknown
         maxIterations?: unknown
         schedule?: unknown
       }
@@ -7948,6 +7958,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.critiquePass !== undefined && typeof body.critiquePass !== "boolean") {
+        return reply.code(400).send({ error: "critiquePass must be a boolean when provided" })
+      }
+      if (body.criticProfileId !== undefined && body.criticProfileId !== null && typeof body.criticProfileId !== "string") {
+        return reply.code(400).send({ error: "criticProfileId must be a string when provided" })
+      }
       if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
         return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
       }
@@ -7969,8 +7985,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(400).send({ error: scheduleResult.error })
       }
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
+      const criticProfileId = typeof body.criticProfileId === "string" ? body.criticProfileId.trim() : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : true
       const runContinuously = body.runContinuously === true
+      const critiquePass = body.critiquePass === true
       const runOnStartup = body.runOnStartup === true
       const speakOnTrigger = body.speakOnTrigger === true
       const continueInSession = body.continueInSession === true
@@ -7990,6 +8008,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession,
         lastSessionId: continueInSession ? (lastSessionId || undefined) : undefined,
         runContinuously,
+        critiquePass,
+        criticProfileId: critiquePass ? (criticProfileId || undefined) : undefined,
         ...(typeof maxIterationsResult.value === "number" ? { maxIterations: maxIterationsResult.value } : {}),
         ...(!runContinuously && scheduleResult.schedule && scheduleResult.schedule !== null
           ? { schedule: scheduleResult.schedule }
@@ -8034,6 +8054,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         continueInSession?: unknown
         lastSessionId?: unknown
         runContinuously?: unknown
+        critiquePass?: unknown
+        criticProfileId?: unknown
         maxIterations?: unknown
         schedule?: unknown
       }
@@ -8083,6 +8105,12 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runContinuously !== undefined && typeof body.runContinuously !== "boolean") {
         return reply.code(400).send({ error: "runContinuously must be a boolean when provided" })
       }
+      if (body.critiquePass !== undefined && typeof body.critiquePass !== "boolean") {
+        return reply.code(400).send({ error: "critiquePass must be a boolean when provided" })
+      }
+      if (body.criticProfileId !== undefined && body.criticProfileId !== null && typeof body.criticProfileId !== "string") {
+        return reply.code(400).send({ error: "criticProfileId must be a string or null when provided" })
+      }
       if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
         return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
       }
@@ -8112,7 +8140,10 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
           : undefined
       const enabled = typeof body.enabled === "boolean" ? body.enabled : undefined
       const profileId = typeof body.profileId === "string" ? body.profileId.trim() : undefined
+      const criticProfileId = typeof body.criticProfileId === "string" ? body.criticProfileId.trim() : undefined
       const runContinuously = typeof body.runContinuously === "boolean" ? body.runContinuously : undefined
+      const critiquePass = typeof body.critiquePass === "boolean" ? body.critiquePass : undefined
+      const nextCritiquePass = critiquePass ?? (existing.critiquePass === true)
       const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : undefined
       const speakOnTrigger = typeof body.speakOnTrigger === "boolean" ? body.speakOnTrigger : undefined
       const continueInSession = typeof body.continueInSession === "boolean" ? body.continueInSession : undefined
@@ -8129,6 +8160,8 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(continueInSession !== undefined && { continueInSession }),
         ...(body.lastSessionId !== undefined && { lastSessionId: lastSessionId || undefined }),
         ...(runContinuously !== undefined && { runContinuously }),
+        ...(critiquePass !== undefined && { critiquePass }),
+        ...(body.criticProfileId !== undefined && nextCritiquePass && { criticProfileId: criticProfileId || undefined }),
         ...(maxIterationsResult.value !== undefined && maxIterationsResult.value !== null && { maxIterations: maxIterationsResult.value }),
       }
       if (maxIterationsResult.value === null) {
@@ -8136,6 +8169,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (continueInSession === false || updated.continueInSession === false) {
         delete updated.lastSessionId
+      }
+      if (!updated.critiquePass) {
+        delete updated.criticProfileId
       }
       if (updated.runContinuously) {
         delete updated.schedule

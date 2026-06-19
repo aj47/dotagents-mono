@@ -13,6 +13,7 @@ The DotAgents desktop app includes a Fastify remote server for mobile clients, o
 
 - Mobile chat over the same desktop agent engine
 - QR-code pairing with the mobile app
+- Easy mobile pairing using a LAN or Tailscale URL when available
 - OpenAI-compatible `/v1/chat/completions` streaming
 - Agent, skill, knowledge note, loop, MCP, and settings management endpoints
 - Optional operator endpoints for health, logs, Discord, WhatsApp, updater, and tunnel controls
@@ -44,6 +45,22 @@ The DotAgents desktop app includes a Fastify remote server for mobile clients, o
 4. The QR configures the API base URL and bearer token.
 
 The mobile app then talks to the desktop runtime, so it can use your desktop MCP servers, agents, knowledge notes, loops, and conversations.
+
+### Easy Pairing And Deep Links
+
+Desktop remote-server settings can show an **Easy Mobile Pairing** block when a reachable URL is known. The pairing payload is a `dotagents://config` deep link containing the API base URL and a one-time view of the remote API key. Streamer Mode hides the QR code and link text while still allowing the server to run.
+
+When Tailscale is installed and running, DotAgents reads `tailscale status --json`, prefers the Tailscale IPv4 address, and builds a pairing URL such as:
+
+```text
+http://100.x.y.z:3210/v1
+```
+
+If Tailscale is unavailable, use the LAN URL from the settings page or enter the host manually on mobile. For LAN pairing, bind to `0.0.0.0` only when the network is trusted.
+
+### Reset Or Rotate Pairing
+
+Use the remote-server settings reset/rotate controls when a mobile device has stale connection details, a QR payload was shared too broadly, or a tunnel URL changed. Rotating the API key immediately invalidates older mobile bearer tokens, so re-scan the QR code or open the updated deep link afterward.
 
 ## API Shape
 

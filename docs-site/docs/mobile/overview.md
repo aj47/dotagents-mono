@@ -23,7 +23,8 @@ Built with Expo SDK 54 and React Native, the mobile app provides a portable inte
 - Loop (recurring task) scheduling
 - Operator dashboard for health checks, logs, tunnels, integrations, updater, and emergency actions
 - Session history with search
-- QR code connection setup
+- QR code, deep-link, and easy pairing setup
+- Android push notifications for desktop-delivered assistant replies
 - Split chat view for multi-agent conversations
 
 ## Supported Platforms
@@ -44,6 +45,7 @@ The primary interface for conversations with your agent:
 
 - **Text input** — Type messages and receive streaming responses
 - **Voice input** — Press-and-hold the mic button for real-time transcription
+- **Desktop Provider STT** — Use the paired desktop speech-to-text provider for push-to-talk when local mobile recognition is not the right fit
 - **TTS playback** — Assistant replies can be spoken aloud via `expo-speech`
 - **Hands-free mode** — Toggle no-hands listening, auto-send after silence, interrupt TTS with voice, and use Android locked-screen capture
 - **Edit mode** — Release the mic while in edit state to place the transcript in the input box for review before sending
@@ -69,6 +71,7 @@ Browse and search your conversation history:
 - Scrollable list of past sessions
 - Search by content or title
 - Tap to continue a previous conversation
+- Pull to refresh from the paired desktop server
 - Delete sessions you no longer need
 
 ### Connection Settings Screen
@@ -76,6 +79,8 @@ Browse and search your conversation history:
 Quick setup via QR code:
 
 - Scan a QR code from your desktop app to auto-configure connection settings
+- Open a `dotagents://config?...` deep link from desktop or another device
+- Use the desktop app's easy-pairing URL when LAN or Tailscale discovery is available
 - Manually enter connection details as an alternative
 - Test connectivity with a health check
 
@@ -114,6 +119,12 @@ Trusted operator dashboard backed by the desktop remote server:
 - Start or stop tunnel exposure
 - Connect or disconnect Discord and WhatsApp integrations
 - Trigger updater checks, reveal downloads, restart MCP services, restart the remote server, restart the app, or run an agent
+
+### Push Notifications
+
+Android native builds can register for push notifications from Settings. When registered, the desktop remote server can send mobile notifications for new assistant messages, deep-link the notification back into the matching conversation, and clear badge state through the remote API.
+
+Push requires a native development or release build, Firebase Android app config, and an Expo/EAS Android FCM V1 credential. It is not available in Expo Go or the web build. See [Build, Release, Deploy](/development/build-release-deploy#mobile-builds) and `apps/mobile/README.md` for credential setup and rotation notes.
 
 ### Split Chat Screen
 
@@ -161,6 +172,10 @@ Android can keep hands-free capture and assistant TTS active after the phone loc
 3. Return to Chat and enable hands-free mode before locking the phone
 
 The app starts a visible microphone foreground service. Keep the notification active while testing locked-screen conversations.
+
+#### Desktop Provider STT
+
+When paired with desktop, mobile can route press-and-hold transcription through the desktop-configured STT provider. This is useful when you want the same OpenAI, Groq, or local desktop transcription behavior on mobile, or when native speech recognition is unreliable in a particular environment.
 
 ### Text-to-Speech
 

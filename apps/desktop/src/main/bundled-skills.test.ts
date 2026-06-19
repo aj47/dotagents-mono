@@ -72,6 +72,18 @@ describe("bundled create-repeat-task skill", () => {
     expect(parsed?.instructions).toContain("runOnStartup")
     expect(parsed?.instructions).toContain("schedule")
     expect(parsed?.instructions).toContain("profileId")
+    expect(parsed?.instructions).toContain("critiquePass")
+
+    // Prompt design guidance keeps scheduler mechanics out of the body.
+    expect(parsed?.instructions).toContain("Frontmatter vs prompt boundary")
+    expect(parsed?.instructions).toContain("Do not restate cadence")
+    expect(parsed?.instructions).toContain("On each run")
+    expect(parsed?.instructions).toContain("durable state")
+    expect(parsed?.instructions).toContain("companion skill")
+    expect(parsed?.instructions).toContain("per-run quota")
+    expect(parsed?.instructions).toContain("User-facing progress reports")
+    expect(parsed?.instructions).toContain("status.html")
+    expect(parsed?.instructions).toContain("polished HTML page")
   })
 
   it("ships an examples.md whose task frontmatter blocks all parse as valid LoopConfigs", () => {
@@ -105,6 +117,29 @@ describe("bundled create-repeat-task skill", () => {
     expect(parsedTasks.some((t) => t.runOnStartup === true)).toBe(true)
     expect(parsedTasks.some((t) => t.schedule?.type === "daily")).toBe(true)
     expect(parsedTasks.some((t) => t.schedule?.type === "weekly")).toBe(true)
+    expect(parsedTasks.some((t) => t.critiquePass === true)).toBe(true)
     expect(parsedTasks.some((t) => t.enabled === false)).toBe(true)
+
+    const inventoryBuilder = parsedTasks.find((t) => t.id === "video-packaging")
+    expect(inventoryBuilder).toBeTruthy()
+    expect(inventoryBuilder?.continueInSession).toBe(true)
+    expect(inventoryBuilder?.critiquePass).toBe(true)
+    expect(inventoryBuilder?.prompt).toContain("On each run")
+    expect(inventoryBuilder?.prompt).toContain("source-ledger.md")
+    expect(inventoryBuilder?.prompt).toContain("status.html")
+    expect(inventoryBuilder?.prompt).toContain("inspect progress visually")
+    expect(inventoryBuilder?.prompt).toContain("Per-run contract")
+    expect(inventoryBuilder?.prompt).not.toMatch(/Every 20 minutes/i)
+  })
+})
+
+describe("bundled skill initialization", () => {
+  it("refreshes existing bundled skills so task creation guidance does not stay stale", () => {
+    const sourcePath = path.resolve(process.cwd(), "src/main/skills-service.ts")
+    const source = fs.readFileSync(sourcePath, "utf8")
+
+    expect(source).toContain("fs.rmSync(destPath, { recursive: true, force: true })")
+    expect(source).toContain("Refreshed bundled skill")
+    expect(source).not.toContain("Bundled skill already exists, skipping")
   })
 })
