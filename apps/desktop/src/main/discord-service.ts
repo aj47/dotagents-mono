@@ -1224,6 +1224,15 @@ class DiscordService {
     }
   }
 
+  private async sendDiscordVoiceTextReply(
+    channel: unknown,
+    conversationId: string,
+    responseText: string,
+  ): Promise<void> {
+    await this.sendChannelChunks(channel, responseText)
+    markDiscordBotReply(this.lastBotReplyAtByConversation, conversationId)
+  }
+
   private async processDiscordVoiceTranscript(session: DiscordVoiceSession, userId: string, transcript: string): Promise<void> {
     if (!this.client) return
     const channel = await this.client.channels.fetch(session.textChannelId).catch(() => null)
@@ -1266,8 +1275,7 @@ class DiscordService {
             this.addLog("info", `Suppressed Discord voice reply for ${conversationId} (NO_REPLY)`)
             return
           }
-          await this.sendChannelChunks(channel, responseText)
-          markDiscordBotReply(this.lastBotReplyAtByConversation, conversationId)
+          await this.sendDiscordVoiceTextReply(channel, conversationId, responseText)
           await this.playDiscordVoiceSessionReply(session, responseText)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
