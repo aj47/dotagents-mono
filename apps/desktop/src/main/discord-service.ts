@@ -1047,13 +1047,7 @@ class DiscordService {
   }
 
   private async generateDiscordVoiceTTS(responseText: string): Promise<Awaited<ReturnType<typeof generateTTS>> | null> {
-    const cfg = configStore.get()
-    if (!cfg.ttsEnabled) {
-      this.addLog("info", "Skipped Discord voice playback because TTS is disabled")
-      return null
-    }
-
-    return generateTTS({ text: responseText }, cfg)
+    return generateTTS({ text: responseText }, configStore.get())
   }
 
   private async playDiscordVoiceSessionReply(session: DiscordVoiceSession, responseText: string): Promise<void> {
@@ -1233,6 +1227,15 @@ class DiscordService {
     markDiscordBotReply(this.lastBotReplyAtByConversation, conversationId)
   }
 
+  private async sendDiscordVoiceTranscriptLog(channel: unknown, userId: string, transcript: string): Promise<void> {
+    const safeTranscript = transcript
+      .trim()
+      .replaceAll("@everyone", "@\u200beveryone")
+      .replaceAll("@here", "@\u200bhere")
+    if (!safeTranscript) return
+    await this.sendChannelChunks(channel, `**[Voice]** <@${userId}>: ${safeTranscript}`)
+  }
+
   private async processDiscordVoiceTranscript(session: DiscordVoiceSession, userId: string, transcript: string): Promise<void> {
     if (!this.client) return
     const channel = await this.client.channels.fetch(session.textChannelId).catch(() => null)
@@ -1240,6 +1243,8 @@ class DiscordService {
       this.addLog("warn", `Discord voice transcript has no linked text channel ${session.textChannelId}`)
       return
     }
+
+    await this.sendDiscordVoiceTranscriptLog(channel, userId, transcript)
 
     let profileId = getDiscordResolvedDefaultProfileId(configStore.get()).profileId
     let profile = profileId ? agentProfileService.getById(profileId) : undefined
