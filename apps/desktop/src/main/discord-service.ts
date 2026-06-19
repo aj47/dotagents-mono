@@ -1109,8 +1109,10 @@ class DiscordService {
     let authorRoleIds: string[] | undefined
 
     try {
-      const guild = this.client?.guilds.cache.get(session.guildId)
-        ?? await this.client?.guilds.fetch(session.guildId).catch(() => null)
+      let guild = this.client?.guilds.cache.get(session.guildId) ?? null
+      if (!guild && this.client) {
+        guild = await this.client.guilds.fetch(session.guildId).catch(() => null)
+      }
       const member = await guild?.members.fetch(userId).catch(() => null)
       authorRoleIds = member ? Array.from(member.roles.cache.keys()) : undefined
     } catch {
@@ -1265,6 +1267,7 @@ class DiscordService {
             return
           }
           await this.sendChannelChunks(channel, responseText)
+          markDiscordBotReply(this.lastBotReplyAtByConversation, conversationId)
           await this.playDiscordVoiceSessionReply(session, responseText)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
