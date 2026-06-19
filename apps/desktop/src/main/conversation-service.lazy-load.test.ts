@@ -33,6 +33,118 @@ afterEach(async () => {
 })
 
 describe("conversation lazy loading", () => {
+  it("includes repeat-task provenance in saved conversation history", async () => {
+    const service = await setupConversationServiceTest()
+    const repeatTask = {
+      type: "repeat_task_run" as const,
+      taskId: "daily-brief",
+      taskName: "Daily Brief",
+      runId: "daily-brief:200",
+      role: "worker" as const,
+    }
+
+    await service.saveConversation({
+      id: "conv_repeat_task",
+      title: "Daily Brief Run",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [
+        { id: "m1", role: "user", content: "Build the daily brief", timestamp: 150 },
+      ],
+      repeatTask,
+    }, true)
+
+    const [item] = await service.getConversationHistory()
+
+    expect(item.repeatTask).toEqual(repeatTask)
+  })
+
+  it("backfills repeat-task provenance by exact prompt even when the generated title looks like task setup", async () => {
+    const service = await setupConversationServiceTest()
+    const repeatTaskPrompt = "# Daily Brief\n\nRun the daily brief."
+
+    await service.saveConversation({
+      id: "conv_real_run",
+      title: "Daily Brief",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [
+        { id: "m1", role: "user", content: repeatTaskPrompt, timestamp: 150 },
+      ],
+    }, true)
+    await service.saveConversation({
+      id: "conv_create_titled_run",
+      title: "Create Daily Brief Task",
+      createdAt: 100,
+      updatedAt: 250,
+      messages: [
+        { id: "m1", role: "user", content: repeatTaskPrompt, timestamp: 150 },
+      ],
+    }, true)
+
+    const updatedCount = await service.backfillRepeatTaskSourcesByPrompt([
+      {
+        taskId: "daily-brief",
+        taskName: "Daily Brief",
+        prompt: repeatTaskPrompt,
+      },
+    ])
+
+    const runConversation = await service.loadConversation("conv_real_run")
+    const createTitledRunConversation = await service.loadConversation("conv_create_titled_run")
+
+    expect(updatedCount).toBe(2)
+    expect(runConversation?.updatedAt).toBe(200)
+    expect(runConversation?.repeatTask).toEqual({
+      type: "repeat_task_run",
+      taskId: "daily-brief",
+      taskName: "Daily Brief",
+      runId: "conv_real_run",
+      role: "worker",
+    })
+    expect(createTitledRunConversation?.updatedAt).toBe(250)
+    expect(createTitledRunConversation?.repeatTask).toEqual({
+      type: "repeat_task_run",
+      taskId: "daily-brief",
+      taskName: "Daily Brief",
+      runId: "conv_create_titled_run",
+      role: "worker",
+    })
+  })
+
+  it("skips repeat-task provenance backfill for duplicate prompts", async () => {
+    const service = await setupConversationServiceTest()
+    const repeatTaskPrompt = "# Shared Prompt\n\nRun this."
+
+    await service.saveConversation({
+      id: "conv_shared_prompt",
+      title: "Shared Prompt Run",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: [
+        { id: "m1", role: "user", content: repeatTaskPrompt, timestamp: 150 },
+      ],
+    }, true)
+
+    const updatedCount = await service.backfillRepeatTaskSourcesByPrompt([
+      {
+        taskId: "task-a",
+        taskName: "Task A",
+        prompt: repeatTaskPrompt,
+      },
+      {
+        taskId: "task-b",
+        taskName: "Task B",
+        prompt: repeatTaskPrompt,
+      },
+    ])
+
+    const conversation = await service.loadConversation("conv_shared_prompt")
+
+    expect(updatedCount).toBe(0)
+    expect(conversation?.repeatTask).toBeUndefined()
+  })
+
   it("keeps saved conversation history index snippets bounded", async () => {
     const service = await setupConversationServiceTest()
     const longMessage = "Huge tool output " + "A".repeat(2000)

@@ -473,6 +473,8 @@ export interface LoopCreateRequest {
   continueInSession?: boolean;
   lastSessionId?: string;
   runContinuously?: boolean;
+  critiquePass?: boolean;
+  criticProfileId?: string;
   maxIterations?: number;
   schedule?: LoopSchedule | null;
 }
@@ -488,6 +490,8 @@ export interface LoopUpdateRequest {
   continueInSession?: boolean;
   lastSessionId?: string | null;
   runContinuously?: boolean;
+  critiquePass?: boolean;
+  criticProfileId?: string | null;
   maxIterations?: number | null;
   schedule?: LoopSchedule | null;
 }

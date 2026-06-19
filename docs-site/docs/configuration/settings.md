@@ -132,14 +132,20 @@ See [WhatsApp Integration](/tools/whatsapp) for MCP setup and environment variab
 | **Auto Reply** | Automatically route incoming messages to an agent reply flow | `false` |
 | **Log Messages** | Store WhatsApp message content in integration logs | `false` |
 
-## Loop Settings
+## Repeat Task Settings
+
+See [Repeat Tasks](/agents/repeat-tasks) for the `task.md` file format, cadence models, same-session continuation, and built-in critique pass.
 
 | Setting | Description |
 |---------|-------------|
 | **Prompt** | Message to send on each interval |
 | **Interval** | Time between executions |
 | **Agent** | Which agent handles the loop |
+| **Critique mode** | Enables the built-in worker -> critic -> worker revision pass for one configured repeat task |
+| **Critic Agent** | Optional agent profile for the critique pass; defaults to the active/default agent |
 | **Enabled** | Whether the loop is active |
+
+When the built-in critique pass is enabled, each run uses three steps: the worker agent answers the repeat-task prompt, a critic agent reviews the answer and any referenced artifacts, and the worker agent receives the critique as a follow-up instruction before producing the final result. This is one configured repeat task, not a second scheduled critic task.
 
 ## UI Settings
 

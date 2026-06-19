@@ -59,7 +59,7 @@ The settings interface has dedicated sections:
 | **Models** | Model selection and custom base URLs |
 | **Capabilities** | MCP server management, tool enable/disable |
 | **Agents** | Agent profile creation and management |
-| **Loops** | Recurring automated task scheduling |
+| **Repeat Tasks** | Recurring automated task scheduling and critique passes |
 | **Discord** | Discord bot integration, access lists, and default agent routing |
 | **WhatsApp** | WhatsApp integration settings |
 | **Remote Server** | Mobile QR pairing, API key, port/bind address, and tunnel controls |
@@ -121,12 +121,13 @@ Discord and WhatsApp let trusted messages reach the desktop agent runtime:
 - **Discord** — DMs, mentions, and configured guild/channel traffic can run a selected agent profile. Operator slash commands are separately allowlisted.
 - **WhatsApp** — MCP-backed messaging tools can send, read, and auto-reply to WhatsApp messages through the WhatsApp package.
 
-### Loops (Recurring Tasks)
+### Repeat Tasks
 
-Set up tasks that run on a schedule:
+Set up tasks that run on a schedule. See [Repeat Tasks](/agents/repeat-tasks) for the file format, cadence options, same-session behavior, and built-in critique pass.
 
-- Define a prompt and interval (e.g., "Check my email every 10 minutes")
+- Define a prompt and interval (for example, "Check my email every 10 minutes")
 - Select which agent handles the loop
+- Enable a built-in worker -> critic -> worker revision pass
 - Monitor loop execution history
 - Pause and resume loops
 

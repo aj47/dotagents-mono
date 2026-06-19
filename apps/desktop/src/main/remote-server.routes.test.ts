@@ -347,6 +347,27 @@ describe("remote-server route registration", () => {
     expect(runLoopSection).toContain("sessionId: triggered.sessionId")
   })
 
+  it("exposes critique-pass fields in repeat task list, create, and update routes", () => {
+    const source = getRemoteServerSource()
+    const listLoopSection = getSection(source, 'fastify.get("/v1/loops"', '// POST /v1/loops/import/markdown')
+    const createLoopSection = getSection(source, 'fastify.post("/v1/loops"', '// PATCH /v1/loops/:id - Update a loop/repeat task')
+    const updateLoopSection = getSection(source, 'fastify.patch("/v1/loops/:id"', '// DELETE /v1/loops/:id - Delete a loop/repeat task')
+
+    expect(listLoopSection).toContain("critiquePass: l.critiquePass")
+    expect(source).toContain("const criticProfileId = loop.critiquePass ? loop.criticProfileId : undefined")
+    expect(listLoopSection).toContain("const criticProfileId = l.critiquePass ? l.criticProfileId : undefined")
+    expect(listLoopSection).toContain("criticProfileId,")
+    expect(listLoopSection).toContain("criticProfileName: getLoopProfileName(criticProfileId)")
+    expect(createLoopSection).toContain("critiquePass?: unknown")
+    expect(createLoopSection).toContain("const critiquePass = body.critiquePass === true")
+    expect(createLoopSection).toContain("criticProfileId: critiquePass ? (criticProfileId || undefined) : undefined")
+    expect(updateLoopSection).toContain("critiquePass?: unknown")
+    expect(updateLoopSection).toContain("const critiquePass = typeof body.critiquePass === \"boolean\" ? body.critiquePass : undefined")
+    expect(updateLoopSection).toContain("const nextCritiquePass = critiquePass ?? (existing.critiquePass === true)")
+    expect(updateLoopSection).toContain("body.criticProfileId !== undefined && nextCritiquePass")
+    expect(updateLoopSection).toContain("if (!updated.critiquePass)")
+  })
+
   it("does not report repeat task creation as successful when loop persistence fails", () => {
     const source = getRemoteServerSource()
     const createLoopSection = getSection(source, 'fastify.post("/v1/loops"', '// PATCH /v1/loops/:id - Update a loop/repeat task')

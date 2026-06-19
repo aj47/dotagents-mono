@@ -44,7 +44,7 @@ Then follow [Quick Start](getting-started/quickstart) to configure a provider, r
 | [Getting Started](getting-started/quickstart) | Install, first run, first agent, and setup flow |
 | [Desktop](desktop/overview) | Electron app, sessions, panel, remote server, updater, and desktop integrations |
 | [Mobile](mobile/overview) | Expo app, QR pairing, voice UX, operations dashboard, and mobile settings |
-| [Agents](agents/profiles) | Agent files, roles, skills, knowledge notes, and acpx delegation |
+| [Agents](agents/profiles) | Agent files, repeat tasks, skills, knowledge notes, and acpx delegation |
 | [Tools & Integrations](tools/mcp) | MCP tools, providers, WhatsApp, Discord, and Langfuse |
 | [Configuration](configuration/settings) | Settings, MCP server config, and keyboard shortcuts |
 | [Security](security/model) | Local-first data model, pairing, permissions, and privacy |

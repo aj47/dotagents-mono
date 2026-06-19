@@ -139,7 +139,28 @@ profileId: code-reviewer
 Review any PR opened on this repo in the last 30 minutes and post inline comments for obvious issues.
 ```
 
-## 9. Disable without deleting
+## 9. Built-in critique pass
+
+Runs the worker once, has a built-in critic pass review the answer and referenced artifacts, then asks the worker to revise using that critique. Omit `criticProfileId` to use the default active agent for critique. This is one configured repeat task, not a second scheduled critic task.
+
+```markdown
+---
+kind: task
+id: reviewed-daily-plan
+name: Reviewed Daily Plan
+enabled: true
+intervalMinutes: 1440
+profileId: planner
+critiquePass: true
+criticProfileId: critical-reviewer
+---
+
+Draft today's execution plan from my goals, calendar, and open work. Prioritize what most improves leverage and identify any risky assumptions.
+
+When producing artifacts, write them to `~/.agents/tasks/reviewed-daily-plan/latest-plan.md`. The critique pass should inspect that file and challenge unsupported assumptions, vague next actions, and priority inversions before the final revision.
+```
+
+## 10. Disable without deleting
 
 To pause a task without losing its config or history, set `enabled: false`. Do not delete the directory.
 

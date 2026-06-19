@@ -6,7 +6,7 @@ const tipcSource = readFileSync(new URL("./tipc.ts", import.meta.url), "utf8")
 
 describe("repeat-task max-iterations plumbing", () => {
   it("passes each task's maxIterations into the loop agent run", () => {
-    expect(loopServiceSource).toContain("runAgentLoopSession(loop.prompt, conversationId, sessionId, startSnoozed, loop.maxIterations)")
+    expect(loopServiceSource).toContain("loop.maxIterations,")
   })
 
   it("preserves mobile session identity for manually triggered repeat tasks", () => {
@@ -18,6 +18,6 @@ describe("repeat-task max-iterations plumbing", () => {
   it("allows loop-triggered agent runs to override the default iteration budget", () => {
     expect(tipcSource).toContain("maxIterationsOverride?: number")
     expect(tipcSource).toContain('typeof maxIterationsOverride === "number" && Number.isFinite(maxIterationsOverride)')
-    expect(tipcSource).toContain("return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed, maxIterationsOverride)")
+    expect(tipcSource).toContain("return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed, maxIterationsOverride, options)")
   })
 })

@@ -144,6 +144,27 @@ Additional notes and context...
 
 Most notes should use `context: search-only`. Reserve `context: auto` for a tiny, curated set of high-signal working notes.
 
+### Tasks (`.agents/tasks/<task-id>/task.md`)
+
+Tasks are repeatable prompts that the DotAgents desktop scheduler can run on an interval, wall-clock schedule, or continuous loop.
+
+```markdown
+---
+kind: task
+id: reviewed-daily-plan
+name: Reviewed Daily Plan
+enabled: true
+intervalMinutes: 1440
+profileId: planner
+critiquePass: true
+criticProfileId: strict-critic
+---
+
+Draft today's execution plan, write it to `~/.agents/tasks/reviewed-daily-plan/latest.md`, and revise it after the critique pass.
+```
+
+Use [Repeat Tasks](/agents/repeat-tasks) for the full task format, scheduler fields, same-session behavior, and critique-pass design guidance.
+
 ### Note-Local Assets
 
 Notes can include related files in the same folder:

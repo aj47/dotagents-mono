@@ -33,16 +33,21 @@ describe("active agents sidebar task section", () => {
     expect(sidebarSource).toContain("Show more")
   })
 
-  it("preserves backend repeat-task markers when merging live progress", () => {
+  it("preserves and hydrates repeat-task markers when merging live progress", () => {
     expect(sidebarSource).toContain("isRepeatTask?: boolean")
-    expect(sidebarSource).toContain("isRepeatTask: existingSession?.isRepeatTask")
+    expect(sidebarSource).toContain("const repeatTaskByConversationId = useMemo(")
+    expect(sidebarSource).toContain("repeatTasks.set(item.id, item.repeatTask)")
+    expect(sidebarSource).toContain("const historyRepeatTask = resolvedSessionMetadata.conversationId")
+    expect(sidebarSource).toContain("const repeatTask = existingSession?.repeatTask ?? historyRepeatTask")
+    expect(sidebarSource).toContain('repeatTask?.type === "repeat_task_run" ? true : undefined')
   })
 
   it("recognizes saved task conversations whose titles are humanized from task slugs or headings", () => {
     expect(sidebarSource).toContain("toTitleCaseTaskName(task.name, { dropConnectorWords: true })")
     expect(sidebarSource).toContain("function getFirstMarkdownHeading")
     expect(sidebarSource).toContain("firstHeading ? `${firstHeading} Run` : null")
-    expect(sidebarSource).toContain("flatMap(getRepeatTaskTitleHints)")
+    expect(sidebarSource).toContain("repeatTaskTitleHints.set(titleHint, task.id)")
+    expect(sidebarSource).toContain("dedupeTaskEntriesByTitle(currentTaskEntries, repeatTaskTitleHints)")
   })
 
   it("forces task rows to remain one line", () => {
@@ -81,7 +86,7 @@ describe("active agents sidebar task section", () => {
     expect(sessionsHeaderIndex).toBeLessThan(savedConversationsIndex)
     expect(sidebarSource).toContain('-ml-2 mt-1 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px]')
     expect(sidebarSource).toContain('"-ml-2 flex items-center gap-1 px-1.5 pb-0.5 pt-1 text-[10px]')
-    expect(sidebarSource).toContain('<Clock className="h-3.5 w-3.5" />')
+    expect(sidebarSource).toContain('<Clock className="h-3 w-3" />')
     expect(sidebarSource).not.toContain("i-mingcute-grid-line")
     expect(sidebarSource).not.toContain("text-sm font-medium transition-all duration-200")
   })
@@ -125,32 +130,22 @@ describe("active agents sidebar task section", () => {
 
   it("lets the session list flex into available sidebar height", () => {
     expect(sidebarSource).not.toContain("max-h-[45vh]")
-    expect(sidebarSource).toContain("sessionListRef")
-    expect(sidebarSource).toContain("sessionListContentRef")
     expect(sidebarSource).toContain("flex h-full min-h-full flex-col")
     expect(sidebarSource).toContain("mt-1 min-h-0 flex-1 overflow-visible")
     expect(sidebarSource).toContain('className="space-y-0.5"')
   })
 
-  it("uses five regular session rows as the floor and auto-fills empty sidebar space", () => {
+  it("uses five regular session rows as the default without auto-filling old history", () => {
     expect(sidebarSource).toContain("const DEFAULT_VISIBLE_SIDEBAR_SESSIONS = 5")
     expect(sidebarSource).toContain("const SIDEBAR_PAST_SESSIONS_PAGE_SIZE = 5")
     expect(sidebarSource).toContain("const MIN_VISIBLE_SIDEBAR_ITEMS = 1")
-    expect(sidebarSource).toContain("const SIDEBAR_SESSION_ROW_ESTIMATE_PX = 28")
     expect(sidebarSource).toContain("DEFAULT_VISIBLE_SIDEBAR_SESSIONS - activeUserSidebarSessionCount")
     expect(sidebarSource).toContain("useState<number | null>(null)")
-    expect(sidebarSource).toContain("const [autoVisibleSavedConversationCount, setAutoVisibleSavedConversationCount]")
     expect(sidebarSource).toContain("requestedSavedConversationCount")
-    expect(sidebarSource).toContain("autoVisibleSavedConversationCount")
-    expect(sidebarSource).toContain("displayedSavedConversationCount")
-    expect(sidebarSource).toContain("const contentHeight = contentElement.getBoundingClientRect().height")
-    expect(sidebarSource).toContain("availableHeight - contentHeight")
-    expect(sidebarSource).toContain("heightDelta < SIDEBAR_SESSION_ROW_ESTIMATE_PX")
-    expect(sidebarSource).toContain("visiblePageableSavedConversationCount + additionalRows")
-    expect(sidebarSource).toContain("Math.max(")
-    expect(sidebarSource).toContain("previousCount")
-    expect(sidebarSource).toContain("new ResizeObserver(updateAutoVisibleRows)")
-    expect(sidebarSource).not.toContain("Math.ceil(heightDelta / SIDEBAR_SESSION_ROW_ESTIMATE_PX)")
+    expect(sidebarSource).not.toContain("autoVisibleSavedConversationCount")
+    expect(sidebarSource).not.toContain("displayedSavedConversationCount")
+    expect(sidebarSource).not.toContain("SIDEBAR_SESSION_ROW_ESTIMATE_PX")
+    expect(sidebarSource).not.toContain("new ResizeObserver(updateAutoVisibleRows)")
     expect(sidebarSource).not.toContain("handleSidebarSessionsScroll")
     expect(sidebarSource).not.toContain("onScroll=")
   })
@@ -160,12 +155,21 @@ describe("active agents sidebar task section", () => {
     const showLessIndex = sidebarSource.lastIndexOf("Show less")
 
     expect(sidebarSource).toContain("const canShowLessSavedConversations =")
-    expect(sidebarSource).toContain("const minimumRequestedSavedConversationRows = Math.max")
+    expect(sidebarSource).toContain("const minimumRequestedSavedConversationRows = minimumVisibleSavedConversationRows")
     expect(sidebarSource).toContain("requestedSavedConversationCount > minimumRequestedSavedConversationRows")
-    expect(sidebarSource).toContain("displayedSavedConversationCount")
     expect(sidebarSource).toContain("const showLessSavedConversations = useCallback")
     expect(sidebarSource).toContain("hasMoreSavedConversations || canShowLessSavedConversations")
     expect(showMoreIndex).toBeGreaterThan(-1)
     expect(showLessIndex).toBeGreaterThan(showMoreIndex)
+  })
+
+  it("filters legacy saved task rows to current repeat tasks", () => {
+    expect(sidebarSource).toContain("const currentRepeatTaskIds = new Set<string>()")
+    expect(sidebarSource).toContain("if (task.enabled !== false)")
+    expect(sidebarSource).toContain("currentRepeatTaskIds.add(task.id)")
+    expect(sidebarSource).toContain("const currentTaskEntries = taskEntries.filter((entry) => {")
+    expect(sidebarSource).toContain("getRepeatTaskEntryTaskId(entry.session, repeatTaskTitleHints)")
+    expect(sidebarSource).toContain("currentRepeatTaskIds.has(taskId)")
+    expect(sidebarSource).toContain("dedupeTaskEntriesByTitle(currentTaskEntries, repeatTaskTitleHints)")
   })
 })

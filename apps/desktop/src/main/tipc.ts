@@ -57,6 +57,7 @@ import {
   Conversation,
   ConversationCompactionMetadata,
   ConversationHistoryItem,
+  ConversationRepeatTaskSource,
   DesktopTTSPlaybackCommand,
   DesktopTTSPlaybackRequest,
   DesktopTTSPlaybackState,
@@ -143,7 +144,12 @@ function sendAgentCompletionPushNotification(input: {
 async function withRepeatTaskSessionFlag<T extends {
   conversationId?: string
   conversationTitle?: string
+  repeatTask?: ConversationRepeatTaskSource
 }>(session: T): Promise<T & { isRepeatTask?: boolean }> {
+  if (session.repeatTask?.type === "repeat_task_run") {
+    return { ...session, isRepeatTask: true }
+  }
+
   if (hasRepeatTaskTitlePrefix(session.conversationTitle)) {
     return { ...session, isRepeatTask: true }
   }
@@ -154,18 +160,16 @@ async function withRepeatTaskSessionFlag<T extends {
     return { ...session, isRepeatTask: true }
   }
 
+  let firstUserMessage: string | undefined
   if (session.conversationId) {
     try {
       const conversation = await conversationService.loadConversation(session.conversationId)
-      const firstUserMessage = conversation?.messages
+      if (conversation?.repeatTask?.type === "repeat_task_run") {
+        return { ...session, isRepeatTask: true, repeatTask: conversation.repeatTask }
+      }
+      firstUserMessage = conversation?.messages
         ?.find((message) => message.role === "user" && message.content.trim())
         ?.content.trim()
-      if (
-        firstUserMessage &&
-        loops.some((loop) => loop.prompt.trim() === firstUserMessage)
-      ) {
-        return { ...session, isRepeatTask: true }
-      }
     } catch (error) {
       logApp("[tipc] Failed to inspect session conversation for repeat-task grouping", {
         conversationId: session.conversationId,
@@ -174,7 +178,21 @@ async function withRepeatTaskSessionFlag<T extends {
     }
   }
 
+  if (
+    firstUserMessage &&
+    !isLikelyRepeatTaskCreationSessionTitle(session.conversationTitle) &&
+    loops.some((loop) => loop.prompt.trim() === firstUserMessage)
+  ) {
+    return { ...session, isRepeatTask: true }
+  }
+
   return session
+}
+
+function isLikelyRepeatTaskCreationSessionTitle(title: string | undefined): boolean {
+  const normalized = title?.trim().toLowerCase()
+  if (!normalized) return false
+  return normalized.startsWith("create ") && /\btask\b/.test(normalized)
 }
 
 const isFinitePanelSize = (value: unknown): value is { width: number; height: number } =>
@@ -413,6 +431,7 @@ async function processWithAgentMode(
   existingSessionId?: string, // Optional: reuse existing session instead of creating new one
   launchStateOrStartSnoozed: boolean | AgentLaunchState = false, // Defaults to foreground/panel-focused work.
   maxIterationsOverride?: number,
+  options: AgentLoopSessionOptions = {},
 ): Promise<string> {
   const launchState = normalizeAgentLaunchState(launchStateOrStartSnoozed)
   const { startSnoozed } = launchState
@@ -469,7 +488,7 @@ async function processWithAgentMode(
     logLLM(`[processWithAgentMode] ACP routing via ${topLevelAcpSelection.source}, agent: ${resolvedMainAgentName}`)
 
     // Create conversation title for session tracking
-    const conversationTitle = text
+    const conversationTitle = resolveAgentRunConversationTitle(text, options)
     const profileSnapshot = existingProfileSnapshot
       ?? (currentProfile ? createSessionSnapshotFromProfile(currentProfile) : undefined)
 
@@ -530,7 +549,7 @@ async function processWithAgentMode(
   }
 
   // Start tracking this agent session (or reuse existing one)
-  let conversationTitle = text
+  let conversationTitle = resolveAgentRunConversationTitle(text, options)
   // When creating a new session from keybind/UI, start unsnoozed unless the
   // caller explicitly requested true background/snoozed work.
   const sessionId = existingSessionId || agentSessionTracker.startSession(conversationId, conversationTitle, startSnoozed, profileSnapshot)
@@ -748,8 +767,19 @@ export async function runAgentLoopSession(
   existingSessionId: string,
   startSnoozed: boolean = true,
   maxIterationsOverride?: number,
+  options: AgentLoopSessionOptions = {},
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed, maxIterationsOverride)
+  return processWithAgentMode(
+    text,
+    conversationId,
+    existingSessionId,
+    startSnoozed,
+    maxIterationsOverride,
+    {
+      ...options,
+      conversationTitle: resolveAgentLoopSessionConversationTitle(text, existingSessionId, options),
+    },
+  )
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"
@@ -773,6 +803,40 @@ type AgentLaunchState = {
   startSnoozed: boolean
   shouldSuppressPanelAutoShow: boolean
   shouldFocusPanelSession: boolean
+}
+
+type AgentLoopSessionOptions = {
+  conversationTitle?: string
+}
+
+const AGENT_LOOP_FALLBACK_TITLE_MAX_CHARS = 80
+
+function resolveAgentRunConversationTitle(
+  text: string,
+  options?: AgentLoopSessionOptions,
+): string {
+  return options?.conversationTitle?.trim() || text
+}
+
+function truncateAgentLoopFallbackTitle(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (!normalized) return "Agent run"
+  if (normalized.length <= AGENT_LOOP_FALLBACK_TITLE_MAX_CHARS) return normalized
+  return `${normalized.slice(0, AGENT_LOOP_FALLBACK_TITLE_MAX_CHARS - 3)}...`
+}
+
+function resolveAgentLoopSessionConversationTitle(
+  text: string,
+  existingSessionId: string,
+  options?: AgentLoopSessionOptions,
+): string {
+  const explicitTitle = options?.conversationTitle?.trim()
+  if (explicitTitle) return explicitTitle
+
+  const existingTitle = agentSessionTracker.getSession(existingSessionId)?.conversationTitle?.trim()
+  if (existingTitle) return existingTitle
+
+  return truncateAgentLoopFallbackTitle(text)
 }
 
 function resolveAgentLaunchState(input: AgentLaunchStateInput = {}): AgentLaunchState {

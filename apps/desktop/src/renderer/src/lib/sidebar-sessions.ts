@@ -1,4 +1,4 @@
-import type { AgentProgressUpdate } from "@shared/types"
+import type { AgentProgressUpdate, ConversationRepeatTaskSource } from "@shared/types"
 import { TASK_SESSION_TITLE_PREFIX, hasRepeatTaskTitlePrefix } from "@shared/repeat-tasks"
 import { normalizeMessagePreviewText } from "@dotagents/shared/message-display-utils"
 export type SessionLike = {
@@ -44,6 +44,7 @@ type TitledSessionLike = SessionLike & {
   parentSessionId?: string | null
   conversationTitle?: string
   isRepeatTask?: boolean
+  repeatTask?: ConversationRepeatTaskSource | null
 }
 
 type ProgressTitleLike = Pick<
@@ -98,7 +99,143 @@ export interface SidebarActivityPresentation {
   isForegroundActivity: boolean
 }
 
-type RepeatTaskTitleHints = ReadonlySet<string>
+type RepeatTaskTitleHints = ReadonlySet<string> | ReadonlyMap<string, string>
+type RepeatTaskTitleHintEntry = {
+  key: string
+  tokens: ReadonlySet<string>
+}
+type RepeatTaskTitleHintIndex = {
+  exactKeyByTitle: ReadonlyMap<string, string>
+  fuzzyEntries: RepeatTaskTitleHintEntry[]
+}
+
+const REPEAT_TASK_TITLE_TOKEN_CACHE_LIMIT = 2000
+const repeatTaskTitleTokenCache = new Map<string, string[]>()
+const repeatTaskTitleHintIndexCache = new WeakMap<object, RepeatTaskTitleHintIndex>()
+const EMPTY_REPEAT_TASK_TITLE_HINT_INDEX: RepeatTaskTitleHintIndex = {
+  exactKeyByTitle: new Map(),
+  fuzzyEntries: [],
+}
+
+const REPEAT_TASK_TITLE_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "agent",
+  "for",
+  "from",
+  "in",
+  "of",
+  "on",
+  "or",
+  "repeat",
+  "run",
+  "task",
+  "the",
+  "to",
+  "with",
+])
+
+const REPEAT_TASK_TITLE_TOKEN_ALIASES: Record<string, string> = {
+  critical: "critic",
+  critique: "critic",
+  critiques: "critic",
+  reviewer: "critic",
+  reviews: "critic",
+}
+
+function normalizeRepeatTaskTitleToken(token: string): string {
+  const normalized = token.toLowerCase()
+  return REPEAT_TASK_TITLE_TOKEN_ALIASES[normalized] ?? normalized
+}
+
+function getRepeatTaskTitleTokens(title: string): string[] {
+  const normalizedTitle = title.trim().toLowerCase()
+  const cached = repeatTaskTitleTokenCache.get(normalizedTitle)
+  if (cached) return cached
+
+  const tokens = normalizedTitle
+    .split(/[^a-z0-9]+/u)
+    .map((token) => normalizeRepeatTaskTitleToken(token.trim()))
+    .filter((token) => token.length > 0 && !REPEAT_TASK_TITLE_STOP_WORDS.has(token))
+
+  const uniqueTokens = Array.from(new Set(tokens))
+  repeatTaskTitleTokenCache.set(normalizedTitle, uniqueTokens)
+  if (repeatTaskTitleTokenCache.size > REPEAT_TASK_TITLE_TOKEN_CACHE_LIMIT) {
+    const oldestKey = repeatTaskTitleTokenCache.keys().next().value
+    if (oldestKey) repeatTaskTitleTokenCache.delete(oldestKey)
+  }
+  return uniqueTokens
+}
+
+function isLikelyTaskCreationConversationTitle(title: string): boolean {
+  const tokens = new Set(getRepeatTaskTitleTokens(title))
+  return tokens.has("create") && /(?:^|[^a-z0-9])task(?:[^a-z0-9]|$)/iu.test(title)
+}
+
+function isRepeatTaskTitleHintMap(value: RepeatTaskTitleHints): value is ReadonlyMap<string, string> {
+  return typeof (value as ReadonlyMap<string, string>).get === "function"
+}
+
+function getRepeatTaskTitleHintIndex(repeatTaskTitleHints?: RepeatTaskTitleHints): RepeatTaskTitleHintIndex {
+  if (!repeatTaskTitleHints || repeatTaskTitleHints.size === 0) {
+    return EMPTY_REPEAT_TASK_TITLE_HINT_INDEX
+  }
+
+  const cacheKey = repeatTaskTitleHints as object
+  const cached = repeatTaskTitleHintIndexCache.get(cacheKey)
+  if (cached) return cached
+
+  const entries = isRepeatTaskTitleHintMap(repeatTaskTitleHints)
+    ? repeatTaskTitleHints.entries()
+    : Array.from(repeatTaskTitleHints).map((hint) => [hint, hint] as const)
+  const exactKeyByTitle = new Map<string, string>()
+  const fuzzyEntries: RepeatTaskTitleHintEntry[] = []
+
+  for (const [hint, key] of entries) {
+    const normalizedHint = hint.trim()
+    if (!normalizedHint) continue
+    if (!exactKeyByTitle.has(normalizedHint)) {
+      exactKeyByTitle.set(normalizedHint, key)
+    }
+
+    const hintTokens = getRepeatTaskTitleTokens(normalizedHint)
+    if (hintTokens.length >= 3) {
+      fuzzyEntries.push({ key, tokens: new Set(hintTokens) })
+    }
+  }
+
+  const index = { exactKeyByTitle, fuzzyEntries }
+  repeatTaskTitleHintIndexCache.set(cacheKey, index)
+  return index
+}
+
+function resolveRepeatTaskTitleHintKey(title: string, repeatTaskTitleHints?: RepeatTaskTitleHints): string | null {
+  const normalizedTitle = title.trim()
+  const hintIndex = getRepeatTaskTitleHintIndex(repeatTaskTitleHints)
+  const exact = hintIndex.exactKeyByTitle.get(normalizedTitle)
+  if (exact) return exact
+  if (hintIndex.fuzzyEntries.length === 0) return null
+  if (isLikelyTaskCreationConversationTitle(normalizedTitle)) return null
+
+  const titleTokens = getRepeatTaskTitleTokens(normalizedTitle)
+  if (titleTokens.length < 3) return null
+
+  for (const hint of hintIndex.fuzzyEntries) {
+    if (titleTokens.length === hint.tokens.size && titleTokens.every((token) => hint.tokens.has(token))) {
+      return hint.key
+    }
+  }
+  return null
+}
+
+function matchesRepeatTaskTitleHint(title: string, repeatTaskTitleHints?: RepeatTaskTitleHints): boolean {
+  return resolveRepeatTaskTitleHintKey(title, repeatTaskTitleHints) !== null
+}
+
+function normalizeTaskDedupeKey(value: string): string {
+  return value.trim().toLowerCase()
+}
 
 export function getSidebarSessionGroupKey(session: SessionLike): string {
   return getSidebarSessionGroupKeys(session)[0]
@@ -390,10 +527,11 @@ function isTaskSessionWithHints(
   session: TitledSessionLike,
   repeatTaskTitleHints?: RepeatTaskTitleHints,
 ): boolean {
+  if (session.repeatTask?.type === "repeat_task_run") return true
   if (session.isRepeatTask) return true
   if (hasRepeatTaskTitlePrefix(session.conversationTitle)) return true
   const title = session.conversationTitle?.trim()
-  return !!title && !!repeatTaskTitleHints?.has(title)
+  return !!title && matchesRepeatTaskTitleHint(title, repeatTaskTitleHints)
 }
 
 export function partitionTaskAndUserEntries<
@@ -402,17 +540,18 @@ export function partitionTaskAndUserEntries<
   entries: T[],
   repeatTaskTitleHints?: RepeatTaskTitleHints,
 ): { userEntries: T[]; taskEntries: T[] } {
-  const taskSessionIds = new Set(
-    entries
-      .filter((entry) => isTaskSessionWithHints(entry.session, repeatTaskTitleHints))
-      .map((entry) => entry.session.id),
-  )
+  const taskSessionIds = new Set<string>()
+  const classifiedEntries = entries.map((entry) => {
+    const isTask = isTaskSessionWithHints(entry.session, repeatTaskTitleHints)
+    if (isTask) taskSessionIds.add(entry.session.id)
+    return { entry, isTask }
+  })
   const userEntries: T[] = []
   const taskEntries: T[] = []
-  for (const entry of entries) {
+  for (const { entry, isTask } of classifiedEntries) {
     const parentSessionId = entry.session.parentSessionId?.trim()
     if (
-      isTaskSessionWithHints(entry.session, repeatTaskTitleHints) ||
+      isTask ||
       (parentSessionId && taskSessionIds.has(parentSessionId))
     ) {
       taskEntries.push(entry)
@@ -423,12 +562,35 @@ export function partitionTaskAndUserEntries<
   return { userEntries, taskEntries }
 }
 
-function getTaskEntryDedupeKey(session: TitledSessionLike): string | null {
+function getTaskEntryDedupeKey(
+  session: TitledSessionLike,
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): string | null {
+  if (session.repeatTask?.type === "repeat_task_run" && session.repeatTask.taskId) {
+    return `repeat-task:${session.repeatTask.taskId}`
+  }
+
   const title = session.conversationTitle?.trim()
   if (!title) return null
+  const repeatTaskTitleHintKey = resolveRepeatTaskTitleHintKey(title, repeatTaskTitleHints)
+  if (repeatTaskTitleHintKey) {
+    return `repeat-task:${repeatTaskTitleHintKey}`
+  }
   return title.startsWith(TASK_SESSION_TITLE_PREFIX)
-    ? title.slice(TASK_SESSION_TITLE_PREFIX.length).trim().toLowerCase()
-    : title.toLowerCase()
+    ? normalizeTaskDedupeKey(title.slice(TASK_SESSION_TITLE_PREFIX.length))
+    : normalizeTaskDedupeKey(title)
+}
+
+export function getRepeatTaskEntryTaskId(
+  session: TitledSessionLike,
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): string | null {
+  if (session.repeatTask?.type === "repeat_task_run" && session.repeatTask.taskId) {
+    return session.repeatTask.taskId
+  }
+
+  const title = session.conversationTitle?.trim()
+  return title ? resolveRepeatTaskTitleHintKey(title, repeatTaskTitleHints) : null
 }
 
 function getTaskEntryTimestamp(session: TitledSessionLike & { startTime?: number; endTime?: number }): number {
@@ -439,6 +601,13 @@ function isSubagentLikeEntry(session: TitledSessionLike): boolean {
   if (isLikelyInternalSubSessionId(session.id)) return true
   const parentSessionId = session.parentSessionId?.trim()
   return !!parentSessionId && parentSessionId !== session.id
+}
+
+function getRepeatTaskRolePriority(session: TitledSessionLike): number {
+  const role = session.repeatTask?.role
+  if (role === "worker") return 2
+  if (role === "critic") return 0
+  return 1
 }
 
 function isBetterTaskEntry<T extends { session: TitledSessionLike & { status?: string; startTime?: number; endTime?: number } }>(
@@ -456,17 +625,30 @@ function isBetterTaskEntry<T extends { session: TitledSessionLike & { status?: s
   const candidateIsActive = candidate.session.status === "active"
   const currentIsActive = current.session.status === "active"
   if (candidateIsActive !== currentIsActive) return candidateIsActive
+
+  const candidateRolePriority = getRepeatTaskRolePriority(candidate.session)
+  const currentRolePriority = getRepeatTaskRolePriority(current.session)
+  if (candidateRolePriority !== currentRolePriority) {
+    return candidateRolePriority > currentRolePriority
+  }
+
   return getTaskEntryTimestamp(candidate.session) > getTaskEntryTimestamp(current.session)
 }
 
 export function dedupeTaskEntriesByTitle<
   T extends { session: TitledSessionLike & { status?: string; startTime?: number; endTime?: number } },
->(taskEntries: T[]): T[] {
+>(
+  taskEntries: T[],
+  repeatTaskTitleHints?: RepeatTaskTitleHints,
+): T[] {
   if (taskEntries.length <= 1) return taskEntries
 
+  const entriesWithKeys = taskEntries.map((entry) => ({
+    entry,
+    key: getTaskEntryDedupeKey(entry.session, repeatTaskTitleHints),
+  }))
   const selectedByTitle = new Map<string, T>()
-  for (const entry of taskEntries) {
-    const key = getTaskEntryDedupeKey(entry.session)
+  for (const { entry, key } of entriesWithKeys) {
     if (!key) continue
     const current = selectedByTitle.get(key)
     if (!current || isBetterTaskEntry(entry, current)) {
@@ -474,9 +656,10 @@ export function dedupeTaskEntriesByTitle<
     }
   }
 
-  return taskEntries.filter((entry) => {
-    const key = getTaskEntryDedupeKey(entry.session)
+  return entriesWithKeys.flatMap(({ entry, key }) => {
     return !key || selectedByTitle.get(key) === entry
+      ? [entry]
+      : []
   })
 }
 
