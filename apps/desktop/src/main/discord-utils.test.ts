@@ -1,11 +1,21 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildDiscordAttachmentPromptBlock,
   canUseMutatingSlashCommand,
   canUseReadOnlySlashCommand,
+  extractDiscordMarkdownImages,
   getDiscordConversationId,
   getDiscordConversationKey,
   getDiscordMessageRejectionReason,
+  getSupportedDiscordAttachmentImageMimeType,
+  isBotNameMentioned,
+  markDiscordBotReply,
+  shouldAllowDiscordNoReply,
+  shouldProcessDiscordMessageType,
   splitDiscordMessageContent,
+  stripDiscordMarkdownImages,
+  summarizeDiscordEmbedImages,
+  summarizeDiscordAttachments,
 } from "./discord-utils"
 
 describe("discord utils", () => {
@@ -90,6 +100,47 @@ describe("discord utils", () => {
     })).toBe("guild not allowlisted")
   })
 
+  it("treats plain-text bot name callouts as direct address", () => {
+    expect(isBotNameMentioned("jinx can u see this", "Jinx", "Jinx")).toBe(true)
+    expect(isBotNameMentioned("im talking to u jinx", "Jinx", "Jinx")).toBe(true)
+    expect(isBotNameMentioned("that jinxed the deploy", "Jinx", "Jinx")).toBe(false)
+
+    expect(shouldAllowDiscordNoReply({
+      isDirectMessage: false,
+      atMentioned: false,
+      nameMentioned: true,
+    })).toBe(false)
+  })
+
+  it("keeps short follow-ups after a bot reply out of no-reply mode", () => {
+    const replies = new Map<string, number>()
+    markDiscordBotReply(replies, "discord_g1_c2", 1_000)
+
+    expect(shouldAllowDiscordNoReply({
+      isDirectMessage: false,
+      atMentioned: false,
+      nameMentioned: false,
+      lastBotReplyAt: replies.get("discord_g1_c2"),
+      now: 1_000 + 30_000,
+    })).toBe(false)
+
+    expect(shouldAllowDiscordNoReply({
+      isDirectMessage: false,
+      atMentioned: false,
+      nameMentioned: false,
+      lastBotReplyAt: replies.get("discord_g1_c2"),
+      now: 1_000 + 3 * 60_000,
+    })).toBe(true)
+  })
+
+  it("filters Discord system thread events before message processing", () => {
+    expect(shouldProcessDiscordMessageType(0)).toBe(true)
+    expect(shouldProcessDiscordMessageType(19)).toBe(true)
+    expect(shouldProcessDiscordMessageType(18)).toBe(false)
+    expect(shouldProcessDiscordMessageType(21)).toBe(false)
+    expect(shouldProcessDiscordMessageType("0")).toBe(false)
+  })
+
   it("exempts Discord application owners from the DM allowlist (bootstrap path)", () => {
     // Without the owner bypass: the owner gets locked out by their own
     // DM allowlist as soon as it's non-empty, breaking the bootstrap flow
@@ -153,6 +204,127 @@ describe("discord utils", () => {
     const chunks = splitDiscordMessageContent(`${"a".repeat(1200)}\n${"b".repeat(1200)}`, 1900)
     expect(chunks.length).toBe(2)
     expect(chunks.every((chunk) => chunk.length <= 1900)).toBe(true)
+  })
+
+  it("detects Discord image attachment mime types from content type or filename", () => {
+    expect(getSupportedDiscordAttachmentImageMimeType({
+      name: "screenshot.bin",
+      contentType: "image/png; charset=binary",
+    })).toBe("image/png")
+    expect(getSupportedDiscordAttachmentImageMimeType({
+      name: "photo.JPG",
+      contentType: null,
+    })).toBe("image/jpeg")
+    expect(getSupportedDiscordAttachmentImageMimeType({
+      name: "notes.txt",
+      contentType: "text/plain",
+    })).toBeUndefined()
+  })
+
+  it("summarizes Discord attachments and skips entries without URLs", () => {
+    const attachments = summarizeDiscordAttachments([
+      {
+        id: "a1",
+        name: "diagram.png",
+        url: "https://cdn.discordapp.com/diagram.png",
+        contentType: "image/png",
+        size: 123,
+      },
+      {
+        id: "a2",
+        name: "missing-url.txt",
+        url: "",
+        contentType: "text/plain",
+        size: 10,
+      },
+    ])
+
+    expect(attachments).toEqual([
+      {
+        id: "a1",
+        name: "diagram.png",
+        url: "https://cdn.discordapp.com/diagram.png",
+        contentType: "image/png",
+        size: 123,
+        imageMimeType: "image/png",
+      },
+    ])
+  })
+
+  it("summarizes image embeds as attachment fallbacks", () => {
+    const summaries = summarizeDiscordEmbedImages([
+      {
+        title: "Preview",
+        image: { url: "https://cdn.discordapp.com/attachments/1/screenshot.png?ex=1" },
+      },
+      {
+        thumbnail: { proxyURL: "https://media.discordapp.net/attachments/1/thumb.webp" },
+      },
+      {
+        url: "https://example.com/no-image",
+      },
+    ])
+
+    expect(summaries).toHaveLength(2)
+    expect(summaries[0]).toMatchObject({
+      name: "screenshot.png",
+      url: "https://cdn.discordapp.com/attachments/1/screenshot.png?ex=1",
+      imageMimeType: "image/png",
+    })
+    expect(summaries[1]).toMatchObject({
+      name: "thumb.webp",
+      imageMimeType: "image/webp",
+    })
+  })
+
+  it("extracts and strips outbound Discord markdown images", () => {
+    const content = [
+      "Here are previews.",
+      "![One](assets://conversation-image/conv/file.png)",
+      "![Two](data:image/png;base64,AAAA)",
+      "Done.",
+    ].join("\n\n")
+
+    expect(extractDiscordMarkdownImages(content)).toEqual([
+      { alt: "One", url: "assets://conversation-image/conv/file.png" },
+      { alt: "Two", url: "data:image/png;base64,AAAA" },
+    ])
+    expect(stripDiscordMarkdownImages(content)).toBe("Here are previews.\n\nDone.")
+  })
+
+  it("does not treat remote URLs in model output as outbound Discord image attachments", () => {
+    const content = "Remote preview: ![leak](https://example.com/private.png)"
+
+    expect(extractDiscordMarkdownImages(content)).toEqual([])
+    expect(stripDiscordMarkdownImages(content)).toBe(content)
+  })
+
+  it("builds compact Discord attachment prompt blocks with optional image markdown", () => {
+    const block = buildDiscordAttachmentPromptBlock([
+      {
+        id: "a1",
+        name: "screen\nshot.png",
+        url: "https://cdn.discordapp.com/screenshot.png",
+        contentType: "image/png",
+        size: 200,
+        imageMimeType: "image/png",
+      },
+      {
+        id: "a2",
+        name: "notes\"injection.txt",
+        url: "https://cdn.discordapp.com/notes.txt",
+        contentType: "text/plain",
+        size: 50,
+      },
+    ], new Map([["a1", "assets://conversation-image/conv/screenshot.png"]]))
+
+    expect(block).toContain("<discord_attachments>")
+    expect(block).toContain('name="screen shot.png"')
+    expect(block).toContain('name="notes injection.txt"')
+    expect(block).not.toContain('notes"injection')
+    expect(block).toContain('type="image/png"')
+    expect(block).toContain('url="https://cdn.discordapp.com/notes.txt"')
+    expect(block).toContain("![screen shot.png](assets://conversation-image/conv/screenshot.png)")
   })
 
   it("restricts slash command mutations to Discord application owners only", () => {

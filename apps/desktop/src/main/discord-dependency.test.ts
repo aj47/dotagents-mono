@@ -39,6 +39,35 @@ describe("discord dependency helpers", () => {
     expect(discordServiceSource).toContain("void this.handleMessage(message).catch(")
   })
 
+  it("enriches Discord runs with attachments, image assets, reactions, and reply references", () => {
+    expect(discordServiceSource).toContain("buildDiscordAttachmentContext(message, conversationId)")
+    expect(discordServiceSource).toContain("conversationService.storeImageBufferAsConversationAsset")
+    expect(discordServiceSource).toContain("Please review the attached Discord media.")
+    expect(discordServiceSource).toContain('await this.reactToMessage(message, "👀")')
+    expect(discordServiceSource).toContain('await this.reactToMessage(message, "✅")')
+    expect(discordServiceSource).toContain('await this.reactToMessage(message, "❌")')
+    expect(discordServiceSource).toContain("collectOutboundDiscordImages(content)")
+    expect(discordServiceSource).toContain("stripDiscordMarkdownImages(content)")
+    expect(discordServiceSource).toContain("await message.reply(payload)")
+  })
+
+  it("supports Hermes-style Discord voice-channel reply playback", () => {
+    expect(discordServiceSource).toContain('setName("voice")')
+    expect(discordServiceSource).toContain("GatewayIntentBits.GuildVoiceStates")
+    expect(discordServiceSource).toContain("joinVoiceChannel")
+    expect(discordServiceSource).toContain("voiceSessions")
+    expect(discordServiceSource).toContain("getDiscordVoiceRejectionReason(session, userId)")
+    expect(discordServiceSource).not.toContain("Skipped Discord voice playback because TTS is disabled")
+    expect(discordServiceSource).toContain("generateTTS({ text: responseText }, configStore.get())")
+    expect(discordServiceSource).toContain("sendDiscordVoiceTranscriptLog(channel, userId, transcript)")
+    expect(discordServiceSource).toContain("**[Voice]** <@${userId}>")
+    expect(discordServiceSource).not.toContain('"new",\n    "voice",')
+    expect(discordServiceSource).toContain('connection.receiver.speaking.on("start"')
+    expect(discordServiceSource).toContain("transcribeAudioWithConfiguredProvider")
+    expect(discordServiceSource).toContain("playDiscordVoiceReply(message, responseText)")
+    expect(discordServiceSource).toContain("generateDiscordVoiceTTS(responseText)")
+  })
+
   it("awaits in-flight startPromise in stop() to close the enable→disable race", () => {
     // Regression guard for the race described in PR #305 review:
     // startInternal() assigns `this.client` only after `client.login()`

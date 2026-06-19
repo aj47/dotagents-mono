@@ -1,9 +1,16 @@
+import fs from "node:fs/promises"
+import path from "node:path"
+import { Readable } from "node:stream"
 import type { Client, Message } from "discord.js"
+import type { AudioPlayer, VoiceConnection } from "@discordjs/voice"
 import { configStore } from "./config"
 import { getResolvedRemoteServerApiKey } from "./remote-server-secret"
 import { emergencyStopAll } from "./emergency-stop"
 import { logApp } from "./debug"
 import { agentProfileService } from "./agent-profile-service"
+import { conversationService } from "./conversation-service"
+import { generateTTS } from "./tts-service"
+import { transcribeAudioWithConfiguredProvider } from "./stt-service"
 import {
   getDiscordResolvedDefaultProfileId,
   getDiscordResolvedToken,
@@ -14,9 +21,19 @@ import {
   getDiscordConversationId,
   getDiscordConversationKey,
   getDiscordMessageRejectionReason,
+  buildDiscordAttachmentPromptBlock,
+  extractDiscordMarkdownImages,
+  summarizeDiscordAttachments,
+  summarizeDiscordEmbedImages,
   isBotNameMentioned,
+  markDiscordBotReply,
+  shouldAllowDiscordNoReply,
+  shouldProcessDiscordMessageType,
   splitDiscordMessageContent,
+  stripDiscordMarkdownImages,
+  type DiscordAttachmentSummary,
   type DiscordConversationLocation,
+  type DiscordMarkdownImage,
 } from "./discord-utils"
 import {
   DISCORD_UNAVAILABLE_ERROR,
@@ -24,8 +41,21 @@ import {
   isDiscordDependencyMissingError,
   requireDiscordDependency,
 } from "./discord-dependency"
+import {
+  CONVERSATION_IMAGE_ASSET_HOST,
+  getConversationImageAssetPath,
+} from "./conversation-image-assets"
 
 type DiscordLogLevel = "info" | "warn" | "error"
+
+const DISCORD_ATTACHMENT_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+const DISCORD_ATTACHMENT_DOWNLOAD_TIMEOUT_MS = 15_000
+const DISCORD_OUTBOUND_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+const DISCORD_OUTBOUND_IMAGE_MAX_COUNT = 4
+const DISCORD_VOICE_PLAYBACK_TIMEOUT_MS = 120_000
+const DISCORD_VOICE_SILENCE_DURATION_MS = 1_500
+const DISCORD_VOICE_MIN_PCM_BYTES = 96_000
+const DISCORD_VOICE_MAX_PCM_BYTES = 192_000 * 120
 
 export interface DiscordLogEntry {
   id: string
@@ -90,7 +120,35 @@ interface ParsedOperatorCommand {
   body?: Record<string, unknown>
 }
 
+type DiscordVoiceModules = typeof import("@discordjs/voice")
+
+interface DiscordVoiceSession {
+  guildId: string
+  channelId: string
+  textChannelId: string
+  channelName: string
+  connection: VoiceConnection
+  player: AudioPlayer
+  joinedAt: number
+}
+
+interface DiscordOutboundImageFile {
+  attachment: Buffer
+  name: string
+}
+
 const OPERATOR_DETAIL_REDACTION_PATTERN = /(api.?key|token|secret|qr)/i
+const DISCORD_IMAGE_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+  "image/png": "png",
+  "image/apng": "apng",
+  "image/gif": "gif",
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/webp": "webp",
+  "image/bmp": "bmp",
+  "image/avif": "avif",
+  "image/svg+xml": "svg",
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
@@ -131,6 +189,107 @@ function getOperatorString(value: unknown): string | undefined {
 
 function getOperatorNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined
+}
+
+function sanitizeDiscordFileName(value: string, fallback: string): string {
+  const clean = value
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80)
+  return clean || fallback
+}
+
+function ensureDiscordImageExtension(fileName: string, mimeType: string, fallbackBase: string): string {
+  const extension = DISCORD_IMAGE_EXTENSION_BY_MIME_TYPE[mimeType.toLowerCase()] || "png"
+  if (path.extname(fileName)) return fileName
+  return `${sanitizeDiscordFileName(fileName, fallbackBase)}.${extension}`
+}
+
+function isDiscordHostedMediaUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== "https:") return false
+    const host = parsed.hostname.toLowerCase()
+    return host === "cdn.discordapp.com"
+      || host === "media.discordapp.net"
+      || /^images-ext-\d+\.discordapp\.net$/u.test(host)
+  } catch {
+    return false
+  }
+}
+
+async function readLimitedDiscordResponseBuffer(response: Response, maxBytes: number): Promise<Buffer | null> {
+  const contentLengthHeader = response.headers.get("content-length")
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) return null
+
+  const body = response.body
+  if (!body) {
+    const buffer = Buffer.from(await response.arrayBuffer())
+    return buffer.length > 0 && buffer.length <= maxBytes ? buffer : null
+  }
+
+  const reader = body.getReader()
+  const chunks: Buffer[] = []
+  let total = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      total += value.byteLength
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined)
+        return null
+      }
+      chunks.push(Buffer.from(value))
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  return total > 0 ? Buffer.concat(chunks, total) : null
+}
+
+function parseDiscordDataImageUrl(url: string): { buffer: Buffer; mimeType: string } | null {
+  const base64Match = /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(url)
+  if (base64Match) {
+    return {
+      mimeType: base64Match[1].toLowerCase(),
+      buffer: Buffer.from(base64Match[2].replace(/\s+/g, ""), "base64"),
+    }
+  }
+
+  const utf8Match = /^data:(image\/[a-z0-9.+-]+);(?:charset=[^;,]+;)?utf8,([\s\S]+)$/i.exec(url)
+  if (utf8Match) {
+    return {
+      mimeType: utf8Match[1].toLowerCase(),
+      buffer: Buffer.from(decodeURIComponent(utf8Match[2]), "utf8"),
+    }
+  }
+
+  return null
+}
+
+async function resolveConversationImageAssetBuffer(url: string): Promise<{ buffer: Buffer; fileName: string; mimeType: string } | null> {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== "assets:" || parsed.hostname !== CONVERSATION_IMAGE_ASSET_HOST) return null
+    const [, encodedConversationId, encodedFileName] = parsed.pathname.split("/")
+    if (!encodedConversationId || !encodedFileName) return null
+
+    const conversationId = decodeURIComponent(encodedConversationId)
+    const fileName = decodeURIComponent(encodedFileName)
+    const buffer = await fs.readFile(getConversationImageAssetPath(conversationId, fileName))
+    const extension = path.extname(fileName).toLowerCase().slice(1)
+    const mimeType = Object.entries(DISCORD_IMAGE_EXTENSION_BY_MIME_TYPE)
+      .find(([, ext]) => ext === extension)?.[0] || "image/png"
+    return { buffer, fileName, mimeType }
+  } catch {
+    return null
+  }
 }
 
 function formatOperatorDetailLines(details: unknown, options: { skipKeys?: string[] } = {}): string[] {
@@ -884,8 +1043,12 @@ class DiscordService {
   private readonly maxLogs = 200
   private startPromise: Promise<{ success: boolean; error?: string }> | null = null
   private readonly processingChains = new Map<string, Promise<void>>()
+  private readonly voiceSessions = new Map<string, DiscordVoiceSession>()
+  private readonly voiceCaptureKeys = new Set<string>()
+  private readonly voicePlaybackGuilds = new Set<string>()
   /** Buffered non-mentioned messages per channel, injected as context when bot IS mentioned */
   private readonly pendingHistory = new Map<string, PendingMessage[]>()
+  private readonly lastBotReplyAtByConversation = new Map<string, number>()
   /**
    * IDs of the Discord application owner (or, if the application is owned by a
    * Team, every team member). Populated on `ready` via `client.application.fetch()`.
@@ -893,6 +1056,339 @@ class DiscordService {
    * `discordDmAllowUserIds` allowlist on a fresh install via `/dm allow`.
    */
   private applicationOwnerIds: ReadonlySet<string> = new Set()
+
+  private async loadDiscordVoiceModules(): Promise<DiscordVoiceModules> {
+    try {
+      return await import("@discordjs/voice")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new Error(`Discord voice support is unavailable because @discordjs/voice is not installed or failed to load. (${message})`)
+    }
+  }
+
+  private getVoiceSessionForTextChannel(message: Message<boolean>): DiscordVoiceSession | undefined {
+    if (!message.guildId) return undefined
+    const session = this.voiceSessions.get(message.guildId)
+    if (!session) return undefined
+    const channelId = message.channel.isThread() ? (message.channel.parentId || message.channel.id) : message.channel.id
+    return session.textChannelId === channelId ? session : undefined
+  }
+
+  private async leaveVoiceSession(guildId: string): Promise<boolean> {
+    const session = this.voiceSessions.get(guildId)
+    if (!session) return false
+    this.voiceSessions.delete(guildId)
+    try {
+      session.player.stop(true)
+    } catch {
+      // best-effort cleanup
+    }
+    try {
+      session.connection.destroy()
+    } catch {
+      // best-effort cleanup
+    }
+    this.addLog("info", `Left Discord voice channel ${session.channelName} (${session.channelId})`)
+    return true
+  }
+
+  private async generateDiscordVoiceTTS(responseText: string): Promise<Awaited<ReturnType<typeof generateTTS>> | null> {
+    return generateTTS({ text: responseText }, configStore.get())
+  }
+
+  private async playDiscordVoiceSessionReply(session: DiscordVoiceSession, responseText: string): Promise<void> {
+    try {
+      const voice = await this.loadDiscordVoiceModules()
+      const tts = await this.generateDiscordVoiceTTS(responseText)
+      if (!tts) return
+      const audioBuffer = Buffer.from(tts.audio)
+      const resource = voice.createAudioResource(Readable.from([audioBuffer]), {
+        inputType: voice.StreamType.Arbitrary,
+      })
+
+      this.voicePlaybackGuilds.add(session.guildId)
+      session.player.play(resource)
+      await new Promise<void>((resolve, reject) => {
+        let timeout: ReturnType<typeof setTimeout> | undefined
+        const cleanup = () => {
+          if (timeout) clearTimeout(timeout)
+          session.player.off(voice.AudioPlayerStatus.Idle, onIdle)
+          session.player.off("error", onError)
+        }
+        const onIdle = () => {
+          cleanup()
+          resolve()
+        }
+        const onError = (error: Error) => {
+          cleanup()
+          reject(error)
+        }
+        session.player.once(voice.AudioPlayerStatus.Idle, onIdle)
+        session.player.once("error", onError)
+        timeout = setTimeout(() => {
+          cleanup()
+          reject(new Error("Discord voice playback timed out"))
+        }, DISCORD_VOICE_PLAYBACK_TIMEOUT_MS)
+      })
+      this.addLog("info", `Spoke Discord reply in voice channel ${session.channelName}`)
+    } catch (error) {
+      this.addLog("warn", `Discord voice playback failed: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      this.voicePlaybackGuilds.delete(session.guildId)
+    }
+  }
+
+  private async playDiscordVoiceReply(message: Message<boolean>, responseText: string): Promise<void> {
+    const session = this.getVoiceSessionForTextChannel(message)
+    if (!session) return
+    await this.playDiscordVoiceSessionReply(session, responseText)
+  }
+
+  private async getDiscordVoiceRejectionReason(session: DiscordVoiceSession, userId: string): Promise<string | null> {
+    const cfg = configStore.get()
+    let authorRoleIds: string[] | undefined
+
+    try {
+      let guild = this.client?.guilds.cache.get(session.guildId) ?? null
+      if (!guild && this.client) {
+        guild = await this.client.guilds.fetch(session.guildId).catch(() => null)
+      }
+      const member = await guild?.members.fetch(userId).catch(() => null)
+      authorRoleIds = member ? Array.from(member.roles.cache.keys()) : undefined
+    } catch {
+      authorRoleIds = undefined
+    }
+
+    return getDiscordMessageRejectionReason({
+      authorId: userId,
+      channelId: session.textChannelId,
+      guildId: session.guildId,
+      isDirectMessage: false,
+      // A linked voice channel is an explicit conversation surface; do not
+      // require users to speak the bot's name, but keep the normal allowlists.
+      mentioned: true,
+      nameMentioned: false,
+      requireMention: cfg.discordRequireMention ?? true,
+      dmEnabled: cfg.discordDmEnabled ?? true,
+      allowUserIds: cfg.discordAllowUserIds,
+      allowGuildIds: cfg.discordAllowGuildIds,
+      allowChannelIds: cfg.discordAllowChannelIds,
+      allowRoleIds: cfg.discordAllowRoleIds,
+      dmAllowUserIds: cfg.discordDmAllowUserIds,
+      authorRoleIds,
+      applicationOwnerIds: this.applicationOwnerIds,
+    })
+  }
+
+  private async collectDiscordVoicePcm(opusStream: NodeJS.ReadableStream): Promise<Buffer> {
+    const prism = await import("prism-media")
+    const decoderCtor = (prism as unknown as { default?: { opus?: { Decoder?: new (options: Record<string, number>) => NodeJS.ReadWriteStream } }; opus?: { Decoder?: new (options: Record<string, number>) => NodeJS.ReadWriteStream } }).default?.opus?.Decoder
+      ?? (prism as unknown as { opus?: { Decoder?: new (options: Record<string, number>) => NodeJS.ReadWriteStream } }).opus?.Decoder
+    if (!decoderCtor) {
+      throw new Error("prism-media Opus decoder is unavailable")
+    }
+
+    const pcmStream = opusStream.pipe(new decoderCtor({ rate: 48_000, channels: 2, frameSize: 960 }))
+    const destroyPcmStream = () => {
+      const destroy = (pcmStream as unknown as { destroy?: () => void }).destroy
+      if (typeof destroy === "function") destroy.call(pcmStream)
+    }
+    const chunks: Buffer[] = []
+    let totalBytes = 0
+    return await new Promise<Buffer>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup()
+        destroyPcmStream()
+        reject(new Error("Discord voice capture timed out"))
+      }, DISCORD_VOICE_PLAYBACK_TIMEOUT_MS)
+      const cleanup = () => {
+        clearTimeout(timeout)
+        pcmStream.off("data", onData)
+        pcmStream.off("end", onEnd)
+        pcmStream.off("error", onError)
+      }
+      const onData = (chunk: Buffer | Uint8Array) => {
+        const buffer = Buffer.from(chunk)
+        totalBytes += buffer.length
+        if (totalBytes > DISCORD_VOICE_MAX_PCM_BYTES) {
+          cleanup()
+          destroyPcmStream()
+          reject(new Error("Discord voice utterance is too long"))
+          return
+        }
+        chunks.push(buffer)
+      }
+      const onEnd = () => {
+        cleanup()
+        resolve(Buffer.concat(chunks))
+      }
+      const onError = (error: Error) => {
+        cleanup()
+        reject(error)
+      }
+      pcmStream.on("data", onData)
+      pcmStream.once("end", onEnd)
+      pcmStream.once("error", onError)
+    })
+  }
+
+  private encodeDiscordVoicePcmAsWav(pcm: Buffer): Buffer {
+    const sampleRate = 48_000
+    const channels = 2
+    const bitsPerSample = 16
+    const byteRate = sampleRate * channels * (bitsPerSample / 8)
+    const blockAlign = channels * (bitsPerSample / 8)
+    const header = Buffer.alloc(44)
+    header.write("RIFF", 0)
+    header.writeUInt32LE(36 + pcm.length, 4)
+    header.write("WAVE", 8)
+    header.write("fmt ", 12)
+    header.writeUInt32LE(16, 16)
+    header.writeUInt16LE(1, 20)
+    header.writeUInt16LE(channels, 22)
+    header.writeUInt32LE(sampleRate, 24)
+    header.writeUInt32LE(byteRate, 28)
+    header.writeUInt16LE(blockAlign, 32)
+    header.writeUInt16LE(bitsPerSample, 34)
+    header.write("data", 36)
+    header.writeUInt32LE(pcm.length, 40)
+    return Buffer.concat([header, pcm])
+  }
+
+  private async sendChannelChunks(channel: unknown, content: string): Promise<void> {
+    const chunks = splitDiscordMessageContent(content)
+    if (chunks.length === 0) return
+    if (!channel || typeof channel !== "object" || !("send" in channel) || typeof channel.send !== "function") return
+    for (const chunk of chunks) {
+      await channel.send({ content: chunk })
+    }
+  }
+
+  private async sendDiscordVoiceTextReply(
+    channel: unknown,
+    conversationId: string,
+    responseText: string,
+  ): Promise<void> {
+    await this.sendChannelChunks(channel, responseText)
+    markDiscordBotReply(this.lastBotReplyAtByConversation, conversationId)
+  }
+
+  private async sendDiscordVoiceTranscriptLog(channel: unknown, userId: string, transcript: string): Promise<void> {
+    const safeTranscript = transcript
+      .trim()
+      .replaceAll("@everyone", "@\u200beveryone")
+      .replaceAll("@here", "@\u200bhere")
+    if (!safeTranscript) return
+    await this.sendChannelChunks(channel, `**[Voice]** <@${userId}>: ${safeTranscript}`)
+  }
+
+  private async processDiscordVoiceTranscript(session: DiscordVoiceSession, userId: string, transcript: string): Promise<void> {
+    if (!this.client) return
+    const channel = await this.client.channels.fetch(session.textChannelId).catch(() => null)
+    if (!channel) {
+      this.addLog("warn", `Discord voice transcript has no linked text channel ${session.textChannelId}`)
+      return
+    }
+
+    await this.sendDiscordVoiceTranscriptLog(channel, userId, transcript)
+
+    let profileId = getDiscordResolvedDefaultProfileId(configStore.get()).profileId
+    let profile = profileId ? agentProfileService.getById(profileId) : undefined
+    if (!profile) {
+      profile = agentProfileService.getCurrentProfile()
+      profileId = profile?.id
+    }
+    if (!profile || !profileId) {
+      await this.sendChannelChunks(channel, "No agent profile is available. Please create one in settings.")
+      return
+    }
+
+    const location: DiscordConversationLocation = {
+      channelId: session.textChannelId,
+      guildId: session.guildId,
+      isDirectMessage: false,
+    }
+    const epoch = this.getConversationEpoch(configStore.get(), location)
+    const conversationId = getDiscordConversationId({ ...location, epoch })
+    const prompt = `Discord voice input from <@${userId}> in ${session.channelName}: ${transcript}`
+    const processingChain = (this.processingChains.get(conversationId) || Promise.resolve())
+      .catch(() => undefined)
+      .then(async () => {
+        this.addLog("info", `Processing Discord voice transcript for ${conversationId} (${transcript.length} chars)`)
+        try {
+          if ("sendTyping" in channel && typeof channel.sendTyping === "function") {
+            await channel.sendTyping()
+          }
+          const { runAgent } = await import("./remote-server")
+          const result = await runAgent({ prompt, conversationId, profileId })
+          const responseText = result.content?.trim() || "Done."
+          if (isNoReplyResponse(responseText)) {
+            this.addLog("info", `Suppressed Discord voice reply for ${conversationId} (NO_REPLY)`)
+            return
+          }
+          await this.sendDiscordVoiceTextReply(channel, conversationId, responseText)
+          await this.playDiscordVoiceSessionReply(session, responseText)
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          this.addLog("error", `Discord voice reply failed for ${conversationId}: ${errorMessage}`)
+          await this.sendChannelChunks(channel, `I hit an error while processing that voice input: ${errorMessage}`)
+        }
+      })
+      .finally(() => {
+        if (this.processingChains.get(conversationId) === processingChain) {
+          this.processingChains.delete(conversationId)
+        }
+      })
+    this.processingChains.set(conversationId, processingChain)
+    await processingChain
+  }
+
+  private async captureDiscordVoiceUtterance(guildId: string, userId: string): Promise<void> {
+    if (this.client?.user?.id === userId) return
+    if (this.voicePlaybackGuilds.has(guildId)) return
+    const captureKey = `${guildId}:${userId}`
+    if (this.voiceCaptureKeys.has(captureKey)) return
+    const session = this.voiceSessions.get(guildId)
+    if (!session) return
+
+    this.voiceCaptureKeys.add(captureKey)
+    try {
+      const rejectionReason = await this.getDiscordVoiceRejectionReason(session, userId)
+      if (rejectionReason) {
+        this.addLog("info", `Dropped Discord voice input from ${userId}: ${rejectionReason}`)
+        return
+      }
+
+      const voice = await this.loadDiscordVoiceModules()
+      const opusStream = session.connection.receiver.subscribe(userId, {
+        end: {
+          behavior: voice.EndBehaviorType.AfterSilence,
+          duration: DISCORD_VOICE_SILENCE_DURATION_MS,
+        },
+      })
+      const pcm = await this.collectDiscordVoicePcm(opusStream)
+      if (pcm.length < DISCORD_VOICE_MIN_PCM_BYTES || this.voicePlaybackGuilds.has(guildId)) return
+
+      const wav = this.encodeDiscordVoicePcmAsWav(pcm)
+      const result = await transcribeAudioWithConfiguredProvider(
+        {
+          audio: wav,
+          mimeType: "audio/wav",
+          fileName: "discord-voice.wav",
+        },
+        configStore.get(),
+        { context: "discord-voice" },
+      )
+      const transcript = result.text.trim()
+      if (!transcript) return
+      this.addLog("info", `Transcribed Discord voice input from ${userId} (${transcript.length} chars)`)
+      await this.processDiscordVoiceTranscript(session, userId, transcript)
+    } catch (error) {
+      this.addLog("warn", `Discord voice capture failed for ${userId}: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      this.voiceCaptureKeys.delete(captureKey)
+    }
+  }
 
   private addPendingMessage(channelId: string, msg: PendingMessage) {
     const list = this.pendingHistory.get(channelId) ?? []
@@ -918,6 +1414,145 @@ class DiscordService {
       (m) => `[${m.authorName}]: ${m.content}`,
     )
     return `\n\n<recent_channel_context>\nRecent messages in this channel (for context — you were not mentioned in these):\n${lines.join("\n")}\n</recent_channel_context>`
+  }
+
+  private async reactToMessage(message: Message<boolean>, emoji: string) {
+    try {
+      await message.react(emoji)
+    } catch (error) {
+      this.addLog("info", `Discord reaction ${emoji} failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  private async removeOwnReaction(message: Message<boolean>, emoji: string) {
+    try {
+      const reaction = message.reactions.cache.get(emoji)
+      if (!reaction || !this.client?.user) return
+      await reaction.users.remove(this.client.user.id)
+    } catch (error) {
+      this.addLog("info", `Discord reaction cleanup ${emoji} failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  private async downloadDiscordAttachmentImage(attachment: DiscordAttachmentSummary): Promise<Buffer | null> {
+    if (!attachment.imageMimeType) return null
+    if (!isDiscordHostedMediaUrl(attachment.url)) return null
+    if (typeof attachment.size === "number" && attachment.size > DISCORD_ATTACHMENT_IMAGE_MAX_BYTES) {
+      return null
+    }
+
+    try {
+      const response = await fetch(attachment.url, {
+        signal: AbortSignal.timeout(DISCORD_ATTACHMENT_DOWNLOAD_TIMEOUT_MS),
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      return readLimitedDiscordResponseBuffer(response, DISCORD_ATTACHMENT_IMAGE_MAX_BYTES)
+    } catch (error) {
+      this.addLog("warn", `Failed to download Discord image attachment ${attachment.name}: ${error instanceof Error ? error.message : String(error)}`)
+      return null
+    }
+  }
+
+  private async fetchCompleteDiscordMessage(message: Message<boolean>): Promise<Message<boolean>> {
+    try {
+      const fetched = await message.fetch()
+      const attachmentCount = fetched.attachments?.size ?? 0
+      const embedImageCount = fetched.embeds?.filter((embed) => embed.image || embed.thumbnail).length ?? 0
+      if (attachmentCount > 0 || embedImageCount > 0) {
+        this.addLog("info", `Fetched Discord message media: ${attachmentCount} attachments, ${embedImageCount} embed images`)
+      }
+      return fetched
+    } catch (error) {
+      this.addLog("warn", `Failed to fetch complete Discord message: ${error instanceof Error ? error.message : String(error)}`)
+      return message
+    }
+  }
+
+  private collectDiscordAttachmentSummaries(message: Message<boolean>): DiscordAttachmentSummary[] {
+    const byUrl = new Map<string, DiscordAttachmentSummary>()
+    for (const attachment of summarizeDiscordAttachments(message.attachments.values())) {
+      byUrl.set(attachment.url, attachment)
+    }
+    for (const attachment of summarizeDiscordEmbedImages(message.embeds)) {
+      if (!byUrl.has(attachment.url)) {
+        byUrl.set(attachment.url, attachment)
+      }
+    }
+    return Array.from(byUrl.values())
+  }
+
+  private async buildDiscordAttachmentContext(
+    message: Message<boolean>,
+    conversationId: string,
+  ): Promise<{ promptBlock: string; attachmentCount: number; imageCount: number }> {
+    const attachments = this.collectDiscordAttachmentSummaries(message)
+    if (attachments.length === 0) {
+      return { promptBlock: "", attachmentCount: 0, imageCount: 0 }
+    }
+
+    const imageAssetUrls = new Map<string, string>()
+    for (const attachment of attachments) {
+      const buffer = await this.downloadDiscordAttachmentImage(attachment)
+      if (!buffer || !attachment.imageMimeType) continue
+      try {
+        const assetUrl = await conversationService.storeImageBufferAsConversationAsset(
+          conversationId,
+          buffer,
+          attachment.imageMimeType,
+        )
+        imageAssetUrls.set(attachment.id, assetUrl)
+      } catch (error) {
+        this.addLog("warn", `Failed to store Discord image attachment ${attachment.name}: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+
+    return {
+      promptBlock: buildDiscordAttachmentPromptBlock(attachments, imageAssetUrls),
+      attachmentCount: attachments.length,
+      imageCount: imageAssetUrls.size,
+    }
+  }
+
+  private async resolveOutboundDiscordImage(image: DiscordMarkdownImage, index: number): Promise<DiscordOutboundImageFile | null> {
+    const fallbackBase = `image-${index + 1}`
+    const safeAlt = sanitizeDiscordFileName(image.alt, fallbackBase)
+
+    try {
+      if (image.url.startsWith("assets://")) {
+        const asset = await resolveConversationImageAssetBuffer(image.url)
+        if (!asset || asset.buffer.length === 0 || asset.buffer.length > DISCORD_OUTBOUND_IMAGE_MAX_BYTES) return null
+        return {
+          attachment: asset.buffer,
+          name: ensureDiscordImageExtension(sanitizeDiscordFileName(asset.fileName || safeAlt, fallbackBase), asset.mimeType, fallbackBase),
+        }
+      }
+
+      if (image.url.startsWith("data:image/")) {
+        const parsed = parseDiscordDataImageUrl(image.url)
+        if (!parsed || parsed.buffer.length === 0 || parsed.buffer.length > DISCORD_OUTBOUND_IMAGE_MAX_BYTES) return null
+        return {
+          attachment: parsed.buffer,
+          name: ensureDiscordImageExtension(safeAlt, parsed.mimeType, fallbackBase),
+        }
+      }
+    } catch (error) {
+      this.addLog("warn", `Failed to prepare Discord image attachment ${safeAlt}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    return null
+  }
+
+  private async collectOutboundDiscordImages(content: string): Promise<DiscordOutboundImageFile[]> {
+    const images = extractDiscordMarkdownImages(content).slice(0, DISCORD_OUTBOUND_IMAGE_MAX_COUNT)
+    const files: DiscordOutboundImageFile[] = []
+    for (const [index, image] of images.entries()) {
+      const file = await this.resolveOutboundDiscordImage(image, index)
+      if (file) files.push(file)
+    }
+    return files
   }
 
   private addLog(level: DiscordLogLevel, message: string) {
@@ -1014,6 +1649,7 @@ class DiscordService {
           discord.GatewayIntentBits.GuildMessages,
           discord.GatewayIntentBits.DirectMessages,
           discord.GatewayIntentBits.MessageContent,
+          discord.GatewayIntentBits.GuildVoiceStates,
         ],
         partials: [discord.Partials.Channel],
       })
@@ -1111,6 +1747,9 @@ class DiscordService {
     }
 
     try {
+      for (const guildId of Array.from(this.voiceSessions.keys())) {
+        await this.leaveVoiceSession(guildId)
+      }
       if (this.client) {
         await this.client.destroy()
         this.client = null
@@ -1152,7 +1791,7 @@ class DiscordService {
     const inGuild = message.inGuild()
     this.addLog(
       "info",
-      `messageCreate received: ${inGuild ? `guild=${message.guildId} channel=${message.channelId}` : "DM"} author=${message.author.id} isBot=${message.author.bot} contentLen=${message.content.length}`,
+      `messageCreate received: ${inGuild ? `guild=${message.guildId} channel=${message.channelId}` : "DM"} author=${message.author.id} isBot=${message.author.bot} type=${message.type ?? "unknown"} contentLen=${message.content.length}`,
     )
 
     if (!this.client?.user) {
@@ -1166,6 +1805,11 @@ class DiscordService {
       this.addLog("info", "Dropped messageCreate: discordEnabled=false")
       return
     }
+    if (!shouldProcessDiscordMessageType(message.type)) {
+      this.addLog("info", `Dropped Discord message: unsupported message type ${message.type ?? "unknown"}`)
+      return
+    }
+    message = await this.fetchCompleteDiscordMessage(message)
 
     const isDirectMessage = !inGuild
 
@@ -1246,7 +1890,8 @@ class DiscordService {
       return
     }
 
-    if (!prompt) {
+    const hasAttachments = this.collectDiscordAttachmentSummaries(message).length > 0
+    if (!prompt && !hasAttachments) {
       this.addLog("info", `Ignored Discord message from ${message.author.id}: empty prompt after mention stripping`)
       return
     }
@@ -1278,6 +1923,7 @@ class DiscordService {
     }
     const epoch = this.getConversationEpoch(cfg, location)
     const conversationId = getDiscordConversationId({ ...location, epoch })
+    const attachmentContext = await this.buildDiscordAttachmentContext(message, conversationId)
 
     // Consume any buffered channel context and prepend to the prompt
     const pendingMessages = !isDirectMessage ? this.consumePendingHistory(message.channel.id) : []
@@ -1287,10 +1933,16 @@ class DiscordService {
     // Direct @mentions and DMs always get a reply. Name mentions and
     // non-mention mode get the smart reply instruction so the LLM can
     // decide whether it has something useful to say.
-    const allowNoReply = !isDirectMessage && !atMentioned
+    const allowNoReply = shouldAllowDiscordNoReply({
+      isDirectMessage,
+      atMentioned,
+      nameMentioned,
+      lastBotReplyAt: this.lastBotReplyAtByConversation.get(conversationId),
+    })
     const smartReplyInstruction = allowNoReply ? DISCORD_SMART_REPLY_INSTRUCTION : ""
 
-    const enrichedPrompt = `${prompt}${contextSuffix}${smartReplyInstruction}`
+    const basePrompt = prompt || "Please review the attached Discord media."
+    const enrichedPrompt = `${basePrompt}${attachmentContext.promptBlock}${contextSuffix}${smartReplyInstruction}`
 
     const processingChain = (this.processingChains.get(conversationId) || Promise.resolve())
       .catch(() => undefined)
@@ -1298,11 +1950,15 @@ class DiscordService {
         const shouldLogMessages = cfg.discordLogMessages ?? false
         const promptSummary = shouldLogMessages ? `: ${prompt}` : ` (${prompt.length} chars)`
         const contextNote = pendingMessages.length > 0 ? ` (+${pendingMessages.length} context msgs)` : ""
-        this.addLog("info", `Processing Discord message for ${conversationId}${promptSummary}${contextNote}`)
+        const attachmentNote = attachmentContext.attachmentCount > 0
+          ? ` (+${attachmentContext.attachmentCount} attachments, ${attachmentContext.imageCount} images)`
+          : ""
+        this.addLog("info", `Processing Discord message for ${conversationId}${promptSummary}${contextNote}${attachmentNote}`)
 
         // Show typing indicator while processing (refreshes every 8s since Discord expires it at 10s)
         let typingInterval: ReturnType<typeof setInterval> | undefined
         try {
+          await this.reactToMessage(message, "👀")
           if ("sendTyping" in message.channel && typeof message.channel.sendTyping === "function") {
             await message.channel.sendTyping()
             typingInterval = setInterval(() => {
@@ -1327,14 +1983,21 @@ class DiscordService {
           // Suppress NO_REPLY responses — the LLM decided it has nothing useful to add
           if (isNoReplyResponse(responseText)) {
             this.addLog("info", `Suppressed reply for ${conversationId} (NO_REPLY)`)
+            await this.removeOwnReaction(message, "👀")
             return
           }
 
           await this.sendChunks(message, responseText)
+          await this.playDiscordVoiceReply(message, responseText)
+          markDiscordBotReply(this.lastBotReplyAtByConversation, conversationId)
+          await this.removeOwnReaction(message, "👀")
+          await this.reactToMessage(message, "✅")
           this.addLog("info", `Replied to Discord conversation ${conversationId}`)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
           this.addLog("error", `Discord reply failed for ${conversationId}: ${errorMessage}`)
+          await this.removeOwnReaction(message, "👀")
+          await this.reactToMessage(message, "❌")
           await this.sendChunks(message, `I hit an error while processing that message: ${errorMessage}`)
         } finally {
           if (typingInterval) clearInterval(typingInterval)
@@ -1396,11 +2059,26 @@ class DiscordService {
   }
 
   private async sendChunks(message: Message<boolean>, content: string) {
-    const chunks = splitDiscordMessageContent(content)
-    if (chunks.length === 0) return
+    const files = await this.collectOutboundDiscordImages(content)
+    const textContent = files.length > 0 ? stripDiscordMarkdownImages(content) : content
+    const chunks = splitDiscordMessageContent(textContent)
+    if (chunks.length === 0 && files.length === 0) return
     if (!("send" in message.channel) || typeof message.channel.send !== "function") return
-    for (const chunk of chunks) {
-      await message.channel.send({ content: chunk })
+    const replyChunks = chunks.length > 0 ? chunks : [""]
+    for (const [index, chunk] of replyChunks.entries()) {
+      const payload = {
+        ...(chunk ? { content: chunk } : {}),
+        ...(index === 0 && files.length > 0 ? { files } : {}),
+      }
+      if (index === 0) {
+        try {
+          await message.reply(payload)
+          continue
+        } catch (error) {
+          this.addLog("info", `Discord reply reference failed; sending plain channel message: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      }
+      await message.channel.send(payload)
     }
   }
 
@@ -1435,6 +2113,20 @@ class DiscordService {
       new SlashCommandBuilder()
         .setName("new")
         .setDescription("Start a fresh conversation in this channel (prior context is preserved, not deleted)"),
+
+      new SlashCommandBuilder()
+        .setName("voice")
+        .setDescription("Manage Discord voice-channel replies")
+        .setDefaultMemberPermissions(adminOnly)
+        .addSubcommand((sub) =>
+          sub.setName("join").setDescription("Join your current voice channel and speak replies from this text channel"),
+        )
+        .addSubcommand((sub) =>
+          sub.setName("leave").setDescription("Leave the active voice channel in this server"),
+        )
+        .addSubcommand((sub) =>
+          sub.setName("status").setDescription("Show the active voice-channel link for this server"),
+        ),
 
       new SlashCommandBuilder()
         .setName("dm")
@@ -1730,6 +2422,9 @@ class DiscordService {
         case "new":
           await this.handleNewCommand(interaction)
           break
+        case "voice":
+          await this.handleVoiceCommand(interaction)
+          break
         case "dm":
           await this.handleDmCommand(interaction)
           break
@@ -1836,6 +2531,112 @@ class DiscordService {
       `Discord /new: forked conversation for ${getDiscordConversationKey(location)} → session #${epoch}`,
     )
     await interaction.reply({ content: "✅ Fresh conversation started.", ephemeral: true })
+  }
+
+  private async handleVoiceCommand(interaction: import("discord.js").ChatInputCommandInteraction) {
+    const sub = interaction.options.getSubcommand()
+    const guild = interaction.guild
+    const guildId = interaction.guildId
+
+    if (!guild || !guildId) {
+      await interaction.reply({ content: "⚠️ Discord voice is only available in servers.", ephemeral: true })
+      return
+    }
+
+    if (sub === "status") {
+      const session = this.voiceSessions.get(guildId)
+      const content = session
+        ? [
+            "Discord voice is connected.",
+            `- Voice channel: <#${session.channelId}>`,
+            `- Linked text channel: <#${session.textChannelId}>`,
+          ].join("\n")
+        : "Discord voice is not connected in this server. Use `/voice join` while you are in a voice channel."
+      await interaction.reply({ content, ephemeral: true })
+      return
+    }
+
+    if (sub === "leave") {
+      const left = await this.leaveVoiceSession(guildId)
+      await interaction.reply({
+        content: left ? "✅ Left the Discord voice channel." : "Discord voice is not connected in this server.",
+        ephemeral: true,
+      })
+      return
+    }
+
+    if (sub !== "join") {
+      await interaction.reply({ content: "Unknown voice command.", ephemeral: true })
+      return
+    }
+
+    await interaction.deferReply({ ephemeral: true })
+
+    try {
+      const member = await guild.members.fetch(interaction.user.id)
+      const voiceChannel = member.voice.channel
+      if (!voiceChannel) {
+        await interaction.editReply({ content: "Join a Discord voice channel first, then run `/voice join` from the text channel you want linked." })
+        return
+      }
+
+      const textChannelId = interaction.channel?.isThread() && interaction.channel.parentId
+        ? interaction.channel.parentId
+        : interaction.channelId
+      if (!textChannelId) {
+        await interaction.editReply({ content: "Could not determine the text channel to link for voice replies." })
+        return
+      }
+
+      await this.leaveVoiceSession(guildId)
+      const voice = await this.loadDiscordVoiceModules()
+      const connection = voice.joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId,
+        adapterCreator: guild.voiceAdapterCreator,
+        selfDeaf: false,
+      })
+      const player = voice.createAudioPlayer()
+      connection.subscribe(player)
+
+      try {
+        await voice.entersState(connection, voice.VoiceConnectionStatus.Ready, 30_000)
+      } catch (error) {
+        connection.destroy()
+        throw error
+      }
+
+      const channelName = "name" in voiceChannel && typeof voiceChannel.name === "string"
+        ? voiceChannel.name
+        : voiceChannel.id
+      this.voiceSessions.set(guildId, {
+        guildId,
+        channelId: voiceChannel.id,
+        textChannelId,
+        channelName,
+        connection,
+        player,
+        joinedAt: Date.now(),
+      })
+      connection.receiver.speaking.on("start", (userId) => {
+        void this.captureDiscordVoiceUtterance(guildId, userId).catch((error) => {
+          this.addLog("warn", `Discord voice listener failed: ${error instanceof Error ? error.message : String(error)}`)
+        })
+      })
+
+      this.addLog("info", `Joined Discord voice channel ${channelName} (${voiceChannel.id}) linked to text channel ${textChannelId}`)
+      await interaction.editReply({
+        content: [
+          `✅ Joined <#${voiceChannel.id}>.`,
+          `Replies in <#${textChannelId}> will also be spoken in voice.`,
+          "Voice input after a short silence will be transcribed into the same conversation.",
+        ].join("\n"),
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.addLog("warn", `Discord /voice join failed: ${message}`)
+      await interaction.editReply({ content: `❌ Could not join voice: ${message}` }).catch(() => {})
+    }
   }
 
   private async handleDmCommand(interaction: import("discord.js").ChatInputCommandInteraction) {

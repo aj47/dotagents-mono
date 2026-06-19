@@ -124,6 +124,29 @@ describe("runtime-tools respond_to_user", () => {
     })
   })
 
+  it("accepts utf8 data image responses for attachment delivery", async () => {
+    const svg = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg"><text>ok</text></svg>')}`
+    mockStoreDataImageUrlAsConversationAsset.mockRejectedValueOnce(new Error("Invalid conversation image asset filename"))
+
+    const { executeRuntimeTool } = await import("./runtime-tools")
+    const result = await executeRuntimeTool(
+      "respond_to_user",
+      { text: "Preview ready", images: [{ url: svg, alt: "Preview" }] },
+      "app-session-1",
+    )
+
+    expect(mockStoreDataImageUrlAsConversationAsset).toHaveBeenCalledWith("conversation-1", svg)
+    expect(mockAppendSessionUserResponse).toHaveBeenCalledWith({
+      sessionId: "app-session-1",
+      runId: 7,
+      text: `Preview ready\n\n![Preview](${svg})`,
+    })
+    expect(JSON.parse(String(result?.content[0]?.text))).toMatchObject({
+      success: true,
+      imageCount: 1,
+    })
+  })
+
   it("rejects svg image paths before storing conversation assets", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "dotagents-respond-image-"))
     const imagePath = path.join(tempDir, "preview.svg")
