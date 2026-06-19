@@ -769,7 +769,17 @@ export async function runAgentLoopSession(
   maxIterationsOverride?: number,
   options: AgentLoopSessionOptions = {},
 ): Promise<string> {
-  return processWithAgentMode(text, conversationId, existingSessionId, startSnoozed, maxIterationsOverride, options)
+  return processWithAgentMode(
+    text,
+    conversationId,
+    existingSessionId,
+    startSnoozed,
+    maxIterationsOverride,
+    {
+      ...options,
+      conversationTitle: resolveAgentLoopSessionConversationTitle(text, existingSessionId, options),
+    },
+  )
 }
 import { diagnosticsService } from "./diagnostics"
 import { knowledgeNotesService } from "./knowledge-notes-service"
@@ -799,11 +809,34 @@ type AgentLoopSessionOptions = {
   conversationTitle?: string
 }
 
+const AGENT_LOOP_FALLBACK_TITLE_MAX_CHARS = 80
+
 function resolveAgentRunConversationTitle(
   text: string,
   options?: AgentLoopSessionOptions,
 ): string {
   return options?.conversationTitle?.trim() || text
+}
+
+function truncateAgentLoopFallbackTitle(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (!normalized) return "Agent run"
+  if (normalized.length <= AGENT_LOOP_FALLBACK_TITLE_MAX_CHARS) return normalized
+  return `${normalized.slice(0, AGENT_LOOP_FALLBACK_TITLE_MAX_CHARS - 3)}...`
+}
+
+function resolveAgentLoopSessionConversationTitle(
+  text: string,
+  existingSessionId: string,
+  options?: AgentLoopSessionOptions,
+): string {
+  const explicitTitle = options?.conversationTitle?.trim()
+  if (explicitTitle) return explicitTitle
+
+  const existingTitle = agentSessionTracker.getSession(existingSessionId)?.conversationTitle?.trim()
+  if (existingTitle) return existingTitle
+
+  return truncateAgentLoopFallbackTitle(text)
 }
 
 function resolveAgentLaunchState(input: AgentLaunchStateInput = {}): AgentLaunchState {

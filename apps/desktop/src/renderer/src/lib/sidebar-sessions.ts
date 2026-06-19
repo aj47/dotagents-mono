@@ -603,6 +603,13 @@ function isSubagentLikeEntry(session: TitledSessionLike): boolean {
   return !!parentSessionId && parentSessionId !== session.id
 }
 
+function getRepeatTaskRolePriority(session: TitledSessionLike): number {
+  const role = session.repeatTask?.role
+  if (role === "worker") return 2
+  if (role === "critic") return 0
+  return 1
+}
+
 function isBetterTaskEntry<T extends { session: TitledSessionLike & { status?: string; startTime?: number; endTime?: number } }>(
   candidate: T,
   current: T,
@@ -618,6 +625,13 @@ function isBetterTaskEntry<T extends { session: TitledSessionLike & { status?: s
   const candidateIsActive = candidate.session.status === "active"
   const currentIsActive = current.session.status === "active"
   if (candidateIsActive !== currentIsActive) return candidateIsActive
+
+  const candidateRolePriority = getRepeatTaskRolePriority(candidate.session)
+  const currentRolePriority = getRepeatTaskRolePriority(current.session)
+  if (candidateRolePriority !== currentRolePriority) {
+    return candidateRolePriority > currentRolePriority
+  }
+
   return getTaskEntryTimestamp(candidate.session) > getTaskEntryTimestamp(current.session)
 }
 

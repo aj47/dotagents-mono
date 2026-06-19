@@ -30,4 +30,16 @@ describe("getAgentSessions repeat-task session flag", () => {
     expect(loopNameIndex).toBeGreaterThan(titlePrefixIndex)
     expect(loadConversationIndex).toBeGreaterThan(loopNameIndex)
   })
+
+  it("forces loop sessions through a safe conversation title before notifications can use it", () => {
+    const functionSource = tipcSource.slice(
+      tipcSource.indexOf("export async function runAgentLoopSession"),
+      tipcSource.indexOf("type AgentLaunchStateInput"),
+    )
+
+    expect(functionSource).toContain("resolveAgentLoopSessionConversationTitle(text, existingSessionId, options)")
+    expect(functionSource).toContain("conversationTitle:")
+    expect(tipcSource).toContain("function truncateAgentLoopFallbackTitle")
+    expect(tipcSource).toContain("agentSessionTracker.getSession(existingSessionId)?.conversationTitle?.trim()")
+  })
 })

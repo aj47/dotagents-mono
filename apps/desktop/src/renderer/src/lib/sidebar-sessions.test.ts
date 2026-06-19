@@ -1255,7 +1255,7 @@ describe("dedupeTaskEntriesByTitle", () => {
     expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["newer"])
   })
 
-  it("collapses worker and critic phases for the same repeat task", () => {
+  it("uses the worker phase as the completed representative for a repeat task with critique", () => {
     const baseRepeatTask = {
       type: "repeat_task_run" as const,
       taskId: "techfren-reel",
@@ -1283,6 +1283,45 @@ describe("dedupeTaskEntriesByTitle", () => {
           status: "completed",
           startTime: 200,
           endTime: 250,
+          repeatTask: {
+            ...baseRepeatTask,
+            runId: "techfren-reel:critic",
+            role: "critic" as const,
+          },
+        },
+      },
+    ]
+
+    expect(dedupeTaskEntriesByTitle(entries).map((e) => e.session.id)).toEqual(["worker"])
+  })
+
+  it("still surfaces an active critic phase while the critique pass is running", () => {
+    const baseRepeatTask = {
+      type: "repeat_task_run" as const,
+      taskId: "techfren-reel",
+      taskName: "TechFren Reel",
+    }
+    const entries = [
+      {
+        session: {
+          id: "worker",
+          conversationTitle: "TechFren Reel Maker",
+          status: "completed",
+          startTime: 100,
+          endTime: 150,
+          repeatTask: {
+            ...baseRepeatTask,
+            runId: "techfren-reel:worker",
+            role: "worker" as const,
+          },
+        },
+      },
+      {
+        session: {
+          id: "critic",
+          conversationTitle: "TechFren Reel Critique",
+          status: "active",
+          startTime: 200,
           repeatTask: {
             ...baseRepeatTask,
             runId: "techfren-reel:critic",
