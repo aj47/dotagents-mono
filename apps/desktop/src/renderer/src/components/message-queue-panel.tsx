@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { cn } from "@renderer/lib/utils"
-import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw } from "lucide-react"
+import { Clock, Trash2, Check, ChevronDown, ChevronUp, AlertCircle, Loader2, Play, Pause, Pencil, RotateCcw, Wrench, MessageSquare } from "lucide-react"
 import { Button } from "@renderer/components/ui/button"
 import { QueuedMessage } from "@shared/types"
 import { useMutation } from "@tanstack/react-query"
@@ -90,6 +90,8 @@ function QueuedMessageItem({
   const isFailed = message.status === "failed"
   const isProcessing = message.status === "processing"
   const isAddedToHistory = message.addedToHistory === true
+  const isWaitingForToolBoundary = message.injectionTarget === "after_next_tool_response"
+  const isWaitingForAgentBoundary = message.injectionTarget === "after_next_agent_response"
 
   // Mutation to retry a failed message by resetting its status to pending
   const retryMutation = useMutation({
@@ -101,6 +103,24 @@ function QueuedMessageItem({
       })
     },
   })
+
+  const injectionTargetMutation = useMutation({
+    mutationFn: async (injectionTarget: QueuedMessage["injectionTarget"] | null) => {
+      const success = await tipcClient.setQueuedMessageInjectionTarget({
+        conversationId,
+        messageId: message.id,
+        injectionTarget,
+      })
+      if (!success) {
+        throw new Error("Failed to update injection target")
+      }
+      return success
+    },
+  })
+
+  const toggleInjectionTarget = (injectionTarget: NonNullable<QueuedMessage["injectionTarget"]>) => {
+    injectionTargetMutation.mutate(message.injectionTarget === injectionTarget ? null : injectionTarget)
+  }
 
   return (
     <div
@@ -174,6 +194,11 @@ function QueuedMessageItem({
                   Error: {message.errorMessage}
                 </p>
               )}
+              {message.injectionTarget && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Waiting for next {isWaitingForToolBoundary ? "tool response" : "agent response"}
+                </p>
+              )}
               {isLongMessage && (
                 <Button
                   variant="ghost"
@@ -220,6 +245,32 @@ function QueuedMessageItem({
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
+                )}
+                {!isFailed && !isAddedToHistory && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm-icon"
+                      className={cn(isWaitingForToolBoundary && "bg-primary/10 text-primary")}
+                      onClick={() => toggleInjectionTarget("after_next_tool_response")}
+                      disabled={injectionTargetMutation.isPending}
+                      title={isWaitingForToolBoundary ? "Use ordinary queue order" : "Inject after next tool response"}
+                      aria-label={isWaitingForToolBoundary ? "Use ordinary queue order" : "Inject after next tool response"}
+                    >
+                      <Wrench className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm-icon"
+                      className={cn(isWaitingForAgentBoundary && "bg-primary/10 text-primary")}
+                      onClick={() => toggleInjectionTarget("after_next_agent_response")}
+                      disabled={injectionTargetMutation.isPending}
+                      title={isWaitingForAgentBoundary ? "Use ordinary queue order" : "Inject after next agent response"}
+                      aria-label={isWaitingForAgentBoundary ? "Use ordinary queue order" : "Inject after next agent response"}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="ghost"
