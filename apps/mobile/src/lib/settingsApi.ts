@@ -469,6 +469,7 @@ export interface LoopCreateRequest {
   enabled: boolean;
   profileId?: string;
   runOnStartup?: boolean;
+  pushNotificationsMuted?: boolean;
   speakOnTrigger?: boolean;
   continueInSession?: boolean;
   lastSessionId?: string;
@@ -486,6 +487,7 @@ export interface LoopUpdateRequest {
   enabled?: boolean;
   profileId?: string | null;
   runOnStartup?: boolean;
+  pushNotificationsMuted?: boolean;
   speakOnTrigger?: boolean;
   continueInSession?: boolean;
   lastSessionId?: string | null;

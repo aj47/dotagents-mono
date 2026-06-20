@@ -7526,6 +7526,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       profileId: loop.profileId,
       profileName: getLoopProfileName(loop.profileId),
       runOnStartup: loop.runOnStartup,
+      pushNotificationsMuted: loop.pushNotificationsMuted,
       speakOnTrigger: loop.speakOnTrigger,
       continueInSession: loop.continueInSession,
       lastSessionId: loop.lastSessionId,
@@ -7563,6 +7564,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
             profileId: l.profileId,
             profileName: getLoopProfileName(l.profileId),
             runOnStartup: l.runOnStartup,
+            pushNotificationsMuted: l.pushNotificationsMuted,
             speakOnTrigger: l.speakOnTrigger,
             continueInSession: l.continueInSession,
             lastSessionId: l.lastSessionId,
@@ -7921,6 +7923,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         enabled?: unknown
         profileId?: unknown
         runOnStartup?: unknown
+        pushNotificationsMuted?: unknown
         speakOnTrigger?: unknown
         continueInSession?: unknown
         lastSessionId?: unknown
@@ -7967,6 +7970,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
         return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
       }
+      if (body.pushNotificationsMuted !== undefined && typeof body.pushNotificationsMuted !== "boolean") {
+        return reply.code(400).send({ error: "pushNotificationsMuted must be a boolean when provided" })
+      }
       if (body.speakOnTrigger !== undefined && typeof body.speakOnTrigger !== "boolean") {
         return reply.code(400).send({ error: "speakOnTrigger must be a boolean when provided" })
       }
@@ -7990,6 +7996,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const runContinuously = body.runContinuously === true
       const critiquePass = body.critiquePass === true
       const runOnStartup = body.runOnStartup === true
+      const pushNotificationsMuted = body.pushNotificationsMuted === true
       const speakOnTrigger = body.speakOnTrigger === true
       const continueInSession = body.continueInSession === true
       const lastSessionId = typeof body.lastSessionId === "string" ? body.lastSessionId.trim() : undefined
@@ -8004,6 +8011,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         enabled,
         profileId: profileId || undefined,
         runOnStartup,
+        pushNotificationsMuted,
         speakOnTrigger,
         continueInSession,
         lastSessionId: continueInSession ? (lastSessionId || undefined) : undefined,
@@ -8050,6 +8058,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         enabled?: unknown
         profileId?: unknown
         runOnStartup?: unknown
+        pushNotificationsMuted?: unknown
         speakOnTrigger?: unknown
         continueInSession?: unknown
         lastSessionId?: unknown
@@ -8114,6 +8123,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       if (body.runOnStartup !== undefined && typeof body.runOnStartup !== "boolean") {
         return reply.code(400).send({ error: "runOnStartup must be a boolean when provided" })
       }
+      if (body.pushNotificationsMuted !== undefined && typeof body.pushNotificationsMuted !== "boolean") {
+        return reply.code(400).send({ error: "pushNotificationsMuted must be a boolean when provided" })
+      }
       if (body.speakOnTrigger !== undefined && typeof body.speakOnTrigger !== "boolean") {
         return reply.code(400).send({ error: "speakOnTrigger must be a boolean when provided" })
       }
@@ -8145,6 +8157,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const critiquePass = typeof body.critiquePass === "boolean" ? body.critiquePass : undefined
       const nextCritiquePass = critiquePass ?? (existing.critiquePass === true)
       const runOnStartup = typeof body.runOnStartup === "boolean" ? body.runOnStartup : undefined
+      const pushNotificationsMuted = typeof body.pushNotificationsMuted === "boolean" ? body.pushNotificationsMuted : undefined
       const speakOnTrigger = typeof body.speakOnTrigger === "boolean" ? body.speakOnTrigger : undefined
       const continueInSession = typeof body.continueInSession === "boolean" ? body.continueInSession : undefined
       const lastSessionId = typeof body.lastSessionId === "string" ? body.lastSessionId.trim() : undefined
@@ -8156,6 +8169,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         ...(enabled !== undefined && { enabled }),
         ...(body.profileId !== undefined && { profileId: profileId || undefined }),
         ...(runOnStartup !== undefined && { runOnStartup }),
+        ...(pushNotificationsMuted !== undefined && { pushNotificationsMuted }),
         ...(speakOnTrigger !== undefined && { speakOnTrigger }),
         ...(continueInSession !== undefined && { continueInSession }),
         ...(body.lastSessionId !== undefined && { lastSessionId: lastSessionId || undefined }),

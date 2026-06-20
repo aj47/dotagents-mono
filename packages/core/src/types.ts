@@ -77,6 +77,8 @@ export interface LoopConfig {
   profileId?: string
   lastRunAt?: number
   runOnStartup?: boolean
+  /** If true, repeat-task completion push notifications are suppressed. */
+  pushNotificationsMuted?: boolean
   /**
    * If true, the session is automatically unsnoozed when the loop completes
    * so the renderer auto-plays TTS for the assistant response. The session

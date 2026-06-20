@@ -34,6 +34,7 @@ type LoopFormData = {
   enabled: boolean;
   profileId: string;
   runOnStartup: boolean;
+  pushNotificationsMuted: boolean;
   speakOnTrigger: boolean;
   continueInSession: boolean;
   lastSessionId: string;
@@ -60,6 +61,7 @@ const defaultFormData: LoopFormData = {
   enabled: true,
   profileId: '',
   runOnStartup: false,
+  pushNotificationsMuted: false,
   speakOnTrigger: false,
   continueInSession: false,
   lastSessionId: '',
@@ -149,6 +151,7 @@ function loopToFormData(loop: Loop): LoopFormData {
     enabled: loop.enabled,
     profileId: loop.profileId || '',
     runOnStartup: !!loop.runOnStartup,
+    pushNotificationsMuted: !!loop.pushNotificationsMuted,
     speakOnTrigger: !!loop.speakOnTrigger,
     continueInSession: !!loop.continueInSession,
     lastSessionId: loop.lastSessionId || '',
@@ -347,6 +350,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
           runOnStartup: formData.runOnStartup,
+          pushNotificationsMuted: formData.pushNotificationsMuted,
           speakOnTrigger: formData.speakOnTrigger,
           continueInSession: formData.continueInSession,
           lastSessionId: formData.continueInSession ? (formData.lastSessionId.trim() || null) : null,
@@ -365,6 +369,7 @@ export default function LoopEditScreen({ navigation, route }: any) {
           enabled: formData.enabled,
           profileId: formData.profileId || undefined,
           runOnStartup: formData.runOnStartup,
+          pushNotificationsMuted: formData.pushNotificationsMuted,
           speakOnTrigger: formData.speakOnTrigger,
           continueInSession: formData.continueInSession,
           ...(formData.continueInSession && formData.lastSessionId.trim() ? { lastSessionId: formData.lastSessionId.trim() } : {}),
@@ -550,6 +555,18 @@ export default function LoopEditScreen({ navigation, route }: any) {
           onValueChange={value => updateField('runOnStartup', value)}
           trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
           thumbColor={formData.runOnStartup ? theme.colors.primaryForeground : theme.colors.background}
+        />
+      </View>
+      <View style={styles.switchRow}>
+        <View style={styles.switchInfo}>
+          <Text style={styles.switchLabel}>Push notifications</Text>
+          <Text style={styles.switchHelperText}>Send a push notification when this repeat task completes.</Text>
+        </View>
+        <Switch
+          value={!formData.pushNotificationsMuted}
+          onValueChange={value => updateField('pushNotificationsMuted', !value)}
+          trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+          thumbColor={!formData.pushNotificationsMuted ? theme.colors.primaryForeground : theme.colors.background}
         />
       </View>
       <View style={styles.switchRow}>

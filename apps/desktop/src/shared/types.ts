@@ -1136,6 +1136,7 @@ export interface LoopConfig {
   profileId?: string       // optional profile to use for the agent session
   lastRunAt?: number       // timestamp (ms) of last execution
   runOnStartup?: boolean   // if true, fires immediately on app start before first interval
+  pushNotificationsMuted?: boolean // if true, suppresses repeat-task completion push notifications
   speakOnTrigger?: boolean // if true, unsnoozes session on completion so TTS auto-plays
   continueInSession?: boolean // if true, reuses the prior session across iterations
   lastSessionId?: string   // session id to resume on next run when continueInSession is on

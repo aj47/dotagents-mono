@@ -53,4 +53,35 @@ describe("agents-files/tasks", () => {
     expect(parsed?.critiquePass).toBe(true)
     expect(parsed?.criticProfileId).toBe("critic-agent")
   })
+
+  it("roundtrips muted push notifications in task frontmatter", () => {
+    const task: LoopConfig = {
+      id: "quiet-task",
+      name: "Quiet task",
+      prompt: "Run quietly.",
+      intervalMinutes: 30,
+      enabled: true,
+      pushNotificationsMuted: true,
+    }
+
+    const markdown = stringifyTaskMarkdown(task)
+    expect(markdown).toContain("pushNotificationsMuted: true")
+
+    const parsed = parseTaskMarkdown(markdown)
+    expect(parsed?.pushNotificationsMuted).toBe(true)
+  })
+
+  it("omits muted push notifications when false or missing", () => {
+    const task: LoopConfig = {
+      id: "noisy-task",
+      name: "Noisy task",
+      prompt: "Notify on completion.",
+      intervalMinutes: 30,
+      enabled: true,
+    }
+
+    const markdown = stringifyTaskMarkdown(task)
+    expect(markdown).not.toContain("pushNotificationsMuted")
+    expect(parseTaskMarkdown(markdown)?.pushNotificationsMuted).toBeUndefined()
+  })
 })

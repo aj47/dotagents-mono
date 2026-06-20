@@ -130,6 +130,7 @@ export function stringifyTaskMarkdown(task: LoopConfig): string {
 
   if (task.profileId) frontmatter.profileId = task.profileId
   if (task.runOnStartup) frontmatter.runOnStartup = "true"
+  if (task.pushNotificationsMuted) frontmatter.pushNotificationsMuted = "true"
   if (task.speakOnTrigger) frontmatter.speakOnTrigger = "true"
   if (task.continueInSession) frontmatter.continueInSession = "true"
   if (task.lastSessionId) frontmatter.lastSessionId = task.lastSessionId
@@ -169,6 +170,7 @@ export function parseTaskMarkdown(
     enabled: parseBoolean(fm.enabled, true),
     profileId: (fm.profileId ?? "").trim() || undefined,
     runOnStartup: parseBoolean(fm.runOnStartup, false) || undefined,
+    pushNotificationsMuted: parseBoolean(fm.pushNotificationsMuted, false) || undefined,
     speakOnTrigger: parseBoolean(fm.speakOnTrigger, false) || undefined,
     continueInSession: parseBoolean(fm.continueInSession, false) || undefined,
     lastSessionId: (fm.lastSessionId ?? "").trim() || undefined,

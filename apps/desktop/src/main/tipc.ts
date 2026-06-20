@@ -127,9 +127,18 @@ function sendAgentCompletionPushNotification(input: {
   sessionId: string
   conversationTitle: string
   content: string
+  repeatTask?: ConversationRepeatTaskSource
 }) {
   if (!input.conversationId || !isPushEnabled()) {
     return
+  }
+
+  if (input.repeatTask?.type === "repeat_task_run") {
+    const loop = loopService.getLoop(input.repeatTask.taskId)
+    if (loop?.pushNotificationsMuted) {
+      logApp(`[tipc] Skipping push notification for muted repeat task "${loop.name}" (${loop.id})`)
+      return
+    }
   }
 
   sendMessageNotification(
@@ -515,12 +524,14 @@ async function processWithAgentMode(
       // Mark session as completed
       if (result.success) {
         logLLM(`[processWithAgentMode] ACP mode completed successfully for session ${sessionId}, conversation ${conversationId}`)
+        const completionRepeatTask = agentSessionTracker.getSession(sessionId)?.repeatTask
         agentSessionTracker.completeSession(sessionId, "ACP agent completed successfully")
         sendAgentCompletionPushNotification({
           conversationId,
           sessionId,
           conversationTitle,
           content: result.response || "Agent completed.",
+          repeatTask: completionRepeatTask,
         })
       } else {
         logLLM(`[processWithAgentMode] ACP mode failed for session ${sessionId}: ${result.error}`)
@@ -718,12 +729,14 @@ async function processWithAgentMode(
     )
 
     // Mark session as completed
+    const completionRepeatTask = agentSessionTracker.getSession(sessionId)?.repeatTask
     agentSessionTracker.completeSession(sessionId, "Agent completed successfully")
     sendAgentCompletionPushNotification({
       conversationId,
       sessionId,
       conversationTitle,
       content: agentResult.content,
+      repeatTask: completionRepeatTask,
     })
 
     return agentResult.content
