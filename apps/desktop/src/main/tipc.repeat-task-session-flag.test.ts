@@ -42,4 +42,16 @@ describe("getAgentSessions repeat-task session flag", () => {
     expect(tipcSource).toContain("function truncateAgentLoopFallbackTitle")
     expect(tipcSource).toContain("agentSessionTracker.getSession(existingSessionId)?.conversationTitle?.trim()")
   })
+
+  it("suppresses completion push notifications for muted repeat tasks", () => {
+    const pushNotificationSection = tipcSource.slice(
+      tipcSource.indexOf("function sendAgentCompletionPushNotification"),
+      tipcSource.indexOf("async function withRepeatTaskSessionFlag"),
+    )
+
+    expect(pushNotificationSection).toContain('input.repeatTask?.type === "repeat_task_run"')
+    expect(pushNotificationSection).toContain("loopService.getLoop(input.repeatTask.taskId)")
+    expect(pushNotificationSection).toContain("loop?.pushNotificationsMuted")
+    expect(pushNotificationSection).toContain("Skipping push notification for muted repeat task")
+  })
 })

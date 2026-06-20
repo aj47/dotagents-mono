@@ -1038,6 +1038,7 @@ export interface Loop {
   profileId?: string;
   profileName?: string;
   runOnStartup?: boolean;
+  pushNotificationsMuted?: boolean;
   speakOnTrigger?: boolean;
   continueInSession?: boolean;
   lastSessionId?: string;

@@ -109,6 +109,7 @@ export interface BundleRepeatTask {
   intervalMinutes: number
   enabled: boolean
   runOnStartup?: boolean
+  pushNotificationsMuted?: boolean
   speakOnTrigger?: boolean
   continueInSession?: boolean
   runContinuously?: boolean
@@ -684,6 +685,7 @@ function loadRepeatTasksForBundle(layer: AgentsLayerPaths, options?: BundleItemS
         intervalMinutes: task.intervalMinutes,
         enabled: task.enabled,
         runOnStartup: task.runOnStartup,
+        pushNotificationsMuted: task.pushNotificationsMuted,
         speakOnTrigger: task.speakOnTrigger,
         continueInSession: task.continueInSession,
         runContinuously: task.runContinuously,
@@ -1670,6 +1672,7 @@ export async function importBundle(
           intervalMinutes: bundleTask.intervalMinutes,
           enabled: bundleTask.enabled,
           runOnStartup: bundleTask.runOnStartup,
+          pushNotificationsMuted: bundleTask.pushNotificationsMuted,
           speakOnTrigger: bundleTask.speakOnTrigger,
           continueInSession: bundleTask.continueInSession,
           runContinuously: bundleTask.runContinuously,

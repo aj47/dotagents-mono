@@ -368,6 +368,21 @@ describe("remote-server route registration", () => {
     expect(updateLoopSection).toContain("if (!updated.critiquePass)")
   })
 
+  it("exposes and validates the repeat task push notification mute field", () => {
+    const source = getRemoteServerSource()
+    const listLoopSection = getSection(source, 'fastify.get("/v1/loops"', '// POST /v1/loops/import/markdown')
+    const createLoopSection = getSection(source, 'fastify.post("/v1/loops"', '// PATCH /v1/loops/:id - Update a loop/repeat task')
+    const updateLoopSection = getSection(source, 'fastify.patch("/v1/loops/:id"', '// DELETE /v1/loops/:id - Delete a loop/repeat task')
+
+    expect(listLoopSection).toContain("pushNotificationsMuted: l.pushNotificationsMuted")
+    expect(createLoopSection).toContain("pushNotificationsMuted?: unknown")
+    expect(createLoopSection).toContain('pushNotificationsMuted must be a boolean when provided')
+    expect(createLoopSection).toContain("const pushNotificationsMuted = body.pushNotificationsMuted === true")
+    expect(updateLoopSection).toContain("pushNotificationsMuted?: unknown")
+    expect(updateLoopSection).toContain('pushNotificationsMuted must be a boolean when provided')
+    expect(updateLoopSection).toContain("const pushNotificationsMuted = typeof body.pushNotificationsMuted === \"boolean\" ? body.pushNotificationsMuted : undefined")
+  })
+
   it("does not report repeat task creation as successful when loop persistence fails", () => {
     const source = getRemoteServerSource()
     const createLoopSection = getSection(source, 'fastify.post("/v1/loops"', '// PATCH /v1/loops/:id - Update a loop/repeat task')

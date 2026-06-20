@@ -30,6 +30,7 @@ interface EditingLoop {
   intervalMinutesDraft: string
   enabled: boolean
   runOnStartup: boolean
+  pushNotificationsMuted: boolean
   speakOnTrigger: boolean
   continueInSession: boolean
   lastSessionId?: string
@@ -55,6 +56,7 @@ const emptyLoop: EditingLoop = {
   intervalMinutesDraft: "15",
   enabled: true,
   runOnStartup: false,
+  pushNotificationsMuted: false,
   speakOnTrigger: false,
   continueInSession: false,
   critiquePass: false,
@@ -291,6 +293,7 @@ export function SettingsLoops() {
       intervalMinutesDraft: formatLoopIntervalDraft(loop.intervalMinutes),
       enabled: loop.enabled,
       runOnStartup: loop.runOnStartup ?? false,
+      pushNotificationsMuted: loop.pushNotificationsMuted ?? false,
       speakOnTrigger: loop.speakOnTrigger ?? false,
       continueInSession: loop.continueInSession ?? false,
       lastSessionId: loop.lastSessionId,
@@ -356,6 +359,7 @@ export function SettingsLoops() {
       intervalMinutes: savedIntervalMinutes,
       enabled: editing.enabled,
       runOnStartup: editing.runOnStartup,
+      pushNotificationsMuted: editing.pushNotificationsMuted,
       speakOnTrigger: editing.speakOnTrigger,
       continueInSession: editing.continueInSession,
       runContinuously: editing.scheduleMode === "continuous",
@@ -520,6 +524,7 @@ export function SettingsLoops() {
                 {describeLoopCadence(loop)}
               </div>
               {loop.runOnStartup && <div>Runs on startup</div>}
+              {loop.pushNotificationsMuted && <div>Push muted</div>}
               {loop.speakOnTrigger && <div>Speaks on trigger</div>}
               {loop.continueInSession && <div>Continues in same session</div>}
               {loop.critiquePass && <div>Built-in critique</div>}
@@ -708,6 +713,14 @@ export function SettingsLoops() {
                 onCheckedChange={(v) => setEditing({ ...editing, runOnStartup: v })}
               />
               <Label htmlFor="runOnStartup">Run on Startup</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="pushNotifications"
+                checked={!editing.pushNotificationsMuted}
+                onCheckedChange={(v) => setEditing({ ...editing, pushNotificationsMuted: !v })}
+              />
+              <Label htmlFor="pushNotifications">Push Notifications</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
