@@ -1278,6 +1278,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [modelOptions, setModelOptions] = useState<ModelInfo[]>([]);
   const [isLoadingModelOptions, setIsLoadingModelOptions] = useState(false);
   const [isSavingModelSettings, setIsSavingModelSettings] = useState(false);
+  const isSavingModelSettingsRef = useRef(false);
   const [isStoppingCurrentSession, setIsStoppingCurrentSession] = useState(false);
   const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
@@ -4683,8 +4684,9 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [agentProviderId, desktopSettings, settingsClient]);
 
   const saveDesktopSettings = useCallback(async (updates: Partial<Settings>) => {
-    if (!settingsClient || !desktopSettings || isSavingModelSettings) return;
+    if (!settingsClient || !desktopSettings || isSavingModelSettingsRef.current) return;
     const nextSettings = { ...desktopSettings, ...updates };
+    isSavingModelSettingsRef.current = true;
     setIsSavingModelSettings(true);
     setDesktopSettings(nextSettings);
     try {
@@ -4698,9 +4700,10 @@ export default function ChatScreen({ route, navigation }: any) {
         Alert.alert('Model settings', message);
       }
     } finally {
+      isSavingModelSettingsRef.current = false;
       setIsSavingModelSettings(false);
     }
-  }, [desktopSettings, isSavingModelSettings, settingsClient]);
+  }, [desktopSettings, settingsClient]);
 
   const handleAgentProviderChange = useCallback((nextProviderId: CHAT_PROVIDER_ID) => {
     if (nextProviderId === agentProviderId) return;
@@ -4756,11 +4759,12 @@ export default function ChatScreen({ route, navigation }: any) {
         }
 
         const result = await settingsClient.stopOperatorAgentSession(sessionId);
-        setOperatorSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
         if (!result.success) {
           const message = result.message || result.error || 'Failed to stop the current session';
           showStopError(message);
+          return;
         }
+        setOperatorSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
       } catch (error: any) {
         const message = error?.message || 'Failed to stop the current session';
         showStopError(message);
