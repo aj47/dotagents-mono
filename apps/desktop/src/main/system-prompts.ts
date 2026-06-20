@@ -36,7 +36,8 @@ function formatWorkingNotesForPrompt(notes: KnowledgeNote[], maxNotes: number = 
       const summary = truncatePromptNoteText(normalizePromptNoteText(note.summary ?? ''), 180)
       const body = truncatePromptNoteText(normalizePromptNoteText(note.body), 140)
       const fallback = body ? `${note.title}: ${body}` : note.title
-      return `- [${note.id}] ${summary || fallback}`
+      const noteText = summary || fallback
+      return `- ${noteText}`
     })
     .join("\n")
 }
@@ -66,6 +67,24 @@ function formatPromptNow(now: Date, timeZone: string): string {
   }
 
   return `${getPart('year')}-${getPart('month')}-${getPart('day')} ${getPart('hour')}:${getPart('minute')}`
+}
+
+function getLocalMemoryAndConfigPrompt(hasExecuteCommand: boolean): string {
+  const sections = [
+    `LOCAL MEMORY & CONFIG:
+- Durable notes live in configured knowledge roots, defaulting to global/workspace .agents/knowledge; edit note/config files directly and keep context:auto rare
+- Prior conversations live under the runtime-supplied conversations directory; whenever you need more context to answer or proceed - including continuation, status, debugging, and high-context planning - search index.json then conv_*.json as a standard step before asking the user, and use the recovered context to answer or continue when sufficient. Only ask the user when prior conversations do not contain the needed facts, or when credentials/approval are required. Always prefer knowledge notes over recalled conversation context when they conflict.
+- For personal legal/immigration, health, finance, career, or other high-context planning, inspect both knowledge notes and recent conversations before generic advice
+- DotAgents config is layered global .agents plus workspace .agents when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, read the dotagents-config-admin SKILL.md path if it is listed under Available Skills`,
+  ]
+
+  if (hasExecuteCommand) {
+    sections.push(`FILESYSTEM SEARCH ORDER:
+- Skills, settings, knowledge, tasks, prompts, runtime metadata, and past conversations are files. Use execute_command with absolute paths from this prompt when available; otherwise discover them with rg/find/ls/wc/sed/head/tail.
+- For rare runtime discovery, inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR with execute_command instead of expecting list/schema helper tools.`)
+  }
+
+  return sections.join("\n\n")
 }
 
 type PromptTool = {
@@ -155,12 +174,6 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
 - If the needed detail or exact query is already known, call read_more_context(mode: "search") directly; use mode: "overview" first only when you need orientation before choosing a query/window
 - Avoid pulling large heads/tails unless a narrower search or window is insufficient`)
   }
-
-  sections.push(`LOCAL MEMORY & CONFIG:
-- Durable notes live in configured knowledge roots, defaulting to global/workspace .agents/knowledge; edit note/config files directly and keep context:auto rare
-- Prior conversations live under the runtime-supplied conversations directory; whenever you need more context to answer or proceed - including continuation, status, debugging, and high-context planning - search index.json then conv_*.json as a standard step before asking the user, and use the recovered context to answer or continue when sufficient. Only ask the user when prior conversations do not contain the needed facts, or when credentials/approval are required. Always prefer knowledge notes over recalled conversation context when they conflict.
-- For personal legal/immigration, health, finance, career, or other high-context planning, inspect both knowledge notes and recent conversations with execute_command before generic advice
-- DotAgents config is layered global .agents plus workspace .agents when DOTAGENTS_WORKSPACE_DIR is set; for unfamiliar config edits, read the dotagents-config-admin SKILL.md path if it is listed under Available Skills`)
 
   return `\n\n${sections.join('\n\n')}`
 }
@@ -344,6 +357,8 @@ export function constructSystemPrompt(
   if (filesystemContext?.trim()) {
     prompt += `\n\nFILESYSTEM LOCATIONS:\n${filesystemContext.trim()}`
   }
+
+  prompt += `\n\n${getLocalMemoryAndConfigPrompt(hasPromptTool(availableTools, 'execute_command'))}`
 
   if (isAgentMode) {
     prompt += getAgentModeAdditions(availableTools)

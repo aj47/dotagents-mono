@@ -133,6 +133,31 @@ describe("constructSystemPrompt", () => {
     expect(agentPrompt).not.toContain("recover state before asking when the user wants to resume prior work")
   })
 
+  it("preserves local memory guidance when a custom base prompt is active", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([
+      { name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } },
+    ] as any, undefined, false, undefined, "Custom profile base prompt.")
+
+    expect(prompt).toContain("Custom profile base prompt.")
+    expect(prompt).toContain("LOCAL MEMORY & CONFIG")
+    expect(prompt).toContain("Durable notes live in configured knowledge roots")
+    expect(prompt).toContain("Prior conversations live under the runtime-supplied conversations directory")
+    expect(prompt).toContain("search index.json then conv_*.json as a standard step before asking the user")
+    expect(prompt).toContain("FILESYSTEM SEARCH ORDER")
+    expect(prompt).toContain("Skills, settings, knowledge, tasks, prompts, runtime metadata, and past conversations are files")
+  })
+
+  it("keeps local memory guidance available outside agent mode", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt([], undefined, false)
+
+    expect(prompt).toContain("LOCAL MEMORY & CONFIG")
+    expect(prompt).toContain("Prior conversations live under the runtime-supplied conversations directory")
+  })
+
   it("teaches the minimal fallback prompt to search prior conversations when more context is needed", async () => {
     const { constructMinimalSystemPrompt } = await import("./system-prompts")
 
@@ -356,8 +381,10 @@ Skills are filesystem instructions. When a task matches a skill below, read its 
 
     expect(prompt).toContain("WORKING NOTES")
     expect(prompt).toContain("context: auto")
-    expect(prompt).toContain("[project-architecture] Layered Electron app with workspace-overrides-global note loading.")
-    expect(prompt).toContain("[release-plan] Release Plan: Milestones Ship the staged rollout next week.")
+    expect(prompt).toContain("- Layered Electron app with workspace-overrides-global note loading.")
+    expect(prompt).toContain("- Release Plan: Milestones Ship the staged rollout next week.")
+    expect(prompt).not.toContain("[project-architecture]")
+    expect(prompt).not.toContain("[release-plan]")
     expect(prompt).not.toContain("KNOWLEDGE FROM PREVIOUS SESSIONS")
   })
 
