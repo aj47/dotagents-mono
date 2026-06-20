@@ -78,6 +78,13 @@ import {
   type VoiceCommandId,
   getVoiceCommandMenuLabels,
   DEFAULT_VOICE_COMMANDS,
+  CHAT_PROVIDERS,
+  type CHAT_PROVIDER_ID,
+  type CodexServiceTier,
+  type ModelInfo,
+  type OpenAiReasoningEffort,
+  type OperatorRuntimeStatus,
+  type Settings,
 } from '@dotagents/shared';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused } from '@react-navigation/native';
@@ -139,6 +146,78 @@ interface PendingImageAttachment {
   previewUri: string;
   dataUrl: string;
 }
+
+type OperatorSessionSummary = OperatorRuntimeStatus['sessions']['activeSessionDetails'][number];
+
+const AGENT_MODEL_FALLBACKS: Record<CHAT_PROVIDER_ID, string> = {
+  openai: 'gpt-5.5',
+  groq: 'llama-3.3-70b-versatile',
+  gemini: 'gemini-2.5-pro',
+  'chatgpt-web': 'gpt-5.5',
+};
+
+const REASONING_EFFORT_OPTIONS: Array<{
+  value: OpenAiReasoningEffort;
+  label: string;
+}> = [
+  { value: 'none', label: 'Off' },
+  { value: 'minimal', label: 'Minimal' },
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'xhigh', label: 'Extra high' },
+];
+
+const CODEX_SERVICE_TIER_OPTIONS: Array<{
+  value: CodexServiceTier;
+  label: string;
+}> = [
+  { value: 'standard', label: 'Standard' },
+  { value: 'priority', label: 'Fast' },
+];
+
+const getAgentProviderId = (settings: Settings | null): CHAT_PROVIDER_ID =>
+  settings?.agentProviderId || settings?.mcpToolsProviderId || 'openai';
+
+const getConfiguredAgentModel = (
+  settings: Settings | null,
+  providerId: CHAT_PROVIDER_ID,
+): string => {
+  if (providerId === 'openai') {
+    return settings?.agentOpenaiModel || settings?.mcpToolsOpenaiModel || AGENT_MODEL_FALLBACKS.openai;
+  }
+  if (providerId === 'groq') {
+    return settings?.agentGroqModel || settings?.mcpToolsGroqModel || AGENT_MODEL_FALLBACKS.groq;
+  }
+  if (providerId === 'gemini') {
+    return settings?.agentGeminiModel || settings?.mcpToolsGeminiModel || AGENT_MODEL_FALLBACKS.gemini;
+  }
+  return settings?.agentChatgptWebModel || settings?.mcpToolsChatgptWebModel || AGENT_MODEL_FALLBACKS['chatgpt-web'];
+};
+
+const getModelDisplayName = (modelId: string): string => modelId.split('/').pop() || modelId;
+
+const buildAgentModelSettingsUpdate = (
+  providerId: CHAT_PROVIDER_ID,
+  modelId: string,
+) => {
+  if (providerId === 'openai') {
+    return { agentOpenaiModel: modelId, mcpToolsOpenaiModel: modelId };
+  }
+  if (providerId === 'groq') {
+    return { agentGroqModel: modelId, mcpToolsGroqModel: modelId };
+  }
+  if (providerId === 'gemini') {
+    return { agentGeminiModel: modelId, mcpToolsGeminiModel: modelId };
+  }
+  return { agentChatgptWebModel: modelId, mcpToolsChatgptWebModel: modelId };
+};
+
+const providerSupportsThinking = (providerId: CHAT_PROVIDER_ID): boolean =>
+  providerId === 'openai' || providerId === 'chatgpt-web';
+
+const providerSupportsServiceTier = (providerId: CHAT_PROVIDER_ID): boolean =>
+  providerId === 'chatgpt-web';
 
 const MAX_PENDING_IMAGES = 4;
 const MAX_PENDING_IMAGE_FILE_SIZE_BYTES = 4 * 1024 * 1024;
@@ -1194,6 +1273,13 @@ export default function ChatScreen({ route, navigation }: any) {
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
   const [availableTasks, setAvailableTasks] = useState<Loop[]>([]);
   const [isLoadingQuickStartPrompts, setIsLoadingQuickStartPrompts] = useState(false);
+  const [desktopSettings, setDesktopSettings] = useState<Settings | null>(null);
+  const [operatorSessions, setOperatorSessions] = useState<OperatorSessionSummary[]>([]);
+  const [modelOptions, setModelOptions] = useState<ModelInfo[]>([]);
+  const [isLoadingModelOptions, setIsLoadingModelOptions] = useState(false);
+  const [isSavingModelSettings, setIsSavingModelSettings] = useState(false);
+  const isSavingModelSettingsRef = useRef(false);
+  const [isStoppingCurrentSession, setIsStoppingCurrentSession] = useState(false);
   const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
   const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
@@ -1218,6 +1304,20 @@ export default function ChatScreen({ route, navigation }: any) {
   const [newPromptName, setNewPromptName] = useState('');
   const [newPromptContent, setNewPromptContent] = useState('');
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
+  const agentProviderId = getAgentProviderId(desktopSettings);
+  const currentAgentModel = getConfiguredAgentModel(desktopSettings, agentProviderId);
+  const currentOperatorSession = useMemo(() => {
+    const serverConversationId = currentSession?.serverConversationId;
+    if (!serverConversationId) return undefined;
+    return operatorSessions.find((session) => session.conversationId === serverConversationId);
+  }, [currentSession?.serverConversationId, operatorSessions]);
+  const modelMenuOptions = useMemo(() => {
+    const options = [...modelOptions];
+    if (currentAgentModel && !options.some((model) => model.id === currentAgentModel)) {
+      options.unshift({ id: currentAgentModel, name: getModelDisplayName(currentAgentModel) });
+    }
+    return options;
+  }, [currentAgentModel, modelOptions]);
   const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE;
   const handsFreeSleepPhrase = config.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
@@ -1528,60 +1628,6 @@ export default function ChatScreen({ route, navigation }: any) {
 
     return unsubscribe;
   }, [sessionStore.currentSessionId, connectionManager]);
-
-  const handleKillSwitch = useCallback(async () => {
-    console.log('[ChatScreen] Kill switch button pressed');
-    const client = getSessionClient();
-    if (!client) {
-      console.error('[ChatScreen] No client available for kill switch');
-      return;
-    }
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        '⚠️ Emergency Stop\n\nAre you sure you want to stop all agent sessions on the remote server? This will immediately terminate any running tasks.'
-      );
-      if (confirmed) {
-        try {
-          const result = await client.killSwitch();
-          if (result.success) {
-            window.alert(result.message || 'All sessions stopped');
-          } else {
-            window.alert('Error: ' + (result.error || 'Failed to stop sessions'));
-          }
-        } catch (e: any) {
-          console.error('[ChatScreen] Kill switch error:', e);
-          window.alert('Error: ' + (e.message || 'Failed to connect to server'));
-        }
-      }
-      return;
-    }
-
-    Alert.alert(
-      '⚠️ Emergency Stop',
-      'Are you sure you want to stop all agent sessions on the remote server? This will immediately terminate any running tasks.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Stop All',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await client.killSwitch();
-              if (result.success) {
-                Alert.alert('Success', result.message || 'All sessions stopped');
-              } else {
-                Alert.alert('Error', result.error || 'Failed to stop sessions');
-              }
-            } catch (e: any) {
-              console.error('[ChatScreen] Kill switch error:', e);
-              Alert.alert('Error', e.message || 'Failed to connect to server');
-            }
-          },
-        },
-      ],
-    );
-  }, [getSessionClient]);
 
   const handleNewChat = useCallback(() => {
     // Reset all UI states unconditionally when creating a new chat
@@ -4557,6 +4603,9 @@ export default function ChatScreen({ route, navigation }: any) {
         setPredefinedPrompts([]);
         setAvailableSkills([]);
         setAvailableTasks([]);
+        setDesktopSettings(null);
+        setOperatorSessions([]);
+        setModelOptions([]);
         setIsLoadingQuickStartPrompts(false);
       }
       return;
@@ -4569,23 +4618,31 @@ export default function ChatScreen({ route, navigation }: any) {
       settingsClient.getSettings(),
       settingsClient.getSkills(),
       settingsClient.getLoops(),
+      settingsClient.getOperatorStatus(),
     ] as const)
-      .then(([settingsResult, skillsResult, loopsResult]) => {
+      .then(([settingsResult, skillsResult, loopsResult, operatorStatusResult]) => {
         if (cancelled) return;
 
         if (settingsResult.status === 'fulfilled') {
           const settings = settingsResult.value;
+          setDesktopSettings(settings);
           const nextPrompts = [...(settings.predefinedPrompts || [])].sort((a, b) => b.updatedAt - a.updatedAt);
           setPredefinedPrompts(nextPrompts);
           setRemoteTtsProvider(settings.ttsProviderId === 'edge' ? 'edge' : 'native');
           setRemoteEdgeTtsVoice(settings.edgeTtsVoice || 'en-US-AriaNeural');
           setRemoteEdgeTtsRate(settings.edgeTtsRate ?? 1.0);
         } else {
+          setDesktopSettings(null);
           setPredefinedPrompts([]);
         }
 
         setAvailableSkills(skillsResult.status === 'fulfilled' ? skillsResult.value.skills : []);
         setAvailableTasks(loopsResult.status === 'fulfilled' ? loopsResult.value.loops : []);
+        setOperatorSessions(
+          operatorStatusResult.status === 'fulfilled'
+            ? operatorStatusResult.value.sessions.activeSessionDetails ?? []
+            : [],
+        );
       })
       .finally(() => {
         if (cancelled) return;
@@ -4596,6 +4653,142 @@ export default function ChatScreen({ route, navigation }: any) {
       cancelled = true;
     };
   }, [isFocused, settingsClient]);
+
+  useEffect(() => {
+    if (!settingsClient || !desktopSettings) {
+      setModelOptions([]);
+      setIsLoadingModelOptions(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingModelOptions(true);
+    settingsClient.getModels(agentProviderId)
+      .then((response) => {
+        if (cancelled) return;
+        setModelOptions(response.models || []);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.warn('[ChatScreen] Failed to load model options:', error);
+        setModelOptions([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoadingModelOptions(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [agentProviderId, desktopSettings, settingsClient]);
+
+  const saveDesktopSettings = useCallback(async (updates: Partial<Settings>) => {
+    if (!settingsClient || !desktopSettings || isSavingModelSettingsRef.current) return;
+    const nextSettings = { ...desktopSettings, ...updates };
+    isSavingModelSettingsRef.current = true;
+    setIsSavingModelSettings(true);
+    setDesktopSettings(nextSettings);
+    try {
+      await settingsClient.updateSettings(updates);
+    } catch (error: any) {
+      setDesktopSettings(desktopSettings);
+      const message = error?.message || 'Failed to update model settings';
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert('Model settings', message);
+      }
+    } finally {
+      isSavingModelSettingsRef.current = false;
+      setIsSavingModelSettings(false);
+    }
+  }, [desktopSettings, settingsClient]);
+
+  const handleAgentProviderChange = useCallback((nextProviderId: CHAT_PROVIDER_ID) => {
+    if (nextProviderId === agentProviderId) return;
+    void saveDesktopSettings({ agentProviderId: nextProviderId });
+  }, [agentProviderId, saveDesktopSettings]);
+
+  const handleAgentModelChange = useCallback((modelId: string) => {
+    if (!modelId || modelId === currentAgentModel) return;
+    void saveDesktopSettings(buildAgentModelSettingsUpdate(agentProviderId, modelId));
+  }, [agentProviderId, currentAgentModel, saveDesktopSettings]);
+
+  const handleReasoningEffortChange = useCallback((value: OpenAiReasoningEffort) => {
+    void saveDesktopSettings({ openaiReasoningEffort: value });
+  }, [saveDesktopSettings]);
+
+  const handleServiceTierChange = useCallback((value: CodexServiceTier) => {
+    void saveDesktopSettings({ codexServiceTier: value });
+  }, [saveDesktopSettings]);
+
+  const handleStopCurrentAgentSession = useCallback(async () => {
+    if (isStoppingCurrentSession) return;
+    closeChatMenu();
+
+    const showStopError = (message: string) => {
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert('Stop session', message);
+      }
+    };
+
+    if (!settingsClient) {
+      showStopError('Connect to your desktop before stopping a session.');
+      return;
+    }
+
+    const stopSession = async () => {
+      setIsStoppingCurrentSession(true);
+      try {
+        let sessionId = currentOperatorSession?.id;
+        if (!sessionId && currentSession?.serverConversationId) {
+          const status = await settingsClient.getOperatorStatus();
+          const refreshedSessions = status.sessions.activeSessionDetails ?? [];
+          setOperatorSessions(refreshedSessions);
+          sessionId = refreshedSessions.find(
+            (session) => session.conversationId === currentSession.serverConversationId,
+          )?.id;
+        }
+
+        if (!sessionId) {
+          showStopError('Could not identify an active desktop session for this chat.');
+          return;
+        }
+
+        const result = await settingsClient.stopOperatorAgentSession(sessionId);
+        if (!result.success) {
+          const message = result.message || result.error || 'Failed to stop the current session';
+          showStopError(message);
+          return;
+        }
+        setOperatorSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
+      } catch (error: any) {
+        const message = error?.message || 'Failed to stop the current session';
+        showStopError(message);
+      } finally {
+        setIsStoppingCurrentSession(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Stop the active agent session for this chat?')) {
+        await stopSession();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Stop current session',
+      'Stop the active agent session for this chat only?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Stop', style: 'destructive', onPress: () => { void stopSession(); } },
+      ],
+    );
+  }, [closeChatMenu, currentOperatorSession?.id, currentSession?.serverConversationId, isStoppingCurrentSession, settingsClient]);
 
   const handleSavePrompt = async () => {
     const name = newPromptName.trim();
@@ -7882,7 +8075,7 @@ export default function ChatScreen({ route, navigation }: any) {
         <Pressable style={styles.chatMenuOverlay} onPress={closeChatMenu}>
           <Pressable style={styles.chatMenuContent} onPress={(event) => event.stopPropagation()}>
             <View style={styles.chatMenuHeader}>
-              <Text style={styles.chatMenuTitle}>Voice menu</Text>
+              <Text style={styles.chatMenuTitle}>Agent menu</Text>
               <TouchableOpacity
                 style={styles.chatMenuCloseButton}
                 onPress={closeChatMenu}
@@ -7895,23 +8088,168 @@ export default function ChatScreen({ route, navigation }: any) {
 
             {isAgentRunningInHeader && (
               <TouchableOpacity
-                style={[styles.chatMenuRow, styles.chatMenuDangerRow]}
-                onPress={() => {
-                  closeChatMenu();
-                  handleKillSwitch();
-                }}
+                style={[styles.chatMenuRow, styles.chatMenuDangerRow, isStoppingCurrentSession && styles.chatMenuRowDisabled]}
+                onPress={handleStopCurrentAgentSession}
+                disabled={isStoppingCurrentSession}
                 accessibilityRole="button"
-                accessibilityLabel="Emergency stop all agent sessions"
-                accessibilityHint="Shows a confirmation before stopping all running sessions."
+                accessibilityLabel="Stop current agent session"
+                accessibilityHint="Stops only the active agent session for this chat."
+                accessibilityState={{ disabled: isStoppingCurrentSession }}
               >
                 <View style={[styles.chatMenuIcon, styles.chatMenuDangerIcon]}>
                   <Ionicons name="stop" size={16} color="#FFFFFF" />
                 </View>
                 <View style={styles.chatMenuRowText}>
-                  <Text style={[styles.chatMenuRowLabel, styles.chatMenuDangerText]}>Emergency stop</Text>
-                  <Text style={styles.chatMenuRowHelper}>Stop all running agent sessions.</Text>
+                  <Text style={[styles.chatMenuRowLabel, styles.chatMenuDangerText]}>
+                    {isStoppingCurrentSession ? 'Stopping session' : 'Stop current session'}
+                  </Text>
+                  <Text style={styles.chatMenuRowHelper}>
+                    {currentOperatorSession?.id
+                      ? "Stop only this chat's active agent session."
+                      : 'Stop only after this chat has an active desktop session.'}
+                  </Text>
                 </View>
               </TouchableOpacity>
+            )}
+
+            {desktopSettings && (
+              <>
+                <View style={styles.chatMenuControlGroup}>
+                  <View style={styles.chatMenuControlHeader}>
+                    <Ionicons name="hardware-chip-outline" size={15} color={theme.colors.primary} />
+                    <Text style={styles.chatMenuControlTitle}>Provider</Text>
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chatMenuChipRow}
+                  >
+                    {CHAT_PROVIDERS.map((provider) => {
+                      const selected = provider.value === agentProviderId;
+                      return (
+                        <Pressable
+                          key={provider.value}
+                          style={[styles.chatMenuChip, selected && styles.chatMenuChipSelected]}
+                          onPress={() => handleAgentProviderChange(provider.value)}
+                          disabled={isSavingModelSettings}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Use ${provider.label} provider`}
+                          accessibilityState={{ selected, disabled: isSavingModelSettings }}
+                        >
+                          <Text style={[styles.chatMenuChipText, selected && styles.chatMenuChipTextSelected]}>
+                            {provider.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                <View style={styles.chatMenuControlGroup}>
+                  <View style={styles.chatMenuControlHeader}>
+                    <Ionicons name="cube-outline" size={15} color={theme.colors.primary} />
+                    <Text style={styles.chatMenuControlTitle}>Model</Text>
+                    {isLoadingModelOptions && <ActivityIndicator size="small" color={theme.colors.primary} />}
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chatMenuChipRow}
+                  >
+                    {modelMenuOptions.map((model) => {
+                      const selected = model.id === currentAgentModel;
+                      return (
+                        <Pressable
+                          key={model.id}
+                          style={[styles.chatMenuChip, selected && styles.chatMenuChipSelected]}
+                          onPress={() => handleAgentModelChange(model.id)}
+                          disabled={isSavingModelSettings}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Use ${model.name || getModelDisplayName(model.id)} model`}
+                          accessibilityState={{ selected, disabled: isSavingModelSettings }}
+                        >
+                          <Text
+                            style={[styles.chatMenuChipText, selected && styles.chatMenuChipTextSelected]}
+                            numberOfLines={1}
+                          >
+                            {model.name || getModelDisplayName(model.id)}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                    {!isLoadingModelOptions && modelMenuOptions.length === 0 && (
+                      <Text style={styles.chatMenuEmptyText}>No models available</Text>
+                    )}
+                  </ScrollView>
+                </View>
+
+                {providerSupportsThinking(agentProviderId) && (
+                  <View style={styles.chatMenuControlGroup}>
+                    <View style={styles.chatMenuControlHeader}>
+                      <Ionicons name="sparkles-outline" size={15} color={theme.colors.primary} />
+                      <Text style={styles.chatMenuControlTitle}>Reasoning</Text>
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.chatMenuChipRow}
+                    >
+                      {REASONING_EFFORT_OPTIONS.map((option) => {
+                        const value = desktopSettings.openaiReasoningEffort || (agentProviderId === 'chatgpt-web' ? 'low' : 'medium');
+                        const selected = option.value === value;
+                        return (
+                          <Pressable
+                            key={option.value}
+                            style={[styles.chatMenuChip, selected && styles.chatMenuChipSelected]}
+                            onPress={() => handleReasoningEffortChange(option.value)}
+                            disabled={isSavingModelSettings}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Set reasoning to ${option.label}`}
+                            accessibilityState={{ selected, disabled: isSavingModelSettings }}
+                          >
+                            <Text style={[styles.chatMenuChipText, selected && styles.chatMenuChipTextSelected]}>
+                              {option.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {providerSupportsServiceTier(agentProviderId) && (
+                  <View style={styles.chatMenuControlGroup}>
+                    <View style={styles.chatMenuControlHeader}>
+                      <Ionicons name="flash-outline" size={15} color={theme.colors.primary} />
+                      <Text style={styles.chatMenuControlTitle}>Speed</Text>
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.chatMenuChipRow}
+                    >
+                      {CODEX_SERVICE_TIER_OPTIONS.map((option) => {
+                        const selected = option.value === (desktopSettings.codexServiceTier || 'standard');
+                        return (
+                          <Pressable
+                            key={option.value}
+                            style={[styles.chatMenuChip, selected && styles.chatMenuChipSelected]}
+                            onPress={() => handleServiceTierChange(option.value)}
+                            disabled={isSavingModelSettings}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Set speed to ${option.label}`}
+                            accessibilityState={{ selected, disabled: isSavingModelSettings }}
+                          >
+                            <Text style={[styles.chatMenuChipText, selected && styles.chatMenuChipTextSelected]}>
+                              {option.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
+              </>
             )}
 
             <TouchableOpacity
@@ -8745,6 +9083,57 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
       marginTop: 2,
+    },
+    chatMenuControlGroup: {
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.sm,
+      gap: spacing.xs,
+    },
+    chatMenuControlHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    chatMenuControlTitle: {
+      ...theme.typography.caption,
+      color: theme.colors.foreground,
+      fontWeight: '700',
+    },
+    chatMenuChipRow: {
+      gap: spacing.xs,
+      paddingRight: spacing.sm,
+    },
+    chatMenuChip: {
+      minHeight: 32,
+      maxWidth: 190,
+      borderRadius: radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 6,
+      justifyContent: 'center',
+    },
+    chatMenuChipSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.primary,
+    },
+    chatMenuChipText: {
+      ...theme.typography.caption,
+      color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    chatMenuChipTextSelected: {
+      color: theme.colors.primaryForeground,
+    },
+    chatMenuEmptyText: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      paddingVertical: 6,
     },
     chatMenuSwitchTrack: {
       width: 42,
