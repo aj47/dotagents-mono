@@ -231,10 +231,13 @@ class MessageQueueService {
   peek(conversationId: string): QueuedMessage | null {
     const queue = this.queues.get(conversationId)
     if (!queue || queue.length === 0) return null
-    // Strict FIFO: only return first item if it's pending
-    // Failed/cancelled messages block the queue until user handles them (retry or remove)
-    const firstMessage = queue[0]
-    return firstMessage.status === "pending" ? firstMessage : null
+    // Strict FIFO for ordinary queued messages, but allow pending injection
+    // messages to wait for their boundary without blocking later ordinary work.
+    for (const message of queue) {
+      if (message.status !== "pending") return null
+      if (!message.injectionTarget) return message
+    }
+    return null
   }
 
   /**
@@ -253,6 +256,53 @@ class MessageQueueService {
     this.emitQueueUpdate(conversationId)
 
     return true
+  }
+
+  /**
+   * Mark a pending queued message to be injected after a specific active-session boundary.
+   * Passing null clears the injection mode and returns the message to ordinary FIFO behavior.
+   */
+  setInjectionTarget(
+    conversationId: string,
+    messageId: string,
+    injectionTarget: QueuedMessage["injectionTarget"] | null,
+  ): boolean {
+    const queue = this.queues.get(conversationId)
+    if (!queue) return false
+
+    const message = queue.find((m) => m.id === messageId)
+    if (!message) return false
+
+    if (message.status !== "pending" || message.addedToHistory) {
+      logApp(`[MessageQueueService] Cannot update injection target for ${messageId} - status: ${message.status}, addedToHistory: ${message.addedToHistory === true}`)
+      return false
+    }
+
+    if (injectionTarget) {
+      message.injectionTarget = injectionTarget
+    } else {
+      delete message.injectionTarget
+    }
+    logApp(`[MessageQueueService] Set injection target for ${messageId} in ${conversationId}: ${injectionTarget ?? "none"}`)
+    this.emitQueueUpdate(conversationId)
+
+    return true
+  }
+
+  /**
+   * Return the next pending message waiting for this injection boundary.
+   */
+  peekInjectionTarget(
+    conversationId: string,
+    injectionTarget: NonNullable<QueuedMessage["injectionTarget"]>,
+  ): QueuedMessage | null {
+    const queue = this.queues.get(conversationId)
+    if (!queue || queue.length === 0) return null
+
+    return queue.find(
+      (message) => message.status === "pending" && message.injectionTarget === injectionTarget,
+    )
+      ?? null
   }
 
   /**
@@ -414,4 +464,3 @@ class MessageQueueService {
 }
 
 export const messageQueueService = MessageQueueService.getInstance()
-

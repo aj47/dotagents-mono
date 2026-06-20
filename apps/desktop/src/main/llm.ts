@@ -8,6 +8,7 @@ import type {
 import { AgentProgressStep, AgentProgressUpdate, SessionProfileSnapshot } from "../shared/types"
 import type { ConversationCompactionMetadata } from "../shared/types"
 import { diagnosticsService } from "./diagnostics"
+import { getErrorMessage } from "./error-utils"
 
 import { makeLLMCallWithFetch, makeTextCompletionWithFetch, verifyCompletionWithFetch, RetryProgressCallback, makeLLMCallWithStreamingAndTools, StreamingCallback } from "./llm-fetch"
 import { constructSystemPrompt } from "./system-prompts"
@@ -18,6 +19,7 @@ import { getSessionCost } from "./session-cost"
 import { emitAgentProgress } from "./emit-agent-progress"
 import { agentSessionTracker } from "./agent-session-tracker"
 import { conversationService } from "./conversation-service"
+import { messageQueueService } from "./message-queue-service"
 import { getAcpSessionTitleOverride } from "./acp-session-state"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
 import { DEFAULT_TRANSCRIPT_POST_PROCESSING_PROMPT, getCurrentPresetName } from "@dotagents/shared"
@@ -1162,6 +1164,60 @@ export async function processTranscriptWithAgentMode(
     }
   }
 
+  let queuedMessageInjectedSinceLastDecision = false
+
+  const injectQueuedMessageAfterBoundary = async (
+    injectionTarget: "after_next_tool_response" | "after_next_agent_response",
+  ) => {
+    if (!currentConversationId) return
+
+    const queuedMessage = messageQueueService.peekInjectionTarget(
+      currentConversationId,
+      injectionTarget,
+    )
+    if (!queuedMessage) return
+
+    const markingSucceeded = messageQueueService.markProcessing(currentConversationId, queuedMessage.id)
+    if (!markingSucceeded) return
+
+    const timestamp = Date.now()
+    const injectedPromptIndex = conversationHistory.length
+    conversationHistory.push({
+      role: "user",
+      content: queuedMessage.text,
+      timestamp,
+      branchMessageIndex: nextBranchMessageIndex++,
+    })
+    currentPromptIndex = injectedPromptIndex
+    queuedMessageInjectedSinceLastDecision = true
+
+    try {
+      const addResult = await conversationService.addMessageToConversation(
+        currentConversationId,
+        queuedMessage.text,
+        "user",
+      )
+      if (!addResult) {
+        logLLM("[injectQueuedMessageAfterBoundary] Failed to persist injected queued message", {
+          conversationId: currentConversationId,
+          queuedMessageId: queuedMessage.id,
+          injectionTarget,
+        })
+        messageQueueService.markFailed(
+          currentConversationId,
+          queuedMessage.id,
+          "Failed to add injected message to conversation history",
+        )
+        return
+      }
+      messageQueueService.markProcessed(currentConversationId, queuedMessage.id)
+    } catch (error) {
+      logLLM("[injectQueuedMessageAfterBoundary] Failed to save injected queued message:", error)
+      diagnosticsService.logWarning("llm", "Failed to save injected queued message", error)
+      messageQueueService.markFailed(currentConversationId, queuedMessage.id, getErrorMessage(error))
+    }
+  }
+
   // Helper function to generate a step summary using the weak model (if dual-model enabled)
   const generateStepSummary = async (
     stepNumber: number,
@@ -1308,6 +1364,12 @@ export async function processTranscriptWithAgentMode(
     ).catch(err => {
       logLLM("[addMessage] Failed to save message:", err)
     })
+
+    if (role === "tool") {
+      void injectQueuedMessageAfterBoundary("after_next_tool_response")
+    } else if (role === "assistant" && content.trim().length > 0 && (toolCalls?.length ?? 0) === 0) {
+      void injectQueuedMessageAfterBoundary("after_next_agent_response")
+    }
   }
 
   // Helper function to add a message to the in-memory conversation history ONLY (not persisted).
@@ -1692,7 +1754,7 @@ export async function processTranscriptWithAgentMode(
 
   // Track the index where the current user prompt was added
   // This is used to scope tool result checks to only the current turn
-  const currentPromptIndex = preparedPreviousConversationHistory.length
+  let currentPromptIndex = preparedPreviousConversationHistory.length
 
   const buildIntentOnlyToolUsageNudge = (contentText: string) => {
     const selectorRef = contentText.match(/@[a-z][0-9]+/i)?.[0]
@@ -2274,6 +2336,17 @@ export async function processTranscriptWithAgentMode(
   let cachedSystemPrompt: string | undefined // Cached rebuilt prompt when tools are excluded
   let suppressReadMoreContextAfterExactAnswer = false
 
+  const continueAfterQueuedMessageInjection = () => {
+    if (!queuedMessageInjectedSinceLastDecision) return false
+
+    queuedMessageInjectedSinceLastDecision = false
+    noOpCount = 0
+    totalNudgeCount = 0
+    garbledToolCallCount = 0
+    finalContent = ""
+    return true
+  }
+
   while (iteration < maxIterations) {
     iteration++
     currentIterationRef = iteration // Update ref for retry progress callback
@@ -2811,6 +2884,9 @@ export async function processTranscriptWithAgentMode(
           }
           finalContent = contentText
           addMessage("assistant", finalContent, undefined, undefined, undefined, displayOnlyMessageOptions)
+          if (continueAfterQueuedMessageInjection()) {
+            continue
+          }
           emit({
             currentIteration: iteration,
             maxIterations,
@@ -2918,6 +2994,10 @@ export async function processTranscriptWithAgentMode(
         if (completionForcedByVerificationLimit && !existingUserResponse1?.trim().length) {
           finalContent = buildIncompleteTaskFallback(finalContent, completionForcedIncompleteDetails)
           addMessage("assistant", finalContent)
+        }
+
+        if (continueAfterQueuedMessageInjection()) {
+          continue
         }
 
         const completionStep = createProgressStep(
@@ -3045,6 +3125,9 @@ export async function processTranscriptWithAgentMode(
       if (!config.mcpVerifyCompletionEnabled) {
         finalContent = buildIncompleteTaskFallback(contentText)
         addMessage("assistant", finalContent)
+        if (continueAfterQueuedMessageInjection()) {
+          continue
+        }
         emit({
           currentIteration: iteration,
           maxIterations,
@@ -3482,6 +3565,10 @@ export async function processTranscriptWithAgentMode(
       })
     }
 
+    if (continueAfterQueuedMessageInjection()) {
+      continue
+    }
+
     if (onlyCommunicationTools && !completionSignalConfirmed) {
       const latestCommunicationOnlyResponse = latestMaterializedUserResponse ?? resolveLatestUserFacingResponse({
         storedResponse: getSessionUserResponse(currentSessionId, effectiveRunId),
@@ -3878,6 +3965,12 @@ export async function processTranscriptWithAgentMode(
 	        conversationHistory.push({ role: "assistant", content: finalContent, timestamp: Date.now() })
 	      }
 
+      if (finalContent.trim().length > 0) {
+        await injectQueuedMessageAfterBoundary("after_next_agent_response")
+        if (continueAfterQueuedMessageInjection()) {
+          continue
+        }
+      }
 
 	      // Add completion step
 	      const completionStep = createProgressStep(

@@ -65,6 +65,7 @@ import {
   SessionProfileSnapshot,
   LoopConfig,
   ArtifactKind,
+  QueuedMessage,
 } from "../shared/types"
 import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared"
 import { getBranchMessageIndexMap } from "@shared/conversation-progress"
@@ -4916,6 +4917,20 @@ export const router = {
       }
 
       return true
+    }),
+
+  setQueuedMessageInjectionTarget: t.procedure
+    .input<{
+      conversationId: string
+      messageId: string
+      injectionTarget: QueuedMessage["injectionTarget"] | null
+    }>()
+    .action(async ({ input }) => {
+      return messageQueueService.setInjectionTarget(
+        input.conversationId,
+        input.messageId,
+        input.injectionTarget,
+      )
     }),
 
   retryQueuedMessage: t.procedure

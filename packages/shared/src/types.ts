@@ -83,6 +83,8 @@ export interface QueuedMessage {
   errorMessage?: string;
   /** Indicates the message was added to conversation history before processing failed */
   addedToHistory?: boolean;
+  /** Optional boundary where this queued message should be injected into active history. */
+  injectionTarget?: 'after_next_tool_response' | 'after_next_agent_response';
 }
 
 /**
