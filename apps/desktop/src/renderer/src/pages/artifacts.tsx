@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import {
@@ -32,6 +32,7 @@ import {
 } from "@renderer/components/ui/select"
 import { Badge } from "@renderer/components/ui/badge"
 import { MarkdownRenderer } from "@renderer/components/markdown-renderer"
+import { useResizable } from "@renderer/hooks/use-resizable"
 import { cn } from "@renderer/lib/utils"
 import { tipcClient } from "@renderer/lib/tipc-client"
 import { toast } from "sonner"
@@ -61,6 +62,74 @@ const kindLabel: Record<ArtifactKind, string> = {
   url: "URL",
   file: "File",
   unknown: "Unknown",
+}
+
+type JsonPreview =
+  | { type: "json"; formatted: string }
+  | {
+      type: "jsonl"
+      records: Array<{ line: number; formatted: string }>
+      invalidLine?: number
+    }
+  | { type: "raw"; error?: string }
+
+const ARTIFACT_LIST_WIDTH_DEFAULT = 360
+const ARTIFACT_LIST_WIDTH_MIN = 288
+const ARTIFACT_LIST_WIDTH_MAX = 720
+const COMPACT_PREVIEW_HEIGHT_DEFAULT = 260
+const COMPACT_PREVIEW_HEIGHT_MIN = 144
+const COMPACT_PREVIEW_HEIGHT_MAX = 560
+
+function getArtifactExtension(artifact: ArtifactRecord): string {
+  const candidates = [
+    artifact.localPath,
+    artifact.name,
+    artifact.normalizedReference,
+    artifact.originalReference,
+  ].filter(Boolean)
+
+  for (const candidate of candidates) {
+    const normalized = candidate!.split(/[?#]/, 1)[0]
+    const match = normalized.match(/\.([a-z0-9]+)$/i)
+    if (match) return match[1].toLowerCase()
+  }
+  return ""
+}
+
+function getJsonPreview(artifact: ArtifactRecord, content: string): JsonPreview {
+  const extension = getArtifactExtension(artifact)
+
+  if (extension === "json") {
+    try {
+      return {
+        type: "json",
+        formatted: JSON.stringify(JSON.parse(content), null, 2),
+      }
+    } catch (error) {
+      return {
+        type: "raw",
+        error: error instanceof Error ? error.message : "Invalid JSON",
+      }
+    }
+  }
+
+  if (extension !== "jsonl") return { type: "raw" }
+
+  const records: Array<{ line: number; formatted: string }> = []
+  const lines = content.split(/\r?\n/)
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim()
+    if (!line) continue
+    try {
+      records.push({
+        line: index + 1,
+        formatted: JSON.stringify(JSON.parse(line), null, 2),
+      })
+    } catch {
+      return { type: "jsonl", records, invalidLine: index + 1 }
+    }
+  }
+  return { type: "jsonl", records }
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -123,6 +192,86 @@ function getArtifactMeta(artifact: ArtifactRecord): string {
   ]
     .filter(Boolean)
     .join(" / ")
+}
+
+function JsonArtifactPreview({
+  preview,
+  content,
+}: {
+  preview: JsonPreview
+  content: string
+}) {
+  if (preview.type === "json") {
+    return (
+      <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed">
+        {preview.formatted}
+      </pre>
+    )
+  }
+
+  if (preview.type === "jsonl" && preview.records.length > 0) {
+    return (
+      <div className="space-y-2">
+        {preview.records.map((record) => (
+          <details
+            key={record.line}
+            className="rounded-md border bg-background/70"
+          >
+            <summary className="text-muted-foreground cursor-pointer px-2 py-1 text-[11px]">
+              Line {record.line}
+            </summary>
+            <pre className="border-t px-2 py-2 text-xs leading-relaxed">
+              {record.formatted}
+            </pre>
+          </details>
+        ))}
+        {preview.invalidLine !== undefined && (
+          <div className="text-destructive text-xs">
+            JSONL parsing stopped at line {preview.invalidLine}; showing parsed
+            records above.
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {preview.type === "jsonl" && preview.invalidLine !== undefined && (
+        <div className="text-destructive mb-3 text-xs">
+          Could not parse JSONL line {preview.invalidLine}; showing raw text.
+        </div>
+      )}
+      {preview.type === "raw" && preview.error && (
+        <div className="text-destructive mb-3 text-xs">
+          Could not parse JSON: {preview.error}
+        </div>
+      )}
+      <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed">
+        {content}
+      </pre>
+    </>
+  )
+}
+
+function ArtifactRowThumbnail({ artifact }: { artifact: ArtifactRecord }) {
+  if (artifact.kind !== "image" || !artifact.previewUrl) {
+    return (
+      <KindIcon kind={artifact.kind} className="text-muted-foreground shrink-0" />
+    )
+  }
+
+  return (
+    <span className="bg-muted/30 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded border">
+      <img
+        src={artifact.previewUrl}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="h-full w-full object-cover"
+      />
+    </span>
+  )
 }
 
 function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
@@ -222,6 +371,7 @@ function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
     }
 
     const content = textQuery.data?.content ?? ""
+    const jsonPreview = getJsonPreview(artifact, content)
     if (artifact.kind === "markdown") {
       return (
         <div className="artifact-preview min-h-0 flex-1 overflow-auto p-4 [&_.prose]:!text-xs [&_.prose_h1]:!text-base [&_.prose_h2]:!text-sm [&_.prose_h3]:!text-xs [&_.prose_p]:!leading-relaxed [&_.prose_pre]:!text-[11px]">
@@ -237,9 +387,7 @@ function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
 
     return (
       <div className="min-h-0 flex-1 overflow-auto p-4">
-        <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed">
-          {content}
-        </pre>
+        <JsonArtifactPreview preview={jsonPreview} content={content} />
         {textQuery.data?.truncated && (
           <div className="text-muted-foreground mt-3 text-xs">
             Preview truncated.
@@ -265,6 +413,26 @@ export const Component = () => {
   const [refreshNonce, setRefreshNonce] = useState(0)
   const consumedRefreshNonce = useRef(0)
   const debouncedQuery = useDebouncedValue(query.trim(), 200)
+  const {
+    width: listWidth,
+    isResizing: isListResizing,
+    handleWidthResizeStart,
+  } = useResizable({
+    initialWidth: ARTIFACT_LIST_WIDTH_DEFAULT,
+    minWidth: ARTIFACT_LIST_WIDTH_MIN,
+    maxWidth: ARTIFACT_LIST_WIDTH_MAX,
+    storageKey: "artifacts-list-panel",
+  })
+  const {
+    height: compactPreviewHeight,
+    isResizing: isCompactPreviewResizing,
+    handleHeightResizeStart,
+  } = useResizable({
+    initialHeight: COMPACT_PREVIEW_HEIGHT_DEFAULT,
+    minHeight: COMPACT_PREVIEW_HEIGHT_MIN,
+    maxHeight: COMPACT_PREVIEW_HEIGHT_MAX,
+    storageKey: "artifacts-compact-preview",
+  })
 
   const artifactsQuery = useQuery<ArtifactListResponse>({
     queryKey: ["artifacts", debouncedQuery, kind, refreshNonce],
@@ -364,13 +532,19 @@ export const Component = () => {
 
       <div
         className={cn(
-          "grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(18rem,30rem)_minmax(0,1fr)] xl:grid-rows-1",
+          "grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(18rem,var(--artifact-list-width))_minmax(0,1fr)] xl:grid-rows-1",
           showCompactPreview
-            ? "grid-rows-[minmax(9rem,32%)_minmax(0,1fr)]"
+            ? "grid-rows-[var(--artifact-compact-preview-height)_minmax(0,1fr)]"
             : "grid-rows-1",
         )}
+        style={
+          {
+            "--artifact-list-width": `${listWidth}px`,
+            "--artifact-compact-preview-height": `${compactPreviewHeight}px`,
+          } as CSSProperties
+        }
       >
-        <div className="flex min-h-0 flex-col border-r">
+        <div className="relative flex min-h-0 flex-col border-r">
           {selectedArtifact && (
             <div className="bg-muted/20 flex shrink-0 items-center gap-2 border-b px-4 py-2 xl:hidden">
               <KindIcon
@@ -454,10 +628,7 @@ export const Component = () => {
                         : "hover:bg-accent/50",
                     )}
                   >
-                    <KindIcon
-                      kind={artifact.kind}
-                      className="text-muted-foreground shrink-0"
-                    />
+                    <ArtifactRowThumbnail artifact={artifact} />
                     <span className="grid min-w-0 flex-1 grid-cols-[minmax(8rem,1fr)_minmax(7rem,0.8fr)] items-center gap-3 md:grid-cols-[minmax(9rem,0.9fr)_minmax(8rem,0.75fr)_minmax(0,1.35fr)]">
                       <span className="truncate text-sm font-semibold">
                         {artifact.name}
@@ -474,14 +645,39 @@ export const Component = () => {
               })}
             </div>
           )}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            title="Drag to resize artifact list"
+            className={cn(
+              "absolute right-0 top-0 z-10 hidden h-full w-1 cursor-col-resize transition-colors xl:block",
+              isListResizing ? "bg-primary/50" : "hover:bg-primary/30",
+            )}
+            onMouseDown={handleWidthResizeStart}
+          />
         </div>
 
         <div
           className={cn(
-            "bg-muted/10 min-h-0 min-w-0 flex-col border-t xl:flex xl:border-t-0",
+            "bg-muted/10 relative min-h-0 min-w-0 flex-col border-t xl:flex xl:border-t-0",
             showCompactPreview ? "flex" : "hidden",
           )}
+          style={
+            showCompactPreview
+              ? { height: "var(--artifact-compact-preview-height)" }
+              : undefined
+          }
         >
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            title="Drag to resize preview"
+            className={cn(
+              "absolute left-0 top-0 z-10 h-1 w-full cursor-row-resize transition-colors xl:hidden",
+              isCompactPreviewResizing ? "bg-primary/50" : "hover:bg-primary/30",
+            )}
+            onMouseDown={handleHeightResizeStart}
+          />
           {selectedArtifact ? (
             <>
               <div className="bg-background flex shrink-0 items-start gap-2 border-b px-3 py-2">

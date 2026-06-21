@@ -45,13 +45,29 @@ describe("artifacts navigation", () => {
 
   it("keeps preview split behind a wider breakpoint", () => {
     expect(artifactsPageSource).toContain(
-      "xl:grid-cols-[minmax(18rem,30rem)_minmax(0,1fr)]",
+      "xl:grid-cols-[minmax(18rem,var(--artifact-list-width))_minmax(0,1fr)]",
     )
     expect(artifactsPageSource).toContain(
-      "grid-rows-[minmax(9rem,32%)_minmax(0,1fr)]",
+      "grid-rows-[var(--artifact-compact-preview-height)_minmax(0,1fr)]",
     )
     expect(artifactsPageSource).toContain("xl:hidden")
     expect(artifactsPageSource).toContain("xl:flex xl:border-t-0")
+  })
+
+  it("keeps artifact panels resizable and image thumbnails lazy", () => {
+    expect(artifactsPageSource).toContain('storageKey: "artifacts-list-panel"')
+    expect(artifactsPageSource).toContain(
+      'storageKey: "artifacts-compact-preview"',
+    )
+    expect(artifactsPageSource).toContain('loading="lazy"')
+    expect(artifactsPageSource).toContain('decoding="async"')
+  })
+
+  it("formats json and jsonl previews locally", () => {
+    expect(artifactsPageSource).toContain("function getJsonPreview")
+    expect(artifactsPageSource).toContain('extension === "json"')
+    expect(artifactsPageSource).toContain('extension !== "jsonl"')
+    expect(artifactsPageSource).toContain("Line {record.line}")
   })
 
   it("sandboxes html artifact previews", () => {
