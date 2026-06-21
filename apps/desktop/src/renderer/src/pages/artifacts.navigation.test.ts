@@ -48,7 +48,7 @@ describe("artifacts navigation", () => {
       "xl:grid-cols-[minmax(18rem,var(--artifact-list-width))_minmax(0,1fr)]",
     )
     expect(artifactsPageSource).toContain(
-      "grid-rows-[var(--artifact-compact-preview-height)_minmax(0,1fr)]",
+      "grid-rows-[minmax(9rem,1fr)_var(--artifact-compact-preview-height)]",
     )
     expect(artifactsPageSource).toContain("xl:hidden")
     expect(artifactsPageSource).toContain("xl:flex xl:border-t-0")

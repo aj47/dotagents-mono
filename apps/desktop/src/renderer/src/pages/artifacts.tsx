@@ -76,9 +76,9 @@ type JsonPreview =
 const ARTIFACT_LIST_WIDTH_DEFAULT = 360
 const ARTIFACT_LIST_WIDTH_MIN = 288
 const ARTIFACT_LIST_WIDTH_MAX = 720
-const COMPACT_PREVIEW_HEIGHT_DEFAULT = 260
-const COMPACT_PREVIEW_HEIGHT_MIN = 144
-const COMPACT_PREVIEW_HEIGHT_MAX = 560
+const COMPACT_PREVIEW_HEIGHT_DEFAULT = 420
+const COMPACT_PREVIEW_HEIGHT_MIN = 220
+const COMPACT_PREVIEW_HEIGHT_MAX = 720
 
 function getArtifactExtension(artifact: ArtifactRecord): string {
   const candidates = [
@@ -306,11 +306,11 @@ function ArtifactPreview({ artifact }: { artifact: ArtifactRecord }) {
 
   if (artifact.kind === "image" && artifact.previewUrl) {
     return (
-      <div className="bg-muted/20 flex min-h-0 flex-1 items-center justify-center p-3">
+      <div className="bg-muted/20 flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
         <img
           src={artifact.previewUrl}
           alt={artifact.name}
-          className="max-h-full max-w-full rounded border object-contain"
+          className="h-full w-full rounded border object-contain"
         />
       </div>
     )
@@ -534,7 +534,7 @@ export const Component = () => {
         className={cn(
           "grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(18rem,var(--artifact-list-width))_minmax(0,1fr)] xl:grid-rows-1",
           showCompactPreview
-            ? "grid-rows-[var(--artifact-compact-preview-height)_minmax(0,1fr)]"
+            ? "grid-rows-[minmax(9rem,1fr)_var(--artifact-compact-preview-height)]"
             : "grid-rows-1",
         )}
         style={
