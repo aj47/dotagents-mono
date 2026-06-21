@@ -26,10 +26,17 @@ document.addEventListener("contextmenu", (e) => {
   e.preventDefault()
 
   const selectedText = window.getSelection()?.toString()
+  const imageTarget =
+    e.target instanceof Element ? e.target.closest("img") : null
+  const imageSrc =
+    imageTarget instanceof HTMLImageElement
+      ? imageTarget.currentSrc || imageTarget.src
+      : undefined
 
   tipcClient.showContextMenu({
     x: e.clientX,
     y: e.clientY,
     selectedText,
+    imageSrc,
   })
 })

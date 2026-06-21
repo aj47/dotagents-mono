@@ -41,11 +41,14 @@ import {
   app,
   clipboard,
   Menu,
+  nativeImage,
+  net,
   shell,
   systemPreferences,
   dialog,
   BrowserWindow,
 } from "electron"
+import os from "os"
 import path from "path"
 import { configStore, recordingsFolder, conversationsFolder, trySaveConfig } from "./config"
 import {
@@ -108,6 +111,10 @@ import { clearSessionUserResponse } from "./session-user-response-store"
 import { isMissingApiKeyErrorMessage } from "@dotagents/shared"
 import { hasRepeatTaskTitlePrefix } from "../shared/repeat-tasks"
 import { isPushEnabled, sendMessageNotification } from "./push-notification-service"
+import {
+  CONVERSATION_IMAGE_ASSET_HOST,
+  getConversationImageAssetPath,
+} from "./conversation-image-assets"
 
 function describeAgentSessionId(sessionId?: string | null): "missing" | "pending" | "subsession" | "session" | "unknown" {
   if (!sessionId) return "missing"
@@ -1338,6 +1345,67 @@ function sendTTSPlaybackRequestToHost(request: DesktopTTSPlaybackRequest): boole
   }
 }
 
+const expandHomePath = (filePath: string): string => {
+  if (filePath === "~") return os.homedir()
+  if (filePath.startsWith("~/")) return path.join(os.homedir(), filePath.slice(2))
+  return filePath
+}
+
+async function resolveImageSourcePath(src: string): Promise<string | null> {
+  try {
+    const parsed = new URL(src)
+
+    if (parsed.protocol === "file:") return decodeURIComponent(parsed.pathname)
+    if (parsed.protocol !== "assets:") return null
+
+    if (parsed.hostname === "file") {
+      const filePath = parsed.searchParams.get("path")
+      return filePath ? expandHomePath(filePath) : null
+    }
+
+    if (parsed.hostname === "artifact") {
+      const id = decodeURIComponent(parsed.pathname.slice(1))
+      return id ? artifactService.resolvePreviewPath(id) : null
+    }
+
+    if (parsed.hostname === CONVERSATION_IMAGE_ASSET_HOST) {
+      const segments = parsed.pathname
+        .split("/")
+        .filter(Boolean)
+        .map((segment) => decodeURIComponent(segment))
+      const [conversationId, fileName] = segments
+      return conversationId && fileName
+        ? getConversationImageAssetPath(conversationId, fileName)
+        : null
+    }
+  } catch {
+    if (src.startsWith("/") || src.startsWith("~/")) return expandHomePath(src)
+  }
+
+  return null
+}
+
+async function copyImageSourceToClipboard(src: string): Promise<void> {
+  const trimmed = src.trim()
+  if (!trimmed) throw new Error("Image source is empty")
+
+  let image: Electron.NativeImage
+  if (/^data:image\//i.test(trimmed)) {
+    image = nativeImage.createFromDataURL(trimmed)
+  } else if (/^https?:\/\//i.test(trimmed)) {
+    const response = await net.fetch(trimmed)
+    if (!response.ok) throw new Error(`Image request failed: ${response.status}`)
+    image = nativeImage.createFromBuffer(Buffer.from(await response.arrayBuffer()))
+  } else {
+    const imagePath = await resolveImageSourcePath(trimmed)
+    if (!imagePath) throw new Error("Unsupported image source")
+    image = nativeImage.createFromPath(imagePath)
+  }
+
+  if (image.isEmpty()) throw new Error("Image could not be read")
+  clipboard.writeImage(image)
+}
+
 export const router = {
   restartApp: t.procedure.action(async () => {
     app.relaunch()
@@ -1957,6 +2025,7 @@ export const router = {
       x: number
       y: number
       selectedText?: string
+      imageSrc?: string
       messageContext?: {
         content: string
         role: "user" | "assistant" | "tool"
@@ -1965,6 +2034,17 @@ export const router = {
     }>()
     .action(async ({ input, context }) => {
       const items: Electron.MenuItemConstructorOptions[] = []
+
+      if (input.imageSrc) {
+        items.push({
+          label: "Copy Image",
+          click() {
+            void copyImageSourceToClipboard(input.imageSrc || "").catch((error) => {
+              logApp("[tipc] Failed to copy image:", error)
+            })
+          },
+        })
+      }
 
       if (input.selectedText) {
         items.push({
