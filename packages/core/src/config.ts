@@ -306,6 +306,7 @@ const getConfig = (): LoadedConfig => {
     mcpContextTargetRatio: 0.4,
     mcpContextLastNMessages: 3,
     mcpContextSummarizeCharThreshold: 2000,
+    mcpConversationCompactionMessageThreshold: 20,
 
     // Tool response processing defaults
     mcpToolResponseProcessingEnabled: true,

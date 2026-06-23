@@ -4,7 +4,7 @@ import path from "path"
 import { createHash } from "crypto"
 import { Writable } from "stream"
 import { pipeline } from "stream/promises"
-import { conversationsFolder } from "./config"
+import { configStore, conversationsFolder } from "./config"
 import { logApp } from "./debug"
 import {
   Conversation,
@@ -17,7 +17,11 @@ import {
   LoadedConversation,
   TitleSource,
 } from "../shared/types"
-import { summarizeContent } from "./context-budget"
+import {
+  estimateTokensFromMessages,
+  getActiveContextTargetTokens,
+  summarizeContent,
+} from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import {
@@ -47,6 +51,39 @@ import { scheduleConversationHistoryChanged } from "./conversation-history-event
 const COMPACTION_MESSAGE_THRESHOLD = 20
 // Number of recent messages to keep intact after compaction
 const COMPACTION_KEEP_LAST = 10
+
+function getConfiguredConversationCompactionMessageThreshold(): number {
+  const configured = configStore.get()?.mcpConversationCompactionMessageThreshold
+  return typeof configured === "number" &&
+    Number.isFinite(configured) &&
+    configured >= 2
+    ? Math.floor(configured)
+    : COMPACTION_MESSAGE_THRESHOLD
+}
+
+function getConfiguredConversationCompactionTokenThreshold(): number | undefined {
+  const configured = configStore.get()?.mcpConversationCompactionTokenThreshold
+  return typeof configured === "number" &&
+    Number.isFinite(configured) &&
+    configured >= 1000
+    ? Math.floor(configured)
+    : undefined
+}
+
+async function getConversationCompactionTokenThreshold(): Promise<number | undefined> {
+  const configured = getConfiguredConversationCompactionTokenThreshold()
+  if (configured) return configured
+
+  try {
+    return await getActiveContextTargetTokens()
+  } catch (error) {
+    logApp(
+      "[conversationService] failed to resolve context target tokens for compaction:",
+      error,
+    )
+    return undefined
+  }
+}
 
 // Debounce delay for writing the conversation index to disk (ms)
 const INDEX_WRITE_DEBOUNCE_MS = 500
@@ -1790,7 +1827,20 @@ export class ConversationService {
   private async compactOnLoad(conversation: Conversation, sessionId?: string): Promise<Conversation> {
     const fullMessageHistory = this.getStoredRawMessages(conversation)
     const messageCount = fullMessageHistory.length
-    if (messageCount <= COMPACTION_MESSAGE_THRESHOLD) {
+    const messageThreshold = getConfiguredConversationCompactionMessageThreshold()
+    const tokenThreshold = await getConversationCompactionTokenThreshold()
+    const tokenCount = tokenThreshold
+      ? estimateTokensFromMessages(
+        fullMessageHistory.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+      )
+      : 0
+    if (
+      messageCount <= messageThreshold &&
+      (!tokenThreshold || tokenCount <= tokenThreshold)
+    ) {
       return conversation
     }
 

@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@renderer/components/ui/select"
 import { Switch } from "@renderer/components/ui/switch"
+import { Slider } from "@renderer/components/ui/slider"
 import { STT_PROVIDER_ID, SUPPORTED_LANGUAGES } from "@dotagents/shared"
 import { Textarea } from "@renderer/components/ui/textarea"
 import { Input } from "@renderer/components/ui/input"
@@ -51,6 +52,14 @@ const SETTINGS_TEXT_SAVE_DEBOUNCE_MS = 400
 const MCP_MAX_ITERATIONS_MIN = 1
 const MCP_MAX_ITERATIONS_MAX = 50
 const MCP_MAX_ITERATIONS_DEFAULT = 10
+const MCP_CONTEXT_TARGET_RATIO_PERCENT_MIN = 10
+const MCP_CONTEXT_TARGET_RATIO_PERCENT_MAX = 95
+const MCP_CONTEXT_TARGET_RATIO_PERCENT_DEFAULT = 40
+const MCP_CONTEXT_SUMMARIZE_CHAR_THRESHOLD_MIN = 500
+const MCP_CONTEXT_SUMMARIZE_CHAR_THRESHOLD_DEFAULT = 2000
+const MCP_CONVERSATION_COMPACTION_MESSAGE_THRESHOLD_MIN = 2
+const MCP_CONVERSATION_COMPACTION_MESSAGE_THRESHOLD_DEFAULT = 20
+const MCP_CONVERSATION_COMPACTION_TOKEN_THRESHOLD_MIN = 1000
 
 type LangfuseDraftKey =
   | "langfusePublicKey"
@@ -74,6 +83,29 @@ function parseMcpMaxIterationsDraft(value: string) {
   )
     return null
   return parsedValue
+}
+
+function parseIntegerDraft(value: string, min: number) {
+  const parsedValue = Number.parseInt(value, 10)
+  if (Number.isNaN(parsedValue) || parsedValue < min) return null
+  return parsedValue
+}
+
+function parseRatioPercentDraft(value: string) {
+  const parsedValue = Number.parseInt(value, 10)
+  if (
+    Number.isNaN(parsedValue) ||
+    parsedValue < MCP_CONTEXT_TARGET_RATIO_PERCENT_MIN ||
+    parsedValue > MCP_CONTEXT_TARGET_RATIO_PERCENT_MAX
+  )
+    return null
+  return parsedValue
+}
+
+function getContextTargetRatioPercent(config: Config | undefined) {
+  return Math.round(
+    (config?.mcpContextTargetRatio ?? 0.4) * 100,
+  )
 }
 
 export function Component() {
@@ -103,6 +135,44 @@ export function Component() {
   const mcpMaxIterationsSaveTimeoutRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null)
+  const [mcpContextTargetRatioPercentDraft, setMcpContextTargetRatioPercentDraft] =
+    useState(() => String(getContextTargetRatioPercent(cfg)))
+  const mcpContextTargetRatioSaveTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+  const [
+    mcpContextSummarizeCharThresholdDraft,
+    setMcpContextSummarizeCharThresholdDraft,
+  ] = useState(() =>
+    String(
+      cfg?.mcpContextSummarizeCharThreshold ??
+        MCP_CONTEXT_SUMMARIZE_CHAR_THRESHOLD_DEFAULT,
+    ),
+  )
+  const mcpContextSummarizeCharThresholdSaveTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+  const [
+    mcpConversationCompactionMessageThresholdDraft,
+    setMcpConversationCompactionMessageThresholdDraft,
+  ] = useState(() =>
+    String(
+      cfg?.mcpConversationCompactionMessageThreshold ??
+        MCP_CONVERSATION_COMPACTION_MESSAGE_THRESHOLD_DEFAULT,
+    ),
+  )
+  const mcpConversationCompactionMessageThresholdSaveTimeoutRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [
+    mcpConversationCompactionTokenThresholdDraft,
+    setMcpConversationCompactionTokenThresholdDraft,
+  ] = useState(() =>
+    cfg?.mcpConversationCompactionTokenThreshold
+      ? String(cfg.mcpConversationCompactionTokenThreshold)
+      : "",
+  )
+  const mcpConversationCompactionTokenThresholdSaveTimeoutRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Settings search
   const [searchQuery, setSearchQuery] = useState("")
@@ -261,6 +331,38 @@ export function Component() {
   }, [cfg?.mcpMaxIterations])
 
   useEffect(() => {
+    setMcpContextTargetRatioPercentDraft(
+      String(getContextTargetRatioPercent(cfg)),
+    )
+  }, [cfg?.mcpContextTargetRatio])
+
+  useEffect(() => {
+    setMcpContextSummarizeCharThresholdDraft(
+      String(
+        cfg?.mcpContextSummarizeCharThreshold ??
+          MCP_CONTEXT_SUMMARIZE_CHAR_THRESHOLD_DEFAULT,
+      ),
+    )
+  }, [cfg?.mcpContextSummarizeCharThreshold])
+
+  useEffect(() => {
+    setMcpConversationCompactionMessageThresholdDraft(
+      String(
+        cfg?.mcpConversationCompactionMessageThreshold ??
+          MCP_CONVERSATION_COMPACTION_MESSAGE_THRESHOLD_DEFAULT,
+      ),
+    )
+  }, [cfg?.mcpConversationCompactionMessageThreshold])
+
+  useEffect(() => {
+    setMcpConversationCompactionTokenThresholdDraft(
+      cfg?.mcpConversationCompactionTokenThreshold
+        ? String(cfg.mcpConversationCompactionTokenThreshold)
+        : "",
+    )
+  }, [cfg?.mcpConversationCompactionTokenThreshold])
+
+  useEffect(() => {
     return () => {
       for (const timeout of Object.values(
         langfuseSaveTimeoutsRef.current,
@@ -274,6 +376,26 @@ export function Component() {
 
       if (mcpMaxIterationsSaveTimeoutRef.current) {
         clearTimeout(mcpMaxIterationsSaveTimeoutRef.current)
+      }
+
+      if (mcpContextTargetRatioSaveTimeoutRef.current) {
+        clearTimeout(mcpContextTargetRatioSaveTimeoutRef.current)
+      }
+
+      if (mcpContextSummarizeCharThresholdSaveTimeoutRef.current) {
+        clearTimeout(mcpContextSummarizeCharThresholdSaveTimeoutRef.current)
+      }
+
+      if (mcpConversationCompactionMessageThresholdSaveTimeoutRef.current) {
+        clearTimeout(
+          mcpConversationCompactionMessageThresholdSaveTimeoutRef.current,
+        )
+      }
+
+      if (mcpConversationCompactionTokenThresholdSaveTimeoutRef.current) {
+        clearTimeout(
+          mcpConversationCompactionTokenThresholdSaveTimeoutRef.current,
+        )
       }
     }
   }, [])
@@ -397,6 +519,245 @@ export function Component() {
       scheduleMcpMaxIterationsSave(value)
     },
     [scheduleMcpMaxIterationsSave],
+  )
+
+  const flushMcpContextTargetRatioSave = useCallback(
+    (value: string) => {
+      if (mcpContextTargetRatioSaveTimeoutRef.current) {
+        clearTimeout(mcpContextTargetRatioSaveTimeoutRef.current)
+        mcpContextTargetRatioSaveTimeoutRef.current = null
+      }
+
+      const parsedValue = parseRatioPercentDraft(value)
+      if (parsedValue === null) {
+        setMcpContextTargetRatioPercentDraft(
+          String(getContextTargetRatioPercent(cfgRef.current)),
+        )
+        return
+      }
+
+      saveConfig({ mcpContextTargetRatio: parsedValue / 100 })
+    },
+    [saveConfig],
+  )
+
+  const scheduleMcpContextTargetRatioSave = useCallback(
+    (value: string) => {
+      if (mcpContextTargetRatioSaveTimeoutRef.current) {
+        clearTimeout(mcpContextTargetRatioSaveTimeoutRef.current)
+        mcpContextTargetRatioSaveTimeoutRef.current = null
+      }
+
+      const parsedValue = parseRatioPercentDraft(value)
+      if (parsedValue === null) return
+
+      mcpContextTargetRatioSaveTimeoutRef.current = setTimeout(() => {
+        mcpContextTargetRatioSaveTimeoutRef.current = null
+        saveConfig({ mcpContextTargetRatio: parsedValue / 100 })
+      }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  const updateMcpContextTargetRatioPercentDraft = useCallback(
+    (value: string) => {
+      setMcpContextTargetRatioPercentDraft(value)
+      scheduleMcpContextTargetRatioSave(value)
+    },
+    [scheduleMcpContextTargetRatioSave],
+  )
+
+  const flushMcpContextSummarizeCharThresholdSave = useCallback(
+    (value: string) => {
+      if (mcpContextSummarizeCharThresholdSaveTimeoutRef.current) {
+        clearTimeout(mcpContextSummarizeCharThresholdSaveTimeoutRef.current)
+        mcpContextSummarizeCharThresholdSaveTimeoutRef.current = null
+      }
+
+      const parsedValue = parseIntegerDraft(
+        value,
+        MCP_CONTEXT_SUMMARIZE_CHAR_THRESHOLD_MIN,
+      )
+      if (parsedValue === null) {
+        setMcpContextSummarizeCharThresholdDraft(
+          String(
+            cfgRef.current?.mcpContextSummarizeCharThreshold ??
+              MCP_CONTEXT_SUMMARIZE_CHAR_THRESHOLD_DEFAULT,
+          ),
+        )
+        return
+      }
+
+      saveConfig({ mcpContextSummarizeCharThreshold: parsedValue })
+    },
+    [saveConfig],
+  )
+
+  const scheduleMcpContextSummarizeCharThresholdSave = useCallback(
+    (value: string) => {
+      if (mcpContextSummarizeCharThresholdSaveTimeoutRef.current) {
+        clearTimeout(mcpContextSummarizeCharThresholdSaveTimeoutRef.current)
+        mcpContextSummarizeCharThresholdSaveTimeoutRef.current = null
+      }
+
+      const parsedValue = parseIntegerDraft(
+        value,
+        MCP_CONTEXT_SUMMARIZE_CHAR_THRESHOLD_MIN,
+      )
+      if (parsedValue === null) return
+
+      mcpContextSummarizeCharThresholdSaveTimeoutRef.current = setTimeout(
+        () => {
+          mcpContextSummarizeCharThresholdSaveTimeoutRef.current = null
+          saveConfig({ mcpContextSummarizeCharThreshold: parsedValue })
+        },
+        SETTINGS_TEXT_SAVE_DEBOUNCE_MS,
+      )
+    },
+    [saveConfig],
+  )
+
+  const updateMcpContextSummarizeCharThresholdDraft = useCallback(
+    (value: string) => {
+      setMcpContextSummarizeCharThresholdDraft(value)
+      scheduleMcpContextSummarizeCharThresholdSave(value)
+    },
+    [scheduleMcpContextSummarizeCharThresholdSave],
+  )
+
+  const flushMcpConversationCompactionMessageThresholdSave = useCallback(
+    (value: string) => {
+      if (mcpConversationCompactionMessageThresholdSaveTimeoutRef.current) {
+        clearTimeout(
+          mcpConversationCompactionMessageThresholdSaveTimeoutRef.current,
+        )
+        mcpConversationCompactionMessageThresholdSaveTimeoutRef.current = null
+      }
+
+      const parsedValue = parseIntegerDraft(
+        value,
+        MCP_CONVERSATION_COMPACTION_MESSAGE_THRESHOLD_MIN,
+      )
+      if (parsedValue === null) {
+        setMcpConversationCompactionMessageThresholdDraft(
+          String(
+            cfgRef.current?.mcpConversationCompactionMessageThreshold ??
+              MCP_CONVERSATION_COMPACTION_MESSAGE_THRESHOLD_DEFAULT,
+          ),
+        )
+        return
+      }
+
+      saveConfig({ mcpConversationCompactionMessageThreshold: parsedValue })
+    },
+    [saveConfig],
+  )
+
+  const scheduleMcpConversationCompactionMessageThresholdSave = useCallback(
+    (value: string) => {
+      if (mcpConversationCompactionMessageThresholdSaveTimeoutRef.current) {
+        clearTimeout(
+          mcpConversationCompactionMessageThresholdSaveTimeoutRef.current,
+        )
+        mcpConversationCompactionMessageThresholdSaveTimeoutRef.current = null
+      }
+
+      const parsedValue = parseIntegerDraft(
+        value,
+        MCP_CONVERSATION_COMPACTION_MESSAGE_THRESHOLD_MIN,
+      )
+      if (parsedValue === null) return
+
+      mcpConversationCompactionMessageThresholdSaveTimeoutRef.current =
+        setTimeout(() => {
+          mcpConversationCompactionMessageThresholdSaveTimeoutRef.current = null
+          saveConfig({
+            mcpConversationCompactionMessageThreshold: parsedValue,
+          })
+        }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  const updateMcpConversationCompactionMessageThresholdDraft = useCallback(
+    (value: string) => {
+      setMcpConversationCompactionMessageThresholdDraft(value)
+      scheduleMcpConversationCompactionMessageThresholdSave(value)
+    },
+    [scheduleMcpConversationCompactionMessageThresholdSave],
+  )
+
+  const flushMcpConversationCompactionTokenThresholdSave = useCallback(
+    (value: string) => {
+      if (mcpConversationCompactionTokenThresholdSaveTimeoutRef.current) {
+        clearTimeout(
+          mcpConversationCompactionTokenThresholdSaveTimeoutRef.current,
+        )
+        mcpConversationCompactionTokenThresholdSaveTimeoutRef.current = null
+      }
+
+      if (!value.trim()) {
+        saveConfig({ mcpConversationCompactionTokenThreshold: undefined })
+        return
+      }
+
+      const parsedValue = parseIntegerDraft(
+        value,
+        MCP_CONVERSATION_COMPACTION_TOKEN_THRESHOLD_MIN,
+      )
+      if (parsedValue === null) {
+        setMcpConversationCompactionTokenThresholdDraft(
+          cfgRef.current?.mcpConversationCompactionTokenThreshold
+            ? String(cfgRef.current.mcpConversationCompactionTokenThreshold)
+            : "",
+        )
+        return
+      }
+
+      saveConfig({ mcpConversationCompactionTokenThreshold: parsedValue })
+    },
+    [saveConfig],
+  )
+
+  const scheduleMcpConversationCompactionTokenThresholdSave = useCallback(
+    (value: string) => {
+      if (mcpConversationCompactionTokenThresholdSaveTimeoutRef.current) {
+        clearTimeout(
+          mcpConversationCompactionTokenThresholdSaveTimeoutRef.current,
+        )
+        mcpConversationCompactionTokenThresholdSaveTimeoutRef.current = null
+      }
+
+      if (!value.trim()) {
+        mcpConversationCompactionTokenThresholdSaveTimeoutRef.current =
+          setTimeout(() => {
+            mcpConversationCompactionTokenThresholdSaveTimeoutRef.current = null
+            saveConfig({ mcpConversationCompactionTokenThreshold: undefined })
+          }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+        return
+      }
+
+      const parsedValue = parseIntegerDraft(
+        value,
+        MCP_CONVERSATION_COMPACTION_TOKEN_THRESHOLD_MIN,
+      )
+      if (parsedValue === null) return
+
+      mcpConversationCompactionTokenThresholdSaveTimeoutRef.current =
+        setTimeout(() => {
+          mcpConversationCompactionTokenThresholdSaveTimeoutRef.current = null
+          saveConfig({ mcpConversationCompactionTokenThreshold: parsedValue })
+        }, SETTINGS_TEXT_SAVE_DEBOUNCE_MS)
+    },
+    [saveConfig],
+  )
+
+  const updateMcpConversationCompactionTokenThresholdDraft = useCallback(
+    (value: string) => {
+      setMcpConversationCompactionTokenThresholdDraft(value)
+      scheduleMcpConversationCompactionTokenThresholdSave(value)
+    },
+    [scheduleMcpConversationCompactionTokenThresholdSave],
   )
 
   // Sync theme preference from config to localStorage when config loads
@@ -698,6 +1059,147 @@ export function Component() {
                 />
               </Control>
             )}
+
+            <Control
+              label={
+                <ControlLabel
+                  label="Context Compaction"
+                  tooltip="Tune when older context is summarized automatically. The ratio is applied to the active model's context window."
+                />
+              }
+              className="px-3"
+            >
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground text-xs">
+                      Context window ratio
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        min={String(MCP_CONTEXT_TARGET_RATIO_PERCENT_MIN)}
+                        max={String(MCP_CONTEXT_TARGET_RATIO_PERCENT_MAX)}
+                        step="5"
+                        value={mcpContextTargetRatioPercentDraft}
+                        onChange={(e) =>
+                          updateMcpContextTargetRatioPercentDraft(
+                            e.currentTarget.value,
+                          )
+                        }
+                        onBlur={(e) =>
+                          flushMcpContextTargetRatioSave(
+                            e.currentTarget.value,
+                          )
+                        }
+                        placeholder={String(
+                          MCP_CONTEXT_TARGET_RATIO_PERCENT_DEFAULT,
+                        )}
+                        className="h-7 w-16 text-right"
+                      />
+                      <span className="text-muted-foreground text-xs">%</span>
+                    </div>
+                  </div>
+                  <Slider
+                    value={[
+                      parseRatioPercentDraft(
+                        mcpContextTargetRatioPercentDraft,
+                      ) ?? MCP_CONTEXT_TARGET_RATIO_PERCENT_DEFAULT,
+                    ]}
+                    min={MCP_CONTEXT_TARGET_RATIO_PERCENT_MIN}
+                    max={MCP_CONTEXT_TARGET_RATIO_PERCENT_MAX}
+                    step={5}
+                    onValueChange={(value) => {
+                      const nextValue = value[0]
+                      if (typeof nextValue !== "number") return
+                      updateMcpContextTargetRatioPercentDraft(
+                        String(nextValue),
+                      )
+                    }}
+                    className="w-full"
+                  />
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <label className="space-y-1.5">
+                    <span className="text-muted-foreground text-xs">
+                      Summary chars
+                    </span>
+                    <Input
+                      type="number"
+                      min={String(MCP_CONTEXT_SUMMARIZE_CHAR_THRESHOLD_MIN)}
+                      step="100"
+                      value={mcpContextSummarizeCharThresholdDraft}
+                      onChange={(e) =>
+                        updateMcpContextSummarizeCharThresholdDraft(
+                          e.currentTarget.value,
+                        )
+                      }
+                      onBlur={(e) =>
+                        flushMcpContextSummarizeCharThresholdSave(
+                          e.currentTarget.value,
+                        )
+                      }
+                      placeholder={String(
+                        MCP_CONTEXT_SUMMARIZE_CHAR_THRESHOLD_DEFAULT,
+                      )}
+                      className="h-8 w-full"
+                    />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-muted-foreground text-xs">
+                      Messages
+                    </span>
+                    <Input
+                      type="number"
+                      min={String(
+                        MCP_CONVERSATION_COMPACTION_MESSAGE_THRESHOLD_MIN,
+                      )}
+                      step="1"
+                      value={mcpConversationCompactionMessageThresholdDraft}
+                      onChange={(e) =>
+                        updateMcpConversationCompactionMessageThresholdDraft(
+                          e.currentTarget.value,
+                        )
+                      }
+                      onBlur={(e) =>
+                        flushMcpConversationCompactionMessageThresholdSave(
+                          e.currentTarget.value,
+                        )
+                      }
+                      placeholder={String(
+                        MCP_CONVERSATION_COMPACTION_MESSAGE_THRESHOLD_DEFAULT,
+                      )}
+                      className="h-8 w-full"
+                    />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-muted-foreground text-xs">
+                      Token override
+                    </span>
+                    <Input
+                      type="number"
+                      min={String(
+                        MCP_CONVERSATION_COMPACTION_TOKEN_THRESHOLD_MIN,
+                      )}
+                      step="1000"
+                      value={mcpConversationCompactionTokenThresholdDraft}
+                      onChange={(e) =>
+                        updateMcpConversationCompactionTokenThresholdDraft(
+                          e.currentTarget.value,
+                        )
+                      }
+                      onBlur={(e) =>
+                        flushMcpConversationCompactionTokenThresholdSave(
+                          e.currentTarget.value,
+                        )
+                      }
+                      placeholder="Use ratio"
+                      className="h-8 w-full"
+                    />
+                  </label>
+                </div>
+              </div>
+            </Control>
 
             <Control
               label={

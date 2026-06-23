@@ -1430,6 +1430,8 @@ export type Config = {
   mcpContextTargetRatio?: number
   mcpContextLastNMessages?: number
   mcpContextSummarizeCharThreshold?: number
+  mcpConversationCompactionMessageThreshold?: number
+  mcpConversationCompactionTokenThreshold?: number
   mcpMaxContextTokensOverride?: number
 
   // Tool Response Processing Configuration

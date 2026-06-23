@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 const tempDirs: string[] = []
 let summaryResult = "Compacted conversation summary."
+let mockConfig: Record<string, unknown> = {}
+let mockActiveContextTargetTokens = 12_000
 
 async function setupConversationServiceTest() {
   const conversationsFolder = await fs.mkdtemp(path.join(os.tmpdir(), "dotagents-conv-lazy-"))
@@ -16,9 +18,21 @@ async function setupConversationServiceTest() {
     recordingsFolder: path.join(conversationsFolder, "recordings"),
     conversationsFolder,
     configPath: path.join(conversationsFolder, "config.json"),
-    configStore: { get: vi.fn(), save: vi.fn(), reload: vi.fn(), config: undefined },
+    configStore: {
+      get: vi.fn(() => mockConfig),
+      save: vi.fn(),
+      reload: vi.fn(() => mockConfig),
+      config: undefined,
+    },
   }))
-  vi.doMock("./context-budget", () => ({ summarizeContent: vi.fn(() => summaryResult) }))
+  vi.doMock("./context-budget", () => ({
+    estimateTokensFromMessages: vi.fn((messages: Array<{ content?: string }>) => {
+      const chars = messages.reduce((sum, message) => sum + (message.content?.length || 0), 0)
+      return Math.ceil(chars / 4)
+    }),
+    getActiveContextTargetTokens: vi.fn(() => mockActiveContextTargetTokens),
+    summarizeContent: vi.fn(() => summaryResult),
+  }))
   vi.doMock("./llm-fetch", () => ({ makeTextCompletionWithFetch: vi.fn() }))
 
   const { ConversationService } = await import("./conversation-service")
@@ -27,6 +41,8 @@ async function setupConversationServiceTest() {
 
 afterEach(async () => {
   summaryResult = "Compacted conversation summary."
+  mockConfig = {}
+  mockActiveContextTargetTokens = 12_000
   vi.resetModules()
   vi.clearAllMocks()
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })))
@@ -387,6 +403,146 @@ describe("conversation lazy loading", () => {
       sourceMessageId: "m2",
       repoSlugs: ["Bin-Huang/youtube-analytics-cli"],
     })
+  })
+
+  it("uses the configured message threshold to compact shorter conversations", async () => {
+    mockConfig = { mcpConversationCompactionMessageThreshold: 12 }
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_low_message_threshold",
+      title: "Low threshold",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: Array.from({ length: 13 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: `Message ${index}`,
+        timestamp: 1_700_000_000_000 + index,
+      })),
+    }, true)
+
+    const loaded = await service.loadConversationWithCompaction(
+      "conv_low_message_threshold",
+    )
+
+    expect(loaded?.messages).toHaveLength(11)
+    expect(loaded?.messages[0]).toMatchObject({ isSummary: true, content: summaryResult })
+    expect(loaded?.compaction).toMatchObject({
+      storedRawMessageCount: 13,
+      firstKeptMessageId: "m3",
+      summarizedMessageCount: 3,
+    })
+  })
+
+  it("uses the configured message threshold to avoid default compaction", async () => {
+    mockConfig = { mcpConversationCompactionMessageThreshold: 30 }
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_high_message_threshold",
+      title: "High threshold",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: Array.from({ length: 25 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: `Message ${index}`,
+        timestamp: 1_700_000_000_000 + index,
+      })),
+    }, true)
+
+    const loaded = await service.loadConversationWithCompaction(
+      "conv_high_message_threshold",
+    )
+
+    expect(loaded?.messages).toHaveLength(25)
+    expect(loaded?.compaction).toBeUndefined()
+  })
+
+  it("uses the configured token threshold to compact below the message threshold", async () => {
+    mockConfig = {
+      mcpConversationCompactionMessageThreshold: 30,
+      mcpConversationCompactionTokenThreshold: 1000,
+    }
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_token_threshold",
+      title: "Token threshold",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: Array.from({ length: 12 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: `Message ${index} ${"token-heavy ".repeat(60)}`,
+        timestamp: 1_700_000_000_000 + index,
+      })),
+    }, true)
+
+    const loaded = await service.loadConversationWithCompaction(
+      "conv_token_threshold",
+    )
+
+    expect(loaded?.messages).toHaveLength(11)
+    expect(loaded?.messages[0]).toMatchObject({ isSummary: true, content: summaryResult })
+    expect(loaded?.compaction).toMatchObject({
+      storedRawMessageCount: 12,
+      firstKeptMessageId: "m2",
+      summarizedMessageCount: 2,
+    })
+  })
+
+  it("uses the active context target tokens when the token threshold is unset", async () => {
+    mockConfig = { mcpConversationCompactionMessageThreshold: 30 }
+    mockActiveContextTargetTokens = 1_000
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_ratio_token_threshold",
+      title: "Ratio token threshold",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: Array.from({ length: 12 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: `Message ${index} ${"token-heavy ".repeat(60)}`,
+        timestamp: 1_700_000_000_000 + index,
+      })),
+    }, true)
+
+    const loaded = await service.loadConversationWithCompaction(
+      "conv_ratio_token_threshold",
+    )
+
+    expect(loaded?.messages).toHaveLength(11)
+    expect(loaded?.messages[0]).toMatchObject({ isSummary: true, content: summaryResult })
+    expect(loaded?.compaction).toMatchObject({
+      storedRawMessageCount: 12,
+      firstKeptMessageId: "m2",
+      summarizedMessageCount: 2,
+    })
+  })
+
+  it("does not compact below the active context target tokens", async () => {
+    mockConfig = { mcpConversationCompactionMessageThreshold: 30 }
+    mockActiveContextTargetTokens = 12_000
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_no_token_threshold",
+      title: "No token threshold",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: Array.from({ length: 12 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: `Message ${index} ${"token-heavy ".repeat(60)}`,
+        timestamp: 1_700_000_000_000 + index,
+      })),
+    }, true)
+
+    const loaded = await service.loadConversationWithCompaction(
+      "conv_no_token_threshold",
+    )
+
+    expect(loaded?.messages).toHaveLength(12)
+    expect(loaded?.compaction).toBeUndefined()
   })
 
   it("backfills missing checkpoint metadata without refreshing updatedAt", async () => {
