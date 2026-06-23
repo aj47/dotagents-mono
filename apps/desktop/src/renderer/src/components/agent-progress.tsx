@@ -223,6 +223,142 @@ const getPayloadValueType = (value: unknown): string => {
   return typeof value
 }
 
+function isExecuteCommandToolName(toolName: string): boolean {
+  const normalizedName = toolName.toLowerCase()
+  return normalizedName === "execute_command" || normalizedName.endsWith(":execute_command")
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function getExecuteCommandResultFields(result: CompactToolExecutionResult): Record<string, unknown> | null {
+  if (!result?.content) return null
+  const parsed = parseJsonStringPayload(result.content)
+  return toRecord(parsed)
+}
+
+function compactDurationMs(value: unknown): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null
+  if (value >= 1000) return `${Math.round(value / 100) / 10}s`
+  return `${Math.round(value)}ms`
+}
+
+function getExecuteCommandMetadata(
+  args: Record<string, unknown> | null,
+  fields: Record<string, unknown> | null,
+): string[] {
+  const metadata: string[] = []
+  const timeout = args?.timeout
+  if (typeof timeout === "number" || typeof timeout === "string") {
+    metadata.push(`timeout ${timeout}`)
+  }
+  const duration = compactDurationMs(fields?.durationMs)
+  if (duration) metadata.push(duration)
+  const exitCode = fields?.exitCode
+  if (typeof exitCode === "number") metadata.push(`exit ${exitCode}`)
+  const cwd = fields?.cwd
+  if (typeof cwd === "string" && cwd.trim()) metadata.push(cwd)
+  return metadata
+}
+
+const ExecuteCommandDetails: React.FC<{
+  call: CompactToolExecutionCall
+  result: Exclude<CompactToolExecutionResult, undefined>
+  derivedTitle?: string
+  onCopy: (event: React.MouseEvent, text: string) => void
+}> = ({ call, result, derivedTitle, onCopy }) => {
+  const args = toRecord(call.arguments)
+  const fields = getExecuteCommandResultFields(result)
+  const command = typeof args?.command === "string"
+    ? args.command
+    : typeof fields?.command === "string"
+      ? fields.command
+      : ""
+  const stdout = typeof fields?.stdout === "string" ? fields.stdout : result.content
+  const stderr = typeof fields?.stderr === "string" ? fields.stderr : result.error || ""
+  const hasStructuredFields = Boolean(fields)
+  const output = hasStructuredFields ? stdout : result.content
+  const metadata = getExecuteCommandMetadata(args, fields)
+  const copyText = command || formatToolArguments(call.arguments)
+
+  return (
+    <>
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <span className="flex min-w-0 flex-1 items-center gap-1.5 font-medium">
+            {derivedTitle && (
+              <span
+                className={cn(
+                  "min-w-0 truncate font-mono text-[11px]",
+                  result.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400",
+                )}
+                title={derivedTitle}
+              >
+                {derivedTitle}
+              </span>
+            )}
+          </span>
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+            {metadata.map((item) => (
+              <span
+                key={item}
+                className="max-w-[18rem] truncate rounded bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground"
+                title={item}
+              >
+                {item}
+              </span>
+            ))}
+            {copyText && (
+              <Button size="sm" variant="ghost" className="h-5 shrink-0 px-1.5 text-[10px]" onClick={(e) => onCopy(e, copyText)}>
+                <Copy className="h-2 w-2 mr-0.5" /> Copy
+              </Button>
+            )}
+          </div>
+        </div>
+        {command ? (
+          <StructuredToolPayload payload={command} maxHeightClassName="max-h-40" />
+        ) : args ? (
+          <StructuredToolPayload payload={args} maxHeightClassName="max-h-40" />
+        ) : null}
+      </div>
+
+      {(output || stderr) && (
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <span className={cn(
+              "min-w-0 flex-1 font-medium",
+              result.success ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+            )}>
+              {result.success ? "Output" : "Error"}
+            </span>
+            {output && (
+              <span className="shrink-0 whitespace-nowrap opacity-50 text-[10px]">{output.length.toLocaleString()} chars</span>
+            )}
+          </div>
+          {output && (
+            <StructuredToolPayload payload={output} tone={result.success ? "success" : "error"} maxHeightClassName="max-h-52" />
+          )}
+          {stderr.trim() && stderr !== output && (
+            <div className="overflow-hidden rounded bg-red-50/50 text-red-700 dark:bg-red-950/30 dark:text-red-300">
+              <StructuredPayloadValueBlock
+                value={formatStructuredPayloadValue(stderr)}
+                maxHeightClassName="max-h-32"
+                textClassName=""
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {!output && !stderr && (
+        <div className="rounded bg-muted/40 p-1.5 text-[10px] text-muted-foreground">No output</div>
+      )}
+    </>
+  )
+}
+
 const getStructuredPayloadChildEntries = (value: unknown): Array<{ key: string; label: string; value: unknown }> => {
   if (Array.isArray(value)) {
     return value.map((entry, index) => ({ key: String(index), label: `[${index}]`, value: entry }))
@@ -1352,6 +1488,28 @@ const CompactMessage = React.memo(CompactMessageBase, (prev, next) => (
 
 type CompactToolExecutionCall = { name: string; arguments: any }
 type CompactToolExecutionResult = { success: boolean; content: string; error?: string } | undefined
+const COLLAPSED_TOOL_SUMMARY_MAX_CHARS = 180
+
+function truncateToolSummary(text: string, maxLength = COLLAPSED_TOOL_SUMMARY_MAX_CHARS): string {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (normalized.length <= maxLength) return normalized
+  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
+}
+
+function getCompactToolActivityText(call: CompactToolExecutionCall, result: CompactToolExecutionResult): string {
+  const activityLabel = getToolActivityLabel(
+    { name: call.name, arguments: call.arguments ?? {} },
+    result ?? null,
+  )
+  const primaryActivityText = activityLabel.detail || activityLabel.title
+  const secondaryActivityText = activityLabel.detail && activityLabel.detail !== activityLabel.title
+    && !/\bcompleted$/i.test(activityLabel.title)
+    ? activityLabel.title
+    : undefined
+  return secondaryActivityText
+    ? `${primaryActivityText} ${secondaryActivityText}`
+    : primaryActivityText
+}
 
 const CompactToolExecutionList: React.FC<{
   calls: CompactToolExecutionCall[]
@@ -1391,103 +1549,80 @@ const CompactToolExecutionList: React.FC<{
   }
 
   const toolCallEntries = calls.map((call, idx) => ({ call, result: results[idx] }))
+  const fullCollapsedSummary = toolCallEntries
+    .map(({ call, result }) => getCompactToolActivityText(call, result))
+    .filter(Boolean)
+    .join(", ")
+  const collapsedSummary = truncateToolSummary(fullCollapsedSummary)
+  const hasMissingResults = toolCallEntries.some(({ result }) => !result)
+  const hasPendingResults = hasMissingResults && !isHistoricalComplete
+  const hasUnrecordedResults = hasMissingResults && isHistoricalComplete
+  const hasFailedResult = toolCallEntries.some(({ result }) => result?.success === false)
+  const allRecordedResultsSucceeded = toolCallEntries.length > 0 && toolCallEntries.every(({ result }) => result?.success === true)
 
   return (
     <>
-      <div className="space-y-0.5 text-xs">
-        {toolCallEntries.map(({ call, result }, idx) => {
-          const callIsMissingResult = !result
-          const callIsPending = callIsMissingResult && !isHistoricalComplete
-          const callIsUnrecorded = callIsMissingResult && isHistoricalComplete
-          const callSuccess = result?.success
-          const activityLabel = getToolActivityLabel(
-            { name: call.name, arguments: call.arguments ?? {} },
-            result ?? null,
-          )
-          const primaryActivityText = activityLabel.detail || activityLabel.title
-          const secondaryActivityText = activityLabel.detail && activityLabel.detail !== activityLabel.title
-            && !/\bcompleted$/i.test(activityLabel.title)
-            ? activityLabel.title
-            : undefined
-          const activityText = secondaryActivityText
-            ? `${primaryActivityText} - ${secondaryActivityText}`
-            : primaryActivityText
-
-          return (
-            <div key={idx}>
-              <div
-                className={cn(
-                  "flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded text-[11px] cursor-pointer hover:bg-muted/30",
-                  rowClassName,
-                  callIsPending
-                    ? "text-blue-600 dark:text-blue-400"
-                    : callIsUnrecorded
-                      ? "text-muted-foreground"
-                      : callSuccess
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-red-600 dark:text-red-400",
-                )}
-                onClick={onToggleDetails}
-              >
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap font-medium" title={activityText}>
-                  {primaryActivityText}
-                </span>
-                {secondaryActivityText && (
-                  <span className="min-w-0 flex-[0.9] truncate whitespace-nowrap text-[10px] opacity-70">
-                    {secondaryActivityText}
-                  </span>
-                )}
-                <span className="shrink-0 text-[10px] opacity-60">
-                  {callIsPending ? (
-                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                  ) : callIsUnrecorded ? (
-                    <Clock className="h-2.5 w-2.5" />
-                  ) : callSuccess ? (
-                    <Check className="h-2.5 w-2.5" />
-                  ) : (
-                    <XCircle className="h-2.5 w-2.5" />
-                  )}
-                </span>
-                <ChevronRight className={cn(
-                  "h-2.5 w-2.5 opacity-40 flex-shrink-0 transition-transform",
-                  detailsExpanded && "rotate-90"
-                )} />
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      {!detailsExpanded && (
+        <div className="space-y-0.5 text-xs">
+          <div
+            className={cn(
+              "flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded text-[11px] cursor-pointer hover:bg-muted/30",
+              rowClassName,
+              hasPendingResults
+                ? "text-blue-600 dark:text-blue-400"
+                : hasUnrecordedResults
+                  ? "text-muted-foreground"
+                  : hasFailedResult
+                    ? "text-red-600 dark:text-red-400"
+                    : allRecordedResultsSucceeded
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-sky-700 dark:text-sky-300",
+            )}
+            onClick={onToggleDetails}
+            title={fullCollapsedSummary}
+          >
+            <span className="min-w-0 flex-1 truncate whitespace-nowrap font-medium">
+              {collapsedSummary}
+            </span>
+            <span className="shrink-0 text-[10px] opacity-60">
+              {hasPendingResults ? (
+                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              ) : hasUnrecordedResults ? (
+                <Clock className="h-2.5 w-2.5" />
+              ) : hasFailedResult ? (
+                <XCircle className="h-2.5 w-2.5" />
+              ) : (
+                <Check className="h-2.5 w-2.5" />
+              )}
+            </span>
+            <ChevronRight className="h-2.5 w-2.5 flex-shrink-0 opacity-40" />
+          </div>
+        </div>
+      )}
 
       {detailsExpanded && (
-        <div className={detailsClassName}>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleDetails()
-              }}
-              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-              aria-label="Hide tool details"
-              title="Hide tool details"
-            >
-              Hide details
-            </button>
-          </div>
+        <div
+          className={cn(detailsClassName, "cursor-pointer")}
+          onClick={(event) => {
+            event.stopPropagation()
+            if (event.target === event.currentTarget) {
+              onToggleDetails()
+            }
+          }}
+          title="Click empty space to collapse tool details"
+        >
           {toolCallEntries.map(({ call, result }, idx) => {
             const callIsMissingResult = !result
             const callIsPending = callIsMissingResult && !isHistoricalComplete
             const callIsUnrecorded = callIsMissingResult && isHistoricalComplete
             const formattedArguments = formatToolArguments(call.arguments)
+            const isExecuteCommand = isExecuteCommandToolName(call.name)
+            const derivedTitle = getCompactToolActivityText(call, result)
             return (
-              <div key={idx} className="text-[10px] space-y-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="shrink-0 font-medium opacity-70">Tool</span>
-                  <code className="min-w-0 truncate rounded bg-muted/50 px-1 py-0.5 font-mono text-[10px] text-foreground">
-                    {call.name}
-                  </code>
-                </div>
-                {formattedArguments && (
+              <div key={idx} className="text-[10px] space-y-1 cursor-default" onClick={(event) => event.stopPropagation()}>
+                {isExecuteCommand && result ? (
+                  <ExecuteCommandDetails call={call} result={result} derivedTitle={derivedTitle} onCopy={handleCopy} />
+                ) : formattedArguments && (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className="min-w-0 font-medium opacity-70">Parameters</span>
@@ -1498,7 +1633,7 @@ const CompactToolExecutionList: React.FC<{
                     <StructuredToolPayload payload={call.arguments} maxHeightClassName="max-h-52" />
                   </>
                 )}
-                {result && (
+                {result && !isExecuteCommand && (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className={cn(
@@ -1626,15 +1761,11 @@ const AssistantWithToolsBubble: React.FC<{
         : allToolsSucceeded
           ? "text-green-600 dark:text-green-400"
           : "text-sky-700 dark:text-sky-300"
-  const activitySummary = getToolActivitySummary(
-    data.calls.map((call) => ({ name: call.name, arguments: call.arguments ?? {} })),
-    data.results,
-  )
-  const collapsedToolStatusLine = activitySummary.title
-  const collapsedToolDetail = activitySummary.detail
-  const collapsedToolTitle = collapsedToolDetail
-    ? `${collapsedToolStatusLine} - ${collapsedToolDetail}`
-    : collapsedToolStatusLine
+  const fullCollapsedToolSummary = toolCallEntries
+    .map(({ call, result }) => getCompactToolActivityText(call, result))
+    .filter(Boolean)
+    .join(", ")
+  const collapsedToolSummary = truncateToolSummary(fullCollapsedToolSummary)
 
   const handleToggleExpand = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!shouldCollapse || hasActiveTextSelection(event.currentTarget)) {
@@ -1678,8 +1809,10 @@ const AssistantWithToolsBubble: React.FC<{
           </div>
         )}
         <div className="flex min-w-0 items-center gap-1.5">
-          <Wrench className={cn("h-3 w-3 shrink-0", toolStatusTextClass)} aria-hidden="true" />
-          {hasThought && (
+          {!toolDetailsExpanded && (
+            <Wrench className={cn("h-3 w-3 shrink-0", toolStatusTextClass)} aria-hidden="true" />
+          )}
+          {hasThought && !toolDetailsExpanded && (
             <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           )}
           <div className="min-w-0 flex-1">
@@ -1688,19 +1821,14 @@ const AssistantWithToolsBubble: React.FC<{
                 type="button"
                 className={cn("flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-[11px] transition-colors hover:bg-muted/30", toolStatusTextClass)}
                 onClick={handleToggleToolDetails}
-                title={collapsedToolTitle}
+                title={fullCollapsedToolSummary}
                 role={isPending ? "status" : undefined}
               >
                 {isPending && <Loader2 className="h-2.5 w-2.5 shrink-0 animate-spin" aria-hidden="true" />}
                 {hasUnrecordedResults && <Clock className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />}
                 <span className="min-w-0 flex-1 truncate whitespace-nowrap font-mono font-medium">
-                  {collapsedToolStatusLine}
+                  {collapsedToolSummary}
                 </span>
-                {collapsedToolDetail && (
-                  <span className="min-w-0 flex-[1.4] truncate whitespace-nowrap text-[10px] opacity-75">
-                    {collapsedToolDetail}
-                  </span>
-                )}
                 <ChevronRight className="h-2.5 w-2.5 shrink-0 opacity-40" aria-hidden="true" />
               </button>
             ) : (
@@ -1710,12 +1838,23 @@ const AssistantWithToolsBubble: React.FC<{
                 detailsExpanded={toolDetailsExpanded}
                 onToggleDetails={handleToggleToolDetails}
                 rowClassName="px-1 py-0.5"
-                detailsClassName="mt-1 ml-3 max-h-[min(68vh,42rem)] space-y-1 overflow-y-auto border-l border-border/50 pl-2 pr-1 scrollbar-thin"
+                detailsClassName="mt-1 max-h-[min(68vh,42rem)] space-y-2 overflow-y-auto pr-1 scrollbar-thin"
                 isHistoricalComplete={data.isComplete}
                 executionStats={data.executionStats}
               />
             )}
           </div>
+          {toolDetailsExpanded && (
+            <button
+              type="button"
+              onClick={handleToggleToolDetails}
+              className="shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:bg-muted/30 hover:text-muted-foreground"
+              aria-label="Collapse tool details"
+              title="Collapse tool details"
+            >
+              <ChevronUp className="h-3 w-3" aria-hidden="true" />
+            </button>
+          )}
           {longThought && (
             isExpanded
               ? <ChevronUp className="h-3 w-3 shrink-0 text-muted-foreground/60" />
@@ -1749,24 +1888,26 @@ const ToolActivityGroupBubble: React.FC<{
   const callCount = group.callCount
   const runningToolNames = group.items.flatMap(getRunningToolCallNames)
   const hasRunningTools = runningToolNames.length > 0
-  const collapsedStatusLine = group.activitySummary.title
-  const collapsedDetail = group.activitySummary.detail
-  const collapsedTitle = collapsedDetail
-    ? `${collapsedStatusLine} - ${collapsedDetail}`
-    : collapsedStatusLine
+  const fallbackStatusLine = group.activitySummary.detail
+    ? `${group.activitySummary.title} ${group.activitySummary.detail}`
+    : group.activitySummary.title
+  const fullCollapsedSummary = group.previewLines.length > 0
+    ? group.previewLines.join(", ")
+    : fallbackStatusLine
+  const collapsedSummary = truncateToolSummary(fullCollapsedSummary)
 
   return (
     <div className={cn(
       "rounded-md text-xs transition-all duration-200",
       "border border-sky-200/60 bg-sky-50/20 dark:border-sky-900/40 dark:bg-sky-950/10",
-      !isExpanded && "hover:brightness-95 dark:hover:brightness-110 cursor-pointer",
+      "hover:brightness-95 dark:hover:brightness-110 cursor-pointer",
     )}>
       {/* Single-line collapsed header */}
       <div
         className="flex min-w-0 items-center gap-1.5 px-2.5 py-1"
-        onClick={() => !isExpanded && onToggleExpand()}
+        onClick={onToggleExpand}
         role={hasRunningTools ? "status" : undefined}
-        title={collapsedTitle}
+        title={fullCollapsedSummary}
       >
         <Wrench className={cn(
           "h-3 w-3 shrink-0",
@@ -1786,13 +1927,8 @@ const ToolActivityGroupBubble: React.FC<{
           "min-w-0 flex-1 truncate whitespace-nowrap font-mono text-[10px]",
           hasRunningTools ? "font-medium text-blue-600 dark:text-blue-400" : "text-sky-900/80 dark:text-sky-100/80",
         )}>
-          {collapsedStatusLine}
+          {collapsedSummary}
         </span>
-        {collapsedDetail && (
-          <span className="min-w-0 flex-[1.6] truncate whitespace-nowrap text-[10px] text-sky-900/60 dark:text-sky-100/60">
-            {collapsedDetail}
-          </span>
-        )}
         {thinkingCount > 0 && (
           <Brain className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         )}
@@ -1811,20 +1947,32 @@ const ToolActivityGroupBubble: React.FC<{
 
       {/* Expanded: render all child items */}
       {isExpanded && (
-        <div className="max-h-[min(72vh,46rem)] space-y-1 overflow-y-auto px-1.5 pb-1.5 pr-1 scrollbar-thin">
-          <div className="space-y-1">
+        <div
+          className="max-h-[min(72vh,46rem)] space-y-1 overflow-y-auto px-1.5 pb-1.5 pr-1 scrollbar-thin"
+          onClick={(event) => {
+            event.stopPropagation()
+            if (event.target === event.currentTarget) {
+              onToggleExpand()
+            }
+          }}
+          title="Click empty space to collapse tool group"
+        >
+          <div className="space-y-1 cursor-default" onClick={(event) => event.stopPropagation()}>
             {group.items.map((item, idx) => renderItem(item, idx))}
           </div>
           <div className="flex justify-end border-t border-sky-200/50 pt-1 dark:border-sky-900/40">
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onToggleExpand() }}
+              onClick={(event) => {
+                event.stopPropagation()
+                onToggleExpand()
+              }}
               className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-sky-700/75 transition-colors hover:bg-sky-100/70 hover:text-sky-900 dark:text-sky-300/75 dark:hover:bg-sky-950/60 dark:hover:text-sky-100"
-              aria-label="Collapse tool group from bottom"
-              title="Collapse tool group"
+              aria-label="Collapse all tool groups"
+              title="Collapse all"
             >
               <ChevronUp className="h-3 w-3" aria-hidden="true" />
-              Collapse group
+              Collapse all
             </button>
           </div>
         </div>

@@ -1197,11 +1197,10 @@ describe("agent progress response history", () => {
     expect(text).not.toContain("Second tool thought")
     expect(text).toContain("all suites passed")
     expect(text).not.toContain("Command completed")
-    expect(text).not.toContain("git status --short:M file.ts branch main")
-    expect(text).not.toContain("pnpm test:all suites passed")
+    expect(text).toContain("git status --short:M file.ts branch main, pnpm test:all suites passed")
     expect(text.indexOf("all suites passed")).toBeLessThan(text.indexOf("Now here is the answer"))
     // 2 tool calls in the run (count badge before the latest-tool summary).
-    expect(text).toMatch(/2\s+all suites passed/)
+    expect(text).toMatch(/2\s+git status --short/)
   })
 
   it("keeps opened assistant tool details expanded when the tool result arrives", async () => {
@@ -1308,7 +1307,7 @@ describe("agent progress response history", () => {
     expect(spinners.length).toBeGreaterThan(0)
   })
 
-  it("lets expanded tool groups collapse from the bottom", async () => {
+  it("lets expanded tool groups collapse from the caret or collapse all button", async () => {
     const runtime = createHookRuntime()
     const { AgentProgress } = await loadAgentProgress(runtime)
     const progress = {
@@ -1366,13 +1365,28 @@ describe("agent progress response history", () => {
     tree = runtime.render(AgentProgress, { progress })
 
     expect(getTextContent(tree)).toContain("First tool thought")
-    const bottomCollapseButton = findAll(
+    const collapseButton = findAll(
       tree,
-      (value) => value?.type === "button" && value.props?.["aria-label"] === "Collapse tool group from bottom",
+      (value) => value?.type === "button" && value.props?.["aria-label"] === "Collapse tool group",
     )[0]
-    expect(bottomCollapseButton).toBeTruthy()
+    expect(collapseButton).toBeTruthy()
 
-    bottomCollapseButton.props.onClick({ stopPropagation: vi.fn() })
+    collapseButton.props.onClick({ stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress })
+
+    expect(getTextContent(tree)).not.toContain("First tool thought")
+
+    expandButton.props.onClick({ stopPropagation: vi.fn() })
+    tree = runtime.render(AgentProgress, { progress })
+
+    expect(getTextContent(tree)).toContain("First tool thought")
+    const collapseAllButton = findAll(
+      tree,
+      (value) => value?.type === "button" && value.props?.["aria-label"] === "Collapse all tool groups",
+    )[0]
+    expect(collapseAllButton).toBeTruthy()
+
+    collapseAllButton.props.onClick({ stopPropagation: vi.fn() })
     tree = runtime.render(AgentProgress, { progress })
 
     expect(getTextContent(tree)).not.toContain("First tool thought")
@@ -1468,24 +1482,10 @@ describe("agent progress response history", () => {
     compactToolSummary.props.onClick({ stopPropagation: vi.fn() })
     tree = runtime.render(AgentProgress, { progress })
 
-    const toolRows = findAll(
-      tree,
-      (value) => value?.type === "div"
-        && typeof value?.props?.className === "string"
-        && value.props.className.includes("text-[11px]")
-        && value.props.className.includes("cursor-pointer")
-        && (
-          getTextContent(value).includes("Visible pending tool") ||
-          getTextContent(value).includes("visible success")
-        ),
-    )
-    const pendingRow = toolRows[0]
-    const successRow = toolRows[1]
-
-    expect(pendingRow.props.className).toContain("text-blue-600")
-    expect(successRow.props.className).toContain("text-green-600")
-    expect(getTextContent(tree)).toContain("visible_pending_tool")
-    expect(getTextContent(tree)).toContain("visible_success_tool")
+    expect(getTextContent(tree)).not.toContain("Visible pending tool")
+    expect(getTextContent(tree)).toContain("visible success")
+    expect(getTextContent(tree)).not.toContain("visible_pending_tool")
+    expect(getTextContent(tree)).not.toContain("visible_success_tool")
     expect(getTextContent(tree)).not.toContain("respond_to_user")
     expect(getTextContent(tree)).not.toContain("No result recorded")
     expect(getTextContent(tree)).toContain("Waiting for response")
