@@ -670,7 +670,7 @@ async function processWithAgentMode(
 
     if (conversationId) {
       logLLM(`[tipc.ts processWithAgentMode] Loading conversation history for conversationId: ${conversationId}`)
-      const conversation = await conversationService.loadConversationWithCompaction(conversationId, sessionId)
+      const conversation = await conversationService.loadConversationForRun(conversationId)
 
       if (conversation && conversation.messages.length > 0) {
         logLLM(`[tipc.ts processWithAgentMode] Loaded conversation with ${conversation.messages.length} messages`)
@@ -746,6 +746,9 @@ async function processWithAgentMode(
       content: agentResult.content,
       repeatTask: completionRepeatTask,
     })
+    if (conversationId) {
+      conversationService.scheduleConversationCompaction(conversationId, "agent-run-complete")
+    }
 
     return agentResult.content
   } catch (error) {

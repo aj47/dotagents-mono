@@ -405,6 +405,116 @@ describe("conversation lazy loading", () => {
     })
   })
 
+  it("loads conversation for a live run without synchronous compaction", async () => {
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_active_session",
+      title: "Active session",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: Array.from({ length: 25 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: `Message ${index}`,
+        timestamp: 1_700_000_000_000 + index,
+      })),
+    }, true)
+
+    const { summarizeContent } = await import("./context-budget")
+    const loaded = await service.loadConversationForRun(
+      "conv_active_session",
+    )
+
+    expect(loaded?.messages).toHaveLength(25)
+    expect(loaded?.compaction).toBeUndefined()
+    expect(summarizeContent).not.toHaveBeenCalled()
+  })
+
+  it("schedules conversation compaction as deduped background cleanup", async () => {
+    vi.useFakeTimers()
+    try {
+      const service = await setupConversationServiceTest()
+      await service.saveConversation({
+        id: "conv_scheduled_compaction",
+        title: "Scheduled compaction",
+        createdAt: 100,
+        updatedAt: 200,
+        messages: Array.from({ length: 25 }, (_, index) => ({
+          id: `m${index}`,
+          role: index % 2 === 0 ? "user" as const : "assistant" as const,
+          content: `Message ${index}`,
+          timestamp: 1_700_000_000_000 + index,
+        })),
+      }, true)
+
+      const { summarizeContent } = await import("./context-budget")
+      const compactSpy = vi.spyOn(service, "compactConversationNow")
+
+      service.scheduleConversationCompaction("conv_scheduled_compaction", "test")
+      service.scheduleConversationCompaction("conv_scheduled_compaction", "duplicate")
+
+      expect(summarizeContent).not.toHaveBeenCalled()
+
+      await vi.runOnlyPendingTimersAsync()
+      expect(compactSpy).toHaveBeenCalledTimes(1)
+      await compactSpy.mock.results[0]?.value
+
+      expect(summarizeContent).toHaveBeenCalledTimes(1)
+      const loaded = await service.loadConversation("conv_scheduled_compaction")
+      expect(loaded?.messages).toHaveLength(11)
+      expect(loaded?.messages[0]).toMatchObject({ isSummary: true, content: summaryResult })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not persist stale compaction if the conversation changes while summarizing", async () => {
+    const service = await setupConversationServiceTest()
+    await service.saveConversation({
+      id: "conv_stale_compaction",
+      title: "Stale compaction",
+      createdAt: 100,
+      updatedAt: 200,
+      messages: Array.from({ length: 25 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" as const : "assistant" as const,
+        content: `Message ${index}`,
+        timestamp: 1_700_000_000_000 + index,
+      })),
+    }, true)
+
+    const { summarizeContent } = await import("./context-budget")
+    let resolveSummary: ((value: string) => void) | undefined
+    ;(summarizeContent as any).mockImplementationOnce(() =>
+      new Promise<string>((resolve) => {
+        resolveSummary = resolve
+      })
+    )
+
+    const compactPromise = service.compactConversationNow("conv_stale_compaction")
+    for (let attempt = 0; attempt < 20 && (summarizeContent as any).mock.calls.length === 0; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    expect(summarizeContent).toHaveBeenCalledTimes(1)
+
+    await service.addMessageToConversation(
+      "conv_stale_compaction",
+      "New user prompt while cleanup is running",
+      "user",
+    )
+
+    resolveSummary?.("Stale compacted summary")
+    const result = await compactPromise
+
+    expect(result?.messages).toHaveLength(26)
+    expect(result?.messages.some((message) => message.isSummary)).toBe(false)
+
+    const reloaded = await service.loadConversation("conv_stale_compaction")
+    expect(reloaded?.messages).toHaveLength(26)
+    expect(reloaded?.messages.some((message) => message.isSummary)).toBe(false)
+  })
+
   it("uses the configured message threshold to compact shorter conversations", async () => {
     mockConfig = { mcpConversationCompactionMessageThreshold: 12 }
     const service = await setupConversationServiceTest()
