@@ -24,6 +24,28 @@ export type HandsFreeUtteranceAction =
   | { type: 'send'; text: string }
   | { type: 'command'; command: VoiceCommandId; label: string; remainder: string };
 
+export type HandsFreeStopTargets = {
+  stopSpeech: boolean;
+  stopAgentTurn: boolean;
+};
+
+export function resolveHandsFreeStopTargets({
+  phase,
+  hasPlayback,
+  responding,
+  hasActiveOperatorSession,
+}: {
+  phase: HandsFreePhase;
+  hasPlayback: boolean;
+  responding: boolean;
+  hasActiveOperatorSession: boolean;
+}): HandsFreeStopTargets {
+  return {
+    stopSpeech: hasPlayback || phase === 'speaking',
+    stopAgentTurn: responding || hasActiveOperatorSession,
+  };
+}
+
 type ResolveHandsFreeUtteranceArgs = {
   state: HandsFreeControllerState;
   transcript: string;

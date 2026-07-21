@@ -102,6 +102,30 @@ export function useTTSPlaybackController() {
 
     const matchesActivePlayback = (playbackId?: string) => !playbackId || stateRef.current.playbackId === playbackId
 
+    // Blob URLs can report duration asynchronously. Waiting for metadata before
+    // starting playback avoids Chromium beginning a newly-loaded TTS stream with
+    // an incomplete duration/buffer and then ending it early.
+    const waitForMetadata = () => new Promise<void>((resolve, reject) => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        resolve()
+        return
+      }
+      const onMetadata = () => {
+        cleanup()
+        resolve()
+      }
+      const onError = () => {
+        cleanup()
+        reject(new Error(audio.error?.message || "Audio metadata failed to load"))
+      }
+      const cleanup = () => {
+        audio.removeEventListener("loadedmetadata", onMetadata)
+        audio.removeEventListener("error", onError)
+      }
+      audio.addEventListener("loadedmetadata", onMetadata, { once: true })
+      audio.addEventListener("error", onError, { once: true })
+    })
+
     const handleRequest = async (request: DesktopTTSPlaybackRequest) => {
       logUI("[TTSPlaybackController] received playback request", {
         playbackId: request.playbackId,
@@ -154,6 +178,11 @@ export function useTTSPlaybackController() {
       }
 
       try {
+        await waitForMetadata()
+        // The request may have been replaced while metadata was loading. Never
+        // let an older response restart the shared audio element.
+        if (requestRef.current !== request || !matchesActivePlayback(request.playbackId)) return
+
         logUI("[TTSPlaybackController] calling audio.play for request", {
           playbackId: request.playbackId,
           sessionId: request.sessionId,
@@ -256,7 +285,7 @@ export function useTTSPlaybackController() {
     }
     const onEnded = () => {
       logUI("[TTSPlaybackController] ended event", { playbackId: stateRef.current.playbackId })
-      publishState({ status: "ended", currentTime: 0, duration: Number.isFinite(audio.duration) ? audio.duration : stateRef.current.duration })
+      publishState({ status: "ended", currentTime: Number.isFinite(audio.duration) ? audio.duration : stateRef.current.currentTime, duration: Number.isFinite(audio.duration) ? audio.duration : stateRef.current.duration })
     }
     const onError = () => {
       logUI("[TTSPlaybackController] error event", {

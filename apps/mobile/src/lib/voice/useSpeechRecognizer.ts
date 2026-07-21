@@ -697,10 +697,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       return false;
     }
 
-    if (normalizeVoiceText(pendingHandsFreeFinalRef.current) === finalText && handsFreeDebounceRef.current) {
-      return true;
-    }
-
+    const hadPendingCountdown = !!handsFreeDebounceRef.current;
     pendingHandsFreeFinalRef.current = finalText;
     if (source === 'web') {
       webFinalRef.current = '';
@@ -716,6 +713,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       source,
       debounceMs,
       generation: scheduledGeneration,
+      extended: hadPendingCountdown,
       text: truncateDebugText(finalText),
       textLength: finalText.length,
     });
@@ -917,6 +915,9 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       if (previewText) {
         setLiveTranscriptValue(previewText);
         setSttPreviewWithExpiry(previewText);
+        if (handsFree && interim) {
+          scheduleHandsFreeFinalization('web', previewText);
+        }
       }
     };
     rec.onend = () => {

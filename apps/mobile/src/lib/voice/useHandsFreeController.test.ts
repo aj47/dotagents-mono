@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createInitialHandsFreeState,
   isExpectedHandsFreeRecognizerStopError,
+  resolveHandsFreeStopTargets,
   resolveHandsFreeUtterance,
 } from './useHandsFreeController';
 
@@ -625,5 +626,43 @@ describe('resolveHandsFreeUtterance', () => {
     controller = runtime.render(useHook, { ...options, enabled: true });
     expect(controller.state.phase).toBe('processing');
     expect(controller.shouldKeepRecognizerActive).toBe(true);
+  });
+});
+
+describe('resolveHandsFreeStopTargets', () => {
+  it('stops both speech and the agent turn when stop is heard during an active spoken response', () => {
+    expect(resolveHandsFreeStopTargets({
+      phase: 'speaking',
+      hasPlayback: true,
+      responding: true,
+      hasActiveOperatorSession: true,
+    })).toEqual({
+      stopSpeech: true,
+      stopAgentTurn: true,
+    });
+  });
+
+  it('stops an active agent turn while processing even before speech starts', () => {
+    expect(resolveHandsFreeStopTargets({
+      phase: 'processing',
+      hasPlayback: false,
+      responding: true,
+      hasActiveOperatorSession: false,
+    })).toEqual({
+      stopSpeech: false,
+      stopAgentTurn: true,
+    });
+  });
+
+  it('stops completed-response playback without reporting an agent turn to stop', () => {
+    expect(resolveHandsFreeStopTargets({
+      phase: 'speaking',
+      hasPlayback: true,
+      responding: false,
+      hasActiveOperatorSession: false,
+    })).toEqual({
+      stopSpeech: true,
+      stopAgentTurn: false,
+    });
   });
 });

@@ -506,6 +506,59 @@ describe('useSpeechRecognizer', () => {
     expect(onVoiceFinalized).toHaveBeenCalledWith({ text: 'hello world again', mode: 'handsfree', source: 'web' });
   });
 
+  it('extends the web hands-free countdown as soon as follow-up interim speech arrives', async () => {
+    vi.useFakeTimers();
+    (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };
+    const runtime = createHookRuntime();
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime);
+    const onVoiceFinalized = vi.fn();
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 2_000,
+      willCancel: false,
+      onVoiceFinalized,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const speechRecognition = FakeSpeechRecognition.instances[0];
+
+    speechRecognition.onresult?.({
+      resultIndex: 0,
+      results: [{ 0: { transcript: 'submit the first part' }, isFinal: true }],
+    });
+
+    vi.advanceTimersByTime(1_500);
+    speechRecognition.onresult?.({
+      resultIndex: 1,
+      results: [
+        { 0: { transcript: 'submit the first part' }, isFinal: true },
+        { 0: { transcript: 'and include the second part' }, isFinal: false },
+      ],
+    });
+
+    vi.advanceTimersByTime(500);
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+
+    speechRecognition.onresult?.({
+      resultIndex: 1,
+      results: [
+        { 0: { transcript: 'submit the first part' }, isFinal: true },
+        { 0: { transcript: 'and include the second part' }, isFinal: true },
+      ],
+    });
+
+    vi.advanceTimersByTime(1_999);
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(onVoiceFinalized).toHaveBeenCalledWith({
+      text: 'submit the first part and include the second part',
+      mode: 'handsfree',
+      source: 'web',
+    });
+  });
+
   it('updates an existing web recognizer to use hands-free mode after rerendering', async () => {
     vi.useFakeTimers();
     (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };

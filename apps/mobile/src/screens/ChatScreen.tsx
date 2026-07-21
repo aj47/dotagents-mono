@@ -129,6 +129,7 @@ import {
 import {
   isBenignHandsFreeRecognizerError,
   isExpectedHandsFreeRecognizerStopError,
+  resolveHandsFreeStopTargets,
   useHandsFreeController,
 } from '../lib/voice/useHandsFreeController';
 import { matchWakePhrase, normalizeVoicePhrase } from '../lib/voice/phraseMatcher';
@@ -2458,6 +2459,112 @@ export default function ChatScreen({ route, navigation }: any) {
     setAndroidHandsFreeDebounceEndsAt(null);
   }, []);
 
+  const findAgentSessionByName = useCallback((spokenName: string) => {
+    return findAgentSessionMatch(
+      spokenName,
+      sessionStore.sessions
+        .filter((session) => !session.isArchived)
+        .map((session) => ({ id: session.id, title: session.title, updatedAt: session.updatedAt })),
+    );
+  }, [sessionStore.sessions]);
+
+  const stopCurrentAgentTurnFromVoice = useCallback(async () => {
+    if (!settingsClient) {
+      setDebugInfo('Stopped locally, but the desktop is not connected.');
+      return false;
+    }
+
+    try {
+      let sessionId = currentOperatorSession?.id;
+      if (!sessionId && currentSession?.serverConversationId) {
+        const status = await settingsClient.getOperatorStatus();
+        const refreshedSessions = status.sessions.activeSessionDetails ?? [];
+        setOperatorSessions(refreshedSessions);
+        sessionId = refreshedSessions.find(
+          (session) => session.conversationId === currentSession.serverConversationId,
+        )?.id;
+      }
+
+      if (!sessionId) {
+        setDebugInfo('Stopped locally, but no active desktop session was found.');
+        return false;
+      }
+
+      const result = await settingsClient.stopOperatorAgentSession(sessionId);
+      if (!result.success) {
+        setDebugInfo(result.message || result.error || 'The desktop could not stop the agent turn.');
+        return false;
+      }
+
+      setOperatorSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
+      setDebugInfo('Stopped the current agent turn.');
+      voiceLog('handsfree-control', 'Desktop agent session stopped by voice command.', { sessionId });
+      return true;
+    } catch (error: any) {
+      setDebugInfo(error?.message || 'The desktop could not stop the agent turn.');
+      voiceLog('handsfree-control', 'Desktop agent session stop failed.', {
+        error: error?.message || String(error),
+      });
+      return false;
+    }
+  }, [currentOperatorSession?.id, currentSession?.serverConversationId, settingsClient, voiceLog]);
+
+  const stopHandsFreeActivityFromVoice = useCallback((source: 'command' | 'tts-barge-in') => {
+    clearAndroidHandsFreePartialTimer();
+    androidHandsFreePendingPartialRef.current = '';
+    queuedResponseEventsRef.current = [];
+    activeAutoSpeechEventRef.current = null;
+    assistantSpeechStartedAtRef.current = 0;
+
+    const playback = getGlobalTtsPlayback();
+    const targets = resolveHandsFreeStopTargets({
+      phase: handsFreePhaseRef.current,
+      hasPlayback: !!playback,
+      responding: respondingRef.current,
+      hasActiveOperatorSession: !!currentOperatorSession?.id,
+    });
+
+    if (activeRequestIdRef.current) {
+      autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
+    }
+    stopGlobalTtsPlayback();
+    if (handsFreePhaseRef.current === 'speaking') {
+      handsFreeController.onSpeechFinished();
+    }
+
+    if (targets.stopAgentTurn) {
+      activeRequestIdRef.current = 0;
+      getSessionClient()?.cleanup();
+      handsFreeController.onRequestCompleted();
+      setRespondingValue(false);
+      setDebugInfo(targets.stopSpeech
+        ? 'Stopped speaking. Stopping the current agent turn.'
+        : 'Stopping the current agent turn.');
+      void stopCurrentAgentTurnFromVoice();
+    } else {
+      setDebugInfo(targets.stopSpeech ? 'Stopped speaking. Listening.' : 'Nothing active to stop.');
+    }
+
+    playHandsFreeCue('stopped');
+    voiceLog('handsfree-control', 'Handsfree stop action applied.', {
+      source,
+      stoppedSpeech: targets.stopSpeech,
+      stoppingAgentTurn: targets.stopAgentTurn,
+      playbackStatus: playback?.status,
+    });
+    return targets;
+  }, [
+    clearAndroidHandsFreePartialTimer,
+    currentOperatorSession?.id,
+    getSessionClient,
+    handsFreeController.onRequestCompleted,
+    handsFreeController.onSpeechFinished,
+    playHandsFreeCue,
+    setRespondingValue,
+    stopCurrentAgentTurnFromVoice,
+    voiceLog,
+  ]);
+
   const handleHandsFreeTtsBargeInCommand = useCallback((text: string, source: 'native' | 'web') => {
     const command = matchHandsFreeTtsBargeInCommand(text);
     if (!command || !handsFreeRef.current) {
@@ -2480,31 +2587,17 @@ export default function ChatScreen({ route, navigation }: any) {
     }
     ttsBargeInLastHandledRef.current = { command, timestamp: now };
 
-    clearAndroidHandsFreePartialTimer();
-    androidHandsFreePendingPartialRef.current = '';
     handsFreeBargeInTranscriptSuppressedUntilRef.current = now + HANDS_FREE_TTS_BARGE_IN_TRANSCRIPT_SUPPRESSION_MS;
-    queuedResponseEventsRef.current = [];
-    activeAutoSpeechEventRef.current = null;
-    assistantSpeechStartedAtRef.current = 0;
-    if (activeRequestIdRef.current) {
-      autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
-    }
-    stopGlobalTtsPlayback();
-    if (handsFreePhaseRef.current === 'speaking') {
-      handsFreeController.onSpeechFinished();
-    }
-    setDebugInfo('Stopped speaking. Listening.');
-    playHandsFreeCue('stopped');
+    const targets = stopHandsFreeActivityFromVoice('tts-barge-in');
     voiceLog('tts-stopped', `Assistant speech interrupted by "${command}".`, {
       source,
       command,
       text,
+      stoppingAgentTurn: targets.stopAgentTurn,
     });
     return true;
   }, [
-    clearAndroidHandsFreePartialTimer,
-    handsFreeController.onSpeechFinished,
-    playHandsFreeCue,
+    stopHandsFreeActivityFromVoice,
     voiceLog,
   ]);
 
@@ -2559,56 +2652,6 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceLog,
   ]);
 
-  const findAgentSessionByName = useCallback((spokenName: string) => {
-    return findAgentSessionMatch(
-      spokenName,
-      sessionStore.sessions
-        .filter((session) => !session.isArchived)
-        .map((session) => ({ id: session.id, title: session.title, updatedAt: session.updatedAt })),
-    );
-  }, [sessionStore.sessions]);
-
-  const stopCurrentAgentTurnFromVoice = useCallback(async () => {
-    if (!settingsClient) {
-      setDebugInfo('Stopped locally, but the desktop is not connected.');
-      return false;
-    }
-
-    try {
-      let sessionId = currentOperatorSession?.id;
-      if (!sessionId && currentSession?.serverConversationId) {
-        const status = await settingsClient.getOperatorStatus();
-        const refreshedSessions = status.sessions.activeSessionDetails ?? [];
-        setOperatorSessions(refreshedSessions);
-        sessionId = refreshedSessions.find(
-          (session) => session.conversationId === currentSession.serverConversationId,
-        )?.id;
-      }
-
-      if (!sessionId) {
-        setDebugInfo('Stopped locally, but no active desktop session was found.');
-        return false;
-      }
-
-      const result = await settingsClient.stopOperatorAgentSession(sessionId);
-      if (!result.success) {
-        setDebugInfo(result.message || result.error || 'The desktop could not stop the agent turn.');
-        return false;
-      }
-
-      setOperatorSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
-      setDebugInfo('Stopped the current agent turn.');
-      voiceLog('handsfree-control', 'Desktop agent session stopped by voice command.', { sessionId });
-      return true;
-    } catch (error: any) {
-      setDebugInfo(error?.message || 'The desktop could not stop the agent turn.');
-      voiceLog('handsfree-control', 'Desktop agent session stop failed.', {
-        error: error?.message || String(error),
-      });
-      return false;
-    }
-  }, [currentOperatorSession?.id, currentSession?.serverConversationId, settingsClient, voiceLog]);
-
   const handleHandsFreeVoiceCommand = useCallback((
     command: VoiceCommandId,
     label: string,
@@ -2618,32 +2661,7 @@ export default function ChatScreen({ route, navigation }: any) {
     switch (command) {
       case 'stop': {
         pendingAgentSwitchRef.current = false;
-        clearAndroidHandsFreePartialTimer();
-        androidHandsFreePendingPartialRef.current = '';
-        queuedResponseEventsRef.current = [];
-        activeAutoSpeechEventRef.current = null;
-
-        const playback = getGlobalTtsPlayback();
-        const isStoppingSpeech = !!playback || handsFreePhaseRef.current === 'speaking';
-        if (activeRequestIdRef.current) {
-          autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
-        }
-        stopGlobalTtsPlayback();
-
-        if (isStoppingSpeech) {
-          if (handsFreePhaseRef.current === 'speaking') {
-            handsFreeController.onSpeechFinished();
-          }
-          setDebugInfo('Stopped speaking.');
-        } else {
-          activeRequestIdRef.current = 0;
-          getSessionClient()?.cleanup();
-          handsFreeController.onRequestCompleted();
-          setRespondingValue(false);
-          setDebugInfo('Stopping the current agent turn.');
-          void stopCurrentAgentTurnFromVoice();
-        }
-        playHandsFreeCue('stopped');
+        stopHandsFreeActivityFromVoice('command');
         break;
       }
       case 'new-session': {
@@ -2704,17 +2722,12 @@ export default function ChatScreen({ route, navigation }: any) {
       }
     }
   }, [
-    clearAndroidHandsFreePartialTimer,
     findAgentSessionByName,
-    getSessionClient,
     handleNewChat,
-    handsFreeController.onRequestCompleted,
-    handsFreeController.onSpeechFinished,
     navigation,
     playHandsFreeCue,
     sessionStore,
-    setRespondingValue,
-    stopCurrentAgentTurnFromVoice,
+    stopHandsFreeActivityFromVoice,
     voiceLog,
   ]);
 
