@@ -3,7 +3,7 @@
     "name": "DotAgents",
     "slug": "dotagents-mobile",
     "scheme": "dotagents",
-    "version": "1.5.3",
+    "version": "1.5.4",
     "orientation": "portrait",
     "icon": "./assets/dotagents-icon.png",
     "userInterfaceStyle": "light",
@@ -28,7 +28,7 @@
       }
     },
     "android": {
-      "versionCode": 10,
+      "versionCode": 11,
       "googleServicesFile": "./android/app/google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/dotagents-icon.png",

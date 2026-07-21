@@ -1,91 +1,145 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"
-import { createInterface } from "node:readline"
+import { spawn } from "node:child_process"
+import { promises as fs } from "node:fs"
+import path from "node:path"
 import { Server } from "@modelcontextprotocol/sdk/server/index.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js"
 
 const CODEX = process.env.CODEX_BIN || `${process.env.HOME}/.codex/packages/standalone/current/codex`
-const SOCKET = process.env.CODEX_APP_SERVER_SOCKET || `${process.env.HOME}/.codex/app-server-control/app-server-control.sock`
+const CODEX_HOME = process.env.CODEX_HOME || `${process.env.HOME}/.codex`
+const SESSIONS_DIR = process.env.CODEX_SESSIONS_DIR || path.join(CODEX_HOME, "sessions")
 
 type Json = Record<string, unknown>
-class CodexClient {
-  private child: ChildProcessWithoutNullStreams | undefined
-  private nextId = 1
-  private pending = new Map<number, (value: Json) => void>()
-  private buffer = ""
-  private initialized = false
+type Session = { threadId: string; path: string; metadata: Json; updatedAt: string; cwd?: string; title?: string; status: string }
 
-  private ensure() {
-    if (this.child && !this.child.killed) return
-    this.child = spawn(CODEX, ["app-server", "proxy", "--sock", SOCKET], { stdio: ["pipe", "pipe", "pipe"] })
-    this.child.stdout.on("data", chunk => {
-      this.buffer += chunk.toString()
-      let newline
-      while ((newline = this.buffer.indexOf("\n")) >= 0) {
-        const line = this.buffer.slice(0, newline).trim(); this.buffer = this.buffer.slice(newline + 1)
-        if (!line) continue
-        try {
-          const msg = JSON.parse(line) as Json
-          const id = typeof msg.id === "number" ? msg.id : undefined
-          if (id !== undefined && this.pending.has(id)) { this.pending.get(id)!(msg); this.pending.delete(id) }
-        } catch { /* ignore non-JSON diagnostics */ }
-      }
-    })
-    this.child.on("exit", () => { this.child = undefined; this.initialized = false })
+function payloadOf(record: Json): Json {
+  return record.payload && typeof record.payload === "object" ? record.payload as Json : {}
+}
+
+async function sessionFiles(): Promise<string[]> {
+  const files: string[] = []
+  async function walk(dir: string) {
+    let entries: Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true, encoding: "utf8" }) as unknown as Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>
+    } catch { return }
+    await Promise.all(entries.map(entry => {
+      const file = path.join(dir, entry.name)
+      if (entry.isDirectory()) return walk(file)
+      if (entry.isFile() && entry.name.endsWith(".jsonl")) { files.push(file) }
+      return undefined
+    }))
   }
-  private async request(method: string, params: Json = {}): Promise<Json> {
-    this.ensure()
-    const id = this.nextId++
-    const result = new Promise<Json>((resolve, reject) => {
-      const timer = setTimeout(() => { this.pending.delete(id); reject(new Error(`Codex app-server timeout for ${method}`)) }, 10000)
-      this.pending.set(id, msg => { clearTimeout(timer); if (msg.error) reject(new Error(JSON.stringify(msg.error))); else resolve((msg.result || {}) as Json) })
-    })
-    this.child!.stdin.write(JSON.stringify({ jsonrpc:"2.0", id, method, params }) + "\n")
-    return result
+  await walk(SESSIONS_DIR)
+  return files
+}
+
+async function readRecords(file: string): Promise<Json[]> {
+  const text = await fs.readFile(file, "utf8")
+  const records: Json[] = []
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue
+    try { records.push(JSON.parse(line) as Json) } catch { /* tolerate a partially-written final line */ }
   }
-  async call(method: string, params: Json = {}) {
-    if (!this.initialized) {
-      await this.request("initialize", { clientInfo:{ name:"dotagents-codex-session-bridge", version:"1.0.0" }, capabilities:{ experimentalApi:true } })
-      this.child!.stdin.write(JSON.stringify({ jsonrpc:"2.0", method:"initialized", params:{} }) + "\n")
-      this.initialized = true
-    }
-    return this.request(method, params)
+  return records
+}
+
+function sessionFrom(file: string, records: Json[]): Session | undefined {
+  const meta = records.find(record => record.type === "session_meta")
+  if (!meta) return undefined
+  const payload = payloadOf(meta)
+  const threadId = String(payload.session_id || payload.id || "")
+  if (!threadId) return undefined
+  const last = records[records.length - 1]
+  const lastPayload = payloadOf(last)
+  const lastType = String(lastPayload.type || last.type || "")
+  const status = lastType === "task_complete" || lastType === "turn_completed" ? "completed" : "recorded"
+  return {
+    threadId, path: file, metadata: payload,
+    updatedAt: String(last.timestamp || meta.timestamp || payload.timestamp || ""),
+    cwd: typeof payload.cwd === "string" ? payload.cwd : undefined,
+    title: typeof payload.title === "string" ? payload.title : undefined,
+    status,
   }
 }
 
-const codex = new CodexClient()
-const server = new Server({ name:"codex-session-bridge", version:"1.0.0" }, { capabilities:{ tools:{} } })
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools:[
-  { name:"list_codex_sessions", description:"List recent non-archived Codex app sessions, including cwd, title, status, and source.", inputSchema:{ type:"object", properties:{ limit:{type:"number", description:"Maximum sessions (default 100)"}, cwd:{type:"string"} } } },
-  { name:"read_codex_session", description:"Read one Codex session's metadata and optionally its turns.", inputSchema:{ type:"object", required:["threadId"], properties:{ threadId:{type:"string"}, includeTurns:{type:"boolean"} } } },
-  { name:"send_codex_message", description:"Resume an existing Codex session and send it a new user message. This starts work in that session.", inputSchema:{ type:"object", required:["threadId","message"], properties:{ threadId:{type:"string"}, message:{type:"string"} } } }
-]}))
-server.setRequestHandler(CallToolRequestSchema, async req => {
+async function findSessions(cwd?: string): Promise<Session[]> {
+  const result: Session[] = []
+  for (const file of await sessionFiles()) {
+    try {
+      const session = sessionFrom(file, await readRecords(file))
+      if (session && (!cwd || session.cwd === cwd)) result.push(session)
+    } catch { /* ignore files being rotated or removed */ }
+  }
+  return result.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+}
+
+async function findSession(threadId: string): Promise<{ session: Session; records: Json[] }> {
+  for (const file of await sessionFiles()) {
+    if (!file.includes(`${threadId}.jsonl`)) continue
+    const records = await readRecords(file)
+    const session = sessionFrom(file, records)
+    if (session?.threadId === threadId) return { session, records }
+  }
+  throw new Error(`Codex session not found: ${threadId}`)
+}
+
+function runCodex(args: string[], cwd?: string): Promise<Json[]> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(CODEX, args, { cwd, stdio: ["ignore", "pipe", "pipe"] })
+    let stdout = "", stderr = ""
+    child.stdout.on("data", chunk => { stdout += chunk.toString() })
+    child.stderr.on("data", chunk => { stderr += chunk.toString() })
+    const timer = setTimeout(() => { child.kill("SIGTERM"); reject(new Error("Codex CLI timed out after 120 seconds")) }, 120_000)
+    child.on("error", error => { clearTimeout(timer); reject(error) })
+    child.on("close", code => {
+      clearTimeout(timer)
+      const events: Json[] = stdout.split("\n").filter(Boolean).flatMap(line => {
+        try { return [JSON.parse(line) as Json] } catch { return [] }
+      })
+      if (code !== 0) reject(new Error(stderr.trim() || `Codex CLI exited with code ${code}`))
+      else resolve(events)
+    })
+  })
+}
+
+const server = new Server({ name: "codex-session-bridge", version: "1.0.0" }, { capabilities: { tools: {} } })
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
+  { name: "list_codex_sessions", description: "List recent non-archived Codex CLI sessions from the local session store.", inputSchema: { type: "object", properties: { limit: { type: "number" }, cwd: { type: "string" } } } },
+  { name: "read_codex_session", description: "Read one Codex CLI session's metadata and optionally its turns.", inputSchema: { type: "object", required: ["threadId"], properties: { threadId: { type: "string" }, includeTurns: { type: "boolean" } } } },
+  { name: "send_codex_message", description: "Resume an existing Codex CLI session and send it a new user message.", inputSchema: { type: "object", required: ["threadId", "message"], properties: { threadId: { type: "string" }, message: { type: "string" } } } },
+] }))
+
+server.setRequestHandler(CallToolRequestSchema, async request => {
   try {
-    const args = (req.params.arguments || {}) as Record<string, unknown>
-    if (req.params.name === "list_codex_sessions") {
-      const params: Json = { limit: typeof args.limit === "number" ? args.limit : 100, archived:false, useStateDbOnly:true }
-      if (typeof args.cwd === "string" && args.cwd) params.cwd = args.cwd
-      const result = await codex.call("thread/list", params)
-      return { content:[{ type:"text", text:JSON.stringify(result, null, 2) }] }
+    const args = (request.params.arguments || {}) as Record<string, unknown>
+    if (request.params.name === "list_codex_sessions") {
+      const sessions = await findSessions(typeof args.cwd === "string" ? args.cwd : undefined)
+      const limit = typeof args.limit === "number" ? Math.max(0, Math.floor(args.limit)) : 100
+      return { content: [{ type: "text", text: JSON.stringify({ sessions: sessions.slice(0, limit).map(({ path: _path, metadata: _metadata, ...publicSession }) => ({ ...publicSession, source: "codex-cli" })) }, null, 2) }] }
     }
-    if (req.params.name === "read_codex_session") {
-      const result = await codex.call("thread/read", { threadId:String(args.threadId), includeTurns:Boolean(args.includeTurns) })
-      return { content:[{ type:"text", text:JSON.stringify(result, null, 2) }] }
+    if (request.params.name === "read_codex_session") {
+      const threadId = String(args.threadId || "")
+      if (!threadId) throw new Error("threadId is required")
+      const { session, records } = await findSession(threadId)
+      const result: Json = { ...session, source: "codex-cli" }
+      delete result.path
+      if (args.includeTurns) result.turns = records
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
     }
-    if (req.params.name === "send_codex_message") {
+    if (request.params.name === "send_codex_message") {
       const threadId = String(args.threadId || "")
       const message = String(args.message || "")
       if (!threadId) throw new Error("threadId is required")
       if (!message.trim()) throw new Error("message must not be empty")
-      await codex.call("thread/resume", { threadId })
-      const result = await codex.call("turn/start", {
-        threadId,
-        input: [{ type:"text", text:message }]
-      })
-      return { content:[{ type:"text", text:JSON.stringify(result, null, 2) }] }
+      const { session } = await findSession(threadId)
+      const cliArgs = ["-a", "never", "exec", "resume", "--json", "--skip-git-repo-check", threadId, message]
+      const events = await runCodex(cliArgs, session.cwd)
+      return { content: [{ type: "text", text: JSON.stringify({ threadId, events }, null, 2) }] }
     }
-    throw new Error(`Unknown tool: ${req.params.name}`)
-  } catch (error) { return { isError:true, content:[{ type:"text", text:error instanceof Error ? error.message : String(error) }] } }
+    throw new Error(`Unknown tool: ${request.params.name}`)
+  } catch (error) {
+    return { isError: true, content: [{ type: "text", text: error instanceof Error ? error.message : String(error) }] }
+  }
 })
 await server.connect(new StdioServerTransport())

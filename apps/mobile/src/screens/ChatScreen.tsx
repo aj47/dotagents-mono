@@ -69,6 +69,7 @@ import {
   normalizeAgentConversationState,
   groupToolActivity,
   type AgentConversationState,
+  type AgentProgressStep,
   type AgentUserResponseEvent,
   type HandsFreePhase,
   type Loop,
@@ -140,6 +141,12 @@ import {
   type HandsFreeAudioCue,
 } from '../lib/voice/handsFreeAudioCues';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
+import {
+  mergeLiveProgressHistory,
+  mergeLiveProgressSteps,
+  upsertLiveStreamingMessage,
+  type LiveProgressHistoryState,
+} from '../lib/liveProgressState';
 
 interface PendingImageAttachment {
   id: string;
@@ -1795,6 +1802,8 @@ export default function ChatScreen({ route, navigation }: any) {
   // Track progress messages so we can merge them with final conversationHistory
   // instead of replacing, preventing intermediate messages from disappearing (#1083)
   const progressMessagesRef = useRef<ChatMessage[]>([]);
+  const progressStepsRef = useRef<AgentProgressStep[]>([]);
+  const progressHistoryRef = useRef<LiveProgressHistoryState | null>(null);
   // Track respond_to_user history for the current session (Issue #26)
   const respondToUserHistoryRef = useRef<AgentUserResponseEvent[]>([]);
   const nextResponseEventOrdinalRef = useRef(1);
@@ -5191,12 +5200,29 @@ export default function ChatScreen({ route, navigation }: any) {
       let currentToolCalls: any[] = [];
       let currentToolResults: any[] = [];
       const currentToolExecutionStats: Array<ToolExecutionStats | undefined> = [];
-      let thinkingContent = '';
+      const thinkingParts: string[] = [];
+
+      const appendThinkingPart = (value?: string) => {
+        const content = value?.trim();
+        if (!content) return;
+        const lastIndex = thinkingParts.length - 1;
+        const previous = thinkingParts[lastIndex];
+        if (!previous) {
+          thinkingParts.push(content);
+        } else if (content === previous) {
+          return;
+        } else if (content.startsWith(previous)) {
+          thinkingParts[lastIndex] = content;
+        } else {
+          thinkingParts.push(content);
+        }
+      };
 
       for (const step of update.steps) {
         const stepContent = step.content || step.llmContent;
-        if (step.type === 'thinking' && stepContent) {
-          thinkingContent = stepContent;
+        const stepFeedback = stepContent || [step.title, step.description].filter(Boolean).join('\n');
+        if (step.type === 'thinking') {
+          appendThinkingPart(stepFeedback);
         } else if (step.type === 'tool_call') {
           if (step.toolCall) {
             currentToolCalls.push(step.toolCall);
@@ -5207,10 +5233,12 @@ export default function ChatScreen({ route, navigation }: any) {
           }
         } else if (step.type === 'tool_result' && step.toolResult) {
           currentToolResults.push(step.toolResult);
-        } else if (step.type === 'completion' && stepContent) {
-          thinkingContent = stepContent;
+        } else if (step.type === 'completion') {
+          appendThinkingPart(stepFeedback);
         }
       }
+
+      const thinkingContent = thinkingParts.join('\n\n');
 
       const activeStep = [...update.steps].reverse().find((step) => step.status === 'in_progress');
       const isVerificationStep = activeStep?.title?.toLowerCase().includes('verifying');
@@ -5230,20 +5258,31 @@ export default function ChatScreen({ route, navigation }: any) {
               executionStats: currentToolExecutionStats[index],
             }))
           : undefined;
-        messages.push({
-          role: 'assistant',
-          content: thinkingContent || (hasCurrentToolActivity ? 'Executing tools...' : ''),
-          toolCalls: currentToolCalls.length > 0 ? currentToolCalls : undefined,
-          toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
-          toolExecutionStats: currentToolExecutionStats.some(Boolean) ? currentToolExecutionStats : undefined,
-          toolExecutions,
-        });
+        if (thinkingContent) {
+          messages.push({
+            id: `live-progress-thinking-${update.sessionId}-${update.runId ?? 0}`,
+            role: 'assistant',
+            content: thinkingContent,
+          });
+        }
+        if (hasCurrentToolActivity) {
+          messages.push({
+            id: `live-progress-tools-${update.sessionId}-${update.runId ?? 0}`,
+            role: 'assistant',
+            content: '',
+            toolCalls: currentToolCalls.length > 0 ? currentToolCalls : undefined,
+            toolResults: currentToolResults.length > 0 ? currentToolResults : undefined,
+            toolExecutionStats: currentToolExecutionStats.some(Boolean) ? currentToolExecutionStats : undefined,
+            toolExecutions,
+          });
+        }
       } else if (
         !update.isComplete &&
         !hasCurrentStateFeedback &&
         !isVerificationStep
       ) {
         messages.push({
+          id: `live-progress-thinking-${update.sessionId}-${update.runId ?? 0}`,
           role: 'assistant',
           content: activeStep?.type === 'tool_call'
             ? activeStep.title || 'Running tool...'
@@ -5253,7 +5292,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (update.conversationHistory && update.conversationHistory.length > 0) {
-      let currentTurnStartIndex = 0;
+      let currentTurnStartIndex = -1;
       for (let i = 0; i < update.conversationHistory.length; i++) {
         if (update.conversationHistory[i].role === 'user') {
           currentTurnStartIndex = i;
@@ -5262,7 +5301,11 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const hasAssistantMessages = currentTurnStartIndex + 1 < update.conversationHistory.length;
       if (hasAssistantMessages) {
+        const persistentThinkingMessages = messages.filter((message) => (
+          message.id?.startsWith('live-progress-thinking-')
+        ));
         messages.length = 0;
+        messages.push(...persistentThinkingMessages);
 
         for (let i = currentTurnStartIndex + 1; i < update.conversationHistory.length; i++) {
           const historyMsg = update.conversationHistory[i];
@@ -5300,9 +5343,11 @@ export default function ChatScreen({ route, navigation }: any) {
           }
 
           messages.push({
+            id: `live-progress-history-${update.sessionId}-${update.runId ?? 0}-${(update.conversationHistoryStartIndex ?? 0) + i}`,
             role: historyMsg.role === 'tool' ? 'assistant' : historyMsg.role,
             content: historyMsg.content || '',
             displayContent: historyMsg.displayContent,
+            timestamp: historyMsg.timestamp,
             toolCalls: historyMsg.toolCalls,
             toolResults: historyMsg.toolResults,
           });
@@ -5311,15 +5356,16 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
     if (update.streamingContent?.text) {
-      if (
-        messages.length > 0
-        && messages[messages.length - 1].role === 'assistant'
-        && messages[messages.length - 1].variant !== 'delegation'
-        && messages[messages.length - 1].variant !== 'approval'
-      ) {
-        messages[messages.length - 1].content = update.streamingContent.text;
-      } else {
+      const streamingMessageId = `live-progress-stream-${update.sessionId}-${update.runId ?? 0}`;
+      const existingStreamingIndex = messages.findIndex((message) => message.id === streamingMessageId);
+      if (existingStreamingIndex >= 0) {
+        messages[existingStreamingIndex] = {
+          ...messages[existingStreamingIndex],
+          content: update.streamingContent.text,
+        };
+      } else if (!messages.some((message) => message.content === update.streamingContent?.text)) {
         messages.push({
+          id: streamingMessageId,
           role: 'assistant',
           content: update.streamingContent.text,
         });
@@ -5584,6 +5630,8 @@ export default function ChatScreen({ route, navigation }: any) {
 	    const messageCountBeforeTurn = currentMessages.length;
     // Clear progress messages ref for this new request (#1083)
     progressMessagesRef.current = [];
+    progressStepsRef.current = [];
+    progressHistoryRef.current = null;
     setMessages((m) => [...m, userMsg, { role: 'assistant', content: '' }]);
     if (options?.source === 'handsfree') {
       setSttPreviewWithExpiry('');
@@ -5698,7 +5746,27 @@ export default function ChatScreen({ route, navigation }: any) {
 		            speakAssistantResponse(responseText, 'mid-turn progress');
 	          }
 	        }
-        const progressMessages = convertProgressToMessages(update, lastUserResponse);
+	        progressStepsRef.current = mergeLiveProgressSteps(progressStepsRef.current, update.steps);
+          progressHistoryRef.current = mergeLiveProgressHistory(
+            progressHistoryRef.current,
+            update.conversationHistory,
+            update.conversationHistoryStartIndex ?? 0,
+          );
+          const stableProgressUpdate: AgentProgressUpdate = {
+            ...update,
+            steps: progressStepsRef.current,
+            ...(progressHistoryRef.current
+              ? {
+                  conversationHistory: progressHistoryRef.current.messages,
+                  conversationHistoryStartIndex: progressHistoryRef.current.startIndex,
+                  conversationHistoryTotalCount: Math.max(
+                    update.conversationHistoryTotalCount ?? 0,
+                    progressHistoryRef.current.startIndex + progressHistoryRef.current.messages.length,
+                  ),
+                }
+              : {}),
+          };
+	        const progressMessages = convertProgressToMessages(stableProgressUpdate, lastUserResponse);
         if (progressMessages.length > 0) {
           // Store progress messages so we can merge with final history (#1083)
           progressMessagesRef.current = progressMessages;
@@ -5733,16 +5801,12 @@ export default function ChatScreen({ route, navigation }: any) {
           streamingText += tok;
         }
 
-        setMessages((m) => {
-          const copy = [...m];
-          for (let i = copy.length - 1; i >= 0; i--) {
-            if (copy[i].role === 'assistant') {
-              copy[i] = { ...copy[i], content: streamingText };
-              break;
-            }
-          }
-          return copy;
-        });
+        setMessages((m) => upsertLiveStreamingMessage(
+          m,
+          `live-token-stream-${requestSessionId ?? 'local'}-${thisRequestId}`,
+          streamingText,
+          messageCountBeforeTurn + 1,
+        ));
       };
 
       const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
@@ -6200,6 +6264,8 @@ export default function ChatScreen({ route, navigation }: any) {
 	      let lastResponseEvents: AgentUserResponseEvent[] = [];
 	      let midTurnLegacyResponseText: string | undefined;
       let queuedProgressMessages: ChatMessage[] = [];
+      let queuedProgressSteps: AgentProgressStep[] = [];
+      let queuedProgressHistory: LiveProgressHistoryState | null = null;
       const announcedToolCallCueKeys = new Set<string>();
 
       const onProgress = (update: AgentProgressUpdate) => {
@@ -6230,7 +6296,27 @@ export default function ChatScreen({ route, navigation }: any) {
 		            speakAssistantResponse(responseText, 'queued mid-turn progress');
 	          }
 	        }
-        const progressMessages = convertProgressToMessages(update, lastUserResponse);
+	        queuedProgressSteps = mergeLiveProgressSteps(queuedProgressSteps, update.steps);
+          queuedProgressHistory = mergeLiveProgressHistory(
+            queuedProgressHistory,
+            update.conversationHistory,
+            update.conversationHistoryStartIndex ?? 0,
+          );
+          const stableProgressUpdate: AgentProgressUpdate = {
+            ...update,
+            steps: queuedProgressSteps,
+            ...(queuedProgressHistory
+              ? {
+                  conversationHistory: queuedProgressHistory.messages,
+                  conversationHistoryStartIndex: queuedProgressHistory.startIndex,
+                  conversationHistoryTotalCount: Math.max(
+                    update.conversationHistoryTotalCount ?? 0,
+                    queuedProgressHistory.startIndex + queuedProgressHistory.messages.length,
+                  ),
+                }
+              : {}),
+          };
+	        const progressMessages = convertProgressToMessages(stableProgressUpdate, lastUserResponse);
         if (progressMessages.length > 0) {
           queuedProgressMessages = progressMessages;
           setMessages((m) => {
@@ -6252,16 +6338,12 @@ export default function ChatScreen({ route, navigation }: any) {
         } else {
           streamingText += tok;
         }
-        setMessages((m) => {
-          const copy = [...m];
-          for (let i = copy.length - 1; i >= 0; i--) {
-            if (copy[i].role === 'assistant') {
-              copy[i] = { ...copy[i], content: streamingText };
-              break;
-            }
-          }
-          return copy;
-        });
+        setMessages((m) => upsertLiveStreamingMessage(
+          m,
+          `live-token-stream-${requestSessionId ?? 'local'}-${thisRequestId}`,
+          streamingText,
+          messageCountBeforeTurn + 1,
+        ));
       };
 
       const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
@@ -7182,7 +7264,7 @@ export default function ChatScreen({ route, navigation }: any) {
             const isLastInExpandedGroup = group && i === group.endIndex && isExpandedGroup;
 
             return (
-              <View key={i}>
+              <View key={m.id ?? i}>
                 {/* Expanded group collapse header */}
                 {isFirstInExpandedGroup && (
                   <Pressable
