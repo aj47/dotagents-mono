@@ -32,15 +32,12 @@ describe("artifacts navigation", () => {
     expect(bottomBarSource).toContain('navigate("/artifacts")')
   })
 
-  it("keeps artifact list rows compact by default", () => {
-    expect(artifactsPageSource).toContain("flex h-9 w-full items-center")
-    expect(artifactsPageSource).toContain(
-      "grid-cols-[minmax(8rem,1fr)_minmax(7rem,0.8fr)]",
-    )
-    expect(artifactsPageSource).toContain(
-      "md:grid-cols-[minmax(9rem,0.9fr)_minmax(8rem,0.75fr)_minmax(0,1.35fr)]",
-    )
-    expect(artifactsPageSource).not.toContain("line-clamp-1 text-xs")
+  it("presents artifacts as dashboard feed cards", () => {
+    expect(artifactsPageSource).toContain("Artifact Feed")
+    expect(artifactsPageSource).toContain("Dashboard plugin for recent files, previews, and links")
+    expect(artifactsPageSource).toContain("grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2")
+    expect(artifactsPageSource).toContain("rounded-xl border bg-card/70 p-3")
+    expect(artifactsPageSource).toContain("line-clamp-2 break-all text-xs leading-relaxed")
   })
 
   it("keeps preview split behind a wider breakpoint", () => {

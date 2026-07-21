@@ -76,8 +76,8 @@ import {
   type Skill,
   type ToolActivityGroup,
   type VoiceCommandId,
-  getVoiceCommandMenuLabels,
   DEFAULT_VOICE_COMMANDS,
+  matchVoiceCommand,
   CHAT_PROVIDERS,
   type CHAT_PROVIDER_ID,
   type CodexServiceTier,
@@ -239,14 +239,7 @@ const HANDS_FREE_TTS_BARGE_IN_TRANSCRIPT_SUPPRESSION_MS = 1_500;
 const HANDS_FREE_TTS_SPEECH_STARTED_BARGE_IN_GRACE_MS = 1_000;
 const HANDS_FREE_TTS_BARGE_IN_COMMANDS = new Set([
   'stop',
-  'stop please',
-  'please stop',
   'stop talking',
-  'stop speaking',
-  'stop tts',
-  'wait',
-  'wait please',
-  'please wait',
 ]);
 const HANDS_FREE_GUIDE_DISMISSED_KEY = 'dotagents:handsfree-guide-dismissed';
 const HANDS_FREE_SESSION_READY_CUE_MIN_INTERVAL_MS = 1_500;
@@ -524,12 +517,12 @@ const escapeMarkdownImageAlt = (value: string) => value.replace(/[\[\]\\]/g, '')
 
 const normalizeAutoTtsTextKey = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase();
 
-const matchHandsFreeTtsBargeInCommand = (text?: string | null): 'stop' | 'wait' | null => {
+const matchHandsFreeTtsBargeInCommand = (text?: string | null): 'stop' | null => {
   const normalized = normalizeVoicePhrase(text);
   if (!normalized || !HANDS_FREE_TTS_BARGE_IN_COMMANDS.has(normalized)) {
     return null;
   }
-  return normalized.includes('stop') ? 'stop' : 'wait';
+  return 'stop';
 };
 
 const estimateNativeTtsWatchdogMs = (text: string, rate = 1.0) => {
@@ -1812,8 +1805,11 @@ export default function ChatScreen({ route, navigation }: any) {
   const activeAutoSpeechEventRef = useRef<QueuedResponseSpeechItem | null>(null);
   const autoTtsSuppressedRequestIdsRef = useRef<Set<number>>(new Set());
   const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
+  const lastHandsFreeSpokenTextRef = useRef('');
+  const speakHandsFreeTextRef = useRef<(content: string, reason: string) => boolean>(() => false);
+  const pendingAgentSwitchRef = useRef(false);
   const androidHandsFreeTtsHandlersRef = useRef<Map<string, AndroidHandsFreeTtsHandler>>(new Map());
-  const ttsBargeInLastHandledRef = useRef<{ command: 'stop' | 'wait'; timestamp: number } | null>(null);
+  const ttsBargeInLastHandledRef = useRef<{ command: 'stop'; timestamp: number } | null>(null);
   const handsFreeBargeInTranscriptSuppressedUntilRef = useRef(0);
   const assistantSpeechStartedAtRef = useRef(0);
   const lastHandsFreeAudioCuePhaseRef = useRef<HandsFreePhase | null>(null);
@@ -2053,6 +2049,15 @@ export default function ChatScreen({ route, navigation }: any) {
     log: voiceLog,
   });
   handsFreePhaseRef.current = handsFreeController.state.phase;
+  useEffect(() => {
+    if (
+      !handsFree
+      || handsFreeController.state.phase === 'sleeping'
+      || handsFreeController.state.phase === 'paused'
+    ) {
+      pendingAgentSwitchRef.current = false;
+    }
+  }, [handsFree, handsFreeController.state.phase]);
   const isAssistantAudioLoading = globalTtsPlayback?.status === 'loading';
   const isAssistantAudioSpeaking =
     handsFreeController.state.phase === 'speaking'
@@ -2175,12 +2180,18 @@ export default function ChatScreen({ route, navigation }: any) {
       || handsFreePhaseRef.current === 'speaking'
     );
   }, [recoverStaleHandsFreeTtsIfNeeded]);
-  const isHandsFreeFinalizationEligibleNow = useCallback(() => (
+  const isProcessingStopTranscript = useCallback((text?: string) => {
+    if (handsFreePhaseRef.current !== 'processing' || !text) return false;
+    const match = matchVoiceCommand(text);
+    return match?.command === 'stop' && !match.remainder;
+  }, []);
+  const isHandsFreeFinalizationEligibleNow = useCallback((payload?: { text: string }) => (
     !handsFreeRef.current
     || handsFreePhaseRef.current === 'sleeping'
     || handsFreePhaseRef.current === 'waking'
     || handsFreePhaseRef.current === 'listening'
-  ), []);
+    || isProcessingStopTranscript(payload?.text)
+  ), [isProcessingStopTranscript]);
   const isExactSleepingWakeTranscript = useCallback((text: string) => {
     if (!handsFreeRef.current || handsFreePhaseRef.current !== 'sleeping') {
       return false;
@@ -2194,7 +2205,10 @@ export default function ChatScreen({ route, navigation }: any) {
     text: string;
     source: 'native' | 'web';
     isFinal?: boolean;
-  }) => isExactSleepingWakeTranscript(text), [isExactSleepingWakeTranscript]);
+  }) => (
+    isExactSleepingWakeTranscript(text)
+    || isProcessingStopTranscript(text)
+  ), [isExactSleepingWakeTranscript, isProcessingStopTranscript]);
 
   const clearAcceptedHandsFreeControlPreview = useCallback((acceptedText: string) => {
     const normalizedAcceptedText = normalizeVoiceText(acceptedText);
@@ -2586,6 +2600,47 @@ export default function ChatScreen({ route, navigation }: any) {
     );
   }, [sessionStore.sessions]);
 
+  const stopCurrentAgentTurnFromVoice = useCallback(async () => {
+    if (!settingsClient) {
+      setDebugInfo('Stopped locally, but the desktop is not connected.');
+      return false;
+    }
+
+    try {
+      let sessionId = currentOperatorSession?.id;
+      if (!sessionId && currentSession?.serverConversationId) {
+        const status = await settingsClient.getOperatorStatus();
+        const refreshedSessions = status.sessions.activeSessionDetails ?? [];
+        setOperatorSessions(refreshedSessions);
+        sessionId = refreshedSessions.find(
+          (session) => session.conversationId === currentSession.serverConversationId,
+        )?.id;
+      }
+
+      if (!sessionId) {
+        setDebugInfo('Stopped locally, but no active desktop session was found.');
+        return false;
+      }
+
+      const result = await settingsClient.stopOperatorAgentSession(sessionId);
+      if (!result.success) {
+        setDebugInfo(result.message || result.error || 'The desktop could not stop the agent turn.');
+        return false;
+      }
+
+      setOperatorSessions((sessions) => sessions.filter((session) => session.id !== sessionId));
+      setDebugInfo('Stopped the current agent turn.');
+      voiceLog('handsfree-control', 'Desktop agent session stopped by voice command.', { sessionId });
+      return true;
+    } catch (error: any) {
+      setDebugInfo(error?.message || 'The desktop could not stop the agent turn.');
+      voiceLog('handsfree-control', 'Desktop agent session stop failed.', {
+        error: error?.message || String(error),
+      });
+      return false;
+    }
+  }, [currentOperatorSession?.id, currentSession?.serverConversationId, settingsClient, voiceLog]);
+
   const handleHandsFreeVoiceCommand = useCallback((
     command: VoiceCommandId,
     label: string,
@@ -2593,161 +2648,85 @@ export default function ChatScreen({ route, navigation }: any) {
   ) => {
     voiceLog('handsfree-control', `Handsfree voice command dispatched: ${label}.`, { command, remainder });
     switch (command) {
-      case 'stop-tts': {
+      case 'stop': {
+        pendingAgentSwitchRef.current = false;
         clearAndroidHandsFreePartialTimer();
         androidHandsFreePendingPartialRef.current = '';
         queuedResponseEventsRef.current = [];
         activeAutoSpeechEventRef.current = null;
+
+        const playback = getGlobalTtsPlayback();
+        const isStoppingSpeech = !!playback || handsFreePhaseRef.current === 'speaking';
         if (activeRequestIdRef.current) {
           autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
         }
         stopGlobalTtsPlayback();
-        if (handsFreePhaseRef.current === 'speaking') {
-          handsFreeController.onSpeechFinished();
+
+        if (isStoppingSpeech) {
+          if (handsFreePhaseRef.current === 'speaking') {
+            handsFreeController.onSpeechFinished();
+          }
+          setDebugInfo('Stopped speaking.');
+        } else {
+          activeRequestIdRef.current = 0;
+          getSessionClient()?.cleanup();
+          handsFreeController.onRequestCompleted();
+          setRespondingValue(false);
+          setDebugInfo('Stopping the current agent turn.');
+          void stopCurrentAgentTurnFromVoice();
         }
-        setDebugInfo('Stopped speaking.');
-        playHandsFreeCue('stopped');
-        break;
-      }
-      case 'stop-agent-turn': {
-        const client = getSessionClient();
-        if (client) {
-          client.cleanup();
-        }
-        if (activeRequestIdRef.current) {
-          autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
-        }
-        queuedResponseEventsRef.current = [];
-        activeAutoSpeechEventRef.current = null;
-        stopGlobalTtsPlayback();
-        if (handsFreePhaseRef.current === 'speaking') {
-          handsFreeController.onSpeechFinished();
-        }
-        handsFreeController.onRequestCompleted();
-        setRespondingValue(false);
-        setDebugInfo('Stopped the current agent turn.');
-        playHandsFreeCue('stopped');
-        break;
-      }
-      case 'tts-stop-all': {
-        queuedResponseEventsRef.current = [];
-        activeAutoSpeechEventRef.current = null;
-        stopGlobalTtsPlayback();
-        if (handsFreePhaseRef.current === 'speaking') {
-          handsFreeController.onSpeechFinished();
-        }
-        setDebugInfo('Stopped all playback.');
-        playHandsFreeCue('stopped');
-        break;
-      }
-      case 'tts-skip': {
-        queuedResponseEventsRef.current = [];
-        activeAutoSpeechEventRef.current = null;
-        stopGlobalTtsPlayback();
-        setDebugInfo('Skipped current playback.');
-        playHandsFreeCue('stopped');
-        break;
-      }
-      case 'tts-pause': {
-        stopGlobalTtsPlayback();
-        setDebugInfo('Playback paused.');
-        playHandsFreeCue('stopped');
-        break;
-      }
-      case 'tts-resume': {
-        setDebugInfo('Resuming pending playback.');
-        playHandsFreeCue('listening');
-        break;
-      }
-      case 'tts-whats-playing': {
-        setDebugInfo(activeAutoSpeechEventRef.current ? 'Assistant audio is playing.' : 'No assistant audio is playing.');
-        playHandsFreeCue('listening');
-        break;
-      }
-      case 'tts-read-everything': {
-        setDebugInfo('Reading pending responses.');
-        playHandsFreeCue('listening');
-        break;
-      }
-      case 'tts-announce-only': {
-        setDebugInfo('Announce-only mode is unavailable without queue mode.');
-        playHandsFreeCue('listening');
-        break;
-      }
-      case 'tts-repeat': {
-        setDebugInfo('Repeat is unavailable without queue mode.');
-        playHandsFreeCue('stopped');
-        break;
-      }
-      case 'tts-mute-agent': {
-        const target = findAgentSessionByName(remainder);
-        const name = target?.title || remainder;
-        setDebugInfo(name ? `Agent audio mute is unavailable without queue mode: ${name}.` : 'Which agent should I mute?');
-        playHandsFreeCue(name ? 'stopped' : 'listening');
-        break;
-      }
-      case 'tts-unmute-agent': {
-        const target = findAgentSessionByName(remainder);
-        const name = target?.title || remainder;
-        setDebugInfo(name ? `Agent audio unmute is unavailable without queue mode: ${name}.` : 'Which agent should I unmute?');
-        playHandsFreeCue('listening');
-        break;
-      }
-      case 'tts-solo-agent': {
-        const target = findAgentSessionByName(remainder);
-        const name = target?.title || remainder;
-        setDebugInfo(name ? `Solo audio is unavailable without queue mode: ${name}.` : 'Which agent should I focus the audio on?');
-        playHandsFreeCue('listening');
-        break;
-      }
-      case 'tts-read-agent': {
-        const target = findAgentSessionByName(remainder);
-        const name = target?.title || remainder;
-        setDebugInfo(`Nothing waiting for ${name || 'that agent'}.`);
         playHandsFreeCue('stopped');
         break;
       }
       case 'new-session': {
+        pendingAgentSwitchRef.current = false;
         handleNewChat();
         setDebugInfo('Started a new chat.');
         playHandsFreeCue('session-ready');
         break;
       }
-      case 'list-recent-agents': {
-        navigation.navigate('Sessions', { initialMode: 'active' });
-        setDebugInfo('Showing recent agents.');
-        playHandsFreeCue('listening');
-        break;
-      }
-      case 'list-old-agents': {
-        navigation.navigate('Sessions', { initialMode: 'archived' });
-        setDebugInfo('Showing old agents.');
-        playHandsFreeCue('listening');
-        break;
-      }
-      case 'focus-agent': {
+      case 'switch-agent': {
         const match = findAgentSessionByName(remainder);
         if (match) {
+          pendingAgentSwitchRef.current = false;
           sessionStore.setCurrentSession(match.id);
-          setDebugInfo(`Focused agent: ${match.title}.`);
+          setDebugInfo(`Switched to ${match.title}.`);
+          speakHandsFreeTextRef.current(`Switched to ${match.title}.`, 'voice agent switch confirmation');
           playHandsFreeCue('session-ready');
         } else {
-          // No confident match — fall back to the recent agents list so the
-          // user can pick visually instead of guessing.
+          const availableAgents = [...sessionStore.sessions]
+            .filter((session) => !session.isArchived)
+            .sort((a, b) => b.updatedAt - a.updatedAt)
+            .slice(0, 5);
+          pendingAgentSwitchRef.current = availableAgents.length > 0;
           navigation.navigate('Sessions', { initialMode: 'active' });
-          setDebugInfo(
-            remainder
-              ? `No agent matched "${remainder}". Showing recent agents.`
-              : 'Showing recent agents to focus.',
-          );
-          playHandsFreeCue('listening');
+          if (availableAgents.length === 0) {
+            const message = 'No agents are available. Start a new chat first.';
+            setDebugInfo(message);
+            speakHandsFreeTextRef.current(message, 'voice agent switch discovery');
+            playHandsFreeCue('stopped');
+            break;
+          }
+
+          const names = availableAgents.map((session) => session.title).join(', ');
+          const message = remainder
+            ? `I could not find ${remainder}. Available agents are ${names}. Say the agent name.`
+            : `Available agents are ${names}. Say the agent name.`;
+          setDebugInfo(message);
+          speakHandsFreeTextRef.current(message, 'voice agent switch discovery');
         }
         break;
       }
-      case 'open-menu': {
-        setDebugInfo(`Say: ${getVoiceCommandMenuLabels().join(', ')}.`);
-        openHandsFreeGuide();
-        playHandsFreeCue('listening');
+      case 'repeat': {
+        const lastSpokenText = lastHandsFreeSpokenTextRef.current;
+        if (!lastSpokenText) {
+          setDebugInfo('Nothing to repeat yet.');
+          playHandsFreeCue('stopped');
+          break;
+        }
+        recentAutoSpeechByTextRef.current.delete(normalizeAutoTtsTextKey(lastSpokenText));
+        speakHandsFreeTextRef.current(lastSpokenText, 'voice repeat');
+        setDebugInfo('Repeating the last response.');
         break;
       }
       default: {
@@ -2758,17 +2737,16 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [
     clearAndroidHandsFreePartialTimer,
-    config,
     findAgentSessionByName,
     getSessionClient,
     handleNewChat,
     handsFreeController.onRequestCompleted,
     handsFreeController.onSpeechFinished,
     navigation,
-    openHandsFreeGuide,
     playHandsFreeCue,
     sessionStore,
     setRespondingValue,
+    stopCurrentAgentTurnFromVoice,
     voiceLog,
   ]);
 
@@ -2811,7 +2789,7 @@ export default function ChatScreen({ route, navigation }: any) {
         );
         return;
       }
-      if (!isHandsFreeFinalizationEligibleNow()) {
+      if (!isHandsFreeFinalizationEligibleNow({ text: finalText })) {
         voiceLog('transcript-ignored', 'Handsfree transcript ignored because the listening turn is no longer active.', {
           source,
           phase: handsFreePhaseRef.current,
@@ -2862,7 +2840,13 @@ export default function ChatScreen({ route, navigation }: any) {
         console.info(
           `[DotAgentsHandsFreeJS] controller action=${action.type} phaseBefore=${phaseBeforeFinalTranscript} textLength=${finalText.length}`,
         );
-        if (action.type === 'send') {
+        if (action.type === 'send' && pendingAgentSwitchRef.current) {
+          voicePreviewComposerTextRef.current = '';
+          setInput('');
+          setSttPreviewWithExpiry('');
+          handsFreeController.onRequestCompleted();
+          handleHandsFreeVoiceCommand('switch-agent', 'Switch agent', action.text);
+        } else if (action.type === 'send') {
           voicePreviewComposerTextRef.current = '';
           setInput('');
           setSttPreviewWithExpiry('');
@@ -2885,6 +2869,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handleHandsFreeTtsBargeInCommand,
     handleHandsFreeVoiceCommand,
     handsFreeController.handleFinalTranscript,
+    handsFreeController.onRequestCompleted,
     handsFreeHasHeadsetRoute,
     hasLiveAgentTurn,
     isHandsFreeFinalizationEligibleNow,
@@ -2936,7 +2921,7 @@ export default function ChatScreen({ route, navigation }: any) {
       });
       return false;
     }
-    if (!isHandsFreeFinalizationEligibleNow()) {
+    if (!isHandsFreeFinalizationEligibleNow({ text: finalText })) {
       voiceLog('transcript-ignored', 'Android handsfree transcript flush ignored because the listening turn is no longer active.', {
         phase: handsFreePhaseRef.current,
         text: finalText,
@@ -2997,7 +2982,7 @@ export default function ChatScreen({ route, navigation }: any) {
       });
       return false;
     }
-    if (!isHandsFreeFinalizationEligibleNow()) {
+    if (!isHandsFreeFinalizationEligibleNow({ text: finalText })) {
       clearAndroidHandsFreePartialTimer();
       androidHandsFreePendingPartialRef.current = '';
       voiceLog('transcript-ignored', 'Android handsfree transcript schedule ignored because the listening turn is no longer active.', {
@@ -3014,7 +2999,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
     androidHandsFreePendingPartialRef.current = finalText;
     clearAndroidHandsFreePartialTimer();
-    const debounceMs = Math.max(0, delayMs);
+    const debounceMs = isProcessingStopTranscript(finalText) ? 0 : Math.max(0, delayMs);
     setAndroidHandsFreeDebounceEndsAt(Date.now() + debounceMs);
     voiceLog('finalization-scheduled', 'Android handsfree native transcript debounce scheduled.', {
       source: 'native',
@@ -3028,6 +3013,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeMessageDebounceMs,
     handleHandsFreeTtsBargeInCommand,
     isHandsFreeFinalizationEligibleNow,
+    isProcessingStopTranscript,
     isHandsFreeTranscriptSuppressedNow,
     isRecentAndroidHandsFreeDuplicate,
     voiceLog,
@@ -3522,11 +3508,12 @@ export default function ChatScreen({ route, navigation }: any) {
 				onSettled?.();
 			return false;
 		}
+		lastHandsFreeSpokenTextRef.current = processedText;
 
       const ttsTextKey = normalizeAutoTtsTextKey(processedText);
       const now = Date.now();
       const lastSpokenAt = recentAutoSpeechByTextRef.current.get(ttsTextKey) ?? 0;
-      if (now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
+      if (reason !== 'voice repeat' && now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
 	        console.info('[DotAgentsTTS] skipped duplicate auto speech', {
 	          reason,
 	          textLength: processedText.length,
@@ -3917,8 +3904,10 @@ export default function ChatScreen({ route, navigation }: any) {
 		    });
     }
 
-		    return startExpoSpeechPlayback(reason);
+			    return startExpoSpeechPlayback(reason);
 				  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, getCurrentAndroidHandsFreeTtsRuntime, handsFree, handsFreeController, invalidateHandsFreeCapture, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
+
+  speakHandsFreeTextRef.current = speakAssistantResponse;
 
 	  const syncResponseHistoryRefs = useCallback((events: AgentUserResponseEvent[]) => {
 	    respondToUserHistoryRef.current = events;
@@ -6778,24 +6767,16 @@ export default function ChatScreen({ route, navigation }: any) {
 			pauseHandsFreeByUser();
 		}, [handsFreeController.state.phase, hasPendingHandsFreeSend, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
 
-  // Clean, data-driven reference of everything the user can say in hands-free
-  // mode. The imperative commands come straight from the shared registry so
-  // the guide never drifts from what the matcher actually recognizes.
+  // Keep the guide aligned with the deliberately small spoken-command surface.
   const voiceCommandReference = useMemo(
     () => [
       { key: 'wake', label: 'Wake from sleep', phrase: handsFreeWakePhrase },
       ...DEFAULT_VOICE_COMMANDS.map((command) => ({
         key: command.id,
         label: command.label,
-        phrase: ({
-          'focus-agent': 'focus on <agent>',
-          'tts-mute-agent': 'mute <agent>',
-          'tts-unmute-agent': 'unmute <agent>',
-          'tts-solo-agent': 'only <agent>',
-          'tts-read-agent': 'read <agent>',
-        } as Partial<Record<VoiceCommandId, string>>)[command.id]
-          ?? command.aliases[0] ?? command.label.toLowerCase(),
+        phrase: command.aliases[0] ?? command.label.toLowerCase(),
       })),
+      { key: 'switch-direct', label: 'Switch directly', phrase: 'switch to <agent>' },
       { key: 'sleep', label: 'Go to sleep', phrase: handsFreeSleepPhrase },
     ],
     [handsFreeWakePhrase, handsFreeSleepPhrase],
@@ -8450,8 +8431,8 @@ export default function ChatScreen({ route, navigation }: any) {
                   ))}
                 </View>
                 <Text style={styles.handsFreeCommandHint}>
-                  Works while the assistant is processing or speaking — commands are dispatched
-                  instead of sent as a message.
+                  Say “switch agent” to hear recent choices, then say the agent name. “Stop”
+                  stops speech while the assistant is talking or cancels the current turn while thinking.
                 </Text>
               </View>
 

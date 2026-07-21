@@ -140,6 +140,7 @@ const MODEL_REGISTRY: Record<string, ModelSpec> = {
   // OpenAI models
   // -------------------------------------------------------------------------
   // GPT-5.x series (future-proofing based on pi-mono registry)
+  "gpt-5.6": { contextWindow: 128_000, maxOutputTokens: 64_000 },
   "gpt-5.4-mini": { contextWindow: 128_000, maxOutputTokens: 64_000 },
   "gpt-5.4": { contextWindow: 128_000, maxOutputTokens: 128_000 },
   "gpt-5.2": { contextWindow: 128_000, maxOutputTokens: 64_000 },
@@ -1129,7 +1130,7 @@ function getProviderAndModel(): { providerId: string; model: string } {
   } else if (providerId === "gemini") {
     model = config.agentGeminiModel || config.mcpToolsGeminiModel || "gemini-2.5-flash"
   } else if (providerId === "chatgpt-web") {
-    model = config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
+    model = config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || "gpt-5.6"
   }
   return { providerId, model }
 }

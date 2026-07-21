@@ -1,0 +1,33 @@
+Top by impressions share
+9.88	CTR 121.99	views 8.17	VG3aoxcYyvw	I Tried Hermes Desktop. It Might Replace My AI Agent Setup
+6.84	CTR 70.45	views 4.22	hn9tEcX-1gQ	best LLM for code #deepseek #magiccoder #gpt4 #claude #opus
+4.25	CTR 107.9	views 3.07	Q38K044vZiI	Cline is expensive  #sonnet #aicoding #vscode #copilot #github #pearai
+4.08	CTR 86.25	views 2.24	mZttSMsvLS8	open source TTS and voice cloning  #waifu #ai #sillytavern
+3.99	CTR 66.32	views 0.62	ne2F9TeAhnc	I Birthed a new Agent Profile with the Hermes Desktop App
+3.63	CTR 52.23	views 0.84	H1V_FoNQaeg	Open Source AI Live
+3.38	CTR 97.94	views 1.16	cW3KD9bm1PM	Fresh Mac to AI Agent in 3 Minutes (Hermes Agent Desktop)
+3.34	CTR 104.81	views 2.74	8AgkNqt1Fbk	my open ai API usage costs
+3.08	CTR 81.1	views 0.94	5sosnrxps6E	Hermes Agent: Day 2
+2.21	CTR 112.03	views 0.75	7yiK8vxhQNs	I Built a Custom Hermes Plugin for My AI Content Agent
+2.15	CTR 62.54	views 1.22	WnOjWMVmrtg	llamafile now on Android. run local models off your phone. #localllama #ai #llm #tinyllama
+2.11	CTR 92.1	views 0.96	plMBQwB5exs	Hermes Desktop Actually Works Better Than I Expected
+1.76	CTR 80.41	views 0.57	nUiK9c_zfY8	Setting Up Tailscale for My Remote Agent
+1.69	CTR 108.59	views 1.05	0B1cNP4zns4	When Local LLMs Are ACTUALLY Worth It + Top 3 Coding LLMs (2025)
+1.58	CTR 83.51	views 0.61	IvJ_iGPpsYo	My Hermes Agent was BLOATED
+
+Top CTR with impressions share >=0.25
+CTR 361.17	impr 0.35	views 0.6	plBcUc997sg	Playwright MCP vs. Chrome Dev Tools: Which is Better for Finding Bugs?
+CTR 358.76	impr 0.59	views 0.81	D1JR8v91oSQ	The FASTEST AI Search API is Here (Exa 2.1)
+CTR 308.25	impr 0.61	views 0.86	LUiVbOeLeas	LM Studio Models not behaving? Try this!
+CTR 302.75	impr 0.71	views 0.97	DVTTskFgI-8	630% Better: pi-AutoResearch in 13 Minutes
+CTR 281.79	impr 0.89	views 0.88	p4MbGVyG0UY	Scrimba is a great way to learn software engineering #learning #learntocode  #coding #langchain
+CTR 272.51	impr 0.81	views 0.79	3DBpfB0ao50	Clawdbot in Less Than 2 Minutes (FREE 24/7 HOSTING)
+CTR 261.86	impr 0.26	views 0.42	OsChkvGGDgw	Aider tips and Example use
+CTR 209.62	impr 1.03	views 1.1	oy9Xo4BY3Bs	transcribe anything for free  super fast and securely! #github #transcription #python #opensource
+CTR 154.3	impr 1.01	views 0.59	tmlaU8kkGGQ	Hermes Agent Day 4: Building Custom AI Dashboards
+CTR 149.48	impr 0.7	views 0.79	04zh52sV1vw	bed work setup setup #wfh #ergonomic #workfromhome #softwareengineer #LifeHack #comfortable ‎08-29
+CTR 148.45	impr 0.49	views 2.96	QhUnSQtO4Ik	I finally used my first Codex reset. #openaicodex #claudecode
+CTR 147.08	impr 0.67	views 3.03	qhIowZrY_jU	Hermes Remote Dashboard is now my Main
+CTR 128.87	impr 1.38	views 1.13	av7A26qxsnw	how to get around debugger block #devtools #debugging #stackoverflow #google #hack #hacks #hacker
+CTR 121.99	impr 9.88	views 8.17	VG3aoxcYyvw	I Tried Hermes Desktop. It Might Replace My AI Agent Setup
+CTR 121.31	impr 0.68	views 0.78	za9YZvcQMnI	xreal air AR glasses #productivity #techtok #digitalnomad #augmentedreality #visionpro

@@ -26,8 +26,8 @@ const DEFAULT_CHAT_MODELS = {
     transcript: "gemini-2.5-flash",
   },
   "chatgpt-web": {
-    mcp: "gpt-5.4-mini",
-    transcript: "gpt-5.4-mini",
+    mcp: "gpt-5.6",
+    transcript: "gpt-5.6",
   },
 } as const
 
@@ -43,8 +43,7 @@ const TRANSCRIPTION_ONLY_MODEL_PATTERNS = {
  */
 const CHATGPT_WEB_ONLY_MODEL_PATTERNS = [
   "codex-spark",
-  "gpt-5.3-codex",
-  "gpt-5.2-codex",
+  "-codex",
 ] as const
 
 interface ProviderConfig {

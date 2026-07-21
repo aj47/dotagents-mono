@@ -1,0 +1,3717 @@
+{
+  "responseContext": {
+    "serviceTrackingParams": [
+      {
+        "service": "GFEEDBACK",
+        "params": [
+          {
+            "key": "serializedDelegationContext",
+            "value": "EhhVQzFSTzc2X0hEVDEzdS1sUFhPQTB0OUEqAggI"
+          },
+          {
+            "key": "logged_in",
+            "value": "1"
+          },
+          {
+            "key": "e",
+            "value": "23804281,24004644,24077241,24290153,24407444,24425063,39320593,39325257,39325413,39328068,39329856,51063643,51098299,51115184,51125020,51152050,51178314,51178337,51178346,51178351,51183909,51222973,51227037,51313109,51340662,51349914,51353393,51366423,51367487,51372971,51389629,51425034,51441710,51445004,51468320,51490331,51493209,51505436,51518819,51530495,51530538,51534669,51538888,51549693,51555499,51565115,51565681,51577777,51583821,51589586,51607676,51617830,51620679,51622845,51622959,51628154,51628206,51635954,51644479,51646769,51648336,51648524,51657786,51657796,51663860,51665353,51672162,51672213,51678603,51681662,51683502,51684148,51684155,51690389,51693405,51704027,51707414,51707620,51721335,51737133,51742830,51750310,51752066,51752830,51765031,51772736,51773318,51773952,51774281,51777590,51777720,51778340,51779436,51783908,51784229,51788309,51788312,51791634,51791680,51795483,51798928,51803128,51803586,51806573,51812789,51812792,51812809,51815044,51820847,51822845,51822856,51822859,51822866,51824465,51825601,51826015,51826046,51826341,51826816,51829039,51836301,51836311,51836316,51836321,51836324,51837000,51840861,51845357,51849937,51850956,51852001,51857589,51857838,51857920,51859893,51860059,51860080,51860221,51860292,51861183,51862326,51862587,51868228,51874028,51875250,51875290,51884627,51887260,51887423,51887431,51887440,51887447,51887454,51891103,51895405,51898362,51898421,51902702,51902977,51904230,51905203,51906533,51907208,51907235,51907257,51907265,51908317,51908421,51908453,51909055,51909060,51910736,51912458,51914174,51918947,51920399,51924963,51926069,51929567,51932246,51933017,51933133,51936228,51938771,51939450,51939764,51941004,51943909,51945056,51946955,51949230,51952747,51953166,51953522,51953630,51954792,51954922,51956018,51956738,51957445,51959694,51959967,51961153,51962116,51963682,51965418,51965825,51967554,51967950,51968083,51969226,51977431,51977607,51978092,51978585,51979121,51980559,51980998,51982288,51982291,51982299,51983368,51984110,51985546,51985580,51987437,51992188,51994654,51996980,52001375,52003453,52004519,52005695,52008377,52008770,52010786,52010793,52010916,52011538,52012523,52013144,52013677,52014803,52015044,52015231,52015935,52016136,52017268,52017782,52018626,52020069,52020487,52023300,52024784,52025664,52026012,52027751,52027753,52029821,52030075,52032894,100670348,100671429,100671441,100671517,100672025,100672059,100672075,100672193,100672435,100672699,100672738,100672764,100672897"
+          }
+        ]
+      },
+      {
+        "service": "CSI",
+        "params": [
+          {
+            "key": "c",
+            "value": "WEB_CREATOR"
+          },
+          {
+            "key": "cver",
+            "value": "1.20260624.04.02"
+          },
+          {
+            "key": "yt_li",
+            "value": "1"
+          },
+          {
+            "key": "GetChannelDashboard_rid",
+            "value": "0x8f319531431c24c4"
+          }
+        ]
+      },
+      {
+        "service": "GUIDED_HELP",
+        "params": [
+          {
+            "key": "logged_in",
+            "value": "1"
+          }
+        ]
+      },
+      {
+        "service": "ECATCHER",
+        "params": [
+          {
+            "key": "client.version",
+            "value": "1.20260624"
+          },
+          {
+            "key": "client.name",
+            "value": "WEB_CREATOR"
+          }
+        ]
+      }
+    ],
+    "responseId": "IhMI8L2KjZColQMVkBCtBh1WHQ1Z",
+    "webResponseContextExtensionData": {
+      "hasDecorated": true
+    }
+  },
+  "cards": [
+    {
+      "body": {
+        "basicCard": {
+          "item": {
+            "channelFactsItem": {
+              "channelFactsData": {
+                "results": [
+                  {
+                    "key": "DASHBOARD_FACT_ANALYTICS_TYPICAL",
+                    "value": {
+                      "getTypicalPerformance": {
+                        "result": {
+                          "metricColumns": [
+                            {
+                              "metric": {
+                                "metric": {
+                                  "type": "EXTERNAL_VIEWS"
+                                }
+                              },
+                              "stats": [
+                                {
+                                  "typicalValue": 25650,
+                                  "typicalRange": {
+                                    "lowerBound": 23000,
+                                    "upperBound": 34200
+                                  }
+                                }
+                              ],
+                              "currentValue": {
+                                "column": {
+                                  "type": "EXTERNAL_VIEWS"
+                                },
+                                "values": [
+                                  {
+                                    "double": 28034
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "metric": {
+                                "metric": {
+                                  "type": "EXTERNAL_WATCH_TIME"
+                                }
+                              },
+                              "stats": [
+                                {
+                                  "typicalValue": 1425600000,
+                                  "typicalRange": {
+                                    "lowerBound": 1116000000,
+                                    "upperBound": 1980000000
+                                  }
+                                }
+                              ],
+                              "currentValue": {
+                                "column": {
+                                  "type": "EXTERNAL_WATCH_TIME"
+                                },
+                                "values": [
+                                  {
+                                    "double": 1526892053
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "metric": {
+                                "metric": {
+                                  "type": "TOTAL_ESTIMATED_EARNINGS"
+                                }
+                              },
+                              "currentValue": {
+                                "column": {
+                                  "type": "TOTAL_ESTIMATED_EARNINGS"
+                                },
+                                "values": [
+                                  {
+                                    "double": 17586
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        "externalChannelId": "UC1RO76_HDT13u-lPXOA0t9A"
+                      }
+                    }
+                  },
+                  {
+                    "key": "TOP_VIDEOS_VIDEO",
+                    "value": {
+                      "getCreatorVideos": {
+                        "videos": [
+                          {
+                            "videoId": "_Zok_jVo-Ss",
+                            "title": "Hermes Agent has built-in checkpoints for coding agents. #hermesagent  #AIAgents #claudecode",
+                            "permissions": {
+                              "overallPermissions": [
+                                "CREATOR_VIDEO_PERMISSION_READ",
+                                "CREATOR_VIDEO_PERMISSION_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+                                "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_DELETE",
+                                "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_WATCH",
+                                "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+                                "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+                                "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+                                "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+                                "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+                                "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+                              ]
+                            },
+                            "responseStatus": {
+                              "statusCode": "CREATOR_ENTITY_STATUS_OK"
+                            },
+                            "loggingDirectives": {
+                              "trackingParams": "CBsQiI4CGNwBIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+                            }
+                          },
+                          {
+                            "videoId": "QhUnSQtO4Ik",
+                            "title": "I finally used my first Codex reset. #openaicodex #claudecode",
+                            "permissions": {
+                              "overallPermissions": [
+                                "CREATOR_VIDEO_PERMISSION_READ",
+                                "CREATOR_VIDEO_PERMISSION_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+                                "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_DELETE",
+                                "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_WATCH",
+                                "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+                                "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+                                "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+                                "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+                                "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+                                "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+                              ]
+                            },
+                            "responseStatus": {
+                              "statusCode": "CREATOR_ENTITY_STATUS_OK"
+                            },
+                            "loggingDirectives": {
+                              "trackingParams": "CBoQiI4CGN0BIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+                            }
+                          },
+                          {
+                            "videoId": "4-haimQyBjg",
+                            "title": "I Gave My AI Agent Its Own Soul.md #hermesagent",
+                            "permissions": {
+                              "overallPermissions": [
+                                "CREATOR_VIDEO_PERMISSION_READ",
+                                "CREATOR_VIDEO_PERMISSION_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+                                "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_DELETE",
+                                "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_WATCH",
+                                "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+                                "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+                                "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+                                "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+                                "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+                                "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+                                "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+                                "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+                              ]
+                            },
+                            "responseStatus": {
+                              "statusCode": "CREATOR_ENTITY_STATUS_OK"
+                            },
+                            "loggingDirectives": {
+                              "trackingParams": "CBkQiI4CGN4BIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "key": "DASHBOARD_FACT_ANALYTICS_LIFETIME_SUBSCRIBERS",
+                    "value": {
+                      "resultTable": {
+                        "metricColumns": [
+                          {
+                            "metric": {
+                              "type": "SUBSCRIBERS_NET_CHANGE",
+                              "asPercentagesOfTotal": false,
+                              "includeTotal": false,
+                              "cumulative": false
+                            },
+                            "columnAnomalies": {},
+                            "counts": {
+                              "values": [
+                                13621
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "key": "TOP_VIDEOS",
+                    "value": {
+                      "resultTable": {
+                        "dimensionColumns": [
+                          {
+                            "dimension": {
+                              "type": "VIDEO"
+                            },
+                            "strings": {
+                              "values": [
+                                "_Zok_jVo-Ss",
+                                "QhUnSQtO4Ik",
+                                "4-haimQyBjg"
+                              ]
+                            },
+                            "columnAnomalies": {}
+                          }
+                        ],
+                        "metricColumns": [
+                          {
+                            "metric": {
+                              "type": "EXTERNAL_VIEWS",
+                              "asPercentagesOfTotal": false,
+                              "includeTotal": false,
+                              "cumulative": false
+                            },
+                            "columnAnomalies": {},
+                            "counts": {
+                              "values": [
+                                1363,
+                                674,
+                                213
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "key": "DASHBOARD_FACT_ANALYTICS_CURRENT",
+                    "value": {
+                      "resultTable": {
+                        "metricColumns": [
+                          {
+                            "metric": {
+                              "type": "EXTERNAL_VIEWS",
+                              "asPercentagesOfTotal": false,
+                              "includeTotal": false,
+                              "cumulative": false
+                            },
+                            "columnAnomalies": {},
+                            "counts": {
+                              "values": [
+                                28034
+                              ]
+                            }
+                          },
+                          {
+                            "metric": {
+                              "type": "EXTERNAL_WATCH_TIME",
+                              "asPercentagesOfTotal": false,
+                              "includeTotal": false,
+                              "cumulative": false
+                            },
+                            "columnAnomalies": {},
+                            "milliseconds": {
+                              "values": [
+                                1526892053
+                              ]
+                            }
+                          },
+                          {
+                            "metric": {
+                              "type": "TOTAL_ESTIMATED_EARNINGS",
+                              "asPercentagesOfTotal": false,
+                              "includeTotal": false,
+                              "cumulative": false
+                            },
+                            "columnAnomalies": {
+                              "ids": [
+                                0
+                              ]
+                            },
+                            "earnings": {
+                              "values": [
+                                17586
+                              ],
+                              "currency": "USD"
+                            }
+                          },
+                          {
+                            "metric": {
+                              "type": "SUBSCRIBERS_NET_CHANGE",
+                              "asPercentagesOfTotal": false,
+                              "includeTotal": false,
+                              "cumulative": false
+                            },
+                            "columnAnomalies": {},
+                            "counts": {
+                              "values": [
+                                65
+                              ]
+                            }
+                          }
+                        ],
+                        "anomalyContext": [
+                          {
+                            "key": 0,
+                            "value": {
+                              "type": "ANALYTICS_ANOMALY_TYPE_DAILY_DATA_PROCESSING",
+                              "startDate": 1782284400000,
+                              "endDate": 1782457200000,
+                              "columns": [
+                                {
+                                  "type": "TOTAL_ESTIMATED_EARNINGS"
+                                }
+                              ],
+                              "permanence": "ANALYTICS_ANOMALY_PERMANENCE_TEMPORARY",
+                              "impact": "ANALYTICS_ANOMALY_IMPACT_DATA_MISSING"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "id": "facts"
+    },
+    {
+      "body": {
+        "basicCard": {
+          "item": {
+            "helpCenterIssuesItem": {
+              "currentIssues": [
+                {
+                  "title": "Increasing Shorts length",
+                  "url": "https://support.google.com/youtube/answer/11286863?hl=en"
+                },
+                {
+                  "title": "Expansion of channel permissions",
+                  "url": "https://support.google.com/youtube/answer/11286864?hl=en"
+                },
+                {
+                  "title": "Upcoming changes to Community Guidelines warnings",
+                  "url": "https://support.google.com/youtube/answer/11287076?hl=en"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "id": "product_updates"
+    },
+    {
+      "body": {
+        "listCard": {
+          "items": [
+            {
+              "postSnapshotItem": {
+                "postSnapshot": {
+                  "postId": "UgkxZUVQwQ14xqkVKyhE1vcREdJg-jREg5QR",
+                  "contentText": "Windows OS shipping with built in MCP servers like filesystem. Is every software going to have inbuilt MCP servers? Pretty cool",
+                  "timePublishedSeconds": "1747674874",
+                  "imagesAttachment": {
+                    "images": [
+                      {
+                        "thumbnails": [
+                          {
+                            "url": "https://yt3.ggpht.com/MDVW1zaxdVazWDChw3x1o7ZS6RY3gmWI8aZWgX_7CMcaIL4jEKmHXx26Wwsn8x3czcBtZxICeaYUIw=s288-c-fcrop64=1,44390000bbc6ffff-nd-v1",
+                            "width": 288,
+                            "height": 288
+                          },
+                          {
+                            "url": "https://yt3.ggpht.com/MDVW1zaxdVazWDChw3x1o7ZS6RY3gmWI8aZWgX_7CMcaIL4jEKmHXx26Wwsn8x3czcBtZxICeaYUIw=s400-c-fcrop64=1,44390000bbc6ffff-nd-v1",
+                            "width": 400,
+                            "height": 400
+                          },
+                          {
+                            "url": "https://yt3.ggpht.com/MDVW1zaxdVazWDChw3x1o7ZS6RY3gmWI8aZWgX_7CMcaIL4jEKmHXx26Wwsn8x3czcBtZxICeaYUIw=s512-c-fcrop64=1,44390000bbc6ffff-nd-v1",
+                            "width": 512,
+                            "height": 512
+                          },
+                          {
+                            "url": "https://yt3.ggpht.com/MDVW1zaxdVazWDChw3x1o7ZS6RY3gmWI8aZWgX_7CMcaIL4jEKmHXx26Wwsn8x3czcBtZxICeaYUIw=s640-c-fcrop64=1,44390000bbc6ffff-nd-v1",
+                            "width": 640,
+                            "height": 640
+                          },
+                          {
+                            "url": "https://yt3.ggpht.com/MDVW1zaxdVazWDChw3x1o7ZS6RY3gmWI8aZWgX_7CMcaIL4jEKmHXx26Wwsn8x3czcBtZxICeaYUIw=s800-c-fcrop64=1,44390000bbc6ffff-nd-v1",
+                            "width": 800,
+                            "height": 800
+                          },
+                          {
+                            "url": "https://yt3.ggpht.com/MDVW1zaxdVazWDChw3x1o7ZS6RY3gmWI8aZWgX_7CMcaIL4jEKmHXx26Wwsn8x3czcBtZxICeaYUIw=s1024-c-fcrop64=1,44390000bbc6ffff-nd-v1",
+                            "width": 1024,
+                            "height": 1024
+                          },
+                          {
+                            "url": "https://yt3.ggpht.com/MDVW1zaxdVazWDChw3x1o7ZS6RY3gmWI8aZWgX_7CMcaIL4jEKmHXx26Wwsn8x3czcBtZxICeaYUIw=s1600-c-fcrop64=1,44390000bbc6ffff-nd-v1",
+                            "width": 1600,
+                            "height": 1600
+                          },
+                          {
+                            "url": "https://yt3.ggpht.com/MDVW1zaxdVazWDChw3x1o7ZS6RY3gmWI8aZWgX_7CMcaIL4jEKmHXx26Wwsn8x3czcBtZxICeaYUIw=s1868-c-fcrop64=1,44390000bbc6ffff-nd-v1",
+                            "width": 1868,
+                            "height": 1868
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "postStatsItem": {
+                "postStats": [
+                  {
+                    "key": "POST_STATS_TYPE_LIKE",
+                    "value": 10
+                  },
+                  {
+                    "key": "POST_STATS_TYPE_COMMENT",
+                    "value": 9
+                  }
+                ]
+              }
+            },
+            {
+              "postCustomizedCtaItem": {
+                "headerType": "POST_CTA_ITEM_HEADER_TYPE_ENGAGEMENT"
+              }
+            }
+          ]
+        }
+      },
+      "id": "post"
+    },
+    {
+      "body": {
+        "listCard": {
+          "items": [
+            {
+              "cardHeader": {
+                "title": "Comments"
+              }
+            },
+            {
+              "commentsSnapshotItem": {
+                "commentId": "UgxQ_atj2SoEMqERiIV4AaABAg",
+                "authorChannelId": "UCtAKljWEwnmSr9Vy9aUQf3g",
+                "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+                "sponsorsOnly": false,
+                "superThanksOnly": false,
+                "commentsFilter": {
+                  "commentCategoryIn": {
+                    "values": [
+                      "COMMENT_CATEGORY_NOT_ENGAGED"
+                    ]
+                  },
+                  "moderationState": "MODERATION_STATE_PUBLISHED",
+                  "sortBy": "SORT_BY_MOST_RELEVANT"
+                },
+                "videoId": "Q38K044vZiI"
+              }
+            },
+            {
+              "commentsSnapshotItem": {
+                "commentId": "UgwYU9vsN5uEtWdtbKF4AaABAg",
+                "authorChannelId": "UClO8cWdpSZCI83Bdh1oHTPg",
+                "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+                "sponsorsOnly": false,
+                "superThanksOnly": false,
+                "commentsFilter": {
+                  "commentCategoryIn": {
+                    "values": [
+                      "COMMENT_CATEGORY_NOT_ENGAGED"
+                    ]
+                  },
+                  "moderationState": "MODERATION_STATE_PUBLISHED",
+                  "sortBy": "SORT_BY_MOST_RELEVANT"
+                },
+                "videoId": "hn9tEcX-1gQ"
+              }
+            },
+            {
+              "commentsSnapshotItem": {
+                "commentId": "UgxTb6oARHpWJT17H8h4AaABAg",
+                "authorChannelId": "UCohX9HYfzDJUFzz2PXX9Z0g",
+                "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+                "sponsorsOnly": false,
+                "superThanksOnly": false,
+                "commentsFilter": {
+                  "commentCategoryIn": {
+                    "values": [
+                      "COMMENT_CATEGORY_NOT_ENGAGED"
+                    ]
+                  },
+                  "moderationState": "MODERATION_STATE_PUBLISHED",
+                  "sortBy": "SORT_BY_MOST_RELEVANT"
+                },
+                "videoId": "5D1SzbvljrY"
+              }
+            },
+            {
+              "buttonAction": {
+                "buttonAction": {
+                  "text": "View more",
+                  "commentsAction": {
+                    "commentsFilter": {
+                      "commentCategoryIn": {
+                        "values": [
+                          "COMMENT_CATEGORY_NOT_ENGAGED"
+                        ]
+                      },
+                      "moderationState": "MODERATION_STATE_PUBLISHED",
+                      "sortBy": "SORT_BY_MOST_RELEVANT"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "id": "comment"
+    },
+    {
+      "body": {
+        "listCard": {
+          "items": [
+            {
+              "recentVideoItem": {
+                "videoId": "4-haimQyBjg"
+              }
+            },
+            {
+              "recentVideoItem": {
+                "videoId": "tmlaU8kkGGQ"
+              }
+            },
+            {
+              "recentVideoItem": {
+                "videoId": "ne2F9TeAhnc"
+              }
+            },
+            {
+              "recentVideoItem": {
+                "videoId": "QhUnSQtO4Ik"
+              }
+            }
+          ]
+        }
+      },
+      "id": "recent_videos"
+    },
+    {
+      "body": {
+        "basicCard": {
+          "item": {
+            "recentActivityItem": {
+              "timePeriod": "SUBSCRIBER_HIGHLIGHTS_TIME_PERIOD_LAST_90_DAYS",
+              "subscriberChannelIds": [
+                "UCoUatjuB9JvwXJehPJ7I-7Q",
+                "UCRH7eLcgFs83fJNepalEkmQ",
+                "UCwHJpR09AvqHWUx2IyIwrvg",
+                "UCM2zjQnjU-PqMkJqKN3hLjQ",
+                "UCO5gM-LNNhaQsocC6tqLpog",
+                "UCPAxH62kJ6m7mzvekHHD_vg"
+              ],
+              "recentSponsors": [
+                {
+                  "externalChannelId": "UCLQeAGEdcmkCzdqWJ9N5MFg",
+                  "tierId": "CKz_6ab7qMuECA",
+                  "durationTotal": {
+                    "amount": 3,
+                    "timeUnit": "SPONSORSHIPS_TIME_UNIT_DAY"
+                  },
+                  "durationAtCurrentTier": {
+                    "amount": 3,
+                    "timeUnit": "SPONSORSHIPS_TIME_UNIT_DAY"
+                  },
+                  "lastEvent": {
+                    "duration": {
+                      "amount": 3,
+                      "timeUnit": "SPONSORSHIPS_TIME_UNIT_DAY"
+                    },
+                    "type": "SPONSORSHIPS_EVENT_TYPE_JOIN"
+                  },
+                  "displayName": "@sai_revanth_12",
+                  "profileImageUrl": "https://yt3.ggpht.com/ytc/AIdro_kgeb3tvIBGrdY-IdjHykSG-MSKpwcehWUAO3_O6TXPgadO46BAk4RkoG8qNgXDJBfHxg=s88-c-k-c0x00ffffff-no-rj",
+                  "loyaltyBadge": {
+                    "thumbnailUrl": "https://lh3.googleusercontent.com/Otv-LqYLhRy6jMTfXN_j8wo7dh0_UxEuAzGM8hhZLzoNdl16NRov8SqniPBUY90jnVMYlklKI0eHLLve"
+                  },
+                  "pricingVersion": {
+                    "versionTimestamp": {
+                      "seconds": "1702431979",
+                      "nanos": 654813280
+                    },
+                    "tierPricing": {
+                      "pricingLevelId": "4990000",
+                      "currency": "USD",
+                      "priceMicros": "4990000"
+                    }
+                  }
+                },
+                {
+                  "externalChannelId": "UCVKIlircmf7MAZ8hiLxvrRw",
+                  "tierId": "CKz_6ab7qMuECA",
+                  "durationTotal": {
+                    "amount": 13,
+                    "timeUnit": "SPONSORSHIPS_TIME_UNIT_MONTH"
+                  },
+                  "durationAtCurrentTier": {
+                    "amount": 13,
+                    "timeUnit": "SPONSORSHIPS_TIME_UNIT_MONTH"
+                  },
+                  "lastEvent": {
+                    "duration": {
+                      "amount": 7,
+                      "timeUnit": "SPONSORSHIPS_TIME_UNIT_MONTH"
+                    },
+                    "type": "SPONSORSHIPS_EVENT_TYPE_REJOIN"
+                  },
+                  "displayName": "@gavinknight8560",
+                  "profileImageUrl": "https://yt3.ggpht.com/ytc/AIdro_kn0LhJM0s0VtzPRnd63PsGG7uYifidAE0JntLkriQ=s88-c-k-c0x00ffffff-no-rj",
+                  "loyaltyBadge": {
+                    "thumbnailUrl": "https://lh3.googleusercontent.com/8EkhzT5LZB8Y1DrCywZwPACLpgvLpFrfkfFtT4Az8za6De8tiPys0k-6tDOSqvn8mfGAz9c8oz_rr9R_"
+                  },
+                  "pricingVersion": {
+                    "versionTimestamp": {
+                      "seconds": "1702431979",
+                      "nanos": 654813280
+                    },
+                    "tierPricing": {
+                      "pricingLevelId": "4990000",
+                      "currency": "USD",
+                      "priceMicros": "4990000"
+                    }
+                  }
+                },
+                {
+                  "externalChannelId": "UCP8C0CZximPD05Acz3PuKIQ",
+                  "tierId": "CKz_6ab7qMuECA",
+                  "durationTotal": {
+                    "amount": 10,
+                    "timeUnit": "SPONSORSHIPS_TIME_UNIT_MONTH"
+                  },
+                  "durationAtCurrentTier": {
+                    "amount": 10,
+                    "timeUnit": "SPONSORSHIPS_TIME_UNIT_MONTH"
+                  },
+                  "lastEvent": {
+                    "duration": {
+                      "amount": 10,
+                      "timeUnit": "SPONSORSHIPS_TIME_UNIT_MONTH"
+                    },
+                    "type": "SPONSORSHIPS_EVENT_TYPE_JOIN"
+                  },
+                  "displayName": "@mareklewandowski7784",
+                  "profileImageUrl": "https://yt3.ggpht.com/ytc/AIdro_krvf2jAsFIOr_N4mKBLzzPxPEAAPgcIwXyDP_b3AziRYs=s88-c-k-c0x00ffffff-no-rj",
+                  "loyaltyBadge": {
+                    "thumbnailUrl": "https://lh3.googleusercontent.com/gAq7jDekvG5e_Az-VnKhS-Sy-rZDgyHIdGQAhks2iWlN7rMkiTlxnW5ztMW96ynyEIG1hMe67LLLCP6q"
+                  },
+                  "pricingVersion": {
+                    "versionTimestamp": {
+                      "seconds": "1702431979",
+                      "nanos": 654813280
+                    },
+                    "tierPricing": {
+                      "pricingLevelId": "4990000",
+                      "currency": "USD",
+                      "priceMicros": "4990000"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "id": "recent_activity"
+    },
+    {
+      "body": {
+        "basicCard": {
+          "item": {
+            "entitySnapshotItem": {
+              "entitySnapshotCardData": {
+                "video": {
+                  "externalVideoId": "_Zok_jVo-Ss",
+                  "videoFormat": "VIDEO_FORMAT_VOD"
+                },
+                "headline": {
+                  "type": "CATALYST_ANALYSIS_TYPE_RECENT_VIDEO_PERFORMANCE",
+                  "entityId": "_Zok_jVo-Ss",
+                  "catalysis": {
+                    "illustration": "CATALYST_ANALYSIS_ILLUSTRATION_HIGHER_SPACE",
+                    "title": "Great job! Views are 82% higher than your other Shorts and viewers watched for longer.",
+                    "feedbackDialog": {
+                      "gFeedbackBucket": "ReStudioAnalyticsRecentVideoPerformanceSurvey",
+                      "thanksMessage": "During this experiment you may receive different messages as we keep you updated on your video performance. You can submit feedback for any message you see — every submission goes to the team.",
+                      "thanksTitle": "Thanks for your feedback!",
+                      "title": "We’d love your feedback!",
+                      "sections": [
+                        {
+                          "id": "usefulnessScore",
+                          "paragraphs": [
+                            "Thanks for trying this feature. We’re still experimenting with it, and your feedback will directly help the team to make improvements.",
+                            "Overall, how useful is this analysis of your video performance for you?"
+                          ],
+                          "requiredErrorMessage": "Please select one of the above.",
+                          "multiOptions": {
+                            "options": [
+                              {
+                                "value": "none",
+                                "label": "Not at all useful"
+                              },
+                              {
+                                "value": "slightly",
+                                "label": "Slightly useful"
+                              },
+                              {
+                                "value": "moderately",
+                                "label": "Moderately useful"
+                              },
+                              {
+                                "value": "very",
+                                "label": "Very useful"
+                              },
+                              {
+                                "value": "extremely",
+                                "label": "Extremely useful"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "id": "textFeedback",
+                          "paragraphs": [
+                            "Please explain your response and/or tell us how we can improve this feature."
+                          ],
+                          "freeform": {
+                            "textareaPlaceholder": "Tell us more (optional)"
+                          }
+                        }
+                      ]
+                    },
+                    "shortSummary": "Great job! Views and watch time are higher than usual.",
+                    "dialog": {
+                      "title": "Great job! Views are 82% higher than your other Shorts and viewers watched for longer."
+                    }
+                  },
+                  "analysisVariant": {
+                    "analysisSummary": {
+                      "type": "CATALYST_ANALYSIS_TYPE_RECENT_VIDEO_PERFORMANCE",
+                      "eligibility": "ANALYSIS_ELIGIBILITY_ELIGIBLE",
+                      "sentiment": "ANALYSIS_SENTIMENT_POSITIVE"
+                    },
+                    "videoPerformanceVariant": {
+                      "views": "CHANGE_DIRECTION_ABOVE_TYPICAL"
+                    }
+                  }
+                },
+                "ranking": {
+                  "entities": [
+                    {
+                      "rank": 1,
+                      "entity": {
+                        "videoId": "u_4IFwHss2E"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 1661
+                      }
+                    },
+                    {
+                      "rank": 2,
+                      "entity": {
+                        "videoId": "_Zok_jVo-Ss"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 1362
+                      }
+                    },
+                    {
+                      "rank": 3,
+                      "entity": {
+                        "videoId": "VG3aoxcYyvw"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 737
+                      }
+                    },
+                    {
+                      "rank": 4,
+                      "entity": {
+                        "videoId": "NOPh68xi2iQ"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 728
+                      }
+                    },
+                    {
+                      "rank": 5,
+                      "entity": {
+                        "videoId": "TS8VoO6QQHU"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 682
+                      }
+                    },
+                    {
+                      "rank": 6,
+                      "entity": {
+                        "videoId": "sQjMGJinIsA"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 604
+                      }
+                    },
+                    {
+                      "rank": 7,
+                      "entity": {
+                        "videoId": "QhUnSQtO4Ik"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 475
+                      }
+                    },
+                    {
+                      "rank": 8,
+                      "entity": {
+                        "videoId": "4-haimQyBjg"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 190
+                      }
+                    },
+                    {
+                      "rank": 9,
+                      "entity": {
+                        "videoId": "bBE0Xhq3CA4"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 188
+                      }
+                    },
+                    {
+                      "rank": 10,
+                      "entity": {
+                        "videoId": "PkXoW2PEZ5I"
+                      },
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 175
+                      }
+                    }
+                  ],
+                  "enableShortsVcAlertBanner": true
+                },
+                "metricsTable": {
+                  "metricRows": [
+                    {
+                      "metric": {
+                        "type": "EXTERNAL_VIEWS"
+                      },
+                      "value": {
+                        "double": 1362
+                      },
+                      "availability": {
+                        "currentConfidence": "ANALYTICS_DATA_CONFIDENCE_COMPARABLE",
+                        "timeUntilNextConfidenceMinutes": -1
+                      },
+                      "typicalRange": {
+                        "typicalValue": 674,
+                        "typicalRange": {
+                          "lowerBound": 590,
+                          "upperBound": 750
+                        }
+                      },
+                      "trend": "TREND_TYPE_UP",
+                      "auxiliaryMetricData": {}
+                    },
+                    {
+                      "metric": {
+                        "type": "AVERAGE_WATCH_PERCENTAGE"
+                      },
+                      "value": {
+                        "double": 0.4743
+                      },
+                      "availability": {
+                        "currentConfidence": "ANALYTICS_DATA_CONFIDENCE_COMPARABLE",
+                        "timeUntilNextConfidenceMinutes": -1
+                      },
+                      "typicalRange": {
+                        "typicalValue": 0.3165,
+                        "typicalRange": {
+                          "lowerBound": 0.303,
+                          "upperBound": 0.33684000000000003
+                        }
+                      },
+                      "trend": "TREND_TYPE_UP",
+                      "auxiliaryMetricData": {}
+                    },
+                    {
+                      "metric": {
+                        "type": "RATINGS_LIKES"
+                      },
+                      "value": {
+                        "double": 6
+                      },
+                      "availability": {
+                        "currentConfidence": "ANALYTICS_DATA_CONFIDENCE_COMPARABLE",
+                        "timeUntilNextConfidenceMinutes": -1
+                      },
+                      "typicalRange": {
+                        "typicalValue": 10,
+                        "typicalRange": {
+                          "lowerBound": 6,
+                          "upperBound": 20
+                        }
+                      },
+                      "trend": "TREND_TYPE_TYPICAL",
+                      "auxiliaryMetricData": {}
+                    }
+                  ]
+                },
+                "collapsableRankSettingWeb": 2,
+                "enableCollapsableRankSettingWeb": true
+              }
+            }
+          }
+        }
+      },
+      "id": "entity_snapshot"
+    }
+  ],
+  "entities": {
+    "videos": [
+      {
+        "video": {
+          "videoId": "Q38K044vZiI",
+          "title": "Cline is expensive  #sonnet #aicoding #vscode #copilot #github #pearai",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/Q38K044vZiI/default.jpg?sqp=CIjAgNIG-oaymwEmCHgQWvKriqkDHBgA8AEB-AHOBYACgAqKAgwIABABGEAgTyhlMA8=&rs=AOn4CLDWeE-A_ifkT2fhtAcJBVdk55XICA",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/Q38K044vZiI/mqdefault.jpg?sqp=CIjAgNIG-oaymwEoCMACELQB8quKqQMcGADwAQH4Ac4FgAKACooCDAgAEAEYQCBPKGUwDw==&rs=AOn4CLCfB8HzXjvHNY5AsFWhbzyW_1U8Iw",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/Q38K044vZiI/hq720.jpg?sqp=CIjAgNIG-oaymwEYCJUDENAFSFryq4qpAwoIARUAAIhC0AEB&rs=AOn4CLA_mnKT6Ha_opXIIVbuhKX26z-abw",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/Q38K044vZiI/hqdefault.jpg?sqp=CIjAgNIG-oaymwEoCOADEOgC8quKqQMcGADwAQH4Ac4FgAKACooCDAgAEAEYQCBPKGUwDw==&rs=AOn4CLCKWn6h9PtmL7mX3OIyEvQUSbCp-Q",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/Q38K044vZiI/sddefault.jpg?sqp=CIjAgNIG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4Ac4FgAKACooCDAgAEAEYQCBPKGUwDw==&rs=AOn4CLCfwdoQA2c8TKPxVyUlzGvcRXgGYQ",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/Q38K044vZiI/maxresdefault.jpg?sqp=CIjAgNIG-oaymwEoCIAKENAF8quKqQMcGADwAQH4Ac4FgAKACooCDAgAEAEYQCBPKGUwDw==&rs=AOn4CLB4FZeEnb3h2Yg3vpLKXUi5uOokDw",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "28100",
+            "commentCount": "29",
+            "likeCount": "230",
+            "dislikeCount": "23"
+          },
+          "lengthSeconds": "38",
+          "status": "VIDEO_STATUS_PROCESSED",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "sponsorsOnly": {
+            "isSponsorsOnly": false
+          },
+          "publicMetrics": {
+            "viewCount": "28100",
+            "commentCount": "29",
+            "likeCount": "230",
+            "externalViewCount": "42176"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CBgQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "channelId": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "status": true,
+          "sponsorsOnly": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "hn9tEcX-1gQ",
+          "title": "best LLM for code #deepseek #magiccoder #gpt4 #claude #opus",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/hn9tEcX-1gQ/default.jpg?sqp=CIjAgNIG-oaymwEmCHgQWvKriqkDHBgA8AEB-AG2CIACgA-KAgwIABABGHIgQigtMA8=&rs=AOn4CLAVH-1DJymA_aPJvv5Ra2rDeAn4QQ",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/hn9tEcX-1gQ/mqdefault.jpg?sqp=CIjAgNIG-oaymwEoCMACELQB8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYciBCKC0wDw==&rs=AOn4CLB7xiQhRP4n4zpzdlY5RzbdcvJWQw",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/hn9tEcX-1gQ/hq720.jpg?sqp=CIjAgNIG-oaymwEYCJUDENAFSFryq4qpAwoIARUAAIhC0AEB&rs=AOn4CLCBbpVQMAMPxgYhYvt9RfJ0GDDLJA",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/hn9tEcX-1gQ/hqdefault.jpg?sqp=CIjAgNIG-oaymwEoCOADEOgC8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYciBCKC0wDw==&rs=AOn4CLDsUC3_EqWlAx2dO1OvstfCNT_j8Q",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/hn9tEcX-1gQ/sddefault.jpg?sqp=CIjAgNIG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYciBCKC0wDw==&rs=AOn4CLDfKVa7Kgg_ljEt9yqG6HuIFAfUpA",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/hn9tEcX-1gQ/maxresdefault.jpg?sqp=CIjAgNIG-oaymwEoCIAKENAF8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYciBCKC0wDw==&rs=AOn4CLBG_AXV4qJe5jOBevX88YjMnSLDUw",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "25304",
+            "commentCount": "30",
+            "likeCount": "677",
+            "dislikeCount": "16"
+          },
+          "lengthSeconds": "49",
+          "status": "VIDEO_STATUS_PROCESSED",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "sponsorsOnly": {
+            "isSponsorsOnly": false
+          },
+          "publicMetrics": {
+            "viewCount": "25304",
+            "commentCount": "30",
+            "likeCount": "677",
+            "externalViewCount": "36636"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CBcQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "channelId": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "status": true,
+          "sponsorsOnly": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "5D1SzbvljrY",
+          "title": "Why I Think Skills Will Replace 80% of MCPs",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/5D1SzbvljrY/default.jpg?sqp=CIjAgNIG-oaymwEkCHgQWvKriqkDGvABAfgB_gmAAtAFigIMCAAQARhTIGIoZTAP&rs=AOn4CLBjdsFFOc6rchAqza9kaa5xPh3BHw",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/5D1SzbvljrY/mqdefault.jpg?sqp=CIjAgNIG-oaymwEmCMACELQB8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGFMgYihlMA8=&rs=AOn4CLDnJZoJy2je6TLx7WC8uhmXsocCog",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/5D1SzbvljrY/hqdefault.jpg?sqp=CIjAgNIG-oaymwEmCOADEOgC8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGFMgYihlMA8=&rs=AOn4CLCM1qQ-Clg0P7SPxU28lLxhqgJpdA",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/5D1SzbvljrY/sddefault.jpg?sqp=CIjAgNIG-oaymwEmCIAFEOAD8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGFMgYihlMA8=&rs=AOn4CLC4IrUFVmHLUxk_Qz-wo4IdkDr32A",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/5D1SzbvljrY/hq720.jpg?sqp=CIjAgNIG-oaymwEaCIAKENAFSFryq4qpAwwIARUAAIhCGAHQAQE=&rs=AOn4CLBnRLoKMeYf8oipC8ASU1XDNr75HA",
+                "width": 1280,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/5D1SzbvljrY/maxresdefault.jpg?sqp=CIjAgNIG-oaymwEmCIAKENAF8quKqQMa8AEB-AH-CYAC0AWKAgwIABABGFMgYihlMA8=&rs=AOn4CLCHH8n44isL7LlYTUe-mfXANJkG4Q",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "679",
+            "commentCount": "11",
+            "likeCount": "18",
+            "dislikeCount": "0"
+          },
+          "lengthSeconds": "1324",
+          "status": "VIDEO_STATUS_PROCESSED",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "sponsorsOnly": {
+            "isSponsorsOnly": false
+          },
+          "publicMetrics": {
+            "viewCount": "679",
+            "commentCount": "11",
+            "likeCount": "18",
+            "externalViewCount": "679"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CBYQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "channelId": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "status": true,
+          "sponsorsOnly": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "4-haimQyBjg",
+          "title": "I Gave My AI Agent Its Own Soul.md #hermesagent",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1782517576",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/4-haimQyBjg/2.jpg?sqp=CIjAgNIG-oaymwEmCHgQWvKriqkDHBgA8AEB-AG2CIACgA-KAgwIABABGEQgXChyMA8=&rs=AOn4CLBaQ1ACu_8F506ZZbZmSTRD2rUSaw",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/4-haimQyBjg/mq2.jpg?sqp=CIjAgNIG-oaymwEoCMACELQB8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYRCBcKHIwDw==&rs=AOn4CLDpMe6EEPsSMUZdjDBotBXXk6rrVA",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/4-haimQyBjg/hq720_2.jpg?sqp=CIjAgNIG-oaymwEYCJUDENAFSFryq4qpAwoIARUAAIhC0AEB&rs=AOn4CLDR0db6w8ticeFyZ50BEIPQx4eFpQ",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/4-haimQyBjg/hq2.jpg?sqp=CIjAgNIG-oaymwEoCOADEOgC8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYRCBcKHIwDw==&rs=AOn4CLBM0ywajmAE-E3M0KGkgSW0iljrtA",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/4-haimQyBjg/sd2.jpg?sqp=CIjAgNIG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYRCBcKHIwDw==&rs=AOn4CLCKjGcKnoLJB_-T7YZcWxbpChW17w",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/4-haimQyBjg/maxres2.jpg?sqp=CIjAgNIG-oaymwEoCIAKENAF8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYRCBcKHIwDw==&rs=AOn4CLAKRpK7Ee2_cdhkXMVFIyr5mXNRQg",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "92",
+            "commentCount": "0",
+            "likeCount": "7",
+            "dislikeCount": "0"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "178",
+          "status": "VIDEO_STATUS_PROCESSED",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "watchUrl": "https://youtube.com/shorts/4-haimQyBjg",
+          "origin": "VIDEO_ORIGIN_UPLOAD",
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "contentOwnershipModelSettings": {
+            "isOffNetworkUpload": false
+          },
+          "publicMetrics": {
+            "viewCount": "92",
+            "commentCount": "0",
+            "likeCount": "7",
+            "externalViewCount": "196"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CBUQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "status": true,
+          "watchUrl": true,
+          "livestream": {
+            "all": true
+          },
+          "origin": true,
+          "premiere": {
+            "all": true
+          },
+          "publicShorts": {
+            "all": true
+          },
+          "contentOwnershipModelSettings": {
+            "all": true
+          },
+          "publicLivestream": {
+            "all": true
+          },
+          "publicPremiere": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "tmlaU8kkGGQ",
+          "title": "Hermes Agent Day 4: Building Custom AI Dashboards",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/tmlaU8kkGGQ/default.jpg?v=6a3eb846&sqp=CIjAgNIG&rs=AOn4CLAcuApX0aEpcHjqtAsR5vVh-BfAVw",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/tmlaU8kkGGQ/mqdefault.jpg?v=6a3eb846&sqp=CIjAgNIG&rs=AOn4CLBzJGgLuQI7dmcsUjqZlzz3xJXuxw",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/tmlaU8kkGGQ/hqdefault.jpg?v=6a3eb846&sqp=CIjAgNIG&rs=AOn4CLAlqx7SpZGZduIub6qZeAX330CK4A",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/tmlaU8kkGGQ/sddefault.jpg?v=6a3eb846&sqp=CIjAgNIG&rs=AOn4CLB5pWd2P8uYZyZcE8FQNtJAyZCqpQ",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/tmlaU8kkGGQ/hq720.jpg?v=6a3eb846&sqp=CIjAgNIG-oaymwEaCIAKENAFSFryq4qpAwwIARUAAIhCGAHQAQE=&rs=AOn4CLAQByGL8JkakflmDwygtlUdN70XbA",
+                "width": 1280,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/tmlaU8kkGGQ/maxresdefault.jpg?v=6a3eb846&sqp=CIjAgNIG&rs=AOn4CLCWdk77f4BTI53ihBUW8kDosYfvzQ",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "161",
+            "commentCount": "0",
+            "likeCount": "10",
+            "dislikeCount": "0"
+          },
+          "lengthSeconds": "7200",
+          "status": "VIDEO_STATUS_PROCESSED",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "watchUrl": "https://youtube.com/live/tmlaU8kkGGQ",
+          "livestream": {
+            "status": "VIDEO_LIVESTREAM_STATUS_ACTIVE",
+            "stage": "VIDEO_LIVESTREAM_STAGE_PAST",
+            "scheduledStartTimeSeconds": "1782496800",
+            "actualStartTimeSeconds": "1782495868",
+            "actualEndTimeSeconds": "1782503126",
+            "totalConcurrentViewers": "0",
+            "urlType": "VIDEO_LIVESTREAM_URL_TYPE_EVENT",
+            "isLcrEncoderBroadcast": true,
+            "isYoutubeWebcamBroadcast": false,
+            "isHoa": false,
+            "isPostLiveDvr": false,
+            "broadcastId": "tmlaU8kkGGQ.1",
+            "source": "VIDEO_LIVESTREAM_SOURCE_ENCODER",
+            "processState": "VIDEO_LIVESTREAM_PROCESS_STATE_PROCESSED",
+            "isAutoStart": false,
+            "isAutoDashboard": false,
+            "isAutoStop": true,
+            "isMonitorStreamEnabled": true,
+            "conferenceType": "VIDEO_LIVESTREAM_CONFERENCE_TYPE_UNSPECIFIED",
+            "hasFullLiveUnprocessedChunks": true,
+            "isDaiEnabled": false,
+            "isScreencast": false,
+            "adsAutomationSettings": {
+              "adsAutomationSettingsType": "VIDEO_LIVESTREAM_ADS_AUTOMATION_SETTINGS_TYPE_OFF"
+            },
+            "fixedDurationAdBreaks": false,
+            "daiDuration": {},
+            "orientationOption": "ORIENTATION_OPTION_UNKNOWN",
+            "showHalftimeSlateToYoutubePremiumUser": false,
+            "multiAspectCreatorSettings": {
+              "mode": "MULTI_ASPECT_MODE_UNSPECIFIED"
+            }
+          },
+          "origin": "VIDEO_ORIGIN_LIVESTREAM",
+          "contentOwnershipModelSettings": {
+            "isOffNetworkUpload": false
+          },
+          "publicLivestream": {
+            "stage": "VIDEO_LIVESTREAM_STAGE_PAST",
+            "scheduledStartTimeSeconds": "1782496800"
+          },
+          "publicMetrics": {
+            "viewCount": "161",
+            "commentCount": "0",
+            "likeCount": "10",
+            "externalViewCount": "161"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CBQQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "channelId": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "status": true,
+          "watchUrl": true,
+          "livestream": {
+            "all": true
+          },
+          "origin": true,
+          "premiere": {
+            "all": true
+          },
+          "contentOwnershipModelSettings": {
+            "all": true
+          },
+          "publicLivestream": {
+            "all": true
+          },
+          "publicPremiere": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "ne2F9TeAhnc",
+          "title": "I Birthed a new Agent Profile with the Hermes Desktop App",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/ne2F9TeAhnc/default.jpg?v=6a3eb4d6&sqp=CIjAgNIG&rs=AOn4CLBW04RmMrFyPV6EDHtbhMu7sYPdlw",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/ne2F9TeAhnc/mqdefault.jpg?v=6a3eb4d6&sqp=CIjAgNIG&rs=AOn4CLBwt5SCFIlONqstQAZBp3OnYgjSpw",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/ne2F9TeAhnc/hqdefault.jpg?v=6a3eb4d6&sqp=CIjAgNIG&rs=AOn4CLB-T--elqF5WtEXTzFiCoCyB4U0FQ",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/ne2F9TeAhnc/sddefault.jpg?v=6a3eb4d6&sqp=CIjAgNIG&rs=AOn4CLBp2jr1FkHT2oFIMa1aMo1TUBpoFA",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/ne2F9TeAhnc/hq720.jpg?sqp=CIjAgNIG-oaymwEaCIAKENAFSFryq4qpAwwIARUAAIhCGAHQAQE=&rs=AOn4CLCyfes70qO8NjQO_Sogby3FzzUcLA",
+                "width": 1280,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/ne2F9TeAhnc/maxresdefault.jpg?v=6a3eb4d6&sqp=CIjAgNIG&rs=AOn4CLDPOcO7Zblbaqjpt4gYFXMp-TZheA",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "81",
+            "commentCount": "0",
+            "likeCount": "4",
+            "dislikeCount": "0"
+          },
+          "lengthSeconds": "178",
+          "status": "VIDEO_STATUS_PROCESSED",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "watchUrl": "https://www.youtube.com/watch?v=ne2F9TeAhnc",
+          "origin": "VIDEO_ORIGIN_UPLOAD",
+          "contentOwnershipModelSettings": {
+            "isOffNetworkUpload": false
+          },
+          "publicMetrics": {
+            "viewCount": "81",
+            "commentCount": "0",
+            "likeCount": "4",
+            "externalViewCount": "81"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CBMQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "channelId": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "status": true,
+          "watchUrl": true,
+          "livestream": {
+            "all": true
+          },
+          "origin": true,
+          "premiere": {
+            "all": true
+          },
+          "contentOwnershipModelSettings": {
+            "all": true
+          },
+          "publicLivestream": {
+            "all": true
+          },
+          "publicPremiere": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "QhUnSQtO4Ik",
+          "title": "I finally used my first Codex reset. #openaicodex #claudecode",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1782493947",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/QhUnSQtO4Ik/2.jpg?sqp=CIjAgNIG-oaymwEmCHgQWvKriqkDHBgA8AEB-AG2CIACgA-KAgwIABABGD0gUyhlMA8=&rs=AOn4CLBOeJQgUQLFXjzPVNJPUzqD7lpMEw",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/QhUnSQtO4Ik/mq2.jpg?sqp=CIjAgNIG-oaymwEoCMACELQB8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPSBTKGUwDw==&rs=AOn4CLDkebj5OsseEnWIkeJJuU3Wy1VTrA",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/QhUnSQtO4Ik/hq720_2.jpg?sqp=CIjAgNIG-oaymwEYCJUDENAFSFryq4qpAwoIARUAAIhC0AEB&rs=AOn4CLDUQnhlcq6AFWzXnWcrEGBEFZMHKg",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/QhUnSQtO4Ik/hq2.jpg?sqp=CIjAgNIG-oaymwEoCOADEOgC8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPSBTKGUwDw==&rs=AOn4CLABFQF5NHq2BQXi0RlyGH_i09nOoQ",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/QhUnSQtO4Ik/sd2.jpg?sqp=CIjAgNIG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPSBTKGUwDw==&rs=AOn4CLCmMtxeutGW_hRNOSwnMi55Z08NvA",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/QhUnSQtO4Ik/maxres2.jpg?sqp=CIjAgNIG-oaymwEoCIAKENAF8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPSBTKGUwDw==&rs=AOn4CLDtH6YWAnLGIJjd9VqLX3brwxmIqw",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "261",
+            "commentCount": "2",
+            "likeCount": "10",
+            "dislikeCount": "0"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "38",
+          "status": "VIDEO_STATUS_PROCESSED",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "watchUrl": "https://youtube.com/shorts/QhUnSQtO4Ik",
+          "origin": "VIDEO_ORIGIN_UPLOAD",
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "contentOwnershipModelSettings": {
+            "isOffNetworkUpload": false
+          },
+          "publicMetrics": {
+            "viewCount": "261",
+            "commentCount": "2",
+            "likeCount": "10",
+            "externalViewCount": "638"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CBIQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "status": true,
+          "watchUrl": true,
+          "livestream": {
+            "all": true
+          },
+          "origin": true,
+          "premiere": {
+            "all": true
+          },
+          "publicShorts": {
+            "all": true
+          },
+          "contentOwnershipModelSettings": {
+            "all": true
+          },
+          "publicLivestream": {
+            "all": true
+          },
+          "publicPremiere": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "_Zok_jVo-Ss",
+          "title": "Hermes Agent has built-in checkpoints for coding agents. #hermesagent  #AIAgents #claudecode",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1782527439",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/_Zok_jVo-Ss/2.jpg?sqp=CIjAgNIG-oaymwEmCHgQWvKriqkDHBgA8AEB-AG2CIACgA-KAgwIABABGD8gUShlMA8=&rs=AOn4CLCgsCdAJ1jx-t0vvK-BwoC_MupdiQ",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/_Zok_jVo-Ss/mq2.jpg?sqp=CIjAgNIG-oaymwEoCMACELQB8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPyBRKGUwDw==&rs=AOn4CLA-fGTxmgFemr0nh0aoWHYZ5fdToQ",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/_Zok_jVo-Ss/hq720_2.jpg?sqp=CIjAgNIG-oaymwEdCJUDENAFSFXyq4qpAw8IARUAAIhCcAHAAQbQAQE=&rs=AOn4CLADWj5nPRmDppTq9iQqhuPGSEO13Q",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/_Zok_jVo-Ss/hq2.jpg?sqp=CIjAgNIG-oaymwEoCOADEOgC8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPyBRKGUwDw==&rs=AOn4CLAQMNGYoMdiMc1oMC2btk5A2wo0QQ",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/_Zok_jVo-Ss/sd2.jpg?sqp=CIjAgNIG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPyBRKGUwDw==&rs=AOn4CLDLkfWaZY-B9JoHw9EF5_L9p1ZgWQ",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/_Zok_jVo-Ss/maxres2.jpg?sqp=CIjAgNIG-oaymwEoCIAKENAF8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPyBRKGUwDw==&rs=AOn4CLDVZGU3SMmBy5o2FRg3_NU2Jr9-dQ",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "570",
+            "commentCount": "1",
+            "likeCount": "6",
+            "dislikeCount": "0"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "38",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "publicMetrics": {
+            "viewCount": "570",
+            "commentCount": "1",
+            "likeCount": "6",
+            "externalViewCount": "1352"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CBEQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "publicShorts": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "u_4IFwHss2E",
+          "title": "I Deleted Half My AI Agent’s Skills",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1782361685",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/u_4IFwHss2E/2.jpg?sqp=CIjAgNIG-oaymwEmCHgQWvKriqkDHBgA8AEB-AG2CIACgA-KAgwIABABGD0gVShyMA8=&rs=AOn4CLDTu_2ZcCClExHMATIRSxY-7HlLQg",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/u_4IFwHss2E/mq2.jpg?sqp=CIjAgNIG-oaymwEoCMACELQB8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPSBVKHIwDw==&rs=AOn4CLCgDnZIttgWQ_gBBh6axUtvUw9RaQ",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/u_4IFwHss2E/hq720_2.jpg?sqp=CIjAgNIG-oaymwEdCJUDENAFSFXyq4qpAw8IARUAAIhCcAHAAQbQAQE=&rs=AOn4CLD4WQZGFSt5OkJOsWEOfFbEKB-sWg",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/u_4IFwHss2E/hq2.jpg?sqp=CIjAgNIG-oaymwEoCOADEOgC8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPSBVKHIwDw==&rs=AOn4CLCCzzc5XnebYnubdZ9tREY3MtSBPA",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/u_4IFwHss2E/sd2.jpg?sqp=CIjAgNIG-oaymwEoCIAFEOAD8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPSBVKHIwDw==&rs=AOn4CLBIrcVA5QP25dzWAqCcy2GyvElU2A",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/u_4IFwHss2E/maxres2.jpg?sqp=CIjAgNIG-oaymwEoCIAKENAF8quKqQMcGADwAQH4AbYIgAKAD4oCDAgAEAEYPSBVKHIwDw==&rs=AOn4CLCbpu8NMmj_7lOompeh08ht6MWpbg",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "676",
+            "commentCount": "0",
+            "likeCount": "25",
+            "dislikeCount": "1"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "32",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "publicMetrics": {
+            "viewCount": "676",
+            "commentCount": "0",
+            "likeCount": "25",
+            "externalViewCount": "1825"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CBAQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "publicShorts": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "PkXoW2PEZ5I",
+          "title": "I’m Building 24/7 AI Agents for My Goals",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1782231268",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/PkXoW2PEZ5I/default.jpg?sqp=CIjAgNIG-oaymwEkCHgQWvKriqkDGvABAfgBtgiAAoAPigIMCAAQARhCIFUoZTAP&rs=AOn4CLA04eKbJVeINUGgl5hJ5eL36fMC_w",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/PkXoW2PEZ5I/mqdefault.jpg?sqp=CIjAgNIG-oaymwEmCMACELQB8quKqQMa8AEB-AG2CIACgA-KAgwIABABGEIgVShlMA8=&rs=AOn4CLArTqqFCPrXeiRNEoGLmuiTcYF7FQ",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/PkXoW2PEZ5I/hq720.jpg?sqp=CIjAgNIG-oaymwEdCJUDENAFSFXyq4qpAw8IARUAAIhCcAHAAQbQAQE=&rs=AOn4CLCRgTY35DdrJkdxdFa7qcxNZi45qQ",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/PkXoW2PEZ5I/hqdefault.jpg?sqp=CIjAgNIG-oaymwEmCOADEOgC8quKqQMa8AEB-AG2CIACgA-KAgwIABABGEIgVShlMA8=&rs=AOn4CLCXNVKGw60nzRaB8EiA-U0feOPwVg",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/PkXoW2PEZ5I/sddefault.jpg?sqp=CIjAgNIG-oaymwEmCIAFEOAD8quKqQMa8AEB-AG2CIACgA-KAgwIABABGEIgVShlMA8=&rs=AOn4CLC_grVyTYN_qbA9l6io-DlOS46PFg",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/PkXoW2PEZ5I/maxresdefault.jpg?sqp=CIjAgNIG-oaymwEmCIAKENAF8quKqQMa8AEB-AG2CIACgA-KAgwIABABGEIgVShlMA8=&rs=AOn4CLAXOVGw9Y5vdq0M8Sr8A16R70LVDA",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "179",
+            "commentCount": "5",
+            "likeCount": "10",
+            "dislikeCount": "0"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "176",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "publicMetrics": {
+            "viewCount": "179",
+            "commentCount": "5",
+            "likeCount": "10",
+            "externalViewCount": "318"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CA8QiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "publicShorts": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "VG3aoxcYyvw",
+          "title": "I Tried Hermes Desktop. It Might Replace My AI Agent Setup",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1781317588",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/VG3aoxcYyvw/default.jpg?sqp=CIjAgNIG-oaymwEkCHgQWvKriqkDGvABAfgBtgiAAoAPigIMCAAQARhyIE0oQzAP&rs=AOn4CLAaSHNMgq6_VW_TiSj6dFhMHXmwdg",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/VG3aoxcYyvw/mqdefault.jpg?sqp=CIjAgNIG-oaymwEmCMACELQB8quKqQMa8AEB-AG2CIACgA-KAgwIABABGHIgTShDMA8=&rs=AOn4CLDNu74KjjkY_CjstU4QBa33cHQMNw",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/VG3aoxcYyvw/hq720.jpg?sqp=CIjAgNIG-oaymwEdCJUDENAFSFXyq4qpAw8IARUAAIhCcAHAAQbQAQE=&rs=AOn4CLAe-roYF2gIw9-4AM-q2up3PEOxKQ",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/VG3aoxcYyvw/hqdefault.jpg?sqp=CIjAgNIG-oaymwEmCOADEOgC8quKqQMa8AEB-AG2CIACgA-KAgwIABABGHIgTShDMA8=&rs=AOn4CLBDGUqxHb7ylZ4a_aevKUd32uhSew",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/VG3aoxcYyvw/sddefault.jpg?sqp=CIjAgNIG-oaymwEmCIAFEOAD8quKqQMa8AEB-AG2CIACgA-KAgwIABABGHIgTShDMA8=&rs=AOn4CLDPD4CZB2pdAitlhVZGtwAwRLtn6g",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/VG3aoxcYyvw/maxresdefault.jpg?sqp=CIjAgNIG-oaymwEmCIAKENAF8quKqQMa8AEB-AG2CIACgA-KAgwIABABGHIgTShDMA8=&rs=AOn4CLDh9hbX7Vdw0SiX63_CagoutkD4CQ",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "1958",
+            "commentCount": "0",
+            "likeCount": "45",
+            "dislikeCount": "1"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "103",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "publicMetrics": {
+            "viewCount": "1958",
+            "commentCount": "0",
+            "likeCount": "45",
+            "externalViewCount": "2747"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CA4QiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "publicShorts": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "NOPh68xi2iQ",
+          "title": "I Built Hermes From Source to Fix My Own Bug",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1781285121",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/NOPh68xi2iQ/default.jpg?sqp=CIjAgNIG-oaymwEkCHgQWvKriqkDGvABAfgBtgiAAoAPigIMCAAQARgrIDoofzAP&rs=AOn4CLASFbAZrKwCMXU2_qFRr3YAIRIlyA",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/NOPh68xi2iQ/mqdefault.jpg?sqp=CIjAgNIG-oaymwEmCMACELQB8quKqQMa8AEB-AG2CIACgA-KAgwIABABGCsgOih_MA8=&rs=AOn4CLCWI-f3KRjyNWOx8ViviY-RB_JFZA",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/NOPh68xi2iQ/hq720.jpg?sqp=CIjAgNIG-oaymwEdCJUDENAFSFXyq4qpAw8IARUAAIhCcAHAAQbQAQE=&rs=AOn4CLAhWDInqWCnNIdyuniJMdb3bx5yNQ",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/NOPh68xi2iQ/hqdefault.jpg?sqp=CIjAgNIG-oaymwEmCOADEOgC8quKqQMa8AEB-AG2CIACgA-KAgwIABABGCsgOih_MA8=&rs=AOn4CLBTWaqsp7PMYqf10x6e9brRZKJybQ",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/NOPh68xi2iQ/sddefault.jpg?sqp=CIjAgNIG-oaymwEmCIAFEOAD8quKqQMa8AEB-AG2CIACgA-KAgwIABABGCsgOih_MA8=&rs=AOn4CLAfD62kz31uVwED481j6AwEuln2Mg",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/NOPh68xi2iQ/maxresdefault.jpg?sqp=CIjAgNIG-oaymwEmCIAKENAF8quKqQMa8AEB-AG2CIACgA-KAgwIABABGCsgOih_MA8=&rs=AOn4CLCAIv3ipnFGFrOX1pU6EUtWrG7lEg",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "728",
+            "commentCount": "2",
+            "likeCount": "15",
+            "dislikeCount": "3"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "138",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "publicMetrics": {
+            "viewCount": "728",
+            "commentCount": "2",
+            "likeCount": "15",
+            "externalViewCount": "1835"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CA0QiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "publicShorts": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "bBE0Xhq3CA4",
+          "title": "ending 68 hour codex goal to see token count",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1778301194",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/bBE0Xhq3CA4/default.jpg?sqp=CIjAgNIG-oaymwEkCHgQWvKriqkDGvABAfgBtgiAAoAPigIMCAAQARgbIBMofzAP&rs=AOn4CLCXIpKTyFSPXzA8aVSm3mKUXGsiUw",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/bBE0Xhq3CA4/mqdefault.jpg?sqp=CIjAgNIG-oaymwEmCMACELQB8quKqQMa8AEB-AG2CIACgA-KAgwIABABGBsgEyh_MA8=&rs=AOn4CLDf2M72t6uLUpBQdZoEqdZgwNP5jg",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/bBE0Xhq3CA4/hq720.jpg?sqp=CIjAgNIG-oaymwEdCJUDENAFSFXyq4qpAw8IARUAAIhCcAHAAQbQAQE=&rs=AOn4CLCk2Ealaqpmb8Xu4mjf6pP9QtmP8Q",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/bBE0Xhq3CA4/hqdefault.jpg?sqp=CIjAgNIG-oaymwEmCOADEOgC8quKqQMa8AEB-AG2CIACgA-KAgwIABABGBsgEyh_MA8=&rs=AOn4CLCYR4w4fbqlibKd6AfseEwyc07c8A",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/bBE0Xhq3CA4/sddefault.jpg?sqp=CIjAgNIG-oaymwEmCIAFEOAD8quKqQMa8AEB-AG2CIACgA-KAgwIABABGBsgEyh_MA8=&rs=AOn4CLCkFwt9XuIIFb70aLL1OzyDySfjiA",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/bBE0Xhq3CA4/maxresdefault.jpg?sqp=CIjAgNIG-oaymwEmCIAKENAF8quKqQMa8AEB-AG2CIACgA-KAgwIABABGBsgEyh_MA8=&rs=AOn4CLDHYKgKo1otpRsMM2gl1KfC9clRHQ",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "506",
+            "commentCount": "2",
+            "likeCount": "17",
+            "dislikeCount": "1"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "151",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "publicMetrics": {
+            "viewCount": "506",
+            "commentCount": "2",
+            "likeCount": "17",
+            "externalViewCount": "824"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAwQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "publicShorts": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "sQjMGJinIsA",
+          "title": "pi-autoresearch",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1778047913",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/sQjMGJinIsA/default.jpg?sqp=CIjAgNIG-oaymwEkCHgQWvKriqkDGvABAfgBtgiAAoAPigIMCAAQARhHIE8oZTAP&rs=AOn4CLDMEEz3lkOowdaBEExR2LwU2NGUvw",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/sQjMGJinIsA/mqdefault.jpg?sqp=CIjAgNIG-oaymwEmCMACELQB8quKqQMa8AEB-AG2CIACgA-KAgwIABABGEcgTyhlMA8=&rs=AOn4CLBcbZcel8c-Cp8Y2SC9DvwrRsq98Q",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/sQjMGJinIsA/hq720.jpg?sqp=CIjAgNIG-oaymwEdCJUDENAFSFXyq4qpAw8IARUAAIhCcAHAAQbQAQE=&rs=AOn4CLCaXjW3tfokiYoLlyHor60PP_qsCA",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/sQjMGJinIsA/hqdefault.jpg?sqp=CIjAgNIG-oaymwEmCOADEOgC8quKqQMa8AEB-AG2CIACgA-KAgwIABABGEcgTyhlMA8=&rs=AOn4CLACbNhzY3LtvWcRHvZRmcR_Ba1MAQ",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/sQjMGJinIsA/sddefault.jpg?sqp=CIjAgNIG-oaymwEmCIAFEOAD8quKqQMa8AEB-AG2CIACgA-KAgwIABABGEcgTyhlMA8=&rs=AOn4CLCbfwbOh-9lNWNLxRadxmeOEFCN8A",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/sQjMGJinIsA/maxresdefault.jpg?sqp=CIjAgNIG-oaymwEmCIAKENAF8quKqQMa8AEB-AG2CIACgA-KAgwIABABGEcgTyhlMA8=&rs=AOn4CLDJ5OQyJS03xReOvNWwRR5_plSVcw",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "418",
+            "commentCount": "1",
+            "likeCount": "18",
+            "dislikeCount": "0"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "163",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "publicMetrics": {
+            "viewCount": "418",
+            "commentCount": "1",
+            "likeCount": "18",
+            "externalViewCount": "1503"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAsQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "publicShorts": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      },
+      {
+        "video": {
+          "videoId": "TS8VoO6QQHU",
+          "title": "new gpt image 2 use case unlockedget it to redesign all of your User interfaces like a pro designer!",
+          "privacy": "VIDEO_PRIVACY_PUBLIC",
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "timePublishedSeconds": "1776926228",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://i9.ytimg.com/vi/TS8VoO6QQHU/default.jpg?sqp=CIjAgNIG-oaymwEkCHgQWvKriqkDGvABAfgBtgiAAoAPigIMCAAQARhyIE0oQzAP&rs=AOn4CLBpHXAD12OT1pvaM1s5_VmsnG2slg",
+                "width": 120,
+                "height": 90
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/TS8VoO6QQHU/mqdefault.jpg?sqp=CIjAgNIG-oaymwEmCMACELQB8quKqQMa8AEB-AG2CIACgA-KAgwIABABGHIgTShDMA8=&rs=AOn4CLATlw4khxyCxB8mQW0KuQo_E4Jp9A",
+                "width": 320,
+                "height": 180
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/TS8VoO6QQHU/hq720.jpg?sqp=CIjAgNIG-oaymwEdCJUDENAFSFXyq4qpAw8IARUAAIhCcAHAAQbQAQE=&rs=AOn4CLBPaK8ed3tMdcWYQFnauWZZKHnR_Q",
+                "width": 405,
+                "height": 720
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/TS8VoO6QQHU/hqdefault.jpg?sqp=CIjAgNIG-oaymwEmCOADEOgC8quKqQMa8AEB-AG2CIACgA-KAgwIABABGHIgTShDMA8=&rs=AOn4CLBYR-tNDaMqxIVFHABhBPfFM33Brw",
+                "width": 480,
+                "height": 360
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/TS8VoO6QQHU/sddefault.jpg?sqp=CIjAgNIG-oaymwEmCIAFEOAD8quKqQMa8AEB-AG2CIACgA-KAgwIABABGHIgTShDMA8=&rs=AOn4CLCit_wTK7r8ffFRNvgcDT0OMHd_0w",
+                "width": 640,
+                "height": 480
+              },
+              {
+                "url": "https://i9.ytimg.com/vi/TS8VoO6QQHU/maxresdefault.jpg?sqp=CIjAgNIG-oaymwEmCIAKENAF8quKqQMa8AEB-AG2CIACgA-KAgwIABABGHIgTShDMA8=&rs=AOn4CLCSwC_pVeW5NMjYbNJ1TB0oyrpW0Q",
+                "width": 1920,
+                "height": 1080
+              }
+            ]
+          },
+          "metrics": {
+            "viewCount": "466",
+            "commentCount": "2",
+            "likeCount": "12",
+            "dislikeCount": "2"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_VIDEO_PERMISSION_READ",
+              "CREATOR_VIDEO_PERMISSION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DELETE",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_WATCH",
+              "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+              "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+              "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+              "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+              "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+              "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+            ]
+          },
+          "lengthSeconds": "71",
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "publicShorts": {
+            "isShortsRenderable": true
+          },
+          "publicMetrics": {
+            "viewCount": "466",
+            "commentCount": "2",
+            "likeCount": "12",
+            "externalViewCount": "1019"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAoQiI4CIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "videoId": true,
+          "title": true,
+          "privacy": true,
+          "channelId": true,
+          "timePublishedSeconds": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "metrics": {
+            "all": true
+          },
+          "permissions": {
+            "all": true
+          },
+          "lengthSeconds": true,
+          "publicShorts": {
+            "all": true
+          },
+          "publicMetrics": {
+            "all": true
+          }
+        }
+      }
+    ],
+    "channels": [
+      {
+        "channel": {
+          "channelId": "UCtAKljWEwnmSr9Vy9aUQf3g",
+          "title": "Hussein Hakizimana",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://yt3.ggpht.com/w8dgbfZ17re5r31SikOdsnGcTUyv69Uqx7iCINAL0WtEB31M3yUQaqB1e3PtfrAyctMk7n0G=s48-c-k-c0x00ffffff-no-rj",
+                "width": 48,
+                "height": 48
+              },
+              {
+                "url": "https://yt3.ggpht.com/w8dgbfZ17re5r31SikOdsnGcTUyv69Uqx7iCINAL0WtEB31M3yUQaqB1e3PtfrAyctMk7n0G=s88-c-k-c0x00ffffff-no-rj",
+                "width": 88,
+                "height": 88
+              },
+              {
+                "url": "https://yt3.ggpht.com/w8dgbfZ17re5r31SikOdsnGcTUyv69Uqx7iCINAL0WtEB31M3yUQaqB1e3PtfrAyctMk7n0G=s176-c-k-c0x00ffffff-no-rj",
+                "width": 176,
+                "height": 176
+              }
+            ]
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "isNameVerified": false,
+          "channelHandle": "@hakiiizimana",
+          "loggingDirectives": {
+            "trackingParams": "CAkQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "isNameVerified": true,
+          "channelHandle": true
+        }
+      },
+      {
+        "channel": {
+          "channelId": "UClO8cWdpSZCI83Bdh1oHTPg",
+          "title": "Irfan",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://yt3.ggpht.com/ytc/AIdro_lMF6e1YxbR__1TBCarFg7dhL9EUUBY0MQMymveJXwkDlWA7mNFLwm4F6AggfNTzLS9Sg=s48-c-k-c0x00ffffff-no-rj",
+                "width": 48,
+                "height": 48
+              },
+              {
+                "url": "https://yt3.ggpht.com/ytc/AIdro_lMF6e1YxbR__1TBCarFg7dhL9EUUBY0MQMymveJXwkDlWA7mNFLwm4F6AggfNTzLS9Sg=s88-c-k-c0x00ffffff-no-rj",
+                "width": 88,
+                "height": 88
+              },
+              {
+                "url": "https://yt3.ggpht.com/ytc/AIdro_lMF6e1YxbR__1TBCarFg7dhL9EUUBY0MQMymveJXwkDlWA7mNFLwm4F6AggfNTzLS9Sg=s176-c-k-c0x00ffffff-no-rj",
+                "width": 176,
+                "height": 176
+              }
+            ]
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "isNameVerified": false,
+          "channelHandle": "@Irfan-o1d9s",
+          "loggingDirectives": {
+            "trackingParams": "CAgQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "isNameVerified": true,
+          "channelHandle": true
+        }
+      },
+      {
+        "channel": {
+          "channelId": "UCohX9HYfzDJUFzz2PXX9Z0g",
+          "title": "Bill Watson",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://yt3.ggpht.com/ytc/AIdro_lJv0xGKJ-Wd3lxqf7rxStZxqKvi34_RBk76MaQWbKE8-QU=s48-c-k-c0x00ffffff-no-rj",
+                "width": 48,
+                "height": 48
+              },
+              {
+                "url": "https://yt3.ggpht.com/ytc/AIdro_lJv0xGKJ-Wd3lxqf7rxStZxqKvi34_RBk76MaQWbKE8-QU=s88-c-k-c0x00ffffff-no-rj",
+                "width": 88,
+                "height": 88
+              },
+              {
+                "url": "https://yt3.ggpht.com/ytc/AIdro_lJv0xGKJ-Wd3lxqf7rxStZxqKvi34_RBk76MaQWbKE8-QU=s176-c-k-c0x00ffffff-no-rj",
+                "width": 176,
+                "height": 176
+              }
+            ]
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "isNameVerified": false,
+          "channelHandle": "@billwatson1448",
+          "loggingDirectives": {
+            "trackingParams": "CAcQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "isNameVerified": true,
+          "channelHandle": true
+        }
+      },
+      {
+        "channel": {
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "title": "Tech Friend AJ",
+          "features": {
+            "unlistedVideo": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "customThumbnails": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "channelCreativeCommonsLicense": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "legacyNoOffwebSyndication": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "audioOnlyUsage": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "usagePolicy": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "posts": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "sponsorships": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "sponsorsOnlyVideos": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "sponsorsOnlyLiveChat": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "copycat": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "donations": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "liveStreaming": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "famebit": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "reels": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "mentions": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "liveToAnyMatching": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "liveToLiveOnlyMatching": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "externalLinksInVideoAnnotations": {
+              "status": "CREATOR_FEATURE_STATUS_ELIGIBLE"
+            },
+            "unlimitedVideoLengthFeature": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "contentIdMatching": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "selfCertification": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "externalLinksInVideoAnnotationsTermsAccepted": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "restrictScheduledVisibilityTimes": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "externalLinksInVideoAnnotationsPrivilegedAccess": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "channelRedirectUrl": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "conditionalRedirects": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "channelHiding": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "limitedAdsReport": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "adSpecifyAgeGates": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "trustedToApplyForMonetization": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "canHideViewCount": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "enableCustomizePremiereFlow": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "liveRedirect": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "liveTrailer": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "sponsorshipsAnalytics": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "enforceTwoStepVerification": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "productsAnalytics": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "sponsorshipsCommentsFilter": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "prechecksNotifications": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "superThanksCommentsFilter": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "externalLinksInVideoDescription": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "mobileLiveStreaming": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "supers": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "shoppingAnalytics": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "remixOptOutTos": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "remixOptOutTorso": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "pangea": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "pflContractFlowEnabled": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "customThumbnailsHighRate": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "yppMobileFlow": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "yppMobileWithAffiliateFlow": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "channelShoppingHub": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "multiTrackAudio": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "autoProducts": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "remixTorsoOwnerOptedIn": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "channelCourseCreation": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "pinnedComments": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "liveSrtIngestion": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "adstubePromotions": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED",
+              "details": {
+                "hasPairedAdstubeAccount": false
+              }
+            },
+            "pflContracted": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "primetimeAnalytics": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED",
+              "tvfilmSelfServeStatus": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "rssPodcasts": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "externalLinks": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "bcx": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "shortsContentLinks": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "simplifiedAdsControls": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "shoppingFirstPartySalesAnalytics": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "podcastShows": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "aloudDubbing": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "adBlockingControls": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "macroMarkers": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "brandPartnerLinking": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "thumbnailExperiments": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "primetimeContentTabs": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "affiliateFeature": {
+              "status": "CREATOR_FEATURE_STATUS_ELIGIBLE",
+              "details": {}
+            },
+            "shoppingAffiliateHubFeature": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "autoTagging": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED",
+              "statusDetails": "CREATOR_FEATURE_STATUS_DETAILS_NOT_APPLICABLE"
+            },
+            "tvfilmShelves": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "shows": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "viewerPosts": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "accountTakeoverSelfCleanup": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED",
+              "details": {
+                "ineligibilityReason": "CHANNEL_ACCOUNT_TAKEOVER_SELF_CLEANUP_INELIGIBILITY_REASON_NO_SUSPICIOUS_ACTIVITIES"
+              }
+            },
+            "automatedDubbing": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "shoppingFirstPartySalesAnalyticsPerProduct": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "autoDubSettings": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "thirdPartyTrainability": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "contentInspiration": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "creatorStore": {
+              "status": "CREATOR_FEATURE_STATUS_ELIGIBLE"
+            },
+            "exclusiveOffers": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "videoProductTagging": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "viewerPostsCommentsFilter": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "videoCollaborationInvite": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "autoDubEarlyAccess": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "creatorLikeness": {
+              "status": "CREATOR_FEATURE_STATUS_ELIGIBLE"
+            },
+            "autoDubDefaultOn": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "creatorChat": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "localizedThumbnails": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "shortsProductSticker": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "channelGuidelines": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "customEpisodicArtworks": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "videoHostedPostCreation": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "viewerPostsEdu": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "giftAnalytics": {
+              "status": "CREATOR_FEATURE_STATUS_ELIGIBLE"
+            },
+            "hypeAnalytics": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "shoppingAmazonAffiliate": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "biggerThumbnails": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED",
+              "details": {
+                "maxThumbnailSize": "BIGGER_THUMBNAIL_SIZE_LARGE"
+              }
+            },
+            "creatorInitiatedLinking": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "videoRegionalAvailability": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "videoVpnProtection": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "videoHighlightSuggestions": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "videoFileAttachment": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "affiliatePartnershipAds": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "videoDrmProtection": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "genaiAudioswap": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "createThumbnailP13nExperiment": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "videoSmartDraft": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "verificationTab": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "shoppingAmazonDataLimitationBanner": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "fixableViolations": {
+              "status": "CREATOR_FEATURE_STATUS_ENABLED"
+            },
+            "prechecksAutopublish": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            },
+            "shortsCustomThumbnailsOnWeb": {
+              "status": "CREATOR_FEATURE_STATUS_DISABLED"
+            }
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "permissions": {
+            "overallPermissions": [
+              "CREATOR_CHANNEL_PERMISSION_CHANNEL_OWNER",
+              "CREATOR_CHANNEL_PERMISSION_READ",
+              "CREATOR_CHANNEL_PERMISSION_BASIC_METADATA_READ",
+              "CREATOR_CHANNEL_PERMISSION_WRITE",
+              "CREATOR_CHANNEL_PERMISSION_VIDEO_READ",
+              "CREATOR_CHANNEL_PERMISSION_VIDEO_BASIC_METADATA_READ",
+              "CREATOR_CHANNEL_PERMISSION_VIDEO_UPLOAD",
+              "CREATOR_CHANNEL_PERMISSION_VIDEO_DELETER",
+              "CREATOR_CHANNEL_PERMISSION_CAPTION_READ",
+              "CREATOR_CHANNEL_PERMISSION_CAPTION_WRITE",
+              "CREATOR_CHANNEL_PERMISSION_COMMENT_MANAGER",
+              "CREATOR_CHANNEL_PERMISSION_COMMENT_SETTINGS_READER",
+              "CREATOR_CHANNEL_PERMISSION_COMMENT_SETTINGS_WRITER",
+              "CREATOR_CHANNEL_PERMISSION_STUDIO_CHANNEL_LEVEL_ACCESS",
+              "CREATOR_CHANNEL_PERMISSION_MONETIZATION_SETTINGS_READ",
+              "CREATOR_CHANNEL_PERMISSION_REVENUE_READ",
+              "CREATOR_CHANNEL_PERMISSION_MONETIZATION_WRITE",
+              "CREATOR_CHANNEL_PERMISSION_SETTINGS_MANAGE",
+              "CREATOR_CHANNEL_PERMISSION_USER_MANAGE",
+              "CREATOR_CHANNEL_PERMISSION_CONTRACT_SIGN",
+              "CREATOR_CHANNEL_PERMISSION_ENFORCEMENT_APPELLANT",
+              "CREATOR_CHANNEL_PERMISSION_ENFORCEMENT_READER",
+              "CREATOR_CHANNEL_PERMISSION_ACCOUNT_TAKEOVER_SELF_CLEANUP_TOOL_READER",
+              "CREATOR_CHANNEL_PERMISSION_LIKENESS_PROVIDER",
+              "CREATOR_CHANNEL_PERMISSION_LIKENESS_MANAGER",
+              "CREATOR_CHANNEL_PERMISSION_VIDEO_COLLABORATION_MANAGER",
+              "CREATOR_CHANNEL_PERMISSION_CHANNEL_VERIFICATION_MANAGER",
+              "CREATOR_CHANNEL_PERMISSION_COMMENT_READER",
+              "CREATOR_CHANNEL_PERMISSION_COMMENT_WRITER"
+            ]
+          },
+          "monetizationStatusData": {
+            "isMonetizationBasicsReady": true,
+            "isLongformAdsEnabled": true,
+            "isShortsRevshareEnabled": true
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAYQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "features": {
+            "all": true
+          },
+          "permissions": {
+            "overallPermissions": true
+          },
+          "monetizationStatusData": {
+            "all": true
+          }
+        }
+      },
+      {
+        "channel": {
+          "channelId": "UCoUatjuB9JvwXJehPJ7I-7Q",
+          "title": "RONY SALTEN",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://yt3.ggpht.com/ixK1BYDDnfr-zsQbvWLBm2a4taWjhLaiSX5U_KmUO9bZiKgNiO-cWo7R4KiIiaYHlJSgrQ9DPpk=s48-c-k-c0x00ffffff-no-rj",
+                "width": 48,
+                "height": 48
+              },
+              {
+                "url": "https://yt3.ggpht.com/ixK1BYDDnfr-zsQbvWLBm2a4taWjhLaiSX5U_KmUO9bZiKgNiO-cWo7R4KiIiaYHlJSgrQ9DPpk=s88-c-k-c0x00ffffff-no-rj",
+                "width": 88,
+                "height": 88
+              },
+              {
+                "url": "https://yt3.ggpht.com/ixK1BYDDnfr-zsQbvWLBm2a4taWjhLaiSX5U_KmUO9bZiKgNiO-cWo7R4KiIiaYHlJSgrQ9DPpk=s176-c-k-c0x00ffffff-no-rj",
+                "width": 176,
+                "height": 176
+              }
+            ]
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "metric": {
+            "subscriberCount": "661",
+            "videoCount": "329",
+            "totalVideoViewCount": "148292"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAUQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "responseStatus": {
+            "all": true
+          },
+          "metric": {
+            "all": true
+          }
+        }
+      },
+      {
+        "channel": {
+          "channelId": "UCRH7eLcgFs83fJNepalEkmQ",
+          "title": "Eternal Frame Productions",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://yt3.ggpht.com/7rp0RNOrrnjW_Cd-fRalLG2FtUHMuVL3cWA--Tx-a4HyHmnCoojrCTzH6ToJq2s4Otgkb0W2gw=s48-c-k-c0x00ffffff-no-rj",
+                "width": 48,
+                "height": 48
+              },
+              {
+                "url": "https://yt3.ggpht.com/7rp0RNOrrnjW_Cd-fRalLG2FtUHMuVL3cWA--Tx-a4HyHmnCoojrCTzH6ToJq2s4Otgkb0W2gw=s88-c-k-c0x00ffffff-no-rj",
+                "width": 88,
+                "height": 88
+              },
+              {
+                "url": "https://yt3.ggpht.com/7rp0RNOrrnjW_Cd-fRalLG2FtUHMuVL3cWA--Tx-a4HyHmnCoojrCTzH6ToJq2s4Otgkb0W2gw=s176-c-k-c0x00ffffff-no-rj",
+                "width": 176,
+                "height": 176
+              }
+            ]
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "metric": {
+            "subscriberCount": "438",
+            "videoCount": "85",
+            "totalVideoViewCount": "115159"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAQQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "responseStatus": {
+            "all": true
+          },
+          "metric": {
+            "all": true
+          }
+        }
+      },
+      {
+        "channel": {
+          "channelId": "UCwHJpR09AvqHWUx2IyIwrvg",
+          "title": "DDBoyM ",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://yt3.ggpht.com/SMvwLz_RHHN8Ul1P4d2co2jWzLRqZ8nNdzRb_k49Nft8q97RI0UiuGW2JyhKdSjXZcfrNeHFO1g=s48-c-k-c0x00ffffff-no-rj",
+                "width": 48,
+                "height": 48
+              },
+              {
+                "url": "https://yt3.ggpht.com/SMvwLz_RHHN8Ul1P4d2co2jWzLRqZ8nNdzRb_k49Nft8q97RI0UiuGW2JyhKdSjXZcfrNeHFO1g=s88-c-k-c0x00ffffff-no-rj",
+                "width": 88,
+                "height": 88
+              },
+              {
+                "url": "https://yt3.ggpht.com/SMvwLz_RHHN8Ul1P4d2co2jWzLRqZ8nNdzRb_k49Nft8q97RI0UiuGW2JyhKdSjXZcfrNeHFO1g=s176-c-k-c0x00ffffff-no-rj",
+                "width": 176,
+                "height": 176
+              }
+            ]
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "metric": {
+            "subscriberCount": "428",
+            "videoCount": "6",
+            "totalVideoViewCount": "2262"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAMQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "responseStatus": {
+            "all": true
+          },
+          "metric": {
+            "all": true
+          }
+        }
+      },
+      {
+        "channel": {
+          "channelId": "UCM2zjQnjU-PqMkJqKN3hLjQ",
+          "title": "TExplicit",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://yt3.ggpht.com/ytc/AIdro_ntgPrUcHyzZ9-vVtMugfOvEyfrYUXSF9CNTYHBl3ld87eoFostv-kIwHbSagae3U3GEw=s48-c-k-c0x00ffffff-no-rj",
+                "width": 48,
+                "height": 48
+              },
+              {
+                "url": "https://yt3.ggpht.com/ytc/AIdro_ntgPrUcHyzZ9-vVtMugfOvEyfrYUXSF9CNTYHBl3ld87eoFostv-kIwHbSagae3U3GEw=s88-c-k-c0x00ffffff-no-rj",
+                "width": 88,
+                "height": 88
+              },
+              {
+                "url": "https://yt3.ggpht.com/ytc/AIdro_ntgPrUcHyzZ9-vVtMugfOvEyfrYUXSF9CNTYHBl3ld87eoFostv-kIwHbSagae3U3GEw=s176-c-k-c0x00ffffff-no-rj",
+                "width": 176,
+                "height": 176
+              }
+            ]
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "metric": {
+            "subscriberCount": "301",
+            "videoCount": "6",
+            "totalVideoViewCount": "311"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAIQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "responseStatus": {
+            "all": true
+          },
+          "metric": {
+            "all": true
+          }
+        }
+      },
+      {
+        "channel": {
+          "channelId": "UCO5gM-LNNhaQsocC6tqLpog",
+          "title": "R - Ng",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://yt3.ggpht.com/K7Lbc6L1LKcJf_U0jWma2zj80jhcvk1DxqqTouIpV3s5Dj4FRcaftPmXCgYN5U6PvGs3C5XcGg=s48-c-k-c0x00ffffff-no-rj",
+                "width": 48,
+                "height": 48
+              },
+              {
+                "url": "https://yt3.ggpht.com/K7Lbc6L1LKcJf_U0jWma2zj80jhcvk1DxqqTouIpV3s5Dj4FRcaftPmXCgYN5U6PvGs3C5XcGg=s88-c-k-c0x00ffffff-no-rj",
+                "width": 88,
+                "height": 88
+              },
+              {
+                "url": "https://yt3.ggpht.com/K7Lbc6L1LKcJf_U0jWma2zj80jhcvk1DxqqTouIpV3s5Dj4FRcaftPmXCgYN5U6PvGs3C5XcGg=s176-c-k-c0x00ffffff-no-rj",
+                "width": 176,
+                "height": 176
+              }
+            ]
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "metric": {
+            "subscriberCount": "283",
+            "videoCount": "6",
+            "totalVideoViewCount": "188611"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAEQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "responseStatus": {
+            "all": true
+          },
+          "metric": {
+            "all": true
+          }
+        }
+      },
+      {
+        "channel": {
+          "channelId": "UCPAxH62kJ6m7mzvekHHD_vg",
+          "title": "Davendra Patel",
+          "thumbnailDetails": {
+            "thumbnails": [
+              {
+                "url": "https://yt3.ggpht.com/A5F5FpBBdtm8zhtIdTuuz9cfxZR4Op388AcymBr5rl_z0gThWLNDAfDyZ0fQDjPeIaZtjkq7=s48-c-k-c0x00ffffff-no-rj",
+                "width": 48,
+                "height": 48
+              },
+              {
+                "url": "https://yt3.ggpht.com/A5F5FpBBdtm8zhtIdTuuz9cfxZR4Op388AcymBr5rl_z0gThWLNDAfDyZ0fQDjPeIaZtjkq7=s88-c-k-c0x00ffffff-no-rj",
+                "width": 88,
+                "height": 88
+              },
+              {
+                "url": "https://yt3.ggpht.com/A5F5FpBBdtm8zhtIdTuuz9cfxZR4Op388AcymBr5rl_z0gThWLNDAfDyZ0fQDjPeIaZtjkq7=s176-c-k-c0x00ffffff-no-rj",
+                "width": 176,
+                "height": 176
+              }
+            ]
+          },
+          "responseStatus": {
+            "statusCode": "CREATOR_ENTITY_STATUS_OK"
+          },
+          "metric": {
+            "subscriberCount": "163",
+            "videoCount": "132",
+            "totalVideoViewCount": "36771"
+          },
+          "loggingDirectives": {
+            "trackingParams": "CAAQ3toCIhMI8L2KjZColQMVkBCtBh1WHQ1Z"
+          }
+        },
+        "mask": {
+          "channelId": true,
+          "title": true,
+          "thumbnailDetails": {
+            "all": true
+          },
+          "responseStatus": {
+            "all": true
+          },
+          "metric": {
+            "all": true
+          }
+        }
+      }
+    ],
+    "comments": [
+      {
+        "comment": {
+          "commentId": "UgxQ_atj2SoEMqERiIV4AaABAg",
+          "authorChannelId": "UCtAKljWEwnmSr9Vy9aUQf3g",
+          "text": {
+            "runs": [
+              {
+                "text": "Now there is caching"
+              }
+            ]
+          },
+          "creationTime": {
+            "seconds": "1777583245",
+            "nanos": 873797000
+          },
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "videoId": "Q38K044vZiI",
+          "commentDecoration": {
+            "topCommenter": false
+          }
+        },
+        "mask": {
+          "commentId": true,
+          "authorChannelId": true,
+          "text": {
+            "all": true
+          },
+          "creationTime": {
+            "all": true
+          },
+          "channelId": true,
+          "videoId": true,
+          "postId": true,
+          "commentDecoration": {
+            "all": true
+          },
+          "playlistId": true
+        }
+      },
+      {
+        "comment": {
+          "commentId": "UgwYU9vsN5uEtWdtbKF4AaABAg",
+          "authorChannelId": "UClO8cWdpSZCI83Bdh1oHTPg",
+          "text": {
+            "runs": [
+              {
+                "text": "data not update"
+              }
+            ]
+          },
+          "creationTime": {
+            "seconds": "1775885858",
+            "nanos": 626512000
+          },
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "videoId": "hn9tEcX-1gQ",
+          "commentDecoration": {
+            "topCommenter": false
+          }
+        },
+        "mask": {
+          "commentId": true,
+          "authorChannelId": true,
+          "text": {
+            "all": true
+          },
+          "creationTime": {
+            "all": true
+          },
+          "channelId": true,
+          "videoId": true,
+          "postId": true,
+          "commentDecoration": {
+            "all": true
+          },
+          "playlistId": true
+        }
+      },
+      {
+        "comment": {
+          "commentId": "UgxTb6oARHpWJT17H8h4AaABAg",
+          "authorChannelId": "UCohX9HYfzDJUFzz2PXX9Z0g",
+          "text": {
+            "runs": [
+              {
+                "text": "Bru, Use your mCP servers through a codex ACP session. Research? \"Hey codex! - use Tavily mCP to research [topic]\"  - Scraping? \"Hey codex! - use playwright mCP to scrape for leads\" etc ..."
+              }
+            ]
+          },
+          "creationTime": {
+            "seconds": "1775474884",
+            "nanos": 146045000
+          },
+          "channelId": "UC1RO76_HDT13u-lPXOA0t9A",
+          "videoId": "5D1SzbvljrY",
+          "commentDecoration": {
+            "topCommenter": false
+          }
+        },
+        "mask": {
+          "commentId": true,
+          "authorChannelId": true,
+          "text": {
+            "all": true
+          },
+          "creationTime": {
+            "all": true
+          },
+          "channelId": true,
+          "videoId": true,
+          "postId": true,
+          "commentDecoration": {
+            "all": true
+          },
+          "playlistId": true
+        }
+      }
+    ]
+  }
+}

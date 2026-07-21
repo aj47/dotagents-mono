@@ -6,6 +6,7 @@ import {
   discardLocalEmptyDraftSessions,
   isStorageQuotaExceededError,
   shouldApplyServerGeneratedSessionTitle,
+  shouldKeepLocalMessagesOnForcedRefresh,
 } from './sessions';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
@@ -97,6 +98,36 @@ describe('discardLocalEmptyDraftSessions', () => {
       localWithMessages,
       serverStub,
     ]);
+  });
+});
+
+describe('shouldKeepLocalMessagesOnForcedRefresh', () => {
+  it('accepts a forced server refresh when the server has appended messages', () => {
+    const localMessages = [
+      { role: 'user' as const, content: 'give in md format', timestamp: 100 },
+    ];
+    const serverMessages = [
+      ...localMessages,
+      { role: 'assistant' as const, content: '## Markdown response', timestamp: 90 },
+    ];
+
+    expect(
+      shouldKeepLocalMessagesOnForcedRefresh(localMessages, 200, serverMessages, 150),
+    ).toBe(false);
+  });
+
+  it('keeps a newer local cache when the server has no additional messages', () => {
+    const localMessages = [
+      { role: 'user' as const, content: 'draft', timestamp: 100 },
+      { role: 'assistant' as const, content: 'local response', timestamp: 200 },
+    ];
+    const serverMessages = [
+      { role: 'user' as const, content: 'draft', timestamp: 100 },
+    ];
+
+    expect(
+      shouldKeepLocalMessagesOnForcedRefresh(localMessages, 300, serverMessages, 200),
+    ).toBe(true);
   });
 });
 

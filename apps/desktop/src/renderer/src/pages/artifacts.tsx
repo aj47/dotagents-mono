@@ -443,7 +443,7 @@ export const Component = () => {
         query: debouncedQuery,
         kind,
         limit: 500,
-        maxConversations: 200,
+        maxConversations: 500,
         forceRefresh,
       })
     },
@@ -482,9 +482,9 @@ export const Component = () => {
       <div className="shrink-0 border-b px-5 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold leading-none">Artifacts</h1>
+            <h1 className="text-lg font-semibold leading-none">Artifact Feed</h1>
             <p className="text-muted-foreground mt-1 text-xs">
-              Conversation files and links. {scanSummary}.
+              Dashboard plugin for recent files, previews, and links. {scanSummary}.
             </p>
           </div>
           <Button
@@ -612,37 +612,51 @@ export const Component = () => {
               No artifacts found.
             </div>
           ) : (
-            <div className="min-h-0 flex-1 overflow-auto">
-              {artifacts.map((artifact) => {
-                const active = selectedArtifact?.id === artifact.id
-                const summary = getArtifactSummary(artifact)
-                return (
-                  <button
-                    key={artifact.id}
-                    type="button"
-                    onClick={() => setSelectedId(artifact.id)}
-                    className={cn(
-                      "flex h-9 w-full items-center gap-2 border-b px-4 text-left transition-colors",
-                      active
-                        ? "bg-muted text-foreground"
-                        : "hover:bg-accent/50",
-                    )}
-                  >
-                    <ArtifactRowThumbnail artifact={artifact} />
-                    <span className="grid min-w-0 flex-1 grid-cols-[minmax(8rem,1fr)_minmax(7rem,0.8fr)] items-center gap-3 md:grid-cols-[minmax(9rem,0.9fr)_minmax(8rem,0.75fr)_minmax(0,1.35fr)]">
-                      <span className="truncate text-sm font-semibold">
-                        {artifact.name}
+            <div className="min-h-0 flex-1 overflow-auto p-3">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                {artifacts.map((artifact) => {
+                  const active = selectedArtifact?.id === artifact.id
+                  const summary = getArtifactSummary(artifact)
+                  return (
+                    <button
+                      key={artifact.id}
+                      type="button"
+                      onClick={() => setSelectedId(artifact.id)}
+                      className={cn(
+                        "group min-w-0 rounded-xl border bg-card/70 p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-accent/30 hover:shadow-md",
+                        active && "border-primary/50 bg-accent/40 ring-1 ring-primary/20",
+                      )}
+                    >
+                      <span className="flex min-w-0 items-start gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background">
+                          <ArtifactRowThumbnail artifact={artifact} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="truncate text-sm font-semibold">
+                              {artifact.name}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 rounded-md px-1.5 py-0 text-[10px]"
+                            >
+                              {kindLabel[artifact.kind]}
+                            </Badge>
+                          </span>
+                          <span className="text-muted-foreground mt-1 block truncate text-[11px]">
+                            {artifact.conversationTitle || "Untitled session"} / {formatTimestamp(artifact.updatedAt)}
+                          </span>
+                          {summary && (
+                            <span className="text-muted-foreground mt-2 line-clamp-2 break-all text-xs leading-relaxed">
+                              {summary}
+                            </span>
+                          )}
+                        </span>
                       </span>
-                      <span className="text-muted-foreground truncate text-[11px]">
-                        {getArtifactMeta(artifact)}
-                      </span>
-                      <span className="text-muted-foreground hidden truncate text-xs md:block">
-                        {summary}
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
           <div

@@ -1019,7 +1019,7 @@ function resolveActiveModelId(cfg: any): string {
   if (provider === "openai") return cfg.agentOpenaiModel || cfg.mcpToolsOpenaiModel || "openai"
   if (provider === "groq") return cfg.agentGroqModel || cfg.mcpToolsGroqModel || "groq"
   if (provider === "gemini") return cfg.agentGeminiModel || cfg.mcpToolsGeminiModel || "gemini"
-  if (provider === "chatgpt-web") return cfg.agentChatgptWebModel || cfg.mcpToolsChatgptWebModel || "gpt-5.4-mini"
+  if (provider === "chatgpt-web") return cfg.agentChatgptWebModel || cfg.mcpToolsChatgptWebModel || "gpt-5.6"
   return String(provider)
 }
 

@@ -247,9 +247,9 @@ describe('resolveHandsFreeUtterance', () => {
 
     expect(result.action.type).toBe('command');
     if (result.action.type === 'command') {
-      expect(result.action.command).toBe('stop-agent-turn');
+      expect(result.action.command).toBe('stop');
     }
-    expect(result.matchedCommand).toBe('stop-agent-turn');
+    expect(result.matchedCommand).toBe('stop');
     expect(result.nextState.phase).toBe('processing');
   });
 
@@ -264,7 +264,7 @@ describe('resolveHandsFreeUtterance', () => {
 
     expect(result.action).toEqual({
       type: 'send',
-      text: 'okay i think we need to plan my reintroduction into the game',
+      text: 'stop okay i think we need to plan my reintroduction into the game',
     });
     expect(result.matchedCommand).toBeNull();
     expect(result.nextState.phase).toBe('processing');
@@ -281,12 +281,12 @@ describe('resolveHandsFreeUtterance', () => {
 
     expect(result.action.type).toBe('command');
     if (result.action.type === 'command') {
-      expect(result.action.command).toBe('stop-tts');
+      expect(result.action.command).toBe('stop');
     }
-    expect(result.matchedCommand).toBe('stop-tts');
+    expect(result.matchedCommand).toBe('stop');
   });
 
-  it('emits a stop-tts command while the assistant is speaking', () => {
+  it('emits the context-neutral stop command while the assistant is speaking', () => {
     const result = resolveHandsFreeUtterance({
       state: { ...createInitialHandsFreeState(), phase: 'speaking', awakeSince: 100, resumePhase: 'listening' },
       transcript: 'stop talking',
@@ -297,9 +297,9 @@ describe('resolveHandsFreeUtterance', () => {
 
     expect(result.action.type).toBe('command');
     if (result.action.type === 'command') {
-      expect(result.action.command).toBe('stop-tts');
+      expect(result.action.command).toBe('stop');
     }
-    expect(result.matchedCommand).toBe('stop-tts');
+    expect(result.matchedCommand).toBe('stop');
     expect(result.nextState.phase).toBe('speaking');
   });
 
@@ -331,7 +331,7 @@ describe('resolveHandsFreeUtterance', () => {
     expect(result.matchedWake).toBe(true);
     expect(result.action.type).toBe('command');
     if (result.action.type === 'command') {
-      expect(result.action.command).toBe('stop-tts');
+      expect(result.action.command).toBe('stop');
     }
     expect(result.nextState.phase).toBe('listening');
   });

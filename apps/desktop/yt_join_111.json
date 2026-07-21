@@ -1,0 +1,417 @@
+{
+  "responseContext": {
+    "serviceTrackingParams": [
+      {
+        "service": "GFEEDBACK",
+        "params": [
+          {
+            "key": "serializedDelegationContext",
+            "value": "EhhVQzFSTzc2X0hEVDEzdS1sUFhPQTB0OUEqAggI"
+          },
+          {
+            "key": "logged_in",
+            "value": "1"
+          },
+          {
+            "key": "e",
+            "value": "23804281,24004644,24077241,24290153,24407444,24425063,39320593,39325413,39328068,39329856,51063643,51098299,51115184,51125020,51152050,51178314,51178337,51178346,51178351,51183909,51222973,51227037,51313109,51340662,51349914,51353393,51366423,51367487,51372971,51389629,51425034,51441710,51445004,51468320,51490331,51493209,51505436,51518819,51530495,51530538,51534669,51538888,51549693,51555499,51565115,51577777,51583821,51589586,51607676,51617830,51620679,51622845,51622959,51628154,51628206,51644479,51646769,51648336,51648524,51663860,51665353,51672162,51672213,51678603,51681662,51683502,51684148,51684155,51690389,51693405,51704027,51707414,51707620,51737133,51742830,51750310,51752066,51752830,51765031,51773318,51773952,51774281,51777590,51778340,51779436,51783908,51784229,51788309,51791075,51791680,51795483,51798928,51803128,51803586,51806573,51812789,51812792,51812809,51815044,51820847,51822845,51822856,51822859,51822866,51824465,51825601,51826015,51826046,51836301,51836311,51836316,51836321,51836324,51837000,51840861,51842422,51845357,51849937,51857838,51857920,51860059,51860080,51860221,51860292,51861183,51862326,51868228,51874028,51875250,51884627,51885382,51887260,51887423,51887431,51887440,51887447,51887454,51891103,51895405,51898362,51902702,51902977,51905203,51906533,51907208,51907235,51907257,51907265,51908317,51908453,51909055,51909060,51910736,51912458,51914174,51918947,51920399,51929567,51932246,51933017,51933133,51936228,51938771,51939450,51939764,51940627,51941004,51943909,51945056,51946955,51949230,51952747,51953166,51953522,51953630,51954792,51954923,51956738,51957445,51959694,51959967,51961153,51962116,51963682,51965418,51967554,51967884,51967950,51968083,51969226,51977431,51977567,51977607,51978092,51978585,51980559,51982288,51982291,51982294,51982300,51983368,51984110,51985546,51992188,51997191,51998469,52001375,52003454,52003568,52004519,52005695,52005839,52008379,52008553,52010786,52010793,52010916,52011869,52012523,52013436,52014803,52015044,52015231,52016136,52016582,52017147,52017268,52017782,52020069,52020487,52022488,52023300,52025528,52025664,52026193,52027697,52027751,52027753,52029147,52029357,52029822,52030075,52030994,52032894,52037262,52039604,52040442,52040449,52043200,52043527,52058023,100670348,100671429,100671441,100671517,100672025,100672059,100672075,100672193,100672435,100672530,100672551,100672699,100672738,100672764,100672897"
+          }
+        ]
+      },
+      {
+        "service": "CSI",
+        "params": [
+          {
+            "key": "c",
+            "value": "WEB_CREATOR"
+          },
+          {
+            "key": "cver",
+            "value": "1.20260706.03.00"
+          },
+          {
+            "key": "yt_li",
+            "value": "1"
+          },
+          {
+            "key": "Join_rid",
+            "value": "0x2f650c684ff9db70"
+          }
+        ]
+      },
+      {
+        "service": "GUIDED_HELP",
+        "params": [
+          {
+            "key": "logged_in",
+            "value": "1"
+          }
+        ]
+      },
+      {
+        "service": "ECATCHER",
+        "params": [
+          {
+            "key": "client.version",
+            "value": "1.20260706"
+          },
+          {
+            "key": "client.name",
+            "value": "WEB_CREATOR"
+          }
+        ]
+      }
+    ],
+    "responseId": "IhMI7NCdo_XDlQMVyCzMBB3-KxzH",
+    "webResponseContextExtensionData": {
+      "hasDecorated": true
+    }
+  },
+  "results": [
+    {
+      "key": "0__DASHBOARD_FACT_ANALYTICS_CURRENT",
+      "value": {
+        "resultTable": {
+          "metricColumns": [
+            {
+              "metric": {
+                "type": "EXTERNAL_VIEWS",
+                "asPercentagesOfTotal": false,
+                "includeTotal": false,
+                "cumulative": false
+              },
+              "columnAnomalies": {},
+              "counts": {
+                "values": [
+                  36577
+                ]
+              }
+            },
+            {
+              "metric": {
+                "type": "EXTERNAL_WATCH_TIME",
+                "asPercentagesOfTotal": false,
+                "includeTotal": false,
+                "cumulative": false
+              },
+              "columnAnomalies": {},
+              "milliseconds": {
+                "values": [
+                  1940695674
+                ]
+              }
+            },
+            {
+              "metric": {
+                "type": "TOTAL_ESTIMATED_EARNINGS",
+                "asPercentagesOfTotal": false,
+                "includeTotal": false,
+                "cumulative": false
+              },
+              "columnAnomalies": {
+                "ids": [
+                  0
+                ]
+              },
+              "earnings": {
+                "values": [
+                  14940
+                ],
+                "currency": "USD"
+              }
+            },
+            {
+              "metric": {
+                "type": "SUBSCRIBERS_NET_CHANGE",
+                "asPercentagesOfTotal": false,
+                "includeTotal": false,
+                "cumulative": false
+              },
+              "columnAnomalies": {},
+              "counts": {
+                "values": [
+                  82
+                ]
+              }
+            }
+          ],
+          "anomalyContext": [
+            {
+              "key": 0,
+              "value": {
+                "type": "ANALYTICS_ANOMALY_TYPE_DAILY_DATA_PROCESSING",
+                "startDate": 1783407600000,
+                "endDate": 1783580400000,
+                "columns": [
+                  {
+                    "type": "TOTAL_ESTIMATED_EARNINGS"
+                  }
+                ],
+                "permanence": "ANALYTICS_ANOMALY_PERMANENCE_TEMPORARY",
+                "impact": "ANALYTICS_ANOMALY_IMPACT_DATA_MISSING"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "0__TOP_VIDEOS_VIDEO",
+      "value": {
+        "getCreatorVideos": {
+          "videos": [
+            {
+              "videoId": "84af5FZjM-c",
+              "title": "Claude just extended Fable 5 access",
+              "permissions": {
+                "overallPermissions": [
+                  "CREATOR_VIDEO_PERMISSION_READ",
+                  "CREATOR_VIDEO_PERMISSION_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+                  "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_DELETE",
+                  "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_WATCH",
+                  "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+                  "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+                  "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+                  "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+                  "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+                  "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+                ]
+              },
+              "responseStatus": {
+                "statusCode": "CREATOR_ENTITY_STATUS_OK"
+              },
+              "loggingDirectives": {
+                "trackingParams": "CAIQiI4CGAsiEwjs0J2j9cOVAxXILMwEHf4rHMc="
+              }
+            },
+            {
+              "videoId": "ZdMNPg-gdoY",
+              "title": "I made my hermes device into a RMTP server",
+              "permissions": {
+                "overallPermissions": [
+                  "CREATOR_VIDEO_PERMISSION_READ",
+                  "CREATOR_VIDEO_PERMISSION_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+                  "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_DELETE",
+                  "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_WATCH",
+                  "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+                  "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+                  "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+                  "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+                  "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+                  "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+                ]
+              },
+              "responseStatus": {
+                "statusCode": "CREATOR_ENTITY_STATUS_OK"
+              },
+              "loggingDirectives": {
+                "trackingParams": "CAEQiI4CGAwiEwjs0J2j9cOVAxXILMwEHf4rHMc="
+              }
+            },
+            {
+              "videoId": "8FiXYO7swV8",
+              "title": "$1.28/YEAR MACBOOK AIR AGENT BOX",
+              "permissions": {
+                "overallPermissions": [
+                  "CREATOR_VIDEO_PERMISSION_READ",
+                  "CREATOR_VIDEO_PERMISSION_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_REVENUE_READ",
+                  "CREATOR_VIDEO_PERMISSION_MONETIZATION_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_DELETE",
+                  "CREATOR_VIDEO_PERMISSION_CAPTIONS_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_WATCH",
+                  "CREATOR_VIDEO_PERMISSION_BASIC_METADATA_READ",
+                  "CREATOR_VIDEO_PERMISSION_ANALYTICS_READ",
+                  "CREATOR_VIDEO_PERMISSION_CAPTIONS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_DOWNLOAD",
+                  "CREATOR_VIDEO_PERMISSION_RATING_SETTINGS_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_MONETIZATION_SETTINGS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENT_SETTINGS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENTS_READ",
+                  "CREATOR_VIDEO_PERMISSION_COMMENTS_MANAGER",
+                  "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PRIVATE_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_PRIVACY_STATUS_PUBLIC_WRITE",
+                  "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_APPELLANT",
+                  "CREATOR_VIDEO_PERMISSION_ENFORCEMENT_READER"
+                ]
+              },
+              "responseStatus": {
+                "statusCode": "CREATOR_ENTITY_STATUS_OK"
+              },
+              "loggingDirectives": {
+                "trackingParams": "CAAQiI4CGA0iEwjs0J2j9cOVAxXILMwEHf4rHMc="
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "0__DASHBOARD_FACT_ANALYTICS_TYPICAL",
+      "value": {
+        "getTypicalPerformance": {
+          "result": {
+            "metricColumns": [
+              {
+                "metric": {
+                  "metric": {
+                    "type": "EXTERNAL_VIEWS"
+                  }
+                },
+                "stats": [
+                  {
+                    "typicalValue": 26140,
+                    "typicalRange": {
+                      "lowerBound": 23500,
+                      "upperBound": 32100
+                    }
+                  }
+                ],
+                "currentValue": {
+                  "column": {
+                    "type": "EXTERNAL_VIEWS"
+                  },
+                  "values": [
+                    {
+                      "double": 36577
+                    }
+                  ]
+                }
+              },
+              {
+                "metric": {
+                  "metric": {
+                    "type": "EXTERNAL_WATCH_TIME"
+                  }
+                },
+                "stats": [
+                  {
+                    "typicalValue": 1414800000,
+                    "typicalRange": {
+                      "lowerBound": 1044000000,
+                      "upperBound": 1980000000
+                    }
+                  }
+                ],
+                "currentValue": {
+                  "column": {
+                    "type": "EXTERNAL_WATCH_TIME"
+                  },
+                  "values": [
+                    {
+                      "double": 1940695674
+                    }
+                  ]
+                }
+              },
+              {
+                "metric": {
+                  "metric": {
+                    "type": "TOTAL_ESTIMATED_EARNINGS"
+                  }
+                },
+                "currentValue": {
+                  "column": {
+                    "type": "TOTAL_ESTIMATED_EARNINGS"
+                  },
+                  "values": [
+                    {
+                      "double": 14940
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "externalChannelId": "UC1RO76_HDT13u-lPXOA0t9A"
+        }
+      }
+    },
+    {
+      "key": "0__TOP_VIDEOS",
+      "value": {
+        "resultTable": {
+          "dimensionColumns": [
+            {
+              "dimension": {
+                "type": "VIDEO"
+              },
+              "strings": {
+                "values": [
+                  "84af5FZjM-c",
+                  "ZdMNPg-gdoY",
+                  "8FiXYO7swV8"
+                ]
+              },
+              "columnAnomalies": {}
+            }
+          ],
+          "metricColumns": [
+            {
+              "metric": {
+                "type": "EXTERNAL_VIEWS",
+                "asPercentagesOfTotal": false,
+                "includeTotal": false,
+                "cumulative": false
+              },
+              "columnAnomalies": {},
+              "counts": {
+                "values": [
+                  1317,
+                  1172,
+                  718
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "0__DASHBOARD_FACT_ANALYTICS_LIFETIME_SUBSCRIBERS",
+      "value": {
+        "resultTable": {
+          "metricColumns": [
+            {
+              "metric": {
+                "type": "SUBSCRIBERS_NET_CHANGE",
+                "asPercentagesOfTotal": false,
+                "includeTotal": false,
+                "cumulative": false
+              },
+              "columnAnomalies": {},
+              "counts": {
+                "values": [
+                  13639
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

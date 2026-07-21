@@ -10,7 +10,7 @@ import { CONVERSATION_IMAGE_ASSET_HOST, getConversationImageAssetPath } from "./
 import { sanitizeMessagesForLlmTransport } from "./llm-text-sanitization"
 
 const DEFAULT_CHATGPT_WEB_BASE_URL = "https://chatgpt.com"
-const DEFAULT_CHATGPT_WEB_MODEL = "gpt-5.4-mini"
+const DEFAULT_CHATGPT_WEB_MODEL = "gpt-5.6"
 const DEFAULT_CHATGPT_WEB_INSTRUCTIONS = "You are a helpful assistant."
 const AUTH_JWT_CLAIM_PATH = "https://api.openai.com/auth"
 const CHATGPT_CODEX_AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize"

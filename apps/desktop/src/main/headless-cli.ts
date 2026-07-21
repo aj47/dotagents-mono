@@ -169,7 +169,7 @@ function printStatus() {
   if (provider === "openai") modelName = cfg.agentOpenaiModel || cfg.mcpToolsOpenaiModel || "gpt-4.1-mini"
   else if (provider === "groq") modelName = cfg.agentGroqModel || cfg.mcpToolsGroqModel || "openai/gpt-oss-120b"
   else if (provider === "gemini") modelName = cfg.agentGeminiModel || cfg.mcpToolsGeminiModel || "gemini-2.5-flash"
-  else if (provider === "chatgpt-web") modelName = cfg.agentChatgptWebModel || cfg.mcpToolsChatgptWebModel || "gpt-5.4-mini"
+  else if (provider === "chatgpt-web") modelName = cfg.agentChatgptWebModel || cfg.mcpToolsChatgptWebModel || "gpt-5.6"
 
   console.log(`\n${colors.bold}Server Status:${colors.reset}`)
   console.log(`  Model: ${colors.cyan}${provider}/${modelName}${colors.reset}`)

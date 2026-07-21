@@ -114,6 +114,21 @@ function getSessionMessageSnapshotKey(messages: ChatMessage[]): string {
   }).join('|');
 }
 
+export function shouldKeepLocalMessagesOnForcedRefresh(
+  localMessages: ChatMessage[],
+  localUpdatedAt: number,
+  serverMessages: ChatMessage[],
+  serverUpdatedAt: number,
+): boolean {
+  const localKey = getSessionMessageSnapshotKey(localMessages);
+  const serverKey = getSessionMessageSnapshotKey(serverMessages);
+  if (localUpdatedAt === serverUpdatedAt && localKey === serverKey) {
+    return true;
+  }
+
+  return localUpdatedAt > serverUpdatedAt && localMessages.length >= serverMessages.length;
+}
+
 async function loadSessions(): Promise<Session[]> {
   try {
     const raw = await AsyncStorage.getItem(SESSIONS_KEY);
@@ -973,9 +988,12 @@ export function useSessions(): SessionStore {
         return { messages: latestSession.messages, freshlyFetched: false };
       }
       if (force && latestSession.messages.length > 0) {
-        const localKey = getSessionMessageSnapshotKey(latestSession.messages as ChatMessage[]);
-        const serverKey = getSessionMessageSnapshotKey(result.messages);
-        if (latestSession.updatedAt > result.updatedAt || (latestSession.updatedAt === result.updatedAt && localKey === serverKey)) {
+        if (shouldKeepLocalMessagesOnForcedRefresh(
+          latestSession.messages as ChatMessage[],
+          latestSession.updatedAt,
+          result.messages,
+          result.updatedAt,
+        )) {
           return { messages: latestSession.messages, freshlyFetched: false };
         }
       }

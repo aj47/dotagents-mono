@@ -913,7 +913,7 @@ export async function processTranscriptWithAgentMode(
     : providerId === "gemini"
     ? config.mcpToolsGeminiModel || "gemini-2.5-flash"
     : providerId === "chatgpt-web"
-    ? config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
+    ? config.mcpToolsChatgptWebModel || "gpt-5.6"
     : "gpt-4.1-mini"
   // For OpenAI provider, use the preset name (e.g., "OpenRouter", "Together AI")
   const providerDisplayName = providerId === "openai"

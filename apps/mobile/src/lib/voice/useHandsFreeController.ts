@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   matchVoiceCommand,
-  PARAMETERIZED_VOICE_COMMANDS,
   type HandsFreePhase,
   type HandsFreeResumePhase,
   type VoiceCommandDefinition,
@@ -47,7 +46,6 @@ type HandsFreeControllerOptions = {
 };
 
 const DEFAULT_REPEATED_ERROR_THRESHOLD = 3;
-const COMMAND_REMAINDER_SEND_WORD_THRESHOLD = 4;
 const BENIGN_RECOGNIZER_ERRORS = new Set(['no-speech', 'aborted']);
 const BENIGN_RECOGNIZER_ERROR_PATTERNS = [
   /server\s+disconnected/i,
@@ -145,32 +143,16 @@ export function getHandsFreeStatusLabel(phase: HandsFreePhase): string {
   }
 }
 
-function buildCommandAction(
-  match: ReturnType<typeof matchVoiceCommand>,
-): HandsFreeUtteranceAction {
-  if (!match) return { type: 'none' };
-  const remainderWordCount = match.remainder ? match.remainder.split(/\s+/).filter(Boolean).length : 0;
-  if (
-    match.remainder
-    && !PARAMETERIZED_VOICE_COMMANDS.has(match.command)
-    && remainderWordCount >= COMMAND_REMAINDER_SEND_WORD_THRESHOLD
-  ) {
-    return { type: 'send', text: match.remainder };
-  }
-  return {
-    type: 'command',
-    command: match.command,
-    label: match.label,
-    remainder: match.remainder,
-  };
-}
-
 function buildCommandResolution(match: NonNullable<ReturnType<typeof matchVoiceCommand>>) {
-  const action = buildCommandAction(match);
   return {
-    action,
-    convertedToSend: action.type === 'send',
-    matchedCommand: action.type === 'command' ? match.command : null,
+    action: {
+      type: 'command' as const,
+      command: match.command,
+      label: match.label,
+      remainder: match.remainder,
+    },
+    convertedToSend: false,
+    matchedCommand: match.command,
   };
 }
 

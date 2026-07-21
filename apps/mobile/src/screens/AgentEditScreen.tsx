@@ -70,7 +70,7 @@ const AGENT_MODEL_PROVIDERS: { label: string; value: AgentModelProvider; placeho
   { label: 'OpenAI', value: 'openai', placeholder: 'gpt-4.1-mini' },
   { label: 'Groq', value: 'groq', placeholder: 'openai/gpt-oss-120b' },
   { label: 'Gemini', value: 'gemini', placeholder: 'gemini-2.5-flash' },
-  { label: 'ChatGPT Web', value: 'chatgpt-web', placeholder: 'gpt-5.4-mini' },
+  { label: 'ChatGPT Web', value: 'chatgpt-web', placeholder: 'gpt-5.6' },
 ];
 
 const MODEL_KEY_BY_PROVIDER: Record<AgentModelProvider, keyof AgentModelConfigFields> = {

@@ -47,9 +47,18 @@ export function mapToModelsDevProviderId(providerId: string, baseUrl?: string): 
 }
 
 const CHATGPT_WEB_FALLBACK_MODELS: ModelInfo[] = [
+  { id: "gpt-6", name: "GPT-6" },
+  { id: "gpt-6-codex", name: "GPT-6 Codex" },
+  { id: "gpt-6-codex-spark", name: "GPT-6 Codex Spark" },
+  { id: "gpt-5.6", name: "GPT-5.6" },
+  { id: "gpt-5.6-codex", name: "GPT-5.6 Codex" },
+  { id: "gpt-5.6-codex-spark", name: "GPT-5.6 Codex Spark" },
   { id: "gpt-5.5", name: "GPT-5.5" },
+  { id: "gpt-5.5-codex", name: "GPT-5.5 Codex" },
+  { id: "gpt-5.5-codex-spark", name: "GPT-5.5 Codex Spark" },
   { id: "gpt-5.4", name: "GPT-5.4" },
-  { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
+  { id: "gpt-5.4-codex", name: "GPT-5.4 Codex" },
+  { id: "gpt-5.4-codex-spark", name: "GPT-5.4 Codex Spark" },
   { id: "gpt-5.3-codex", name: "GPT-5.3 Codex" },
   { id: "gpt-5.3-codex-spark", name: "GPT-5.3 Codex Spark" },
   { id: "gpt-5.2-codex", name: "GPT-5.2 Codex" },

@@ -2721,7 +2721,7 @@ export default function SettingsScreen({ navigation, route }: any) {
     if (provider === 'openai') return 'gpt-4.1-mini';
     if (provider === 'groq') return 'openai/gpt-oss-120b';
     if (provider === 'gemini') return 'gemini-2.5-flash';
-    return 'gpt-5.4-mini';
+    return 'gpt-5.6';
   };
 
   // Get display name for current model

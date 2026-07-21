@@ -100,7 +100,7 @@ export async function executeSampling(
     } else if (providerId === "gemini") {
       model = config.agentGeminiModel || config.mcpToolsGeminiModel || "gemini-2.5-flash"
     } else if (providerId === "chatgpt-web") {
-      model = config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || "gpt-5.4-mini"
+      model = config.agentChatgptWebModel || config.mcpToolsChatgptWebModel || "gpt-5.6"
     }
 
     // Execute the LLM call

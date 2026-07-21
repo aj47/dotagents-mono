@@ -460,8 +460,7 @@ function getActivePreset(config: Partial<Config>): ModelPreset | undefined {
  */
 const CHATGPT_WEB_ONLY_MODEL_PATTERNS = [
   "codex-spark",
-  "gpt-5.3-codex",
-  "gpt-5.2-codex",
+  "-codex",
 ]
 
 function isLikelyChatGptWebOnlyModel(model: string | undefined): boolean {

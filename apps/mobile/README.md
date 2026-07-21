@@ -58,7 +58,7 @@ pnpm --filter @dotagents/mobile android
 
 Open the app and configure Settings:
 - API Key: Bearer token from DotAgents desktop remote server, or provider API key
-- Model: Model identifier used by the Run API (for example, `gpt-5.4-mini`)
+- Model: Model identifier used by the Run API (for example, `gpt-5.6`)
 - Environment: Toggle Local vs Cloud
   - Run API Base URL (Local/Cloud)
   - Manage API Base URL (Local/Cloud)
@@ -94,7 +94,9 @@ Expo also needs an Android FCM V1 credential for the EAS project. To set it up o
   - If the chip says Sleeping, tap **Wake** or say the configured wake phrase (default: `hey agents`)
   - Speak after the listening cue; the app auto-sends after the configured silence window
   - Say the sleep phrase (default: `go to sleep`) to return to sleep
-  - While the assistant is speaking, say `wait` or `stop` to interrupt TTS and return to listening
+  - The four hands-free commands are `stop`, `new chat`, `switch agent`, and `repeat`
+  - Say `switch agent` to hear recent choices, then say a name; or say `switch to <agent>` directly
+  - `stop` interrupts speech or cancels the current agent turn, depending on what is active
   - On Android, a visible microphone service keeps capture and TTS active after the app is backgrounded or locked
   - Short audio cues announce state when the screen is not visible: rising tones for listening, double tones for processing, falling tones for stopped/sleeping, and low repeated tones for errors
 - Assistant replies can be read aloud via text‑to‑speech

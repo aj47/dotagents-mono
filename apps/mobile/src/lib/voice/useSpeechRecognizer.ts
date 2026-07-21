@@ -57,7 +57,7 @@ type UseSpeechRecognizerOptions = {
   onRecognizerError?: (message: string) => void;
   onPermissionDenied?: () => void;
   shouldSuppressHandsFreeTranscript?: () => boolean;
-  shouldFinalizeHandsFreeTranscript?: () => boolean;
+  shouldFinalizeHandsFreeTranscript?: (payload?: HandsFreeTranscriptPayload) => boolean;
   shouldImmediatelyFinalizeHandsFreeTranscript?: (payload: HandsFreeTranscriptPayload) => boolean;
   onSuppressedHandsFreeTranscript?: (payload: SuppressedHandsFreeTranscriptPayload) => boolean;
   log?: VoiceDebugLog;
@@ -225,8 +225,8 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     handsFree && shouldSuppressHandsFreeTranscriptRef.current?.() === true
   ), [handsFree]);
 
-  const isHandsFreeFinalizationEligible = useCallback(() => (
-    !handsFree || shouldFinalizeHandsFreeTranscriptRef.current?.() !== false
+  const isHandsFreeFinalizationEligible = useCallback((payload?: HandsFreeTranscriptPayload) => (
+    !handsFree || shouldFinalizeHandsFreeTranscriptRef.current?.(payload) !== false
   ), [handsFree]);
 
   const clearSuppressedHandsFreeTranscript = useCallback((source: 'native' | 'web', text?: string, isFinal?: boolean) => {
@@ -273,7 +273,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       clearSuppressedHandsFreeTranscript(source, finalText);
       return;
     }
-    if (mode === 'handsfree' && !isHandsFreeFinalizationEligible()) {
+    if (mode === 'handsfree' && !isHandsFreeFinalizationEligible({ text: finalText, source })) {
       log?.('transcript-ignored', 'Hands-free transcript ignored because the capture turn is no longer eligible.', {
         source,
         text: truncateDebugText(finalText),
@@ -594,7 +594,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       return false;
     }
 
-    if (!isHandsFreeFinalizationEligible()) {
+    if (!isHandsFreeFinalizationEligible({ text: textToSend, source })) {
       log?.('transcript-ignored', 'Hands-free finalization skipped because the capture turn is no longer eligible.', {
         source,
         text: truncateDebugText(textToSend),
@@ -628,7 +628,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       return true;
     }
 
-    if (!isHandsFreeFinalizationEligible()) {
+    if (!isHandsFreeFinalizationEligible({ text: finalText, source, isFinal })) {
       return false;
     }
 
@@ -686,7 +686,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       clearSuppressedHandsFreeTranscript(source, finalText);
       return false;
     }
-    if (!isHandsFreeFinalizationEligible()) {
+    if (!isHandsFreeFinalizationEligible({ text: finalText, source })) {
       clearHandsFreeDebounce();
       pendingHandsFreeFinalRef.current = '';
       log?.('transcript-ignored', 'Hands-free finalization schedule skipped because the capture turn is no longer eligible.', {
