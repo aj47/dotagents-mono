@@ -111,6 +111,21 @@ export interface ChatGptWebAuthStatus {
   callbackUrl: string
 }
 
+export interface ChatGptWebModelInfo {
+  id: string
+  name: string
+  description?: string
+}
+
+interface ChatGptWebModelsResponse {
+  models?: Array<{
+    slug?: string
+    display_name?: string
+    description?: string
+    visibility?: string
+  }>
+}
+
 interface ChatGptWebCompletedEventResponse {
   output?: Array<{
     type?: string
@@ -521,6 +536,51 @@ async function resolveChatGptWebAuth(signal?: AbortSignal): Promise<ResolvedChat
     accountId: configuredAccountId || extractChatGptAccountId(accessToken),
     baseUrl,
   }
+}
+
+async function resolveChatGptWebClientVersion(): Promise<string> {
+  try {
+    const { app } = await import("electron")
+    const version = app.getVersion().trim()
+    if (version) return version
+  } catch {}
+  return "1.0.0"
+}
+
+export async function fetchChatGptWebModels(clientVersion?: string): Promise<ChatGptWebModelInfo[]> {
+  const auth = await resolveChatGptWebAuth()
+  const version = clientVersion?.trim() || await resolveChatGptWebClientVersion()
+  const url = `${auth.baseUrl}/backend-api/codex/models?client_version=${encodeURIComponent(version)}`
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${auth.accessToken}`,
+    Accept: "application/json",
+    originator: "dotagents",
+  }
+
+  if (auth.accountId) {
+    headers["chatgpt-account-id"] = auth.accountId
+  }
+
+  const response = await fetch(url, { headers })
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "")
+    throw new Error(`ChatGPT Codex models request failed (${response.status}): ${errorText || response.statusText}`)
+  }
+
+  const payload = await response.json() as ChatGptWebModelsResponse
+  if (!Array.isArray(payload.models)) {
+    throw new Error("ChatGPT Codex models response did not include a model catalog")
+  }
+
+  return payload.models
+    .filter(model => model.visibility === "list" && typeof model.slug === "string" && model.slug.length > 0)
+    .map(model => ({
+      id: model.slug!,
+      name: typeof model.display_name === "string" && model.display_name.length > 0
+        ? model.display_name
+        : model.slug!,
+      description: model.description,
+    }))
 }
 
 function getConfiguredChatGptWebModel(modelContext: ChatGptWebModelContext): string {

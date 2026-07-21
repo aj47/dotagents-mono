@@ -61,6 +61,20 @@ describe('SettingsApiClient operator endpoints', () => {
     expect(getDeviceIdentity).toHaveBeenCalled();
   });
 
+  it('loads provider picker models from the shared /models endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
+      providerId: 'chatgpt-web',
+      models: [{ id: 'gpt-5.6', name: 'GPT-5.6' }],
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new SettingsApiClient('https://example.com/v1', 'secret-token');
+    const response = await client.getModels('chatgpt-web');
+
+    expect(response.models).toEqual([{ id: 'gpt-5.6', name: 'GPT-5.6' }]);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://example.com/v1/models?providerId=chatgpt-web');
+  });
+
   it('targets operator errors, audit, and action endpoints without duplicating the /v1 prefix', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ count: 0, errors: [] }))

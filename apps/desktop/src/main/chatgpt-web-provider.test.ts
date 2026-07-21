@@ -4,10 +4,12 @@ import path from "path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const tempDirs: string[] = []
+const originalCodexHome = process.env.CODEX_HOME
 
 async function setupChatGptWebProviderTest(configOverrides: Record<string, unknown> = {}) {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "dotagents-chatgpt-web-images-"))
   tempDirs.push(tempDir)
+  process.env.CODEX_HOME = tempDir
 
   vi.doMock("./config", () => ({
     configStore: {
@@ -42,6 +44,8 @@ afterEach(async () => {
   vi.resetModules()
   vi.clearAllMocks()
   vi.restoreAllMocks()
+  if (originalCodexHome === undefined) delete process.env.CODEX_HOME
+  else process.env.CODEX_HOME = originalCodexHome
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })))
 })
 
@@ -310,5 +314,58 @@ describe("chatgpt-web Codex CLI auth fallback", () => {
       if (previousCodexHome === undefined) delete process.env.CODEX_HOME
       else process.env.CODEX_HOME = previousCodexHome
     }
+  })
+})
+
+describe("chatgpt-web model catalog", () => {
+  it("returns only visible models from the authenticated Codex models endpoint", async () => {
+    await setupChatGptWebProviderTest({
+      chatgptWebAccessToken: "test-access-token",
+      chatgptWebAccountId: "account-123",
+    })
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      models: [
+        {
+          slug: "gpt-5.6-sol",
+          display_name: "GPT-5.6-Sol",
+          description: "Latest frontier agentic coding model.",
+          visibility: "list",
+        },
+        {
+          slug: "codex-auto-review",
+          display_name: "Codex Auto Review",
+          visibility: "hide",
+        },
+      ],
+    }), { status: 200 }) as any)
+
+    const { fetchChatGptWebModels } = await import("./chatgpt-web-provider")
+    await expect(fetchChatGptWebModels("1.1.6")).resolves.toEqual([
+      {
+        id: "gpt-5.6-sol",
+        name: "GPT-5.6-Sol",
+        description: "Latest frontier agentic coding model.",
+      },
+    ])
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://chatgpt.test/backend-api/codex/models?client_version=1.1.6",
+      {
+        headers: {
+          Authorization: "Bearer test-access-token",
+          Accept: "application/json",
+          originator: "dotagents",
+          "chatgpt-account-id": "account-123",
+        },
+      },
+    )
+  })
+
+  it("does not fabricate a model catalog when discovery fails", async () => {
+    await setupChatGptWebProviderTest({ chatgptWebAccessToken: "test-access-token" })
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("unauthorized", { status: 401 }) as any)
+
+    const { fetchChatGptWebModels } = await import("./chatgpt-web-provider")
+    await expect(fetchChatGptWebModels("1.1.6")).rejects.toThrow("ChatGPT Codex models request failed (401)")
   })
 })

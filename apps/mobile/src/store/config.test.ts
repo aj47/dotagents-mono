@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
@@ -14,8 +15,34 @@ import {
   DEFAULT_HANDS_FREE_SLEEP_PHRASE,
   DEFAULT_HANDS_FREE_WAKE_PHRASE,
   MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  loadConfig,
   normalizeStoredConfig,
 } from './config';
+
+describe('loadConfig', () => {
+  it('repairs a missing app config from successful tunnel metadata', async () => {
+    vi.mocked(AsyncStorage.getItem).mockImplementation(async (key) => {
+      if (key === 'app_config_v1') return null;
+      if (key === 'dotagents_tunnel_metadata_v1') {
+        return JSON.stringify({
+          baseUrl: 'http://desktop.example:3210/v1',
+          apiKey: 'paired-secret',
+          lastConnectedAt: Date.now(),
+        });
+      }
+      return null;
+    });
+
+    const loaded = await loadConfig();
+
+    expect(loaded.baseUrl).toBe('http://desktop.example:3210/v1');
+    expect(loaded.apiKey).toBe('paired-secret');
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      'app_config_v1',
+      expect.stringContaining('http://desktop.example:3210/v1'),
+    );
+  });
+});
 
 describe('normalizeStoredConfig', () => {
   it('backfills the handsfree defaults for older configs', () => {
@@ -57,6 +84,15 @@ describe('normalizeStoredConfig', () => {
 
     expect(normalized.handsFreeWakePhrase).toBe('hey desk agent');
     expect(normalized.handsFreeSleepPhrase).toBe('go quiet');
+  });
+
+  it('migrates the previous wake phrase default to Hi bro', () => {
+    const normalized = normalizeStoredConfig({
+      ...DEFAULT_APP_CONFIG,
+      handsFreeWakePhrase: 'hey agents',
+    });
+
+    expect(normalized.handsFreeWakePhrase).toBe('Hi bro');
   });
 
   it('accepts arbitrary non-negative handsfree send delays while still rejecting negatives', () => {

@@ -716,7 +716,7 @@ export class SettingsApiClient {
 
   // Models Management
   async getModels(providerId: 'openai' | 'groq' | 'gemini' | 'chatgpt-web'): Promise<ModelsResponse> {
-    return this.request<ModelsResponse>(`/models/${providerId}`);
+    return this.request<ModelsResponse>(`/models?providerId=${encodeURIComponent(providerId)}`);
   }
 
   // Operator / Admin Management

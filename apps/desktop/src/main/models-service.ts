@@ -2,6 +2,7 @@ import { configStore } from "./config"
 import { diagnosticsService } from "./diagnostics"
 import { fetchModelsDevData, getModelFromModelsDevByProviderId } from "./models-dev-service"
 import type { ModelsDevModel } from "./models-dev-service"
+import { fetchChatGptWebModels } from "./chatgpt-web-provider"
 import { isKnownSttModel, KNOWN_STT_MODEL_IDS } from "@dotagents/shared"
 import type { ModelInfo, EnhancedModelInfo } from "../shared/types"
 
@@ -44,30 +45,6 @@ export function mapToModelsDevProviderId(providerId: string, baseUrl?: string): 
   }
 
   return providerMap[providerId] || providerId
-}
-
-const CHATGPT_WEB_FALLBACK_MODELS: ModelInfo[] = [
-  { id: "gpt-6", name: "GPT-6" },
-  { id: "gpt-6-codex", name: "GPT-6 Codex" },
-  { id: "gpt-6-codex-spark", name: "GPT-6 Codex Spark" },
-  { id: "gpt-5.6", name: "GPT-5.6" },
-  { id: "gpt-5.6-codex", name: "GPT-5.6 Codex" },
-  { id: "gpt-5.6-codex-spark", name: "GPT-5.6 Codex Spark" },
-  { id: "gpt-5.5", name: "GPT-5.5" },
-  { id: "gpt-5.5-codex", name: "GPT-5.5 Codex" },
-  { id: "gpt-5.5-codex-spark", name: "GPT-5.5 Codex Spark" },
-  { id: "gpt-5.4", name: "GPT-5.4" },
-  { id: "gpt-5.4-codex", name: "GPT-5.4 Codex" },
-  { id: "gpt-5.4-codex-spark", name: "GPT-5.4 Codex Spark" },
-  { id: "gpt-5.3-codex", name: "GPT-5.3 Codex" },
-  { id: "gpt-5.3-codex-spark", name: "GPT-5.3 Codex Spark" },
-  { id: "gpt-5.2-codex", name: "GPT-5.2 Codex" },
-]
-
-async function fetchChatGptWebModels(): Promise<ModelInfo[]> {
-  // ChatGPT Web model list endpoint is not stable across deployments.
-  // Keep this provider reliable by surfacing known model IDs as selectable defaults.
-  return CHATGPT_WEB_FALLBACK_MODELS
 }
 
 /**
@@ -687,6 +664,12 @@ export async function fetchAvailableModels(
       },
     )
 
+    // ChatGPT OAuth model availability is account-specific. Never replace an
+    // auth/catalog failure with API-key or locally invented model entries.
+    if (providerId === "chatgpt-web") {
+      throw error
+    }
+
     // Return fallback models if API call fails
     // Try async fallback first, then sync fallback
     try {
@@ -726,7 +709,6 @@ const HARDCODED_FALLBACK_MODELS: Record<string, ModelInfo[]> = {
   openai: [
     { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
   ],
-  "chatgpt-web": CHATGPT_WEB_FALLBACK_MODELS,
   openrouter: [
     { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini (OpenAI)" },
     { id: "anthropic/claude-sonnet-4", name: "Claude Sonnet 4 (Anthropic)" },

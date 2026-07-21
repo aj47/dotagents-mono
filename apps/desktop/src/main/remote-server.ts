@@ -3557,19 +3557,13 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     }
   })
 
-  fastify.get("/v1/models", async (_req, reply) => {
-    const model = resolveActiveModelId(configStore.get())
-    return reply.send({
-      object: "list",
-      data: [{ id: model, object: "model", owned_by: "system" }],
-    })
-  })
-
-  // GET /v1/models/:providerId - Fetch available models for a provider
-  fastify.get("/v1/models/:providerId", async (req, reply) => {
+  // GET /v1/models - Fetch available models for the requested or active provider.
+  // This is both the OpenAI-compatible endpoint and the source of truth for app pickers.
+  fastify.get("/v1/models", async (req, reply) => {
     try {
-      const params = req.params as { providerId: string }
-      const providerId = params.providerId
+      const query = req.query as { providerId?: string }
+      const cfg = configStore.get()
+      const providerId = query.providerId || cfg.agentProviderId || "openai"
 
       const validProviders = ["openai", "groq", "gemini", "chatgpt-web"]
       if (!validProviders.includes(providerId)) {
@@ -3579,14 +3573,22 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const { fetchAvailableModels } = await import("./models-service")
       const models = await fetchAvailableModels(providerId)
 
+      const pickerModels = models.map(m => ({
+        id: m.id,
+        name: m.name,
+        description: m.description,
+        context_length: m.context_length,
+      }))
+
       return reply.send({
-        providerId,
-        models: models.map(m => ({
-          id: m.id,
-          name: m.name,
-          description: m.description,
-          context_length: m.context_length,
+        object: "list",
+        data: pickerModels.map(model => ({
+          ...model,
+          object: "model",
+          owned_by: providerId,
         })),
+        providerId,
+        models: pickerModels,
       })
     } catch (error: any) {
       diagnosticsService.logError("remote-server", "Failed to fetch models", error)

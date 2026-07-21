@@ -195,8 +195,6 @@ const getConfiguredAgentModel = (
   return settings?.agentChatgptWebModel || settings?.mcpToolsChatgptWebModel || AGENT_MODEL_FALLBACKS['chatgpt-web'];
 };
 
-const getModelDisplayName = (modelId: string): string => modelId.split('/').pop() || modelId;
-
 const buildAgentModelSettingsUpdate = (
   providerId: CHAT_PROVIDER_ID,
   modelId: string,
@@ -1273,6 +1271,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const [isSavingModelSettings, setIsSavingModelSettings] = useState(false);
   const isSavingModelSettingsRef = useRef(false);
   const [isStoppingCurrentSession, setIsStoppingCurrentSession] = useState(false);
+  const [isEmergencyStopping, setIsEmergencyStopping] = useState(false);
   const [runningPromptTaskId, setRunningPromptTaskId] = useState<string | null>(null);
   const [remoteTtsProvider, setRemoteTtsProvider] = useState<'native' | 'edge'>('native');
   const [remoteEdgeTtsVoice, setRemoteEdgeTtsVoice] = useState('en-US-AriaNeural');
@@ -1291,6 +1290,7 @@ export default function ChatScreen({ route, navigation }: any) {
     config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteEdgeTtsRate;
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
   const [chatMenuVisible, setChatMenuVisible] = useState(false);
+  const [agentConfigExpanded, setAgentConfigExpanded] = useState(false);
   const [handsFreeGuideVisible, setHandsFreeGuideVisible] = useState(false);
   const [handsFreeGuideDismissed, setHandsFreeGuideDismissed] = useState<boolean | null>(null);
   const [editingPrompt, setEditingPrompt] = useState<PredefinedPromptSummary | null>(null);
@@ -1304,16 +1304,13 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!serverConversationId) return undefined;
     return operatorSessions.find((session) => session.conversationId === serverConversationId);
   }, [currentSession?.serverConversationId, operatorSessions]);
-  const modelMenuOptions = useMemo(() => {
-    const options = [...modelOptions];
-    if (currentAgentModel && !options.some((model) => model.id === currentAgentModel)) {
-      options.unshift({ id: currentAgentModel, name: getModelDisplayName(currentAgentModel) });
-    }
-    return options;
-  }, [currentAgentModel, modelOptions]);
   const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE;
   const handsFreeSleepPhrase = config.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
+  const [handsFreeWakePhraseDraft, setHandsFreeWakePhraseDraft] = useState(handsFreeWakePhrase);
+  const [handsFreeSleepPhraseDraft, setHandsFreeSleepPhraseDraft] = useState(handsFreeSleepPhrase);
+  useEffect(() => setHandsFreeWakePhraseDraft(handsFreeWakePhrase), [handsFreeWakePhrase]);
+  useEffect(() => setHandsFreeSleepPhraseDraft(handsFreeSleepPhrase), [handsFreeSleepPhrase]);
   const handsFreeDebugEnabled = config.handsFreeDebug === true || isHandsFreeDebugForcedInDev();
   const androidHandsFreeServiceAvailable = Platform.OS === 'android' && isAndroidHandsFreeServiceAvailable();
   const shouldRunAndroidHandsFreeService =
@@ -1822,7 +1819,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const androidHandsFreePendingPartialRef = useRef('');
   const androidHandsFreeLastSentRef = useRef<{ text: string; timestamp: number } | null>(null);
   const handsFreeLastFinalizedRef = useRef<{ text: string; timestamp: number } | null>(null);
-  const voicePreviewComposerTextRef = useRef('');
   const acceptedHandsFreeControlPreviewRef = useRef<{ text: string; timestamp: number } | null>(null);
 		  const [input, setInput] = useState('');
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
@@ -2212,9 +2208,6 @@ export default function ChatScreen({ route, navigation }: any) {
 
   const clearAcceptedHandsFreeControlPreview = useCallback((acceptedText: string) => {
     const normalizedAcceptedText = normalizeVoiceText(acceptedText);
-    const previousPreviewText = voicePreviewComposerTextRef.current;
-    const normalizedPreviousPreviewText = normalizeVoiceText(previousPreviewText);
-    const textToRemove = normalizedPreviousPreviewText || normalizedAcceptedText;
 
     if (normalizedAcceptedText) {
       acceptedHandsFreeControlPreviewRef.current = {
@@ -2223,33 +2216,8 @@ export default function ChatScreen({ route, navigation }: any) {
       };
     }
 
-    voicePreviewComposerTextRef.current = '';
     setSttPreviewWithExpiry('');
-    setInput((current) => {
-      const normalizedCurrent = normalizeVoiceText(current);
-
-      if (!normalizedCurrent) {
-        return current;
-      }
-
-      if (
-        normalizedCurrent === normalizedAcceptedText
-        || (normalizedPreviousPreviewText && normalizedCurrent === normalizedPreviousPreviewText)
-      ) {
-        return '';
-      }
-
-      if (textToRemove && current.endsWith(textToRemove)) {
-        return current.slice(0, -textToRemove.length).trimEnd();
-      }
-
-      if (previousPreviewText && current.endsWith(previousPreviewText)) {
-        return current.slice(0, -previousPreviewText.length).trimEnd();
-      }
-
-      return current;
-    });
-    voiceLog('runtime-state', 'Accepted handsfree wake phrase cleared from composer preview.', {
+    voiceLog('runtime-state', 'Accepted handsfree wake phrase cleared from voice preview.', {
       textLength: normalizedAcceptedText.length,
     });
   }, [voiceLog]);
@@ -2841,19 +2809,13 @@ export default function ChatScreen({ route, navigation }: any) {
           `[DotAgentsHandsFreeJS] controller action=${action.type} phaseBefore=${phaseBeforeFinalTranscript} textLength=${finalText.length}`,
         );
         if (action.type === 'send' && pendingAgentSwitchRef.current) {
-          voicePreviewComposerTextRef.current = '';
-          setInput('');
           setSttPreviewWithExpiry('');
           handsFreeController.onRequestCompleted();
           handleHandsFreeVoiceCommand('switch-agent', 'Switch agent', action.text);
         } else if (action.type === 'send') {
-          voicePreviewComposerTextRef.current = '';
-          setInput('');
           setSttPreviewWithExpiry('');
           void sendRef.current(action.text, { source: 'handsfree' });
         } else if (action.type === 'command') {
-          voicePreviewComposerTextRef.current = '';
-          setInput('');
           setSttPreviewWithExpiry('');
           handleHandsFreeVoiceCommand(action.command, action.label, action.remainder);
         } else if (acceptedWakeControlText) {
@@ -3089,48 +3051,6 @@ export default function ChatScreen({ route, navigation }: any) {
     },
     log: voiceLog,
   });
-
-  useEffect(() => {
-    const previewText = normalizeVoiceText(sttPreview || liveTranscript);
-    const previousPreviewText = voicePreviewComposerTextRef.current;
-
-    if (!handsFree || !previewText) {
-      if (!previewText) {
-        voicePreviewComposerTextRef.current = '';
-        acceptedHandsFreeControlPreviewRef.current = null;
-      }
-      return;
-    }
-
-    const acceptedControlPreview = acceptedHandsFreeControlPreviewRef.current;
-    if (acceptedControlPreview) {
-      const acceptedControlPreviewExpired =
-        Date.now() - acceptedControlPreview.timestamp > HANDS_FREE_ACCEPTED_CONTROL_PREVIEW_SUPPRESSION_MS;
-
-      if (acceptedControlPreviewExpired || acceptedControlPreview.text !== previewText) {
-        acceptedHandsFreeControlPreviewRef.current = null;
-      } else {
-        voicePreviewComposerTextRef.current = '';
-        return;
-      }
-    }
-
-    setInput((current) => {
-      const currentTrimmed = current.trim();
-
-      if (!currentTrimmed || currentTrimmed === previousPreviewText) {
-        voicePreviewComposerTextRef.current = previewText;
-        return previewText;
-      }
-
-      if (previousPreviewText && current.endsWith(previousPreviewText)) {
-        voicePreviewComposerTextRef.current = previewText;
-        return `${current.slice(0, -previousPreviewText.length)}${previewText}`;
-      }
-
-      return current;
-    });
-  }, [handsFree, liveTranscript, sttPreview]);
 
   const androidHandsFreeServiceListeningEnabled =
     androidServiceHandlesHandsFreeMic && shouldKeepHandsFreeMicArmed;
@@ -4779,6 +4699,57 @@ export default function ChatScreen({ route, navigation }: any) {
     );
   }, [closeChatMenu, currentOperatorSession?.id, currentSession?.serverConversationId, isStoppingCurrentSession, settingsClient]);
 
+  const handleEmergencyStop = useCallback(async () => {
+    if (isEmergencyStopping) return;
+    closeChatMenu();
+
+    const showEmergencyStopError = (message: string) => {
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert('Emergency stop', message);
+      }
+    };
+
+    if (!settingsClient) {
+      showEmergencyStopError('Connect to your desktop before using Emergency Stop.');
+      return;
+    }
+
+    const stopEverything = async () => {
+      setIsEmergencyStopping(true);
+      try {
+        const result = await settingsClient.emergencyStop();
+        if (!result.success) {
+          showEmergencyStopError(result.message || result.error || 'Emergency Stop failed.');
+          return;
+        }
+        setOperatorSessions([]);
+      } catch (error: any) {
+        showEmergencyStopError(error?.message || 'Emergency Stop failed.');
+      } finally {
+        setIsEmergencyStopping(false);
+      }
+    };
+
+    const confirmation = 'Immediately stop all active agent work across the desktop app?';
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmation)) {
+        await stopEverything();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Emergency stop',
+      confirmation,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Stop everything', style: 'destructive', onPress: () => { void stopEverything(); } },
+      ],
+    );
+  }, [closeChatMenu, isEmergencyStopping, settingsClient]);
+
   const handleSavePrompt = async () => {
     const name = newPromptName.trim();
     const content = newPromptContent.trim();
@@ -5559,7 +5530,9 @@ export default function ChatScreen({ route, navigation }: any) {
           phase: handsFreePhaseRef.current,
         });
       }
-      setInput('');
+      if (options?.source !== 'handsfree') {
+        setInput('');
+      }
       if (options?.fromComposer) {
         setPendingImages([]);
       }
@@ -5637,7 +5610,9 @@ export default function ChatScreen({ route, navigation }: any) {
       requestId: thisRequestId
     });
 
-    setInput('');
+    if (options?.source !== 'handsfree') {
+      setInput('');
+    }
 	    if (options?.fromComposer) {
 	      setPendingImages([]);
 	    }
@@ -6586,7 +6561,6 @@ export default function ChatScreen({ route, navigation }: any) {
   const sendComposerInput = useCallback(() => {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
     if (!composedMessage.trim()) return;
-    voicePreviewComposerTextRef.current = '';
     setSttPreviewWithExpiry('');
     void send(composedMessage, { fromComposer: true });
   }, [input, pendingImages, send, setSttPreviewWithExpiry]);
@@ -6596,7 +6570,6 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!composedMessage.trim()) return;
 
     messageQueue.enqueue(currentConversationId, composedMessage, currentConversationId);
-    voicePreviewComposerTextRef.current = '';
     setInput('');
     setSttPreviewWithExpiry('');
     setPendingImages([]);
@@ -6704,9 +6677,28 @@ export default function ChatScreen({ route, navigation }: any) {
       suppressNextChangeRef.current = false;
       return;
     }
-    voicePreviewComposerTextRef.current = '';
     setInput(text);
   }, []);
+
+  const rawHandsFreeVoicePreview = normalizeVoiceText(sttPreview || liveTranscript);
+  const acceptedControlPreview = acceptedHandsFreeControlPreviewRef.current;
+  const acceptedControlPreviewMatches = !!acceptedControlPreview
+    && acceptedControlPreview.text === rawHandsFreeVoicePreview
+    && handsFreeCountdownNow - acceptedControlPreview.timestamp <= HANDS_FREE_ACCEPTED_CONTROL_PREVIEW_SUPPRESSION_MS;
+  const handsFreeVoicePreview = handsFree && !acceptedControlPreviewMatches
+    ? rawHandsFreeVoicePreview
+    : '';
+
+  useEffect(() => {
+    if (
+      !rawHandsFreeVoicePreview
+      || !acceptedControlPreview
+      || acceptedControlPreview.text !== rawHandsFreeVoicePreview
+      || handsFreeCountdownNow - acceptedControlPreview.timestamp > HANDS_FREE_ACCEPTED_CONTROL_PREVIEW_SUPPRESSION_MS
+    ) {
+      acceptedHandsFreeControlPreviewRef.current = null;
+    }
+  }, [acceptedControlPreview, handsFreeCountdownNow, rawHandsFreeVoicePreview]);
 
   const handsFreeSendDeadline = useMemo(() => {
     const deadlines = [handsFreeDebounceEndsAt, androidHandsFreeDebounceEndsAt]
@@ -6716,7 +6708,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const handsFreeCountdownSeconds = handsFreeSendDeadline
     ? Math.max(0, Math.ceil((handsFreeSendDeadline - handsFreeCountdownNow) / 1000))
     : 0;
-  const hasPendingHandsFreeSend = handsFree && handsFreeCountdownSeconds > 0;
+  const hasPendingHandsFreeSend = handsFree && !!handsFreeVoicePreview && handsFreeCountdownSeconds > 0;
 
   useEffect(() => {
     if (!handsFreeSendDeadline) return;
@@ -6744,12 +6736,13 @@ export default function ChatScreen({ route, navigation }: any) {
 		const pauseHandsFreeByUser = useCallback(() => {
 			clearAndroidHandsFreePartialTimer();
 			androidHandsFreePendingPartialRef.current = '';
+			setSttPreviewWithExpiry('');
 			handsFreeController.pauseByUser();
 			if (!androidServiceHandlesHandsFreeMic) {
 				void stopRecognitionOnly();
 			}
 			setDebugInfo('Handsfree paused.');
-		}, [androidServiceHandlesHandsFreeMic, clearAndroidHandsFreePartialTimer, handsFreeController.pauseByUser, stopRecognitionOnly]);
+		}, [androidServiceHandlesHandsFreeMic, clearAndroidHandsFreePartialTimer, handsFreeController.pauseByUser, setSttPreviewWithExpiry, stopRecognitionOnly]);
 
 		const handleHandsFreePrimaryControl = useCallback(() => {
 			if (hasPendingHandsFreeSend) {
@@ -6767,30 +6760,50 @@ export default function ChatScreen({ route, navigation }: any) {
 			pauseHandsFreeByUser();
 		}, [handsFreeController.state.phase, hasPendingHandsFreeSend, pauseHandsFreeByUser, resumeHandsFreeByUser, wakeHandsFreeByUser]);
 
+  const handleComposerPrimaryAction = useCallback(() => {
+    if (hasPendingHandsFreeSend) {
+      pauseHandsFreeByUser();
+      return;
+    }
+    sendComposerInput();
+  }, [hasPendingHandsFreeSend, pauseHandsFreeByUser, sendComposerInput]);
+
   // Keep the guide aligned with the deliberately small spoken-command surface.
   const voiceCommandReference = useMemo(
     () => [
-      { key: 'wake', label: 'Wake from sleep', phrase: handsFreeWakePhrase },
+      { key: 'wake', label: 'Wake from sleep', phrase: handsFreeWakePhrase, editable: 'wake' as const },
       ...DEFAULT_VOICE_COMMANDS.map((command) => ({
         key: command.id,
         label: command.label,
         phrase: command.aliases[0] ?? command.label.toLowerCase(),
       })),
       { key: 'switch-direct', label: 'Switch directly', phrase: 'switch to <agent>' },
-      { key: 'sleep', label: 'Go to sleep', phrase: handsFreeSleepPhrase },
+      { key: 'sleep', label: 'Go to sleep', phrase: handsFreeSleepPhrase, editable: 'sleep' as const },
     ],
     [handsFreeWakePhrase, handsFreeSleepPhrase],
   );
 
-  const editVoiceCommandReference = useCallback((phrase: string) => {
-    const editablePhrase = phrase.replace(/<agent>/g, '').trim();
-    if (!editablePhrase) return;
+  const commitEditableVoicePhrase = useCallback((kind: 'wake' | 'sleep') => {
+    const value = kind === 'wake'
+      ? handsFreeWakePhraseDraft.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE
+      : handsFreeSleepPhraseDraft.trim() || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
 
-    setInput(editablePhrase);
-    closeHandsFreeGuide();
-    setDebugInfo('Voice command moved to composer.');
-    setTimeout(() => inputRef.current?.focus(), 0);
-  }, [closeHandsFreeGuide]);
+    if (kind === 'wake') setHandsFreeWakePhraseDraft(value);
+    else setHandsFreeSleepPhraseDraft(value);
+
+    setConfig((previous) => {
+      const next = {
+        ...previous,
+        ...(kind === 'wake'
+          ? { handsFreeWakePhrase: value }
+          : { handsFreeSleepPhrase: value }),
+      };
+      void saveConfig(next).catch((error) => {
+        console.warn('[ChatScreen] Failed to save hands-free phrase:', error);
+      });
+      return next;
+    });
+  }, [handsFreeSleepPhraseDraft, handsFreeWakePhraseDraft, setConfig]);
 
 	const composerPlaceholder = handsFree
 		? (handsFreeController.state.phase === 'paused'
@@ -7847,6 +7860,27 @@ export default function ChatScreen({ route, navigation }: any) {
             { paddingBottom: Platform.OS === 'ios' ? 12 + insets.bottom : spacing.sm },
           ]}
         >
+	          {!!handsFreeVoicePreview && (
+	            <View
+	              style={styles.voicePreviewCard}
+	              accessibilityRole="text"
+	              accessibilityLabel={`Voice preview: ${handsFreeVoicePreview}`}
+	              accessibilityLiveRegion="polite"
+	            >
+	              <View style={styles.voicePreviewHeader}>
+	                <View style={styles.voicePreviewTitleRow}>
+	                  <Ionicons name="mic-outline" size={14} color={theme.colors.primary} />
+	                  <Text style={styles.voicePreviewTitle}>Voice preview</Text>
+	                </View>
+	                {hasPendingHandsFreeSend && (
+	                  <Text style={styles.voicePreviewCountdown}>Sending in {handsFreeCountdownSeconds}s</Text>
+	                )}
+	              </View>
+	              <Text style={styles.voicePreviewText} numberOfLines={3}>
+	                {handsFreeVoicePreview}
+	              </Text>
+	            </View>
+	          )}
 	          {pendingImages.length > 0 && (
 	            <ScrollView
 	              horizontal
@@ -7931,9 +7965,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	            )}
             <TouchableOpacity
 	              style={[styles.sendButton, !composerHasContent && !hasPendingHandsFreeSend && styles.sendButtonDisabled]}
-	              onPress={sendComposerInput}
+	              onPress={handleComposerPrimaryAction}
 	              activeOpacity={0.7}
-	              disabled={!composerHasContent}
+	              disabled={!composerHasContent && !hasPendingHandsFreeSend}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel(
                 hasPendingHandsFreeSend
@@ -7941,9 +7975,9 @@ export default function ChatScreen({ route, navigation }: any) {
                   : 'Send message',
               )}
 	              accessibilityHint={hasPendingHandsFreeSend
-                  ? 'Shows the remaining handsfree auto-send countdown.'
+                  ? 'Pauses hands-free and cancels the pending automatic send.'
                   : 'Sends your typed text and any attached images to the selected agent.'}
-              accessibilityState={{ disabled: !composerHasContent }}
+              accessibilityState={{ disabled: !composerHasContent && !hasPendingHandsFreeSend }}
 	            >
               {hasPendingHandsFreeSend ? (
                 <Text style={styles.sendButtonCountdownText}>{handsFreeCountdownSeconds}s</Text>
@@ -8067,6 +8101,36 @@ export default function ChatScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </View>
 
+            <ScrollView
+              style={styles.chatMenuScroll}
+              contentContainerStyle={styles.chatMenuScrollContent}
+              showsVerticalScrollIndicator
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
+
+            <TouchableOpacity
+              style={[styles.chatMenuRow, styles.chatMenuDangerRow, isEmergencyStopping && styles.chatMenuRowDisabled]}
+              onPress={handleEmergencyStop}
+              disabled={isEmergencyStopping}
+              accessibilityRole="button"
+              accessibilityLabel="Emergency stop"
+              accessibilityHint="Immediately stops all active agent work across the desktop app."
+              accessibilityState={{ disabled: isEmergencyStopping }}
+            >
+              <View style={[styles.chatMenuIcon, styles.chatMenuDangerIcon]}>
+                <Ionicons name="warning" size={16} color="#FFFFFF" />
+              </View>
+              <View style={styles.chatMenuRowText}>
+                <Text style={[styles.chatMenuRowLabel, styles.chatMenuDangerText]}>
+                  {isEmergencyStopping ? 'Stopping everything' : 'Emergency stop'}
+                </Text>
+                <Text style={styles.chatMenuRowHelper}>
+                  Immediately stop all active agent work across the desktop app.
+                </Text>
+              </View>
+            </TouchableOpacity>
+
             {isAgentRunningInHeader && (
               <TouchableOpacity
                 style={[styles.chatMenuRow, styles.chatMenuDangerRow, isStoppingCurrentSession && styles.chatMenuRowDisabled]}
@@ -8095,6 +8159,33 @@ export default function ChatScreen({ route, navigation }: any) {
 
             {desktopSettings && (
               <>
+                <TouchableOpacity
+                  style={styles.chatMenuRow}
+                  onPress={() => setAgentConfigExpanded((expanded) => !expanded)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${agentConfigExpanded ? 'Collapse' : 'Expand'} model settings`}
+                  accessibilityState={{ expanded: agentConfigExpanded }}
+                >
+                  <View style={styles.chatMenuIcon}>
+                    <Ionicons name="options-outline" size={16} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.chatMenuRowText}>
+                    <Text style={styles.chatMenuRowLabel}>Model settings</Text>
+                    <Text style={styles.chatMenuRowHelper} numberOfLines={1}>
+                      {CHAT_PROVIDERS.find((provider) => provider.value === agentProviderId)?.label || agentProviderId}
+                      {' · '}
+                      {modelOptions.find((model) => model.id === currentAgentModel)?.name || currentAgentModel}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={agentConfigExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={17}
+                    color={theme.colors.mutedForeground}
+                  />
+                </TouchableOpacity>
+
+                {agentConfigExpanded && (
+                <View style={styles.chatMenuAgentConfigPanel}>
                 <View style={styles.chatMenuControlGroup}>
                   <View style={styles.chatMenuControlHeader}>
                     <Ionicons name="hardware-chip-outline" size={15} color={theme.colors.primary} />
@@ -8137,7 +8228,7 @@ export default function ChatScreen({ route, navigation }: any) {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.chatMenuChipRow}
                   >
-                    {modelMenuOptions.map((model) => {
+                    {modelOptions.map((model) => {
                       const selected = model.id === currentAgentModel;
                       return (
                         <Pressable
@@ -8146,19 +8237,19 @@ export default function ChatScreen({ route, navigation }: any) {
                           onPress={() => handleAgentModelChange(model.id)}
                           disabled={isSavingModelSettings}
                           accessibilityRole="button"
-                          accessibilityLabel={`Use ${model.name || getModelDisplayName(model.id)} model`}
+                          accessibilityLabel={`Use ${model.name} model`}
                           accessibilityState={{ selected, disabled: isSavingModelSettings }}
                         >
                           <Text
                             style={[styles.chatMenuChipText, selected && styles.chatMenuChipTextSelected]}
                             numberOfLines={1}
                           >
-                            {model.name || getModelDisplayName(model.id)}
+                            {model.name}
                           </Text>
                         </Pressable>
                       );
                     })}
-                    {!isLoadingModelOptions && modelMenuOptions.length === 0 && (
+                    {!isLoadingModelOptions && modelOptions.length === 0 && (
                       <Text style={styles.chatMenuEmptyText}>No models available</Text>
                     )}
                   </ScrollView>
@@ -8229,6 +8320,8 @@ export default function ChatScreen({ route, navigation }: any) {
                       })}
                     </ScrollView>
                   </View>
+                )}
+                </View>
                 )}
               </>
             )}
@@ -8362,6 +8455,7 @@ export default function ChatScreen({ route, navigation }: any) {
               selectedDeviceId={config.audioInputDeviceId}
               onDeviceChange={handleAudioInputDeviceChange}
             />
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -8414,23 +8508,32 @@ export default function ChatScreen({ route, navigation }: any) {
                       <Text style={styles.handsFreeCommandLabel} numberOfLines={1}>
                         {entry.label}
                       </Text>
-                      <TouchableOpacity
-                        style={styles.handsFreeCommandPhrase}
-                        onPress={() => editVoiceCommandReference(entry.phrase)}
-                        activeOpacity={0.75}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Edit voice command ${entry.phrase}`}
-                        accessibilityHint="Moves this command into the composer so you can edit it before sending."
-                      >
-                        <Text style={styles.handsFreeCommandPhraseText} numberOfLines={1}>
-                          “{entry.phrase}”
-                        </Text>
-                        <Ionicons name="create-outline" size={13} color={theme.colors.primary} />
-                      </TouchableOpacity>
+                      {'editable' in entry && entry.editable ? (
+                        <TextInput
+                          style={[styles.handsFreeCommandPhrase, styles.handsFreeCommandPhraseInput]}
+                          value={entry.editable === 'wake' ? handsFreeWakePhraseDraft : handsFreeSleepPhraseDraft}
+                          onChangeText={entry.editable === 'wake' ? setHandsFreeWakePhraseDraft : setHandsFreeSleepPhraseDraft}
+                          onEndEditing={() => commitEditableVoicePhrase(entry.editable)}
+                          onSubmitEditing={() => commitEditableVoicePhrase(entry.editable)}
+                          placeholder={entry.editable === 'wake' ? DEFAULT_HANDS_FREE_WAKE_PHRASE : DEFAULT_HANDS_FREE_SLEEP_PHRASE}
+                          placeholderTextColor={theme.colors.mutedForeground}
+                          autoCapitalize="sentences"
+                          autoCorrect={false}
+                          returnKeyType="done"
+                          accessibilityLabel={`Edit ${entry.label.toLowerCase()} phrase`}
+                        />
+                      ) : (
+                        <View style={styles.handsFreeCommandPhrase}>
+                          <Text style={styles.handsFreeCommandPhraseText} numberOfLines={1}>
+                            “{entry.phrase}”
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   ))}
                 </View>
                 <Text style={styles.handsFreeCommandHint}>
+                  Wake and sleep phrases are editable here.{' '}
                   Say “switch agent” to hear recent choices, then say the agent name. “Stop”
                   stops speech while the assistant is talking or cancels the current turn while thinking.
                 </Text>
@@ -8642,6 +8745,42 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       right: 0,
       bottom: 0,
       zIndex: 20,
+    },
+    voicePreviewCard: {
+      marginHorizontal: spacing.sm,
+      marginTop: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: hexToRgba(theme.colors.primary, 0.28),
+      backgroundColor: hexToRgba(theme.colors.primary, isDark ? 0.1 : 0.06),
+      gap: 3,
+    },
+    voicePreviewHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    voicePreviewTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    voicePreviewTitle: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '700',
+    },
+    voicePreviewCountdown: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      fontVariant: ['tabular-nums'],
+    },
+    voicePreviewText: {
+      ...theme.typography.body,
+      color: theme.colors.foreground,
     },
     pendingImagesRow: {
       paddingHorizontal: spacing.sm,
@@ -8898,6 +9037,13 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.primary,
       fontWeight: '600',
     },
+    handsFreeCommandPhraseInput: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '600',
+      minHeight: 32,
+      paddingVertical: 3,
+    },
     handsFreeCommandHint: {
       ...theme.typography.caption,
       color: theme.colors.mutedForeground,
@@ -8986,6 +9132,7 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     chatMenuContent: {
       width: '100%',
       maxWidth: 390,
+      maxHeight: Math.max(320, screenHeight - 72),
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -8997,6 +9144,13 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       shadowRadius: 18,
       shadowOffset: { width: 0, height: 10 },
       elevation: 8,
+    },
+    chatMenuScroll: {
+      flexShrink: 1,
+    },
+    chatMenuScrollContent: {
+      gap: spacing.sm,
+      paddingBottom: spacing.sm,
     },
     chatMenuHeader: {
       flexDirection: 'row',
@@ -9073,6 +9227,14 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.sm,
       gap: spacing.xs,
+    },
+    chatMenuAgentConfigPanel: {
+      gap: spacing.sm,
+      padding: spacing.xs,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: hexToRgba(theme.colors.primary, isDark ? 0.06 : 0.035),
     },
     chatMenuControlHeader: {
       flexDirection: 'row',

@@ -1024,22 +1024,22 @@ export default function SettingsScreen({ navigation, route }: any) {
     }
   }, []);
 
-  const updateDraftField = useCallback((patch: Partial<AppConfig>) => {
-    setDraft((prev) => ({ ...prev, ...patch }));
-    setHasPendingLocalSave(true);
-    setSaveStatusMessage(null);
-  }, []);
-
-  // Keep a ref to the latest draft so multiple synchronous updateLocalConfig
-  // calls within the same tick compose instead of clobbering each other.
-  // This matters for flows like TTSSettings.handleVoiceSelect which calls
-  // onTtsProviderChange + onEdgeTtsVoiceChange back-to-back: without the ref,
-  // the second call would read a stale `draft` from closure and overwrite
-  // the first call's patch.
+  // Keep a ref to the latest draft so blur/end-edit handlers always commit the
+  // text the user just entered, even if React has not rendered that keystroke yet.
   const draftRef = useRef(draft);
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
+
+  const updateDraftField = useCallback((patch: Partial<AppConfig>) => {
+    setDraft((prev) => {
+      const next = { ...prev, ...patch };
+      draftRef.current = next;
+      return next;
+    });
+    setHasPendingLocalSave(true);
+    setSaveStatusMessage(null);
+  }, []);
 
   const updateLocalConfig = useCallback((patch: Partial<AppConfig>) => {
     const next = { ...draftRef.current, ...patch };
@@ -3267,7 +3267,9 @@ export default function SettingsScreen({ navigation, route }: any) {
           style={styles.input}
           value={draft.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE}
           onChangeText={(value) => updateDraftField({ handsFreeWakePhrase: value })}
-          onEndEditing={() => updateLocalConfig({ handsFreeWakePhrase: draft.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE })}
+          onEndEditing={(event) => updateLocalConfig({
+            handsFreeWakePhrase: event.nativeEvent.text.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE,
+          })}
           placeholder={DEFAULT_HANDS_FREE_WAKE_PHRASE}
           placeholderTextColor={theme.colors.mutedForeground}
           autoCapitalize='none'

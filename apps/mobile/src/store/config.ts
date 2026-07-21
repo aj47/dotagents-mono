@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { normalizeApiBaseUrl } from '@dotagents/shared';
+import { loadTunnelMetadata } from '../lib/tunnelPersistence';
 
 export type AppConfig = {
   apiKey: string;
@@ -28,7 +29,8 @@ export type AppConfig = {
   audioInputDeviceId?: string;
 };
 
-export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'hey agents';
+export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'Hi bro';
+const LEGACY_DEFAULT_HANDS_FREE_WAKE_PHRASE = 'hey agents';
 export const DEFAULT_HANDS_FREE_SLEEP_PHRASE = 'go to sleep';
 export const DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 1500;
 export const MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 0;
@@ -76,6 +78,32 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
 
 const STORAGE_KEY = 'app_config_v1';
 
+function createDefaultAppConfig(): AppConfig {
+  return { ...DEFAULT_APP_CONFIG };
+}
+
+async function recoverConfigFromTunnelMetadata(): Promise<AppConfig | null> {
+  const metadata = await loadTunnelMetadata();
+  if (!metadata?.baseUrl?.trim() || !metadata.apiKey?.trim()) {
+    return null;
+  }
+
+  const recovered = normalizeStoredConfig({
+    ...DEFAULT_APP_CONFIG,
+    baseUrl: metadata.baseUrl,
+    apiKey: metadata.apiKey,
+  });
+
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(recovered));
+    console.log('[Config] Recovered connection settings from tunnel metadata');
+  } catch (error) {
+    console.warn('[Config] Recovered connection settings but could not repair app config storage:', error);
+  }
+
+  return recovered;
+}
+
 export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
   // Edge TTS now routes through the paired desktop's /v1/tts/speak endpoint,
   // so if no desktop is paired fall back to native.
@@ -92,7 +120,10 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
     ...cfg,
     baseUrl: cfg.baseUrl ? normalizeApiBaseUrl(cfg.baseUrl) : cfg.baseUrl,
     handsFreeMessageDebounceMs: normalizeHandsFreeMessageDebounceMs(cfg.handsFreeMessageDebounceMs),
-    handsFreeWakePhrase: cfg.handsFreeWakePhrase?.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE,
+    handsFreeWakePhrase:
+      cfg.handsFreeWakePhrase?.trim().toLowerCase() === LEGACY_DEFAULT_HANDS_FREE_WAKE_PHRASE
+        ? DEFAULT_HANDS_FREE_WAKE_PHRASE
+        : cfg.handsFreeWakePhrase?.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE,
     handsFreeSleepPhrase: cfg.handsFreeSleepPhrase?.trim() || DEFAULT_HANDS_FREE_SLEEP_PHRASE,
     handsFreeDebug: cfg.handsFreeDebug ?? false,
     edgeTtsVoice: migrateEdgeTtsVoice(cfg.edgeTtsVoice),
@@ -106,12 +137,25 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
 
 export async function loadConfig(): Promise<AppConfig> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
-  if (!raw) return DEFAULT_APP_CONFIG;
-  try {
-    const parsed = JSON.parse(raw);
-    return normalizeStoredConfig({ ...DEFAULT_APP_CONFIG, ...parsed } as AppConfig);
-  } catch {}
-  return DEFAULT_APP_CONFIG;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      const normalized = normalizeStoredConfig({ ...DEFAULT_APP_CONFIG, ...parsed } as AppConfig);
+      if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        } catch (error) {
+          console.warn('[Config] Loaded migrated config but could not persist it:', error);
+        }
+      }
+      return normalized;
+    } catch (error) {
+      console.warn('[Config] Stored app config is invalid; attempting connection recovery:', error);
+    }
+  }
+
+  const recovered = await recoverConfigFromTunnelMetadata();
+  return recovered ?? createDefaultAppConfig();
 }
 
 export async function saveConfig(cfg: AppConfig) {
@@ -119,7 +163,7 @@ export async function saveConfig(cfg: AppConfig) {
 }
 
 export function useConfig() {
-  const [config, setConfig] = useState<AppConfig>(DEFAULT_APP_CONFIG);
+  const [config, setConfig] = useState<AppConfig>(() => createDefaultAppConfig());
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
