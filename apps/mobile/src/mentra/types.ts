@@ -35,6 +35,10 @@ export type PendingMentraPhoto = {
   expiresAt: number;
 };
 
+export type FinishMentraCaptureOptions = {
+  onCaptureStopped?: () => void | Promise<void>;
+};
+
 export type MentraContextValue = {
   supported: boolean;
   enabled: boolean;
@@ -61,7 +65,7 @@ export type MentraContextValue = {
   disconnect(): Promise<void>;
   forget(): Promise<void>;
   beginCapture(): Promise<void>;
-  finishCapture(): Promise<string>;
+  finishCapture(options?: FinishMentraCaptureOptions): Promise<string>;
   cancelCapture(): Promise<void>;
   clearPendingPhoto(): void;
   consumePendingPhoto(photoId: string): void;

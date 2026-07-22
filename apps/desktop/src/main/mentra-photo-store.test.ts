@@ -3,6 +3,7 @@ import os from "os"
 import path from "path"
 import { afterEach, describe, expect, it } from "vitest"
 import {
+  MENTRA_PHOTO_MAX_BYTES,
   MentraPhotoStore,
   isSupportedMentraPhotoMimeType,
   isValidMentraPhotoRequestId,
@@ -44,5 +45,13 @@ describe("MentraPhotoStore", () => {
     expect(isValidMentraPhotoRequestId("../photo")).toBe(false)
     expect(isValidMentraPhotoRequestId("safe-photo_1")).toBe(true)
     expect(isSupportedMentraPhotoMimeType("image/svg+xml")).toBe(false)
+  })
+
+  it("rejects empty and oversized photos", async () => {
+    const store = await createStore()
+    await expect(store.save("empty", "image/jpeg", Buffer.alloc(0)))
+      .rejects.toThrow("empty")
+    await expect(store.save("oversized", "image/jpeg", Buffer.alloc(MENTRA_PHOTO_MAX_BYTES + 1)))
+      .rejects.toThrow("exceeds")
   })
 })

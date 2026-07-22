@@ -11,6 +11,7 @@ import type {
   MentraConnectionState,
   MentraContextValue,
   MentraDevice,
+  FinishMentraCaptureOptions,
   PendingMentraPhoto,
 } from './types';
 
@@ -46,14 +47,18 @@ function asMentraDevice(device: Device | null): MentraDevice | null {
 
 async function requestMentraPermissions(): Promise<void> {
   if (Platform.OS !== 'android') return;
-  const permissions = [PermissionsAndroid.PERMISSIONS.RECORD_AUDIO];
+  // The Mentra SDK notes that some Android 12+ devices still suppress BLE scan
+  // callbacks unless Location is granted and enabled, even with BLUETOOTH_SCAN.
+  const permissions = [
+    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+    PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+  ];
   if (Number(Platform.Version) >= 31) {
     permissions.push(
       PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
       PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
     );
-  } else {
-    permissions.push(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
   }
   if (Number(Platform.Version) >= 33) {
     permissions.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
@@ -61,7 +66,7 @@ async function requestMentraPermissions(): Promise<void> {
   const result = await PermissionsAndroid.requestMultiple(permissions);
   const denied = permissions.filter((permission) => result[permission] !== PermissionsAndroid.RESULTS.GRANTED);
   if (denied.length > 0) {
-    throw new Error('Bluetooth, microphone, and notification permissions are required for Mentra Live.');
+    throw new Error('Bluetooth, Location, microphone, and notification permissions are required for Mentra Live.');
   }
 }
 
@@ -242,15 +247,18 @@ export function MentraProvider({ children }: { children: ReactNode }) {
     if (!config.baseUrl || !config.apiKey) {
       throw new Error('Pair DotAgents with the desktop before using the Mentra Live microphone.');
     }
-    await requestMentraPermissions();
-    captureChunksRef.current = [];
-    captureBytesRef.current = 0;
-    captureStartedAtRef.current = Date.now();
-    setError(null);
+    if (captureStateRef.current !== 'idle') return;
+    captureStateRef.current = 'capturing';
     setCaptureState('capturing');
     try {
+      await requestMentraPermissions();
+      captureChunksRef.current = [];
+      captureBytesRef.current = 0;
+      captureStartedAtRef.current = Date.now();
+      setError(null);
       await BluetoothSdk.setMicState(true, true, false, false);
     } catch (nextError) {
+      captureStateRef.current = 'idle';
       setCaptureState('idle');
       handleError(nextError);
       throw nextError;
@@ -260,16 +268,20 @@ export function MentraProvider({ children }: { children: ReactNode }) {
   const cancelCapture = useCallback(async () => {
     captureChunksRef.current = [];
     captureBytesRef.current = 0;
+    captureStateRef.current = 'idle';
     setCaptureState('idle');
     await BluetoothSdk.setMicState(false, true, false, false).catch(handleError);
   }, [handleError]);
 
-  const finishCapture = useCallback(async (): Promise<string> => {
+  const finishCapture = useCallback(async (options?: FinishMentraCaptureOptions): Promise<string> => {
     if (captureStateRef.current !== 'capturing') return '';
+    captureStateRef.current = 'transcribing';
     setCaptureState('transcribing');
     await BluetoothSdk.setMicState(false, true, false, false).catch(handleError);
+    await options?.onCaptureStopped?.();
     const byteLength = captureBytesRef.current;
     if (!byteLength) {
+      captureStateRef.current = 'idle';
       setCaptureState('idle');
       throw new Error('No speech audio was received from Mentra Live.');
     }
@@ -307,6 +319,7 @@ export function MentraProvider({ children }: { children: ReactNode }) {
     } finally {
       captureChunksRef.current = [];
       captureBytesRef.current = 0;
+      captureStateRef.current = 'idle';
       setCaptureState('idle');
     }
   }, [config.apiKey, config.baseUrl, handleError]);

@@ -147,6 +147,7 @@ import {
 } from '../lib/voice/agentSessionVoice';
 import { sendMessageToAgentSession } from '../lib/voice/sendAgentSessionMessage';
 import {
+  getHandsFreeAudioCueDurationMs,
   playHandsFreeAudioCue,
   setAndroidHandsFreeCueRoutingEnabled,
   type HandsFreeAudioCue,
@@ -3693,6 +3694,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const mentraVadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mentraFinalizingRef = useRef(false);
   const mentraSleepAfterTurnRef = useRef(false);
+  const mentraControlCueSequenceRef = useRef(0);
   const mentraCaptureStateRef = useRef(mentra.captureState);
   mentraCaptureStateRef.current = mentra.captureState;
 
@@ -3702,26 +3704,61 @@ export default function ChatScreen({ route, navigation }: any) {
     mentraVadTimerRef.current = null;
   }, []);
 
+  const playMentraControlCue = useCallback(async (cue: HandsFreeAudioCue): Promise<boolean> => {
+    if (!mentraVoiceActive || !mentra.audioConnected) return false;
+    const sequence = mentraControlCueSequenceRef.current + 1;
+    mentraControlCueSequenceRef.current = sequence;
+    await mentra.setOwnAppAudioPlaying(true).catch(() => undefined);
+    playHandsFreeAudioCue(cue);
+    voiceLog('runtime-state', 'Mentra control audio cue played.', { cue });
+    const cueHoldMs = Math.max(500, getHandsFreeAudioCueDurationMs(cue) + 100);
+    await new Promise<void>((resolve) => setTimeout(resolve, cueHoldMs));
+    if (mentraControlCueSequenceRef.current === sequence && !getGlobalTtsPlayback()) {
+      await mentra.setOwnAppAudioPlaying(false).catch(() => undefined);
+    }
+    return true;
+  }, [mentra.audioConnected, mentra.setOwnAppAudioPlaying, mentraVoiceActive, voiceLog]);
+
   const finalizeMentraCapture = useCallback(async (mode: 'send' | 'handsfree') => {
     if (mentraFinalizingRef.current || mentraCaptureStateRef.current !== 'capturing') return;
     mentraFinalizingRef.current = true;
     clearMentraVadTimer();
     setDebugInfo('Transcribing Mentra Live audio…');
     try {
-      const text = await mentra.finishCapture();
+      const text = await mentra.finishCapture({
+        onCaptureStopped: mode === 'send'
+          ? () => playMentraControlCue('processing')
+          : undefined,
+      });
       if (!text) {
         setDebugInfo('No speech was detected from Mentra Live.');
-        playHandsFreeCue('error');
+        if (mode === 'send') void playMentraControlCue('error');
+        else playHandsFreeCue('error');
         return;
       }
       handleVoiceFinalized({ text, mode, source: 'mentra' });
     } catch (nextError: any) {
       setDebugInfo(nextError?.message || 'Mentra Live transcription failed.');
-      playHandsFreeCue('error');
+      if (mode === 'send') void playMentraControlCue('error');
+      else playHandsFreeCue('error');
     } finally {
       mentraFinalizingRef.current = false;
+      if (mode === 'handsfree') {
+        setTimeout(() => {
+          if (
+            mentraVoiceActive
+            && handsFreePhaseRef.current === 'listening'
+            && mentraCaptureStateRef.current === 'idle'
+            && !getGlobalTtsPlayback()
+          ) {
+            void mentra.beginCapture().catch((nextError: any) => {
+              setDebugInfo(nextError?.message || 'Could not restart the Mentra Live microphone.');
+            });
+          }
+        }, 0);
+      }
     }
-  }, [clearMentraVadTimer, handleVoiceFinalized, mentra.finishCapture, playHandsFreeCue]);
+  }, [clearMentraVadTimer, handleVoiceFinalized, mentra.beginCapture, mentra.finishCapture, mentraVoiceActive, playHandsFreeCue, playMentraControlCue]);
 
   useEffect(() => {
     const event = mentra.lastTouch;
@@ -3752,16 +3789,18 @@ export default function ChatScreen({ route, navigation }: any) {
     } else if (action === 'stop') {
       mentraSleepAfterTurnRef.current = false;
       clearMentraVadTimer();
-      void mentra.cancelCapture();
       stopHandsFreeActivityFromVoice('hardware');
       if (handsFree) handsFreeController.wakeByUser();
       setDebugInfo('Stopped. Mentra Live is ready for another request.');
+      void mentra.cancelCapture().then(() => {
+        if (!handsFree) return playMentraControlCue('stopped');
+      });
     } else if (action === 'start-capture') {
       mentraLastSpeakingHandledRef.current = mentra.lastSpeaking?.sequence ?? 0;
-      void mentra.beginCapture()
+      void playMentraControlCue('listening')
+        .then(() => mentra.beginCapture())
         .then(() => {
           setDebugInfo('Mentra Live is recording. Tap again to send.');
-          playHandsFreeCue('listening');
         })
         .catch((nextError: any) => setDebugInfo(nextError?.message || 'Could not start Mentra Live microphone.'));
     } else if (action === 'finish-capture') {
@@ -3779,13 +3818,19 @@ export default function ChatScreen({ route, navigation }: any) {
     mentra.lastTouch,
     mentraVoiceActive,
     playHandsFreeCue,
+    playMentraControlCue,
     stopHandsFreeActivityFromVoice,
   ]);
 
   useEffect(() => {
     if (!mentraVoiceActive || !handsFree) return;
     const phase = handsFreeController.state.phase;
-    if (mentraSleepAfterTurnRef.current && phase === 'listening') {
+    if (
+      mentraSleepAfterTurnRef.current
+      && phase === 'listening'
+      && !hasLiveAgentTurn
+      && !getGlobalTtsPlayback()
+    ) {
       mentraSleepAfterTurnRef.current = false;
       void mentra.cancelCapture();
       handsFreeController.sleepByUser();
@@ -3815,6 +3860,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFree,
     handsFreeController.sleepByUser,
     handsFreeController.state.phase,
+    hasLiveAgentTurn,
     mentra.beginCapture,
     mentra.cancelCapture,
     mentra.captureState,

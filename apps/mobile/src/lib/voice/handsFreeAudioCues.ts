@@ -175,6 +175,10 @@ export function playHandsFreeAudioCue(cue: HandsFreeAudioCue): void {
   void playNativeCue(cue);
 }
 
+export function getHandsFreeAudioCueDurationMs(cue: HandsFreeAudioCue): number {
+  return CUE_DEFINITIONS[cue].reduce((total, tone) => total + Math.max(0, tone.durationMs), 0);
+}
+
 async function ensureCueAudioMode(): Promise<void> {
   if (audioModeConfigured) return;
   try {

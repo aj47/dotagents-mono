@@ -64,6 +64,14 @@ afterEach(() => {
 });
 
 describe('handsFreeAudioCues', () => {
+  it('reports cue durations for sequencing Mentra microphone capture', async () => {
+    const mod = await loadModule();
+
+    expect(mod.getHandsFreeAudioCueDurationMs('listening')).toBe(252);
+    expect(mod.getHandsFreeAudioCueDurationMs('processing')).toBe(192);
+    expect(mod.getHandsFreeAudioCueDurationMs('stopped')).toBe(228);
+  });
+
   it('routes cue playback through the Android service when service routing is enabled', async () => {
     const mod = await loadModule();
     playAndroidHandsFreeCueMock.mockResolvedValue(true);

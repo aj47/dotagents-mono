@@ -1,5 +1,5 @@
 diff --git a/android/build.gradle b/android/build.gradle
-index 680ac0be9a0ce1a21c4d5ed74fc0da49398b0e8e..5fa49428273a49eb25087e62b0165de0fd069bec 100644
+index 680ac0be9a0ce1a21c4d5ed74fc0da49398b0e8e..4f4593f82ef108c80349773f1a6df5a08bd980d1 100644
 --- a/android/build.gradle
 +++ b/android/build.gradle
 @@ -184,7 +184,9 @@ gradle.taskGraph.whenReady {
@@ -7,23 +7,10 @@ index 680ac0be9a0ce1a21c4d5ed74fc0da49398b0e8e..5fa49428273a49eb25087e62b0165de0
  apply from: expoModulesCorePlugin
  applyKotlinExpoModulesCorePlugin()
 -useExpoPublishing()
-+// The host Expo app configures its own publishing hooks. This module's
-+// publishing block below is sufficient for SDK releases and avoids duplicate
-+// Maven publications when consumed by an Expo app.
+-
++// This package already declares its Android release component and Maven publication below.
++// Calling Expo's publishing helper as well registers both a second variant and a second component.
++// Keep the package publishing configuration as the single source of truth for AGP 8.6+ hosts.
++
  // If you want to use the managed Android SDK versions from expo-modules-core, set this to true.
  // The Android SDK versions will be bumped from time to time in SDK releases and may introduce breaking changes in your module code.
-@@ -215,12 +217,8 @@ android {
-     versionName project.version
-     buildConfigField "String", "SDK_VERSION", "\"${project.version}\""
-   }
--  publishing {
--    singleVariant("release") {
--      withSourcesJar()
--      withJavadocJar()
--    }
--  }
-+  // Expo's useExpoPublishing() already registers the release variant.
-+  // Registering it again breaks AGP 8.6+ with a duplicate singleVariant error.
-   lintOptions {
-     abortOnError false
-   }
