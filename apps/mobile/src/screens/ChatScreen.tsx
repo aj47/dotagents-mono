@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback, type ComponentProps, type SetStateAction } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, useCallback, type ComponentProps, type ReactNode, type SetStateAction } from 'react';
 import {
   View,
   Text,
@@ -1239,6 +1239,130 @@ const formatToolExecutionStatsLabel = (stats?: ToolExecutionStats | null): strin
 
   return parts.length > 0 ? parts.join(' • ') : null;
 };
+
+const parseToolInspectorPayload = (value: unknown): unknown => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (!trimmed || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
+const isToolInspectorRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+type ToolInspectorValueProps = {
+  value: unknown;
+  styles: ReturnType<typeof createStyles>;
+  depth?: number;
+  emphasized?: boolean;
+};
+
+/** Render tool payloads as readable fields instead of making users parse JSON. */
+function ToolInspectorValue({ value, styles, depth = 0, emphasized = false }: ToolInspectorValueProps): ReactNode {
+  if (value === null) {
+    return <Text style={styles.toolFieldValueMuted}>null</Text>;
+  }
+
+  if (typeof value === 'string') {
+    return (
+      <Text
+        selectable
+        style={[styles.toolFieldValue, emphasized && styles.toolFieldValueCode]}
+      >
+        {value}
+      </Text>
+    );
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return <Text style={styles.toolFieldValue}>{String(value)}</Text>;
+  }
+
+  if (depth >= 3) {
+    return (
+      <Text style={styles.toolFieldValueCode} selectable>
+        {JSON.stringify(value)}
+      </Text>
+    );
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <Text style={styles.toolFieldValueMuted}>Empty list</Text>;
+    return (
+      <View style={styles.toolNestedValue}>
+        {value.map((item, index) => (
+          <View key={index} style={styles.toolArrayItem}>
+            <Text style={styles.toolArrayIndex}>{index + 1}</Text>
+            <View style={styles.toolArrayItemValue}>
+              <ToolInspectorValue value={item} styles={styles} depth={depth + 1} />
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  if (isToolInspectorRecord(value)) {
+    const entries = Object.entries(value);
+    if (entries.length === 0) return <Text style={styles.toolFieldValueMuted}>Empty object</Text>;
+    return (
+      <View style={styles.toolNestedValue}>
+        {entries.map(([key, childValue]) => (
+          <View key={key} style={styles.toolNestedField}>
+            <Text style={styles.toolNestedFieldLabel}>{key}</Text>
+            <ToolInspectorValue value={childValue} styles={styles} depth={depth + 1} />
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  return <Text style={styles.toolFieldValue}>{String(value)}</Text>;
+}
+
+type ToolInspectorPayloadProps = {
+  value: unknown;
+  fallbackText: string;
+  styles: ReturnType<typeof createStyles>;
+};
+
+function ToolInspectorPayload({ value, fallbackText, styles }: ToolInspectorPayloadProps): ReactNode {
+  const parsed = parseToolInspectorPayload(value);
+  if (isToolInspectorRecord(parsed)) {
+    const entries = Object.entries(parsed);
+    if (entries.length === 0) return <Text style={styles.toolFieldValueMuted}>No fields</Text>;
+    return (
+      <View style={styles.toolFieldList}>
+        {entries.map(([key, childValue]) => (
+          <View key={key} style={styles.toolFieldRow}>
+            <Text style={styles.toolFieldLabel}>{key}</Text>
+            <View style={styles.toolFieldValueWrap}>
+              <ToolInspectorValue
+                value={childValue}
+                styles={styles}
+                emphasized={key === 'command' || key === 'script'}
+              />
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  if (Array.isArray(parsed)) {
+    return <ToolInspectorValue value={parsed} styles={styles} />;
+  }
+
+  return (
+    <Text selectable style={styles.toolPayloadFallback}>
+      {fallbackText}
+    </Text>
+  );
+}
 
 export default function ChatScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -7554,17 +7678,34 @@ export default function ChatScreen({ route, navigation }: any) {
                                     aria-expanded={isToolCallFullyExpanded}
                                     accessibilityHint={isToolCallFullyExpanded ? 'Collapse tool details' : 'Expand to show full input/output'}
                                   >
-                                    <Text style={styles.toolName}>{toolNameLabel}</Text>
-                                    <Text style={styles.toolCallExpandHint}>
-                                      {isToolCallFullyExpanded ? '▼ Collapse' : '▶ Full Details'}
-                                    </Text>
+                                    <View style={styles.toolCallTitleRow}>
+                                      <Ionicons
+                                        name="terminal-outline"
+                                        size={14}
+                                        color={theme.colors.primary}
+                                      />
+                                      <Text style={styles.toolName}>{toolNameLabel}</Text>
+                                    </View>
+                                    <View style={styles.toolCallExpandControl}>
+                                      <Text style={styles.toolCallExpandHint}>
+                                        {isToolCallFullyExpanded ? 'Hide details' : 'Show details'}
+                                      </Text>
+                                      <Ionicons
+                                        name={isToolCallFullyExpanded ? 'chevron-up' : 'chevron-down'}
+                                        size={13}
+                                        color={theme.colors.mutedForeground}
+                                      />
+                                    </View>
                                   </Pressable>
 
                                   {/* Parameters */}
                                   {toolInputPayload && (
                                     <View style={styles.toolParamsSection}>
                                       <View style={styles.toolSectionHeaderRow}>
-                                        <Text style={styles.toolSectionLabel}>Input:</Text>
+                                        <View style={styles.toolSectionTitleRow}>
+                                          <Ionicons name="arrow-forward-outline" size={12} color={theme.colors.primary} />
+                                          <Text style={styles.toolSectionLabel}>Input</Text>
+                                        </View>
                                         <Pressable
                                           style={({ pressed }) => [
                                             styles.toolDetailCopyButton,
@@ -7582,9 +7723,11 @@ export default function ChatScreen({ route, navigation }: any) {
                                         style={isToolCallFullyExpanded ? styles.toolParamsScrollExpanded : styles.toolParamsScroll}
                                         nestedScrollEnabled
                                       >
-                                        <Text style={styles.toolParamsCode}>
-                                          {toolInputPayload}
-                                        </Text>
+                                        <ToolInspectorPayload
+                                          value={toolCall.arguments}
+                                          fallbackText={toolInputPayload}
+                                          styles={styles}
+                                        />
                                       </ScrollView>
                                     </View>
                                   )}
@@ -7603,7 +7746,10 @@ export default function ChatScreen({ route, navigation }: any) {
                                   {result ? (
                                     <View style={styles.toolResultItem}>
                                       <View style={styles.toolResultHeader}>
-                                        <Text style={styles.toolSectionLabel}>Output:</Text>
+                                        <View style={styles.toolSectionTitleRow}>
+                                          <Ionicons name="arrow-back-outline" size={12} color={result.success ? theme.colors.success : theme.colors.destructive} />
+                                          <Text style={styles.toolSectionLabel}>Output</Text>
+                                        </View>
                                         <Text style={[
                                           styles.toolResultBadge,
                                           result.success ? styles.toolResultBadgeSuccess : styles.toolResultBadgeError
@@ -7630,9 +7776,11 @@ export default function ChatScreen({ route, navigation }: any) {
                                         style={isToolCallFullyExpanded ? styles.toolResultScrollExpanded : styles.toolResultScroll}
                                         nestedScrollEnabled
                                       >
-                                        <Text style={styles.toolResultCode}>
-                                          {toolResultContent}
-                                        </Text>
+                                        <ToolInspectorPayload
+                                          value={toolResultContent}
+                                          fallbackText={toolResultContent}
+                                          styles={styles}
+                                        />
                                       </ScrollView>
                                       {result.error && (
                                         <View style={styles.toolResultErrorSection}>
@@ -9705,10 +9853,10 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     // Unified Tool Execution Card styles - compact left-accent design matching desktop
     toolExecutionCard: {
       marginTop: 2,
-      borderRadius: radius.sm,
-      borderLeftWidth: 1.5,
+      borderRadius: radius.md,
+      borderLeftWidth: 3,
       borderLeftColor: hexToRgba(theme.colors.mutedForeground, 0.5),
-      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.02),
+      backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.045),
       overflow: 'hidden',
     },
     toolExecutionPending: {
@@ -9724,16 +9872,16 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       backgroundColor: hexToRgba(theme.colors.destructive, 0.02),
     },
     toolCallCompactContainer: {
-      paddingVertical: 1,
-      paddingHorizontal: 2,
-      borderRadius: radius.sm,
-      gap: 1,
+      paddingVertical: 5,
+      paddingHorizontal: spacing.xs,
+      borderRadius: radius.md,
+      gap: 2,
     },
     toolCallCompactLine: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      paddingVertical: 1,
+      gap: 6,
+      paddingVertical: 2,
       overflow: 'hidden',
     },
     toolCallCompactPressed: {
@@ -9741,7 +9889,7 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     },
     toolCallCompactName: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '500',
       flexShrink: 1,
       minWidth: 0,
@@ -9757,7 +9905,7 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.destructive,
     },
     toolCallCompactStatus: {
-      fontSize: 9,
+      fontSize: 11,
     },
     toolCallCompactStatusPending: {
       color: theme.colors.info,
@@ -9801,8 +9949,8 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       minWidth: 0,
     },
     toolParamsSection: {
-      paddingHorizontal: spacing.xs,
-      paddingVertical: 2,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
     },
     toolParamsSectionTitle: {
       fontSize: 9,
@@ -9818,48 +9966,67 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       marginBottom: 2,
     },
     toolCallSection: {
-      marginBottom: spacing.xs,
-      paddingBottom: spacing.xs,
-      borderBottomWidth: 0.5,
-      borderBottomColor: hexToRgba(theme.colors.mutedForeground, 0.15),
+      marginBottom: spacing.sm,
+      paddingBottom: spacing.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: hexToRgba(theme.colors.mutedForeground, 0.2),
+    },
+    toolCallTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      flex: 1,
+      minWidth: 0,
     },
     toolName: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       fontWeight: '600',
       color: theme.colors.primary,
-      fontSize: 10,
+      fontSize: 12,
       flex: 1,
     },
     toolCallHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: spacing.xs,
-      marginBottom: spacing.xs,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.sm,
+      marginBottom: 0,
       minHeight: 44,
+      gap: spacing.sm,
     },
     toolCallHeaderPressed: {
       opacity: 0.7,
     },
     toolCallExpandHint: {
-      fontSize: 9,
+      fontSize: 10,
       color: theme.colors.mutedForeground,
       fontWeight: '500',
     },
+    toolCallExpandControl: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 0,
+    },
     toolSectionLabel: {
-      fontSize: 8,
+      fontSize: 10,
       fontWeight: '600',
       color: theme.colors.mutedForeground,
-      marginBottom: 2,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      letterSpacing: 0.8,
+    },
+    toolSectionTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
     },
     toolSectionHeaderRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: spacing.xs,
-      marginBottom: 2,
+      marginBottom: spacing.xs,
     },
     toolDetailCopyButton: {
       minHeight: 24,
@@ -9867,9 +10034,9 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 3,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: radius.sm,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: radius.md,
       backgroundColor: hexToRgba(theme.colors.mutedForeground, 0.08),
       flexShrink: 0,
     },
@@ -9877,34 +10044,115 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       opacity: 0.7,
     },
     toolDetailCopyButtonText: {
-      fontSize: 8,
+      fontSize: 10,
       fontWeight: '600',
       color: theme.colors.mutedForeground,
     },
     toolExecutionStatsText: {
-      marginTop: 2,
-      marginBottom: 2,
-      fontSize: 9,
+      marginHorizontal: spacing.sm,
+      marginTop: spacing.xs,
+      marginBottom: spacing.xs,
+      fontSize: 10,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       color: theme.colors.mutedForeground,
     },
     toolParamsScroll: {
-      maxHeight: 80,
-      borderRadius: radius.sm,
+      maxHeight: 126,
+      borderRadius: radius.md,
       overflow: 'hidden',
+      backgroundColor: hexToRgba(theme.colors.background, 0.6),
     },
     toolParamsScrollExpanded: {
-      maxHeight: 400,
-      borderRadius: radius.sm,
+      maxHeight: 420,
+      borderRadius: radius.md,
       overflow: 'hidden',
+      backgroundColor: hexToRgba(theme.colors.background, 0.6),
     },
     toolParamsCode: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 8,
+      fontSize: 10,
+      lineHeight: 15,
       color: theme.colors.foreground,
-      backgroundColor: theme.colors.muted,
-      padding: 3,
-      borderRadius: radius.sm,
+      padding: spacing.sm,
+      borderRadius: radius.md,
+    },
+    toolFieldList: {
+      paddingVertical: 2,
+    },
+    toolFieldRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: hexToRgba(theme.colors.mutedForeground, 0.12),
+    },
+    toolFieldLabel: {
+      width: 82,
+      paddingTop: 1,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 10,
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
+    toolFieldValueWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    toolFieldValue: {
+      color: theme.colors.foreground,
+      fontSize: 11,
+      lineHeight: 16,
+      flexShrink: 1,
+    },
+    toolFieldValueCode: {
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 10,
+      lineHeight: 15,
+      color: theme.colors.foreground,
+    },
+    toolFieldValueMuted: {
+      color: theme.colors.mutedForeground,
+      fontSize: 11,
+      fontStyle: 'italic',
+    },
+    toolNestedValue: {
+      gap: 4,
+      paddingLeft: spacing.sm,
+      marginTop: 2,
+      borderLeftWidth: 1,
+      borderLeftColor: hexToRgba(theme.colors.mutedForeground, 0.2),
+    },
+    toolNestedField: {
+      gap: 1,
+    },
+    toolNestedFieldLabel: {
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 9,
+      color: theme.colors.mutedForeground,
+    },
+    toolArrayItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.xs,
+    },
+    toolArrayIndex: {
+      minWidth: 16,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 9,
+      color: theme.colors.mutedForeground,
+      textAlign: 'right',
+    },
+    toolArrayItemValue: {
+      flex: 1,
+      minWidth: 0,
+    },
+    toolPayloadFallback: {
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 10,
+      lineHeight: 15,
+      color: theme.colors.foreground,
+      padding: spacing.sm,
     },
     toolResponseSection: {
       paddingHorizontal: spacing.xs,
@@ -9942,16 +10190,18 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       justifyContent: 'space-between',
       flexWrap: 'wrap',
       gap: 4,
-      marginBottom: 1,
+      marginBottom: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      paddingTop: spacing.xs,
     },
     toolResultCharCount: {
-      fontSize: 8,
+      fontSize: 10,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       color: theme.colors.mutedForeground,
       opacity: 0.6,
     },
     toolResultBadge: {
-      fontSize: 9,
+      fontSize: 10,
       fontWeight: '600',
       paddingHorizontal: 4,
       paddingVertical: 1,
@@ -9966,22 +10216,26 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.destructive,
     },
     toolResultScroll: {
-      maxHeight: 80,
-      borderRadius: radius.sm,
+      maxHeight: 126,
+      borderRadius: radius.md,
       overflow: 'hidden',
+      marginHorizontal: spacing.sm,
+      backgroundColor: hexToRgba(theme.colors.background, 0.6),
     },
     toolResultScrollExpanded: {
-      maxHeight: 400,
-      borderRadius: radius.sm,
+      maxHeight: 420,
+      borderRadius: radius.md,
       overflow: 'hidden',
+      marginHorizontal: spacing.sm,
+      backgroundColor: hexToRgba(theme.colors.background, 0.6),
     },
     toolResultCode: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 8,
+      fontSize: 10,
+      lineHeight: 15,
       color: theme.colors.foreground,
-      backgroundColor: theme.colors.muted,
-      padding: 3,
-      borderRadius: radius.sm,
+      padding: spacing.sm,
+      borderRadius: radius.md,
     },
     toolResultErrorSection: {
       marginTop: 1,
@@ -9993,11 +10247,12 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     },
     toolResultErrorText: {
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 8,
+      fontSize: 10,
+      lineHeight: 15,
       color: theme.colors.destructive,
       backgroundColor: hexToRgba(theme.colors.destructive, 0.06),
-      padding: 3,
-      borderRadius: radius.sm,
+      padding: spacing.sm,
+      borderRadius: radius.md,
     },
     messageContentRow: {
       flexDirection: 'row',
