@@ -57,6 +57,11 @@ overrides:
   webpack-dev-server@<=5.2.3: 5.2.4
   ws@>=8.0.0 <8.20.1: 8.20.1
 
+patchedDependencies:
+  '@mentra/bluetooth-sdk@0.1.20':
+    hash: nyansw3vdkuvqxik3j7sptjbsq
+    path: patches/@mentra__bluetooth-sdk@0.1.20.patch
+
 importers:
 
   .: {}
@@ -326,7 +331,7 @@ importers:
         version: link:../../packages/shared
       '@mentra/bluetooth-sdk':
         specifier: 0.1.20
-        version: 0.1.20(@expo/config-plugins@54.0.4)(@types/react@19.1.17)(expo@54.0.35(@babel/core@7.28.5)(react-native@0.81.5(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        version: 0.1.20(patch_hash=nyansw3vdkuvqxik3j7sptjbsq)(@expo/config-plugins@54.0.4)(@types/react@19.1.17)(expo@54.0.35(@babel/core@7.28.5)(react-native@0.81.5(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.81.5(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))
@@ -15142,7 +15147,7 @@ snapshots:
       '@types/react': 19.1.17
       react: 19.1.0
 
-  '@mentra/bluetooth-sdk@0.1.20(@expo/config-plugins@54.0.4)(@types/react@19.1.17)(expo@54.0.35(@babel/core@7.28.5)(react-native@0.81.5(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
+  '@mentra/bluetooth-sdk@0.1.20(patch_hash=nyansw3vdkuvqxik3j7sptjbsq)(@expo/config-plugins@54.0.4)(@types/react@19.1.17)(expo@54.0.35(@babel/core@7.28.5)(react-native@0.81.5(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.28.5)(@react-native-community/cli@20.0.2(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@expo/config-plugins': 54.0.4
       '@types/react': 19.1.17

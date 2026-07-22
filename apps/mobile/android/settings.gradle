@@ -41,7 +41,7 @@ includeBuild(expoAutolinking.reactNativeGradlePlugin)
 def mentraBluetoothSdkRoot = new File(
   providers.exec {
     workingDir(rootDir)
-    commandLine("node", "--print", "require.resolve('@mentra/bluetooth-sdk/package.json', { paths: [rootDir.getParent()] })")
+    commandLine("node", "--print", "require.resolve('@mentra/bluetooth-sdk/package.json', { paths: [process.cwd(), '..'] })")
   }.standardOutput.asText.get().trim()
 ).getParentFile().absolutePath
 

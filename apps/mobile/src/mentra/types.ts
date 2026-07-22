@@ -64,5 +64,6 @@ export type MentraContextValue = {
   finishCapture(): Promise<string>;
   cancelCapture(): Promise<void>;
   clearPendingPhoto(): void;
+  consumePendingPhoto(photoId: string): void;
   setOwnAppAudioPlaying(playing: boolean): Promise<void>;
 };

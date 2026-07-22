@@ -2095,7 +2095,10 @@ export default function ChatScreen({ route, navigation }: any) {
   const lastForegroundHandsFreeAutoStartAtRef = useRef(0);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 	// Stable ref to the latest send() to avoid stale closures in speech callbacks
-  const sendRef = useRef<(text: string, options?: { fromComposer?: boolean; source?: 'handsfree' }) => Promise<void>>(async () => {});
+  const sendRef = useRef<(
+    text: string,
+    options?: { fromComposer?: boolean; source?: 'handsfree'; onSubmitted?: () => void },
+  ) => Promise<void>>(async () => {});
   const androidHandsFreePendingPartialRef = useRef('');
   const androidHandsFreeLastSentRef = useRef<{ text: string; timestamp: number } | null>(null);
   const handsFreeLastFinalizedRef = useRef<{ text: string; timestamp: number } | null>(null);
@@ -2113,6 +2116,12 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [handsFree, handsFreeAutoSend, setPendingHandsFreeDraftValue]);
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
+	  const mentraPendingPhotoSessionRef = useRef(sessionStore.currentSessionId);
+	  useEffect(() => {
+	    if (mentraPendingPhotoSessionRef.current === sessionStore.currentSessionId) return;
+	    mentraPendingPhotoSessionRef.current = sessionStore.currentSessionId;
+	    mentra.clearPendingPhoto();
+	  }, [mentra.clearPendingPhoto, sessionStore.currentSessionId]);
 	  const inputRef = useRef<TextInput>(null);
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
   const [composerHeight, setComposerHeight] = useState(0);
@@ -3231,20 +3240,36 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [closeVoiceAgentSession, focusVoiceAgentSession, handleNewChat, messageVoiceAgentSession, playHandsFreeCue, stopHandsFreeActivityFromVoice, voiceLog]);
 
   const composeMentraVoicePrompt = useCallback((text: string, source: 'native' | 'web' | 'mentra') => {
-    if (source !== 'mentra' || !mentra.pendingPhoto) return text;
+    if (source !== 'mentra' || !mentra.pendingPhoto) return { text };
     if (mentra.pendingPhoto.expiresAt <= Date.now()) {
       mentra.clearPendingPhoto();
-      return text;
+      return { text };
     }
     const photo = mentra.pendingPhoto;
-    mentra.clearPendingPhoto();
-    return buildMessageWithPendingImages(text, [{
-      id: photo.id,
-      name: photo.name,
-      previewUri: photo.previewUri,
-      dataUrl: photo.dataUrl,
-    }]);
+    return {
+      text: buildMessageWithPendingImages(text, [{
+        id: photo.id,
+        name: photo.name,
+        previewUri: photo.previewUri,
+        dataUrl: photo.dataUrl,
+      }]),
+      photoId: photo.id,
+    };
   }, [mentra.clearPendingPhoto, mentra.pendingPhoto]);
+
+  const sendFinalizedVoicePrompt = useCallback((
+    text: string,
+    source: 'native' | 'web' | 'mentra',
+    options?: { source?: 'handsfree' },
+  ) => {
+    const submission = composeMentraVoicePrompt(text, source);
+    return sendRef.current(submission.text, {
+      ...options,
+      onSubmitted: submission.photoId
+        ? () => mentra.consumePendingPhoto(submission.photoId!)
+        : undefined,
+    });
+  }, [composeMentraVoicePrompt, mentra.consumePendingPhoto]);
 
   const handleVoiceFinalized = useCallback(({
     text,
@@ -3404,7 +3429,7 @@ export default function ChatScreen({ route, navigation }: any) {
               sendPhrase: handsFreeSendPhrase,
               textLength: manualDraftResolution.text.length,
             });
-            void sendRef.current(composeMentraVoicePrompt(manualDraftResolution.text, source), { source: 'handsfree' });
+            void sendFinalizedVoicePrompt(manualDraftResolution.text, source, { source: 'handsfree' });
             return;
           }
 
@@ -3418,7 +3443,7 @@ export default function ChatScreen({ route, navigation }: any) {
           });
         } else if (action.type === 'send') {
           setSttPreviewWithExpiry('');
-          void sendRef.current(composeMentraVoicePrompt(action.text, source), { source: 'handsfree' });
+          void sendFinalizedVoicePrompt(action.text, source, { source: 'handsfree' });
         } else if (action.type === 'command') {
           setSttPreviewWithExpiry('');
           handleHandsFreeVoiceCommand(action.command, action.label, action.remainder);
@@ -3429,10 +3454,9 @@ export default function ChatScreen({ route, navigation }: any) {
       }
     }
 
-    void sendRef.current(composeMentraVoicePrompt(finalText, source));
+    void sendFinalizedVoicePrompt(finalText, source);
   }, [
     clearAcceptedHandsFreeControlPreview,
-    composeMentraVoicePrompt,
     handleHandsFreeTtsBargeInCommand,
     handleHandsFreeVoiceCommand,
     handlePendingAgentVoiceText,
@@ -3446,6 +3470,7 @@ export default function ChatScreen({ route, navigation }: any) {
     isHandsFreeTranscriptSuppressedNow,
     isExactSleepingWakeTranscript,
     setPendingHandsFreeDraftValue,
+    sendFinalizedVoicePrompt,
     voiceAgentPickerVisible,
     voiceLog,
   ]);
@@ -3662,6 +3687,190 @@ export default function ChatScreen({ route, navigation }: any) {
     },
     log: voiceLog,
   });
+
+  const mentraLastTouchHandledRef = useRef(0);
+  const mentraLastSpeakingHandledRef = useRef(0);
+  const mentraVadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mentraFinalizingRef = useRef(false);
+  const mentraSleepAfterTurnRef = useRef(false);
+  const mentraCaptureStateRef = useRef(mentra.captureState);
+  mentraCaptureStateRef.current = mentra.captureState;
+
+  const clearMentraVadTimer = useCallback(() => {
+    if (!mentraVadTimerRef.current) return;
+    clearTimeout(mentraVadTimerRef.current);
+    mentraVadTimerRef.current = null;
+  }, []);
+
+  const finalizeMentraCapture = useCallback(async (mode: 'send' | 'handsfree') => {
+    if (mentraFinalizingRef.current || mentraCaptureStateRef.current !== 'capturing') return;
+    mentraFinalizingRef.current = true;
+    clearMentraVadTimer();
+    setDebugInfo('Transcribing Mentra Live audio…');
+    try {
+      const text = await mentra.finishCapture();
+      if (!text) {
+        setDebugInfo('No speech was detected from Mentra Live.');
+        playHandsFreeCue('error');
+        return;
+      }
+      handleVoiceFinalized({ text, mode, source: 'mentra' });
+    } catch (nextError: any) {
+      setDebugInfo(nextError?.message || 'Mentra Live transcription failed.');
+      playHandsFreeCue('error');
+    } finally {
+      mentraFinalizingRef.current = false;
+    }
+  }, [clearMentraVadTimer, handleVoiceFinalized, mentra.finishCapture, playHandsFreeCue]);
+
+  useEffect(() => {
+    const event = mentra.lastTouch;
+    if (!mentraVoiceActive || !event || event.sequence === mentraLastTouchHandledRef.current) return;
+    mentraLastTouchHandledRef.current = event.sequence;
+    const action = resolveMentraTouchAction({
+      gestureName: event.gestureName,
+      handsFree,
+      handsFreePhase: handsFreePhaseRef.current,
+      capturing: mentraCaptureStateRef.current === 'capturing',
+    });
+
+    if (action === 'wake') {
+      mentraSleepAfterTurnRef.current = false;
+      handsFreeController.wakeByUser();
+      setDebugInfo('Mentra Live awake. Listening.');
+      playHandsFreeCue('listening');
+    } else if (action === 'sleep') {
+      mentraSleepAfterTurnRef.current = false;
+      clearMentraVadTimer();
+      void mentra.cancelCapture();
+      handsFreeController.sleepByUser();
+      setDebugInfo('Mentra Live sleeping. Tap the touch bar to wake.');
+      playHandsFreeCue('sleeping');
+    } else if (action === 'sleep-after-turn') {
+      mentraSleepAfterTurnRef.current = true;
+      setDebugInfo('Mentra Live will sleep after this reply.');
+    } else if (action === 'stop') {
+      mentraSleepAfterTurnRef.current = false;
+      clearMentraVadTimer();
+      void mentra.cancelCapture();
+      stopHandsFreeActivityFromVoice('hardware');
+      if (handsFree) handsFreeController.wakeByUser();
+      setDebugInfo('Stopped. Mentra Live is ready for another request.');
+    } else if (action === 'start-capture') {
+      mentraLastSpeakingHandledRef.current = mentra.lastSpeaking?.sequence ?? 0;
+      void mentra.beginCapture()
+        .then(() => {
+          setDebugInfo('Mentra Live is recording. Tap again to send.');
+          playHandsFreeCue('listening');
+        })
+        .catch((nextError: any) => setDebugInfo(nextError?.message || 'Could not start Mentra Live microphone.'));
+    } else if (action === 'finish-capture') {
+      void finalizeMentraCapture('send');
+    }
+  }, [
+    clearMentraVadTimer,
+    finalizeMentraCapture,
+    handsFree,
+    handsFreeController.sleepByUser,
+    handsFreeController.wakeByUser,
+    mentra.beginCapture,
+    mentra.cancelCapture,
+    mentra.lastSpeaking?.sequence,
+    mentra.lastTouch,
+    mentraVoiceActive,
+    playHandsFreeCue,
+    stopHandsFreeActivityFromVoice,
+  ]);
+
+  useEffect(() => {
+    if (!mentraVoiceActive || !handsFree) return;
+    const phase = handsFreeController.state.phase;
+    if (mentraSleepAfterTurnRef.current && phase === 'listening') {
+      mentraSleepAfterTurnRef.current = false;
+      void mentra.cancelCapture();
+      handsFreeController.sleepByUser();
+      playHandsFreeCue('sleeping');
+      return;
+    }
+
+    if (
+      phase === 'listening'
+      && mentra.captureState === 'idle'
+      && !mentraFinalizingRef.current
+      && !getGlobalTtsPlayback()
+    ) {
+      mentraLastSpeakingHandledRef.current = mentra.lastSpeaking?.sequence ?? 0;
+      void mentra.beginCapture().catch((nextError: any) => {
+        setDebugInfo(nextError?.message || 'Could not start Mentra Live microphone.');
+      });
+      return;
+    }
+
+    if (phase !== 'listening' && mentra.captureState === 'capturing') {
+      clearMentraVadTimer();
+      void mentra.cancelCapture();
+    }
+  }, [
+    clearMentraVadTimer,
+    handsFree,
+    handsFreeController.sleepByUser,
+    handsFreeController.state.phase,
+    mentra.beginCapture,
+    mentra.cancelCapture,
+    mentra.captureState,
+    mentra.lastSpeaking?.sequence,
+    mentraVoiceActive,
+    playHandsFreeCue,
+  ]);
+
+  useEffect(() => {
+    const event = mentra.lastSpeaking;
+    if (
+      !mentraVoiceActive
+      || !handsFree
+      || !event
+      || event.sequence === mentraLastSpeakingHandledRef.current
+    ) return;
+    mentraLastSpeakingHandledRef.current = event.sequence;
+    if (event.speaking) {
+      clearMentraVadTimer();
+      return;
+    }
+    if (mentraCaptureStateRef.current !== 'capturing' || handsFreePhaseRef.current !== 'listening') return;
+    clearMentraVadTimer();
+    mentraVadTimerRef.current = setTimeout(() => {
+      mentraVadTimerRef.current = null;
+      void finalizeMentraCapture('handsfree');
+    }, Math.max(0, handsFreeMessageDebounceMs));
+  }, [
+    clearMentraVadTimer,
+    finalizeMentraCapture,
+    handsFree,
+    handsFreeMessageDebounceMs,
+    mentra.lastSpeaking,
+    mentraVoiceActive,
+  ]);
+
+  useEffect(() => () => clearMentraVadTimer(), [clearMentraVadTimer]);
+
+  useEffect(() => {
+    if (!mentraVoiceActive) return;
+    const playing = globalTtsPlayback?.status === 'loading' || globalTtsPlayback?.status === 'speaking';
+    if (playing && mentraCaptureStateRef.current === 'capturing') {
+      clearMentraVadTimer();
+      void mentra.cancelCapture();
+    }
+    void mentra.setOwnAppAudioPlaying(playing).catch(() => undefined);
+    return () => {
+      if (playing) void mentra.setOwnAppAudioPlaying(false).catch(() => undefined);
+    };
+  }, [
+    clearMentraVadTimer,
+    globalTtsPlayback?.status,
+    mentra.cancelCapture,
+    mentra.setOwnAppAudioPlaying,
+    mentraVoiceActive,
+  ]);
 
   const androidHandsFreeServiceListeningEnabled =
     androidServiceHandlesHandsFreeMic && shouldKeepHandsFreeMicArmed;
@@ -4030,6 +4239,12 @@ export default function ChatScreen({ route, navigation }: any) {
 		// before it ran (stale closures inside in-flight send() progress handlers).
 		if (!ttsEnabledRef.current) {
 				console.info('[DotAgentsTTS] skipped because TTS is disabled', { reason, contentLength: content.length });
+			onSettled?.();
+			return false;
+		}
+		if (mentraVoiceActive && !mentra.audioConnected) {
+			setDebugInfo('Mentra Live audio is not connected. Complete the Android Bluetooth audio pairing to hear private replies.');
+			playHandsFreeCue('error');
 			onSettled?.();
 			return false;
 		}
@@ -4436,7 +4651,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
 
 			    return startExpoSpeechPlayback(reason);
-				  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, getCurrentAndroidHandsFreeTtsRuntime, handsFree, handsFreeController, invalidateHandsFreeCapture, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
+				  }, [androidBackgroundHandsFree, androidHandsFreeServiceAvailable, config.apiKey, config.baseUrl, config.ttsPitch, config.ttsRate, config.ttsVoiceId, effectiveEdgeTtsRate, effectiveEdgeTtsVoice, effectiveTtsProvider, getCurrentAndroidHandsFreeTtsRuntime, handsFree, handsFreeController, invalidateHandsFreeCapture, mentra.audioConnected, mentraVoiceActive, playHandsFreeCue, sessionStore, stableHandsFreeForeground, voiceLog]);
 
   speakHandsFreeTextRef.current = speakAssistantResponse;
 
@@ -4581,6 +4796,12 @@ export default function ChatScreen({ route, navigation }: any) {
     const processedText = preprocessTextForTTS(content);
     if (!processedText) {
       intendedSpeakingIndexRef.current = null;
+      return;
+    }
+    if (mentraVoiceActive && !mentra.audioConnected) {
+      intendedSpeakingIndexRef.current = null;
+      setDebugInfo('Mentra Live audio is not connected. Complete the Android Bluetooth audio pairing first.');
+      playHandsFreeCue('error');
       return;
     }
     const currentAndroidHandsFreeTtsRuntime = getCurrentAndroidHandsFreeTtsRuntime();
@@ -4946,6 +5167,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	    getCurrentAndroidHandsFreeTtsRuntime,
 	    handsFree,
 	    handsFreeController,
+    mentra.audioConnected,
+    mentraVoiceActive,
+    playHandsFreeCue,
     sessionStore,
 	    voiceLog,
 	  ]);
@@ -6128,7 +6352,10 @@ export default function ChatScreen({ route, navigation }: any) {
     setPendingImages((prev) => prev.filter((image) => image.id !== attachmentId));
   }, []);
 
-  const send = async (text: string, options?: { fromComposer?: boolean; source?: 'handsfree' }) => {
+  const send = async (
+    text: string,
+    options?: { fromComposer?: boolean; source?: 'handsfree'; onSubmitted?: () => void },
+  ) => {
     const trimmedText = text.trim();
     if (!trimmedText) return;
 
@@ -6177,6 +6404,7 @@ export default function ChatScreen({ route, navigation }: any) {
       if (options?.fromComposer) {
         setPendingImages([]);
       }
+      options?.onSubmitted?.();
       return;
     }
     if (respondingRef.current && conversationState === 'needs_input') {
@@ -6393,6 +6621,7 @@ export default function ChatScreen({ route, navigation }: any) {
 
       const modelMessages = sanitizeMessagesForModel([...currentMessages, userMsg]);
 	      const response = await client.chat(modelMessages, onToken, onProgress, serverConversationId);
+      options?.onSubmitted?.();
       const finalText = response.content || streamingText;
 		      const finalResponseEvent = lastResponseEvents[lastResponseEvents.length - 1];
 		      const finalDisplayText = finalResponseEvent?.text || lastUserResponse || finalText;
@@ -7169,9 +7398,11 @@ export default function ChatScreen({ route, navigation }: any) {
 	sendRef.current = send;
 
 	const isWebPlatform = Platform.OS === 'web';
-	const effectiveMicListening = handsFree
-		? (androidServiceHandlesHandsFreeMic ? shouldKeepHandsFreeMicArmed : listening)
-		: listening;
+	const effectiveMicListening = mentraVoiceActive
+    ? mentra.captureState === 'capturing'
+    : handsFree
+		  ? (androidServiceHandlesHandsFreeMic ? shouldKeepHandsFreeMicArmed : listening)
+		  : listening;
 	const composerAccessibilityHint = createChatComposerAccessibilityHint({
 	  handsFree,
 	  handsFreeAutoSend,
@@ -8717,6 +8948,23 @@ export default function ChatScreen({ route, navigation }: any) {
 	              <Text style={styles.voicePreviewText} numberOfLines={3}>
 	                {handsFreeVoicePreview}
 	              </Text>
+	            </View>
+	          )}
+	          {mentra.pendingPhoto && (
+	            <View style={styles.voicePreviewCard} accessibilityRole="text" accessibilityLabel="Mentra photo ready for voice prompt">
+	              <View style={styles.voicePreviewHeader}>
+	                <View style={styles.voicePreviewTitleRow}>
+	                  <Ionicons name="glasses-outline" size={14} color={theme.colors.primary} />
+	                  <Text style={styles.voicePreviewTitle}>Mentra photo ready</Text>
+	                </View>
+	                <TouchableOpacity onPress={mentra.clearPendingPhoto} accessibilityRole="button" accessibilityLabel="Discard Mentra photo">
+	                  <Text style={styles.pendingImageRemoveButtonText}>✕</Text>
+	                </TouchableOpacity>
+	              </View>
+	              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+	                <Image source={{ uri: mentra.pendingPhoto.previewUri }} style={styles.pendingImagePreview} />
+	                <Text style={[styles.voicePreviewText, { flex: 1 }]}>Ask your next question through the glasses to send this image.</Text>
+	              </View>
 	            </View>
 	          )}
 	          {pendingImages.length > 0 && (

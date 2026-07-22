@@ -60,6 +60,7 @@ describe('normalizeStoredConfig', () => {
     expect(normalized.handsFreeWakePhrase).toBe(DEFAULT_HANDS_FREE_WAKE_PHRASE);
     expect(normalized.handsFreeSleepPhrase).toBe(DEFAULT_HANDS_FREE_SLEEP_PHRASE);
     expect(normalized.handsFreeDebug).toBe(false);
+    expect(normalized.mentraEnabled).toBe(false);
     expect(normalized.mobileSttProvider).toBe('native');
     expect(normalized.baseUrl).toBe('https://api.openai.com/v1');
   });

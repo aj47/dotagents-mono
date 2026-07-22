@@ -30,6 +30,7 @@ export const unsupportedMentraValue: MentraContextValue = {
   finishCapture: async () => '',
   cancelCapture: async () => {},
   clearPendingPhoto: () => {},
+  consumePendingPhoto: () => {},
   setOwnAppAudioPlaying: async () => {},
 };
 

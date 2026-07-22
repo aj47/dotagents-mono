@@ -99,6 +99,9 @@ export function MentraProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearPendingPhoto = useCallback(() => setPendingPhoto(null), []);
+  const consumePendingPhoto = useCallback((photoId: string) => {
+    setPendingPhoto((current) => current?.id === photoId ? null : current);
+  }, []);
 
   const capturePhoto = useCallback(async () => {
     if (!enabled || !session.glasses.ready) return;
@@ -196,6 +199,12 @@ export function MentraProvider({ children }: { children: ReactNode }) {
     captureBytesRef.current += accepted.byteLength;
     if (captureBytesRef.current >= MAX_CAPTURE_BYTES || Date.now() - captureStartedAtRef.current >= MAX_CAPTURE_MS) {
       void BluetoothSdk.setMicState(false, true, false, false).catch(handleError);
+      speakingSequenceRef.current += 1;
+      setLastSpeaking({
+        sequence: speakingSequenceRef.current,
+        speaking: false,
+        timestamp: Date.now(),
+      });
     }
   }, { enabled });
 
@@ -230,6 +239,9 @@ export function MentraProvider({ children }: { children: ReactNode }) {
 
   const beginCapture = useCallback(async () => {
     if (!enabled || !session.glasses.ready) throw new Error('Mentra Live is not ready.');
+    if (!config.baseUrl || !config.apiKey) {
+      throw new Error('Pair DotAgents with the desktop before using the Mentra Live microphone.');
+    }
     await requestMentraPermissions();
     captureChunksRef.current = [];
     captureBytesRef.current = 0;
@@ -243,7 +255,7 @@ export function MentraProvider({ children }: { children: ReactNode }) {
       handleError(nextError);
       throw nextError;
     }
-  }, [enabled, handleError, session.glasses.ready]);
+  }, [config.apiKey, config.baseUrl, enabled, handleError, session.glasses.ready]);
 
   const cancelCapture = useCallback(async () => {
     captureChunksRef.current = [];
@@ -345,6 +357,7 @@ export function MentraProvider({ children }: { children: ReactNode }) {
     finishCapture,
     cancelCapture,
     clearPendingPhoto,
+    consumePendingPhoto,
     setOwnAppAudioPlaying: BluetoothSdk.setOwnAppAudioPlaying,
   }), [
     audioConnected,
@@ -353,6 +366,7 @@ export function MentraProvider({ children }: { children: ReactNode }) {
     cancelCapture,
     captureState,
     clearPendingPhoto,
+    consumePendingPhoto,
     enabled,
     error,
     finishCapture,
