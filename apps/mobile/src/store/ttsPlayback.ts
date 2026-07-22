@@ -86,6 +86,17 @@ export function completeGlobalTtsPlayback(id?: string | null): void {
 }
 
 export function stopGlobalTtsPlayback(): void {
+  const stack = new Error('global TTS stop requested').stack
+    ?.split('\n')
+    .slice(1, 7)
+    .map((line) => line.trim())
+    .join(' <- ');
+  console.info(
+    `[DotAgentsTTS] global stop active=${currentPlayback?.id ?? 'none'}`
+    + ` source=${currentPlayback?.source ?? 'none'}`
+    + ` status=${currentPlayback?.status ?? 'none'}`
+    + ` stack=${stack ?? 'unavailable'}`,
+  );
   stopGeneration += 1;
   Speech.stop();
   stopRemoteTts();

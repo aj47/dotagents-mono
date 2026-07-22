@@ -259,6 +259,23 @@ function startWebPlayback(
   };
   currentPlayback = playback;
   let hasStartedPlaying = false;
+  let lastLoggedTimeUpdate = -1;
+
+  const summarizeWebAudio = () => ({
+    currentTime: Number.isFinite(audio.currentTime) ? audio.currentTime : null,
+    duration: Number.isFinite(audio.duration) ? audio.duration : null,
+    readyState: audio.readyState,
+    networkState: audio.networkState,
+    paused: audio.paused,
+    ended: audio.ended,
+    playbackRate: audio.playbackRate,
+    errorCode: audio.error?.code ?? null,
+    errorMessage: audio.error?.message ?? null,
+  });
+
+  const logWebAudioEvent = (event: string) => {
+    logRemoteTts('info', `web playback ${event}`, summarizeWebAudio());
+  };
 
   const markStarted = () => {
     if (hasStartedPlaying || playback.stopped) return;
@@ -281,17 +298,31 @@ function startWebPlayback(
   };
 
   audio.onplaying = markStarted;
+  audio.onloadedmetadata = () => logWebAudioEvent('loadedmetadata');
+  audio.oncanplay = () => logWebAudioEvent('canplay');
+  audio.onplay = () => logWebAudioEvent('play');
+  audio.onwaiting = () => logWebAudioEvent('waiting');
+  audio.onstalled = () => logWebAudioEvent('stalled');
+  audio.onsuspend = () => logWebAudioEvent('suspend');
+  audio.ontimeupdate = () => {
+    if (audio.currentTime - lastLoggedTimeUpdate < 0.25) return;
+    lastLoggedTimeUpdate = audio.currentTime;
+    logWebAudioEvent('timeupdate');
+  };
   audio.onended = () => {
+    logWebAudioEvent('ended');
     playback.stopped = true;
     cleanup();
     options.onDone?.();
   };
   audio.onerror = () => {
+    logWebAudioEvent('error');
     playback.stopped = true;
     cleanup();
     options.onError?.();
   };
   audio.onpause = () => {
+    logWebAudioEvent('pause');
     if (!audio.ended && !playback.stopped) {
       playback.stopped = true;
       cleanup();
@@ -300,8 +331,15 @@ function startWebPlayback(
   };
 
   void audio.play()
-    .then(markStarted)
-    .catch(() => {
+    .then(() => {
+      logWebAudioEvent('play-resolved');
+      markStarted();
+    })
+    .catch((error) => {
+      logRemoteTts('warn', 'web playback play rejected', {
+        ...summarizeWebAudio(),
+        message: error instanceof Error ? error.message : String(error),
+      });
       if (playback.stopped) return;
       playback.stopped = true;
       cleanup();

@@ -134,7 +134,12 @@ import {
   useHandsFreeController,
 } from '../lib/voice/useHandsFreeController';
 import { matchWakePhrase, normalizeVoicePhrase } from '../lib/voice/phraseMatcher';
-import { findAgentSessionMatch } from '../lib/voice/agentSessionMatch';
+import {
+  getRecentActiveAgentSessions,
+  normalizeAgentSessionMessage,
+  resolveAgentSessionReference,
+} from '../lib/voice/agentSessionVoice';
+import { sendMessageToAgentSession } from '../lib/voice/sendAgentSessionMessage';
 import {
   playHandsFreeAudioCue,
   setAndroidHandsFreeCueRoutingEnabled,
@@ -156,6 +161,13 @@ interface PendingImageAttachment {
 }
 
 type OperatorSessionSummary = OperatorRuntimeStatus['sessions']['activeSessionDetails'][number];
+
+type PendingAgentVoiceAction = {
+  command: 'focus' | 'message' | 'close';
+  awaiting: 'target' | 'message';
+  sessionId?: string;
+  sessionTitle?: string;
+};
 
 const AGENT_MODEL_FALLBACKS: Record<CHAT_PROVIDER_ID, string> = {
   openai: 'gpt-5.5',
@@ -236,7 +248,10 @@ const AUTO_TTS_DUPLICATE_SUPPRESSION_MS = 5_000;
 const MESSAGE_COPY_FEEDBACK_RESET_MS = 2_000;
 const HANDS_FREE_DEBUG_STORAGE_KEY = 'dotagents:handsfree-debug';
 const ANDROID_HANDS_FREE_DUPLICATE_SUPPRESSION_MS = 3_000;
-const HANDS_FREE_FINALIZED_DUPLICATE_SUPPRESSION_MS = 3_000;
+// Chrome can deliver the final result for a command after the 3s hands-free
+// debounce has already elapsed. Keep this longer than that debounce so an
+// interim command handled immediately cannot execute again as a late final.
+const HANDS_FREE_FINALIZED_DUPLICATE_SUPPRESSION_MS = 6_000;
 const HANDS_FREE_ACCEPTED_CONTROL_PREVIEW_SUPPRESSION_MS = 3_000;
 const ANDROID_HANDS_FREE_FOREGROUND_HANDOFF_DELAY_MS = 1_500;
 const HANDS_FREE_KEEP_AWAKE_TAG = 'dotagents-handsfree';
@@ -1434,6 +1449,7 @@ export default function ChatScreen({ route, navigation }: any) {
     config.ttsProvider === 'edge' ? config.ttsRate ?? 1.0 : remoteEdgeTtsRate;
   const [addPromptModalVisible, setAddPromptModalVisible] = useState(false);
   const [chatMenuVisible, setChatMenuVisible] = useState(false);
+  const [voiceAgentPickerVisible, setVoiceAgentPickerVisible] = useState(false);
   const [agentConfigExpanded, setAgentConfigExpanded] = useState(false);
   const [handsFreeGuideVisible, setHandsFreeGuideVisible] = useState(false);
   const [handsFreeGuideDismissed, setHandsFreeGuideDismissed] = useState<boolean | null>(null);
@@ -1949,8 +1965,12 @@ export default function ChatScreen({ route, navigation }: any) {
   const autoTtsSuppressedRequestIdsRef = useRef<Set<number>>(new Set());
   const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
   const lastHandsFreeSpokenTextRef = useRef('');
-  const speakHandsFreeTextRef = useRef<(content: string, reason: string) => boolean>(() => false);
-  const pendingAgentSwitchRef = useRef(false);
+  const speakHandsFreeTextRef = useRef<(
+    content: string,
+    reason: string,
+    onSettled?: () => void,
+  ) => boolean>(() => false);
+  const pendingAgentVoiceActionRef = useRef<PendingAgentVoiceAction | null>(null);
   const androidHandsFreeTtsHandlersRef = useRef<Map<string, AndroidHandsFreeTtsHandler>>(new Map());
   const ttsBargeInLastHandledRef = useRef<{ command: 'stop'; timestamp: number } | null>(null);
   const handsFreeBargeInTranscriptSuppressedUntilRef = useRef(0);
@@ -2197,7 +2217,7 @@ export default function ChatScreen({ route, navigation }: any) {
       || handsFreeController.state.phase === 'sleeping'
       || handsFreeController.state.phase === 'paused'
     ) {
-      pendingAgentSwitchRef.current = false;
+      pendingAgentVoiceActionRef.current = null;
     }
   }, [handsFree, handsFreeController.state.phase]);
   const isAssistantAudioLoading = globalTtsPlayback?.status === 'loading';
@@ -2280,6 +2300,7 @@ export default function ChatScreen({ route, navigation }: any) {
     && isAssistantAudioPendingOrSpeaking;
   const shouldSuppressHandsFreeTranscriptRef = useRef(shouldSuppressHandsFreeTranscript);
   shouldSuppressHandsFreeTranscriptRef.current = shouldSuppressHandsFreeTranscript;
+  const lastHandsFreeSuppressionDiagnosticAtRef = useRef(0);
   const recoverStaleHandsFreeTtsIfNeeded = useCallback((reason: string) => {
     if (!handsFreeRef.current) return false;
     const playback = getGlobalTtsPlayback();
@@ -2310,30 +2331,55 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [handsFreeController.onSpeechFinished, voiceLog]);
   const isHandsFreeTranscriptSuppressedNow = useCallback(() => {
     if (!handsFreeRef.current) return false;
-    if (Date.now() < handsFreeBargeInTranscriptSuppressedUntilRef.current) {
+    const now = Date.now();
+    if (now < handsFreeBargeInTranscriptSuppressedUntilRef.current) {
+      if (now - lastHandsFreeSuppressionDiagnosticAtRef.current >= 500) {
+        lastHandsFreeSuppressionDiagnosticAtRef.current = now;
+        console.info(
+          `[DotAgentsHandsFreeJS] transcript suppression cause=barge-in-grace`
+          + ` remainingMs=${handsFreeBargeInTranscriptSuppressedUntilRef.current - now}`,
+        );
+      }
       return true;
     }
     if (recoverStaleHandsFreeTtsIfNeeded('transcript-suppression-check')) {
       return false;
     }
-    return (
+    const playback = getGlobalTtsPlayback();
+    const suppressed = (
       shouldSuppressHandsFreeTranscriptRef.current
-      || !!getGlobalTtsPlayback()
+      || !!playback
       || handsFreePhaseRef.current === 'speaking'
     );
+    if (suppressed && now - lastHandsFreeSuppressionDiagnosticAtRef.current >= 500) {
+      lastHandsFreeSuppressionDiagnosticAtRef.current = now;
+      console.info(
+        `[DotAgentsHandsFreeJS] transcript suppression cause=assistant-audio`
+        + ` phase=${handsFreePhaseRef.current}`
+        + ` playback=${playback?.id ?? 'none'}`
+        + ` source=${playback?.source ?? 'none'}`
+        + ` status=${playback?.status ?? 'none'}`
+        + ` ageMs=${playback ? now - playback.startedAt : -1}`,
+      );
+    }
+    return suppressed;
   }, [recoverStaleHandsFreeTtsIfNeeded]);
   const isProcessingStopTranscript = useCallback((text?: string) => {
     if (handsFreePhaseRef.current !== 'processing' || !text) return false;
     const match = matchVoiceCommand(text);
     return match?.command === 'stop' && !match.remainder;
   }, []);
+  const isProcessingVoiceCommandTranscript = useCallback((text?: string) => {
+    if (handsFreePhaseRef.current !== 'processing' || !text) return false;
+    return !!matchVoiceCommand(text);
+  }, []);
   const isHandsFreeFinalizationEligibleNow = useCallback((payload?: { text: string }) => (
     !handsFreeRef.current
     || handsFreePhaseRef.current === 'sleeping'
     || handsFreePhaseRef.current === 'waking'
     || handsFreePhaseRef.current === 'listening'
-    || isProcessingStopTranscript(payload?.text)
-  ), [isProcessingStopTranscript]);
+    || isProcessingVoiceCommandTranscript(payload?.text)
+  ), [isProcessingVoiceCommandTranscript]);
   const isExactSleepingWakeTranscript = useCallback((text: string) => {
     if (!handsFreeRef.current || handsFreePhaseRef.current !== 'sleeping') {
       return false;
@@ -2349,8 +2395,8 @@ export default function ChatScreen({ route, navigation }: any) {
     isFinal?: boolean;
   }) => (
     isExactSleepingWakeTranscript(text)
-    || isProcessingStopTranscript(text)
-  ), [isExactSleepingWakeTranscript, isProcessingStopTranscript]);
+    || isProcessingVoiceCommandTranscript(text)
+  ), [isExactSleepingWakeTranscript, isProcessingVoiceCommandTranscript]);
 
   const clearAcceptedHandsFreeControlPreview = useCallback((acceptedText: string) => {
     const normalizedAcceptedText = normalizeVoiceText(acceptedText);
@@ -2604,15 +2650,6 @@ export default function ChatScreen({ route, navigation }: any) {
     setAndroidHandsFreeDebounceEndsAt(null);
   }, []);
 
-  const findAgentSessionByName = useCallback((spokenName: string) => {
-    return findAgentSessionMatch(
-      spokenName,
-      sessionStore.sessions
-        .filter((session) => !session.isArchived)
-        .map((session) => ({ id: session.id, title: session.title, updatedAt: session.updatedAt })),
-    );
-  }, [sessionStore.sessions]);
-
   const stopCurrentAgentTurnFromVoice = useCallback(async () => {
     if (!settingsClient) {
       setDebugInfo('Stopped locally, but the desktop is not connected.');
@@ -2797,6 +2834,181 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceLog,
   ]);
 
+  const getVoiceAgentChoices = useCallback(
+    () => getRecentActiveAgentSessions(sessionStore.sessions, 5),
+    [sessionStore.sessions],
+  );
+
+  const closeVoiceAgentPicker = useCallback(() => {
+    setVoiceAgentPickerVisible(false);
+    if (pendingAgentVoiceActionRef.current?.command === 'focus') {
+      pendingAgentVoiceActionRef.current = null;
+    }
+  }, []);
+
+  const announceVoiceAgentChoices = useCallback((requestedName?: string, onSettled?: () => void) => {
+    const availableAgents = getVoiceAgentChoices();
+    if (availableAgents.length === 0) {
+      const message = 'No active agents are available. Say new agent to start one.';
+      setDebugInfo(message);
+      const didSpeak = speakHandsFreeTextRef.current(message, 'voice agent discovery', onSettled);
+      if (!didSpeak) onSettled?.();
+      playHandsFreeCue('stopped');
+      return false;
+    }
+
+    const names = availableAgents.map((session) => session.title).join(', ');
+    const message = requestedName
+      ? `I could not find ${requestedName}. Active agents are ${names}. Say an agent name.`
+      : `Active agents are ${names}. Say an agent name.`;
+    setDebugInfo(message);
+    const didSpeak = speakHandsFreeTextRef.current(message, 'voice agent discovery', onSettled);
+    if (!didSpeak) onSettled?.();
+    return true;
+  }, [getVoiceAgentChoices, playHandsFreeCue]);
+
+  const focusVoiceAgentSession = useCallback((spokenName: string) => {
+    const reference = resolveAgentSessionReference(spokenName, getVoiceAgentChoices());
+    if (!reference) {
+      pendingAgentVoiceActionRef.current = { command: 'focus', awaiting: 'target' };
+      if (activeRequestIdRef.current) {
+        autoTtsSuppressedRequestIdsRef.current.add(activeRequestIdRef.current);
+      }
+      queuedResponseEventsRef.current = [];
+      activeAutoSpeechEventRef.current = null;
+      assistantSpeechStartedAtRef.current = 0;
+      if (getGlobalTtsPlayback()) {
+        stopGlobalTtsPlayback();
+      }
+      setVoiceAgentPickerVisible(true);
+      announceVoiceAgentChoices(spokenName);
+      return false;
+    }
+
+    pendingAgentVoiceActionRef.current = null;
+    setVoiceAgentPickerVisible(false);
+    const isDifferentSession = sessionStore.currentSessionId !== reference.session.id;
+    sessionStore.setCurrentSession(reference.session.id);
+    if (isDifferentSession) {
+      navigation.navigate('Chat');
+    }
+    setDebugInfo(`Focused ${reference.session.title}.`);
+    speakHandsFreeTextRef.current(`Focused ${reference.session.title}.`, 'voice agent focus confirmation');
+    playHandsFreeCue('session-ready');
+    return true;
+  }, [announceVoiceAgentChoices, getVoiceAgentChoices, navigation, playHandsFreeCue, sessionStore]);
+
+  const closeVoiceAgentSession = useCallback(async (spokenName: string) => {
+    const reference = resolveAgentSessionReference(spokenName, getVoiceAgentChoices());
+    if (!reference) {
+      pendingAgentVoiceActionRef.current = { command: 'close', awaiting: 'target' };
+      announceVoiceAgentChoices(spokenName);
+      return false;
+    }
+
+    pendingAgentVoiceActionRef.current = null;
+    const wasCurrentSession = sessionStore.currentSessionId === reference.session.id;
+    await sessionStore.toggleSessionArchived(reference.session.id, settingsClient || undefined);
+    if (wasCurrentSession) {
+      handleNewChat();
+    }
+    setDebugInfo(`Closed ${reference.session.title}.`);
+    speakHandsFreeTextRef.current(`Closed ${reference.session.title}.`, 'voice agent close confirmation');
+    playHandsFreeCue('session-ready');
+    return true;
+  }, [announceVoiceAgentChoices, getVoiceAgentChoices, handleNewChat, playHandsFreeCue, sessionStore, settingsClient]);
+
+  const messageVoiceAgentSession = useCallback(async (spokenRemainder: string) => {
+    const reference = resolveAgentSessionReference(spokenRemainder, getVoiceAgentChoices());
+    if (!reference) {
+      pendingAgentVoiceActionRef.current = { command: 'message', awaiting: 'target' };
+      announceVoiceAgentChoices(spokenRemainder);
+      return false;
+    }
+
+    const message = normalizeAgentSessionMessage(reference.remainder);
+    if (!message) {
+      pendingAgentVoiceActionRef.current = {
+        command: 'message',
+        awaiting: 'message',
+        sessionId: reference.session.id,
+        sessionTitle: reference.session.title,
+      };
+      const prompt = `What should I send to ${reference.session.title}?`;
+      setDebugInfo(prompt);
+      speakHandsFreeTextRef.current(prompt, 'voice agent message prompt');
+      return true;
+    }
+
+    pendingAgentVoiceActionRef.current = null;
+    try {
+      await sendMessageToAgentSession({
+        sessionId: reference.session.id,
+        text: message,
+        sessionStore,
+        connectionManager,
+        settingsClient,
+      });
+      setDebugInfo(`Message sent to ${reference.session.title}.`);
+      speakHandsFreeTextRef.current(`Message sent to ${reference.session.title}.`, 'voice agent message confirmation');
+      playHandsFreeCue('session-ready');
+      return true;
+    } catch (error: any) {
+      const errorMessage = error?.message || 'The message could not be sent.';
+      setDebugInfo(errorMessage);
+      voiceLog('handsfree-control', 'Background agent message failed.', {
+        sessionId: reference.session.id,
+        error: errorMessage,
+      });
+      speakHandsFreeTextRef.current(errorMessage, 'voice agent message error');
+      return false;
+    }
+  }, [announceVoiceAgentChoices, connectionManager, getVoiceAgentChoices, playHandsFreeCue, sessionStore, settingsClient, voiceLog]);
+
+  const handlePendingAgentVoiceText = useCallback(async (text: string) => {
+    const pending = pendingAgentVoiceActionRef.current;
+    if (!pending) return false;
+
+    if (pending.awaiting === 'target') {
+      const reference = resolveAgentSessionReference(text, getVoiceAgentChoices());
+      if (!reference) {
+        announceVoiceAgentChoices(text);
+        return true;
+      }
+      if (pending.command === 'focus') {
+        focusVoiceAgentSession(reference.session.title);
+      } else if (pending.command === 'close') {
+        await closeVoiceAgentSession(reference.session.title);
+      } else {
+        await messageVoiceAgentSession(reference.session.title);
+      }
+      return true;
+    }
+
+    const message = normalizeAgentSessionMessage(text);
+    if (!message || !pending.sessionId || !pending.sessionTitle) {
+      return true;
+    }
+    pendingAgentVoiceActionRef.current = null;
+    try {
+      await sendMessageToAgentSession({
+        sessionId: pending.sessionId,
+        text: message,
+        sessionStore,
+        connectionManager,
+        settingsClient,
+      });
+      setDebugInfo(`Message sent to ${pending.sessionTitle}.`);
+      speakHandsFreeTextRef.current(`Message sent to ${pending.sessionTitle}.`, 'voice agent message confirmation');
+      playHandsFreeCue('session-ready');
+    } catch (error: any) {
+      const errorMessage = error?.message || 'The message could not be sent.';
+      setDebugInfo(errorMessage);
+      speakHandsFreeTextRef.current(errorMessage, 'voice agent message error');
+    }
+    return true;
+  }, [announceVoiceAgentChoices, closeVoiceAgentSession, connectionManager, focusVoiceAgentSession, getVoiceAgentChoices, messageVoiceAgentSession, playHandsFreeCue, sessionStore, settingsClient]);
+
   const handleHandsFreeVoiceCommand = useCallback((
     command: VoiceCommandId,
     label: string,
@@ -2805,47 +3017,42 @@ export default function ChatScreen({ route, navigation }: any) {
     voiceLog('handsfree-control', `Handsfree voice command dispatched: ${label}.`, { command, remainder });
     switch (command) {
       case 'stop': {
-        pendingAgentSwitchRef.current = false;
+        pendingAgentVoiceActionRef.current = null;
         stopHandsFreeActivityFromVoice('command');
         break;
       }
       case 'new-session': {
-        pendingAgentSwitchRef.current = false;
+        pendingAgentVoiceActionRef.current = null;
         handleNewChat();
         setDebugInfo('Started a new chat.');
         playHandsFreeCue('session-ready');
         break;
       }
       case 'switch-agent': {
-        const match = findAgentSessionByName(remainder);
-        if (match) {
-          pendingAgentSwitchRef.current = false;
-          sessionStore.setCurrentSession(match.id);
-          setDebugInfo(`Switched to ${match.title}.`);
-          speakHandsFreeTextRef.current(`Switched to ${match.title}.`, 'voice agent switch confirmation');
-          playHandsFreeCue('session-ready');
-        } else {
-          const availableAgents = [...sessionStore.sessions]
-            .filter((session) => !session.isArchived)
-            .sort((a, b) => b.updatedAt - a.updatedAt)
-            .slice(0, 5);
-          pendingAgentSwitchRef.current = availableAgents.length > 0;
-          navigation.navigate('Sessions', { initialMode: 'active' });
-          if (availableAgents.length === 0) {
-            const message = 'No agents are available. Start a new chat first.';
-            setDebugInfo(message);
-            speakHandsFreeTextRef.current(message, 'voice agent switch discovery');
-            playHandsFreeCue('stopped');
-            break;
-          }
-
-          const names = availableAgents.map((session) => session.title).join(', ');
-          const message = remainder
-            ? `I could not find ${remainder}. Available agents are ${names}. Say the agent name.`
-            : `Available agents are ${names}. Say the agent name.`;
-          setDebugInfo(message);
-          speakHandsFreeTextRef.current(message, 'voice agent switch discovery');
+        focusVoiceAgentSession(remainder);
+        break;
+      }
+      case 'message-agent': {
+        void messageVoiceAgentSession(remainder);
+        break;
+      }
+      case 'new-agent': {
+        pendingAgentVoiceActionRef.current = null;
+        handleNewChat();
+        const initialMessage = normalizeAgentSessionMessage(remainder);
+        if (initialMessage) {
+          void sendRef.current(initialMessage, { source: 'handsfree' });
         }
+        setDebugInfo(initialMessage ? 'Started a new agent and sent the first message.' : 'Started a new agent.');
+        speakHandsFreeTextRef.current(
+          initialMessage ? 'Started a new agent and sent the first message.' : 'Started a new agent.',
+          'voice new agent confirmation',
+        );
+        playHandsFreeCue('session-ready');
+        break;
+      }
+      case 'close-agent': {
+        void closeVoiceAgentSession(remainder);
         break;
       }
       case 'repeat': {
@@ -2861,20 +3068,11 @@ export default function ChatScreen({ route, navigation }: any) {
         break;
       }
       default: {
-        // Exhaustive over VoiceCommandId; unknown ids fall through with no-op.
         const _exhaustive: never = command;
         void _exhaustive;
       }
     }
-  }, [
-    findAgentSessionByName,
-    handleNewChat,
-    navigation,
-    playHandsFreeCue,
-    sessionStore,
-    stopHandsFreeActivityFromVoice,
-    voiceLog,
-  ]);
+  }, [closeVoiceAgentSession, focusVoiceAgentSession, handleNewChat, messageVoiceAgentSession, playHandsFreeCue, stopHandsFreeActivityFromVoice, voiceLog]);
 
   const handleVoiceFinalized = useCallback(({
     text,
@@ -2964,12 +3162,16 @@ export default function ChatScreen({ route, navigation }: any) {
         const phaseBeforeFinalTranscript = handsFreePhaseRef.current;
         const action = handsFreeController.handleFinalTranscript(finalText);
         console.info(
-          `[DotAgentsHandsFreeJS] controller action=${action.type} phaseBefore=${phaseBeforeFinalTranscript} textLength=${finalText.length}`,
+          `[DotAgentsHandsFreeJS] controller action=${action.type}`
+          + ` command=${action.type === 'command' ? action.command : 'none'}`
+          + ` phaseBefore=${phaseBeforeFinalTranscript}`
+          + ` text=${JSON.stringify(finalText)}`
+          + ` remainder=${JSON.stringify(action.type === 'command' ? action.remainder : '')}`,
         );
-        if (action.type === 'send' && pendingAgentSwitchRef.current) {
+        if (action.type === 'send' && pendingAgentVoiceActionRef.current) {
           setSttPreviewWithExpiry('');
           handsFreeController.onRequestCompleted();
-          handleHandsFreeVoiceCommand('switch-agent', 'Switch agent', action.text);
+          void handlePendingAgentVoiceText(action.text);
         } else if (action.type === 'send') {
           setSttPreviewWithExpiry('');
           void sendRef.current(action.text, { source: 'handsfree' });
@@ -2988,6 +3190,7 @@ export default function ChatScreen({ route, navigation }: any) {
     clearAcceptedHandsFreeControlPreview,
     handleHandsFreeTtsBargeInCommand,
     handleHandsFreeVoiceCommand,
+    handlePendingAgentVoiceText,
     handsFreeController.handleFinalTranscript,
     handsFreeController.onRequestCompleted,
     handsFreeHasHeadsetRoute,
@@ -3592,7 +3795,7 @@ export default function ChatScreen({ route, navigation }: any) {
       const now = Date.now();
       const lastSpokenAt = recentAutoSpeechByTextRef.current.get(ttsTextKey) ?? 0;
       if (reason !== 'voice repeat' && now - lastSpokenAt < AUTO_TTS_DUPLICATE_SUPPRESSION_MS) {
-	        console.info('[DotAgentsTTS] skipped duplicate auto speech', {
+        console.info('[DotAgentsTTS] skipped duplicate auto speech', {
 	          reason,
 	          textLength: processedText.length,
 	          sinceLastMs: now - lastSpokenAt,
@@ -3687,11 +3890,11 @@ export default function ChatScreen({ route, navigation }: any) {
       clearSpeechWatchdog = null;
       assistantSpeechStartedAtRef.current = 0;
       completeGlobalTtsPlayback(playbackId);
-				onSettled?.();
 			if (handsFree && handsFreeSpeechStarted) {
 				handsFreeController.onSpeechFinished();
 				voiceLog('tts-stopped', `Assistant speech stopped (${reason}).`);
 			}
+			onSettled?.();
 		};
 
     const startExpoSpeechPlayback = (playbackReason: string): boolean => {
@@ -4539,13 +4742,6 @@ export default function ChatScreen({ route, navigation }: any) {
     if (initialScrollPendingRef.current && scrollViewRef.current) {
       scrollViewRef.current.scrollToEnd({ animated: false });
     }
-  }, []);
-
-  // Cleanup: stop speech on unmount (#1078)
-  useEffect(() => {
-    return () => {
-      stopGlobalTtsPlayback();
-    };
   }, []);
 
   // Keep ref in sync with state
@@ -8262,9 +8458,9 @@ export default function ChatScreen({ route, navigation }: any) {
               accessibilityState={{ busy: micControlVisual.busy }}
               aria-busy={micControlVisual.busy}
               onLongPress={undefined}
-              onPressIn={handsFree && isWebPlatform ? handleHandsFreePrimaryControl : (!handsFree ? handlePushToTalkPressIn : undefined)}
+              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
               onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
-              onPress={handsFree && !isWebPlatform ? handleHandsFreePrimaryControl : undefined}
+              onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
             >
               <View style={styles.micContent}>
                 <View style={styles.micTitleRow}>
@@ -8717,6 +8913,70 @@ export default function ChatScreen({ route, navigation }: any) {
         </Pressable>
       </Modal>
       <Modal
+        visible={voiceAgentPickerVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeVoiceAgentPicker}
+      >
+        <Pressable style={styles.voiceAgentPickerOverlay} onPress={closeVoiceAgentPicker}>
+          <Pressable
+            style={styles.voiceAgentPickerContent}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <View style={styles.voiceAgentPickerHeader}>
+              <View style={styles.voiceAgentPickerTitleWrap}>
+                <Text style={styles.voiceAgentPickerTitle}>Switch agent</Text>
+                <Text style={styles.voiceAgentPickerSubtitle}>
+                  Say an agent name, or tap one below. The current chat stays active while you choose.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.chatMenuCloseButton}
+                onPress={closeVoiceAgentPicker}
+                accessibilityRole="button"
+                accessibilityLabel="Close agent picker"
+              >
+                <Ionicons name="close" size={20} color={theme.colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.voiceAgentPickerScroll}
+              contentContainerStyle={styles.voiceAgentPickerScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {getVoiceAgentChoices().map((agent) => (
+                <TouchableOpacity
+                  key={agent.id}
+                  style={styles.voiceAgentPickerRow}
+                  onPress={() => focusVoiceAgentSession(agent.title)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Switch to ${agent.title}`}
+                >
+                  <View style={styles.voiceAgentPickerIcon}>
+                    <Ionicons name="sparkles-outline" size={16} color={theme.colors.primary} />
+                  </View>
+                  <View style={styles.voiceAgentPickerRowText}>
+                    <Text style={styles.voiceAgentPickerRowTitle} numberOfLines={1}>
+                      {agent.title}
+                    </Text>
+                    <Text style={styles.voiceAgentPickerRowMeta} numberOfLines={1}>
+                      Active agent
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={17} color={theme.colors.mutedForeground} />
+                </TouchableOpacity>
+              ))}
+              {getVoiceAgentChoices().length === 0 && (
+                <Text style={styles.voiceAgentPickerEmptyText}>
+                  No active agents are available. Say new agent to start one.
+                </Text>
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+      <Modal
         visible={handsFreeGuideVisible}
         transparent={true}
         animationType="fade"
@@ -8791,8 +9051,10 @@ export default function ChatScreen({ route, navigation }: any) {
                 </View>
                 <Text style={styles.handsFreeCommandHint}>
                   Wake and sleep phrases are editable here.{' '}
-                  Say “switch agent” to hear recent choices, then say the agent name. “Stop”
-                  stops speech while the assistant is talking or cancels the current turn while thinking.
+                  Say “switch agent” to focus one of the five most recent agents, “message agent”
+                  to send in the background, “new agent” to start a session, or “close agent”
+                  to archive one. “Stop” stops speech while the assistant is talking or cancels
+                  the current turn while thinking.
                 </Text>
               </View>
 
@@ -9377,6 +9639,96 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     modalSaveButtonText: {
       color: theme.colors.primaryForeground,
       fontWeight: '600',
+    },
+    voiceAgentPickerOverlay: {
+      flex: 1,
+      backgroundColor: hexToRgba(theme.colors.foreground, isDark ? 0.3 : 0.2),
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    voiceAgentPickerContent: {
+      width: '100%',
+      maxWidth: 440,
+      maxHeight: Math.min(screenHeight - spacing.xl * 2, 560),
+      alignSelf: 'center',
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+      padding: spacing.md,
+      gap: spacing.sm,
+      shadowColor: '#000000',
+      shadowOpacity: isDark ? 0.4 : 0.16,
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 8,
+    },
+    voiceAgentPickerHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: spacing.sm,
+    },
+    voiceAgentPickerTitleWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
+    voiceAgentPickerTitle: {
+      ...theme.typography.h2,
+      color: theme.colors.foreground,
+      marginBottom: 3,
+    },
+    voiceAgentPickerSubtitle: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      lineHeight: 18,
+    },
+    voiceAgentPickerScroll: {
+      flexShrink: 1,
+    },
+    voiceAgentPickerScrollContent: {
+      gap: spacing.sm,
+      paddingTop: spacing.xs,
+      paddingBottom: spacing.xs,
+    },
+    voiceAgentPickerRow: {
+      minHeight: 58,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.card,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.sm,
+    },
+    voiceAgentPickerIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: hexToRgba(theme.colors.primary, 0.1),
+    },
+    voiceAgentPickerRowText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    voiceAgentPickerRowTitle: {
+      ...theme.typography.body,
+      color: theme.colors.foreground,
+      fontWeight: '600',
+    },
+    voiceAgentPickerRowMeta: {
+      ...theme.typography.caption,
+      color: theme.colors.mutedForeground,
+      marginTop: 2,
+    },
+    voiceAgentPickerEmptyText: {
+      ...theme.typography.body,
+      color: theme.colors.mutedForeground,
+      paddingVertical: spacing.md,
+      textAlign: 'center',
     },
     chatMenuOverlay: {
       flex: 1,

@@ -64,6 +64,34 @@ const getOrderedSharedWordCount = (leftWords: string[], rightWords: string[]) =>
   return lengths[0][0];
 };
 
+const getPartialWordRewrite = (leftWords: string[], rightWords: string[]) => {
+  const overlapLength = Math.min(leftWords.length, rightWords.length);
+  if (overlapLength === 0) {
+    return null;
+  }
+
+  const partialIndex = overlapLength - 1;
+  if (!wordRunsMatch(leftWords, 0, rightWords, 0, partialIndex)) {
+    return null;
+  }
+
+  const leftKey = getWordKey(leftWords[partialIndex] || '');
+  const rightKey = getWordKey(rightWords[partialIndex] || '');
+  if (!leftKey || !rightKey || leftKey === rightKey) {
+    return null;
+  }
+
+  const shorterKey = leftKey.length <= rightKey.length ? leftKey : rightKey;
+  const longerKey = leftKey.length > rightKey.length ? leftKey : rightKey;
+  // Require at least two characters so ordinary short words such as "a"
+  // do not get treated as partial rewrites of unrelated words.
+  if (shorterKey.length < 2 || !longerKey.startsWith(shorterKey)) {
+    return null;
+  }
+
+  return leftKey.length >= rightKey.length ? 'left' : 'right';
+};
+
 const isLikelyCumulativeRewrite = (previousWords: string[], nextWords: string[]) => {
   const shorterLength = Math.min(previousWords.length, nextWords.length);
   if (shorterLength < 4) {
@@ -125,6 +153,13 @@ export function mergeVoiceText(finalText?: string, liveText?: string): string {
   }
   if (wordRunsMatch(finalWords, 0, liveWords, 0, liveWords.length)) {
     return finalClean;
+  }
+  const partialWordRewrite = getPartialWordRewrite(finalWords, liveWords);
+  if (partialWordRewrite === 'left') {
+    return finalClean;
+  }
+  if (partialWordRewrite === 'right') {
+    return liveClean;
   }
   if (isLikelyCumulativeRewrite(finalWords, liveWords)) {
     return liveClean;

@@ -108,6 +108,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [
   { name: "list_codex_sessions", description: "List recent non-archived Codex CLI sessions from the local session store.", inputSchema: { type: "object", properties: { limit: { type: "number" }, cwd: { type: "string" } } } },
   { name: "read_codex_session", description: "Read one Codex CLI session's metadata and optionally its turns.", inputSchema: { type: "object", required: ["threadId"], properties: { threadId: { type: "string" }, includeTurns: { type: "boolean" } } } },
   { name: "send_codex_message", description: "Resume an existing Codex CLI session and send it a new user message.", inputSchema: { type: "object", required: ["threadId", "message"], properties: { threadId: { type: "string" }, message: { type: "string" } } } },
+  { name: "spawn_codex_session", description: "Start a new Codex CLI session with a prompt in a specified working directory.", inputSchema: { type: "object", required: ["prompt"], properties: { prompt: { type: "string" }, cwd: { type: "string" } } } },
 ] }))
 
 server.setRequestHandler(CallToolRequestSchema, async request => {
@@ -126,6 +127,18 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       delete result.path
       if (args.includeTurns) result.turns = records
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
+    }
+    if (request.params.name === "spawn_codex_session") {
+      const prompt = String(args.prompt || "")
+      if (!prompt.trim()) throw new Error("prompt must not be empty")
+      const cwd = typeof args.cwd === "string" && args.cwd.trim() ? args.cwd : process.cwd()
+      const cliArgs = ["-a", "never", "exec", "--json", "--skip-git-repo-check", prompt]
+      const events = await runCodex(cliArgs, cwd)
+      const completion = [...events].reverse().find(event => {
+        const payload = payloadOf(event)
+        return payload.type === "task_complete" || event.type === "task_complete"
+      })
+      return { content: [{ type: "text", text: JSON.stringify({ cwd, events, completed: Boolean(completion) }, null, 2) }] }
     }
     if (request.params.name === "send_codex_message") {
       const threadId = String(args.threadId || "")

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { mergeVoiceText, normalizeVoiceText } from './mergeVoiceText';
+import {
+  applyWebSpeechTranscriptEvent,
+  createWebSpeechTranscriptState,
+  getWebSpeechTranscriptText,
+} from './webTranscriptAssembly';
 
 type EffectRecord = {
   callback?: () => void | (() => void);
@@ -237,6 +242,54 @@ describe('mergeVoiceText', () => {
   });
   it('matches overlap despite case or punctuation changes', () => {
     expect(mergeVoiceText('Turn on the lights.', 'lights in the kitchen')).toBe('Turn on the lights in the kitchen');
+  });
+  it('prefers a completed word when an interim word is only its prefix', () => {
+    expect(mergeVoiceText('saf', 'safely')).toBe('safely');
+    expect(mergeVoiceText('I want to download saf', 'I want to download safely')).toBe(
+      'I want to download safely',
+    );
+    expect(mergeVoiceText('I want to download safely', 'I want to download saf')).toBe(
+      'I want to download safely',
+    );
+  });
+});
+
+describe('web transcript assembly', () => {
+  it('replaces interim rewrites at the same result index instead of duplicating words', () => {
+    const state = createWebSpeechTranscriptState();
+
+    applyWebSpeechTranscriptEvent(state, {
+      resultIndex: 0,
+      results: [{ 0: { transcript: 'I want to download saf' }, isFinal: false }],
+    });
+    applyWebSpeechTranscriptEvent(state, {
+      resultIndex: 0,
+      results: [{ 0: { transcript: 'I want to download safely' }, isFinal: false }],
+    });
+    applyWebSpeechTranscriptEvent(state, {
+      resultIndex: 0,
+      results: [{ 0: { transcript: 'I want to download safely' }, isFinal: true }],
+    });
+
+    expect(getWebSpeechTranscriptText(state)).toBe('I want to download safely');
+  });
+
+  it('keeps finalized result indexes while replacing only the changed interim index', () => {
+    const state = createWebSpeechTranscriptState();
+
+    applyWebSpeechTranscriptEvent(state, {
+      resultIndex: 0,
+      results: [{ 0: { transcript: 'first part' }, isFinal: true }],
+    });
+    applyWebSpeechTranscriptEvent(state, {
+      resultIndex: 1,
+      results: [
+        { 0: { transcript: 'first part' }, isFinal: true },
+        { 0: { transcript: 'second sa' }, isFinal: false },
+      ],
+    });
+
+    expect(getWebSpeechTranscriptText(state)).toBe('first part second sa');
   });
 });
 

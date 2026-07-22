@@ -12,6 +12,9 @@ export type VoiceCommandId =
   | 'stop'
   | 'new-session'
   | 'switch-agent'
+  | 'message-agent'
+  | 'new-agent'
+  | 'close-agent'
   | 'repeat';
 
 /**
@@ -21,6 +24,9 @@ export type VoiceCommandId =
  */
 export const PARAMETERIZED_VOICE_COMMANDS: ReadonlySet<VoiceCommandId> = new Set([
   'switch-agent',
+  'message-agent',
+  'new-agent',
+  'close-agent',
 ]);
 
 export interface VoiceCommandDefinition {
@@ -61,6 +67,46 @@ export const DEFAULT_VOICE_COMMANDS: readonly VoiceCommandDefinition[] = [
       'switch to agent',
       'switch agent',
       'switch to',
+      'focus agent',
+      'focus on agent',
+      'open agent',
+      'go to agent',
+    ],
+  },
+  {
+    id: 'message-agent',
+    label: 'Message agent',
+    aliases: [
+      'send a message to',
+      'send message to',
+      'send to agent',
+      'message agent',
+      'message the agent',
+      'tell agent',
+      'tell the agent',
+    ],
+  },
+  {
+    id: 'new-agent',
+    label: 'New agent',
+    aliases: [
+      'start a new agent',
+      'create a new agent',
+      'start new agent',
+      'create new agent',
+      'new agent',
+    ],
+  },
+  {
+    id: 'close-agent',
+    label: 'Close agent',
+    aliases: [
+      'close the agent',
+      'close agent',
+      'end the agent',
+      'end agent',
+      'archive the agent',
+      'archive agent',
     ],
   },
   {
