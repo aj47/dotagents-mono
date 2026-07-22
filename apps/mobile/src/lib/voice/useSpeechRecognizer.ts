@@ -30,6 +30,7 @@ type VoiceFinalizedPayload = {
   text: string;
   mode: VoiceFinalizationMode;
   source: 'native' | 'web';
+  finalSegmentText?: string;
 };
 
 type SuppressedHandsFreeTranscriptPayload = {
@@ -42,6 +43,7 @@ type HandsFreeTranscriptPayload = {
   text: string;
   source: 'native' | 'web';
   isFinal?: boolean;
+  finalSegmentText?: string;
 };
 
 type DeferredPushToTalkFinal = {
@@ -287,7 +289,11 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     });
   }, [clearHandsFreeDebounce, log, resetWebHandsFreeTranscript, setLiveTranscriptValue, setSttPreviewWithExpiry]);
 
-  const emitFinalized = useCallback((text: string, source: 'native' | 'web') => {
+  const emitFinalized = useCallback((
+    text: string,
+    source: 'native' | 'web',
+    finalSegmentText?: string,
+  ) => {
     if (!enabledRef.current) {
       log?.('transcript-ignored', 'Voice transcript ignored while speech recognizer is inactive.', {
         source,
@@ -322,10 +328,12 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       textLength: finalText.length,
     });
     setSttPreviewWithExpiry(finalText);
+    const normalizedFinalSegment = normalizeVoiceText(finalSegmentText);
     onVoiceFinalized({
       text: finalText,
       mode,
       source,
+      ...(normalizedFinalSegment ? { finalSegmentText: normalizedFinalSegment } : {}),
     });
   }, [
     clearSuppressedHandsFreeTranscript,
@@ -651,7 +659,12 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
     return true;
   }, [clearSuppressedHandsFreeTranscript, emitFinalized, isHandsFreeFinalizationEligible, isHandsFreeTranscriptSuppressed, log, setLiveTranscriptValue, stopRecognitionOnly]);
 
-  const maybeFinalizeHandsFreeImmediately = useCallback((source: 'native' | 'web', text: string, isFinal?: boolean) => {
+  const maybeFinalizeHandsFreeImmediately = useCallback((
+    source: 'native' | 'web',
+    text: string,
+    isFinal?: boolean,
+    finalSegmentText?: string,
+  ) => {
     if (!handsFree || !enabledRef.current) {
       return false;
     }
@@ -674,6 +687,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       text: finalText,
       source,
       isFinal,
+      finalSegmentText: normalizeVoiceText(finalSegmentText) || undefined,
     }) === true;
     if (!shouldFinalizeImmediately) {
       return false;
@@ -696,7 +710,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       textLength: finalText.length,
     });
     void stopRecognitionOnly();
-    emitFinalized(finalText, source);
+    emitFinalized(finalText, source, finalSegmentText);
     return true;
   }, [
     clearHandsFreeDebounce,
@@ -1021,6 +1035,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
           'web',
           assembledHandsFreeText,
           !!finalText,
+          finalText || undefined,
         )
       ) {
         return;
@@ -1299,6 +1314,7 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
                   'native',
                   mergeVoiceText(pendingHandsFreeFinalRef.current, text),
                   !!nativeEvent?.isFinal,
+                  nativeEvent?.isFinal ? text : undefined,
                 )
               ) {
                 return;

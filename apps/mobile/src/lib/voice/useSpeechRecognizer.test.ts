@@ -444,6 +444,47 @@ describe('useSpeechRecognizer', () => {
     expect(onVoiceFinalized).toHaveBeenCalledWith({ text: 'hello world', mode: 'handsfree', source: 'web' });
   });
 
+  it('finalizes a standalone web control segment without losing earlier dictation', async () => {
+    vi.useFakeTimers();
+    (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };
+    const runtime = createHookRuntime();
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime);
+    const onVoiceFinalized = vi.fn();
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 10_000,
+      willCancel: false,
+      onVoiceFinalized,
+      shouldImmediatelyFinalizeHandsFreeTranscript: ({ finalSegmentText, isFinal }) => (
+        isFinal === true && finalSegmentText === 'send'
+      ),
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const speechRecognition = FakeSpeechRecognition.instances[0];
+    const dictatedResult = { 0: { transcript: 'hello world' }, isFinal: true };
+    speechRecognition.onresult?.({
+      resultIndex: 0,
+      results: [dictatedResult],
+    });
+    expect(onVoiceFinalized).not.toHaveBeenCalled();
+
+    speechRecognition.onresult?.({
+      resultIndex: 1,
+      results: [dictatedResult, { 0: { transcript: 'send' }, isFinal: true }],
+    });
+
+    expect(onVoiceFinalized).toHaveBeenCalledWith({
+      text: 'hello world send',
+      mode: 'handsfree',
+      source: 'web',
+      finalSegmentText: 'send',
+    });
+    vi.advanceTimersByTime(10_000);
+    expect(onVoiceFinalized).toHaveBeenCalledTimes(1);
+  });
+
   it('cancels a pending hands-free debounce when capture is invalidated mid-debounce', async () => {
     vi.useFakeTimers();
     (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };

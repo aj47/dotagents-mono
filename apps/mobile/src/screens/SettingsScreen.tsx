@@ -3296,7 +3296,7 @@ export default function SettingsScreen({ navigation, route }: any) {
               accessibilityLabel="Hands-free send keyword"
             />
             <Text style={styles.helperText}>
-              Say this exact phrase by itself to submit the pending voice draft.
+              Say this exact phrase by itself to submit the pending voice draft. Say “clear” to discard the draft.
             </Text>
           </>
         )}

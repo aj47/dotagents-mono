@@ -120,7 +120,7 @@ describe('createChatComposerAccessibilityHint', () => {
         handsFreeSendPhrase: 'over',
         listening: false,
       }),
-    ).toBe('Type your message or tap the mic to dictate. Say "over" to send the voice draft.');
+    ).toBe('Type your message or tap the mic to dictate. Say "over" to send the voice draft or "clear" to discard it.');
   });
 
   it('returns standard push-to-talk guidance when hands-free is off', () => {
@@ -225,7 +225,7 @@ describe('createVoiceInputLiveRegionAnnouncement', () => {
         willCancel: false,
         liveTranscript: 'draft a short update',
       }),
-    ).toBe('Voice listening active. Say "over" to submit the voice draft. Transcript: draft a short update');
+    ).toBe('Voice listening active. Say "over" to submit the voice draft or "clear" to discard it. Transcript: draft a short update');
   });
 
   it('announces captured transcript when listening stops', () => {

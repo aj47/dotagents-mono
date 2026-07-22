@@ -91,12 +91,12 @@ export const createChatComposerAccessibilityHint = ({
 }): string => {
   const baseHint = listening
     ? handsFree && !handsFreeAutoSend
-      ? `Voice listening is active. Dictated text stays in a voice draft until you say "${handsFreeSendPhrase}".`
+      ? `Voice listening is active. Dictated text stays in a voice draft until you say "${handsFreeSendPhrase}". Say "clear" to discard it.`
       : 'Voice listening is active. Dictated text appears in this message field.'
     : handsFree
       ? handsFreeAutoSend
         ? 'Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.'
-        : `Type your message or tap the mic to dictate. Say "${handsFreeSendPhrase}" to send the voice draft.`
+        : `Type your message or tap the mic to dictate. Say "${handsFreeSendPhrase}" to send the voice draft or "clear" to discard it.`
       : 'Type your message or hold the mic to dictate before sending.';
 
   if (!isWeb) {
@@ -151,7 +151,7 @@ export const createVoiceInputLiveRegionAnnouncement = ({
     const releaseInstruction = handsFree
       ? handsFreeAutoSend
         ? 'Tap mic again to stop.'
-        : `Say "${handsFreeSendPhrase}" to submit the voice draft.`
+        : `Say "${handsFreeSendPhrase}" to submit the voice draft or "clear" to discard it.`
       : willCancel
         ? 'Release to edit your message.'
         : 'Release to send your message.';

@@ -36,7 +36,39 @@ describe('resolveHandsFreeManualDraft', () => {
     });
   });
 
+  it('submits accumulated speech when send is a standalone final recognizer segment', () => {
+    expect(resolveHandsFreeManualDraft('', 'book a table for tomorrow send', 'send', {
+      finalSegmentText: 'send',
+    })).toEqual({
+      type: 'send',
+      text: 'book a table for tomorrow',
+    });
+  });
+
   it('returns empty when the send keyword is spoken without a draft', () => {
     expect(resolveHandsFreeManualDraft('', 'send', 'send')).toEqual({ type: 'empty' });
+  });
+
+  it('clears an existing draft when clear is spoken by itself', () => {
+    expect(resolveHandsFreeManualDraft('do not send this', 'clear', 'send')).toEqual({
+      type: 'clear',
+      text: 'do not send this',
+    });
+  });
+
+  it('clears accumulated speech when clear is a standalone final recognizer segment', () => {
+    expect(resolveHandsFreeManualDraft('old draft', 'new words clear', 'send', {
+      finalSegmentText: 'clear',
+    })).toEqual({
+      type: 'clear',
+      text: 'old draft new words',
+    });
+  });
+
+  it('does not clear when clear is part of dictated content', () => {
+    expect(resolveHandsFreeManualDraft('make this', 'clear and concise', 'send')).toEqual({
+      type: 'draft',
+      text: 'make this clear and concise',
+    });
   });
 });

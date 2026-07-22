@@ -115,7 +115,11 @@ import {
 } from '../lib/accessibility';
 import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { mergeVoiceText, normalizeVoiceText } from '../lib/voice/mergeVoiceText';
-import { resolveHandsFreeManualDraft } from '../lib/voice/handsFreeManualSend';
+import {
+  DEFAULT_HANDS_FREE_CLEAR_DRAFT_PHRASE,
+  matchesHandsFreeSendPhrase,
+  resolveHandsFreeManualDraft,
+} from '../lib/voice/handsFreeManualSend';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useStableForeground } from '../lib/voice/useStableForeground';
 import { APP_SHELL_DIMENSIONS, resolveAppShellLayout } from '../ui/appShell';
@@ -432,7 +436,7 @@ function createMicControlVisual({
               ? `Auto-sending in ${handsFreeCountdownSeconds}s. Tap to pause.`
               : 'Listening for your request.')
           : (hasPendingHandsFreeDraft
-              ? `Voice draft ready. Say "${trimmedSendPhrase}" to send.`
+              ? `Voice draft ready. Say "${trimmedSendPhrase}" to send or "${DEFAULT_HANDS_FREE_CLEAR_DRAFT_PHRASE}" to discard.`
               : `Listening. Say "${trimmedSendPhrase}" when your message is ready.`),
         tone: 'active',
         busy: true,
@@ -2422,14 +2426,31 @@ export default function ChatScreen({ route, navigation }: any) {
   }, [handsFreeWakePhrase]);
   const shouldImmediatelyFinalizeHandsFreeTranscript = useCallback(({
     text,
+    finalSegmentText,
+    isFinal,
   }: {
     text: string;
     source: 'native' | 'web';
     isFinal?: boolean;
+    finalSegmentText?: string;
   }) => (
     isExactSleepingWakeTranscript(text)
     || isProcessingVoiceCommandTranscript(text)
-  ), [isExactSleepingWakeTranscript, isProcessingVoiceCommandTranscript]);
+    || (
+      !handsFreeAutoSend
+      && isFinal === true
+      && !!finalSegmentText
+      && (
+        matchesHandsFreeSendPhrase(finalSegmentText, handsFreeSendPhrase)
+        || matchesHandsFreeSendPhrase(finalSegmentText, DEFAULT_HANDS_FREE_CLEAR_DRAFT_PHRASE)
+      )
+    )
+  ), [
+    handsFreeAutoSend,
+    handsFreeSendPhrase,
+    isExactSleepingWakeTranscript,
+    isProcessingVoiceCommandTranscript,
+  ]);
 
   const clearAcceptedHandsFreeControlPreview = useCallback((acceptedText: string) => {
     const normalizedAcceptedText = normalizeVoiceText(acceptedText);
@@ -3111,10 +3132,12 @@ export default function ChatScreen({ route, navigation }: any) {
     text,
     mode,
     source,
+    finalSegmentText,
   }: {
     text: string;
     mode: 'edit' | 'send' | 'handsfree';
     source: 'native' | 'web';
+    finalSegmentText?: string;
   }) => {
     const finalText = text.trim();
     if (!finalText) return;
@@ -3224,6 +3247,7 @@ export default function ChatScreen({ route, navigation }: any) {
             pendingHandsFreeDraftRef.current,
             finalText,
             handsFreeSendPhrase,
+            { finalSegmentText },
           );
           if (manualDraftResolution.type === 'empty') {
               setDebugInfo(`Nothing to send yet. Dictate a message, then say "${handsFreeSendPhrase}".`);
@@ -3232,6 +3256,20 @@ export default function ChatScreen({ route, navigation }: any) {
                 sendPhrase: handsFreeSendPhrase,
               });
               return;
+          }
+          if (manualDraftResolution.type === 'clear') {
+            setPendingHandsFreeDraftValue('');
+            setDebugInfo(
+              manualDraftResolution.text
+                ? 'Voice draft cleared.'
+                : 'Nothing to clear yet.',
+            );
+            voiceLog('handsfree-control', 'Handsfree voice draft cleared by keyword.', {
+              source,
+              clearPhrase: DEFAULT_HANDS_FREE_CLEAR_DRAFT_PHRASE,
+              previousTextLength: manualDraftResolution.text.length,
+            });
+            return;
           }
           if (manualDraftResolution.type === 'send') {
             setPendingHandsFreeDraftValue('');
@@ -7316,6 +7354,11 @@ export default function ChatScreen({ route, navigation }: any) {
         phrase: command.aliases[0] ?? command.label.toLowerCase(),
       })),
       ...(!handsFreeAutoSend ? [{ key: 'manual-send', label: 'Send voice draft', phrase: handsFreeSendPhrase }] : []),
+      ...(!handsFreeAutoSend ? [{
+        key: 'manual-clear',
+        label: 'Clear voice draft',
+        phrase: DEFAULT_HANDS_FREE_CLEAR_DRAFT_PHRASE,
+      }] : []),
       { key: 'switch-direct', label: 'Switch directly', phrase: 'switch to <agent>' },
       { key: 'sleep', label: 'Go to sleep', phrase: handsFreeSleepPhrase, editable: 'sleep' as const },
     ],
@@ -8444,7 +8487,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	                  <Text style={styles.voicePreviewCountdown}>Sending in {handsFreeCountdownSeconds}s</Text>
 	                )}
 	                {hasPendingHandsFreeDraft && (
-	                  <Text style={styles.voicePreviewCountdown}>Say “{handsFreeSendPhrase}” to send</Text>
+	                  <Text style={styles.voicePreviewCountdown}>
+                      Say “{handsFreeSendPhrase}” to send · “{DEFAULT_HANDS_FREE_CLEAR_DRAFT_PHRASE}” to clear
+                    </Text>
 	                )}
 	              </View>
 	              <Text style={styles.voicePreviewText} numberOfLines={3}>
