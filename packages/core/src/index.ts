@@ -49,6 +49,7 @@ export type {
   AgentProfileToolConfig,
   ProfileMcpServerConfig,
   ProfileModelConfig,
+  ProfilePromptConfig,
   ProfileSkillsConfig,
   SessionProfileSnapshot,
 } from './types';

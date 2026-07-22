@@ -2,7 +2,7 @@ import { acpSmartRouter } from './acp/acp-smart-router'
 import { acpService } from './acp-service'
 import { getInternalAgentInfo } from './acp/internal-agent'
 import { agentProfileService } from './agent-profile-service'
-import type { KnowledgeNote } from "@dotagents/core"
+import type { KnowledgeNote, ProfilePromptConfig } from "@dotagents/core"
 
 import { DEFAULT_SYSTEM_PROMPT } from './system-prompts-default'
 
@@ -97,7 +97,7 @@ function hasPromptTool(tools: PromptTool[], toolName: string): boolean {
   return tools.some((tool) => tool.name === toolName)
 }
 
-function getAgentModeAdditions(availableTools: PromptTool[]): string {
+function getAgentModeAdditions(availableTools: PromptTool[], includeLocalContext: boolean): string {
   const hasRespondToUser = hasPromptTool(availableTools, 'respond_to_user')
   const hasMarkWorkComplete = hasPromptTool(availableTools, 'mark_work_complete')
   const hasExecuteCommand = hasPromptTool(availableTools, 'execute_command')
@@ -153,12 +153,18 @@ function getAgentModeAdditions(availableTools: PromptTool[]): string {
   }
 
   if (hasExecuteCommand) {
-    sections.push(`AGENT FILE & COMMAND EXECUTION:
-- Use execute_command for shell/file automation. Infer package manager from lockfiles (pnpm-lock.yaml, package-lock.json, yarn.lock, bun.lock*) and do not default to npm against another lockfile.
-- For planning/status/context, prefer read-only probes (git status, ls, find, rg, sed/head/tail/cat). Do not run install/test/build/lint/typecheck unless asked or validating your code changes.
-- Before reading large files, check size (wc -l) and read targeted ranges with sed/head/tail; avoid cat on large files. Output over 10K chars is truncated.
-- Skills, settings, knowledge, tasks, prompts, runtime metadata, and past conversations are files. Use the absolute paths shown in this prompt when available; otherwise discover with filesystem search.
-- For rare runtime discovery, inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR with execute_command instead of expecting list/schema helper tools.`)
+    const executionGuidance = [
+      "- Use execute_command for shell/file automation. Infer package manager from lockfiles (pnpm-lock.yaml, package-lock.json, yarn.lock, bun.lock*) and do not default to npm against another lockfile.",
+      "- For planning/status/context, prefer read-only probes (git status, ls, find, rg, sed/head/tail/cat). Do not run install/test/build/lint/typecheck unless asked or validating your code changes.",
+      "- Before reading large files, check size (wc -l) and read targeted ranges with sed/head/tail; avoid cat on large files. Output over 10K chars is truncated.",
+    ]
+    if (includeLocalContext) {
+      executionGuidance.push(
+        "- Skills, settings, knowledge, tasks, prompts, runtime metadata, and past conversations are files. Use the absolute paths shown in this prompt when available; otherwise discover with filesystem search.",
+        "- For rare runtime discovery, inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR with execute_command instead of expecting list/schema helper tools.",
+      )
+    }
+    sections.push(`AGENT FILE & COMMAND EXECUTION:\n${executionGuidance.join("\n")}`)
   }
 
   if (hasSetSessionTitle) {
@@ -345,8 +351,10 @@ export function constructSystemPrompt(
   workingNotes?: KnowledgeNote[],
   excludeAgentId?: string,
   filesystemContext?: string,
+  promptConfig?: ProfilePromptConfig,
 ): string {
   let prompt = getEffectiveSystemPrompt(customSystemPrompt)
+  const includeLocalContext = promptConfig?.includeLocalContext !== false
 
   // Inject local date/time so the LLM can reason about relative dates and timestamps.
   const now = new Date()
@@ -354,14 +362,16 @@ export function constructSystemPrompt(
   const compactNow = formatPromptNow(now, tz)
   prompt += `\n\nNow: ${compactNow} ${tz}`
 
-  if (filesystemContext?.trim()) {
+  if (includeLocalContext && filesystemContext?.trim()) {
     prompt += `\n\nFILESYSTEM LOCATIONS:\n${filesystemContext.trim()}`
   }
 
-  prompt += `\n\n${getLocalMemoryAndConfigPrompt(hasPromptTool(availableTools, 'execute_command'))}`
+  if (includeLocalContext) {
+    prompt += `\n\n${getLocalMemoryAndConfigPrompt(hasPromptTool(availableTools, 'execute_command'))}`
+  }
 
   if (isAgentMode) {
-    prompt += getAgentModeAdditions(availableTools)
+    prompt += getAgentModeAdditions(availableTools, includeLocalContext)
 
     const hasDelegationTool = hasPromptTool(availableTools, 'delegate_to_agent')
 
@@ -392,7 +402,9 @@ export function constructSystemPrompt(
 
   // Add working notes if provided.
   // Only a tiny subset of context:auto knowledge notes should be injected at runtime.
-  const formattedWorkingNotes = formatWorkingNotesForPrompt(workingNotes || [])
+  const formattedWorkingNotes = includeLocalContext
+    ? formatWorkingNotesForPrompt(workingNotes || [])
+    : ""
   if (formattedWorkingNotes) {
     prompt += `\n\nWORKING NOTES:\nThese were injected from configured knowledge roots because their frontmatter sets context: auto. Prefer note summaries when present, keep this subset tiny, and leave most notes as context: search-only.\n\n${formattedWorkingNotes}`
   }
@@ -480,6 +492,7 @@ export function constructMinimalSystemPrompt(
   }>,
   skillsIndex?: string,
   filesystemContext?: string,
+  includeLocalContext: boolean = true,
 ): string {
   const hasExecuteCommand = availableTools?.some((tool) => tool.name === 'execute_command') ?? false
   const hasReadMoreContext = availableTools?.some((tool) => tool.name === 'read_more_context') ?? false
@@ -493,17 +506,21 @@ export function constructMinimalSystemPrompt(
     "Latest user request wins; preserve constraints/approval boundaries. No recaps, completion summaries, or next safe actions unless asked for status/next steps. ",
     "Continuation: preserve the exact next action from evidence; don't soften quit/reopen/verify. ",
     "Before asking, use available context; ask one focused follow-up only if facts are missing. ",
-    hasExecuteCommand
-      ? "personal legal/immigration/health/finance/career prep: use execute_command on both knowledge notes and recent conversations before generic advice. Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use rg/find/ls/wc/sed/head/tail. Runtime: $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, $DOTAGENTS_TOOL_SCHEMA_DIR. Knowledge: configured knowledge roots, <knowledge-root>/<slug>/<slug>.md, context: search-only default, context: auto rare. Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; search index.json then conv_*.json. Config: layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available."
-      : "When file tools are unavailable, answer from provided context and do not claim filesystem searches.",
+    includeLocalContext
+      ? hasExecuteCommand
+        ? "personal legal/immigration/health/finance/career prep: use execute_command on both knowledge notes and recent conversations before generic advice. Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use rg/find/ls/wc/sed/head/tail. Runtime: $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, $DOTAGENTS_TOOL_SCHEMA_DIR. Knowledge: configured knowledge roots, <knowledge-root>/<slug>/<slug>.md, context: search-only default, context: auto rare. Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; search index.json then conv_*.json. Config: layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available."
+        : "When file tools are unavailable, answer from provided context and do not claim filesystem searches."
+      : "Use only the provided conversation context for prior state; do not search DotAgents knowledge, config, or stored conversations unless the user explicitly asks.",
   ].join("")
   const contextRecoveryPrompt = [
     "You are an autonomous AI assistant that uses tools to complete tasks. Use exact tool names and parameter keys, batch independent calls when useful, verify results, and be concise. ",
     "Respect earlier user constraints and approval boundaries. Answer the latest user request only; do not append workflow recaps, completion summaries, or next safe actions unless the user asks for status or next steps. ",
     "Before asking for facts, use available context and ask only the minimum high-signal follow-up if facts are missing. ",
-    hasExecuteCommand
-      ? "personal legal/immigration/health/finance/career prep: use execute_command on both knowledge notes and recent conversations before generic advice. Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use rg/find/ls/wc/sed/head/tail when filesystem paths are available. Inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR for runtime discovery. Durable knowledge lives in configured knowledge roots as <knowledge-root>/<slug>/<slug>.md notes; use context: search-only by default, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; use index.json then conv_*.json. DotAgents config lives in layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available before unfamiliar config edits."
-      : "When execute_command is unavailable, rely on provided history and read_more_context results; do not claim filesystem searches.",
+    includeLocalContext
+      ? hasExecuteCommand
+        ? "personal legal/immigration/health/finance/career prep: use execute_command on both knowledge notes and recent conversations before generic advice. Skills, settings, knowledge, tasks, prompts, runtime metadata, and conversations are files; use rg/find/ls/wc/sed/head/tail when filesystem paths are available. Inspect $DOTAGENTS_RUNTIME_DIR, $DOTAGENTS_AGENT_REGISTRY, $DOTAGENTS_TOOL_MANIFEST, or $DOTAGENTS_TOOL_SCHEMA_DIR for runtime discovery. Durable knowledge lives in configured knowledge roots as <knowledge-root>/<slug>/<slug>.md notes; use context: search-only by default, reserve context: auto for a tiny curated subset, and prefer direct file editing. Prior DotAgents conversations are JSON in the runtime-supplied conversations directory; use index.json then conv_*.json. DotAgents config lives in layered global/workspace .agents folders; read dotagents-config-admin SKILL.md when available before unfamiliar config edits."
+        : "When execute_command is unavailable, rely on provided history and read_more_context results; do not claim filesystem searches."
+      : "Use only provided history and read_more_context results for prior state; do not search DotAgents knowledge, config, or stored conversations unless the user explicitly asks.",
   ].join("")
 
   // Keep the fuller fallback when read_more_context is available; it preserves
@@ -511,15 +528,18 @@ export function constructMinimalSystemPrompt(
   let prompt = hasReadMoreContext ? contextRecoveryPrompt : compactPrompt
 
   if (isAgentMode) {
-    prompt += hasReadMoreContext
-      ? " Agent mode: continue with tools until the requested work is resolved. Whenever you need more context - continuation, status, debugging, or high-context planning - search the conversation store (index.json then conv_*.json) before asking follow-up questions, and use recovered context to answer or continue when sufficient."
-      : " Agent mode: continue with tools until the requested work is resolved. Whenever you need more context - continuation, status, debugging, or high-context planning - search the conversation store (index.json then conv_*.json) before asking, and use recovered context to answer or continue when sufficient."
+    prompt += " Agent mode: continue with tools until the requested work is resolved."
+    if (includeLocalContext) {
+      prompt += hasReadMoreContext
+        ? " Whenever you need more context - continuation, status, debugging, or high-context planning - search the conversation store (index.json then conv_*.json) before asking follow-up questions, and use recovered context to answer or continue when sufficient."
+        : " Whenever you need more context - continuation, status, debugging, or high-context planning - search the conversation store (index.json then conv_*.json) before asking, and use recovered context to answer or continue when sufficient."
+    }
     if (hasReadMoreContext) {
       prompt += ' For compacted Context refs, call read_more_context(mode: "search") with the exact needed query when known; once the returned result contains the requested evidence, answer instead of searching again.'
     }
   }
 
-  if (filesystemContext?.trim() && hasExecuteCommand) {
+  if (includeLocalContext && filesystemContext?.trim() && hasExecuteCommand) {
     prompt += `\n\nFILESYSTEM LOCATIONS:\n${filesystemContext.trim()}`
   }
 

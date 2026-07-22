@@ -577,15 +577,21 @@ export async function processTranscriptWithTools(
     : enabledSkillIdsOrNull
   const skillsInstructions = skillsService.getEnabledSkillsInstructionsForProfile(enabledSkillIds)
   const skillsIndex = extractSkillsIndexForMinimalPrompt(skillsInstructions)
+  const promptConfig = mainAgent?.promptConfig
+  const includeLocalContext = promptConfig?.includeLocalContext !== false
 
   const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-  const workingNotes = loadWorkingKnowledgeNotesForPrompt({
-    globalAgentsDir: globalAgentsFolder,
-    workspaceAgentsDir: workspaceAgentsFolder,
-    maxNotes: NON_AGENT_WORKING_NOTES_LIMIT,
-  })
+  const workingNotes = includeLocalContext
+    ? loadWorkingKnowledgeNotesForPrompt({
+        globalAgentsDir: globalAgentsFolder,
+        workspaceAgentsDir: workspaceAgentsFolder,
+        maxNotes: NON_AGENT_WORKING_NOTES_LIMIT,
+      })
+    : []
   logLLM(`[processTranscriptWithLLM] Loaded ${workingNotes.length} working notes for prompt context`)
-  const filesystemContext = buildFilesystemContextForPrompt(uniqueAvailableTools)
+  const filesystemContext = includeLocalContext
+    ? buildFilesystemContextForPrompt(uniqueAvailableTools)
+    : undefined
 
   const systemPrompt = constructSystemPrompt(
     uniqueAvailableTools,
@@ -598,6 +604,7 @@ export async function processTranscriptWithTools(
     workingNotes,
     undefined,
     filesystemContext,
+    promptConfig,
   )
 
   const messages = [
@@ -617,6 +624,7 @@ export async function processTranscriptWithTools(
     isAgentMode: false,
     skillsIndex,
     filesystemContext,
+    includeLocalContext,
   })
 
   const chatProviderId = config.mcpToolsProviderId
@@ -1631,6 +1639,8 @@ export async function processTranscriptWithAgentMode(
   const agentSkillsInstructions = effectiveProfileSnapshot?.skillsInstructions
   // Get agent properties from profile snapshot (dynamic key-value pairs)
   const agentProperties = effectiveProfileSnapshot?.agentProperties
+  const promptConfig = effectiveProfileSnapshot?.promptConfig ?? mainAgent?.promptConfig
+  const includeLocalContext = promptConfig?.includeLocalContext !== false
 
   // Load enabled agent skills instructions for the current profile
   // Skills provide specialized instructions that improve AI performance on specific tasks
@@ -1656,13 +1666,17 @@ export async function processTranscriptWithAgentMode(
   const skillsIndex = extractSkillsIndexForMinimalPrompt(skillsInstructions)
 
   const workspaceAgentsFolder = resolveWorkspaceAgentsFolder()
-  const workingNotes = loadWorkingKnowledgeNotesForPrompt({
-    globalAgentsDir: globalAgentsFolder,
-    workspaceAgentsDir: workspaceAgentsFolder,
-    maxNotes: AGENT_WORKING_NOTES_LIMIT,
-  })
+  const workingNotes = includeLocalContext
+    ? loadWorkingKnowledgeNotesForPrompt({
+        globalAgentsDir: globalAgentsFolder,
+        workspaceAgentsDir: workspaceAgentsFolder,
+        maxNotes: AGENT_WORKING_NOTES_LIMIT,
+      })
+    : []
   logLLM(`[processTranscriptWithAgentMode] Loaded ${workingNotes.length} working notes for prompt context`)
-  const filesystemContext = buildFilesystemContextForPrompt(baseAvailableTools, currentSessionId)
+  const filesystemContext = includeLocalContext
+    ? buildFilesystemContextForPrompt(baseAvailableTools, currentSessionId)
+    : undefined
 
   // The agent's profile ID is used to exclude itself from delegation targets in the system prompt
   const excludeAgentId = effectiveProfileSnapshot?.profileId
@@ -1679,6 +1693,7 @@ export async function processTranscriptWithAgentMode(
     workingNotes, // injected working notes
     excludeAgentId, // exclude this agent from delegation targets
     filesystemContext,
+    promptConfig,
   )
 
   logLLM(`[llm.ts processTranscriptWithAgentMode] Initializing conversationHistory for session ${currentSessionId}`)
@@ -2011,6 +2026,7 @@ export async function processTranscriptWithAgentMode(
       workingNotes, // injected working notes
       excludeAgentId, // exclude this agent from delegation targets
       filesystemContext,
+      promptConfig,
     )
 
     const postVerifySummaryMessages = [
@@ -2025,6 +2041,7 @@ export async function processTranscriptWithAgentMode(
       isAgentMode: true,
       skillsIndex,
       filesystemContext,
+      includeLocalContext,
       sessionId: currentSessionId,
       onSummarizationProgress: (current, total) => {
         const lastThinkingStep = progressSteps.findLast(step => step.type === "thinking")
@@ -2383,6 +2400,7 @@ export async function processTranscriptWithAgentMode(
           workingNotes, // injected working notes
           excludeAgentId, // exclude this agent from delegation targets
           filesystemContext,
+          promptConfig,
         )
         lastExcludedToolCount = excludedToolCount
         logLLM(`[processTranscriptWithAgentMode] Rebuilt system prompt with ${activeTools.length} active tools (excluded ${excludedToolCount})`)
@@ -2494,6 +2512,7 @@ export async function processTranscriptWithAgentMode(
       isAgentMode: true,
       skillsIndex,
       filesystemContext,
+      includeLocalContext,
       sessionId: currentSessionId,
       onSummarizationProgress: (current, total, message) => {
         // Update thinking step with summarization progress
@@ -3756,6 +3775,7 @@ export async function processTranscriptWithAgentMode(
           workingNotes, // injected working notes
           excludeAgentId, // exclude this agent from delegation targets
           filesystemContext,
+          promptConfig,
         )
 
         const summaryMessages = [
@@ -3770,6 +3790,7 @@ export async function processTranscriptWithAgentMode(
           isAgentMode: true,
           skillsIndex,
           filesystemContext,
+          includeLocalContext,
           sessionId: currentSessionId,
           onSummarizationProgress: (current, total) => {
             summaryStep.description = `Summarizing for summary generation (${current}/${total})`

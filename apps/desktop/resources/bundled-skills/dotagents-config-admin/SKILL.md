@@ -71,6 +71,7 @@ Edit `mcp.json` for MCP server definitions and enablement-related config.
 
 - Edit `agents/<id>/agent.md` for identity, display text, role, and other frontmatter-friendly fields
 - Edit `agents/<id>/config.json` for nested config like connection, tools, models, or skills config
+- To keep an isolated agent from receiving DotAgents-owned knowledge, stored-conversation/config locations, and runtime filesystem manifests, set `"promptConfig": { "includeLocalContext": false }` in `agents/<id>/config.json`. The default is `true`, and current conversation history is unaffected.
 
 ### Change a skill
 

@@ -164,6 +164,16 @@ export type ProfileSkillsConfig = {
   allSkillsDisabledByDefault?: boolean
 }
 
+export type ProfilePromptConfig = {
+  /**
+   * Whether DotAgents should inject its local knowledge/configuration context,
+   * including knowledge notes, stored-conversation locations, and runtime
+   * filesystem manifests. Existing conversation history is not affected.
+   * Defaults to true when omitted.
+   */
+  includeLocalContext?: boolean
+}
+
 export type SessionProfileSnapshot = {
   profileId: string
   profileName: string
@@ -174,6 +184,7 @@ export type SessionProfileSnapshot = {
   skillsInstructions?: string
   agentProperties?: Record<string, string>
   skillsConfig?: ProfileSkillsConfig
+  promptConfig?: ProfilePromptConfig
 }
 
 export type AgentProfileConnectionType = "internal" | "acpx" | "acp" | "stdio" | "remote"
@@ -212,6 +223,7 @@ export type AgentProfile = {
   modelConfig?: ProfileModelConfig
   toolConfig?: AgentProfileToolConfig
   skillsConfig?: ProfileSkillsConfig
+  promptConfig?: ProfilePromptConfig
   connection: AgentProfileConnection
   isStateful?: boolean
   conversationId?: string

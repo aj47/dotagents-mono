@@ -438,6 +438,14 @@ export type ProfileSkillsConfig = {
   allSkillsDisabledByDefault?: boolean
 }
 
+export type ProfilePromptConfig = {
+  /**
+   * Whether to inject DotAgents-owned local knowledge/configuration context.
+   * Existing conversation history is unaffected. Defaults to true.
+   */
+  includeLocalContext?: boolean
+}
+
 // Profile Management Types
 export type Profile = {
   id: string
@@ -449,6 +457,7 @@ export type Profile = {
   mcpServerConfig?: ProfileMcpServerConfig
   modelConfig?: ProfileModelConfig
   skillsConfig?: ProfileSkillsConfig
+  promptConfig?: ProfilePromptConfig
   systemPrompt?: string
 }
 
@@ -473,6 +482,7 @@ export type SessionProfileSnapshot = {
   /** Dynamic agent properties exposed in system prompt (from agent's properties) */
   agentProperties?: Record<string, string>
   skillsConfig?: ProfileSkillsConfig
+  promptConfig?: ProfilePromptConfig
 }
 
 // ============================================================================
@@ -722,6 +732,10 @@ export type AgentProfile = {
   /** Skills configuration */
   skillsConfig?: ProfileSkillsConfig
 
+  // Prompt context
+  /** DotAgents-owned local context injection settings */
+  promptConfig?: ProfilePromptConfig
+
   // Connection - how to run this agent
   /** Connection configuration for the underlying agent */
   connection: AgentProfileConnection
@@ -788,6 +802,7 @@ export function profileToAgentProfile(profile: Profile): AgentProfile {
       enabledRuntimeTools: profile.mcpServerConfig.enabledRuntimeTools,
     } : undefined,
     skillsConfig: profile.skillsConfig,
+    promptConfig: profile.promptConfig,
     connection: { type: "internal" },
     isStateful: false,
     role: "chat-agent",

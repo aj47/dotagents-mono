@@ -149,6 +149,37 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("Skills, settings, knowledge, tasks, prompts, runtime metadata, and past conversations are files")
   })
 
+  it("can isolate a profile from DotAgents-owned local context", async () => {
+    const { constructSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructSystemPrompt(
+      [
+        { name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } },
+      ] as any,
+      undefined,
+      true,
+      undefined,
+      "Isolated profile prompt.",
+      undefined,
+      undefined,
+      [{ id: "private-note", title: "Private", context: "auto", body: "Do not inject me." } as any],
+      undefined,
+      "Global .agents: /tmp/private/.agents",
+      { includeLocalContext: false },
+    )
+
+    expect(prompt).toContain("Isolated profile prompt.")
+    expect(prompt).toContain("AGENT MODE")
+    expect(prompt).toContain("AGENT FILE & COMMAND EXECUTION")
+    expect(prompt).toContain("DOTAGENTS TOOLS: execute_command")
+    expect(prompt).not.toContain("LOCAL MEMORY & CONFIG")
+    expect(prompt).not.toContain("FILESYSTEM LOCATIONS")
+    expect(prompt).not.toContain("WORKING NOTES")
+    expect(prompt).not.toContain("Do not inject me")
+    expect(prompt).not.toContain("DOTAGENTS_RUNTIME_DIR")
+    expect(prompt).not.toContain("past conversations are files")
+  })
+
   it("keeps local memory guidance available outside agent mode", async () => {
     const { constructSystemPrompt } = await import("./system-prompts")
 
@@ -212,6 +243,26 @@ describe("constructSystemPrompt", () => {
     expect(prompt).toContain("When file tools are unavailable")
     expect(prompt).not.toContain("use execute_command on both knowledge notes")
     expect(prompt).not.toContain("DOTAGENTS_TOOL_MANIFEST")
+  })
+
+  it("keeps local context disabled in the minimal fallback prompt", async () => {
+    const { constructMinimalSystemPrompt } = await import("./system-prompts")
+
+    const prompt = constructMinimalSystemPrompt(
+      [{ name: "execute_command", description: "Execute command", inputSchema: { type: "object", properties: {} } }],
+      true,
+      undefined,
+      undefined,
+      "Global .agents: /tmp/private/.agents",
+      false,
+    )
+
+    expect(prompt).toContain("AVAILABLE DOTAGENTS RUNTIME TOOLS")
+    expect(prompt).toContain("execute_command")
+    expect(prompt).toContain("Use only the provided conversation context for prior state")
+    expect(prompt).not.toContain("FILESYSTEM LOCATIONS")
+    expect(prompt).not.toContain("DOTAGENTS_RUNTIME_DIR")
+    expect(prompt).not.toContain("index.json")
   })
 
   it("separates MCP tools from DotAgents runtime tools in the full prompt", async () => {

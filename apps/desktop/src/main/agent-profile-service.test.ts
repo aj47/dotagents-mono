@@ -70,4 +70,14 @@ describe("agentProfileService skills", () => {
     expect(agentProfileService.hasAllSkillsEnabledByDefault(profile.id)).toBe(true)
     expect(agentProfileService.getEnabledSkillIdsForProfile(profile.id)).toBeNull()
   })
+
+  it("captures prompt context settings in a session snapshot", async () => {
+    const { agentProfileService, createSessionSnapshotFromProfile } = await import("./agent-profile-service")
+    const profile = agentProfileService.getAll()[0]
+    profile.promptConfig = { includeLocalContext: false }
+
+    expect(createSessionSnapshotFromProfile(profile).promptConfig).toEqual({
+      includeLocalContext: false,
+    })
+  })
 })

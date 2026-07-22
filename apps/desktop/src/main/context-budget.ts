@@ -1867,6 +1867,8 @@ export interface ShrinkOptions {
   skillsIndex?: string
   /** Optional absolute filesystem locations to preserve when using Tier-3 minimal prompts. */
   filesystemContext?: string
+  /** Whether Tier-3 prompts may include DotAgents-owned local context guidance. */
+  includeLocalContext?: boolean
   isAgentMode?: boolean
   targetRatio?: number // default 0.4
   lastNMessages?: number // default 3
@@ -2289,6 +2291,7 @@ export async function shrinkMessagesForLLM(opts: ShrinkOptions): Promise<ShrinkR
     opts.relevantTools,
     opts.skillsIndex,
     opts.filesystemContext,
+    opts.includeLocalContext !== false,
   )
   if (systemMsgIdx >= 0) {
     messages[systemMsgIdx] = { role: "system", content: minimal }

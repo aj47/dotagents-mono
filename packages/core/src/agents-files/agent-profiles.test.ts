@@ -6,6 +6,7 @@ import type { AgentProfile, AgentProfileConnectionType, AgentProfileRole } from 
 import { getAgentsLayerPaths, type AgentsLayerPaths } from "./modular-config"
 import {
   AGENTS_PROFILE_CANONICAL_FILENAME,
+  agentProfileIdToConfigJsonPath,
   agentProfileIdToFilePath,
   getAgentProfilesDir,
   loadAgentProfilesLayer,
@@ -110,6 +111,27 @@ describe("agent-profiles role inference", () => {
 })
 
 describe("agent-profiles write behaviour", () => {
+  it("round-trips profile prompt context configuration through config.json", () => {
+    const layer = mkTempLayer("dotagents-agent-profiles-prompt-config-")
+    const profile: AgentProfile = {
+      id: "isolated-agent",
+      name: "isolated-agent",
+      displayName: "Isolated Agent",
+      guidelines: "",
+      promptConfig: { includeLocalContext: false },
+      connection: { type: "internal" },
+      enabled: true,
+      createdAt: 1,
+      updatedAt: 1,
+    }
+
+    writeAgentsProfileFiles(layer, profile)
+
+    const config = JSON.parse(fs.readFileSync(agentProfileIdToConfigJsonPath(layer, profile.id), "utf8"))
+    expect(config.promptConfig).toEqual({ includeLocalContext: false })
+    expect(loadAgentProfilesLayer(layer).profiles[0].promptConfig).toEqual({ includeLocalContext: false })
+  })
+
   it("does not rewrite agent.md when the in-memory profile is unchanged", () => {
     const layer = mkTempLayer("dotagents-agent-profiles-skip-")
     const profile: AgentProfile = {

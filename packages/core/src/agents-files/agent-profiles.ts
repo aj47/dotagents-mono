@@ -8,6 +8,7 @@ import type {
   AgentProfileToolConfig,
   PreferredAgentProfileRole,
   ProfileModelConfig,
+  ProfilePromptConfig,
   ProfileSkillsConfig,
 } from "../types"
 import type { AgentsLayerPaths } from "./modular-config"
@@ -112,6 +113,7 @@ export type AgentProfileConfigJson = {
   toolConfig?: AgentProfileToolConfig
   modelConfig?: ProfileModelConfig
   skillsConfig?: ProfileSkillsConfig
+  promptConfig?: ProfilePromptConfig
   connection?: Partial<AgentProfileConnection>
 }
 
@@ -133,6 +135,7 @@ function writeConfigJson(
     config.toolConfig ||
     config.modelConfig ||
     config.skillsConfig ||
+    config.promptConfig ||
     (config.connection && Object.keys(config.connection).length > 0)
 
   if (!hasContent) return
@@ -263,6 +266,7 @@ function assembleAgentProfile(
     toolConfig: configJson.toolConfig,
     modelConfig: configJson.modelConfig,
     skillsConfig: configJson.skillsConfig,
+    promptConfig: configJson.promptConfig,
   }
 }
 
@@ -363,6 +367,7 @@ export function writeAgentsProfileFiles(
     ...(profile.toolConfig ? { toolConfig: profile.toolConfig } : {}),
     ...(profile.modelConfig ? { modelConfig: profile.modelConfig } : {}),
     ...(profile.skillsConfig ? { skillsConfig: profile.skillsConfig } : {}),
+    ...(profile.promptConfig ? { promptConfig: profile.promptConfig } : {}),
     ...(Object.keys(connectionExtra).length > 0 ? { connection: connectionExtra } : {}),
   }
 

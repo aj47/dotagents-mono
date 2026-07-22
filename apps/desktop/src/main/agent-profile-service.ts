@@ -179,6 +179,7 @@ export function createSessionSnapshotFromProfile(
     skillsInstructions,
     agentProperties: profile.properties,
     skillsConfig: profile.skillsConfig,
+    promptConfig: profile.promptConfig,
   }
 }
 
