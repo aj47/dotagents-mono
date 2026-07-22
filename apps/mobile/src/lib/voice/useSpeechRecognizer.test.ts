@@ -485,6 +485,52 @@ describe('useSpeechRecognizer', () => {
     expect(onVoiceFinalized).toHaveBeenCalledTimes(1);
   });
 
+  it('allows a command in the newest web speech segment after earlier dictation', async () => {
+    vi.useFakeTimers();
+    (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };
+    const runtime = createHookRuntime();
+    const { useSpeechRecognizer } = await loadUseSpeechRecognizer(runtime);
+    const onVoiceFinalized = vi.fn();
+    const isEligibleSegment = ({ text, finalSegmentText }: {
+      text: string;
+      finalSegmentText?: string;
+    } = { text: '' }) => text === 'hello world' || finalSegmentText === 'new agent';
+    const isImmediateCommandSegment = ({ finalSegmentText }: {
+      finalSegmentText?: string;
+    } = {}) => finalSegmentText === 'new agent';
+
+    const recognizer = runtime.render(useSpeechRecognizer, {
+      handsFree: true,
+      handsFreeDebounceMs: 10_000,
+      willCancel: false,
+      onVoiceFinalized,
+      shouldFinalizeHandsFreeTranscript: isEligibleSegment,
+      shouldImmediatelyFinalizeHandsFreeTranscript: isImmediateCommandSegment,
+    });
+    runtime.commitEffects();
+
+    await recognizer.startRecording();
+    const speechRecognition = FakeSpeechRecognition.instances[0];
+    speechRecognition.onresult?.({
+      resultIndex: 0,
+      results: [{ 0: { transcript: 'hello world' }, isFinal: true }],
+    });
+    speechRecognition.onresult?.({
+      resultIndex: 1,
+      results: [
+        { 0: { transcript: 'hello world' }, isFinal: true },
+        { 0: { transcript: 'new agent' }, isFinal: true },
+      ],
+    });
+
+    expect(onVoiceFinalized).toHaveBeenCalledWith({
+      text: 'hello world new agent',
+      mode: 'handsfree',
+      source: 'web',
+      finalSegmentText: 'new agent',
+    });
+  });
+
   it('cancels a pending hands-free debounce when capture is invalidated mid-debounce', async () => {
     vi.useFakeTimers();
     (globalThis as any).window = { SpeechRecognition: FakeSpeechRecognition };

@@ -1279,6 +1279,89 @@ const formatToolExecutionStatsLabel = (stats?: ToolExecutionStats | null): strin
   return parts.length > 0 ? parts.join(' • ') : null;
 };
 
+type LiveProgressFocus = {
+  thinking: {
+    id: string;
+    content: string;
+    status: AgentProgressStep['status'];
+  } | null;
+  tool: {
+    id: string;
+    title: string;
+    description?: string;
+    status: AgentProgressStep['status'];
+    toolCall?: NonNullable<AgentProgressStep['toolCall']>;
+    toolResult?: NonNullable<AgentProgressStep['toolResult']>;
+    executionStats?: AgentProgressStep['executionStats'];
+  } | null;
+};
+
+const getProgressStepContent = (step: AgentProgressStep): string => {
+  const directContent = [step.content, step.llmContent]
+    .find((value) => typeof value === 'string' && value.trim().length > 0);
+  return directContent?.trim() || [step.title, step.description].filter(Boolean).join('\n').trim();
+};
+
+/**
+ * Select the two pieces of live work worth keeping in view while the run moves.
+ * The progress refs intentionally retain earlier steps, so this focus does not
+ * flicker away between a tool result and the next thinking update.
+ */
+const getLiveProgressFocus = (steps: AgentProgressStep[]): LiveProgressFocus => {
+  const latestThinkingStep = [...steps]
+    .reverse()
+    .find((step) => step.type === 'thinking' && getProgressStepContent(step));
+
+  const latestToolCallStep = [...steps]
+    .reverse()
+    .find((step) => step.type === 'tool_call' && step.toolCall);
+  const latestToolResultStep = [...steps]
+    .reverse()
+    .find((step) => (
+      (step.type === 'tool_result' && step.toolResult) ||
+      (step.type === 'tool_call' && step.toolResult)
+    ));
+
+  const toolStep = latestToolCallStep || latestToolResultStep;
+  if (!toolStep) {
+    return {
+      thinking: latestThinkingStep
+        ? {
+            id: latestThinkingStep.id,
+            content: getProgressStepContent(latestThinkingStep),
+            status: latestThinkingStep.status,
+          }
+        : null,
+      tool: null,
+    };
+  }
+
+  const toolResult = latestToolCallStep?.toolResult || (
+    latestToolResultStep && (!latestToolCallStep || latestToolResultStep.timestamp >= latestToolCallStep.timestamp)
+      ? latestToolResultStep.toolResult
+      : undefined
+  );
+
+  return {
+    thinking: latestThinkingStep
+      ? {
+          id: latestThinkingStep.id,
+          content: getProgressStepContent(latestThinkingStep),
+          status: latestThinkingStep.status,
+        }
+      : null,
+    tool: {
+      id: toolStep.id,
+      title: toolStep.toolCall?.name || toolStep.title || 'Tool result',
+      description: toolStep.description,
+      status: toolStep.status,
+      toolCall: toolStep.toolCall,
+      toolResult,
+      executionStats: toolStep.executionStats,
+    },
+  };
+};
+
 const parseToolInspectorPayload = (value: unknown): unknown => {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
@@ -2266,6 +2349,13 @@ export default function ChatScreen({ route, navigation }: any) {
     || isAssistantAudioSpeaking;
   const shouldKeepHandsFreeMicArmed = handsFreeController.shouldKeepRecognizerActive;
   const isAgentRunningInHeader = conversationState === 'running' || responding;
+  const liveProgressFocus = useMemo(
+    () => getLiveProgressFocus(progressStepsRef.current),
+    [conversationState, messages, responding],
+  );
+  const shouldRenderLiveProgressFocus = isAgentRunningInHeader && (
+    !!liveProgressFocus.thinking || !!liveProgressFocus.tool
+  );
   const handsFreeDisplayPhase: HandsFreeDisplayPhase = handsFree
     ? (
         isAssistantAudioLoading
@@ -2410,12 +2500,16 @@ export default function ChatScreen({ route, navigation }: any) {
     if (handsFreePhaseRef.current !== 'processing' || !text) return false;
     return !!matchVoiceCommand(text);
   }, []);
-  const isHandsFreeFinalizationEligibleNow = useCallback((payload?: { text: string }) => (
+  const isHandsFreeFinalizationEligibleNow = useCallback((payload?: {
+    text?: string;
+    finalSegmentText?: string;
+  }) => (
     !handsFreeRef.current
     || handsFreePhaseRef.current === 'sleeping'
     || handsFreePhaseRef.current === 'waking'
     || handsFreePhaseRef.current === 'listening'
     || isProcessingVoiceCommandTranscript(payload?.text)
+    || isProcessingVoiceCommandTranscript(payload?.finalSegmentText)
   ), [isProcessingVoiceCommandTranscript]);
   const isExactSleepingWakeTranscript = useCallback((text: string) => {
     if (!handsFreeRef.current || handsFreePhaseRef.current !== 'sleeping') {
@@ -2436,6 +2530,8 @@ export default function ChatScreen({ route, navigation }: any) {
   }) => (
     isExactSleepingWakeTranscript(text)
     || isProcessingVoiceCommandTranscript(text)
+    || isProcessingVoiceCommandTranscript(finalSegmentText)
+    || !!(finalSegmentText && matchVoiceCommand(finalSegmentText))
     || (
       !handsFreeAutoSend
       && isFinal === true
@@ -3092,6 +3188,7 @@ export default function ChatScreen({ route, navigation }: any) {
       }
       case 'new-agent': {
         pendingAgentVoiceActionRef.current = null;
+        setVoiceAgentPickerVisible(false);
         handleNewChat();
         const initialMessage = normalizeAgentSessionMessage(remainder);
         if (initialMessage) {
@@ -3216,7 +3313,14 @@ export default function ChatScreen({ route, navigation }: any) {
       if (handsFreeRef.current) {
         const acceptedWakeControlText = isExactSleepingWakeTranscript(finalText);
         const phaseBeforeFinalTranscript = handsFreePhaseRef.current;
-        const action = handsFreeController.handleFinalTranscript(finalText);
+        // Web Speech keeps the whole continuous recognition session in the
+        // assembled transcript. A command can arrive as the newest finalized
+        // segment after ordinary dictation, so dispatch that segment when it
+        // is independently recognized as a command.
+        const commandTranscript = finalSegmentText && matchVoiceCommand(finalSegmentText)
+          ? finalSegmentText
+          : finalText;
+        const action = handsFreeController.handleFinalTranscript(commandTranscript);
         const shouldRouteToAgentTarget = action.type === 'send'
           && (pendingAgentVoiceActionRef.current || voiceAgentPickerVisible);
         console.info(
@@ -7538,6 +7642,15 @@ export default function ChatScreen({ route, navigation }: any) {
           )}
           {visibleMessages.map((m, visibleIndex) => {
             const i = firstVisibleMessageIndex + visibleIndex;
+            // Live progress is promoted into the focused workbench below. Keep
+            // the durable conversation history in this list so it remains
+            // expandable without duplicating the in-flight blocks.
+            if (
+              shouldRenderLiveProgressFocus &&
+              (m.id?.startsWith('live-progress-thinking-') || m.id?.startsWith('live-progress-tools-'))
+            ) {
+              return null;
+            }
             // --- Tool-activity group handling ---
             const group = toolActivityGroups.groupByIndex.get(i);
             if (group) {
@@ -8231,6 +8344,92 @@ export default function ChatScreen({ route, navigation }: any) {
               </View>
             );
           })}
+          {shouldRenderLiveProgressFocus && (
+            <View
+              style={styles.liveProgressFocusCard}
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel="Latest agent activity"
+              accessibilityState={{ busy: true }}
+            >
+              <View style={styles.liveProgressFocusHeader}>
+                <View style={styles.liveProgressFocusTitleRow}>
+                  <View style={styles.liveProgressPulse} />
+                  <Text style={styles.liveProgressFocusEyebrow}>LIVE WORK</Text>
+                </View>
+                <Text style={styles.liveProgressFocusHint}>Latest activity stays open</Text>
+              </View>
+
+              {liveProgressFocus.thinking && (
+                <View key={`live-thinking-${liveProgressFocus.thinking.id}`} style={styles.liveProgressThinkingSection}>
+                  <View style={styles.liveProgressSectionLabelRow}>
+                    <Ionicons name="bulb-outline" size={14} color={theme.colors.primary} />
+                    <Text style={styles.liveProgressSectionLabel}>Thinking</Text>
+                  </View>
+                  <View style={styles.liveProgressThinkingContent}>
+                    <MarkdownRenderer
+                      content={liveProgressFocus.thinking.content}
+                      assetBaseUrl={config.baseUrl}
+                      assetAuthToken={config.apiKey}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {liveProgressFocus.tool && (
+                <View key={`live-tool-${liveProgressFocus.tool.id}`} style={styles.liveProgressToolSection}>
+                  <View style={styles.liveProgressSectionLabelRow}>
+                    <Ionicons name="terminal-outline" size={14} color={theme.colors.primary} />
+                    <Text style={styles.liveProgressSectionLabel}>Latest tool call</Text>
+                    <Text
+                      style={[
+                        styles.liveProgressToolStatus,
+                        liveProgressFocus.tool.toolResult?.success === false && styles.liveProgressToolStatusError,
+                        liveProgressFocus.tool.toolResult?.success === true && styles.liveProgressToolStatusSuccess,
+                      ]}
+                    >
+                      {liveProgressFocus.tool.toolResult
+                        ? liveProgressFocus.tool.toolResult.success ? '✓ complete' : '✕ error'
+                        : '⏳ running'}
+                    </Text>
+                  </View>
+                  <Text style={styles.liveProgressToolName} numberOfLines={1} ellipsizeMode="tail">
+                    {liveProgressFocus.tool.title}
+                  </Text>
+                  {liveProgressFocus.tool.description && !liveProgressFocus.tool.toolCall && (
+                    <Text style={styles.liveProgressToolDescription} numberOfLines={2}>
+                      {liveProgressFocus.tool.description}
+                    </Text>
+                  )}
+                  {liveProgressFocus.tool.toolCall && (
+                    <View style={styles.liveProgressPayloadBlock}>
+                      <Text style={styles.liveProgressPayloadLabel}>Input</Text>
+                      <ScrollView style={styles.liveProgressPayloadScroll} nestedScrollEnabled>
+                        <ToolInspectorPayload
+                          value={liveProgressFocus.tool.toolCall.arguments}
+                          fallbackText={formatToolArguments(liveProgressFocus.tool.toolCall.arguments)}
+                          styles={styles}
+                        />
+                      </ScrollView>
+                    </View>
+                  )}
+                  {liveProgressFocus.tool.toolResult && (
+                    <View style={styles.liveProgressPayloadBlock}>
+                      <Text style={styles.liveProgressPayloadLabel}>Output</Text>
+                      <ScrollView style={styles.liveProgressPayloadScroll} nestedScrollEnabled>
+                        <ToolInspectorPayload
+                          value={liveProgressFocus.tool.toolResult.content}
+                          fallbackText={liveProgressFocus.tool.toolResult.content || 'No content returned'}
+                          styles={styles}
+                          hiddenKeys={TOOL_OUTPUT_METADATA_KEYS}
+                        />
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
           {!messageQueuePanelVisible && pendingQueuedMessages.map((queuedMessage) => (
             <View
               key={`queued-inline-${queuedMessage.id}`}
@@ -8611,14 +8810,15 @@ export default function ChatScreen({ route, navigation }: any) {
               )}
             </TouchableOpacity>
           </View>
-          {/* Large mic button - ~20% of screen height */}
+          {/* The idle mic affordance becomes a compact work-status rail while an agent runs. */}
           <View
             ref={micButtonRef}
-            style={styles.micWrapper}
+            style={[styles.micWrapper, isAgentRunningInHeader && styles.micWrapperProcessing]}
           >
             <Pressable
               style={[
                 styles.mic,
+                isAgentRunningInHeader && styles.micProcessing,
                 micControlActive && styles.micOn,
                 micControlDanger && styles.micDanger,
                 // @ts-ignore - Web-only CSS to disable long-press selection/callouts
@@ -8634,7 +8834,7 @@ export default function ChatScreen({ route, navigation }: any) {
               onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
               onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
             >
-              <View style={styles.micContent}>
+              <View style={[styles.micContent, isAgentRunningInHeader && styles.micContentProcessing]}>
                 <View style={styles.micTitleRow}>
                   <Ionicons
                     name={micControlVisual.icon}
@@ -8644,6 +8844,7 @@ export default function ChatScreen({ route, navigation }: any) {
                   <Text
                     style={[
                       styles.micLabel,
+                      isAgentRunningInHeader && styles.micLabelProcessing,
                       micControlActive && styles.micLabelOn,
                       micControlDanger && styles.micLabelDanger,
                     ]}
@@ -8655,15 +8856,16 @@ export default function ChatScreen({ route, navigation }: any) {
                 <Text
                   style={[
                     styles.micStatusText,
+                    isAgentRunningInHeader && styles.micStatusTextProcessing,
                     micControlActive && styles.micStatusTextOn,
                     micControlDanger && styles.micStatusTextDanger,
                   ]}
-                  numberOfLines={2}
+                  numberOfLines={isAgentRunningInHeader ? 1 : 2}
                   selectable={false}
                 >
                   {micControlVisual.status}
                 </Text>
-                <View style={styles.micIndicatorRow}>
+                <View style={[styles.micIndicatorRow, isAgentRunningInHeader && styles.micIndicatorRowProcessing]}>
                   {micControlVisual.indicators.map((indicator) => {
                     const indicatorWarning = micControlDanger || indicator.warning;
                     const indicatorEmphasized = micControlActive || indicator.active;
@@ -10100,6 +10302,9 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       paddingHorizontal: spacing.sm,
       paddingBottom: spacing.sm,
     },
+    micWrapperProcessing: {
+      paddingBottom: spacing.xs,
+    },
     mic: {
       width: '100%' as any,
       minHeight: 94,
@@ -10113,11 +10318,23 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
     },
+    micProcessing: {
+      minHeight: 52,
+      borderRadius: radius.md,
+      paddingVertical: 6,
+      paddingHorizontal: spacing.sm,
+    },
     micContent: {
       flex: 1,
       minWidth: 0,
       alignItems: 'center',
       gap: 6,
+    },
+    micContentProcessing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
     },
     micTitleRow: {
       flexDirection: 'row',
@@ -10138,6 +10355,9 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.mutedForeground,
       fontWeight: '700',
     },
+    micLabelProcessing: {
+      fontSize: 14,
+    },
     micLabelOn: {
       color: theme.colors.primaryForeground,
     },
@@ -10151,6 +10371,12 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       fontWeight: '500',
       textAlign: 'center',
     },
+    micStatusTextProcessing: {
+      flex: 1,
+      textAlign: 'left',
+      fontSize: 11,
+      lineHeight: 14,
+    },
     micStatusTextOn: {
       color: hexToRgba(theme.colors.primaryForeground, 0.84),
     },
@@ -10163,6 +10389,11 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       justifyContent: 'center',
       flexWrap: 'wrap',
       gap: 6,
+    },
+    micIndicatorRowProcessing: {
+      flexWrap: 'nowrap',
+      justifyContent: 'flex-end',
+      gap: 4,
     },
     micIndicatorPill: {
       flexDirection: 'row',
@@ -10485,6 +10716,115 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.mutedForeground,
       flexShrink: 1,
       minWidth: 0,
+    },
+    liveProgressFocusCard: {
+      marginTop: spacing.xs,
+      marginBottom: spacing.sm,
+      padding: spacing.sm,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: hexToRgba(theme.colors.primary, 0.32),
+      borderLeftWidth: 3,
+      borderLeftColor: theme.colors.primary,
+      backgroundColor: hexToRgba(theme.colors.primary, 0.055),
+      gap: spacing.sm,
+    },
+    liveProgressFocusHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    liveProgressFocusTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    liveProgressPulse: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      backgroundColor: theme.colors.primary,
+    },
+    liveProgressFocusEyebrow: {
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 1.1,
+      color: theme.colors.primary,
+    },
+    liveProgressFocusHint: {
+      fontSize: 10,
+      color: theme.colors.mutedForeground,
+    },
+    liveProgressThinkingSection: {
+      paddingBottom: spacing.sm,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: hexToRgba(theme.colors.primary, 0.2),
+      gap: spacing.xs,
+    },
+    liveProgressToolSection: {
+      gap: spacing.xs,
+    },
+    liveProgressSectionLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    liveProgressSectionLabel: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: theme.colors.foreground,
+      letterSpacing: 0.2,
+    },
+    liveProgressThinkingContent: {
+      paddingLeft: 19,
+      maxHeight: 180,
+      overflow: 'hidden',
+    },
+    liveProgressToolStatus: {
+      marginLeft: 'auto' as any,
+      fontSize: 10,
+      fontWeight: '700',
+      color: theme.colors.info,
+    },
+    liveProgressToolStatusSuccess: {
+      color: theme.colors.success,
+    },
+    liveProgressToolStatusError: {
+      color: theme.colors.destructive,
+    },
+    liveProgressToolName: {
+      paddingLeft: 19,
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
+    liveProgressToolDescription: {
+      paddingLeft: 19,
+      fontSize: 11,
+      lineHeight: 15,
+      color: theme.colors.mutedForeground,
+    },
+    liveProgressPayloadBlock: {
+      marginTop: 2,
+      marginLeft: 19,
+      padding: spacing.xs,
+      borderRadius: radius.sm,
+      backgroundColor: hexToRgba(theme.colors.background, 0.72),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: hexToRgba(theme.colors.border, 0.8),
+    },
+    liveProgressPayloadLabel: {
+      marginBottom: 3,
+      fontSize: 9,
+      fontWeight: '800',
+      color: theme.colors.mutedForeground,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+    },
+    liveProgressPayloadScroll: {
+      maxHeight: 116,
     },
     toolParamsSection: {
       paddingHorizontal: spacing.sm,

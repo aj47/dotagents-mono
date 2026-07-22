@@ -15,6 +15,13 @@ buildscript {
 
 allprojects {
   repositories {
+    maven {
+      // Mentra SDK stages its pinned Sherpa-ONNX AAR here.
+      def mentraBluetoothSdkRoot = new File(
+        ["node", "--print", "require.resolve('@mentra/bluetooth-sdk/package.json', { paths: [rootDir.getParent()] })"].execute(null, rootDir).text.trim()
+      ).getParentFile()
+      url = uri(new File(mentraBluetoothSdkRoot, "android/libs/maven"))
+    }
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }

@@ -2,11 +2,18 @@ import { DEFAULT_STT_MODELS, getConfiguredSttModel } from "@dotagents/shared"
 import type { Config } from "../shared/types"
 import { logLLM } from "./debug"
 import { postProcessTranscript } from "./llm"
+import {
+  initializeRecognizer as initializeParakeetRecognizer,
+  isModelReady as isParakeetModelReady,
+  transcribe as transcribeWithParakeet,
+} from "./parakeet-stt"
+import { pcmS16LeToFloat32ArrayBuffer, pcmS16LeToWav } from "./pcm-audio"
 
 export type SttProviderId = "openai" | "groq" | "parakeet"
 
 export type TranscribeAudioInput = {
   audio: Buffer
+  encoding?: "encoded" | "pcm_s16le"
   mimeType?: string
   fileName?: string
   durationMs?: number
@@ -95,7 +102,22 @@ export async function transcribeAudioWithConfiguredProvider(
 
   const provider = getEffectiveSttProvider(config)
   if (provider === "parakeet") {
-    throw new Error("Parakeet STT requires decoded PCM audio and is not available for mobile audio uploads. Choose OpenAI or Groq for mobile transcription.")
+    if (input.encoding !== "pcm_s16le") {
+      throw new Error("Parakeet STT requires decoded 16 kHz mono PCM audio")
+    }
+    if (!isParakeetModelReady()) {
+      throw new Error("Parakeet model is not downloaded")
+    }
+
+    await initializeParakeetRecognizer(config.parakeetNumThreads || 2)
+    const rawText = await transcribeWithParakeet(
+      pcmS16LeToFloat32ArrayBuffer(input.audio),
+      16_000,
+    )
+    const text = options.postProcess === false
+      ? rawText
+      : await postProcessTranscriptSafely(rawText, config, options.context || "stt-service")
+    return { text, provider }
   }
 
   const model = getRemoteSttModel(config, provider)
@@ -104,12 +126,14 @@ export async function transcribeAudioWithConfiguredProvider(
     throw new Error(`${provider === "groq" ? "Groq" : "OpenAI"} API key is required for speech-to-text`)
   }
 
-  const mimeType = input.mimeType?.trim() || DEFAULT_AUDIO_MIME_TYPE
-  const fileName = getSafeAudioFileName(input.fileName, mimeType)
+  const isPcm = input.encoding === "pcm_s16le"
+  const uploadAudio = isPcm ? pcmS16LeToWav(input.audio) : input.audio
+  const mimeType = isPcm ? "audio/wav" : input.mimeType?.trim() || DEFAULT_AUDIO_MIME_TYPE
+  const fileName = isPcm ? "mentra-glasses.wav" : getSafeAudioFileName(input.fileName, mimeType)
   const form = new FormData()
-  const audioArrayBuffer = input.audio.buffer.slice(
-    input.audio.byteOffset,
-    input.audio.byteOffset + input.audio.byteLength,
+  const audioArrayBuffer = uploadAudio.buffer.slice(
+    uploadAudio.byteOffset,
+    uploadAudio.byteOffset + uploadAudio.byteLength,
   ) as ArrayBuffer
 
   form.append("file", new File([audioArrayBuffer], fileName, { type: mimeType }))

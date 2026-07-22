@@ -1,0 +1,20 @@
+{
+  "name": "@dotagents/mentra-dotagents",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DotAgents voice assistant for MentraOS smart glasses",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@mentra/sdk": "^2.1.29"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.8",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

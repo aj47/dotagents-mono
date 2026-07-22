@@ -88,6 +88,7 @@ export async function transcribeRemoteSttRecording(options: RemoteSttOptions): P
       Accept: 'application/json',
     },
     body: JSON.stringify({
+      encoding: 'encoded',
       audioBase64,
       mimeType,
       fileName,

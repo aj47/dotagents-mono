@@ -313,7 +313,10 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       clearSuppressedHandsFreeTranscript(source, finalText);
       return;
     }
-    if (mode === 'handsfree' && !isHandsFreeFinalizationEligible({ text: finalText, source })) {
+    if (
+      mode === 'handsfree'
+      && !isHandsFreeFinalizationEligible({ text: finalText, source, finalSegmentText })
+    ) {
       log?.('transcript-ignored', 'Hands-free transcript ignored because the capture turn is no longer eligible.', {
         source,
         text: truncateDebugText(finalText),
@@ -679,7 +682,12 @@ export function useSpeechRecognizer(options: UseSpeechRecognizerOptions) {
       return true;
     }
 
-    if (!isHandsFreeFinalizationEligible({ text: finalText, source, isFinal })) {
+    if (!isHandsFreeFinalizationEligible({
+      text: finalText,
+      source,
+      isFinal,
+      finalSegmentText: normalizeVoiceText(finalSegmentText) || undefined,
+    })) {
       return false;
     }
 

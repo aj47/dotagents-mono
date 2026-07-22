@@ -91,7 +91,7 @@ android {
     namespace 'com.aj47.dotagents'
     defaultConfig {
         applicationId 'com.aj47.dotagents'
-        minSdkVersion rootProject.ext.minSdkVersion
+        minSdkVersion 28
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 12
         versionName "1.5.5"

@@ -1,6 +1,7 @@
 import { app } from "electron"
 import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import cors from "@fastify/cors"
+import multipart from "@fastify/multipart"
 import { Server as MCPServer } from "@modelcontextprotocol/sdk/server/index.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
 import { CallToolRequestSchema, ListToolsRequestSchema, isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
@@ -57,6 +58,12 @@ import { isRuntimeTool } from "./runtime-tools"
 import { agentProfileService, createSessionSnapshotFromProfile, toolConfigToMcpServerConfig } from "./agent-profile-service"
 import { generateTTS } from "./tts-service"
 import { transcribeAudioWithConfiguredProvider } from "./stt-service"
+import {
+  MENTRA_PHOTO_MAX_BYTES,
+  MentraPhotoStore,
+  isSupportedMentraPhotoMimeType,
+  isValidMentraPhotoRequestId,
+} from "./mentra-photo-store"
 import { getRendererHandlers } from "@egoist/tipc/main"
 import {
   getAcpSessionForClientSessionToken,
@@ -2354,6 +2361,21 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
     maxAge: 86400, // Cache preflight for 24 hours
     preflight: true, // Enable preflight pass-through
     strictPreflight: false, // Don't be strict about preflight requests
+  })
+
+  await fastify.register(multipart, {
+    limits: {
+      files: 1,
+      fileSize: MENTRA_PHOTO_MAX_BYTES,
+      fields: 4,
+    },
+  })
+
+  const mentraPhotoStore = new MentraPhotoStore(
+    path.join(app.getPath("temp"), "dotagents-mentra-photos"),
+  )
+  await mentraPhotoStore.cleanupExpired().catch((error) => {
+    diagnosticsService.logError("remote-server", "Mentra photo cleanup failed", error)
   })
 
   // Auth hook (skip for OPTIONS preflight requests)
@@ -5842,11 +5864,32 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         return reply.code(413).send({ error: "Audio payload too large (max 24 MB)" })
       }
 
+      if (body.encoding !== "encoded" && body.encoding !== "pcm_s16le") {
+        return reply.code(400).send({ error: "Missing or invalid audio 'encoding'" })
+      }
+
+      const audio = Buffer.from(normalizedBase64, "base64")
+      if (body.encoding === "pcm_s16le") {
+        if (
+          body.sampleRate !== 16_000
+          || body.channels !== 1
+          || body.bitsPerSample !== 16
+        ) {
+          return reply.code(400).send({
+            error: "PCM audio must be 16 kHz, mono, signed 16-bit little-endian",
+          })
+        }
+        if (audio.length % 2 !== 0) {
+          return reply.code(400).send({ error: "PCM audio payload must contain complete 16-bit samples" })
+        }
+      }
+
       const result = await transcribeAudioWithConfiguredProvider(
         {
-          audio: Buffer.from(normalizedBase64, "base64"),
-          mimeType: typeof body.mimeType === "string" ? body.mimeType : undefined,
-          fileName: typeof body.fileName === "string" ? body.fileName : undefined,
+          audio,
+          encoding: body.encoding,
+          mimeType: body.encoding === "encoded" && typeof body.mimeType === "string" ? body.mimeType : undefined,
+          fileName: body.encoding === "encoded" && typeof body.fileName === "string" ? body.fileName : undefined,
           durationMs: typeof body.durationMs === "number" ? body.durationMs : undefined,
         },
         configStore.get(),
@@ -5861,6 +5904,73 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       const code = /not available for mobile|API key is required|Audio payload is empty/i.test(message) ? 400 : 502
       return reply.code(code).send({ error: message })
     }
+  })
+
+  // Mentra Live uploads photos directly to this authenticated, temporary inbox.
+  // The mobile app fetches the photo and embeds it into the next voice prompt.
+  fastify.post<{ Params: { requestId: string } }>("/v1/mentra/photos/:requestId", async (req, reply) => {
+    const { requestId } = req.params
+    if (!isValidMentraPhotoRequestId(requestId)) {
+      return reply.code(400).send({ error: "Invalid Mentra photo request ID" })
+    }
+
+    try {
+      await mentraPhotoStore.cleanupExpired()
+      const upload = await req.file({
+        limits: { files: 1, fileSize: MENTRA_PHOTO_MAX_BYTES },
+      })
+      if (!upload || upload.fieldname !== "photo") {
+        return reply.code(400).send({ error: "Expected one multipart 'photo' file" })
+      }
+      if (!isSupportedMentraPhotoMimeType(upload.mimetype)) {
+        upload.file.resume()
+        return reply.code(415).send({ error: "Photo must be JPEG, PNG, WebP, or AVIF" })
+      }
+
+      const data = await upload.toBuffer()
+      const stored = await mentraPhotoStore.save(requestId, upload.mimetype, data)
+      const photoPath = `/v1/mentra/photos/${encodeURIComponent(requestId)}`
+      return reply.code(201).send({
+        requestId,
+        photoUrl: photoPath,
+        statusUrl: photoPath,
+        contentType: stored.mimeType,
+        fileSizeBytes: stored.size,
+        expiresInMs: 15 * 60 * 1000,
+      })
+    } catch (error: any) {
+      diagnosticsService.logError("remote-server", "Mentra photo upload failed", error)
+      if (error?.code === "FST_REQ_FILE_TOO_LARGE" || /file too large/i.test(error?.message || "")) {
+        return reply.code(413).send({ error: "Photo exceeds the 8 MB limit" })
+      }
+      return reply.code(400).send({ error: error?.message || "Mentra photo upload failed" })
+    }
+  })
+
+  fastify.get<{ Params: { requestId: string } }>("/v1/mentra/photos/:requestId", async (req, reply) => {
+    const { requestId } = req.params
+    if (!isValidMentraPhotoRequestId(requestId)) {
+      return reply.code(400).send({ error: "Invalid Mentra photo request ID" })
+    }
+
+    const photo = await mentraPhotoStore.get(requestId)
+    if (!photo) {
+      return reply.code(404).send({ error: "Mentra photo not found or expired" })
+    }
+    return reply
+      .header("Content-Type", photo.mimeType)
+      .header("Content-Length", String(photo.size))
+      .header("Cache-Control", "no-store")
+      .send(fs.createReadStream(photo.filePath))
+  })
+
+  fastify.delete<{ Params: { requestId: string } }>("/v1/mentra/photos/:requestId", async (req, reply) => {
+    const { requestId } = req.params
+    if (!isValidMentraPhotoRequestId(requestId)) {
+      return reply.code(400).send({ error: "Invalid Mentra photo request ID" })
+    }
+    await mentraPhotoStore.delete(requestId)
+    return reply.code(204).send()
   })
 
   // ============================================

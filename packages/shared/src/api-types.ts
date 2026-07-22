@@ -855,12 +855,26 @@ export interface PushStatusResponse {
   platforms: string[];
 }
 
-export interface RemoteSttTranscriptionRequest {
+export interface RemoteEncodedSttTranscriptionRequest {
+  encoding: 'encoded';
   audioBase64: string;
   mimeType?: string;
   fileName?: string;
   durationMs?: number;
 }
+
+export interface RemotePcmSttTranscriptionRequest {
+  encoding: 'pcm_s16le';
+  audioBase64: string;
+  sampleRate: 16000;
+  channels: 1;
+  bitsPerSample: 16;
+  durationMs?: number;
+}
+
+export type RemoteSttTranscriptionRequest =
+  | RemoteEncodedSttTranscriptionRequest
+  | RemotePcmSttTranscriptionRequest;
 
 export interface RemoteSttTranscriptionResponse {
   text: string;

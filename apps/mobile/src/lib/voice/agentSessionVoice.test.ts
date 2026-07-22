@@ -35,6 +35,15 @@ describe('resolveAgentSessionReference', () => {
   it('supports fuzzy focus references', () => {
     expect(resolveAgentSessionReference('calendar', sessions)?.session.id).toBe('calendar');
   });
+
+  it('resolves ordinal references against the visible active-agent order', () => {
+    const visibleSessions = getRecentActiveAgentSessions(sessions);
+
+    expect(resolveAgentSessionReference('can you do the second one that you listed', visibleSessions)?.session.id)
+      .toBe('old');
+    expect(resolveAgentSessionReference('number 1', visibleSessions)?.session.id).toBe('calendar');
+    expect(resolveAgentSessionReference('the third one', visibleSessions)).toBeNull();
+  });
 });
 
 describe('normalizeAgentSessionMessage', () => {

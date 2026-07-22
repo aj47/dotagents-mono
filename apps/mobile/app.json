@@ -41,6 +41,11 @@
         "CAMERA",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_MICROPHONE",
+        "FOREGROUND_SERVICE_CONNECTED_DEVICE",
+        "FOREGROUND_SERVICE_DATA_SYNC",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
+        "ACCESS_FINE_LOCATION",
         "POST_NOTIFICATIONS"
       ],
       "package": "com.aj47.dotagents"
@@ -55,6 +60,28 @@
     },
     "plugins": [
       "expo-speech-recognition",
+      [
+        "@mentra/bluetooth-sdk",
+        {
+          "node": true,
+          "analytics": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 28,
+            "packagingOptions": {
+              "pickFirst": [
+                "**/libc++_shared.so",
+                "**/libonnxruntime.so",
+                "**/libonnxruntime4j_jni.so"
+              ]
+            }
+          }
+        }
+      ],
       [
         "expo-camera",
         {

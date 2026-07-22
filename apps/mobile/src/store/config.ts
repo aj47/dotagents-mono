@@ -29,6 +29,7 @@ export type AppConfig = {
   // On native (iOS/Android), expo-speech-recognition does not expose a device-selection
   // API — the OS manages input device routing. This value is ignored on native.
   audioInputDeviceId?: string;
+  mentraEnabled?: boolean; // connect directly to a saved Mentra Live device
 };
 
 export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'Hi bro';
@@ -79,6 +80,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   ttsPitch: 1.0,
   edgeTtsVoice: 'en-US-AriaNeural',
   audioInputDeviceId: undefined, // Use system default microphone
+  mentraEnabled: false,
 };
 
 const STORAGE_KEY = 'app_config_v1';
@@ -133,6 +135,7 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
         : cfg.handsFreeWakePhrase?.trim() || DEFAULT_HANDS_FREE_WAKE_PHRASE,
     handsFreeSleepPhrase: cfg.handsFreeSleepPhrase?.trim() || DEFAULT_HANDS_FREE_SLEEP_PHRASE,
     handsFreeDebug: cfg.handsFreeDebug ?? false,
+    mentraEnabled: cfg.mentraEnabled ?? false,
     edgeTtsVoice: migrateEdgeTtsVoice(cfg.edgeTtsVoice),
     ttsProvider,
     mobileSttProvider,

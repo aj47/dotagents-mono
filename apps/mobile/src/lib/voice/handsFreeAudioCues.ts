@@ -27,88 +27,109 @@ type CueTone = {
   frequency: number;
   durationMs: number;
   gain?: number;
+  harmonicGain?: number;
 };
 
-const SAMPLE_RATE = 22_050;
+// 24 kHz mono PCM keeps the short cues crisp on small speakers while keeping
+// each generated file comfortably below the size of a typical bundled asset.
+const SAMPLE_RATE = 24_000;
 const MAX_CUE_MS = 900;
 const CUE_MIN_INTERVAL_MS = 250;
-const CUE_GAIN = 0.18;
+const CUE_GAIN = 0.12;
+const CUE_HARMONIC_GAIN = 0.055;
+const CUE_DECAY_LEVEL = 0.76;
+
+// A small pentatonic palette stays consonant across every cue and avoids the
+// sharp, unresolved feeling of semitone-heavy notification sounds.
+const NOTE = {
+  C4: 261.63,
+  D4: 293.66,
+  E4: 329.63,
+  G4: 392.00,
+  A4: 440.00,
+  C5: 523.25,
+  D5: 587.33,
+  E5: 659.25,
+  G5: 783.99,
+  A5: 880.00,
+} as const;
+
 const CUE_DEFINITIONS: Record<HandsFreeAudioCue, CueTone[]> = {
   enabled: [
-    { frequency: 660, durationMs: 70 },
-    { frequency: 0, durationMs: 28 },
-    { frequency: 880, durationMs: 90 },
+    { frequency: NOTE.C5, durationMs: 94, gain: 0.11 },
+    { frequency: 0, durationMs: 24 },
+    { frequency: NOTE.E5, durationMs: 136, gain: 0.10 },
   ],
   disabled: [
-    { frequency: 560, durationMs: 80 },
-    { frequency: 0, durationMs: 30 },
-    { frequency: 330, durationMs: 110 },
+    { frequency: NOTE.E5, durationMs: 82, gain: 0.10 },
+    { frequency: 0, durationMs: 28 },
+    { frequency: NOTE.C5, durationMs: 148, gain: 0.085 },
   ],
   'session-ready': [
-    { frequency: 660, durationMs: 55 },
-    { frequency: 0, durationMs: 24 },
-    { frequency: 880, durationMs: 55 },
-    { frequency: 0, durationMs: 24 },
-    { frequency: 1_100, durationMs: 80, gain: 0.14 },
+    { frequency: NOTE.G4, durationMs: 78, gain: 0.10 },
+    { frequency: 0, durationMs: 20 },
+    { frequency: NOTE.C5, durationMs: 88, gain: 0.105 },
+    { frequency: 0, durationMs: 20 },
+    { frequency: NOTE.E5, durationMs: 146, gain: 0.095 },
   ],
   'preview-submitted': [
-    { frequency: 784, durationMs: 80, gain: 0.34 },
-    { frequency: 0, durationMs: 34 },
-    { frequency: 1_176, durationMs: 115, gain: 0.40 },
-    { frequency: 0, durationMs: 34 },
-    { frequency: 1_568, durationMs: 150, gain: 0.34 },
+    { frequency: NOTE.C5, durationMs: 82, gain: 0.10 },
+    { frequency: 0, durationMs: 18 },
+    { frequency: NOTE.D5, durationMs: 102, gain: 0.105 },
+    { frequency: 0, durationMs: 18 },
+    { frequency: NOTE.G5, durationMs: 154, gain: 0.09 },
   ],
   'prompt-submitted': [
-    { frequency: 880, durationMs: 110, gain: 0.38 },
-    { frequency: 0, durationMs: 45 },
-    { frequency: 1_240, durationMs: 150, gain: 0.42 },
-    { frequency: 0, durationMs: 40 },
-    { frequency: 1_560, durationMs: 190, gain: 0.36 },
+    { frequency: NOTE.C5, durationMs: 88, gain: 0.10 },
+    { frequency: 0, durationMs: 20 },
+    { frequency: NOTE.E5, durationMs: 118, gain: 0.105 },
+    { frequency: 0, durationMs: 18 },
+    { frequency: NOTE.A5, durationMs: 168, gain: 0.085 },
   ],
   'tool-called': [
-    { frequency: 520, durationMs: 42 },
-    { frequency: 0, durationMs: 36 },
-    { frequency: 740, durationMs: 42 },
-    { frequency: 0, durationMs: 36 },
-    { frequency: 520, durationMs: 42 },
+    { frequency: NOTE.A4, durationMs: 58, gain: 0.09 },
+    { frequency: 0, durationMs: 26 },
+    { frequency: NOTE.C5, durationMs: 64, gain: 0.095 },
+    { frequency: 0, durationMs: 26 },
+    { frequency: NOTE.A4, durationMs: 84, gain: 0.08 },
   ],
   'agent-response': [
-    { frequency: 1_120, durationMs: 45, gain: 0.14 },
+    { frequency: NOTE.G4, durationMs: 72, gain: 0.09 },
     { frequency: 0, durationMs: 20 },
-    { frequency: 1_320, durationMs: 65, gain: 0.14 },
+    { frequency: NOTE.C5, durationMs: 112, gain: 0.09 },
   ],
   listening: [
-    { frequency: 740, durationMs: 55 },
+    { frequency: NOTE.C5, durationMs: 92, gain: 0.10 },
     { frequency: 0, durationMs: 22 },
-    { frequency: 980, durationMs: 70 },
+    { frequency: NOTE.G5, durationMs: 138, gain: 0.095 },
   ],
   processing: [
-    { frequency: 520, durationMs: 48 },
-    { frequency: 0, durationMs: 40 },
-    { frequency: 520, durationMs: 48 },
+    { frequency: NOTE.D4, durationMs: 68, gain: 0.08 },
+    { frequency: 0, durationMs: 36 },
+    { frequency: NOTE.D4, durationMs: 88, gain: 0.075 },
   ],
   speaking: [
-    { frequency: 1_080, durationMs: 80, gain: 0.14 },
+    { frequency: NOTE.E5, durationMs: 118, gain: 0.09 },
   ],
   stopped: [
-    { frequency: 980, durationMs: 45 },
+    { frequency: NOTE.G5, durationMs: 70, gain: 0.095 },
     { frequency: 0, durationMs: 24 },
-    { frequency: 520, durationMs: 95 },
+    { frequency: NOTE.C5, durationMs: 134, gain: 0.085 },
   ],
   paused: [
-    { frequency: 440, durationMs: 120 },
+    { frequency: NOTE.D4, durationMs: 156, gain: 0.075 },
   ],
   sleeping: [
-    { frequency: 620, durationMs: 65 },
-    { frequency: 0, durationMs: 28 },
-    { frequency: 360, durationMs: 115 },
+    { frequency: NOTE.E4, durationMs: 86, gain: 0.08 },
+    { frequency: 0, durationMs: 26 },
+    { frequency: NOTE.C4, durationMs: 168, gain: 0.07 },
   ],
   error: [
-    { frequency: 220, durationMs: 70 },
-    { frequency: 0, durationMs: 35 },
-    { frequency: 220, durationMs: 70 },
-    { frequency: 0, durationMs: 35 },
-    { frequency: 220, durationMs: 110 },
+    { frequency: NOTE.D4, durationMs: 62, gain: 0.085 },
+    { frequency: 0, durationMs: 32 },
+    { frequency: NOTE.D4, durationMs: 62, gain: 0.08 },
+    { frequency: 0, durationMs: 32 },
+    { frequency: NOTE.C4, durationMs: 98, gain: 0.075 },
   ],
 };
 
@@ -240,17 +261,29 @@ function playWebCue(cue: HandsFreeAudioCue): void {
       }
 
       const oscillator = context.createOscillator();
+      const harmonicOscillator = context.createOscillator();
+      const harmonicGain = context.createGain();
       const gain = context.createGain();
       oscillator.type = 'sine';
       oscillator.frequency.value = tone.frequency;
+      harmonicOscillator.type = 'sine';
+      harmonicOscillator.frequency.value = tone.frequency * 2;
+      harmonicGain.gain.value = tone.harmonicGain ?? CUE_HARMONIC_GAIN;
       gain.gain.setValueAtTime(0, cursor);
-      gain.gain.linearRampToValueAtTime(tone.gain ?? CUE_GAIN, cursor + 0.01);
-      gain.gain.setValueAtTime(tone.gain ?? CUE_GAIN, Math.max(cursor, cursor + duration - 0.02));
+      gain.gain.linearRampToValueAtTime(tone.gain ?? CUE_GAIN, cursor + Math.min(0.016, duration / 3));
+      gain.gain.linearRampToValueAtTime(
+        (tone.gain ?? CUE_GAIN) * CUE_DECAY_LEVEL,
+        Math.max(cursor, cursor + duration - 0.04),
+      );
       gain.gain.linearRampToValueAtTime(0, cursor + duration);
       oscillator.connect(gain);
+      harmonicOscillator.connect(harmonicGain);
+      harmonicGain.connect(gain);
       gain.connect(context.destination);
       oscillator.start(cursor);
       oscillator.stop(cursor + duration);
+      harmonicOscillator.start(cursor);
+      harmonicOscillator.stop(cursor + duration);
       cursor += duration;
     }
 
@@ -290,22 +323,34 @@ function createWavFile(tones: CueTone[]): Uint8Array {
   let sampleOffset = 0;
   for (const tone of tones) {
     const toneSamples = Math.max(1, Math.round((tone.durationMs / 1_000) * SAMPLE_RATE));
-    const rampSamples = Math.max(1, Math.round(SAMPLE_RATE * 0.008));
+    const attackSamples = Math.max(1, Math.round(SAMPLE_RATE * 0.016));
+    const releaseSamples = Math.max(1, Math.round(SAMPLE_RATE * 0.04));
     const amplitude = 32_767 * (tone.gain ?? CUE_GAIN);
+    const harmonicGain = tone.harmonicGain ?? CUE_HARMONIC_GAIN;
 
     for (let i = 0; i < toneSamples; i += 1) {
-      const envelope = tone.frequency <= 0
-        ? 0
-        : Math.min(1, i / rampSamples, (toneSamples - i - 1) / rampSamples);
+      const attack = Math.min(1, i / attackSamples);
+      const release = Math.min(1, (toneSamples - i - 1) / releaseSamples);
+      const envelope = tone.frequency <= 0 ? 0 : smoothstep(Math.min(attack, release));
+      const progress = toneSamples <= 1 ? 1 : i / (toneSamples - 1);
+      const decay = CUE_DECAY_LEVEL + ((1 - CUE_DECAY_LEVEL) * Math.exp(-3 * progress));
       const value = tone.frequency <= 0
         ? 0
-        : Math.sin((2 * Math.PI * tone.frequency * i) / SAMPLE_RATE) * amplitude * envelope;
+        : (
+          Math.sin((2 * Math.PI * tone.frequency * i) / SAMPLE_RATE)
+          + Math.sin((4 * Math.PI * tone.frequency * i) / SAMPLE_RATE) * harmonicGain
+        ) * amplitude * envelope * decay;
       view.setInt16(headerBytes + (sampleOffset * bytesPerSample), Math.round(value), true);
       sampleOffset += 1;
     }
   }
 
   return output;
+}
+
+function smoothstep(value: number): number {
+  const clamped = Math.max(0, Math.min(1, value));
+  return clamped * clamped * (3 - (2 * clamped));
 }
 
 function writeAscii(output: Uint8Array, offset: number, text: string): void {
