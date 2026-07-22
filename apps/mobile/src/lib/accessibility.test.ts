@@ -112,6 +112,17 @@ describe('createChatComposerAccessibilityHint', () => {
     ).toBe('Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.');
   });
 
+  it('returns keyword-send guidance when hands-free auto-send is disabled', () => {
+    expect(
+      createChatComposerAccessibilityHint({
+        handsFree: true,
+        handsFreeAutoSend: false,
+        handsFreeSendPhrase: 'over',
+        listening: false,
+      }),
+    ).toBe('Type your message or tap the mic to dictate. Say "over" to send the voice draft.');
+  });
+
   it('returns standard push-to-talk guidance when hands-free is off', () => {
     expect(
       createChatComposerAccessibilityHint({ handsFree: false, listening: false }),
@@ -204,6 +215,19 @@ describe('createVoiceInputLiveRegionAnnouncement', () => {
     ).toBe('Voice listening active. Tap mic again to stop. Transcript: draft a short update');
   });
 
+  it('announces the manual send keyword while hands-free listening', () => {
+    expect(
+      createVoiceInputLiveRegionAnnouncement({
+        listening: true,
+        handsFree: true,
+        handsFreeAutoSend: false,
+        handsFreeSendPhrase: 'over',
+        willCancel: false,
+        liveTranscript: 'draft a short update',
+      }),
+    ).toBe('Voice listening active. Say "over" to submit the voice draft. Transcript: draft a short update');
+  });
+
   it('announces captured transcript when listening stops', () => {
     expect(
       createVoiceInputLiveRegionAnnouncement({
@@ -236,4 +260,3 @@ describe('createVoiceInputLiveRegionAnnouncement', () => {
     ).toBe('Voice input ready.');
   });
 });
-

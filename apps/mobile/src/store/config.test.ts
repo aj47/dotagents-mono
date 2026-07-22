@@ -12,6 +12,7 @@ import {
   type AppConfig,
   DEFAULT_APP_CONFIG,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  DEFAULT_HANDS_FREE_SEND_PHRASE,
   DEFAULT_HANDS_FREE_SLEEP_PHRASE,
   DEFAULT_HANDS_FREE_WAKE_PHRASE,
   MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
@@ -53,6 +54,8 @@ describe('normalizeStoredConfig', () => {
     });
 
     expect(normalized.handsFree).toBe(false);
+    expect(normalized.handsFreeAutoSend).toBe(true);
+    expect(normalized.handsFreeSendPhrase).toBe(DEFAULT_HANDS_FREE_SEND_PHRASE);
     expect(normalized.handsFreeMessageDebounceMs).toBe(DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS);
     expect(normalized.handsFreeWakePhrase).toBe(DEFAULT_HANDS_FREE_WAKE_PHRASE);
     expect(normalized.handsFreeSleepPhrase).toBe(DEFAULT_HANDS_FREE_SLEEP_PHRASE);
@@ -80,10 +83,12 @@ describe('normalizeStoredConfig', () => {
       ...DEFAULT_APP_CONFIG,
       handsFreeWakePhrase: '  hey desk agent  ',
       handsFreeSleepPhrase: '  go quiet  ',
+      handsFreeSendPhrase: '  submit now  ',
     });
 
     expect(normalized.handsFreeWakePhrase).toBe('hey desk agent');
     expect(normalized.handsFreeSleepPhrase).toBe('go quiet');
+    expect(normalized.handsFreeSendPhrase).toBe('submit now');
   });
 
   it('migrates the previous wake phrase default to Hi bro', () => {

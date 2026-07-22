@@ -8,6 +8,8 @@ export type AppConfig = {
   baseUrl: string; // OpenAI-compatible API base URL e.g., https://api.openai.com/v1
   model: string; // model name required by /v1/chat/completions
   handsFree?: boolean; // hands-free voice mode toggle
+  handsFreeAutoSend?: boolean; // automatically submit after the silence debounce
+  handsFreeSendPhrase?: string; // exact phrase used to submit a pending manual voice draft
   handsFreeMessageDebounceMs?: number; // silence window before auto-sending a hands-free message
   handsFreeWakePhrase?: string; // wake phrase for foreground handsfree mode
   handsFreeSleepPhrase?: string; // sleep phrase for foreground handsfree mode
@@ -32,6 +34,7 @@ export type AppConfig = {
 export const DEFAULT_HANDS_FREE_WAKE_PHRASE = 'Hi bro';
 const LEGACY_DEFAULT_HANDS_FREE_WAKE_PHRASE = 'hey agents';
 export const DEFAULT_HANDS_FREE_SLEEP_PHRASE = 'go to sleep';
+export const DEFAULT_HANDS_FREE_SEND_PHRASE = 'send';
 export const DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 1500;
 export const MIN_HANDS_FREE_MESSAGE_DEBOUNCE_MS = 0;
 
@@ -61,6 +64,8 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-4.1-mini',
   handsFree: false,
+  handsFreeAutoSend: true,
+  handsFreeSendPhrase: DEFAULT_HANDS_FREE_SEND_PHRASE,
   handsFreeMessageDebounceMs: DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
   handsFreeWakePhrase: DEFAULT_HANDS_FREE_WAKE_PHRASE,
   handsFreeSleepPhrase: DEFAULT_HANDS_FREE_SLEEP_PHRASE,
@@ -119,6 +124,8 @@ export function normalizeStoredConfig(cfg: AppConfig): AppConfig {
     ...DEFAULT_APP_CONFIG,
     ...cfg,
     baseUrl: cfg.baseUrl ? normalizeApiBaseUrl(cfg.baseUrl) : cfg.baseUrl,
+    handsFreeAutoSend: cfg.handsFreeAutoSend ?? true,
+    handsFreeSendPhrase: cfg.handsFreeSendPhrase?.trim() || DEFAULT_HANDS_FREE_SEND_PHRASE,
     handsFreeMessageDebounceMs: normalizeHandsFreeMessageDebounceMs(cfg.handsFreeMessageDebounceMs),
     handsFreeWakePhrase:
       cfg.handsFreeWakePhrase?.trim().toLowerCase() === LEGACY_DEFAULT_HANDS_FREE_WAKE_PHRASE

@@ -3,6 +3,7 @@ import { View, Text, TextInput, Switch, StyleSheet, ScrollView, Modal, Touchable
 import {
   AppConfig,
   DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+  DEFAULT_HANDS_FREE_SEND_PHRASE,
   DEFAULT_HANDS_FREE_WAKE_PHRASE,
   saveConfig,
   useConfigContext,
@@ -3262,6 +3263,44 @@ export default function SettingsScreen({ navigation, route }: any) {
           On Android, a visible microphone service keeps hands-free active while the app is backgrounded or locked.
         </Text>
 
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Auto-send Voice Messages</Text>
+            <Text style={[styles.helperText, { marginTop: 2 }]}>
+              When off, speech stays in a voice draft until you say the send keyword.
+            </Text>
+          </View>
+          <Switch
+            value={draft.handsFreeAutoSend !== false}
+            onValueChange={(v) => updateLocalConfig({ handsFreeAutoSend: v })}
+            accessibilityLabel={createSwitchAccessibilityLabel('Auto-send Voice Messages')}
+            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+            thumbColor={draft.handsFreeAutoSend !== false ? theme.colors.primaryForeground : theme.colors.background}
+          />
+        </View>
+
+        {draft.handsFreeAutoSend === false && (
+          <>
+            <Text style={[styles.label, { marginTop: spacing.md }]}>Send keyword</Text>
+            <TextInput
+              style={styles.input}
+              value={draft.handsFreeSendPhrase || DEFAULT_HANDS_FREE_SEND_PHRASE}
+              onChangeText={(value) => updateDraftField({ handsFreeSendPhrase: value })}
+              onEndEditing={(event) => updateLocalConfig({
+                handsFreeSendPhrase: event.nativeEvent.text.trim() || DEFAULT_HANDS_FREE_SEND_PHRASE,
+              })}
+              placeholder={DEFAULT_HANDS_FREE_SEND_PHRASE}
+              placeholderTextColor={theme.colors.mutedForeground}
+              autoCapitalize='none'
+              autoCorrect={false}
+              accessibilityLabel="Hands-free send keyword"
+            />
+            <Text style={styles.helperText}>
+              Say this exact phrase by itself to submit the pending voice draft.
+            </Text>
+          </>
+        )}
+
         <Text style={[styles.label, { marginTop: spacing.md }]}>Wake phrase</Text>
         <TextInput
           style={styles.input}
@@ -3299,7 +3338,8 @@ export default function SettingsScreen({ navigation, route }: any) {
           keyboardType='number-pad'
         />
         <Text style={styles.helperText}>
-          Wait this many milliseconds without new speech before sending a hands-free message. Any value ≥ 0 works.
+          Wait this many milliseconds without new speech before finalizing a hands-free phrase.
+          {draft.handsFreeAutoSend !== false ? ' The finalized message is then sent automatically.' : ' The finalized phrase is added to the voice draft.'} Any value ≥ 0 works.
           Current: {Math.round((draft.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS) / 10) / 100}s.
         </Text>
 

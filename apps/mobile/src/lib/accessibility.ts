@@ -78,17 +78,25 @@ export const createMicControlAccessibilityHint = ({
 
 export const createChatComposerAccessibilityHint = ({
   handsFree,
+  handsFreeAutoSend = true,
+  handsFreeSendPhrase = 'send',
   listening,
   isWeb = false,
 }: {
   handsFree: boolean;
+  handsFreeAutoSend?: boolean;
+  handsFreeSendPhrase?: string;
   listening: boolean;
   isWeb?: boolean;
 }): string => {
   const baseHint = listening
-    ? 'Voice listening is active. Dictated text appears in this message field.'
+    ? handsFree && !handsFreeAutoSend
+      ? `Voice listening is active. Dictated text stays in a voice draft until you say "${handsFreeSendPhrase}".`
+      : 'Voice listening is active. Dictated text appears in this message field.'
     : handsFree
-      ? 'Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.'
+      ? handsFreeAutoSend
+        ? 'Type your message or tap the mic to dictate. Hands-free mode can send dictated speech automatically.'
+        : `Type your message or tap the mic to dictate. Say "${handsFreeSendPhrase}" to send the voice draft.`
       : 'Type your message or hold the mic to dictate before sending.';
 
   if (!isWeb) {
@@ -121,12 +129,16 @@ const normalizeVoiceTranscriptForAnnouncement = (text: string): string => {
 export const createVoiceInputLiveRegionAnnouncement = ({
   listening,
   handsFree,
+  handsFreeAutoSend = true,
+  handsFreeSendPhrase = 'send',
   willCancel,
   liveTranscript,
   sttPreview,
 }: {
   listening: boolean;
   handsFree: boolean;
+  handsFreeAutoSend?: boolean;
+  handsFreeSendPhrase?: string;
   willCancel: boolean;
   liveTranscript?: string;
   sttPreview?: string;
@@ -137,7 +149,9 @@ export const createVoiceInputLiveRegionAnnouncement = ({
 
   if (listening) {
     const releaseInstruction = handsFree
-      ? 'Tap mic again to stop.'
+      ? handsFreeAutoSend
+        ? 'Tap mic again to stop.'
+        : `Say "${handsFreeSendPhrase}" to submit the voice draft.`
       : willCancel
         ? 'Release to edit your message.'
         : 'Release to send your message.';
@@ -175,4 +189,3 @@ export const createMinimumTouchTargetStyle = ({
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 });
-

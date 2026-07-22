@@ -66,6 +66,8 @@ export const DEFAULT_VOICE_COMMANDS: readonly VoiceCommandDefinition[] = [
     aliases: [
       'switch to agent',
       'switch agent',
+      'switch agents',
+      'switch to agents',
       'switch to',
       'focus agent',
       'focus on agent',

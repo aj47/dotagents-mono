@@ -26,6 +26,11 @@ describe('matchVoiceCommand', () => {
     const match = matchVoiceCommand('switch agent');
     expect(match?.command).toBe('switch-agent');
     expect(match?.remainder).toBe('');
+
+    expect(matchVoiceCommand('switch agents')).toMatchObject({
+      command: 'switch-agent',
+      remainder: '',
+    });
   });
 
   it('returns an agent name for the switch fast path', () => {

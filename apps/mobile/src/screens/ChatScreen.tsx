@@ -32,6 +32,7 @@ const lightSpinner = require('../../assets/light-spinner.gif');
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
 	DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS,
+	DEFAULT_HANDS_FREE_SEND_PHRASE,
 	DEFAULT_HANDS_FREE_WAKE_PHRASE,
 	DEFAULT_HANDS_FREE_SLEEP_PHRASE,
 	useConfigContext,
@@ -114,6 +115,7 @@ import {
 } from '../lib/accessibility';
 import { formatVoiceDebugEntry, useVoiceDebug } from '../lib/voice/voiceDebug';
 import { mergeVoiceText, normalizeVoiceText } from '../lib/voice/mergeVoiceText';
+import { resolveHandsFreeManualDraft } from '../lib/voice/handsFreeManualSend';
 import { useSpeechRecognizer } from '../lib/voice/useSpeechRecognizer';
 import { useStableForeground } from '../lib/voice/useStableForeground';
 import { APP_SHELL_DIMENSIONS, resolveAppShellLayout } from '../ui/appShell';
@@ -334,7 +336,10 @@ function createMicControlVisual({
   handsFree,
   displayPhase,
   effectiveMicListening,
+  handsFreeAutoSend,
+  handsFreeSendPhrase,
   hasPendingHandsFreeSend,
+  hasPendingHandsFreeDraft,
   handsFreeCountdownSeconds,
   willCancel,
   wakePhrase,
@@ -343,7 +348,10 @@ function createMicControlVisual({
   handsFree: boolean;
   displayPhase: HandsFreeDisplayPhase;
   effectiveMicListening: boolean;
+  handsFreeAutoSend: boolean;
+  handsFreeSendPhrase?: string;
   hasPendingHandsFreeSend: boolean;
+  hasPendingHandsFreeDraft: boolean;
   handsFreeCountdownSeconds: number;
   willCancel: boolean;
   wakePhrase: string;
@@ -388,6 +396,7 @@ function createMicControlVisual({
       }
     : null;
   const trimmedWakePhrase = wakePhrase.trim();
+  const trimmedSendPhrase = handsFreeSendPhrase?.trim() || DEFAULT_HANDS_FREE_SEND_PHRASE;
 
   switch (displayPhase) {
     case 'sleeping':
@@ -418,20 +427,31 @@ function createMicControlVisual({
       return {
         icon: 'ear-outline',
         label: 'Listening',
-        status: hasPendingHandsFreeSend
-          ? `Auto-sending in ${handsFreeCountdownSeconds}s. Tap to pause.`
-          : 'Listening for your request.',
+        status: handsFreeAutoSend
+          ? (hasPendingHandsFreeSend
+              ? `Auto-sending in ${handsFreeCountdownSeconds}s. Tap to pause.`
+              : 'Listening for your request.')
+          : (hasPendingHandsFreeDraft
+              ? `Voice draft ready. Say "${trimmedSendPhrase}" to send.`
+              : `Listening. Say "${trimmedSendPhrase}" when your message is ready.`),
         tone: 'active',
         busy: true,
         indicators: [
           micIndicator,
-          { key: 'send-mode', icon: 'send-outline', label: 'Auto-send', active: true },
-          ...(countdownIndicator ? [countdownIndicator] : []),
+          {
+            key: 'send-mode',
+            icon: 'send-outline',
+            label: handsFreeAutoSend ? 'Auto-send' : `Say ${trimmedSendPhrase}`,
+            active: true,
+          },
+          ...(handsFreeAutoSend && countdownIndicator ? [countdownIndicator] : []),
         ],
-        accessibilityLabel: hasPendingHandsFreeSend
+        accessibilityLabel: handsFreeAutoSend && hasPendingHandsFreeSend
           ? `Hands-free listening, sending in ${handsFreeCountdownSeconds} seconds`
-          : 'Hands-free listening',
-        accessibilityHint: hasPendingHandsFreeSend
+          : handsFreeAutoSend
+            ? 'Hands-free listening'
+            : `Hands-free listening, say ${trimmedSendPhrase} to send`,
+        accessibilityHint: handsFreeAutoSend && hasPendingHandsFreeSend
           ? 'Double tap to pause hands-free before the automatic send.'
           : 'Double tap to pause hands-free listening.',
       };
@@ -1464,7 +1484,9 @@ export default function ChatScreen({ route, navigation }: any) {
     if (!serverConversationId) return undefined;
     return operatorSessions.find((session) => session.conversationId === serverConversationId);
   }, [currentSession?.serverConversationId, operatorSessions]);
+  const handsFreeAutoSend = config.handsFreeAutoSend !== false;
   const handsFreeMessageDebounceMs = config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS;
+  const handsFreeSendPhrase = config.handsFreeSendPhrase?.trim() || DEFAULT_HANDS_FREE_SEND_PHRASE;
   const handsFreeWakePhrase = config.handsFreeWakePhrase || DEFAULT_HANDS_FREE_WAKE_PHRASE;
   const handsFreeSleepPhrase = config.handsFreeSleepPhrase || DEFAULT_HANDS_FREE_SLEEP_PHRASE;
   const [handsFreeWakePhraseDraft, setHandsFreeWakePhraseDraft] = useState(handsFreeWakePhrase);
@@ -1986,7 +2008,18 @@ export default function ChatScreen({ route, navigation }: any) {
   const androidHandsFreeLastSentRef = useRef<{ text: string; timestamp: number } | null>(null);
   const handsFreeLastFinalizedRef = useRef<{ text: string; timestamp: number } | null>(null);
   const acceptedHandsFreeControlPreviewRef = useRef<{ text: string; timestamp: number } | null>(null);
-		  const [input, setInput] = useState('');
+	  const [input, setInput] = useState('');
+  const [pendingHandsFreeDraft, setPendingHandsFreeDraft] = useState('');
+  const pendingHandsFreeDraftRef = useRef('');
+	  const setPendingHandsFreeDraftValue = useCallback((value: string) => {
+    pendingHandsFreeDraftRef.current = value;
+    setPendingHandsFreeDraft(value);
+  }, []);
+	  useEffect(() => {
+    if (!handsFree || handsFreeAutoSend) {
+      setPendingHandsFreeDraftValue('');
+    }
+  }, [handsFree, handsFreeAutoSend, setPendingHandsFreeDraftValue]);
 	  const [pendingImages, setPendingImages] = useState<PendingImageAttachment[]>([]);
 	  const inputRef = useRef<TextInput>(null);
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
@@ -3161,6 +3194,8 @@ export default function ChatScreen({ route, navigation }: any) {
         const acceptedWakeControlText = isExactSleepingWakeTranscript(finalText);
         const phaseBeforeFinalTranscript = handsFreePhaseRef.current;
         const action = handsFreeController.handleFinalTranscript(finalText);
+        const shouldRouteToAgentTarget = action.type === 'send'
+          && (pendingAgentVoiceActionRef.current || voiceAgentPickerVisible);
         console.info(
           `[DotAgentsHandsFreeJS] controller action=${action.type}`
           + ` command=${action.type === 'command' ? action.command : 'none'}`
@@ -3168,10 +3203,56 @@ export default function ChatScreen({ route, navigation }: any) {
           + ` text=${JSON.stringify(finalText)}`
           + ` remainder=${JSON.stringify(action.type === 'command' ? action.remainder : '')}`,
         );
-        if (action.type === 'send' && pendingAgentVoiceActionRef.current) {
+        if (shouldRouteToAgentTarget) {
+          // The picker is the source of truth for the pending target UI. Keep
+          // the voice handoff alive even if a phase transition cleared the
+          // ref while the discovery prompt was speaking.
+          if (!pendingAgentVoiceActionRef.current) {
+            pendingAgentVoiceActionRef.current = { command: 'focus', awaiting: 'target' };
+            voiceLog('handsfree-control', 'Restored switch-agent target handoff from the visible picker.', {
+              text: finalText,
+            });
+          }
           setSttPreviewWithExpiry('');
           handsFreeController.onRequestCompleted();
           void handlePendingAgentVoiceText(action.text);
+        } else if (action.type === 'send' && !handsFreeAutoSend) {
+          setSttPreviewWithExpiry('');
+          handsFreeController.onRequestCompleted();
+
+          const manualDraftResolution = resolveHandsFreeManualDraft(
+            pendingHandsFreeDraftRef.current,
+            finalText,
+            handsFreeSendPhrase,
+          );
+          if (manualDraftResolution.type === 'empty') {
+              setDebugInfo(`Nothing to send yet. Dictate a message, then say "${handsFreeSendPhrase}".`);
+              voiceLog('transcript-ignored', 'Handsfree send keyword heard without a pending voice draft.', {
+                source,
+                sendPhrase: handsFreeSendPhrase,
+              });
+              return;
+          }
+          if (manualDraftResolution.type === 'send') {
+            setPendingHandsFreeDraftValue('');
+            setDebugInfo('Voice draft sent.');
+            voiceLog('handsfree-control', 'Handsfree voice draft submitted by keyword.', {
+              source,
+              sendPhrase: handsFreeSendPhrase,
+              textLength: manualDraftResolution.text.length,
+            });
+            void sendRef.current(manualDraftResolution.text, { source: 'handsfree' });
+            return;
+          }
+
+          const nextDraft = manualDraftResolution.text;
+          setPendingHandsFreeDraftValue(nextDraft);
+          setDebugInfo(`Voice draft ready. Say "${handsFreeSendPhrase}" to send.`);
+          voiceLog('finalization-fired', 'Handsfree transcript added to the manual voice draft.', {
+            source,
+            sendPhrase: handsFreeSendPhrase,
+            textLength: nextDraft.length,
+          });
         } else if (action.type === 'send') {
           setSttPreviewWithExpiry('');
           void sendRef.current(action.text, { source: 'handsfree' });
@@ -3193,11 +3274,15 @@ export default function ChatScreen({ route, navigation }: any) {
     handlePendingAgentVoiceText,
     handsFreeController.handleFinalTranscript,
     handsFreeController.onRequestCompleted,
+    handsFreeAutoSend,
     handsFreeHasHeadsetRoute,
+    handsFreeSendPhrase,
     hasLiveAgentTurn,
     isHandsFreeFinalizationEligibleNow,
     isHandsFreeTranscriptSuppressedNow,
     isExactSleepingWakeTranscript,
+    setPendingHandsFreeDraftValue,
+    voiceAgentPickerVisible,
     voiceLog,
   ]);
 
@@ -6924,12 +7009,16 @@ export default function ChatScreen({ route, navigation }: any) {
 		: listening;
 	const composerAccessibilityHint = createChatComposerAccessibilityHint({
 	  handsFree,
+	  handsFreeAutoSend,
+	  handsFreeSendPhrase,
 	  listening: effectiveMicListening,
 	  isWeb: isWebPlatform,
 	});
 	const voiceInputLiveRegionAnnouncement = createVoiceInputLiveRegionAnnouncement({
 	  listening: effectiveMicListening,
 	  handsFree,
+	  handsFreeAutoSend,
+	  handsFreeSendPhrase,
 	  willCancel,
 	  liveTranscript,
 		  sttPreview,
@@ -6991,6 +7080,15 @@ export default function ChatScreen({ route, navigation }: any) {
     setSttPreviewWithExpiry('');
     void send(composedMessage, { fromComposer: true });
   }, [input, pendingImages, send, setSttPreviewWithExpiry]);
+
+  const sendPendingHandsFreeDraft = useCallback(() => {
+    const pendingDraft = pendingHandsFreeDraftRef.current.trim();
+    if (!pendingDraft) return;
+    setPendingHandsFreeDraftValue('');
+    setSttPreviewWithExpiry('');
+    setDebugInfo('Voice draft sent.');
+    void send(pendingDraft, { source: 'handsfree' });
+  }, [send, setPendingHandsFreeDraftValue, setSttPreviewWithExpiry]);
 
   const queueComposerInput = useCallback(() => {
     const composedMessage = buildMessageWithPendingImages(input, pendingImages);
@@ -7112,9 +7210,15 @@ export default function ChatScreen({ route, navigation }: any) {
   const acceptedControlPreviewMatches = !!acceptedControlPreview
     && acceptedControlPreview.text === rawHandsFreeVoicePreview
     && handsFreeCountdownNow - acceptedControlPreview.timestamp <= HANDS_FREE_ACCEPTED_CONTROL_PREVIEW_SUPPRESSION_MS;
-  const handsFreeVoicePreview = handsFree && !acceptedControlPreviewMatches
-    ? rawHandsFreeVoicePreview
+  const visibleHandsFreeLivePreview = acceptedControlPreviewMatches ? '' : rawHandsFreeVoicePreview;
+  const handsFreeVoicePreview = handsFree
+    ? (handsFreeAutoSend
+        ? visibleHandsFreeLivePreview
+        : mergeVoiceText(pendingHandsFreeDraft, visibleHandsFreeLivePreview))
     : '';
+  const hasPendingHandsFreeDraft = handsFree
+    && !handsFreeAutoSend
+    && pendingHandsFreeDraft.trim().length > 0;
 
   useEffect(() => {
     if (
@@ -7135,7 +7239,10 @@ export default function ChatScreen({ route, navigation }: any) {
   const handsFreeCountdownSeconds = handsFreeSendDeadline
     ? Math.max(0, Math.ceil((handsFreeSendDeadline - handsFreeCountdownNow) / 1000))
     : 0;
-  const hasPendingHandsFreeSend = handsFree && !!handsFreeVoicePreview && handsFreeCountdownSeconds > 0;
+  const hasPendingHandsFreeSend = handsFree
+    && handsFreeAutoSend
+    && !!handsFreeVoicePreview
+    && handsFreeCountdownSeconds > 0;
 
   useEffect(() => {
     if (!handsFreeSendDeadline) return;
@@ -7192,8 +7299,12 @@ export default function ChatScreen({ route, navigation }: any) {
       pauseHandsFreeByUser();
       return;
     }
+    if (!composerHasContent && hasPendingHandsFreeDraft) {
+      sendPendingHandsFreeDraft();
+      return;
+    }
     sendComposerInput();
-  }, [hasPendingHandsFreeSend, pauseHandsFreeByUser, sendComposerInput]);
+  }, [composerHasContent, hasPendingHandsFreeDraft, hasPendingHandsFreeSend, pauseHandsFreeByUser, sendComposerInput, sendPendingHandsFreeDraft]);
 
   // Keep the guide aligned with the deliberately small spoken-command surface.
   const voiceCommandReference = useMemo(
@@ -7204,10 +7315,11 @@ export default function ChatScreen({ route, navigation }: any) {
         label: command.label,
         phrase: command.aliases[0] ?? command.label.toLowerCase(),
       })),
+      ...(!handsFreeAutoSend ? [{ key: 'manual-send', label: 'Send voice draft', phrase: handsFreeSendPhrase }] : []),
       { key: 'switch-direct', label: 'Switch directly', phrase: 'switch to <agent>' },
       { key: 'sleep', label: 'Go to sleep', phrase: handsFreeSleepPhrase, editable: 'sleep' as const },
     ],
-    [handsFreeWakePhrase, handsFreeSleepPhrase],
+    [handsFreeAutoSend, handsFreeSendPhrase, handsFreeSleepPhrase, handsFreeWakePhrase],
   );
 
   const commitEditableVoicePhrase = useCallback((kind: 'wake' | 'sleep') => {
@@ -7242,7 +7354,10 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFree,
     displayPhase: handsFreeDisplayPhase,
     effectiveMicListening,
+    handsFreeAutoSend,
+    handsFreeSendPhrase,
     hasPendingHandsFreeSend,
+    hasPendingHandsFreeDraft,
     handsFreeCountdownSeconds,
     willCancel,
     wakePhrase: handsFreeWakePhrase,
@@ -8328,6 +8443,9 @@ export default function ChatScreen({ route, navigation }: any) {
 	                {hasPendingHandsFreeSend && (
 	                  <Text style={styles.voicePreviewCountdown}>Sending in {handsFreeCountdownSeconds}s</Text>
 	                )}
+	                {hasPendingHandsFreeDraft && (
+	                  <Text style={styles.voicePreviewCountdown}>Say “{handsFreeSendPhrase}” to send</Text>
+	                )}
 	              </View>
 	              <Text style={styles.voicePreviewText} numberOfLines={3}>
 	                {handsFreeVoicePreview}
@@ -8417,20 +8535,29 @@ export default function ChatScreen({ route, navigation }: any) {
 	              </Text>
 	            )}
             <TouchableOpacity
-	              style={[styles.sendButton, !composerHasContent && !hasPendingHandsFreeSend && styles.sendButtonDisabled]}
+	              style={[
+                  styles.sendButton,
+                  !composerHasContent && !hasPendingHandsFreeSend && !hasPendingHandsFreeDraft && styles.sendButtonDisabled,
+                ]}
 	              onPress={handleComposerPrimaryAction}
 	              activeOpacity={0.7}
-	              disabled={!composerHasContent && !hasPendingHandsFreeSend}
+	              disabled={!composerHasContent && !hasPendingHandsFreeSend && !hasPendingHandsFreeDraft}
               accessibilityRole="button"
               accessibilityLabel={createButtonAccessibilityLabel(
                 hasPendingHandsFreeSend
                   ? `Handsfree sending in ${handsFreeCountdownSeconds} seconds`
+                  : !composerHasContent && hasPendingHandsFreeDraft
+                    ? 'Send hands-free voice draft'
                   : 'Send message',
               )}
 	              accessibilityHint={hasPendingHandsFreeSend
                   ? 'Pauses hands-free and cancels the pending automatic send.'
+                  : !composerHasContent && hasPendingHandsFreeDraft
+                    ? `Sends the pending voice draft. You can also say ${handsFreeSendPhrase}.`
                   : 'Sends your typed text and any attached images to the selected agent.'}
-              accessibilityState={{ disabled: !composerHasContent && !hasPendingHandsFreeSend }}
+              accessibilityState={{
+                disabled: !composerHasContent && !hasPendingHandsFreeSend && !hasPendingHandsFreeDraft,
+              }}
 	            >
               {hasPendingHandsFreeSend ? (
                 <Text style={styles.sendButtonCountdownText}>{handsFreeCountdownSeconds}s</Text>
