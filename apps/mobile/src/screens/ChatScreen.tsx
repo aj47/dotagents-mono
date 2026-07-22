@@ -1254,6 +1254,18 @@ const parseToolInspectorPayload = (value: unknown): unknown => {
 const isToolInspectorRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
+const hasToolInspectorContent = (value: unknown): boolean => {
+  const parsed = parseToolInspectorPayload(value);
+  if (isToolInspectorRecord(parsed)) return Object.keys(parsed).length > 0;
+  if (Array.isArray(parsed)) return parsed.length > 0;
+  if (typeof parsed === 'string') return parsed.trim().length > 0;
+  return parsed !== null && parsed !== undefined;
+};
+
+// These fields are already represented by the tool header/status or by the input.
+// Repeating them in the output makes long command results much harder to scan.
+const TOOL_OUTPUT_METADATA_KEYS = new Set(['success', 'cwd', 'command']);
+
 type ToolInspectorValueProps = {
   value: unknown;
   styles: ReturnType<typeof createStyles>;
@@ -1296,7 +1308,6 @@ function ToolInspectorValue({ value, styles, depth = 0, emphasized = false }: To
       <View style={styles.toolNestedValue}>
         {value.map((item, index) => (
           <View key={index} style={styles.toolArrayItem}>
-            <Text style={styles.toolArrayIndex}>{index + 1}</Text>
             <View style={styles.toolArrayItemValue}>
               <ToolInspectorValue value={item} styles={styles} depth={depth + 1} />
             </View>
@@ -1313,7 +1324,6 @@ function ToolInspectorValue({ value, styles, depth = 0, emphasized = false }: To
       <View style={styles.toolNestedValue}>
         {entries.map(([key, childValue]) => (
           <View key={key} style={styles.toolNestedField}>
-            <Text style={styles.toolNestedFieldLabel}>{key}</Text>
             <ToolInspectorValue value={childValue} styles={styles} depth={depth + 1} />
           </View>
         ))}
@@ -1328,18 +1338,20 @@ type ToolInspectorPayloadProps = {
   value: unknown;
   fallbackText: string;
   styles: ReturnType<typeof createStyles>;
+  hiddenKeys?: ReadonlySet<string>;
 };
 
-function ToolInspectorPayload({ value, fallbackText, styles }: ToolInspectorPayloadProps): ReactNode {
+function ToolInspectorPayload({ value, fallbackText, styles, hiddenKeys }: ToolInspectorPayloadProps): ReactNode {
   const parsed = parseToolInspectorPayload(value);
   if (isToolInspectorRecord(parsed)) {
-    const entries = Object.entries(parsed);
-    if (entries.length === 0) return <Text style={styles.toolFieldValueMuted}>No fields</Text>;
+    const entries = Object.entries(parsed).filter(([key]) => !hiddenKeys?.has(key));
+    if (entries.length === 0) {
+      return <Text style={styles.toolFieldValueMuted}>{hiddenKeys ? 'No output returned' : 'No fields'}</Text>;
+    }
     return (
       <View style={styles.toolFieldList}>
         {entries.map(([key, childValue]) => (
           <View key={key} style={styles.toolFieldRow}>
-            <Text style={styles.toolFieldLabel}>{key}</Text>
             <View style={styles.toolFieldValueWrap}>
               <ToolInspectorValue
                 value={childValue}
@@ -7662,6 +7674,7 @@ export default function ChatScreen({ route, navigation }: any) {
                               const isToolCallFullyExpanded = expandedToolCalls[toolCallKey] ?? false;
                               const toolNameLabel = label ?? toolCall.name;
                               const toolInputPayload = toolCall.arguments ? formatToolArguments(toolCall.arguments) : '';
+                              const hasToolInput = hasToolInspectorContent(toolCall.arguments);
                               const toolResultContent = result?.content || 'No content returned';
                               return (
                                 <View key={idx} style={styles.toolCallSection}>
@@ -7699,7 +7712,7 @@ export default function ChatScreen({ route, navigation }: any) {
                                   </Pressable>
 
                                   {/* Parameters */}
-                                  {toolInputPayload && (
+                                  {hasToolInput && toolInputPayload && (
                                     <View style={styles.toolParamsSection}>
                                       <View style={styles.toolSectionHeaderRow}>
                                         <View style={styles.toolSectionTitleRow}>
@@ -7780,6 +7793,7 @@ export default function ChatScreen({ route, navigation }: any) {
                                           value={toolResultContent}
                                           fallbackText={toolResultContent}
                                           styles={styles}
+                                          hiddenKeys={TOOL_OUTPUT_METADATA_KEYS}
                                         />
                                       </ScrollView>
                                       {result.error && (
@@ -10057,13 +10071,13 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.mutedForeground,
     },
     toolParamsScroll: {
-      maxHeight: 126,
+      maxHeight: 132,
       borderRadius: radius.md,
       overflow: 'hidden',
       backgroundColor: hexToRgba(theme.colors.background, 0.6),
     },
     toolParamsScrollExpanded: {
-      maxHeight: 420,
+      maxHeight: 280,
       borderRadius: radius.md,
       overflow: 'hidden',
       backgroundColor: hexToRgba(theme.colors.background, 0.6),
@@ -10086,14 +10100,6 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       paddingVertical: spacing.xs,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: hexToRgba(theme.colors.mutedForeground, 0.12),
-    },
-    toolFieldLabel: {
-      width: 82,
-      paddingTop: 1,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 10,
-      fontWeight: '600',
-      color: theme.colors.primary,
     },
     toolFieldValueWrap: {
       flex: 1,
@@ -10126,22 +10132,10 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
     toolNestedField: {
       gap: 1,
     },
-    toolNestedFieldLabel: {
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 9,
-      color: theme.colors.mutedForeground,
-    },
     toolArrayItem: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: spacing.xs,
-    },
-    toolArrayIndex: {
-      minWidth: 16,
-      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-      fontSize: 9,
-      color: theme.colors.mutedForeground,
-      textAlign: 'right',
     },
     toolArrayItemValue: {
       flex: 1,
@@ -10216,14 +10210,14 @@ function createStyles(theme: Theme, screenHeight: number, isDark: boolean) {
       color: theme.colors.destructive,
     },
     toolResultScroll: {
-      maxHeight: 126,
+      maxHeight: 132,
       borderRadius: radius.md,
       overflow: 'hidden',
       marginHorizontal: spacing.sm,
       backgroundColor: hexToRgba(theme.colors.background, 0.6),
     },
     toolResultScrollExpanded: {
-      maxHeight: 420,
+      maxHeight: 280,
       borderRadius: radius.md,
       overflow: 'hidden',
       marginHorizontal: spacing.sm,
