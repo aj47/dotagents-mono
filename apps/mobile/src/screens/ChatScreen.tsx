@@ -152,6 +152,8 @@ import {
   type HandsFreeAudioCue,
 } from '../lib/voice/handsFreeAudioCues';
 import { createDelegationProgressMessages } from '../lib/delegationProgress';
+import { useMentra } from '../mentra/MentraProvider';
+import { resolveMentraTouchAction } from '../mentra/mentraControls';
 import {
   mergeLiveProgressHistory,
   mergeLiveProgressSteps,
@@ -1510,6 +1512,7 @@ export default function ChatScreen({ route, navigation }: any) {
       ? APP_SHELL_DIMENSIONS.compactPrimaryNavHeight
       : 0;
   const { config, setConfig } = useConfigContext();
+  const mentra = useMentra();
   const sessionStore = useSessionContext();
   const messageQueue = useMessageQueueContext();
   const connectionManager = useConnectionManager();
@@ -1517,6 +1520,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const globalTtsPlayback = useGlobalTtsPlayback();
   const currentSession = sessionStore.getCurrentSession();
   const handsFree = !!config.handsFree;
+  const mentraVoiceActive = mentra.enabled && mentra.ready;
   const mobileSttProvider = config.mobileSttProvider || 'native';
   const desktopSttSelected = mobileSttProvider === 'desktop';
   const desktopSttAvailable = !!config.baseUrl && !!config.apiKey;
@@ -1638,7 +1642,8 @@ export default function ChatScreen({ route, navigation }: any) {
     && !stableHandsFreeForeground;
   const androidServiceHandlesHandsFreeMic =
     Platform.OS === 'android'
-    && shouldRunAndroidHandsFreeService;
+    && shouldRunAndroidHandsFreeService
+    && !mentraVoiceActive;
   const stableHandsFreeForegroundRef = useRef(stableHandsFreeForeground);
   stableHandsFreeForegroundRef.current = stableHandsFreeForeground;
   const shouldRunAndroidHandsFreeServiceRef = useRef(shouldRunAndroidHandsFreeService);
@@ -2841,7 +2846,7 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [currentOperatorSession?.id, currentSession?.serverConversationId, settingsClient, voiceLog]);
 
-  const stopHandsFreeActivityFromVoice = useCallback((source: 'command' | 'tts-barge-in') => {
+  const stopHandsFreeActivityFromVoice = useCallback((source: 'command' | 'tts-barge-in' | 'hardware') => {
     clearAndroidHandsFreePartialTimer();
     androidHandsFreePendingPartialRef.current = '';
     queuedResponseEventsRef.current = [];
@@ -3225,6 +3230,22 @@ export default function ChatScreen({ route, navigation }: any) {
     }
   }, [closeVoiceAgentSession, focusVoiceAgentSession, handleNewChat, messageVoiceAgentSession, playHandsFreeCue, stopHandsFreeActivityFromVoice, voiceLog]);
 
+  const composeMentraVoicePrompt = useCallback((text: string, source: 'native' | 'web' | 'mentra') => {
+    if (source !== 'mentra' || !mentra.pendingPhoto) return text;
+    if (mentra.pendingPhoto.expiresAt <= Date.now()) {
+      mentra.clearPendingPhoto();
+      return text;
+    }
+    const photo = mentra.pendingPhoto;
+    mentra.clearPendingPhoto();
+    return buildMessageWithPendingImages(text, [{
+      id: photo.id,
+      name: photo.name,
+      previewUri: photo.previewUri,
+      dataUrl: photo.dataUrl,
+    }]);
+  }, [mentra.clearPendingPhoto, mentra.pendingPhoto]);
+
   const handleVoiceFinalized = useCallback(({
     text,
     mode,
@@ -3233,7 +3254,7 @@ export default function ChatScreen({ route, navigation }: any) {
   }: {
     text: string;
     mode: 'edit' | 'send' | 'handsfree';
-    source: 'native' | 'web';
+    source: 'native' | 'web' | 'mentra';
     finalSegmentText?: string;
   }) => {
     const finalText = text.trim();
@@ -3249,7 +3270,7 @@ export default function ChatScreen({ route, navigation }: any) {
         `[DotAgentsHandsFreeJS] finalized source=${source} phase=${handsFreePhaseRef.current} textLength=${finalText.length}`,
       );
     if (isHandsFreeTranscriptSuppressedNow()) {
-      if (handleHandsFreeTtsBargeInCommand(finalText, source)) {
+      if (handleHandsFreeTtsBargeInCommand(finalText, source === 'mentra' ? 'native' : source)) {
         return;
       }
         voiceLog('transcript-ignored', 'Handsfree transcript ignored while assistant audio is speaking.', {
@@ -3383,7 +3404,7 @@ export default function ChatScreen({ route, navigation }: any) {
               sendPhrase: handsFreeSendPhrase,
               textLength: manualDraftResolution.text.length,
             });
-            void sendRef.current(manualDraftResolution.text, { source: 'handsfree' });
+            void sendRef.current(composeMentraVoicePrompt(manualDraftResolution.text, source), { source: 'handsfree' });
             return;
           }
 
@@ -3397,7 +3418,7 @@ export default function ChatScreen({ route, navigation }: any) {
           });
         } else if (action.type === 'send') {
           setSttPreviewWithExpiry('');
-          void sendRef.current(action.text, { source: 'handsfree' });
+          void sendRef.current(composeMentraVoicePrompt(action.text, source), { source: 'handsfree' });
         } else if (action.type === 'command') {
           setSttPreviewWithExpiry('');
           handleHandsFreeVoiceCommand(action.command, action.label, action.remainder);
@@ -3408,9 +3429,10 @@ export default function ChatScreen({ route, navigation }: any) {
       }
     }
 
-    void sendRef.current(finalText);
+    void sendRef.current(composeMentraVoicePrompt(finalText, source));
   }, [
     clearAcceptedHandsFreeControlPreview,
+    composeMentraVoicePrompt,
     handleHandsFreeTtsBargeInCommand,
     handleHandsFreeVoiceCommand,
     handlePendingAgentVoiceText,
@@ -3602,6 +3624,7 @@ export default function ChatScreen({ route, navigation }: any) {
   const pushToTalkDesktopSttActive = !handsFree && desktopSttSelected;
   const foregroundSpeechRecognizerEnabled =
     isFocused
+    && !mentraVoiceActive
     && (isAppActive || pushToTalkDesktopSttActive)
     && (!handsFree || (foregroundHandsFreeRuntimeActive && !androidServiceHandlesHandsFreeMic));
 

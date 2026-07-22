@@ -63,6 +63,7 @@ import { getAcpxMainAgentOptions } from '../lib/mainAgentOptions';
 import { TTSSettings } from '../ui/TTSSettings';
 import { MicrophoneSelector } from '../ui/MicrophoneSelector';
 import Slider from '@react-native-community/slider';
+import { useMentra } from '../mentra/MentraProvider';
 
 // STT Provider Options
 const STT_PROVIDERS = [
@@ -818,6 +819,7 @@ export default function SettingsScreen({ navigation, route }: any) {
   const { width } = useWindowDimensions();
   const { theme, themeMode, setThemeMode } = useTheme();
   const { config, setConfig, ready } = useConfigContext();
+  const mentra = useMentra();
   const [draft, setDraft] = useState<AppConfig>(config);
   const [handsFreeDebounceInput, setHandsFreeDebounceInput] = useState(
     String(config.handsFreeMessageDebounceMs ?? DEFAULT_HANDS_FREE_MESSAGE_DEBOUNCE_MS),
@@ -3262,6 +3264,112 @@ export default function SettingsScreen({ navigation, route }: any) {
           Use the Chat top-right voice menu for no-hands requests. Audio cues announce listening, processing, sleep, and error states.
           On Android, a visible microphone service keeps hands-free active while the app is backgrounded or locked.
         </Text>
+
+        <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Mentra Live</Text>
+        <View style={styles.row}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Direct Glasses Connection</Text>
+            <Text style={[styles.helperText, { marginTop: 2 }]}>Uses Bluetooth directly; no Mentra API key or cloud app is required.</Text>
+          </View>
+          <Switch
+            value={draft.mentraEnabled === true}
+            onValueChange={(value) => updateLocalConfig({ mentraEnabled: value })}
+            disabled={!mentra.supported}
+            accessibilityLabel={createSwitchAccessibilityLabel('Direct Mentra Live connection')}
+            trackColor={{ false: theme.colors.muted, true: theme.colors.primary }}
+            thumbColor={draft.mentraEnabled ? theme.colors.primaryForeground : theme.colors.background}
+          />
+        </View>
+
+        {!mentra.supported && (
+          <Text style={styles.helperText}>Mentra Live is available in the Android development build, not Expo Go or web.</Text>
+        )}
+
+        {draft.mentraEnabled && mentra.supported && (
+          <View style={styles.endpointPanel}>
+            <Text style={styles.serverName}>
+              {mentra.ready ? 'Connected and ready' : mentra.connectionState.replace(/_/g, ' ')}
+            </Text>
+            <Text style={styles.serverMeta}>
+              {mentra.defaultDevice?.name || 'No saved glasses'}
+              {mentra.batteryLevel !== null ? ` • ${mentra.batteryLevel}%${mentra.charging ? ' charging' : ''}` : ''}
+              {mentra.firmwareVersion ? ` • Firmware ${mentra.firmwareVersion}` : ''}
+            </Text>
+            <Text style={styles.serverMeta}>
+              Glasses audio: {mentra.audioConnected ? 'connected' : 'not connected'}
+              {mentra.audioPairingDeviceName ? ` (${mentra.audioPairingDeviceName})` : ''}
+            </Text>
+            {mentra.photoStatus && <Text style={styles.serverMeta}>Camera: {mentra.photoStatus}</Text>}
+            {mentra.error && <Text style={[styles.helperText, { color: theme.colors.destructive }]}>{mentra.error}</Text>}
+
+            <View style={styles.profileActions}>
+              <TouchableOpacity
+                style={[styles.profileActionButton, mentra.busy && styles.profileActionButtonDisabled]}
+                onPress={() => void mentra.startScan()}
+                disabled={mentra.busy}
+                accessibilityRole="button"
+                accessibilityLabel="Scan for Mentra Live glasses"
+              >
+                <Text style={styles.profileActionButtonText}>{mentra.connectionState === 'scanning' ? 'Scanning…' : 'Scan'}</Text>
+              </TouchableOpacity>
+              {mentra.defaultDevice && !mentra.ready && (
+                <TouchableOpacity
+                  style={[styles.profileActionButton, mentra.busy && styles.profileActionButtonDisabled]}
+                  onPress={() => void mentra.connect()}
+                  disabled={mentra.busy}
+                  accessibilityRole="button"
+                  accessibilityLabel="Reconnect saved Mentra Live glasses"
+                >
+                  <Text style={styles.profileActionButtonText}>Reconnect</Text>
+                </TouchableOpacity>
+              )}
+              {mentra.ready && (
+                <TouchableOpacity
+                  style={styles.profileActionButton}
+                  onPress={() => void mentra.disconnect()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Disconnect Mentra Live glasses"
+                >
+                  <Text style={styles.profileActionButtonText}>Disconnect</Text>
+                </TouchableOpacity>
+              )}
+              {mentra.defaultDevice && (
+                <TouchableOpacity
+                  style={styles.dangerActionButton}
+                  onPress={() => void mentra.forget()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Forget Mentra Live glasses"
+                >
+                  <Text style={styles.dangerActionButtonText}>Forget</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {mentra.devices.map((device) => (
+              <TouchableOpacity
+                key={device.id}
+                style={styles.serverRow}
+                onPress={() => {
+                  mentra.selectDevice(device);
+                  void mentra.connect(device);
+                }}
+                disabled={mentra.busy}
+                accessibilityRole="button"
+                accessibilityLabel={`Connect to ${device.name}`}
+              >
+                <View style={styles.serverInfo}>
+                  <Text style={styles.serverName}>{device.name}</Text>
+                  <Text style={styles.serverMeta}>{device.address || device.model}{device.rssi !== undefined ? ` • ${device.rssi} dBm` : ''}</Text>
+                </View>
+                <Text style={styles.profileActionButtonText}>Connect</Text>
+              </TouchableOpacity>
+            ))}
+
+            <Text style={styles.helperText}>
+              Disconnect the Mentra app first. Android may separately ask to pair Bluetooth audio for private replies through the glasses.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.row}>
           <View style={{ flex: 1 }}>

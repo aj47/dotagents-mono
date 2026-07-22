@@ -50,6 +50,7 @@ import {
 import * as Linking from 'expo-linking';
 import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react';
+import { MentraProvider } from './src/mentra/MentraProvider';
 
 
 const dotagentsIcon = require('./assets/dotagents-icon.png');
@@ -562,7 +563,8 @@ function Navigation() {
 
   return (
     <ConfigContext.Provider value={cfg}>
-      <ProfileContext.Provider value={profileProvider}>
+      <MentraProvider>
+        <ProfileContext.Provider value={profileProvider}>
         <SessionContext.Provider value={sessionStore}>
           <MessageQueueContext.Provider value={messageQueueStore}>
             <ConnectionManagerContext.Provider value={connectionManager}>
@@ -668,7 +670,8 @@ function Navigation() {
             </ConnectionManagerContext.Provider>
           </MessageQueueContext.Provider>
         </SessionContext.Provider>
-      </ProfileContext.Provider>
+        </ProfileContext.Provider>
+      </MentraProvider>
     </ConfigContext.Provider>
   );
 }
