@@ -4010,6 +4010,8 @@ export default function ChatScreen({ route, navigation }: any) {
           language: 'en-US',
           listeningEnabled: androidHandsFreeServiceListeningEnabledRef.current,
           debounceMs: handsFreeMessageDebounceMs,
+          baseUrl: config.baseUrl,
+          apiKey: config.apiKey,
         });
       })
       .then(() => {
@@ -4028,6 +4030,8 @@ export default function ChatScreen({ route, navigation }: any) {
       cancelled = true;
     };
   }, [
+    config.apiKey,
+    config.baseUrl,
     handsFreeMessageDebounceMs,
     isAppActive,
     isFocused,

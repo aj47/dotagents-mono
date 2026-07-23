@@ -11,7 +11,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioRecord
 import android.media.MediaPlayer
+import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -26,9 +29,15 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Base64
 import android.util.Log
 import androidx.core.content.ContextCompat
+import java.io.ByteArrayOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Locale
+import kotlin.math.sqrt
+import org.json.JSONObject
 
 class HandsFreeVoiceService : Service() {
   private val mainHandler = Handler(Looper.getMainLooper())
@@ -59,6 +68,11 @@ class HandsFreeVoiceService : Service() {
   private var pendingDebouncedResultDueAtElapsed: Long? = null
   private var pendingDebouncedResultRemainingMs: Long? = null
   private val activeCuePlayers = mutableListOf<CuePlayback>()
+  private var remoteSttBaseUrl = ""
+  private var remoteSttApiKey = ""
+  private var rawCaptureThread: Thread? = null
+  private var rawCaptureRecord: AudioRecord? = null
+  @Volatile private var rawCaptureRunning = false
 
   private val restartRunnable = Runnable {
     if (captureEnabled && (activeTtsUtteranceId == null || activeTtsAllowBargeIn)) {
@@ -149,7 +163,9 @@ class HandsFreeVoiceService : Service() {
           ?.getLongExtra(EXTRA_TRANSCRIPT_DEBOUNCE_MS, DEFAULT_TRANSCRIPT_DEBOUNCE_MS)
           ?.coerceAtLeast(0L)
           ?: DEFAULT_TRANSCRIPT_DEBOUNCE_MS
-        Log.i(TAG, "service start action language=$language captureEnabled=$captureEnabled transcriptDebounceMs=$transcriptDebounceMs")
+        remoteSttBaseUrl = intent?.getStringExtra(EXTRA_REMOTE_STT_BASE_URL)?.trim().orEmpty()
+        remoteSttApiKey = intent?.getStringExtra(EXTRA_REMOTE_STT_API_KEY)?.trim().orEmpty()
+        Log.i(TAG, "service start action language=$language captureEnabled=$captureEnabled transcriptDebounceMs=$transcriptDebounceMs remoteSttConfigured=${remoteSttBaseUrl.isNotBlank() && remoteSttApiKey.isNotBlank()}")
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
           HandsFreeVoiceEvents.emit("error") {
             it.putString("message", "permission-denied")
@@ -356,6 +372,11 @@ class HandsFreeVoiceService : Service() {
       return
     }
 
+    if (remoteSttBaseUrl.isNotBlank() && remoteSttApiKey.isNotBlank()) {
+      startRemotePcmCapture()
+      return
+    }
+
     if (!SpeechRecognizer.isRecognitionAvailable(this)) {
       HandsFreeVoiceEvents.emit("error") {
         it.putString("message", "speech-recognition-unavailable")
@@ -415,12 +436,215 @@ class HandsFreeVoiceService : Service() {
     Log.i(TAG, "recognizer stop requested suppressEvent=$suppressEvent listening=$listening captureEnabled=$captureEnabled")
     suppressRecognizerEnd = true
     mainHandler.removeCallbacks(restartRunnable)
+    stopRemotePcmCapture()
     try {
       speechRecognizer?.cancel()
     } catch (_: Throwable) {}
     listening = false
     if (!suppressEvent) {
       HandsFreeVoiceEvents.emit("recognizer-stopped")
+    }
+  }
+
+  private fun startRemotePcmCapture() {
+    if (rawCaptureRunning) {
+      HandsFreeAudioRouter.acquire(this, CAPTURE_ROUTE_REQUESTER)
+      return
+    }
+
+    try { speechRecognizer?.cancel() } catch (_: Throwable) {}
+
+    val minBufferBytes = AudioRecord.getMinBufferSize(
+      REMOTE_SAMPLE_RATE,
+      AudioFormat.CHANNEL_IN_MONO,
+      AudioFormat.ENCODING_PCM_16BIT,
+    )
+    if (minBufferBytes <= 0) {
+      emitRemoteCaptureError("raw-audio-buffer-unavailable", recoverable = true)
+      scheduleRestart(1500L)
+      return
+    }
+
+    val bufferBytes = maxOf(minBufferBytes, REMOTE_SAMPLE_RATE / 2)
+    val record = try {
+      AudioRecord(
+        MediaRecorder.AudioSource.VOICE_RECOGNITION,
+        REMOTE_SAMPLE_RATE,
+        AudioFormat.CHANNEL_IN_MONO,
+        AudioFormat.ENCODING_PCM_16BIT,
+        bufferBytes * 2,
+      )
+    } catch (error: Throwable) {
+      Log.e(TAG, "raw audio recorder creation failed", error)
+      emitRemoteCaptureError("raw-audio-init-failed", recoverable = true)
+      scheduleRestart(1500L)
+      return
+    }
+
+    if (record.state != AudioRecord.STATE_INITIALIZED) {
+      try { record.release() } catch (_: Throwable) {}
+      emitRemoteCaptureError("raw-audio-init-failed", recoverable = true)
+      scheduleRestart(1500L)
+      return
+    }
+
+    try {
+      HandsFreeAudioRouter.acquire(this, CAPTURE_ROUTE_REQUESTER)
+      record.startRecording()
+      rawCaptureRecord = record
+      rawCaptureRunning = true
+      listening = true
+      suppressRecognizerEnd = false
+      HandsFreeVoiceEvents.emit("recognizer-started") {
+        it.putString("language", language)
+        it.putString("sessionMode", "remote-pcm")
+      }
+      Log.i(TAG, "raw PCM capture started sampleRate=$REMOTE_SAMPLE_RATE bufferBytes=$bufferBytes")
+      rawCaptureThread = Thread({ captureRemotePcmLoop(record, bufferBytes) }, "DotAgentsRemotePcm").also { it.start() }
+    } catch (error: Throwable) {
+      Log.e(TAG, "raw audio recording start failed", error)
+      try { record.release() } catch (_: Throwable) {}
+      emitRemoteCaptureError("raw-audio-start-failed", recoverable = true)
+      scheduleRestart(1500L)
+    }
+  }
+
+  private fun stopRemotePcmCapture() {
+    rawCaptureRunning = false
+    rawCaptureThread?.interrupt()
+    rawCaptureThread = null
+    val record = rawCaptureRecord
+    rawCaptureRecord = null
+    if (record != null) {
+      try { record.stop() } catch (_: Throwable) {}
+      try { record.release() } catch (_: Throwable) {}
+    }
+  }
+
+  private fun captureRemotePcmLoop(record: AudioRecord, bufferBytes: Int) {
+    val buffer = ByteArray(bufferBytes)
+    val audio = ByteArrayOutputStream()
+    var speechStartedAt = 0L
+    var lastVoiceAt = 0L
+
+    try {
+      while (rawCaptureRunning && !Thread.currentThread().isInterrupted) {
+        val read = record.read(buffer, 0, buffer.size)
+        if (read <= 0) continue
+        val now = SystemClock.elapsedRealtime()
+        val rms = calculateRms(buffer, read)
+        val voiceDetected = rms >= REMOTE_VOICE_RMS_THRESHOLD
+
+        if (speechStartedAt == 0L && voiceDetected) {
+          speechStartedAt = now
+          lastVoiceAt = now
+          audio.reset()
+          Log.i(TAG, "raw PCM speech started rms=${rms.toInt()}")
+        }
+
+        if (speechStartedAt != 0L) {
+          audio.write(buffer, 0, read)
+          if (voiceDetected) lastVoiceAt = now
+          val durationMs = now - speechStartedAt
+          val silenceMs = now - lastVoiceAt
+          if (
+            (durationMs >= REMOTE_MIN_SPEECH_MS && silenceMs >= REMOTE_SILENCE_FINALIZE_MS) ||
+            durationMs >= REMOTE_MAX_UTTERANCE_MS
+          ) {
+            val utterance = audio.toByteArray()
+            val utteranceDurationMs = durationMs
+            audio.reset()
+            speechStartedAt = 0L
+            lastVoiceAt = 0L
+            if (utterance.size >= REMOTE_MIN_AUDIO_BYTES) {
+              transcribeRemotePcm(utterance, utteranceDurationMs)
+            }
+          }
+        }
+      }
+    } catch (error: Throwable) {
+      if (rawCaptureRunning) {
+        Log.e(TAG, "raw PCM capture loop failed", error)
+        mainHandler.post {
+          emitRemoteCaptureError("raw-audio-capture-failed", recoverable = true)
+          listening = false
+          scheduleRestart(1500L)
+        }
+      }
+    } finally {
+      if (rawCaptureRecord === record) {
+        try { record.stop() } catch (_: Throwable) {}
+        try { record.release() } catch (_: Throwable) {}
+        rawCaptureRecord = null
+      } else {
+        try { record.release() } catch (_: Throwable) {}
+      }
+    }
+  }
+
+  private fun calculateRms(buffer: ByteArray, length: Int): Double {
+    var sumSquares = 0.0
+    var samples = 0
+    var index = 0
+    while (index + 1 < length) {
+      val unsigned = (buffer[index].toInt() and 0xff) or (buffer[index + 1].toInt() shl 8)
+      val sample = if (unsigned > 32767) unsigned - 65536 else unsigned
+      sumSquares += sample.toDouble() * sample.toDouble()
+      samples += 1
+      index += 2
+    }
+    return if (samples == 0) 0.0 else sqrt(sumSquares / samples)
+  }
+
+  private fun transcribeRemotePcm(audioBytes: ByteArray, durationMs: Long) {
+    val baseUrl = remoteSttBaseUrl.trimEnd('/')
+    val apiKey = remoteSttApiKey
+    Thread({
+      var connection: HttpURLConnection? = null
+      try {
+        val payload = JSONObject().apply {
+          put("encoding", "pcm_s16le")
+          put("audioBase64", Base64.encodeToString(audioBytes, Base64.NO_WRAP))
+          put("sampleRate", REMOTE_SAMPLE_RATE)
+          put("channels", 1)
+          put("bitsPerSample", 16)
+          put("durationMs", durationMs)
+        }.toString()
+        connection = URL("$baseUrl/stt/transcribe").openConnection() as HttpURLConnection
+        connection!!.requestMethod = "POST"
+        connection!!.connectTimeout = REMOTE_STT_CONNECT_TIMEOUT_MS.toInt()
+        connection!!.readTimeout = REMOTE_STT_READ_TIMEOUT_MS.toInt()
+        connection!!.doOutput = true
+        connection!!.setRequestProperty("Authorization", "Bearer $apiKey")
+        connection!!.setRequestProperty("Content-Type", "application/json")
+        connection!!.setRequestProperty("Accept", "application/json")
+        connection!!.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+        val status = connection!!.responseCode
+        val stream = if (status in 200..299) connection!!.inputStream else connection!!.errorStream
+        val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        if (status !in 200..299) {
+          Log.w(TAG, "remote PCM STT failed status=$status responseLength=${response.length}")
+          return@Thread
+        }
+        val text = JSONObject(response).optString("text").trim()
+        if (text.isNotBlank()) {
+          Log.i(TAG, "remote PCM STT result textLength=${text.length} durationMs=$durationMs")
+          mainHandler.post {
+            if (captureEnabled) scheduleDebouncedResult(text, "remote-pcm")
+          }
+        }
+      } catch (error: Throwable) {
+        Log.w(TAG, "remote PCM STT request failed", error)
+      } finally {
+        connection?.disconnect()
+      }
+    }, "DotAgentsRemoteStt").start()
+  }
+
+  private fun emitRemoteCaptureError(message: String, recoverable: Boolean) {
+    HandsFreeVoiceEvents.emit("error") {
+      it.putString("message", message)
+      it.putBoolean("recoverable", recoverable)
     }
   }
 
@@ -1528,6 +1752,8 @@ class HandsFreeVoiceService : Service() {
     private const val EXTRA_LANGUAGE = "language"
     private const val EXTRA_LISTENING_ENABLED = "listeningEnabled"
     private const val EXTRA_TRANSCRIPT_DEBOUNCE_MS = "transcriptDebounceMs"
+    private const val EXTRA_REMOTE_STT_BASE_URL = "remoteSttBaseUrl"
+    private const val EXTRA_REMOTE_STT_API_KEY = "remoteSttApiKey"
     private const val DEFAULT_LANGUAGE = "en-US"
     private const val TAG = "DotAgentsHandsFree"
     private const val DEFAULT_TRANSCRIPT_DEBOUNCE_MS = 1500L
@@ -1551,6 +1777,14 @@ class HandsFreeVoiceService : Service() {
     private const val MAX_TTS_PITCH = 3.0f
     private const val CUE_PREPARE_TIMEOUT_MS = 1500L
     private const val TTS_AUDIO_PREPARE_TIMEOUT_MS = 2500L
+    private const val REMOTE_SAMPLE_RATE = 16000
+    private const val REMOTE_VOICE_RMS_THRESHOLD = 450.0
+    private const val REMOTE_MIN_SPEECH_MS = 250L
+    private const val REMOTE_SILENCE_FINALIZE_MS = 800L
+    private const val REMOTE_MAX_UTTERANCE_MS = 12000L
+    private const val REMOTE_MIN_AUDIO_BYTES = 1600
+    private const val REMOTE_STT_CONNECT_TIMEOUT_MS = 10000L
+    private const val REMOTE_STT_READ_TIMEOUT_MS = 30000L
 
     @Volatile
     private var running = false
@@ -1563,12 +1797,16 @@ class HandsFreeVoiceService : Service() {
       language: String,
       listeningEnabled: Boolean,
       transcriptDebounceMs: Long,
+      baseUrl: String = "",
+      apiKey: String = "",
     ): Intent {
       return Intent(context, HandsFreeVoiceService::class.java).apply {
         action = ACTION_START
         putExtra(EXTRA_LANGUAGE, language)
         putExtra(EXTRA_LISTENING_ENABLED, listeningEnabled)
         putExtra(EXTRA_TRANSCRIPT_DEBOUNCE_MS, transcriptDebounceMs.coerceAtLeast(0L))
+        putExtra(EXTRA_REMOTE_STT_BASE_URL, baseUrl)
+        putExtra(EXTRA_REMOTE_STT_API_KEY, apiKey)
       }
     }
 

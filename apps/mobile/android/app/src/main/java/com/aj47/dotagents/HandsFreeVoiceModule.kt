@@ -38,10 +38,12 @@ class HandsFreeVoiceModule(
     val transcriptDebounceMs = readDouble(options, "debounceMs", 1500.0)
       .toLong()
       .coerceAtLeast(0L)
+    val baseUrl = readString(options, "baseUrl")?.trim().orEmpty()
+    val apiKey = readString(options, "apiKey")?.trim().orEmpty()
 
     try {
-      Log.i(tag, "module start requested language=$language listeningEnabled=$listeningEnabled transcriptDebounceMs=$transcriptDebounceMs isRunning=${HandsFreeVoiceService.isRunning()}")
-      val intent = HandsFreeVoiceService.createStartIntent(reactContext, language, listeningEnabled, transcriptDebounceMs)
+      Log.i(tag, "module start requested language=$language listeningEnabled=$listeningEnabled transcriptDebounceMs=$transcriptDebounceMs remoteSttConfigured=${baseUrl.isNotBlank() && apiKey.isNotBlank()} isRunning=${HandsFreeVoiceService.isRunning()}")
+      val intent = HandsFreeVoiceService.createStartIntent(reactContext, language, listeningEnabled, transcriptDebounceMs, baseUrl, apiKey)
       ContextCompat.startForegroundService(reactContext, intent)
       Log.i(tag, "module start dispatched")
       promise.resolve(null)

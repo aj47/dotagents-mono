@@ -36,7 +36,7 @@ export type AndroidHandsFreeAudioRoute = {
 };
 
 type AndroidHandsFreeVoiceModule = {
-  start(options?: { language?: string; listeningEnabled?: boolean; debounceMs?: number }): Promise<void>;
+  start(options?: { language?: string; listeningEnabled?: boolean; debounceMs?: number; baseUrl?: string; apiKey?: string }): Promise<void>;
   stop(): Promise<void>;
   setListeningEnabled(enabled: boolean): Promise<boolean>;
   isRunning(): Promise<boolean>;
@@ -79,6 +79,8 @@ export async function startAndroidHandsFreeService(options?: {
   language?: string;
   listeningEnabled?: boolean;
   debounceMs?: number;
+  baseUrl?: string;
+  apiKey?: string;
 }): Promise<void> {
   if (!nativeModule) return;
   await ensureAndroidHandsFreePermissions();
