@@ -8999,6 +8999,7 @@ export default function ChatScreen({ route, navigation }: any) {
             </View>
           </View>
         )}
+        {isFocused && (
         <View
           onLayout={handleComposerLayout}
           style={[
@@ -9185,8 +9186,15 @@ export default function ChatScreen({ route, navigation }: any) {
               accessibilityState={{ busy: micControlVisual.busy }}
               aria-busy={micControlVisual.busy}
               onLongPress={undefined}
-              onPressIn={!handsFree ? handlePushToTalkPressIn : undefined}
-              onPressOut={!handsFree ? handlePushToTalkPressOut : undefined}
+              // Keep push-to-talk's responder through small finger movement or
+              // competing scroll gestures; an interrupted responder otherwise
+              // looks like an immediate release on Android.
+              onStartShouldSetResponder={() => !handsFree}
+              onMoveShouldSetResponder={() => !handsFree}
+              onResponderTerminationRequest={() => false}
+              onResponderGrant={!handsFree ? handlePushToTalkPressIn : undefined}
+              onResponderRelease={!handsFree ? handlePushToTalkPressOut : undefined}
+              onResponderTerminate={!handsFree ? handlePushToTalkPressOut : undefined}
               onPress={handsFree ? handleHandsFreePrimaryControl : undefined}
             >
               <View style={[styles.micContent, isAgentRunningInHeader && styles.micContentProcessing]}>
@@ -9262,6 +9270,7 @@ export default function ChatScreen({ route, navigation }: any) {
             </Pressable>
           </View>
         </View>
+        )}
       </View>
       <Modal
         visible={chatMenuVisible}

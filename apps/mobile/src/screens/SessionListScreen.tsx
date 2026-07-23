@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert, Platform, Image, GestureResponderEvent, TextInput, useWindowDimensions, Modal, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { EventEmitter } from 'expo-modules-core';
 import {
   RecordingPresets,
@@ -55,6 +56,7 @@ interface Props {
 
 export default function SessionListScreen({ navigation, route }: Props) {
   const { theme, isDark } = useTheme();
+  const isFocused = useIsFocused();
   const { height: screenHeight } = useWindowDimensions();
   const styles = useMemo(() => createStyles(theme, screenHeight), [theme, screenHeight]);
   const { config } = useConfigContext();
@@ -700,6 +702,39 @@ export default function SessionListScreen({ navigation, route }: Props) {
   }, [mergeVoiceText, rfCleanupSubs, rfLog, rfRunBackgroundSend, rfSetListening, rfSetTransientStatus, rfStopDesktopRecordingAndTranscribe]);
 
   rfStopAndFireRef.current = rfStopAndFire;
+
+  const rfHandlePressIn = useCallback((e: GestureResponderEvent) => {
+    rfGrantTimeRef.current = Date.now();
+    rfPressInSeenRef.current = true;
+    rfLog('mic:pressIn', {
+      listening: rfListeningRef.current,
+      starting: rfStartingRef.current,
+      pageX: e.nativeEvent.pageX,
+      pageY: e.nativeEvent.pageY,
+    });
+    if (!rfListeningRef.current) {
+      void rfStartRecording(e);
+    }
+  }, [rfLog, rfStartRecording]);
+
+  const rfHandlePressOut = useCallback(() => {
+    rfPressInSeenRef.current = false;
+    const dt = Date.now() - rfGrantTimeRef.current;
+    const delay = Math.max(0, rfMinHoldMs - dt);
+    rfLog('mic:pressOut', { listening: rfListeningRef.current, dt, delay });
+    const stop = () => {
+      rfLog('mic:release -> stop fired', { listening: rfListeningRef.current });
+      if (rfListeningRef.current) {
+        void rfStopAndFire();
+      }
+    };
+    if (delay > 0) {
+      setTimeout(stop, delay);
+    } else {
+      stop();
+    }
+  }, [rfLog, rfStopAndFire]);
+
   // ── end Rapid Fire ─────────────────────────────────────────────────────────
 
   useLayoutEffect(() => {
@@ -1408,7 +1443,7 @@ export default function SessionListScreen({ navigation, route }: Props) {
       />
 
       {/* Rapid Fire hold-to-speak button */}
-      <View style={styles.rfContainer}>
+      {isFocused && <View style={styles.rfContainer}>
         {(rfListening || rfStatus === 'sent') && rfTranscript ? (
           <Text style={styles.rfTranscript} numberOfLines={2}>{rfTranscript}</Text>
         ) : null}
@@ -1426,38 +1461,21 @@ export default function SessionListScreen({ navigation, route }: Props) {
             Platform.OS === 'web' && { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation' },
             pressed && !rfListening && { opacity: 0.8 },
           ]}
-          onPressIn={(e: GestureResponderEvent) => {
-            rfGrantTimeRef.current = Date.now();
-            rfPressInSeenRef.current = true;
-            rfLog('mic:onPressIn', {
-              listening: rfListeningRef.current,
-              starting: rfStartingRef.current,
-              pageX: e.nativeEvent.pageX,
-              pageY: e.nativeEvent.pageY,
-            });
-            if (!rfListeningRef.current) { void rfStartRecording(e); }
-          }}
-          onPressOut={() => {
-            rfPressInSeenRef.current = false;
-            const dt = Date.now() - rfGrantTimeRef.current;
-            const delay = Math.max(0, rfMinHoldMs - dt);
-            rfLog('mic:onPressOut', { listening: rfListeningRef.current, dt, delay });
-            if (delay > 0) {
-              setTimeout(() => {
-                rfLog('mic:onPressOut -> delayed stop fired', { listening: rfListeningRef.current });
-                if (rfListeningRef.current) { void rfStopAndFire(); }
-              }, delay);
-            } else {
-              if (rfListeningRef.current) { void rfStopAndFire(); }
-            }
-          }}
+          // Capture the responder so a FlatList/ScrollView gesture or small
+          // finger movement cannot turn a hold into an immediate release.
+          onStartShouldSetResponder={() => true}
+          onMoveShouldSetResponder={() => true}
+          onResponderTerminationRequest={() => false}
+          onResponderGrant={rfHandlePressIn}
+          onResponderRelease={rfHandlePressOut}
+          onResponderTerminate={rfHandlePressOut}
         >
           <Text style={styles.rfButtonText}>{rfListening ? '\uD83C\uDF99\uFE0F' : '\uD83C\uDFA4'}</Text>
           <Text style={styles.rfButtonLabel}>
             {rfListening ? '...' : (rfStatus === 'sending' ? 'Sending' : 'Hold')}
           </Text>
         </Pressable>
-      </View>
+      </View>}
       <Modal
         visible={!!renameSession}
         transparent
