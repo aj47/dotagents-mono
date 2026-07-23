@@ -2080,7 +2080,9 @@ export default function ChatScreen({ route, navigation }: any) {
   const activeAutoSpeechEventRef = useRef<QueuedResponseSpeechItem | null>(null);
   const autoTtsSuppressedRequestIdsRef = useRef<Set<number>>(new Set());
   const recentAutoSpeechByTextRef = useRef<Map<string, number>>(new Map());
-  const lastHandsFreeSpokenTextRef = useRef('');
+  // Keep response replay independent from short confirmations such as
+  // "Focused ..." or agent-discovery prompts.
+  const lastHandsFreeResponseBySessionRef = useRef<Map<string, string>>(new Map());
   const speakHandsFreeTextRef = useRef<(
     content: string,
     reason: string,
@@ -3228,14 +3230,17 @@ export default function ChatScreen({ route, navigation }: any) {
         break;
       }
       case 'repeat': {
-        const lastSpokenText = lastHandsFreeSpokenTextRef.current;
-        if (!lastSpokenText) {
+        const currentSessionId = sessionStore.currentSessionId;
+        const lastResponseText = currentSessionId
+          ? lastHandsFreeResponseBySessionRef.current.get(currentSessionId)
+          : undefined;
+        if (!lastResponseText) {
           setDebugInfo('Nothing to repeat yet.');
           playHandsFreeCue('stopped');
           break;
         }
-        recentAutoSpeechByTextRef.current.delete(normalizeAutoTtsTextKey(lastSpokenText));
-        speakHandsFreeTextRef.current(lastSpokenText, 'voice repeat');
+        recentAutoSpeechByTextRef.current.delete(normalizeAutoTtsTextKey(lastResponseText));
+        speakHandsFreeTextRef.current(lastResponseText, 'voice repeat');
         setDebugInfo('Repeating the last response.');
         break;
       }
@@ -3244,7 +3249,7 @@ export default function ChatScreen({ route, navigation }: any) {
         void _exhaustive;
       }
     }
-  }, [closeVoiceAgentSession, focusVoiceAgentSession, handleNewChat, messageVoiceAgentSession, playHandsFreeCue, stopHandsFreeActivityFromVoice, voiceLog]);
+  }, [closeVoiceAgentSession, focusVoiceAgentSession, handleNewChat, messageVoiceAgentSession, playHandsFreeCue, sessionStore, stopHandsFreeActivityFromVoice, voiceLog]);
 
   const composeMentraVoicePrompt = useCallback((text: string, source: 'native' | 'web' | 'mentra') => {
     if (source !== 'mentra' || !mentra.pendingPhoto) return { text };
@@ -4338,7 +4343,18 @@ export default function ChatScreen({ route, navigation }: any) {
 				onSettled?.();
 			return false;
 		}
-		lastHandsFreeSpokenTextRef.current = processedText;
+      const isSubstantiveResponse =
+        reason.startsWith('response event')
+        || reason === 'mid-turn progress'
+        || reason === 'final response'
+        || reason === 'queued mid-turn progress'
+        || reason === 'queued final response';
+      if (isSubstantiveResponse) {
+        const sessionId = sessionStore.currentSessionId;
+        if (sessionId) {
+          lastHandsFreeResponseBySessionRef.current.set(sessionId, processedText);
+        }
+      }
 
       const ttsTextKey = normalizeAutoTtsTextKey(processedText);
       const now = Date.now();
