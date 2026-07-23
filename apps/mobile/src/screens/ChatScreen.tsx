@@ -126,6 +126,7 @@ import { APP_SHELL_DIMENSIONS, resolveAppShellLayout } from '../ui/appShell';
 import {
   getAndroidHandsFreeAudioRoute,
   isAndroidHandsFreeServiceAvailable,
+  isAndroidHandsFreeServiceRunning,
   playAndroidHandsFreeTtsAudio,
   setAndroidHandsFreeListeningEnabled,
   speakAndroidHandsFreeTts,
@@ -3727,7 +3728,7 @@ export default function ChatScreen({ route, navigation }: any) {
     try {
       const text = await mentra.finishCapture({
         onCaptureStopped: mode === 'send'
-          ? () => playMentraControlCue('processing')
+          ? () => { void playMentraControlCue('processing'); }
           : undefined,
       });
       if (!text) {
@@ -3993,35 +3994,59 @@ export default function ChatScreen({ route, navigation }: any) {
   }, []);
 
   useEffect(() => {
-    if (!shouldRunAndroidHandsFreeService) {
+    // Android 14+ rejects a microphone foreground-service start when the app
+    // is already backgrounded (including the lock screen). Start only while
+    // the chat is visible; an already-running service is intentionally left
+    // alone when the app moves to the background so it can survive locking.
+    if (!shouldRunAndroidHandsFreeService || !isAppActive || !isFocused) {
       return;
     }
 
     let cancelled = false;
-    void startAndroidHandsFreeService({
-      language: 'en-US',
-      listeningEnabled: androidHandsFreeServiceListeningEnabledRef.current,
-      debounceMs: handsFreeMessageDebounceMs,
-    }).then(() => {
-      if (!cancelled) {
-        setDebugInfo('Locked-screen handsfree is ready.');
-        playHandsFreeSessionReadyCue('service-start-command');
-      }
-    }).catch((error) => {
-      const message = (error as any)?.message || String(error);
-      voiceLog('recognizer-error', 'Android handsfree service failed to start.', { message });
-      setDebugInfo(`Voice error: ${message}`);
-    });
+    void isAndroidHandsFreeServiceRunning()
+      .then((running) => {
+        if (running || cancelled) return;
+        return startAndroidHandsFreeService({
+          language: 'en-US',
+          listeningEnabled: androidHandsFreeServiceListeningEnabledRef.current,
+          debounceMs: handsFreeMessageDebounceMs,
+        });
+      })
+      .then(() => {
+        if (!cancelled) {
+          setDebugInfo('Locked-screen handsfree is ready.');
+          playHandsFreeSessionReadyCue('service-start-command');
+        }
+      })
+      .catch((error) => {
+        const message = (error as any)?.message || String(error);
+        voiceLog('recognizer-error', 'Android handsfree service failed to start.', { message });
+        setDebugInfo(`Voice error: ${message}`);
+      });
 
     return () => {
       cancelled = true;
-      void stopAndroidHandsFreeService().catch((error) => {
-        voiceLog('recognizer-error', 'Android handsfree service failed to stop.', {
-          message: (error as any)?.message || String(error),
-        });
-      });
     };
-  }, [handsFreeMessageDebounceMs, playHandsFreeSessionReadyCue, shouldRunAndroidHandsFreeService, voiceLog]);
+  }, [
+    handsFreeMessageDebounceMs,
+    isAppActive,
+    isFocused,
+    playHandsFreeSessionReadyCue,
+    shouldRunAndroidHandsFreeService,
+    voiceLog,
+  ]);
+
+  useEffect(() => {
+    if (shouldRunAndroidHandsFreeService) {
+      return;
+    }
+
+    void stopAndroidHandsFreeService().catch((error) => {
+      voiceLog('recognizer-error', 'Android handsfree service failed to stop.', {
+        message: (error as any)?.message || String(error),
+      });
+    });
+  }, [shouldRunAndroidHandsFreeService, voiceLog]);
 
   useEffect(() => {
     if (!shouldRunAndroidHandsFreeService) {

@@ -158,7 +158,22 @@ class HandsFreeVoiceService : Service() {
           stopSelf()
           return START_NOT_STICKY
         }
-        startForegroundWithNotification()
+        try {
+          startForegroundWithNotification()
+        } catch (error: SecurityException) {
+          // Android 14+ does not allow a microphone FGS to be started from
+          // the background. This can happen if a stale JS start command lands
+          // while the device is locked. Do not let it take down the app.
+          Log.e(TAG, "microphone foreground service start denied while backgrounded", error)
+          HandsFreeVoiceEvents.emit("error") {
+            it.putString("message", "background-fgs-not-allowed")
+            it.putBoolean("recoverable", false)
+          }
+          running = false
+          releaseCpuWakeLock()
+          stopSelf()
+          return START_NOT_STICKY
+        }
         acquireCpuWakeLock()
         HandsFreeAudioRouter.acquire(this, SESSION_ROUTE_REQUESTER)
         HandsFreeVoiceEvents.emit("service-started") {
