@@ -9,6 +9,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import type { LanguageModel } from "ai"
 import { configStore } from "./config"
 import { isDebugLLM, logLLM } from "./debug"
+import type { OPENAI_COMPATIBLE_PROMPT_CACHING } from "@dotagents/shared"
 
 export type ProviderType = "openai" | "groq" | "gemini" | "chatgpt-web"
 
@@ -54,7 +55,17 @@ interface ProviderConfig {
 
 export interface PromptCachingConfig {
   strategy: string
+  enabled: boolean
+  capability: "implicit-prefix" | "disabled"
+  baseUrlClass: "provider-default" | "official-openai" | "vercel-ai-gateway" | "known-openrouter" | "custom-compatible"
+  reason?: string
   providerOptions?: Record<string, unknown>
+  headers?: Record<string, string>
+}
+
+export interface PromptCachingRequestContext {
+  /** Stable DotAgents conversation/session identity, never logged or sent as a prompt. */
+  conversationId?: string
 }
 
 function normalizeProviderType(providerId: string): ProviderType {
@@ -269,27 +280,23 @@ export function getCurrentModelName(
   return getProviderConfig(effectiveProviderId, modelContext).model
 }
 
-/**
- * Check if the model name indicates an Anthropic/Claude model.
- * Common patterns: "claude-3.5-sonnet", "anthropic/claude-sonnet-4-5", etc.
- */
-function isAnthropicModel(model: string): boolean {
-  const normalized = model.trim().toLowerCase()
-  return normalized.includes("claude") || normalized.includes("anthropic")
-}
-
-/**
- * Check if the base URL points to a known proxy that routes to Anthropic.
- * OpenRouter, LiteLLM, and similar OpenAI-compatible gateways are common proxies.
- */
-function isAnthropicProxy(baseURL: string): boolean {
-  const normalized = baseURL.trim().toLowerCase()
-  return normalized.includes("openrouter.ai") || normalized.includes("anthropic")
+function classifyBaseUrl(baseURL: string): PromptCachingConfig["baseUrlClass"] {
+  if (!baseURL) return "provider-default"
+  try {
+    const hostname = new URL(baseURL).hostname.toLowerCase()
+    if (hostname === "api.openai.com") return "official-openai"
+    if (hostname === "ai-gateway.vercel.sh") return "vercel-ai-gateway"
+    if (hostname === "openrouter.ai" || hostname.endsWith(".openrouter.ai")) return "known-openrouter"
+  } catch {
+    // Treat malformed/custom values as an unknown compatible endpoint.
+  }
+  return "custom-compatible"
 }
 
 export function getPromptCachingConfig(
   providerId?: ProviderType,
   modelContext: "mcp" | "transcript" = "mcp",
+  requestContext: PromptCachingRequestContext = {},
 ): PromptCachingConfig | undefined {
   const config = configStore.get()
   const effectiveProviderId = normalizeProviderType(
@@ -297,15 +304,29 @@ export function getPromptCachingConfig(
   )
   const providerConfig = getProviderConfig(effectiveProviderId, modelContext)
   const normalizedBaseURL = (providerConfig.baseURL || "").trim().toLowerCase()
+  const baseUrlClass = classifyBaseUrl(normalizedBaseURL)
+  const configuredCapability = config.openaiCompatiblePromptCaching as OPENAI_COMPATIBLE_PROMPT_CACHING | undefined
+  const promptCacheKey = requestContext.conversationId?.trim() || undefined
+  const isCustomOpenAIEndpoint = effectiveProviderId === "openai" &&
+    (baseUrlClass === "custom-compatible" || baseUrlClass === "known-openrouter")
 
   if (effectiveProviderId === "chatgpt-web") {
-    return undefined
+    return {
+      strategy: "disabled-chatgpt-web-transport",
+      enabled: false,
+      capability: "disabled",
+      baseUrlClass,
+      reason: "chatgpt-web uses a separate transport whose cache contract is not exposed here",
+    }
   }
 
-  // Vercel AI Gateway handles caching automatically for all providers
-  if (normalizedBaseURL.includes("ai-gateway.vercel.sh")) {
+  // Vercel AI Gateway handles caching automatically for all providers.
+  if (baseUrlClass === "vercel-ai-gateway") {
     return {
       strategy: "gateway-auto",
+      enabled: true,
+      capability: "implicit-prefix",
+      baseUrlClass,
       providerOptions: {
         gateway: {
           caching: "auto",
@@ -314,25 +335,14 @@ export function getPromptCachingConfig(
     }
   }
 
-  // Anthropic/Claude via OpenAI-compatible proxy (e.g., OpenRouter, LiteLLM).
-  // Anthropic requires explicit cache_control markers — unlike OpenAI/Gemini which cache implicitly.
-  // The AI SDK translates message-level providerOptions.anthropic.cacheControl into
-  // block-level cache_control on the last content block of each message.
-  if (isAnthropicModel(providerConfig.model) || isAnthropicProxy(normalizedBaseURL)) {
-    return {
-      strategy: "anthropic-cache-control",
-      providerOptions: {
-        anthropic: {
-          cacheControl: { type: "ephemeral" },
-        },
-      },
-    }
-  }
-
   // Direct OpenAI — automatic prefix caching, no API changes needed (≥1,024 tokens)
-  if (effectiveProviderId === "openai" && (!normalizedBaseURL || normalizedBaseURL.includes("api.openai.com"))) {
+  if (effectiveProviderId === "openai" && (baseUrlClass === "provider-default" || baseUrlClass === "official-openai")) {
     return {
       strategy: "openai-implicit-prefix",
+      enabled: true,
+      capability: "implicit-prefix",
+      baseUrlClass,
+      ...(promptCacheKey ? { providerOptions: { openai: { promptCacheKey } } } : {}),
     }
   }
 
@@ -340,10 +350,39 @@ export function getPromptCachingConfig(
   if (effectiveProviderId === "gemini") {
     return {
       strategy: "gemini-stable-prefix",
+      enabled: true,
+      capability: "implicit-prefix",
+      baseUrlClass,
     }
   }
 
-  return undefined
+  if (isCustomOpenAIEndpoint && (configuredCapability === "openai" || configuredCapability === "cliproxy")) {
+    return {
+      strategy: configuredCapability === "cliproxy" ? "cliproxy-openai-prefix" : "openai-compatible-prefix",
+      enabled: true,
+      capability: "implicit-prefix",
+      baseUrlClass,
+      reason: "enabled by explicit endpoint capability configuration",
+      ...(promptCacheKey
+        ? {
+            providerOptions: { openai: { promptCacheKey } },
+            ...(configuredCapability === "cliproxy" ? { headers: { session_id: promptCacheKey } } : {}),
+          }
+        : {}),
+    }
+  }
+
+  return {
+    strategy: configuredCapability === "unsupported"
+      ? "disabled-unsupported-compatible-endpoint"
+      : "disabled-unknown-compatible-endpoint",
+    enabled: false,
+    capability: "disabled",
+    baseUrlClass,
+    reason: configuredCapability === "unsupported"
+      ? "endpoint is explicitly declared not to provide reliable prompt-cache telemetry"
+      : "custom OpenAI-compatible endpoint has no explicit prompt-cache capability declaration",
+  }
 }
 
 /**

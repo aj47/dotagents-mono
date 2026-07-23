@@ -3,6 +3,7 @@ import type {
   STT_PROVIDER_ID,
   TTS_PROVIDER_ID,
   OPENAI_COMPATIBLE_PRESET_ID,
+  OPENAI_COMPATIBLE_PROMPT_CACHING,
   ToolCall,
   ToolResult,
   AgentConversationState,
@@ -1185,6 +1186,8 @@ export type Config = {
   openaiApiKey?: string
   openaiBaseUrl?: string
   openaiCompatiblePreset?: OPENAI_COMPATIBLE_PRESET_ID
+  /** Explicit capability declaration for a non-OpenAI OpenAI-compatible endpoint. */
+  openaiCompatiblePromptCaching?: OPENAI_COMPATIBLE_PROMPT_CACHING
 
   modelPresets?: ModelPreset[]
   currentModelPresetId?: string

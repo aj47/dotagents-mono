@@ -3,7 +3,7 @@
  * These are interface/type definitions only - no implementation classes
  */
 
-import type { ModelPreset } from './providers';
+import type { ModelPreset, OPENAI_COMPATIBLE_PROMPT_CACHING } from './providers';
 import type { TitleSource } from './session';
 import type { QueuedMessage } from './types';
 
@@ -452,6 +452,7 @@ export interface Settings {
   // Provider credentials and base URLs are returned masked when configured.
   openaiApiKey?: string;
   openaiBaseUrl?: string;
+  openaiCompatiblePromptCaching?: OPENAI_COMPATIBLE_PROMPT_CACHING;
   groqApiKey?: string;
   groqBaseUrl?: string;
   geminiApiKey?: string;
@@ -629,6 +630,7 @@ export interface SettingsUpdate {
   // Provider credentials and base URLs.
   openaiApiKey?: string;
   openaiBaseUrl?: string;
+  openaiCompatiblePromptCaching?: OPENAI_COMPATIBLE_PROMPT_CACHING;
   groqApiKey?: string;
   groqBaseUrl?: string;
   geminiApiKey?: string;

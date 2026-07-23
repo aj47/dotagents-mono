@@ -142,6 +142,93 @@ describe('LLM Fetch with AI SDK', () => {
     }))
   })
 
+  it('passes an explicitly configured compatible-endpoint cache key and session header', async () => {
+    getPromptCachingConfigMock.mockReturnValue({
+      strategy: 'cliproxy-openai-prefix',
+      enabled: true,
+      capability: 'implicit-prefix',
+      baseUrlClass: 'custom-compatible',
+      providerOptions: { openai: { promptCacheKey: 'session-1' } },
+      headers: { session_id: 'session-1' },
+    })
+
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+    generateTextMock.mockResolvedValue({
+      text: 'cached response',
+      finishReason: 'stop',
+      usage: { inputTokens: 1200, outputTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    const { diagnosticsService } = await import('./diagnostics')
+    const logInfoMock = vi.mocked(diagnosticsService.logInfo)
+
+    await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'A stable prompt prefix followed by the current turn.' }],
+      'openai',
+      undefined,
+      'session-1',
+    )
+
+    expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
+      providerOptions: { openai: { promptCacheKey: 'session-1' } },
+      headers: { session_id: 'session-1' },
+    }))
+    expect(logInfoMock).toHaveBeenCalledWith(
+      'prompt-cache',
+      'Prompt cache request shape',
+      expect.objectContaining({
+        strategy: 'cliproxy-openai-prefix',
+        providerBaseUrlClass: 'custom-compatible',
+        promptTokensEstimated: expect.any(Number),
+        stablePrefixTokens: expect.any(Number),
+        stablePrefixHash: expect.stringMatching(/^[0-9a-f]{16}$/),
+      }),
+    )
+    const shapeLog = logInfoMock.mock.calls.find(([, message]) => message === 'Prompt cache request shape')
+    expect(shapeLog?.[2]).not.toHaveProperty('fullPrompt')
+  })
+
+  it('uses the durable conversation identity over the transient session identity', async () => {
+    getPromptCachingConfigMock.mockImplementation((_providerId: string, _modelContext: string, requestContext: { conversationId?: string }) => ({
+      strategy: 'cliproxy-openai-prefix',
+      enabled: true,
+      capability: 'implicit-prefix',
+      baseUrlClass: 'custom-compatible',
+      providerOptions: { openai: { promptCacheKey: requestContext.conversationId } },
+      headers: { session_id: requestContext.conversationId },
+    }))
+
+    const { generateText } = await import('ai')
+    const generateTextMock = vi.mocked(generateText)
+    generateTextMock.mockResolvedValue({
+      text: 'conversation-aware response',
+      finishReason: 'stop',
+      usage: { inputTokens: 1200, outputTokens: 20 },
+    } as any)
+
+    const { makeLLMCallWithFetch } = await import('./llm-fetch')
+    await makeLLMCallWithFetch(
+      [{ role: 'user', content: 'continue the durable conversation' }],
+      'openai',
+      undefined,
+      'transient-session-id',
+      undefined,
+      'durable-conversation-id',
+    )
+
+    expect(getPromptCachingConfigMock).toHaveBeenCalledWith(
+      'openai',
+      'mcp',
+      { conversationId: 'durable-conversation-id' },
+    )
+    expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
+      providerOptions: { openai: { promptCacheKey: 'durable-conversation-id' } },
+      headers: { session_id: 'durable-conversation-id' },
+    }))
+  })
+
   it('logs cache metrics when usage includes inputTokenDetails with cache data', async () => {
     getPromptCachingConfigMock.mockReturnValue({
       strategy: 'openai-implicit-prefix',
@@ -158,7 +245,6 @@ describe('LLM Fetch with AI SDK', () => {
       usage: {
         promptTokens: 1000,
         completionTokens: 50,
-        inputTokens: 1000,
         outputTokens: 50,
         inputTokenDetails: {
           cacheReadTokens: 800,
@@ -179,20 +265,65 @@ describe('LLM Fetch with AI SDK', () => {
         cacheReadTokens: 800,
         cacheWriteTokens: 200,
         cacheHitRate: 80,
+        reportedBreakdownIsSubset: true,
       })
     )
   })
 
-  it('passes anthropic cache control provider options through to generateText', async () => {
+  it('keeps streaming cache telemetry when usage arrives on the finish event', async () => {
     getPromptCachingConfigMock.mockReturnValue({
-      strategy: 'anthropic-cache-control',
-      providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+      strategy: 'openai-implicit-prefix',
+      enabled: true,
+      capability: 'implicit-prefix',
+      baseUrlClass: 'official-openai',
+    })
+
+    const { streamText } = await import('ai')
+    const streamTextMock = vi.mocked(streamText)
+    streamTextMock.mockImplementation(() => ({
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: 'streamed response' }
+        yield {
+          type: 'finish',
+          totalUsage: {
+            inputTokens: 1000,
+            outputTokens: 20,
+            inputTokenDetails: { cacheReadTokens: 800, cacheWriteTokens: 200 },
+          },
+        }
+      })(),
+    } as any))
+
+    const { makeLLMCallWithStreamingAndTools } = await import('./llm-fetch')
+    const { diagnosticsService } = await import('./diagnostics')
+    const logInfoMock = vi.mocked(diagnosticsService.logInfo)
+
+    await makeLLMCallWithStreamingAndTools(
+      [{ role: 'user', content: 'stream this' }],
+      vi.fn(),
+      'openai',
+    )
+
+    expect(logInfoMock).toHaveBeenCalledWith(
+      'prompt-cache',
+      expect.stringContaining('80% hit rate'),
+      expect.objectContaining({ cacheReadTokens: 800, cacheHitRate: 80 }),
+    )
+  })
+
+  it('passes configured OpenAI-compatible provider options through to generateText', async () => {
+    getPromptCachingConfigMock.mockReturnValue({
+      strategy: 'openai-compatible-prefix',
+      enabled: true,
+      capability: 'implicit-prefix',
+      baseUrlClass: 'custom-compatible',
+      providerOptions: { openai: { promptCacheKey: 'session-1' } },
     })
 
     const { generateText } = await import('ai')
     const generateTextMock = vi.mocked(generateText)
     generateTextMock.mockResolvedValue({
-      text: '{"content":"anthropic cached"}',
+      text: '{"content":"compatible cached"}',
       finishReason: 'stop',
       usage: { promptTokens: 10, completionTokens: 20 },
     } as any)
@@ -202,7 +333,7 @@ describe('LLM Fetch with AI SDK', () => {
     await makeLLMCallWithFetch([{ role: 'user', content: 'test' }], 'openai')
 
     expect(generateTextMock).toHaveBeenCalledWith(expect.objectContaining({
-      providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+      providerOptions: { openai: { promptCacheKey: 'session-1' } },
     }))
   })
 

@@ -78,6 +78,41 @@ Use any OpenAI-compatible local model server:
 
 Best for: Privacy-first, offline use, no API costs.
 
+### Prompt caching for OpenAI-compatible endpoints
+
+OpenAI's official endpoint uses implicit prefix caching automatically. DotAgents
+also sends the durable conversation identity as `prompt_cache_key` when a
+continuing conversation is available (falling back to the run session for
+standalone calls); the key is a routing hint, and cache usage is only counted
+from provider-reported usage.
+
+For any other OpenAI-compatible base URL, caching is disabled unless the
+endpoint capability is explicitly declared in the layered DotAgents settings
+(`openaiCompatiblePromptCaching`):
+
+| Value | Behavior |
+|-------|----------|
+| `openai` | Sends OpenAI-compatible `prompt_cache_key` for implicit prefix caching. |
+| `cliproxy` | Sends the same key plus the stable `session_id` header expected by CLIProxy's Codex continuity path. |
+| `unsupported` | Explicitly disables caching and records that the endpoint has no reliable cache contract. |
+
+An omitted value means the endpoint is unknown, so DotAgents does not send
+cache-specific options or claim that caching is enabled. Proxy response usage
+is not repaired or inflated: `cacheReadTokens` and `cacheWriteTokens` remain
+subsets of the provider's reported input token count. For long-running tasks,
+keep the same session and use an endpoint version that preserves the cache key,
+session identity, tool serialization, and cached-token usage fields.
+
+For example, a CLIProxy setup can declare its capability alongside the base
+URL in the workspace/global DotAgents settings (or through `SettingsUpdate`):
+
+```json
+{
+  "openaiBaseUrl": "http://localhost:8317/v1",
+  "openaiCompatiblePromptCaching": "cliproxy"
+}
+```
+
 ## Speech-to-Text (STT) Providers
 
 ### OpenAI Whisper

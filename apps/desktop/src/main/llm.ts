@@ -557,10 +557,9 @@ export async function processTranscriptWithTools(
 ): Promise<LLMToolCallResponse> {
   const config = configStore.get()
 
-  const uniqueAvailableTools = availableTools.filter(
-    (tool, index, self) =>
-      index === self.findIndex((t) => t.name === tool.name),
-  )
+  const uniqueAvailableTools = availableTools
+    .filter((tool, index, self) => index === self.findIndex((t) => t.name === tool.name))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   // Load enabled agent skills instructions for non-agent mode too
   // Uses the Main Agent's skills config if available, otherwise globally enabled skills
@@ -1609,10 +1608,9 @@ export async function processTranscriptWithAgentMode(
   initialStep.description = `Found ${availableTools.length} available tools.`
 
   // Remove duplicates from available tools to prevent confusion
-  const uniqueAvailableTools = availableTools.filter(
-    (tool, index, self) =>
-      index === self.findIndex((t) => t.name === tool.name),
-  )
+  const uniqueAvailableTools = availableTools
+    .filter((tool, index, self) => index === self.findIndex((t) => t.name === tool.name))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   const hideCompletionSignalTool = isLikelyAnswerOnlyContinuationTurn(transcript, previousConversationHistory)
   const baseAvailableTools = hideCompletionSignalTool
@@ -1803,6 +1801,20 @@ export async function processTranscriptWithAgentMode(
       logLLM("[processTranscriptWithAgentMode] Failed to save initial user message:", err)
     })
   }
+
+  // Materialize derived context once per continuing session. Recomputing
+  // relevant facts ahead of the replayed history on every iteration changes
+  // the prompt prefix and defeats provider prefix caching. New context remains
+  // available through the live conversation history and context-budget summaries.
+  const checkpointContextMessage = isInternalResumeTranscript
+    ? null
+    : buildCompactionCheckpointContextMessage(conversationCompaction)
+  const relevantEarlierContextMessage = isInternalResumeTranscript
+    ? null
+    : buildRelevantEarlierConversationContextMessage(conversationHistory, transcript)
+  const historicalContextGuardMessage = checkpointContextMessage || relevantEarlierContextMessage
+    ? { role: "system" as const, content: HISTORICAL_CONTEXT_GUARD_PROMPT }
+    : null
 
   // Track empty response retries to prevent infinite loops
   let emptyResponseRetryCount = 0
@@ -2043,7 +2055,15 @@ export async function processTranscriptWithAgentMode(
     // Update context info for progress display
     contextInfoRef = { estTokens: verifyEstTokens, maxTokens: verifyMaxTokens }
 
-    const response = await makeLLMCall(shrunkMessages, config, onRetryProgress, undefined, currentSessionId)
+    const response = await makeLLMCall(
+      shrunkMessages,
+      config,
+      onRetryProgress,
+      undefined,
+      currentSessionId,
+      undefined,
+      currentConversationId,
+    )
 
     // Check for stop request if needed
     if (checkForStop && agentSessionStateManager.shouldStopSession(currentSessionId)) {
@@ -2177,6 +2197,8 @@ export async function processTranscriptWithAgentMode(
         verificationMessages,
         config.mcpToolsProviderId,
         currentSessionId,
+        undefined,
+        currentConversationId,
       ), { verificationMessages })
       if (verification?.isComplete === true) {
         verified = true
@@ -2432,16 +2454,6 @@ export async function processTranscriptWithAgentMode(
       ...getConversationWindowForProgress(),
     })
 
-    const checkpointContextMessage = isInternalResumeTranscript
-      ? null
-      : buildCompactionCheckpointContextMessage(conversationCompaction)
-    const relevantEarlierContextMessage = isInternalResumeTranscript
-      ? null
-      : buildRelevantEarlierConversationContextMessage(conversationHistory, transcript)
-    const historicalContextGuardMessage = checkpointContextMessage || relevantEarlierContextMessage
-      ? { role: "system" as const, content: HISTORICAL_CONTEXT_GUARD_PROMPT }
-      : null
-
     // Build messages for LLM call
     const messages = [
       { role: "system", content: currentSystemPrompt },
@@ -2515,6 +2527,16 @@ export async function processTranscriptWithAgentMode(
     // Track last context budget for Langfuse trace metadata
     lastContextBudgetInfo = { estTokensAfter, maxTokens: maxContextTokens, appliedStrategies }
 
+    if (appliedStrategies.length > 0) {
+      diagnosticsService.logInfo("prompt-cache", "Context compaction event", {
+        strategies: appliedStrategies,
+        promptMessagesBefore: messages.length,
+        promptMessagesAfter: shrunkMessages.length,
+        estimatedPromptTokens: estTokensAfter,
+        contextTokenLimit: maxContextTokens,
+      })
+    }
+
     if (thinkingStep.description?.startsWith("Summarizing context") || thinkingStep.description === "Updating context summary") {
       thinkingStep.description = appliedStrategies.length > 0
         ? "Generating response with compacted context"
@@ -2587,7 +2609,15 @@ export async function processTranscriptWithAgentMode(
         }, { sendRendererProgress: shouldSendRendererProgress })
       }
 
-      llmResponse = await makeLLMCall(shrunkMessages, config, onRetryProgress, onStreamingUpdate, currentSessionId, activeTools)
+      llmResponse = await makeLLMCall(
+        shrunkMessages,
+        config,
+        onRetryProgress,
+        onStreamingUpdate,
+        currentSessionId,
+        activeTools,
+        currentConversationId,
+      )
 
       // The next non-streaming progress update clears live streaming state in the renderer.
       // Avoid an extra intermediate emit that would duplicate the completed text.
@@ -3787,7 +3817,15 @@ export async function processTranscriptWithAgentMode(
 
 
         try {
-          const summaryResponse = await makeLLMCall(shrunkSummaryMessages, config, onRetryProgress, undefined, currentSessionId)
+          const summaryResponse = await makeLLMCall(
+            shrunkSummaryMessages,
+            config,
+            onRetryProgress,
+            undefined,
+            currentSessionId,
+            undefined,
+            currentConversationId,
+          )
 
           // Check if stop was requested during summary generation
           if (agentSessionStateManager.shouldStopSession(currentSessionId)) {
@@ -4136,6 +4174,7 @@ async function makeLLMCall(
   onStreamingUpdate?: StreamingCallback,
   sessionId?: string,
   tools?: MCPTool[],
+  conversationId?: string,
 ): Promise<LLMToolCallResponse> {
   const chatProviderId = config.mcpToolsProviderId
 
@@ -4167,9 +4206,10 @@ async function makeLLMCall(
         onRetryProgress,
         sessionId,
         tools,
+        conversationId,
       )
     } else {
-      result = await makeLLMCallWithFetch(messages, chatProviderId, onRetryProgress, sessionId, tools)
+      result = await makeLLMCallWithFetch(messages, chatProviderId, onRetryProgress, sessionId, tools, conversationId)
     }
 
     if (isDebugLLM()) {

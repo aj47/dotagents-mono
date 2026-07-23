@@ -197,6 +197,7 @@ const SENSITIVE_OPERATOR_SETTINGS_KEYS = new Set([
   "localTraceLogPath",
   "openaiApiKey",
   "openaiBaseUrl",
+  "openaiCompatiblePromptCaching",
   "groqApiKey",
   "groqBaseUrl",
   "geminiApiKey",
@@ -4898,6 +4899,7 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
         codexServiceTier: cfg.codexServiceTier,
         openaiApiKey: cfg.openaiApiKey ? REMOTE_SERVER_SECRET_MASK : "",
         openaiBaseUrl: cfg.openaiBaseUrl ?? "",
+        openaiCompatiblePromptCaching: cfg.openaiCompatiblePromptCaching,
         groqApiKey: cfg.groqApiKey ? REMOTE_SERVER_SECRET_MASK : "",
         groqBaseUrl: cfg.groqBaseUrl ?? "",
         geminiApiKey: cfg.geminiApiKey ? REMOTE_SERVER_SECRET_MASK : "",
@@ -5119,6 +5121,9 @@ async function startRemoteServerInternal(options: StartRemoteServerOptions = {})
       }
       if (typeof body.openaiBaseUrl === "string") {
         updates.openaiBaseUrl = body.openaiBaseUrl.trim()
+      }
+      if (["openai", "cliproxy", "unsupported"].includes(body.openaiCompatiblePromptCaching)) {
+        updates.openaiCompatiblePromptCaching = body.openaiCompatiblePromptCaching
       }
       if (typeof body.groqApiKey === "string" && body.groqApiKey !== REMOTE_SERVER_SECRET_MASK) {
         updates.groqApiKey = body.groqApiKey.trim()

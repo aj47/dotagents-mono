@@ -228,6 +228,18 @@ export const OPENAI_COMPATIBLE_PRESETS = [
 
 export type OPENAI_COMPATIBLE_PRESET_ID = (typeof OPENAI_COMPATIBLE_PRESETS)[number]["value"];
 
+/**
+ * Prompt-cache behavior for an OpenAI-compatible endpoint. The value is a
+ * capability declaration, not a request to manufacture cache usage.
+ */
+export const OPENAI_COMPATIBLE_PROMPT_CACHING = [
+  "openai",
+  "cliproxy",
+  "unsupported",
+] as const;
+
+export type OPENAI_COMPATIBLE_PROMPT_CACHING = (typeof OPENAI_COMPATIBLE_PROMPT_CACHING)[number];
+
 // Default preset ID
 export const DEFAULT_MODEL_PRESET_ID = "builtin-openai";
 

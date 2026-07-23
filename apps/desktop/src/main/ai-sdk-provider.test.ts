@@ -105,8 +105,15 @@ describe("ai-sdk-provider chat model sanitization", () => {
       openaiBaseUrl: "https://api.openai.com/v1",
     })
 
-    expect(mod.getPromptCachingConfig("openai")).toEqual({
+    expect(mod.getPromptCachingConfig("openai")).toMatchObject({
       strategy: "openai-implicit-prefix",
+      enabled: true,
+      capability: "implicit-prefix",
+      baseUrlClass: "official-openai",
+    })
+
+    expect(mod.getPromptCachingConfig("openai", "mcp", { conversationId: "agent-session-1" })).toMatchObject({
+      providerOptions: { openai: { promptCacheKey: "agent-session-1" } },
     })
   })
 
@@ -115,7 +122,7 @@ describe("ai-sdk-provider chat model sanitization", () => {
       openaiBaseUrl: "https://ai-gateway.vercel.sh/v1",
     })
 
-    expect(mod.getPromptCachingConfig("openai")).toEqual({
+    expect(mod.getPromptCachingConfig("openai")).toMatchObject({
       strategy: "gateway-auto",
       providerOptions: {
         gateway: {
@@ -130,64 +137,64 @@ describe("ai-sdk-provider chat model sanitization", () => {
       mcpToolsProviderId: "gemini",
     })
 
-    expect(mod.getPromptCachingConfig("gemini")).toEqual({
+    expect(mod.getPromptCachingConfig("gemini")).toMatchObject({
       strategy: "gemini-stable-prefix",
+      enabled: true,
     })
   })
 
-  it("enables anthropic cache control when model name contains 'claude'", async () => {
+  it("requires explicit capability for known gateways too", async () => {
     const { mod } = await loadModule({
+      openaiBaseUrl: "https://openrouter.ai/api/v1",
       mcpToolsOpenaiModel: "claude-sonnet-4-5",
     })
 
-    expect(mod.getPromptCachingConfig("openai")).toEqual({
-      strategy: "anthropic-cache-control",
-      providerOptions: {
-        anthropic: {
-          cacheControl: { type: "ephemeral" },
-        },
-      },
+    expect(mod.getPromptCachingConfig("openai")).toMatchObject({
+      enabled: false,
+      strategy: "disabled-unknown-compatible-endpoint",
     })
   })
 
-  it("enables anthropic cache control when base URL contains 'openrouter'", async () => {
+  it("requires explicit capability for an arbitrary compatible endpoint", async () => {
     const { mod } = await loadModule({
-      openaiBaseUrl: "https://openrouter.ai/api/v1",
-      mcpToolsOpenaiModel: "some-model",
-    })
-
-    expect(mod.getPromptCachingConfig("openai")).toEqual({
-      strategy: "anthropic-cache-control",
-      providerOptions: {
-        anthropic: {
-          cacheControl: { type: "ephemeral" },
-        },
-      },
-    })
-  })
-
-  it("enables anthropic cache control when model name contains 'anthropic'", async () => {
-    const { mod } = await loadModule({
+      openaiBaseUrl: "https://cliproxy.example.com/v1",
       mcpToolsOpenaiModel: "anthropic/claude-3.5-sonnet",
     })
 
-    expect(mod.getPromptCachingConfig("openai")).toEqual({
-      strategy: "anthropic-cache-control",
-      providerOptions: {
-        anthropic: {
-          cacheControl: { type: "ephemeral" },
-        },
-      },
+    expect(mod.getPromptCachingConfig("openai")).toMatchObject({
+      enabled: false,
+      capability: "disabled",
+      strategy: "disabled-unknown-compatible-endpoint",
     })
   })
 
-  it("returns undefined for unknown proxy without anthropic model", async () => {
+  it("enables explicitly declared CLIProxy continuity", async () => {
     const { mod } = await loadModule({
-      openaiBaseUrl: "https://my-custom-proxy.example.com/v1",
+      openaiBaseUrl: "http://localhost:8317/v1",
       mcpToolsOpenaiModel: "gpt-4.1-mini",
+      openaiCompatiblePromptCaching: "cliproxy",
     })
 
-    expect(mod.getPromptCachingConfig("openai")).toBeUndefined()
+    expect(mod.getPromptCachingConfig("openai", "mcp", { conversationId: "agent-session-1" })).toMatchObject({
+      strategy: "cliproxy-openai-prefix",
+      enabled: true,
+      providerOptions: { openai: { promptCacheKey: "agent-session-1" } },
+      headers: { session_id: "agent-session-1" },
+    })
+  })
+
+  it("marks an unsupported custom proxy disabled without cache options", async () => {
+    const { mod } = await loadModule({
+      openaiBaseUrl: "https://my-custom-proxy.example.com/v1",
+      openaiCompatiblePromptCaching: "unsupported",
+    })
+
+    const caching = mod.getPromptCachingConfig("openai")
+    expect(caching).toMatchObject({
+      enabled: false,
+      strategy: "disabled-unsupported-compatible-endpoint",
+    })
+    expect(caching?.providerOptions).toBeUndefined()
   })
 
   it("returns configured model metadata for chatgpt-web and disables prompt caching hints", async () => {
@@ -199,7 +206,7 @@ describe("ai-sdk-provider chat model sanitization", () => {
     })
 
     expect(mod.getCurrentModelName("chatgpt-web")).toBe("gpt-5")
-    expect(mod.getPromptCachingConfig("chatgpt-web")).toBeUndefined()
+    expect(mod.getPromptCachingConfig("chatgpt-web")).toMatchObject({ enabled: false })
     expect(() => mod.createLanguageModel("chatgpt-web")).toThrow(
       "chatgpt-web provider uses a custom fetch transport, not AI SDK createLanguageModel",
     )

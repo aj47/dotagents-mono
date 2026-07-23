@@ -13,7 +13,7 @@
 import { generateText, streamText, tool as aiTool } from "ai"
 import type { ModelMessage, UserContent } from "ai"
 import { jsonSchema } from "ai"
-import { randomUUID } from "crypto"
+import { createHash, randomUUID } from "crypto"
 import fs from "fs"
 import {
   createLanguageModel,
@@ -51,6 +51,8 @@ import { sanitizeMessagesForLlmTransport, sanitizeTextForLlmTransport } from "./
  */
 interface ExtendedUsage {
   inputTokens?: number
+  /** Legacy/test/provider raw alias used by some OpenAI-compatible adapters. */
+  promptTokens?: number
   outputTokens?: number
   inputTokenDetails?: {
     cacheReadTokens?: number
@@ -63,6 +65,93 @@ interface ExtendedUsage {
   totalTokens?: number
 }
 
+type PromptShapeDiagnostics = {
+  promptTokensEstimated: number
+  stablePrefixTokens: number
+  stablePrefixHash: string
+  stablePrefixChanged?: boolean
+  messageCount: number
+  compactionEvents: string[]
+}
+
+const lastStablePrefixHashBySession = new Map<string, string>()
+
+function stableSerialize(value: unknown): string {
+  return JSON.stringify(value, (_key, nestedValue) => {
+    if (!nestedValue || typeof nestedValue !== "object" || Array.isArray(nestedValue)) return nestedValue
+    return Object.fromEntries(Object.entries(nestedValue as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)))
+  })
+}
+
+function estimatePromptTokens(serialized: string): number {
+  return Math.ceil(serialized.length / 4)
+}
+
+function getPromptShapeDiagnostics(
+  system: string | undefined,
+  messages: ModelMessage[],
+  convertedTools?: ConvertedTools,
+  sessionId?: string,
+): PromptShapeDiagnostics {
+  const toolEntries = Object.entries(convertedTools?.tools || {})
+    .sort(([a], [b]) => a.localeCompare(b))
+  const fullPrompt = stableSerialize({ system, messages, tools: toolEntries })
+  const stablePrefix = stableSerialize({
+    system,
+    messages: messages.slice(0, Math.max(0, messages.length - 1)),
+    tools: toolEntries,
+  })
+  const stablePrefixHash = createHash("sha256").update(stablePrefix).digest("hex").slice(0, 16)
+  const previousHash = sessionId ? lastStablePrefixHashBySession.get(sessionId) : undefined
+  if (sessionId) {
+    lastStablePrefixHashBySession.set(sessionId, stablePrefixHash)
+    if (lastStablePrefixHashBySession.size > 2048) {
+      const oldest = lastStablePrefixHashBySession.keys().next().value
+      if (oldest) lastStablePrefixHashBySession.delete(oldest)
+    }
+  }
+
+  const allContent = messages.map(message => typeof message.content === "string" ? message.content : "").join("\n")
+  const compactionEvents = [
+    ["checkpoint", "[Persisted Conversation Checkpoint]"],
+    ["relevant-earlier-context", "[Relevant Earlier Conversation Facts]"],
+    ["summary", "[Earlier Context Summary:"],
+    ["archived-background", "[Archived Background Summary"],
+    ["tool-result-cleared", "[Tool result cleared for context management]"],
+    ["truncated-tool", "[Large tool result truncated for context management."],
+    ["truncated-payload", "[Large payload truncated for context management."],
+  ].filter(([, marker]) => allContent.includes(marker)).map(([event]) => event)
+
+  return {
+    promptTokensEstimated: estimatePromptTokens(fullPrompt),
+    stablePrefixTokens: estimatePromptTokens(stablePrefix),
+    stablePrefixHash,
+    ...(previousHash ? { stablePrefixChanged: previousHash !== stablePrefixHash } : {}),
+    messageCount: messages.length,
+    compactionEvents,
+  }
+}
+
+function logPromptShapeDiagnostics(
+  promptCaching: ReturnType<typeof getPromptCachingConfig>,
+  diagnostics: PromptShapeDiagnostics,
+  providerId: string,
+): void {
+  diagnosticsService.logInfo("prompt-cache", "Prompt cache request shape", {
+    provider: providerId,
+    strategy: promptCaching?.strategy,
+    enabled: promptCaching?.enabled ?? false,
+    capability: promptCaching?.capability,
+    providerBaseUrlClass: promptCaching?.baseUrlClass,
+    promptTokensEstimated: diagnostics.promptTokensEstimated,
+    stablePrefixTokens: diagnostics.stablePrefixTokens,
+    stablePrefixHash: diagnostics.stablePrefixHash,
+    stablePrefixChanged: diagnostics.stablePrefixChanged,
+    messageCount: diagnostics.messageCount,
+    compactionEvents: diagnostics.compactionEvents,
+  })
+}
+
 /**
  * Build token usage object for Langfuse, only including it when at least one token field is present.
  * This avoids reporting 0 tokens when the provider doesn't return usage data.
@@ -73,7 +162,7 @@ function buildTokenUsage(usage?: ExtendedUsage): {
   completionTokens?: number
   totalTokens?: number
 } | undefined {
-  const inputTokens = usage?.inputTokens
+  const inputTokens = usage?.inputTokens ?? usage?.promptTokens
   const outputTokens = usage?.outputTokens
 
   // Only include usage when at least one token field is present
@@ -104,18 +193,26 @@ function logCacheMetrics(
   // Only log when we have actual cache data
   if (cacheReadTokens === undefined && cacheWriteTokens === undefined) return
 
-  const inputTokens = usage.inputTokens ?? 0
+  const inputTokens = usage.inputTokens ?? usage.promptTokens ?? 0
   const cacheRead = cacheReadTokens ?? 0
   const cacheWrite = cacheWriteTokens ?? 0
-  const cacheHitRate = inputTokens > 0 ? Math.round((cacheRead / inputTokens) * 100) : 0
+  const cacheHitRate = inputTokens > 0 ? Math.round((cacheRead / inputTokens) * 100) : undefined
+  const reportedBreakdownIsSubset =
+    inputTokens >= 0 &&
+    cacheRead >= 0 &&
+    cacheWrite >= 0 &&
+    cacheRead <= inputTokens &&
+    cacheWrite <= inputTokens &&
+    cacheRead + cacheWrite <= inputTokens
 
-  diagnosticsService.logInfo("prompt-cache", `Cache metrics: ${cacheHitRate}% hit rate`, {
+  diagnosticsService.logInfo("prompt-cache", `Cache metrics: ${cacheHitRate === undefined ? "unavailable" : `${cacheHitRate}%`} hit rate`, {
     provider: providerId,
     strategy,
     inputTokens,
     cacheReadTokens: cacheRead,
     cacheWriteTokens: cacheWrite,
     cacheHitRate,
+    reportedBreakdownIsSubset,
   })
 
   if (isDebugLLM()) {
@@ -125,7 +222,8 @@ function logCacheMetrics(
       inputTokens,
       cacheReadTokens: cacheRead,
       cacheWriteTokens: cacheWrite,
-      cacheHitRate: `${cacheHitRate}%`,
+      cacheHitRate: cacheHitRate === undefined ? "unavailable" : `${cacheHitRate}%`,
+      reportedBreakdownIsSubset,
     })
   }
 }
@@ -234,7 +332,17 @@ function normalizeToolInputSchema(inputSchema: unknown): Record<string, unknown>
   delete schema.not
   delete schema.enum
 
-  return schema
+  const canonicalize = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(canonicalize)
+    if (!value || typeof value !== "object") return value
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, nestedValue]) => [key, canonicalize(nestedValue)]),
+    )
+  }
+
+  return canonicalize(schema) as Record<string, unknown>
 }
 
 /**
@@ -257,7 +365,9 @@ function convertMCPToolsToAISDKTools(mcpTools: MCPTool[]): ConvertedTools {
   // Track collision counts for disambiguation
   const collisionCount = new Map<string, number>()
 
-  for (const mcpTool of mcpTools) {
+  // MCP discovery order can vary between runs. Keep the native tool array and
+  // its prefix serialization deterministic so it does not split cache keys.
+  for (const mcpTool of [...mcpTools].sort((a, b) => a.name.localeCompare(b.name))) {
     // Sanitize tool name to avoid provider compatibility issues
     // (OpenAI/Groq reject tool names containing ':')
     let sanitizedName = sanitizeToolName(mcpTool.name)
@@ -910,7 +1020,8 @@ export async function makeLLMCallWithFetch(
   providerId?: string,
   onRetryProgress?: RetryProgressCallback,
   sessionId?: string,
-  tools?: MCPTool[]
+  tools?: MCPTool[],
+  conversationId?: string,
 ): Promise<LLMToolCallResponse> {
   const effectiveProviderId = (providerId ||
     getCurrentProviderId()) as ProviderType
@@ -1023,7 +1134,7 @@ export async function makeLLMCallWithFetch(
 
         const model = createLanguageModel(effectiveProviderId)
         const { system, messages: convertedMessages } = convertMessages(transportMessages)
-        const promptCaching = getPromptCachingConfig(effectiveProviderId)
+        const promptCaching = getPromptCachingConfig(effectiveProviderId, "mcp", { conversationId: conversationId || sessionId })
         const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId)
         const mergedProviderOptions = mergeProviderOptions(
           promptCaching?.providerOptions,
@@ -1034,6 +1145,12 @@ export async function makeLLMCallWithFetch(
         const convertedTools = tools && tools.length > 0
           ? convertMCPToolsToAISDKTools(tools)
           : undefined
+
+        logPromptShapeDiagnostics(
+          promptCaching,
+          getPromptShapeDiagnostics(system, convertedMessages, convertedTools, conversationId || sessionId),
+          effectiveProviderId,
+        )
 
         const modelName = getCurrentModelName(effectiveProviderId)
 
@@ -1058,6 +1175,9 @@ export async function makeLLMCallWithFetch(
               hasTools: !!convertedTools,
               toolCount: tools?.length || 0,
               promptCaching: promptCaching?.strategy,
+              promptCachingEnabled: promptCaching?.enabled,
+              promptCachingCapability: promptCaching?.capability,
+              providerBaseUrlClass: promptCaching?.baseUrlClass,
               reasoningEffort: (reasoningOptions?.openai as any)?.reasoningEffort,
             },
             input: { system, messages: convertedMessages },
@@ -1071,6 +1191,7 @@ export async function makeLLMCallWithFetch(
             system,
             messages: convertedMessages,
             abortSignal: abortController.signal,
+            headers: promptCaching?.headers,
             providerOptions: mergedProviderOptions as any,
             tools: convertedTools?.tools,
             // Allow the model to choose whether to use tools or respond with text
@@ -1236,7 +1357,8 @@ export async function makeLLMCallWithStreamingAndTools(
   providerId?: string,
   onRetryProgress?: RetryProgressCallback,
   sessionId?: string,
-  tools?: MCPTool[]
+  tools?: MCPTool[],
+  conversationId?: string,
 ): Promise<LLMToolCallResponse> {
   const effectiveProviderId = (providerId || getCurrentProviderId()) as ProviderType
   const transportMessages = sanitizeMessagesForLlmTransport(messages)
@@ -1333,11 +1455,17 @@ export async function makeLLMCallWithStreamingAndTools(
 
       const model = createLanguageModel(effectiveProviderId)
       const { system, messages: convertedMessages } = convertMessages(transportMessages)
-      const promptCaching = getPromptCachingConfig(effectiveProviderId)
+      const promptCaching = getPromptCachingConfig(effectiveProviderId, "mcp", { conversationId: conversationId || sessionId })
       const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId)
       const mergedProviderOptions = mergeProviderOptions(
         promptCaching?.providerOptions,
         reasoningOptions,
+      )
+
+      logPromptShapeDiagnostics(
+        promptCaching,
+        getPromptShapeDiagnostics(system, convertedMessages, convertedTools, conversationId || sessionId),
+        effectiveProviderId,
       )
 
       if (isDebugLLM()) {
@@ -1360,6 +1488,9 @@ export async function makeLLMCallWithStreamingAndTools(
             hasTools: !!convertedTools,
             toolCount: tools?.length || 0,
             promptCaching: promptCaching?.strategy,
+            promptCachingEnabled: promptCaching?.enabled,
+            promptCachingCapability: promptCaching?.capability,
+            providerBaseUrlClass: promptCaching?.baseUrlClass,
             reasoningEffort: (reasoningOptions?.openai as any)?.reasoningEffort,
           },
           input: { system, messages: convertedMessages },
@@ -1379,6 +1510,7 @@ export async function makeLLMCallWithStreamingAndTools(
           system,
           messages: convertedMessages,
           abortSignal: abortController.signal,
+          headers: promptCaching?.headers,
           providerOptions: mergedProviderOptions as any,
           tools: convertedTools?.tools,
           toolChoice: convertedTools?.tools ? "auto" : undefined,
@@ -1386,7 +1518,7 @@ export async function makeLLMCallWithStreamingAndTools(
 
         let accumulated = ""
         const collectedToolCalls: Array<{ name: string; arguments: Record<string, unknown> }> = []
-        let finishUsage: { inputTokens?: number; outputTokens?: number } | undefined
+        let finishUsage: ExtendedUsage | undefined
 
         for await (const event of streamResult.fullStream) {
           if (
@@ -1542,11 +1674,17 @@ export async function makeTextCompletionWithFetch(
             )).trim()
           : await (async () => {
               const model = createLanguageModel(effectiveProviderId, modelContext)
-              const promptCaching = getPromptCachingConfig(effectiveProviderId, modelContext)
+              const promptCaching = getPromptCachingConfig(effectiveProviderId, modelContext, { conversationId: sessionId })
               const reasoningOptions = getReasoningEffortProviderOptions(effectiveProviderId, modelContext)
               const mergedProviderOptions = mergeProviderOptions(
                 promptCaching?.providerOptions,
                 reasoningOptions,
+              )
+
+              logPromptShapeDiagnostics(
+                promptCaching,
+                getPromptShapeDiagnostics(undefined, [{ role: "user", content: transportPrompt }], undefined, sessionId),
+                effectiveProviderId,
               )
 
               if (isDebugLLM()) {
@@ -1561,6 +1699,7 @@ export async function makeTextCompletionWithFetch(
                 model,
                 prompt: transportPrompt,
                 abortSignal: abortController.signal,
+                headers: promptCaching?.headers,
                 providerOptions: mergedProviderOptions as any,
               })
 
@@ -1622,7 +1761,8 @@ export async function verifyCompletionWithFetch(
   messages: Array<{ role: string; content: string }>,
   providerId?: string,
   sessionId?: string,
-  onRetryProgress?: RetryProgressCallback
+  onRetryProgress?: RetryProgressCallback,
+  conversationId?: string,
 ): Promise<CompletionVerification> {
   const effectiveProviderId = (providerId ||
     getCurrentProviderId()) as ProviderType
@@ -1649,7 +1789,7 @@ export async function verifyCompletionWithFetch(
         const generationId = isTracingEnabled() ? randomUUID() : null
         const promptCaching = isChatGptWebProvider(effectiveProviderId)
           ? undefined
-          : getPromptCachingConfig(effectiveProviderId)
+          : getPromptCachingConfig(effectiveProviderId, "mcp", { conversationId: conversationId || sessionId })
         const reasoningOptions = isChatGptWebProvider(effectiveProviderId)
           ? undefined
           : getReasoningEffortProviderOptions(effectiveProviderId)
@@ -1658,6 +1798,11 @@ export async function verifyCompletionWithFetch(
           reasoningOptions,
         )
         const { system, messages: convertedMessages } = convertMessages(transportMessages)
+        logPromptShapeDiagnostics(
+          promptCaching,
+          getPromptShapeDiagnostics(system, convertedMessages, undefined, conversationId || sessionId),
+          effectiveProviderId,
+        )
         if (generationId) {
           createLLMGeneration(sessionId || null, generationId, {
             name: "Verification Call",
@@ -1665,6 +1810,9 @@ export async function verifyCompletionWithFetch(
             modelParameters: {
               provider: effectiveProviderId,
               promptCaching: promptCaching?.strategy,
+              promptCachingEnabled: promptCaching?.enabled,
+              promptCachingCapability: promptCaching?.capability,
+              providerBaseUrlClass: promptCaching?.baseUrlClass,
               reasoningEffort: (reasoningOptions?.openai as any)?.reasoningEffort,
             },
             input: { system, messages: convertedMessages },
@@ -1694,6 +1842,7 @@ export async function verifyCompletionWithFetch(
               system,
               messages: convertedMessages,
               abortSignal: abortController.signal,
+              headers: promptCaching?.headers,
               providerOptions: mergedProviderOptions as any,
             })
             usage = result.usage as ExtendedUsage
