@@ -6,6 +6,7 @@ import {
   isProgressUpdateResponse,
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
+  sanitizeAssistantContentForToolCalls,
 } from "./llm-continuation-guards"
 
 describe("continuation guard helpers", () => {
@@ -243,6 +244,49 @@ describe("continuation guard helpers", () => {
   it("only classifies actual placeholder-style tool text as garbled", () => {
     expect(isGarbledToolCallText('[Calling tools: execute_command]')).toBe(true)
     expect(isGarbledToolCallText('The new empty field is at @e33 (nth=4). Let me add the next item.')).toBe(false)
+  })
+
+  it("flags bare top-level functions.<name>({...}) wrappers as garbled", () => {
+    // Real example from #401: model emitted plain-text function-call syntax alongside
+    // a structured mark_work_complete tool call.
+    expect(isGarbledToolCallText('functions.respond_to_user({"text":"All done."})')).toBe(true)
+    expect(isGarbledToolCallText('functions.execute_command({ "command": "ls" })')).toBe(true)
+    expect(isDeliverableResponseContent('functions.respond_to_user({"text":"All done."})')).toBe(false)
+    // Prose mentioning the word "functions" without the call+object-literal shape
+    // should not be flagged.
+    expect(isGarbledToolCallText('The available functions include respond_to_user and execute_command.')).toBe(false)
+  })
+
+  it("strips garbled tool-call-as-text content when structured tool calls are present", () => {
+    // Real example from #401: assistant emits a plain-text functions.respond_to_user
+    // wrapper alongside a structured mark_work_complete tool call. The plain text
+    // must not be persisted, or it replays back to the model as user-pasted text.
+    expect(
+      sanitizeAssistantContentForToolCalls(
+        'functions.respond_to_user({"text":"All done."})',
+        [{ name: "mark_work_complete", arguments: {} }],
+      ),
+    ).toBe("")
+    // Without structured tool calls, the content is preserved (it's the regular
+    // garbled-text-loop guard's job to detect that case via isGarbledToolCallText).
+    expect(
+      sanitizeAssistantContentForToolCalls(
+        'functions.respond_to_user({"text":"All done."})',
+        undefined,
+      ),
+    ).toBe('functions.respond_to_user({"text":"All done."})')
+    // Legitimate prose alongside tool calls is preserved.
+    expect(
+      sanitizeAssistantContentForToolCalls(
+        "Running the tests now.",
+        [{ name: "execute_command", arguments: {} }],
+      ),
+    ).toBe("Running the tests now.")
+    // Empty content passes through.
+    expect(
+      sanitizeAssistantContentForToolCalls("", [{ name: "execute_command", arguments: {} }]),
+    ).toBe("")
+    expect(sanitizeAssistantContentForToolCalls(undefined, undefined)).toBe("")
   })
 
   it("treats common sign-offs as deliverable content", () => {

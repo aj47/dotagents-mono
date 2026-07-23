@@ -70,6 +70,7 @@ import {
   normalizeMissingItemsList,
   normalizeVerificationResultForCompletion,
   resolveIterationLimitFinalContent,
+  sanitizeAssistantContentForToolCalls,
 } from "./llm-continuation-guards"
 import { buildVerificationMessagesFromAgentState } from "./llm-verification-replay"
 import { loadWorkingKnowledgeNotesForPrompt } from "./working-notes-runtime"
@@ -3168,8 +3169,15 @@ export async function processTranscriptWithAgentMode(
     const failedTools: string[] = []
 
     // Add assistant response with tool calls to conversation history BEFORE executing tools
-    // This ensures the tool call request is visible immediately in the UI
-    addMessage("assistant", llmResponse.content || "", llmResponse.toolCalls || [], undefined, undefined, displayOnlyMessageOptions)
+    // This ensures the tool call request is visible immediately in the UI.
+    // sanitizeAssistantContentForToolCalls drops garbled tool-call-as-text content
+    // (e.g. a plain "functions.respond_to_user({...})" wrapper) when structured tool
+    // calls are present, so it does not get replayed back to the model as user text.
+    const persistedAssistantContent = sanitizeAssistantContentForToolCalls(
+      llmResponse.content,
+      llmResponse.toolCalls,
+    )
+    addMessage("assistant", persistedAssistantContent, llmResponse.toolCalls || [], undefined, undefined, displayOnlyMessageOptions)
 
     // Emit progress update to show tool calls immediately
     emit({
