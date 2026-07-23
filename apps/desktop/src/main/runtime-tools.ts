@@ -21,6 +21,7 @@ import { promises as fs } from "fs"
 import { exec } from "child_process"
 import { promisify } from "util"
 import path from "path"
+import { maybeWrapWithRtk } from "./rtk"
 
 const execAsync = promisify(exec)
 
@@ -966,7 +967,10 @@ const toolHandlers: Record<string, ToolHandler> = {
         execOptions.timeout = timeout
       }
 
-      const { stdout, stderr } = await execAsync(effectiveCommand, execOptions)
+      const rtkWrap = await maybeWrapWithRtk(effectiveCommand)
+      const commandToRun = rtkWrap.command
+
+      const { stdout, stderr } = await execAsync(commandToRun, execOptions)
 
       // Truncate large outputs to prevent context bloat
       // Keep first 5K + last 5K chars so agent sees both beginning and end
@@ -999,6 +1003,7 @@ const toolHandlers: Record<string, ToolHandler> = {
               ...(normalizedCommandResult.normalizedPaths ? { normalizedPaths: normalizedCommandResult.normalizedPaths } : {}),
               stdout: truncatedStdout,
               stderr: stderr || "",
+              ...(rtkWrap.wrapped ? { rtkWrapped: true } : {}),
               ...(outputTruncated ? { outputTruncated: true, hint: "Output was truncated. Use head -n/tail -n/sed -n 'X,Yp' to read specific sections." } : {}),
             }, null, 2),
           },
