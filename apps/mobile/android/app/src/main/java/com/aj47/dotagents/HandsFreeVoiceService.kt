@@ -18,6 +18,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.speech.RecognitionPart
 import android.speech.RecognitionListener
@@ -32,6 +33,7 @@ import java.util.Locale
 class HandsFreeVoiceService : Service() {
   private val mainHandler = Handler(Looper.getMainLooper())
   private var speechRecognizer: SpeechRecognizer? = null
+  private var cpuWakeLock: PowerManager.WakeLock? = null
   private var captureEnabled = true
   private var listening = false
   private var language = DEFAULT_LANGUAGE
@@ -123,6 +125,7 @@ class HandsFreeVoiceService : Service() {
     activeService = this
     running = true
     ensureNotificationChannel()
+    acquireCpuWakeLock()
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -156,6 +159,7 @@ class HandsFreeVoiceService : Service() {
           return START_NOT_STICKY
         }
         startForegroundWithNotification()
+        acquireCpuWakeLock()
         HandsFreeAudioRouter.acquire(this, SESSION_ROUTE_REQUESTER)
         HandsFreeVoiceEvents.emit("service-started") {
           it.putString("language", language)
@@ -181,6 +185,7 @@ class HandsFreeVoiceService : Service() {
     releaseAllCuePlayers()
     HandsFreeAudioRouter.release(this, CAPTURE_ROUTE_REQUESTER)
     HandsFreeAudioRouter.release(this, SESSION_ROUTE_REQUESTER)
+    releaseCpuWakeLock()
     destroyRecognizer()
     running = false
     if (activeService === this) {
@@ -225,6 +230,35 @@ class HandsFreeVoiceService : Service() {
     } else {
       Log.i(TAG, "service startForeground sdk=${Build.VERSION.SDK_INT}")
       startForeground(NOTIFICATION_ID, notification)
+    }
+  }
+
+  /**
+   * Keep the CPU awake without keeping the display awake. Samsung can leave
+   * the foreground service alive after locking while suspending the audio
+   * recognizer's processing unless the service owns a partial wake lock.
+   */
+  private fun acquireCpuWakeLock() {
+    if (cpuWakeLock?.isHeld == true) return
+    val powerManager = getSystemService(PowerManager::class.java) ?: return
+    cpuWakeLock = powerManager.newWakeLock(
+      PowerManager.PARTIAL_WAKE_LOCK,
+      "$packageName:HandsFreeVoiceService",
+    ).apply {
+      setReferenceCounted(false)
+      acquire()
+    }
+    Log.i(TAG, "cpu wake lock acquired interactive=${powerManager.isInteractive}")
+  }
+
+  private fun releaseCpuWakeLock() {
+    try {
+      cpuWakeLock?.let { if (it.isHeld) it.release() }
+    } catch (error: Throwable) {
+      Log.w(TAG, "cpu wake lock release failed", error)
+    } finally {
+      cpuWakeLock = null
+      Log.i(TAG, "cpu wake lock released")
     }
   }
 
@@ -1180,6 +1214,11 @@ class HandsFreeVoiceService : Service() {
   }
 
   private fun shouldUseSegmentedRecognizerSession(): Boolean {
+    // Samsung's Android speech service advertises segmented-session support,
+    // but on lock screen it frequently emits empty segment results and then
+    // cancels the session with a no-input beep. Keep the long-lived standard
+    // session for Samsung devices so hands-free capture can recover cleanly.
+    if (Build.MANUFACTURER.equals("samsung", ignoreCase = true)) return false
     return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
       SystemClock.elapsedRealtime() >= standardRecognizerModeUntilElapsed
   }
