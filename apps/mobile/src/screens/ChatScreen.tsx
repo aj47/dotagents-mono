@@ -2516,6 +2516,9 @@ export default function ChatScreen({ route, navigation }: any) {
     if (handsFreePhaseRef.current !== 'processing' || !text) return false;
     return !!matchVoiceCommand(text);
   }, []);
+  const isHandsFreeVoiceCommandTranscript = useCallback((text?: string) => (
+    !!text && !!matchVoiceCommand(text)
+  ), []);
   const isHandsFreeFinalizationEligibleNow = useCallback((payload?: {
     text?: string;
     finalSegmentText?: string;
@@ -2524,9 +2527,11 @@ export default function ChatScreen({ route, navigation }: any) {
     || handsFreePhaseRef.current === 'sleeping'
     || handsFreePhaseRef.current === 'waking'
     || handsFreePhaseRef.current === 'listening'
+    || isHandsFreeVoiceCommandTranscript(payload?.text)
+    || isHandsFreeVoiceCommandTranscript(payload?.finalSegmentText)
     || isProcessingVoiceCommandTranscript(payload?.text)
     || isProcessingVoiceCommandTranscript(payload?.finalSegmentText)
-  ), [isProcessingVoiceCommandTranscript]);
+  ), [isHandsFreeVoiceCommandTranscript, isProcessingVoiceCommandTranscript]);
   const isExactSleepingWakeTranscript = useCallback((text: string) => {
     if (!handsFreeRef.current || handsFreePhaseRef.current !== 'sleeping') {
       return false;
@@ -3296,7 +3301,10 @@ export default function ChatScreen({ route, navigation }: any) {
       console.info(
         `[DotAgentsHandsFreeJS] finalized source=${source} phase=${handsFreePhaseRef.current} textLength=${finalText.length}`,
       );
-    if (isHandsFreeTranscriptSuppressedNow()) {
+      const isVoiceCommandTranscript =
+        isHandsFreeVoiceCommandTranscript(finalText)
+        || isHandsFreeVoiceCommandTranscript(finalSegmentText);
+    if (isHandsFreeTranscriptSuppressedNow() && !isVoiceCommandTranscript) {
       if (handleHandsFreeTtsBargeInCommand(finalText, source === 'mentra' ? 'native' : source)) {
         return;
       }
@@ -3469,6 +3477,7 @@ export default function ChatScreen({ route, navigation }: any) {
     handsFreeSendPhrase,
     hasLiveAgentTurn,
     isHandsFreeFinalizationEligibleNow,
+    isHandsFreeVoiceCommandTranscript,
     isHandsFreeTranscriptSuppressedNow,
     isExactSleepingWakeTranscript,
     setPendingHandsFreeDraftValue,

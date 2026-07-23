@@ -110,6 +110,25 @@ describe('resolveHandsFreeUtterance', () => {
     expect(result.nextState.lastTranscript).toBe('tell me a joke');
   });
 
+  it('allows an explicit switch-agent command to wake control flow from sleep', () => {
+    const result = resolveHandsFreeUtterance({
+      state: createInitialHandsFreeState(),
+      transcript: 'switch agents',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 100,
+    });
+
+    expect(result.action).toEqual({
+      type: 'command',
+      command: 'switch-agent',
+      label: 'Switch agent',
+      remainder: '',
+    });
+    expect(result.nextState.phase).toBe('listening');
+    expect(result.nextState.awakeSince).toBe(100);
+  });
+
   it('sends direct foreground speech while sleeping when explicitly allowed', () => {
     const result = resolveHandsFreeUtterance({
       state: createInitialHandsFreeState(),
@@ -301,6 +320,23 @@ describe('resolveHandsFreeUtterance', () => {
       expect(result.action.command).toBe('stop');
     }
     expect(result.matchedCommand).toBe('stop');
+    expect(result.nextState.phase).toBe('speaking');
+  });
+
+  it('emits switch-agent controls while the assistant is speaking', () => {
+    const result = resolveHandsFreeUtterance({
+      state: { ...createInitialHandsFreeState(), phase: 'speaking', awakeSince: 100, resumePhase: 'listening' },
+      transcript: 'switch agents',
+      wakePhrase: 'hey dot agents',
+      sleepPhrase: 'go to sleep',
+      now: 285,
+    });
+
+    expect(result.action).toMatchObject({
+      type: 'command',
+      command: 'switch-agent',
+      remainder: '',
+    });
     expect(result.nextState.phase).toBe('speaking');
   });
 

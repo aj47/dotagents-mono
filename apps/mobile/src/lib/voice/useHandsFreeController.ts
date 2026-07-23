@@ -217,26 +217,32 @@ export function resolveHandsFreeUtterance({
   if (state.phase === 'sleeping') {
     const wakeMatch = matchWakePhrase(normalizedTranscript, wakePhrase);
     if (!wakeMatch.matched) {
+      // Keep ordinary dictation gated behind the wake phrase, but allow the
+      // explicit control vocabulary to operate from the sleeping state. This
+      // matters on a locked phone, where saying "switch agents" should open
+      // the agent handoff instead of being silently ignored.
+      const commandMatch = matchVoiceCommand(normalizedTranscript, voiceCommands);
+      if (commandMatch) {
+        const commandResolution = buildCommandResolution(commandMatch);
+        const shouldStaySleeping = commandMatch.command === 'stop';
+        return {
+          nextState: {
+            ...state,
+            phase: shouldStaySleeping ? 'sleeping' : 'listening',
+            resumePhase: null,
+            awakeSince: shouldStaySleeping ? state.awakeSince : state.awakeSince ?? now,
+            lastTranscript: normalizedTranscript,
+            lastError: null,
+            recognizerErrorCount: 0,
+          },
+          action: commandResolution.action,
+          matchedWake: false,
+          matchedSleep: false,
+          matchedCommand: commandResolution.matchedCommand,
+        };
+      }
+
       if (allowDirectSpeechWhileSleeping) {
-        const commandMatch = matchVoiceCommand(normalizedTranscript, voiceCommands);
-        if (commandMatch) {
-          const commandResolution = buildCommandResolution(commandMatch);
-          return {
-            nextState: {
-              ...state,
-              phase: commandResolution.convertedToSend ? 'processing' : state.phase,
-              resumePhase: commandResolution.convertedToSend ? 'listening' : state.resumePhase,
-              awakeSince: state.awakeSince ?? now,
-              lastTranscript: normalizedTranscript,
-              lastError: null,
-              recognizerErrorCount: 0,
-            },
-            action: commandResolution.action,
-            matchedWake: false,
-            matchedSleep: false,
-            matchedCommand: commandResolution.matchedCommand,
-          };
-        }
         return {
           nextState: {
             ...state,
