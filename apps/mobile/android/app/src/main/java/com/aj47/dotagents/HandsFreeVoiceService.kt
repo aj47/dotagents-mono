@@ -539,6 +539,12 @@ class HandsFreeVoiceService : Service() {
           speechStartedAt = now
           lastVoiceAt = now
           audio.reset()
+          // A new burst can begin while the previous remote STT result is still
+          // waiting on the native debounce. Hold that result until this burst
+          // has been transcribed so lock-mode speech does not submit early.
+          mainHandler.post {
+            holdDebouncedResult("remote-pcm-speech-started")
+          }
           Log.i(TAG, "raw PCM speech started rms=${rms.toInt()}")
         }
 
