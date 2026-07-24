@@ -4,7 +4,7 @@ import path from "path"
 import { createHash } from "crypto"
 import { Writable } from "stream"
 import { pipeline } from "stream/promises"
-import { conversationsFolder } from "./config"
+import { configStore, conversationsFolder } from "./config"
 import { logApp } from "./debug"
 import {
   Conversation,
@@ -17,7 +17,11 @@ import {
   LoadedConversation,
   TitleSource,
 } from "../shared/types"
-import { summarizeContent } from "./context-budget"
+import {
+  estimateTokensFromMessages,
+  getActiveContextTargetTokens,
+  summarizeContent,
+} from "./context-budget"
 import { extractHighSignalFactsFromConversationMessages } from "./conversation-context-builder"
 import { assertSafeConversationId, validateAndSanitizeConversationId } from "./conversation-id"
 import {
@@ -48,6 +52,39 @@ const COMPACTION_MESSAGE_THRESHOLD = 20
 // Number of recent messages to keep intact after compaction
 const COMPACTION_KEEP_LAST = 10
 
+function getConfiguredConversationCompactionMessageThreshold(): number {
+  const configured = configStore.get()?.mcpConversationCompactionMessageThreshold
+  return typeof configured === "number" &&
+    Number.isFinite(configured) &&
+    configured >= 2
+    ? Math.floor(configured)
+    : COMPACTION_MESSAGE_THRESHOLD
+}
+
+function getConfiguredConversationCompactionTokenThreshold(): number | undefined {
+  const configured = configStore.get()?.mcpConversationCompactionTokenThreshold
+  return typeof configured === "number" &&
+    Number.isFinite(configured) &&
+    configured >= 1000
+    ? Math.floor(configured)
+    : undefined
+}
+
+async function getConversationCompactionTokenThreshold(): Promise<number | undefined> {
+  const configured = getConfiguredConversationCompactionTokenThreshold()
+  if (configured) return configured
+
+  try {
+    return await getActiveContextTargetTokens()
+  } catch (error) {
+    logApp(
+      "[conversationService] failed to resolve context target tokens for compaction:",
+      error,
+    )
+    return undefined
+  }
+}
+
 // Debounce delay for writing the conversation index to disk (ms)
 const INDEX_WRITE_DEBOUNCE_MS = 500
 // On parse failures, try a bounded number of prefix candidates to recover a valid JSON object.
@@ -62,6 +99,7 @@ const MAX_CONVERSATION_HISTORY_LAST_MESSAGE_CHARS = 500
 const MAX_CONVERSATION_HISTORY_PREVIEW_CHARS = 200
 const MAX_CONVERSATION_HISTORY_SEARCH_TEXT_CHARS = 8000
 const COMPACTION_EXTRACTED_FACT_LIMIT = 8
+const BACKGROUND_COMPACTION_DELAY_MS = 5000
 
 export interface RepeatTaskConversationBackfillSource {
   taskId: string
@@ -123,6 +161,8 @@ export class ConversationService {
   private indexMutationQueue: Promise<void> = Promise.resolve()
   // Flag to block new per-conversation mutations during deleteAllConversations.
   private deletingAll = false
+  // Dedupes background compaction so repeated live runs do not spawn redundant cleanup work.
+  private scheduledCompactionConversationIds = new Set<string>()
 
   static getInstance(): ConversationService {
     if (!ConversationService.instance) {
@@ -1271,10 +1311,17 @@ export class ConversationService {
     }
   }
 
-  private async persistCompactionCheckpointIfMissing(
+  private getConversationCompactionRevision(conversation: Conversation): string {
+    const fullMessageHistory = this.getStoredRawMessages(conversation)
+    return createHash("sha256")
+      .update(JSON.stringify(fullMessageHistory))
+      .digest("hex")
+  }
+
+  private buildCompactionCheckpointIfMissing(
     conversation: Conversation,
     fullMessageHistory: ConversationMessage[],
-  ): Promise<Conversation> {
+  ): Conversation {
     if (this.hasPersistedCompactionCheckpoint(conversation.compaction)) {
       return conversation
     }
@@ -1312,14 +1359,7 @@ export class ConversationService {
       ),
       updatedAt: conversation.updatedAt,
     }
-
-    try {
-      await this.saveConversation(compactedConversation, true)
-      return compactedConversation
-    } catch (error) {
-      logApp(`[conversationService] compactOnLoad: failed to persist checkpoint backfill, returning original:`, error)
-      return conversation
-    }
+    return compactedConversation
   }
 
 
@@ -1457,28 +1497,94 @@ export class ConversationService {
   }
 
   /**
-   * Load a conversation and compact it if it exceeds the message threshold.
-   * Use this when loading conversations for continued use (e.g., in agent mode).
-   * The compaction is persisted to disk, so subsequent loads will be faster.
+   * Load a conversation for a live agent run.
    *
-   * @param conversationId - The ID of the conversation to load
-   * @param sessionId - Optional session ID for cancellation support during summarization
-   * @returns The conversation (possibly compacted), or null if not found
+   * This must stay cheap: no LLM summarization, no durable compaction, and no
+   * cleanup side effects that can make a user's follow-up wait on maintenance.
    */
-  async loadConversationWithCompaction(conversationId: string, sessionId?: string): Promise<Conversation | null> {
-    const conversation = await this.loadConversation(conversationId)
+  async loadConversationForRun(conversationId: string): Promise<LoadedConversation | null> {
+    return this.loadConversation(conversationId)
+  }
+
+  /**
+   * Schedule best-effort conversation cleanup outside the live prompt path.
+   */
+  scheduleConversationCompaction(conversationId: string, reason: string = "background"): void {
+    if (this.scheduledCompactionConversationIds.has(conversationId)) {
+      return
+    }
+
+    this.scheduledCompactionConversationIds.add(conversationId)
+    setTimeout(() => {
+      void this.compactConversationNow(conversationId, { reason })
+        .catch((error) => {
+          logApp(`[conversationService] background compaction failed for ${conversationId}:`, error)
+        })
+        .finally(() => {
+          this.scheduledCompactionConversationIds.delete(conversationId)
+        })
+    }, BACKGROUND_COMPACTION_DELAY_MS)
+  }
+
+  /**
+   * Explicit maintenance path for durable conversation compaction.
+   *
+   * Do not call this from the pre-response live prompt path; use
+   * loadConversationForRun() there and schedule this after completion/idle.
+   */
+  async compactConversationNow(
+    conversationId: string,
+    options: { sessionId?: string; reason?: string } = {},
+  ): Promise<Conversation | null> {
+    const conversation = await this.enqueueConversationMutation(conversationId, async () =>
+      this.loadConversationFromDisk(conversationId)
+    )
     if (!conversation) {
       return null
     }
 
-    // Compact if needed (this will save to disk if compaction occurs)
-    // Best-effort: if compaction fails, return the original conversation
+    const sourceRevision = this.getConversationCompactionRevision(conversation)
+    let compactedConversation: Conversation
     try {
-      return await this.compactOnLoad(conversation, sessionId)
+      compactedConversation = await this.compactConversationSnapshot(conversation, options.sessionId)
     } catch (error) {
-      logApp(`Failed to compact conversation ${conversationId}, returning original: ${error}`)
+      logApp(`[conversationService] compactConversationNow failed for ${conversationId}, returning original:`, error)
       return conversation
     }
+
+    if (compactedConversation === conversation) {
+      return conversation
+    }
+
+    const preserveTimestamp = compactedConversation.updatedAt === conversation.updatedAt
+    return this.enqueueConversationMutation(conversationId, async () => {
+      const latestConversation = await this.loadConversationFromDisk(conversationId)
+      if (!latestConversation) {
+        return null
+      }
+
+      const latestRevision = this.getConversationCompactionRevision(latestConversation)
+      if (latestRevision !== sourceRevision) {
+        logApp(`[conversationService] compactConversationNow: skipped stale compaction for ${conversationId}`)
+        return latestConversation
+      }
+
+      try {
+        await this.saveConversationUnlocked(compactedConversation, preserveTimestamp)
+        return compactedConversation
+      } catch (error) {
+        logApp(`[conversationService] compactConversationNow: failed to persist, returning original:`, error)
+        return latestConversation
+      }
+    })
+  }
+
+  /**
+   * Backwards-compatible explicit compaction entry point.
+   * Prefer loadConversationForRun() for live agent prompts.
+   */
+  async loadConversationWithCompaction(conversationId: string, sessionId?: string): Promise<Conversation | null> {
+    return this.compactConversationNow(conversationId, { sessionId, reason: "explicit-load" })
   }
 
   async getConversationHistory(): Promise<ConversationHistoryItem[]> {
@@ -1787,10 +1893,23 @@ export class ConversationService {
    * @param sessionId - Optional session ID for cancellation support during summarization
    * @returns The compacted conversation
    */
-  private async compactOnLoad(conversation: Conversation, sessionId?: string): Promise<Conversation> {
+  private async compactConversationSnapshot(conversation: Conversation, sessionId?: string): Promise<Conversation> {
     const fullMessageHistory = this.getStoredRawMessages(conversation)
     const messageCount = fullMessageHistory.length
-    if (messageCount <= COMPACTION_MESSAGE_THRESHOLD) {
+    const messageThreshold = getConfiguredConversationCompactionMessageThreshold()
+    const tokenThreshold = await getConversationCompactionTokenThreshold()
+    const tokenCount = tokenThreshold
+      ? estimateTokensFromMessages(
+        fullMessageHistory.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+      )
+      : 0
+    if (
+      messageCount <= messageThreshold &&
+      (!tokenThreshold || tokenCount <= tokenThreshold)
+    ) {
       return conversation
     }
 
@@ -1802,7 +1921,7 @@ export class ConversationService {
       this.getRepresentedMessageCount(conversation) === messageCount &&
       activeNonSummaryCount <= COMPACTION_KEEP_LAST
     ) {
-      return this.persistCompactionCheckpointIfMissing(conversation, fullMessageHistory)
+      return this.buildCompactionCheckpointIfMissing(conversation, fullMessageHistory)
     }
 
     // Calculate how many messages to summarize
@@ -1813,7 +1932,7 @@ export class ConversationService {
       return conversation
     }
 
-    logApp(`[conversationService] compactOnLoad: compacting ${messagesToSummarize.length} messages for ${conversation.id}`)
+    logApp(`[conversationService] compactConversationNow: compacting ${messagesToSummarize.length} messages for ${conversation.id}`)
 
     // Build a summary of the older messages
     const summaryInput = messagesToSummarize
@@ -1856,11 +1975,11 @@ export class ConversationService {
       // Detect this by checking if the result equals or contains the full prompt (failure case).
       // A successful summary should be significantly shorter than the prompt.
       if (summaryContent === summarizationPrompt || summaryContent.length >= summarizationPrompt.length * 0.9) {
-        logApp(`[conversationService] compactOnLoad: summarization likely failed (output too similar to input), keeping original`)
+        logApp(`[conversationService] compactConversationNow: summarization likely failed (output too similar to input), keeping original`)
         return conversation
       }
     } catch (error) {
-      logApp(`[conversationService] compactOnLoad: summarization failed, keeping original:`, error)
+      logApp(`[conversationService] compactConversationNow: summarization failed, keeping original:`, error)
       return conversation
     }
 
@@ -1890,17 +2009,7 @@ export class ConversationService {
       updatedAt: Date.now(),
     }
 
-    // Persist the compacted conversation
-    // Note: saveConversation() already calls updateConversationIndex(), so no need to call it separately
-    // If save fails, return the original conversation (best-effort)
-    try {
-      await this.saveConversation(compactedConversation)
-    } catch (error) {
-      logApp(`[conversationService] compactOnLoad: failed to persist, returning original:`, error)
-      return conversation
-    }
-
-    logApp(`[conversationService] compactOnLoad: compacted ${messagesToSummarize.length} messages into summary, new count: ${compactedConversation.messages.length}`)
+    logApp(`[conversationService] compactConversationNow: compacted ${messagesToSummarize.length} messages into summary, new count: ${compactedConversation.messages.length}`)
     return compactedConversation
   }
 

@@ -483,6 +483,14 @@ async function getMaxContextTokens(providerId: string, model: string): Promise<n
   return result
 }
 
+export async function getActiveContextTargetTokens(): Promise<number> {
+  const config = configStore.get()
+  const targetRatio = config.mcpContextTargetRatio ?? 0.4
+  const { providerId, model } = getProviderAndModel()
+  const maxTokens = await getMaxContextTokens(providerId, model)
+  return Math.floor(maxTokens * targetRatio)
+}
+
 export function estimateTokensFromMessages(messages: LLMMessage[]): number {
   // Rough estimate: 4 chars ≈ 1 token
   const totalChars = messages.reduce((sum, m) => {
