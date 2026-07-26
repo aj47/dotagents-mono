@@ -7,7 +7,10 @@ const RAW_TOOL_TRANSCRIPT_REGEX = /^\[[a-z0-9_:-]+\]\s*(?:ERROR:\s*)?(?:\{[\s\S]
 // syntax as plain text content instead of structured tool calls. This happens with
 // long conversations when the model starts outputting OpenAI-internal formats like
 // multi_tool_use.parallel or functions.* as text with garbled Unicode.
-const GARBLED_TOOL_CALL_TEXT_REGEX = /(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.|recipient_name.*functions\.|\[Calling tools?:.*\].*(?:to=|json\s*\{))/i
+// The last alternative also catches bare top-level wrappers like
+// `functions.respond_to_user({ ... })` that show up without a `to=` prefix or
+// `[Calling tools: …]` placeholder.
+const GARBLED_TOOL_CALL_TEXT_REGEX = /(?:multi_tool_use[.\s]|to=(?:multi_tool_use|functions)\.|recipient_name.*functions\.|\[Calling tools?:.*\].*(?:to=|json\s*\{)|\bfunctions\.[a-zA-Z_][a-zA-Z0-9_]*\s*\(\s*\{)/i
 const PROGRESS_UPDATE_REGEX = /(?:^|[.!?]\s+)(?:let me|i'?ll|i will|i'm going to|now i'?ll|next i'?ll|working on it|still working on it|continuing|searching now)\b/i
 const NEXT_STEP_PROGRESS_REGEX = /(?:^|[.!?]\s+)(?:next(?:\s+item)?\s*(?::|[-—]))/i
 const NON_PROGRESS_SIGNOFF_REGEX = /(?:^|[.!?]\s+)(?:let me know if you need(?: anything else| more help| anything more)?|feel free to reach out if you need anything else)\b/i
@@ -142,6 +145,23 @@ export function isGarbledToolCallText(content?: string): boolean {
   const trimmed = typeof content === "string" ? content.trim() : ""
   if (!trimmed) return false
   return TOOL_CALL_PLACEHOLDER_REGEX.test(trimmed) || GARBLED_TOOL_CALL_TEXT_REGEX.test(trimmed)
+}
+
+// When the model emits real structured tool calls but ALSO emits garbled
+// tool-call-as-text in `content` (e.g. a plain "functions.respond_to_user({…})"
+// wrapper next to the structured call), persisting that text would replay it
+// back to the model as if the user had pasted it. Strip it in that case.
+// Plain prose alongside tool calls is allowed through unchanged.
+export function sanitizeAssistantContentForToolCalls(
+  content?: string,
+  toolCalls?: Array<{ name?: string; arguments?: unknown }>,
+): string {
+  const raw = typeof content === "string" ? content : ""
+  const hasStructuredToolCalls = Array.isArray(toolCalls) && toolCalls.length > 0
+  if (hasStructuredToolCalls && isGarbledToolCallText(raw)) {
+    return ""
+  }
+  return raw
 }
 
 export function isDeliverableResponseContent(content?: string): boolean {
