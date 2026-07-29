@@ -22,6 +22,7 @@
     "test:continue-replay": "vitest run src/main/llm.continue-replay.live.test.ts",
     "test:agent-loop-live": "npx tsx scripts/run-agent-loop-live-test.ts",
     "test:agent-loop-live:strict": "npx tsx scripts/run-agent-loop-live-test.ts --strict",
+    "test:e2e:agent-loop-long": "npx tsx scripts/run-agent-loop-long-e2e.ts",
     "test:autoresearch-replay": "vitest run src/main/llm.respond-to-user-history.test.ts -t AutoResearch",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",

@@ -38,8 +38,10 @@ import {
 /**
  * Path to the agent profiles storage file.
  */
+const userDataFolder = process.env.DOTAGENTS_USER_DATA_DIR?.trim() || app.getPath("userData")
+
 export const agentProfilesPath = path.join(
-  app.getPath("userData"),
+  userDataFolder,
   "agent-profiles.json"
 )
 
@@ -47,13 +49,13 @@ export const agentProfilesPath = path.join(
  * Path to the agent profile conversations storage file.
  */
 export const agentProfileConversationsPath = path.join(
-  app.getPath("userData"),
+  userDataFolder,
   "agent-profile-conversations.json"
 )
 
 // Legacy paths for migration
-const legacyProfilesPath = path.join(app.getPath("userData"), "profiles.json")
-const legacyPersonasPath = path.join(app.getPath("userData"), "personas.json")
+const legacyProfilesPath = path.join(userDataFolder, "profiles.json")
+const legacyPersonasPath = path.join(userDataFolder, "personas.json")
 
 // ============================================================================
 // Validation Helpers (ported from the legacy profile service)

@@ -24,3 +24,32 @@ enabled by default. Set `LIVE_AGENT_LOOP_LLM_JUDGE=0` to disable that extra judg
 call. Use `pnpm --filter @dotagents/desktop run test:agent-loop-live:strict` or
 set `LIVE_AGENT_LOOP_LLM_JUDGE_REQUIRED=1` to make a failed judge verdict fail
 the live test rather than only recording `llmJudge*` metric fields.
+
+## Long Electron Agent-Loop E2E
+
+The long real-Electron suite is intentionally opt-in because it launches the
+desktop app, uses real ChatGPT Web/Codex auth, starts three concurrent sessions,
+and waits for delayed sandbox MCP tools. It is not part of normal `pnpm test`,
+`pnpm typecheck`, or PR CI.
+
+Prerequisites:
+
+- A valid Codex ChatGPT auth file at `$CODEX_HOME/auth.json` or `~/.codex/auth.json`.
+- No existing desktop dev process using the Electron/Vite dev ports.
+- Network access to ChatGPT Web/Codex.
+
+Run:
+
+```bash
+LONG_AGENT_LOOP_E2E=1 \
+  pnpm --filter @dotagents/desktop run test:e2e:agent-loop-long
+```
+
+Artifacts are written under `apps/desktop/tmp/e2e-agent-loop/<run-id>/`,
+including Electron logs, sandbox MCP tool-call JSONL, renderer CDP metrics/trace
+files from `scripts/renderer-perf-recorder.ts`, runner heartbeat metrics, and
+`summary.json`.
+
+Expected runtime is a few minutes. Each sandbox tool waits about 12.5 seconds,
+and each of the three sessions must execute at least five distinct sandbox tool
+calls before the final audit receipt can be returned.
