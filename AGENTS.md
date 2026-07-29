@@ -1,73 +1,39 @@
-# agents.md
+# AGENTS.md
 
-Concise gotchas for AI coding agents working in this repo.
+Gotchas for AI coding agents in this repo. Inspect nearby files for subsystem-specific details.
 
-## Core gotchas
+## Core
 
-- **Use `pnpm` only.** This repo uses `pnpm-lock.yaml`; do not use npm or yarn.
-- **If you change `packages/shared`, run `pnpm build:shared` before `pnpm dev`.**
-- **Prefer existing patterns over new abstractions.** This codebase has a lot of app-specific wiring.
-- **This is a greenfield project.** Do not preserve backwards compatibility unless explicitly requested.
-- **Avoid circular imports.** Check dependency direction before adding imports, especially around main-process services and tool code.
+- Use `pnpm` only; this repo has `pnpm-lock.yaml`, not npm/yarn locks.
+- If you change `packages/shared`, run `pnpm build:shared` before `pnpm dev`.
+- Prefer existing app-specific wiring over new abstractions, and check dependency direction before adding imports to avoid cycles.
+- This is a greenfield project; do not preserve backwards compatibility unless explicitly requested.
 
-## Imports and process boundaries
+## Boundaries
 
-- **Main and renderer are separate TypeScript builds.** Do not treat them as one runtime.
-- **The desktop app is Electron-first, not a normal website.** It has a renderer bundle, but desktop features depend on Electron/main-process APIs, so do not assume changes can be validated in a plain browser.
-- **Renderer must not import from `src/main/`.** Move shared code to `apps/desktop/src/shared/` or `packages/shared/` if both sides need it.
-- **Aliases matter:**
-  - renderer: `@renderer/*` or `~/*`
-  - main + renderer shared desktop code: `@shared/*`
-- **Do not add ugly deep relative imports** when an existing alias already fits.
+- Main and renderer are separate TypeScript builds. Desktop is Electron-first, so renderer changes are not fully validated by a plain browser.
+- Renderer must not import from `src/main/`. Move shared code to `apps/desktop/src/shared/` or `packages/shared/`.
+- Use existing aliases instead of deep relatives: renderer `@renderer/*` or `~/*`; desktop shared `@shared/*`.
+- Desktop-only shared types live in `apps/desktop/src/shared/types.ts`; cross-app/package types live in `packages/shared/src/types.ts`; avoid legacy types except in migration code.
+- Main-process services usually use exported singletons. Use `agentSessionStateManager` for session state and clean up in `finally`.
+- Mobile UI can often be debugged with Expo web, but native-only features still need native/dev builds.
 
-## Debugging / local dev gotchas
+## Product/UI
 
-- **For mobile debugging, Expo web is available.** You can often debug mobile UI/logic quickly in the browser before switching to a device/simulator.
-- **Use `pnpm --filter @dotagents/mobile web`** to run the mobile app with Expo web.
-- **Do not confuse Expo web support with full native parity.** Some native-only features still require `expo run:ios` / `expo run:android` or a development build.
+- Say “agent”, not “persona”; there are no end-user profiles, only config / `.agents` settings.
+- Every multiline UI surface should collapse to one line. Render readable JSON inline; collapse logs, payloads, and tool results by default when they exceed 2 lines.
+- Tool-result UI should stay compact and dependency-light; built-in tool definition schemas should not create circular imports.
 
-## Types
+## Config and Tooling
 
-- **Desktop-only shared types belong in `apps/desktop/src/shared/types.ts`.**
-- **Cross-app/package types belong in `packages/shared/src/types.ts`.**
-- **Legacy types still exist for migration.** Do not use them for new work unless you are touching migration code.
+- `.agents` is layered: global `~/.agents/` plus optional workspace `.agents/`; workspace wins on conflicts.
+- Config merge is shallow by key, while agents/tasks/skills/memories merge by ID. Frontmatter is simple `key: value`, not full YAML.
+- Do not hardcode sanitized MCP tool names; internal mapping handles provider-safe renaming.
 
-## Naming and concepts
+## Electron
 
-- **Say “agent”, not “persona”.** Use `agent` in user-facing copy, comments, and new code.
-- **There are no user profiles in the end-user model.** Global settings live in config / `.agents` files.
+- Use `WINDOWS.get(...)` for window lookup and null-check panel access; the panel window is special-cased.
 
-## Services and state
+## Commands
 
-- **Main-process services typically use the singleton pattern.** Reuse the exported singleton; do not `new` service instances ad hoc.
-- **Use `agentSessionStateManager` for session state.** Avoid writing new logic against raw global `state.*` flags.
-- **Always clean up session state in `finally` paths** to avoid leaks.
-
-## `.agents` config gotchas
-
-- **`.agents` is layered:** global `~/.agents/` plus optional workspace `.agents/`; workspace wins on conflicts.
-- **Config merge is shallow by key.** Be careful when changing nested config objects.
-- **Agents / tasks / skills / memories merge by ID.** Matching workspace IDs override global ones.
-- **Frontmatter is simple `key: value`, not full YAML.** Don’t assume YAML features are supported.
-
-## MCP / tooling gotchas
-
-- **Do not hardcode sanitized MCP tool names.** Internal mapping handles provider-safe renaming.
-- **Built-in tool definition schemas should stay dependency-light** to avoid circular import problems.
-- **Tool-result UI should stay compact.** Render JSON values inline where readable, and make any tool/result payload that would take more than 2 lines collapsible by default.
-
-## Window / Electron gotchas
-
-- **Use `WINDOWS.get(...)` for window lookup.** Do not assume the panel window exists.
-- **Null-check panel window access.** Panel-specific resize/behavior is special-cased.
-
-## Practical commands
-
-- Dev: `pnpm dev`
-- Shared package only: `pnpm build:shared`
-- Mobile (Expo web): `pnpm --filter @dotagents/mobile web`
-- Tests: `pnpm test`
-- Typecheck: `pnpm typecheck`
-- Lint: `pnpm lint`
-
-If you need a step-by-step implementation guide for a subsystem, inspect the nearby files first instead of expanding this document.
+Dev: `pnpm dev`; shared: `pnpm build:shared`; mobile web: `pnpm --filter @dotagents/mobile web`; checks: `pnpm test`, `pnpm typecheck`, `pnpm lint`.
