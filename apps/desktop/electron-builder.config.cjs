@@ -137,6 +137,11 @@ module.exports = {
         filter: ["**/*"]
       },
       {
+        from: "resources/bin/rtk.exe",
+        to: "bin/rtk.exe",
+        filter: ["**/*"]
+      },
+      {
         from: "build/icon.ico",
         to: "icon.ico"
       },
@@ -165,6 +170,7 @@ module.exports = {
   mac: {
     binaries: [
       "resources/bin/dotagents-rs",
+      "resources/bin/rtk",
     ],
     extraResources: [
       {
@@ -332,6 +338,11 @@ module.exports = {
       {
         from: "resources/bin/dotagents-rs",
         to: "bin/dotagents-rs",
+        filter: ["**/*"]
+      },
+      {
+        from: "resources/bin/rtk",
+        to: "bin/rtk",
         filter: ["**/*"]
       },
       {
