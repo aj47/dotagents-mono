@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build-windows:
     name: Build Windows desktop
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 60
     env:
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}\.cache\electron-builder
