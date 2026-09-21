@@ -5,7 +5,7 @@ sidebar_label: "The .agents Protocol"
 
 # The .agents Protocol
 
-The `.agents/` directory is an open standard for agent configuration. Define your skills, knowledge notes, and commands once, and they work across DotAgents, Claude Code, Cursor, Codex, and every tool adopting the protocol.
+The `.agents/` directory is an open standard for agent configuration. Define your skills, knowledge concepts, and commands once, and they work across DotAgents, Claude Code, Cursor, Codex, and every tool adopting the protocol.
 
 **Protocol first, product second.**
 
@@ -15,7 +15,7 @@ The `.agents/` directory is an open standard for agent configuration. Define you
 
 AI agents are proliferating across tools — coding assistants, voice interfaces, automation platforms. But each tool locks agent configuration into its own format. The `.agents` protocol solves this by providing a shared, file-based standard that any tool can read.
 
-Your agents, skills, and knowledge notes become **portable assets** that travel with your projects.
+Your agents, skills, and knowledge concepts become **portable assets** that travel with your projects.
 
 ## Directory Structure
 
@@ -39,10 +39,13 @@ Your agents, skills, and knowledge notes become **portable assets** that travel 
 │   └── <skill-id>/
 │       └── skill.md         # Skill definition and instructions
 ├── knowledge/
+│   ├── index.md                    # Bundle listing (OKF §3.1, §8, §12)
+│   ├── log.md                      # Update history (OKF §3.1, §9)
+│   ├── references/                 # Non-markdown assets (OKF §6.3)
+│   │   ├── diagram.png
+│   │   └── db-schema.pdf
 │   └── project-architecture/
-│       ├── project-architecture.md  # Canonical note file
-│       ├── diagram.png              # Note-local asset
-│       └── db-schema.pdf            # Note-local asset
+│       └── project-architecture.md  # Concept document (OKF §4)
 └── .backups/                 # Auto-rotated timestamped backups
 ```
 
@@ -55,7 +58,7 @@ The `.agents` protocol uses a **two-layer** configuration system:
 - Canonical source of truth for your global agent configuration
 - Created automatically on first app launch
 - Shared across all workspaces and projects
-- Stores global agents, skills, and knowledge notes
+- Stores global agents, skills, and knowledge concepts
 
 ### Workspace Layer (`./.agents/`)
 
@@ -71,11 +74,11 @@ Final Config = Global Config + Workspace Config
                               (workspace wins on conflicts)
 ```
 
-Agents, tasks, skills, and notes merge by ID — workspace versions override global versions with the same ID. JSON config files are shallow-merged by key, so avoid assuming nested objects merge deeply.
+Agents, tasks, skills, and concepts merge by ID — workspace versions override global versions with the same ID. JSON config files are shallow-merged by key, so avoid assuming nested objects merge deeply.
 
 ## File Formats
 
-Markdown files in `.agents/` use simple `key: value` frontmatter. It is **not full YAML**.
+Markdown files in `.agents/` use simple `key: value` frontmatter. It is **not full YAML** — with one exception: knowledge concepts follow the [OKF v0.2 spec](https://github.com/GoogleCloudPlatform/open-knowledge-format), whose trust/provenance fields (`generated`, `verified`, `sources`, etc.) may use nested YAML structures as OKF defines them.
 
 ### Agents (`agent.md`)
 
@@ -122,27 +125,28 @@ source: local
 This skill enables working with Word documents...
 ```
 
-### Notes (`.agents/knowledge/<slug>/<slug>.md`)
+### Concepts (`.agents/knowledge/<slug>/<slug>.md`)
 
-Notes are the canonical markdown knowledge artifacts in `.agents/knowledge/`. The small runtime-injected subset are **working notes**, selected with `context: auto`.
+`.agents/knowledge/` is the home for [OKF (Open Knowledge Format)](https://github.com/GoogleCloudPlatform/open-knowledge-format) v0.2 knowledge bundles. The artifacts in a bundle are **concepts** — markdown documents with YAML frontmatter, carrying `type`, the single required OKF field.
 
 ```markdown
 ---
-kind: note
-id: project-architecture
+type: Reference
 title: Project Architecture
+description: Service-oriented Electron app with layered .agents config.
 context: auto
-updatedAt: 1234567890
-tags: architecture, project, context
-summary: Service-oriented Electron app with layered .agents config.
+generated: { by: human:you, at: 2026-09-21T02:00:00Z }
+tags: [architecture, project, context]
 ---
 
 ## Details
 
-Additional notes and context...
+Additional concept content...
 ```
 
-Most notes should use `context: search-only`. Reserve `context: auto` for a tiny, curated set of high-signal working notes.
+`context: auto | search-only` is the dotagents-defined runtime-injection semantic, expressed as an OKF extension key. Most concepts should use `context: search-only`. Reserve `context: auto` for a tiny, curated set of high-signal working concepts.
+
+See [Knowledge & Concepts](/agents/knowledge-notes) for the full format, the `references/` asset convention, and the field mappings.
 
 ### Tasks (`.agents/tasks/<task-id>/task.md`)
 
@@ -165,15 +169,9 @@ Draft today's execution plan, write it to `~/.agents/tasks/reviewed-daily-plan/l
 
 Use [Repeat Tasks](/agents/repeat-tasks) for the full task format, scheduler fields, same-session behavior, and critique-pass design guidance.
 
-### Note-Local Assets
+### Concept Assets (`references/`)
 
-Notes can include related files in the same folder:
-
-- Images like diagrams or screenshots
-- Documents like PDFs or design notes
-- Any other supporting assets needed with the note
-
-No fixed `assets/` subfolder is required.
+Non-markdown assets follow OKF's `references/` convention (§6.3): the file is mirrored into the bundle under `references/`, and a concept points at it via `resource:` (the underlying asset the concept describes) or `sources[].resource` (provenance). The concept body carries the curated knowledge; the asset is the evidence.
 
 ### JSON Configuration Files
 
@@ -209,7 +207,7 @@ The `.agents/` directory is designed to work across AI tools:
 | Tool | Support |
 |------|---------|
 | **DotAgents** | Full support (native) |
-| **Claude Code** | Skills and knowledge notes |
+| **Claude Code** | Skills and knowledge concepts |
 | **Cursor** | Skills (via `.cursor/` compatibility) |
 | **Codex** | Skills and agent configuration |
 | **OpenCode** | Skills support |
@@ -222,4 +220,4 @@ Skills and markdown-based `.agents` content are designed to stay portable across
 
 - **[Protocol Ecosystem](protocol-ecosystem)** — How MCP, ACP, and Skills interoperate
 - **[Skills](/agents/skills)** — Create and manage agent skills
-- **[Knowledge & Notes](/agents/knowledge-notes)** — Durable agent knowledge
+- **[Knowledge & Concepts](/agents/knowledge-notes)** — Durable agent knowledge

@@ -1,50 +1,52 @@
 ---
 sidebar_position: 3
-sidebar_label: "Knowledge & Notes"
+sidebar_label: "Knowledge & Concepts"
 ---
 
-# Knowledge & Notes
+# Knowledge & Concepts
 
-Knowledge gives your agents durable, local context across sessions. In the `.agents` protocol, the mixed-content container is `knowledge`, markdown artifacts are `notes`, and the small runtime-injected subset are `working notes`.
+Knowledge gives your agents durable, local context across sessions. `.agents/knowledge/` is the home for [OKF (Open Knowledge Format)](https://github.com/GoogleCloudPlatform/open-knowledge-format) v0.2 knowledge bundles — the agreed-upon standard for representing knowledge as markdown + frontmatter. The `.agents` protocol doesn't invent its own knowledge format; it tells producers where to put their OKF bundle.
+
+In OKF's domain language, the artifacts in a bundle are **concepts**. Each concept is a single unit of knowledge: a markdown document with YAML frontmatter.
 
 ---
 
-## What are Knowledge Notes?
+## What are Concepts?
 
-Notes are markdown files stored in `.agents/knowledge/<slug>/<slug>.md`. Unlike conversation history (which is per-session), notes persist as local files and can be shared, versioned, and searched like the rest of your project.
+Concepts are markdown files stored in `.agents/knowledge/<slug>/<slug>.md`. Unlike conversation history (which is per-session), concepts persist as local files and can be shared, versioned, and searched like the rest of your project.
 
-Use notes for:
+Use concepts for:
 - Project-specific context and architecture decisions
 - User preferences and working patterns
 - Important findings from previous research
 - Reference information the agent needs repeatedly
 
-The note folder can also contain related assets such as images, PDFs, and other files. No fixed `assets/` subfolder is required.
-
-## Canonical Note Layout
+## Canonical Bundle Layout
 
 ```text
 .agents/
 └── knowledge/
+    ├── index.md                  # Bundle listing (OKF §3.1, §8, §12)
+    ├── log.md                    # Update history (OKF §3.1, §9)
+    ├── references/               # Non-markdown assets (OKF §6.3)
+    │   ├── architecture-diagram.png
+    │   └── api-contract.pdf
     └── project-stack/
-        ├── project-stack.md
-        ├── architecture-diagram.png
-        └── api-contract.pdf
+        └── project-stack.md      # Concept document
 ```
 
-## Note Format
+## Concept Format
 
-Notes are stored as markdown files with simple frontmatter. This is `key: value` metadata, **not full YAML**:
+Every concept is a markdown document with YAML frontmatter. The only always-required field is `type` (OKF §4.1):
 
 ```markdown
 ---
-kind: note
-id: project-stack
+type: Reference
 title: Project Technology Stack
+description: React 18, TypeScript 5, Fastify backend, PostgreSQL.
 context: auto
-updatedAt: 1709856000
-tags: architecture, project, stack
-summary: React 18, TypeScript 5, Fastify backend, PostgreSQL.
+generated: { by: human:you, at: 2026-09-21T02:00:00Z }
+tags: [architecture, project, stack]
 ---
 
 ## Additional Context
@@ -54,49 +56,54 @@ The backend follows a service-oriented architecture with dependency injection.
 All API endpoints require JWT authentication.
 ```
 
-### Frontmatter Fields
+### The dotagents-specific fields
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `kind` | Yes | Always `note` |
-| `id` | Yes | Unique identifier |
-| `title` | Yes | Short descriptive title |
-| `context` | Yes | `auto` or `search-only` |
-| `updatedAt` | Yes | Unix timestamp |
-| `summary` | No | Compact runtime summary |
-| `createdAt` | No | Unix timestamp |
-| `references` | No | Related paths or external refs |
-| `tags` | No | Comma-separated tags or JSON array |
+Everything not listed here is defined by the OKF v0.2 spec — the trust/provenance/lifecycle fields (`sources`, `generated`, `verified`, `stale_after`, `status`), the actor convention, cross-linking, `index.md`/`log.md` structure, and the conformance bar. The `.agents` protocol adds exactly one thing:
 
-## Working Notes and Runtime Selection
+| Field | Description |
+|-------|-------------|
+| `context` | `auto` or `search-only`. The dotagents-defined runtime-injection semantic, expressed as an OKF extension key — OKF declines to specify serving or query infrastructure, so this field decides which concepts are eligible for automatic injection. |
+
+Field mappings from the legacy notes format: `updatedAt` (Unix epoch) → OKF's `generated.at` (ISO 8601 UTC); `summary` → OKF's recommended `description`. The remaining legacy fields (`kind`, `id`, `title`, `tags`) are OKF extension keys, which consumers must preserve and never reject.
+
+Nested YAML is allowed for the OKF trust/provenance fields (`generated`, `verified`, `sources`, etc.) as OKF defines them — the exception to the protocol's "simple key:value, not full YAML" rule. Plain scalar fields stay simple.
+
+### Assets
+
+Non-markdown assets live under the `references/` convention (OKF §6.3): the file is mirrored into the bundle as a first-class artifact, and a concept points at it via `resource:` (the underlying asset the concept describes) or `sources[].resource` (provenance — the concept was extracted from that file). The concept body carries the curated knowledge; the asset is the evidence.
+
+### Linking concepts
+
+Concepts relate through ordinary markdown links, bundle-relative absolute form recommended (OKF §6.1). Consumers must tolerate broken links.
+
+## Working Concepts and Runtime Selection
 
 Runtime behavior is determined explicitly by `context`:
 
 | `context` | Behavior |
 |----------|----------|
-| `auto` | Eligible for automatic runtime injection as a working note |
+| `auto` | Eligible for automatic runtime injection as a working concept |
 | `search-only` | Not injected by default; available via search/retrieval |
 
-Most notes should use `context: search-only`. Reserve `context: auto` for a tiny curated subset of high-signal working notes.
+Most concepts should use `context: search-only`. Reserve `context: auto` for a tiny curated subset of high-signal working concepts.
 
-## Managing Notes
+## Managing Concepts
 
 ### Via Files
 
-Create note folders directly in `~/.agents/knowledge/` or `./.agents/knowledge/`:
+Create concept folders directly in `~/.agents/knowledge/` or `./.agents/knowledge/`:
 
 ```bash
 mkdir -p ~/.agents/knowledge/coding-standards
 
 cat > ~/.agents/knowledge/coding-standards/coding-standards.md << 'EOF'
 ---
-kind: note
-id: coding-standards
+type: Reference
 title: Team Coding Standards
+description: Core TypeScript standards for the team.
 context: search-only
-updatedAt: 1709856000
-tags: standards, code-quality
-summary: Core TypeScript standards for the team.
+generated: { by: human:you, at: 2026-09-21T02:00:00Z }
+tags: [standards, code-quality]
 ---
 
 ## Standards
@@ -110,29 +117,29 @@ EOF
 
 ### Via the Agent
 
-Ask your agent to create or update notes as normal files:
+Ask your agent to create or update concepts as normal files:
 
-> "Create a knowledge note for our API versioning rules and make it search-only."
+> "Create a knowledge concept for our API versioning rules and make it search-only."
 
-Direct file editing is the default write path for notes.
+Direct file editing is the default write path for concepts.
 
-## How Notes are Used
+## How Concepts are Used
 
 ### Loading
 
-Notes are layered the same way as the rest of `.agents`:
+Concepts are layered the same way as the rest of `.agents`:
 
 ```
-~/.agents/knowledge/       (global notes)
+~/.agents/knowledge/       (global concepts)
     ↓ merge by ID
-./.agents/knowledge/       (workspace notes, wins on conflict)
+./.agents/knowledge/       (workspace concepts, wins on conflict)
     ↓
 Agent's available knowledge
 ```
 
 ### In Context
 
-Only notes with `context: auto` are eligible for automatic runtime injection. Search-only notes remain discoverable through file search and semantic retrieval without being injected into every session.
+Only concepts with `context: auto` are eligible for automatic runtime injection. Search-only concepts remain discoverable through file search and semantic retrieval without being injected into every session.
 
 ## Two-Layer Storage
 
@@ -140,29 +147,27 @@ Like all `.agents` protocol files, knowledge supports two layers:
 
 ### Global (`~/.agents/knowledge/`)
 
-Personal notes available across all projects. Good for:
+Personal concepts available across all projects. Good for:
 - Your coding preferences
 - Common tool configurations
 - General knowledge the agent should have
 
 ### Workspace (`./.agents/knowledge/`)
 
-Project-specific notes. Good for:
+Project-specific concepts. Good for:
 - Project architecture and decisions
 - Team conventions
 - Domain-specific knowledge
 
-Workspace notes override global notes with the same ID.
+Workspace concepts override global concepts with the same ID.
 
 ## Backup and Recovery
 
-Knowledge notes are protected by the `.agents` protocol's resilience features:
+Knowledge concepts are protected by the `.agents` protocol's resilience features:
 
 - **Atomic writes** — Writes use temp file + rename to prevent corruption
 - **Timestamped backups** — Auto-rotated copies in `.agents/.backups/knowledge/`
 - **Auto-recovery** — Corrupted files are automatically restored from backups
-
-> Older docs or integrations may still use `memory` wording, but the protocol model documents `knowledge`, `notes`, and `working notes` as canonical.
 
 ---
 
